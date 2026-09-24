@@ -143,8 +143,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		$next['features']['acceptance'] = true;
 		$next['features']['skills'] = true;
 		$next['updated_at'] = gmdate( 'c' );
-		if ( false === update_option( MAD4B_SCP_Site_Profile::OPTION, $next, false ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_save_failed', 'Site Profile feature re-enrollment could not be persisted.' );
-		MAD4B_SCP_Site_Profile::reset_cache();
+		if ( ! MAD4B_SCP_Site_Profile::persist_record_exact( $next ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_save_failed', 'Site Profile feature re-enrollment could not be persisted and verified by readback.' );
 
 		$after = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
 		$status = MAD4B_SCP_Site_Profile::status();
@@ -236,8 +235,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		$next['revision'] = $current_revision + 1;
 		$next['chatgpt_app_id'] = $app_id;
 		$next['updated_at'] = gmdate( 'c' );
-		if ( false === update_option( MAD4B_SCP_Site_Profile::OPTION, $next, false ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_save_failed', 'ChatGPT App mapping could not be persisted.' );
-		MAD4B_SCP_Site_Profile::reset_cache();
+		if ( ! MAD4B_SCP_Site_Profile::persist_record_exact( $next ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_save_failed', 'ChatGPT App mapping could not be persisted and verified by readback.' );
 
 		$after = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
 		$status = MAD4B_SCP_Site_Profile::status();
@@ -295,9 +293,6 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 	}
 
 	private static function restore_profile( array $before ) {
-		update_option( MAD4B_SCP_Site_Profile::OPTION, $before, false );
-		MAD4B_SCP_Site_Profile::reset_cache();
-		$restored = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
-		return is_array( $restored ) && $before === $restored;
+		return MAD4B_SCP_Site_Profile::persist_record_exact( $before );
 	}
 }

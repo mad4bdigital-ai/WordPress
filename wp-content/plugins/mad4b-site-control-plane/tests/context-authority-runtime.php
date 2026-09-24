@@ -70,8 +70,7 @@ mad4b_context_assert( true === $matches->invoke( null, $rw, 'read_write' ), 'rea
 mad4b_context_assert( false === $matches->invoke( null, $ro, 'read_write' ), 'read-write mode must reject read-only scope' );
 mad4b_context_assert( false === $matches->invoke( null, $ro . ' ' . $rw, 'read_only' ), 'read-only mode must reject accumulated Drive scopes' );
 mad4b_context_assert( false === $matches->invoke( null, $ro . ' ' . $rw, 'read_write' ), 'read-write mode must reject accumulated Drive scopes' );
-mad4b_context_assert( true === $allowed->invoke( null, $rw . ' ' . MAD4B_SCP_Google_Drive_Context::GMAIL_READ_SCOPE ), 'catalogued Workspace scopes may coexist with the governed Drive scope' );
-mad4b_context_assert( false === $allowed->invoke( null, $rw . ' https://www.googleapis.com/auth/youtube.force-ssl' ), 'Google scopes outside the governed Workspace grant catalog must fail closed' );
+mad4b_context_assert( false === $allowed->invoke( null, $rw . ' https://www.googleapis.com/auth/contacts.readonly' ), 'unsupported Google scopes must fail closed' );
 mad4b_context_assert( false === $allowed->invoke( null, 'https://www.googleapis.com/auth/drive.file' ), 'drive.file is not accepted by the existing-asset repair contract' );
 
 mad4b_context_assert(

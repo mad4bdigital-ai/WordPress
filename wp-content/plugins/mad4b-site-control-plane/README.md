@@ -2,19 +2,38 @@
 
 Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter owns MCP protocol/session/transport; MAD4B registers explicit WordPress Abilities and mounts them only on isolated custom MCP servers.
 
-Current plugin version: **0.4.0-rc.35**.
+Current plugin version: **0.4.0-rc.59**.
+
+Provider-gap closure is zero-touch and non-authorizing. The package embeds exact-head repository evidence plus `functional-gap-policy.json`; `mad4b/functional-gap-runtime-evidence` performs bounded local runtime collection, fixed-point drift checks, and deterministic evaluation without shell, WP-CLI, raw SQL, remote requests, credential reads, or mutation. Evidence readiness never grants provider write authority or Production activation. Provider capability diagnostics also distinguish mounted from latent capabilities and read readiness from blocked write certification.
 
 > Repository CI certification is not live-site certification. The PR remains Draft until the exact target WordPress deployment passes the target acceptance contract.
 
+Operator deployment, authority reconciliation, recovery, rollback and lifecycle guidance: [`docs/RELEASE-AND-OPERATOR-RUNBOOK.md`](docs/RELEASE-AND-OPERATOR-RUNBOOK.md).
+
+Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
+
+### rc.59 lineage consolidation
+
+rc.59 consolidates the previously divergent provider/zero-touch, Developer + Full Staging Authority, and rc.58 ChatGPT hotpath lineages. It retains route-targeted MCP materialization and request-local non-persistent catalog caching, restores plan-bound transactional Staging grant reconciliation v2 with persistence rollback, restores zero-touch runtime-census binding, and keeps Developer/Developer Breakglass on isolated non-Production MCP resources. Generic Raw SQL Breakglass remains a separate disabled-by-default surface and is not included in Full Staging Authority.
+
+### ChatGPT MCP refresh hot path
+
+rc.58 keeps the compact rc.57 transport catalog and additionally removes two request-time costs that were still paid before `tools/list` could return. On an HTTP request to one MAD4B MCP route, every MAD4B route is still registered, but only the addressed server materializes its Ability-to-MCP Tool DTOs; sibling servers are route stubs for that request and are fully materialized when addressed by their own request. Request-local catalog/provider memoization is active during MCP server construction as soon as the WordPress Abilities registry is complete. Skill seed/provider reconciliation is kept off generic MCP transport requests and remains on activation, explicit Control Plane admin lifecycle, and WP-CLI. No cross-request catalog cache or authority shortcut is introduced.
+
+
 ## MCP surfaces
 
-MAD4B now owns five governed custom MCP server IDs:
+MAD4B now owns nine governed custom MCP server IDs:
 
 - `mad4b-read` — privileged discovery and diagnostics.
+- `mad4b-chatgpt` — compact ChatGPT-safe discovery/dispatch gateway.
+- `mad4b-enrollment` — bounded Site Profile, candidate-binding, and authority bootstrap surface.
 - `mad4b-content` — specialist content/provider mutation surface.
 - `mad4b-write` — unified governed write ingress containing only already-registered Abilities with explicit runtime `annotations.readonly === false`.
 - `mad4b-admin` — specialist administrative repair/governance surface.
-- `mad4b-breakglass` — exceptional raw SQL recovery; disabled by default.
+- `mad4b-developer` — isolated non-Production Developer Agent plane.
+- `mad4b-developer-breakglass` — separately gated non-Production Developer recovery plane; disabled by default.
+- `mad4b-breakglass` — exceptional generic raw SQL recovery; disabled by default and excluded from Full Staging Authority.
 
 Their effective REST URLs are derived from the MCP Adapter runtime. With standard rewrites they normally appear as `/wp-json/mcp/<server-id>`; WordPress may also represent the same REST route through `index.php?rest_route=/mcp/<server-id>` when pretty REST rewrites are unavailable. MAD4B validates the registered logical route rather than assuming one URL-rewrite form.
 
@@ -110,7 +129,7 @@ A detected peer/foreign write path produces `mcp_write_side_channel_detected` an
 2. remote HTTPS endpoint preflight readiness;
 3. external connection certification, which remains false until a real target MCP session is proven.
 
-It derives all five runtime server endpoints, validates REST route registration and exact transport permission callback identity, and displays a dedicated `mad4b-write` summary with mounted-write count, global mutation state and the exact-transport-grant requirement.
+It derives all nine runtime server endpoints, validates REST route registration and exact transport permission callback identity, and displays a dedicated `mad4b-write` summary with mounted-write count, global mutation state and the exact-transport-grant requirement.
 
 The page does not create credentials, configure a client, enable mutation, create grants/approvals, or make outbound self-probe HTTP requests. A local WordPress process cannot self-certify Internet reachability, authentication behavior or the external subject bridge.
 
@@ -292,7 +311,7 @@ Repository CI currently covers:
 - exact packaged-provider version/archive certification;
 - runtime critical-file integrity manifests;
 - native MCP security invariants for JetEngine, Elementor and Bit Pi;
-- default-server isolation and six MAD4B custom servers;
+- default-server isolation and nine MAD4B custom servers;
 - exact route/server transport binding before exact grant and approval consumption;
 - `mad4b-write` projection from explicit `readonly=false` Ability metadata;
 - specialist-server grant versus `mad4b-write` grant isolation;
@@ -313,7 +332,7 @@ Repository CI currently covers:
 - read-only Admin Governance/Connection Console contract/runtime behavior;
 - disposable WordPress/MySQL runtime activation and smoke testing on WordPress 6.9 and the current `latest` release.
 
-The isolated runtime CI activates MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.4.0-rc.35 in disposable WordPress/MySQL. Repository success does **not** replace target-site certification.
+The isolated runtime CI activates MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.4.0-rc.59 in disposable WordPress/MySQL. Repository success does **not** replace target-site certification.
 
 The core mutation-gate workflow is read-only. The MCP Adapter refresh workflow is manual-only (`workflow_dispatch`) and may write certification evidence only when an operator explicitly runs it on a selected branch.
 
@@ -323,7 +342,7 @@ Keep the PR Draft until the exact target site proves at least:
 
 1. the deployed provider versions and critical files match the certified baseline;
 2. MCP Adapter and the control plane activate without fatal/runtime warnings;
-3. all six MAD4B servers are registered and the intended endpoint is remotely reachable over HTTPS;
+3. all nine MAD4B servers are registered and the intended endpoint is remotely reachable over HTTPS;
 4. the dedicated control identity authenticates correctly through real MCP transport/session handling;
 5. `mad4b/runtime-self-test` returns `passed`, with custom-server isolation and no required-provider/peer blockers;
 6. the official default MCP server cannot discover MAD4B abilities;
@@ -355,3 +374,10 @@ Keep the PR Draft until the exact target site proves at least:
 ## Host boundary
 
 The WordPress control plane does not provide arbitrary PHP/shell execution or privilege escalation. SSH, Hostinger APIs, system services, host-level cron/logs, files outside PHP permissions, and unrelated database credentials remain a separate MAD4B Host Connector concern.
+
+
+### Capability-impact health semantics
+
+Runtime provider health distinguishes artifact drift from unsafe capability drift. An active provider may remain platform-healthy when its mounted read capabilities are structurally compatible and every mutation capability remains fail-closed. Active providers with exposed read incompatibilities, adapter-runtime failure, or mutation eligibility under unresolved artifact drift remain blockers.
+
+Functional-gap evaluation also distinguishes evaluator completion from provider closure. The legacy `ready` field is a backward-compatible alias for `evaluation_complete`; it is not provider certification. Operators should use `decision_handoff`, `followup_required`, and per-family decision states for the next governed action.

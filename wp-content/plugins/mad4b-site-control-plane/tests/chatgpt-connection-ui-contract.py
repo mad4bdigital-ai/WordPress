@@ -57,15 +57,21 @@ for forbidden in [
         raise SystemExit(f'forbidden ChatGPT connection UI primitive: {forbidden}')
 
 required_consent_semantics = [
-    'mad4b.local-oauth-consent-ui.v2',
+    'mad4b.local-oauth-consent-ui.v4',
     "add_action( 'admin_init', array( __CLASS__, 'start_buffer_for_connection_admin' ), -20 )",
-    'This consent authenticates the client and grants the narrow read resource scope shown below; it does not grant write authority.',
-    'Governed write actions, when available, require separate governed write authority and a one-time approval.',
-    'OAuth identity/read scope · write authority separate · PKCE S256',
+    'This consent authenticates the client and grants only the read resource scope shown below. Write, Developer and Developer Breakglass are separate governed authorities and are not created by this OAuth approval.',
+    'Read identity + Staging authority step-up',
+    'mad4b:authority:step-up',
+    'Approve governed access',
+    'Write, Developer and Developer Breakglass are separate governed authorities',
+    'OAuth identity · Step-up is request permission only · Write/Developer authorities separate · PKCE S256',
     'Connection and certification workspace.',
     'This page is inspection-only:',
     'Governed write capability, when available, is established separately by Write Authority, Write Runtime Certification and one-time approvals.',
     'This certification does not grant write authority; governed mutation availability is evaluated separately by Write Authority and Write Runtime Certification.',
+    'What you are approving now',
+    'Generic raw-SQL Breakglass',
+    'Current Staging authority',
 ]
 for marker in required_consent_semantics:
     if marker not in consent_ui:

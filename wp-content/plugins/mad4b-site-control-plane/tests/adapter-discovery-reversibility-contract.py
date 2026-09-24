@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,15 +22,20 @@ def text(path):
 def family_for_archive(name, catalog):
     synthetic = name[:-4] + "/" if name.endswith(".zip") else name + "/"
     for family in catalog.get("families", []):
-        for prefix in family.get("match", []):
-            if synthetic.startswith(prefix):
-                return {
-                    "family": family.get("id", "unknown"),
-                    "adapter_id": family.get("adapter_id", ""),
-                    "strategy": family.get("strategy", "adapter_required"),
-                    "risk": family.get("risk", "unknown"),
-                    "requested_contracts": family.get("requested_contracts", []),
-                }
+        matched = any(synthetic.startswith(prefix) for prefix in family.get("match", []))
+        if not matched:
+            for base in family.get("versioned_match", []) or []:
+                if re.match(r'^' + re.escape(str(base).strip('/')) + r'-v[0-9]+(?:[.][0-9]+)*/', synthetic):
+                    matched = True
+                    break
+        if matched:
+            return {
+                "family": family.get("id", "unknown"),
+                "adapter_id": family.get("adapter_id", ""),
+                "strategy": family.get("strategy", "adapter_required"),
+                "risk": family.get("risk", "unknown"),
+                "requested_contracts": family.get("requested_contracts", []),
+            }
     default = catalog.get("default", {})
     return {
         "family": "unknown",

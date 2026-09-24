@@ -218,7 +218,8 @@ $expected_metadata = class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ? MAD4
 if ( empty( $challenge['WWW-Authenticate'] ) || false === strpos( $challenge['WWW-Authenticate'], 'resource_metadata=' ) || false === strpos( $challenge['WWW-Authenticate'], 'mad4b:read' ) || ( $expected_metadata && false === strpos( $challenge['WWW-Authenticate'], $expected_metadata ) ) ) mad4b_oauth_smoke_fail( '401 must advertise authoritative protected-resource metadata and read scope.', $challenge );
 
 $metadata = MAD4B_SCP_OAuth_Resource_Bridge::protected_resource_metadata();
-if ( $status['resource'] !== $metadata['resource'] || array( $issuer ) !== $metadata['authorization_servers'] || array( 'mad4b:read' ) !== $metadata['scopes_supported'] ) mad4b_oauth_smoke_fail( 'Protected resource metadata mismatch.', $metadata );
+$expected_resource_scopes = MAD4B_SCP_OAuth_Resource_Bridge::scopes_for_resource( $metadata['resource'] );
+if ( $status['resource'] !== $metadata['resource'] || array( $issuer ) !== $metadata['authorization_servers'] || $expected_resource_scopes !== $metadata['scopes_supported'] ) mad4b_oauth_smoke_fail( 'Protected resource metadata mismatch.', array( 'metadata' => $metadata, 'expected_scopes' => $expected_resource_scopes ) );
 
 $compat = MAD4B_SCP_MCP_Client_Compatibility::status();
 if ( 'external' !== $compat['oauth_authority_mode'] || empty( $compat['authorization_server_external'] ) || ! empty( $compat['authorization_server_local'] ) || 1 !== (int) $compat['authorization_server_count'] ) mad4b_oauth_smoke_fail( 'Client compatibility metadata does not truthfully report external authority mode.', $compat );

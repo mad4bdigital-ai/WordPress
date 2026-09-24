@@ -78,7 +78,7 @@ for marker in [
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-seeder.v1'",
-    "const SEED_VERSION = 3",
+    "const SEED_VERSION = 6",
     "const SEED_DIR = 'skill-seeds'",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Skill_Registry::editor_enabled()",
@@ -99,6 +99,8 @@ for marker in [
     "jetengine-content-modeling",
     "wordpress-archive-audit",
     "wordpress-change-safety",
+    "wordpress-release-orchestration",
+    "wordpress-browser-acceptance",
     "wordpress-content-authoring",
     "context_policy_sha256",
     "allowed_mutation_abilities",
@@ -296,6 +298,8 @@ expected_skills = {
     'jetengine-content-modeling',
     'wordpress-archive-audit',
     'wordpress-change-safety',
+    'wordpress-release-orchestration',
+    'wordpress-browser-acceptance',
     'wordpress-content-authoring',
 }
 found = set()
@@ -314,6 +318,10 @@ for skill_dir in (portable / 'skills').iterdir():
         raise SystemExit(f'{skill_dir.name} frontmatter name must match folder')
     if 'description:' not in text.split('---', 2)[1]:
         raise SystemExit(f'{skill_dir.name} missing frontmatter description')
+    if skill_dir.name == 'wordpress-release-orchestration':
+        for marker in ('plan_sha256', 'expected_plan_sha256', 'expected_state_sha256', 're-planning and re-approval'):
+            if marker not in text:
+                raise SystemExit(f'wordpress-release-orchestration missing plan-bound authority instruction: {marker}')
     found.add(skill_dir.name)
 
     canonical = seed_root / skill_dir.name / 'SKILL.md'
@@ -326,7 +334,7 @@ for skill_dir in (portable / 'skills').iterdir():
 if not expected_skills.issubset(found):
     raise SystemExit(f'missing portable seed skills: {sorted(expected_skills - found)}')
 if {p.parent.name for p in seed_root.glob('*/SKILL.md')} != expected_skills:
-    raise SystemExit('canonical Control Plane seed set must exactly match the seven portable baseline Skills')
+    raise SystemExit('canonical Control Plane seed set must exactly match the nine portable baseline Skills')
 
 entry = next((x for x in marketplace.get('plugins', []) if x.get('name') == 'mad4b-wordpress'), None)
 if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpress':
@@ -334,4 +342,4 @@ if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpres
 if entry.get('policy', {}).get('authentication') != 'ON_INSTALL':
     raise SystemExit('MAD4B WordPress marketplace entry must authenticate on install')
 
-print('mad4b.dynamic-skills.v6: PASS')
+print('mad4b.dynamic-skills.v8: PASS')

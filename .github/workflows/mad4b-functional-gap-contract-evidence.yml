@@ -1,0 +1,271 @@
+name: MAD4B Functional Gap Contract Evidence
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/*.zip'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'tools/evaluate-functional-gap-contract-promotion.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-functional-gap-diagnostic.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-runtime-diagnostic-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-promotion-evaluator-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-zero-touch-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-authority-isolation-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity-matrix.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-functional-gap-evidence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-plugin-package.yml'
+      - '.github/workflows/mad4b-functional-gap-contract-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-functional-gap-contract-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    name: Repository-backed functional-gap evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Verify exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Verify read-only runtime diagnostic contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-runtime-diagnostic-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-promotion-evaluator-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-zero-touch-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-authority-isolation-contract.py
+          python3 -m py_compile tools/evaluate-functional-gap-contract-promotion.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-functional-gap-evidence.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-functional-gap-diagnostic.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity.php
+          python3 -m py_compile wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity-matrix.py
+
+      - name: Capture contract evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/mad4b-functional-gap
+          python3 tools/capture-functional-gap-contract-evidence.py             /tmp/mad4b-functional-gap/functional-gap-contract-evidence.json
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          p=Path('/tmp/mad4b-functional-gap/functional-gap-contract-evidence.json')
+          data=json.loads(p.read_text())
+          policy_path=Path('wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json')
+          policy_raw=policy_path.read_bytes()
+          policy=json.loads(policy_raw)
+          expected={
+              family for family,row in policy.get('families',{}).items()
+              if row.get('repository_evidence') is True
+          }
+          if data.get('contract')!='mad4b.functional-gap-contract-evidence.v1':
+              raise SystemExit('contract mismatch')
+          if data.get('source_commit_sha')!=os.environ['SOURCE_SHA']:
+              raise SystemExit('evidence exact source mismatch')
+          if data.get('policy_contract')!=policy.get('contract'):
+              raise SystemExit('evidence policy contract mismatch')
+          if data.get('policy_sha256')!=hashlib.sha256(policy_raw).hexdigest():
+              raise SystemExit('evidence policy SHA mismatch')
+          if set(data.get('families',{}))!=expected:
+              raise SystemExit('family evidence set mismatch')
+          for family,row in data['families'].items():
+              if row.get('promotion_authorized') is not False or row.get('evidence_only') is not True:
+                  raise SystemExit(f'{family}: evidence became authorizing')
+              if not row.get('artifacts'):
+                  raise SystemExit(f'{family}: no artifacts')
+              for artifact in row['artifacts']:
+                  if len(artifact.get('archive_sha256',''))!=64:
+                      raise SystemExit(f'{family}: missing archive sha')
+                  if not artifact.get('plugin_headers'):
+                      raise SystemExit(f'{family}: no plugin headers found')
+                  tree=artifact.get('package_tree') or {}
+                  if len(tree.get('tree_sha256',''))!=64 or int(tree.get('file_count',0))<1:
+                      raise SystemExit(f'{family}: package tree fingerprint missing')
+
+          for family,rule in policy.get('families',{}).items():
+              if rule.get('evaluation_mode') not in {'premium_semantic','composite_behavioral'}:
+                  continue
+              components=rule.get('identity_components') or []
+              if not components:
+                  raise SystemExit(f'{family}: identity components missing')
+              evidence_artifacts={
+                  row.get('archive'):row
+                  for row in data.get('families',{}).get(family,{}).get('artifacts',[])
+                  if isinstance(row,dict) and row.get('archive')
+              }
+              expected_artifacts=sorted(set(rule.get('repository_artifacts') or []))
+              component_artifacts=sorted(set(str(row.get('artifact','')) for row in components))
+              if component_artifacts!=expected_artifacts:
+                  raise SystemExit(f'{family}: identity component artifact set mismatch')
+              seen_plugins=set()
+              for component in components:
+                  archive=str(component.get('artifact',''))
+                  plugin_file=str(component.get('plugin_file','')).replace('\\','/').lstrip('/').lower()
+                  if not archive or not plugin_file or plugin_file in seen_plugins:
+                      raise SystemExit(f'{family}: invalid/duplicate identity component')
+                  seen_plugins.add(plugin_file)
+                  artifact=evidence_artifacts.get(archive)
+                  if not artifact:
+                      raise SystemExit(f'{family}: identity component artifact missing from evidence: {archive}')
+                  basename=plugin_file.rsplit('/',1)[-1]
+                  headers=[
+                      h for h in artifact.get('plugin_headers',[])
+                      if str(h.get('file','')).replace('\\','/').rsplit('/',1)[-1].lower()==basename
+                      and str(h.get('version','')).strip()
+                  ]
+                  if len(headers)!=1:
+                      raise SystemExit(f'{family}: identity component header ambiguous: {plugin_file}')
+          print('functional-gap evidence boundaries: PASS')
+          PY
+
+          cp wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json \
+            /tmp/mad4b-functional-gap/functional-gap-policy.json
+          printf '%s\n' "$SOURCE_SHA" > /tmp/mad4b-functional-gap/SOURCE_HEAD.txt
+          (
+            cd /tmp/mad4b-functional-gap
+            sha256sum functional-gap-contract-evidence.json functional-gap-policy.json SOURCE_HEAD.txt > SHA256SUMS
+            sha256sum --check --strict SHA256SUMS
+          )
+
+      - name: Prove PHP and Python evaluator parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo_evidence=/tmp/mad4b-functional-gap/functional-gap-contract-evidence.json
+          runtime_fixture=/tmp/mad4b-functional-gap/runtime-parity-fixture.json
+          python_output=/tmp/mad4b-functional-gap/python-evaluation.json
+
+          python3 - "$repo_evidence" "$runtime_fixture" <<'PY'
+          import hashlib, json, sys
+          from pathlib import Path
+
+          evidence=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          policy=json.loads(Path('wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json').read_text(encoding='utf-8'))
+          repo_families=evidence.get('families',{})
+
+          families={}
+          for family,rule in sorted(policy.get('families',{}).items()):
+              artifacts=repo_families.get(family,{}).get('artifacts',[])
+              fixture_artifacts = artifacts if rule.get('evaluation_mode') == 'composite_behavioral' and artifacts else (artifacts[:1] if artifacts else [])
+              rows=[]
+              if fixture_artifacts:
+                  for index,artifact in enumerate(fixture_artifacts):
+                      tree=artifact.get('package_tree',{})
+                      headers=[h for h in artifact.get('plugin_headers',[]) if h.get('version')]
+                      version=str(headers[0]['version']) if headers else ''
+                      digest=str(tree.get('tree_sha256',''))
+                      count=int(tree.get('file_count',1) or 1)
+                      total=int(tree.get('total_bytes',1) or 1)
+                      header_file=str(headers[0].get('file','')) if headers else ''
+                      plugin_file=header_file or f"{family}/component-{index}.php"
+                      rows.append({
+                          'plugin_file':plugin_file,
+                          'name':family,
+                          'version':version,
+                          'active':True,
+                          'plugin_tree':{
+                              'file_count':count,
+                              'total_bytes':total,
+                              'tree_sha256':digest,
+                              'scan_stable':True,
+                              'scan_attempts':1,
+                              'comparison':'exact_repository_match',
+                              'scan_strategy':'fixture',
+                          },
+                      })
+              else:
+                  rows=[{
+                      'plugin_file':f"{family}/{family}.php",
+                      'name':family,
+                      'version':'fixture-1.0.0',
+                      'active':True,
+                      'plugin_tree':{
+                          'file_count':1,
+                          'total_bytes':1,
+                          'tree_sha256':hashlib.sha256(family.encode()).hexdigest(),
+                          'scan_stable':True,
+                          'scan_attempts':1,
+                          'comparison':'runtime_identity_captured',
+                          'scan_strategy':'fixture',
+                      },
+                  }]
+              families[family]=rows
+
+          rest_routes=[]
+          for family,rule in sorted(policy.get('families',{}).items()):
+              callback_map=rule.get('required_get_permission_callbacks') or {}
+              for route in rule.get('required_get_routes',[]) or []:
+                  callbacks=callback_map.get(route) or []
+                  callbacks=[str(value).strip() for value in callbacks if str(value).strip()]
+                  rest_routes.append({
+                      'route':route,
+                      'methods':['GET'],
+                      'get_permission_callbacks':callbacks,
+                      'get_permission_missing':not bool(callbacks),
+                      'get_permission_public':False,
+                  })
+
+          option_presence={}
+          for family,rule in sorted(policy.get('families',{}).items()):
+              for key in rule.get('redacted_secret_option_keys',[]) or []:
+                  option_presence[key]={'exists':None,'redacted':True,'configured':None,'value_read':False,'probe':'omitted_secret_value'}
+              for key in rule.get('required_status_option_keys',[]) or []:
+                  option_presence[key]={'exists':True,'redacted':False,'type':'boolean','empty':False}
+
+          runtime={
+              'contract':'mad4b.runtime-functional-gap-evidence.v2',
+              'generated_at':'fixture',
+              'deep_scan_performed':True,
+              'scan_budget':{'files_hashed':0,'bytes_hashed':0,'elapsed_ms':0},
+              'families':families,
+              'constants':{},
+              'rest_routes':rest_routes,
+              'ajax_hooks':[],
+              'option_presence':option_presence,
+              'cron_hooks':[],
+              'safety':{
+                  'mutation_performed':False,
+                  'remote_request_performed':False,
+                  'secret_values_returned':False,
+                  'raw_sql_performed':False,
+              },
+          }
+          Path(sys.argv[2]).write_text(json.dumps(runtime,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          PY
+
+          python3 tools/evaluate-functional-gap-contract-promotion.py             --repository-evidence "$repo_evidence"             --runtime-diagnostic "$runtime_fixture"             --output "$python_output"
+
+          php wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity.php             "$repo_evidence" "$runtime_fixture" "$python_output"
+
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity-matrix.py \
+            --repository-evidence "$repo_evidence" \
+            --runtime-fixture "$runtime_fixture" \
+            --output-dir /tmp/mad4b-functional-gap/parity-matrix
+
+      - name: Upload self-contained evidence bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-functional-gap-contract-evidence-${{ env.SOURCE_SHA }}
+          path: /tmp/mad4b-functional-gap/
+          if-no-files-found: error
+          retention-days: 30

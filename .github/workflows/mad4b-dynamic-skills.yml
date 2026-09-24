@@ -62,6 +62,9 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           for file in \
             includes/class-mad4b-scp-site-profile.php \
+            includes/class-mad4b-scp-plugin-lifecycle.php \
+            includes/class-mad4b-scp-workflow-providers.php \
+            includes/class-mad4b-scp-operating-model.php \
             includes/class-mad4b-scp-skill-autoconfig.php \
             includes/class-mad4b-scp-skill-registry.php \
             includes/class-mad4b-scp-skill-seeder.php \
@@ -81,7 +84,15 @@ jobs:
             includes/class-mad4b-scp-transport-context.php \
             includes/class-mad4b-scp-servers.php \
             includes/adapters/class-mad4b-scp-skills-adapter.php \
+            includes/adapters/class-mad4b-scp-wp-import-export-adapter.php \
             tests/runtime-dynamic-skills-smoke.php \
+            tests/runtime-governance-readonly-immutability.php \
+            tests/runtime-plugin-lifecycle-data-continuity.php \
+            tests/runtime-workflow-lifecycle-governance.php \
+            tests/runtime-authority-concurrency-worker.php \
+            tests/runtime-authority-concurrency-verify.php \
+            tests/authority-candidate-binding-runtime.php \
+            tests/runtime-wp-import-export-governance.php \
             tests/runtime-write-authority-persisted-readback.php \
             tests/runtime-write-surface-smoke.php \
             tests/runtime-dynamic-skills-production-smoke.php; do
@@ -95,6 +106,11 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-data-retention-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-governance-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/workflow-provider-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/operating-model-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/authority-candidate-binding-runtime.php
 
       - name: Deny Skill mutation and breakglass leakage
         shell: bash
@@ -233,11 +249,82 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+      - name: Prove workflow provider and plugin lifecycle planning fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-workflow-lifecycle-governance.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+
+      - name: Prove bulk Import Export remains exact-plan-only and fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-wp-import-export-governance.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+
       - name: Prove persisted authority survives an independent request
         shell: bash
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-write-authority-persisted-readback.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+
+      - name: Prove read and status surfaces preserve authority-bearing persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-governance-readonly-immutability.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+
+      - name: Prove deactivate and reactivate preserve governance data
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-dynamic-skills-staging
+          SNAPSHOT=/tmp/mad4b-scp-plugin-lifecycle-snapshot.json
+          export MAD4B_LIFECYCLE_SNAPSHOT_FILE="$SNAPSHOT"
+
+          export MAD4B_LIFECYCLE_PHASE=capture
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+          php /tmp/wp-cli.phar plugin deactivate mad4b-site-control-plane --path="$WP_PATH"
+          export MAD4B_LIFECYCLE_PHASE=verify
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-governance-readonly-immutability.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+      - name: Prove concurrent reconcile and read requests preserve exact grants
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-dynamic-skills-staging
+          SNAPSHOT=/tmp/mad4b-authority-concurrency.json
+          export MAD4B_AUTHORITY_CONCURRENCY_SNAPSHOT_FILE="$SNAPSHOT"
+
+          export MAD4B_AUTHORITY_CONCURRENCY_PHASE=capture
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-authority-concurrency-verify.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+          pids=()
+          logs=()
+          for i in 1 2 3 4 5 6; do
+            log="/tmp/mad4b-authority-read-$i.log"
+            MAD4B_AUTHORITY_CONCURRENCY_MODE=read php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-authority-concurrency-worker.php" --path="$WP_PATH" --user=mad4b-ci-admin >"$log" 2>&1 &
+            pids+=("$!")
+            logs+=("$log")
+          done
+          reconcile_log=/tmp/mad4b-authority-reconcile.log
+          MAD4B_AUTHORITY_CONCURRENCY_MODE=reconcile php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-authority-concurrency-worker.php" --path="$WP_PATH" --user=mad4b-ci-admin >"$reconcile_log" 2>&1 &
+          pids+=("$!")
+          logs+=("$reconcile_log")
+
+          failed=0
+          for pid in "${pids[@]}"; do
+            if ! wait "$pid"; then failed=1; fi
+          done
+          for log in "${logs[@]}"; do cat "$log"; done
+          test "$failed" -eq 0
+
+          export MAD4B_AUTHORITY_CONCURRENCY_PHASE=verify
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-authority-concurrency-verify.php" --path="$WP_PATH" --user=mad4b-ci-admin
 
       - name: Prove provider-uncertified mutations stay outside governed remote write projection
         shell: bash

@@ -263,7 +263,7 @@ require(impl['connection'], '$connection_certified = empty( $certification_block
 require(impl['connection'], "'external_handshake_unverified'", 'implementation-unverified-handshake-blocker')
 require(impl['connection'], "'external_handshake_stale'", 'implementation-stale-handshake-blocker')
 for marker in (
-    'mad4b.external-handshake-evidence.v3',
+    'mad4b.external-handshake-evidence.v4',
     "const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
     "const SERVER_ID = 'mad4b-chatgpt'",
     "defined( 'REST_REQUEST' )", "defined( 'WP_CLI' ) && WP_CLI",
@@ -271,6 +271,7 @@ for marker in (
     "hash( 'sha256', $session_id )", "update_option( self::OPTION, $evidence, false )",
     "'credential_material_stored' => false", "'stale_build_evidence'", "'stale_tool_inventory_evidence'", 'build_fingerprint()',
     "'tool_inventory_fingerprint'", "'expected_tool_inventory_fingerprint'", "'tool_inventory_match'",
+    "'write_catalog_fingerprint'", "'write_transport_ready'", "'direct_write_schema_leaks'",
     'expected_tool_names()', 'expected_write_tool_names()', 'blocked_write_tool_names()', 'breakglass_tool_names()',
 ): require(impl['external_evidence'], marker, 'implementation-external-handshake-evidence')
 for forbidden in ("'access_token' =>", "'refresh_token' =>", "'authorization_header' =>", "'raw_token' =>", 'wp_remote_get(', 'wp_remote_post('):

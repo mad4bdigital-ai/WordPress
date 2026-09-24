@@ -170,6 +170,39 @@ The engine records artifact evidence separately from structural and behavioral e
 
 `compatible_unattested` means the required structural contract is present but the provider artifact itself is not an exact certified baseline. It does not mean “trusted for mutation.” A specific bounded capability may still be behaviorally recertified without changing that provider-level artifact truth.
 
+## Surface-aware structural compatibility
+
+Capability declarations and actually mounted adapter surfaces are separate facts. Each capability now reports:
+
+- `abilities` — catalog-declared abilities;
+- `mounted_abilities` — the subset currently declared by the adapter;
+- `surface_exposed` — whether the capability can participate in the current adapter surface.
+
+A structural probe failure on a catalog-only latent capability is retained as evidence but does not by itself mark the provider as a breaking contract. Exposed incompatibilities remain fail-closed. Mixed exposed compatibility is reported as `partially_compatible`; a provider whose installed artifact exists but whose adapter runtime is not available is reported as `adapter_runtime_unavailable`.
+
+`mad4b/provider-mcp-mount-plan` separates latent catalog abilities from mounted eligible/blocked abilities. A latent capability can never become mount-eligible merely because it exists in the capability catalog.
+
+Functional coverage also separates healthy reads from blocked writes. `read_ready_write_blocked` means the provider has a usable governed read surface while mutation remains blocked by exact/capability certification. If an exposed read capability itself is structurally incompatible, the provider remains `safety_blocked`.
+
+Runtime self-test treats drift from an installed-but-inactive provider as advisory evidence rather than platform degradation. The same drift becomes blocking when that provider is active. This classification changes health reporting only; it never grants mutation authority.
+
+Premium candidate metadata is diagnostic, not certification. If an installed premium version differs from the repository package candidate (for example a patch-suffix difference), the candidate relation is reported explicitly and mutation stays fail-closed. Live/runtime hashes are never accepted as self-attestation authority.
+
+## Evidence, artifact authority, capability certification and mutation authority
+
+These are separate trust layers:
+
+1. **Repository evidence** proves what package trees or contracts exist in the reviewed repository. It is evidence, not certification.
+2. **Artifact authority** binds an installed provider identity to a trusted provider contract/baseline. A repository ZIP or live version string does not create this authority by itself.
+3. **Capability certification** evaluates individual mounted abilities against structural and, where required, behavioral/rollback evidence.
+4. **Mutation authority** remains a separate execution-time gate requiring all normal MAD4B authorization controls.
+
+A provider may therefore be `READ_COMPATIBLE` while `artifact_authority_bound=false`. This is valid for structurally bounded reads, but any write capability must remain `DISCOVERED`, `write_eligible=false`, and `artifact_authority_required=true`. Behavioral or rollback probes cannot promote that write until artifact authority is established.
+
+Rank Math intentionally exercises this state in rc.52: the repository contains Rank Math package evidence and the SEO adapter exposes bounded read/write abilities, but no certified Rank Math provider baseline has been created. Its reads can be structurally classified; `seo/update-meta` remains fail-closed and its recertification plan must establish artifact authority before behavioral recertification.
+
+Functional-gap `ready` is also not provider closure. It is retained only as a backward-compatible alias for `evaluation_complete`. Consumers should use `provider_closure_ready`, `followup_required`, and `decision_handoff.groups` to determine whether governed follow-up remains.
+
 ## Recertification planning
 
 `mad4b/provider-recertification-plan` is advisory evidence only. Current classifications include:

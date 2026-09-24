@@ -16,10 +16,16 @@ function is_wp_error( $value ) { return $value instanceof WP_Error; }
 final class MAD4B_SCP_Provider_Contracts {
     public static $exact = false;
     public static function get( $provider ) {
+        if ( 'rank_math' === $provider ) return array();
         $file = 'bit_pi' === $provider ? 'bit-pi/bit-pi.php' : 'jet-engine/jet-engine.php';
         return array( 'plugin_file'=>$file, 'archive_sha256'=>str_repeat('a',64) );
     }
     public static function runtime_status( $provider, $available = null ) {
+        if ( 'rank_math' === $provider ) return array(
+            'provider'=>'rank_math',
+            'status'=>'uncertified_provider',
+            'runtime_contract_ok'=>false,
+        );
         return array(
             'provider'=>$provider,
             'status'=>self::$exact?'certified':'version_drift',
@@ -46,14 +52,23 @@ final class FakeBitFlowsAdapter {
     public function ability_names(){ return array('read'=>array('bitflows/list-flows','bitflows/get-flow','bitflows/get-executions'),'content'=>array(),'admin'=>array('bitflows/run-flow')); }
     public function reversible_contracts(){ return array(); }
 }
+final class FakeSeoAdapter {
+    public function id(){ return 'seo'; }
+    public function provider_key(){ return 'rank_math'; }
+    public function is_available(){ return true; }
+    public function runtime_version(){ return '1.0-test'; }
+    public function ability_names(){ return array('read'=>array('seo/status','seo/get-meta','seo/validate'),'content'=>array('seo/update-meta'),'admin'=>array()); }
+    public function reversible_contracts(){ return array('seo/update-meta'=>'mad4b.rollback.rank-math-meta.v1'); }
+}
 final class MAD4B_SCP_Adapter_Registry {
     private static $instance;
     private $jetengine;
     private $bitflows;
+    private $seo;
     public static function instance(){ if(!self::$instance) self::$instance=new self(); return self::$instance; }
-    public function __construct(){ $this->jetengine=new FakeJetEngineAdapter(); $this->bitflows=new FakeBitFlowsAdapter(); }
+    public function __construct(){ $this->jetengine=new FakeJetEngineAdapter(); $this->bitflows=new FakeBitFlowsAdapter(); $this->seo=new FakeSeoAdapter(); }
     public function register_defaults(){}
-    public function get($id){ if('jetengine'===$id) return $this->jetengine; if('bitflows'===$id) return $this->bitflows; return null; }
+    public function get($id){ if('jetengine'===$id) return $this->jetengine; if('bitflows'===$id) return $this->bitflows; if('seo'===$id) return $this->seo; return null; }
     public function register($adapter){ return true; }
 }
 
@@ -68,6 +83,10 @@ MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
 $drift=MAD4B_SCP_Provider_Compatibility_Certification::assess_provider('jetengine',$adapter);
 expect_same('compatible_unattested',$drift['compatibility_state'],'version drift with intact structure becomes compatible_unattested');
 expect_same('READ_COMPATIBLE',$drift['capabilities']['post_meta.read']['certification_level'],'read capability survives benign version drift');
+expect_same(false,$drift['capabilities']['query_builder.read']['surface_exposed'],'catalog-only query-builder capability remains latent when no adapter ability is mounted');
+expect_same('QUARANTINED',$drift['capabilities']['query_builder.read']['certification_level'],'latent structural drift remains visible as capability evidence');
+expect_true(in_array('query_builder.read',$drift['structural_scope']['latent_incompatibilities'],true),'latent structural drift is reported separately');
+expect_same(0,$drift['structural_scope']['exposed_incompatibility_count'],'latent drift must not poison exposed provider compatibility');
 expect_same('DISCOVERED',$drift['capabilities']['post_meta.bounded-write']['certification_level'],'write capability does not self-certify from structure');
 expect_true(false===$drift['capabilities']['post_meta.bounded-write']['write_eligible'],'version drift cannot open write');
 $drift_projection=MAD4B_SCP_Provider_Compatibility_Certification::adapter_mount_projection('jetengine',$adapter);
@@ -90,6 +109,24 @@ $exact_projection=MAD4B_SCP_Provider_Compatibility_Certification::adapter_mount_
 expect_same(true,$exact_projection['all_write_abilities_eligible'],'exact reversible write compiles into the MCP provider gate');
 expect_true(in_array('jetengine/update-post-meta',array_column($exact_projection['eligible'],'ability'),true),'exact certified write appears in MCP mount evidence');
 expect_same(true,MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard('jetengine','jetengine/update-post-meta',true,$adapter),'exact bounded capability guard passes');
+
+$seo=new FakeSeoAdapter();
+MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
+$rank=MAD4B_SCP_Provider_Compatibility_Certification::assess_provider('rank_math',$seo);
+expect_same('compatible_unattested',$rank['compatibility_state'],'Rank Math structural reads may be compatible without artifact certification');
+expect_same(false,$rank['artifact']['artifact_authority_bound'],'Rank Math repository evidence is not a certified provider artifact authority');
+expect_same('READ_COMPATIBLE',$rank['capabilities']['seo_meta.read']['certification_level'],'Rank Math read surface is structurally classifiable');
+expect_same(true,$rank['capabilities']['seo_meta.read']['read_eligible'],'Rank Math governed reads remain eligible when structurally compatible');
+expect_same('DISCOVERED',$rank['capabilities']['seo_meta.bounded-write']['certification_level'],'Rank Math write cannot progress without artifact authority');
+expect_same('artifact_authority_missing',$rank['capabilities']['seo_meta.bounded-write']['certification_source'],'Rank Math write blocker identifies missing artifact authority');
+expect_same(true,$rank['capabilities']['seo_meta.bounded-write']['artifact_authority_required'],'Rank Math write explicitly requires artifact authority');
+expect_same(false,$rank['capabilities']['seo_meta.bounded-write']['behavioral_probe_required'],'Behavioral recertification cannot start before artifact authority exists');
+expect_same(false,$rank['capabilities']['seo_meta.bounded-write']['write_eligible'],'Rank Math write remains fail closed');
+$rank_plan=MAD4B_SCP_Provider_Compatibility_Certification::recertification_plan(array('provider_id'=>'rank_math'));
+expect_true(in_array('establish_artifact_authority_before_behavioral_recertification',array_column($rank_plan['steps'],'action'),true),'Rank Math recertification plan must establish artifact authority first');
+$rank_guard=MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard('rank_math','seo/update-meta',true,$seo);
+expect_true(is_wp_error($rank_guard),'Rank Math mutation remains blocked without artifact authority');
+expect_true(in_array('artifact_authority_required',$rank_guard->data['violations'],true),'Rank Math mutation guard exposes artifact-authority blocker');
 
 $bitflows=new FakeBitFlowsAdapter();
 MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
@@ -121,6 +158,33 @@ expect_true(in_array('jetengine/get-post-meta',$eligible,true),'MCP mount plan i
 expect_true(!in_array('bitflows/run-flow',$eligible,true),'MCP mount plan never exposes shadow high-risk execution');
 expect_true(in_array('bitflows/run-flow',$blocked,true),'MCP mount plan reports shadow high-risk execution as blocked');
 expect_same(false,$mount['authorizing'],'mount plan is evidence, not authority');
+expect_true(isset($mount['latent']) && is_array($mount['latent']),'mount plan must separate latent catalog abilities from mounted eligibility');
+
+$registry_source=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-adapter-registry.php');
+foreach(array(
+    'provider_contract_advisories',
+    'provider_capability_health',
+    'provider_not_active_in_current_runtime',
+    'active_provider_drift_read_compatible_writes_fail_closed',
+    'provider_inactive_drift_is_blocking',
+    'provider_active_drift_is_blocking_when_reads_compatible_and_writes_fail_closed',
+    'exposed_read_blockers',
+    'eligible_writes_under_drift'
+) as $marker){
+    expect_true(false!==strpos($registry_source,$marker),'runtime self-test must classify provider drift by active capability impact: '.$marker);
+}
+$compat_source=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-provider-compatibility-certification.php');
+$state_anchor=strpos($compat_source,'$installed_artifact_present =');
+$state_end=false!==$state_anchor?strpos($compat_source,'$structural_fingerprint =',$state_anchor):false;
+expect_true(false!==$state_anchor && false!==$state_end && $state_end>$state_anchor,'provider compatibility state block is missing');
+$state_block=substr($compat_source,$state_anchor,$state_end-$state_anchor);
+$structural_pos=strpos($state_block,'elseif ( ! empty( $exposed_incompatibilities ) )');
+$exact_pos=strpos($state_block,'elseif ( $exact_certified )');
+expect_true(false!==$structural_pos && false!==$exact_pos && $structural_pos<$exact_pos,'exposed structural incompatibility must outrank exact artifact identity in provider health classification');
+$bitflows_source=file_get_contents(dirname(__DIR__).'/includes/adapters/class-mad4b-scp-bitflows-adapter.php');
+foreach(array('mad4b.bitflows-runtime-contract-diagnostic.v1','declared_class_suffix_candidates','autoload_or_bootstrap_mutation_attempted','filesystem_scan_performed') as $marker){
+    expect_true(false!==strpos($bitflows_source,$marker),'Bit Flows must expose bounded non-mutating runtime contract diagnostics: '.$marker);
+}
 
 $adapter_base_source=file_get_contents(dirname(__DIR__).'/includes/adapters/class-mad4b-scp-adapter-base.php');
 expect_true(false!==strpos($adapter_base_source,"capability_mount_projection"),'Adapter Base must expose capability mount projection to MCP compiler');

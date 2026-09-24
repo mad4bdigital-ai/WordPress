@@ -166,7 +166,21 @@ $result_schema = $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4
 $evidence_schema = $result_schema['properties']['evidence'];
 $case_schema = $evidence_schema['properties']['cases']['items'];
 browser_expect( 8 === (int) $evidence_schema['properties']['cases']['maxItems'], 'browser evidence case limit must match provider MAX_CASES' );
-foreach ( array( 'runtime', 'events', 'network', 'rendered', 'url_state', 'seo', 'reset' ) as $section ) {
+browser_expect( 15 === (int) $case_schema['maxProperties'], 'browser case schema must include bounded performance evidence without opening arbitrary properties' );
+$network_schema = $case_schema['properties']['network'];
+browser_expect( isset( $network_schema['properties']['latency_ms'] ), 'browser network schema must expose bounded AJAX latency' );
+$observer_schema = $evidence_schema['properties']['observer'];
+browser_expect( isset( $observer_schema['properties']['execution_mode'] ), 'browser observer schema must expose bounded execution mode' );
+browser_expect( 4 === (int) $observer_schema['maxProperties'], 'browser observer schema property budget drifted' );
+$performance_schema = $case_schema['properties']['performance'];
+foreach ( array( 'ttfb_ms', 'ajax_endpoint_latency_ms', 'filter_to_presentation_ms' ) as $metric ) {
+	browser_expect( isset( $performance_schema['properties'][ $metric ] ), 'browser performance metric missing: ' . $metric );
+}
+$rendered_schema = $case_schema['properties']['rendered'];
+foreach ( array( 'result_count_authoritative', 'result_count_source', 'ids_complete', 'digest_authoritative', 'proof_item_count', 'identity_digest', 'order_digest' ) as $field ) {
+	browser_expect( isset( $rendered_schema['properties'][ $field ] ), 'browser rendered proof field missing: ' . $field );
+}
+foreach ( array( 'runtime', 'events', 'network', 'performance', 'rendered', 'url_state', 'seo', 'reset' ) as $section ) {
 	browser_expect( false === $case_schema['properties'][ $section ]['additionalProperties'], 'browser evidence section must reject arbitrary properties: ' . $section );
 }
 

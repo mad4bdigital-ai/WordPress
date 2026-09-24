@@ -18,7 +18,7 @@ write_cert = (root / 'includes/class-mad4b-scp-write-runtime-certification.php')
 required_observer = [
     "const QUERY_MONITOR_CONTRACT = 'mad4b.query-monitor-regression.v1'",
     "const PROVENANCE_CONTRACT = 'mad4b.build-provenance.v1'",
-    "const EXTERNAL_ATTESTATION_CONTRACT = 'mad4b.external-handshake-attestation.v2'",
+    "const EXTERNAL_ATTESTATION_CONTRACT = 'mad4b.external-handshake-attestation.v3'",
     "const WPML_RECEIPT_CONTRACT = 'mad4b.external-wpml-receipt.v1'",
     "const SNAPSHOT_VERIFY_CONTRACT = 'mad4b.snapshot-verify.v1'",
     "const AGGREGATE_CONTRACT = 'mad4b.live-acceptance-status.v1'",
@@ -34,6 +34,19 @@ required_observer = [
     "add_action( 'deprecated_class_run'",
     "add_filter( 'rest_post_dispatch'",
     "'mad4b/query-monitor-regression-status'",
+    "'mad4b/frontend-performance-status'",
+    "'frontend_performance_baseline' => self::gate(",
+    "'mad4b.frontend-performance-evidence.v3'",
+    "'baseline_only' => false",
+    "'budget_evaluated' => $minimum_samples_met",
+    "'budget_pass' => $budget_pass",
+    "'evaluation_window' => array(",
+    "'server_elapsed_strategy' => 'median'",
+    "'db_queries_strategy' => 'max'",
+    "'peak_memory_strategy' => 'max'",
+    "'insufficient_frontend_samples'",
+    "'budget_failures' => $budget_failures",
+    "'ttfb_claimed' => false",
     "'mad4b/build-provenance-status'",
     "'mad4b/external-handshake-attestation-status'",
     "'mad4b/external-wpml-receipt-status'",
@@ -42,6 +55,7 @@ required_observer = [
     "'readonly' => true",
     "'surface' => 'read'",
     "'production_capture_persistence_enabled' => false",
+    "'closed_observation' => $closed_observation",
     "'pending_external_evidence'",
     "'external_facts_self_certified' => false",
     "'provider_gated_write_tools'",
@@ -53,6 +67,8 @@ required_observer = [
     "'breakglass_exposed'",
     "'foreign_write_tool_exposed'",
     "'write_inventory_fingerprint_match'",
+    "'write_transport_ready'",
+    "'direct_write_schema_leaks'",
 ]
 missing = [marker for marker in required_observer if marker not in observer]
 if missing:
@@ -216,6 +232,8 @@ if "'local_rest_isolation' => self::gate( ! empty( $rest['ready'] )" not in obse
     raise SystemExit('Aggregate local REST gate no longer consumes the dedicated REST readiness result.')
 if "'external_wpml' => self::gate( ! empty( $wpml['verified'] )" not in observer:
     raise SystemExit('External WPML acceptance must remain a separate observer gate before finalization.')
+if "'frontend_performance_baseline' => self::gate( ! empty( $performance['ready'] )" not in observer:
+    raise SystemExit('Front-end performance baseline must remain a separate current-build gate.')
 
 # Environment/profile enrollment, acceptance capture and write eligibility are
 # separate governance facts. Disabled features must stay fail-closed without
@@ -277,6 +295,12 @@ for marker in [
 
 # Positive reachability is a mandatory regression, not only false-pass checks.
 for marker in [
+    'Current-build front-end performance window must become ready.',
+    'A single elapsed-time outlier must not flap an otherwise healthy performance window.',
+    'Persistent over-budget front-end performance must fail closed.',
+    'A DB query budget breach inside the bounded window must fail closed.',
+    'Performance certification must require the minimum current-build frontend sample count.',
+    'Server elapsed evidence must not self-claim TTFB.',
     'Valid authoritative mutation receipt must become ready.',
     'Wrong mutation SHA must fail closed.',
     'Wrong mutation fingerprint must fail closed.',
@@ -302,14 +326,17 @@ for marker in [
     if marker not in runtime_test:
         raise SystemExit('Live Acceptance reachability regression is missing: ' + marker)
 
-# Canonical external handshake v3 certifies the stable external catalog while
-# current execution eligibility stays bound to mad4b-write separately.
-if "const CONTRACT = 'mad4b.external-handshake-evidence.v3'" not in external:
-    raise SystemExit('Canonical external-handshake v3 contract is missing.')
+# Canonical external handshake v4 certifies the minimal external transport and
+# the full logical write catalog independently, while execution eligibility
+# remains bound to mad4b-write.
+if "const CONTRACT = 'mad4b.external-handshake-evidence.v4'" not in external:
+    raise SystemExit('Canonical external-handshake v4 contract is missing.')
 for marker in [
     'public static function external_write_tools',
     'public static function is_external_write_candidate',
     'stable registered tenant-bound catalog',
+    "'write_transport_ready'",
+    "'direct_write_schema_leaks'",
 ]:
     if marker not in servers and marker not in external:
         raise SystemExit('Stable external write-catalog contract missing: ' + marker)
@@ -320,7 +347,12 @@ if "'mad4b_write_capability_not_eligible'" not in (root / 'includes/class-mad4b-
 for marker in [
     "'production_auto_enable' => false",
     "'breakglass_auto_enable' => false",
-    "'all_remote_writes_require_exact_approval' => true",
+    "'all_remote_writes_require_exact_approval' => false",
+    "'normal_remote_writes_require_exact_approval' => true",
+    "'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v2'",
+    "'remote_write_approval_policy' => 'exact_approval_with_bounded_standing_exceptions'",
+    "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' )",
+    "const CANDIDATE_BOOTSTRAP_ABILITY = 'mad4b/acceptance-target-provision'",
 ]:
     if marker not in write:
         raise SystemExit('Write authority invariant missing: ' + marker)

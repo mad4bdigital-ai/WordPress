@@ -22,6 +22,37 @@ final class MAD4B_SCP_Abilities {
 		$this->add( 'mad4b/list-post-types', 'List Post Types', 'mad4b-read', 'list_post_types', 'read', null, false, true, false, true );
 		$this->add( 'mad4b/list-plugins', 'List Plugins', 'mad4b-read', 'list_plugins', 'read', null, false, true, false, true );
 		$this->add( 'mad4b/abilities-inventory', 'Abilities Inventory', 'mad4b-read', 'abilities_inventory', 'read', null, false, true, false, true );
+		$this->add( 'mad4b/tool-discover', 'Discover Governed Read Abilities', 'mad4b-read', 'tool_discover', 'read', $this->schema(
+			array(
+				'query' => array( 'type' => 'string', 'default' => '', 'maxLength' => 160 ),
+				'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 50 ),
+			), array()
+		), false, true, false, true );
+		$this->add( 'mad4b/tool-info', 'Get Governed Read Ability Info', 'mad4b-read', 'tool_info', 'read', $this->schema(
+			array( 'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ) ), array( 'ability_name' )
+		), false, true, false, true );
+		$this->add( 'mad4b/read-execute', 'Execute Governed Read Ability', 'mad4b-read', 'read_execute', 'read', $this->schema(
+			array(
+				'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
+				'input' => array( 'type' => 'object', 'default' => array() ),
+			), array( 'ability_name' )
+		), false, true, false, true );
+		$this->add( 'mad4b/write-discover', 'Discover Governed Write Abilities', 'mad4b-read', 'write_discover', 'read', $this->schema(
+			array(
+				'query' => array( 'type' => 'string', 'default' => '', 'maxLength' => 160 ),
+				'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 50 ),
+			), array()
+		), false, true, false, true );
+		$this->add( 'mad4b/write-info', 'Get Governed Write Ability Info', 'mad4b-read', 'write_info', 'read', $this->schema(
+			array( 'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ) ), array( 'ability_name' )
+		), false, true, false, true );
+		$this->add( 'mad4b/write-execute', 'Execute Governed Write Ability', 'mad4b-admin', 'write_execute', 'write_dispatch', $this->schema(
+			array(
+				'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
+				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'input' => array( 'type' => 'object', 'default' => array() ),
+			), array( 'ability_name', 'expected_input_schema_sha256' )
+		), false, false, true, false );
 		$this->add( 'mad4b/filesystem-list', 'List Files', 'mad4b-read', 'filesystem_list', 'read', $this->schema(
 			array(
 				'root' => array( 'type' => 'string', 'enum' => $this->roots() ),
@@ -133,6 +164,7 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	private function mutation_permission_callback( $permission, $readonly, $ability_name, $server_id ) {
+		if ( 'write_dispatch' === $permission ) return array( $this, 'can_write_dispatch' );
 		$callback = $this->permission_callback( $permission );
 		if ( $readonly ) return $callback;
 
@@ -169,9 +201,11 @@ final class MAD4B_SCP_Abilities {
 			array(
 				'plugin' => array( 'type' => 'string', 'minLength' => 1 ),
 				'expected_active' => array( 'type' => 'boolean' ),
+				'expected_state_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'expected_plan_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
 				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
 			),
-			array( 'plugin', 'expected_active', 'reason' )
+			array( 'plugin', 'expected_active', 'expected_state_sha256', 'expected_plan_sha256', 'reason' )
 		);
 	}
 
@@ -220,6 +254,174 @@ final class MAD4B_SCP_Abilities {
 			$items[] = array( 'name' => $name, 'label' => method_exists( $ability, 'get_label' ) ? $ability->get_label() : '', 'description' => method_exists( $ability, 'get_description' ) ? $ability->get_description() : '', 'category' => method_exists( $ability, 'get_category' ) ? $ability->get_category() : '' );
 		}
 		return array( 'abilities' => $items, 'count' => count( $items ) );
+	}
+
+	private function governed_read_target( $ability_name ) {
+		$ability_name = trim( (string) $ability_name );
+		if ( '' === $ability_name ) return new WP_Error( 'mad4b_read_dispatch_target_required', 'A governed read ability_name is required.' );
+		if ( in_array( $ability_name, array( 'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute' ), true ) ) return new WP_Error( 'mad4b_read_dispatch_recursion_denied', 'Nested read-dispatch execution is not allowed.' );
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $ability_name ) ) return new WP_Error( 'mad4b_read_dispatch_target_not_cataloged', 'Requested ability is not in the governed ChatGPT capability universe.' );
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_read_dispatch_target_unavailable', 'Requested ability is not registered in the current runtime.' );
+		$ability = wp_get_ability( $ability_name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) return new WP_Error( 'mad4b_read_dispatch_contract_unavailable', 'Requested ability does not expose the required WordPress Ability contract.' );
+		$meta = $ability->get_meta();
+		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+		if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) return new WP_Error( 'mad4b_read_dispatch_mutation_denied', 'Only abilities explicitly annotated readonly=true may be executed through mad4b/read-execute.' );
+		return $ability;
+	}
+
+	public function tool_discover( $input ) {
+		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
+		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
+		$items = array();
+		$candidates = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::chatgpt_full_catalog_candidates() : array();
+		foreach ( $candidates as $ability_name ) {
+			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
+			$ability = wp_get_ability( $ability_name );
+			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
+			$meta = $ability->get_meta();
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+			if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
+			$label = method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '';
+			$description = method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '';
+			$category = method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
+			$haystack = strtolower( $ability_name . ' ' . $label . ' ' . $description . ' ' . $category );
+			if ( '' !== $query && false === strpos( $haystack, $query ) ) continue;
+			$items[] = array( 'ability_name' => $ability_name, 'label' => $label, 'description' => $description, 'category' => $category, 'direct' => in_array( $ability_name, MAD4B_SCP_Servers::chatgpt_tools(), true ) );
+			if ( count( $items ) >= $limit ) break;
+		}
+		return array( 'contract' => 'mad4b.chatgpt-read-discovery.v1', 'query' => $query, 'items' => $items, 'count' => count( $items ), 'read_only' => true, 'mutation_performed' => false );
+	}
+
+	public function tool_info( $input ) {
+		$ability = $this->governed_read_target( $input['ability_name'] );
+		if ( is_wp_error( $ability ) ) return $ability;
+		return array(
+			'contract' => 'mad4b.chatgpt-read-ability-info.v1',
+			'ability_name' => (string) $input['ability_name'],
+			'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '',
+			'description' => method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '',
+			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
+			'input_schema' => method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null,
+			'output_schema' => method_exists( $ability, 'get_output_schema' ) ? $ability->get_output_schema() : null,
+			'annotations' => ( $meta = $ability->get_meta() ) && isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array(),
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	public function read_execute( $input ) {
+		$ability_name = (string) $input['ability_name'];
+		$ability = $this->governed_read_target( $ability_name );
+		if ( is_wp_error( $ability ) ) return $ability;
+		$params = array_key_exists( 'input', $input ) ? $input['input'] : null;
+		$target_input_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) {
+			$params = null;
+		}
+		$result = $ability->execute( $params );
+		if ( is_wp_error( $result ) ) return $result;
+		return array( 'contract' => 'mad4b.chatgpt-read-execute.v1', 'ability_name' => $ability_name, 'result' => $result, 'read_only' => true, 'mutation_performed' => false );
+	}
+
+	private function governed_write_target( $ability_name, $require_runtime_eligible = false ) {
+		$ability_name = trim( (string) $ability_name );
+		if ( '' === $ability_name ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write ability_name is required.' );
+		if ( in_array( $ability_name, array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ), true ) ) return new WP_Error( 'mad4b_write_dispatch_recursion_denied', 'Nested write-dispatch execution is not allowed.' );
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::is_external_write_candidate( $ability_name ) ) return new WP_Error( 'mad4b_write_dispatch_target_not_cataloged', 'Requested ability is not in the stable governed write catalog.' );
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_write_dispatch_target_unavailable', 'Requested write ability is not registered in the current runtime.' );
+		$ability = wp_get_ability( $ability_name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) return new WP_Error( 'mad4b_write_dispatch_contract_unavailable', 'Requested write ability does not expose the required WordPress Ability contract.' );
+		$meta = $ability->get_meta();
+		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+		if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) return new WP_Error( 'mad4b_write_dispatch_read_target_denied', 'Only abilities explicitly annotated readonly=false may be selected through mad4b/write-execute.' );
+		if ( $require_runtime_eligible && ! in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true ) ) return new WP_Error( 'mad4b_write_dispatch_target_not_runtime_eligible', 'Requested write ability is not runtime-eligible on the dedicated governed write surface.' );
+		return $ability;
+	}
+
+	private function ability_input_schema_sha256( $ability ) {
+		$schema = is_object( $ability ) && method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		$encoded = wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( false === $encoded ) $encoded = 'null';
+		return hash( 'sha256', $encoded );
+	}
+
+	public function can_write_dispatch( $input = null ) {
+		if ( ! MAD4B_SCP_Policy::can_admin() ) return false;
+		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_write_dispatch_mutation_disabled', 'Governed mutation authority is not currently ready.' );
+		if ( ! is_array( $input ) || empty( $input['ability_name'] ) ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write ability_name is required.' );
+		$ability = $this->governed_write_target( $input['ability_name'], true );
+		if ( is_wp_error( $ability ) ) return $ability;
+		return true;
+	}
+
+	public function write_discover( $input ) {
+		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
+		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
+		$items = array();
+		$candidates = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::external_write_tools() : array();
+		$eligible = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::write_tools() : array();
+		foreach ( $candidates as $ability_name ) {
+			$ability = $this->governed_write_target( $ability_name, false );
+			if ( is_wp_error( $ability ) ) continue;
+			$label = method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '';
+			$description = method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '';
+			$category = method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
+			$haystack = strtolower( $ability_name . ' ' . $label . ' ' . $description . ' ' . $category );
+			if ( '' !== $query && false === strpos( $haystack, $query ) ) continue;
+			$items[] = array(
+				'ability_name' => $ability_name,
+				'label' => $label,
+				'description' => $description,
+				'category' => $category,
+				'runtime_eligible' => in_array( $ability_name, $eligible, true ),
+				'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
+			);
+			if ( count( $items ) >= $limit ) break;
+		}
+		return array( 'contract' => 'mad4b.chatgpt-write-discovery.v1', 'query' => $query, 'items' => $items, 'count' => count( $items ), 'read_only' => true, 'mutation_performed' => false );
+	}
+
+	public function write_info( $input ) {
+		$ability_name = (string) $input['ability_name'];
+		$ability = $this->governed_write_target( $ability_name, false );
+		if ( is_wp_error( $ability ) ) return $ability;
+		$schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		$meta = $ability->get_meta();
+		return array(
+			'contract' => 'mad4b.chatgpt-write-ability-info.v1',
+			'ability_name' => $ability_name,
+			'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '',
+			'description' => method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '',
+			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
+			'input_schema' => $schema,
+			'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
+			'annotations' => isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array(),
+			'runtime_eligible' => in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true ),
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	public function write_execute( $input ) {
+		$ability_name = (string) $input['ability_name'];
+		$ability = $this->governed_write_target( $ability_name, true );
+		if ( is_wp_error( $ability ) ) return $ability;
+		$actual_schema_sha256 = $this->ability_input_schema_sha256( $ability );
+		$expected_schema_sha256 = strtolower( (string) $input['expected_input_schema_sha256'] );
+		if ( ! hash_equals( strtolower( $actual_schema_sha256 ), $expected_schema_sha256 ) ) return new WP_Error( 'mad4b_write_dispatch_schema_drift', 'Requested write ability input schema changed after planning.', array( 'ability_name' => $ability_name, 'current_input_schema_sha256' => $actual_schema_sha256 ) );
+		$params = array_key_exists( 'input', $input ) ? $input['input'] : null;
+		$target_input_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
+		$result = $ability->execute( $params );
+		if ( is_wp_error( $result ) ) return $result;
+		return array(
+			'contract' => 'mad4b.chatgpt-write-execute.v1',
+			'ability_name' => $ability_name,
+			'input_schema_sha256' => $actual_schema_sha256,
+			'result' => $result,
+			'mutation_performed' => true,
+		);
 	}
 
 	public function filesystem_list( $input ) {
@@ -367,9 +569,16 @@ final class MAD4B_SCP_Abilities {
 		if ( $current !== (bool) $input['expected_active'] ) return new WP_Error( 'mad4b_stale_plugin_state', 'Plugin active state changed since it was reviewed.', array( 'current_active' => $current ) );
 		if ( $current ) return new WP_Error( 'mad4b_plugin_already_active', 'Plugin is already active.' );
 		if ( ! MAD4B_SCP_Policy::plugin_lifecycle_allowed( $plugin, 'activate' ) ) return new WP_Error( 'mad4b_plugin_lifecycle_policy_denied', 'Plugin lifecycle mutation is disabled or the plugin is not explicitly allowlisted.' );
+		$preflight = class_exists( 'MAD4B_SCP_Plugin_Lifecycle' ) ? MAD4B_SCP_Plugin_Lifecycle::mutation_preflight( $plugin, true, $input ) : new WP_Error( 'mad4b_plugin_lifecycle_preflight_unavailable', 'Plugin lifecycle preflight is unavailable.' );
+		if ( is_wp_error( $preflight ) ) return $preflight;
 		$result = activate_plugin( $plugin ); if ( is_wp_error( $result ) ) return $result;
-		MAD4B_SCP_Audit::record( 'mad4b/plugin-activate', array( 'plugin' => $plugin, 'reason' => sanitize_text_field( $input['reason'] ) ) );
-		return array( 'plugin' => $plugin, 'active' => is_plugin_active( $plugin ) );
+		$readback = MAD4B_SCP_Plugin_Lifecycle::verify_state( $plugin, true );
+		if ( is_wp_error( $readback ) ) {
+			MAD4B_SCP_Audit::record( 'mad4b/plugin-activate', array( 'plugin' => $plugin, 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'readback_verified' => false ), 'failure' );
+			return $readback;
+		}
+		MAD4B_SCP_Audit::record( 'mad4b/plugin-activate', array( 'plugin' => $plugin, 'reason' => sanitize_text_field( $input['reason'] ), 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'after_state_sha256' => $readback['state_sha256'], 'readback_verified' => true ) );
+		return array( 'plugin' => $plugin, 'active' => true, 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'after_state_sha256' => $readback['state_sha256'], 'readback_verified' => true );
 	}
 
 	public function plugin_deactivate( $input ) {
@@ -386,11 +595,18 @@ final class MAD4B_SCP_Abilities {
 		$is_mcp_adapter = 0 === strpos( strtolower( $plugin ), 'mcp-adapter/' ) || 'mcp-adapter' === $text_domain || false !== strpos( $name, 'mcp adapter' );
 		if ( $plugin === $self || $is_mcp_adapter || MAD4B_SCP_Policy::plugin_lifecycle_protected( $plugin ) ) return new WP_Error( 'mad4b_control_plane_dependency_protected', 'The control plane, its MCP Adapter dependency, and protected plugins cannot be deactivated through the normal admin surface.' );
 		if ( ! MAD4B_SCP_Policy::plugin_lifecycle_allowed( $plugin, 'deactivate' ) ) return new WP_Error( 'mad4b_plugin_lifecycle_policy_denied', 'Plugin lifecycle mutation is disabled or the plugin is not explicitly allowlisted.' );
+		$preflight = class_exists( 'MAD4B_SCP_Plugin_Lifecycle' ) ? MAD4B_SCP_Plugin_Lifecycle::mutation_preflight( $plugin, false, $input ) : new WP_Error( 'mad4b_plugin_lifecycle_preflight_unavailable', 'Plugin lifecycle preflight is unavailable.' );
+		if ( is_wp_error( $preflight ) ) return $preflight;
 		$network = is_multisite() && is_plugin_active_for_network( $plugin );
 		if ( $network && ! current_user_can( 'manage_network_plugins' ) ) return new WP_Error( 'mad4b_network_plugin_capability_denied', 'Network-wide plugin deactivation requires manage_network_plugins.' );
 		deactivate_plugins( $plugin, false, $network );
-		MAD4B_SCP_Audit::record( 'mad4b/plugin-deactivate', array( 'plugin' => $plugin, 'network_wide' => $network, 'reason' => sanitize_text_field( $input['reason'] ) ) );
-		return array( 'plugin' => $plugin, 'active' => is_plugin_active( $plugin ), 'network_active' => is_multisite() ? is_plugin_active_for_network( $plugin ) : false );
+		$readback = MAD4B_SCP_Plugin_Lifecycle::verify_state( $plugin, false );
+		if ( is_wp_error( $readback ) ) {
+			MAD4B_SCP_Audit::record( 'mad4b/plugin-deactivate', array( 'plugin' => $plugin, 'network_wide' => $network, 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'readback_verified' => false ), 'failure' );
+			return $readback;
+		}
+		MAD4B_SCP_Audit::record( 'mad4b/plugin-deactivate', array( 'plugin' => $plugin, 'network_wide' => $network, 'reason' => sanitize_text_field( $input['reason'] ), 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'after_state_sha256' => $readback['state_sha256'], 'readback_verified' => true ) );
+		return array( 'plugin' => $plugin, 'active' => false, 'network_active' => (bool) $readback['network_active'], 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'after_state_sha256' => $readback['state_sha256'], 'readback_verified' => true );
 	}
 
 	public function filesystem_write( $input ) {

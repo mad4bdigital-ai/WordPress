@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * external ChatGPT tool refresh remain separate live-acceptance gates.
  */
 final class MAD4B_SCP_Write_Runtime_Certification {
-	const CONTRACT = 'mad4b.write-runtime-certification.v2';
+	const CONTRACT = 'mad4b.write-runtime-certification.v3';
 	const OPTION = 'mad4b_scp_write_runtime_certification_v1';
 	private static $observing = false;
 
@@ -42,7 +42,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 	}
 
 	public static function observe() {
-		if ( self::$observing ) return self::status();
+		if ( self::$observing ) return self::persisted_status();
 		// Guard against accidental invocation while REST routes are still being
 		// registered. This path performs authority reconciliation, audit writes and
 		// persistence and must never sit on the MCP tools/list critical path.
@@ -55,14 +55,14 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		}
 
 		self::$observing = true;
-		$result = self::evaluate();
+		$result = self::current_status();
 		self::$observing = false;
 		if ( ! is_array( $result ) ) return self::status();
 
 		$previous = get_option( self::OPTION, array() );
 		$previous_digest = is_array( $previous ) && isset( $previous['evidence_digest'] ) ? (string) $previous['evidence_digest'] : '';
 		$current_digest = isset( $result['evidence_digest'] ) ? (string) $result['evidence_digest'] : '';
-		if ( '' !== $current_digest && '' !== $previous_digest && hash_equals( $previous_digest, $current_digest ) ) return $previous;
+		if ( is_array( $previous ) && isset( $previous['contract'] ) && self::CONTRACT === (string) $previous['contract'] && '' !== $current_digest && '' !== $previous_digest && hash_equals( $previous_digest, $current_digest ) ) return $previous;
 
 		$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
 		if ( empty( $audit['ready'] ) ) {
@@ -100,24 +100,60 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 	}
 
 	public static function status() {
-		// Never surface a previously persisted exact enrolled-site certification as current
-		// truth after this database/site is moved to another origin or environment.
+		return self::current_status();
+	}
+
+	/**
+	 * Current truth is recomputed from read-only runtime inspection.
+	 * Persisted evidence is never promoted to current release truth.
+	 */
+	public static function current_status() {
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) {
 			return self::ineligible_status();
 		}
+		if ( class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_write_certification' ) ) {
+			return MAD4B_SCP_Live_Truth::current_write_certification();
+		}
+		$result = self::evaluate();
+		if ( ! is_array( $result ) ) {
+			return array(
+				'contract' => self::CONTRACT,
+				'ready' => false,
+				'state' => 'blocked',
+				'blockers' => array( 'write_runtime_live_inspection_unavailable' ),
+				'current_truth' => true,
+				'persistence' => 'read_only_live_inspection',
+			);
+		}
+		$result['current_truth'] = true;
+		$result['persistence'] = 'read_only_live_inspection';
+		return $result;
+	}
+
+	/**
+	 * Historical certification is audit evidence only.
+	 */
+	public static function persisted_status() {
 		$stored = get_option( self::OPTION, array() );
-		if ( is_array( $stored ) && isset( $stored['contract'] ) && self::CONTRACT === $stored['contract'] ) return $stored;
+		if ( is_array( $stored ) && ! empty( $stored ) ) {
+			$stored['current_truth'] = false;
+			$stored['historical'] = true;
+			$stored['persistence'] = 'historical_evidence_only';
+			return $stored;
+		}
 		return array(
 			'contract' => self::CONTRACT,
 			'ready' => false,
 			'state' => 'pending',
 			'blockers' => array( 'write_runtime_certification_not_observed' ),
+			'current_truth' => false,
+			'historical' => true,
+			'persistence' => 'historical_evidence_only',
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
 			'external_wpml_acceptance_required' => true,
 			'external_wpml_acceptance_verified' => false,
 			'external_client_tools_verified' => false,
-			'external_client_action' => 'Run any deployment-specific external acceptance and Refresh/Scan Tools for the same Plugin after this exact enrolled build is deployed.',
 		);
 	}
 
@@ -158,7 +194,11 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$checks['production_auto_enable_absent'] = empty( $authority['production_auto_enable'] );
 		$checks['breakglass_auto_enable_absent'] = empty( $authority['breakglass_auto_enable'] );
 		$checks['breakglass_not_included'] = empty( $authority['breakglass_included'] );
-		$checks['remote_approval_required'] = ! empty( $authority['all_remote_writes_require_exact_approval'] );
+		$checks['normal_remote_approval_required'] = ! empty( $authority['normal_remote_writes_require_exact_approval'] );
+		$approval_exceptions = isset( $authority['remote_write_approval_exceptions'] ) && is_array( $authority['remote_write_approval_exceptions'] ) ? array_values( $authority['remote_write_approval_exceptions'] ) : array();
+		$checks['candidate_bootstrap_exception_bounded'] = empty( $approval_exceptions ) || ( 1 === count( $approval_exceptions ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY === (string) $approval_exceptions[0] );
+		$bootstrap_closure = isset( $authority['candidate_bootstrap_closure'] ) && is_array( $authority['candidate_bootstrap_closure'] ) ? $authority['candidate_bootstrap_closure'] : array();
+		$checks['candidate_bootstrap_closure_complete'] = empty( $bootstrap_closure['required'] ) || ! empty( $bootstrap_closure['closed'] );
 		foreach ( $checks as $key => $ok ) if ( ! $ok ) $blockers[] = $key;
 
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
@@ -169,13 +209,18 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 
 		$tools = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::write_tools() : array();
 		$missing_write_mounts = array();
-		$missing_remote_mounts = array();
+		$direct_write_schema_leaks = array();
+		$write_transport_tools = array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' );
+		$missing_write_transport = array();
+		foreach ( $write_transport_tools as $transport_ability ) {
+			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $transport_ability ) ) $missing_write_transport[] = $transport_ability;
+		}
 		$metadata_mismatch = array();
 		$breakglass = array();
 		foreach ( $tools as $ability_name ) {
 			if ( 'mad4b/database-raw-query' === $ability_name ) $breakglass[] = $ability_name;
 			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) $missing_write_mounts[] = $ability_name;
-			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) $missing_remote_mounts[] = $ability_name;
+			if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) $direct_write_schema_leaks[] = $ability_name;
 			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) {
 				$metadata_mismatch[] = $ability_name;
 				continue;
@@ -200,11 +245,17 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 
 		$checks['write_inventory_nonempty'] = ! empty( $tools );
 		$checks['all_write_tools_mounted_on_authority'] = empty( $missing_write_mounts );
-		$checks['all_write_tools_exposed_on_same_plugin_transport'] = empty( $missing_remote_mounts );
+		$checks['write_dispatch_transport_available'] = empty( $missing_write_transport );
+		$checks['direct_write_schemas_hidden_from_chatgpt'] = empty( $direct_write_schema_leaks );
+		// Backward-compatible field: "same plugin transport" now means every
+		// logical write is reachable through the exact-target dispatcher on the
+		// same MAD4B ChatGPT MCP resource, not that every large target schema is
+		// enumerated directly in tools/list.
+		$checks['all_write_tools_exposed_on_same_plugin_transport'] = $checks['write_dispatch_transport_available'] && $checks['direct_write_schemas_hidden_from_chatgpt'];
 		$checks['all_write_tools_annotated_mutating'] = empty( $metadata_mismatch );
 		$checks['provider_uncertified_write_tools_safely_unmounted'] = empty( $provider_blocked_mount_leaks );
 		$checks['breakglass_absent_from_write_inventory'] = empty( $breakglass );
-		foreach ( array( 'write_inventory_nonempty', 'all_write_tools_mounted_on_authority', 'all_write_tools_exposed_on_same_plugin_transport', 'all_write_tools_annotated_mutating', 'provider_uncertified_write_tools_safely_unmounted', 'breakglass_absent_from_write_inventory' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
+		foreach ( array( 'write_inventory_nonempty', 'all_write_tools_mounted_on_authority', 'write_dispatch_transport_available', 'direct_write_schemas_hidden_from_chatgpt', 'all_write_tools_exposed_on_same_plugin_transport', 'all_write_tools_annotated_mutating', 'provider_uncertified_write_tools_safely_unmounted', 'breakglass_absent_from_write_inventory' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		// approval-plan is a mutation because it persists a pending ticket. It must
 		// itself use NHI + exact mad4b-write grant + budget, but it is the only remote
@@ -267,7 +318,8 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'provider_blocked_write_tools' => $provider_blocked_write_tools,
 			'provider_blocked_mount_leaks' => $provider_blocked_mount_leaks,
 			'missing_write_mounts' => $missing_write_mounts,
-			'missing_remote_mounts' => $missing_remote_mounts,
+			'missing_write_transport' => $missing_write_transport,
+			'direct_write_schema_leaks' => $direct_write_schema_leaks,
 			'metadata_mismatch' => $metadata_mismatch,
 			'breakglass' => $breakglass,
 			'rest' => $rest,
@@ -286,7 +338,6 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'provider_blocked_write_tools' => $provider_blocked_write_tools,
 			'provider_blocked_mount_leaks' => $provider_blocked_mount_leaks,
 			'missing_write_mounts' => $missing_write_mounts,
-			'missing_remote_mounts' => $missing_remote_mounts,
 			'metadata_mismatch' => $metadata_mismatch,
 			'authority' => $authority,
 			'approval_planner' => $planner,
@@ -294,7 +345,10 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
 			'oauth_role' => 'identity_only',
-			'exact_approval_required_for_remote_write' => true,
+			'exact_approval_required_for_remote_write' => empty( $authority['remote_write_approval_exceptions'] ),
+			'normal_remote_write_exact_approval_required' => true,
+			'candidate_bootstrap_prior_approval_exception' => ! empty( $authority['candidate_bootstrap_exception_active'] ) ? MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY : '',
+			'candidate_bootstrap_closure' => $bootstrap_closure,
 			'approval_planner_bootstrap_exception' => 'pending_ticket_creation_only',
 			'external_wpml_acceptance_required' => true,
 			'external_wpml_acceptance_verified' => false,

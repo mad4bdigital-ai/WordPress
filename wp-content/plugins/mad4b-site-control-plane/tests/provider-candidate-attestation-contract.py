@@ -11,6 +11,10 @@ for marker in [
     'public static function profile_catalog()',
     'public static function candidate_attestation(',
     "$result['candidate_attestation'] = $candidate_attestation",
+    "'candidate_policy_available'",
+    "'candidate_relation' => 'installed_version_not_exact_candidate'",
+    "'installed_version_eligible_for_candidate_attestation' => false",
+    "'candidate_attestation_required'",
     "'candidate_attestation_required'",
 ]:
     assert marker in provider, marker
@@ -31,6 +35,11 @@ assert "return new WP_Error( 'mad4b_provider_mutation_not_certified'" in provide
 assert "candidate_attestation_required" in provider
 assert "pending_semantic_review" in profiles
 assert "fail_closed_until_attested_exact_package_manifest" in profiles
+
+# Candidate metadata may explain a mismatch but can never turn a non-exact installed
+# version into an attested candidate or add mutation authority.
+assert "'attestation_required' => false" in provider
+assert "'authorizing' => false" in provider
 
 # The old exact certified-provider contract remains authoritative until explicit attestation updates it.
 assert "if ( empty( $status['status'] ) || 'certified' !== $status['status'] )" in provider

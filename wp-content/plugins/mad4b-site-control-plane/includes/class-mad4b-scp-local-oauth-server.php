@@ -40,6 +40,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 
 	private static $booted = false;
 	private static $runtime_error = null;
+	private static $public_jwk_request_cache = null;
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -48,6 +49,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		add_action( 'init', array( __CLASS__, 'ensure_runtime' ), 1 );
 		add_action( 'parse_request', array( __CLASS__, 'serve_protocol_paths' ), -10 );
 		add_filter( 'pre_http_request', array( __CLASS__, 'intercept_local_discovery' ), 1, 3 );
+		add_action( 'wp_ajax_mad4b_oauth_grant_projection', array( __CLASS__, 'ajax_grant_projection' ) );
 	}
 
 	public static function ensure_runtime() {
@@ -83,9 +85,9 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$clients = self::clients();
 		$issuer_validation = self::configured_issuer_validation();
 		$issuer_valid = ! is_wp_error( $issuer_validation );
-		$https = 'https' === strtolower( (string) wp_parse_url( self::issuer(), PHP_URL_SCHEME ) );
+		$transport_allowed = self::issuer_transport_allowed( self::issuer() );
 		$client_policy_ready = ! empty( $clients ) || self::cimd_supported();
-		$effective = self::enabled() && self::environment_allowed() && $https && $issuer_valid && $store_ready && $key_ready && $client_policy_ready && ! is_wp_error( self::$runtime_error );
+		$effective = self::enabled() && self::environment_allowed() && $transport_allowed && $issuer_valid && $store_ready && $key_ready && $client_policy_ready && ! is_wp_error( self::$runtime_error );
 		return array(
 			'contract' => self::CONTRACT,
 			'configured' => self::enabled(),
@@ -95,6 +97,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'issuer' => self::issuer(),
 			'issuer_same_origin_required' => true,
 			'issuer_configuration_valid' => $issuer_valid,
+			'issuer_transport_allowed' => $transport_allowed,
+			'http_loopback_local_only' => true,
 			'authorization_endpoint' => self::authorize_url(),
 			'token_endpoint' => self::token_url(),
 			'jwks_uri' => self::jwks_url(),
@@ -135,7 +139,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'grant_types_supported' => array( 'authorization_code', 'refresh_token' ),
 			'token_endpoint_auth_methods_supported' => array( 'none' ),
 			'code_challenge_methods_supported' => array( 'S256' ),
-			'scopes_supported' => array( 'mad4b:read', 'offline_access' ),
+			'scopes_supported' => array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' ),
 			'authorization_response_iss_parameter_supported' => true,
 			'protected_resources' => self::resource_identifiers(),
 			'client_id_metadata_document_supported' => true,
@@ -299,7 +303,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( 'S256' !== $method || ! preg_match( '/^[A-Za-z0-9_-]{43,128}$/', $challenge ) ) return new WP_Error( 'invalid_request', 'PKCE S256 code challenge is required.' );
 		$scope = self::request_param( $params, 'scope', self::MAX_SCOPE_BYTES );
 		if ( is_wp_error( $scope ) ) return $scope;
-		$scopes = self::normalize_scopes( '' !== $scope ? $scope : 'mad4b:read' );
+		$scopes = self::normalize_scopes( '' !== $scope ? $scope : 'mad4b:read', $resource, $client_id );
 		if ( is_wp_error( $scopes ) ) return $scopes;
 		$state = self::request_param( $params, 'state', self::MAX_STATE_BYTES, false );
 		if ( is_wp_error( $state ) ) return $state;
@@ -344,13 +348,238 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		self::trusted_client_redirect( $location );
 	}
 
+
+	public static function consent_grant_projection() {
+		$plan = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'reconciliation_plan' )
+			? MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()
+			: array();
+		$rows = isset( $plan['rows'] ) && is_array( $plan['rows'] ) ? $plan['rows'] : array();
+		$grants = array();
+		$plan_runtime = array();
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$ability = isset( $row['ability'] ) ? trim( (string) $row['ability'] ) : '';
+			$provider = isset( $row['provider'] ) ? trim( (string) $row['provider'] ) : '';
+			if ( '' !== $ability && ! empty( $row['mounted'] ) ) $plan_runtime[] = $ability;
+			if ( '' === $ability || '' === $provider || empty( $row['mounted'] ) || empty( $row['exact_grant_present'] ) ) continue;
+			$grants[] = array( 'ability' => $ability, 'provider' => $provider );
+		}
+		usort( $grants, static function ( $a, $b ) {
+			return strcmp( $a['ability'] . "\0" . $a['provider'], $b['ability'] . "\0" . $b['provider'] );
+		} );
+
+		$catalog = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::external_write_tools() : array();
+		$runtime = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::write_tools() : array();
+		$blocked = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::blocked_write_tools() : array();
+		$governance_gated = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'governance_gated_write_tools' )
+			? MAD4B_SCP_Servers::governance_gated_write_tools()
+			: array();
+		$catalog = array_values( array_unique( array_map( 'strval', is_array( $catalog ) ? $catalog : array() ) ) );
+		$runtime = array_values( array_unique( array_map( 'strval', is_array( $runtime ) ? $runtime : array() ) ) );
+		$plan_runtime = array_values( array_unique( array_map( 'strval', $plan_runtime ) ) );
+		sort( $catalog, SORT_STRING );
+		sort( $runtime, SORT_STRING );
+		sort( $plan_runtime, SORT_STRING );
+
+		$blocked_rows = array_values( is_array( $blocked ) ? $blocked : array() );
+		$blocked_abilities = array();
+		foreach ( $blocked_rows as $entry ) {
+			if ( is_array( $entry ) && ! empty( $entry['ability'] ) ) $blocked_abilities[] = (string) $entry['ability'];
+		}
+		$blocked_abilities = array_values( array_unique( $blocked_abilities ) );
+		sort( $blocked_abilities, SORT_STRING );
+		$governance_rows = array_values( is_array( $governance_gated ) ? $governance_gated : array() );
+		$governance_abilities = array();
+		foreach ( $governance_rows as $entry ) {
+			if ( is_array( $entry ) && ! empty( $entry['ability'] ) ) $governance_abilities[] = (string) $entry['ability'];
+		}
+		$governance_abilities = array_values( array_unique( $governance_abilities ) );
+		sort( $governance_abilities, SORT_STRING );
+		$reconstructed_catalog = array_values( array_unique( array_merge( $runtime, $blocked_abilities, $governance_abilities ) ) );
+		sort( $reconstructed_catalog, SORT_STRING );
+
+		$binding = isset( $plan['candidate_binding'] ) && is_array( $plan['candidate_binding'] ) ? $plan['candidate_binding'] : array();
+		$missing = isset( $plan['exact_grants_missing_count'] ) ? (int) $plan['exact_grants_missing_count'] : 0;
+		$missing_items = isset( $plan['exact_grants_missing'] ) && is_array( $plan['exact_grants_missing'] ) ? array_values( $plan['exact_grants_missing'] ) : array();
+		$stale = isset( $plan['stale_allow_grants_count'] ) ? (int) $plan['stale_allow_grants_count'] : 0;
+		$stale_items = isset( $plan['stale_allow_grants'] ) && is_array( $plan['stale_allow_grants'] ) ? array_values( $plan['stale_allow_grants'] ) : array();
+		$global_wildcards = isset( $plan['global_registry_wildcard_grants'] ) ? (int) $plan['global_registry_wildcard_grants'] : ( isset( $plan['wildcard_grants'] ) ? (int) $plan['wildcard_grants'] : 0 );
+		$current_agent_wildcards = isset( $plan['current_agent_wildcard_grants'] ) ? (int) $plan['current_agent_wildcard_grants'] : 0;
+		$duplicates = isset( $plan['duplicate_exact_allow_grants_count'] ) ? (int) $plan['duplicate_exact_allow_grants_count'] : 0;
+		$duplicate_items = isset( $plan['duplicate_exact_allow_grants'] ) && is_array( $plan['duplicate_exact_allow_grants'] ) ? array_values( $plan['duplicate_exact_allow_grants'] ) : array();
+		$broad_environment = isset( $plan['broad_environment_grants_count'] ) ? (int) $plan['broad_environment_grants_count'] : 0;
+		$broad_environment_items = isset( $plan['broad_environment_grants'] ) && is_array( $plan['broad_environment_grants'] ) ? array_values( $plan['broad_environment_grants'] ) : array();
+		$write_tool_count = isset( $plan['write_tool_count'] ) ? (int) $plan['write_tool_count'] : count( $runtime );
+		$binding_required = ! empty( $binding['required'] );
+		$binding_match = ! $binding_required || ! empty( $binding['match'] );
+
+		$consistency_violations = array();
+		if ( $write_tool_count !== count( $runtime ) ) $consistency_violations[] = 'plan_runtime_count_mismatch';
+		if ( $plan_runtime !== $runtime ) $consistency_violations[] = 'plan_runtime_inventory_mismatch';
+		if ( count( $grants ) > count( $runtime ) ) $consistency_violations[] = 'exact_grants_exceed_runtime_inventory';
+		$grant_abilities = array_values( array_unique( array_map( static function ( $grant ) { return isset( $grant['ability'] ) ? (string) $grant['ability'] : ''; }, $grants ) ) );
+		$grant_abilities = array_values( array_filter( $grant_abilities, static function ( $value ) { return '' !== $value; } ) );
+		sort( $grant_abilities, SORT_STRING );
+		if ( ! empty( array_diff( $grant_abilities, $runtime ) ) ) $consistency_violations[] = 'exact_grant_outside_runtime_inventory';
+		if ( $catalog !== $reconstructed_catalog ) $consistency_violations[] = 'catalog_runtime_gate_partition_mismatch';
+		if ( ! empty( array_intersect( $runtime, $blocked_abilities ) ) ) $consistency_violations[] = 'provider_gated_runtime_overlap';
+		if ( ! empty( array_intersect( $runtime, $governance_abilities ) ) ) $consistency_violations[] = 'governance_gated_runtime_overlap';
+		if ( ! empty( array_intersect( $blocked_abilities, $governance_abilities ) ) ) $consistency_violations[] = 'provider_governance_gate_overlap';
+		$projection_consistent = empty( $consistency_violations );
+
+		$blocking_conditions = array();
+		if ( ! $projection_consistent ) $blocking_conditions[] = array( 'code' => 'authority_projection_inconsistent', 'count' => count( $consistency_violations ), 'items' => $consistency_violations );
+		if ( $missing > 0 ) $blocking_conditions[] = array( 'code' => 'exact_grants_missing', 'count' => $missing, 'items' => array_slice( $missing_items, 0, 20 ) );
+		if ( $stale > 0 ) $blocking_conditions[] = array( 'code' => 'stale_allow_grants', 'count' => $stale, 'items' => array_slice( $stale_items, 0, 20 ) );
+		if ( $broad_environment > 0 ) $blocking_conditions[] = array( 'code' => 'broad_environment_grants', 'count' => $broad_environment, 'items' => array_slice( $broad_environment_items, 0, 20 ) );
+		if ( $duplicates > 0 ) $blocking_conditions[] = array( 'code' => 'duplicate_exact_allow_grants', 'count' => $duplicates, 'items' => array_slice( $duplicate_items, 0, 20 ) );
+		if ( $global_wildcards > 0 ) $blocking_conditions[] = array( 'code' => 'global_registry_wildcard_grants', 'count' => $global_wildcards, 'current_agent_count' => $current_agent_wildcards );
+		if ( ! $binding_match ) $blocking_conditions[] = array(
+			'code' => 'candidate_binding_mismatch',
+			'count' => 1,
+			'binding' => array(
+				'stored_source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : '',
+				'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
+				'stored_build_fingerprint' => isset( $binding['stored_build_fingerprint'] ) ? (string) $binding['stored_build_fingerprint'] : '',
+				'current_build_fingerprint' => isset( $binding['current_build_fingerprint'] ) ? (string) $binding['current_build_fingerprint'] : '',
+			),
+		);
+		if ( empty( $plan['current_ready'] ) && empty( $blocking_conditions ) ) $blocking_conditions[] = array( 'code' => 'write_authority_not_ready', 'count' => 1 );
+
+		$catalog_fingerprint = hash( 'sha256', wp_json_encode( $catalog, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$runtime_inventory_fingerprint = hash( 'sha256', wp_json_encode( $plan_runtime, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$grant_set_fingerprint = hash( 'sha256', wp_json_encode( $grants, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$candidate_identity = array(
+			'stored_source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : '',
+			'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
+			'stored_build_fingerprint' => isset( $binding['stored_build_fingerprint'] ) ? (string) $binding['stored_build_fingerprint'] : '',
+			'current_build_fingerprint' => isset( $binding['current_build_fingerprint'] ) ? (string) $binding['current_build_fingerprint'] : '',
+		);
+		$candidate_fingerprint = hash( 'sha256', wp_json_encode( $candidate_identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$authority_generation = hash( 'sha256', implode( "\0", array( $catalog_fingerprint, $runtime_inventory_fingerprint, $grant_set_fingerprint, $candidate_fingerprint ) ) );
+		$write_ready = ! empty( $plan['current_ready'] )
+			&& $projection_consistent
+			&& $write_tool_count > 0
+			&& count( $grants ) === count( $runtime )
+			&& empty( $blocking_conditions );
+
+		$developer_status = class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::status() : array();
+		$developer_ready = ! empty( $developer_status['developer_enabled'] )
+			&& ! empty( $developer_status['direct_execution_enabled'] )
+			&& empty( $developer_status['kill_switch_enabled'] )
+			&& ! empty( $developer_status['normal_authority']['ready'] );
+		$developer_breakglass_ready = $developer_ready
+			&& ! empty( $developer_status['breakglass_enabled'] )
+			&& ! empty( $developer_status['breakglass_authority']['ready'] );
+		$full_staging_authority_ready = $write_ready && $developer_ready && $developer_breakglass_ready;
+		$developer_fingerprint = hash( 'sha256', wp_json_encode( array(
+			'agent_public_id' => isset( $developer_status['agent_public_id'] ) ? (string) $developer_status['agent_public_id'] : '',
+			'developer_enabled' => ! empty( $developer_status['developer_enabled'] ),
+			'direct_execution_enabled' => ! empty( $developer_status['direct_execution_enabled'] ),
+			'kill_switch_enabled' => ! empty( $developer_status['kill_switch_enabled'] ),
+			'normal_ready' => $developer_ready,
+			'breakglass_enabled' => ! empty( $developer_status['breakglass_enabled'] ),
+			'breakglass_ready' => $developer_breakglass_ready,
+		), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+
+		$projection_fingerprint = hash( 'sha256', wp_json_encode( array(
+			'generation' => $authority_generation,
+			'blocking_conditions' => $blocking_conditions,
+			'provider_gated' => $blocked_rows,
+			'governance_gated' => $governance_rows,
+			'current_ready' => ! empty( $plan['current_ready'] ),
+			'developer_fingerprint' => $developer_fingerprint,
+			'full_staging_authority_ready' => $full_staging_authority_ready,
+		), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+
+		$ready = $write_ready;
+
+		return array(
+			'contract' => 'mad4b.oauth-consent-grant-projection.v3',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'oauth_scope_changed' => false,
+			'write_authority_granted_by_consent' => false,
+			'eligible' => ! empty( $plan['eligible'] ),
+			'current_ready' => ! empty( $plan['current_ready'] ),
+			'ready' => $ready,
+			'state' => $ready ? 'ready' : ( ! $projection_consistent ? 'projection_inconsistent' : ( ! empty( $blocking_conditions ) ? 'authority_blocked' : 'read_only_only' ) ),
+			'environment' => isset( $plan['environment'] ) ? (string) $plan['environment'] : '',
+			'catalog_write_tool_count' => count( $catalog ),
+			'runtime_eligible_write_tool_count' => count( $runtime ),
+			'provider_gated_write_tool_count' => count( $blocked_rows ),
+			'governance_gated_write_tool_count' => count( $governance_rows ),
+			'catalog_partition_contract' => 'mad4b.write-catalog-partition.v1',
+			'write_tool_count' => $write_tool_count,
+			'exact_grants_existing' => count( $grants ),
+			'exact_grants_missing_count' => $missing,
+			'stale_allow_grants_count' => $stale,
+			'broad_environment_grants_count' => $broad_environment,
+			'duplicate_exact_allow_grants_count' => $duplicates,
+			'current_agent_wildcard_grants' => $current_agent_wildcards,
+			'global_registry_wildcard_grants' => $global_wildcards,
+			'candidate_binding_required' => $binding_required,
+			'candidate_binding_match' => $binding_match,
+			'candidate_binding' => array_merge( array( 'required' => $binding_required, 'match' => $binding_match ), $candidate_identity ),
+			'projection_consistent' => $projection_consistent,
+			'consistency_violations' => $consistency_violations,
+			'catalog_fingerprint' => $catalog_fingerprint,
+			'runtime_inventory_fingerprint' => $runtime_inventory_fingerprint,
+			'grant_set_fingerprint' => $grant_set_fingerprint,
+			'candidate_fingerprint' => $candidate_fingerprint,
+			'authority_generation' => $authority_generation,
+			'projection_fingerprint' => $projection_fingerprint,
+			'observed_at' => gmdate( 'c' ),
+			'grant_lookup_strategy' => isset( $plan['grant_lookup_strategy'] ) ? (string) $plan['grant_lookup_strategy'] : '',
+			'normal_remote_writes_require_exact_approval' => true,
+			'developer_authority_ready' => $developer_ready,
+			'developer_breakglass_authority_ready' => $developer_breakglass_ready,
+			'developer_enabled' => ! empty( $developer_status['developer_enabled'] ),
+			'developer_direct_execution_enabled' => ! empty( $developer_status['direct_execution_enabled'] ),
+			'developer_kill_switch_enabled' => ! empty( $developer_status['kill_switch_enabled'] ),
+			'developer_breakglass_enabled' => ! empty( $developer_status['breakglass_enabled'] ),
+			'developer_agent_public_id' => isset( $developer_status['agent_public_id'] ) ? (string) $developer_status['agent_public_id'] : '',
+			'full_staging_authority_ready' => $full_staging_authority_ready,
+			'generic_raw_sql_breakglass_included' => false,
+			'blocking_conditions' => $blocking_conditions,
+			'grants' => $grants,
+			'blocked_catalog_abilities' => $blocked_rows,
+			'governance_gated_catalog_abilities' => $governance_rows,
+		);
+	}
+
+	public static function consent_user_identity( $user_id ) {
+		$user_id = (int) $user_id;
+		$user = $user_id > 0 && function_exists( 'get_userdata' ) ? get_userdata( $user_id ) : false;
+		$display = $user && isset( $user->display_name ) && '' !== trim( (string) $user->display_name ) ? (string) $user->display_name : ( $user && isset( $user->user_login ) ? (string) $user->user_login : '' );
+		return array(
+			'contract' => 'mad4b.oauth-consent-user-identity.v1',
+			'user_id' => $user_id,
+			'display_name' => $display,
+			'display_label' => '' !== $display ? $display : __( 'WordPress account', 'mad4b-site-control-plane' ),
+			'id_exposed_in_primary_ui' => false,
+		);
+	}
+
+	public static function ajax_grant_projection() {
+		if ( ! is_user_logged_in() ) wp_send_json_error( array( 'code' => 'authentication_required' ), 401 );
+		if ( ! self::user_authorized( get_current_user_id() ) ) wp_send_json_error( array( 'code' => 'access_denied' ), 403 );
+		check_ajax_referer( 'mad4b_oauth_grant_projection', 'nonce' );
+		wp_send_json_success( array(
+			'projection' => self::consent_grant_projection(),
+			'user' => self::consent_user_identity( get_current_user_id() ),
+			'observed_at' => gmdate( 'c' ),
+		) );
+	}
+
 	private static function render_consent( array $validated, $user_id ) {
 		$client_name = isset( $validated['client']['client_name'] ) ? (string) $validated['client']['client_name'] : $validated['client_id'];
 		nocache_headers();
 		status_header( 200 );
 		header( 'Content-Type: text/html; charset=utf-8' );
 		header( 'X-Frame-Options: DENY' );
-		header( "Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" );
+		$script_nonce = rtrim( strtr( base64_encode( random_bytes( 18 ) ), '+/', '-_' ), '=' );
+		header( "Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-" . $script_nonce . "'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" );
 		header( 'Referrer-Policy: no-referrer' );
 		header( 'X-Content-Type-Options: nosniff' );
 		$hidden = array(
@@ -366,9 +595,75 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . esc_html__( 'Authorize MCP access', 'mad4b-site-control-plane' ) . '</title></head><body>';
 		echo '<main style="max-width:720px;margin:40px auto;font-family:system-ui,sans-serif;padding:0 20px">';
 		echo '<h1>' . esc_html__( 'Authorize MCP access', 'mad4b-site-control-plane' ) . '</h1>';
-		echo '<p><strong>' . esc_html( $client_name ) . '</strong> ' . esc_html__( 'is requesting read access to this WordPress MCP resource.', 'mad4b-site-control-plane' ) . '</p>';
-		echo '<p>' . esc_html__( 'Signed in WordPress user:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( (string) $user_id ) . '</code></p>';
-		echo '<p>' . esc_html__( 'Scopes:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( implode( ' ', $validated['scopes'] ) ) . '</code></p>';
+		$step_up_requested = in_array( 'mad4b:authority:step-up', $validated['scopes'], true );
+		echo '<p><strong>' . esc_html( $client_name ) . '</strong> ' . esc_html( $step_up_requested
+			? __( 'is requesting read access plus a governed Staging authority step-up scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
+			: __( 'is requesting read access to this WordPress MCP resource.', 'mad4b-site-control-plane' )
+		) . '</p>';
+		$user_identity = self::consent_user_identity( $user_id );
+		echo '<p>' . esc_html__( 'Signed in as:', 'mad4b-site-control-plane' ) . ' <strong id="mad4b-oauth-user-label">' . esc_html( (string) $user_identity['display_label'] ) . '</strong></p>';
+		echo '<p>' . esc_html__( 'OAuth scopes:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( implode( ' ', $validated['scopes'] ) ) . '</code></p>';
+		if ( $step_up_requested ) {
+			echo '<p><strong>' . esc_html__( 'Authority step-up:', 'mad4b-site-control-plane' ) . '</strong> ' .
+				esc_html__( 'This OAuth scope only permits ChatGPT to request the composite Full Staging Authority operation. It does not create write grants, Developer authority, Developer Breakglass authority, or Production authority. Execution still requires an exact current plan, matching build/site digests, enrolled administrator identity, explicit confirmation, audit readiness, and all fail-closed governance gates.', 'mad4b-site-control-plane' ) .
+				'</p>';
+		}
+		$grant_projection = self::consent_grant_projection();
+		$grant_count = isset( $grant_projection['exact_grants_existing'] ) ? (int) $grant_projection['exact_grants_existing'] : 0;
+		$grant_total = isset( $grant_projection['write_tool_count'] ) ? (int) $grant_projection['write_tool_count'] : 0;
+		$catalog_count = isset( $grant_projection['catalog_write_tool_count'] ) ? (int) $grant_projection['catalog_write_tool_count'] : 0;
+		$runtime_count = isset( $grant_projection['runtime_eligible_write_tool_count'] ) ? (int) $grant_projection['runtime_eligible_write_tool_count'] : $grant_total;
+		$blocked_count = isset( $grant_projection['provider_gated_write_tool_count'] ) ? (int) $grant_projection['provider_gated_write_tool_count'] : 0;
+		$governance_blocked_count = isset( $grant_projection['governance_gated_write_tool_count'] ) ? (int) $grant_projection['governance_gated_write_tool_count'] : 0;
+		echo '<section class="mad4b-live-grants" id="mad4b-live-authority" aria-label="' . esc_attr__( 'Live governed write authority', 'mad4b-site-control-plane' ) . '">';
+		echo '<div class="mad4b-grant-head"><h2>' . esc_html__( 'Live governed write authority', 'mad4b-site-control-plane' ) . '</h2><span id="mad4b-grant-state" class="mad4b-state">' . esc_html( ! empty( $grant_projection['ready'] ) ? __( 'Converged', 'mad4b-site-control-plane' ) : __( 'Fail-closed', 'mad4b-site-control-plane' ) ) . '</span></div>';
+		echo '<div class="mad4b-grant-metrics">';
+		echo '<div><strong id="mad4b-exact-count">' . esc_html( sprintf( '%d/%d', $grant_count, $runtime_count ) ) . '</strong><span>' . esc_html__( 'exact / runtime eligible', 'mad4b-site-control-plane' ) . '</span></div>';
+		echo '<div><strong id="mad4b-catalog-count">' . esc_html( (string) $catalog_count ) . '</strong><span>' . esc_html__( 'governed catalog', 'mad4b-site-control-plane' ) . '</span></div>';
+		echo '<div><strong id="mad4b-blocked-count">' . esc_html( (string) $blocked_count ) . '</strong><span>' . esc_html__( 'provider gated', 'mad4b-site-control-plane' ) . '</span></div>';
+		echo '<div><strong id="mad4b-governance-blocked-count">' . esc_html( (string) $governance_blocked_count ) . '</strong><span>' . esc_html__( 'governance gated', 'mad4b-site-control-plane' ) . '</span></div>';
+		echo '</div>';
+		echo '<p class="mad4b-grant-note">' . esc_html__( 'This panel is live governance evidence, not an OAuth permission request. OAuth approval cannot create or widen write grants. Every normal remote write still requires a runtime-eligible ability, its exact grant, and a one-time approval.', 'mad4b-site-control-plane' ) . '</p>';
+		$blocking_conditions = isset( $grant_projection['blocking_conditions'] ) && is_array( $grant_projection['blocking_conditions'] ) ? $grant_projection['blocking_conditions'] : array();
+		$blocker_class = empty( $blocking_conditions ) && ! empty( $grant_projection['ready'] ) ? 'mad4b-grant-blockers mad4b-ok' : 'mad4b-grant-blockers mad4b-warn';
+		echo '<div id="mad4b-grant-blockers" class="' . esc_attr( $blocker_class ) . '" aria-live="polite">';
+		if ( empty( $blocking_conditions ) ) {
+			echo esc_html( ! empty( $grant_projection['ready'] ) ? __( 'Write authority is fully converged for the runtime-eligible surface.', 'mad4b-site-control-plane' ) : __( 'No grant drift detected; write authority remains unavailable for another governed condition.', 'mad4b-site-control-plane' ) );
+		} else {
+			echo esc_html__( 'Execution remains fail-closed:', 'mad4b-site-control-plane' );
+			echo '<ul>';
+			foreach ( $blocking_conditions as $condition ) {
+				$code = isset( $condition['code'] ) ? sanitize_key( (string) $condition['code'] ) : 'governance_blocker';
+				$count = isset( $condition['count'] ) ? (int) $condition['count'] : 0;
+				echo '<li><code>' . esc_html( $code ) . '</code>' . ( $count > 0 ? ' (' . esc_html( (string) $count ) . ')' : '' ) . '</li>';
+			}
+			echo '</ul>';
+		}
+		echo '</div>';
+		echo '<details><summary>' . esc_html__( 'Exact granted abilities', 'mad4b-site-control-plane' ) . '</summary><ul id="mad4b-grant-list">';
+		foreach ( (array) $grant_projection['grants'] as $grant ) echo '<li><code>' . esc_html( (string) $grant['ability'] ) . '</code> <span>· ' . esc_html( (string) $grant['provider'] ) . '</span></li>';
+		echo '</ul></details>';
+		echo '<details><summary>' . esc_html__( 'Provider-gated catalog abilities', 'mad4b-site-control-plane' ) . '</summary><ul id="mad4b-blocked-list">';
+		foreach ( (array) $grant_projection['blocked_catalog_abilities'] as $entry ) {
+			$ability = isset( $entry['ability'] ) ? (string) $entry['ability'] : '';
+			$provider = isset( $entry['provider'] ) ? (string) $entry['provider'] : '';
+			$reason = isset( $entry['reason'] ) ? (string) $entry['reason'] : 'provider_gated';
+			echo '<li><code>' . esc_html( $ability ) . '</code> <span>· ' . esc_html( $provider . ' · ' . $reason ) . '</span></li>';
+		}
+		echo '</ul></details>';
+		echo '<details><summary>' . esc_html__( 'Governance-gated catalog abilities', 'mad4b-site-control-plane' ) . '</summary><ul id="mad4b-governance-blocked-list">';
+		foreach ( (array) $grant_projection['governance_gated_catalog_abilities'] as $entry ) {
+			$ability = isset( $entry['ability'] ) ? (string) $entry['ability'] : '';
+			$provider = isset( $entry['provider'] ) ? (string) $entry['provider'] : 'core';
+			$reason = isset( $entry['reason'] ) ? (string) $entry['reason'] : 'governance_gated';
+			echo '<li><code>' . esc_html( $ability ) . '</code> <span>· ' . esc_html( $provider . ' · ' . $reason ) . '</span></li>';
+		}
+		echo '</ul></details>';
+		echo '<p class="mad4b-live-stamp">' . esc_html__( 'Live read-only authority refresh: immediate on focus/return, then every 15 seconds while visible; paused while hidden.', 'mad4b-site-control-plane' ) . ' <span id="mad4b-observed-at">' . esc_html( isset( $grant_projection['observed_at'] ) ? (string) $grant_projection['observed_at'] : '' ) . '</span></p>';
+		echo '</section>';
+		$projection_url = admin_url( 'admin-ajax.php' );
+		$projection_nonce = wp_create_nonce( 'mad4b_oauth_grant_projection' );
+		echo '<script nonce="' . esc_attr( $script_nonce ) . '">(function(){const u=' . wp_json_encode( $projection_url ) . ',nonce=' . wp_json_encode( $projection_nonce ) . ';const BASE=15000,MAX=60000;let timer=null,failures=0,inflight=false,lastFingerprint="";const q=(s)=>document.querySelector(s);const clear=(el)=>{while(el&&el.firstChild)el.removeChild(el.firstChild)};const li=(a,p,r)=>{const n=document.createElement("li"),c=document.createElement("code"),s=document.createElement("span");c.textContent=a||"";s.textContent=" · "+(p||"")+(r?" · "+r:"");n.append(c,s);return n};const blockers=(p)=>{const el=q("#mad4b-grant-blockers");clear(el);const b=Array.isArray(p.blocking_conditions)?p.blocking_conditions:[];if(!b.length){el.className="mad4b-grant-blockers mad4b-ok";el.textContent=p.ready?"Write authority is fully converged for the runtime-eligible surface.":"No grant drift detected; write authority remains unavailable for another governed condition.";return}el.className="mad4b-grant-blockers mad4b-warn";const ul=document.createElement("ul");b.forEach(x=>{const n=document.createElement("li");let t=(x.code||"governance_blocker")+(x.count?" ("+x.count+")":"");if(Array.isArray(x.items)&&x.items.length){const names=x.items.slice(0,4).map(i=>i&&i.ability?i.ability:(typeof i==="string"?i:"")).filter(Boolean);if(names.length)t+=" · "+names.join(", ")+(x.items.length>4?" …":"")}if(x.binding){const s=(x.binding.stored_source_commit_sha||"").slice(0,8),c=(x.binding.current_source_commit_sha||"").slice(0,8);if(s||c)t+=" · "+(s||"unbound")+" → "+(c||"unknown")}n.textContent=t;ul.appendChild(n)});el.append("Execution remains fail-closed: ",ul)};const paint=(d)=>{if(!d||!d.projection)return;const p=d.projection;q("#mad4b-exact-count").textContent=(p.exact_grants_existing||0)+"/"+(p.runtime_eligible_write_tool_count||0);q("#mad4b-catalog-count").textContent=p.catalog_write_tool_count||0;q("#mad4b-blocked-count").textContent=p.provider_gated_write_tool_count||0;q("#mad4b-governance-blocked-count").textContent=p.governance_gated_write_tool_count||0;const st=q("#mad4b-grant-state");st.textContent=p.ready?"Converged":"Fail-closed";st.className="mad4b-state "+(p.ready?"mad4b-ok-state":"mad4b-block-state");const authority=(id,ready)=>{const e=q(id);if(!e)return;e.textContent=ready?"Allowed":"Blocked";e.className=ready?"mad4b-authority-ready":"mad4b-authority-blocked"};authority("#mad4b-write-state",!!p.ready);authority("#mad4b-developer-state",!!p.developer_authority_ready);authority("#mad4b-developer-breakglass-state",!!p.developer_breakglass_authority_ready);const full=q("#mad4b-full-authority-state");if(full){full.className=p.full_staging_authority_ready?"mad4b-full-ready":"mad4b-full-blocked";full.textContent="Full Staging Authority: "+(p.full_staging_authority_ready?"Ready":"Not fully converged")}blockers(p);const gl=q("#mad4b-grant-list");clear(gl);(p.grants||[]).forEach(x=>gl.appendChild(li(x.ability,x.provider,"")));const bl=q("#mad4b-blocked-list");clear(bl);(p.blocked_catalog_abilities||[]).forEach(x=>bl.appendChild(li(x.ability,x.provider,x.reason||"provider_gated")));const glb=q("#mad4b-governance-blocked-list");clear(glb);(p.governance_gated_catalog_abilities||[]).forEach(x=>glb.appendChild(li(x.ability,x.provider,x.reason||"governance_gated")));if(d.user&&d.user.display_label)q("#mad4b-oauth-user-label").textContent=d.user.display_label;if(p.observed_at)q("#mad4b-observed-at").textContent=p.observed_at};const schedule=(delay)=>{if(timer)clearTimeout(timer);timer=null;if(document.hidden)return;timer=setTimeout(run,delay)};const run=()=>{if(document.hidden||inflight)return;inflight=true;const body=new URLSearchParams();body.set("action","mad4b_oauth_grant_projection");body.set("nonce",nonce);fetch(u,{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Accept":"application/json","Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:body.toString()}).then(r=>r.ok?r.json():Promise.reject(new Error("http_"+r.status))).then(x=>{if(!x||!x.success||!x.data||!x.data.projection)throw new Error("invalid_projection");failures=0;const fp=x.data.projection.projection_fingerprint||"";if(!fp||fp!==lastFingerprint){paint(x.data);lastFingerprint=fp}schedule(BASE)}).catch(()=>{failures=Math.min(failures+1,3);schedule(Math.min(MAX,BASE*Math.pow(2,failures)))}).finally(()=>{inflight=false})};document.addEventListener("visibilitychange",()=>{if(document.hidden){if(timer)clearTimeout(timer);timer=null}else{run()}});window.addEventListener("focus",()=>{if(!document.hidden)run()});run()})();</script>';
 		echo '<form method="post" action="' . esc_url( self::authorize_url() ) . '">';
 		foreach ( $hidden as $name => $value ) echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '">';
 		wp_nonce_field( 'mad4b_local_oauth_consent', '_mad4b_oauth_nonce' );
@@ -412,7 +707,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( ! hash_equals( (string) $row['code_challenge'], $challenge ) ) self::send_oauth_error( 'invalid_grant', 'PKCE verification failed.', 400 );
 		if ( ! self::user_authorized( (int) $row['wp_user_id'] ) ) self::send_oauth_error( 'access_denied', 'WordPress subject is no longer authorized.', 403 );
 		if ( ! MAD4B_SCP_Local_OAuth_Store::mark_code_used( (int) $row['id'], gmdate( 'Y-m-d H:i:s' ) ) ) self::send_oauth_error( 'invalid_grant', 'Authorization code was already consumed.', 400 );
-		$scopes = self::normalize_scopes( (string) $row['scope'] );
+		$scopes = self::normalize_scopes( (string) $row['scope'], $resource, $client_id );
 		if ( is_wp_error( $scopes ) ) self::send_oauth_error( 'invalid_scope', 'Stored scope binding is invalid.', 500 );
 		self::issue_token_response( $client_id, (int) $row['wp_user_id'], $resource, $scopes, true );
 	}
@@ -435,7 +730,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( ! empty( $row['revoked_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) < time() ) self::send_oauth_error( 'invalid_grant', 'Refresh token is expired or revoked.', 400 );
 		if ( ! hash_equals( (string) $row['client_id'], $client_id ) || ! hash_equals( (string) $row['resource'], $resource ) || ! self::resource_allowed( $resource ) ) self::send_oauth_error( 'invalid_grant', 'Refresh token binding does not match.', 400 );
 		if ( ! self::user_authorized( (int) $row['wp_user_id'] ) ) self::send_oauth_error( 'access_denied', 'WordPress subject is no longer authorized.', 403 );
-		$scopes = self::normalize_scopes( (string) $row['scope'] );
+		$scopes = self::normalize_scopes( (string) $row['scope'], $resource, $client_id );
 		if ( is_wp_error( $scopes ) ) self::send_oauth_error( 'invalid_scope', 'Stored scope binding is invalid.', 500 );
 		$replacement = self::random_token( 48 );
 		if ( is_wp_error( $replacement ) ) self::send_oauth_error( 'server_error', 'Unable to rotate refresh token.', 500 );
@@ -551,11 +846,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		return $signing_input . '.' . self::base64url_encode( $signature );
 	}
 
-	private static function normalize_scopes( $scope ) {
+	private static function normalize_scopes( $scope, $resource = '', $client_id = '' ) {
 		$scope = trim( (string) $scope );
 		if ( strlen( $scope ) > self::MAX_SCOPE_BYTES ) return new WP_Error( 'invalid_scope', 'OAuth scope is too large.' );
 		$items = preg_split( '/\s+/', $scope );
-		$allowed = array( 'mad4b:read', 'offline_access' );
+		$allowed = array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' );
 		$scopes = array();
 		foreach ( is_array( $items ) ? $items : array() as $item ) {
 			$item = trim( (string) $item );
@@ -565,6 +860,31 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		}
 		$scopes = array_values( array_unique( $scopes ) );
 		if ( ! in_array( 'mad4b:read', $scopes, true ) ) return new WP_Error( 'invalid_scope', 'mad4b:read is required.' );
+
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		$client_id = trim( (string) $client_id );
+		if ( '' !== $resource && class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) {
+			$chatgpt = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier();
+			$developer = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer' );
+			$breakglass = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer-breakglass' );
+			$has_step_up = in_array( 'mad4b:authority:step-up', $scopes, true );
+			$has_developer = in_array( 'server:mad4b-developer', $scopes, true );
+			$has_breakglass = in_array( 'server:mad4b-developer-breakglass', $scopes, true );
+
+			if ( $has_step_up ) {
+				if ( ! hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is reserved for the exact ChatGPT CIMD client.' );
+				if ( ! hash_equals( $chatgpt, $resource ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is valid only for the canonical ChatGPT resource.' );
+				if ( ! MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available() ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is unavailable outside exact eligible Staging.' );
+			}
+
+			if ( hash_equals( $developer, $resource ) ) {
+				if ( ! $has_developer || $has_breakglass || $has_step_up ) return new WP_Error( 'invalid_scope', 'Developer resource requires exactly the normal Developer server scope.' );
+			} elseif ( hash_equals( $breakglass, $resource ) ) {
+				if ( ! $has_breakglass || $has_developer || $has_step_up ) return new WP_Error( 'invalid_scope', 'Developer Breakglass resource requires exactly the Breakglass server scope.' );
+			} elseif ( $has_developer || $has_breakglass ) {
+				return new WP_Error( 'invalid_scope', 'Developer scopes cannot be issued for a non-Developer protected resource.' );
+			}
+		}
 		return $scopes;
 	}
 
@@ -747,7 +1067,10 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$path = self::private_key_path();
 		if ( is_wp_error( $path ) ) return $path;
 		if ( is_file( $path ) ) {
-			@chmod( $path, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- best-effort permission hardening.
+			$mode = @fileperms( $path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- bounded local key metadata check.
+			if ( false === $mode || 0600 !== ( $mode & 0777 ) ) {
+				@chmod( $path, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- best-effort repair only when permissions drift.
+			}
 			return true;
 		}
 		$dir = dirname( $path );
@@ -794,6 +1117,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function public_jwk() {
+		if ( is_array( self::$public_jwk_request_cache ) ) return self::$public_jwk_request_cache;
 		$pem = self::private_key_pem();
 		if ( is_wp_error( $pem ) ) return $pem;
 		$key = openssl_pkey_get_private( $pem );
@@ -802,7 +1126,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$details = openssl_pkey_get_details( $key );
 		if ( ! is_array( $details ) || empty( $details['key'] ) || empty( $details['rsa']['n'] ) || empty( $details['rsa']['e'] ) ) return new WP_Error( 'mad4b_local_oauth_public_key_unavailable', 'Unable to derive local OAuth public key.' );
 		if ( empty( $details['bits'] ) || (int) $details['bits'] < 2048 ) return new WP_Error( 'mad4b_local_oauth_rsa_key_too_small', 'Local OAuth RSA signing key must be at least 2048 bits.' );
-		return array(
+		self::$public_jwk_request_cache = array(
 			'kty' => 'RSA',
 			'use' => 'sig',
 			'key_ops' => array( 'verify' ),
@@ -811,6 +1135,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'n' => self::base64url_encode( $details['rsa']['n'] ),
 			'e' => self::base64url_encode( $details['rsa']['e'] ),
 		);
+		return self::$public_jwk_request_cache;
 	}
 
 	private static function absolute_path( $path ) {
@@ -820,7 +1145,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	private static function configured_issuer_validation() {
 		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) return self::site_base_url() . self::ISSUER_PATH;
 		$configured = rtrim( trim( (string) constant( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ), '/' );
-		if ( strlen( $configured ) > self::MAX_URI_BYTES || ! self::valid_https_url( $configured ) ) return new WP_Error( 'mad4b_local_oauth_issuer_invalid', 'Configured local OAuth issuer must be a bounded HTTPS URL without credentials, query or fragment.' );
+		if ( strlen( $configured ) > self::MAX_URI_BYTES || ! self::issuer_transport_allowed( $configured ) ) return new WP_Error( 'mad4b_local_oauth_issuer_invalid', 'Configured local OAuth issuer must be HTTPS, except bounded HTTP loopback in the local environment.' );
 		if ( ! self::same_origin( $configured, self::origin() ) ) return new WP_Error( 'mad4b_local_oauth_issuer_cross_origin', 'Configured local OAuth issuer must use the same origin as this WordPress site.' );
 		return $configured;
 	}
@@ -836,6 +1161,17 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$port_a = isset( $a['port'] ) ? (int) $a['port'] : ( 'https' === $scheme_a ? 443 : 80 );
 		$port_b = isset( $b['port'] ) ? (int) $b['port'] : ( 'https' === $scheme_b ? 443 : 80 );
 		return '' !== $host_a && $scheme_a === $scheme_b && $host_a === $host_b && $port_a === $port_b;
+	}
+
+
+	private static function issuer_transport_allowed( $url ) {
+		$parts = wp_parse_url( (string) $url );
+		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) || ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) || ! empty( $parts['query'] ) || ! empty( $parts['fragment'] ) ) return false;
+		$scheme = strtolower( (string) $parts['scheme'] );
+		$host = strtolower( (string) $parts['host'] );
+		if ( 'https' === $scheme ) return true;
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		return 'local' === $environment && 'http' === $scheme && in_array( $host, array( '127.0.0.1', '::1', 'localhost' ), true );
 	}
 
 	private static function valid_https_url( $url ) {

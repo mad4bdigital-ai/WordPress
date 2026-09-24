@@ -12,8 +12,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * gate remains deny-only defense in depth.
  */
 final class MAD4B_SCP_OAuth_Resource_Bridge {
-	const CONTRACT = 'mad4b.oauth-resource-bridge.v4';
+	const CONTRACT = 'mad4b.oauth-resource-bridge.v5';
 	const READ_SCOPE = 'mad4b:read';
+	const AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up';
+	const DEVELOPER_SCOPE = 'server:mad4b-developer';
+	const DEVELOPER_BREAKGLASS_SCOPE = 'server:mad4b-developer-breakglass';
 	const METADATA_NAMESPACE = 'mad4b/v1';
 	const METADATA_ROUTE = '/oauth-protected-resource';
 	const CLOCK_SKEW = 60;
@@ -79,6 +82,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$authorities = self::authority_registry();
 		$issuers = array_keys( $authorities );
 		$https = self::resources_are_https();
+		$resource_transport_allowed = self::resources_transport_allowed();
 		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$environment_allowed = $profile_ready && ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) || ( 'production' === $environment && $production_approved ) );
 		$registry_valid = self::authority_registry_valid( $mode, $authorities );
@@ -88,7 +92,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		foreach ( $authorities as $authority ) {
 			if ( 'local' === $authority['type'] && empty( $authority['runtime_ready'] ) ) $local_ready = false;
 		}
-		$effective = $enabled && $registry_valid && $subject_policy_ready && $wp_users_ready && $local_ready && $https && $environment_allowed;
+		$effective = $enabled && $registry_valid && $subject_policy_ready && $wp_users_ready && $local_ready && $resource_transport_allowed && $environment_allowed;
 
 		$authority_status = array();
 		foreach ( $authorities as $issuer => $authority ) {
@@ -120,10 +124,12 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'resources' => self::resource_identifiers(),
 			'metadata_url' => self::metadata_url(),
 			'authorization_server_metadata_urls' => self::authorization_server_metadata_urls(),
-			'scopes_supported' => array( self::READ_SCOPE ),
+			'scopes_supported' => array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE, self::DEVELOPER_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE ),
 			'wp_user_id' => self::configured_user_id( self::primary_issuer() ),
 			'wp_user_capable' => $wp_users_ready,
 			'https' => $https,
+			'resource_transport_allowed' => $resource_transport_allowed,
+			'http_loopback_local_only' => ( ! $https && $resource_transport_allowed ),
 			'accepted_bearer_algorithms' => array( 'RS256' ),
 			'jwks_x5c_required' => false,
 			'jwks_rsa_ne_supported' => true,
@@ -138,8 +144,10 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'creates_credentials' => false,
 			'outbound_discovery_on_admin' => false,
 			'write_surfaces_enabled' => false,
+			'authority_step_up_surface_enabled' => self::authority_step_up_scope_available(),
+			'authority_step_up_scope' => self::AUTHORITY_STEP_UP_SCOPE,
 			'protected_transport_server' => 'mad4b-chatgpt',
-			'protected_transport_servers' => array( 'mad4b-chatgpt', 'mad4b-enrollment' ),
+			'protected_transport_servers' => array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ),
 		);
 	}
 
@@ -150,19 +158,42 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return array(
 			'resource' => $resource,
 			'authorization_servers' => self::trusted_issuers(),
-			'scopes_supported' => array( self::READ_SCOPE ),
+			'scopes_supported' => self::scopes_for_resource( $resource ),
 			'bearer_methods_supported' => array( 'header' ),
 		);
+	}
+
+	public static function scopes_for_resource( $resource ) {
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		if ( hash_equals( self::resource_identifier( 'mad4b-developer' ), $resource ) ) return array( self::READ_SCOPE, self::DEVELOPER_SCOPE );
+		if ( hash_equals( self::resource_identifier( 'mad4b-developer-breakglass' ), $resource ) ) return array( self::READ_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE );
+		if ( hash_equals( self::resource_identifier(), $resource ) && self::authority_step_up_scope_available() ) {
+			return array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE );
+		}
+		return array( self::READ_SCOPE );
+	}
+
+	public static function authority_step_up_scope_available() {
+		if ( ! class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) || ! method_exists( 'MAD4B_SCP_Full_Staging_Authority', 'chatgpt_step_up_tools' ) ) return false;
+		$tools = MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools();
+		return is_array( $tools ) && in_array( MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY, $tools, true );
 	}
 
 	public static function resource_identifier( $server_id = 'mad4b-chatgpt' ) {
 		$server_id = sanitize_key( (string) $server_id );
 		if ( 'mad4b-enrollment' === $server_id ) return untrailingslashit( home_url( '/wp-json/mcp/mad4b-enrollment' ) );
+		if ( 'mad4b-developer' === $server_id ) return untrailingslashit( home_url( '/wp-json/mcp/mad4b-developer' ) );
+		if ( 'mad4b-developer-breakglass' === $server_id ) return untrailingslashit( home_url( '/wp-json/mcp/mad4b-developer-breakglass' ) );
 		return untrailingslashit( home_url( '/wp-json/mcp/mad4b-chatgpt' ) );
 	}
 
 	public static function resource_identifiers() {
-		return array( self::resource_identifier( 'mad4b-chatgpt' ), self::resource_identifier( 'mad4b-enrollment' ) );
+		return array(
+			self::resource_identifier( 'mad4b-chatgpt' ),
+			self::resource_identifier( 'mad4b-enrollment' ),
+			self::resource_identifier( 'mad4b-developer' ),
+			self::resource_identifier( 'mad4b-developer-breakglass' ),
+		);
 	}
 
 	public static function is_protected_resource( $resource ) {
@@ -174,8 +205,9 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 	public static function resource_for_route( $route ) {
 		$route = '/' . ltrim( rtrim( (string) $route, '/' ), '/' );
-		if ( '/mcp/mad4b-chatgpt' === $route ) return self::resource_identifier( 'mad4b-chatgpt' );
-		if ( '/mcp/mad4b-enrollment' === $route ) return self::resource_identifier( 'mad4b-enrollment' );
+		foreach ( array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ) as $server_id ) {
+			if ( '/mcp/' . $server_id === $route ) return self::resource_identifier( $server_id );
+		}
 		return '';
 	}
 
@@ -244,6 +276,28 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return is_array( self::$verified_context ) && ! empty( self::$verified_context['authenticated'] ) && 'oauth2_bearer' === (string) self::$verified_context['auth_method'];
 	}
 
+	public static function verified_bearer_has_scope( $scope ) {
+		$scope = trim( (string) $scope );
+		if ( '' === $scope || ! self::verified_bearer_active() ) return false;
+		$scopes = isset( self::$verified_context['token_scopes'] ) && is_array( self::$verified_context['token_scopes'] )
+			? self::$verified_context['token_scopes']
+			: array();
+		foreach ( $scopes as $granted ) if ( is_string( $granted ) && hash_equals( $scope, $granted ) ) return true;
+		return false;
+	}
+
+	public static function verified_bearer_client_is( $client_id ) {
+		$client_id = trim( (string) $client_id );
+		if ( '' === $client_id || strlen( $client_id ) > self::MAX_URI_BYTES || ! self::verified_bearer_active() ) return false;
+		$actual = isset( self::$verified_context['client_fingerprint'] ) ? strtolower( trim( (string) self::$verified_context['client_fingerprint'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $actual ) ) return false;
+		foreach ( self::trusted_issuers() as $issuer ) {
+			$expected = hash( 'sha256', 'oauth-client' . "\0" . $issuer . "\0" . $client_id );
+			if ( hash_equals( $expected, $actual ) ) return true;
+		}
+		return false;
+	}
+
 	/** Reset request-local OAuth authority before a bearer is evaluated. */
 	public static function reset_verified_bearer_context( $bearer_request = false ) {
 		self::$verified_context = null;
@@ -297,15 +351,29 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$user = $user_id > 0 ? get_userdata( $user_id ) : false;
 		if ( ! $user || ! user_can( $user, 'manage_options' ) ) return self::unauthorized_response( 'mad4b_oauth_wp_subject_invalid', 'Configured OAuth WordPress subject is missing required capability.', 403 );
 		wp_set_current_user( $user_id );
+		$developer_resource = hash_equals( self::resource_identifier( 'mad4b-developer' ), $resource )
+			|| hash_equals( self::resource_identifier( 'mad4b-developer-breakglass' ), $resource );
+		$subject_type = 'oauth';
+		$normal_subject_fingerprint = hash( 'sha256', 'oauth' . "\0" . $verified['issuer'] . "\0" . $verified['subject'] );
+		$subject_fingerprint = $normal_subject_fingerprint;
+		if ( $developer_resource ) {
+			$client_fingerprint = isset( $verified['client_fingerprint'] ) ? strtolower( trim( (string) $verified['client_fingerprint'] ) ) : '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $client_fingerprint ) ) return self::unauthorized_response( 'mad4b_developer_oauth_client_required', 'Developer MCP requires an attributable OAuth client identity.', 401, $resource );
+			$subject_type = 'oauth_developer';
+			$subject_fingerprint = hash( 'sha256', 'oauth-developer' . "\0" . $normal_subject_fingerprint . "\0" . $client_fingerprint );
+		}
 		self::$verified_context = array(
 			'authenticated' => true,
-			'subject_type' => 'oauth',
-			'subject_fingerprint' => hash( 'sha256', 'oauth' . "\0" . $verified['issuer'] . "\0" . $verified['subject'] ),
+			'subject_type' => $subject_type,
+			'subject_fingerprint' => $subject_fingerprint,
+			'issuer_fingerprint' => isset( $verified['issuer_fingerprint'] ) ? (string) $verified['issuer_fingerprint'] : '',
+			'client_fingerprint' => isset( $verified['client_fingerprint'] ) ? (string) $verified['client_fingerprint'] : '',
+			'session_fingerprint' => isset( $verified['session_fingerprint'] ) ? (string) $verified['session_fingerprint'] : '',
 			'token_scopes' => $verified['scopes'],
 			'approval_ticket_id' => '',
 			'auth_method' => 'oauth2_bearer',
 			'wp_user_id' => $user_id,
-			'origin' => 'mcp',
+			'origin' => $developer_resource ? 'mcp_developer' : 'mcp',
 		);
 		return $result;
 	}
@@ -321,7 +389,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$metadata = hash_equals( self::resource_identifier(), $resource ) && class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' )
 			? MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url()
 			: self::metadata_url( $resource );
-		return 'Bearer resource_metadata="' . esc_url_raw( $metadata ) . '", scope="' . self::READ_SCOPE . '"';
+		return 'Bearer resource_metadata="' . esc_url_raw( $metadata ) . '", scope="' . implode( ' ', self::scopes_for_resource( $resource ) ) . '"';
 	}
 
 	private static function unauthorized_response( $code, $message, $status = 401, $resource = '' ) {
@@ -388,7 +456,30 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$scopes = self::extract_scopes( $claims );
 		if ( is_wp_error( $scopes ) ) return $scopes;
 		if ( ! in_array( self::READ_SCOPE, $scopes, true ) ) return new WP_Error( 'mad4b_oauth_scope_missing', 'Access token does not grant mad4b:read.' );
-		return array( 'issuer' => $issuer, 'subject' => $subject, 'scopes' => $scopes );
+		$client_id = '';
+		if ( isset( $claims['client_id'] ) ) {
+			if ( ! is_string( $claims['client_id'] ) || '' === trim( $claims['client_id'] ) || strlen( trim( $claims['client_id'] ) ) > self::MAX_URI_BYTES ) return new WP_Error( 'mad4b_oauth_client_claim_invalid', 'Access token client_id claim is invalid.' );
+			$client_id = trim( $claims['client_id'] );
+		}
+		if ( isset( $claims['azp'] ) ) {
+			if ( ! is_string( $claims['azp'] ) || '' === trim( $claims['azp'] ) || strlen( trim( $claims['azp'] ) ) > self::MAX_URI_BYTES ) return new WP_Error( 'mad4b_oauth_authorized_party_invalid', 'Access token azp claim is invalid.' );
+			$azp = trim( $claims['azp'] );
+			if ( '' !== $client_id && ! hash_equals( $client_id, $azp ) ) return new WP_Error( 'mad4b_oauth_client_claim_mismatch', 'Access token client_id and azp claims disagree.' );
+			if ( '' === $client_id ) $client_id = $azp;
+		}
+		$jti = '';
+		if ( isset( $claims['jti'] ) ) {
+			if ( ! is_string( $claims['jti'] ) || '' === trim( $claims['jti'] ) || strlen( trim( $claims['jti'] ) ) > 512 ) return new WP_Error( 'mad4b_oauth_jti_invalid', 'Access token jti claim is invalid.' );
+			$jti = trim( $claims['jti'] );
+		}
+		return array(
+			'issuer' => $issuer,
+			'subject' => $subject,
+			'scopes' => $scopes,
+			'issuer_fingerprint' => hash( 'sha256', 'oauth-issuer' . "\0" . $issuer ),
+			'client_fingerprint' => '' !== $client_id ? hash( 'sha256', 'oauth-client' . "\0" . $issuer . "\0" . $client_id ) : '',
+			'session_fingerprint' => '' !== $jti ? hash( 'sha256', 'oauth-token-instance' . "\0" . $issuer . "\0" . $jti ) : '',
+		);
 	}
 
 	private static function extract_scopes( array $claims ) {
@@ -421,6 +512,36 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$key = 'mad4b_oauth_discovery_' . substr( hash( 'sha256', $issuer ), 0, 32 );
 		$cached = get_transient( $key );
 		if ( is_array( $cached ) ) return $cached;
+
+		// Same-process Local OAuth must never depend on an outbound/loopback HTTP
+		// request to verify its own tokens. Besides avoiding deadlock/timeouts on
+		// constrained hosts, this preserves the exact same issuer/origin/PKCE checks
+		// against the authoritative local metadata object.
+		$local_issuer = self::local_issuer();
+		if ( '' !== $local_issuer && hash_equals( $local_issuer, rtrim( (string) $issuer, '/' ) )
+			&& class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			&& method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'metadata' ) ) {
+			$metadata = MAD4B_SCP_Local_OAuth_Server::metadata();
+			if ( is_array( $metadata )
+				&& isset( $metadata['issuer'] ) && is_string( $metadata['issuer'] ) && hash_equals( $issuer, $metadata['issuer'] )
+				&& ! empty( $metadata['jwks_uri'] ) && self::same_origin_https_url( $metadata['jwks_uri'], $issuer )
+				&& ! empty( $metadata['authorization_endpoint'] ) && self::same_origin_https_url( $metadata['authorization_endpoint'], $issuer )
+				&& ! empty( $metadata['token_endpoint'] ) && self::same_origin_https_url( $metadata['token_endpoint'], $issuer )
+				&& ! empty( $metadata['code_challenge_methods_supported'] ) && is_array( $metadata['code_challenge_methods_supported'] )
+				&& in_array( 'S256', $metadata['code_challenge_methods_supported'], true ) ) {
+				$bounded = array(
+					'issuer' => $issuer,
+					'jwks_uri' => esc_url_raw( $metadata['jwks_uri'] ),
+					'authorization_endpoint' => esc_url_raw( $metadata['authorization_endpoint'] ),
+					'token_endpoint' => esc_url_raw( $metadata['token_endpoint'] ),
+					'code_challenge_methods_supported' => array( 'S256' ),
+				);
+				set_transient( $key, $bounded, self::CACHE_TTL );
+				return $bounded;
+			}
+			return new WP_Error( 'mad4b_oauth_local_metadata_invalid', 'Local OAuth metadata is unavailable or not MCP-compatible.' );
+		}
+
 		foreach ( self::authorization_server_metadata_urls( $issuer ) as $url ) {
 			$response = wp_safe_remote_get( $url, array( 'timeout' => 5, 'redirection' => 0, 'headers' => array( 'Accept' => 'application/json' ) ) );
 			if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) continue;
@@ -451,6 +572,23 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( $force_refresh ) delete_transient( $key );
 		$cached = get_transient( $key );
 		if ( is_array( $cached ) ) return $cached;
+
+		$local_issuer = self::local_issuer();
+		if ( '' !== $local_issuer && hash_equals( $local_issuer, rtrim( (string) $issuer, '/' ) )
+			&& class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			&& method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'jwks_url' )
+			&& method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'jwks_document' )
+			&& hash_equals( untrailingslashit( (string) MAD4B_SCP_Local_OAuth_Server::jwks_url() ), untrailingslashit( (string) $jwks_uri ) ) ) {
+			$jwks = MAD4B_SCP_Local_OAuth_Server::jwks_document();
+			if ( is_wp_error( $jwks ) ) return $jwks;
+			if ( ! is_array( $jwks ) || empty( $jwks['keys'] ) || ! is_array( $jwks['keys'] ) || count( $jwks['keys'] ) > self::MAX_JWKS_KEYS ) {
+				return new WP_Error( 'mad4b_oauth_jwks_invalid', 'Local OAuth JWKS payload is invalid.' );
+			}
+			$bounded = array( 'keys' => array_slice( $jwks['keys'], 0, self::MAX_JWKS_KEYS ) );
+			set_transient( $key, $bounded, self::CACHE_TTL );
+			return $bounded;
+		}
+
 		$response = wp_safe_remote_get( $jwks_uri, array( 'timeout' => 5, 'redirection' => 0, 'headers' => array( 'Accept' => 'application/json' ) ) );
 		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) return new WP_Error( 'mad4b_oauth_jwks_unavailable', 'OAuth JWKS endpoint is unavailable.' );
 		$body = (string) wp_remote_retrieve_body( $response );
@@ -622,7 +760,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) || true !== constant( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) ) return '';
 		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) || ! method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'issuer' ) ) return '';
 		$issuer = rtrim( (string) MAD4B_SCP_Local_OAuth_Server::issuer(), '/' );
-		return self::valid_https_url( $issuer ) ? $issuer : '';
+		return self::valid_authority_url( $issuer ) ? $issuer : '';
 	}
 
 	private static function normalize_subjects( $value ) {
@@ -639,17 +777,43 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	}
 
 	private static function resources_are_https() { foreach ( self::resource_identifiers() as $resource ) if ( 'https' !== strtolower( (string) wp_parse_url( $resource, PHP_URL_SCHEME ) ) ) return false; return true; }
+
+	private static function resources_transport_allowed() {
+		foreach ( self::resource_identifiers() as $resource ) if ( ! self::valid_authority_url( $resource ) ) return false;
+		return true;
+	}
+
+	private static function valid_local_http_loopback_url( $url ) {
+		if ( ! is_string( $url ) || '' === $url || strlen( $url ) > self::MAX_URI_BYTES ) return false;
+		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		if ( 'local' !== $environment ) return false;
+		$parts = wp_parse_url( $url );
+		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return false;
+		$host = strtolower( rtrim( (string) $parts['host'], '.' ) );
+		return 'http' === strtolower( (string) $parts['scheme'] )
+			&& in_array( $host, array( '127.0.0.1', '::1', 'localhost' ), true )
+			&& empty( $parts['user'] ) && empty( $parts['pass'] ) && empty( $parts['query'] ) && empty( $parts['fragment'] );
+	}
+
 	private static function valid_https_url( $url ) {
 		if ( ! is_string( $url ) || '' === $url || strlen( $url ) > self::MAX_URI_BYTES ) return false;
 		$parts = wp_parse_url( $url );
 		return is_array( $parts ) && isset( $parts['scheme'], $parts['host'] ) && 'https' === strtolower( (string) $parts['scheme'] ) && '' !== (string) $parts['host'] && empty( $parts['user'] ) && empty( $parts['pass'] ) && empty( $parts['query'] ) && empty( $parts['fragment'] );
 	}
+
+	private static function valid_authority_url( $url ) {
+		return self::valid_https_url( $url ) || self::valid_local_http_loopback_url( $url );
+	}
+
 	private static function same_origin_https_url( $url, $issuer ) {
-		if ( ! self::valid_https_url( $url ) || ! self::valid_https_url( $issuer ) ) return false;
+		if ( ! self::valid_authority_url( $url ) || ! self::valid_authority_url( $issuer ) ) return false;
 		$url_parts = wp_parse_url( (string) $url );
 		$issuer_parts = wp_parse_url( (string) $issuer );
-		$url_port = isset( $url_parts['port'] ) ? (int) $url_parts['port'] : 443;
-		$issuer_port = isset( $issuer_parts['port'] ) ? (int) $issuer_parts['port'] : 443;
+		$url_scheme = strtolower( (string) $url_parts['scheme'] );
+		$issuer_scheme = strtolower( (string) $issuer_parts['scheme'] );
+		if ( ! hash_equals( $issuer_scheme, $url_scheme ) ) return false;
+		$url_port = isset( $url_parts['port'] ) ? (int) $url_parts['port'] : ( 'https' === $url_scheme ? 443 : 80 );
+		$issuer_port = isset( $issuer_parts['port'] ) ? (int) $issuer_parts['port'] : ( 'https' === $issuer_scheme ? 443 : 80 );
 		return strtolower( (string) $url_parts['host'] ) === strtolower( (string) $issuer_parts['host'] ) && $url_port === $issuer_port;
 	}
 	private static function decode_json_segment( $segment ) {

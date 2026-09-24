@@ -21,9 +21,11 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-managed-google-signin-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-contract.py'
@@ -91,6 +93,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php
@@ -111,6 +114,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py
+
+      - name: Enforce natural Managed Google Sign-In contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/context-managed-google-signin-contract.py
 
       - name: Enforce Context Intelligence read-only architecture
         shell: bash
@@ -135,6 +144,12 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php
+
+      - name: Execute governed AI Agent review runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
 
       - name: Execute Skill Context preflight runtime
         shell: bash

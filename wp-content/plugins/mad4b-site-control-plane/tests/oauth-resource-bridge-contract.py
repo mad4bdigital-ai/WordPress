@@ -15,13 +15,19 @@ runtime_context = (root / 'tests' / 'runtime-oauth-context-cooldown-smoke.php').
 runtime_edges = (root / 'tests' / 'runtime-oauth-edge-guards-smoke.php').read_text(encoding='utf-8')
 
 required = [
-    "mad4b.oauth-resource-bridge.v4",
+    "mad4b.oauth-resource-bridge.v5",
     "MAD4B_MCP_OAUTH_MODE",
     "array( 'local', 'external', 'hybrid' )",
     "MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS",
     "MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER",
     "subject_allowed",
     "verified_bearer_active",
+    "AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up'",
+    "verified_bearer_has_scope",
+    "verified_bearer_client_is",
+    "hash( 'sha256', 'oauth-client' . \"\\0\" . $issuer . \"\\0\" . $client_id )",
+    "authority_step_up_scope_available",
+    "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
     "reset_verified_bearer_context",
     "self::reset_verified_bearer_context( true )",
     "self::reset_verified_bearer_context( false )",
@@ -56,11 +62,29 @@ required = [
     "public_key_from_jwk",
     "jwks_rsa_ne_supported",
     "home_url( '/wp-json/mcp/mad4b-chatgpt' )",
-    "'/mcp/mad4b-chatgpt'",
+    "resource_for_route( $route )",
+    "foreach ( array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ) as $server_id )",
+    "resource_identifier( 'mad4b-chatgpt' )",
+    "resource_identifier( 'mad4b-enrollment' )",
+    "resource_identifier( 'mad4b-developer' )",
+    "resource_identifier( 'mad4b-developer-breakglass' )",
     "'protected_transport_server' => 'mad4b-chatgpt'",
+    "'protected_transport_servers' => array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' )",
     "stores_bearer_tokens' => false",
     "creates_credentials' => false",
     "write_surfaces_enabled' => false",
+    "authority_step_up_surface_enabled' => self::authority_step_up_scope_available()",
+    "authority_step_up_scope' => self::AUTHORITY_STEP_UP_SCOPE",
+    "'resource_transport_allowed' => $resource_transport_allowed",
+    "'http_loopback_local_only' => ( ! $https && $resource_transport_allowed )",
+    "valid_local_http_loopback_url",
+    "'local' !== $environment",
+    "array( '127.0.0.1', '::1', 'localhost' )",
+    "self::valid_authority_url( $issuer )",
+    "MAD4B_SCP_Local_OAuth_Server::metadata()",
+    "MAD4B_SCP_Local_OAuth_Server::jwks_document()",
+    "MAD4B_SCP_Local_OAuth_Server::jwks_url()",
+    "mad4b_oauth_local_metadata_invalid",
 ]
 for marker in required:
     if marker not in bridge:
@@ -127,7 +151,8 @@ alignment_required = [
     "/mcp/mad4b-chatgpt",
     "resource_metadata=",
     "authoritative_well_known_url",
-    "MAD4B_SCP_OAuth_Resource_Bridge::READ_SCOPE",
+    "MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( $server_id )",
+    "MAD4B_SCP_OAuth_Resource_Bridge::scopes_for_resource( $resource )",
 ]
 for marker in alignment_required:
     if marker not in alignment:
@@ -173,6 +198,7 @@ for forbidden in [
     "mad4b-admin' === $route",
     "mad4b-breakglass' === $route",
     "HS256",
+    "'http' === $scheme ) return true",
 ]:
     if forbidden in bridge:
         raise SystemExit(f"forbidden OAuth bridge primitive: {forbidden}")
@@ -201,4 +227,4 @@ for boot_marker in [
 if "bind_local_oauth_subject_compatibility" not in plugin:
     raise SystemExit("plugin boot does not derive local subject compatibility from issuer-bound policy")
 
-print('mad4b.site-control-plane.oauth-resource-bridge.v8: PASS')
+print('mad4b.site-control-plane.oauth-resource-bridge.v10: PASS')

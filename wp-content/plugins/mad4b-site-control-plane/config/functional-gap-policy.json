@@ -1,0 +1,262 @@
+{
+  "contract": "mad4b.functional-gap-policy.v1",
+  "default_mutation": "deny",
+  "promotion_authorized": false,
+  "probes": {
+    "rest_route_regex": "(?:bulk-taxonomy-editor|wpl-client|rank-math|rankmath|gtm|meta|duplicator|elementskit|hostinger)",
+    "ajax_hook_regex": "(?:bte_|wpl_|gtm|rank_math|duplicator|elementskit|hostinger|meta)",
+    "cron_hook_regex": "(?:wpl|gtm|rank_math|duplicator|elementskit|hostinger|meta_catalog|feed)",
+    "secret_key_regex": "(?:secret|token|password|passwd|api[_-]?key|license[_-]?key|access[_-]?key|client[_-]?secret)",
+    "constants": [
+      "JET_ENGINE_VERSION",
+      "JET_SMART_FILTERS_VERSION",
+      "RANK_MATH_VERSION",
+      "RANK_MATH_PRO_VERSION",
+      "PMXI_VERSION",
+      "PMXE_VERSION"
+    ],
+    "option_keys": [
+      "bte_api_enabled",
+      "bte_api_allowed_roles",
+      "bte_api_allowed_post_types",
+      "wpl_access_token",
+      "wpl_api_key",
+      "wpl_serial_verified",
+      "wpl_verified_order_number",
+      "wpl_verified_order_numbers",
+      "wpl_verified_wpl_ids",
+      "rank-math-options-general",
+      "rank-math-options-titles",
+      "rank-math-options-sitemap"
+    ]
+  },
+  "families": {
+    "bulk-taxonomy-editor": {
+      "match": [
+        "bulk-taxonomy-editor/"
+      ],
+      "repository_evidence": true,
+      "repository_artifacts": [
+        "bulk-taxonomy-editor.zip"
+      ],
+      "evaluation_mode": "bounded_read_routes",
+      "required_get_routes": [
+        "/bulk-taxonomy-editor/v1/posts",
+        "/bulk-taxonomy-editor/v1/taxonomies",
+        "/bulk-taxonomy-editor/v1/terms"
+      ],
+      "safe_now": [
+        "plugin_status_read",
+        "posts_read",
+        "taxonomies_read",
+        "terms_read"
+      ],
+      "blocked": [
+        "post_create_or_update",
+        "bulk_taxonomy_write",
+        "term_relationship_mutation",
+        "taxonomy_delete_or_merge"
+      ],
+      "require_non_public_permissions": true,
+      "required_get_permission_callbacks": {
+        "/bulk-taxonomy-editor/v1/posts": [
+          "bte_rest_check_permissions"
+        ],
+        "/bulk-taxonomy-editor/v1/taxonomies": [
+          "bte_rest_check_permissions"
+        ],
+        "/bulk-taxonomy-editor/v1/terms": [
+          "bte_rest_check_permissions"
+        ]
+      }
+    },
+    "custom-mega-menu": {
+      "match": [
+        "custom-mega-menu/"
+      ],
+      "repository_evidence": true,
+      "repository_artifacts": [
+        "custom-mega-menu-v43.zip"
+      ],
+      "evaluation_mode": "exact_tree_review",
+      "versioned_match": [
+        "custom-mega-menu"
+      ]
+    },
+    "google-tag-manager": {
+      "match": [
+        "duracelltomi-google-tag-manager/"
+      ],
+      "repository_evidence": true,
+      "repository_artifacts": [
+        "duracelltomi-google-tag-manager.zip"
+      ],
+      "evaluation_mode": "exact_tree_review"
+    },
+    "meta-catalog-feed-mapper": {
+      "match": [
+        "meta-catalog-feed-mapper-pro/"
+      ],
+      "repository_evidence": true,
+      "repository_artifacts": [
+        "meta-catalog-feed-mapper-pro.zip"
+      ],
+      "evaluation_mode": "exact_tree_review"
+    },
+    "wpl-client": {
+      "match": [
+        "wpl-client/"
+      ],
+      "repository_evidence": true,
+      "repository_artifacts": [
+        "wpl-client-1238.zip",
+        "wpl-client.zip"
+      ],
+      "evaluation_mode": "redacted_status",
+      "redacted_secret_option_keys": [
+        "wpl_access_token",
+        "wpl_api_key"
+      ],
+      "required_status_option_keys": [
+        "wpl_serial_verified",
+        "wpl_verified_order_number",
+        "wpl_verified_order_numbers",
+        "wpl_verified_wpl_ids"
+      ],
+      "safe_now": [
+        "plugin_status_read",
+        "license_verification_state_read_redacted"
+      ],
+      "blocked": [
+        "credential_read",
+        "remote_execution",
+        "plugin_or_theme_install",
+        "plugin_toggle",
+        "filesystem_write",
+        "external_write"
+      ]
+    },
+    "rank-math": {
+      "match": [
+        "seo-by-rank-math/",
+        "seo-by-rank-math-pro/"
+      ],
+      "repository_evidence": true,
+      "repository_artifacts": [
+        "seo-by-rank-math.zip",
+        "seo-by-rank-math-pro.zip"
+      ],
+      "evaluation_mode": "exact_tree_review"
+    },
+    "duplicator": {
+      "match": [
+        "duplicator/"
+      ],
+      "repository_evidence": false,
+      "repository_artifacts": [],
+      "evaluation_mode": "runtime_only"
+    },
+    "elementskit": {
+      "match": [
+        "elementskit-lite/"
+      ],
+      "repository_evidence": false,
+      "repository_artifacts": [],
+      "evaluation_mode": "runtime_only"
+    },
+    "heic-support": {
+      "match": [
+        "heic-support/"
+      ],
+      "repository_evidence": false,
+      "repository_artifacts": [],
+      "evaluation_mode": "runtime_only"
+    },
+    "hostinger-ai": {
+      "match": [
+        "hostinger-ai-assistant/"
+      ],
+      "repository_evidence": false,
+      "repository_artifacts": [],
+      "evaluation_mode": "runtime_only"
+    },
+    "hostinger-onboarding": {
+      "match": [
+        "hostinger-easy-onboarding/"
+      ],
+      "repository_evidence": false,
+      "repository_artifacts": [],
+      "evaluation_mode": "runtime_only"
+    },
+    "hostinger-reach": {
+      "match": [
+        "hostinger-reach/"
+      ],
+      "repository_evidence": false,
+      "repository_artifacts": [],
+      "evaluation_mode": "runtime_only"
+    },
+    "wordpress-importer": {
+      "match": [
+        "wordpress-importer/"
+      ],
+      "repository_evidence": false,
+      "repository_artifacts": [],
+      "evaluation_mode": "runtime_only"
+    },
+    "jetengine": {
+      "match": [
+        "jet-engine/"
+      ],
+      "repository_evidence": true,
+      "repository_artifacts": [
+        "jet-engine.zip"
+      ],
+      "evaluation_mode": "premium_semantic",
+      "identity_components": [
+        {
+          "artifact": "jet-engine.zip",
+          "plugin_file": "jet-engine/jet-engine.php"
+        }
+      ]
+    },
+    "jetsmartfilters": {
+      "match": [
+        "jet-smart-filters/"
+      ],
+      "repository_evidence": true,
+      "repository_artifacts": [
+        "jet-smart-filters.zip"
+      ],
+      "evaluation_mode": "premium_semantic",
+      "identity_components": [
+        {
+          "artifact": "jet-smart-filters.zip",
+          "plugin_file": "jet-smart-filters/jet-smart-filters.php"
+        }
+      ]
+    },
+    "wp-import-export": {
+      "match": [
+        "wp-all-import-pro/",
+        "wp-all-export-pro/"
+      ],
+      "repository_evidence": true,
+      "repository_artifacts": [
+        "wp-all-import-pro.zip",
+        "wp-all-export-pro.zip"
+      ],
+      "evaluation_mode": "composite_behavioral",
+      "identity_components": [
+        {
+          "artifact": "wp-all-import-pro.zip",
+          "plugin_file": "wp-all-import-pro/wp-all-import-pro.php"
+        },
+        {
+          "artifact": "wp-all-export-pro.zip",
+          "plugin_file": "wp-all-export-pro/wp-all-export-pro.php"
+        }
+      ]
+    }
+  }
+}

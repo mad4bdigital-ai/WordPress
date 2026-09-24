@@ -29,6 +29,8 @@ required = {
     'profile admin owner required': "site_profile_admin_owner_required",
     'primary owner selector': "primary_owner_user_id",
     'explicit disable respected': "explicit_local_oauth_disabled",
+    'explicit resource bridge disable respected': "explicit_resource_oauth_disabled",
+    'resource oauth enabled': "define( 'MAD4B_MCP_OAUTH_ENABLED', true )",
     'explicit local production disable respected': "explicit_local_oauth_production_disabled",
     'explicit resource production disable respected': "explicit_resource_oauth_production_disabled",
     'explicit non-local mode respected': "explicit_non_local_oauth_mode",
@@ -46,6 +48,8 @@ required = {
     'no private key persistence': "'stores_private_key' => false",
     'production write authority remains off': "'write_authority_enabled' => false",
     'production breakglass remains off': "'breakglass_enabled' => false",
+    'semantic persistence comparison': "if ( $existing_semantic !== $record )",
+    'timestamp excluded from semantic identity': "unset( $existing_semantic['updated_at'] )",
 }
 
 missing = [name for name, marker in required.items() if marker not in auto]
@@ -84,3 +88,8 @@ if plugin.find(boot_marker, plugin.find('public static function boot()')) > plug
     raise SystemExit('oauth autoconfig must run before local OAuth key-path policy')
 
 print('tenant-profile local oauth + explicit production read-only contract v3: PASS')
+
+# rc.46 local HTTP issuer must be loopback-bounded.
+for marker in ["127.0.0.1", "::1", "localhost", "$local_loopback"]:
+    if marker not in auto:
+        raise SystemExit(f'missing local loopback OAuth autoconfig boundary: {marker}')

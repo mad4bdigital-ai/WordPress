@@ -33,5 +33,124 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runner-contract.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-wp-import-export-exact-packages.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/wp-import-export-composite-provider-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runner-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/wp-import-export-provider-package-inspection.py --output /tmp/mad4b-wp-import-export-package-inspection.json
+
+      - name: Upload exact WP Import Export package inspection evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-wp-import-export-package-inspection-${{ matrix.php }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/mad4b-wp-import-export-package-inspection.json
+          if-no-files-found: error
+          retention-days: 14
+
+  wp-import-export-runtime:
+    name: Exact WP Import Export composite runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, openssl, zip
+          coverage: none
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+
+      - name: Provision disposable WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wp-import-export-runtime
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=6.9 --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://bulk-io.test' --title='MAD4B Bulk IO Runtime' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+
+      - name: Install exact provider packages and Control Plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wp-import-export-runtime
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/wp-all-import-pro.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug wp-all-import-pro
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/wp-all-export-pro.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug wp-all-export-pro
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate wp-all-import-pro wp-all-export-pro mcp-adapter mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Prove server-local WP All Import CLI and deny synthetic Export CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wp-import-export-runtime
+          php /tmp/wp-cli.phar all-import list --path="$WP_PATH" --user=mad4b-ci-admin > /tmp/wp-all-import-list.txt
+          if grep -Eqi 'cron_job_key|import_key|export_key' /tmp/wp-all-import-list.txt; then
+            echo 'Provider secret marker leaked through WP All Import CLI inventory.' >&2
+            exit 1
+          fi
+          if php /tmp/wp-cli.phar help all-export --path="$WP_PATH" >/tmp/wp-all-export-help.txt 2>&1; then
+            echo 'Unexpected WP All Export CLI command is registered; exact execution model must be re-reviewed.' >&2
+            exit 1
+          fi
+
+      - name: Prove server-local Import transport fails closed on unknown job
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wp-import-export-runtime
+          BEFORE_POSTS="$(php /tmp/wp-cli.phar post list --path="$WP_PATH" --user=mad4b-ci-admin --format=count)"
+          set +e
+          php /tmp/wp-cli.phar all-import run 2147483647 --path="$WP_PATH" --user=mad4b-ci-admin >/tmp/wp-all-import-invalid-run.txt 2>&1
+          RC=$?
+          set -e
+          if [ "$RC" -eq 0 ]; then
+            echo 'Unknown WP All Import job unexpectedly returned success.' >&2
+            cat /tmp/wp-all-import-invalid-run.txt >&2
+            exit 1
+          fi
+          AFTER_POSTS="$(php /tmp/wp-cli.phar post list --path="$WP_PATH" --user=mad4b-ci-admin --format=count)"
+          test "$BEFORE_POSTS" = "$AFTER_POSTS"
+          if grep -Eqi 'cron_job_key|import_key|export_key' /tmp/wp-all-import-invalid-run.txt; then
+            echo 'Provider secret marker leaked through failed server-local Import transport.' >&2
+            exit 1
+          fi
+
+      - name: Prove exact composite certification remains execution-shadowed
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-wp-import-export-exact-packages.php"             --path=/tmp/mad4b-wp-import-export-runtime             --user=mad4b-ci-admin

@@ -11,6 +11,20 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Skill_Snapshot_Identity {
 	const CONTRACT = 'mad4b.skill-snapshot-identity.v1';
+	private static $request_cache = null;
+
+	/**
+	 * Request-local memoization for latency-sensitive MCP discovery. This never
+	 * persists across HTTP requests, so filesystem/admin changes are visible on
+	 * the next request while duplicate scans inside one tools/list lifecycle are
+	 * eliminated.
+	 */
+	public static function build_request_cached() {
+		if ( is_array( self::$request_cache ) ) return self::$request_cache;
+		$identity = self::build();
+		if ( is_array( $identity ) ) self::$request_cache = $identity;
+		return $identity;
+	}
 
 	public static function build() {
 		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry' ) ) return self::empty_identity( 'registry_unavailable' );

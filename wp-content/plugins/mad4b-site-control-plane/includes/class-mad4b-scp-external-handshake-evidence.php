@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * persisted. WP-CLI, cron and internal rest_do_request probes cannot certify.
  */
 final class MAD4B_SCP_External_Handshake_Evidence {
-	const CONTRACT = 'mad4b.external-handshake-evidence.v3';
+	const CONTRACT = 'mad4b.external-handshake-evidence.v4';
 	const OPTION = 'mad4b_scp_external_handshake_evidence';
 	const OBSERVER_ATTESTATION_OPTION = 'mad4b_scp_external_inventory_attestation_v1';
 	const PENDING_PREFIX = 'mad4b_ext_hs_';
@@ -22,6 +22,7 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 	const FINALIZER_SESSION_SKEW = 5;
 
 	private static $booted = false;
+	private static $request_build_fingerprint = null;
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -122,6 +123,11 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			'expected_tool_count' => 0,
 			'write_tool_count' => 0,
 			'expected_write_tool_count' => 0,
+			'write_catalog_fingerprint' => '',
+			'write_inventory_fingerprint_match' => false,
+			'write_transport_tool_count' => 0,
+			'write_transport_ready' => false,
+			'direct_write_schema_leaks' => array(),
 			'eligible_write_tool_count' => 0,
 			'expected_eligible_write_tool_count' => 0,
 			'provider_gated_write_tool_count' => 0,
@@ -156,6 +162,13 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$inventory_match = '' !== $expected_inventory_fingerprint
 			&& preg_match( '/^[a-f0-9]{64}$/', $stored_inventory_fingerprint )
 			&& hash_equals( $expected_inventory_fingerprint, $stored_inventory_fingerprint );
+		$expected_write_inventory_fingerprint = self::inventory_fingerprint( $expected_write_names );
+		$stored_write_catalog_fingerprint = isset( $evidence['write_catalog_fingerprint'] ) ? strtolower( trim( (string) $evidence['write_catalog_fingerprint'] ) ) : '';
+		$write_inventory_match = '' !== $expected_write_inventory_fingerprint
+			&& preg_match( '/^[a-f0-9]{64}$/', $stored_write_catalog_fingerprint )
+			&& hash_equals( $expected_write_inventory_fingerprint, $stored_write_catalog_fingerprint );
+		$write_transport_ready = ! empty( $evidence['write_transport_ready'] ) && isset( $evidence['write_transport_tool_count'] ) && 3 === (int) $evidence['write_transport_tool_count'];
+		$direct_write_schema_leaks = isset( $evidence['direct_write_schema_leaks'] ) && is_array( $evidence['direct_write_schema_leaks'] ) ? $evidence['direct_write_schema_leaks'] : array();
 		$verified_at = isset( $evidence['verified_at'] ) ? sanitize_text_field( (string) $evidence['verified_at'] ) : '';
 		$verified_ts = '' !== $verified_at ? strtotime( $verified_at . ' UTC' ) : false;
 		$age = false === $verified_ts ? PHP_INT_MAX : max( 0, time() - $verified_ts );
@@ -177,7 +190,12 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$base['expected_tool_count'] = count( $expected_tool_names );
 		$base['write_tool_count'] = isset( $evidence['write_tool_count'] ) ? max( 0, (int) $evidence['write_tool_count'] ) : 0;
 		$base['expected_write_tool_count'] = count( $expected_write_names );
-		$base['eligible_write_tool_count'] = isset( $evidence['eligible_write_tool_count'] ) ? max( 0, (int) $evidence['eligible_write_tool_count'] ) : 0;
+		$base['write_catalog_fingerprint'] = preg_match( '/^[a-f0-9]{64}$/', $stored_write_catalog_fingerprint ) ? $stored_write_catalog_fingerprint : '';
+		$base['write_inventory_fingerprint_match'] = (bool) $write_inventory_match;
+		$base['write_transport_tool_count'] = isset( $evidence['write_transport_tool_count'] ) ? max( 0, (int) $evidence['write_transport_tool_count'] ) : 0;
+		$base['write_transport_ready'] = (bool) $write_transport_ready;
+		$base['direct_write_schema_leaks'] = $direct_write_schema_leaks;
+		$base['eligible_write_tool_count'] = count( $eligible_write_names );
 		$base['expected_eligible_write_tool_count'] = count( $eligible_write_names );
 		$base['provider_gated_write_tool_count'] = count( $gated_write_names );
 		$base['provider_gated_write_tools'] = $gated_write_names;
@@ -197,6 +215,7 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( ! in_array( self::REQUIRED_SCOPE, $scope_set, true ) || $tool_count < 1 || '' === $issuer ) { $base['status'] = 'handshake_incomplete'; return $base; }
 		if ( ! $build_match ) { $base['status'] = 'stale_build_evidence'; return $base; }
 		if ( ! $inventory_match ) { $base['status'] = 'stale_tool_inventory_evidence'; return $base; }
+		if ( ! $write_inventory_match || ! $write_transport_ready || ! empty( $direct_write_schema_leaks ) ) { $base['status'] = 'stale_write_transport_evidence'; return $base; }
 		if ( $age > self::MAX_EVIDENCE_AGE ) { $base['status'] = 'stale_time_evidence'; return $base; }
 
 		$base['verified'] = true;
@@ -205,6 +224,8 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 	}
 
 	public static function build_fingerprint() {
+		if ( is_string( self::$request_build_fingerprint ) && '' !== self::$request_build_fingerprint ) return self::$request_build_fingerprint;
+
 		$files = array(
 			defined( 'MAD4B_SCP_FILE' ) ? MAD4B_SCP_FILE : '',
 			defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-resource-bridge.php' : '',
@@ -221,7 +242,8 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			if ( ! is_string( $digest ) || '' === $digest ) return '';
 			hash_update( $ctx, basename( $file ) . "\0" . $digest . "\0" );
 		}
-		return hash_final( $ctx );
+		self::$request_build_fingerprint = hash_final( $ctx );
+		return self::$request_build_fingerprint;
 	}
 
 	private static function capture_runtime_allowed( $request ) {
@@ -275,11 +297,17 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( ! is_array( $current ) || ! self::same_context( $pending, $current ) ) return;
 		if ( empty( $pending['build_fingerprint'] ) || ! hash_equals( self::build_fingerprint(), (string) $pending['build_fingerprint'] ) ) return;
 
-		$data = self::normalize_value( $response->get_data() );
-		$tools = is_array( $data ) && isset( $data['result']['tools'] ) && is_array( $data['result']['tools'] ) ? $data['result']['tools'] : array();
+		$data = $response->get_data();
+		if ( is_object( $data ) ) $data = get_object_vars( $data );
+		$result = is_array( $data ) && isset( $data['result'] ) ? $data['result'] : array();
+		if ( is_object( $result ) ) $result = get_object_vars( $result );
+		$tools = is_array( $result ) && isset( $result['tools'] ) && is_array( $result['tools'] ) ? $result['tools'] : array();
 		if ( empty( $tools ) ) return;
 		$names = array();
-		foreach ( $tools as $tool ) if ( is_array( $tool ) && isset( $tool['name'] ) && is_string( $tool['name'] ) ) $names[] = $tool['name'];
+		foreach ( $tools as $tool ) {
+			if ( is_object( $tool ) ) $tool = get_object_vars( $tool );
+			if ( is_array( $tool ) && isset( $tool['name'] ) && is_string( $tool['name'] ) ) $names[] = $tool['name'];
+		}
 		$names = self::normalize_tool_names( $names );
 		if ( empty( $names ) ) return;
 
@@ -292,15 +320,20 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$expected_fingerprint = self::inventory_fingerprint( $expected_names );
 		if ( '' === $actual_fingerprint || '' === $expected_fingerprint || ! hash_equals( $expected_fingerprint, $actual_fingerprint ) ) return;
 
+		// tools/list attests the exact transport plus the stable logical write
+		// catalog. Dynamic provider eligibility/blocking is intentionally deferred
+		// to status() so Refresh never runs provider certification on the response
+		// critical path.
 		$write_names = self::expected_write_tool_names();
-		$observed_write_names = array_values( array_intersect( $names, $write_names ) );
-		if ( count( $observed_write_names ) !== count( $write_names ) ) return;
-		$eligible_names = self::expected_eligible_write_tool_names();
-		$observed_eligible_names = array_values( array_intersect( $names, $eligible_names ) );
-		$blocked_names = self::blocked_write_tool_names();
-		$gated_names = array_values( array_intersect( $names, $blocked_names ) );
+		$write_transport_names = self::ability_names_to_mcp_tool_names( array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ) );
+		$observed_write_transport = array_values( array_intersect( $names, $write_transport_names ) );
+		if ( count( $observed_write_transport ) !== count( $write_transport_names ) ) return;
+		$direct_write_schema_leaks = array_values( array_intersect( $names, $write_names ) );
+		if ( ! empty( $direct_write_schema_leaks ) ) return;
 		$breakglass_names = self::breakglass_tool_names();
 		if ( ! empty( array_intersect( $names, $breakglass_names ) ) ) return;
+		$write_catalog_fingerprint = self::inventory_fingerprint( $write_names );
+		if ( '' === $write_catalog_fingerprint ) return;
 
 		$evidence = array(
 			'contract' => self::CONTRACT,
@@ -315,10 +348,15 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			'scope_set' => $current['scope_set'],
 			'mcp_session_fingerprint' => $session_fingerprint,
 			'tool_count' => count( $names ),
-			'write_tool_count' => count( $observed_write_names ),
-			'eligible_write_tool_count' => count( $observed_eligible_names ),
-			'provider_gated_write_tool_count' => count( $gated_names ),
-			'provider_gated_write_tools' => $gated_names,
+			'write_tool_count' => count( $write_names ),
+			'write_catalog_fingerprint' => $write_catalog_fingerprint,
+			'write_transport_tool_count' => count( $observed_write_transport ),
+			'write_transport_ready' => true,
+			'direct_write_schema_leaks' => array(),
+			'eligible_write_tool_count' => 0,
+			'provider_gated_write_tool_count' => 0,
+			'provider_gated_write_tools' => array(),
+			'runtime_projection_deferred' => true,
 			'tool_inventory_fingerprint' => $actual_fingerprint,
 			'initialized_at' => isset( $pending['initialized_at'] ) ? sanitize_text_field( (string) $pending['initialized_at'] ) : '',
 			'verified_at' => gmdate( 'Y-m-d H:i:s' ),

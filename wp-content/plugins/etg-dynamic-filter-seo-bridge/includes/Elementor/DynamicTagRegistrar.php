@@ -32,6 +32,17 @@ final class DynamicTagRegistrar {
         add_action('elementor/dynamic_tags/before_render',array(DynamicTagRuntime::class,'beginEditorRenderPass'));
         add_action('elementor/dynamic_tags/after_render',array(DynamicTagRuntime::class,'endEditorRenderPass'));
         add_action('elementor/editor/after_enqueue_styles',array($this,'enqueueEditorStyles'));
+
+        // Plugin activation, governed exact-candidate boot and other late-load
+        // paths can attach ETG after Elementor has already fired its one-shot
+        // dynamic-tag registration hook in the current request. Register against
+        // the live manager immediately in that bounded case so the same request
+        // cannot observe a false "tag unregistered" state.
+        if(function_exists('did_action')&&did_action('elementor/dynamic_tags/register')
+            &&class_exists('\\Elementor\\Plugin')&&isset(\Elementor\Plugin::$instance)
+            &&isset(\Elementor\Plugin::$instance->dynamic_tags)){
+            $this->register(\Elementor\Plugin::$instance->dynamic_tags);
+        }
     }
     public function enqueueEditorStyles():void{
         wp_enqueue_style(

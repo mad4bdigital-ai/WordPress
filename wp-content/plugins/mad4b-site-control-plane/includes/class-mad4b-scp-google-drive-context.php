@@ -88,7 +88,26 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$mode = isset( $record['mode'] ) ? sanitize_key( (string) $record['mode'] ) : '';
 			if ( in_array( $mode, array( self::AUTH_MODE_CUSTOM, self::AUTH_MODE_MANAGED, self::AUTH_MODE_DEDICATED ), true ) ) return $mode;
 		}
-		return self::AUTH_MODE_CUSTOM;
+
+		// Preserve existing site-local OAuth configuration. Only a genuinely
+		// unconfigured site starts with the normal Managed Google Sign-In path.
+		$dedicated_constants = defined( 'MAD4B_GOOGLE_DEDICATED_CLIENT_ID' ) && defined( 'MAD4B_GOOGLE_DEDICATED_CLIENT_SECRET' )
+			&& '' !== trim( (string) constant( 'MAD4B_GOOGLE_DEDICATED_CLIENT_ID' ) )
+			&& '' !== trim( (string) constant( 'MAD4B_GOOGLE_DEDICATED_CLIENT_SECRET' ) );
+		$dedicated = get_option( self::DEDICATED_CONFIG_OPTION, array() );
+		if ( $dedicated_constants || ( is_array( $dedicated ) && self::CONTRACT === ( isset( $dedicated['contract'] ) ? (string) $dedicated['contract'] : '' ) && ! empty( $dedicated['client_id'] ) && ! empty( $dedicated['client_secret'] ) ) ) {
+			return self::AUTH_MODE_DEDICATED;
+		}
+
+		$custom_constants = defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID' ) && defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET' )
+			&& '' !== trim( (string) constant( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID' ) )
+			&& '' !== trim( (string) constant( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET' ) );
+		$custom = get_option( self::CONFIG_OPTION, array() );
+		if ( $custom_constants || ( is_array( $custom ) && self::CONTRACT === ( isset( $custom['contract'] ) ? (string) $custom['contract'] : '' ) && ! empty( $custom['client_id'] ) && ! empty( $custom['client_secret'] ) ) ) {
+			return self::AUTH_MODE_CUSTOM;
+		}
+
+		return self::AUTH_MODE_MANAGED;
 	}
 
 	public static function managed_broker_status() {
@@ -99,10 +118,15 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$blockers = array();
 		if ( ! $base_configured ) $blockers[] = 'managed_google_oauth_broker_not_configured';
 		if ( empty( $site_auth['configured'] ) ) $blockers[] = 'managed_google_oauth_site_request_auth_not_configured';
+		$base_source = defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' )
+			? 'constant'
+			: ( false !== getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' ) ? 'environment' : 'environment_default' );
 		return array(
 			'contract' => 'mad4b.google-managed-oauth-broker-status.v2',
 			'configured' => $configured,
 			'base_url' => $base_configured ? (string) $base : '',
+			'base_url_source' => $base_source,
+			'one_click_sign_in_ready' => $configured,
 			'session_endpoint' => $base_configured ? self::managed_broker_endpoint( 'session' ) : '',
 			'redeem_endpoint' => $base_configured ? self::managed_broker_endpoint( 'redeem' ) : '',
 			'refresh_endpoint' => $base_configured ? self::managed_broker_endpoint( 'refresh' ) : '',
@@ -2433,9 +2457,16 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	private static function persist_tokens( $access_token, $refresh_token, $expires_in, $scope, $existing = array(), $requested_mode = 'read_only', $auth_mode = '', $expected_scope = '' ) {
 		$scope = trim( (string) $scope );
-		if ( ! self::scope_is_allowed( $scope ) ) return new WP_Error( 'mad4b_google_drive_scope_not_allowed', 'Google granted a scope set outside the governed Drive read/read-write contracts.' );
+		$expected_scope = trim( (string) $expected_scope );
+
+		if ( '' !== $expected_scope ) {
+			if ( ! self::workspace_scope_is_allowed( $scope ) ) return new WP_Error( 'mad4b_google_workspace_scope_not_allowed', 'Google granted a scope outside the governed Workspace grant catalog.' );
+			if ( ! self::scope_sets_equal( $scope, $expected_scope ) ) return new WP_Error( 'mad4b_google_workspace_scope_set_not_exact', 'Google returned a scope set that does not exactly match the reviewed Workspace grant request.' );
+		} elseif ( ! self::scope_is_allowed( $scope ) ) {
+			return new WP_Error( 'mad4b_google_drive_scope_not_allowed', 'Google granted a scope set outside the governed Drive read/read-write contracts.' );
+		}
+
 		$requested_mode = sanitize_key( (string) $requested_mode );
-		if ( '' !== trim( (string) $expected_scope ) && ! self::scope_sets_equal( $scope, $expected_scope ) ) return new WP_Error( 'mad4b_google_workspace_scope_set_not_exact', 'Google returned a scope set that does not exactly match the reviewed Workspace grant request.' );
 		if ( ! self::scope_matches_requested_mode( $scope, $requested_mode ) ) {
 			if ( 'read_only' === $requested_mode && self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_readonly_scope_escalated', 'Google returned Drive write authority for a read-only connection. Revoke Google access and reconnect with Read-only to restore least privilege.' );
 			if ( 'read_write' === $requested_mode && ! self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_write_scope_missing', 'Google did not grant the required Drive read+write scope.' );
@@ -2530,10 +2561,22 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return array_values( array_unique( $allowed ) );
 	}
 
-	private static function scope_is_allowed( $scope ) {
+	private static function workspace_scope_is_allowed( $scope ) {
 		$items = self::scope_items( $scope );
 		if ( empty( $items ) ) return false;
 		$allowed = self::allowed_scope_items();
+		foreach ( $items as $item ) if ( ! in_array( (string) $item, $allowed, true ) ) return false;
+		return true;
+	}
+
+	private static function scope_is_allowed( $scope ) {
+		$items = self::scope_items( $scope );
+		if ( empty( $items ) ) return false;
+
+		// This guard is intentionally Drive-only. Workspace-wide OAuth grants
+		// are validated separately against the exact reviewed scope set before
+		// token persistence, and must not broaden the Drive repair contract.
+		$allowed = array( self::READ_SCOPE, self::WRITE_SCOPE );
 		foreach ( $items as $item ) if ( ! in_array( (string) $item, $allowed, true ) ) return false;
 		return true;
 	}
@@ -2629,12 +2672,25 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	private static function managed_broker_base_url() {
-		if ( ! defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' ) ) return new WP_Error( 'mad4b_google_managed_broker_not_configured', 'Managed Google Sign-In requires MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL.' );
-		$url = self::validated_https_url( (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' ) );
+		$raw = '';
+		if ( defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' ) ) {
+			$raw = (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' );
+		} elseif ( false !== getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' ) ) {
+			$raw = (string) getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' );
+		} else {
+			$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'production';
+			$raw = in_array( $environment, array( 'local', 'development', 'staging' ), true )
+				? 'https://dev.mad4b.com'
+				: 'https://auth.mad4b.com';
+		}
+
+		$url = self::validated_https_url( $raw );
 		if ( '' === $url ) return new WP_Error( 'mad4b_google_managed_broker_invalid', 'Managed Google Sign-In broker URL must be a valid HTTPS URL.' );
 		$parts = function_exists( 'wp_parse_url' ) ? wp_parse_url( $url ) : parse_url( $url );
 		$path = is_array( $parts ) && isset( $parts['path'] ) ? rtrim( (string) $parts['path'], '/' ) : '';
-		if ( ! is_array( $parts ) || '' !== $path || ! empty( $parts['query'] ) || ! empty( $parts['fragment'] ) || ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) ) return new WP_Error( 'mad4b_google_managed_broker_invalid', 'Managed Google Sign-In broker URL must be an HTTPS origin with no path, query, fragment, or user-info components.' );
+		if ( ! is_array( $parts ) || '' !== $path || ! empty( $parts['query'] ) || ! empty( $parts['fragment'] ) || ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) ) {
+			return new WP_Error( 'mad4b_google_managed_broker_invalid', 'Managed Google Sign-In broker URL must be an HTTPS origin with no path, query, fragment, or user-info components.' );
+		}
 		return rtrim( $url, '/' );
 	}
 
@@ -2673,15 +2729,38 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return $data;
 	}
 
+	private static function managed_site_auth_credentials() {
+		$key_id = defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' )
+			? trim( (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' ) )
+			: trim( (string) ( false !== getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' ) ? getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' ) : '' ) );
+		$secret = defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' )
+			? (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' )
+			: (string) ( false !== getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) ? getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) : '' );
+
+		return array(
+			'key_id' => $key_id,
+			'secret' => $secret,
+			'key_source' => defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' )
+				? 'constant'
+				: ( false !== getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' ) ? 'environment' : 'missing' ),
+			'secret_source' => defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' )
+				? 'constant'
+				: ( false !== getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) ? 'environment' : 'missing' ),
+		);
+	}
+
 	private static function managed_site_auth_status() {
-		$key_id = defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' ) ? trim( (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' ) ) : '';
-		$secret = defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) ? (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) : '';
+		$credentials = self::managed_site_auth_credentials();
+		$key_id = isset( $credentials['key_id'] ) ? (string) $credentials['key_id'] : '';
+		$secret = isset( $credentials['secret'] ) ? (string) $credentials['secret'] : '';
 		$key_valid = (bool) preg_match( '/^[A-Za-z0-9._:-]{3,64}$/', $key_id );
 		$secret_valid = strlen( $secret ) >= 32;
 		return array(
 			'contract' => self::MANAGED_SITE_AUTH_CONTRACT,
 			'configured' => $key_valid && $secret_valid,
 			'key_id' => $key_valid ? $key_id : '',
+			'key_source' => isset( $credentials['key_source'] ) ? (string) $credentials['key_source'] : 'missing',
+			'secret_source' => isset( $credentials['secret_source'] ) ? (string) $credentials['secret_source'] : 'missing',
 			'secret_present' => '' !== $secret,
 			'secret_length_ok' => $secret_valid,
 			'signature_algorithm' => 'HMAC-SHA256',
@@ -2713,7 +2792,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$nonce,
 			hash( 'sha256', $canonical ),
 		) );
-		$signature = hash_hmac( 'sha256', $signing_payload, (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) );
+		$credentials = self::managed_site_auth_credentials();
+		$site_secret = isset( $credentials['secret'] ) ? (string) $credentials['secret'] : '';
+		if ( strlen( $site_secret ) < 32 ) return new WP_Error( 'mad4b_google_managed_site_auth_not_configured', 'Managed Google Sign-In site request signing is not configured.' );
+		$signature = hash_hmac( 'sha256', $signing_payload, $site_secret );
 		return array(
 			'X-MAD4B-Site-Key-ID' => (string) $status['key_id'],
 			'X-MAD4B-Site-Timestamp' => $timestamp,

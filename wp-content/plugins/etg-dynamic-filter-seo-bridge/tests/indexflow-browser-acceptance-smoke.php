@@ -28,6 +28,7 @@ $base=[
  'runtime'=>['javascript_runtime'=>true,'jet_smart_filters_observed'=>true,'filter_group'=>'jet-engine/q'],
  'events'=>['ajax_filters_updated'=>true,'presentation_updated'=>true,'presentation_reset'=>true],
  'network'=>['method'=>'POST','endpoint'=>'/wp-json/etg-dfsb/v1/ajax-presentation','http_status'=>200,'contract'=>'etg.dfsb.ajax-presentation.v1','status'=>'ready','authorizing'=>false,'url_authority'=>false,'seo_mutation'=>false,'provider'=>'jet-engine','query_id'=>'q'],
+ 'performance'=>['ttfb_ms'=>120.0,'ajax_endpoint_latency_ms'=>80.0,'filter_to_presentation_ms'=>110.0],
  'rendered'=>['ids'=>$ids,'ids_complete'=>true,'result_count'=>50,'result_count_authoritative'=>true,'result_count_source'=>'jet_smart_filters_results_count'],
  'url_state'=>['filter_state_observed'=>true,'etg_history_mutation'=>false],
  'seo'=>['canonical_unchanged'=>true,'robots_unchanged'=>true,'hreflang_unchanged'=>true,'rank_math_unchanged'=>true],

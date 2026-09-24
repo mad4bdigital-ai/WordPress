@@ -32,7 +32,7 @@ if ( empty( $registry['portable_app_id_configured'] ) ) $fail( 'Portable App map
 
 $seed = MAD4B_SCP_Skill_Seeder::status();
 if ( ! isset( $seed['state'] ) || 'ready' !== $seed['state'] ) $fail( 'Seed pack is not ready.' );
-if ( ! isset( $seed['seed_version'] ) || 3 !== (int) $seed['seed_version'] ) $fail( 'Canonical seed version is not v3.' );
+if ( ! isset( $seed['seed_version'] ) || 6 !== (int) $seed['seed_version'] ) $fail( 'Canonical seed version is not v6.' );
 if ( ! empty( $seed['overwrites_user_owned'] ) ) $fail( 'Seeder must never overwrite user-owned Skills.' );
 if ( empty( $seed['refreshes_only_digest_clean_managed'] ) ) $fail( 'Managed seed refresh must remain digest-clean only.' );
 
@@ -48,6 +48,8 @@ $seed_identities = array(
 	array( 'provider', 'jet-engine', 'jetengine-content-modeling', false ),
 	array( 'workflow', 'archive-audit', 'wordpress-archive-audit', true ),
 	array( 'workflow', 'change-safety', 'wordpress-change-safety', true ),
+	array( 'workflow', 'release-orchestration', 'wordpress-release-orchestration', true ),
+	array( 'workflow', 'browser-acceptance', 'wordpress-browser-acceptance', true ),
 	array( 'workflow', 'content-authoring', 'wordpress-content-authoring', true ),
 );
 $workspace = getenv( 'GITHUB_WORKSPACE' );
@@ -121,10 +123,17 @@ if ( ! empty( $rest_compat['rest_enabled_hook']['truncated'] ) || ! empty( $rest
 if ( empty( $rest_compat['wpml']['route_registered'] ) || empty( $rest_compat['wpml']['ready'] ) || empty( $rest_compat['wpml']['query_parameters_preserved'] ) ) $fail( 'WPML-compatible REST probe did not preserve query parameters.' );
 if ( ! empty( $rest_compat['wpml']['control_plane_block_detected'] ) ) $fail( 'Control Plane blocked the WPML-compatible REST probe.' );
 
-$write_authority = MAD4B_SCP_Staging_Write_Authority::reconcile();
-if ( empty( $write_authority['ready'] ) || 'ready' !== $write_authority['state'] ) $fail( 'Governed write authority is not ready: ' . wp_json_encode( $write_authority ) );
+$write_reconciliation = MAD4B_SCP_Staging_Write_Authority::reconcile();
+if ( empty( $write_reconciliation['ready'] ) || 'ready' !== $write_reconciliation['state'] ) $fail( 'Governed write authority is not ready: ' . wp_json_encode( $write_reconciliation ) );
+$write_authority = MAD4B_SCP_Staging_Write_Authority::status();
 if ( empty( $write_authority['mutation_gate_configured'] ) ) $fail( 'Governed mutation gate was not configured.' );
-if ( empty( $write_authority['all_remote_writes_require_exact_approval'] ) ) $fail( 'Remote governed writes are not forced through exact approvals.' );
+if ( ! isset( $write_authority['approval_policy_contract'] ) || 'mad4b.remote-write-approval-policy.v2' !== (string) $write_authority['approval_policy_contract'] ) $fail( 'Write authority did not expose remote approval policy v2.' );
+if ( ! array_key_exists( 'all_remote_writes_require_exact_approval', $write_authority ) || false !== $write_authority['all_remote_writes_require_exact_approval'] ) $fail( 'Write authority did not expose bounded standing-exception truth.' );
+if ( empty( $write_authority['normal_remote_writes_require_exact_approval'] ) ) $fail( 'Normal remote governed writes are not forced through exact approvals.' );
+if ( 'exact_approval_with_bounded_standing_exceptions' !== (string) $write_authority['remote_write_approval_policy'] ) $fail( 'Write authority remote approval policy is not the v2 bounded standing-exception contract.' );
+$prior_approval_exceptions = isset( $write_authority['remote_write_prior_approval_exceptions'] ) && is_array( $write_authority['remote_write_prior_approval_exceptions'] ) ? array_values( $write_authority['remote_write_prior_approval_exceptions'] ) : array();
+$expected_prior_approval_exceptions = array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY, MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY );
+if ( $expected_prior_approval_exceptions !== $prior_approval_exceptions ) $fail( 'Write authority prior-approval exception declarations are not limited to candidate bootstrap + bounded AI review delegation.' );
 if ( ! empty( $write_authority['breakglass_included'] ) || ! empty( $write_authority['breakglass_auto_enable'] ) ) $fail( 'Breakglass leaked into governed write authority.' );
 if ( empty( $write_authority['write_tool_count'] ) ) $fail( 'Write authority inventory is empty.' );
 if ( empty( $write_authority['site_uuid'] ) || ! hash_equals( MAD4B_SCP_Site_Profile::site_uuid(), (string) $write_authority['site_uuid'] ) ) $fail( 'Write authority is not bound to the enrolled site UUID.' );
@@ -193,9 +202,15 @@ $expected_core_writes = array(
 $write_tools = MAD4B_SCP_Staging_Write_Authority::write_tools();
 foreach ( $expected_core_writes as $ability ) if ( ! in_array( $ability, $write_tools, true ) ) $fail( 'Expected core write action is missing from mad4b-write: ' . $ability );
 if ( in_array( 'mad4b/database-raw-query', $write_tools, true ) ) $fail( 'Breakglass raw query leaked into mad4b-write.' );
+$stable_external_writes = MAD4B_SCP_Servers::external_write_tools();
+$direct_chatgpt_tools = MAD4B_SCP_Servers::chatgpt_tools();
+foreach ( array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ) as $transport_ability ) {
+	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $transport_ability ) ) $fail( 'Governed write transport is not mounted on ChatGPT: ' . $transport_ability );
+}
 foreach ( $write_tools as $ability ) {
 	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability ) ) $fail( 'Write action is not mounted on mad4b-write: ' . $ability );
-	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability ) ) $fail( 'Write action is not exposed through the same ChatGPT Plugin transport: ' . $ability );
+	if ( ! in_array( $ability, $stable_external_writes, true ) ) $fail( 'Runtime-eligible write is missing from the stable logical write catalog: ' . $ability );
+	if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability ) || in_array( $ability, $direct_chatgpt_tools, true ) ) $fail( 'Underlying write schema leaked directly into ChatGPT tools/list: ' . $ability );
 	$write_ability = wp_get_ability( $ability );
 	$write_meta = is_object( $write_ability ) && method_exists( $write_ability, 'get_meta' ) ? $write_ability->get_meta() : array();
 	if ( ! isset( $write_meta['annotations']['readonly'] ) || false !== $write_meta['annotations']['readonly'] ) $fail( 'Write inventory contains an ability without readonly=false: ' . $ability );
@@ -255,7 +270,10 @@ if ( empty( $readback['ready'] ) || ! hash_equals( (string) $cert['evidence_dige
 
 $write_cert = MAD4B_SCP_Write_Runtime_Certification::observe();
 if ( empty( $write_cert['ready'] ) || 'ready' !== $write_cert['state'] ) $fail( 'Governed write certification is blocked: ' . wp_json_encode( isset( $write_cert['blockers'] ) ? $write_cert['blockers'] : array() ) );
-if ( empty( $write_cert['exact_approval_required_for_remote_write'] ) ) $fail( 'Write certification does not require exact remote approvals.' );
+if ( empty( $write_cert['normal_remote_write_exact_approval_required'] ) ) $fail( 'Write certification does not require exact approvals for normal remote writes.' );
+$bootstrap_exception = isset( $write_cert['candidate_bootstrap_prior_approval_exception'] ) ? (string) $write_cert['candidate_bootstrap_prior_approval_exception'] : '';
+if ( empty( $write_cert['exact_approval_required_for_remote_write'] ) && MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY !== $bootstrap_exception ) $fail( 'Write certification relaxed exact approval outside the bounded candidate bootstrap ability.' );
+if ( ! empty( $write_cert['exact_approval_required_for_remote_write'] ) && '' !== $bootstrap_exception ) $fail( 'Write certification reported a bootstrap exception while claiming all remote writes require exact approval.' );
 if ( 'pending_ticket_creation_only' !== $write_cert['approval_planner_bootstrap_exception'] ) $fail( 'Write certification did not record the bounded planner bootstrap exception.' );
 if ( ! empty( $write_cert['external_client_tools_verified'] ) ) $fail( 'WordPress must not claim external client tool refresh.' );
 if ( (int) $write_cert['write_tool_count'] !== count( $write_tools ) ) $fail( 'Write certification inventory count mismatch.' );

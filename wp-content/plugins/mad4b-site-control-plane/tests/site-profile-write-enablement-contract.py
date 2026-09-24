@@ -102,9 +102,30 @@ for marker in [
 core_write = servers[servers.index('private static function core_write_candidates'):servers.index('private static function registered_adapter_write_candidates')]
 if 'mad4b/site-profile-write-enable' in core_write:
     raise SystemExit('bounded Site Profile write enablement leaked into normal governed write candidates')
-if "array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' )" not in servers:
-    raise SystemExit('unified ChatGPT catalog does not explicitly classify all bounded bootstrap mutations')
+chatgpt_transport = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
+if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_transport:
+    raise SystemExit('single-app Full Staging Authority step-up projection is missing')
+for bootstrap_ability in (
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
+):
+    if bootstrap_ability in chatgpt_transport:
+        raise SystemExit('low-level bootstrap mutation leaked into direct ChatGPT transport: ' + bootstrap_ability)
+
+internal_enrollment = servers.split('private static function chatgpt_internal_enrollment_mutations()', 1)[1].split('private static function chatgpt_enrollment_candidates()', 1)[0]
+for bootstrap_ability in (
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
+):
+    if bootstrap_ability not in internal_enrollment:
+        raise SystemExit('internal bootstrap primitive was lost: ' + bootstrap_ability)
 if 'mad4b/staging-write-grant-reconcile' in core_write:
     raise SystemExit('bounded exact grant reconciliation leaked into normal governed write candidates')
+if 'mad4b/staging-write-candidate-bind' in core_write:
+    raise SystemExit('binding-only candidate bootstrap leaked into normal governed write candidates')
 
-print('mad4b.site-profile-write-enablement.contract.v2: PASS')
+print('mad4b.site-profile-write-enablement.contract.v3: PASS')

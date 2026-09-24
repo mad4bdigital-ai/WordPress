@@ -14,7 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Skill_Seeder {
 	const CONTRACT = 'mad4b.skill-seeder.v1';
 	const OPTION = 'mad4b_scp_skill_seed_v1';
-	const SEED_VERSION = 3;
+	const INSPECTION_CONTRACT = 'mad4b.skill-seed-inspection.v1';
+	const SEED_VERSION = 6;
 	const SEED_DIR = 'skill-seeds';
 
 	private static $ran = false;
@@ -76,6 +77,81 @@ final class MAD4B_SCP_Skill_Seeder {
 			'overwrites_user_owned' => false,
 			'refreshes_only_digest_clean_managed' => true,
 			'production_auto_seed' => false,
+		);
+	}
+
+	/**
+	 * Deterministic read-only inspection of canonical seed state.
+	 */
+	public static function inspect() {
+		$root = class_exists( 'MAD4B_SCP_Skill_Registry' ) ? MAD4B_SCP_Skill_Registry::storage_root() : '';
+		$items = array();
+		$would_create = array();
+		$would_refresh = array();
+		$conflicts = array();
+		foreach ( self::seeds() as $seed ) {
+			$level = isset( $seed['level'] ) ? sanitize_key( (string) $seed['level'] ) : '';
+			$target = isset( $seed['target'] ) ? sanitize_key( (string) $seed['target'] ) : '';
+			$name = isset( $seed['name'] ) ? sanitize_key( (string) $seed['name'] ) : '';
+			$logical_id = $level . ':' . $target . ':' . $name;
+			$document = self::canonical_document( $name );
+			$expected_sha = is_wp_error( $document ) ? '' : hash( 'sha256', $document );
+			$dir = '' !== $root ? wp_normalize_path( $root . '/' . $level . '/' . $target . '/' . $name ) : '';
+			$file = '' !== $dir ? $dir . '/SKILL.md' : '';
+			$meta_file = '' !== $dir ? $dir . '/' . MAD4B_SCP_Skill_Registry::META_FILE : '';
+			$path_exists = '' !== $file && ( file_exists( $file ) || is_link( $file ) );
+			$present = $path_exists && is_file( $file ) && ! is_link( $file );
+			$current_raw = $present && is_readable( $file ) ? file_get_contents( $file ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$current_sha = is_string( $current_raw ) ? hash( 'sha256', $current_raw ) : '';
+			$meta_raw = '' !== $meta_file && is_file( $meta_file ) && ! is_link( $meta_file ) && is_readable( $meta_file ) ? file_get_contents( $meta_file ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$meta = is_string( $meta_raw ) ? json_decode( $meta_raw, true ) : null;
+			$owner = is_array( $meta ) && isset( $meta['provisioned_by'] ) ? (string) $meta['provisioned_by'] : '';
+			$managed = self::CONTRACT === $owner;
+			$recorded_sha = is_array( $meta ) && isset( $meta['sha256'] ) ? strtolower( trim( (string) $meta['sha256'] ) ) : '';
+			$digest_clean = $present && 1 === preg_match( '/^[a-f0-9]{64}$/', $recorded_sha ) && '' !== $current_sha && hash_equals( $recorded_sha, $current_sha );
+			$user_owned = $present && ( ! $managed || ! $digest_clean );
+			$seed_version_match = $managed && is_array( $meta ) && isset( $meta['seed_version'] ) && self::SEED_VERSION === (int) $meta['seed_version'];
+			$content_match = $present && '' !== $expected_sha && '' !== $current_sha && hash_equals( $expected_sha, $current_sha );
+			$item_would_create = ! $path_exists && '' !== $expected_sha;
+			$item_would_refresh = $present && $managed && $digest_clean && ( ! $content_match || ! $seed_version_match );
+			$conflict = is_wp_error( $document ) || ( $path_exists && ! $present ) || $user_owned;
+			if ( $item_would_create ) $would_create[] = $logical_id;
+			if ( $item_would_refresh ) $would_refresh[] = $logical_id;
+			if ( $conflict ) $conflicts[] = $logical_id;
+			$items[] = array(
+				'logical_id' => $logical_id,
+				'expected_sha256' => $expected_sha,
+				'current_sha256' => $current_sha,
+				'present' => $present,
+				'managed' => $managed,
+				'user_owned' => $user_owned,
+				'seed_version_match' => $seed_version_match,
+				'content_match' => $content_match,
+				'would_create' => $item_would_create,
+				'would_refresh' => $item_would_refresh,
+				'conflict' => $conflict,
+			);
+		}
+		$would_create = array_values( array_unique( $would_create ) );
+		$would_refresh = array_values( array_unique( $would_refresh ) );
+		$conflicts = array_values( array_unique( $conflicts ) );
+		$ready = empty( $would_create ) && empty( $would_refresh ) && empty( $conflicts );
+		$stored = get_option( self::OPTION, array() );
+		return array(
+			'contract' => self::INSPECTION_CONTRACT,
+			'ready' => $ready,
+			'state' => $ready ? 'ready' : 'drifted',
+			'seed_version' => self::SEED_VERSION,
+			'seed_version_match' => is_array( $stored ) && isset( $stored['version'] ) && self::SEED_VERSION === (int) $stored['version'],
+			'items' => $items,
+			'would_create' => $would_create,
+			'would_refresh' => $would_refresh,
+			'conflicts' => $conflicts,
+			'read_only' => true,
+			'mutation_performed' => false,
+			'filesystem_write_performed' => false,
+			'option_write_performed' => false,
+			'audit_write_performed' => false,
 		);
 	}
 
@@ -282,6 +358,8 @@ final class MAD4B_SCP_Skill_Seeder {
 			array( 'level' => 'provider', 'target' => 'jet-engine', 'name' => 'jetengine-content-modeling', 'enabled' => false ),
 			array( 'level' => 'workflow', 'target' => 'archive-audit', 'name' => 'wordpress-archive-audit' ),
 			array( 'level' => 'workflow', 'target' => 'change-safety', 'name' => 'wordpress-change-safety' ),
+			array( 'level' => 'workflow', 'target' => 'release-orchestration', 'name' => 'wordpress-release-orchestration' ),
+			array( 'level' => 'workflow', 'target' => 'browser-acceptance', 'name' => 'wordpress-browser-acceptance' ),
 			array(
 				'level' => 'workflow',
 				'target' => 'content-authoring',

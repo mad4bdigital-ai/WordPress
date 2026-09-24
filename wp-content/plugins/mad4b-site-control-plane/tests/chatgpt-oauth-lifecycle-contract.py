@@ -6,7 +6,7 @@ component = (root / 'includes' / 'class-mad4b-scp-chatgpt-oauth-lifecycle.php').
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 
 required = [
-    'mad4b.chatgpt-oauth-lifecycle.v1',
+    'mad4b.chatgpt-oauth-lifecycle.v2',
     "CHATGPT_CIMD_CLIENT_ID",
     "MAD4B_MCP_LOCAL_OAUTH_ENABLED",
     "add_action( 'parse_request', array( __CLASS__, 'augment_authorization_scope' ), -30 )",
@@ -16,7 +16,10 @@ required = [
     "'S256' !== strtoupper( $pkce_method )",
     "'mad4b:read'",
     "'offline_access'",
-    "$params['scope'] = implode( ' ', $scopes )",
+    "AUTHORITY_STEP_UP_SCOPE",
+    "authority_step_up_scope_available",
+    "$step_up_available",
+    "$params['scope'] = implode( ' ', array_values( array_unique( $scopes ) ) )",
 ]
 for marker in required:
     if marker not in component:
@@ -44,4 +47,4 @@ for marker in [
     if marker not in main:
         raise SystemExit(f'plugin bootstrap missing ChatGPT OAuth lifecycle component: {marker}')
 
-print('mad4b.site-control-plane.chatgpt-oauth-lifecycle.v1: PASS')
+print('mad4b.site-control-plane.chatgpt-oauth-lifecycle.v2: PASS')

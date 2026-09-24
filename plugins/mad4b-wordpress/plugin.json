@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "mad4b-wordpress",
-  "version": "0.2.0-rc.1",
+  "version": "0.2.0-rc.2",
   "description": "Governed WordPress diagnostics, reusable workflow skills and exact-approval tenant-bound write operations for the MAD4B MCP control plane.",
   "author": {
     "name": "MAD4B",
@@ -9,7 +9,14 @@
   },
   "repository": "https://github.com/mad4bdigital-ai/WordPress",
   "license": "GPL-2.0-or-later",
-  "keywords": ["wordpress", "mcp", "skills", "elementor", "jetengine", "governance"],
+  "keywords": [
+    "wordpress",
+    "mcp",
+    "skills",
+    "elementor",
+    "jetengine",
+    "governance"
+  ],
   "extensions": {
     "com.openai": {
       "apps": "./.app.json",
@@ -19,7 +26,10 @@
         "longDescription": "WordPress diagnostics, connection checks, Elementor, JetEngine, archive audits and governed tenant-bound update/write/mutation workflows backed by explicit Site Profile enrollment, exact NHI grants, one-time approvals and MAD4B MCP certification.",
         "developerName": "MAD4B",
         "category": "Productivity",
-        "capabilities": ["Read", "Write"],
+        "capabilities": [
+          "Read",
+          "Write"
+        ],
         "websiteURL": "https://github.com/mad4bdigital-ai/WordPress",
         "defaultPrompt": [
           "Diagnose my WordPress site.",
@@ -27,7 +37,8 @@
           "Show the governed write authority status for the enrolled site.",
           "Plan a safe approved change on the enrolled site.",
           "Audit this Elementor template.",
-          "Analyze my JetEngine dynamic content setup."
+          "Analyze my JetEngine dynamic content setup.",
+          "Orchestrate a governed WordPress release with workflow and plugin lifecycle preflight."
         ]
       }
     }

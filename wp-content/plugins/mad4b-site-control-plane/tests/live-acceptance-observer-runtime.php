@@ -12,6 +12,7 @@ namespace {
 	$GLOBALS['mad4b_test_env'] = 'staging';
 	$GLOBALS['mad4b_test_home'] = 'https://staging.egypttourgates.com';
 	$GLOBALS['mad4b_test_init'] = 0;
+	$GLOBALS['mad4b_test_options'] = array();
 
 	class WP_Error {
 		private $code;
@@ -32,8 +33,8 @@ namespace {
 	function absint( $value ) { return abs( (int) $value ); }
 	function add_action() {}
 	function add_filter() {}
-	function get_option( $key, $default = false ) { return $default; }
-	function update_option() { return true; }
+	function get_option( $key, $default = false ) { return array_key_exists( $key, $GLOBALS['mad4b_test_options'] ) ? $GLOBALS['mad4b_test_options'][ $key ] : $default; }
+	function update_option( $key, $value, $autoload = false ) { $GLOBALS['mad4b_test_options'][ $key ] = $value; return true; }
 	function set_transient() { return true; }
 	function get_transient() { return false; }
 	function delete_transient() { return true; }
@@ -44,10 +45,11 @@ namespace {
 		public static function site_host() { return (string) parse_url( self::site_origin(), PHP_URL_HOST ); }
 		public static function related_origin( $environment ) { return 'production' === (string) $environment ? 'https://production.test' : self::site_origin(); }
 		public static function nonproduction_governed( $feature = '' ) { return in_array( self::current_environment(), array( 'local', 'development', 'staging' ), true ) && ( '' === $feature || 'acceptance' === $feature ); }
+		public static function acceptance_enabled() { return true; }
 		public static function site_urls_match_enrollment() { return ! isset( $GLOBALS['mad4b_test_urls_match'] ) || ! empty( $GLOBALS['mad4b_test_urls_match'] ); }
 	}
 	class MAD4B_SCP_Servers {
-		public static function chatgpt_tools() { return array( 'mad4b/site-info', 'mad4b/content-update-post', 'elementor/update-widget-settings' ); }
+		public static function chatgpt_tools() { return array( 'mad4b/site-info', 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ); }
 		public static function external_write_tools() { return array( 'mad4b/content-update-post', 'elementor/update-widget-settings' ); }
 		public static function write_tools() { return array( 'mad4b/content-update-post' ); }
 		public static function blocked_write_tools() { return array( array( 'ability' => 'elementor/update-widget-settings' ) ); }
@@ -83,21 +85,33 @@ namespace {
 	mad4b_assert( false === stripos( $sanitized, 'hunter2' ), 'Password must be redacted.' );
 	mad4b_assert( false === strpos( $sanitized, '/home/user/site' ), 'Absolute filesystem path must be redacted.' );
 
-	$stable_inventory = array( 'mad4b-site-info', 'mad4b-content-update-post', 'elementor-update-widget-settings' );
+	$stable_inventory = array( 'mad4b-site-info', 'mad4b-write-discover', 'mad4b-write-info', 'mad4b-write-execute' );
 	$current_build_test = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( $stable_inventory, str_repeat( '0', 64 ) );
-	mad4b_assert( ! empty( $current_build_test['inventory_match'] ), 'Same exact stable external set must match inventory independently of build freshness.' );
+	mad4b_assert( ! empty( $current_build_test['inventory_match'] ), 'Same exact minimal external transport must match independently of build freshness.' );
 	mad4b_assert( empty( $current_build_test['verified'] ), 'Pure evaluator must never self-certify an external session.' );
-	mad4b_assert( in_array( 'elementor-update-widget-settings', $current_build_test['provider_gated_write_tools'], true ), 'Provider-gated external write must be classified as gated.' );
-	mad4b_assert( empty( $current_build_test['provider_execution_mount_leaks'] ), 'Discoverable gated provider write must not be treated as an execution mount leak.' );
+	mad4b_assert( ! empty( $current_build_test['write_transport_ready'] ), 'Exact write transport trio must be recognized.' );
+	mad4b_assert( empty( $current_build_test['direct_write_schema_leaks'] ), 'Logical write schemas must not leak into direct tools/list.' );
+	mad4b_assert( ! empty( $current_build_test['write_inventory_fingerprint_match'] ), 'Logical write catalog must remain fingerprint-bound behind the transport.' );
+	mad4b_assert( 2 === (int) $current_build_test['external_write_tool_count'], 'Logical external write count must remain complete.' );
+	mad4b_assert( ! empty( $current_build_test['runtime_projection_deferred'] ), 'Pure tools/list evaluator must defer provider eligibility projection.' );
+	mad4b_assert( 0 === (int) $current_build_test['eligible_write_tool_count'], 'Pure tools/list evaluator must not run provider eligibility projection.' );
+	mad4b_assert( empty( $current_build_test['provider_gated_write_tools'] ), 'Pure tools/list evaluator must not run provider gate projection.' );
+	mad4b_assert( empty( $current_build_test['provider_execution_mount_leaks'] ), 'Deferred provider projection must not invent execution leaks.' );
 
-	$different = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array( 'mad4b-site-info', 'mad4b-content-update-post', 'mad4b-other-write' ), str_repeat( '0', 64 ) );
-	mad4b_assert( empty( $different['inventory_match'] ), 'Same count/different names must fail.' );
-	mad4b_assert( in_array( 'elementor-update-widget-settings', $different['missing_expected_tools'], true ), 'Missing stable provider tool must be diffed.' );
-	mad4b_assert( in_array( 'mad4b-other-write', $different['unexpected_tools'], true ), 'Unexpected tool must be diffed.' );
-	mad4b_assert( ! empty( $different['foreign_write_tool_exposed'] ), 'Unexpected external tool must be fail-closed as foreign exposure.' );
+	$different = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array( 'mad4b-site-info', 'mad4b-write-discover', 'mad4b-write-execute', 'foreign-unexpected-tool' ), str_repeat( '0', 64 ) );
+	mad4b_assert( empty( $different['inventory_match'] ), 'Same count/different transport names must fail.' );
+	mad4b_assert( in_array( 'mad4b-write-info', $different['missing_expected_tools'], true ), 'Missing write-info transport must be diffed.' );
+	mad4b_assert( in_array( 'foreign-unexpected-tool', $different['unexpected_tools'], true ), 'Unexpected tool must be diffed.' );
+	mad4b_assert( empty( $different['write_transport_ready'] ), 'Missing write transport member must fail transport readiness.' );
 
-	$missing_write = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array( 'mad4b-site-info', 'mad4b-content-update-post' ), str_repeat( '0', 64 ) );
-	mad4b_assert( empty( $missing_write['write_inventory_fingerprint_match'] ), 'Missing stable provider write must fail write inventory parity.' );
+	$direct_write_leak = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array_merge( $stable_inventory, array( 'mad4b-content-update-post' ) ), str_repeat( '0', 64 ) );
+	mad4b_assert( ! empty( $direct_write_leak['direct_write_schema_leaks'] ), 'Direct underlying write schema exposure must be detected.' );
+	mad4b_assert( in_array( 'mad4b-content-update-post', $direct_write_leak['direct_write_schema_leaks'], true ), 'Leaked underlying write tool must be named.' );
+	mad4b_assert( empty( $direct_write_leak['write_inventory_fingerprint_match'] ), 'Direct write schema leakage must fail logical write transport acceptance.' );
+
+	$missing_write_transport = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array( 'mad4b-site-info', 'mad4b-write-discover', 'mad4b-write-execute' ), str_repeat( '0', 64 ) );
+	mad4b_assert( empty( $missing_write_transport['write_transport_ready'] ), 'Incomplete write transport must fail closed.' );
+	mad4b_assert( empty( $missing_write_transport['write_inventory_fingerprint_match'] ), 'Incomplete write transport must fail write inventory acceptance.' );
 
 	$raw_sql = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array_merge( $stable_inventory, array( 'mad4b-database-raw-query' ) ), str_repeat( '0', 64 ) );
 	mad4b_assert( ! empty( $raw_sql['raw_sql_exposed'] ), 'Raw SQL exposure must fail explicit assertion.' );
@@ -118,6 +132,120 @@ namespace {
 		'success' => MAD4B_SCP_Live_Acceptance_Finalizer::classify_wpml_response( 200, array( 'status' => 'valid', 'get_parameters' => 'valid' ), '', true ),
 	);
 	foreach ( $wpml_classes as $expected => $result ) mad4b_assert( $expected === $result['classification'], 'WPML normalized classification failed for ' . $expected );
+
+	$observer_reflection = new ReflectionClass( 'MAD4B_SCP_Live_Acceptance_Observer' );
+	$current_build_method = $observer_reflection->getMethod( 'current_build_fingerprint' );
+	$current_build_method->setAccessible( true );
+	$current_build = (string) $current_build_method->invoke( null );
+	mad4b_assert( 1 === preg_match( '/^[a-f0-9]{64}$/', $current_build ), 'Runtime fixture must resolve a current build fingerprint for performance evidence.' );
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ] = array(
+		'contract' => MAD4B_SCP_Live_Acceptance_Observer::QUERY_MONITOR_CONTRACT,
+		'control_plane_version' => MAD4B_SCP_VERSION,
+		'build_fingerprint' => $current_build,
+		'capture_started_at' => gmdate( 'Y-m-d H:i:s', time() - 60 ),
+		'last_observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ),
+		'observed_request_count' => 1,
+		'request_coverage' => array( 'mcp' => 0, 'rest' => 0, 'wp_admin' => 0, 'frontend' => 1 ),
+		'counters' => array(
+			'mad4b' => array(
+				'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0,
+				'deprecated_hook' => 0, 'deprecated_class' => 0, 'ability_not_found' => 0,
+				'wp_get_ability_missing' => 0, 'pre_init_abilities_violation' => 0,
+			),
+			'third_party' => array( 'fluentform_action_scheduler' => 0 ),
+			'wordpress_core' => array(),
+			'unknown' => array(),
+		),
+		'events' => array(),
+		'performance' => array(
+			'contract' => 'mad4b.frontend-performance-evidence.v1',
+			'frontend_observed' => true,
+			'rest_observed' => false,
+			'samples' => array(
+				array( 'request_class' => 'frontend', 'server_elapsed_ms' => 120.0, 'db_queries' => 35, 'peak_memory_bytes' => 15728640, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 3 ) ),
+				array( 'request_class' => 'frontend', 'server_elapsed_ms' => 125.0, 'db_queries' => 37, 'peak_memory_bytes' => 16777216, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 2 ) ),
+				array( 'request_class' => 'frontend', 'server_elapsed_ms' => 130.0, 'db_queries' => 36, 'peak_memory_bytes' => 16000000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ) ),
+			),
+			'last_by_class' => array(
+				'frontend' => array(
+					'request_class' => 'frontend',
+					'server_elapsed_ms' => 130.0,
+					'db_queries' => 36,
+					'peak_memory_bytes' => 16000000,
+					'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ),
+				),
+			),
+		),
+	);
+	$performance = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
+	mad4b_assert( ! empty( $performance['ready'] ), 'Current-build front-end performance window must become ready.' );
+	mad4b_assert( 'ready' === (string) $performance['state'], 'Current-build front-end performance state must be ready.' );
+	mad4b_assert( empty( $performance['baseline_only'] ) && ! empty( $performance['budget_evaluated'] ) && ! empty( $performance['budget_pass'] ), 'Front-end performance evidence must evaluate and pass the bounded regression budget.' );
+	mad4b_assert( empty( $performance['ttfb_claimed'] ), 'Server elapsed evidence must not self-claim TTFB.' );
+	mad4b_assert( 3 === (int) $performance['evaluation_window']['sample_count'], 'Front-end performance must require a bounded multi-sample window.' );
+	mad4b_assert( 'median' === (string) $performance['evaluation_window']['server_elapsed_strategy'], 'Front-end elapsed evaluation must use the median.' );
+	mad4b_assert( 'max' === (string) $performance['evaluation_window']['db_queries_strategy'], 'DB query evaluation must preserve worst-case pressure.' );
+	mad4b_assert( 125.0 === (float) $performance['metrics']['server_elapsed_ms'], 'Front-end median server elapsed drifted.' );
+	mad4b_assert( 37 === (int) $performance['metrics']['db_queries'], 'Front-end max DB query sample drifted.' );
+	mad4b_assert( 16777216 === (int) $performance['metrics']['peak_memory_bytes'], 'Front-end max peak memory sample drifted.' );
+
+	$telemetry_property = $observer_reflection->getProperty( 'telemetry' );
+	$telemetry_property->setAccessible( true );
+
+	// A single elapsed-time outlier must be visible but must not fail a healthy
+	// bounded window. This prevents one noisy Staging request from flapping the
+	// release gate while keeping the exact 2000 ms budget unchanged.
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['samples'] = array(
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 125.0, 'db_queries' => 37, 'peak_memory_bytes' => 16777216, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 3 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 140.0, 'db_queries' => 38, 'peak_memory_bytes' => 17000000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 2 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 5000.0, 'db_queries' => 39, 'peak_memory_bytes' => 17500000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ) ),
+	);
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['last_by_class']['frontend']['server_elapsed_ms'] = 5000.0;
+	$telemetry_property->setValue( null, null );
+	$isolated_spike = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
+	mad4b_assert( ! empty( $isolated_spike['ready'] ), 'A single elapsed-time outlier must not flap an otherwise healthy performance window.' );
+	mad4b_assert( 140.0 === (float) $isolated_spike['metrics']['server_elapsed_ms'], 'Elapsed-time median must remain robust to a single outlier.' );
+
+	// Persistent slowdown must still fail closed.
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['samples'] = array(
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 5000.0, 'db_queries' => 37, 'peak_memory_bytes' => 16777216, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 3 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 5100.0, 'db_queries' => 38, 'peak_memory_bytes' => 17000000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 2 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 5200.0, 'db_queries' => 39, 'peak_memory_bytes' => 17500000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ) ),
+	);
+	$telemetry_property->setValue( null, null );
+	$over_budget = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
+	mad4b_assert( empty( $over_budget['ready'] ) && 'performance_budget_exceeded' === (string) $over_budget['state'], 'Persistent over-budget front-end performance must fail closed.' );
+	mad4b_assert( in_array( 'server_elapsed_ms_budget_exceeded', (array) $over_budget['budget_failures'], true ), 'Performance budget failure reason must identify persistent server elapsed regression.' );
+
+	// Query/memory pressure remains worst-case sensitive even when elapsed median
+	// is healthy.
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['samples'] = array(
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 125.0, 'db_queries' => 37, 'peak_memory_bytes' => 16777216, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 3 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 130.0, 'db_queries' => 101, 'peak_memory_bytes' => 17000000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 2 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 135.0, 'db_queries' => 39, 'peak_memory_bytes' => 17500000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ) ),
+	);
+	$telemetry_property->setValue( null, null );
+	$query_spike = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
+	mad4b_assert( empty( $query_spike['ready'] ) && in_array( 'db_queries_budget_exceeded', (array) $query_spike['budget_failures'], true ), 'A DB query budget breach inside the bounded window must fail closed.' );
+
+	// Fewer than the minimum number of current-build frontend samples may not
+	// certify performance.
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['samples'] = array(
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 125.0, 'db_queries' => 37, 'peak_memory_bytes' => 16777216, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 2 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 130.0, 'db_queries' => 38, 'peak_memory_bytes' => 17000000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ) ),
+	);
+	$telemetry_property->setValue( null, null );
+	$insufficient = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
+	mad4b_assert( empty( $insufficient['ready'] ) && 'insufficient_frontend_samples' === (string) $insufficient['state'], 'Performance certification must require the minimum current-build frontend sample count.' );
+
+	// Restore a healthy window for the remaining aggregate tests.
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['samples'] = array(
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 120.0, 'db_queries' => 35, 'peak_memory_bytes' => 15728640, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 3 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 125.0, 'db_queries' => 37, 'peak_memory_bytes' => 16777216, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 2 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 130.0, 'db_queries' => 36, 'peak_memory_bytes' => 16000000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ) ),
+	);
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['last_by_class']['frontend']['server_elapsed_ms'] = 130.0;
+	$telemetry_property->setValue( null, null );
 
 	$match = MAD4B_SCP_Live_Acceptance_Observer::snapshot_verify( array( 'client_snapshot_token' => 'sha256:' . str_repeat( 'a', 64 ) ) );
 	mad4b_assert( ! empty( $match['exact_match'] ), 'Matching snapshot token must compare true.' );

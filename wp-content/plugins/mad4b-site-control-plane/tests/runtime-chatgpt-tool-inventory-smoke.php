@@ -81,42 +81,213 @@ if ( $actual_names !== $expected_names ) {
 	);
 }
 
-$core_required = array(
+$direct_required = array(
 	'mad4b-site-info',
 	'mad4b-site-profile-status',
 	'mad4b-build-provenance-status',
-	'mad4b-list-post-types',
-	'mad4b-post-identity',
-	'mad4b-list-plugins',
-	'mad4b-abilities-inventory',
+	'mad4b-tool-discover',
+	'mad4b-tool-info',
+	'mad4b-read-execute',
+	'mad4b-write-discover',
+	'mad4b-write-info',
+	'mad4b-write-execute',
 	'mad4b-diagnostics-health',
 	'mad4b-runtime-authority-status',
 	'mad4b-connection-status',
-	'mad4b-filesystem-list',
-	'mad4b-filesystem-read',
-	'mad4b-filesystem-write',
-	'mad4b-filesystem-patch',
-	'mad4b-database-list-tables',
-	'mad4b-database-describe-table',
-	'mad4b-database-select',
-	'mad4b-database-update',
-	'mad4b-content-get-post',
-	'mad4b-content-update-post',
-	'mad4b-plugin-activate',
-	'mad4b-plugin-deactivate',
-	'mad4b-audit-tail',
-	'mad4b-mutation-get',
-	'mad4b-mutation-undo',
-	'mad4b-agent-list',
-	'mad4b-agent-effective-access',
-	'mad4b-approval-plan',
+	'mad4b-plugin-package-plan',
+	'mad4b-write-authority-status',
+	'mad4b-write-authority-reconciliation-plan',
+	'mad4b-write-runtime-certification',
+	'mad4b-rest-compatibility-status',
+	'mad4b-staging-certification-status',
+	'mad4b-staging-write-candidate-binding-audit',
+	'mad4b-full-staging-authority-status',
+	'mad4b-full-staging-authority-plan',
+	'mad4b-full-staging-authority-apply',
+);
+foreach ( $direct_required as $tool_name ) {
+	if ( ! in_array( $tool_name, $actual_names, true ) ) {
+		$fail( 'Required minimal Staging ChatGPT direct tool is missing.', $tool_name );
+	}
+}
+
+// Enrollment implementation details remain registered internally, but the
+// single user-facing ChatGPT app must expose only the composite step-up.
+$internal_only_direct_forbidden = array(
 	'mad4b-site-profile-feature-reenroll',
 	'mad4b-site-profile-write-enable',
+	'mad4b-staging-write-grant-reconcile',
+	'mad4b-staging-write-candidate-bind',
 );
-foreach ( $core_required as $tool_name ) {
-	if ( ! in_array( $tool_name, $actual_names, true ) ) {
-		$fail( 'Required unified Staging ChatGPT Read/Write tool is missing.', $tool_name );
+foreach ( $internal_only_direct_forbidden as $tool_name ) {
+	if ( in_array( $tool_name, $actual_names, true ) ) {
+		$fail( 'Low-level enrollment mutation leaked into the single-app direct catalog.', $tool_name );
 	}
+}
+
+// Heavy/read-only inventory stays out of tools/list so client Refresh remains
+// bounded. These abilities remain in the governed capability universe and are
+// reachable only through the read-only discovery/info/execute surface.
+$hidden_read_required = array(
+		'mad4b/filesystem-list',
+		'mad4b/filesystem-read',
+		'mad4b/database-list-tables',
+		'mad4b/database-describe-table',
+		'mad4b/database-select',
+		'mad4b/content-get-post',
+		'mad4b/post-identity',
+		'mad4b/audit-tail',
+		'mad4b/mutation-get',
+		'mad4b/agent-list',
+		'mad4b/agent-effective-access',
+);
+$full_candidates = MAD4B_SCP_Servers::chatgpt_full_catalog_candidates();
+if ( ! in_array( 'mad4b/full-staging-authority-apply', $full_candidates, true ) ) {
+	$fail( 'Single-app logical catalog lost the composite Full Staging Authority step-up.' );
+}
+foreach ( array(
+	'mad4b/site-profile-feature-reenroll',
+	'mad4b/site-profile-write-enable',
+	'mad4b/staging-write-grant-reconcile',
+	'mad4b/staging-write-candidate-bind',
+) as $ability_name ) {
+	if ( in_array( $ability_name, $full_candidates, true ) ) {
+		$fail( 'Low-level enrollment mutation leaked into logical ChatGPT discovery.', $ability_name );
+	}
+}
+foreach ( $hidden_read_required as $ability_name ) {
+	if ( ! in_array( $ability_name, $full_candidates, true ) ) {
+		$fail( 'Compact catalog lost a governed read capability.', $ability_name );
+	}
+	$tool_name = \WP\MCP\Domain\Utils\McpNameSanitizer::sanitize_name( $ability_name );
+	if ( is_wp_error( $tool_name ) ) {
+		$fail( 'Hidden governed read ability cannot be represented as an MCP name.', $ability_name );
+	}
+	if ( in_array( (string) $tool_name, $actual_names, true ) ) {
+		$fail( 'Heavy read ability leaked back into direct tools/list.', $tool_name );
+	}
+}
+
+// Stable write abilities remain fully cataloged, but their large schemas stay
+// behind the governed write discovery/info/execute transport.
+$hidden_write_required = array(
+	'mad4b/content-update-post',
+	'mad4b/plugin-activate',
+	'mad4b/plugin-deactivate',
+	'mad4b/plugin-package-apply',
+	'mad4b/filesystem-write',
+	'mad4b/filesystem-patch',
+	'mad4b/database-update',
+	'mad4b/mutation-undo',
+	'mad4b/approval-plan',
+);
+$external_write_catalog = MAD4B_SCP_Servers::external_write_tools();
+foreach ( $hidden_write_required as $ability_name ) {
+	if ( ! in_array( $ability_name, $external_write_catalog, true ) ) {
+		$fail( 'Minimal transport lost a stable governed write capability.', $ability_name );
+	}
+	$tool_name = \WP\MCP\Domain\Utils\McpNameSanitizer::sanitize_name( $ability_name );
+	if ( is_wp_error( $tool_name ) ) {
+		$fail( 'Hidden governed write ability cannot be represented as an MCP name.', $ability_name );
+	}
+	if ( in_array( (string) $tool_name, $actual_names, true ) ) {
+		$fail( 'Large write ability leaked back into direct tools/list.', $tool_name );
+	}
+}
+
+if ( count( $actual_names ) > 48 ) {
+	$fail( 'Minimal ChatGPT tools/list exceeded the refresh-safety budget.', array( 'tool_count' => count( $actual_names ), 'budget' => 48 ) );
+}
+
+$discover = wp_get_ability( 'mad4b/tool-discover' );
+$info = wp_get_ability( 'mad4b/tool-info' );
+$read_execute = wp_get_ability( 'mad4b/read-execute' );
+if ( ! $discover || ! $info || ! $read_execute ) {
+	$fail( 'Compact read discovery surface is not fully registered.' );
+}
+$discovered = $discover->execute( array( 'query' => 'filesystem', 'limit' => 100 ) );
+if ( is_wp_error( $discovered ) ) {
+	$fail( 'Read discovery failed.', $discovered->get_error_code() );
+}
+$discovered_names = array();
+foreach ( (array) ( $discovered['items'] ?? array() ) as $item ) {
+	if ( is_array( $item ) && ! empty( $item['ability_name'] ) ) {
+		$discovered_names[] = (string) $item['ability_name'];
+	}
+}
+if ( ! in_array( 'mad4b/filesystem-list', $discovered_names, true ) ) {
+	$fail( 'Read discovery did not expose hidden filesystem-list capability.', $discovered );
+}
+
+$filesystem_info = $info->execute( array( 'ability_name' => 'mad4b/filesystem-list' ) );
+if ( is_wp_error( $filesystem_info ) || empty( $filesystem_info['read_only'] ) || empty( $filesystem_info['annotations']['readonly'] ) ) {
+	$fail( 'Read info did not preserve readonly metadata for hidden capability.', $filesystem_info );
+}
+
+$database_read = $read_execute->execute(
+	array(
+		'ability_name' => 'mad4b/database-list-tables',
+		'input' => array(),
+	)
+);
+if ( is_wp_error( $database_read ) || empty( $database_read['read_only'] ) || ! isset( $database_read['result']['tables'] ) ) {
+	$fail( 'Readonly dispatcher could not execute a hidden governed read ability.', $database_read );
+}
+
+$mutation_denied = $read_execute->execute(
+	array(
+		'ability_name' => 'mad4b/plugin-package-apply',
+		'input' => array(),
+	)
+);
+if ( ! is_wp_error( $mutation_denied ) || 'mad4b_read_dispatch_mutation_denied' !== $mutation_denied->get_error_code() ) {
+	$fail( 'Readonly dispatcher did not fail closed for a mutating ability.', $mutation_denied );
+}
+
+$write_discover = wp_get_ability( 'mad4b/write-discover' );
+$write_info = wp_get_ability( 'mad4b/write-info' );
+$write_execute = wp_get_ability( 'mad4b/write-execute' );
+if ( ! $write_discover || ! $write_info || ! $write_execute ) {
+	$fail( 'Minimal governed write transport is not fully registered.' );
+}
+$write_discovered = $write_discover->execute( array( 'query' => 'plugin package', 'limit' => 100 ) );
+if ( is_wp_error( $write_discovered ) ) {
+	$fail( 'Write discovery failed.', $write_discovered->get_error_code() );
+}
+$write_names = array();
+foreach ( (array) ( $write_discovered['items'] ?? array() ) as $item ) {
+	if ( is_array( $item ) && ! empty( $item['ability_name'] ) ) $write_names[] = (string) $item['ability_name'];
+}
+if ( ! in_array( 'mad4b/plugin-package-apply', $write_names, true ) ) {
+	$fail( 'Write discovery did not expose plugin-package-apply.', $write_discovered );
+}
+$package_write_info = $write_info->execute( array( 'ability_name' => 'mad4b/plugin-package-apply' ) );
+if ( is_wp_error( $package_write_info ) || empty( $package_write_info['input_schema_sha256'] ) || 64 !== strlen( (string) $package_write_info['input_schema_sha256'] ) ) {
+	$fail( 'Write info did not return an exact input schema fingerprint.', $package_write_info );
+}
+if ( ! array_key_exists( 'runtime_eligible', $package_write_info ) ) {
+	$fail( 'Write info omitted runtime eligibility.', $package_write_info );
+}
+$write_attempt = $write_execute->execute(
+	array(
+		'ability_name' => 'mad4b/plugin-package-apply',
+		'expected_input_schema_sha256' => (string) $package_write_info['input_schema_sha256'],
+		'input' => array(),
+	)
+);
+if ( ! is_wp_error( $write_attempt ) ) {
+	$fail( 'Write dispatcher unexpectedly executed without exact governed authority and target input.', $write_attempt );
+}
+if ( ! in_array( $write_attempt->get_error_code(), array(
+	'mad4b_write_dispatch_mutation_disabled',
+	'mad4b_write_dispatch_target_not_runtime_eligible',
+	'rest_invalid_param',
+	'invalid_input',
+	'mad4b_authorization_unavailable',
+	'mad4b_mutation_disabled',
+	'ability_invalid_permissions',
+), true ) ) {
+	$fail( 'Write dispatcher failed closed with an unexpected contract.', array( 'code' => $write_attempt->get_error_code(), 'message' => $write_attempt->get_error_message() ) );
 }
 
 if ( ! wp_has_ability( 'mad4b/post-identity' ) ) {
@@ -134,8 +305,11 @@ if ( empty( $identity_annotations['readonly'] ) || ! empty( $identity_annotation
 if ( 'core' !== MAD4B_SCP_Servers::provider_for_ability( 'mad4b-read', 'mad4b/post-identity' ) ) {
 	$fail( 'Post identity must be mounted on mad4b-read.' );
 }
-if ( 'core' !== MAD4B_SCP_Servers::provider_for_ability( 'mad4b-chatgpt', 'mad4b/post-identity' ) ) {
-	$fail( 'Post identity must be mounted on mad4b-chatgpt.' );
+if ( ! in_array( 'mad4b/post-identity', $full_candidates, true ) ) {
+	$fail( 'Post identity was lost from the governed ChatGPT discovery universe.' );
+}
+if ( null !== MAD4B_SCP_Servers::provider_for_ability( 'mad4b-chatgpt', 'mad4b/post-identity' ) ) {
+	$fail( 'Post identity heavy schema leaked directly into mad4b-chatgpt tools/list.' );
 }
 foreach ( array( 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' ) as $server_id ) {
 	if ( null !== MAD4B_SCP_Servers::provider_for_ability( $server_id, 'mad4b/post-identity' ) ) {
@@ -193,6 +367,6 @@ foreach ( $forbidden as $tool_name ) {
 
 fwrite(
 	STDOUT,
-	'mad4b.site-control-plane.runtime-chatgpt-tool-inventory.v3: PASS ' .
+	'mad4b.site-control-plane.runtime-chatgpt-tool-inventory.v6: PASS ' .
 	wp_json_encode( array( 'tool_count' => count( $actual_names ), 'tools' => $actual_names ), JSON_UNESCAPED_SLASHES ) . PHP_EOL
 );

@@ -40,6 +40,8 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php"
           php -l "$root/tests/local-oauth-consent-ui-contract.php"
           php -l "$root/tests/runtime-local-oauth-standalone-smoke.php"
+          php -l "$root/tests/runtime-local-oauth-store-readiness-cache.php"
+          php -l "$root/tests/oauth-live-authority-projection-runtime.php"
           php -l "$root/tests/runtime-chatgpt-oauth-lifecycle-smoke.php"
           php -l "$root/tests/runtime-local-oauth-chatgpt-http-smoke.php"
           php -l "$root/tests/runtime-local-oauth-key-path-policy-smoke.php"
@@ -47,7 +49,10 @@ jobs:
           php -l "$root/tests/runtime-local-oauth-browser-canary-smoke.php"
           php -l "$root/tests/runtime-local-oauth-browser-canary-production-smoke.php"
           php "$root/tests/local-oauth-consent-ui-contract.php"
+          php "$root/tests/oauth-live-authority-projection-runtime.php"
+          php "$root/tests/runtime-local-oauth-store-readiness-cache.php"
           node --check "$root/assets/local-oauth-canary.js"
+          node --check "$root/tests/oauth-live-authority-browser-e2e.mjs"
           node --check "$root/assets/chatgpt-connection.js"
           python3 "$root/tests/staging-oauth-autoconfig-contract.py"
           python3 "$root/tests/local-oauth-standalone-contract.py"
@@ -174,6 +179,221 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove live authority dashboard in a real browser
+        if: matrix.wordpress == 'latest'
+        shell: bash
+        env:
+          MAD4B_BROWSER_BASE_URL: http://127.0.0.1:8088
+          MAD4B_BROWSER_USER: mad4b-ci-admin
+          MAD4B_BROWSER_PASSWORD: ci-only-not-a-secret
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+
+          # Browser proof uses an isolated loopback Local environment so the
+          # governed Site Profile can bind an HTTP loopback origin without
+          # weakening the Staging HTTPS requirement.
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE local --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar option update home "$MAD4B_BROWSER_BASE_URL" --path="$WP_PATH"
+          php /tmp/wp-cli.phar option update siteurl "$MAD4B_BROWSER_BASE_URL" --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_MCP_LOCAL_OAUTH_CLIENTS "array( 'mad4b-browser-e2e' => array( 'client_name' => 'MAD4B Browser E2E', 'redirect_uris' => array( 'http://127.0.0.1:8088/callback' ), 'application_type' => 'native' ) )" --type=constant --raw --path="$WP_PATH"
+
+          php /tmp/wp-cli.phar eval '
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+              "expected_revision" => MAD4B_SCP_Site_Profile::revision(),
+              "display_name" => "MAD4B Browser E2E",
+              "chatgpt_app_id" => "",
+              "oauth_user_ids" => array( get_current_user_id() ),
+              "oauth_enabled" => true,
+              "skills_enabled" => false,
+              "write_enabled" => false,
+              "production_write_confirmed" => false,
+              "provider_isolation_enabled" => false,
+              "managed_runtime_enabled" => true,
+              "acceptance_enabled" => false,
+          ) );
+          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
+          if ( empty( $result["configured"] ) || empty( $result["origin_match"] ) || empty( $result["environment_match"] ) ) {
+              throw new RuntimeException( "Browser E2E Site Profile did not bind the loopback Local origin." );
+          }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+
+          cat >/tmp/mad4b-wp-router.php <<'PHP'
+          <?php
+          $path = parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH );
+          $file = rtrim( $_SERVER['DOCUMENT_ROOT'], '/' ) . $path;
+          if ( '/' !== $path && is_file( $file ) ) return false;
+
+          // PHP's built-in server has no Apache/nginx rewrite layer. Mirror the
+          // WordPress REST rewrite so a pretty /wp-json/... URL reaches the same
+          // rest_route that live Staging serves.
+          if ( 0 === strpos( $path, '/wp-json/' ) ) {
+              $rest_route = '/' . ltrim( substr( $path, strlen( '/wp-json/' ) ), '/' );
+              $_GET['rest_route'] = $rest_route;
+              $_REQUEST['rest_route'] = $rest_route;
+          }
+
+          require rtrim( $_SERVER['DOCUMENT_ROOT'], '/' ) . '/index.php';
+          PHP
+
+          php -S 127.0.0.1:8088 -t "$WP_PATH" /tmp/mad4b-wp-router.php >/tmp/mad4b-browser-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true; cat /tmp/mad4b-browser-server.log || true' EXIT
+          for i in $(seq 1 40); do
+            if curl -fsS "$MAD4B_BROWSER_BASE_URL/wp-login.php" >/dev/null; then break; fi
+            sleep 0.25
+          done
+          curl -fsS "$MAD4B_BROWSER_BASE_URL/wp-login.php" >/dev/null
+
+          # Bound the complete OAuth/MCP discovery chain used by external clients.
+          # These are full HTTP requests and therefore include WordPress/plugin boot.
+          RESOURCE_METADATA_URL="$(php /tmp/wp-cli.phar eval 'echo MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url();' --path="$WP_PATH" --user=mad4b-ci-admin)"
+          AUTH_METADATA_URL="$(php /tmp/wp-cli.phar eval 'echo MAD4B_SCP_Local_OAuth_Server::metadata_url();' --path="$WP_PATH" --user=mad4b-ci-admin)"
+          JWKS_URL="$(php /tmp/wp-cli.phar eval 'echo MAD4B_SCP_Local_OAuth_Server::jwks_url();' --path="$WP_PATH" --user=mad4b-ci-admin)"
+          test -n "$RESOURCE_METADATA_URL"
+          test -n "$AUTH_METADATA_URL"
+          test -n "$JWKS_URL"
+
+          probe_discovery() {
+            local name="$1" url="$2" out="/tmp/mad4b-discovery-$1.body"
+            local meta status elapsed
+            meta="$(curl --silent --show-error --connect-timeout 1 --max-time 4 -o "$out" -w '%{http_code} %{time_total}' "$url")"
+            status="${meta%% *}"
+            elapsed="${meta#* }"
+            echo "HTTP OAuth discovery name=$name status=$status time=$elapsed url=$url"
+            test "$status" = "200"
+            python3 - "$name" "$elapsed" "$out" <<'PY'
+          import json, sys
+          from pathlib import Path
+          name, elapsed, path = sys.argv[1], float(sys.argv[2]), Path(sys.argv[3])
+          if elapsed > 2.0:
+              raise SystemExit(f'{name} discovery exceeded 2s budget: {elapsed:.3f}s')
+          payload = json.loads(path.read_text(encoding='utf-8', errors='strict'))
+          if not isinstance(payload, dict) or not payload:
+              raise SystemExit(f'{name} discovery returned no JSON object')
+          print(json.dumps({'name': name, 'seconds': elapsed, 'status': 'PASS'}))
+          PY
+          }
+          probe_discovery resource-metadata "$RESOURCE_METADATA_URL"
+          probe_discovery authorization-metadata "$AUTH_METADATA_URL"
+          probe_discovery jwks "$JWKS_URL"
+
+          # Exercise the real HTTP route that ChatGPT Refresh uses. This is
+          # intentionally separate from rest_do_request() and WP-CLI stdio so
+          # route-local server materialization and response-path observers are
+          # included in the latency measurement.
+          CHATGPT_TOKEN="$(php /tmp/wp-cli.phar eval '
+          MAD4B_SCP_Local_OAuth_Server::ensure_runtime();
+          $mint = new ReflectionMethod( "MAD4B_SCP_Local_OAuth_Server", "mint_access_token" );
+          $mint->setAccessible( true );
+          $token = $mint->invoke( null, "https://chatgpt.com/oauth/client.json", 1, MAD4B_SCP_Local_OAuth_Server::resource_identifier(), array( "mad4b:read" ) );
+          if ( is_wp_error( $token ) ) throw new RuntimeException( $token->get_error_code() . ":" . $token->get_error_message() );
+          echo $token;
+          ' --path="$WP_PATH" --user=mad4b-ci-admin)"
+          test -n "$CHATGPT_TOKEN"
+
+          # Use the runtime-declared protected resource exactly. On disposable
+          # WordPress with plain permalinks this is ?rest_route=..., while live
+          # Staging may expose the equivalent pretty /wp-json/... form.
+          MCP_URL="$(php /tmp/wp-cli.phar eval '
+          MAD4B_SCP_Local_OAuth_Server::ensure_runtime();
+          echo MAD4B_SCP_Local_OAuth_Server::resource_identifier();
+          ' --path="$WP_PATH" --user=mad4b-ci-admin)"
+          test -n "$MCP_URL"
+          echo "HTTP MCP resource=$MCP_URL"
+          INIT_META="$(curl --silent --show-error \
+            --connect-timeout 2 --max-time 8 \
+            -D /tmp/mad4b-http-init.headers \
+            -o /tmp/mad4b-http-init.body \
+            -w '%{http_code} %{time_total}' \
+            -X POST "$MCP_URL" \
+            -H "Authorization: Bearer $CHATGPT_TOKEN" \
+            -H 'Accept: application/json, text/event-stream' \
+            -H 'Content-Type: application/json' \
+            -H 'MCP-Protocol-Version: 2025-11-25' \
+            --data '{"jsonrpc":"2.0","id":901,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"mad4b-http-refresh-ci","version":"1.0.0"}}}')"
+          INIT_STATUS="${INIT_META%% *}"
+          INIT_TIME="${INIT_META#* }"
+          echo "HTTP MCP initialize status=$INIT_STATUS time=$INIT_TIME"
+          cat /tmp/mad4b-http-init.headers
+          cat /tmp/mad4b-http-init.body
+          test "$INIT_STATUS" = "200"
+
+          SESSION_ID="$(awk 'BEGIN{IGNORECASE=1} /^Mcp-Session-Id:/ {gsub(/\r/,""); print $2}' /tmp/mad4b-http-init.headers | tail -n1)"
+          test -n "$SESSION_ID"
+
+          TOOLS_META="$(curl --silent --show-error \
+            --connect-timeout 2 --max-time 8 \
+            -D /tmp/mad4b-http-tools.headers \
+            -o /tmp/mad4b-http-tools.body \
+            -w '%{http_code} %{time_total}' \
+            -X POST "$MCP_URL" \
+            -H "Authorization: Bearer $CHATGPT_TOKEN" \
+            -H "Mcp-Session-Id: $SESSION_ID" \
+            -H 'Accept: application/json, text/event-stream' \
+            -H 'Content-Type: application/json' \
+            -H 'MCP-Protocol-Version: 2025-11-25' \
+            --data '{"jsonrpc":"2.0","id":902,"method":"tools/list","params":{}}')"
+          TOOLS_STATUS="${TOOLS_META%% *}"
+          TOOLS_TIME="${TOOLS_META#* }"
+          echo "HTTP MCP tools/list status=$TOOLS_STATUS time=$TOOLS_TIME"
+          cat /tmp/mad4b-http-tools.headers
+          cat /tmp/mad4b-http-tools.body
+          test "$TOOLS_STATUS" = "200"
+
+          export INIT_TIME TOOLS_TIME
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          def decode(path):
+              raw = Path(path).read_text(encoding='utf-8', errors='replace').strip()
+              if raw.startswith('data:'):
+                  chunks = []
+                  for line in raw.splitlines():
+                      if line.startswith('data:'):
+                          chunks.append(line[5:].strip())
+                  raw = ''.join(chunks)
+              return json.loads(raw)
+
+          init = decode('/tmp/mad4b-http-init.body')
+          tools = decode('/tmp/mad4b-http-tools.body')
+          init_s = float(os.environ['INIT_TIME'])
+          tools_s = float(os.environ['TOOLS_TIME'])
+          if init_s > 5.0:
+              raise SystemExit(f'HTTP MCP initialize exceeded 5s hotpath budget: {init_s:.3f}s')
+          if tools_s > 5.0:
+              raise SystemExit(f'HTTP MCP tools/list exceeded 5s hotpath budget: {tools_s:.3f}s')
+          if init.get('error') or not isinstance(init.get('result'), dict):
+              raise SystemExit(f'HTTP MCP initialize failed: {init!r}')
+          inventory = tools.get('result', {}).get('tools', [])
+          if tools.get('error') or not isinstance(inventory, list) or not inventory:
+              raise SystemExit(f'HTTP MCP tools/list failed: {tools!r}')
+          payload_bytes = Path('/tmp/mad4b-http-tools.body').stat().st_size
+          if payload_bytes > 131072:
+              raise SystemExit(f'HTTP MCP tools/list payload exceeded 128 KiB: {payload_bytes}')
+          if len(inventory) > 48:
+              raise SystemExit(f'HTTP MCP tools/list exceeded 48 tools: {len(inventory)}')
+          print(json.dumps({
+              'contract': 'mad4b.chatgpt-refresh-http-hotpath.v1',
+              'initialize_seconds': init_s,
+              'tools_list_seconds': tools_s,
+              'tool_count': len(inventory),
+              'tools_payload_bytes': payload_bytes,
+              'status': 'PASS',
+          }, indent=2))
+          PY
+          unset CHATGPT_TOKEN
+
+          rm -rf /tmp/mad4b-playwright
+          mkdir -p /tmp/mad4b-playwright
+          cp "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/oauth-live-authority-browser-e2e.mjs" /tmp/mad4b-playwright/test.mjs
+          cd /tmp/mad4b-playwright
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node ./test.mjs
 
       - name: Prove browser canary is unavailable in Production
         shell: bash

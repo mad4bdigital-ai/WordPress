@@ -36,6 +36,9 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php
           php -l wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
 
       - name: Prove expensive governance work is scoped
         shell: python
@@ -49,9 +52,29 @@ jobs:
           skill_abilities = (root / 'includes/class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
           request_scope = (root / 'includes/class-mad4b-scp-mcp-request-scope.php').read_text(encoding='utf-8')
           metadata_bridge = (root / 'includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php').read_text(encoding='utf-8')
+          functional_gap = (root / 'includes/class-mad4b-scp-functional-gap-evidence.php').read_text(encoding='utf-8')
           mu_bootstrap = (root / 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php').read_text(encoding='utf-8')
           main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
+          query_perf = (root / 'includes/class-mad4b-scp-admin-query-performance.php').read_text(encoding='utf-8')
           marker = (root / 'MAD4B-RUNTIME-BUILD.txt').read_text(encoding='utf-8')
+
+          for marker_text in [
+              "const CONTRACT = 'mad4b.admin-query-performance.v1'",
+              "mad4b_post_id_meta_key",
+              "mad4b_term_id_meta_key",
+              "ADD INDEX",
+              "'staging' !== self::environment()",
+              "'production_changed' => false",
+              "postmeta(post_id,meta_key)",
+              "termmeta(term_id,meta_key)",
+          ]:
+              if marker_text not in query_perf:
+                  raise SystemExit('Missing bounded admin-query performance invariant: ' + marker_text)
+          for forbidden in ["DROP INDEX", "DROP KEY", "DROP TABLE", "DELETE FROM", "UPDATE wp_"]:
+              if forbidden in query_perf:
+                  raise SystemExit('Admin-query performance hardening contains forbidden destructive SQL: ' + forbidden)
+          if "class-mad4b-scp-admin-query-performance.php" not in main or "MAD4B_SCP_Admin_Query_Performance::boot();" not in main:
+              raise SystemExit('Admin-query performance hardening is not wired into the Control Plane')
 
           required = [
               "remove_action( 'admin_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 20 );",
@@ -115,6 +138,92 @@ jobs:
                   raise SystemExit('Metadata bridge broadens dependency handling: ' + forbidden)
 
           for marker_text in [
+              "const MAX_TREE_FILES = 12000;",
+              "const MAX_TREE_BYTES = 805306368;",
+              "const MAX_SNAPSHOT_TREE_FILES = 30000;",
+              "const MAX_SNAPSHOT_TREE_BYTES = 1610612736;",
+              "const MAX_SNAPSHOT_SCAN_SECONDS = 20.0;",
+              "const MAX_PROVENANCE_VERIFY_FILES = 2500;",
+              "const MAX_PROVENANCE_VERIFY_BYTES = 268435456;",
+              "const MAX_PROVENANCE_VERIFY_SECONDS = 8.0;",
+              "const MAX_CENSUS_FILES = 30000;",
+              "const MAX_CENSUS_BYTES = 1610612736;",
+              "const MAX_CENSUS_SCAN_SECONDS = 5.0;",
+              "public static function current_runtime_census_status()",
+              "'metadata_only' => true",
+              "'content_rehashed' => false",
+              "runtime_census_time_budget_exceeded",
+              "runtime_census_snapshot_budget_exceeded",
+              "private static $snapshot = null;",
+              "private static $snapshot_key = '';",
+              "private static $fixed_point_retry_depth = 0;",
+              "if ( null !== self::$snapshot && '' !== self::$snapshot_key && hash_equals( self::$snapshot_key, $key ) ) {",
+              "$current_dynamic = strtolower( (string) self::current_dynamic_surface_fingerprint() );",
+              "$census_required = ! empty( self::$snapshot['snapshot_census_required'] );",
+              "$current_census = self::current_runtime_census_status();",
+              "hash_equals( $cached_census, $current_census_sha )",
+              "if ( $dynamic_match && $census_match ) return self::$snapshot;",
+              "self::$snapshot = null;",
+              "snapshot_runtime_identity_changed_during_evaluation",
+              "snapshot_runtime_census_changed_during_evaluation",
+              "self::$fixed_point_retry_depth < 1",
+              "'snapshot_fixed_point_stable' => $fixed_point_stable",
+              "'snapshot_census_required' => $census_required",
+              "'inactive_not_scanned'",
+              "single_pass_exact_match",
+              "single_pass_non_authorizing_identity",
+              "double_pass_drift_confirmation",
+              "metadata_only_runtime_identity",
+              "private static function runtime_only_metadata_identity",
+              "'content_rehashed' => false",
+              "snapshot_scan_budget_exceeded",
+              "snapshot_scan_time_budget_exceeded",
+              "build_provenance_verification_budget_exceeded",
+          ]:
+              if marker_text not in functional_gap:
+                  raise SystemExit('Missing zero-touch performance invariant: ' + marker_text)
+
+          runtime_evidence_body = functional_gap.split("private static function runtime_evidence", 1)[1].split("private static function route_methods", 1)[0]
+          if runtime_evidence_body.count("$runtime_only_metadata_budget = array(") != 1:
+              raise SystemExit('Runtime-only metadata budget is not snapshot-global')
+          if "runtime_only_metadata_identity( $plugin_file, $runtime_only_metadata_budget )" not in runtime_evidence_body:
+              raise SystemExit('Runtime-only metadata identity is not using the shared snapshot budget')
+
+          runtime_only_body = functional_gap.split("private static function runtime_only_metadata_identity", 1)[1].split("private static function runtime_census_from_runtime", 1)[0]
+          if "hash_file(" in runtime_only_body:
+              raise SystemExit('Runtime-only evidence unexpectedly performs content hashing')
+          for marker_text in ["plugin_census_once(", "'metadata_only' => true", "'content_rehashed' => false"]:
+              if marker_text not in runtime_only_body:
+                  raise SystemExit('Runtime-only metadata-only performance invariant missing: ' + marker_text)
+
+          census_body = functional_gap.split("private static function plugin_census_once", 1)[1].split("private static function runtime_only_metadata_identity", 1)[0]
+          if "hash_file(" in census_body:
+              raise SystemExit('Metadata-only fixed-point census unexpectedly re-hashes provider file content')
+          for marker_text in ["filesize(", "filemtime(", "census_sha256"]:
+              if marker_text not in census_body:
+                  raise SystemExit('Metadata census implementation missing: ' + marker_text)
+
+          identity_body = functional_gap.split("private static function runtime_identity_key()", 1)[1].split("private static function plugin_tree_once", 1)[0]
+          provider_identity_body = identity_body.split("foreach ( array(", 1)[0]
+          if "hash_file(" in provider_identity_body:
+              raise SystemExit('Request-local provider identity performs unbudgeted content hashing')
+          for marker_text in ["@lstat( $main )", "$main_stat['size']", "$main_stat['mtime']", "$main_stat['ctime']", "$main_stat['ino']"]:
+              if marker_text not in provider_identity_body:
+                  raise SystemExit('Provider cache identity is not metadata-only: ' + marker_text)
+
+          for forbidden in [
+              "add_action( 'admin_init'",
+              "add_action( 'init'",
+              "add_action( 'wp_loaded'",
+              "set_transient(",
+              "set_site_transient(",
+              "update_option(",
+              "add_option(",
+          ]:
+              if forbidden in functional_gap:
+                  raise SystemExit('Zero-touch evidence escaped on-demand/request-local performance boundary: ' + forbidden)
+
+          for marker_text in [
               "'request_requires_mcp_runtime' => false",
               "'request_scope_bypassed' => false",
               "'non_mad4b_request_bypassed'",
@@ -157,4 +266,4 @@ jobs:
           if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', versions[0]):
               raise SystemExit('Control Plane version format invalid: ' + versions[0])
 
-          print('mad4b-admin-performance.v7: PASS')
+          print('mad4b-admin-performance.v9: PASS')

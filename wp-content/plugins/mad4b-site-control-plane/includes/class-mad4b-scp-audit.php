@@ -153,7 +153,20 @@ final class MAD4B_SCP_Audit {
 	}
 
 	public static function storage_status() {
-		return MAD4B_SCP_Audit_Integrity::storage_status();
+		$status = MAD4B_SCP_Audit_Integrity::storage_status();
+		if ( ! is_array( $status ) ) $status = array( 'ready' => false );
+		$event_count = isset( $status['event_count'] ) ? (int) $status['event_count'] : 0;
+		$status['retention_contract'] = 'mad4b.audit-retention.v1';
+		$status['retention_mode'] = 'append_only_no_automatic_deletion';
+		$status['automatic_deletion_enabled'] = false;
+		$status['retention_review_threshold_events'] = 100000;
+		$status['retention_review_recommended'] = $event_count >= 100000;
+		$status['redaction_contract'] = 'mad4b.audit-redaction.v1';
+		$status['sensitive_key_redaction_enabled'] = true;
+		$status['summary_max_depth'] = self::SUMMARY_MAX_DEPTH;
+		$status['summary_max_items'] = self::SUMMARY_MAX_ITEMS;
+		$status['summary_max_bytes'] = self::SUMMARY_MAX_BYTES;
+		return $status;
 	}
 
 	public static function verify_chain() {
@@ -182,6 +195,145 @@ final class MAD4B_SCP_Audit {
 			if ( is_array( $entry ) ) $out[] = $entry;
 		}
 		return $out;
+	}
+
+	/**
+	 * Bounded read-only lookup for candidate-binding evidence.
+	 *
+	 * This intentionally filters the append-only chain in PHP instead of exposing
+	 * generic SQL/audit search. Selectors are exact and limited to binding events.
+	 */
+	public static function candidate_binding_events( array $selectors = array() ) {
+		global $wpdb;
+		$limit = isset( $selectors['limit'] ) ? max( 1, min( 200, absint( $selectors['limit'] ) ) ) : 50;
+		$request_id = isset( $selectors['request_id'] ) ? substr( sanitize_text_field( (string) $selectors['request_id'] ), 0, 100 ) : '';
+		$operation_id = isset( $selectors['operation_id'] ) ? strtolower( trim( (string) $selectors['operation_id'] ) ) : '';
+		$event_id = isset( $selectors['event_id'] ) ? strtolower( trim( (string) $selectors['event_id'] ) ) : '';
+		if ( '' !== $request_id && 1 !== preg_match( '/^[A-Za-z0-9._:-]{8,100}$/', $request_id ) ) return new WP_Error( 'mad4b_binding_audit_request_id_invalid', 'Binding audit request_id is invalid.' );
+		if ( '' !== $operation_id && 1 !== preg_match( '/^[a-f0-9-]{36}$/', $operation_id ) ) return new WP_Error( 'mad4b_binding_audit_operation_id_invalid', 'Binding audit operation_id is invalid.' );
+		if ( '' !== $event_id && 1 !== preg_match( '/^[a-f0-9-]{36}$/', $event_id ) ) return new WP_Error( 'mad4b_binding_audit_event_id_invalid', 'Binding audit event_id is invalid.' );
+
+		$status = self::storage_status();
+		if ( empty( $status['ready'] ) ) return new WP_Error( 'mad4b_binding_audit_storage_unavailable', 'Append-only audit storage is not ready.' );
+		$t = MAD4B_SCP_Schema::tables();
+		$allowed = array(
+			'mad4b/staging-write-candidate-binding-authorized',
+			'mad4b/staging-write-candidate-binding-complete',
+			'mad4b/staging-write-candidate-binding-noop',
+			'mad4b/staging-write-candidate-binding-rollback',
+		);
+		$where = array( 'chain_name = %s', 'ability IN (%s,%s,%s,%s)' );
+		$args = array_merge( array( self::CHAIN ), $allowed );
+		if ( '' !== $request_id ) {
+			$where[] = 'request_id = %s';
+			$args[] = $request_id;
+		}
+		if ( '' !== $event_id ) {
+			$where[] = 'event_id = %s';
+			$args[] = $event_id;
+		}
+		if ( '' !== $operation_id ) {
+			$where[] = 'summary_json LIKE %s';
+			$args[] = '%' . $wpdb->esc_like( '"operation_id":"' . $operation_id . '"' ) . '%';
+		}
+		$args[] = $limit;
+		$sql = "SELECT * FROM {$t['audit_events']} WHERE " . implode( ' AND ', $where ) . ' ORDER BY sequence DESC LIMIT %d';
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( ! is_array( $rows ) ) return new WP_Error( 'mad4b_binding_audit_lookup_failed', 'Binding audit lookup failed.', array( 'db_error' => $wpdb->last_error ) );
+		$rows = array_reverse( $rows );
+		$events = array();
+		foreach ( $rows as $row ) {
+			$entry = MAD4B_SCP_Audit_Integrity::row_to_entry( $row );
+			if ( is_array( $entry ) ) $events[] = $entry;
+		}
+		return array(
+			'contract' => 'mad4b.staging-write-candidate-binding-audit.v1',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'bounded_event_types' => $allowed,
+			'chain' => self::CHAIN,
+			'chain_valid' => self::verify_chain(),
+			'head_consistent' => ! empty( $status['head_consistent'] ),
+			'count' => count( $events ),
+			'events' => $events,
+		);
+	}
+
+
+	/**
+	 * Bounded read-only lookup for Context Review evidence.
+	 *
+	 * Only the exact Human and delegated AI review event types are queryable. Review-note text is not
+	 * returned through this MCP-facing diagnostic; presence and SHA-256 are enough
+	 * to prove rationale existed without widening the read surface.
+	 */
+	public static function context_review_events( array $selectors = array() ) {
+		global $wpdb;
+		$limit = isset( $selectors['limit'] ) ? max( 1, min( 100, absint( $selectors['limit'] ) ) ) : 25;
+		$request_id = isset( $selectors['request_id'] ) ? substr( sanitize_text_field( (string) $selectors['request_id'] ), 0, 100 ) : '';
+		$event_id = isset( $selectors['event_id'] ) ? strtolower( trim( (string) $selectors['event_id'] ) ) : '';
+		$asset_id = isset( $selectors['asset_id'] ) ? strtolower( trim( (string) $selectors['asset_id'] ) ) : '';
+		$decision = isset( $selectors['decision'] ) ? sanitize_key( (string) $selectors['decision'] ) : '';
+		$actor_type = isset( $selectors['actor_type'] ) ? sanitize_key( (string) $selectors['actor_type'] ) : '';
+		if ( '' !== $request_id && 1 !== preg_match( '/^[A-Za-z0-9._:-]{8,100}$/', $request_id ) ) return new WP_Error( 'mad4b_context_review_audit_request_id_invalid', 'Context review audit request_id is invalid.' );
+		if ( '' !== $event_id && 1 !== preg_match( '/^[a-f0-9-]{36}$/', $event_id ) ) return new WP_Error( 'mad4b_context_review_audit_event_id_invalid', 'Context review audit event_id is invalid.' );
+		if ( '' !== $asset_id && 1 !== preg_match( '/^[a-f0-9]{64}$/', $asset_id ) ) return new WP_Error( 'mad4b_context_review_audit_asset_id_invalid', 'Context review audit asset_id is invalid.' );
+		if ( '' !== $decision && ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) ) return new WP_Error( 'mad4b_context_review_audit_decision_invalid', 'Context review audit decision is invalid.' );
+		if ( '' !== $actor_type && ! in_array( $actor_type, array( 'wp_admin', 'ai_agent' ), true ) ) return new WP_Error( 'mad4b_context_review_audit_actor_type_invalid', 'Context review audit actor_type is invalid.' );
+
+		$status = self::storage_status();
+		if ( empty( $status['ready'] ) ) return new WP_Error( 'mad4b_context_review_audit_storage_unavailable', 'Append-only audit storage is not ready.' );
+		$t = MAD4B_SCP_Schema::tables();
+		$where = array( 'chain_name = %s', '( ability = %s OR ability = %s )' );
+		$args = array( self::CHAIN, 'mad4b/context-asset-review', 'mad4b/context-asset-ai-review' );
+		if ( '' !== $request_id ) {
+			$where[] = 'request_id = %s';
+			$args[] = $request_id;
+		}
+		if ( '' !== $event_id ) {
+			$where[] = 'event_id = %s';
+			$args[] = $event_id;
+		}
+		if ( '' !== $asset_id ) {
+			$where[] = 'summary_json LIKE %s';
+			$args[] = '%' . $wpdb->esc_like( '"asset_id":"' . $asset_id . '"' ) . '%';
+		}
+		if ( '' !== $decision ) {
+			$where[] = 'summary_json LIKE %s';
+			$args[] = '%' . $wpdb->esc_like( '"decision":"' . $decision . '"' ) . '%';
+		}
+		if ( '' !== $actor_type ) {
+			$where[] = 'summary_json LIKE %s';
+			$args[] = '%' . $wpdb->esc_like( '"actor_type":"' . $actor_type . '"' ) . '%';
+		}
+		$args[] = $limit;
+		$sql = "SELECT * FROM {$t['audit_events']} WHERE " . implode( ' AND ', $where ) . ' ORDER BY sequence DESC LIMIT %d';
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( ! is_array( $rows ) ) return new WP_Error( 'mad4b_context_review_audit_lookup_failed', 'Context review audit lookup failed.', array( 'db_error' => $wpdb->last_error ) );
+		$rows = array_reverse( $rows );
+		$events = array();
+		foreach ( $rows as $row ) {
+			$entry = MAD4B_SCP_Audit_Integrity::row_to_entry( $row );
+			if ( ! is_array( $entry ) ) continue;
+			$summary = isset( $entry['summary'] ) && is_array( $entry['summary'] ) ? $entry['summary'] : array();
+			$review_note = isset( $summary['review_note'] ) ? (string) $summary['review_note'] : '';
+			unset( $summary['review_note'] );
+			$summary['review_note_present'] = '' !== $review_note;
+			$summary['review_note_sha256'] = '' !== $review_note ? hash( 'sha256', $review_note ) : '';
+			$entry['summary'] = $summary;
+			$events[] = $entry;
+		}
+		return array(
+			'contract' => 'mad4b.context-review-audit.v2',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'bounded_event_types' => array( 'mad4b/context-asset-review', 'mad4b/context-asset-ai-review' ),
+			'chain' => self::CHAIN,
+			'chain_valid' => self::verify_chain(),
+			'head_consistent' => ! empty( $status['head_consistent'] ),
+			'count' => count( $events ),
+			'events' => $events,
+		);
 	}
 
 	private static function append_locked( $ability, array $summary, $summary_json, $status ) {

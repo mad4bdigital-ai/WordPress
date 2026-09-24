@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/config/premium-provider-attestations.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/premium-provider-semantic-review-requests.json'
       - 'wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json'
       - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
       - 'wp-content/plugins/jet-engine.zip'
@@ -11,6 +12,7 @@ on:
       - 'tools/normalize-premium-provider-package.py'
       - 'tools/premium-provider-attestation.py'
       - 'tests/premium-provider-attestation-contract.py'
+      - 'tests/premium-provider-semantic-review-request-contract.py'
       - '.github/workflows/mad4b-premium-provider-attestation.yml'
   workflow_dispatch:
 
@@ -41,6 +43,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/premium-provider-attestations.json >/dev/null
           python3 tests/premium-provider-attestation-contract.py
+          python3 tests/premium-provider-semantic-review-request-contract.py
 
       - name: Normalize owner-supplied exact packages
         shell: bash

@@ -1,0 +1,38 @@
+{
+  "contract": "mad4b.premium-provider-semantic-review-requests.v1",
+  "non_authorizing": true,
+  "evidence": {
+    "source_head_sha": "fda73ba3e90b019ff2fcb21cd8573dc30350fb74",
+    "workflow_run_id": "35691216971",
+    "artifact_id": 10678610762,
+    "artifact_digest": "sha256:bcb940bf62f342dd4941825ea2b6b56ff2f1fd63ac2808672b3da54bb36a0f45"
+  },
+  "requests": {
+    "jetengine": {
+      "provider": "jetengine",
+      "version": "3.8.15",
+      "baseline_version": "3.8.11.2",
+      "candidate_attestation_id": "jetengine-3.8.15-9e469a9d3e0c86d4",
+      "repository_source_archive_sha256": "9f7d2711deb0d2b9dac5d07d0bd96000e7bcd698a3614454f53b534e94935e97",
+      "normalized_archive_sha256": "9e469a9d3e0c86d4ec617e03198de29291d27f5339b7e6e85ae57493626d7fc7",
+      "normalized_archive_bytes": 21756103,
+      "critical_manifest_sha256": "d20b87a52b999a24549ffd633f26e9596d20e2cbb137dbe00f0ac0f7e0693224",
+      "changed_critical_file_count": 13,
+      "semantic_review_status": "pending",
+      "promotion_authorized": false
+    },
+    "jetsmartfilters": {
+      "provider": "jetsmartfilters",
+      "version": "3.8.5",
+      "baseline_version": "3.8.3.1",
+      "candidate_attestation_id": "jetsmartfilters-3.8.5-6a5f37cf953f7262",
+      "repository_source_archive_sha256": "9d82887a95728f824f53efa9ac59101ca609dfd1321e4639030e4dff3dcc3354",
+      "normalized_archive_sha256": "6a5f37cf953f7262347c6daba6a0637382e40d81acb47d4e03d047ddb91f4752",
+      "normalized_archive_bytes": 8164976,
+      "critical_manifest_sha256": "16dea505c386f2a2b5366c55a10ff430e21d9b3a72727f01acfc400071136068",
+      "changed_critical_file_count": 6,
+      "semantic_review_status": "pending",
+      "promotion_authorized": false
+    }
+  }
+}

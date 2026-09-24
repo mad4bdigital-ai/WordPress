@@ -76,6 +76,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/composite-packaged-provider-scan-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/scan-packaged-providers.py \
             --plugins-dir wp-content/plugins \
             --baseline wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json \
@@ -98,6 +99,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify staging post-deployment certification contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-certification-contract.py
+
+      - name: Verify admin settings persistence contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-contract.py
+
       - name: Verify required modules and core safety gates
         shell: bash
         run: |
@@ -115,6 +128,7 @@ jobs:
           authorization="$root/includes/class-mad4b-scp-authorization.php"
           site_profile="$root/includes/class-mad4b-scp-site-profile.php"
           write_authority="$root/includes/class-mad4b-scp-staging-write-authority.php"
+          candidate_binding="$root/includes/class-mad4b-scp-staging-write-candidate-binding.php"
           write_cert="$root/includes/class-mad4b-scp-write-runtime-certification.php"
           rest_compat="$root/includes/class-mad4b-scp-rest-compatibility.php"
           for file in \
@@ -130,6 +144,16 @@ jobs:
             includes/class-mad4b-scp-provider-contracts.php \
             includes/class-mad4b-scp-adapter-registry.php \
             includes/class-mad4b-scp-staging-write-authority.php \
+            includes/class-mad4b-scp-staging-write-candidate-binding.php \
+            includes/class-mad4b-scp-staging-certification.php \
+            includes/class-mad4b-scp-admin-query-performance.php \
+            includes/class-mad4b-scp-query-monitor-evidence-bridge.php \
+            includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php \
+            includes/class-mad4b-scp-plugin-package.php \
+            includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php \
+            tests/staging-write-candidate-binding-runtime.php \
+            MAD4B-ROLLBACK-CANDIDATE.json \
+            MAD4B-ROLLBACK-RETENTION-RECEIPT.json \
             includes/class-mad4b-scp-write-runtime-certification.php \
             includes/class-mad4b-scp-rest-compatibility.php \
             includes/adapters/class-mad4b-scp-adapter-base.php \
@@ -223,11 +247,43 @@ jobs:
           grep -Fq "'mad4b-write'" "$servers"
           grep -Fq "public static function write_tools" "$servers"
           grep -Fq "'MAD4B Write MCP'" "$servers"
-          grep -Fq "array_merge( \$tools, self::write_tools() )" "$servers"
+          # Normal governed write schemas must stay out of ChatGPT tools/list.
+          # The full logical inventory remains on mad4b-write and is transported
+          # through the exact-target write dispatcher.
+          grep -Fq "public static function external_write_tools()" "$servers"
+          grep -Fq "public static function chatgpt_full_catalog_candidates()" "$servers"
+          grep -Fq "\$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), \$step_up )" "$servers"
+          grep -Fq "write_dispatch_transport_available" "$write_cert"
+          grep -Fq "direct_write_schemas_hidden_from_chatgpt" "$write_cert"
 
           grep -Fq "mad4b.site-profile.v1" "$site_profile"
           grep -Fq "MAD4B_SCP_Site_Profile::origin_enrolled" "$write_authority"
           grep -Fq "MAD4B_SCP_Site_Profile::write_enabled" "$write_authority"
+          grep -Fq "mad4b.staging-write-candidate-binding.v2" "$candidate_binding"
+          grep -Fq "mad4b/staging-write-candidate-bind" "$candidate_binding"
+          grep -Fq "'surface' => 'enrollment'" "$candidate_binding"
+          grep -Fq "'binding_only' => true" "$candidate_binding"
+          grep -Fq "'grant_mutation_allowed' => false" "$candidate_binding"
+          grep -Fq "'subject_mutation_allowed' => false" "$candidate_binding"
+          grep -Fq "'agent_mutation_allowed' => false" "$candidate_binding"
+          grep -Fq "expected_grant_rows_fingerprint" "$candidate_binding"
+          grep -Fq "expected_package_manifest_digest" "$candidate_binding"
+          grep -Fq "expected_artifact_identity" "$candidate_binding"
+          grep -Fq "MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity" "$candidate_binding"
+          if grep -Fq "MAD4B_SCP_Staging_Write_Authority::reconcile(" "$candidate_binding"; then
+            echo 'Binding-only enrollment surface must never call full authority reconcile().' >&2
+            exit 1
+          fi
+          grep -Fq "mad4b/staging-write-candidate-bind" "$servers"
+          grep -Fq "mad4b/staging-write-candidate-binding-audit" "$servers"
+          grep -Fq "mad4b/staging-write-candidate-binding-noop" "$write_authority"
+          grep -Fq "mad4b/staging-write-candidate-binding-rollback" "$write_authority"
+          grep -Fq "stored_package_manifest_digest" "$write_authority"
+          grep -Fq "stored_artifact_identity" "$write_authority"
+          php "$root/tests/staging-write-candidate-binding-runtime.php"
+          python3 "$root/tests/staging-write-candidate-binding-audit-contract.py"
+          python3 "$root/tests/plugin-package-mcp-governance-contract.py"
+          python3 "$root/tests/chatgpt-refresh-compact-catalog-contract.py"
           grep -Fq "all_remote_writes_require_exact_approval" "$write_authority"
           grep -Fq "production_auto_enable" "$write_authority"
           grep -Fq "breakglass_auto_enable" "$write_authority"
@@ -235,7 +291,7 @@ jobs:
             echo 'Governed write authority must be tenant-neutral; ETG origin literal detected.' >&2
             exit 1
           fi
-          grep -Fq "mad4b.write-runtime-certification.v2" "$write_cert"
+          grep -Fq "mad4b.write-runtime-certification.v3" "$write_cert"
           grep -Fq "all_write_tools_exposed_on_same_plugin_transport" "$write_cert"
           grep -Fq "mad4b.rest-compatibility.v2" "$rest_compat"
           grep -Fq "'/wpml/v1/rest/status'" "$rest_compat"
@@ -326,8 +382,21 @@ jobs:
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
-          if grep -RInE --include='*.php' '\b(eval|assert|exec|shell_exec|system|passthru|popen|proc_open)\s*\(' "$root"; then
-            echo 'Forbidden arbitrary execution primitive detected.' >&2
+          developer="$root/includes/class-mad4b-scp-developer-runtime.php"
+
+          # The default/control/content/admin planes remain command-execution free.
+          if find "$root" -type f -name '*.php' ! -path "$developer" -print0 \
+            | xargs -0 grep -nEH '\b(eval|assert|exec|shell_exec|system|passthru|popen|proc_open)\s*\('; then
+            echo 'Forbidden arbitrary execution primitive detected outside the isolated Developer Plane.' >&2
+            exit 1
+          fi
+
+          # The Developer Plane gets one process primitive only. PHP eval() and
+          # shell helper primitives remain forbidden; wp eval is invoked as argv.
+          test -f "$developer"
+          grep -Fq "proc_open(" "$developer"
+          if grep -nE '\b(eval|assert|exec|shell_exec|system|passthru|popen)\s*\(' "$developer"; then
+            echo 'Developer Plane must use only proc_open with bounded argv execution.' >&2
             exit 1
           fi
 
@@ -336,7 +405,7 @@ jobs:
         run: |
           set -euo pipefail
           servers='wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
-          for surface in mad4b-read mad4b-chatgpt mad4b-content mad4b-write mad4b-admin mad4b-breakglass; do
+          for surface in mad4b-read mad4b-chatgpt mad4b-enrollment mad4b-content mad4b-write mad4b-admin mad4b-developer mad4b-developer-breakglass mad4b-breakglass; do
             grep -Fq "'$surface'" "$servers"
           done
           grep -Fq "ability_names( 'read' )" "$servers"

@@ -36,6 +36,7 @@ required_compat = [
     "'local_key_path_policy_ready'",
     "&& ! empty( $status['effective'] )",
     "&& self::local_key_policy_ready( $status )",
+    "&& ! empty( $status['resource_transport_allowed'] )",
     "MAD4B_SCP_Local_OAuth_Key_Path_Policy::transport_ready()",
     "if ( ! self::oauth_discovery_ready( $status ) ) return array();",
     "'remote_oauth_read_policy'",
@@ -60,12 +61,22 @@ required_compat = [
 for marker in required_compat:
     assert marker in compat, f'missing compatibility marker: {marker}'
 
+discovery_body = compat.split("private static function oauth_discovery_ready( $status )", 1)[1].split("private static function local_key_policy_ready", 1)[0]
+assert "$status['resource_transport_allowed']" in discovery_body, 'OAuth discovery must follow the bridge transport policy'
+assert "$status['https']" not in discovery_body, 'Compatibility must not re-forbid the bridge bounded Local loopback exception'
+
 for marker in [
-    "'/mcp/mad4b-enrollment' === $route",
-    "MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url( 'mad4b-enrollment' )",
+    "'/mcp/mad4b-chatgpt' => 'mad4b-chatgpt'",
+    "'/mcp/mad4b-enrollment' => 'mad4b-enrollment'",
+    "'/mcp/mad4b-developer' => 'mad4b-developer'",
+    "'/mcp/mad4b-developer-breakglass' => 'mad4b-developer-breakglass'",
+    "$server_id = $server_map[ $route ]",
+    "MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url( $server_id )",
+    "MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( $server_id )",
+    "MAD4B_SCP_OAuth_Resource_Bridge::scopes_for_resource( $resource )",
 ]:
-    assert marker in challenge, f'missing enrollment challenge marker: {marker}'
-assert "MAD4B_SCP_OAuth_Resource_Bridge::metadata_url( $resource )" not in challenge, 'enrollment challenge must use canonical RFC9728 path-derived metadata'
+    assert marker in challenge, f'missing resource-specific challenge marker: {marker}'
+assert "MAD4B_SCP_OAuth_Resource_Bridge::metadata_url( $resource )" not in challenge, 'resource challenge must use canonical RFC9728 path-derived metadata'
 
 assert "'authorization_server_external' => true" not in compat, 'external authority truth must not be hardcoded'
 assert "MAD4B WordPress Staging Read MCP'" not in compat, 'resource name must not be hardcoded to Staging'
@@ -84,30 +95,62 @@ required_registry = [
 for marker in required_registry:
     assert marker in registry, f'missing profile registry marker: {marker}'
 
-# Exact enrolled Staging uses one ChatGPT resource for the complete normal governed
-# read/write catalog plus the bounded bootstrap transitions. Production/non-exact
-# sites retain the historical narrow read surface.
+# Exact enrolled Staging uses one ChatGPT resource with a minimal direct
+# transport. The full logical read/write universe remains discoverable, while
+# large target schemas stay outside tools/list and execute only through their
+# original governed WP_Ability contracts.
 for marker in [
     'chatgpt_unified_catalog_enabled',
     "'staging' === MAD4B_SCP_Site_Profile::current_environment()",
     'MAD4B_SCP_Site_Profile::origin_enrolled()',
     'MAD4B_SCP_Site_Profile::site_urls_match_enrollment()',
+    'public static function chatgpt_full_catalog_candidates()',
     "foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface )",
     "self::core_tools( 'mad4b-enrollment' )",
-    "$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' );",
+    "private static function chatgpt_internal_enrollment_mutations()",
+    "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
+    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )",
     'self::external_write_tools()',
     "'mad4b/database-raw-query' === $ability_name",
     "self::core_tools( 'mad4b-breakglass' )",
 ]:
-    assert marker in servers, f'missing unified ChatGPT catalog marker: {marker}'
+    assert marker in servers, f'missing minimal ChatGPT transport/logical catalog marker: {marker}'
 
-# The legacy/narrow fallback remains explicit when exact Staging binding is absent.
-assert 'if ( ! self::chatgpt_unified_catalog_enabled() )' in servers
-for marker in [
-    "'mad4b/filesystem-list', 'mad4b/filesystem-read'",
-    "'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/database-raw-query'",
+# Low-level enrollment mutations remain present only as internal primitives and
+# must be removed from both direct ChatGPT tools/list and logical user discovery.
+chatgpt_tools_body = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
+for low_level in [
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
 ]:
-    assert marker in servers, f'missing non-Staging narrow fallback marker: {marker}'
+    assert low_level not in chatgpt_tools_body, f'low-level enrollment mutation leaked into direct ChatGPT catalog: {low_level}'
+
+internal_enrollment = servers.split('private static function chatgpt_internal_enrollment_mutations()', 1)[1].split('private static function chatgpt_enrollment_candidates()', 1)[0]
+for low_level in [
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
+]:
+    assert low_level in internal_enrollment, f'internal enrollment primitive was lost: {low_level}'
+
+logical_enrollment = servers.split('private static function chatgpt_enrollment_candidates()', 1)[1].split('public static function chatgpt_full_catalog_candidates()', 1)[0]
+assert 'self::chatgpt_internal_enrollment_mutations()' in logical_enrollment
+
+# The non-unified fallback is also a minimal transport and must never
+# restore heavy filesystem/database schemas or Breakglass to tools/list.
+assert 'if ( ! self::chatgpt_unified_catalog_enabled() )' in servers
+fallback = servers.split('if ( ! self::chatgpt_unified_catalog_enabled() )', 1)[1].split('$bootstrap = array(', 1)[0]
+for marker in [
+    "$tools = array_values( array_diff( $core, $breakglass, array( 'mad4b/database-raw-query' ) ) )",
+    "array_unique( array_map( 'strval', $tools ) )",
+    "sort( $tools, SORT_STRING )",
+    "return $tools",
+]:
+    assert marker in fallback, f'missing non-Staging minimal fallback marker: {marker}'
+assert 'self::write_tools()' not in fallback, 'non-Staging fallback must not merge the governed write catalog directly'
 
 # Discovery never grants execution. Every normal mutation arriving through ChatGPT
 # is intercepted regardless of current write readiness and can only cross to
@@ -152,4 +195,4 @@ for forbidden in [
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
-print('mad4b.site-control-plane.mcp-client-compatibility.v9: PASS')
+print('mad4b.site-control-plane.mcp-client-compatibility.v12: PASS')

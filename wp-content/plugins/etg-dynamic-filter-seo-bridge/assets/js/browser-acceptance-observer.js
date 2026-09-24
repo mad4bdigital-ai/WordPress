@@ -20,12 +20,50 @@
             filteredSnapshot: null,
             resetSnapshot: null,
             historyCalls: [],
-            etgHistoryMutation: false
+            etgHistoryMutation: false,
+            ajaxFilterStartedAt: 0,
+            ajaxEndpointLatencyMs: null,
+            filterToPresentationMs: null
         };
     }
 
     function clone(value) {
         try { return JSON.parse(JSON.stringify(value)); } catch (error) { return null; }
+    }
+
+    function nowMs() {
+        try { if (window.performance && typeof window.performance.now === 'function') { return Number(window.performance.now()) || 0; } } catch (error) {}
+        return Date.now ? Date.now() : 0;
+    }
+
+    function roundMs(value) {
+        value = Number(value);
+        return isFinite(value) && value >= 0 ? Math.round(value * 1000) / 1000 : null;
+    }
+
+    function navigationPerformance() {
+        var out = {};
+        try {
+            var perf = window.performance;
+            if (!perf) { return out; }
+            var entries = typeof perf.getEntriesByType === 'function' ? perf.getEntriesByType('navigation') : [];
+            var nav = entries && entries.length ? entries[0] : null;
+            if (nav) {
+                var requestStart = Number(nav.requestStart || 0), responseStart = Number(nav.responseStart || 0);
+                var domEnd = Number(nav.domContentLoadedEventEnd || 0), loadEnd = Number(nav.loadEventEnd || 0);
+                if (responseStart >= requestStart) { out.ttfb_ms = roundMs(responseStart - requestStart); }
+                if (domEnd >= Number(nav.startTime || 0)) { out.dom_content_loaded_ms = roundMs(domEnd - Number(nav.startTime || 0)); }
+                if (loadEnd >= Number(nav.startTime || 0) && loadEnd > 0) { out.load_event_ms = roundMs(loadEnd - Number(nav.startTime || 0)); }
+                return out;
+            }
+            var timing = perf.timing;
+            if (timing) {
+                if (Number(timing.responseStart) >= Number(timing.requestStart)) { out.ttfb_ms = roundMs(Number(timing.responseStart) - Number(timing.requestStart)); }
+                if (Number(timing.domContentLoadedEventEnd) >= Number(timing.navigationStart)) { out.dom_content_loaded_ms = roundMs(Number(timing.domContentLoadedEventEnd) - Number(timing.navigationStart)); }
+                if (Number(timing.loadEventEnd) >= Number(timing.navigationStart) && Number(timing.loadEventEnd) > 0) { out.load_event_ms = roundMs(Number(timing.loadEventEnd) - Number(timing.navigationStart)); }
+            }
+        } catch (error) {}
+        return out;
     }
 
     function boundedString(value, maxLength) {
@@ -86,7 +124,8 @@
         };
     }
 
-    function domIds() {
+    function domIds(limit) {
+        limit = Math.max(1, Math.min(5000, parseInt(limit, 10) || 100));
         var selectors = [
             '.jet-listing-grid__item[data-post-id]',
             '.jet-listing-grid__item [data-post-id]',
@@ -96,7 +135,7 @@
         selectors.forEach(function (selector) {
             Array.prototype.forEach.call(document.querySelectorAll(selector), function (node) {
                 var id = parseInt(node.getAttribute('data-post-id'), 10);
-                if (id > 0 && out.indexOf(id) === -1 && out.length < 100) { out.push(id); }
+                if (id > 0 && out.indexOf(id) === -1 && out.length < limit) { out.push(id); }
             });
         });
         return out;
@@ -121,12 +160,16 @@
     }
 
     function domState() {
-        var ids = domIds();
-        var count = resultCount(ids);
+        var proofIds = domIds(5000);
+        var ids = proofIds.slice(0, 100);
+        var count = resultCount(proofIds);
         return {
             ids: ids,
-            ids_complete: !!count.authoritative && count.count <= 100 && ids.length === count.count,
-            observed_id_count: ids.length,
+            ids_complete: !!count.authoritative && count.count <= 100 && proofIds.length === count.count,
+            observed_id_count: proofIds.length,
+            proof_ids: proofIds,
+            proof_ids_complete: !!count.authoritative && count.count <= 5000 && proofIds.length === count.count,
+            proof_item_count: proofIds.length,
             result_count: count.count,
             result_count_authoritative: !!count.authoritative,
             result_count_source: count.source
@@ -196,11 +239,12 @@
         if (originalFetch || typeof window.fetch !== 'function') { return; }
         originalFetch = window.fetch;
         window.fetch = function (input, init) {
-            var url = requestUrl(input), method = requestMethod(input, init);
+            var url = requestUrl(input), method = requestMethod(input, init), startedAt = nowMs();
             var promise = originalFetch.apply(window, arguments);
             if (!endpointMatches(url)) { return promise; }
             promise.then(function (response) {
-                var record = { method: boundedString(method, 16), endpoint: boundedString(url, 2048), http_status: Number(response.status || 0) };
+                var record = { method: boundedString(method, 16), endpoint: boundedString(url, 2048), http_status: Number(response.status || 0), latency_ms: roundMs(nowMs() - startedAt) };
+                state.ajaxEndpointLatencyMs = record.latency_ms;
                 try {
                     response.clone().text().then(function (body) {
                         var data = {};
@@ -234,6 +278,7 @@
         jsf.events.subscribe('ajaxFilters/updated', function (provider, queryId) {
             if (!armed) { return; }
             state.ajaxFiltersUpdated = true;
+            state.ajaxFilterStartedAt = nowMs();
             state.filterGroup = boundedString(provider || '', 80) + '/' + boundedString(queryId || '', 79);
         });
         jsfSubscribed = true;
@@ -248,6 +293,7 @@
     document.addEventListener('etg-dfsb/ajax-presentation-updated', function (event) {
         if (!armed) { return; }
         state.presentationUpdated = true;
+        if (state.ajaxFilterStartedAt > 0) { state.filterToPresentationMs = roundMs(nowMs() - state.ajaxFilterStartedAt); }
         var detail = event && event.detail ? event.detail : {};
         if (detail.provider || detail.query_id) { state.filterGroup = boundedString(detail.provider || '', 80) + '/' + boundedString(detail.query_id || '', 79); }
         window.setTimeout(function () { if (armed) { state.filteredSnapshot = snapshotState(); } }, 0);
@@ -289,6 +335,31 @@
         armed = false; currentCase = null; currentChallengeNonce = ''; restoreFetch(); restoreHistory();
     }
 
+    function renderedEvidence(dom) {
+        dom = dom && typeof dom === 'object' ? dom : {};
+        var out = {};
+        ['ids','ids_complete','observed_id_count','result_count','result_count_authoritative','result_count_source'].forEach(function (key) {
+            if (Object.prototype.hasOwnProperty.call(dom, key)) { out[key] = clone(dom[key]); }
+        });
+        return out;
+    }
+
+    function canonicalIdsJson(ids) {
+        return JSON.stringify((Array.isArray(ids) ? ids : []).map(function (id) { return parseInt(id, 10) || 0; }));
+    }
+
+    function sha256Hex(text) {
+        try {
+            if (!window.crypto || !window.crypto.subtle || typeof window.crypto.subtle.digest !== 'function' || typeof window.TextEncoder !== 'function') {
+                return Promise.resolve('');
+            }
+            var bytes = (new window.TextEncoder()).encode(String(text || ''));
+            return window.crypto.subtle.digest('SHA-256', bytes).then(function (buffer) {
+                return Array.prototype.map.call(new Uint8Array(buffer), function (b) { return ('00' + b.toString(16)).slice(-2); }).join('');
+            }, function () { return ''; });
+        } catch (error) { return Promise.resolve(''); }
+    }
+
     function snapshot() {
         var filtered = state.filteredSnapshot || snapshotState();
         var reset = state.resetSnapshot || snapshotState();
@@ -317,7 +388,13 @@
                 presentation_reset: state.presentationReset
             },
             network: clone(state.lastNetwork) || {},
-            rendered: clone(filtered.dom) || { ids: [], result_count: 0 },
+            performance: (function () {
+                var perf = navigationPerformance();
+                if (state.ajaxEndpointLatencyMs !== null) { perf.ajax_endpoint_latency_ms = state.ajaxEndpointLatencyMs; }
+                if (state.filterToPresentationMs !== null) { perf.filter_to_presentation_ms = state.filterToPresentationMs; }
+                return perf;
+            }()),
+            rendered: renderedEvidence(filtered.dom),
             url_state: {
                 filter_state_observed: normalizedPath(filtered.url) !== normalizedPath(baseline.url) || state.ajaxFiltersUpdated,
                 etg_history_mutation: state.etgHistoryMutation,
@@ -339,12 +416,35 @@
         };
     }
 
+    function snapshotAsync() {
+        var evidence = snapshot();
+        var filtered = state.filteredSnapshot || snapshotState();
+        var dom = filtered && filtered.dom ? filtered.dom : {};
+        var proofIds = Array.isArray(dom.proof_ids) ? dom.proof_ids.slice(0, 5000) : [];
+        var total = Number(evidence.rendered && evidence.rendered.result_count || 0);
+        var authoritative = !!(evidence.rendered && evidence.rendered.result_count_authoritative);
+        if (!authoritative || total <= 100 || total > 5000 || proofIds.length !== total) {
+            return Promise.resolve(evidence);
+        }
+        var identity = proofIds.slice().sort(function (a, b) { return Number(a) - Number(b); });
+        return Promise.all([sha256Hex(canonicalIdsJson(identity)), sha256Hex(canonicalIdsJson(proofIds))]).then(function (digests) {
+            if (/^[a-f0-9]{64}$/.test(digests[0]) && /^[a-f0-9]{64}$/.test(digests[1])) {
+                evidence.rendered.digest_authoritative = true;
+                evidence.rendered.proof_item_count = proofIds.length;
+                evidence.rendered.identity_digest = digests[0];
+                evidence.rendered.order_digest = digests[1];
+            }
+            return evidence;
+        });
+    }
+
     window.ETGDFSBBrowserAcceptanceObserver = {
         contract: CONTRACT,
         passive: true,
         authorizing: false,
         arm: arm,
         snapshot: snapshot,
+        snapshotAsync: snapshotAsync,
         disarm: disarm
     };
 }(window, document));

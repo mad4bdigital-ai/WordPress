@@ -1,9 +1,5 @@
 <?php
 
-namespace Jet_Engine\Query_Builder {
-	class Manager {}
-}
-
 namespace BitApps\Pi\Model {
 	class Flow {}
 }

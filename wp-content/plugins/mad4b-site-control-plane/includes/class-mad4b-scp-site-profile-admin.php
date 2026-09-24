@@ -14,6 +14,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		self::$booted = true;
 		add_action( 'admin_menu', array( __CLASS__, 'register_page' ), 25 );
 		add_action( 'admin_post_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
+		add_action( 'wp_ajax_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 		add_action( 'admin_post_' . self::ACTION_DISABLE, array( __CLASS__, 'handle_disable' ) );
 	}
 
@@ -29,8 +30,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 	}
 
 	public static function handle_save() {
-		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
-		check_admin_referer( self::ACTION_SAVE );
+		self::require_save_request();
 		$input = array(
 			'display_name' => isset( $_POST['display_name'] ) ? wp_unslash( $_POST['display_name'] ) : '',
 			'chatgpt_app_id' => isset( $_POST['chatgpt_app_id'] ) ? wp_unslash( $_POST['chatgpt_app_id'] ) : '',
@@ -49,6 +49,40 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			'acceptance_enabled' => ! empty( $_POST['acceptance_enabled'] ),
 		);
 		$result = MAD4B_SCP_Site_Profile::save_current_site( $input );
+		if ( self::is_ajax_request() ) {
+			if ( is_wp_error( $result ) ) {
+				wp_send_json_error( array(
+					'code' => sanitize_key( $result->get_error_code() ),
+					'message' => $result->get_error_message(),
+					'data' => $result->get_error_data(),
+				), 422 );
+			}
+			MAD4B_SCP_Site_Profile::reset_cache();
+			$status = MAD4B_SCP_Site_Profile::status();
+			$profile = MAD4B_SCP_Site_Profile::profile();
+			$verified = is_array( $profile )
+				&& ! empty( $profile )
+				&& isset( $status['revision'] )
+				&& (int) $status['revision'] > (int) $input['expected_revision']
+				&& hash_equals( (string) MAD4B_SCP_Site_Profile::profile_digest(), (string) ( isset( $status['profile_digest'] ) ? $status['profile_digest'] : MAD4B_SCP_Site_Profile::profile_digest() ) );
+			if ( ! $verified ) {
+				wp_send_json_error( array(
+					'code' => 'mad4b_site_profile_readback_mismatch',
+					'message' => __( 'Site Profile write completed but persisted readback did not match the committed revision.', 'mad4b-site-control-plane' ),
+				), 500 );
+			}
+			wp_send_json_success( array(
+				'message' => __( 'Site Profile saved and verified by persisted readback.', 'mad4b-site-control-plane' ),
+				'persistence_verified' => true,
+				'readback' => array(
+					'revision' => (int) $status['revision'],
+					'profile_digest' => MAD4B_SCP_Site_Profile::profile_digest(),
+					'display_name' => MAD4B_SCP_Site_Profile::display_name(),
+					'chatgpt_app_id' => MAD4B_SCP_Site_Profile::chatgpt_app_id(),
+					'features' => isset( $profile['features'] ) && is_array( $profile['features'] ) ? $profile['features'] : array(),
+				),
+			) );
+		}
 		if ( is_wp_error( $result ) ) self::redirect( $result->get_error_code() );
 		self::redirect( 'saved' );
 	}
@@ -59,6 +93,22 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		$expected_revision = isset( $_POST['expected_revision'] ) ? absint( $_POST['expected_revision'] ) : null;
 		$result = MAD4B_SCP_Site_Profile::disable_authority( $expected_revision );
 		self::redirect( is_wp_error( $result ) ? $result->get_error_code() : 'authority_disabled' );
+	}
+
+	private static function is_ajax_request() {
+		return function_exists( 'wp_doing_ajax' ) && wp_doing_ajax();
+	}
+
+	private static function require_save_request() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			if ( self::is_ajax_request() ) wp_send_json_error( array( 'code' => 'mad4b_site_profile_admin_required', 'message' => __( 'Administrator capability is required.', 'mad4b-site-control-plane' ) ), 403 );
+			wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
+		}
+		if ( self::is_ajax_request() ) {
+			if ( false === check_ajax_referer( self::ACTION_SAVE, '_wpnonce', false ) ) wp_send_json_error( array( 'code' => 'mad4b_site_profile_nonce_invalid', 'message' => __( 'The Site Profile settings request expired. Refresh the page and try again.', 'mad4b-site-control-plane' ) ), 403 );
+			return;
+		}
+		check_admin_referer( self::ACTION_SAVE );
 	}
 
 	private static function redirect( $state ) {
@@ -91,7 +141,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 				</tbody>
 			</table>
 
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<form id="mad4b-site-profile-settings" class="mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-site-profile-settings" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_SAVE ); ?>" />
 				<input type="hidden" name="expected_revision" value="<?php echo esc_attr( (string) ( isset( $status['revision'] ) ? absint( $status['revision'] ) : 0 ) ); ?>" />
 				<?php wp_nonce_field( self::ACTION_SAVE ); ?>
@@ -115,10 +165,11 @@ final class MAD4B_SCP_Site_Profile_Admin {
 							<?php self::checkbox( 'production_write_confirmed', 'I explicitly authorize governed writes on this Production origin', ! empty( $features['production_write_confirmed'] ) ); ?>
 							<label style="display:block;margin:.6em 0" for="mad4b-production-write-confirmation"><?php esc_html_e( 'Type the exact confirmation phrase when Production write is enabled:', 'mad4b-site-control-plane' ); ?></label>
 							<code><?php echo esc_html( MAD4B_SCP_Site_Profile::PRODUCTION_WRITE_CONFIRMATION ); ?></code><br />
-							<input class="regular-text" autocomplete="off" id="mad4b-production-write-confirmation" name="production_write_confirmation" value="" />
+							<input class="regular-text" autocomplete="off" id="mad4b-production-write-confirmation" name="production_write_confirmation" value="" data-mad4b-one-time-confirm />
 						<?php endif; ?>
 					</td></tr>
 				</table>
+				<div class="mad4b-settings-feedback" data-mad4b-settings-feedback aria-live="polite"></div>
 				<?php submit_button( __( 'Save exact site profile', 'mad4b-site-control-plane' ) ); ?>
 			</form>
 

@@ -57,6 +57,12 @@ final class MAD4B_SCP_Live_Truth {
 
 	private static function recover_runtime_authority() {
 		if ( self::$recovering ) return;
+		// Merely materializing the Abilities registry for MCP initialize/tools-list
+		// must not trigger full authority/grant/provider reconciliation reads.
+		// Explicit status/certification tool calls still execute current truth.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_is_protocol_hotpath' )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return;
 		self::$recovering = true;
 		// Runtime recovery means refreshing truth, never reconciling grants/subjects.
@@ -159,17 +165,55 @@ final class MAD4B_SCP_Live_Truth {
 		if ( $breakglass ) $blockers[] = 'breakglass_leak';
 
 		$runtime = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
+		$candidate_binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
+			: array( 'required' => false, 'match' => true );
+		$candidate_reconciled = empty( $candidate_binding['required'] ) || ! empty( $candidate_binding['match'] );
+		$candidate_bootstrap = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && defined( 'MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY' )
+			? MAD4B_SCP_Staging_Write_Authority::candidate_bootstrap_status( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY )
+			: array();
+		$candidate_bootstrap_exception_active = ! $candidate_reconciled && ! empty( $candidate_bootstrap['policy_available'] );
+		$approval_policy = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'approval_policy_projection' )
+			? MAD4B_SCP_Staging_Write_Authority::approval_policy_projection( $candidate_bootstrap_exception_active )
+			: array(
+				'all_remote_writes_require_exact_approval' => ! $candidate_bootstrap_exception_active,
+				'normal_remote_writes_require_exact_approval' => true,
+				'remote_write_approval_policy' => $candidate_bootstrap_exception_active ? 'exact_approval_except_bounded_candidate_bootstrap' : 'exact_approval_required',
+				'remote_write_approval_exceptions' => $candidate_bootstrap_exception_active ? array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY ) : array(),
+			);
 		$runtime_reconciled = ! empty( $runtime['ready'] )
 			&& empty( $runtime['blocker'] )
 			&& isset( $runtime['write_tool_count'] )
 			&& (int) $runtime['write_tool_count'] === count( $tools )
 			&& isset( $runtime['write_inventory_fingerprint'], $inventory['write_inventory_fingerprint'] )
 			&& '' !== (string) $inventory['write_inventory_fingerprint']
-			&& hash_equals( (string) $inventory['write_inventory_fingerprint'], (string) $runtime['write_inventory_fingerprint'] );
+			&& hash_equals( (string) $inventory['write_inventory_fingerprint'], (string) $runtime['write_inventory_fingerprint'] )
+			&& $candidate_reconciled;
+		if ( $eligible && ! $candidate_reconciled ) $blockers[] = 'runtime_authority_candidate_not_reconciled';
 		if ( $eligible && ! $runtime_reconciled ) $blockers[] = 'runtime_authority_not_reconciled';
 
 		$blockers = array_values( array_unique( array_filter( array_map( 'strval', $blockers ) ) ) );
 		$ready = $eligible && empty( $blockers );
+		$bootstrap_closure_required = ! empty( $candidate_binding['required'] );
+		$bootstrap_closure_closed = ! $bootstrap_closure_required || ( $candidate_reconciled && $runtime_reconciled && $ready );
+		if ( ! $bootstrap_closure_required ) $bootstrap_closure_state = 'not_required';
+		elseif ( $bootstrap_closure_closed ) $bootstrap_closure_state = 'closed';
+		elseif ( $candidate_bootstrap_exception_active ) $bootstrap_closure_state = 'acceptance_target_provision_required';
+		elseif ( ! $candidate_reconciled ) $bootstrap_closure_state = 'candidate_reconciliation_required';
+		else $bootstrap_closure_state = 'authority_reconciliation_required';
+		$candidate_bootstrap_closure = array(
+			'contract' => 'mad4b.governed-write-candidate-bootstrap-closure.v1',
+			'required' => $bootstrap_closure_required,
+			'sequence' => array( 'mad4b/acceptance-target-provision', 'mad4b/staging-write-grant-reconcile' ),
+			'required_postconditions' => array( 'candidate_binding_match', 'runtime_reconciled', 'write_authority_ready' ),
+			'candidate_binding_match' => ! empty( $candidate_binding['match'] ),
+			'runtime_reconciled' => $runtime_reconciled,
+			'write_authority_ready' => $ready,
+			'closed' => $bootstrap_closure_closed,
+			'state' => $bootstrap_closure_state,
+			'atomic_single_mutation' => false,
+			'retry_provider_mutation_on_reconciliation_failure' => false,
+		);
 		return array(
 			'contract' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::CONTRACT : 'mad4b.governed-write-authority.v2',
 			'truth_contract' => self::CONTRACT,
@@ -207,16 +251,39 @@ final class MAD4B_SCP_Live_Truth {
 			'production_auto_enable' => false,
 			'breakglass_auto_enable' => false,
 			'breakglass_included' => $breakglass,
-			'all_remote_writes_require_exact_approval' => true,
+			'approval_policy_contract' => isset( $approval_policy['approval_policy_contract'] ) ? (string) $approval_policy['approval_policy_contract'] : '',
+			'approval_policy_scope' => isset( $approval_policy['approval_policy_scope'] ) ? (string) $approval_policy['approval_policy_scope'] : 'effective_runtime',
+			'approval_policy_effective_state_resolved' => true,
+			'all_remote_writes_require_exact_approval' => ! empty( $approval_policy['all_remote_writes_require_exact_approval'] ),
+			'normal_remote_writes_require_exact_approval' => ! empty( $approval_policy['normal_remote_writes_require_exact_approval'] ),
+			'remote_write_approval_policy' => isset( $approval_policy['remote_write_approval_policy'] ) ? (string) $approval_policy['remote_write_approval_policy'] : '',
+			'remote_write_approval_exceptions' => isset( $approval_policy['remote_write_approval_exceptions'] ) ? (array) $approval_policy['remote_write_approval_exceptions'] : array(),
+			'candidate_bootstrap_exception_defined' => ! empty( $approval_policy['candidate_bootstrap_exception_defined'] ),
+			'candidate_bootstrap_exception_active' => $candidate_bootstrap_exception_active,
+			'candidate_bootstrap_contract' => isset( $candidate_bootstrap['contract'] ) ? (string) $candidate_bootstrap['contract'] : '',
+			'candidate_bootstrap_closure' => $candidate_bootstrap_closure,
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
 			'oauth_role' => 'identity_only',
 			'runtime_reconciled' => $runtime_reconciled,
 			'runtime_state' => isset( $runtime['state'] ) ? (string) $runtime['state'] : 'unknown',
+			'candidate_binding_required' => ! empty( $candidate_binding['required'] ),
+			'candidate_binding_match' => ! empty( $candidate_binding['match'] ),
+			'candidate_binding_contract' => isset( $candidate_binding['contract'] ) ? (string) $candidate_binding['contract'] : '',
+			'candidate_source_commit_sha' => isset( $candidate_binding['stored_source_commit_sha'] ) ? (string) $candidate_binding['stored_source_commit_sha'] : '',
+			'candidate_build_fingerprint' => isset( $candidate_binding['stored_build_fingerprint'] ) ? (string) $candidate_binding['stored_build_fingerprint'] : '',
+			'candidate_package_manifest_digest' => isset( $candidate_binding['stored_package_manifest_digest'] ) ? (string) $candidate_binding['stored_package_manifest_digest'] : '',
+			'candidate_artifact_identity' => isset( $candidate_binding['stored_artifact_identity'] ) ? (string) $candidate_binding['stored_artifact_identity'] : '',
+			'current_source_commit_sha' => isset( $candidate_binding['current_source_commit_sha'] ) ? (string) $candidate_binding['current_source_commit_sha'] : '',
+			'current_build_fingerprint' => isset( $candidate_binding['current_build_fingerprint'] ) ? (string) $candidate_binding['current_build_fingerprint'] : '',
+			'current_package_manifest_digest' => isset( $candidate_binding['current_package_manifest_digest'] ) ? (string) $candidate_binding['current_package_manifest_digest'] : '',
+			'current_artifact_identity' => isset( $candidate_binding['current_artifact_identity'] ) ? (string) $candidate_binding['current_artifact_identity'] : '',
+			'candidate_binding_fingerprint' => self::candidate_binding_fingerprint( $candidate_binding ),
 			'control_plane_version' => isset( $inventory['control_plane_version'] ) ? $inventory['control_plane_version'] : '',
 			'write_inventory_fingerprint' => isset( $inventory['write_inventory_fingerprint'] ) ? $inventory['write_inventory_fingerprint'] : '',
 			'provider_blocked_fingerprint' => isset( $inventory['provider_blocked_fingerprint'] ) ? $inventory['provider_blocked_fingerprint'] : '',
 			'provider_blocked_write_tool_count' => isset( $inventory['provider_blocked_write_tool_count'] ) ? $inventory['provider_blocked_write_tool_count'] : 0,
+			'provider_blocked_write_tools' => isset( $inventory['provider_blocked_write_tools'] ) && is_array( $inventory['provider_blocked_write_tools'] ) ? $inventory['provider_blocked_write_tools'] : array(),
 			'inspection_source' => 'live_read_only',
 			'persists_changes' => false,
 			'observed_at' => gmdate( 'c' ),
@@ -225,7 +292,29 @@ final class MAD4B_SCP_Live_Truth {
 
 	public static function current_write_certification() {
 		$authority = self::current_authority_status();
-		$inventory = self::inventory_identity();
+		// Reuse the exact inventory observed by current_authority_status(). This
+		// avoids recomputing provider/write projection twice in one read while
+		// deliberately avoiding cross-call memoization that could become stale
+		// after an in-request governed mutation.
+		$inventory = array(
+			'control_plane_version' => isset( $authority['control_plane_version'] ) ? (string) $authority['control_plane_version'] : '',
+			'write_tools' => isset( $authority['write_tools'] ) && is_array( $authority['write_tools'] ) ? $authority['write_tools'] : array(),
+			'write_inventory_fingerprint' => isset( $authority['write_inventory_fingerprint'] ) ? (string) $authority['write_inventory_fingerprint'] : '',
+			'provider_blocked_write_tool_count' => isset( $authority['provider_blocked_write_tool_count'] ) ? (int) $authority['provider_blocked_write_tool_count'] : 0,
+			'provider_blocked_write_tools' => isset( $authority['provider_blocked_write_tools'] ) && is_array( $authority['provider_blocked_write_tools'] ) ? $authority['provider_blocked_write_tools'] : array(),
+			'provider_blocked_fingerprint' => isset( $authority['provider_blocked_fingerprint'] ) ? (string) $authority['provider_blocked_fingerprint'] : '',
+		);
+		$candidate_binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
+			: array( 'required' => false, 'match' => true );
+		$binding_fingerprint = self::candidate_binding_fingerprint( $candidate_binding );
+		$package_identity_complete = empty( $candidate_binding['required'] ) || (
+			isset( $candidate_binding['current_source_commit_sha'], $candidate_binding['current_build_fingerprint'], $candidate_binding['current_package_manifest_digest'], $candidate_binding['current_artifact_identity'] )
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/', (string) $candidate_binding['current_source_commit_sha'] )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $candidate_binding['current_build_fingerprint'] )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $candidate_binding['current_package_manifest_digest'] )
+			&& 1 === preg_match( '/^mad4b-site-control-plane-general-distribution-kit-[a-f0-9]{40}$/', (string) $candidate_binding['current_artifact_identity'] )
+		);
 		$tools = isset( $inventory['write_tools'] ) ? $inventory['write_tools'] : array();
 		$provider_blocked = isset( $inventory['provider_blocked_write_tools'] ) ? $inventory['provider_blocked_write_tools'] : array();
 		$checks = array();
@@ -241,8 +330,12 @@ final class MAD4B_SCP_Live_Truth {
 		$checks['production_auto_enable_absent'] = empty( $authority['production_auto_enable'] );
 		$checks['breakglass_auto_enable_absent'] = empty( $authority['breakglass_auto_enable'] );
 		$checks['breakglass_not_included'] = empty( $authority['breakglass_included'] );
-		$checks['remote_approval_required'] = ! empty( $authority['all_remote_writes_require_exact_approval'] );
-		foreach ( array( 'site_profile_bound', 'write_feature_enabled', 'write_authority_eligible', 'authority_ready', 'mutation_gate_enabled', 'production_auto_enable_absent', 'breakglass_auto_enable_absent', 'breakglass_not_included', 'remote_approval_required' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
+		$checks['normal_remote_approval_required'] = ! empty( $authority['normal_remote_writes_require_exact_approval'] );
+		$checks['package_identity_complete'] = $package_identity_complete;
+		$checks['candidate_binding_current'] = empty( $candidate_binding['required'] ) || ! empty( $candidate_binding['match'] );
+		$exceptions = isset( $authority['remote_write_approval_exceptions'] ) && is_array( $authority['remote_write_approval_exceptions'] ) ? array_values( $authority['remote_write_approval_exceptions'] ) : array();
+		$checks['candidate_bootstrap_exception_bounded'] = empty( $exceptions ) || ( 1 === count( $exceptions ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY === (string) $exceptions[0] );
+		foreach ( array( 'site_profile_bound', 'write_feature_enabled', 'write_authority_eligible', 'authority_ready', 'mutation_gate_enabled', 'production_auto_enable_absent', 'breakglass_auto_enable_absent', 'breakglass_not_included', 'normal_remote_approval_required', 'package_identity_complete', 'candidate_binding_current', 'candidate_bootstrap_exception_bounded' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
 		$checks['oauth_effective'] = ! empty( $oauth['effective'] );
@@ -251,13 +344,22 @@ final class MAD4B_SCP_Live_Truth {
 		foreach ( array( 'oauth_effective', 'oauth_resource_is_chatgpt', 'oauth_does_not_create_write_authority' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$missing_write_mounts = array();
+		// Legacy compatibility alias retained in the response contract. Direct
+		// remote write schemas are intentionally hidden behind write-execute, so
+		// there is no separate remote mount inventory to populate.
 		$missing_remote_mounts = array();
+		$direct_write_schema_leaks = array();
+		$write_transport_tools = array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' );
+		$missing_write_transport = array();
+		foreach ( $write_transport_tools as $transport_ability ) {
+			if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $transport_ability ) ) $missing_write_transport[] = $transport_ability;
+		}
 		$metadata_mismatch = array();
 		$breakglass = array();
 		foreach ( $tools as $ability_name ) {
 			if ( 'mad4b/database-raw-query' === $ability_name ) $breakglass[] = $ability_name;
 			if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) $missing_write_mounts[] = $ability_name;
-			if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) $missing_remote_mounts[] = $ability_name;
+			if ( class_exists( 'MAD4B_SCP_Servers' ) && MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) $direct_write_schema_leaks[] = $ability_name;
 			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) { $metadata_mismatch[] = $ability_name; continue; }
 			$ability = wp_get_ability( $ability_name );
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) { $metadata_mismatch[] = $ability_name; continue; }
@@ -274,11 +376,16 @@ final class MAD4B_SCP_Live_Truth {
 		}
 		$checks['write_inventory_nonempty'] = ! empty( $tools );
 		$checks['all_write_tools_mounted_on_authority'] = empty( $missing_write_mounts );
-		$checks['all_write_tools_exposed_on_same_plugin_transport'] = empty( $missing_remote_mounts );
+		$checks['write_dispatch_transport_available'] = empty( $missing_write_transport );
+		$checks['direct_write_schemas_hidden_from_chatgpt'] = empty( $direct_write_schema_leaks );
+		// Compatibility alias: "same plugin transport" now means the logical
+		// write inventory is reachable through the exact-target dispatcher on the
+		// same ChatGPT MCP resource, without enumerating target schemas directly.
+		$checks['all_write_tools_exposed_on_same_plugin_transport'] = $checks['write_dispatch_transport_available'] && $checks['direct_write_schemas_hidden_from_chatgpt'];
 		$checks['all_write_tools_annotated_mutating'] = empty( $metadata_mismatch );
 		$checks['provider_uncertified_write_tools_safely_unmounted'] = empty( $provider_blocked_mount_leaks );
 		$checks['breakglass_absent_from_write_inventory'] = empty( $breakglass );
-		foreach ( array( 'write_inventory_nonempty', 'all_write_tools_mounted_on_authority', 'all_write_tools_exposed_on_same_plugin_transport', 'all_write_tools_annotated_mutating', 'provider_uncertified_write_tools_safely_unmounted', 'breakglass_absent_from_write_inventory' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
+		foreach ( array( 'write_inventory_nonempty', 'all_write_tools_mounted_on_authority', 'write_dispatch_transport_available', 'direct_write_schemas_hidden_from_chatgpt', 'all_write_tools_exposed_on_same_plugin_transport', 'all_write_tools_annotated_mutating', 'provider_uncertified_write_tools_safely_unmounted', 'breakglass_absent_from_write_inventory' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$planner = class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) ? MAD4B_SCP_Staging_Write_Planning_Guard::status() : array();
 		$planner_ability = function_exists( 'wp_has_ability' ) && function_exists( 'wp_get_ability' ) && wp_has_ability( 'mad4b/approval-plan' ) ? wp_get_ability( 'mad4b/approval-plan' ) : null;
@@ -321,20 +428,30 @@ final class MAD4B_SCP_Live_Truth {
 			'provider_blocked_write_tools' => $provider_blocked,
 			'provider_blocked_mount_leaks' => $provider_blocked_mount_leaks,
 			'missing_write_mounts' => $missing_write_mounts,
-			'missing_remote_mounts' => $missing_remote_mounts,
+			'missing_write_transport' => $missing_write_transport,
+			'direct_write_schema_leaks' => $direct_write_schema_leaks,
 			'metadata_mismatch' => $metadata_mismatch,
 			'breakglass' => $breakglass,
 			'local_rest_isolation' => $rest,
 			'control_plane_version' => isset( $inventory['control_plane_version'] ) ? $inventory['control_plane_version'] : '',
 			'write_inventory_fingerprint' => isset( $inventory['write_inventory_fingerprint'] ) ? $inventory['write_inventory_fingerprint'] : '',
 			'provider_blocked_fingerprint' => isset( $inventory['provider_blocked_fingerprint'] ) ? $inventory['provider_blocked_fingerprint'] : '',
+			'evidence_schema_revision' => 3,
+			'candidate_binding' => $candidate_binding,
+			'candidate_binding_fingerprint' => $binding_fingerprint,
 		);
 		$digest = hash( 'sha256', wp_json_encode( $evidence, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 
 		return array(
-			'contract' => class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::CONTRACT : 'mad4b.write-runtime-certification.v2',
+			'contract' => class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::CONTRACT : 'mad4b.write-runtime-certification.v3',
 			'truth_contract' => self::CONTRACT,
 			'current_truth' => true,
+			'evidence_schema_revision' => 3,
+			'source_commit_sha' => isset( $candidate_binding['current_source_commit_sha'] ) ? (string) $candidate_binding['current_source_commit_sha'] : '',
+			'build_fingerprint' => isset( $candidate_binding['current_build_fingerprint'] ) ? (string) $candidate_binding['current_build_fingerprint'] : '',
+			'package_manifest_digest' => isset( $candidate_binding['current_package_manifest_digest'] ) ? (string) $candidate_binding['current_package_manifest_digest'] : '',
+			'artifact_identity' => isset( $candidate_binding['current_artifact_identity'] ) ? (string) $candidate_binding['current_artifact_identity'] : '',
+			'candidate_binding_fingerprint' => $binding_fingerprint,
 			'ready' => empty( $blockers ),
 			'state' => empty( $blockers ) ? 'ready' : 'blocked',
 			'blockers' => $blockers,
@@ -353,7 +470,10 @@ final class MAD4B_SCP_Live_Truth {
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
 			'oauth_role' => 'identity_only',
-			'exact_approval_required_for_remote_write' => true,
+			'exact_approval_required_for_remote_write' => empty( $exceptions ),
+			'normal_remote_write_exact_approval_required' => ! empty( $authority['normal_remote_writes_require_exact_approval'] ),
+			'candidate_bootstrap_prior_approval_exception' => ! empty( $authority['candidate_bootstrap_exception_active'] ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY : '',
+			'candidate_bootstrap_closure' => isset( $authority['candidate_bootstrap_closure'] ) && is_array( $authority['candidate_bootstrap_closure'] ) ? $authority['candidate_bootstrap_closure'] : array(),
 			'approval_planner_bootstrap_exception' => 'pending_ticket_creation_only',
 			'external_wpml_acceptance_required' => true,
 			'external_wpml_acceptance_verified' => false,
@@ -395,7 +515,7 @@ final class MAD4B_SCP_Live_Truth {
 		if ( empty( $reasons ) ) return $value;
 
 		return array(
-			'contract' => class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::CONTRACT : 'mad4b.write-runtime-certification.v2',
+			'contract' => class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::CONTRACT : 'mad4b.write-runtime-certification.v3',
 			'truth_contract' => self::CONTRACT,
 			'ready' => false,
 			'state' => 'stale',
@@ -428,8 +548,17 @@ final class MAD4B_SCP_Live_Truth {
 		if ( ! self::$full_boot_seen || ! is_array( $value ) ) return;
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return;
 		$identity = self::inventory_identity();
+		$candidate_binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
+			: array();
 		update_option( self::FRESHNESS_OPTION, array(
-			'contract' => 'mad4b.write-runtime-certification-freshness.v1',
+			'contract' => 'mad4b.write-runtime-certification-freshness.v2',
+			'evidence_schema_revision' => 3,
+			'source_commit_sha' => isset( $candidate_binding['current_source_commit_sha'] ) ? (string) $candidate_binding['current_source_commit_sha'] : '',
+			'build_fingerprint' => isset( $candidate_binding['current_build_fingerprint'] ) ? (string) $candidate_binding['current_build_fingerprint'] : '',
+			'package_manifest_digest' => isset( $candidate_binding['current_package_manifest_digest'] ) ? (string) $candidate_binding['current_package_manifest_digest'] : '',
+			'artifact_identity' => isset( $candidate_binding['current_artifact_identity'] ) ? (string) $candidate_binding['current_artifact_identity'] : '',
+			'candidate_binding_fingerprint' => self::candidate_binding_fingerprint( $candidate_binding ),
 			'control_plane_version' => isset( $identity['control_plane_version'] ) ? $identity['control_plane_version'] : '',
 			'write_tool_count' => isset( $identity['write_tool_count'] ) ? (int) $identity['write_tool_count'] : 0,
 			'write_inventory_fingerprint' => isset( $identity['write_inventory_fingerprint'] ) ? $identity['write_inventory_fingerprint'] : '',
@@ -460,6 +589,17 @@ final class MAD4B_SCP_Live_Truth {
 		$current_version = isset( $identity['control_plane_version'] ) ? (string) $identity['control_plane_version'] : '';
 		$current_write = isset( $identity['write_inventory_fingerprint'] ) ? (string) $identity['write_inventory_fingerprint'] : '';
 		$current_blocked = isset( $identity['provider_blocked_fingerprint'] ) ? (string) $identity['provider_blocked_fingerprint'] : '';
+		$candidate_binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
+			: array();
+		$current_binding_fingerprint = self::candidate_binding_fingerprint( $candidate_binding );
+		if ( ! isset( $freshness['evidence_schema_revision'] ) || 3 !== (int) $freshness['evidence_schema_revision'] ) $reasons[] = 'evidence_schema_revision_changed';
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $field ) {
+			$current_key = 'current_' . $field;
+			$current_value = isset( $candidate_binding[ $current_key ] ) ? (string) $candidate_binding[ $current_key ] : '';
+			if ( ! isset( $freshness[ $field ] ) || ! hash_equals( $current_value, (string) $freshness[ $field ] ) ) $reasons[] = $field . '_changed';
+		}
+		if ( ! isset( $freshness['candidate_binding_fingerprint'] ) || ! hash_equals( $current_binding_fingerprint, (string) $freshness['candidate_binding_fingerprint'] ) ) $reasons[] = 'candidate_binding_fingerprint_changed';
 		if ( ! isset( $freshness['control_plane_version'] ) || ! hash_equals( $current_version, (string) $freshness['control_plane_version'] ) ) $reasons[] = 'control_plane_version_changed';
 		if ( ! isset( $freshness['write_inventory_fingerprint'] ) || ! hash_equals( $current_write, (string) $freshness['write_inventory_fingerprint'] ) ) $reasons[] = 'write_inventory_changed';
 		if ( ! isset( $freshness['provider_blocked_fingerprint'] ) || ! hash_equals( $current_blocked, (string) $freshness['provider_blocked_fingerprint'] ) ) $reasons[] = 'provider_blocked_projection_changed';
@@ -474,6 +614,20 @@ final class MAD4B_SCP_Live_Truth {
 			if ( ! isset( $freshness['site_profile_digest'] ) || '' === $digest || ! hash_equals( $digest, (string) $freshness['site_profile_digest'] ) ) $reasons[] = 'site_profile_digest_changed';
 		}
 		return array_values( array_unique( $reasons ) );
+	}
+
+	private static function candidate_binding_fingerprint( array $binding ) {
+		$payload = array(
+			'contract' => isset( $binding['contract'] ) ? (string) $binding['contract'] : '',
+			'required' => ! empty( $binding['required'] ),
+			'match' => ! empty( $binding['match'] ),
+			'source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
+			'build_fingerprint' => isset( $binding['current_build_fingerprint'] ) ? (string) $binding['current_build_fingerprint'] : '',
+			'package_manifest_digest' => isset( $binding['current_package_manifest_digest'] ) ? (string) $binding['current_package_manifest_digest'] : '',
+			'artifact_identity' => isset( $binding['current_artifact_identity'] ) ? (string) $binding['current_artifact_identity'] : '',
+		);
+		$json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return is_string( $json ) ? hash( 'sha256', $json ) : '';
 	}
 
 	private static function inventory_identity() {

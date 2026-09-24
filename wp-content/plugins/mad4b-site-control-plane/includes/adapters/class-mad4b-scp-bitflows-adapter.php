@@ -16,9 +16,10 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 		$this->add_ability( 'bitflows/run-flow', 'Run Bit Flow', 'run_flow', array( $this, 'can_run_flow' ), $this->schema( array(
 			'flow_id' => array( 'type' => 'integer', 'minimum' => 1 ),
 			'expected_flow_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+			'expected_plan_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
 			'trigger_data' => array( 'type' => 'object', 'default' => array() ),
 			'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
-		), array( 'flow_id', 'expected_flow_sha256', 'reason' ) ), 'admin', false, true, false );
+		), array( 'flow_id', 'expected_flow_sha256', 'expected_plan_sha256', 'reason' ) ), 'admin', false, true, false );
 	}
 	public function status() {
 		$status = parent::status();
@@ -28,10 +29,42 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 			'flow_executor' => class_exists( 'BitApps\\Pi\\src\\Flow\\FlowExecutor' ),
 			'flow_history' => class_exists( 'BitApps\\Pi\\Model\\FlowHistory' ),
 		);
+		$status['runtime_contract_diagnostic'] = array(
+			'contract' => 'mad4b.bitflows-runtime-contract-diagnostic.v1',
+			'provider_runtime_available' => $this->is_available(),
+			'provider_version' => '' !== $this->detect_plugin_version() ? $this->detect_plugin_version() : ( isset( $status['version'] ) ? (string) $status['version'] : '' ),
+			'exact_expected_symbols' => $status['contracts'],
+			'declared_class_suffix_candidates' => array(
+				'flow_model' => self::declared_class_suffix_matches( array( '\\Model\\Flow' ) ),
+				'flow_node' => self::declared_class_suffix_matches( array( '\\Model\\FlowNode' ) ),
+				'flow_executor' => self::declared_class_suffix_matches( array( '\\Flow\\FlowExecutor', '\\FlowExecutor' ) ),
+				'flow_history' => self::declared_class_suffix_matches( array( '\\Model\\FlowHistory' ) ),
+			),
+			'autoload_or_bootstrap_mutation_attempted' => false,
+			'filesystem_scan_performed' => false,
+			'authorizing' => false,
+			'read_only' => true,
+		);
 		$status['execution_enabled'] = defined( 'MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED' ) && true === MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED;
 		$status['flow_policy_default'] = 'deny';
 		$status['native_mcp_role'] = 'client';
 		return $status;
+	}
+
+	private static function declared_class_suffix_matches( array $suffixes ) {
+		$matches = array();
+		foreach ( get_declared_classes() as $class ) {
+			foreach ( $suffixes as $suffix ) {
+				$suffix = (string) $suffix;
+				if ( '' === $suffix || strlen( $class ) < strlen( $suffix ) ) continue;
+				if ( substr( $class, -strlen( $suffix ) ) === $suffix ) {
+					$matches[] = $class;
+					break;
+				}
+			}
+			if ( count( $matches ) >= 20 ) break;
+		}
+		return array_values( array_unique( $matches ) );
 	}
 	public function can_run_flow( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return false;
@@ -93,18 +126,24 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 			$fingerprint = $this->flow_fingerprint( $id, $flow );
 			if ( is_wp_error( $fingerprint ) ) return $fingerprint;
 			if ( ! hash_equals( $fingerprint, strtolower( trim( $input['expected_flow_sha256'] ) ) ) ) return new WP_Error( 'mad4b_bitflows_stale_flow', 'Flow definition changed since it was reviewed.', array( 'current_flow_sha256' => $fingerprint ) );
+			$expected_plan_sha = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
+			if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_plan_sha ) ) return new WP_Error( 'mad4b_bitflows_plan_digest_required', 'Bit Flows execution requires expected_plan_sha256 from the reviewed workflow plan.' );
+			if ( ! class_exists( 'MAD4B_SCP_Workflow_Providers' ) ) return new WP_Error( 'mad4b_workflow_planner_unavailable', 'Workflow planner is unavailable.' );
+			$reviewed_plan = MAD4B_SCP_Workflow_Providers::plan( array( 'provider' => 'bitflows', 'operation' => 'execute', 'workflow_ref' => (string) $id, 'expected_workflow_sha256' => $fingerprint, 'reason' => isset( $input['reason'] ) ? (string) $input['reason'] : '' ) );
+			if ( is_wp_error( $reviewed_plan ) ) return $reviewed_plan;
+			if ( ! hash_equals( (string) $reviewed_plan['plan_sha256'], $expected_plan_sha ) ) return new WP_Error( 'mad4b_bitflows_plan_changed', 'Workflow execution plan changed since approval.', array( 'current_plan_sha256' => $reviewed_plan['plan_sha256'], 'expected_plan_sha256' => $expected_plan_sha ) );
 			if ( ! (bool) apply_filters( 'mad4b_scp_bitflows_flow_allowed', false, $id, $fingerprint, $flow, get_current_user_id() ) ) return new WP_Error( 'mad4b_bitflows_flow_policy_denied', 'Flow execution requires an explicit per-flow allowlist policy.' );
 
 			$trigger_data = isset( $input['trigger_data'] ) && is_array( $input['trigger_data'] ) ? $input['trigger_data'] : array();
 			$reason = sanitize_text_field( $input['reason'] );
-			MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'flow_sha256' => $fingerprint, 'reason' => $reason, 'trigger_keys' => array_keys( $trigger_data ) ), 'attempt' );
+			MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'flow_sha256' => $fingerprint, 'plan_sha256' => $expected_plan_sha, 'reason' => $reason, 'trigger_keys' => array_keys( $trigger_data ) ), 'attempt' );
 			$result = $executor::execute( $flow, $trigger_data );
 			if ( false === $result ) {
-				MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'flow_sha256' => $fingerprint ), 'failure' );
+				MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'flow_sha256' => $fingerprint, 'plan_sha256' => $expected_plan_sha ), 'failure' );
 				return new WP_Error( 'mad4b_bitflows_execution_rejected', 'Bit Flows executor rejected the run.' );
 			}
-			MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'flow_sha256' => $fingerprint, 'queued' => true ) );
-			return array( 'flow_id' => $id, 'flow_sha256' => $fingerprint, 'queued' => true, 'executor_result' => (bool) $result );
+			MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'flow_sha256' => $fingerprint, 'plan_sha256' => $expected_plan_sha, 'queued' => true ) );
+			return array( 'flow_id' => $id, 'flow_sha256' => $fingerprint, 'plan_sha256' => $expected_plan_sha, 'queued' => true, 'executor_result' => (bool) $result );
 		} catch ( Throwable $e ) {
 			MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'error_type' => get_class( $e ) ), 'failure' );
 			return new WP_Error( 'mad4b_bitflows_execution_failed', $e->getMessage() );
