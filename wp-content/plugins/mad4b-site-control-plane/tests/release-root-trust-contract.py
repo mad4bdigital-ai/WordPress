@@ -97,11 +97,22 @@ for fragment in (
     "RELEASE-ATTESTATION-LOCATOR.json",
     "'runtime_self_attestation_authoritative': False",
     "'verification_boundary': 'external_release_verifier'",
+    "Verify trusted master release root externally",
+    "if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')",
+    "python3 tools/verify_release_root_trust.py",
+    '--trusted-signer-digest "$GITHUB_SHA"',
+    "RELEASE-ROOT-TRUST-VERIFICATION.json",
+    "trusted_signer_ref == \"refs/heads/master\"",
 ):
     if fragment not in workflow:
         raise SystemExit(f"root-trust packaging workflow missing: {fragment}")
 if workflow.index("uses: actions/attest@v4") > workflow.index("Upload reviewed General Distribution installation kit"):
     raise SystemExit("release attestation must be generated before artifact upload")
+verify_step = workflow.index("Verify trusted master release root externally")
+persist_step = workflow.index("Persist release attestation evidence")
+upload_step = workflow.index("Upload reviewed General Distribution installation kit")
+if not (persist_step < verify_step < upload_step):
+    raise SystemExit("trusted master external root verification must run after attestation persistence and before artifact upload")
 
 with tempfile.TemporaryDirectory() as tmp:
     tmp = Path(tmp)
