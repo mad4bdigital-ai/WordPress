@@ -389,6 +389,7 @@ final class MAD4B_SCP_Schema {
 		}
 		$missing_columns = array();
 		$missing_durable_columns = array();
+		$missing_durable_indexes = array();
 		if ( empty( $missing_tables ) ) {
 			$t = self::tables();
 			$columns = $wpdb->get_col( "SHOW COLUMNS FROM `{$t['approvals']}`", 0 );
@@ -399,14 +400,28 @@ final class MAD4B_SCP_Schema {
 				$durable_columns = is_array( $durable_columns ) ? array_map( 'strval', $durable_columns ) : array();
 				foreach ( $required as $column ) if ( ! in_array( $column, $durable_columns, true ) ) $missing_durable_columns[] = $table_key . '.' . $column;
 			}
+			foreach ( self::required_durable_indexes() as $table_key => $required ) {
+				$index_rows = $wpdb->get_results( "SHOW INDEX FROM `{$t[ $table_key ]}`", ARRAY_A );
+				$index_rows = is_array( $index_rows ) ? $index_rows : array();
+				$index_state = array();
+				foreach ( $index_rows as $row ) {
+					if ( ! is_array( $row ) || empty( $row['Key_name'] ) ) continue;
+					$name = (string) $row['Key_name'];
+					if ( ! isset( $index_state[ $name ] ) ) $index_state[ $name ] = array( 'unique' => isset( $row['Non_unique'] ) && 0 === (int) $row['Non_unique'] );
+				}
+				foreach ( $required as $name => $must_be_unique ) {
+					if ( ! isset( $index_state[ $name ] ) || ( $must_be_unique && empty( $index_state[ $name ]['unique'] ) ) ) $missing_durable_indexes[] = $table_key . '.' . $name;
+				}
+			}
 		}
 		self::$physical_status_cache = array(
-			'contract' => 'mad4b.schema-integrity.v3',
+			'contract' => 'mad4b.schema-integrity.v4',
 			'expected_version' => self::VERSION,
 			'missing_tables' => $missing_tables,
 			'missing_approval_columns' => $missing_columns,
 			'missing_durable_columns' => $missing_durable_columns,
-			'ready' => empty( $missing_tables ) && empty( $missing_columns ) && empty( $missing_durable_columns ),
+			'missing_durable_indexes' => $missing_durable_indexes,
+			'ready' => empty( $missing_tables ) && empty( $missing_columns ) && empty( $missing_durable_columns ) && empty( $missing_durable_indexes ),
 		);
 		return self::$physical_status_cache;
 	}
@@ -414,7 +429,9 @@ final class MAD4B_SCP_Schema {
 	private static function expected_integrity_token() {
 		$durable = array();
 		foreach ( self::required_durable_columns() as $table => $columns ) foreach ( $columns as $column ) $durable[] = $table . '.' . $column;
-		return hash( 'sha256', 'mad4b-schema-v9|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) . '|' . implode( '|', $durable ) );
+		$indexes = array();
+		foreach ( self::required_durable_indexes() as $table => $required ) foreach ( $required as $name => $unique ) $indexes[] = $table . '.' . $name . ':' . ( $unique ? 'unique' : 'index' );
+		return hash( 'sha256', 'mad4b-schema-v9|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) . '|' . implode( '|', $durable ) . '|' . implode( '|', $indexes ) );
 	}
 	private static function required_approval_binding_columns() { return array( 'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment', 'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at' ); }
 	private static function required_durable_columns() {
@@ -427,6 +444,17 @@ final class MAD4B_SCP_Schema {
 			'inbox' => array( 'provider_id', 'provider_event_id', 'job_id', 'payload_sha256', 'status', 'provider_execution_ref', 'result_ref', 'received_at' ),
 		);
 	}
+	private static function required_durable_indexes() {
+		return array(
+			'content_jobs' => array( 'job_id' => true ),
+			'content_job_events' => array( 'event_id' => true, 'job_sequence' => true ),
+			'work_leases' => array( 'work_id' => true ),
+			'idempotency' => array( 'scope_idempotency' => true ),
+			'outbox' => array( 'outbox_id' => true, 'provider_idempotency' => true ),
+			'inbox' => array( 'provider_event' => true ),
+		);
+	}
+
 	private static function migrate_legacy_candidate_bindings() {
 		global $wpdb; $legacy = get_option( self::LEGACY_BINDINGS_OPTION, array() ); if ( ! is_array( $legacy ) || empty( $legacy ) ) return; $t = self::tables();
 		foreach ( array_slice( $legacy, -100, 100, true ) as $ticket_id => $binding ) {
