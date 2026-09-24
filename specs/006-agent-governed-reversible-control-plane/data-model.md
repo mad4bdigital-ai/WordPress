@@ -2,11 +2,11 @@
 
 Status: Normative schema contract aligned with current implementation
 Storage scope: site-local WordPress database tables
-Schema version: `8`
+Schema version: `9`
 Encoding: UTF-8 / JSON text only where structured extension fields are required
 Secret policy: no plaintext bearer/OAuth credential persistence
 
-Schema v8 contains fifteen normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically. It preserves the v6 exact Site Profile/candidate approval binding and adds Feature 007 durable Content Job, event, lease, idempotency, outbox and inbox storage. Durable recovery remains fail-closed: expired pending work is not silently reused without explicit reconciliation evidence.
+Schema v9 contains fifteen normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically. It preserves the v6 exact Site Profile/candidate approval binding and adds Feature 007 durable Content Job, event, lease, idempotency, outbox and inbox storage. Durable recovery remains fail-closed: expired pending work is not silently reused without explicit reconciliation evidence.
 
 ## Table 1 — `{prefix}mad4b_scp_agents`
 
@@ -292,6 +292,7 @@ Key columns:
 - `scope_key CHAR(64)`
 - `idempotency_key`
 - `request_sha256`
+- `claim_epoch BIGINT UNSIGNED DEFAULT 1`
 - `status`
 - result JSON/hash
 - `reconciliation_ref`
@@ -303,6 +304,7 @@ Invariants:
 - same key + same request hash may replay stored completion evidence;
 - same key + different request hash is a hard conflict;
 - expired pending records require explicit reconciliation before reclaim;
+- every reclaim increments `claim_epoch`, and stale claim epochs cannot complete or reuse the record;
 - retention exceeds the supported retry/replay horizon.
 
 ## Table 14 — `{prefix}mad4b_execution_outbox`
@@ -410,7 +412,7 @@ Joined audit sink dispatch occurs only after explicit transaction commit. Explic
 
 ## Migration strategy
 
-Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `8`.
+Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `9`.
 
 Activation/boot rules:
 1. `dbDelta()` creates/updates only MAD4B-prefixed tables.
@@ -419,8 +421,8 @@ Activation/boot rules:
 4. Existing global mutation enablement never implies NHI authority.
 5. Missing/partial schema produces `governance_schema_unavailable` and governed mutation fails closed.
 6. A successful deep physical-integrity verification writes the bounded schema-integrity token used by normal read/hot paths; mutation/approval authority boundaries still use the memoized physical guard and fail closed on physical drift.
-7. Schema v8 preserves the v6 Site Profile approval bindings and adds six durable Feature 007 tables: Content Jobs, Job Events, Work Leases, Idempotency, Execution Outbox and Execution Inbox.
-8. The idempotency table includes `reconciliation_ref`; expired pending idempotency and expired active leases require explicit reconciliation before reclaim, while terminal leases cannot be resurrected.
+7. Schema v9 preserves the v6 Site Profile approval bindings and adds six durable Feature 007 tables: Content Jobs, Job Events, Work Leases, Idempotency, Execution Outbox and Execution Inbox.
+8. The idempotency table includes `claim_epoch` and `reconciliation_ref`; reclaim increments the epoch after verified reconciliation, stale claims are fenced, expired active leases require reconciliation, and terminal leases cannot be resurrected.
 9. Legacy option-based or v1 candidate bindings may be migrated only as compatibility evidence; they do not become actionable governed-write authority unless the exact tenant-profile/build binding is complete. Otherwise they remain stale/fail-closed and a new v2 exact plan is required.
 9. New governed remote approval bindings are persisted on the approval row using `mad4b.approval-candidate-binding.v2`.
 10. Audit head/legacy anchor is initialized only after schema readiness.
