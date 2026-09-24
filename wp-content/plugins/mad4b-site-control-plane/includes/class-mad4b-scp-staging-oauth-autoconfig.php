@@ -27,6 +27,10 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 	private static $admin_actions_booted = false;
 	private static $status = array();
 
+	public static function boot_admin_actions_early() {
+		self::boot_admin_actions();
+	}
+
 	public static function bootstrap() {
 		self::boot_admin_actions();
 		if ( self::$bootstrapped ) return self::$status;

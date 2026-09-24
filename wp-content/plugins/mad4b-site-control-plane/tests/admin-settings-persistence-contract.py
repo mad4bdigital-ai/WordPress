@@ -32,6 +32,15 @@ for marker in [
     assert marker in persistence, marker
 
 for marker in [
+    "$asset_path = MAD4B_SCP_DIR . 'assets/admin-settings-persistence.js';",
+    "$asset_version = MAD4B_SCP_VERSION;",
+    "hash_file( 'sha256', $asset_path )",
+    "substr( $content_sha, 0, 12 )",
+    "filemtime( $asset_path )",
+]:
+    assert marker in persistence, marker
+
+for marker in [
     ".mad4b-settings-ajax-form",
     "persistence_verified !== true",
     "data-mad4b-one-time-confirm",
@@ -40,6 +49,39 @@ for marker in [
     "cache: \"no-store\"",
 ]:
     assert marker in client, marker
+
+# Settings AJAX actions must be registered immediately after the admin classes
+# are loaded and before heavy runtime bootstrap begins. This prevents
+# admin-ajax.php from returning WordPress's literal "0" sentinel when a later
+# performance/security bootstrap short-circuits the request lifecycle.
+early_context = loader.index("MAD4B_SCP_Context_Admin_UI::boot();")
+early_site = loader.index("MAD4B_SCP_Site_Profile_Admin::boot();")
+early_persistence = loader.index("MAD4B_SCP_Admin_Settings_Persistence::boot();")
+early_oauth_actions = loader.index("MAD4B_SCP_Staging_OAuth_Autoconfig::boot_admin_actions_early();")
+heavy_boot = loader.index("MAD4B_SCP_Site_Profile::bootstrap();")
+assert early_context < heavy_boot
+assert early_site < heavy_boot
+assert early_persistence < heavy_boot
+assert early_oauth_actions < heavy_boot
+assert "public static function boot_admin_actions_early()" in oauth
+assert "self::boot_admin_actions();" in oauth
+
+# The browser client may fall back to the existing admin-post.php endpoint only
+# for the exact unregistered-action sentinel. It must not hide real HTTP/JSON,
+# nonce, governance, or readback failures.
+for marker in [
+    'response.status === 400 && trimmedResponse === "0"',
+    "HTMLFormElement.prototype.submit.call(form)",
+    "mad4b_settings_ajax_action_unregistered",
+    "mad4b_settings_non_json_response",
+    '"Accept": "application/json"',
+]:
+    assert marker in client, marker
+
+assert 'if (response.status === 400 && trimmedResponse === "0")' in client
+sentinel = client.split('if (response.status === 400 && trimmedResponse === "0")', 1)[1].split("var payload;", 1)[0]
+assert "HTMLFormElement.prototype.submit.call(form)" in sentinel
+assert "payload.data" not in sentinel
 
 # Site Profile writes must survive stale persistent Options caches and prove exact
 # readback before returning success.
@@ -134,4 +176,4 @@ for marker in [
     assert marker in oauth, marker
 assert 'class="mad4b-settings-ajax-form"' in chatgpt_ui
 
-print("mad4b.admin-settings-persistence.v2: PASS")
+print("mad4b.admin-settings-persistence.v7: PASS")
