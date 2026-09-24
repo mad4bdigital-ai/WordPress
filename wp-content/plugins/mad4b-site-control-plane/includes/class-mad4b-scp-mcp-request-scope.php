@@ -140,6 +140,46 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		return self::is_mad4b_mcp_route( $path );
 	}
 
+	/**
+	 * Latency-sensitive MAD4B protocol requests. This is intentionally broader
+	 * than the MCP Adapter runtime scope: OAuth discovery/protocol endpoints need
+	 * a lightweight plugin boot, but must NOT keep the MCP Adapter enabled.
+	 */
+	public static function current_request_is_protocol_hotpath() {
+		if ( self::current_request_requires_mcp_runtime() ) return true;
+
+		$route = isset( $_GET['rest_route'] ) ? wp_unslash( (string) $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$route = '/' . ltrim( rtrim( (string) $route, '/' ), '/' );
+		if ( '/mad4b/v1/oauth-protected-resource' === $route ) return true;
+
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- parsed only.
+		if ( '' === $uri ) return false;
+		$path = wp_parse_url( $uri, PHP_URL_PATH );
+		if ( ! is_string( $path ) || '' === $path ) return false;
+		$path = '/' . ltrim( rawurldecode( $path ), '/' );
+
+		$prefix = function_exists( 'rest_get_url_prefix' ) ? trim( (string) rest_get_url_prefix(), '/' ) : 'wp-json';
+		$needle = '/' . $prefix . '/';
+		$offset = strpos( $path, $needle );
+		$rest_path = false !== $offset ? '/' . ltrim( substr( $path, $offset + strlen( $needle ) ), '/' ) : $path;
+		$rest_path = '/' . ltrim( rtrim( $rest_path, '/' ), '/' );
+		if ( '/mad4b/v1/oauth-protected-resource' === $rest_path ) return true;
+
+		$path = '/' . ltrim( rtrim( $path, '/' ), '/' );
+		foreach ( array(
+			'/.well-known/oauth-protected-resource',
+			'/.well-known/oauth-authorization-server',
+		) as $well_known ) {
+			if ( $path === $well_known || 0 === strpos( $path, $well_known . '/' ) ) return true;
+		}
+		return in_array( $path, array(
+			'/oauth/mcp/authorize',
+			'/oauth/mcp/token',
+			'/oauth/mcp/jwks',
+			'/oauth/mcp/revoke',
+		), true );
+	}
+
 	private static function is_mad4b_mcp_route( $route ) {
 		$route = '/' . ltrim( rtrim( (string) $route, '/' ), '/' );
 		return in_array( $route, array(
@@ -149,6 +189,8 @@ final class MAD4B_SCP_MCP_Request_Scope {
 			'/mcp/mad4b-content',
 			'/mcp/mad4b-write',
 			'/mcp/mad4b-admin',
+			'/mcp/mad4b-developer',
+			'/mcp/mad4b-developer-breakglass',
 			'/mcp/mad4b-breakglass',
 		), true );
 	}
