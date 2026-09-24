@@ -715,4 +715,8 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3627 P1 Complete rights/AI-data processing, cron/provider backlog and schedule/public-publish maturity without widening kernel authority.
 - [ ] T3628 P2 Complete growth/fairness/localization/accessibility/link/eval-ops/experimentation/usage maturity lanes.
 - [ ] T3629 P1 Complete decommission/portability quiesce/export/import/remap/revoke/final-authority proof.
+- [ ] T3631 P0 Apply/read back the external master ruleset, then remove or permanently disable the initial governance bootstrap exception and prove ordinary PRs fail closed if the ruleset is absent.
+- [ ] T3632 P0 After protected backup readiness, deploy the exact trusted master artifact to ETG Staging; no version-label-only acceptance.
+- [ ] T3633 P0 Read back source SHA, build fingerprint, package manifest digest, archive SHA and all seven Root Trust/provenance files from the deployed runtime; UNKNOWN filesystem evidence cannot satisfy the gate.
+- [ ] T3634 P0 Re-run runtime/schema/authority/fail-closed diagnostics on the exact deployed candidate before Bit Flows or content canaries.
 - [ ] T3630 P0 GATE Execute exact ETG Staging linked evidence chain and emit CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED only when every hard dependency is satisfied.
