@@ -177,18 +177,29 @@ for forbidden_grant in [
         raise SystemExit(f'forbidden ability leaked into exact grant-reconciliation allowlist: {forbidden_grant}')
 
 if "'mad4b/staging-write-grant-reconcile'" not in servers:
-    raise SystemExit('bounded grant reconciliation is missing from enrollment server catalog')
-chatgpt_transport = servers.split('public static function chatgpt_tools()', 1)[1].split('public static function chatgpt_full_catalog_candidates()', 1)[0]
-if '$bounded_bootstrap = array(' not in chatgpt_transport:
-    raise SystemExit('bounded bootstrap transport set is missing from the minimal ChatGPT catalog')
+    raise SystemExit('bounded grant reconciliation is missing from the internal enrollment server catalog')
+chatgpt_transport = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
+if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_transport:
+    raise SystemExit('single-app Full Staging Authority step-up projection is missing')
+if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" not in chatgpt_transport:
+    raise SystemExit('direct ChatGPT mutation transport must be limited to write-execute plus the composite step-up')
 for bootstrap_ability in (
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
     "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
 ):
-    if bootstrap_ability not in chatgpt_transport:
-        raise SystemExit('bounded bootstrap mutation missing from minimal ChatGPT transport: ' + bootstrap_ability)
+    if bootstrap_ability in chatgpt_transport:
+        raise SystemExit('low-level enrollment mutation leaked into minimal ChatGPT transport: ' + bootstrap_ability)
+internal_enrollment = servers.split('private static function chatgpt_internal_enrollment_mutations()', 1)[1].split('private static function chatgpt_enrollment_candidates()', 1)[0]
+for bootstrap_ability in (
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
+):
+    if bootstrap_ability not in internal_enrollment:
+        raise SystemExit('internal enrollment primitive was lost: ' + bootstrap_ability)
 core_write = servers[servers.index('private static function core_write_candidates()'):servers.index('private static function registered_adapter_write_candidates()')]
 if "'mad4b/staging-write-grant-reconcile'" in core_write:
     raise SystemExit('grant reconciliation must not become a normal mad4b-write candidate')
@@ -300,7 +311,8 @@ for marker in [
     "$registry->ability_names( 'admin' )",
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
-    "$meta_write_transport = array( 'mad4b/write-execute' )",
+    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )",
+    "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
     "self::provider_for_ability( 'mad4b-write', $ability_name )",
     "'mad4b/write-authority-status'",
     "'mad4b/write-runtime-certification'",
@@ -686,4 +698,4 @@ if set(forbidden_contract) != expected_forbidden or not all(forbidden_contract.g
 if deployment.get('secrets_included') is not False:
     raise SystemExit('deployment handoff must never contain secrets')
 
-print('mad4b.staging-write-authority.tenant-profile.v13: PASS')
+print('mad4b.staging-write-authority.tenant-profile.v14: PASS')
