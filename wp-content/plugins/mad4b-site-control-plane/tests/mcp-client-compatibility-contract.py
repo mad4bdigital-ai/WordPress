@@ -120,19 +120,19 @@ for marker in [
 # must be removed from both direct ChatGPT tools/list and logical user discovery.
 chatgpt_tools_body = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
 for low_level in [
-    "mad4b/site-profile-feature-reenroll",
-    "mad4b/site-profile-write-enable",
-    "mad4b/staging-write-grant-reconcile",
-    "mad4b/staging-write-candidate-bind",
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
 ]:
     assert low_level not in chatgpt_tools_body, f'low-level enrollment mutation leaked into direct ChatGPT catalog: {low_level}'
 
 internal_enrollment = servers.split('private static function chatgpt_internal_enrollment_mutations()', 1)[1].split('private static function chatgpt_enrollment_candidates()', 1)[0]
 for low_level in [
-    "mad4b/site-profile-feature-reenroll",
-    "mad4b/site-profile-write-enable",
-    "mad4b/staging-write-grant-reconcile",
-    "mad4b/staging-write-candidate-bind",
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
 ]:
     assert low_level in internal_enrollment, f'internal enrollment primitive was lost: {low_level}'
 
