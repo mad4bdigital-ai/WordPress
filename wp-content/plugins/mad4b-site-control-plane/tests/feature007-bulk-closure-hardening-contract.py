@@ -8,6 +8,8 @@ matrix = json.loads((SPEC / "bulk-closure-hardening.json").read_text(encoding="u
 contract = (SPEC / "contracts/bulk-runtime-closure-hardening.md").read_text(encoding="utf-8")
 recovery = (ROOT / "tools/mad4b_recovery_plane.py").read_text(encoding="utf-8")
 gate = json.loads((SPEC / "gate-graph.json").read_text(encoding="utf-8"))
+critical_ci = (ROOT / ".github/workflows/feature-007-critical-kernel.yml").read_text(encoding="utf-8")
+runtime_faults = (ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php").read_text(encoding="utf-8")
 
 assert matrix["contract"] == "mad4b.feature007-bulk-closure-hardening.v1"
 assert matrix["production_authorized"] is False
@@ -28,11 +30,30 @@ for phrase in [
 # Recovery implementation must use atomic durable JSON persistence and a pre-mutation journal.
 for phrase in [
     "def atomic_json_write",
+    "def recovery_journal_summary",
+    "def reconcile_recovery_evidence",
     "recovery-journal",
     "mutation_started",
-    "evidence_state",
+    "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+    "ROLLED_BACK_AFTER_FAILURE",
+    "blind_retry_allowed",
+    "expected_post_identity",
 ]:
     assert phrase in recovery, phrase
+
+for phrase in [
+    "mad4b_fence_epoch_stale",
+    "mad4b_lease_heartbeat_fenced",
+    "mad4b_lease_complete_fenced",
+    "mad4b_idempotency_reconciliation_required",
+    "mad4b_reconciliation_unverified",
+    "mad4b_outbox_idempotency_conflict",
+    "mad4b_inbox_event_conflict",
+]:
+    assert phrase in runtime_faults, phrase
+
+assert "durable-execution-runtime-faults.php" in critical_ci
+assert "Prove durable execution runtime fault semantics" in critical_ci
 
 ids = {x["id"] for x in gate["gates"]}
 assert matrix["terminal_gate"] in ids
