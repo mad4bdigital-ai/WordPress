@@ -190,11 +190,33 @@ for marker in [
     "'current_mapping'",
     "'would_enable'",
     "'would_disable'",
+    "'would_refresh'",
+    "'content_drift'",
+    "'expected_sha256'",
+    "'current_sha256'",
+    "'content_current'",
+    "'refresh_policy' => 'digest_clean_provider_managed_only'",
+    "'catalog_truncated'",
+    "'definition_limit_exceeded'",
     "'user_owned'",
     "'provider_plugin_mutation' => false",
 ]:
     if marker not in provider_discovery:
         raise SystemExit(f'missing provider inspection invariant: {marker}')
+
+for marker in [
+    "const DISCOVERY_VERSION = 3;",
+    "const MAX_PACKS = 100;",
+    "const MAX_DEFINITIONS_PER_FAMILY = 20;",
+    "private static function catalog_limits( array $packs )",
+    "if ( ! empty( $limits['exceeded'] ) ) return self::set_status( 'catalog_limits_exceeded' );",
+    "private static function canonical_document( array $definition )",
+    "'mad4b/skill-provider-refresh'",
+    "'provider_content_refreshed' => true",
+    "$provider_managed && (bool) $desired_enabled",
+]:
+    if marker not in provider_discovery:
+        raise SystemExit(f'missing provider drift/limit hardening invariant: {marker}')
 
 if "const CONTRACT = 'mad4b.write-runtime-certification.v3'" not in write_cert:
     raise SystemExit('write runtime certification must expose v3 current-truth semantics')

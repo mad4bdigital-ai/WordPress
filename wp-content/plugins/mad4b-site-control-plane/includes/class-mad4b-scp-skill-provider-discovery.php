@@ -15,8 +15,9 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 	const CATALOG_CONTRACT = 'mad4b.skill-provider-catalog.v1';
 	const INSPECTION_CONTRACT = 'mad4b.skill-provider-reconciliation-inspection.v1';
 	const OPTION = 'mad4b_scp_skill_provider_discovery_v1';
-	const DISCOVERY_VERSION = 2;
+	const DISCOVERY_VERSION = 3;
 	const MAX_PACKS = 100;
+	const MAX_DEFINITIONS_PER_FAMILY = 20;
 
 	private static $ran = false;
 	private static $catalog = null;
@@ -43,10 +44,13 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		$catalog = self::catalog();
 		$packs = isset( $catalog['packs'] ) && is_array( $catalog['packs'] ) ? $catalog['packs'] : array();
 		if ( empty( $packs ) ) return self::set_status( 'catalog_empty' );
+		$limits = self::catalog_limits( $packs );
+		if ( ! empty( $limits['exceeded'] ) ) return self::set_status( 'catalog_limits_exceeded' );
 
 		$coverage = MAD4B_SCP_Plugin_Discovery::coverage();
 		$providers = self::provider_state_map( isset( $coverage['plugins'] ) && is_array( $coverage['plugins'] ) ? $coverage['plugins'] : array() );
 		$created = array();
+		$refreshed = array();
 		$activated = array();
 		$deactivated = array();
 		$skipped_user_owned = array();
@@ -73,7 +77,7 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 				'desired_enabled' => $desired_enabled,
 			);
 
-			foreach ( array_slice( $definitions, 0, 20 ) as $definition ) {
+			foreach ( array_slice( $definitions, 0, self::MAX_DEFINITIONS_PER_FAMILY ) as $definition ) {
 				if ( ! is_array( $definition ) ) continue;
 				$result = self::reconcile_definition( $family, $definition, $desired_enabled, $reason );
 				if ( is_wp_error( $result ) ) {
@@ -81,6 +85,7 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 					continue;
 				}
 				if ( ! empty( $result['created'] ) ) $created[] = $result['logical_id'];
+				if ( ! empty( $result['refreshed'] ) ) $refreshed[] = $result['logical_id'];
 				if ( ! empty( $result['activated'] ) ) $activated[] = $result['logical_id'];
 				if ( ! empty( $result['deactivated'] ) ) $deactivated[] = $result['logical_id'];
 				if ( ! empty( $result['user_owned'] ) ) $skipped_user_owned[] = $result['logical_id'];
@@ -97,6 +102,8 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 			array_values( array_unique( $skipped_user_owned ) ),
 			array_values( array_unique( $skipped_conflict ) )
 		);
+		$record['refreshed_managed'] = array_values( array_unique( $refreshed ) );
+		$record['catalog_limits'] = $limits;
 		$record['updated_at'] = gmdate( 'c' );
 		update_option( self::OPTION, $record, false );
 		self::$runtime_status = $record;
@@ -130,11 +137,14 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		$coverage = class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ? MAD4B_SCP_Plugin_Discovery::coverage() : array();
 		$providers = self::provider_state_map( isset( $coverage['plugins'] ) && is_array( $coverage['plugins'] ) ? $coverage['plugins'] : array() );
 		$root = class_exists( 'MAD4B_SCP_Skill_Registry' ) ? MAD4B_SCP_Skill_Registry::storage_root() : '';
+		$limits = self::catalog_limits( $packs );
 		$families = array();
 		$mappings = array();
 		$missing = array();
 		$extra = array();
 		$would_create = array();
+		$would_refresh = array();
+		$content_drift = array();
 		$would_enable = array();
 		$would_disable = array();
 		$user_owned = array();
@@ -150,7 +160,7 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 			$adapter_ready = $active && ! empty( $provider['adapter_registered'] ) && ! empty( $provider['adapter_runtime_available'] );
 			$desired_enabled = $active && $adapter_ready;
 			$family_current = array();
-			foreach ( array_slice( $definitions, 0, 20 ) as $definition ) {
+			foreach ( array_slice( $definitions, 0, self::MAX_DEFINITIONS_PER_FAMILY ) as $definition ) {
 				if ( ! is_array( $definition ) ) continue;
 				$level = isset( $definition['level'] ) ? sanitize_key( (string) $definition['level'] ) : '';
 				$target = isset( $definition['target'] ) ? sanitize_key( (string) $definition['target'] ) : '';
@@ -160,6 +170,8 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 					continue;
 				}
 				$logical_id = $level . ':' . $target . ':' . $name;
+				$document = self::canonical_document( $definition );
+				$expected_sha = is_wp_error( $document ) ? '' : hash( 'sha256', $document );
 				$dir = '' !== $root ? wp_normalize_path( $root . '/' . $level . '/' . $target . '/' . $name ) : '';
 				$file = '' !== $dir ? $dir . '/SKILL.md' : '';
 				$meta_file = '' !== $dir ? $dir . '/' . MAD4B_SCP_Skill_Registry::META_FILE : '';
@@ -171,18 +183,23 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 				$meta = is_string( $meta_raw ) ? json_decode( $meta_raw, true ) : null;
 				$owner = is_array( $meta ) && isset( $meta['provisioned_by'] ) ? (string) $meta['provisioned_by'] : '';
 				$managed = in_array( $owner, array( self::CONTRACT, 'mad4b.skill-seeder.v1' ), true );
+				$provider_managed = self::CONTRACT === $owner;
 				$recorded_sha = is_array( $meta ) && isset( $meta['sha256'] ) ? strtolower( trim( (string) $meta['sha256'] ) ) : '';
 				$digest_clean = $present && 1 === preg_match( '/^[a-f0-9]{64}$/', $recorded_sha ) && '' !== $current_sha && hash_equals( $recorded_sha, $current_sha );
 				$item_user_owned = $present && ( ! $managed || ! $digest_clean );
 				$current_enabled = $present && ( ! is_array( $meta ) || ! array_key_exists( 'enabled', $meta ) || ! empty( $meta['enabled'] ) );
+				$content_current = $present && '' !== $expected_sha && '' !== $current_sha && hash_equals( $expected_sha, $current_sha );
 				$mapping_ready = $desired_enabled ? ( $present && $current_enabled ) : ( ! $present || ! $current_enabled );
 				$item_would_create = $desired_enabled && ! $path_exists;
+				$item_would_refresh = $desired_enabled && $present && $provider_managed && $digest_clean && ! $content_current;
 				$item_would_enable = $desired_enabled && $present && ! $current_enabled && ! $item_user_owned;
 				$item_would_disable = ! $desired_enabled && $present && $current_enabled && ! $item_user_owned;
-				$conflict = ( $path_exists && ! $present ) || ( ! $mapping_ready && $item_user_owned );
+				if ( $item_would_refresh ) $mapping_ready = false;
+				$conflict = is_wp_error( $document ) || ( $path_exists && ! $present ) || ( ! $mapping_ready && $item_user_owned );
 				if ( $desired_enabled && ! $present ) $missing[] = $logical_id;
 				if ( ! $desired_enabled && $present && $current_enabled ) $extra[] = $logical_id;
 				if ( $item_would_create ) $would_create[] = $logical_id;
+				if ( $item_would_refresh ) { $would_refresh[] = $logical_id; $content_drift[] = $logical_id; }
 				if ( $item_would_enable ) $would_enable[] = $logical_id;
 				if ( $item_would_disable ) $would_disable[] = $logical_id;
 				if ( $item_user_owned ) $user_owned[] = $logical_id;
@@ -194,10 +211,15 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 					'current_enabled' => $current_enabled,
 					'present' => $present,
 					'adapter_ready' => $adapter_ready,
+					'provider_managed' => $provider_managed,
+					'expected_sha256' => $expected_sha,
+					'current_sha256' => $current_sha,
+					'content_current' => $content_current,
 					'missing' => $desired_enabled && ! $present,
 					'extra' => ! $desired_enabled && $present && $current_enabled,
 					'would_create' => $item_would_create,
-					'would_refresh' => false,
+					'would_refresh' => $item_would_refresh,
+					'refresh_policy' => 'digest_clean_provider_managed_only',
 					'would_enable' => $item_would_enable,
 					'would_disable' => $item_would_disable,
 					'user_owned' => $item_user_owned,
@@ -217,11 +239,13 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		$missing = array_values( array_unique( $missing ) );
 		$extra = array_values( array_unique( $extra ) );
 		$would_create = array_values( array_unique( $would_create ) );
+		$would_refresh = array_values( array_unique( $would_refresh ) );
+		$content_drift = array_values( array_unique( $content_drift ) );
 		$would_enable = array_values( array_unique( $would_enable ) );
 		$would_disable = array_values( array_unique( $would_disable ) );
 		$user_owned = array_values( array_unique( $user_owned ) );
 		$conflicts = array_values( array_unique( $conflicts ) );
-		$ready = empty( $missing ) && empty( $extra ) && empty( $would_create ) && empty( $would_enable ) && empty( $would_disable ) && empty( $conflicts );
+		$ready = empty( $limits['exceeded'] ) && empty( $missing ) && empty( $extra ) && empty( $would_create ) && empty( $would_refresh ) && empty( $would_enable ) && empty( $would_disable ) && empty( $conflicts );
 		return array(
 			'contract' => self::INSPECTION_CONTRACT,
 			'ready' => $ready,
@@ -231,7 +255,13 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 			'missing' => $missing,
 			'extra' => $extra,
 			'would_create' => $would_create,
-			'would_refresh' => array(),
+			'would_refresh' => $would_refresh,
+			'content_drift' => $content_drift,
+			'catalog_family_count' => isset( $limits['family_count'] ) ? (int) $limits['family_count'] : 0,
+			'processed_family_count' => min( isset( $limits['family_count'] ) ? (int) $limits['family_count'] : 0, self::MAX_PACKS ),
+			'catalog_truncated' => ! empty( $limits['family_limit_exceeded'] ),
+			'definition_limit_exceeded' => ! empty( $limits['definition_limit_exceeded'] ),
+			'catalog_limits' => $limits,
 			'would_enable' => $would_enable,
 			'would_disable' => $would_disable,
 			'user_owned' => $user_owned,
@@ -243,6 +273,37 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 			'option_write_performed' => false,
 			'audit_write_performed' => false,
 		);
+	}
+
+	private static function catalog_limits( array $packs ) {
+		$family_count = count( $packs );
+		$definition_limit_exceeded = array();
+		foreach ( $packs as $family => $definitions ) {
+			if ( ! is_array( $definitions ) ) continue;
+			if ( count( $definitions ) > self::MAX_DEFINITIONS_PER_FAMILY ) $definition_limit_exceeded[] = sanitize_key( (string) $family );
+		}
+		$definition_limit_exceeded = array_values( array_unique( array_filter( $definition_limit_exceeded ) ) );
+		$family_limit_exceeded = $family_count > self::MAX_PACKS;
+		return array(
+			'family_count' => $family_count,
+			'max_families' => self::MAX_PACKS,
+			'max_definitions_per_family' => self::MAX_DEFINITIONS_PER_FAMILY,
+			'family_limit_exceeded' => $family_limit_exceeded,
+			'definition_limit_exceeded' => $definition_limit_exceeded,
+			'exceeded' => $family_limit_exceeded || ! empty( $definition_limit_exceeded ),
+		);
+	}
+
+	private static function canonical_document( array $definition ) {
+		$name = isset( $definition['name'] ) ? sanitize_key( (string) $definition['name'] ) : '';
+		$description = isset( $definition['description'] ) ? trim( (string) $definition['description'] ) : '';
+		$body = isset( $definition['body'] ) ? trim( (string) $definition['body'] ) : '';
+		if ( '' === $name || ! preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name ) || '' === $description || strlen( $description ) > 2000 || '' === $body ) {
+			return new WP_Error( 'invalid_document', 'Provider Skill document is invalid.' );
+		}
+		$document = "---\nname: " . $name . "\ndescription: " . self::yaml_scalar( $description ) . "\n---\n\n" . $body . "\n";
+		if ( strlen( $document ) > MAD4B_SCP_Skill_Registry::MAX_SKILL_BYTES || false !== strpos( $document, "\0" ) ) return new WP_Error( 'document_too_large', 'Provider Skill document is invalid.' );
+		return $document;
 	}
 
 	private static function set_status( $state ) {
@@ -269,6 +330,7 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 			'production_auto_provision' => false,
 			'provider_plugin_mutation' => false,
 			'deletes_skills' => false,
+			'catalog_limits' => self::catalog_limits( isset( self::catalog()['packs'] ) && is_array( self::catalog()['packs'] ) ? self::catalog()['packs'] : array() ),
 		);
 	}
 
@@ -318,6 +380,8 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		if ( '' === $target || $target !== sanitize_key( $target ) ) return new WP_Error( 'invalid_target', 'Provider Skill target is invalid.' );
 		if ( '' === $name || ! preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name ) ) return new WP_Error( 'invalid_name', 'Provider Skill name is invalid.' );
 		if ( '' === $description || strlen( $description ) > 2000 || '' === $body ) return new WP_Error( 'invalid_document', 'Provider Skill document is invalid.' );
+		$document = self::canonical_document( $definition );
+		if ( is_wp_error( $document ) ) return $document;
 
 		$root = MAD4B_SCP_Skill_Registry::storage_root();
 		if ( '' === $root || ( ! is_dir( $root ) && ! wp_mkdir_p( $root ) ) ) return new WP_Error( 'storage_unavailable', 'Skill storage is unavailable.' );
@@ -326,8 +390,8 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		$meta_file = $dir . '/' . MAD4B_SCP_Skill_Registry::META_FILE;
 		$logical_id = $level . ':' . $target . ':' . $name;
 
-		if ( is_file( $file ) ) return self::reconcile_existing( $family, $logical_id, $file, $meta_file, $desired_enabled, $reason );
-		if ( ! $desired_enabled ) return array( 'logical_id' => $logical_id, 'created' => false, 'activated' => false, 'deactivated' => false, 'user_owned' => false, 'conflict' => false );
+		if ( is_file( $file ) ) return self::reconcile_existing( $family, $logical_id, $file, $meta_file, $desired_enabled, $reason, $document );
+		if ( ! $desired_enabled ) return array( 'logical_id' => $logical_id, 'created' => false, 'refreshed' => false, 'activated' => false, 'deactivated' => false, 'user_owned' => false, 'conflict' => false );
 
 		foreach ( MAD4B_SCP_Skill_Registry::list_skills() as $existing ) {
 			if ( isset( $existing['name'] ) && $name === $existing['name'] ) return array( 'logical_id' => $logical_id, 'conflict' => true );
@@ -336,8 +400,6 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		if ( ! wp_mkdir_p( $dir ) ) return new WP_Error( 'directory_failed', 'Unable to create provider Skill directory.' );
 		if ( ! self::within_root( $root, $dir ) ) return new WP_Error( 'path_escape_denied', 'Provider Skill path escaped managed storage.' );
 
-		$document = "---\nname: " . $name . "\ndescription: " . self::yaml_scalar( $description ) . "\n---\n\n" . $body . "\n";
-		if ( strlen( $document ) > MAD4B_SCP_Skill_Registry::MAX_SKILL_BYTES || false !== strpos( $document, "\0" ) ) return new WP_Error( 'document_too_large', 'Provider Skill document is invalid.' );
 		$sha = hash( 'sha256', $document );
 		$meta = array(
 			'contract' => MAD4B_SCP_Skill_Registry::CONTRACT,
@@ -368,10 +430,10 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 			if ( is_wp_error( $remove_file ) || is_wp_error( $remove_meta ) ) return new WP_Error( 'provider_provision_rollback_failed', 'Provider Skill audit failed and newly provisioned files could not be fully removed.' );
 			return new WP_Error( 'audit_failed', 'Provider Skill provisioning rolled back and verified because audit commit failed.' );
 		}
-		return array( 'logical_id' => $logical_id, 'created' => true, 'activated' => true, 'deactivated' => false, 'user_owned' => false, 'conflict' => false );
+		return array( 'logical_id' => $logical_id, 'created' => true, 'refreshed' => false, 'activated' => true, 'deactivated' => false, 'user_owned' => false, 'conflict' => false );
 	}
 
-	private static function reconcile_existing( $family, $logical_id, $file, $meta_file, $desired_enabled, $reason ) {
+	private static function reconcile_existing( $family, $logical_id, $file, $meta_file, $desired_enabled, $reason, $canonical_document = '' ) {
 		if ( ! is_file( $file ) || is_link( $file ) || ! is_file( $meta_file ) || is_link( $meta_file ) ) return array( 'logical_id' => $logical_id, 'user_owned' => true );
 		$skill_raw = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$raw = file_get_contents( $meta_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
@@ -387,9 +449,21 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		}
 
 		$current = ! empty( $meta['enabled'] );
-		if ( $current === (bool) $desired_enabled ) return array( 'logical_id' => $logical_id, 'created' => false, 'activated' => false, 'deactivated' => false, 'user_owned' => false, 'conflict' => false );
+		$provider_managed = self::CONTRACT === $owner;
+		$canonical_sha = is_string( $canonical_document ) && '' !== $canonical_document ? hash( 'sha256', $canonical_document ) : '';
+		$refresh = $provider_managed && (bool) $desired_enabled && '' !== $canonical_sha && ! hash_equals( $canonical_sha, $current_sha );
+		$toggle = $current !== (bool) $desired_enabled;
+		if ( ! $refresh && ! $toggle ) return array( 'logical_id' => $logical_id, 'created' => false, 'refreshed' => false, 'activated' => false, 'deactivated' => false, 'user_owned' => false, 'conflict' => false );
 
-		$before = $raw;
+		$before_skill = $skill_raw;
+		$before_meta = $raw;
+		if ( $refresh ) {
+			$written_skill = self::atomic_write( $file, $canonical_document );
+			if ( is_wp_error( $written_skill ) ) return $written_skill;
+			$meta['previous_sha256'] = $current_sha;
+			$meta['sha256'] = $canonical_sha;
+			$meta['provider_content_refreshed'] = true;
+		}
 		$meta['enabled'] = (bool) $desired_enabled;
 		$meta['updated_at'] = gmdate( 'c' );
 		$meta['updated_by'] = 0;
@@ -397,17 +471,39 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		$meta['provider_activation_reason'] = $reason;
 		$meta['provider_managed_by'] = self::CONTRACT;
 		$written = self::atomic_write( $meta_file, wp_json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
-		if ( is_wp_error( $written ) ) return $written;
-		$audit = MAD4B_SCP_Audit::record( 'mad4b/skill-provider-activation', array( 'logical_id' => $logical_id, 'provider_family' => $family, 'before_enabled' => $current, 'after_enabled' => (bool) $desired_enabled, 'reason' => $reason ), 'ok' );
-		if ( is_wp_error( $audit ) ) {
-			$restored = self::atomic_write( $meta_file, $before );
-			$after = is_file( $meta_file ) && ! is_link( $meta_file ) ? file_get_contents( $meta_file ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-			if ( is_wp_error( $restored ) || ! is_string( $after ) || ! hash_equals( hash( 'sha256', $before ), hash( 'sha256', $after ) ) || $before !== $after ) {
-				return new WP_Error( 'provider_activation_rollback_failed', 'Provider Skill activation audit failed and previous metadata could not be verified after rollback.' );
-			}
-			return new WP_Error( 'audit_failed', 'Provider Skill activation change rolled back and verified because audit commit failed.' );
+		if ( is_wp_error( $written ) ) {
+			if ( $refresh ) self::atomic_write( $file, $before_skill );
+			return $written;
 		}
-		return array( 'logical_id' => $logical_id, 'created' => false, 'activated' => (bool) $desired_enabled, 'deactivated' => ! $desired_enabled, 'user_owned' => false, 'conflict' => false );
+		$event = $refresh ? 'mad4b/skill-provider-refresh' : 'mad4b/skill-provider-activation';
+		$audit = MAD4B_SCP_Audit::record( $event, array(
+			'logical_id' => $logical_id,
+			'provider_family' => $family,
+			'before_sha256' => $current_sha,
+			'after_sha256' => $refresh ? $canonical_sha : $current_sha,
+			'before_enabled' => $current,
+			'after_enabled' => (bool) $desired_enabled,
+			'reason' => $reason,
+		), 'ok' );
+		if ( is_wp_error( $audit ) ) {
+			$restore_skill = $refresh ? self::atomic_write( $file, $before_skill ) : true;
+			$restore_meta = self::atomic_write( $meta_file, $before_meta );
+			$after_skill = is_file( $file ) && ! is_link( $file ) ? file_get_contents( $file ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$after_meta = is_file( $meta_file ) && ! is_link( $meta_file ) ? file_get_contents( $meta_file ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			if ( is_wp_error( $restore_skill ) || is_wp_error( $restore_meta ) || ! is_string( $after_skill ) || ! is_string( $after_meta ) || $before_skill !== $after_skill || $before_meta !== $after_meta ) {
+				return new WP_Error( 'provider_refresh_rollback_failed', 'Provider Skill audit failed and previous managed bytes could not be verified after rollback.' );
+			}
+			return new WP_Error( 'audit_failed', 'Provider Skill managed change rolled back and verified because audit commit failed.' );
+		}
+		return array(
+			'logical_id' => $logical_id,
+			'created' => false,
+			'refreshed' => $refresh,
+			'activated' => $toggle && (bool) $desired_enabled,
+			'deactivated' => $toggle && ! $desired_enabled,
+			'user_owned' => false,
+			'conflict' => false,
+		);
 	}
 
 	private static function within_root( $root, $dir ) {
