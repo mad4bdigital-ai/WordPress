@@ -12,8 +12,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * gate remains deny-only defense in depth.
  */
 final class MAD4B_SCP_OAuth_Resource_Bridge {
-	const CONTRACT = 'mad4b.oauth-resource-bridge.v4';
+	const CONTRACT = 'mad4b.oauth-resource-bridge.v5';
 	const READ_SCOPE = 'mad4b:read';
+	const AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up';
 	const DEVELOPER_SCOPE = 'server:mad4b-developer';
 	const DEVELOPER_BREAKGLASS_SCOPE = 'server:mad4b-developer-breakglass';
 	const METADATA_NAMESPACE = 'mad4b/v1';
@@ -123,7 +124,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'resources' => self::resource_identifiers(),
 			'metadata_url' => self::metadata_url(),
 			'authorization_server_metadata_urls' => self::authorization_server_metadata_urls(),
-			'scopes_supported' => array( self::READ_SCOPE, self::DEVELOPER_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE ),
+			'scopes_supported' => array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE, self::DEVELOPER_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE ),
 			'wp_user_id' => self::configured_user_id( self::primary_issuer() ),
 			'wp_user_capable' => $wp_users_ready,
 			'https' => $https,
@@ -164,7 +165,16 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$resource = untrailingslashit( trim( (string) $resource ) );
 		if ( hash_equals( self::resource_identifier( 'mad4b-developer' ), $resource ) ) return array( self::READ_SCOPE, self::DEVELOPER_SCOPE );
 		if ( hash_equals( self::resource_identifier( 'mad4b-developer-breakglass' ), $resource ) ) return array( self::READ_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE );
+		if ( hash_equals( self::resource_identifier(), $resource ) && self::authority_step_up_scope_available() ) {
+			return array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE );
+		}
 		return array( self::READ_SCOPE );
+	}
+
+	public static function authority_step_up_scope_available() {
+		if ( ! class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) || ! method_exists( 'MAD4B_SCP_Full_Staging_Authority', 'chatgpt_step_up_tools' ) ) return false;
+		$tools = MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools();
+		return is_array( $tools ) && in_array( MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY, $tools, true );
 	}
 
 	public static function resource_identifier( $server_id = 'mad4b-chatgpt' ) {
@@ -262,6 +272,16 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 	public static function verified_bearer_active() {
 		return is_array( self::$verified_context ) && ! empty( self::$verified_context['authenticated'] ) && 'oauth2_bearer' === (string) self::$verified_context['auth_method'];
+	}
+
+	public static function verified_bearer_has_scope( $scope ) {
+		$scope = trim( (string) $scope );
+		if ( '' === $scope || ! self::verified_bearer_active() ) return false;
+		$scopes = isset( self::$verified_context['token_scopes'] ) && is_array( self::$verified_context['token_scopes'] )
+			? self::$verified_context['token_scopes']
+			: array();
+		foreach ( $scopes as $granted ) if ( is_string( $granted ) && hash_equals( $scope, $granted ) ) return true;
+		return false;
 	}
 
 	/** Reset request-local OAuth authority before a bearer is evaluated. */
