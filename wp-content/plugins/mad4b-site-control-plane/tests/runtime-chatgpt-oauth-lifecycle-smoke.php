@@ -15,8 +15,13 @@ if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) || true !== MAD4B_MCP_LOCAL_OA
 }
 
 $metadata = MAD4B_SCP_Local_OAuth_Server::metadata();
-if ( ! in_array( 'refresh_token', $metadata['grant_types_supported'], true ) || ! in_array( 'offline_access', $metadata['scopes_supported'], true ) ) {
-	$fail( 'Local authorization-server metadata does not support persistent lifecycle.', $metadata );
+if ( ! in_array( 'refresh_token', $metadata['grant_types_supported'], true )
+	|| ! in_array( 'offline_access', $metadata['scopes_supported'], true )
+	|| ! in_array( 'mad4b:authority:step-up', $metadata['scopes_supported'], true ) ) {
+	$fail( 'Local authorization-server metadata does not support persistent single-app step-up lifecycle.', $metadata );
+}
+if ( ! MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available() ) {
+	$fail( 'Exact Staging fixture did not expose the authority step-up scope.' );
 }
 
 $resource = MAD4B_SCP_Local_OAuth_Server::resource_identifier();
@@ -42,14 +47,14 @@ $_POST = array();
 if ( ! MAD4B_SCP_ChatGPT_OAuth_Lifecycle::augment_authorization_scope() ) {
 	$fail( 'Exact ChatGPT GET authorization request was not augmented.' );
 }
-if ( 'mad4b:read offline_access' !== $_GET['scope'] ) {
-	$fail( 'ChatGPT lifecycle scope was not added exactly once.', $_GET );
+if ( 'mad4b:read offline_access mad4b:authority:step-up' !== $_GET['scope'] ) {
+	$fail( 'ChatGPT lifecycle and authority step-up scopes were not added exactly once.', $_GET );
 }
 if ( MAD4B_SCP_ChatGPT_OAuth_Lifecycle::augment_authorization_scope() ) {
 	$fail( 'Lifecycle augmentation was not idempotent.', $_GET );
 }
-if ( 1 !== substr_count( $_GET['scope'], 'offline_access' ) ) {
-	$fail( 'Lifecycle scope duplicated.', $_GET['scope'] );
+if ( 1 !== substr_count( $_GET['scope'], 'offline_access' ) || 1 !== substr_count( $_GET['scope'], 'mad4b:authority:step-up' ) ) {
+	$fail( 'Lifecycle or authority step-up scope duplicated.', $_GET['scope'] );
 }
 
 $_GET = $base;
@@ -72,15 +77,15 @@ if ( MAD4B_SCP_ChatGPT_OAuth_Lifecycle::augment_authorization_scope() || 'mad4b:
 
 $_GET = $base;
 unset( $_GET['scope'] );
-if ( ! MAD4B_SCP_ChatGPT_OAuth_Lifecycle::augment_authorization_scope() || 'mad4b:read offline_access' !== $_GET['scope'] ) {
-	$fail( 'ChatGPT default read scope did not receive lifecycle continuity.', $_GET );
+if ( ! MAD4B_SCP_ChatGPT_OAuth_Lifecycle::augment_authorization_scope() || 'mad4b:read offline_access mad4b:authority:step-up' !== $_GET['scope'] ) {
+	$fail( 'ChatGPT default read scope did not receive lifecycle plus step-up continuity.', $_GET );
 }
 
 $_SERVER['REQUEST_METHOD'] = 'POST';
 $_POST = $base;
 $_GET = array();
-if ( ! MAD4B_SCP_ChatGPT_OAuth_Lifecycle::augment_authorization_scope() || 'mad4b:read offline_access' !== $_POST['scope'] ) {
-	$fail( 'Consent POST did not preserve ChatGPT lifecycle scope.', $_POST );
+if ( ! MAD4B_SCP_ChatGPT_OAuth_Lifecycle::augment_authorization_scope() || 'mad4b:read offline_access mad4b:authority:step-up' !== $_POST['scope'] ) {
+	$fail( 'Consent POST did not preserve ChatGPT lifecycle plus step-up scope.', $_POST );
 }
 
 $_SERVER = $old_server;
@@ -89,13 +94,15 @@ $_POST = $old_post;
 
 fwrite(
 	STDOUT,
-	'mad4b.site-control-plane.runtime-chatgpt-oauth-lifecycle.v1: PASS ' .
+	'mad4b.site-control-plane.runtime-chatgpt-oauth-lifecycle.v2: PASS ' .
 	wp_json_encode(
 		array(
 			'client_id' => MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID,
 			'resource' => $resource,
-			'authorization_scope' => 'mad4b:read offline_access',
+			'authorization_scope' => 'mad4b:read offline_access mad4b:authority:step-up',
 			'access_authority_scope' => 'mad4b:read',
+			'authority_step_up_scope' => 'mad4b:authority:step-up',
+			'step_up_scope_is_not_write_authority' => true,
 			'refresh_rotation_supported' => true,
 		),
 		JSON_UNESCAPED_SLASHES

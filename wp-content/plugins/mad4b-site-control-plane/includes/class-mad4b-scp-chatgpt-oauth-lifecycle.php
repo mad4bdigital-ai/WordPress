@@ -12,13 +12,14 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *
  * This component is deliberately narrow: only the exact allowlisted ChatGPT
  * CIMD identity, the local authorize endpoint, the canonical ChatGPT protected
- * resource, Authorization Code, and PKCE S256 are eligible. It adds lifecycle
- * scope only; it never broadens the protected-resource permission beyond
- * `mad4b:read`, never runs for another client, and never touches Production
- * enablement or mutation authority.
+ * resource, Authorization Code, and PKCE S256 are eligible. It ensures rotating
+ * refresh-token lifecycle support and, only on exact eligible Staging, requests
+ * the dedicated `mad4b:authority:step-up` scope used by the composite authority
+ * orchestrator. The scope is not mutation authority by itself and never enables
+ * Production, raw-SQL Breakglass, or any low-level enrollment primitive.
  */
 final class MAD4B_SCP_ChatGPT_OAuth_Lifecycle {
-	const CONTRACT = 'mad4b.chatgpt-oauth-lifecycle.v1';
+	const CONTRACT = 'mad4b.chatgpt-oauth-lifecycle.v2';
 
 	private static $booted = false;
 
@@ -64,10 +65,23 @@ final class MAD4B_SCP_ChatGPT_OAuth_Lifecycle {
 		$scopes = '' === $scope ? array( 'mad4b:read' ) : preg_split( '/\s+/', $scope );
 		$scopes = is_array( $scopes ) ? array_values( array_unique( array_filter( array_map( 'trim', $scopes ) ) ) ) : array();
 		if ( ! in_array( 'mad4b:read', $scopes, true ) ) return false;
-		if ( in_array( 'offline_access', $scopes, true ) ) return false;
 
-		$scopes[] = 'offline_access';
-		$params['scope'] = implode( ' ', $scopes );
+		$changed = false;
+		if ( ! in_array( 'offline_access', $scopes, true ) ) {
+			$scopes[] = 'offline_access';
+			$changed = true;
+		}
+
+		$step_up_available = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+			&& method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'authority_step_up_scope_available' )
+			&& MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available();
+		if ( $step_up_available && ! in_array( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE, $scopes, true ) ) {
+			$scopes[] = MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE;
+			$changed = true;
+		}
+
+		if ( ! $changed ) return false;
+		$params['scope'] = implode( ' ', array_values( array_unique( $scopes ) ) );
 		return true;
 	}
 
