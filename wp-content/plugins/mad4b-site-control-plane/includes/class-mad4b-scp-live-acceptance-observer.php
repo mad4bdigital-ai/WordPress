@@ -36,6 +36,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	private static $telemetry = null;
 	private static $telemetry_dirty = false;
 	private static $request_marked = false;
+	private static $provenance_manifest_cache = null;
 
 	public static function boot_early() {
 		if ( self::$booted ) return;
@@ -294,6 +295,59 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		);
 	}
 
+	/**
+	 * Lightweight exact-build identity for latency-sensitive MCP response finalizers.
+	 * This validates the signed/packaged manifest fields but deliberately does not
+	 * hash every package file. Full byte-for-byte provenance remains available via
+	 * build_provenance_status() and is still required by the final acceptance gate.
+	 */
+	public static function build_provenance_identity_status() {
+		$base = array(
+			'contract' => self::PROVENANCE_CONTRACT,
+			'version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '',
+			'source_commit_sha' => '',
+			'build_fingerprint' => '',
+			'package_manifest_digest' => '',
+			'artifact_identity' => '',
+			'mcp_adapter_version' => '',
+			'manifest_present' => false,
+			'manifest_valid' => false,
+			'identity_ready' => false,
+			'identity_mismatch' => array( 'manifest_missing' ),
+			'full_runtime_hash_validation_deferred' => true,
+		);
+		$data = self::provenance_manifest();
+		if ( empty( $data ) ) return $base;
+		$base['manifest_present'] = true;
+		if ( self::PROVENANCE_CONTRACT !== ( isset( $data['contract'] ) ? (string) $data['contract'] : '' ) ) {
+			$base['identity_mismatch'] = array( 'manifest_invalid' );
+			return $base;
+		}
+		if ( empty( $data['source_commit_sha'] ) || 1 !== preg_match( '/^[a-f0-9]{40}$/', (string) $data['source_commit_sha'] ) ) {
+			$base['identity_mismatch'] = array( 'source_commit_sha_invalid' );
+			return $base;
+		}
+		foreach ( array( 'build_fingerprint', 'package_manifest_digest' ) as $key ) {
+			if ( empty( $data[ $key ] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $data[ $key ] ) ) {
+				$base['identity_mismatch'] = array( 'manifest_hash_invalid' );
+				return $base;
+			}
+		}
+		if ( empty( $data['package_files'] ) || ! is_array( $data['package_files'] ) ) {
+			$base['identity_mismatch'] = array( 'manifest_files_missing' );
+			return $base;
+		}
+		$base['manifest_valid'] = true;
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity', 'mcp_adapter_version' ) as $key ) {
+			$base[ $key ] = isset( $data[ $key ] ) ? sanitize_text_field( (string) $data[ $key ] ) : '';
+		}
+		$mismatch = array();
+		if ( (string) $base['version'] !== (string) ( isset( $data['control_plane_version'] ) ? $data['control_plane_version'] : '' ) ) $mismatch[] = 'control_plane_version_mismatch';
+		$base['identity_ready'] = empty( $mismatch );
+		$base['identity_mismatch'] = array_values( array_unique( $mismatch ) );
+		return $base;
+	}
+
 	public static function build_provenance_status() {
 		$path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' : '';
 		$base = array( 'contract' => self::PROVENANCE_CONTRACT, 'version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '', 'source_commit_sha' => '', 'build_fingerprint' => '', 'package_manifest_digest' => '', 'build_workflow' => '', 'build_run_id' => '', 'artifact_identity' => '', 'mcp_adapter_version' => '', 'manifest_present' => false, 'manifest_valid' => false, 'runtime_manifest_match' => false, 'stale' => true, 'provenance_mismatch' => array( 'manifest_missing' ) );
@@ -305,7 +359,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		$lines = array(); $mismatch = array(); foreach ( $data['package_files'] as $entry ) { if ( ! is_array( $entry ) || empty( $entry['path'] ) || false !== strpos( (string) $entry['path'], '..' ) || ! isset( $entry['bytes'], $entry['sha256'] ) || ! preg_match( '/^[a-f0-9]{64}$/', (string) $entry['sha256'] ) ) { $mismatch[] = 'package_entry_invalid'; continue; } $relative = ltrim( wp_normalize_path( (string) $entry['path'] ), '/' ); $file = MAD4B_SCP_DIR . $relative; if ( ! is_readable( $file ) || (int) filesize( $file ) !== (int) $entry['bytes'] || ! hash_equals( (string) $entry['sha256'], (string) hash_file( 'sha256', $file ) ) ) { $mismatch[] = 'runtime_file_mismatch:' . self::safe_identifier( $relative ); continue; } $lines[] = $relative . "\0" . (int) $entry['bytes'] . "\0" . strtolower( (string) $entry['sha256'] ) . "\n"; }
 		sort( $lines, SORT_STRING ); $digest = hash( 'sha256', implode( '', $lines ) ); if ( ! hash_equals( (string) $data['package_manifest_digest'], $digest ) ) $mismatch[] = 'package_manifest_digest_mismatch'; if ( (string) $base['version'] !== (string) ( isset( $data['control_plane_version'] ) ? $data['control_plane_version'] : '' ) ) $mismatch[] = 'control_plane_version_mismatch'; $base['runtime_manifest_match'] = empty( $mismatch ); $base['stale'] = ! $base['runtime_manifest_match']; $base['provenance_mismatch'] = array_values( array_unique( $mismatch ) ); return $base;
 	}
-	private static function provenance_manifest() { $path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' : ''; if ( '' === $path || ! is_readable( $path ) ) return array(); $data = json_decode( (string) file_get_contents( $path ), true ); return is_array( $data ) ? $data : array(); }
+	private static function provenance_manifest() { if ( is_array( self::$provenance_manifest_cache ) ) return self::$provenance_manifest_cache; $path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' : ''; if ( '' === $path || ! is_readable( $path ) ) return array(); $data = json_decode( (string) file_get_contents( $path ), true ); if ( is_array( $data ) ) self::$provenance_manifest_cache = $data; return is_array( $data ) ? $data : array(); }
 	private static function current_build_fingerprint() { $manifest = self::provenance_manifest(); if ( isset( $manifest['build_fingerprint'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $manifest['build_fingerprint'] ) ) return strtolower( (string) $manifest['build_fingerprint'] ); $legacy = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? MAD4B_SCP_External_Handshake_Evidence::build_fingerprint() : ''; $self_hash = is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : ''; return hash( 'sha256', self::CONTRACT . "\n" . ( defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '' ) . "\n" . $legacy . "\n" . $self_hash ); }
 
 	public static function observe_rest_response( $response, $server, $request ) { self::observe_wpml_response( $response, $request ); self::observe_external_handshake( $response, $request ); return $response; }
