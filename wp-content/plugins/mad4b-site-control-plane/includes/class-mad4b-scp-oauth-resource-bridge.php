@@ -478,6 +478,36 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$key = 'mad4b_oauth_discovery_' . substr( hash( 'sha256', $issuer ), 0, 32 );
 		$cached = get_transient( $key );
 		if ( is_array( $cached ) ) return $cached;
+
+		// Same-process Local OAuth must never depend on an outbound/loopback HTTP
+		// request to verify its own tokens. Besides avoiding deadlock/timeouts on
+		// constrained hosts, this preserves the exact same issuer/origin/PKCE checks
+		// against the authoritative local metadata object.
+		$local_issuer = self::local_issuer();
+		if ( '' !== $local_issuer && hash_equals( $local_issuer, rtrim( (string) $issuer, '/' ) )
+			&& class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			&& method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'metadata' ) ) {
+			$metadata = MAD4B_SCP_Local_OAuth_Server::metadata();
+			if ( is_array( $metadata )
+				&& isset( $metadata['issuer'] ) && is_string( $metadata['issuer'] ) && hash_equals( $issuer, $metadata['issuer'] )
+				&& ! empty( $metadata['jwks_uri'] ) && self::same_origin_https_url( $metadata['jwks_uri'], $issuer )
+				&& ! empty( $metadata['authorization_endpoint'] ) && self::same_origin_https_url( $metadata['authorization_endpoint'], $issuer )
+				&& ! empty( $metadata['token_endpoint'] ) && self::same_origin_https_url( $metadata['token_endpoint'], $issuer )
+				&& ! empty( $metadata['code_challenge_methods_supported'] ) && is_array( $metadata['code_challenge_methods_supported'] )
+				&& in_array( 'S256', $metadata['code_challenge_methods_supported'], true ) ) {
+				$bounded = array(
+					'issuer' => $issuer,
+					'jwks_uri' => esc_url_raw( $metadata['jwks_uri'] ),
+					'authorization_endpoint' => esc_url_raw( $metadata['authorization_endpoint'] ),
+					'token_endpoint' => esc_url_raw( $metadata['token_endpoint'] ),
+					'code_challenge_methods_supported' => array( 'S256' ),
+				);
+				set_transient( $key, $bounded, self::CACHE_TTL );
+				return $bounded;
+			}
+			return new WP_Error( 'mad4b_oauth_local_metadata_invalid', 'Local OAuth metadata is unavailable or not MCP-compatible.' );
+		}
+
 		foreach ( self::authorization_server_metadata_urls( $issuer ) as $url ) {
 			$response = wp_safe_remote_get( $url, array( 'timeout' => 5, 'redirection' => 0, 'headers' => array( 'Accept' => 'application/json' ) ) );
 			if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) continue;
@@ -508,6 +538,23 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( $force_refresh ) delete_transient( $key );
 		$cached = get_transient( $key );
 		if ( is_array( $cached ) ) return $cached;
+
+		$local_issuer = self::local_issuer();
+		if ( '' !== $local_issuer && hash_equals( $local_issuer, rtrim( (string) $issuer, '/' ) )
+			&& class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			&& method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'jwks_url' )
+			&& method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'jwks_document' )
+			&& hash_equals( untrailingslashit( (string) MAD4B_SCP_Local_OAuth_Server::jwks_url() ), untrailingslashit( (string) $jwks_uri ) ) ) {
+			$jwks = MAD4B_SCP_Local_OAuth_Server::jwks_document();
+			if ( is_wp_error( $jwks ) ) return $jwks;
+			if ( ! is_array( $jwks ) || empty( $jwks['keys'] ) || ! is_array( $jwks['keys'] ) || count( $jwks['keys'] ) > self::MAX_JWKS_KEYS ) {
+				return new WP_Error( 'mad4b_oauth_jwks_invalid', 'Local OAuth JWKS payload is invalid.' );
+			}
+			$bounded = array( 'keys' => array_slice( $jwks['keys'], 0, self::MAX_JWKS_KEYS ) );
+			set_transient( $key, $bounded, self::CACHE_TTL );
+			return $bounded;
+		}
+
 		$response = wp_safe_remote_get( $jwks_uri, array( 'timeout' => 5, 'redirection' => 0, 'headers' => array( 'Accept' => 'application/json' ) ) );
 		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) return new WP_Error( 'mad4b_oauth_jwks_unavailable', 'OAuth JWKS endpoint is unavailable.' );
 		$body = (string) wp_remote_retrieve_body( $response );

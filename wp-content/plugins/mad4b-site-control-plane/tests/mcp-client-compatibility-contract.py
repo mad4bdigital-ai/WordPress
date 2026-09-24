@@ -36,6 +36,7 @@ required_compat = [
     "'local_key_path_policy_ready'",
     "&& ! empty( $status['effective'] )",
     "&& self::local_key_policy_ready( $status )",
+    "&& ! empty( $status['resource_transport_allowed'] )",
     "MAD4B_SCP_Local_OAuth_Key_Path_Policy::transport_ready()",
     "if ( ! self::oauth_discovery_ready( $status ) ) return array();",
     "'remote_oauth_read_policy'",
@@ -59,6 +60,10 @@ required_compat = [
 ]
 for marker in required_compat:
     assert marker in compat, f'missing compatibility marker: {marker}'
+
+discovery_body = compat.split("private static function oauth_discovery_ready( $status )", 1)[1].split("private static function local_key_policy_ready", 1)[0]
+assert "$status['resource_transport_allowed']" in discovery_body, 'OAuth discovery must follow the bridge transport policy'
+assert "$status['https']" not in discovery_body, 'Compatibility must not re-forbid the bridge bounded Local loopback exception'
 
 for marker in [
     "'/mcp/mad4b-chatgpt' => 'mad4b-chatgpt'",
@@ -170,4 +175,4 @@ for forbidden in [
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
-print('mad4b.site-control-plane.mcp-client-compatibility.v10: PASS')
+print('mad4b.site-control-plane.mcp-client-compatibility.v11: PASS')

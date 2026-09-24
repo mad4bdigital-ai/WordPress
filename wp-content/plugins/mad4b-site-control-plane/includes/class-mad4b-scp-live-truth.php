@@ -57,6 +57,12 @@ final class MAD4B_SCP_Live_Truth {
 
 	private static function recover_runtime_authority() {
 		if ( self::$recovering ) return;
+		// Merely materializing the Abilities registry for MCP initialize/tools-list
+		// must not trigger full authority/grant/provider reconciliation reads.
+		// Explicit status/certification tool calls still execute current truth.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_is_protocol_hotpath' )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return;
 		self::$recovering = true;
 		// Runtime recovery means refreshing truth, never reconciling grants/subjects.
@@ -308,6 +314,10 @@ final class MAD4B_SCP_Live_Truth {
 		foreach ( array( 'oauth_effective', 'oauth_resource_is_chatgpt', 'oauth_does_not_create_write_authority' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$missing_write_mounts = array();
+		// Legacy compatibility alias retained in the response contract. Direct
+		// remote write schemas are intentionally hidden behind write-execute, so
+		// there is no separate remote mount inventory to populate.
+		$missing_remote_mounts = array();
 		$direct_write_schema_leaks = array();
 		$write_transport_tools = array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' );
 		$missing_write_transport = array();

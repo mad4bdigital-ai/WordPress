@@ -131,6 +131,11 @@ required_server = [
     "script-src 'nonce-",
     "connect-src 'self'",
     "Live read-only authority refresh: immediate on focus/return, then every 15 seconds while visible; paused while hidden.",
+    "private static $public_jwk_request_cache = null;",
+    "if ( is_array( self::$public_jwk_request_cache ) ) return self::$public_jwk_request_cache;",
+    "return self::$public_jwk_request_cache;",
+    "$mode = @fileperms( $path );",
+    "0600 !== ( $mode & 0777 )",
 ]
 for marker in required_server:
     if marker not in server:

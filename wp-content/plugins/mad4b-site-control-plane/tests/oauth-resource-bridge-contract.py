@@ -73,6 +73,10 @@ required = [
     "'local' !== $environment",
     "array( '127.0.0.1', '::1', 'localhost' )",
     "self::valid_authority_url( $issuer )",
+    "MAD4B_SCP_Local_OAuth_Server::metadata()",
+    "MAD4B_SCP_Local_OAuth_Server::jwks_document()",
+    "MAD4B_SCP_Local_OAuth_Server::jwks_url()",
+    "mad4b_oauth_local_metadata_invalid",
 ]
 for marker in required:
     if marker not in bridge:

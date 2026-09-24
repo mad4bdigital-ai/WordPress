@@ -51,24 +51,36 @@ final class MAD4B_SCP_Servers {
 			'mad4b-admin' => array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
-				'mad4b/context-ai-review',
 			),
 			'mad4b-developer' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( false ) : array(),
 			'mad4b-developer-breakglass' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( true ) : array(),
 			'mad4b-breakglass' => array( 'mad4b/database-raw-query' ),
 		);
 		if ( 'mad4b-write' === $server_id ) return self::write_tools();
-		return isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
+		$tools = isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
+		if ( 'mad4b-admin' === $server_id
+			&& class_exists( 'MAD4B_SCP_Context_Authority' )
+			&& function_exists( 'wp_has_ability' )
+			&& wp_has_ability( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ) ) {
+			$tools[] = MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY;
+		}
+		return array_values( array_unique( $tools ) );
 	}
 
 	private static function core_write_candidates() {
-		return array_merge(
+		$candidates = array_merge(
 			array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
 			array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
 			)
 		);
+		if ( class_exists( 'MAD4B_SCP_Context_Authority' )
+			&& function_exists( 'wp_has_ability' )
+			&& wp_has_ability( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ) ) {
+			$candidates[] = MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY;
+		}
+		return array_values( array_unique( $candidates ) );
 	}
 
 	/**

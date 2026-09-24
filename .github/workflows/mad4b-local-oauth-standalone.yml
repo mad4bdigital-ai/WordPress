@@ -246,6 +246,39 @@ jobs:
           done
           curl -fsS "$MAD4B_BROWSER_BASE_URL/wp-login.php" >/dev/null
 
+          # Bound the complete OAuth/MCP discovery chain used by external clients.
+          # These are full HTTP requests and therefore include WordPress/plugin boot.
+          RESOURCE_METADATA_URL="$(php /tmp/wp-cli.phar eval 'echo MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url();' --path="$WP_PATH" --user=mad4b-ci-admin)"
+          AUTH_METADATA_URL="$(php /tmp/wp-cli.phar eval 'echo MAD4B_SCP_Local_OAuth_Server::metadata_url();' --path="$WP_PATH" --user=mad4b-ci-admin)"
+          JWKS_URL="$(php /tmp/wp-cli.phar eval 'echo MAD4B_SCP_Local_OAuth_Server::jwks_url();' --path="$WP_PATH" --user=mad4b-ci-admin)"
+          test -n "$RESOURCE_METADATA_URL"
+          test -n "$AUTH_METADATA_URL"
+          test -n "$JWKS_URL"
+
+          probe_discovery() {
+            local name="$1" url="$2" out="/tmp/mad4b-discovery-$1.body"
+            local meta status elapsed
+            meta="$(curl --silent --show-error --connect-timeout 1 --max-time 4 -o "$out" -w '%{http_code} %{time_total}' "$url")"
+            status="${meta%% *}"
+            elapsed="${meta#* }"
+            echo "HTTP OAuth discovery name=$name status=$status time=$elapsed url=$url"
+            test "$status" = "200"
+            python3 - "$name" "$elapsed" "$out" <<'PY'
+          import json, sys
+          from pathlib import Path
+          name, elapsed, path = sys.argv[1], float(sys.argv[2]), Path(sys.argv[3])
+          if elapsed > 2.0:
+              raise SystemExit(f'{name} discovery exceeded 2s budget: {elapsed:.3f}s')
+          payload = json.loads(path.read_text(encoding='utf-8', errors='strict'))
+          if not isinstance(payload, dict) or not payload:
+              raise SystemExit(f'{name} discovery returned no JSON object')
+          print(json.dumps({'name': name, 'seconds': elapsed, 'status': 'PASS'}))
+          PY
+          }
+          probe_discovery resource-metadata "$RESOURCE_METADATA_URL"
+          probe_discovery authorization-metadata "$AUTH_METADATA_URL"
+          probe_discovery jwks "$JWKS_URL"
+
           # Exercise the real HTTP route that ChatGPT Refresh uses. This is
           # intentionally separate from rest_do_request() and WP-CLI stdio so
           # route-local server materialization and response-path observers are

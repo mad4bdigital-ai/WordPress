@@ -22,6 +22,7 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 	const FINALIZER_SESSION_SKEW = 5;
 
 	private static $booted = false;
+	private static $request_build_fingerprint = null;
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -223,6 +224,8 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 	}
 
 	public static function build_fingerprint() {
+		if ( is_string( self::$request_build_fingerprint ) && '' !== self::$request_build_fingerprint ) return self::$request_build_fingerprint;
+
 		$files = array(
 			defined( 'MAD4B_SCP_FILE' ) ? MAD4B_SCP_FILE : '',
 			defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-resource-bridge.php' : '',
@@ -239,7 +242,8 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			if ( ! is_string( $digest ) || '' === $digest ) return '';
 			hash_update( $ctx, basename( $file ) . "\0" . $digest . "\0" );
 		}
-		return hash_final( $ctx );
+		self::$request_build_fingerprint = hash_final( $ctx );
+		return self::$request_build_fingerprint;
 	}
 
 	private static function capture_runtime_allowed( $request ) {
@@ -293,11 +297,17 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( ! is_array( $current ) || ! self::same_context( $pending, $current ) ) return;
 		if ( empty( $pending['build_fingerprint'] ) || ! hash_equals( self::build_fingerprint(), (string) $pending['build_fingerprint'] ) ) return;
 
-		$data = self::normalize_value( $response->get_data() );
-		$tools = is_array( $data ) && isset( $data['result']['tools'] ) && is_array( $data['result']['tools'] ) ? $data['result']['tools'] : array();
+		$data = $response->get_data();
+		if ( is_object( $data ) ) $data = get_object_vars( $data );
+		$result = is_array( $data ) && isset( $data['result'] ) ? $data['result'] : array();
+		if ( is_object( $result ) ) $result = get_object_vars( $result );
+		$tools = is_array( $result ) && isset( $result['tools'] ) && is_array( $result['tools'] ) ? $result['tools'] : array();
 		if ( empty( $tools ) ) return;
 		$names = array();
-		foreach ( $tools as $tool ) if ( is_array( $tool ) && isset( $tool['name'] ) && is_string( $tool['name'] ) ) $names[] = $tool['name'];
+		foreach ( $tools as $tool ) {
+			if ( is_object( $tool ) ) $tool = get_object_vars( $tool );
+			if ( is_array( $tool ) && isset( $tool['name'] ) && is_string( $tool['name'] ) ) $names[] = $tool['name'];
+		}
 		$names = self::normalize_tool_names( $names );
 		if ( empty( $names ) ) return;
 

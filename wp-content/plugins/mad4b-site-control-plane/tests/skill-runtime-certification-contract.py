@@ -16,6 +16,7 @@ main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 live_truth = (wp / 'includes' / 'class-mad4b-scp-live-truth.php').read_text(encoding='utf-8')
 write_authority = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
 write_cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
+request_scope = (wp / 'includes' / 'class-mad4b-scp-mcp-request-scope.php').read_text(encoding='utf-8')
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-autoconfig.v2'",
@@ -122,6 +123,19 @@ for marker in [
 status_section = cert[cert.index('public static function status()'):cert.index('public static function persisted_status()')]
 if 'update_option(' in status_section or 'MAD4B_SCP_Audit::record' in status_section:
     raise SystemExit('Skill current status must remain read-only and must not persist or audit')
+
+observe_section = cert[cert.index('public static function observe()'):cert.index('public static function current_status()')]
+if "current_request_is_protocol_hotpath()" not in observe_section:
+    raise SystemExit('Skill observe must skip expensive recomputation only on the protocol hotpath')
+if "current_request_requires_mcp_runtime()" in observe_section:
+    raise SystemExit('Skill observe must not equate WP-CLI/admin runtime ownership with the HTTP protocol hotpath')
+
+http_scope = request_scope[request_scope.index('public static function current_request_is_http_mcp_transport()'):request_scope.index('public static function current_request_is_protocol_hotpath()')]
+runtime_scope = request_scope[request_scope.index('public static function current_request_requires_mcp_runtime()'):request_scope.index('public static function current_request_is_http_mcp_transport()')]
+if "defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return false;" not in http_scope:
+    raise SystemExit('HTTP MCP transport classifier must exclude WP-CLI')
+if "defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;" not in runtime_scope:
+    raise SystemExit('MCP runtime ownership must remain available under WP-CLI')
 
 # Provider reconciliation must see the deterministic adapter registry before it
 # derives desired_enabled. This guards the live ETG DFSB failure shape where an
@@ -253,5 +267,9 @@ if "hash_equals( (string) $inventory['write_inventory_fingerprint'], (string) $r
     raise SystemExit('runtime reconciliation must bind the exact live write inventory fingerprint')
 if "MAD4B_SCP_Live_Truth::boot_early();" not in main:
     raise SystemExit('live truth bridge must be armed before Ability materialization')
+if "$missing_remote_mounts = array();" not in live_truth:
+    raise SystemExit('legacy missing_remote_mounts response field must be initialized deterministically')
+if "current_request_is_protocol_hotpath()" not in live_truth:
+    raise SystemExit('Live Truth automatic recovery must skip only the protocol hotpath')
 
-print('mad4b.skill-runtime-certification.v5: PASS')
+print('mad4b.skill-runtime-certification.v6: PASS')
