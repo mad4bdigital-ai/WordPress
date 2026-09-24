@@ -256,15 +256,31 @@ final class MAD4B_SCP_Context_Admin_UI {
 		);
 		if ( self::is_ajax_request() ) {
 			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'code' => sanitize_key( $result->get_error_code() ), 'message' => $result->get_error_message(), 'data' => $result->get_error_data() ), 422 );
+			$policy = MAD4B_SCP_Context_Authority::review_policy();
 			$status = MAD4B_SCP_Context_Authority::ai_review_policy_status();
+			$expected_mode = isset( $_POST['review_mode'] ) ? sanitize_key( wp_unslash( $_POST['review_mode'] ) ) : 'human_only';
+			$expected_agent = 'human_and_ai' === $expected_mode && isset( $_POST['ai_agent_public_id'] )
+				? strtolower( trim( sanitize_text_field( wp_unslash( $_POST['ai_agent_public_id'] ) ) ) )
+				: '';
+			$verified = isset( $policy['mode'], $policy['ai_agent_public_id'] )
+				&& hash_equals( $expected_mode, (string) $policy['mode'] )
+				&& hash_equals( $expected_agent, (string) $policy['ai_agent_public_id'] );
+			if ( ! $verified ) wp_send_json_error( array( 'code' => 'mad4b_context_review_policy_readback_mismatch', 'message' => __( 'Approval mode write completed but persisted readback did not match.', 'mad4b-site-control-plane' ) ), 500 );
+			$context_profile = MAD4B_SCP_Context_Authority::profile();
 			wp_send_json_success(
 				array(
-					'message' => 'human_and_ai' === ( isset( $status['mode'] ) ? (string) $status['mode'] : '' )
-						? __( 'Human + AI Agent approval mode saved. Exact write authority/grant reconciliation remains explicit.', 'mad4b-site-control-plane' )
-						: __( 'Human-only approval mode saved.', 'mad4b-site-control-plane' ),
+					'message' => 'human_and_ai' === (string) $policy['mode']
+						? __( 'Human + AI Agent approval mode saved and verified. Exact write authority/grant reconciliation remains explicit.', 'mad4b-site-control-plane' )
+						: __( 'Human-only approval mode saved and verified.', 'mad4b-site-control-plane' ),
+					'persistence_verified' => true,
+					'readback' => array(
+						'mode' => (string) $policy['mode'],
+						'ai_agent_public_id' => (string) $policy['ai_agent_public_id'],
+						'revision' => isset( $context_profile['revision'] ) ? (int) $context_profile['revision'] : 0,
+					),
 					'review_policy' => $status,
 					'context_status' => MAD4B_SCP_Context_Authority::status(),
-					'refresh' => true,
+					'one_time_confirmation_persisted' => false,
 				)
 			);
 		}
@@ -370,14 +386,15 @@ final class MAD4B_SCP_Context_Admin_UI {
 		);
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::cards( $cards );
 
-		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( 'Brand Context Profile', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<div id="mad4b-context-brand-profile" class="mad4b-scp-panel"><h2>' . esc_html__( 'Brand Context Profile', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Use a short brand name. This profile is bound to the current Site Profile UUID, not to a global WordPress setting.', 'mad4b-site-control-plane' ) . '</p>';
-		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<form class="mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-context-brand-profile" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION_SAVE_PROFILE );
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SAVE_PROFILE ) . '">';
 		echo '<label for="mad4b-brand-name"><strong>' . esc_html__( 'Brand name', 'mad4b-site-control-plane' ) . '</strong></label><br>';
 		$value = isset( $profile['brand_name'] ) ? (string) $profile['brand_name'] : get_bloginfo( 'name' );
 		echo '<input id="mad4b-brand-name" name="brand_name" type="text" class="regular-text" value="' . esc_attr( $value ) . '" required> ';
+		echo '<div class="mad4b-settings-feedback" data-mad4b-settings-feedback aria-live="polite"></div>';
 		submit_button( empty( $profile ) ? __( 'Create Brand Context', 'mad4b-site-control-plane' ) : __( 'Update Brand Context', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
 		echo '</form></div>';
 
@@ -721,7 +738,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		foreach ( $sources as $source ) {
 			echo '<tr><td><strong>' . esc_html( $source['label'] ) . '</strong><br><code>' . esc_html( $source['external_root_id'] ) . '</code></td>';
 			echo '<td><span class="mad4b-context-badge">' . esc_html( $source['mode'] ) . '</span></td>';
-			echo '<td><form class="mad4b-context-policy-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			echo '<td><form class="mad4b-context-policy-form mad4b-settings-ajax-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_UPDATE_SOURCE_POLICY );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_UPDATE_SOURCE_POLICY ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';
 			if ( 'task_attachment' === $source['mode'] ) {
@@ -729,7 +746,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 			} else {
 				echo '<select name="write_policy">';
 				foreach ( MAD4B_SCP_Context_Authority::write_policies() as $policy_key => $policy ) echo '<option value="' . esc_attr( $policy_key ) . '"' . selected( $source['write_policy'], $policy_key, false ) . '>' . esc_html( $policy['label'] ) . '</option>';
-				echo '</select><br><label class="description"><input type="checkbox" name="write_policy_confirmed" value="1"> ' . esc_html__( 'Confirm if this change increases Drive write authority', 'mad4b-site-control-plane' ) . '</label> ';
+				echo '</select><br><label class="description"><input type="checkbox" name="write_policy_confirmed" value="1" data-mad4b-one-time-confirm> ' . esc_html__( 'One-time confirmation if this change increases Drive write authority. This confirmation is intentionally not stored.', 'mad4b-site-control-plane' ) . '</label> ';
+				echo '<div class="mad4b-settings-feedback" data-mad4b-settings-feedback aria-live="polite"></div>';
 				submit_button( __( 'Save', 'mad4b-site-control-plane' ), 'secondary small', 'submit', false );
 			}
 			echo '</form></td><td>' . esc_html( $source['task_scope'] ? $source['task_scope'] : '—' ) . '</td>';
@@ -780,7 +798,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$cataloged = class_exists( 'MAD4B_SCP_Servers' ) && in_array( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY, MAD4B_SCP_Servers::external_write_tools(), true );
 
 		echo '<div id="mad4b-context-review-policy" class="mad4b-scp-panel mad4b-context-review-policy"><div class="mad4b-context-review-policy-head"><div><h2>' . esc_html__( 'Approval Mode', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Human approval always remains available. AI Agent approval is an optional additive Staging delegation for exact-bound review decisions only.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-badge">' . esc_html( 'human_and_ai' === $mode ? 'Human + AI' : 'Human only' ) . '</span></div>';
-		echo '<form class="mad4b-context-review-policy-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<form class="mad4b-settings-ajax-form" data-mad4b-refresh-selector="#mad4b-context-review-policy" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION_SAVE_REVIEW_POLICY );
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SAVE_REVIEW_POLICY ) . '">';
 		echo '<div class="mad4b-context-approval-mode-grid">';
@@ -795,7 +813,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<option value="' . esc_attr( $agent['public_id'] ) . '"' . selected( $configured_agent, $agent['public_id'], false ) . '>' . esc_html( $label ) . '</option>';
 		}
 		echo '</select></label>';
-		echo '<label class="mad4b-context-required-confirm"><input type="checkbox" name="confirm_ai_review_delegation" value="1"> ' . esc_html__( 'I explicitly delegate exact Context review decisions to the selected AI Agent. This does not grant authority automatically; exact grant reconciliation remains a separate governed action.', 'mad4b-site-control-plane' ) . '</label>';
+		echo '<label class="mad4b-context-required-confirm"><input type="checkbox" name="confirm_ai_review_delegation" value="1" data-mad4b-one-time-confirm> ' . esc_html__( 'One-time confirmation: I explicitly delegate exact Context review decisions to the selected AI Agent. This confirmation intentionally resets after save/reload; the persisted mode and selected Agent are shown above. Exact grant reconciliation remains separate.', 'mad4b-site-control-plane' ) . '</label>';
 		echo '<div class="mad4b-context-ai-review-status">';
 		echo '<span><strong>' . esc_html__( 'Stable catalog', 'mad4b-site-control-plane' ) . ':</strong> ' . esc_html( $cataloged ? 'present' : 'not registered' ) . '</span>';
 		echo '<span><strong>' . esc_html__( 'Runtime write mount', 'mad4b-site-control-plane' ) . ':</strong> ' . esc_html( $write_mounted ? 'eligible' : 'blocked until delegation' ) . '</span>';
@@ -803,7 +821,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<span><strong>' . esc_html__( 'Production', 'mad4b-site-control-plane' ) . ':</strong> ' . esc_html__( 'not authorized', 'mad4b-site-control-plane' ) . '</span>';
 		echo '</div>';
 		if ( ! empty( $status['blockers'] ) && 'human_and_ai' === $mode ) echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'AI path blockers:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( implode( ' · ', array_map( 'sanitize_key', $status['blockers'] ) ) ) . '</code></p>';
-		echo '<div class="mad4b-context-review-policy-feedback" aria-live="polite"></div>';
+		echo '<div class="mad4b-context-review-policy-feedback mad4b-settings-feedback" data-mad4b-settings-feedback aria-live="polite"></div>';
 		submit_button( __( 'Save Approval Mode', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
 		echo '</div></form></div>';
 	}
