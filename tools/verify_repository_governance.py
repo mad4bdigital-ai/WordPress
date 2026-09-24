@@ -128,18 +128,25 @@ def main() -> int:
         raise SystemExit("pull_request rule does not satisfy single-owner-safe review policy")
 
     status_policy = policy.get("required_status_checks") or {}
-    required_contexts = set(status_policy.get("contexts") or [])
+    required_rows = status_policy.get("contexts") or []
+    required_checks = {
+        (str(row.get("context") or ""), int(row.get("integration_id") or 0))
+        for row in required_rows
+        if isinstance(row, dict)
+    }
+    if not required_checks or any(not context or integration_id < 1 for context, integration_id in required_checks):
+        raise SystemExit("repository governance policy must pin every required check to a source integration")
     status_rules = [rule for _, rule in all_rules if rule.get("type") == "required_status_checks"]
     matched_status_rule = None
     for rule in status_rules:
         params = rule.get("parameters") or {}
-        contexts = {
-            str(row.get("context") or "")
+        actual_checks = {
+            (str(row.get("context") or ""), int(row.get("integration_id") or 0))
             for row in params.get("required_status_checks") or []
             if isinstance(row, dict)
         }
         if (
-            required_contexts.issubset(contexts)
+            required_checks.issubset(actual_checks)
             and bool(params.get("strict_required_status_checks_policy"))
             == bool(status_policy.get("strict_required_status_checks_policy", True))
         ):
@@ -147,7 +154,8 @@ def main() -> int:
             break
     if matched_status_rule is None:
         raise SystemExit(
-            f"required status-check policy missing: contexts={sorted(required_contexts)} strict=true"
+            "required status-check policy missing or source integration is not pinned: "
+            + repr(sorted(required_checks))
         )
 
     result = {
@@ -158,7 +166,10 @@ def main() -> int:
         "applicable_ruleset_ids": [row.get("id") for row in applicable],
         "applicable_ruleset_names": [row.get("name") for row in applicable],
         "required_rule_types": sorted(required_types),
-        "required_status_checks": sorted(required_contexts),
+        "required_status_checks": [
+            {"context": context, "integration_id": integration_id}
+            for context, integration_id in sorted(required_checks)
+        ],
         "strict_required_status_checks_policy": True,
         "bypass_actor_count": 0,
         "single_owner_safe": True,
