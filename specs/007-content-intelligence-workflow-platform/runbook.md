@@ -111,9 +111,9 @@ Manual interactive hosting shell is the last-resort operator path and remains ou
 Use `implementation-closure.json` as the current workstream index and `gate-graph.json` as the hard dependency graph.
 
 Execution:
-1. verify exact master baseline and external repository governance;
-2. reconcile task/evidence ledger;
-3. recapture latest-master release root;
+1. verify exact reviewed PR parent and external repository governance;
+2. reconcile the generated task/evidence ledger;
+3. verify selected runtime-release identity; if runtime bytes changed, keep `RECAPTURE_REQUIRED` until protected post-merge packaging/attestation recaptures it;
 4. verify protected backup/recovery readiness before live mutation;
 5. certify exact installed workflow-provider artifact and side-channel policy;
 6. close authority/policy/liveness;
