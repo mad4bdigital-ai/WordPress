@@ -264,16 +264,16 @@ jobs:
             echo "HTTP OAuth discovery name=$name status=$status time=$elapsed url=$url"
             test "$status" = "200"
             python3 - "$name" "$elapsed" "$out" <<'PY'
-import json, sys
-from pathlib import Path
-name, elapsed, path = sys.argv[1], float(sys.argv[2]), Path(sys.argv[3])
-if elapsed > 2.0:
-    raise SystemExit(f'{name} discovery exceeded 2s budget: {elapsed:.3f}s')
-payload = json.loads(path.read_text(encoding='utf-8', errors='strict'))
-if not isinstance(payload, dict) or not payload:
-    raise SystemExit(f'{name} discovery returned no JSON object')
-print(json.dumps({'name': name, 'seconds': elapsed, 'status': 'PASS'}))
-PY
+          import json, sys
+          from pathlib import Path
+          name, elapsed, path = sys.argv[1], float(sys.argv[2]), Path(sys.argv[3])
+          if elapsed > 2.0:
+              raise SystemExit(f'{name} discovery exceeded 2s budget: {elapsed:.3f}s')
+          payload = json.loads(path.read_text(encoding='utf-8', errors='strict'))
+          if not isinstance(payload, dict) or not payload:
+              raise SystemExit(f'{name} discovery returned no JSON object')
+          print(json.dumps({'name': name, 'seconds': elapsed, 'status': 'PASS'}))
+          PY
           }
           probe_discovery resource-metadata "$RESOURCE_METADATA_URL"
           probe_discovery authorization-metadata "$AUTH_METADATA_URL"
