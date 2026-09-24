@@ -36,6 +36,12 @@ for marker in (
     "public static function enqueue_outbox",
     "public static function accept_inbox",
     "mad4b_outbox_idempotency_conflict",
+    "mad4b_outbox_job_invalid",
+    "mad4b_outbox_revision_invalid",
+    "mad4b_outbox_provider_invalid",
+    "mad4b_outbox_capability_invalid",
+    "mad4b_outbox_idempotency_key_invalid",
+    "mad4b_outbox_available_at_invalid",
     "mad4b_inbox_event_conflict",
     "mad4b_inbox_job_conflict",
     "mad4b_inbox_execution_ref_conflict",
@@ -63,7 +69,10 @@ for marker in (
     "UNIQUE KEY provider_idempotency (provider_id,idempotency_key)",
     "UNIQUE KEY provider_event (provider_id,provider_event_id)",
     "private static function required_durable_columns()",
+    "private static function required_durable_indexes()",
     "'missing_durable_columns'",
+    "'missing_durable_indexes'",
+    "'contract' => 'mad4b.schema-integrity.v4'",
 ):
     if marker not in SCHEMA:
         raise SystemExit(f"durable schema contract missing: {marker}")
@@ -111,6 +120,20 @@ completion = completion[: completion.index("public static function reclaim_idemp
 for marker in ("claim_epoch=%d", "expires_at>%s"):
     if marker not in completion:
         raise SystemExit(f"stale idempotency worker is not fenced at completion: {marker}")
+
+outbox = DURABLE[DURABLE.index("public static function enqueue_outbox"):]
+outbox = outbox[: outbox.index("public static function accept_inbox")]
+for marker in (
+    "expected_job_revision < 1",
+    "provider_id",
+    "capability_id",
+    "idempotency_key",
+    "workflow_plan_sha256",
+    "request_sha256",
+    "mad4b_outbox_idempotency_conflict",
+):
+    if marker not in outbox:
+        raise SystemExit(f"outbox identity validation missing: {marker}")
 
 # Durable persistence primitives must not become an alternate provider/network
 # execution surface.
