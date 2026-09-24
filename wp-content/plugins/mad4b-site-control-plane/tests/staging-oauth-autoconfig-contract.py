@@ -48,6 +48,8 @@ required = {
     'no private key persistence': "'stores_private_key' => false",
     'production write authority remains off': "'write_authority_enabled' => false",
     'production breakglass remains off': "'breakglass_enabled' => false",
+    'semantic persistence comparison': "if ( $existing_semantic !== $record )",
+    'timestamp excluded from semantic identity': "unset( $existing_semantic['updated_at'] )",
 }
 
 missing = [name for name, marker in required.items() if marker not in auto]
