@@ -687,8 +687,8 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 
 ## Phase 36 — Unified implementation closure
 - [x] T3601 P0 GATE Apply and independently read back the reviewed master repository ruleset with no bypass actors and pinned Release Verdict source. Evidence: ruleset `23968498`; master governance run `36072550595`; PR #64.
-- [x] T3602 P0 Synchronize Feature 007 to the exact current master and recapture trusted release/root evidence for that descendant. Evidence: master `540d5db4be521297de673c8a4d14974c23b67a6a`; package run `36072550999`; artifact `10838403565`; receipt `10838323685`.
-- [ ] T3603 P0 Reconcile the legacy task ledger into DONE/PARTIAL/OPEN/DEFERRED with exact commit/artifact/runtime evidence references; no bulk completion.
+- [x] T3602 P0 Separate reviewed repository parent identity from deployable runtime release identity and bind the selected runtime release to external Root Trust evidence. Evidence: reviewed parent `b1f7e837efc69aa220385d84761e46f64c2442b1`; runtime release `540d5db4be521297de673c8a4d14974c23b67a6a`; package run `36072550999`; artifact `10838403565`; receipt `10838323685`.
+- [x] T3603 P0 Reconcile the legacy task ledger into DONE/PARTIAL/OPEN/DEFERRED with exact commit/artifact/runtime evidence references; no bulk completion. Evidence: `reconcile_task_ledger.py`, `task-ledger-overrides.json`, `task-ledger.generated.json`.
 - [ ] T3604 P0 Prepare protected backup root and prove exists/writable/ready plus current-runtime backup receipt.
 - [ ] T3605 P0 Prove known-good restore preconditions and run the bounded Recovery Plane live drill without Production/Breakglass authority.
 - [ ] T3606 P0 Capture and certify exact installed Bit Flows 1.29.0 artifact/tree/critical hashes/runtime semantics.
@@ -716,7 +716,11 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3628 P2 Complete growth/fairness/localization/accessibility/link/eval-ops/experimentation/usage maturity lanes.
 - [ ] T3629 P1 Complete decommission/portability quiesce/export/import/remap/revoke/final-authority proof.
 - [x] T3631 P0 Apply/read back the external master ruleset, then remove or permanently disable the initial governance bootstrap exception and prove ordinary PRs fail closed if the ruleset is absent. Evidence: PR #64 exact head `0dd96ad9a67dd7c31415b847de2019cdb6438555`, merge `540d5db4be521297de673c8a4d14974c23b67a6a`, bootstrap-retirement contract PASS.
-- [ ] T3632 P0 After protected backup readiness, deploy the exact trusted master artifact to ETG Staging; no version-label-only acceptance.
-- [ ] T3633 P0 Read back source SHA, build fingerprint, package manifest digest, archive SHA and all seven Root Trust/provenance files from the deployed runtime; UNKNOWN filesystem evidence cannot satisfy the gate.
+- [ ] T3632 P0 After protected backup readiness, deploy the exact selected runtime release artifact to ETG Staging; repository HEAD equality is not required when the repository delta is proven non-runtime.
+- [ ] T3633 P0 Read back runtime-release source SHA, build fingerprint, package manifest digest, archive SHA and all seven Root Trust/provenance files from the deployed runtime; UNKNOWN filesystem evidence cannot satisfy the gate.
 - [ ] T3634 P0 Re-run runtime/schema/authority/fail-closed diagnostics on the exact deployed candidate before Bit Flows or content canaries.
+- [ ] T3635 P0 Enforce exact-head OWNER_ATTEST_SINGLE_OWNER as a repository merge-gate input, including stale-on-descendant behavior and authorized-owner identity.
+- [ ] T3636 P0 Replace the stale fixed implementation branch with workflow-owned Feature 007 branch-prefix policy.
+- [ ] T3637 P0 Enforce reviewed-parent versus runtime-release identity separation and runtime-path drift detection in CI.
+- [ ] T3638 P0 Complete the minimal out-of-band Recovery Runner read/disable/known-good-restore surface and contract tests.
 - [ ] T3630 P0 GATE Execute exact ETG Staging linked evidence chain and emit CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED only when every hard dependency is satisfied.
