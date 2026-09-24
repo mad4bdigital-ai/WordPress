@@ -28,7 +28,7 @@ final class MAD4B_SCP_Durable_Execution {
 		$now = gmdate( 'Y-m-d H:i:s' );
 		$expires = gmdate( 'Y-m-d H:i:s', time() + $ttl_seconds );
 		$inserted = $wpdb->query( $wpdb->prepare(
-			"INSERT IGNORE INTO {$t['idempotency']} (scope_key,idempotency_key,request_sha256,status,result_json,result_sha256,expires_at,created_at,updated_at) VALUES (%s,%s,%s,'pending',NULL,'',%s,%s,%s)",
+			"INSERT IGNORE INTO {$t['idempotency']} (scope_key,idempotency_key,request_sha256,claim_epoch,status,result_json,result_sha256,reconciliation_ref,expires_at,created_at,updated_at) VALUES (%s,%s,%s,1,'pending',NULL,'','',%s,%s,%s)",
 			$scope_key, $idempotency_key, $request_sha256, $expires, $now, $now
 		) );
 		if ( 1 === (int) $inserted ) {
@@ -39,6 +39,7 @@ final class MAD4B_SCP_Durable_Execution {
 				'scope_key' => $scope_key,
 				'idempotency_key' => $idempotency_key,
 				'request_sha256' => $request_sha256,
+				'claim_epoch' => 1,
 				'expires_at' => $expires,
 			);
 		}
@@ -75,6 +76,7 @@ final class MAD4B_SCP_Durable_Execution {
 				'scope_key' => $scope_key,
 				'idempotency_key' => $idempotency_key,
 				'request_sha256' => $request_sha256,
+				'claim_epoch' => isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0,
 				'result' => $result,
 				'result_sha256' => isset( $row['result_sha256'] ) ? (string) $row['result_sha256'] : '',
 			);
@@ -84,8 +86,8 @@ final class MAD4B_SCP_Durable_Execution {
 
 	public static function complete_idempotency( array $claim, $result ) {
 		global $wpdb;
-		if ( empty( $claim['claimed'] ) || empty( $claim['scope_key'] ) || empty( $claim['idempotency_key'] ) || empty( $claim['request_sha256'] ) ) {
-			return new WP_Error( 'mad4b_idempotency_claim_invalid', 'Idempotency completion requires the exact pending claim.' );
+		if ( empty( $claim['claimed'] ) || empty( $claim['scope_key'] ) || empty( $claim['idempotency_key'] ) || empty( $claim['request_sha256'] ) || empty( $claim['claim_epoch'] ) ) {
+			return new WP_Error( 'mad4b_idempotency_claim_invalid', 'Idempotency completion requires the exact pending claim and claim epoch.' );
 		}
 		$json = wp_json_encode( $result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( ! is_string( $json ) ) return new WP_Error( 'mad4b_idempotency_result_invalid', 'Idempotency result is not serializable.' );
@@ -93,8 +95,8 @@ final class MAD4B_SCP_Durable_Execution {
 		$sha = hash( 'sha256', $json );
 		$t = MAD4B_SCP_Schema::tables();
 		$updated = $wpdb->query( $wpdb->prepare(
-			"UPDATE {$t['idempotency']} SET status='completed',result_json=%s,result_sha256=%s,updated_at=%s WHERE scope_key=%s AND idempotency_key=%s AND request_sha256=%s AND status='pending'",
-			$json, $sha, gmdate( 'Y-m-d H:i:s' ), (string) $claim['scope_key'], (string) $claim['idempotency_key'], (string) $claim['request_sha256']
+			"UPDATE {$t['idempotency']} SET status='completed',result_json=%s,result_sha256=%s,updated_at=%s WHERE scope_key=%s AND idempotency_key=%s AND request_sha256=%s AND claim_epoch=%d AND status='pending' AND expires_at>%s",
+			$json, $sha, gmdate( 'Y-m-d H:i:s' ), (string) $claim['scope_key'], (string) $claim['idempotency_key'], (string) $claim['request_sha256'], absint( $claim['claim_epoch'] ), gmdate( 'Y-m-d H:i:s' )
 		) );
 		return 1 === (int) $updated
 			? array( 'contract' => self::IDEMPOTENCY_CONTRACT, 'completed' => true, 'result_sha256' => $sha )
@@ -138,9 +140,26 @@ final class MAD4B_SCP_Durable_Execution {
 				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_still_active', 'Pending idempotency record has not expired.' );
 			}
+			$reconciliation = self::reconciliation_verified(
+				'idempotency_reclaim',
+				array(
+					'scope_key' => $scope_key,
+					'idempotency_key' => $idempotency_key,
+					'request_sha256' => $request_sha256,
+					'claim_epoch' => isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0,
+					'expires_at' => isset( $row['expires_at'] ) ? (string) $row['expires_at'] : '',
+					'reconciliation_ref' => $reconciliation_ref,
+				)
+			);
+			if ( is_wp_error( $reconciliation ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return $reconciliation;
+			}
+			$current_epoch = isset( $row['claim_epoch'] ) ? max( 1, (int) $row['claim_epoch'] ) : 1;
+			$next_epoch = $current_epoch + 1;
 			$updated = $wpdb->query( $wpdb->prepare(
-				"UPDATE {$t['idempotency']} SET expires_at=%s,reconciliation_ref=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND status='pending' AND expires_at<=%s",
-				$expires, $reconciliation_ref, $now, (int) $row['id'], $request_sha256, $now
+				"UPDATE {$t['idempotency']} SET claim_epoch=%d,expires_at=%s,reconciliation_ref=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='pending' AND expires_at<=%s",
+				$next_epoch, $expires, $reconciliation_ref, $now, (int) $row['id'], $request_sha256, $current_epoch, $now
 			) );
 			if ( 1 !== (int) $updated ) throw new RuntimeException( 'idempotency_reclaim_cas_failed' );
 			$wpdb->query( 'COMMIT' );
@@ -152,6 +171,7 @@ final class MAD4B_SCP_Durable_Execution {
 				'scope_key' => $scope_key,
 				'idempotency_key' => $idempotency_key,
 				'request_sha256' => $request_sha256,
+				'claim_epoch' => $next_epoch,
 				'reconciliation_ref' => $reconciliation_ref,
 				'expires_at' => $expires,
 			);
@@ -256,6 +276,25 @@ final class MAD4B_SCP_Durable_Execution {
 			if ( ! $expired ) {
 				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_lease_still_active', 'Active unexpired work cannot be reclaimed.' );
+			}
+			$reconciliation = self::reconciliation_verified(
+				'lease_reclaim',
+				array(
+					'work_id' => $work_id,
+					'aggregate_type' => isset( $row['aggregate_type'] ) ? (string) $row['aggregate_type'] : '',
+					'aggregate_id' => isset( $row['aggregate_id'] ) ? (string) $row['aggregate_id'] : '',
+					'previous_worker_id' => isset( $row['worker_id'] ) ? (string) $row['worker_id'] : '',
+					'previous_lease_epoch' => isset( $row['lease_epoch'] ) ? (int) $row['lease_epoch'] : 0,
+					'previous_expected_revision' => isset( $row['expected_aggregate_revision'] ) ? (int) $row['expected_aggregate_revision'] : 0,
+					'previous_expires_at' => isset( $row['expires_at'] ) ? (string) $row['expires_at'] : '',
+					'requested_worker_id' => $worker_id,
+					'requested_expected_revision' => absint( $expected_revision ),
+					'reconciliation_ref' => $reconciliation_ref,
+				)
+			);
+			if ( is_wp_error( $reconciliation ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return $reconciliation;
 			}
 			$next_epoch = (int) $row['lease_epoch'] + 1;
 			$updated = $wpdb->query( $wpdb->prepare(
@@ -386,6 +425,19 @@ final class MAD4B_SCP_Durable_Execution {
 		$stored_execution_ref = isset( $row['provider_execution_ref'] ) ? (string) $row['provider_execution_ref'] : '';
 		if ( '' !== $provider_execution_ref && '' !== $stored_execution_ref && ! hash_equals( $stored_execution_ref, $provider_execution_ref ) ) return new WP_Error( 'mad4b_inbox_execution_ref_conflict', 'Duplicate provider event ID is already bound to a different provider execution reference.' );
 		return array( 'contract' => self::INBOX_CONTRACT, 'duplicate' => true, 'provider_id' => $provider_id, 'provider_event_id' => $provider_event_id, 'status' => (string) $row['status'], 'result_ref' => (string) $row['result_ref'] );
+	}
+
+	private static function reconciliation_verified( $kind, array $context ) {
+		$kind = sanitize_key( (string) $kind );
+		$ref = isset( $context['reconciliation_ref'] ) ? trim( (string) $context['reconciliation_ref'] ) : '';
+		if ( '' === $kind || '' === $ref ) return new WP_Error( 'mad4b_reconciliation_evidence_required', 'Durable reclaim requires reconciliation evidence.' );
+		$verified = apply_filters( 'mad4b_scp_durable_reconciliation_verified', false, $kind, $context );
+		if ( true !== $verified ) return new WP_Error(
+			'mad4b_reconciliation_unverified',
+			'Durable reclaim is blocked until provider/state reconciliation is independently verified.',
+			array( 'kind' => $kind, 'reconciliation_ref' => substr( $ref, 0, 191 ) )
+		);
+		return true;
 	}
 
 	private static function validate_lease_identity( &$work_id, &$aggregate_type, &$aggregate_id, &$worker_id, $expected_revision ) {
