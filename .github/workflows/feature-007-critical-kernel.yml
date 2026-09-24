@@ -10,6 +10,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
       - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
@@ -94,6 +95,18 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py
+
+      - name: Lint Bit Flows governed adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php
+
+      - name: Verify Bit Flows durable correlation contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py
 
       - name: Inspect exact Bit Flows package semantics
         shell: bash
