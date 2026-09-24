@@ -643,6 +643,7 @@ jobs:
             /tmp/mad4b-install-kit/MAD4B-BUILD-PROVENANCE.json
             /tmp/mad4b-install-kit/BUILD-FINGERPRINT.txt
             /tmp/mad4b-install-kit/PACKAGE-MANIFEST-DIGEST.txt
+            /tmp/mad4b-install-kit/CANONICAL-PACKAGE-RECEIPT.json
             /tmp/mad4b-install-kit/SHA256SUMS
             /tmp/mad4b-install-kit/install-manifest.json
             /tmp/mad4b-install-kit/INSTALL-GENERAL-DISTRIBUTION.md
