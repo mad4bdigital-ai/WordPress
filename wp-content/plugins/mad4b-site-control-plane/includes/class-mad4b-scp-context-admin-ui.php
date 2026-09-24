@@ -46,7 +46,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			self::ACTION_UPDATE_SOURCE_POLICY => 'handle_update_source_policy',
 		) as $action => $method ) {
 			add_action( 'admin_post_' . $action, array( __CLASS__, $method ) );
-			if ( in_array( $action, array( self::ACTION_SAVE_GOOGLE, self::ACTION_SAVE_GOOGLE_DEDICATED, self::ACTION_SAVE_GOOGLE_AUTH_MODE, self::ACTION_SAVE_GOOGLE_GRANTS, self::ACTION_REVIEW_ASSET, self::ACTION_SAVE_REVIEW_POLICY ), true ) ) add_action( 'wp_ajax_' . $action, array( __CLASS__, $method ) );
+			if ( in_array( $action, array( self::ACTION_SAVE_PROFILE, self::ACTION_SAVE_GOOGLE, self::ACTION_SAVE_GOOGLE_DEDICATED, self::ACTION_SAVE_GOOGLE_AUTH_MODE, self::ACTION_SAVE_GOOGLE_GRANTS, self::ACTION_REVIEW_ASSET, self::ACTION_SAVE_REVIEW_POLICY, self::ACTION_UPDATE_SOURCE_POLICY ), true ) ) add_action( 'wp_ajax_' . $action, array( __CLASS__, $method ) );
 		}
 	}
 
@@ -62,8 +62,24 @@ final class MAD4B_SCP_Context_Admin_UI {
 	}
 
 	public static function handle_save_profile() {
-		self::require_admin( self::ACTION_SAVE_PROFILE );
-		$result = MAD4B_SCP_Context_Authority::save_profile( isset( $_POST['brand_name'] ) ? wp_unslash( $_POST['brand_name'] ) : '' );
+		self::require_admin_request( self::ACTION_SAVE_PROFILE );
+		$brand_name = isset( $_POST['brand_name'] ) ? wp_unslash( $_POST['brand_name'] ) : '';
+		$result = MAD4B_SCP_Context_Authority::save_profile( $brand_name );
+		if ( self::is_ajax_request() ) {
+			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'code' => sanitize_key( $result->get_error_code() ), 'message' => $result->get_error_message(), 'data' => $result->get_error_data() ), 422 );
+			$profile = MAD4B_SCP_Context_Authority::profile();
+			$expected = trim( sanitize_text_field( (string) $brand_name ) );
+			$verified = is_array( $profile ) && isset( $profile['brand_name'] ) && hash_equals( $expected, (string) $profile['brand_name'] );
+			if ( ! $verified ) wp_send_json_error( array( 'code' => 'mad4b_context_profile_readback_mismatch', 'message' => __( 'Brand Context write completed but persisted readback did not match.', 'mad4b-site-control-plane' ) ), 500 );
+			wp_send_json_success( array(
+				'message' => __( 'Brand Context saved and verified by persisted readback.', 'mad4b-site-control-plane' ),
+				'persistence_verified' => true,
+				'readback' => array(
+					'brand_name' => (string) $profile['brand_name'],
+					'revision' => isset( $profile['revision'] ) ? (int) $profile['revision'] : 0,
+				),
+			) );
+		}
 		self::redirect_result( $result, 'overview', 'brand_profile_saved' );
 	}
 
@@ -185,12 +201,26 @@ final class MAD4B_SCP_Context_Admin_UI {
 	}
 
 	public static function handle_update_source_policy() {
-		self::require_admin( self::ACTION_UPDATE_SOURCE_POLICY );
+		self::require_admin_request( self::ACTION_UPDATE_SOURCE_POLICY );
+		$source_id = isset( $_POST['source_id'] ) ? strtolower( trim( sanitize_text_field( wp_unslash( $_POST['source_id'] ) ) ) ) : '';
+		$write_policy = isset( $_POST['write_policy'] ) ? sanitize_key( wp_unslash( $_POST['write_policy'] ) ) : 'read_only';
 		$result = MAD4B_SCP_Context_Authority::update_source_write_policy(
-			isset( $_POST['source_id'] ) ? wp_unslash( $_POST['source_id'] ) : '',
-			isset( $_POST['write_policy'] ) ? wp_unslash( $_POST['write_policy'] ) : 'read_only',
+			$source_id,
+			$write_policy,
 			! empty( $_POST['write_policy_confirmed'] )
 		);
+		if ( self::is_ajax_request() ) {
+			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'code' => sanitize_key( $result->get_error_code() ), 'message' => $result->get_error_message(), 'data' => $result->get_error_data() ), 422 );
+			$sources = MAD4B_SCP_Context_Authority::sources();
+			$readback = isset( $sources[ $source_id ] ) && is_array( $sources[ $source_id ] ) ? $sources[ $source_id ] : array();
+			$verified = ! empty( $readback ) && isset( $readback['write_policy'] ) && hash_equals( $write_policy, (string) $readback['write_policy'] );
+			if ( ! $verified ) wp_send_json_error( array( 'code' => 'mad4b_context_source_policy_readback_mismatch', 'message' => __( 'Source policy write completed but persisted readback did not match.', 'mad4b-site-control-plane' ) ), 500 );
+			wp_send_json_success( array(
+				'message' => __( 'Source policy saved and verified by persisted readback.', 'mad4b-site-control-plane' ),
+				'persistence_verified' => true,
+				'readback' => array( 'source_id' => $source_id, 'write_policy' => (string) $readback['write_policy'] ),
+			) );
+		}
 		self::redirect_result( $result, 'sources', 'source_policy_updated' );
 	}
 
