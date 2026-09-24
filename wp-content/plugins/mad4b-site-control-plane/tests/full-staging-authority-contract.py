@@ -63,14 +63,24 @@ assert "public static function chatgpt_step_up_tools()" in full
 step_up = full.split("public static function chatgpt_step_up_tools()", 1)[1].split("public static function register_category()", 1)[0]
 for marker in [
     "self::can_access()",
-    "self::status()",
-    "self::plan()",
-    "empty( $plan['ready_to_apply'] )",
-    "! empty( $plan['hard_blockers'] )",
     "return array( self::APPLY_ABILITY );",
 ]:
     assert marker in step_up, marker
-assert "if ( ! is_array( $status ) || ! empty( $status['ready'] ) ) return array();" in step_up
+for forbidden in [
+    "self::status()",
+    "self::plan()",
+    "ready_to_apply",
+    "hard_blockers",
+]:
+    assert forbidden not in step_up, f"tools/list step-up projection must stay off the full authority plan hotpath: {forbidden}"
+
+apply_body = full.split("public static function apply( $input )", 1)[1].split("private static function developer_apply_input", 1)[0]
+for marker in [
+    "$plan = self::plan();",
+    "empty( $plan['ready_to_apply'] )",
+    "self::match_expected_plan( $plan, $input )",
+]:
+    assert marker in apply_body, marker
 assert "MAD4B_SCP_Full_Staging_Authority::enrollment_tools()" in servers
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in servers
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in servers
@@ -118,4 +128,4 @@ assert "Current Staging authority" in ui
 assert "0.4.0-rc.59" in plugin
 assert "release=0.4.0-rc.59" in runtime_build
 
-print("mad4b.full-staging-authority-contract.v3: PASS")
+print("mad4b.full-staging-authority-contract.v4: PASS")
