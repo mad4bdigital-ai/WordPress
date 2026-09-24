@@ -3,9 +3,9 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Schema {
-	const VERSION = 6;
+	const VERSION = 7;
 	const OPTION  = 'mad4b_scp_schema_version';
-	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v5';
+	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v7';
 	const LEGACY_BINDINGS_OPTION = 'mad4b_scp_approval_candidate_bindings_v1';
 
 	private static $critical_ready_cache = null;
@@ -17,6 +17,9 @@ final class MAD4B_SCP_Schema {
 			'agents' => $wpdb->prefix . 'mad4b_scp_agents', 'subjects' => $wpdb->prefix . 'mad4b_scp_agent_subjects', 'grants' => $wpdb->prefix . 'mad4b_scp_agent_grants',
 			'approvals' => $wpdb->prefix . 'mad4b_scp_approval_tickets', 'mutations' => $wpdb->prefix . 'mad4b_scp_mutations', 'budgets' => $wpdb->prefix . 'mad4b_scp_agent_budgets',
 			'budget_windows' => $wpdb->prefix . 'mad4b_scp_agent_budget_windows', 'audit_events' => $wpdb->prefix . 'mad4b_scp_audit_events', 'audit_heads' => $wpdb->prefix . 'mad4b_scp_audit_heads',
+			'content_jobs' => $wpdb->prefix . 'mad4b_content_jobs', 'content_job_events' => $wpdb->prefix . 'mad4b_content_job_events',
+			'work_leases' => $wpdb->prefix . 'mad4b_work_leases', 'idempotency' => $wpdb->prefix . 'mad4b_idempotency',
+			'outbox' => $wpdb->prefix . 'mad4b_execution_outbox', 'inbox' => $wpdb->prefix . 'mad4b_execution_inbox',
 		);
 	}
 
@@ -216,6 +219,151 @@ final class MAD4B_SCP_Schema {
 			PRIMARY KEY  (chain_name)
 		) $charset;";
 
+		$sql[] = "CREATE TABLE {$t['content_jobs']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			job_id char(36) NOT NULL,
+			tenant_id varchar(191) NOT NULL DEFAULT '',
+			site_uuid char(36) NOT NULL,
+			brand_id varchar(191) NOT NULL,
+			subject text NOT NULL,
+			primary_keyword varchar(191) NOT NULL DEFAULT '',
+			language varchar(32) NOT NULL,
+			country varchar(32) NOT NULL,
+			content_type varchar(64) NOT NULL,
+			writer_profile_id varchar(191) NOT NULL DEFAULT '',
+			writer_profile_version varchar(64) NOT NULL DEFAULT '',
+			research_depth varchar(32) NOT NULL DEFAULT 'standard',
+			automation_level varchar(32) NOT NULL DEFAULT 'review_gated',
+			state varchar(32) NOT NULL,
+			stage varchar(64) NOT NULL,
+			target_post_type varchar(64) NOT NULL DEFAULT '',
+			target_post_id bigint(20) unsigned NULL,
+			desired_publish_at datetime NULL,
+			current_artifact_id varchar(191) NOT NULL DEFAULT '',
+			quality_status varchar(32) NOT NULL DEFAULT 'unknown',
+			last_error_code varchar(64) NOT NULL DEFAULT '',
+			last_error_summary varchar(500) NOT NULL DEFAULT '',
+			job_revision bigint(20) unsigned NOT NULL DEFAULT 1,
+			created_by_nhi char(36) NOT NULL DEFAULT '',
+			created_by_user bigint(20) unsigned NOT NULL DEFAULT 0,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			completed_at datetime NULL,
+			cancelled_at datetime NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY job_id (job_id),
+			KEY site_lifecycle (site_uuid,state,stage),
+			KEY brand_market (brand_id,language,country),
+			KEY target_post_id (target_post_id),
+			KEY updated_at (updated_at)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['content_job_events']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			event_id char(36) NOT NULL,
+			job_id char(36) NOT NULL,
+			sequence bigint(20) unsigned NOT NULL,
+			event_type varchar(64) NOT NULL,
+			previous_state varchar(32) NOT NULL DEFAULT '',
+			new_state varchar(32) NOT NULL DEFAULT '',
+			previous_stage varchar(64) NOT NULL DEFAULT '',
+			new_stage varchar(64) NOT NULL DEFAULT '',
+			reason_code varchar(64) NOT NULL DEFAULT '',
+			correlation_id varchar(100) NOT NULL DEFAULT '',
+			actor_type varchar(64) NOT NULL DEFAULT '',
+			actor_id varchar(191) NOT NULL DEFAULT '',
+			plan_sha256 char(64) NOT NULL DEFAULT '',
+			artifact_id varchar(191) NOT NULL DEFAULT '',
+			provider_id varchar(64) NOT NULL DEFAULT '',
+			metadata_json longtext NULL,
+			previous_entry_sha256 char(64) NOT NULL DEFAULT '',
+			entry_sha256 char(64) NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY event_id (event_id),
+			UNIQUE KEY job_sequence (job_id,sequence),
+			KEY correlation_id (correlation_id),
+			KEY created_at (created_at)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['work_leases']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			work_id char(36) NOT NULL,
+			aggregate_type varchar(64) NOT NULL,
+			aggregate_id varchar(191) NOT NULL,
+			worker_id varchar(191) NOT NULL DEFAULT '',
+			lease_epoch bigint(20) unsigned NOT NULL DEFAULT 0,
+			expected_aggregate_revision bigint(20) unsigned NOT NULL DEFAULT 0,
+			status varchar(32) NOT NULL DEFAULT 'available',
+			acquired_at datetime NULL,
+			heartbeat_at datetime NULL,
+			expires_at datetime NULL,
+			reconciliation_ref varchar(191) NOT NULL DEFAULT '',
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY work_id (work_id),
+			KEY aggregate_status (aggregate_type,aggregate_id,status),
+			KEY lease_expiry (status,expires_at)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['idempotency']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			scope_key char(64) NOT NULL,
+			idempotency_key varchar(191) NOT NULL,
+			request_sha256 char(64) NOT NULL,
+			status varchar(32) NOT NULL DEFAULT 'pending',
+			result_json longtext NULL,
+			result_sha256 char(64) NOT NULL DEFAULT '',
+			expires_at datetime NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY scope_idempotency (scope_key,idempotency_key),
+			KEY expiry_status (expires_at,status)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['outbox']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			outbox_id char(36) NOT NULL,
+			job_id char(36) NOT NULL,
+			expected_job_revision bigint(20) unsigned NOT NULL,
+			provider_id varchar(64) NOT NULL,
+			capability_id varchar(191) NOT NULL,
+			workflow_plan_sha256 char(64) NOT NULL,
+			idempotency_key varchar(191) NOT NULL,
+			request_sha256 char(64) NOT NULL,
+			payload_json longtext NULL,
+			status varchar(32) NOT NULL DEFAULT 'pending',
+			attempts int(10) unsigned NOT NULL DEFAULT 0,
+			provider_execution_ref varchar(191) NOT NULL DEFAULT '',
+			last_error_class varchar(64) NOT NULL DEFAULT '',
+			available_at datetime NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY outbox_id (outbox_id),
+			UNIQUE KEY provider_idempotency (provider_id,idempotency_key),
+			KEY delivery_queue (status,available_at,id)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['inbox']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			provider_id varchar(64) NOT NULL,
+			provider_event_id varchar(191) NOT NULL,
+			job_id char(36) NOT NULL DEFAULT '',
+			payload_sha256 char(64) NOT NULL,
+			status varchar(32) NOT NULL DEFAULT 'accepted',
+			provider_execution_ref varchar(191) NOT NULL DEFAULT '',
+			result_ref varchar(191) NOT NULL DEFAULT '',
+			received_at datetime NOT NULL,
+			processed_at datetime NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY provider_event (provider_id,provider_event_id),
+			KEY job_status (job_id,status),
+			KEY received_at (received_at)
+		) $charset;";
+
 		foreach ( $sql as $statement ) dbDelta( $statement );
 		self::migrate_legacy_candidate_bindings();
 		self::$physical_status_cache = null;
@@ -236,7 +384,7 @@ final class MAD4B_SCP_Schema {
 		self::$physical_status_cache = array( 'contract' => 'mad4b.schema-integrity.v2', 'expected_version' => self::VERSION, 'missing_tables' => $missing_tables, 'missing_approval_columns' => $missing_columns, 'ready' => empty( $missing_tables ) && empty( $missing_columns ) ); return self::$physical_status_cache;
 	}
 	public static function status( $deep = false ) { $status = array( 'expected_version' => self::VERSION, 'installed_version' => (int) get_option( self::OPTION, 0 ), 'ready' => self::is_ready(), 'integrity_token_valid' => self::is_ready(), 'tables' => self::tables() ); if ( $deep ) $status['physical_integrity'] = self::physical_integrity_status(); return $status; }
-	private static function expected_integrity_token() { return hash( 'sha256', 'mad4b-schema-v6|' . implode( '|', self::required_approval_binding_columns() ) ); }
+	private static function expected_integrity_token() { return hash( 'sha256', 'mad4b-schema-v7|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) ); }
 	private static function required_approval_binding_columns() { return array( 'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment', 'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at' ); }
 	private static function migrate_legacy_candidate_bindings() {
 		global $wpdb; $legacy = get_option( self::LEGACY_BINDINGS_OPTION, array() ); if ( ! is_array( $legacy ) || empty( $legacy ) ) return; $t = self::tables();
