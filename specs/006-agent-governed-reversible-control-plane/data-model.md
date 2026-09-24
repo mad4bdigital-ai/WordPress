@@ -2,11 +2,11 @@
 
 Status: Normative schema contract aligned with current implementation
 Storage scope: site-local WordPress database tables
-Schema version: `6`
+Schema version: `9`
 Encoding: UTF-8 / JSON text only where structured extension fields are required
 Secret policy: no plaintext bearer/OAuth credential persistence
 
-Schema v6 contains nine normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically. Schema v6 extends the approval-row candidate/build binding with exact Site Profile identity so a governed remote mutation ticket cannot survive a clone, origin/environment drift, profile-policy revision, or deployment change.
+Schema v9 contains fifteen normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically. It preserves the v6 exact Site Profile/candidate approval binding, so clone, origin/environment, profile-policy or deployed-build drift cannot inherit existing governed-write authority, and adds Feature 007 durable Content Job, event, lease, idempotency, outbox and inbox storage. Durable recovery remains fail-closed: expired pending work is not silently reused without explicit reconciliation evidence.
 
 ## Table 1 — `{prefix}mad4b_scp_agents`
 
@@ -226,6 +226,128 @@ Invariants:
 - legacy option evidence is retained read-only and cryptographically anchored;
 - legacy drift makes integrity verification fail.
 
+## Table 10 — `{prefix}mad4b_content_jobs`
+
+Purpose: durable Content Job aggregate state for Feature 007.
+
+Key columns:
+- `job_id CHAR(36) UNIQUE`
+- `site_uuid`, `brand_id`
+- `state`, `stage`
+- `current_artifact_id`
+- `job_revision BIGINT UNSIGNED DEFAULT 1`
+- target post identity, quality/error fields and timestamps
+
+Invariants:
+- mutable job state carries an explicit revision;
+- writes use expected revision/state rather than last-write-wins;
+- current artifact identity and job lifecycle are treated as durable aggregate state.
+
+## Table 11 — `{prefix}mad4b_content_job_events`
+
+Purpose: append durable lifecycle evidence for Content Jobs.
+
+Key columns:
+- `event_id CHAR(36) UNIQUE`
+- `job_id`
+- monotonic per-job `sequence`
+- `event_type`
+- previous/new state and stage
+- `plan_sha256`, `artifact_id`, `provider_id`
+- `previous_entry_sha256`, `entry_sha256`
+- `created_at`
+
+Indexes include unique `(job_id, sequence)`.
+
+Invariants:
+- job events are append-only evidence;
+- event ordering is explicit per job;
+- state/event transitions must not expose half-committed logical transitions.
+
+## Table 12 — `{prefix}mad4b_work_leases`
+
+Purpose: fenced ownership of long-running work.
+
+Key columns:
+- `work_id CHAR(36) UNIQUE`
+- aggregate type/id
+- `worker_id`
+- `lease_epoch`
+- `expected_aggregate_revision`
+- `status`
+- acquired/heartbeat/expiry timestamps
+- `reconciliation_ref`
+
+Invariants:
+- only an active expired lease may be reclaimed;
+- reclaim requires bounded reconciliation evidence;
+- terminal leases are never resurrected;
+- stale worker/epoch/revision tokens fail closed.
+
+## Table 13 — `{prefix}mad4b_idempotency`
+
+Purpose: effect-once protection for externally retryable writes.
+
+Key columns:
+- `scope_key CHAR(64)`
+- `idempotency_key`
+- `request_sha256`
+- `claim_epoch BIGINT UNSIGNED DEFAULT 1`
+- `status`
+- result JSON/hash
+- `reconciliation_ref`
+- `expires_at`
+
+Unique authority key: `(scope_key, idempotency_key)`.
+
+Invariants:
+- same key + same request hash may replay stored completion evidence;
+- same key + different request hash is a hard conflict;
+- expired pending records require explicit reconciliation before reclaim;
+- every reclaim increments `claim_epoch`, and stale claim epochs cannot complete or reuse the record;
+- retention exceeds the supported retry/replay horizon.
+
+## Table 14 — `{prefix}mad4b_execution_outbox`
+
+Purpose: durable provider execution intent before asynchronous delivery.
+
+Key columns:
+- `outbox_id CHAR(36) UNIQUE`
+- `job_id`, expected job revision
+- provider/capability identity
+- `workflow_plan_sha256`
+- `idempotency_key`, `request_sha256`
+- payload, status, attempt count
+- provider execution ref, error class, availability/timestamps
+
+Unique provider delivery identity: `(provider_id, idempotency_key)`.
+
+Invariants:
+- delivery intent is persisted before provider execution;
+- duplicate provider/idempotency identity with a different request hash is denied;
+- no claim of exactly-once network delivery is made.
+
+## Table 15 — `{prefix}mad4b_execution_inbox`
+
+Purpose: deduplicate provider callbacks/events.
+
+Key columns:
+- `provider_id`
+- `provider_event_id`
+- `job_id`
+- `payload_sha256`
+- `status`
+- `provider_execution_ref`
+- `result_ref`
+- received/processed timestamps
+
+Unique event identity: `(provider_id, provider_event_id)`.
+
+Invariants:
+- repeated same provider event is idempotent only when payload and job identity match;
+- the same event ID cannot be rebound to another job or conflicting execution reference;
+- callback ordering is validated by higher-level job/provider contracts when order matters.
+
 ## Transport subject context
 
 Runtime normalized structure may contain:
@@ -290,20 +412,34 @@ Joined audit sink dispatch occurs only after explicit transaction commit. Explic
 
 ## Migration strategy
 
-Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `6`.
+Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `9`. Schema v9 is governed by migration contract `mad4b.schema-migration.v1` with migration ID `20260924-feature007-durable-execution-v9`.
+
+Migration declaration:
+- prerequisite schema identities: fresh install `0`, and supported prior/current versions `6|7|8|9`; a future or otherwise unsupported version fails closed instead of being downgraded;
+- forward operation: additive `dbDelta()` creation/update of MAD4B-prefixed tables, columns and indexes only;
+- rollback/forward-fix strategy: forward-fix only; additive v9 objects are preserved so older code can ignore the new surfaces rather than requiring destructive rollback;
+- expected locks/downtime: bounded metadata DDL; no maintenance mode is assumed;
+- data-volume assumption: the six Feature 007 durable tables are new or sparse while existing governance rows are preserved;
+- preflight: supported prerequisite version, usable WordPress DB handle, non-empty site prefix and no future-schema downgrade;
+- post-verification: deep physical integrity, approval-binding columns, durable columns and required unique indexes;
+- evidence: deterministic migration-contract SHA-256, target integrity token, physical-integrity SHA-256 and durable `mad4b.schema-migration-receipt.v1`;
+- partial failure: target version/readiness is not accepted until deep verification, exact option readback and a finalized receipt succeed; retry remains idempotent;
+- retry provenance: if an earlier attempt reached a contract-valid physical-verification receipt before readiness finalization, later idempotent retries preserve that receipt's original `from_version`/run type instead of rewriting an upgrade as a repair;
+- mixed-version window: v9 is additive and previous v6 code does not consume the new durable surfaces;
+- authority widening: forbidden; migration does not create/enable NHI subjects, grants, approvals, provider promotion or Production authority.
 
 Activation/boot rules:
-1. `dbDelta()` creates/updates only MAD4B-prefixed tables.
-2. Migration is idempotent.
-3. Migration never auto-creates enabled NHI authority.
-4. Existing global mutation enablement never implies NHI authority.
-5. Missing/partial schema produces `governance_schema_unavailable` and governed mutation fails closed.
-6. A successful deep physical-integrity verification writes the bounded schema-integrity token used by normal read/hot paths; mutation/approval authority boundaries still use the memoized physical guard and fail closed on physical drift.
-7. Schema v6 adds Site Profile identity columns/indexes to the approval table without changing the nine-table topology.
-8. Legacy option-based or v1 candidate bindings may be migrated only as compatibility evidence; they do not become actionable governed-write authority unless the exact tenant-profile/build binding is complete. Otherwise they remain stale/fail-closed and a new v2 exact plan is required.
-9. New governed remote approval bindings are persisted on the approval row using `mad4b.approval-candidate-binding.v2`.
-10. Audit head/legacy anchor is initialized only after schema readiness.
-11. No legacy capability is widened during migration.
+1. A healthy already-finalized v9 schema short-circuits without repeated DDL.
+2. Otherwise migration preflight runs before `dbDelta()`; unsupported/future schema identity fails closed.
+3. `dbDelta()` creates/updates only MAD4B-prefixed tables and the operation is idempotent.
+4. Migration never auto-creates enabled NHI authority, and existing global mutation enablement never implies NHI authority.
+5. Schema v9 preserves the v6 Site Profile approval bindings and adds six durable Feature 007 tables: Content Jobs, Job Events, Work Leases, Idempotency, Execution Outbox and Execution Inbox.
+6. The idempotency table includes `claim_epoch` and `reconciliation_ref`; reclaim increments the epoch after verified reconciliation, stale claims are fenced, expired active leases require reconciliation, and terminal leases cannot be resurrected.
+7. Legacy option-based or v1 candidate bindings may be migrated only as compatibility evidence; incomplete tenant/profile/build binding remains stale and requires a new v2 exact plan.
+8. New governed remote approval bindings are persisted on the approval row using `mad4b.approval-candidate-binding.v2`.
+9. Deep physical verification must pass before any readiness marker advances. A physical-verification receipt is persisted/read back, then schema version and integrity token are persisted/read back, then a finalized receipt is persisted/read back.
+10. `MAD4B_SCP_Schema::is_ready()` requires exact version, exact integrity token and a valid finalized migration receipt; missing/partial evidence therefore keeps governed mutation fail-closed.
+11. Audit head/legacy anchor is initialized only after schema readiness, and no legacy capability is widened during migration.
 
 ## Retention and evidence
 

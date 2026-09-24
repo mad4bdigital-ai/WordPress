@@ -4,7 +4,7 @@ define( 'ABSPATH', __DIR__ . '/' );
 
 $GLOBALS['mad4b_registered_ability'] = array();
 $GLOBALS['mad4b_policy_mutate'] = true;
-$GLOBALS['mad4b_canary_mode'] = 'canary';
+$GLOBALS['mad4b_canary_mode'] = 'bootstrap';
 $GLOBALS['mad4b_target_mounted'] = false;
 $GLOBALS['mad4b_adapter_opt_in'] = true;
 $GLOBALS['mad4b_adapter_calls'] = 0;
@@ -89,19 +89,25 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 	public static function supports_provider( $provider ) { return 'bit_pi' === $provider; }
 	public static function ability_status( $provider, $ability, $adapter = null ) {
 		$mode = $GLOBALS['mad4b_canary_mode'];
-		$behavioral = array(
-			'state' => 'verified',
-			'behavioral_verified' => true,
-			'accepted_receipt' => array( 'evidence_digest' => str_repeat( 'e', 64 ) ),
-		);
+		$behavioral = array( 'state' => 'missing', 'behavioral_verified' => false, 'accepted_receipt' => array() );
 		$stage = 'canary';
 		$eligible = true;
-		if ( 'shadow' === $mode ) { $stage = 'shadow'; $eligible = false; }
-		if ( 'missing_behavioral' === $mode ) $behavioral = array( 'state' => 'missing', 'behavioral_verified' => false, 'accepted_receipt' => array() );
+		$bootstrap = true;
+		if ( 'receipt' === $mode ) {
+			$behavioral = array(
+				'state' => 'verified',
+				'behavioral_verified' => true,
+				'accepted_receipt' => array( 'evidence_digest' => str_repeat( 'e', 64 ) ),
+			);
+		}
+		if ( 'shadow' === $mode ) { $stage = 'shadow'; $eligible = false; $bootstrap = false; }
+		if ( 'unbacked_canary' === $mode ) { $bootstrap = false; }
 		return array(
 			'capability_id' => 'flow.execute',
 			'risk' => 'high_risk_write',
 			'activation_stage' => $stage,
+			'canary_bootstrap_eligible' => $bootstrap,
+			'canary_basis_digest' => str_repeat( '6', 64 ),
 			'canary_eligible' => $eligible,
 			'write_eligible' => false,
 			'artifact' => array( 'runtime_artifact_fingerprint' => str_repeat( 'c', 64 ) ),
@@ -144,8 +150,8 @@ function valid_canary_input() {
 		'expected_build_fingerprint' => str_repeat( 'b', 64 ),
 		'expected_artifact_fingerprint' => str_repeat( 'c', 64 ),
 		'expected_capability_contract_digest' => str_repeat( 'd', 64 ),
-		'expected_behavioral_evidence_digest' => str_repeat( 'e', 64 ),
-		'target_input' => array( 'flow_id' => 41, 'expected_flow_sha256' => str_repeat( 'f', 64 ), 'trigger_data' => array(), 'reason' => 'governed canary validation' ),
+		'expected_canary_basis_digest' => str_repeat( '6', 64 ),
+		'target_input' => array( 'flow_id' => 41, 'expected_flow_sha256' => str_repeat( 'f', 64 ), 'expected_plan_sha256' => str_repeat( '7', 64 ), 'idempotency_key' => 'canary-contract-0001', 'trigger_data' => array(), 'reason' => 'governed canary validation' ),
 	);
 }
 
@@ -156,6 +162,8 @@ expect_same( false, $registered['meta']['annotations']['readonly'], 'canary wrap
 expect_same( true, $registered['meta']['annotations']['destructive'], 'canary wrapper is destructive/high-risk' );
 expect_same( false, $registered['meta']['annotations']['idempotent'], 'canary wrapper is non-idempotent' );
 expect_same( 'write', $registered['meta']['mcp']['surface'], 'canary wrapper declares dedicated write authority' );
+expect_true( in_array( 'expected_canary_basis_digest', $registered['input_schema']['required'], true ), 'canary wrapper requires exact bootstrap basis digest' );
+expect_true( ! in_array( 'expected_behavioral_evidence_digest', $registered['input_schema']['required'], true ), 'prior behavioral receipt is optional for first canary bootstrap' );
 expect_same( 'high', MAD4B_SCP_Impact_Policy::impact_for( MAD4B_SCP_Provider_Canary_Execution::ABILITY, 'core', array() ), 'canary wrapper must be hard high impact' );
 expect_same( true, MAD4B_SCP_Impact_Policy::requires_approval( MAD4B_SCP_Provider_Canary_Execution::ABILITY, 'core', array() ), 'canary wrapper always requires approval' );
 
@@ -169,14 +177,21 @@ $wrong_candidate = $valid; $wrong_candidate['expected_candidate_sha'] = str_repe
 expect_error( MAD4B_SCP_Provider_Canary_Execution::validate_context( $wrong_candidate ), 'mad4b_provider_canary_candidate_mismatch', 'wrong candidate must fail closed' );
 $wrong_artifact = $valid; $wrong_artifact['expected_artifact_fingerprint'] = str_repeat( '9', 64 );
 expect_error( MAD4B_SCP_Provider_Canary_Execution::validate_context( $wrong_artifact ), 'mad4b_provider_canary_artifact_mismatch', 'wrong artifact must fail closed' );
-$wrong_receipt = $valid; $wrong_receipt['expected_behavioral_evidence_digest'] = str_repeat( '9', 64 );
-expect_error( MAD4B_SCP_Provider_Canary_Execution::validate_context( $wrong_receipt ), 'mad4b_provider_canary_behavioral_evidence_mismatch', 'wrong behavioral receipt must fail closed' );
+$wrong_basis = $valid; $wrong_basis['expected_canary_basis_digest'] = str_repeat( '9', 64 );
+expect_error( MAD4B_SCP_Provider_Canary_Execution::validate_context( $wrong_basis ), 'mad4b_provider_canary_basis_mismatch', 'wrong canary bootstrap basis must fail closed' );
+
+$GLOBALS['mad4b_canary_mode'] = 'receipt';
+$with_receipt = $valid;
+$with_receipt['expected_behavioral_evidence_digest'] = str_repeat( 'e', 64 );
+expect_true( is_array( MAD4B_SCP_Provider_Canary_Execution::validate_context( $with_receipt ) ), 'repeat canary may bind current trusted behavioral receipt' );
+$wrong_receipt = $with_receipt; $wrong_receipt['expected_behavioral_evidence_digest'] = str_repeat( '9', 64 );
+expect_error( MAD4B_SCP_Provider_Canary_Execution::validate_context( $wrong_receipt ), 'mad4b_provider_canary_behavioral_evidence_mismatch', 'wrong behavioral receipt must fail closed when a trusted receipt exists' );
 
 $GLOBALS['mad4b_canary_mode'] = 'shadow';
 expect_error( MAD4B_SCP_Provider_Canary_Execution::validate_context( $valid ), 'mad4b_provider_canary_stage_invalid', 'shadow capability cannot execute canary' );
-$GLOBALS['mad4b_canary_mode'] = 'missing_behavioral';
-expect_error( MAD4B_SCP_Provider_Canary_Execution::validate_context( $valid ), 'mad4b_provider_canary_behavioral_evidence_missing', 'missing behavioral evidence cannot execute canary' );
-$GLOBALS['mad4b_canary_mode'] = 'canary';
+$GLOBALS['mad4b_canary_mode'] = 'unbacked_canary';
+expect_error( MAD4B_SCP_Provider_Canary_Execution::validate_context( $valid ), 'mad4b_provider_canary_bootstrap_not_eligible', 'unbacked high-risk canary must fail closed without trusted behavioral evidence' );
+$GLOBALS['mad4b_canary_mode'] = 'bootstrap';
 
 $GLOBALS['mad4b_target_mounted'] = true;
 expect_error( MAD4B_SCP_Provider_Canary_Execution::validate_context( $valid ), 'mad4b_provider_canary_target_mounted', 'normal write mount and canary wrapper are mutually exclusive' );
@@ -224,6 +239,7 @@ expect_same( MAD4B_SCP_Provider_Canary_Execution::AUTHORIZED_EVIDENCE_CONTRACT, 
 expect_same( true, $authorized['durable'], 'authorized evidence is durable append-only evidence' );
 expect_same( $result['canary_execution_evidence']['evidence_digest'], $authorized['execution_evidence_digest'], 'authorized evidence binds exact execution digest' );
 expect_same( $claim['approval_ticket_id'], $authorized['approval_ticket_id'], 'authorized evidence binds exact approval ticket' );
+expect_same( str_repeat( '6', 64 ), $result['canary_execution_evidence']['canary_basis_digest'], 'execution evidence binds exact canary bootstrap basis' );
 expect_same( false, $authorized['promotion_granted'], 'authorized evidence cannot grant promotion' );
 
 $GLOBALS['mad4b_audit_fail_status'] = 'authorized_evidence';

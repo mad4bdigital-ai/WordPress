@@ -47,12 +47,23 @@ if ( empty( $status['authority_registry_valid'] ) || empty( $status['subject_pol
 $trusted = MAD4B_SCP_OAuth_Resource_Bridge::trusted_issuers();
 if ( ! in_array( $local_issuer, $trusted, true ) || ! in_array( $external_issuer, $trusted, true ) ) mad4b_hybrid_fail( 'Hybrid trusted issuers are incomplete.', $trusted );
 
+$advertised = MAD4B_SCP_OAuth_Resource_Bridge::advertised_issuers();
+if ( array( $external_issuer ) !== $advertised ) mad4b_hybrid_fail( 'Hybrid advertisement policy did not remain independent from trust.', $advertised );
+$local_policy = MAD4B_SCP_OAuth_Resource_Bridge::resource_policy_for_issuer( $local_issuer );
+if ( array( 'mad4b-chatgpt' ) !== $local_policy ) mad4b_hybrid_fail( 'Local authority resource policy mismatch.', $local_policy );
+$registry = MAD4B_SCP_Multi_Authority_Registry::snapshot();
+if ( 'mad4b.multi-authority-registry.v1' !== $registry['contract'] || 2 !== (int) $registry['authority_count'] ) mad4b_hybrid_fail( 'Feature 007 multi-authority registry projection is incomplete.', $registry );
+if ( ! empty( $registry['live_certification_is_inferred_from_configuration'] ) || 'PENDING' !== $registry['live_certification_verdict'] ) mad4b_hybrid_fail( 'Configured authorities were incorrectly promoted to live-verified state.', $registry );
+foreach ( $registry['authorities'] as $descriptor ) {
+	if ( ! empty( $descriptor['runtime_verified'] ) ) mad4b_hybrid_fail( 'Multi-authority registry inferred runtime verification from configuration.', $descriptor );
+}
+
 if ( ! MAD4B_SCP_OAuth_Resource_Bridge::subject_allowed( $local_issuer, 'user:1' ) ) mad4b_hybrid_fail( 'Local issuer-bound subject was not accepted.' );
 if ( ! MAD4B_SCP_OAuth_Resource_Bridge::subject_allowed( $external_issuer, 'user:user-1' ) ) mad4b_hybrid_fail( 'External issuer-bound subject was not accepted.' );
 if ( MAD4B_SCP_OAuth_Resource_Bridge::subject_allowed( $external_issuer, 'user:1' ) ) mad4b_hybrid_fail( 'Cross-authority subject confusion was accepted.' );
 
 $metadata = MAD4B_SCP_OAuth_Resource_Bridge::protected_resource_metadata();
-if ( 2 !== count( $metadata['authorization_servers'] ) || $resource !== $metadata['resource'] ) mad4b_hybrid_fail( 'Hybrid protected-resource metadata is incomplete.', $metadata );
+if ( array( $external_issuer ) !== $metadata['authorization_servers'] || $resource !== $metadata['resource'] ) mad4b_hybrid_fail( 'Hybrid protected-resource advertisement policy is incomplete.', $metadata );
 
 // Mint a real token with the WordPress-local private key/JWK and prove the same
 // resource bridge verifies it as one member of the hybrid trust registry.
@@ -70,6 +81,20 @@ $identity = MAD4B_SCP_Identity_Context::current();
 if ( is_wp_error( $identity ) || 'oauth2_bearer' !== $identity['auth_method'] ) mad4b_hybrid_fail( 'Local hybrid token did not produce OAuth identity.', $identity );
 $restricted = MAD4B_SCP_Governed_Ability_Overrides::can_remote_oauth_read_ability( 'mad4b/database-select' );
 if ( ! is_wp_error( $restricted ) || 'mad4b_remote_oauth_sensitive_read_denied' !== $restricted->get_error_code() ) mad4b_hybrid_fail( 'Local-issued remote bearer bypassed sensitive read default deny.', $restricted );
+
+// Trust and advertisement are independent: the unadvertised local authority
+// remains trusted for ChatGPT, but its explicit resource policy must prevent it
+// from reaching the Developer MCP.
+$developer_resource = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer' );
+$developer_token = $mint->invoke( null, 'https://client.example.test/mcp-client.json', 1, $developer_resource, array( 'mad4b:read', 'server:mad4b-developer' ) );
+if ( is_wp_error( $developer_token ) ) mad4b_hybrid_fail( 'Unable to mint local Developer-policy negative-test token.', $developer_token->get_error_message() );
+$developer_request = new WP_REST_Request( 'POST', '/mcp/mad4b-developer' );
+$developer_request->set_header( 'Authorization', 'Bearer ' . $developer_token );
+wp_set_current_user( 0 );
+$developer_denied = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, null, $developer_request );
+if ( 401 !== mad4b_hybrid_status_code( $developer_denied ) ) mad4b_hybrid_fail( 'Local authority unexpectedly reached Developer resource.', $developer_denied );
+$developer_metadata = MAD4B_SCP_OAuth_Resource_Bridge::protected_resource_metadata( $developer_resource );
+if ( array( $external_issuer ) !== $developer_metadata['authorization_servers'] ) mad4b_hybrid_fail( 'Developer resource advertised an authority forbidden by resource policy.', $developer_metadata );
 
 // Configure an independent external authority on another origin.
 $external_key = openssl_pkey_new( array( 'private_key_type' => OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048 ) );
@@ -140,7 +165,7 @@ if ( 401 !== mad4b_hybrid_status_code( $response ) || $calls_before !== $externa
 $compat = MAD4B_SCP_MCP_Client_Compatibility::status();
 if ( 'hybrid' !== $compat['oauth_authority_mode'] || empty( $compat['authorization_server_hybrid'] ) || empty( $compat['authorization_server_local'] ) || empty( $compat['authorization_server_external'] ) || 2 !== (int) $compat['authorization_server_count'] ) mad4b_hybrid_fail( 'Client compatibility metadata does not truthfully expose hybrid authority.', $compat );
 $manifest = MAD4B_SCP_MCP_Client_Compatibility::manifest();
-if ( 'hybrid' !== $manifest['authentication']['authority_mode'] || 2 !== count( $manifest['authentication']['authorization_servers'] ) ) mad4b_hybrid_fail( 'Hybrid client manifest authority metadata is incomplete.', $manifest );
+if ( 'hybrid' !== $manifest['authentication']['authority_mode'] || array( $external_issuer ) !== $manifest['authentication']['authorization_servers'] ) mad4b_hybrid_fail( 'Hybrid client manifest did not honor advertised-authority policy.', $manifest );
 if ( 'deny_sensitive_generic_introspection' !== $manifest['remote_oauth_read_policy']['default'] ) mad4b_hybrid_fail( 'Hybrid client manifest omits remote read blast-radius policy.', $manifest );
 
 echo 'mad4b.site-control-plane.runtime-oauth-hybrid.v2: PASS' . PHP_EOL;

@@ -40,14 +40,20 @@ if not re.fullmatch(r'\d+\.\d+\.\d+-rc\.\d+', version):
 
 required_workflow_fragments = (
     'SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}',
-    "source = os.environ['SOURCE_SHA']",
-    "'source_commit_sha': source",
-    "artifact_identity = f'mad4b-site-control-plane-general-distribution-kit-{source}'",
+    'ref: ${{ env.SOURCE_SHA }}',
+    'test "$(git rev-parse HEAD)" = "$SOURCE_SHA"',
+    '--source-sha "$SOURCE_SHA"',
+    '--receipt-output "$stage/CANONICAL-PACKAGE-RECEIPT.json"',
+    "if receipt.get('source_commit_sha') != os.environ['SOURCE_SHA']:",
     "'commit': os.environ.get('SOURCE_SHA')",
+    'name: mad4b-site-control-plane-general-distribution-kit-${{ env.SOURCE_SHA }}',
 )
 for fragment in required_workflow_fragments:
     if fragment not in workflow:
         raise SystemExit(f'package exact-head source binding missing: {fragment}')
+
+if "source = os.environ['SOURCE_SHA']" in workflow:
+    raise SystemExit('package workflow regressed to obsolete duplicated source alias instead of canonical SOURCE_SHA binding')
 
 if handoff.get('producer', {}).get('source_binding') != 'exact_head_sha':
     raise SystemExit('deployment handoff is not exact-head bound')

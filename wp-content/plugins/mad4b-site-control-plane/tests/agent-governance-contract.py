@@ -39,11 +39,13 @@ bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
 
 # Schema authority must be normalized and migration must not seed authority.
-require(schema, 'const VERSION = 6;', 'schema-version')
+require(schema, 'const VERSION = 9;', 'schema-version')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
     'mad4b_scp_agent_budget_windows', 'mad4b_scp_audit_events', 'mad4b_scp_audit_heads',
+    'mad4b_content_jobs', 'mad4b_content_job_events', 'mad4b_work_leases',
+    'mad4b_idempotency', 'mad4b_execution_outbox', 'mad4b_execution_inbox',
 ):
     require(schema, table, 'schema-table')
 for approval_binding_field in (

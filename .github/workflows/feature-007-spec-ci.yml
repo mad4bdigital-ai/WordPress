@@ -1,0 +1,143 @@
+name: Feature 007 Spec Quality CI
+
+on:
+  pull_request:
+    paths:
+      - 'specs/007-content-intelligence-workflow-platform/**'
+      - '.github/workflows/feature-007-spec-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: feature-007-spec-quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spec-quality:
+    name: Feature 007 specification quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Enforce current baseline ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          if ! git merge-base --is-ancestor "$BASE" HEAD; then
+            echo "BASELINE_STALE"
+            git rev-list --left-right --count "$BASE"...HEAD || true
+            exit 1
+          fi
+          META_BASE="$(python -c 'import json; print(json.load(open("specs/007-content-intelligence-workflow-platform/feature.json"))["current_baseline_head"])')"
+          if [ "$META_BASE" != "$BASE" ]; then
+            echo "BASELINE_METADATA_STALE expected=$BASE recorded=$META_BASE"
+            exit 1
+          fi
+
+      - name: Preserve cross-feature global metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          git diff --exit-code "$BASE"...HEAD -- .specify/feature.json .specify/memory/constitution.md
+
+      - name: Enforce phase-aware Feature 007 change boundary
+        shell: bash
+        env:
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          python - "$BASE" "$HEAD_BRANCH" <<'PY'
+          import json
+          import subprocess
+          import sys
+
+          base, head_branch = sys.argv[1], sys.argv[2]
+          feature = json.load(open("specs/007-content-intelligence-workflow-platform/feature.json", encoding="utf-8"))
+          status = feature.get("status")
+
+          changed = subprocess.check_output(
+              ["git", "diff", "--name-only", f"{base}...HEAD"],
+              text=True,
+          ).splitlines()
+
+          spec_allowed = [
+              "specs/007-content-intelligence-workflow-platform/",
+              ".github/workflows/feature-007-spec-ci.yml",
+          ]
+          implementation_allowed = [
+              ".github/workflows/feature-007-critical-kernel.yml",
+              ".github/workflows/feature-007-spec-ci.yml",
+              ".github/workflows/mad4b-control-plane-package.yml",
+              ".github/workflows/mad4b-live-acceptance-evidence.yml",
+              ".github/workflows/mad4b-wpml-external-diagnostic.yml",
+              ".github/workflows/mad4b-oauth-resource-bridge.yml",
+              ".github/workflows/mad4b-provider-compatibility-engine.yml",
+              "specs/007-content-intelligence-workflow-platform/",
+              "tools/mad4b_recovery_plane.py",
+              "tools/verify_release_root_trust.py",
+              "wp-content/plugins/mad4b-site-control-plane/",
+          ]
+          cross_feature_dependencies = [
+              ".github/workflows/wpl-client-contract.yml",
+              "specs/006-agent-governed-reversible-control-plane/data-model.md",
+          ]
+          implementation_branch = "feat/007-critical-kernel-root-trust-20260924"
+
+          # The mutable feature metadata is descriptive evidence, not authority.
+          # It must mirror this workflow-owned policy exactly and cannot widen it.
+          if feature.get("implementation_branch") != implementation_branch:
+              raise SystemExit(
+                  f"IMPLEMENTATION_METADATA_BRANCH_DRIFT expected={implementation_branch} "
+                  f"recorded={feature.get('implementation_branch')}"
+              )
+          if feature.get("implementation_allowed_paths") != implementation_allowed:
+              raise SystemExit("IMPLEMENTATION_METADATA_ALLOWLIST_DRIFT")
+          if feature.get("cross_feature_contract_dependencies") != cross_feature_dependencies:
+              raise SystemExit("CROSS_FEATURE_METADATA_DEPENDENCY_DRIFT")
+
+          def permitted(path, entries):
+              return any(path == entry or (entry.endswith("/") and path.startswith(entry)) for entry in entries)
+
+          if status == "specification":
+              forbidden = [p for p in changed if not permitted(p, spec_allowed)]
+          elif status == "implementation":
+              if head_branch != implementation_branch:
+                  raise SystemExit(
+                      f"IMPLEMENTATION_BRANCH_MISMATCH expected={implementation_branch} actual={head_branch}"
+                  )
+              permitted_entries = implementation_allowed + cross_feature_dependencies
+              forbidden = [p for p in changed if not permitted(p, permitted_entries)]
+              touched_cross_feature = [
+                  p for p in changed
+                  if p.startswith("specs/")
+                  and not p.startswith("specs/007-content-intelligence-workflow-platform/")
+              ]
+              undeclared = [p for p in touched_cross_feature if p not in cross_feature_dependencies]
+              if undeclared:
+                  raise SystemExit("UNDECLARED_CROSS_FEATURE_CHANGE: " + ",".join(sorted(undeclared)))
+          else:
+              raise SystemExit(f"UNKNOWN_FEATURE_STATUS: {status!r}")
+
+          if forbidden:
+              raise SystemExit("FORBIDDEN_CHANGE: " + ",".join(sorted(forbidden)))
+
+          print(f"FEATURE_007_BOUNDARY_OK status={status} changed={len(changed)}")
+          PY
+
+      - name: Validate Feature 007 contracts and gate liveness
+        run: python specs/007-content-intelligence-workflow-platform/validate_spec.py

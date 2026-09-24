@@ -5,13 +5,35 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
-      - '.github/workflows/mad4b-*.yml'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-live-acceptance-evidence.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
+      - '.github/workflows/feature-007-critical-kernel.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-live-acceptance-evidence.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
+      - '.github/workflows/feature-007-critical-kernel.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
   actions: read
   checks: read
+  pull-requests: read
 
 concurrency:
   group: mad4b-release-verdict-${{ github.event.pull_request.number || github.ref }}
@@ -34,23 +56,87 @@ jobs:
       - name: Wait for exact-head critical checks
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || '' }}
         shell: bash
         run: |
           set -euo pipefail
-          critical=(
-            'Control-plane contract guard'
-            'Dynamic Skills contract'
-            'Dynamic Skills + governed write generic Staging runtime'
-            'Dynamic Skills + write authority Production fail-closed runtime'
-            'Build reviewed General Distribution installation kit'
-            'ChatGPT refresh request hotpath contract'
-            'ChatGPT tools/list catalog performance contract'
-            'Full Staging authority contract'
-            'Governed execution fence (latest)'
-            'Human approval decision (8.3)'
-            'OAuth bridge runtime (latest)'
+          python3 - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+
+          full = [
+              'Control-plane contract guard',
+              'Dynamic Skills contract',
+              'Dynamic Skills + governed write generic Staging runtime',
+              'Dynamic Skills + write authority Production fail-closed runtime',
+              'Build reviewed General Distribution installation kit',
+              'ChatGPT refresh request hotpath contract',
+              'ChatGPT tools/list catalog performance contract',
+              'Full Staging authority contract',
+              'Governed execution fence (latest)',
+              'Human approval decision (8.3)',
+              'OAuth bridge runtime (latest)',
+          ]
+          release_evidence = [
+              'Root trust and Recovery Plane',
+              'Build reviewed General Distribution installation kit',
+              'Live evidence contracts + exact artifact',
+          ]
+          release_evidence_paths = {
+              '.github/workflows/mad4b-control-plane-package.yml',
+              '.github/workflows/mad4b-live-acceptance-evidence.yml',
+              '.github/workflows/mad4b-release-verdict.yml',
+              '.github/workflows/feature-007-critical-kernel.yml',
+          }
+
+          changed = []
+          pr_number = os.environ.get('PR_NUMBER', '').strip()
+          if pr_number:
+              for page in (1, 2):
+                  raw = subprocess.check_output([
+                      'gh', 'api',
+                      '-H', 'Accept: application/vnd.github+json',
+                      f"repos/{os.environ['GITHUB_REPOSITORY']}/pulls/{pr_number}/files?per_page=100&page={page}",
+                  ], text=True)
+                  changed.extend(
+                      str(row.get('filename', ''))
+                      for row in json.loads(raw)
+                      if isinstance(row, dict) and row.get('filename')
+                  )
+          elif os.environ.get('GITHUB_EVENT_NAME') == 'push':
+              event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text(encoding='utf-8'))
+              before = str(event.get('before', '')).strip().lower()
+              if len(before) == 40 and set(before) != {'0'}:
+                  raw = subprocess.check_output([
+                      'gh', 'api',
+                      '-H', 'Accept: application/vnd.github+json',
+                      f"repos/{os.environ['GITHUB_REPOSITORY']}/compare/{before}...{os.environ['SOURCE_SHA']}",
+                  ], text=True)
+                  compare = json.loads(raw)
+                  changed.extend(
+                      str(row.get('filename', ''))
+                      for row in compare.get('files', [])
+                      if isinstance(row, dict) and row.get('filename')
+                  )
+          changed = sorted(set(changed))
+          narrow = bool(changed) and set(changed).issubset(release_evidence_paths)
+          required = release_evidence if narrow else full
+          mode = 'release_evidence_workflows_only' if narrow else 'full_runtime_release'
+
+          Path('/tmp/mad4b-critical-checks.txt').write_text('\n'.join(required) + '\n', encoding='utf-8')
+          Path('/tmp/mad4b-release-verdict-scope.json').write_text(
+              json.dumps({
+                  'contract': 'mad4b.release-verdict-scope.v1',
+                  'mode': mode,
+                  'changed_files': changed,
+                  'required_checks': required,
+                  'narrow_release_evidence_paths': sorted(release_evidence_paths),
+              }, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
           )
-          printf '%s\n' "${critical[@]}" > /tmp/mad4b-critical-checks.txt
+          print(json.dumps({'mode': mode, 'changed_files': changed, 'required_checks': required}, indent=2))
+          PY
+
           for attempt in $(seq 1 120); do
             gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/check-runs?per_page=100&page=1" > /tmp/checks-1.json
             gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/check-runs?per_page=100&page=2" > /tmp/checks-2.json
@@ -91,11 +177,12 @@ jobs:
           gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/check-runs?per_page=100&page=2" > /tmp/checks-2.json
           artifact_name="mad4b-site-control-plane-general-distribution-kit-$SOURCE_SHA"
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$artifact_name&per_page=100" > /tmp/artifacts.json
-          python3 - /tmp/mad4b-critical-checks.txt /tmp/checks-1.json /tmp/checks-2.json /tmp/artifacts.json <<'PY'
+          python3 - /tmp/mad4b-critical-checks.txt /tmp/mad4b-release-verdict-scope.json /tmp/checks-1.json /tmp/checks-2.json /tmp/artifacts.json <<'PY'
           import json,os,sys
           required=[x.strip() for x in open(sys.argv[1],encoding='utf-8') if x.strip()]
+          scope=json.load(open(sys.argv[2],encoding='utf-8'))
           runs=[]
-          for path in sys.argv[2:4]: runs.extend(json.load(open(path,encoding='utf-8')).get('check_runs',[]))
+          for path in sys.argv[3:5]: runs.extend(json.load(open(path,encoding='utf-8')).get('check_runs',[]))
           latest={}
           for row in sorted(runs,key=lambda x:int(x.get('id',0))): latest[row.get('name','')]=row
           critical={name:{'status':latest[name].get('status'),'conclusion':latest[name].get('conclusion'),'details_url':latest[name].get('details_url','')} for name in required}
@@ -103,7 +190,7 @@ jobs:
           if live and live.get('conclusion')=='success': live_state='accepted'
           elif live and live.get('conclusion') in ('failure','cancelled','timed_out','action_required'): live_state='failed'
           else: live_state='external_pending'
-          artifacts=json.load(open(sys.argv[4],encoding='utf-8')).get('artifacts',[])
+          artifacts=json.load(open(sys.argv[5],encoding='utf-8')).get('artifacts',[])
           exact=[a for a in artifacts if not a.get('expired') and (a.get('workflow_run') or {}).get('head_sha')==os.environ['SOURCE_SHA']]
           exact=sorted(exact,key=lambda a:int(a.get('id',0)),reverse=True)
           artifact=exact[0] if exact else {}
@@ -115,6 +202,8 @@ jobs:
             'source_commit_sha':os.environ['SOURCE_SHA'],
             'critical_checks':critical,
             'critical_check_count':len(critical),
+            'critical_check_mode':scope.get('mode','full_runtime_release'),
+            'changed_files':scope.get('changed_files',[]),
             'repository_release_ready':all(v['status']=='completed' and v['conclusion']=='success' for v in critical.values()),
             'distribution_artifact':{
               'id':artifact.get('id'), 'name':artifact.get('name'), 'sha256':digest,
@@ -129,6 +218,7 @@ jobs:
             'owner_attestation_required_for_exact_head':True,
             'attestation_stale_on_descendant':True,
             'notes':[
+              'Release-evidence workflow-only changes use the narrow exact package + root-trust + live-acceptance check set; any other change uses the full runtime release check set.',
               'Repository success does not substitute for live ETG Staging acceptance.',
               'Live performance and rollback drill remain external deployment gates.',
               'Production and Breakglass/raw-SQL authority are not granted by this verdict.'

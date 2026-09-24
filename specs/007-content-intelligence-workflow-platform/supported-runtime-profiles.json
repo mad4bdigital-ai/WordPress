@@ -1,0 +1,23 @@
+{
+  "contract": "mad4b.supported-runtime-profiles.v1",
+  "profiles": [
+    {
+      "id": "etg-staging-current",
+      "status": "candidate",
+      "environment": "staging",
+      "php": "8.3.x",
+      "wordpress": "current ETG deployed/certified version",
+      "database": "MariaDB 11.x class",
+      "mcp_adapter": "0.6.1 exact-package governed",
+      "control_plane": "rc.59 lineage exact candidate",
+      "oauth_profile": "multi-authority per current site policy",
+      "workflow_provider": "Bit Flows exact installed candidate",
+      "notes": "Values that are runtime-moving remain exact-evidence bound during certification; this profile is a compatibility class, not authority."
+    }
+  ],
+  "strategy": {
+    "exact_profiles": "full critical path",
+    "broader": "pairwise + change-impact + provider-specific targeted matrices",
+    "unknown": "unsupported until certified"
+  }
+}
