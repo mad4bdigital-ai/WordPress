@@ -501,6 +501,9 @@ def main() -> int:
         evidence["native_mcp"]["server_marker_files"] or evidence["native_mcp"]["route_marker_files"]
     )
     evidence["native_mcp"]["client_surface_detected"] = bool(evidence["native_mcp"]["client_marker_files"])
+    evidence["native_mcp"]["no_privileged_side_channel_proven"] = bool(
+        args.mode == "certified" and not evidence["native_mcp"]["server_surface_detected"]
+    )
     evidence["native_mcp"]["security_recertification_required"] = bool(
         args.mode == "candidate"
         and (
