@@ -116,6 +116,7 @@ if feature_path.exists():
         "recovery_runner_independent_root_trust","tool_executor_runtime_profile_compatibility",
         "repository_governance_external_enforcement","execution_ledger_reconciliation",
         "protected_backup_recovery_readiness","bitflows_1_29_exact_runtime_certification",
+        "repository_governance_bootstrap_retirement","etg_exact_master_deployment","runtime_root_trust_readback",
         "unified_implementation_closure","critical_kernel_vertical_slice_verified"
     }
     missing = mandatory_gates.difference(gates)
@@ -140,8 +141,8 @@ if closure_path.exists() and feature_path.exists():
     if len(stream_ids) != len(set(stream_ids)) or any(not x for x in stream_ids):
         errors.append("closure:workstream_ids_invalid")
     required_streams = {
-        "repository_governance","execution_ledger_reconciliation","latest_master_root_trust",
-        "governed_tool_execution","protected_backup_recovery","recovery_live_drill","bitflows_1_29_exact_certification",
+        "repository_governance","repository_governance_bootstrap_retirement","execution_ledger_reconciliation","latest_master_root_trust",
+        "governed_tool_execution","protected_backup_recovery","etg_exact_master_deployment","runtime_root_trust_readback","recovery_live_drill","bitflows_1_29_exact_certification",
         "provider_side_channel","capability_traits","site_bootstrap","intent_registry",
         "content_job_domain","artifact_registry_store","context_writer","research_competitive",
         "blueprint_draft_qa","governed_wp_draft","semantic_publication_verification",
