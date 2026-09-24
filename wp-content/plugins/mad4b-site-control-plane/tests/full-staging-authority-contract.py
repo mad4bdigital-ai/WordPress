@@ -57,10 +57,19 @@ assert "'generic_raw_sql_breakglass_requested' => false" in full
 assert "'mad4b/database-raw-query'" not in full
 
 assert "class-mad4b-scp-full-staging-authority.php" in servers
+assert "public static function chatgpt_read_tools()" in full
+assert "return array( self::STATUS_ABILITY, self::PLAN_ABILITY );" in full
 assert "MAD4B_SCP_Full_Staging_Authority::enrollment_tools()" in servers
+assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in servers
 assert "private static function chatgpt_enrollment_candidates()" in servers
 assert "array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in servers
 assert "array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools() )" in servers
+
+chatgpt_map = servers.split("'mad4b-chatgpt' => array_merge(", 1)[1].split("'mad4b-enrollment' =>", 1)[0]
+assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_map
+assert "mad4b/full-staging-authority-apply" not in chatgpt_map
+assert "self::meta( true, 'read' )" in full
+assert "self::meta( false, 'enrollment' )" in full
 
 bg_start = developer.index("public static function breakglass_flag_enabled()")
 bg_end = developer.index("public static function configured_agent_public_id()", bg_start)
@@ -82,4 +91,4 @@ assert "Current Staging authority" in ui
 assert "0.4.0-rc.59" in plugin
 assert "release=0.4.0-rc.59" in runtime_build
 
-print("mad4b.full-staging-authority-contract.v1: PASS")
+print("mad4b.full-staging-authority-contract.v2: PASS")
