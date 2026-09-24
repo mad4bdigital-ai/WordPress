@@ -179,4 +179,59 @@ with tempfile.TemporaryDirectory() as td:
     if "broken old runtime" not in (quarantine / "mad4b-site-control-plane.php").read_text(encoding="utf-8"):
         raise SystemExit("quarantined rollback evidence is not the previous plugin")
 
+    # Read-only status must verify installed provenance without loading WordPress.
+    status = recovery.recovery_status(wp, "staging")
+    if status["mutation_performed"] is not False or status["read_only"] is not True:
+        raise SystemExit("Recovery status must remain observational")
+    if status["installed_provenance"]["valid"] is not True:
+        raise SystemExit("Recovery status did not verify installed known-good provenance")
+    if status["installed_provenance"]["identity"]["source_commit_sha"] != source_sha:
+        raise SystemExit("Recovery status source identity mismatch")
+
+    # Exact-plan disable/quarantine provides an out-of-band stop path for a bad plugin.
+    disable_plan = recovery.build_disable_plan(
+        wp,
+        "staging",
+        "INC-DISABLE-001",
+        "Disable exact installed Control Plane without loading WordPress.",
+    )
+    try:
+        recovery.apply_disable(disable_plan, "0" * 64)
+        raise SystemExit("Recovery disable accepted the wrong owner plan attestation")
+    except ValueError as exc:
+        if "OWNER_ATTEST_SINGLE_OWNER" not in str(exc):
+            raise
+
+    disabled = recovery.apply_disable(disable_plan, disable_plan["plan_sha256"])
+    if live.exists():
+        raise SystemExit("Recovery disable left the plugin active at the canonical path")
+    disabled_quarantine = wp / disabled["previous"]["quarantine_path"]
+    if not disabled_quarantine.is_dir():
+        raise SystemExit("Recovery disable did not quarantine exact prior plugin bytes")
+    if disabled["post_disable"]["production_authorized"] is not False:
+        raise SystemExit("Recovery disable widened Production authority")
+
+    absent_status = recovery.recovery_status(wp, "staging")
+    if absent_status["target"]["plugin_present"] is not False:
+        raise SystemExit("Recovery status did not observe disabled plugin")
+
+    # Restore after disable proves the Recovery Plane can hand control back without plugin boot.
+    restore_after_disable = recovery.build_restore_plan(
+        wp,
+        "staging",
+        "INC-RESTORE-AFTER-DISABLE",
+        "Restore externally attested package after exact-plan disable.",
+        receipt,
+    )
+    restored_again = recovery.apply_restore(
+        restore_after_disable,
+        artifact,
+        receipt,
+        restore_after_disable["plan_sha256"],
+    )
+    if restored_again["post_recovery"]["source_commit_sha"] != source_sha:
+        raise SystemExit("Recovery restore after disable did not restore exact source identity")
+    if not live.is_dir():
+        raise SystemExit("Recovery restore after disable did not reactivate canonical plugin path")
+
 print("out-of-band recovery plane contract: PASS")
