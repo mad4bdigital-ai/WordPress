@@ -240,6 +240,10 @@ def apply_restore(
     owner_attest_plan_sha: str,
 ) -> dict[str, Any]:
     root = assert_plan_current(plan)
+    if not root_receipt.get("verified") or not root_receipt.get("attestation_verified"):
+        raise ValueError("recovery apply requires freshly verified external release root trust")
+    if root_receipt.get("runtime_self_attestation_authoritative") is not False:
+        raise ValueError("runtime self-attestation cannot authorize Recovery Plane apply")
     plan_sha = str(plan["plan_sha256"])
     if owner_attest_plan_sha.strip().lower() != plan_sha:
         raise ValueError("OWNER_ATTEST_SINGLE_OWNER does not bind the exact recovery plan")
