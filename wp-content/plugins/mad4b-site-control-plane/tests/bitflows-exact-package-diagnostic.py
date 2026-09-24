@@ -407,10 +407,15 @@ def main() -> int:
         "package_manifest_digest": "",
         "package_manifest": [],
         "native_mcp": {
+            "catalog_role": str(provider.get("native_mcp_role", "")),
+            "catalog_security": provider.get("native_mcp_security", {}) if isinstance(provider.get("native_mcp_security"), dict) else {},
             "server_marker_files": [],
+            "server_reference_files": [],
             "route_marker_files": [],
             "client_marker_files": [],
             "mcp_named_paths": [],
+            "server_detection_method": "bounded_static_implementation_markers_v2",
+            "server_surface_absence_proven": False,
             "no_privileged_side_channel_proven": False,
             "security_recertification_required": args.mode == "candidate",
         },
@@ -545,31 +550,85 @@ def main() -> int:
             lower_name = name.lower()
             if "/mcp/" in lower_name or lower_name.endswith("/mcp.php") or "mcp" in Path(name).name.lower():
                 evidence["native_mcp"]["mcp_named_paths"].append(name)
-            if re.search(r"\bMcpServer\b|Model Context Protocol|mcp[_ -]?server", source, re.I):
+
+            # Descriptive references such as "MCP server URL" are common in a
+            # client implementation and are not evidence that this package
+            # exposes a native MCP server. Preserve them for review only.
+            if re.search(r"Model Context Protocol|mcp[_ -]?server", source, re.I):
+                evidence["native_mcp"]["server_reference_files"].append(name)
+
+            first_party = "/vendor/" not in lower_name
+            server_path_marker = first_party and bool(
+                re.search(r"(?:^|/)mcp/(?:[^/]+/)*(?:mcp)?server[^/]*\.php$", lower_name)
+                or re.search(r"(?:^|/)mcpserver[^/]*\.php$", lower_name)
+            )
+            server_code_marker = first_party and bool(
+                re.search(r"\bclass\s+[A-Za-z_][A-Za-z0-9_]*McpServer[A-Za-z0-9_]*\b", source, re.I)
+                or re.search(r"\bnamespace\s+[^;]*\\Mcp\\Server(?:\\|\s*;)", source, re.I)
+                or re.search(r"\bnew\s+(?:\\?[A-Za-z_][A-Za-z0-9_]*\\)*[A-Za-z_][A-Za-z0-9_]*McpServer[A-Za-z0-9_]*\s*\(", source, re.I)
+            )
+            if server_path_marker or server_code_marker:
                 evidence["native_mcp"]["server_marker_files"].append(name)
-            if re.search(r"register_rest_route\s*\([^\n]{0,500}mcp|/mcp(?:/|['\"])", source, re.I | re.S):
+
+            route_marker = bool(
+                re.search(r"register_rest_route\s*\([^;]{0,1200}['\"][^'\"]*mcp", source, re.I | re.S)
+                or re.search(r"add_action\s*\(\s*['\"]wp_ajax_(?:nopriv_)?[^'\"]*mcp", source, re.I)
+                or re.search(r"(?:Route|Router)::(?:get|post|put|patch|delete|any)\s*\(\s*['\"][^'\"]*mcp", source, re.I)
+                or re.search(r"add_rewrite_rule\s*\([^;]{0,800}['\"][^'\"]*mcp", source, re.I | re.S)
+            )
+            if route_marker:
                 evidence["native_mcp"]["route_marker_files"].append(name)
+
             if re.search(r"\bMcpClient\b|mcp[_ -]?client", source, re.I):
                 evidence["native_mcp"]["client_marker_files"].append(name)
 
     evidence["executor_call_sites"] = sorted(evidence["executor_call_sites"], key=lambda row: row["path"])
     evidence["history_write_sites"] = sorted(evidence["history_write_sites"], key=lambda row: row["path"])
 
-    for key in ("server_marker_files", "route_marker_files", "client_marker_files", "mcp_named_paths"):
+    for key in ("server_marker_files", "server_reference_files", "route_marker_files", "client_marker_files", "mcp_named_paths"):
         evidence["native_mcp"][key] = sorted(set(evidence["native_mcp"][key]))
+
     evidence["native_mcp"]["server_surface_detected"] = bool(
         evidence["native_mcp"]["server_marker_files"] or evidence["native_mcp"]["route_marker_files"]
     )
+    evidence["native_mcp"]["server_rest_routes_detected"] = bool(evidence["native_mcp"]["route_marker_files"])
     evidence["native_mcp"]["client_surface_detected"] = bool(evidence["native_mcp"]["client_marker_files"])
-    evidence["native_mcp"]["no_privileged_side_channel_proven"] = bool(
-        args.mode == "certified" and not evidence["native_mcp"]["server_surface_detected"]
+    evidence["native_mcp"]["server_surface_absence_proven"] = False
+    evidence["native_mcp"]["no_privileged_side_channel_proven"] = False
+
+    catalog_role = evidence["native_mcp"]["catalog_role"]
+    catalog_security = evidence["native_mcp"]["catalog_security"]
+    expected_server_routes = catalog_security.get("server_rest_routes_detected")
+    evidence["native_mcp"]["catalog_role_match"] = (
+        True
+        if not catalog_role
+        else (
+            evidence["native_mcp"]["client_surface_detected"] and not evidence["native_mcp"]["server_surface_detected"]
+            if catalog_role == "client"
+            else evidence["native_mcp"]["server_surface_detected"]
+            if catalog_role == "server"
+            else False
+        )
     )
+    evidence["native_mcp"]["catalog_server_route_expectation_match"] = (
+        True
+        if not isinstance(expected_server_routes, bool)
+        else bool(expected_server_routes) == evidence["native_mcp"]["server_rest_routes_detected"]
+    )
+
+    if args.mode == "certified" and archive_matches_catalog:
+        if not evidence["native_mcp"]["catalog_role_match"]:
+            raise SystemExit("Bit Flows certified native MCP role no longer matches catalog")
+        if not evidence["native_mcp"]["catalog_server_route_expectation_match"]:
+            raise SystemExit("Bit Flows certified native MCP server-route expectation no longer matches catalog")
+
     evidence["native_mcp"]["security_recertification_required"] = bool(
         args.mode == "candidate"
         and (
             not archive_matches_catalog
             or evidence["native_mcp"]["server_surface_detected"]
-            or evidence["native_mcp"]["route_marker_files"]
+            or not evidence["native_mcp"]["catalog_role_match"]
+            or not evidence["native_mcp"]["catalog_server_route_expectation_match"]
         )
     )
 
@@ -611,7 +670,9 @@ def main() -> int:
         "archive_structure_safe": bool(evidence.get("archive_structure", {}).get("safe")),
         "candidate_version_claim_match": bool(evidence.get("candidate_version_claim_match")),
         "native_mcp_security_review_required": bool(evidence["native_mcp"]["security_recertification_required"]),
-        "no_privileged_mcp_side_channel_proven": False if args.mode == "candidate" else not evidence["native_mcp"]["server_surface_detected"],
+        "native_mcp_catalog_role_match": bool(evidence["native_mcp"]["catalog_role_match"]),
+        "native_mcp_server_route_expectation_match": bool(evidence["native_mcp"]["catalog_server_route_expectation_match"]),
+        "no_privileged_mcp_side_channel_proven": False,
         "write_authority_granted": False,
         "normal_mount_eligible": False,
     }
