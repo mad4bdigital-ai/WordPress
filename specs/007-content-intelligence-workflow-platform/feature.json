@@ -121,6 +121,7 @@
     ".github/workflows/feature-007-spec-ci.yml",
     ".github/workflows/mad4b-control-plane-package.yml",
     ".github/workflows/mad4b-live-acceptance-evidence.yml",
+    ".github/workflows/mad4b-wpml-external-diagnostic.yml",
     ".github/workflows/mad4b-oauth-resource-bridge.yml",
     ".github/workflows/mad4b-provider-compatibility-engine.yml",
     "specs/007-content-intelligence-workflow-platform/",
