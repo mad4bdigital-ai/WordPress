@@ -103,6 +103,8 @@ for fragment in (
     '--trusted-signer-digest "$GITHUB_SHA"',
     "RELEASE-ROOT-TRUST-VERIFICATION.json",
     "trusted_signer_ref == \"refs/heads/master\"",
+    '.trust_role == "release_package_attestation"',
+    ".trusted_release_root == true",
 ):
     if fragment not in workflow:
         raise SystemExit(f"root-trust packaging workflow missing: {fragment}")
