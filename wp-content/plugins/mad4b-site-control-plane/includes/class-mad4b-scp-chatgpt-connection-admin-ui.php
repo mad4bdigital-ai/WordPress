@@ -119,9 +119,10 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 					<strong><?php echo esc_html( ! empty( $status['production_readonly_enabled'] ) ? __( 'Production read-only OAuth profile is enabled.', 'mad4b-site-control-plane' ) : __( 'Production read-only OAuth requires explicit administrator opt-in.', 'mad4b-site-control-plane' ) ); ?></strong>
 					<?php echo esc_html__( ' This profile grants only the narrow OAuth read scope on the mad4b-chatgpt projection. It does not enable mutation, Skills authoring, write authority or Breakglass.', 'mad4b-site-control-plane' ); ?>
 				</p></div>
-				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin:14px 0 20px">
+				<form class="mad4b-settings-ajax-form" data-mad4b-refresh-selector=".wrap" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin:14px 0 20px">
 					<?php wp_nonce_field( 'mad4b_production_readonly_oauth' ); ?>
 					<input type="hidden" name="action" value="<?php echo esc_attr( ! empty( $status['production_readonly_enabled'] ) ? 'mad4b_disable_production_readonly_oauth' : 'mad4b_enable_production_readonly_oauth' ); ?>">
+					<div class="mad4b-settings-feedback" data-mad4b-settings-feedback aria-live="polite"></div>
 					<button type="submit" class="button <?php echo empty( $status['production_readonly_enabled'] ) ? 'button-primary' : ''; ?>">
 						<?php echo esc_html( ! empty( $status['production_readonly_enabled'] ) ? __( 'Disable Production read-only OAuth', 'mad4b-site-control-plane' ) : __( 'Enable Production read-only OAuth', 'mad4b-site-control-plane' ) ); ?>
 					</button>
