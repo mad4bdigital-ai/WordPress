@@ -67,7 +67,7 @@ final class MAD4B_SCP_Context_Authority {
 				array(
 					'label' => 'AI Agent Context Review',
 					'description' => 'Submit one exact-bound Context review decision through the explicitly delegated AI Agent approval mode. Governance metadata and quality policy cannot be changed by this ability.',
-					'category' => 'mad4b-write',
+					'category' => 'mad4b-admin',
 					'execute_callback' => array( __CLASS__, 'review_asset_by_agent' ),
 					'permission_callback' => class_exists( 'MAD4B_SCP_Policy' ) ? array( 'MAD4B_SCP_Policy', 'can_admin' ) : '__return_false',
 					'input_schema' => array(
