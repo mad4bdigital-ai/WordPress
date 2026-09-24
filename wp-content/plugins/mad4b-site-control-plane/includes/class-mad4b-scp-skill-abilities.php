@@ -214,8 +214,11 @@ final class MAD4B_SCP_Skill_Abilities {
 		if ( '' === $session_id || strlen( $session_id ) > 512 ) return $response;
 		$rest = function_exists( 'rest_ensure_response' ) ? rest_ensure_response( $response ) : $response;
 		if ( ! is_object( $rest ) || ! method_exists( $rest, 'get_status' ) || ! method_exists( $rest, 'get_data' ) || 200 !== (int) $rest->get_status() ) return $response;
-		$data = self::normalize_value( $rest->get_data() );
-		$tools = isset( $data['result']['tools'] ) && is_array( $data['result']['tools'] ) ? $data['result']['tools'] : array();
+		$data = $rest->get_data();
+		if ( is_object( $data ) ) $data = get_object_vars( $data );
+		$result = is_array( $data ) && isset( $data['result'] ) ? $data['result'] : array();
+		if ( is_object( $result ) ) $result = get_object_vars( $result );
+		$tools = is_array( $result ) && isset( $result['tools'] ) && is_array( $result['tools'] ) ? $result['tools'] : array();
 		$snapshot = self::snapshot_attestation_from_tools( $tools );
 		if ( empty( $snapshot['identity_match'] ) ) return $response;
 		$names = array();
