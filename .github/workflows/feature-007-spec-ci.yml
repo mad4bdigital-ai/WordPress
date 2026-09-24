@@ -5,6 +5,8 @@ on:
     paths:
       - 'specs/007-content-intelligence-workflow-platform/**'
       - '.github/workflows/feature-007-spec-ci.yml'
+      - 'tools/mad4b_recovery_plane.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py'
 
 permissions:
   contents: read
@@ -200,3 +202,6 @@ jobs:
 
       - name: Validate Feature 007 contracts and gate liveness
         run: python specs/007-content-intelligence-workflow-platform/validate_spec.py
+
+      - name: Enforce bulk closure hardening contract
+        run: python wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py
