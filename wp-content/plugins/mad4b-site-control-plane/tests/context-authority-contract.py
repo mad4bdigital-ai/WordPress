@@ -631,6 +631,9 @@ require(authority, "'mad4b/context-ai-review'", "direct core AI review ability r
 require(servers, "'mad4b/context-ai-review'", "stable unified catalog entry for AI review")
 require(servers, "MAD4B_SCP_Context_Authority::ai_review_catalog_eligible()", "AI review runtime inventory policy gate")
 require(servers, "array_diff( $candidates, array( 'mad4b/context-ai-review' ) )", "AI review fail-closed runtime unmount")
+require(servers, "ai_review_standing_delegation_not_eligible", "AI review stable-catalog blocked classification")
+require(servers, "wp_has_ability( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY )", "AI review blocked classification requires registered ability")
+require(servers, "! MAD4B_SCP_Context_Authority::ai_review_catalog_eligible()", "AI review blocked classification follows delegation eligibility")
 require(write_authority, "mad4b.context-ai-review-standing-delegation.v1", "AI review standing delegation contract")
 require(write_authority, "public static function ai_review_delegation_status", "AI review request-time delegation guard")
 require(write_authority, "public static function ai_review_delegation_allowed", "AI review standing delegation predicate")
@@ -685,4 +688,4 @@ require(authority, "legacy_unbound", "legacy approval binding backlog observabil
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
-print("mad4b.site-control-plane.context-authority-contract.v70: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v71: PASS")
