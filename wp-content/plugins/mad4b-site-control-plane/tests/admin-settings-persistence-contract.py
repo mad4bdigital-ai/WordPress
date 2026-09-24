@@ -89,7 +89,6 @@ for marker in [
 policy = context.split("public static function set_review_policy", 1)[1].split("public static function sources()", 1)[0]
 assert "Persisted state is authoritative" in policy
 assert policy.index("self::review_policy()") < policy.index("if ( 'human_and_ai' === $mode )")
-assert policy.index("'persistence_verified' =") if False else True
 assert "current['persistence_verified'] = true" in policy
 assert "Changing delegated AI Agent review requires explicit administrator confirmation." in policy
 
