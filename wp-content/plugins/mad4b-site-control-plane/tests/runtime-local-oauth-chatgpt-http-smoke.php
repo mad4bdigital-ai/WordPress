@@ -77,6 +77,7 @@ $dispatch = static function ( array $payload, $bearer, $session_id = '' ) {
 	return apply_filters( 'rest_post_dispatch', $response, rest_get_server(), $request );
 };
 
+$initialize_started = hrtime( true );
 $initialize = $dispatch(
 	array(
 		'jsonrpc' => '2.0',
@@ -89,6 +90,7 @@ $initialize = $dispatch(
 	),
 	$token
 );
+$initialize_elapsed_ms = ( hrtime( true ) - $initialize_started ) / 1000000;
 if ( ! $initialize instanceof WP_REST_Response ) $fail( 'Initialize did not return WP_REST_Response.', gettype( $initialize ) );
 if ( 200 !== (int) $initialize->get_status() ) $fail( 'OAuth bearer initialize failed.', array( 'status' => $initialize->get_status(), 'body' => $initialize->get_data() ) );
 $initialize_data = $normalize( $initialize->get_data() );
@@ -113,12 +115,14 @@ if ( ! is_array( $identity ) || empty( $identity['authenticated'] ) || 'oauth2_b
 	$fail( 'Initialize did not establish OAuth bearer identity.', $identity );
 }
 
+$tools_started = hrtime( true );
 $tools_response = $dispatch(
 	array( 'jsonrpc' => '2.0', 'id' => 71, 'method' => 'tools/list', 'params' => array() ),
 	$token,
 	$session_id
 );
 
+$tools_elapsed_ms = ( hrtime( true ) - $tools_started ) / 1000000;
 if ( ! $tools_response instanceof WP_REST_Response ) $fail( 'tools/list did not return WP_REST_Response.', gettype( $tools_response ) );
 if ( 200 !== (int) $tools_response->get_status() ) $fail( 'OAuth bearer tools/list failed.', array( 'status' => $tools_response->get_status(), 'body' => $tools_response->get_data() ) );
 $tools_data = $normalize( $tools_response->get_data() );
@@ -188,6 +192,14 @@ if ( count( $names ) > 48 ) {
 }
 if ( $tools_payload_bytes > 131072 ) {
 	$fail( 'OAuth bearer tools/list exceeded the refresh payload budget.', array( 'payload_bytes' => $tools_payload_bytes, 'budget_bytes' => 131072 ) );
+}
+
+$refresh_latency_budget_ms = 5000.0;
+if ( $initialize_elapsed_ms > $refresh_latency_budget_ms ) {
+	$fail( 'OAuth bearer initialize exceeded the refresh latency budget.', array( 'elapsed_ms' => $initialize_elapsed_ms, 'budget_ms' => $refresh_latency_budget_ms ) );
+}
+if ( $tools_elapsed_ms > $refresh_latency_budget_ms ) {
+	$fail( 'OAuth bearer tools/list exceeded the refresh latency budget.', array( 'elapsed_ms' => $tools_elapsed_ms, 'budget_ms' => $refresh_latency_budget_ms ) );
 }
 if ( in_array( 'mad4b-database-raw-query', $names, true ) ) {
 	$fail( 'OAuth bearer tools/list exposed Breakglass Raw SQL.', 'mad4b-database-raw-query' );
@@ -270,14 +282,18 @@ remove_filter( 'pre_http_request', $http_spy, 9999 );
 if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) $fail( 'Verified bearer context was not active after MCP dispatch.' );
 if ( 1 !== get_current_user_id() || ! current_user_can( 'manage_options' ) ) $fail( 'OAuth bearer did not map to the configured WordPress subject.' );
 if ( ! empty( $unpreempted_http ) ) $fail( 'Local OAuth bearer verification attempted unpreempted outbound HTTP.', $unpreempted_http );
+if ( ! empty( $http_seen ) ) $fail( 'Local OAuth bearer verification must use the in-process metadata/JWKS fast path and perform zero HTTP calls.', $http_seen );
 
 fwrite(
 	STDOUT,
-	'mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v5: PASS ' .
+	'mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v6: PASS ' .
 	wp_json_encode(
 		array(
 			'tool_count' => count( $names ),
 			'tools_payload_bytes' => $tools_payload_bytes,
+			'initialize_elapsed_ms' => round( $initialize_elapsed_ms, 3 ),
+			'tools_list_elapsed_ms' => round( $tools_elapsed_ms, 3 ),
+			'refresh_latency_budget_ms' => $refresh_latency_budget_ms,
 			'http_filter_calls' => count( $http_seen ),
 			'unpreempted_http_calls' => count( $unpreempted_http ),
 			'session_established' => true,
