@@ -17,6 +17,9 @@ on:
       - 'wp-content/plugins/bit-pi.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-multi-authority-registry.php'
@@ -89,6 +92,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py
+
+      - name: Verify Ability category and schema diagnostic contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php
 
       - name: Verify durable schema dbDelta contract
         shell: bash
