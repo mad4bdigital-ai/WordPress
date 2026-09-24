@@ -9,6 +9,11 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
+      - 'wp-content/plugins/bit-pi.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php'
@@ -89,3 +94,17 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py
+
+      - name: Inspect exact Bit Flows package semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py --output /tmp/mad4b-bitflows-exact-package-diagnostic.json
+
+      - name: Upload exact Bit Flows semantic diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-bitflows-exact-package-diagnostic-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/mad4b-bitflows-exact-package-diagnostic.json
+          if-no-files-found: error
+          retention-days: 14
