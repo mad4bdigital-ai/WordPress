@@ -1,0 +1,48 @@
+{
+  "contract": "mad4b.feature007-bulk-closure-hardening.v1",
+  "production_authorized": false,
+  "architecture_freeze": true,
+  "terminal_gate": "critical_kernel_vertical_slice_verified",
+  "required_domains": [
+    "runtime_vertical_slice",
+    "fault_injection",
+    "evidence_durability",
+    "protected_backup_restore",
+    "bootstrap_minimization",
+    "filesystem_process_confinement",
+    "execution_location_truthfulness",
+    "recovery_wordpress_independence",
+    "gate_liveness",
+    "cross_executor_conformance",
+    "bitflows_exact_recertification",
+    "operator_doctor_dlq",
+    "complexity_guardrail"
+  ],
+  "required_fault_fixtures": [
+    "runner_crash_after_lease",
+    "runner_crash_after_side_effect_before_receipt",
+    "lease_loss_before_commit",
+    "duplicate_delivery_replay",
+    "stale_plan_after_approval",
+    "executor_change_after_approval",
+    "symlink_swap_before_commit",
+    "zip_slip_path_traversal",
+    "shell_executable_injection",
+    "output_timeout_exhaustion",
+    "provider_timeout_after_possible_side_effect",
+    "readback_failure_after_mutation",
+    "rollback_failure",
+    "evidence_persistence_failure",
+    "wordpress_boot_unavailable_recovery",
+    "backup_corruption_restore_interruption"
+  ],
+  "mutation_uncertainty_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+  "closure_rules": {
+    "backup_exists_is_not_ready": true,
+    "runtime_evidence_required_for_live_gate": true,
+    "docs_only_cannot_close_runtime_gate": true,
+    "ordinary_generic_shell_prohibited": true,
+    "raw_sql_breakglass_separate": true,
+    "production_authority_not_implied": true
+  }
+}
