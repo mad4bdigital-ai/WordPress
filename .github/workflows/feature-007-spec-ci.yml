@@ -31,6 +31,22 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
 
+      - name: Enforce current baseline ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          if ! git merge-base --is-ancestor "$BASE" HEAD; then
+            echo "BASELINE_STALE"
+            git rev-list --left-right --count "$BASE"...HEAD || true
+            exit 1
+          fi
+          META_BASE="$(python -c 'import json; print(json.load(open("specs/007-content-intelligence-workflow-platform/feature.json"))["current_baseline_head"])')"
+          if [ "$META_BASE" != "$BASE" ]; then
+            echo "BASELINE_METADATA_STALE expected=$BASE recorded=$META_BASE"
+            exit 1
+          fi
+
       - name: Preserve cross-feature global metadata
         shell: bash
         run: |
@@ -56,5 +72,5 @@ jobs:
           done < <(git diff --name-only "$BASE"...HEAD)
           test "$bad" -eq 0
 
-      - name: Validate Feature 007 contracts
+      - name: Validate Feature 007 contracts and gate liveness
         run: python specs/007-content-intelligence-workflow-platform/validate_spec.py
