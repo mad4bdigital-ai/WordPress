@@ -200,6 +200,10 @@ Candidate evidence binds both the raw archive SHA-256 and a normalized full-pack
 
 A candidate package with a native MCP server is a separate security surface from the MAD4B Bit Flows adapter. Structural compatibility of `FlowExecutor` or durable execution correlation does not prove that the provider-native MCP server cannot bypass MAD4B transport, grant, approval, budget, audit, candidate-binding, or Production boundaries. Candidate mode therefore keeps `no_privileged_mcp_side_channel_proven=false` and requires explicit MCP security recertification whenever a server/route surface is detected or the candidate artifact differs from the certified baseline.
 
+Native-MCP static detection is deliberately split into **references** and **implementation surfaces**. Text such as “MCP server URL” inside a client implementation is retained in `server_reference_files` for review but does not by itself classify the package as an MCP server. `server_surface_detected` requires bounded first-party server implementation markers or an actual route/AJAX/rewrite registration marker. For the exact certified Bit Flows 1.24.0 artifact this observation must remain consistent with the catalog contract `native_mcp_role=client` and `server_rest_routes_detected=false`; a mismatch fails certified diagnostics closed.
+
+The static package diagnostic never claims proof of absence: `server_surface_absence_proven=false` and `no_privileged_mcp_side_channel_proven=false` remain false even when no server implementation marker is observed. A separate authoritative security certification is required to satisfy the Feature 007 no-privileged-side-channel gate.
+
 If a provider-native MCP server is intentionally disabled or isolated at runtime, that runtime policy is evidence only; it does not create artifact authority. A later certification must either prove enforced isolation/fail-closed disablement for the exact artifact or model the native server as a governed peer under the existing MCP peer-governance contract.
 
 
