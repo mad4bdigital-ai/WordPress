@@ -1,0 +1,76 @@
+name: Feature 007 Spec Quality CI
+
+on:
+  pull_request:
+    paths:
+      - 'specs/007-content-intelligence-workflow-platform/**'
+      - '.github/workflows/feature-007-spec-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: feature-007-spec-quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spec-quality:
+    name: Feature 007 specification quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Enforce current baseline ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          if ! git merge-base --is-ancestor "$BASE" HEAD; then
+            echo "BASELINE_STALE"
+            git rev-list --left-right --count "$BASE"...HEAD || true
+            exit 1
+          fi
+          META_BASE="$(python -c 'import json; print(json.load(open("specs/007-content-intelligence-workflow-platform/feature.json"))["current_baseline_head"])')"
+          if [ "$META_BASE" != "$BASE" ]; then
+            echo "BASELINE_METADATA_STALE expected=$BASE recorded=$META_BASE"
+            exit 1
+          fi
+
+      - name: Preserve cross-feature global metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          git diff --exit-code "$BASE"...HEAD -- .specify/feature.json .specify/memory/constitution.md
+
+      - name: Enforce specification-only change boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          bad=0
+          while IFS= read -r path; do
+            case "$path" in
+              specs/007-content-intelligence-workflow-platform/*|.github/workflows/feature-007-spec-ci.yml)
+                ;;
+              *)
+                echo "FORBIDDEN_CHANGE: $path"
+                bad=1
+                ;;
+            esac
+          done < <(git diff --name-only "$BASE"...HEAD)
+          test "$bad" -eq 0
+
+      - name: Validate Feature 007 contracts and gate liveness
+        run: python specs/007-content-intelligence-workflow-platform/validate_spec.py
