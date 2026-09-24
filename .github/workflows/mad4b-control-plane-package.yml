@@ -778,6 +778,7 @@ jobs:
           stage='/tmp/mad4b-install-kit'
           control_archive="$(find "$stage" -maxdepth 1 -type f -name 'mad4b-site-control-plane-*.zip' -print -quit)"
           test -n "$control_archive"
+          export CONTROL_ARCHIVE_NAME="$(basename "$control_archive")"
           test -f "$stage/RELEASE-ATTESTATION.sigstore.json"
           test -f "$stage/RELEASE-ATTESTATION-LOCATOR.json"
           test -f "$stage/install-manifest.json"
@@ -809,6 +810,9 @@ jobs:
             and .trusted_signer_ref == "refs/heads/master"
             and (.trusted_signer_event == "push" or .trusted_signer_event == "workflow_dispatch")
             and .trusted_runner_environment == "github-hosted"
+            and (.install_manifest_sha256 | test("^[0-9a-f]{64}$"))
+            and (([.verified_attestation_subjects[].name] | sort) == ([env.CONTROL_ARCHIVE_NAME, "install-manifest.json"] | sort))
+            and ([.verified_attestation_subjects[].sha256 | test("^[0-9a-f]{64}$")] | all)
           ' "$stage/RELEASE-ROOT-TRUST-VERIFICATION.json" >/dev/null
 
       - name: Upload reviewed General Distribution installation kit
