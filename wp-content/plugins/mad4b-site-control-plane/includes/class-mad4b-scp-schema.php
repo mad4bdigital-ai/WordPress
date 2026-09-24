@@ -108,13 +108,16 @@ final class MAD4B_SCP_Schema {
 		);
 	}
 
-	private static function migration_receipt_valid( $receipt = null ) {
-		if ( null === $receipt ) $receipt = get_option( self::MIGRATION_RECEIPT_OPTION, array() );
+	private static function migration_receipt_matches_contract( $receipt, $require_finalized = false ) {
 		if ( ! is_array( $receipt ) ) return false;
 		if ( 'mad4b.schema-migration-receipt.v1' !== ( isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '' ) ) return false;
 		if ( self::MIGRATION_ID !== ( isset( $receipt['migration_id'] ) ? (string) $receipt['migration_id'] : '' ) ) return false;
 		if ( self::VERSION !== (int) ( isset( $receipt['to_version'] ) ? $receipt['to_version'] : 0 ) ) return false;
-		if ( empty( $receipt['physical_verified'] ) || empty( $receipt['readiness_finalized'] ) ) return false;
+		$from_version = (int) ( isset( $receipt['from_version'] ) ? $receipt['from_version'] : -1 );
+		if ( ! in_array( $from_version, self::migration_contract()['prerequisite_schema_versions'], true ) ) return false;
+		$expected_run_type = 0 === $from_version ? 'fresh_install' : ( self::VERSION === $from_version ? 'repair' : 'upgrade' );
+		if ( $expected_run_type !== ( isset( $receipt['run_type'] ) ? (string) $receipt['run_type'] : '' ) ) return false;
+		if ( empty( $receipt['physical_verified'] ) || ( $require_finalized && empty( $receipt['readiness_finalized'] ) ) ) return false;
 		if ( ! empty( $receipt['destructive'] ) || ! empty( $receipt['authority_widened'] ) ) return false;
 		$contract_sha = isset( $receipt['contract_sha256'] ) ? strtolower( trim( (string) $receipt['contract_sha256'] ) ) : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $contract_sha ) || ! hash_equals( self::migration_contract_sha256(), $contract_sha ) ) return false;
@@ -122,6 +125,18 @@ final class MAD4B_SCP_Schema {
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $integrity ) || ! hash_equals( self::expected_integrity_token(), $integrity ) ) return false;
 		$physical_sha = isset( $receipt['physical_integrity_sha256'] ) ? strtolower( trim( (string) $receipt['physical_integrity_sha256'] ) ) : '';
 		return (bool) preg_match( '/^[a-f0-9]{64}$/', $physical_sha );
+	}
+
+	private static function migration_receipt_valid( $receipt = null ) {
+		if ( null === $receipt ) $receipt = get_option( self::MIGRATION_RECEIPT_OPTION, array() );
+		return self::migration_receipt_matches_contract( $receipt, true );
+	}
+
+	private static function migration_origin_version( $installed_version ) {
+		$installed_version = (int) $installed_version;
+		$receipt = get_option( self::MIGRATION_RECEIPT_OPTION, array() );
+		if ( ! self::migration_receipt_matches_contract( $receipt, false ) ) return $installed_version;
+		return (int) $receipt['from_version'];
 	}
 
 	private static function persist_and_verify_option( $option, $value ) {
@@ -142,8 +157,9 @@ final class MAD4B_SCP_Schema {
 		if ( empty( $preflight['ready'] ) ) {
 			return new WP_Error( 'mad4b_schema_migration_preflight_failed', 'MAD4B schema migration preflight failed closed.', $preflight );
 		}
-		$from_version = (int) $preflight['installed_version'];
-		if ( self::VERSION === $from_version && self::is_ready() ) {
+		$installed_version = (int) $preflight['installed_version'];
+		$from_version = self::migration_origin_version( $installed_version );
+		if ( self::VERSION === $installed_version && self::is_ready() ) {
 			self::$physical_status_cache = null;
 			$existing_physical = self::physical_integrity_status();
 			if ( ! empty( $existing_physical['ready'] ) ) {
