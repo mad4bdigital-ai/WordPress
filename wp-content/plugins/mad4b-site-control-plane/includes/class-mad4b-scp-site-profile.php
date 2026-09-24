@@ -249,6 +249,53 @@ final class MAD4B_SCP_Site_Profile {
 		return 'chatgpt-governed-write';
 	}
 
+	private static function option_values_equal( $left, $right ) {
+		return serialize( $left ) === serialize( $right );
+	}
+
+	private static function clear_option_read_cache( $aggressive = false ) {
+		if ( ! function_exists( 'wp_cache_delete' ) ) return;
+		wp_cache_delete( self::OPTION, 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+		if ( $aggressive && function_exists( 'wp_cache_flush_group' ) ) wp_cache_flush_group( 'options' );
+	}
+
+	public static function persist_record_exact( array $record ) {
+		if ( ! self::valid_record( $record ) ) return false;
+
+		self::clear_option_read_cache( true );
+		$current = get_option( self::OPTION, false );
+		if ( false !== $current && self::option_values_equal( $current, $record ) ) {
+			self::reset_cache();
+			return true;
+		}
+
+		if ( false === $current ) add_option( self::OPTION, $record, '', 'no' );
+		else update_option( self::OPTION, $record, false );
+
+		self::clear_option_read_cache();
+		$readback = get_option( self::OPTION, false );
+		if ( self::option_values_equal( $readback, $record ) ) {
+			self::reset_cache();
+			return true;
+		}
+
+		// Persistent object-cache drop-ins may retain stale option existence or
+		// value state. Re-resolve after flushing only the Options cache group,
+		// retry through the public Options API, then require exact readback.
+		self::clear_option_read_cache( true );
+		$current = get_option( self::OPTION, false );
+		if ( false === $current ) add_option( self::OPTION, $record, '', 'no' );
+		else update_option( self::OPTION, $record, false );
+
+		self::clear_option_read_cache( true );
+		$readback = get_option( self::OPTION, false );
+		$verified = self::option_values_equal( $readback, $record );
+		if ( $verified ) self::reset_cache();
+		return $verified;
+	}
+
 	public static function save_current_site( array $input ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );
 		self::bootstrap();
@@ -316,8 +363,7 @@ final class MAD4B_SCP_Site_Profile {
 			'updated_at' => gmdate( 'c' ),
 		);
 		$before_digest = is_array( $existing ) && self::valid_record( $existing ) ? self::digest_record( self::normalize_record( $existing ) ) : '';
-		if ( false === update_option( self::OPTION, $record, false ) ) return new WP_Error( 'mad4b_site_profile_save_failed', 'Site profile could not be persisted.' );
-		self::reset_cache();
+		if ( ! self::persist_record_exact( $record ) ) return new WP_Error( 'mad4b_site_profile_save_failed', 'Site profile could not be persisted and verified by readback.' );
 		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 			$audit = MAD4B_SCP_Audit::record( 'mad4b/site-profile-updated', array(
 				'site_uuid' => $site_uuid,
@@ -351,8 +397,7 @@ final class MAD4B_SCP_Site_Profile {
 		$profile['features']['write'] = false;
 		$profile['features']['production_write_confirmed'] = false;
 		$profile['updated_at'] = gmdate( 'c' );
-		if ( false === update_option( self::OPTION, $profile, false ) ) return new WP_Error( 'mad4b_site_profile_save_failed', 'Site profile authority state could not be persisted.' );
-		self::reset_cache();
+		if ( ! self::persist_record_exact( $profile ) ) return new WP_Error( 'mad4b_site_profile_save_failed', 'Site profile authority state could not be persisted and verified by readback.' );
 		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 			MAD4B_SCP_Audit::record( 'mad4b/site-profile-write-disabled', array(
 				'site_uuid' => self::site_uuid(),
