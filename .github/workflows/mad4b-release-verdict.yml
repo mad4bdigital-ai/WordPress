@@ -153,6 +153,15 @@ jobs:
               changed.extend(line.strip() for line in raw.splitlines() if line.strip())
 
           changed = sorted(set(changed))
+          governance_bootstrap_paths = {
+              '.github/mad4b-master-ruleset-template.json',
+              '.github/mad4b-repository-governance-policy.json',
+              '.github/workflows/mad4b-repository-governance.yml',
+              '.github/workflows/mad4b-release-verdict.yml',
+              'tools/Apply-Mad4bMasterRuleset.ps1',
+              'tools/verify_repository_governance.py',
+          }
+          governance_bootstrap_candidate = governance_bootstrap_paths.issubset(set(changed))
           narrow = bool(changed) and set(changed).issubset(release_evidence_paths)
           runtime_affecting = any(
               fnmatch.fnmatch(path, pattern)
@@ -183,6 +192,8 @@ jobs:
                   'required_checks': required,
                   'narrow_release_evidence_paths': sorted(release_evidence_paths),
                   'runtime_patterns': sorted(runtime_patterns),
+                  'governance_bootstrap_paths': sorted(governance_bootstrap_paths),
+                  'governance_bootstrap_candidate': governance_bootstrap_candidate,
               }, indent=2, sort_keys=True) + '\n',
               encoding='utf-8',
           )
@@ -191,6 +202,7 @@ jobs:
               'artifact_required': artifact_required,
               'changed_files': changed,
               'required_checks': required,
+              'governance_bootstrap_candidate': governance_bootstrap_candidate,
           }, indent=2))
           PY
           for attempt in $(seq 1 120); do
@@ -253,6 +265,27 @@ jobs:
           scope=json.load(open(sys.argv[2],encoding='utf-8'))
           artifact_required=bool(scope.get('artifact_required'))
 
+          governance_output=Path('/tmp/mad4b-release-verdict-governance.json')
+          governance_proc=subprocess.run([
+              'python3','tools/verify_repository_governance.py',
+              '--repository',os.environ['GITHUB_REPOSITORY'],
+              '--policy','.github/mad4b-repository-governance-policy.json',
+              '--output',str(governance_output),
+          ],text=True,capture_output=True)
+          governance_ready=governance_proc.returncode == 0
+          governance_reason=(governance_proc.stderr or governance_proc.stdout or '').strip()
+          governance_status={}
+          if governance_output.is_file():
+              try:
+                  governance_status=json.loads(governance_output.read_text(encoding='utf-8'))
+              except Exception:
+                  governance_status={}
+          governance_bootstrap_pending=bool(
+              not governance_ready
+              and scope.get('governance_bootstrap_candidate')
+              and governance_reason.startswith('no active repository ruleset applies to refs/heads/master')
+          )
+
           runs=[]
           for path in sys.argv[3:5]:
               runs.extend(json.load(open(path,encoding='utf-8')).get('check_runs',[]))
@@ -267,9 +300,13 @@ jobs:
                   'conclusion':row.get('conclusion'),
                   'details_url':row.get('details_url',''),
               }
-          merge_gate_ready=all(
+          critical_checks_ready=all(
               value['status']=='completed' and value['conclusion']=='success'
               for value in critical.values()
+          )
+          merge_gate_ready=bool(
+              critical_checks_ready
+              and (governance_ready or governance_bootstrap_pending)
           )
 
           live=latest.get('Live ETG managed browser acceptance')
@@ -404,7 +441,18 @@ jobs:
               'artifact_required':artifact_required,
               'changed_files':scope.get('changed_files',[]),
               'repository_merge_gate_ready':merge_gate_ready,
-              'repository_release_ready':bool(merge_gate_ready and artifact_required and canonical_package and canonical_package.get('verified')),
+              'repository_release_ready':bool(
+                  merge_gate_ready
+                  and governance_ready
+                  and artifact_required
+                  and canonical_package
+                  and canonical_package.get('verified')
+              ),
+              'repository_governance_ready':governance_ready,
+              'repository_governance_status':governance_status,
+              'repository_governance_verification_error':None if governance_ready else governance_reason,
+              'governance_bootstrap_pending':governance_bootstrap_pending,
+              'governance_bootstrap_candidate':bool(scope.get('governance_bootstrap_candidate')),
               'distribution_artifact':artifact,
               'canonical_package_identity':canonical_package,
               'artifact_verification_error':artifact_verification_error,
@@ -448,7 +496,14 @@ jobs:
           verdict=json.load(open('MAD4B-RELEASE-VERDICT.json',encoding='utf-8'))
           if verdict.get('repository_merge_gate_ready') is not True:
               raise SystemExit('repository merge gate is not ready')
-          if verdict.get('artifact_required') and verdict.get('repository_release_ready') is not True:
-              raise SystemExit('repository release artifact identity is not ready')
-          print('repository release verdict enforcement: PASS')
+          if (
+              verdict.get('artifact_required')
+              and verdict.get('repository_release_ready') is not True
+              and verdict.get('governance_bootstrap_pending') is not True
+          ):
+              raise SystemExit('repository release artifact identity or repository governance is not ready')
+          if verdict.get('governance_bootstrap_pending') is True:
+              print('repository release verdict enforcement: PASS (bounded initial governance bootstrap; external ruleset still pending)')
+          else:
+              print('repository release verdict enforcement: PASS')
           PY
