@@ -307,3 +307,10 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T1808 P1 Demotion/quarantine.
 - [ ] T1809 P1 Verify Production eligibility != authorization.
 - [ ] T1810 P1 GATE Demonstrate selective capability promotion/demotion from dependency evidence.
+
+## Phase 19 — Spec isolation and compatibility
+- [ ] T1901 P0 Keep Feature 007 metadata local to specs/007-content-intelligence-workflow-platform/feature.json.
+- [ ] T1902 P0 GATE Preserve existing repository-global .specify/feature.json semantics for Feature 001.
+- [ ] T1903 P0 Add cross-feature spec isolation contract/test.
+- [ ] T1904 P0 Verify Feature 001 CI stays green for spec-only Feature 007 changes.
+- [ ] T1905 P0 Verify Feature 007 validation does not depend on mutating another feature's metadata.

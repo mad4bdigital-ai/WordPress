@@ -89,3 +89,9 @@
 - [ ] Exact Bit Flows installed artifact recertification.
 - [ ] Provider Resolver runtime implementation.
 - [ ] First Content Job vertical slice.
+
+## Cross-feature compatibility
+- [x] Cross-feature metadata isolation is explicit.
+- [x] Feature 007 metadata is local to Feature 007.
+- [x] Existing Feature 001 global metadata is preserved.
+- [ ] CI proves spec-only additions cannot regress unrelated feature contracts.

@@ -12,6 +12,7 @@ It is intentionally generic:
 ## Files
 
 Core:
+- feature.json
 - constitution.md
 - spec.md
 - research.md
@@ -66,3 +67,7 @@ This specification branch is based on rc.59 integration lineage. Runtime impleme
 ## Coverage rule
 
 `coverage-audit.md` is the normative mapping from all supplied architecture inputs to Feature 007 contracts/tasks. A concern is not considered captured merely because it was discussed in chat; it must appear in the audit and be linked to a contract/task/gate.
+
+## Cross-feature isolation
+
+Feature 007 stores its metadata in this directory's `feature.json`. It MUST NOT replace the repository-global `.specify/feature.json` owned by Feature 001 CI. Shared/root specification metadata is treated as an externally owned compatibility surface unless a dedicated migration spec changes the repository convention.
