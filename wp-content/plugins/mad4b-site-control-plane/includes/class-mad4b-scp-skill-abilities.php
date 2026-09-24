@@ -102,7 +102,12 @@ final class MAD4B_SCP_Skill_Abilities {
 
 	/** @internal Deterministic tool metadata anchor consumed only from a real external tools/list response. */
 	public static function snapshot_anchor() {
-		$identity = class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ? MAD4B_SCP_Skill_Snapshot_Identity::build() : array();
+		$identity = array();
+		if ( class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ) {
+			$identity = method_exists( 'MAD4B_SCP_Skill_Snapshot_Identity', 'build_request_cached' )
+				? MAD4B_SCP_Skill_Snapshot_Identity::build_request_cached()
+				: MAD4B_SCP_Skill_Snapshot_Identity::build();
+		}
 		$token = isset( $identity['identity_token'] ) ? strtolower( trim( (string) $identity['identity_token'] ) ) : '';
 		return 1 === preg_match( '/^sha256:[a-f0-9]{64}$/', $token ) ? $token : '';
 	}
@@ -238,10 +243,12 @@ final class MAD4B_SCP_Skill_Abilities {
 		$handshake = MAD4B_SCP_External_Handshake_Evidence::status();
 		$raw_handshake = get_option( MAD4B_SCP_External_Handshake_Evidence::OPTION, array() );
 		$observer = MAD4B_SCP_Live_Acceptance_Observer::external_handshake_attestation_status();
-		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		$provenance = method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()
+			: MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 		if ( ! is_array( $handshake ) || empty( $handshake['verified'] ) || empty( $handshake['tool_inventory_match'] ) || empty( $handshake['build_fingerprint_match'] ) ) return;
 		if ( ! is_array( $raw_handshake ) || ! is_array( $observer ) || empty( $observer['verified'] ) || empty( $observer['real_external_session'] ) || empty( $observer['inventory_match'] ) || empty( $observer['write_inventory_fingerprint_match'] ) || empty( $observer['build_fingerprint_match'] ) ) return;
-		if ( ! is_array( $provenance ) || empty( $provenance['runtime_manifest_match'] ) || ! empty( $provenance['stale'] ) ) return;
+		if ( ! is_array( $provenance ) || empty( $provenance['identity_ready'] ) ) return;
 
 		$raw_session = isset( $raw_handshake['mcp_session_fingerprint'] ) ? strtolower( trim( (string) $raw_handshake['mcp_session_fingerprint'] ) ) : '';
 		$raw_inventory = isset( $raw_handshake['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $raw_handshake['tool_inventory_fingerprint'] ) ) : '';
