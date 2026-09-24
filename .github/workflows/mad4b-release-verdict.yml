@@ -5,7 +5,26 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
-      - '.github/workflows/mad4b-*.yml'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-live-acceptance-evidence.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-live-acceptance-evidence.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
   workflow_dispatch:
 
 permissions:
@@ -79,6 +98,21 @@ jobs:
                   changed.extend(
                       str(row.get('filename', ''))
                       for row in json.loads(raw)
+                      if isinstance(row, dict) and row.get('filename')
+                  )
+          elif os.environ.get('GITHUB_EVENT_NAME') == 'push':
+              event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text(encoding='utf-8'))
+              before = str(event.get('before', '')).strip().lower()
+              if len(before) == 40 and set(before) != {'0'}:
+                  raw = subprocess.check_output([
+                      'gh', 'api',
+                      '-H', 'Accept: application/vnd.github+json',
+                      f"repos/{os.environ['GITHUB_REPOSITORY']}/compare/{before}...{os.environ['SOURCE_SHA']}",
+                  ], text=True)
+                  compare = json.loads(raw)
+                  changed.extend(
+                      str(row.get('filename', ''))
+                      for row in compare.get('files', [])
                       if isinstance(row, dict) and row.get('filename')
                   )
           changed = sorted(set(changed))
