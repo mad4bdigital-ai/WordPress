@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect the exact repository Bit Flows package without authorizing execution."""
+"""Inspect an exact Bit Flows package without authorizing execution.\n\nDefault mode verifies the repository-certified artifact strictly. Candidate mode\naccepts a different exact archive for evidence-only semantic analysis; it never\nchanges certification, grants, activation state, or write authority.\n"""
 
 from __future__ import annotations
 
@@ -54,6 +54,22 @@ def decode_php(raw: bytes, path: str) -> str:
         return raw.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise RuntimeError(f"non-UTF8 PHP source: {path}") from exc
+
+
+def detect_plugin_version(archive: zipfile.ZipFile, names: list[str]) -> str:
+    try:
+        resolved = unique_suffix(names, "bit-pi.php")
+    except RuntimeError:
+        return ""
+    try:
+        source = decode_php(archive.read(resolved), resolved)
+    except RuntimeError:
+        return ""
+    header = re.search(r"^[ \t*#/@]*Version:\s*([^\r\n]+)", source, re.I | re.M)
+    if header:
+        return header.group(1).strip()
+    constant = re.search(r"define\s*\(\s*['\"]BIT_?PI_VERSION['\"]\s*,\s*['\"]([^'\"]+)['\"]", source, re.I)
+    return constant.group(1).strip() if constant else ""
 
 
 def methods(source: str) -> list[str]:
@@ -336,7 +352,14 @@ def semantic_summary(path: str, source: str) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--archive", type=Path, default=ARCHIVE)
+    parser.add_argument("--mode", choices=("certified", "candidate"), default="certified")
+    parser.add_argument("--candidate-version", default="")
     args = parser.parse_args()
+
+    archive_path = args.archive.resolve()
+    if not archive_path.is_file():
+        raise SystemExit(f"Bit Flows archive not found: {archive_path}")
 
     catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
     providers = catalog.get("providers", catalog)
@@ -345,8 +368,9 @@ def main() -> int:
         raise SystemExit("bit_pi certification entry missing")
 
     expected_archive = str(provider.get("archive_sha256", "")).lower()
-    actual_archive = sha256_file(ARCHIVE)
-    if actual_archive != expected_archive:
+    actual_archive = sha256_file(archive_path)
+    archive_matches_catalog = actual_archive == expected_archive
+    if args.mode == "certified" and not archive_matches_catalog:
         raise SystemExit(f"Bit Flows archive SHA mismatch: {actual_archive}")
 
     critical = provider.get("critical_files")
@@ -355,23 +379,40 @@ def main() -> int:
 
     evidence: dict[str, Any] = {
         "contract": CONTRACT,
+        "diagnostic_mode": args.mode,
         "authorizing": False,
+        "mutation_performed": False,
         "provider_id": "bit_pi",
-        "provider_version": str(provider.get("version", "")),
-        "archive": str(provider.get("archive", "")),
+        "provider_version": "",
+        "catalog_version": str(provider.get("version", "")),
+        "archive": archive_path.name,
         "archive_sha256": actual_archive,
-        "archive_sha256_matches_catalog": True,
+        "catalog_archive_sha256": expected_archive,
+        "archive_sha256_matches_catalog": archive_matches_catalog,
+        "candidate_attestation_eligible": False,
         "critical_files_verified": 0,
+        "critical_files_missing": [],
         "critical_file_mismatches": [],
+        "semantic_targets_missing": [],
         "semantic_sources": {},
         "executor_call_sites": [],
         "history_write_sites": [],
     }
 
-    with zipfile.ZipFile(ARCHIVE, "r") as archive:
+    with zipfile.ZipFile(archive_path, "r") as archive:
         names = archive.namelist()
+        detected_version = detect_plugin_version(archive, names)
+        evidence["provider_version"] = str(args.candidate_version or detected_version or provider.get("version", ""))
+        evidence["detected_provider_version"] = detected_version
+
         for logical, expected in critical.items():
-            resolved = unique_suffix(names, logical)
+            try:
+                resolved = unique_suffix(names, logical)
+            except RuntimeError:
+                evidence["critical_files_missing"].append(logical)
+                if args.mode == "certified":
+                    raise SystemExit(f"Bit Flows certified critical file missing: {logical}")
+                continue
             actual = sha256_bytes(archive.read(resolved))
             if actual != str(expected).lower():
                 evidence["critical_file_mismatches"].append(
@@ -380,11 +421,17 @@ def main() -> int:
             else:
                 evidence["critical_files_verified"] += 1
 
-        if evidence["critical_file_mismatches"]:
+        if args.mode == "certified" and evidence["critical_file_mismatches"]:
             raise SystemExit("Bit Flows critical file certification mismatch")
 
         for logical in TARGETS:
-            resolved = unique_suffix(names, logical)
+            try:
+                resolved = unique_suffix(names, logical)
+            except RuntimeError:
+                evidence["semantic_targets_missing"].append(logical)
+                if args.mode == "certified":
+                    raise
+                continue
             source = decode_php(archive.read(resolved), logical)
             evidence["semantic_sources"][logical] = semantic_summary(logical, source)
 
@@ -410,13 +457,18 @@ def main() -> int:
 
     evidence["executor_call_sites"] = sorted(evidence["executor_call_sites"], key=lambda row: row["path"])
     evidence["history_write_sites"] = sorted(evidence["history_write_sites"], key=lambda row: row["path"])
-    executor = evidence["semantic_sources"]["backend/app/src/Flow/FlowExecutor.php"]["execute"]
-    history_service = evidence["semantic_sources"]["backend/app/Services/FlowHistoryService.php"].get("service_methods", {})
+
+    executor_summary = evidence["semantic_sources"].get("backend/app/src/Flow/FlowExecutor.php", {})
+    executor = executor_summary.get("execute", {}) if isinstance(executor_summary, dict) else {}
+    history_summary = evidence["semantic_sources"].get("backend/app/Services/FlowHistoryService.php", {})
+    history_service = history_summary.get("service_methods", {}) if isinstance(history_summary, dict) else {}
     create_history = history_service.get("createHistoryWithTriggerNode", {})
     update_history = history_service.get("updateFlowHistoryStatus", {})
+    correlation_complete = bool(executor) and bool(history_service)
     evidence["execution_correlation"] = {
-        "execute_returns_identity_candidate": bool(executor["returns_execution_identity_candidate"]),
-        "execute_returns_flow_history_status_result": bool(executor["returns_flow_history_status_result"]),
+        "analysis_complete": correlation_complete,
+        "execute_returns_identity_candidate": bool(executor.get("returns_execution_identity_candidate")),
+        "execute_returns_flow_history_status_result": bool(executor.get("returns_flow_history_status_result")),
         "execute_signature": executor.get("signature", ""),
         "create_history_signature": create_history.get("signature", ""),
         "create_history_return_expressions": create_history.get("return_expressions", []),
@@ -424,15 +476,24 @@ def main() -> int:
         "update_history_signature": update_history.get("signature", ""),
         "update_history_return_expressions": update_history.get("return_expressions", []),
         "update_history_returns_direct_history_id": bool(update_history.get("returns_direct_history_id")),
-        "execute_return_shapes": executor["return_shapes"],
-        "execute_return_expressions": executor["return_expressions"],
-        "execute_history_relevant_statements": executor["history_relevant_statements"],
-        "execute_history_id_refs": executor["history_id_refs"],
-        "execute_flow_history_refs": executor["flow_history_refs"],
-        "provider_execution_ref_markers": executor["provider_execution_ref_markers"],
+        "execute_return_shapes": executor.get("return_shapes", []),
+        "execute_return_expressions": executor.get("return_expressions", []),
+        "execute_history_relevant_statements": executor.get("history_relevant_statements", []),
+        "execute_history_id_refs": executor.get("history_id_refs", 0),
+        "execute_flow_history_refs": executor.get("flow_history_refs", 0),
+        "provider_execution_ref_markers": executor.get("provider_execution_ref_markers", 0),
         "safe_retry_proven": False,
         "readback_correlation_proven": False,
         "certification_state": "DIAGNOSTIC_ONLY",
+    }
+    evidence["candidate_summary"] = {
+        "exact_archive_observed": True,
+        "catalog_identity_match": archive_matches_catalog,
+        "critical_baseline_match": not evidence["critical_files_missing"] and not evidence["critical_file_mismatches"],
+        "semantic_analysis_complete": correlation_complete and not evidence["semantic_targets_missing"],
+        "requires_explicit_certification_update": args.mode == "candidate" and not archive_matches_catalog,
+        "write_authority_granted": False,
+        "normal_mount_eligible": False,
     }
 
     encoded = json.dumps(evidence, indent=2, sort_keys=True) + "\n"
