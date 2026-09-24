@@ -74,6 +74,9 @@ $check( 1 === (int) $updated, 'unable to expire disposable lease fixture' );
 $expired_fence = MAD4B_SCP_Durable_Execution::assert_fencing_token( $work_id, 'worker-a', 1, 7 );
 $check( 'mad4b_fence_lease_expired' === $error_code( $expired_fence ), 'expired worker still passed commit fence' );
 
+$expired_complete = MAD4B_SCP_Durable_Execution::complete_lease( $work_id, 'worker-a', 1, 'completed' );
+$check( 'mad4b_lease_complete_fenced' === $error_code( $expired_complete ), 'expired worker terminalized lease before reconciliation' );
+
 $reclaim_unverified = MAD4B_SCP_Durable_Execution::reclaim_lease(
 	$work_id,
 	'worker-b',
