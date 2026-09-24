@@ -165,6 +165,14 @@ jobs:
           assert mcp['catalog_role_binding_source'] == 'exact_archive_sha256_certification'
           assert mcp['server_surface_detected'] is False
           assert mcp['server_rest_routes_detected'] is False
+          assert mcp['route_marker_files'] == []
+          assert isinstance(mcp['client_route_details'], list) and mcp['client_route_details']
+          assert any(
+              row.get('kind') == 'router'
+              and "mcp-client/tools" in row.get('snippet', '')
+              and "McpClientController::class" in row.get('snippet', '')
+              for row in mcp['client_route_details']
+          )
           assert mcp['catalog_role_match'] is True
           assert mcp['catalog_role_artifact_bound'] is True
           assert mcp['catalog_server_route_expectation_match'] is True
