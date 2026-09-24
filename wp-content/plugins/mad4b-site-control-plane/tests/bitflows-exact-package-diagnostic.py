@@ -58,6 +58,19 @@ def methods(source: str) -> list[str]:
     return sorted(set(re.findall(r"\bfunction\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", source)))
 
 
+def function_signature(source: str, method: str) -> str:
+    match = re.search(
+        r"\bfunction\s+" + re.escape(method) + r"\s*\((.*?)\)\s*(?::\s*([^\{]+))?\{",
+        source,
+        re.S,
+    )
+    if not match:
+        return ""
+    args = re.sub(r"\s+", " ", match.group(1)).strip()
+    return_type = re.sub(r"\s+", " ", match.group(2) or "").strip()
+    return f"{method}({args})" + (f": {return_type}" if return_type else "")
+
+
 def function_body(source: str, method: str) -> str:
     match = re.search(r"\bfunction\s+" + re.escape(method) + r"\s*\([^)]*\)\s*(?::\s*[^\{]+)?\{", source, re.S)
     if not match:
@@ -181,6 +194,31 @@ def semantic_summary(path: str, source: str) -> dict[str, Any]:
         "flow_executor_refs": source.count("FlowExecutor"),
         "history_id_refs": len(re.findall(r"history[_A-Za-z]*id|historyId|history_id", source, re.I)),
     }
+    if path.endswith("FlowHistoryService.php"):
+        service_methods: dict[str, Any] = {}
+        for method in ("createHistoryWithTriggerNode", "updateFlowHistoryStatus", "getFlowHistoryStatus"):
+            body = function_body(source, method)
+            if not body:
+                continue
+            returns = return_expressions(body)
+            service_methods[method] = {
+                "signature": function_signature(source, method),
+                "body_sha256": sha256_bytes(body.encode("utf-8")),
+                "return_shapes": return_shapes(body),
+                "return_expressions": returns,
+                "history_relevant_statements": bounded_statements(
+                    body,
+                    r"FlowHistory|history[_A-Za-z]*id|historyId|history_id|status|insert|create|save|update",
+                    limit=40,
+                ),
+                "returns_direct_history_id": any(
+                    re.fullmatch(r"\$[A-Za-z_][A-Za-z0-9_]*(?:History|history)[A-Za-z0-9_]*Id", expr)
+                    or re.fullmatch(r"\$flowHistory->id", expr)
+                    for expr in returns
+                ),
+            }
+        summary["service_methods"] = service_methods
+
     if path.endswith("FlowExecutor.php"):
         body = function_body(source, "execute")
         if not body:
@@ -212,9 +250,16 @@ def semantic_summary(path: str, source: str) -> dict[str, Any]:
                     "return ",
                 ),
             ),
-            "returns_execution_identity_candidate": bool(
-                re.search(r"return\s+[^;]*(?:history|execution|run)[_A-Za-z]*id", body, re.I)
+            "returns_execution_identity_candidate": any(
+                re.fullmatch(r"\$flowHistoryId", expr)
+                or bool(re.search(r"['\"]flow_history_id['\"]\s*=>\s*\$flowHistoryId", expr))
+                for expr in return_expressions(body)
             ),
+            "returns_flow_history_status_result": any(
+                "FlowHistoryService::updateFlowHistoryStatus($flowHistoryId)" in expr
+                for expr in return_expressions(body)
+            ),
+            "signature": function_signature(source, "execute"),
         }
     return summary
 
@@ -297,8 +342,19 @@ def main() -> int:
     evidence["executor_call_sites"] = sorted(evidence["executor_call_sites"], key=lambda row: row["path"])
     evidence["history_write_sites"] = sorted(evidence["history_write_sites"], key=lambda row: row["path"])
     executor = evidence["semantic_sources"]["backend/app/src/Flow/FlowExecutor.php"]["execute"]
+    history_service = evidence["semantic_sources"]["backend/app/Services/FlowHistoryService.php"].get("service_methods", {})
+    create_history = history_service.get("createHistoryWithTriggerNode", {})
+    update_history = history_service.get("updateFlowHistoryStatus", {})
     evidence["execution_correlation"] = {
         "execute_returns_identity_candidate": bool(executor["returns_execution_identity_candidate"]),
+        "execute_returns_flow_history_status_result": bool(executor["returns_flow_history_status_result"]),
+        "execute_signature": executor.get("signature", ""),
+        "create_history_signature": create_history.get("signature", ""),
+        "create_history_return_expressions": create_history.get("return_expressions", []),
+        "create_history_returns_direct_history_id": bool(create_history.get("returns_direct_history_id")),
+        "update_history_signature": update_history.get("signature", ""),
+        "update_history_return_expressions": update_history.get("return_expressions", []),
+        "update_history_returns_direct_history_id": bool(update_history.get("returns_direct_history_id")),
         "execute_return_shapes": executor["return_shapes"],
         "execute_return_expressions": executor["return_expressions"],
         "execute_history_relevant_statements": executor["history_relevant_statements"],
