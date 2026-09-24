@@ -30,7 +30,9 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 		// inspection and must never run merely because the Abilities registry was
 		// initialized for a transport request. Persisted evidence remains readable;
 		// explicit admin/CLI/certification lifecycles own recomputation.
-		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime() ) {
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_is_protocol_hotpath' )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) {
 			return self::persisted_status();
 		}
 		self::$observing = true;
