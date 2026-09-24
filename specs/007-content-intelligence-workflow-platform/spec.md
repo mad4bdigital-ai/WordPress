@@ -387,3 +387,30 @@ PRV-005 Bit Flows, n8n, future native or other engines implement the same semant
 BRG-001 Webhook/custom-app integration between MAD4B and WorkflowProvider uses a signed/authenticated, expiring, replay-resistant request bound to site, workflow SHA and plan SHA.
 BRG-002 Generic webhook execute-any behavior is forbidden.
 BRG-003 Provider result callbacks are bound to the originating request and cannot widen MAD4B authority.
+
+
+## Non-functional quality requirements
+
+Q-001 ContentJob transitions, corresponding events and local artifact-current references must preserve atomic invariants.
+Q-002 Retryable writes use explicit idempotency keys and effect-once semantics; the system does not falsely claim network-level exactly-once behavior.
+Q-003 Async provider delivery uses durable inbox/outbox or equivalent replay-safe evidence.
+Q-004 Mutable aggregates use optimistic revision/expected-state checks; stale writers fail with explicit conflict.
+Q-005 Long-running work has lease/heartbeat/recovery semantics and cannot duplicate irreversible effects after crash recovery.
+Q-006 Retry behavior is error-classified, bounded by attempts/time/budget and uses backoff/jitter where appropriate.
+Q-007 External providers have timeout, circuit-breaker/bulkhead and backpressure controls.
+Q-008 Schema and contract evolution is versioned and migration-backed; destructive change needs rollback/forward-fix evidence.
+Q-009 Security threat modeling includes confused deputy, SSRF/DNS rebinding, prompt injection, XSS, SQL/command/path injection, replay, tenant bleed and provider compromise.
+Q-010 Exact executable artifacts preserve supply-chain provenance and dependency inventory; unexpected update source/digest drift is a blocker.
+Q-011 Secrets never enter ordinary artifacts/prompts/logs and have scope/rotation/revocation policy.
+Q-012 Scraped/context/provider text is untrusted data and cannot redefine authority, tool policy or approvals.
+Q-013 Durable AI-produced artifacts record model/process/prompt/input fingerprints and pass schema + versioned evaluation requirements.
+Q-014 Multi-site/tenant isolation is enforced in persistence, cache, provider credentials, callbacks and Host Connector targeting.
+Q-015 Data classification, minimization, retention, export and deletion/tombstone behavior are explicit.
+Q-016 Environment/use-case SLO profiles cover latency, queue age, error rate, payload size, DB/memory/time/concurrency and capacity.
+Q-017 Provider/model/research cost has enforceable per-job/stage/provider/site budgets where applicable.
+Q-018 New durable/irreversible state has backup/restore or rollback/forward-fix rehearsal appropriate to risk.
+Q-019 Compatibility is tested across declared PHP/WordPress/DB/MCP/provider classes; unsupported combinations are explicit.
+Q-020 Verification includes denial paths, property/invariant tests, bounded fuzzing and fault injection for critical flows.
+Q-021 Desired/observed policy drift is explicit; unknown high-risk runtime state fails closed.
+Q-022 Feature flags and kill switches narrow runtime behavior but never substitute for grants, certification or approval.
+Q-023 Cross-feature specification metadata is isolated so Feature 007 cannot break Feature 001 or other independent contracts.

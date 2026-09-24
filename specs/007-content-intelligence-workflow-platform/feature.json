@@ -45,8 +45,23 @@
     "evidence_dependency_reuse",
     "provider_release_rings",
     "conditional_certification_autopromotion",
-    "signed_workflow_bridge"
+    "signed_workflow_bridge",
+    "cross_feature_spec_isolation",
+    "atomic_state_and_idempotency",
+    "durable_execution_and_backpressure",
+    "schema_contract_evolution",
+    "security_threat_model",
+    "supply_chain_and_secret_integrity",
+    "source_trust_prompt_injection_resistance",
+    "llm_quality_evaluation",
+    "tenant_privacy_isolation",
+    "performance_capacity_cost_slo",
+    "disaster_recovery_restore_rehearsal",
+    "compatibility_matrix",
+    "fault_injection_and_denial_path_testing",
+    "policy_drift_and_kill_switches"
   ],
-  "coverage_audit_version": "2026-09-24.v2",
-  "coverage_status": "architecture-inputs-explicitly-traced"
+  "coverage_audit_version": "2026-09-24.v3-quality-hardening",
+  "coverage_status": "architecture-inputs-explicitly-traced",
+  "quality_model": "mad4b.feature007.quality.v1"
 }

@@ -23,9 +23,23 @@ Core:
 - runbook.md
 - traceability.md
 - coverage-audit.md
+- quality-model.md
+- quality-scorecard.md
 - data-model-authority-certification.md
 
 Contracts:
+- spec-isolation.md
+- policy-drift-kill-switches.md
+- verification-testing-strategy.md
+- disaster-recovery-operability.md
+- performance-capacity-cost.md
+- tenant-privacy-retention.md
+- source-trust-ai-evaluation.md
+- supply-chain-secrets.md
+- security-threat-model.md
+- schema-contract-evolution.md
+- durable-execution-resilience.md
+- correctness-consistency-idempotency.md
 - release-rings.md
 - provider-resolver.md
 - signed-workflow-bridge.md
@@ -71,3 +85,7 @@ This specification branch is based on rc.59 integration lineage. Runtime impleme
 ## Cross-feature isolation
 
 Feature 007 stores its metadata in this directory's `feature.json`. It MUST NOT replace the repository-global `.specify/feature.json` owned by Feature 001 CI. Shared/root specification metadata is treated as an externally owned compatibility surface unless a dedicated migration spec changes the repository convention.
+
+## Quality rule
+
+Functional coverage is not sufficient for release. `quality-model.md` defines independent hard quality gates for correctness, resilience, security, data/privacy, performance/cost, evaluation, compatibility and recovery. Hard blockers are not averaged into a single score.
