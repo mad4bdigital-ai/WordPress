@@ -16,6 +16,19 @@ class WP_Error {
 	public function get_error_data() { return $this->data; }
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
+
+$GLOBALS['mad4b_registered_abilities'] = array();
+function wp_has_ability( $name ) { return isset( $GLOBALS['mad4b_registered_abilities'][ (string) $name ] ); }
+function wp_register_ability( $name, $args ) {
+	$allowed_categories = array( 'mad4b-read', 'mad4b-content', 'mad4b-admin', 'mad4b-breakglass' );
+	$category = is_array( $args ) && isset( $args['category'] ) ? (string) $args['category'] : '';
+	if ( ! in_array( $category, $allowed_categories, true ) ) {
+		fwrite( STDERR, 'FAIL: unregistered Ability category used during AI review registration: ' . $category . "\n" );
+		exit( 1 );
+	}
+	$GLOBALS['mad4b_registered_abilities'][ (string) $name ] = $args;
+	return true;
+}
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 function absint( $value ) { return abs( (int) $value ); }
@@ -148,6 +161,15 @@ function mad4b_review_assert( $condition, $message, $context = null ) {
 	if ( null !== $context ) fwrite( STDERR, json_encode( $context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
 	exit( 1 );
 }
+
+MAD4B_SCP_Context_Authority::register_ability();
+$ai_registration = isset( $GLOBALS['mad4b_registered_abilities'][ MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ] )
+	? $GLOBALS['mad4b_registered_abilities'][ MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ]
+	: array();
+mad4b_review_assert( ! empty( $ai_registration ), 'AI review Ability did not register.' );
+mad4b_review_assert( 'mad4b-admin' === ( isset( $ai_registration['category'] ) ? (string) $ai_registration['category'] : '' ), 'AI review must use a registered governance Ability category, not the mad4b-write transport server ID.', $ai_registration );
+mad4b_review_assert( 'write' === ( isset( $ai_registration['meta']['mcp']['surface'] ) ? (string) $ai_registration['meta']['mcp']['surface'] : '' ), 'AI review lost its dedicated write MCP surface.', $ai_registration );
+mad4b_review_assert( isset( $ai_registration['meta']['annotations']['readonly'] ) && false === $ai_registration['meta']['annotations']['readonly'], 'AI review must remain a mutation for mad4b-write projection.', $ai_registration );
 
 function mad4b_review_exact_input( $asset_id, array $decision ) {
 	$asset = MAD4B_SCP_Context_Authority::asset( $asset_id );
