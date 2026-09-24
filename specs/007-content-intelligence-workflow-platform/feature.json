@@ -174,7 +174,7 @@
   "repository_baseline_semantics": "committed metadata records the exact master parent reviewed by the PR; current master HEAD is external evidence and is intentionally not self-referential",
   "runtime_release_identity": {
     "contract": "mad4b.runtime-release-identity.v1",
-    "state": "CURRENT_FOR_DEPLOYMENT",
+    "state": "RECAPTURE_REQUIRED",
     "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
     "control_plane_version": "0.4.0-rc.59",
     "build_fingerprint": "f16cb7ecccff30bd1d54aa3088de404f5315823222f4e26b73fb340b4195a8c6",
@@ -182,8 +182,9 @@
     "control_plane_archive_sha256": "c8885bdfc42e6aa1a6ce44896f6a9b6b54742a1d7d56269605402ffe11c33b06",
     "package_workflow_run_id": 36072550999,
     "general_distribution_artifact_id": 10838403565,
-    "runtime_affecting_changes_since_release": false,
-    "repository_changes_since_release_are_non_runtime": true
+    "runtime_affecting_changes_since_release": true,
+    "repository_changes_since_release_are_non_runtime": false,
+    "recapture_reason": "bulk closure PR adds ContentJob runtime and strengthens out-of-band Recovery Plane; a trusted post-merge package must be recaptured before deployment"
   },
   "runtime_identity_paths": [
     "wp-content/plugins/mad4b-site-control-plane/",
