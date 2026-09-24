@@ -814,3 +814,18 @@ Exit gates:
 - `critical_kernel_vertical_slice_verified`
 
 No Phase 36 action grants Production authorization.
+
+
+Bulk closure hardening lane:
+- enforce `mad4b.feature007-bulk-closure-hardening.v1` as machine-readable CI policy;
+- treat mutation-without-durable-evidence as `MUTATED_BUT_EVIDENCE_UNCERTAIN`, never as success or a blind retry;
+- execute permanent fault fixtures for lease loss, zombie workers, duplicate/replay, crash-after-side-effect, provider uncertainty, readback and rollback failure;
+- centralize filesystem/process confinement and execute path/symlink/archive/shell/executable injection negatives;
+- minimize runner bootstrap/enrollment to one exact attested package, one exact scheduler/service entry and one single-use target-bound enrollment;
+- prove protected backup integrity plus corrupt/interrupted restore behavior;
+- prove out-of-band recovery with WordPress/plugin/control-plane unavailable;
+- prove cross-executor semantic parity and execution-location truthfulness;
+- strengthen gate liveness so every blocker has a terminal closure path;
+- close the lane only through one full request→plan→approval→execution→readback→durable receipt→rollback evidence chain.
+
+Architecture Freeze remains active: this lane closes implementation/safety gaps and MUST NOT become a vehicle for new documentation-only abstractions.
