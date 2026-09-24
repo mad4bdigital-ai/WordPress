@@ -119,6 +119,8 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'subject_policy_ready' => $subject_policy_ready,
 			'issuer' => self::primary_issuer(),
 			'issuers' => $issuers,
+			'advertised_issuers' => self::advertised_issuers(),
+			'trust_advertisement_separated' => true,
 			'issuer_configured' => ! empty( $issuers ),
 			'resource' => self::resource_identifier(),
 			'resources' => self::resource_identifiers(),
@@ -157,7 +159,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( ! self::is_protected_resource( $resource ) ) return array();
 		return array(
 			'resource' => $resource,
-			'authorization_servers' => self::trusted_issuers(),
+			'authorization_servers' => self::advertised_issuers( $resource ),
 			'scopes_supported' => self::scopes_for_resource( $resource ),
 			'bearer_methods_supported' => array( 'header' ),
 		);
@@ -233,6 +235,90 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	}
 
 	public static function trusted_issuers() { return array_keys( self::authority_registry() ); }
+
+	/**
+	 * Advertisement is intentionally independent from trust. Existing installs
+	 * retain the legacy advertise-all-trusted behavior until an explicit
+	 * MAD4B_MCP_OAUTH_ADVERTISED_ISSUERS policy is supplied.
+	 */
+	public static function advertised_issuers( $resource = '' ) {
+		$trusted = self::trusted_issuers();
+		$advertised = $trusted;
+		if ( defined( 'MAD4B_MCP_OAUTH_ADVERTISED_ISSUERS' ) ) {
+			$raw = constant( 'MAD4B_MCP_OAUTH_ADVERTISED_ISSUERS' );
+			$items = is_array( $raw ) ? $raw : preg_split( '/[\\s,]+/', (string) $raw );
+			$advertised = array();
+			foreach ( is_array( $items ) ? array_slice( $items, 0, 32 ) : array() as $candidate ) {
+				if ( ! is_string( $candidate ) ) continue;
+				$candidate = rtrim( trim( $candidate ), '/' );
+				if ( '' === $candidate || ! self::is_trusted_issuer( $candidate ) ) continue;
+				$advertised[] = $candidate;
+			}
+			$advertised = array_values( array_unique( $advertised ) );
+		}
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		if ( '' !== $resource ) {
+			$advertised = array_values( array_filter( $advertised, static function ( $issuer ) use ( $resource ) {
+				return self::issuer_allowed_for_resource( $issuer, $resource );
+			} ) );
+		}
+		return $advertised;
+	}
+
+	public static function configured_user_id_for_issuer( $issuer ) {
+		return self::configured_user_id( (string) $issuer );
+	}
+
+	public static function authority_type_for_issuer( $issuer ) {
+		$issuer = rtrim( trim( (string) $issuer ), '/' );
+		$registry = self::authority_registry();
+		return isset( $registry[ $issuer ]['type'] ) ? (string) $registry[ $issuer ]['type'] : '';
+	}
+
+	public static function resource_policy_for_issuer( $issuer ) {
+		$issuer = rtrim( trim( (string) $issuer ), '/' );
+		if ( ! self::is_trusted_issuer( $issuer ) ) return array();
+
+		$known = array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' );
+		$allowed = $known;
+		if ( defined( 'MAD4B_MCP_OAUTH_RESOURCE_POLICY_BY_ISSUER' ) ) {
+			$policies = constant( 'MAD4B_MCP_OAUTH_RESOURCE_POLICY_BY_ISSUER' );
+			if ( is_array( $policies ) ) {
+				foreach ( $policies as $bound_issuer => $resources ) {
+					if ( ! is_string( $bound_issuer ) || ! hash_equals( $issuer, rtrim( trim( $bound_issuer ), '/' ) ) ) continue;
+					$items = is_array( $resources ) ? $resources : preg_split( '/[\\s,]+/', (string) $resources );
+					$allowed = array();
+					foreach ( is_array( $items ) ? array_slice( $items, 0, 16 ) : array() as $server_id ) {
+						if ( ! is_string( $server_id ) ) continue;
+						$server_id = sanitize_key( $server_id );
+						if ( in_array( $server_id, $known, true ) ) $allowed[] = $server_id;
+					}
+					$allowed = array_values( array_unique( $allowed ) );
+					break;
+				}
+			}
+		}
+		return $allowed;
+	}
+
+	public static function issuer_allowed_for_resource( $issuer, $resource ) {
+		$server_id = self::server_id_for_resource( $resource );
+		return '' !== $server_id && in_array( $server_id, self::resource_policy_for_issuer( $issuer ), true );
+	}
+
+	public static function resource_policy_id_for_issuer( $issuer ) {
+		$resources = self::resource_policy_for_issuer( $issuer );
+		sort( $resources, SORT_STRING );
+		return 'oauth-resource-policy:v1:' . substr( hash( 'sha256', implode( "\n", $resources ) ), 0, 24 );
+	}
+
+	private static function server_id_for_resource( $resource ) {
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		foreach ( array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ) as $server_id ) {
+			if ( hash_equals( self::resource_identifier( $server_id ), $resource ) ) return $server_id;
+		}
+		return '';
+	}
 
 	public static function is_trusted_issuer( $issuer ) {
 		if ( ! is_string( $issuer ) || '' === $issuer || strlen( $issuer ) > self::MAX_URI_BYTES ) return false;
@@ -420,6 +506,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 		$issuer = isset( $claims['iss'] ) && is_string( $claims['iss'] ) ? $claims['iss'] : '';
 		if ( '' === $issuer || strlen( $issuer ) > self::MAX_URI_BYTES || ! self::is_trusted_issuer( $issuer ) ) return new WP_Error( 'mad4b_oauth_issuer_untrusted', 'Access token issuer is not a configured trusted authority.' );
+		if ( ! self::issuer_allowed_for_resource( $issuer, $resource ) ) return new WP_Error( 'mad4b_oauth_authority_resource_denied', 'OAuth authority is not permitted for this protected resource.' );
 		$discovery = self::authorization_server_metadata( $issuer );
 		if ( is_wp_error( $discovery ) ) return $discovery;
 		$jwks = self::jwks( $discovery['jwks_uri'], $issuer, false );
