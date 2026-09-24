@@ -9,6 +9,8 @@ on:
       - 'tools/capture-functional-gap-contract-evidence.py'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-live-acceptance-evidence.yml'
+      - '.github/workflows/mad4b-live-acceptance-evidence.yml'
   push:
     branches:
       - master
