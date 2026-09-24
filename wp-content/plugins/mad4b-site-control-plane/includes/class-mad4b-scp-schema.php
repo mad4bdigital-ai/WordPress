@@ -3,9 +3,9 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Schema {
-	const VERSION = 8;
+	const VERSION = 9;
 	const OPTION  = 'mad4b_scp_schema_version';
-	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v8';
+	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v9';
 	const LEGACY_BINDINGS_OPTION = 'mad4b_scp_approval_candidate_bindings_v1';
 
 	private static $critical_ready_cache = null;
@@ -312,6 +312,7 @@ final class MAD4B_SCP_Schema {
 			scope_key char(64) NOT NULL,
 			idempotency_key varchar(191) NOT NULL,
 			request_sha256 char(64) NOT NULL,
+			claim_epoch bigint(20) unsigned NOT NULL DEFAULT 1,
 			status varchar(32) NOT NULL DEFAULT 'pending',
 			result_json longtext NULL,
 			result_sha256 char(64) NOT NULL DEFAULT '',
@@ -413,7 +414,7 @@ final class MAD4B_SCP_Schema {
 	private static function expected_integrity_token() {
 		$durable = array();
 		foreach ( self::required_durable_columns() as $table => $columns ) foreach ( $columns as $column ) $durable[] = $table . '.' . $column;
-		return hash( 'sha256', 'mad4b-schema-v8|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) . '|' . implode( '|', $durable ) );
+		return hash( 'sha256', 'mad4b-schema-v9|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) . '|' . implode( '|', $durable ) );
 	}
 	private static function required_approval_binding_columns() { return array( 'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment', 'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at' ); }
 	private static function required_durable_columns() {
@@ -421,7 +422,7 @@ final class MAD4B_SCP_Schema {
 			'content_jobs' => array( 'job_id', 'site_uuid', 'state', 'stage', 'current_artifact_id', 'job_revision', 'updated_at' ),
 			'content_job_events' => array( 'event_id', 'job_id', 'sequence', 'event_type', 'plan_sha256', 'artifact_id', 'entry_sha256', 'created_at' ),
 			'work_leases' => array( 'work_id', 'aggregate_type', 'aggregate_id', 'worker_id', 'lease_epoch', 'expected_aggregate_revision', 'status', 'heartbeat_at', 'expires_at', 'reconciliation_ref' ),
-			'idempotency' => array( 'scope_key', 'idempotency_key', 'request_sha256', 'status', 'result_sha256', 'reconciliation_ref', 'expires_at' ),
+			'idempotency' => array( 'scope_key', 'idempotency_key', 'request_sha256', 'claim_epoch', 'status', 'result_sha256', 'reconciliation_ref', 'expires_at' ),
 			'outbox' => array( 'outbox_id', 'job_id', 'expected_job_revision', 'provider_id', 'capability_id', 'workflow_plan_sha256', 'idempotency_key', 'request_sha256', 'status', 'attempts', 'available_at' ),
 			'inbox' => array( 'provider_id', 'provider_event_id', 'job_id', 'payload_sha256', 'status', 'provider_execution_ref', 'result_ref', 'received_at' ),
 		);
