@@ -6,6 +6,8 @@ require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-write-enablement.php';
 require_once __DIR__ . '/class-mad4b-scp-staging-write-grant-reconciliation.php';
+require_once __DIR__ . '/class-mad4b-scp-developer-authority.php';
+require_once __DIR__ . '/class-mad4b-scp-full-staging-authority.php';
 
 MAD4B_SCP_Site_Profile_Enrollment::boot();
 MAD4B_SCP_Site_Profile_Write_Enablement::boot();
@@ -21,7 +23,7 @@ final class MAD4B_SCP_Servers {
 	private static $external_attestation_projection_active = false;
 
 	public static function expected_server_ids() {
-		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
+		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
 	}
 
 	public static function core_tools( $server_id ) {
@@ -40,12 +42,19 @@ final class MAD4B_SCP_Servers {
 				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
 				'mad4b/plugin-package-plan',
 			), $governed_status ),
-			'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' ),
+			'mad4b-enrollment' => array_merge(
+				array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' ),
+				class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::enrollment_tools() : array(),
+				class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::enrollment_tools() : array()
+			),
 			'mad4b-content' => array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
 			'mad4b-admin' => array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
+				'mad4b/context-ai-review',
 			),
+			'mad4b-developer' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( false ) : array(),
+			'mad4b-developer-breakglass' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( true ) : array(),
 			'mad4b-breakglass' => array( 'mad4b/database-raw-query' ),
 		);
 		if ( 'mad4b-write' === $server_id ) return self::write_tools();
@@ -110,6 +119,11 @@ final class MAD4B_SCP_Servers {
 	 */
 	public static function write_tools() {
 		$candidates = self::core_write_candidates();
+		// AI Agent review is always discoverable in the stable catalog, but it is
+		// runtime-write eligible only while the bounded Staging delegation is active.
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) || ! MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ) {
+			$candidates = array_values( array_diff( $candidates, array( 'mad4b/context-ai-review' ) ) );
+		}
 		$projection = self::adapter_write_projection();
 		$candidates = array_merge( $candidates, $projection['eligible'] );
 		$write = array();
@@ -389,11 +403,18 @@ final class MAD4B_SCP_Servers {
 		return $tools;
 	}
 
+	private static function chatgpt_enrollment_candidates() {
+		$tools = self::core_tools( 'mad4b-enrollment' );
+		if ( class_exists( 'MAD4B_SCP_Developer_Authority' ) ) $tools = array_values( array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() ) );
+		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $tools = array_values( array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools() ) );
+		return $tools;
+	}
+
 	public static function chatgpt_full_catalog_candidates() {
 		$candidates = array_merge(
 			self::core_tools( 'mad4b-read' ),
 			self::core_tools( 'mad4b-chatgpt' ),
-			self::core_tools( 'mad4b-enrollment' ),
+			self::chatgpt_enrollment_candidates(),
 			self::core_tools( 'mad4b-content' ),
 			self::core_tools( 'mad4b-admin' ),
 			self::external_write_tools()
@@ -504,6 +525,8 @@ final class MAD4B_SCP_Servers {
 	public static function can_content_transport( $request = null ) { return self::transport_permission( 'mad4b-content', $request, array( 'MAD4B_SCP_Policy', 'can_content' ) ); }
 	public static function can_write_transport( $request = null ) { return self::transport_permission( 'mad4b-write', $request, array( 'MAD4B_SCP_Policy', 'can_admin' ) ); }
 	public static function can_admin_transport( $request = null ) { return self::transport_permission( 'mad4b-admin', $request, array( 'MAD4B_SCP_Policy', 'can_admin' ) ); }
+	public static function can_developer_transport( $request = null ) { return self::transport_permission( 'mad4b-developer', $request, array( 'MAD4B_SCP_Policy', 'can_developer_read' ) ); }
+	public static function can_developer_breakglass_transport( $request = null ) { return self::transport_permission( 'mad4b-developer-breakglass', $request, array( 'MAD4B_SCP_Policy', 'can_developer_breakglass' ) ); }
 	public static function can_breakglass_transport( $request = null ) { return self::transport_permission( 'mad4b-breakglass', $request, array( 'MAD4B_SCP_Policy', 'can_breakglass' ) ); }
 
 	private static function transport_permission( $server_id, $request, $policy_callback ) {
@@ -579,10 +602,12 @@ final class MAD4B_SCP_Servers {
 
 		$read_tools = $materialize( 'mad4b-read', static function () use ( $registry_for_surface ) { $registry = $registry_for_surface(); return array_merge( self::core_tools( 'mad4b-read' ), $registry->ability_names( 'read' ) ); } );
 		$chatgpt_tools = $materialize( 'mad4b-chatgpt', static function () { return self::chatgpt_tools(); } );
-		$enrollment_tools = $materialize( 'mad4b-enrollment', static function () { return self::core_tools( 'mad4b-enrollment' ); } );
+		$enrollment_tools = $materialize( 'mad4b-enrollment', static function () { return self::chatgpt_enrollment_candidates(); } );
 		$content_tools = $materialize( 'mad4b-content', static function () use ( $registry_for_surface ) { $registry = $registry_for_surface(); return array_merge( self::core_tools( 'mad4b-content' ), $registry->ability_names( 'content' ) ); } );
 		$write_tools = $materialize( 'mad4b-write', static function () { return self::write_tools(); } );
 		$admin_tools = $materialize( 'mad4b-admin', static function () use ( $registry_for_surface ) { $registry = $registry_for_surface(); return array_merge( self::core_tools( 'mad4b-admin' ), $registry->ability_names( 'admin' ) ); } );
+		$developer_tools = $materialize( 'mad4b-developer', static function () { return self::core_tools( 'mad4b-developer' ); } );
+		$developer_breakglass_tools = $materialize( 'mad4b-developer-breakglass', static function () { return self::core_tools( 'mad4b-developer-breakglass' ); } );
 		$breakglass_tools = $materialize( 'mad4b-breakglass', static function () { return self::core_tools( 'mad4b-breakglass' ); } );
 
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
@@ -598,6 +623,8 @@ final class MAD4B_SCP_Servers {
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', $content_tools, array( __CLASS__, 'can_content_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-content', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every runtime-eligible registered content/admin/write mutation explicitly annotated non-readonly. Cataloged provider mutations are projected per ability from capability certification; adapter-native runtime capability checks are hard mount gates; legacy providers retain exact runtime certification; breakglass is excluded.', $write_tools, array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-write', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative governance, repair, mutation evidence and governed recovery abilities.', $admin_tools, array( __CLASS__, 'can_admin_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-admin', $target_server_id ) );
+		$this->create( $adapter, 'mad4b-developer', 'MAD4B Developer MCP', 'Isolated explicit non-Production Developer Agent plane. It is never mounted on mad4b-chatgpt or mad4b-write; execution requires the exact configured developer agent, exact grant, one-time approval, budget, audit and runtime gate.', $developer_tools, array( __CLASS__, 'can_developer_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-developer', $target_server_id ) );
+		$this->create( $adapter, 'mad4b-developer-breakglass', 'MAD4B Developer Breakglass MCP', 'Exceptional non-Production Developer Agent recovery plane. Disabled by default and separately gated from normal developer execution.', $developer_breakglass_tools, array( __CLASS__, 'can_developer_breakglass_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-developer-breakglass', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled in wp-config.php.', $breakglass_tools, array( __CLASS__, 'can_breakglass_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-breakglass', $target_server_id ) );
 	}
 

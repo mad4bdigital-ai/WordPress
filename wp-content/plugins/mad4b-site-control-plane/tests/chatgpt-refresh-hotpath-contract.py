@@ -30,7 +30,7 @@ assert "$this->component_registry->register_tools( $tools );" in server
 assert "$mcp_tool = McpTool::fromAbility( $ability );" in registry
 assert "SchemaTransformer::transform_to_object_schema" in ability_tool
 
-# rc.58 registers every route but only materializes the addressed server's tool
+# rc.59 registers all governed routes but only materializes the addressed server's tool
 # DTOs on an HTTP MCP request.
 for marker in [
     "private static function current_request_server_id()",
@@ -42,7 +42,7 @@ for marker in [
     "'tool_count' => count( $tools )",
 ]:
     assert marker in servers, marker
-assert servers.count("$this->create( $adapter,") == 7
+assert servers.count("$this->create( $adapter,") == 9
 assert "$registry = null;" in servers
 assert "$registry_for_surface = static function () use ( &$registry )" in servers
 register_body = servers.split("public function register_servers( $adapter )", 1)[1].split("private function create( $adapter", 1)[0]
@@ -62,6 +62,8 @@ for server_id in [
     "mad4b-content",
     "mad4b-write",
     "mad4b-admin",
+    "mad4b-developer",
+    "mad4b-developer-breakglass",
     "mad4b-breakglass",
 ]:
     assert f"$materialize( '{server_id}'" in servers, server_id
@@ -93,9 +95,9 @@ assert "MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime() ) re
 assert "defined( 'WP_CLI' )" in reconcile
 assert "0 === strpos( $page, 'mad4b-control-plane' )" in reconcile
 
-assert "Version: 0.4.0-rc.58" in entry
-assert "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.58' );" in entry
-assert "release=0.4.0-rc.58" in runtime_build
+assert "Version: 0.4.0-rc.59" in entry
+assert "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.59' );" in entry
+assert "release=0.4.0-rc.59" in runtime_build
 
 # External evidence must not put dynamic provider certification back onto the
 # initialize/tools-list response path. Stable logical catalog identity is

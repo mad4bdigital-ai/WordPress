@@ -105,7 +105,7 @@ final class MAD4B_SCP_Developer_Authority {
 			false,
 			self::apply_schema( self::CONFIRM_BREAKGLASS )
 		);
-	
+
 		} finally {
 			if ( false !== $priority ) add_filter( 'wp_register_ability_args', $augment, (int) $priority, 2 );
 		}

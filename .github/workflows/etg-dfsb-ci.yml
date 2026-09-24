@@ -228,7 +228,7 @@ jobs:
           test -n "$MERGE_BASE"
           git diff --name-only "$MERGE_BASE...HEAD" | while IFS= read -r path; do
             case "$path" in
-              wp-content/plugins/etg-dynamic-filter-seo-bridge/*|specs/001-etg-dynamic-filter-seo-operational/*|.specify/*|.github/workflows/etg-dfsb-ci.yml|.github/workflows/etg-dfsb-jetengine-ci.yml|.github/workflows/indexflow-foundation-ci.yml|.github/workflows/mad4b-browser-acceptance-core.yml|.github/workflows/mad4b-control-plane-package.yml|.github/workflows/mad4b-general-distribution-foundation.yml|.github/workflows/mad4b-wpml-external-diagnostic.yml|plugins/mad4b-wordpress/skills/elementor-dynamic-content/SKILL.md|wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php|wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-query-monitor-evidence-bridge.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php|wp-content/plugins/mad4b-site-control-plane/skill-seeds/elementor-dynamic-content/SKILL.md|wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php|wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-evidence-contract.py|wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-observer-runtime.php|wp-content/plugins/mad4b-site-control-plane/tests/provider-bounded-reversible-contract.py|wp-content/plugins/mad4b-site-control-plane/tests/query-monitor-evidence-bridge-runtime.php|wp-content/plugins/mad4b-site-control-plane/tests/runtime-browser-acceptance-core-etg-smoke.php|wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php|wp-content/plugins/mad4b-site-control-plane/tests/runtime-elementor-etg-structural-primitives.php|wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py|.github/workflows/mad4b-dynamic-skills.yml|docs/MAD4B-UNIFIED-WORDPRESS-WORKFLOW-OPERATING-MODEL.md|docs/MAD4B-OPERATING-MODEL-COVERAGE-MATRIX.md|plugins/mad4b-wordpress/.codex-plugin/plugin.json|plugins/mad4b-wordpress/plugin.json|plugins/mad4b-wordpress/skills/wordpress-release-orchestration/SKILL.md|wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt|wp-content/plugins/mad4b-site-control-plane/README.md|wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json|wp-content/plugins/mad4b-site-control-plane/config/workflow-provider-contracts.json|wp-content/plugins/mad4b-site-control-plane/config/operating-model-contracts.json|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-lifecycle.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workflow-providers.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operating-model.php|wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php|wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-release-orchestration/SKILL.md|wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py|wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-governance-contract.py|wp-content/plugins/mad4b-site-control-plane/tests/runtime-workflow-lifecycle-governance.php|wp-content/plugins/mad4b-site-control-plane/tests/workflow-provider-contract.py|wp-content/plugins/mad4b-site-control-plane/tests/operating-model-contract.py) ;;
+              wp-content/plugins/etg-dynamic-filter-seo-bridge/*|specs/001-etg-dynamic-filter-seo-operational/*|.specify/*|.github/workflows/etg-dfsb-ci.yml|.github/workflows/etg-dfsb-jetengine-ci.yml|.github/workflows/indexflow-foundation-ci.yml|.github/workflows/mad4b-*|plugins/mad4b-wordpress/*|wp-content/plugins/mad4b-site-control-plane/*|docs/MAD4B-*|docs/evidence/ETG-STAGING-RC41-PROVIDER-RUNTIME-ALIGNMENT.json|tools/capture-provider-recertification-evidence.py|tools/provider-semantic-delta.py|tools/capture-functional-gap-contract-evidence.py|tools/evaluate-functional-gap-contract-promotion.py|tools/browser-acceptance/*|tests/premium-provider-semantic-review-request-contract.py) ;;
               *) echo "Unexpected path in ETG PR: $path"; exit 1 ;;
             esac
           done
@@ -312,28 +312,25 @@ jobs:
 
           PUSH_RUNS_JSON="$RUNNER_TEMP/etg-dfsb-push-runs.json"
           PR_RUNS_JSON="$RUNNER_TEMP/etg-dfsb-pr-runs.json"
-          PUSH_RUN_ID=''
-          PR_RUN_ID=''
-          for attempt in $(seq 1 12); do
-            curl --fail --silent --show-error \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H 'Accept: application/vnd.github+json' \
-              -H 'X-GitHub-Api-Version: 2022-11-28' \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/etg-dfsb-ci.yml/runs?head_sha=${SOURCE_SHA}&event=push&per_page=10" > "$PUSH_RUNS_JSON"
-            curl --fail --silent --show-error \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H 'Accept: application/vnd.github+json' \
-              -H 'X-GitHub-Api-Version: 2022-11-28' \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/etg-dfsb-ci.yml/runs?head_sha=${SOURCE_SHA}&event=pull_request&per_page=10" > "$PR_RUNS_JSON"
-            PUSH_RUN_ID=$(jq -r --arg sha "$SOURCE_SHA" '.workflow_runs[] | select(.head_sha==$sha and .event=="push") | .id' "$PUSH_RUNS_JSON" | head -n1)
-            PR_RUN_ID=$(jq -r --arg sha "$SOURCE_SHA" '.workflow_runs[] | select(.head_sha==$sha and .event=="pull_request") | .id' "$PR_RUNS_JSON" | head -n1)
-            if [[ -n "$PUSH_RUN_ID" && "$PUSH_RUN_ID" != 'null' && -n "$PR_RUN_ID" && "$PR_RUN_ID" != 'null' ]]; then
-              break
-            fi
-            sleep 5
-          done
-          test -n "$PUSH_RUN_ID" && test "$PUSH_RUN_ID" != 'null'
-          test -n "$PR_RUN_ID" && test "$PR_RUN_ID" != 'null'
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/etg-dfsb-ci.yml/runs?head_sha=${SOURCE_SHA}&event=push&per_page=10" > "$PUSH_RUNS_JSON"
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/etg-dfsb-ci.yml/runs?head_sha=${SOURCE_SHA}&event=pull_request&per_page=10" > "$PR_RUNS_JSON"
+          PUSH_RUN_ID=$(jq -r --arg sha "$SOURCE_SHA" '.workflow_runs[] | select(.head_sha==$sha and .event=="push") | .id' "$PUSH_RUNS_JSON" | head -n1)
+          PR_RUN_ID=$(jq -r --arg sha "$SOURCE_SHA" '.workflow_runs[] | select(.head_sha==$sha and .event=="pull_request") | .id' "$PR_RUNS_JSON" | head -n1)
+          [[ "$PUSH_RUN_ID" == 'null' ]] && PUSH_RUN_ID=''
+          [[ "$PR_RUN_ID" == 'null' ]] && PR_RUN_ID=''
+          case "$GITHUB_EVENT_NAME" in
+            pull_request) PR_RUN_ID="$GITHUB_RUN_ID" ;;
+            push) PUSH_RUN_ID="$GITHUB_RUN_ID" ;;
+            *) echo "Unsupported provenance event: $GITHUB_EVENT_NAME"; exit 1 ;;
+          esac
 
           OUT="$RUNNER_TEMP/etg-package"; mkdir -p "$OUT/etg-dynamic-filter-seo-bridge"
           rsync -a --exclude tests "$PLUGIN/" "$OUT/etg-dynamic-filter-seo-bridge/"
@@ -444,10 +441,22 @@ jobs:
               got=values.get(key)
               if got!=want:
                   raise SystemExit(f'provenance mismatch {key}: expected={want!r} actual={got!r}')
-          for key in ('push_run_id','pr_run_id'):
-              got=values.get(key,'')
-              if not re.fullmatch(r'[0-9]+',got):
-                  raise SystemExit(f'provenance invalid {key}: {got!r}')
+          current_run_id=values.get('current_run_id','')
+          current_event=values.get('current_event','')
+          if not re.fullmatch(r'[0-9]+',current_run_id):
+              raise SystemExit(f'provenance invalid current_run_id: {current_run_id!r}')
+          if current_event=='pull_request':
+              if values.get('pr_run_id','') != current_run_id:
+                  raise SystemExit(f"provenance PR run mismatch: pr_run_id={values.get('pr_run_id','')!r} current_run_id={current_run_id!r}")
+              cross_event=values.get('push_run_id','')
+          elif current_event=='push':
+              if values.get('push_run_id','') != current_run_id:
+                  raise SystemExit(f"provenance push run mismatch: push_run_id={values.get('push_run_id','')!r} current_run_id={current_run_id!r}")
+              cross_event=values.get('pr_run_id','')
+          else:
+              raise SystemExit(f'provenance invalid current_event: {current_event!r}')
+          if cross_event and not re.fullmatch(r'[0-9]+',cross_event):
+              raise SystemExit(f'provenance invalid optional cross-event run id: {cross_event!r}')
           for key in ('test_manifest_sha256','vendor_contract_sha256'):
               got=values.get(key,'')
               if not re.fullmatch(r'[0-9a-f]{64}',got):
