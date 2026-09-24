@@ -2277,11 +2277,36 @@ final class MAD4B_SCP_Context_Authority {
 		return $profile;
 	}
 
+	private static function option_values_equal( $left, $right ) {
+		return serialize( $left ) === serialize( $right );
+	}
+
+	private static function clear_option_read_cache( $name, $aggressive = false ) {
+		if ( ! function_exists( 'wp_cache_delete' ) ) return;
+		$name = sanitize_key( (string) $name );
+		if ( '' === $name ) return;
+		wp_cache_delete( $name, 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+		if ( $aggressive && function_exists( 'wp_cache_flush_group' ) ) wp_cache_flush_group( 'options' );
+	}
+
 	private static function write_option( $name, $value ) {
+		$name = sanitize_key( (string) $name );
+		if ( '' === $name ) return false;
+
+		self::clear_option_read_cache( $name, true );
 		$current = get_option( $name, false );
-		if ( false !== $current && $current === $value ) return true;
-		$result = false === $current ? add_option( $name, $value, '', false ) : update_option( $name, $value, false );
-		if ( true === $result ) return true;
-		return get_option( $name, false ) === $value;
+		if ( false !== $current && self::option_values_equal( $current, $value ) ) return true;
+
+		update_option( $name, $value, false );
+		self::clear_option_read_cache( $name );
+		$readback = get_option( $name, false );
+		if ( self::option_values_equal( $readback, $value ) ) return true;
+
+		self::clear_option_read_cache( $name, true );
+		update_option( $name, $value, false );
+		self::clear_option_read_cache( $name, true );
+		return self::option_values_equal( get_option( $name, false ), $value );
 	}
 }
