@@ -18,6 +18,9 @@ for marker in (
     "public static function reclaim_idempotency",
     "mad4b_idempotency_reconciliation_required",
     "mad4b_idempotency_hash_conflict",
+    "claim_epoch",
+    "mad4b_scp_durable_reconciliation_verified",
+    "mad4b_reconciliation_unverified",
     "SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s FOR UPDATE",
     "reconciliation_ref=%s",
     "public static function acquire_lease",
@@ -47,12 +50,13 @@ if MAIN.index(load_marker) > MAIN.index("includes/class-mad4b-scp-authorization.
     raise SystemExit("durable execution must be loaded before governed execution is authorized")
 
 for marker in (
-    "const VERSION = 8;",
-    "mad4b_scp_schema_integrity_v8",
+    "const VERSION = 9;",
+    "mad4b_scp_schema_integrity_v9",
     "'work_leases' => $wpdb->prefix . 'mad4b_work_leases'",
     "'idempotency' => $wpdb->prefix . 'mad4b_idempotency'",
     "'outbox' => $wpdb->prefix . 'mad4b_execution_outbox'",
     "'inbox' => $wpdb->prefix . 'mad4b_execution_inbox'",
+    "claim_epoch bigint(20) unsigned NOT NULL DEFAULT 1",
     "reconciliation_ref varchar(191) NOT NULL DEFAULT ''",
     "UNIQUE KEY scope_idempotency (scope_key,idempotency_key)",
     "UNIQUE KEY work_id (work_id)",
@@ -69,6 +73,7 @@ idempotency_reclaim = DURABLE[DURABLE.index("public static function reclaim_idem
 idempotency_reclaim = idempotency_reclaim[: idempotency_reclaim.index("public static function scope_key")]
 for marker in (
     "reconciliation_ref",
+    "claim_epoch=%d",
     "status='pending'",
     "expires_at<=%s",
     "START TRANSACTION",
@@ -85,6 +90,8 @@ if "'active' !== (string) $row['status']" not in lease_reclaim:
     raise SystemExit("terminal leases can be resurrected by reclaim")
 if "reconciliation_ref" not in lease_reclaim or "lease_epoch=%d" not in lease_reclaim:
     raise SystemExit("lease reclaim lacks reconciliation evidence or epoch CAS")
+if "reconciliation_verified(" not in lease_reclaim:
+    raise SystemExit("lease reclaim does not require independently verified readback")
 
 fence = DURABLE[DURABLE.index("public static function assert_fencing_token"):]
 fence = fence[: fence.index("public static function complete_lease")]
@@ -98,6 +105,12 @@ for marker in (
 ):
     if marker not in fence:
         raise SystemExit(f"zombie-worker fencing dependency missing: {marker}")
+
+completion = DURABLE[DURABLE.index("public static function complete_idempotency"):]
+completion = completion[: completion.index("public static function reclaim_idempotency")]
+for marker in ("claim_epoch=%d", "expires_at>%s"):
+    if marker not in completion:
+        raise SystemExit(f"stale idempotency worker is not fenced at completion: {marker}")
 
 # Durable persistence primitives must not become an alternate provider/network
 # execution surface.
