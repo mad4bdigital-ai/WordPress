@@ -25,7 +25,7 @@ if ( false === strpos( $enhanced, '<title>Authorize read access</title>' ) ) $fa
 if ( false === strpos( $enhanced, '<h1>Authorize read access</h1>' ) ) $fail( 'Read-specific consent heading is missing.' );
 if ( false === strpos( $enhanced, 'This consent authenticates the client and grants only the read resource scope shown below. Write, Developer and Developer Breakglass are separate governed authorities and are not created by this OAuth approval.' ) ) $fail( 'OAuth/read-scope separation statement is missing.' );
 if ( false === strpos( $enhanced, 'Write, Developer and Developer Breakglass are separate governed authorities' ) ) $fail( 'Governed write separation statement is missing.' );
-if ( false === strpos( $enhanced, 'OAuth read identity · Write/Developer authorities separate · PKCE S256' ) ) $fail( 'Security context footer is missing.' );
+if ( false === strpos( $enhanced, 'OAuth identity · Step-up is request permission only · Write/Developer authorities separate · PKCE S256' ) ) $fail( 'Security context footer is missing.' );
 if ( false === strpos( $enhanced, '.mad4b-live-grants' ) ) $fail( 'Live governed grant projection styling is missing.' );
 if ( false === strpos( $enhanced, '.mad4b-grant-metrics' ) ) $fail( 'Live authority metrics styling is missing.' );
 if ( false === strpos( $enhanced, '.mad4b-grant-blockers' ) ) $fail( 'Live authority blocker styling is missing.' );
@@ -50,6 +50,26 @@ if ( false !== stripos( $enhanced, '<script' ) ) $fail( 'Consent UI must not inj
 if ( false !== stripos( $enhanced, '<link' ) ) $fail( 'Consent UI must not load external stylesheets.' );
 if ( $enhanced !== MAD4B_SCP_Local_OAuth_Consent_UI::enhance_document( $enhanced ) ) $fail( 'Consent enhancement is not idempotent.' );
 
+$step_up_sample = '<!doctype html><html><head><meta charset="utf-8"><title>Authorize MCP access</title></head><body>'
+	. '<main><h1>Authorize MCP access</h1><p><strong>ChatGPT</strong> is requesting read access plus a governed Staging authority step-up scope for this WordPress MCP resource.</p>'
+	. '<p>OAuth scopes: <code>mad4b:read offline_access mad4b:authority:step-up</code></p>'
+	. '<section class="mad4b-live-grants"><h2>Governed write grants</h2></section>'
+	. '<form method="post" action="https://example.test/oauth/mcp/authorize">'
+	. '<input type="hidden" name="client_id" value="https://chatgpt.com/oauth/client.json">'
+	. '<input type="hidden" name="scope" value="mad4b:read offline_access mad4b:authority:step-up">'
+	. '<input type="hidden" name="_mad4b_oauth_nonce" value="nonce-step-up">'
+	. '<button type="submit" name="decision" value="approve">Approve</button>'
+	. '<button type="submit" name="decision" value="deny">Deny</button>'
+	. '</form></main></body></html>';
+$step_up_enhanced = MAD4B_SCP_Local_OAuth_Consent_UI::enhance_document( $step_up_sample );
+if ( false === strpos( $step_up_enhanced, '<title>Authorize governed MCP access</title>' ) ) $fail( 'Governed step-up consent title is missing.' );
+if ( false === strpos( $step_up_enhanced, '<h1>Authorize governed MCP access</h1>' ) ) $fail( 'Governed step-up consent heading is missing.' );
+if ( false === strpos( $step_up_enhanced, 'Read identity + Staging authority step-up' ) ) $fail( 'Step-up access summary is missing.' );
+if ( false === strpos( $step_up_enhanced, '<code>mad4b:authority:step-up</code> is a request permission' ) ) $fail( 'Step-up non-authority explanation is missing.' );
+if ( false === strpos( $step_up_enhanced, '>Approve governed access</button>' ) ) $fail( 'Governed step-up approval label is missing.' );
+if ( false === strpos( $step_up_enhanced, 'does not itself create Write, Developer, Developer Breakglass, Production, or raw-SQL Breakglass authority' ) ) $fail( 'Step-up authority boundary statement is missing.' );
+if ( false === strpos( $step_up_enhanced, 'name="scope" value="mad4b:read offline_access mad4b:authority:step-up"' ) ) $fail( 'Step-up scope field was changed.' );
+
 $connection_sample = '<!doctype html><html><head><title>MAD4B Connection</title></head><body>'
 	. '<p>Read-only connection workspace. It organizes environment, MCP transport, OAuth authority, isolation and external certification without creating credentials, connecting a client, enabling mutation, granting authority or making outbound discovery requests.</p>'
 	. '<p>The connection reports externally verified certification evidence. Continue to governance and adapter coverage before enabling any mutation path.</p>'
@@ -64,4 +84,4 @@ $unrelated = '<!doctype html><html><head><title>Other page</title></head><body>O
 if ( $unrelated !== MAD4B_SCP_Local_OAuth_Consent_UI::enhance_document( $unrelated ) ) $fail( 'Unrelated HTML was modified.' );
 if ( $unrelated !== MAD4B_SCP_Local_OAuth_Consent_UI::enhance_connection_document( $unrelated ) ) $fail( 'Unrelated connection HTML was modified.' );
 
-echo "mad4b.site-control-plane.local-oauth-consent-ui.v3: PASS\n";
+echo "mad4b.site-control-plane.local-oauth-consent-ui.v4: PASS\n";
