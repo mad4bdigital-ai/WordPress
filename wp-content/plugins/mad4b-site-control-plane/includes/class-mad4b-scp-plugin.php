@@ -225,8 +225,42 @@ final class MAD4B_SCP_Plugin {
 		return is_wp_error( self::$schema_error ) ? sanitize_key( (string) self::$schema_error->get_error_code() ) : '';
 	}
 
+	public static function governance_bootstrap_error_data() {
+		$data = is_wp_error( self::$schema_error ) ? self::$schema_error->get_error_data() : array();
+		return is_array( $data ) ? $data : array();
+	}
+
 	public static function schema_notice() {
-		if ( current_user_can( 'manage_options' ) && is_wp_error( self::$schema_error ) ) echo '<div class="notice notice-error"><p>' . esc_html__( 'MAD4B Site Control Plane governance schema is unavailable. Mutation remains fail-closed until the schema is repaired.', 'mad4b-site-control-plane' ) . '</p></div>';
+		if ( ! current_user_can( 'manage_options' ) || ! is_wp_error( self::$schema_error ) ) return;
+		$code = self::governance_bootstrap_error_code();
+		$data = self::governance_bootstrap_error_data();
+		$details = array();
+		if ( isset( $data['from_version'], $data['target_version'] ) ) {
+			$details[] = 'schema ' . (int) $data['from_version'] . '→' . (int) $data['target_version'];
+		}
+		$physical = isset( $data['physical_integrity'] ) && is_array( $data['physical_integrity'] ) ? $data['physical_integrity'] : array();
+		foreach ( array(
+			'missing_tables' => 'missing tables',
+			'missing_approval_columns' => 'missing approval columns',
+			'missing_durable_columns' => 'missing durable columns',
+			'missing_durable_indexes' => 'missing durable indexes',
+		) as $key => $label ) {
+			$items = isset( $physical[ $key ] ) && is_array( $physical[ $key ] ) ? array_values( array_filter( array_map( 'strval', $physical[ $key ] ) ) ) : array();
+			if ( $items ) $details[] = $label . ': ' . implode( ', ', array_slice( $items, 0, 12 ) );
+		}
+		$dbdelta_errors = array();
+		foreach ( isset( $data['dbdelta_diagnostics'] ) && is_array( $data['dbdelta_diagnostics'] ) ? $data['dbdelta_diagnostics'] : array() as $row ) {
+			if ( ! is_array( $row ) || empty( $row['last_error'] ) ) continue;
+			$table = ! empty( $row['table'] ) ? (string) $row['table'] : 'unknown-table';
+			$dbdelta_errors[] = $table . ': ' . substr( trim( (string) $row['last_error'] ), 0, 220 );
+			if ( count( $dbdelta_errors ) >= 3 ) break;
+		}
+		if ( $dbdelta_errors ) $details[] = 'dbDelta: ' . implode( ' | ', $dbdelta_errors );
+		$message = 'MAD4B governance schema is unavailable';
+		if ( '' !== $code ) $message .= ' [' . $code . ']';
+		$message .= '. Mutation remains fail-closed.';
+		if ( $details ) $message .= ' ' . implode( ' | ', $details );
+		echo '<div class="notice notice-error"><p>' . esc_html( $message ) . '</p></div>';
 	}
 	public static function abilities_notice() {
 		if ( current_user_can( 'activate_plugins' ) ) echo '<div class="notice notice-error"><p>' . esc_html__( 'MAD4B Site Control Plane requires the WordPress Abilities API (WordPress 6.9+).', 'mad4b-site-control-plane' ) . '</p></div>';
