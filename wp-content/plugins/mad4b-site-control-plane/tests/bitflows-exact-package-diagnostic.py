@@ -25,6 +25,8 @@ TARGETS = (
     "backend/app/HTTP/Controllers/FlowController.php",
     "backend/app/HTTP/Controllers/WebhookDispatchController.php",
     "backend/app/Services/FlowHistoryService.php",
+    "backend/app/Services/LogService.php",
+    "backend/app/Model/FlowLog.php",
 )
 
 
@@ -132,6 +134,49 @@ def function_body(source: str, method: str) -> str:
     raise RuntimeError(f"unbalanced method body: {method}")
 
 
+def call_expressions(body: str, callee: str, limit: int = 12) -> list[str]:
+    rows: list[str] = []
+    start_at = 0
+    needle = callee + "("
+    while len(rows) < limit:
+        pos = body.find(needle, start_at)
+        if pos < 0:
+            break
+        open_pos = pos + len(callee)
+        depth = 0
+        quote = ""
+        escaped = False
+        i = open_pos
+        while i < len(body):
+            ch = body[i]
+            if quote:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == quote:
+                    quote = ""
+                i += 1
+                continue
+            if ch in ("'", '"'):
+                quote = ch
+                i += 1
+                continue
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    expr = re.sub(r"\s+", " ", body[pos : i + 1]).strip()
+                    rows.append(expr[:1200])
+                    start_at = i + 1
+                    break
+            i += 1
+        else:
+            break
+    return rows
+
+
 def bounded_statements(body: str, pattern: str, limit: int = 24) -> list[str]:
     rows: list[str] = []
     for raw in body.splitlines():
@@ -203,6 +248,8 @@ def semantic_summary(path: str, source: str) -> dict[str, Any]:
             returns = return_expressions(body)
             service_methods[method] = {
                 "signature": function_signature(source, method),
+                "log_service_save_calls": call_expressions(body, "LogService::save"),
+                "history_insert_calls": call_expressions(body, "FlowHistory::insert"),
                 "body_sha256": sha256_bytes(body.encode("utf-8")),
                 "return_shapes": return_shapes(body),
                 "return_expressions": returns,
@@ -229,8 +276,11 @@ def semantic_summary(path: str, source: str) -> dict[str, Any]:
             "return_expressions": return_expressions(body),
             "history_relevant_statements": bounded_statements(
                 body,
-                r"FlowHistory|history[_A-Za-z]*id|historyId|history_id|parent_history_id",
+                r"FlowHistory|history[_A-Za-z]*id|historyId|history_id|parent_history_id|LogService|triggerData",
+                limit=48,
             ),
+            "create_history_calls": call_expressions(body, "FlowHistoryService::createHistoryWithTriggerNode"),
+            "log_service_save_calls": call_expressions(body, "LogService::save"),
             "flow_history_refs": body.count("FlowHistory"),
             "history_id_refs": len(re.findall(r"history[_A-Za-z]*id|historyId|history_id", body, re.I)),
             "provider_execution_ref_markers": len(re.findall(r"execution[_A-Za-z]*id|executionId|execution_id|run[_A-Za-z]*id|runId|run_id", body, re.I)),
@@ -261,6 +311,25 @@ def semantic_summary(path: str, source: str) -> dict[str, Any]:
             ),
             "signature": function_signature(source, "execute"),
         }
+    if path.endswith("LogService.php"):
+        save_body = function_body(source, "save")
+        if save_body:
+            summary["save"] = {
+                "signature": function_signature(source, "save"),
+                "return_expressions": return_expressions(save_body),
+                "flow_log_calls": call_expressions(save_body, "FlowLog::insert") + call_expressions(save_body, "FlowLog::update"),
+                "payload_relevant_statements": bounded_statements(
+                    save_body,
+                    r"data|payload|input|output|flow_history_id|node_id|status|json|serialize",
+                    limit=60,
+                ),
+            }
+    if path.endswith("FlowLog.php"):
+        summary["source_markers"] = {
+            "trigger_data_refs": len(re.findall(r"trigger[_A-Za-z]*data|triggerData", source, re.I)),
+            "payload_refs": len(re.findall(r"payload|data|input|output|variables", source, re.I)),
+        }
+
     return summary
 
 
