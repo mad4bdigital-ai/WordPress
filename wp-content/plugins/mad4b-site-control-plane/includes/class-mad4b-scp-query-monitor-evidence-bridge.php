@@ -227,7 +227,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			if ( ! empty( $classification['pre_init_abilities_violation'] ) ) self::increment_counter( $telemetry, 'mad4b', 'pre_init_abilities_violation' );
 			if ( ! empty( $classification['fluentform_action_scheduler'] ) ) self::increment_counter( $telemetry, 'third_party', 'fluentform_action_scheduler' );
 
-			$telemetry['events'][] = array(
+			$event_record = array(
 				'type' => $event_type,
 				'classification' => $bucket,
 				'severity' => isset( $classification['severity'] ) ? sanitize_key( (string) $classification['severity'] ) : 'observed',
@@ -242,6 +242,11 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 				'callers' => isset( $classification['callers'] ) && is_array( $classification['callers'] ) ? array_slice( $classification['callers'], 0, 6 ) : array(),
 				'evidence_source' => self::CONTRACT,
 			);
+			$telemetry['events'][] = $event_record;
+			if ( ! isset( $telemetry['events_by_bucket'] ) || ! is_array( $telemetry['events_by_bucket'] ) ) $telemetry['events_by_bucket'] = array();
+			if ( ! isset( $telemetry['events_by_bucket'][ $bucket ] ) || ! is_array( $telemetry['events_by_bucket'][ $bucket ] ) ) $telemetry['events_by_bucket'][ $bucket ] = array();
+			$telemetry['events_by_bucket'][ $bucket ][] = $event_record;
+			$telemetry['events_by_bucket'][ $bucket ] = array_slice( $telemetry['events_by_bucket'][ $bucket ], -1 * MAD4B_SCP_Live_Acceptance_Observer::MAX_EVENTS );
 		}
 
 		$telemetry['events'] = array_slice( isset( $telemetry['events'] ) && is_array( $telemetry['events'] ) ? $telemetry['events'] : array(), -1 * MAD4B_SCP_Live_Acceptance_Observer::MAX_EVENTS );
@@ -359,6 +364,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 				'unknown' => array(),
 			),
 			'events' => array(),
+			'events_by_bucket' => array( 'mad4b' => array(), 'third_party' => array(), 'wordpress_core' => array(), 'unknown' => array() ),
 			'performance' => self::empty_performance(),
 		);
 	}
