@@ -437,11 +437,12 @@ final class MAD4B_SCP_Durable_Execution {
 		$status = sanitize_key( (string) $status );
 		if ( ! in_array( $status, array( 'completed', 'blocked', 'failed', 'cancelled' ), true ) ) return new WP_Error( 'mad4b_lease_terminal_status_invalid', 'Lease terminal status is invalid.' );
 		$t = MAD4B_SCP_Schema::tables();
+		$now = gmdate( 'Y-m-d H:i:s' );
 		$updated = $wpdb->query( $wpdb->prepare(
-			"UPDATE {$t['work_leases']} SET status=%s,updated_at=%s WHERE work_id=%s AND worker_id=%s AND lease_epoch=%d AND status='active'",
-			$status, gmdate( 'Y-m-d H:i:s' ), strtolower( trim( (string) $work_id ) ), trim( (string) $worker_id ), absint( $lease_epoch )
+			"UPDATE {$t['work_leases']} SET status=%s,updated_at=%s WHERE work_id=%s AND worker_id=%s AND lease_epoch=%d AND status='active' AND expires_at>%s",
+			$status, $now, strtolower( trim( (string) $work_id ) ), trim( (string) $worker_id ), absint( $lease_epoch ), $now
 		) );
-		return 1 === (int) $updated ? true : new WP_Error( 'mad4b_lease_complete_fenced', 'Lease completion was rejected by current ownership/fencing state.' );
+		return 1 === (int) $updated ? true : new WP_Error( 'mad4b_lease_complete_fenced', 'Lease completion was rejected because ownership, epoch, status or expiry is no longer authoritative.' );
 	}
 
 	public static function enqueue_outbox( array $record ) {
