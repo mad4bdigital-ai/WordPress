@@ -33,9 +33,9 @@ permissions:
   artifact-metadata: write
 
 concurrency:
-  # Package artifacts are exact-run evidence. Keep PR/ref scoping required by the
-  # hygiene contract while isolating each workflow run from stale historical jobs.
-  group: mad4b-control-plane-package-${{ github.event.pull_request.number || github.ref }}-${{ github.run_id }}
+  # Keep one active package run per PR/ref. A newer exact-head candidate cancels
+  # superseded package work instead of allowing stale runs to remain live.
+  group: mad4b-control-plane-package-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
