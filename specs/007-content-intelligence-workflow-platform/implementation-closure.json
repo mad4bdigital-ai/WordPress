@@ -23,7 +23,25 @@
       "id": "repository_governance",
       "priority": "KERNEL_BLOCKER",
       "status": "EXTERNAL_PENDING",
-      "gate": "repository_governance_enforced"
+      "gate": "repository_governance_enforced",
+      "evidence": {
+        "master_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
+        "governance_run_id": 36068553163,
+        "repository_governance_ready": false,
+        "external_ruleset_state": "missing",
+        "bootstrap_exception_active": true,
+        "bootstrap_scope": "initial_master_ruleset_only"
+      }
+    },
+    {
+      "id": "repository_governance_bootstrap_retirement",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "repository_governance_bootstrap_retired",
+      "evidence": {
+        "current_state": "bootstrap exception still present after PR #60 merge",
+        "prerequisite": "repository_governance_enforced"
+      }
     },
     {
       "id": "execution_ledger_reconciliation",
@@ -53,14 +71,58 @@
     {
       "id": "governed_tool_execution",
       "priority": "LIVE_PRECONDITION",
-      "status": "OPEN",
-      "gate": "recovery_tooling_available"
+      "status": "PARTIAL",
+      "gate": "recovery_tooling_available",
+      "evidence": {
+        "filesystem_read_abilities_present": true,
+        "filesystem_read_authorized_for_current_subject": false,
+        "remote_shell_surface_available_in_current_chat": false,
+        "generic_shell_allowed": false
+      }
     },
     {
       "id": "protected_backup_recovery",
       "priority": "LIVE_PRECONDITION",
       "status": "OPEN",
-      "gate": "protected_backup_recovery_ready"
+      "gate": "protected_backup_recovery_ready",
+      "evidence": {
+        "exists": false,
+        "writable": false,
+        "ready": false,
+        "requires_preparation": true,
+        "mutation_performed": false
+      }
+    },
+    {
+      "id": "etg_exact_master_deployment",
+      "priority": "LIVE_PRECONDITION",
+      "status": "OPEN",
+      "gate": "etg_exact_master_deployed",
+      "evidence": {
+        "target_source_commit_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
+        "currently_deployed_source_commit_sha": "03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c",
+        "source_commit_match": false,
+        "deployment_performed": false
+      }
+    },
+    {
+      "id": "runtime_root_trust_readback",
+      "priority": "LIVE_PRECONDITION",
+      "status": "OPEN",
+      "gate": "runtime_root_trust_readback",
+      "evidence": {
+        "required_files": [
+          "MAD4B-BUILD-PROVENANCE.json",
+          "BUILD-FINGERPRINT.txt",
+          "PACKAGE-MANIFEST-DIGEST.txt",
+          "install-manifest.json",
+          "RELEASE-ATTESTATION.sigstore.json",
+          "RELEASE-ATTESTATION-LOCATOR.json",
+          "RELEASE-ROOT-TRUST-VERIFICATION.json"
+        ],
+        "current_subject_authorized": false,
+        "current_file_presence": "UNKNOWN_FROM_CURRENT_SUBJECT"
+      }
     },
     {
       "id": "recovery_live_drill",
@@ -72,7 +134,15 @@
       "id": "bitflows_1_29_exact_certification",
       "priority": "KERNEL_BLOCKER",
       "status": "OPEN",
-      "gate": "provider_exact_certified"
+      "gate": "provider_exact_certified",
+      "evidence": {
+        "installed_version": "1.29.0",
+        "installed_status": "inactive",
+        "prior_certified_version": "1.24.0",
+        "available": false,
+        "runtime_contract_ok": false,
+        "execution_enabled": false
+      }
     },
     {
       "id": "provider_side_channel",
@@ -213,5 +283,46 @@
       "priority": "MATURITY_REQUIRED",
       "status": "OPEN"
     }
-  ]
+  ],
+  "observed_live_etg_state": {
+    "observed_from": "MAD4B live read-only surfaces",
+    "environment": "staging",
+    "wordpress_version": "7.1.2",
+    "php_version": "8.3.33",
+    "database_version": "11.8.9-MariaDB-log",
+    "control_plane_version": "0.4.0-rc.59",
+    "mcp_adapter_version": "0.6.1",
+    "live_source_commit_sha": "03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c",
+    "target_master_source_commit_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
+    "trusted_master_deployed": false,
+    "live_manifest_present": true,
+    "live_manifest_valid": true,
+    "live_runtime_manifest_match": true,
+    "live_stale": false,
+    "live_provenance_mismatch": [],
+    "protected_backup_root": {
+      "exists": false,
+      "writable": false,
+      "ready": false,
+      "requires_preparation": true
+    },
+    "filesystem_trust_readback": {
+      "abilities_present": [
+        "mad4b/filesystem-list",
+        "mad4b/filesystem-read"
+      ],
+      "subject_authorized": false,
+      "file_presence_conclusion": "UNKNOWN_FROM_CURRENT_SUBJECT"
+    },
+    "bitflows": {
+      "installed_version": "1.29.0",
+      "status": "inactive",
+      "certified_version": "1.24.0",
+      "available": false,
+      "runtime_contract_ok": false,
+      "execution_enabled": false
+    },
+    "mutation_performed": false,
+    "breakglass_enabled": false
+  }
 }
