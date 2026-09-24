@@ -104,7 +104,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'description' => 'Converge exact governed Write, bind the current package candidate, and provision isolated Developer plus Developer Breakglass authority on Staging only.',
 					'category' => 'mad4b-full-staging-authority',
 					'execute_callback' => array( __CLASS__, 'apply' ),
-					'permission_callback' => array( __CLASS__, 'can_access' ),
+					'permission_callback' => array( __CLASS__, 'can_apply' ),
 					'input_schema' => self::schema(
 						array(
 							'expected_plan_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
@@ -179,6 +179,19 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		}
 		if ( self::generic_raw_sql_breakglass_gate_enabled() || ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) ) {
 			return new WP_Error( 'mad4b_full_authority_raw_sql_breakglass_denied', 'Generic raw-SQL Breakglass must remain disabled during Full Staging Authority convergence.' );
+		}
+		return true;
+	}
+
+	public static function can_apply( $input = null ) {
+		$access = self::can_access( $input );
+		if ( is_wp_error( $access ) || ! $access ) return $access;
+		if ( ! defined( 'MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE' )
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
+			return new WP_Error(
+				'mad4b_full_authority_step_up_scope_required',
+				'The OAuth bearer does not grant the dedicated Full Staging Authority step-up scope.'
+			);
 		}
 		return true;
 	}
@@ -288,7 +301,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 
 	public static function apply( $input ) {
 		if ( self::$running ) return new WP_Error( 'mad4b_full_authority_reentry_denied', 'Full Staging Authority convergence is already running in this request.' );
-		$access = self::can_access( $input );
+		$access = self::can_apply( $input );
 		if ( is_wp_error( $access ) || ! $access ) return $access;
 		if ( ! is_array( $input ) || self::CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) {
 			return new WP_Error( 'mad4b_full_authority_confirmation_required', 'Exact confirmation is required.' );
