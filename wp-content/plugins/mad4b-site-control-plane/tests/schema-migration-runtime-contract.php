@@ -89,6 +89,9 @@ final class MAD4B_Test_Schema_WPDB {
 			'artifact_id', 'artifact_type', 'version', 'content_sha256', 'payload_json',
 			'producer_stage', 'supersedes_artifact_id',
 			'edge_id', 'from_artifact_id', 'to_artifact_id', 'relation', 'invalidated', 'reason_code',
+			'relation_id', 'locale', 'market', 'intent_id', 'content_id', 'role', 'confidence',
+			'evidence_json', 'analysis_signals_json', 'source', 'revision', 'valid_from', 'valid_to',
+			'current_relation_key', 'owner_scope_key', 'relation_sha256',
 		);
 	}
 	public function get_results( $query, $output = null ) {
@@ -97,6 +100,7 @@ final class MAD4B_Test_Schema_WPDB {
 			'job_id', 'event_id', 'job_sequence', 'work_id', 'scope_idempotency',
 			'outbox_id', 'provider_idempotency', 'provider_event',
 			'artifact_id', 'job_type_version', 'edge_id', 'artifact_relation',
+			'relation_revision', 'current_relation_key', 'owner_scope_key',
 		) as $name ) {
 			$rows[] = array( 'Key_name' => $name, 'Non_unique' => 0 );
 		}
@@ -147,12 +151,12 @@ function mad4b_schema_assert_receipt( $from, $run_type ) {
 	mad4b_schema_assert( 64 === strlen( (string) ( $receipt['physical_integrity_sha256'] ?? '' ) ), 'Receipt physical-integrity digest missing.', $receipt );
 }
 
-// v6 -> v10 exact additive upgrade.
+// v6 -> current exact additive upgrade.
 mad4b_schema_reset_fixture( 6 );
 $before_calls = $GLOBALS['mad4b_schema_dbdelta_calls'];
 $upgrade = MAD4B_SCP_Schema::install_or_upgrade();
 mad4b_schema_assert( true === $upgrade, 'Supported v6 upgrade must succeed.', $upgrade );
-mad4b_schema_assert( MAD4B_SCP_Schema::VERSION === (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ), 'Schema version must finalize to v10.' );
+mad4b_schema_assert( MAD4B_SCP_Schema::VERSION === (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ), 'Schema version must finalize to current target.' );
 mad4b_schema_assert( MAD4B_SCP_Schema::is_ready(), 'Schema must be ready only after exact receipt/token persistence.' );
 mad4b_schema_assert_receipt( 6, 'upgrade' );
 mad4b_schema_assert( $GLOBALS['mad4b_schema_dbdelta_calls'] > $before_calls, 'Initial upgrade must execute dbDelta.' );
@@ -161,7 +165,7 @@ mad4b_schema_assert( $GLOBALS['mad4b_schema_dbdelta_calls'] > $before_calls, 'In
 $healthy_calls = $GLOBALS['mad4b_schema_dbdelta_calls'];
 $repeat = MAD4B_SCP_Schema::install_or_upgrade();
 mad4b_schema_assert( true === $repeat, 'Healthy repeated migration must succeed.' );
-mad4b_schema_assert( $healthy_calls === $GLOBALS['mad4b_schema_dbdelta_calls'], 'Healthy finalized v10 must not repeat dbDelta.' );
+mad4b_schema_assert( $healthy_calls === $GLOBALS['mad4b_schema_dbdelta_calls'], 'Healthy finalized target must not repeat dbDelta.' );
 
 // A partial final-receipt failure must keep readiness false and preserve v6 origin on retry.
 mad4b_schema_reset_fixture( 6 );
@@ -184,7 +188,7 @@ $physical_fail = MAD4B_SCP_Schema::install_or_upgrade();
 mad4b_schema_assert( is_wp_error( $physical_fail ) && 'mad4b_governance_schema_unavailable' === $physical_fail->get_error_code(), 'Missing durable table must fail physical verification.', $physical_fail );
 $physical_fail_data = $physical_fail->get_error_data();
 mad4b_schema_assert( is_array( $physical_fail_data ), 'Physical failure must expose bounded migration diagnostics.', $physical_fail_data );
-mad4b_schema_assert( 6 === (int) ( $physical_fail_data['from_version'] ?? -1 ) && 10 === (int) ( $physical_fail_data['target_version'] ?? 0 ), 'Physical failure diagnostics must preserve migration origin and target.', $physical_fail_data );
+mad4b_schema_assert( 6 === (int) ( $physical_fail_data['from_version'] ?? -1 ) && MAD4B_SCP_Schema::VERSION === (int) ( $physical_fail_data['target_version'] ?? 0 ), 'Physical failure diagnostics must preserve migration origin and target.', $physical_fail_data );
 mad4b_schema_assert( isset( $physical_fail_data['physical_integrity'] ) && is_array( $physical_fail_data['physical_integrity'] ), 'Physical failure diagnostics must include deep integrity status.', $physical_fail_data );
 mad4b_schema_assert( in_array( 'inbox', $physical_fail_data['physical_integrity']['missing_tables'] ?? array(), true ), 'Physical failure diagnostics must identify the missing durable table.', $physical_fail_data );
 mad4b_schema_assert( isset( $physical_fail_data['dbdelta_diagnostics'] ) && is_array( $physical_fail_data['dbdelta_diagnostics'] ) && count( $physical_fail_data['dbdelta_diagnostics'] ) >= 15, 'Physical failure diagnostics must preserve per-table dbDelta evidence.', $physical_fail_data );
@@ -215,11 +219,11 @@ mad4b_schema_assert_receipt( 6, 'upgrade' );
 // Fresh install has a distinct origin/run type.
 mad4b_schema_reset_fixture( 0 );
 $fresh = MAD4B_SCP_Schema::install_or_upgrade();
-mad4b_schema_assert( true === $fresh, 'Fresh v0 -> v10 installation must succeed.', $fresh );
+mad4b_schema_assert( true === $fresh, 'Fresh v0 -> current installation must succeed.', $fresh );
 mad4b_schema_assert_receipt( 0, 'fresh_install' );
 
-// Future schema identity must never be downgraded by v10 code.
-mad4b_schema_reset_fixture( 11 );
+// Future schema identity must never be downgraded by current code.
+mad4b_schema_reset_fixture( MAD4B_SCP_Schema::VERSION + 1 );
 $future_calls = $GLOBALS['mad4b_schema_dbdelta_calls'];
 $future = MAD4B_SCP_Schema::install_or_upgrade();
 mad4b_schema_assert( is_wp_error( $future ) && 'mad4b_schema_migration_preflight_failed' === $future->get_error_code(), 'Future schema must fail preflight.', $future );
