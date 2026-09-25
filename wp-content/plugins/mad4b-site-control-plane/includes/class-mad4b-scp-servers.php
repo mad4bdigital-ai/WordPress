@@ -43,7 +43,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/scheduler-fair-rank',
 				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status',
 				'mad4b/site-bootstrap-snapshot',
-				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix',
+				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/remote-operation-work-queue',
 			), $governed_status ),
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status',
@@ -54,7 +54,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix',
 			), $governed_status ),
 			'mad4b-enrollment' => array_merge(
-				array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/multi-authority-registry-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit', 'mad4b/reconcile-managed-skills', 'mad4b/frontend-performance-sample-run', 'mad4b/admin-query-performance-apply' ),
+				array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/multi-authority-registry-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit', 'mad4b/reconcile-managed-skills', 'mad4b/frontend-performance-sample-run', 'mad4b/admin-query-performance-apply', 'mad4b/remote-operation-work-claim', 'mad4b/remote-operation-work-complete' ),
 				class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::enrollment_tools() : array()
 			),
