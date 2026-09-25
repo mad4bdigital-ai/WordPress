@@ -186,7 +186,7 @@ final class MAD4B_SCP_Addon_Registry {
 			'pair_fingerprint' => $pair_fingerprint,
 			'certification_fingerprint' => self::fingerprint( array( 'state' => $state, 'pair_fingerprint' => $pair_fingerprint, 'certified_pair' => $certified_pair ) ),
 			'stale_plan_on_fingerprint_change' => true,
-			'recertification_required_after_plugin_lifecycle_change' => true,
+			'revalidation_required_after_plugin_lifecycle_change' => true,
 			'production_authorized' => false,
 		);
 	}
@@ -212,8 +212,10 @@ final class MAD4B_SCP_Addon_Registry {
 			'addons' => $items,
 			'count' => count( $items ),
 			'exact_pair_certification_required' => true,
+			'catalog_certification_is_repository_authority' => true,
+			'runtime_pair_revalidated_on_every_status_read' => true,
 			'compatible_range_is_not_execution_authority' => true,
-			'plugin_lifecycle_invalidates_certification_epoch' => true,
+			'plugin_lifecycle_invalidates_plan_fingerprint' => true,
 			'read_only' => true,
 			'mutation_performed' => false,
 			'production_authorized' => false,
