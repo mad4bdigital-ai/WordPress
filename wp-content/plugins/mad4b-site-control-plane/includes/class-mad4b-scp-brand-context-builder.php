@@ -21,6 +21,10 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	const MAX_SAMPLE_BYTES = 1800;
 	const MAX_AUTHORITY_EVIDENCE_BYTES = 40000;
 	const MAX_DRAFT_BYTES = 120000;
+	const DRAFT_INDEX_OPTION = 'mad4b_scp_brand_draft_index_v1';
+	const MAX_DRAFT_INDEX_ENTRIES = 256;
+
+	private static $authority_readback_cache = array();
 
 	public static function expected_categories() {
 		return array(
@@ -53,6 +57,40 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		if ( ! $is_list ) ksort( $value, SORT_STRING );
 		foreach ( $value as $key => $item ) $value[ $key ] = self::sort_value( $item );
 		return $value;
+	}
+
+	private static function authority_readback( $asset_id ) {
+		$asset_id = strtolower( trim( (string) $asset_id ) );
+		if ( '' === $asset_id ) return new WP_Error( 'mad4b_brand_authority_asset_id_invalid', 'Brand authority asset ID is invalid.' );
+		if ( array_key_exists( $asset_id, self::$authority_readback_cache ) ) return self::$authority_readback_cache[ $asset_id ];
+		if ( ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) return new WP_Error( 'mad4b_context_provider_gateway_unavailable', 'Context Provider Gateway is unavailable.' );
+		$result = MAD4B_SCP_Context_Provider_Gateway::read_context_asset( $asset_id );
+		self::$authority_readback_cache[ $asset_id ] = $result;
+		return $result;
+	}
+
+	private static function draft_index() {
+		$index = get_option( self::DRAFT_INDEX_OPTION, array() );
+		return is_array( $index ) ? $index : array();
+	}
+
+	private static function save_draft_index( array $index ) {
+		if ( count( $index ) > self::MAX_DRAFT_INDEX_ENTRIES ) {
+			uasort( $index, static function ( $a, $b ) {
+				return strcmp( isset( $a['updated_at'] ) ? (string) $a['updated_at'] : '', isset( $b['updated_at'] ) ? (string) $b['updated_at'] : '' );
+			} );
+			$index = array_slice( $index, -self::MAX_DRAFT_INDEX_ENTRIES, null, true );
+		}
+		update_option( self::DRAFT_INDEX_OPTION, $index, false );
+	}
+
+	private static function index_draft_artifact( $idempotency_key, $artifact_id ) {
+		$idempotency_key = strtolower( trim( (string) $idempotency_key ) );
+		$artifact_id = strtolower( trim( (string) $artifact_id ) );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $idempotency_key ) || ! preg_match( '/^[a-f0-9-]{36}$/', $artifact_id ) ) return;
+		$index = self::draft_index();
+		$index[ $idempotency_key ] = array( 'artifact_id' => $artifact_id, 'updated_at' => gmdate( 'c' ) );
+		self::save_draft_index( $index );
 	}
 
 	private static function approved_brand_asset( array $asset ) {
@@ -288,7 +326,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 					'reason' => 'approved_brand_authority',
 				);
 				if ( $include_authoritative_content && class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) {
-					$readback = MAD4B_SCP_Context_Provider_Gateway::read_context_asset( (string) $entry['asset_id'] );
+					$readback = self::authority_readback( (string) $entry['asset_id'] );
 					if ( is_wp_error( $readback ) ) {
 						$authority_read_blockers[] = 'authority_read_failed:' . (string) $entry['asset_id'] . ':' . $readback->get_error_code();
 					} else {
@@ -396,9 +434,24 @@ final class MAD4B_SCP_Brand_Context_Builder {
 
 	private static function find_existing_draft( $idempotency_key ) {
 		global $wpdb;
+		$idempotency_key = strtolower( trim( (string) $idempotency_key ) );
+		$index = self::draft_index();
+		if ( isset( $index[ $idempotency_key ]['artifact_id'] ) ) {
+			$result = MAD4B_SCP_Artifacts::get_artifact( array( 'artifact_id' => (string) $index[ $idempotency_key ]['artifact_id'] ) );
+			if ( ! is_wp_error( $result ) && isset( $result['artifact'] ) && is_array( $result['artifact'] ) ) {
+				$artifact = $result['artifact'];
+				$metadata = isset( $artifact['metadata'] ) && is_array( $artifact['metadata'] ) ? $artifact['metadata'] : array();
+				if ( 'active' === ( isset( $artifact['status'] ) ? (string) $artifact['status'] : '' )
+					&& 'brand_context_draft' === ( isset( $artifact['artifact_type'] ) ? (string) $artifact['artifact_type'] : '' )
+					&& isset( $metadata['idempotency_key'] )
+					&& hash_equals( $idempotency_key, strtolower( (string) $metadata['idempotency_key'] ) ) ) return $result;
+			}
+			unset( $index[ $idempotency_key ] );
+			self::save_draft_index( $index );
+		}
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::critical_ready() ) return array();
 		$t = MAD4B_SCP_Schema::tables();
-		$needle = '%"idempotency_key":"' . $wpdb->esc_like( (string) $idempotency_key ) . '"%';
+		$needle = '%"idempotency_key":"' . $wpdb->esc_like( $idempotency_key ) . '"%';
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT artifact_id FROM {$t['artifacts']} WHERE site_uuid=%s AND artifact_type=%s AND status=%s AND metadata_json LIKE %s ORDER BY id DESC LIMIT 1",
@@ -408,9 +461,10 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				$needle
 			),
 			ARRAY_A
-		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- legacy fallback/backfill only.
 		if ( ! is_array( $row ) || empty( $row['artifact_id'] ) ) return array();
 		$result = MAD4B_SCP_Artifacts::get_artifact( array( 'artifact_id' => (string) $row['artifact_id'] ) );
+		if ( ! is_wp_error( $result ) ) self::index_draft_artifact( $idempotency_key, (string) $row['artifact_id'] );
 		return is_wp_error( $result ) ? array() : $result;
 	}
 
@@ -559,6 +613,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$artifact['idempotency_scope_key'] = $scope_key;
 		$artifact['draft_content_sha256'] = $draft_content_sha256;
 		$artifact['brand_core_ready'] = false;
+		if ( isset( $artifact['artifact']['artifact_id'] ) ) self::index_draft_artifact( $idempotency_key, (string) $artifact['artifact']['artifact_id'] );
 		$completed = MAD4B_SCP_Durable_Execution::complete_idempotency( $claim, $artifact );
 		if ( is_wp_error( $completed ) ) {
 			return new WP_Error(
