@@ -61,6 +61,9 @@ for key in [
     "data_governance_required_for_external_data_transfer",
     "direct_mutation_escape_paths_forbidden",
     "release_ring_required",
+    "commit_guard_required",
+    "expected_pair_fingerprint_required",
+    "expected_certification_fingerprint_required",
 ]:
     if addon.get(key) is not True:
         raise SystemExit(f"ADDON must require {key}")
@@ -97,7 +100,7 @@ if not expected_guards.issubset(set(policy.get("mad4b_custom_guards", []))):
 if policy.get("addon_manifest_contract") != "mad4b.wordpress-addon-manifest.v1":
     raise SystemExit("addon manifest contract must be stable")
 manifest_fields = {
-    "addon_id","plugin_file","base_provider","compatible_versions","extension_points","capabilities",
+    "addon_id","plugin_file","source_root","base_provider","compatible_versions","extension_points","capabilities",
     "data_ownership","authority_impact","rollback","certification","tests","portability",
     "supply_chain","network_access","multisite","performance_budget","observability","failure_policy","release_ring","certified_pairs",
 }
@@ -114,7 +117,7 @@ for marker in ["REUSE, ADDON, FORK, or NATIVE", "Add-on-first customization patt
         raise SystemExit(f"extension strategy Skill missing marker: {marker}")
 
 security = policy.get("addon_security", {})
-if security.get("php_is_not_a_sandbox") is not True or security.get("manifest_is_not_a_security_boundary") is not True:
+if security.get("php_is_not_a_sandbox") is not True or security.get("manifest_is_not_a_security_boundary") is not True or security.get("source_root_required") is not True:
     raise SystemExit("add-on security model must not treat PHP or the manifest as a sandbox")
 if policy.get("multisite_default") != "unsupported_unless_manifest_explicit":
     raise SystemExit("multisite default must fail closed unless explicitly supported")
