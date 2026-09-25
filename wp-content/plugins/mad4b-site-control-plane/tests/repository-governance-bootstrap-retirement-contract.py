@@ -75,6 +75,18 @@ for needle in rerun_required:
     if needle not in rerun:
         raise SystemExit(f"owner-attestation rerun lifecycle missing: {needle}")
 
+actions_job_evidence_required = [
+    "tools/capture_exact_head_action_jobs.py",
+    "github_actions_runs_jobs_api",
+    "elif os.environ.get('GITHUB_EVENT_NAME') == 'push':",
+    "required = [name for name in required if name != 'Repository feature boundary']",
+]
+for needle in actions_job_evidence_required:
+    if needle not in verdict:
+        raise SystemExit(f"Release Verdict Actions-job evidence binding missing: {needle}")
+if "/check-runs?per_page=" in verdict:
+    raise SystemExit("Release Verdict returned to the GITHUB_TOKEN-incompatible check-runs API")
+
 schema_binding_required = [
     "critical_kernel_text.splitlines()",
     "stripped.startswith('name: Schema ')",
@@ -104,4 +116,6 @@ print("post_merge_ruleset_apply_required=true")
 print("ruleset_attestation_storage=owner_issue_comment")
 print("owner_attestation_reruns=release_verdict+failed_feature_boundary")
 print("schema_check_binding=derived_from_critical_kernel")
+print("critical_job_evidence=github_actions_runs_jobs_api")
+print("push_boundary_wait=disabled_pr_only_check")
 print("merge_gate_requires=governance_ready")
