@@ -1081,6 +1081,22 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$asset = self::provider_asset_payload( $source, $file, $observed );
 		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $asset );
 		if ( is_wp_error( $registered ) ) return self::compensate_created_file_failure( $registered, $file, $source, 'create' );
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record(
+				'context/materialize-brand-draft',
+				array(
+					'source_id' => (string) $source['source_id'],
+					'asset_id' => (string) $registered['asset_id'],
+					'file_id' => (string) $registered['file_id'],
+					'target_folder_id' => $target_folder_id,
+					'content_sha256' => (string) $registered['content_hash'],
+					'artifact_id' => (string) $properties['mad4b_artifact'],
+					'idempotency_key' => (string) $properties['mad4b_idempotency'],
+					'request_sha256' => (string) $properties['mad4b_request'],
+				),
+				'ok'
+			);
+		}
 		return array(
 			'contract' => 'mad4b.google-drive-brand-context-materialization.v1',
 			'operation' => 'brand_context_create',
