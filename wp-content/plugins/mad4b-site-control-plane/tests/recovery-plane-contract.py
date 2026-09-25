@@ -411,4 +411,98 @@ with tempfile.TemporaryDirectory() as td:
     if "old runtime" not in (old / "mad4b-site-control-plane.php").read_text(encoding="utf-8"):
         raise SystemExit("symlinked recovery workspace fixture mutated live plugin")
 
+
+# Protected backup is a bounded exact-plan snapshot of current Control Plane bytes.
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    wp = tmp / "wordpress"
+    plugins = wp / "wp-content" / "plugins"
+    live = plugins / recovery.PLUGIN_SLUG
+    live.mkdir(parents=True)
+    config_secret = "<?php // secret-do-not-copy\ndefine('DB_PASSWORD','never-copy-this');\n"
+    (wp / "wp-config.php").write_text(config_secret, encoding="utf-8")
+    (live / "mad4b-site-control-plane.php").write_text("<?php // current runtime\n", encoding="utf-8")
+    (live / "includes").mkdir()
+    (live / "includes" / "runtime.php").write_text("<?php return 'current';\n", encoding="utf-8")
+
+    before = recovery.protected_backup_status(wp)
+    if before["ready"] is not False or before["requires_preparation"] is not True:
+        raise SystemExit("protected backup status incorrectly reported absent root as ready")
+
+    plan = recovery.build_backup_plan(
+        wp,
+        "staging",
+        "INC-PROTECTED-BACKUP",
+        "Create exact current Control Plane backup before governed deployment.",
+    )
+    if plan["scope"]["copies_wp_config_bytes"] is not False or plan["scope"]["copies_database"] is not False:
+        raise SystemExit("protected backup plan widened scope")
+    try:
+        recovery.apply_backup(plan, "0" * 64)
+        raise SystemExit("protected backup accepted wrong owner plan attestation")
+    except ValueError as exc:
+        if "OWNER_ATTEST_SINGLE_OWNER" not in str(exc):
+            raise
+
+    # Exact target drift after planning invalidates the backup plan.
+    original = (live / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
+    (live / "mad4b-site-control-plane.php").write_text(original + "// drift\n", encoding="utf-8")
+    try:
+        recovery.apply_backup(plan, plan["plan_sha256"])
+        raise SystemExit("protected backup accepted stale target plan")
+    except ValueError as exc:
+        if "target changed since plan" not in str(exc):
+            raise
+    (live / "mad4b-site-control-plane.php").write_text(original, encoding="utf-8")
+
+    plan = recovery.build_backup_plan(
+        wp,
+        "staging",
+        "INC-PROTECTED-BACKUP-2",
+        "Create exact current Control Plane backup after target re-read.",
+    )
+    receipt = recovery.apply_backup(plan, plan["plan_sha256"])
+    backup = Path(receipt["backup_path"])
+    if receipt["readback_verified"] is not True or receipt["production_authorized"] is not False:
+        raise SystemExit("protected backup receipt is not verified or widened Production")
+    if recovery.tree_digest(backup / recovery.PLUGIN_SLUG) != plan["target"]["plugin_tree_sha256"]:
+        raise SystemExit("protected backup bytes do not match planned runtime")
+    manifest = json.loads((backup / "BACKUP-MANIFEST.json").read_text(encoding="utf-8"))
+    persisted = json.loads((backup / "BACKUP-RECEIPT.json").read_text(encoding="utf-8"))
+    if manifest["source_plugin_tree_sha256"] != plan["target"]["plugin_tree_sha256"]:
+        raise SystemExit("protected backup manifest lost exact runtime identity")
+    if persisted["wp_config_bytes_copied"] is not False or persisted["database_copied"] is not False:
+        raise SystemExit("protected backup receipt widened backup scope")
+    for path in backup.rglob("*"):
+        if path.is_file() and "never-copy-this" in path.read_text(encoding="utf-8", errors="ignore"):
+            raise SystemExit("protected backup leaked wp-config bytes")
+
+    status = recovery.protected_backup_status(wp)
+    if status["ready"] is not True or status["backup_count"] != 1:
+        raise SystemExit("protected backup root did not become ready with one verified backup")
+
+# Backup source symlinks fail closed instead of following content outside plugin root.
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    wp = tmp / "wordpress"
+    plugins = wp / "wp-content" / "plugins"
+    live = plugins / recovery.PLUGIN_SLUG
+    live.mkdir(parents=True)
+    (wp / "wp-config.php").write_text("<?php // backup symlink fixture\n", encoding="utf-8")
+    (live / "mad4b-site-control-plane.php").write_text("<?php // runtime\n", encoding="utf-8")
+    outside = tmp / "outside-secret.txt"
+    outside.write_text("outside", encoding="utf-8")
+    (live / "linked-secret.txt").symlink_to(outside)
+    try:
+        recovery.build_backup_plan(
+            wp,
+            "staging",
+            "INC-PROTECTED-BACKUP-SYMLINK",
+            "Reject plugin tree containing symlink.",
+        )
+        raise SystemExit("protected backup plan accepted symlinked plugin source")
+    except ValueError as exc:
+        if "symlink forbidden" not in str(exc):
+            raise
+
 print("out-of-band recovery plane contract: PASS")
