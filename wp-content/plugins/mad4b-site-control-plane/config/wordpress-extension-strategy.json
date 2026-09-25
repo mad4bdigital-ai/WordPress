@@ -1,0 +1,98 @@
+{
+  "contract": "mad4b.wordpress-extension-strategy.v1",
+  "decision_order": [
+    "REUSE",
+    "ADDON",
+    "FORK",
+    "NATIVE"
+  ],
+  "default_decision": "REUSE",
+  "addon_preferred_when": {
+    "base_plugin_suitable": true,
+    "customization_required": true,
+    "stable_extension_point_required": true,
+    "vendor_files_modified": false
+  },
+  "decisions": {
+    "REUSE": {
+      "requires": [
+        "supported_public_api",
+        "compatible_version",
+        "acceptable_security_and_lifecycle"
+      ],
+      "vendor_patch_allowed": false
+    },
+    "ADDON": {
+      "requires": [
+        "base_provider_identity",
+        "compatible_version_range",
+        "extension_points",
+        "data_ownership",
+        "authority_impact",
+        "rollback_or_disable_path",
+        "runtime_certification",
+        "compatibility_test",
+        "portability_exit_path"
+      ],
+      "vendor_patch_allowed": false,
+      "production_authority_inherited": false,
+      "exact_provider_version_runtime_certification_required": true,
+      "fail_closed_on_unknown_provider_version": true,
+      "fail_closed_on_missing_extension_point": true
+    },
+    "FORK": {
+      "requires": [
+        "no_safe_supported_extension_point",
+        "explicit_owner",
+        "security_update_sla",
+        "upstream_merge_plan",
+        "divergence_monitoring",
+        "exit_plan"
+      ],
+      "exception": true
+    },
+    "NATIVE": {
+      "requires": [
+        "no_suitable_maintained_plugin_or_extension",
+        "authority_or_recovery_kernel_reason",
+        "dependency_risk_assessment"
+      ],
+      "provider_neutral_preferred": true
+    }
+  },
+  "generic_quality_tooling": {
+    "strategy": "reuse-maintained-tools",
+    "recommended": [
+      "php-lint",
+      "WordPressCS",
+      "PHPCompatibilityWP",
+      "PHPStan",
+      "WordPress Plugin Check"
+    ],
+    "runtime_dependency": false
+  },
+  "mad4b_custom_guards": [
+    "ability_surface_consistency",
+    "authority_negative_space",
+    "immutable_lineage",
+    "provider_profile_and_certification_binding",
+    "package_source_manifest_parity",
+    "release_root_trust",
+    "recovery_and_rollback_semantics"
+  ],
+  "addon_manifest_contract": "mad4b.wordpress-addon-manifest.v1",
+  "addon_manifest_required_fields": [
+    "addon_id",
+    "base_provider",
+    "compatible_versions",
+    "extension_points",
+    "capabilities",
+    "data_ownership",
+    "authority_impact",
+    "rollback",
+    "certification",
+    "tests",
+    "portability"
+  ],
+  "production_authorized": false
+}
