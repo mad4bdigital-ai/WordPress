@@ -85,6 +85,25 @@ class MAD4B_SCP_External_Handshake_Evidence {
 	public static function build_fingerprint() { return str_repeat( 'c', 64 ); }
 }
 
+class MAD4B_SCP_Context_Provider_Gateway {
+	public static function capabilities() { return array( 'contract' => 'mad4b.context-provider-gateway.v1', 'providers' => array( 'google_drive' => array() ) ); }
+	public static function read_context_asset() { return array(); }
+	public static function scan_source() { return array(); }
+	public static function create_asset() { return array(); }
+	public static function rollback_created_brand_asset() { return array(); }
+}
+
+class MAD4B_SCP_Brand_Context_Builder {
+	const ROLLBACK_CONTRACT = 'mad4b.rollback.google-drive-brand-context-create.v1';
+	const MAX_DRAFT_BYTES = 120000;
+	public static function gap_plan() { return array(); }
+	public static function append_draft() { return array(); }
+	public static function source_scan_plan() { return array(); }
+	public static function source_scan_apply() { return array(); }
+	public static function materialize_draft() { return array(); }
+	public static function rollback_materialized_draft() { return array(); }
+}
+
 require dirname( __DIR__ ) . '/includes/adapters/class-mad4b-scp-context-adapter.php';
 
 function mad4b_context_mount_assert( $condition, $message, $context = null ) {
