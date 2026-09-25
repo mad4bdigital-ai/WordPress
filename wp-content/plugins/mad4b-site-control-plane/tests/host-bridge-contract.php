@@ -141,6 +141,73 @@ $check(1===count(MAD4B_SCP_Authorization::$calls), 'write did not use Authorizat
 $check('mad4b/host-operation-apply'===MAD4B_SCP_Authorization::$calls[0]['ability'], 'wrong authorization ability');
 $check(str_repeat('a',64)===$write['authority']['policy_decision_sha256'], 'policy decision evidence missing');
 
+// Dead-letter repair requires a fresh plan/job/idempotency and fresh Authorization.
+$dead_id='12121212-3434-4567-8899-121212121212';
+$dead_dir=WP_CONTENT_DIR . '/mad4b-runner/bridge/dead-letter';
+wp_mkdir_p($dead_dir);
+$dead=array(
+	'contract'=>'mad4b.host-bridge-incident.v1',
+	'job_id'=>$dead_id,
+	'submission_sha256'=>str_repeat('c',64),
+	'reason_code'=>'execution_failed',
+	'blind_retry_allowed'=>false,
+	'payload_persisted'=>false,
+	'created_at'=>'2026-09-25T00:00:00+00:00',
+);
+file_put_contents($dead_dir . '/' . $dead_id . '.json', json_encode($dead));
+
+$repair=MAD4B_SCP_Host_Bridge::repair_plan(array(
+	'job_id'=>$dead_id,
+	'replacement_plan'=>$wplan,
+));
+$check(is_array($repair) && true===$repair['requeue_allowed'], 'dead-letter repair plan was not produced');
+$check(false===$repair['blind_retry_allowed'], 'repair plan enabled blind retry');
+$check(true===$repair['fresh_job_id_required'] && true===$repair['fresh_idempotency_required'], 'repair plan did not require fresh identity');
+
+$old_auth_calls=count(MAD4B_SCP_Authorization::$calls);
+$requeued=MAD4B_SCP_Host_Bridge::requeue(array(
+	'repair_plan'=>$repair,
+	'job_id'=>'34343434-5656-4789-8abc-343434343434',
+	'idempotency_key'=>'idem-requeue-fresh-1',
+	'approval_ref'=>'approval:repair',
+	'server_id'=>'mad4b-primary',
+	'_mad4b_approval_ticket_id'=>'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+));
+$check(is_array($requeued) && true===$requeued['queued'], 'governed requeue did not queue');
+$check(false===$requeued['blind_retry'], 'governed requeue was marked blind retry');
+$check($dead_id===$requeued['requeued_from_job_id'], 'requeue lost incident lineage');
+$check(count(MAD4B_SCP_Authorization::$calls)===$old_auth_calls+1, 'requeue did not perform fresh Authorization');
+
+$same_id=MAD4B_SCP_Host_Bridge::requeue(array(
+	'repair_plan'=>$repair,
+	'job_id'=>$dead_id,
+	'idempotency_key'=>'idem-requeue-invalid',
+	'approval_ref'=>'approval:repair',
+	'server_id'=>'mad4b-primary',
+));
+$check(is_wp_error($same_id) && 'mad4b_host_requeue_job_id_invalid'===$same_id->get_error_code(), 'requeue reused source job id');
+
+// Recovery-required incidents are not requeueable before reconciliation.
+$recovery_id='56565656-7878-4901-8abc-565656565656';
+$recovery_dir=WP_CONTENT_DIR . '/mad4b-runner/bridge/recovery-required';
+wp_mkdir_p($recovery_dir);
+file_put_contents($recovery_dir . '/' . $recovery_id . '.json', json_encode(array(
+	'contract'=>'mad4b.host-bridge-incident.v1',
+	'job_id'=>$recovery_id,
+	'reason_code'=>'recovery_required',
+	'blind_retry_allowed'=>false,
+	'payload_persisted'=>false,
+	'created_at'=>'2026-09-25T00:00:00+00:00',
+)));
+$recovery_plan=MAD4B_SCP_Host_Bridge::repair_plan(array('job_id'=>$recovery_id,'replacement_plan'=>$wplan));
+$check(false===$recovery_plan['requeue_allowed'] && true===$recovery_plan['reconciliation_required'], 'recovery-required incident became requeueable');
+$blocked=MAD4B_SCP_Host_Bridge::requeue(array(
+	'repair_plan'=>$recovery_plan,
+	'job_id'=>'78787878-9090-4123-8abc-787878787878',
+	'idempotency_key'=>'idem-recovery-blocked',
+));
+$check(is_wp_error($blocked) && 'mad4b_host_repair_plan_digest_invalid'===$blocked->get_error_code() || is_wp_error($blocked), 'recovery-required requeue was not denied');
+
 // Stale target plan must fail after root identity changes.
 file_put_contents($tmp . '/wp-config.php', "<?php // changed target\n");
 $stale = MAD4B_SCP_Host_Bridge::apply(array(
