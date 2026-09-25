@@ -69,6 +69,9 @@ jobs:
               '.github/mad4b-repository-governance-policy.json',
               '.github/mad4b-feature-boundary-grants.json',
               'tools/verify_feature_boundary.py',
+              '.github/workflows/mad4b-feature-boundary.yml',
+              '.github/workflows/mad4b-release-verdict.yml',
+              '.github/workflows/mad4b-repository-governance.yml',
           }
           if not required.issubset(immutable):
               raise SystemExit('feature-boundary immutable root incomplete')
