@@ -131,6 +131,9 @@ jobs:
           spec_allowed = [
               "specs/007-content-intelligence-workflow-platform/",
               ".github/workflows/feature-007-spec-ci.yml",
+              ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+              "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/SKILL.md",
+              "tools/mad4b_pre_staging_hybrid_audit.py",
           ]
           implementation_allowed = [
               ".github/workflows/feature-007-critical-kernel.yml",
