@@ -55,8 +55,16 @@ def validate_grants(grants):
     if grants.get("verifier_path") != "tools/verify_feature_boundary.py":
         fail("grant_verifier_path_mismatch")
     immutable=grants.get("immutable_global_paths")
-    if not isinstance(immutable,list) or GRANTS_PATH not in immutable or REPOSITORY_POLICY_PATH not in immutable or "tools/verify_feature_boundary.py" not in immutable:
-        fail("grant_immutable_root_incomplete")
+    required_immutable={
+        GRANTS_PATH,
+        REPOSITORY_POLICY_PATH,
+        "tools/verify_feature_boundary.py",
+        ".github/workflows/mad4b-feature-boundary.yml",
+        ".github/workflows/mad4b-release-verdict.yml",
+        ".github/workflows/mad4b-repository-governance.yml",
+    }
+    if not isinstance(immutable,list) or not required_immutable.issubset(set(immutable)):
+        fail("grant_immutable_root_incomplete", missing=sorted(required_immutable-set(immutable or [])))
     features=grants.get("features")
     if not isinstance(features,dict) or not features:
         fail("grant_feature_catalog_empty")
@@ -96,8 +104,15 @@ def self_test():
     assert allowed(".github/workflows/feature-007-ci.yml", sample["implementation_allowed_prefixes"], sample["implementation_allowed_exact_paths"])
     assert not allowed(".github/workflows/other.yml", sample["implementation_allowed_prefixes"], sample["implementation_allowed_exact_paths"])
     assert re.match(r"^(?:feat|fix|spec)/([0-9]{3})-", "feat/007-example").group(1) == "007"
-    immutable={GRANTS_PATH,REPOSITORY_POLICY_PATH,"tools/verify_feature_boundary.py"}
-    assert GRANTS_PATH in immutable and "runtime/a.php" not in immutable
+    immutable={
+        GRANTS_PATH,
+        REPOSITORY_POLICY_PATH,
+        "tools/verify_feature_boundary.py",
+        ".github/workflows/mad4b-feature-boundary.yml",
+        ".github/workflows/mad4b-release-verdict.yml",
+        ".github/workflows/mad4b-repository-governance.yml",
+    }
+    assert GRANTS_PATH in immutable and ".github/workflows/mad4b-feature-boundary.yml" in immutable and "runtime/a.php" not in immutable
     print("mad4b.feature-boundary-root-of-trust.self-test: PASS")
     return 0
 
