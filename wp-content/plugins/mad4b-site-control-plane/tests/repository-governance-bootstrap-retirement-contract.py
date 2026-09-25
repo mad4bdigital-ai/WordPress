@@ -30,6 +30,8 @@ one_time_governance_required = [
     'git show "$BASE_SHA:.github/mad4b-repository-governance-policy.json"',
     "verify_feature_boundary_bootstrap_transition.py",
     "policy_path=/tmp/mad4b-bootstrap-base-policy.json",
+    "governance_extra_args+=(--allow-bootstrap-hidden-bypass-evidence)",
+    "MAD4B_RULESET_ATTESTATION",
     "'post_merge_ruleset_apply_required': True",
 ]
 for needle in one_time_governance_required:
@@ -40,6 +42,8 @@ one_time_verdict_required = [
     "os.environ.get('PR_NUMBER', '').strip() == '66'",
     "verify_feature_boundary_bootstrap_transition.py",
     "mad4b-release-verdict-bootstrap-base-policy.json",
+    "governance_cmd.append('--allow-bootstrap-hidden-bypass-evidence')",
+    "MAD4B_RULESET_ATTESTATION",
     "'post_merge_ruleset_apply_required':True",
     "PR #66 on branch chore/bootstrap-feature-boundary-policy-20260925",
 ]
