@@ -25,8 +25,6 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
-		self::register( 'mad4b/context-pack-build', 'Build ContextPack', 'build_context_pack' );
-		self::register( 'mad4b/research-artifact-append', 'Append Research Artifact', 'append_research' );
 		self::register( 'mad4b/blueprint-build', 'Build Content Blueprint', 'build_blueprint' );
 		self::register( 'mad4b/blueprint-qa', 'Evaluate Blueprint QA', 'blueprint_qa' );
 		self::register( 'mad4b/draft-append', 'Append Article Draft', 'append_draft' );
@@ -257,7 +255,7 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 		$draft = self::active_artifact( $draft_id, $job_id, 'draft' );
 		if ( is_wp_error( $draft ) ) return $draft;
 		$definitions = array(
-			'fact_qa' => array( 'stage' => 'FACT_QA', 'contract' => 'mad4b.fact-ledger.v1', 'input' => 'fact_ledger' ),
+			'fact_ledger' => array( 'stage' => 'FACT_QA', 'contract' => 'mad4b.fact-ledger.v1', 'input' => 'fact_ledger' ),
 			'editorial_qa' => array( 'stage' => 'EDITORIAL_QA', 'contract' => 'mad4b.editorial-qa.v1', 'input' => 'editorial_qa' ),
 			'seo_qa' => array( 'stage' => 'SEO', 'contract' => 'mad4b.seo-qa.v1', 'input' => 'seo_qa' ),
 		);
