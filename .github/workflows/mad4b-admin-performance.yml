@@ -37,6 +37,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php
           php -l wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance-ui.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
 
@@ -56,6 +57,7 @@ jobs:
           mu_bootstrap = (root / 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php').read_text(encoding='utf-8')
           main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
           query_perf = (root / 'includes/class-mad4b-scp-admin-query-performance.php').read_text(encoding='utf-8')
+          query_perf_ui = (root / 'includes/class-mad4b-scp-admin-query-performance-ui.php').read_text(encoding='utf-8')
           marker = (root / 'MAD4B-RUNTIME-BUILD.txt').read_text(encoding='utf-8')
 
           for marker_text in [
@@ -70,6 +72,33 @@ jobs:
           ]:
               if marker_text not in query_perf:
                   raise SystemExit('Missing bounded admin-query performance invariant: ' + marker_text)
+          for marker_text in [
+              "add_action( 'admin_post_mad4b_apply_admin_query_indexes', array( __CLASS__, 'handle_explicit_apply' ) );",
+              "'automatic_apply' => false",
+              "'explicit_admin_action' => 'mad4b_apply_admin_query_indexes'",
+              "private static function is_forbidden_automatic_lifecycle_request()",
+              "array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' )",
+              "array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' )",
+              "'lifecycle_protected'",
+          ]:
+              if marker_text not in query_perf:
+                  raise SystemExit('Missing plugin lifecycle performance protection: ' + marker_text)
+          if "add_action( 'admin_init', array( __CLASS__, 'maybe_ensure_staging_indexes' )" in query_perf:
+              raise SystemExit('Performance DDL must never auto-run from admin_init')
+
+          for marker_text in [
+              "final class MAD4B_SCP_Admin_Query_Performance_UI",
+              "add_submenu_page(",
+              "'mad4b-control-plane-performance'",
+              "wp_nonce_field( 'mad4b_apply_admin_query_indexes', 'mad4b_admin_query_performance_nonce' )",
+              "value=\"mad4b_apply_admin_query_indexes\"",
+              "Performance indexes are never created during plugin upload, update, activation, or ordinary admin requests.",
+          ]:
+              if marker_text not in query_perf_ui:
+                  raise SystemExit('Missing isolated performance maintenance UI invariant: ' + marker_text)
+          if "class-mad4b-scp-admin-query-performance-ui.php" not in main:
+              raise SystemExit('Isolated performance maintenance UI is not loaded by the Control Plane')
+
           for forbidden in ["DROP INDEX", "DROP KEY", "DROP TABLE", "DELETE FROM", "UPDATE wp_"]:
               if forbidden in query_perf:
                   raise SystemExit('Admin-query performance hardening contains forbidden destructive SQL: ' + forbidden)
