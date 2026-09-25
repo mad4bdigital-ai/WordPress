@@ -14,13 +14,10 @@
         "wp-content/plugins/mad4b-site-control-plane/"
       ],
       "allowed_exact_paths": [
-        ".github/workflows/feature-007-critical-kernel.yml",
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
         ".github/workflows/feature-007-spec-ci.yml",
         ".github/workflows/mad4b-admin-performance.yml",
         ".github/workflows/mad4b-context-authority.yml",
-        ".github/workflows/mad4b-control-plane-package.yml",
-        ".github/workflows/mad4b-site-control-plane.yml",
         "plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md",
         "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/SKILL.md",
         "tools/mad4b_host_runner.py",
@@ -33,7 +30,13 @@
         "specs/006-agent-governed-reversible-control-plane/data-model.md"
       ],
       "repository_governance_mutation_allowed": false,
-      "metadata_cannot_widen_grant": true
+      "metadata_cannot_widen_grant": true,
+      "self_certifying_paths_forbidden": [
+        ".github/workflows/feature-007-critical-kernel.yml",
+        ".github/workflows/mad4b-control-plane-package.yml",
+        ".github/workflows/mad4b-site-control-plane.yml"
+      ],
+      "release_critical_workflows_must_be_baseline_owned": true
     }
   }
 }
