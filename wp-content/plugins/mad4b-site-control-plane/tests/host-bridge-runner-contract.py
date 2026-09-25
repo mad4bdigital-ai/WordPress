@@ -66,6 +66,7 @@ with tempfile.TemporaryDirectory() as td:
         "arguments": {},
         "submission_location": "wordpress_request",
         "execution_location": "host_runner",
+        "commit_location": "host_runner",
         "production_authorized": False,
         "created_at": "2026-09-25T00:00:00+00:00",
         "authorizing": False,
@@ -88,6 +89,7 @@ with tempfile.TemporaryDirectory() as td:
         },
         "submission_location": "wordpress_request",
         "execution_location": "host_runner",
+        "commit_location": "host_runner",
         "created_at": plan["created_at"],
         "production_authorized": False,
     }
@@ -106,6 +108,7 @@ with tempfile.TemporaryDirectory() as td:
     assert bridge_receipt["bridge_submission_sha256"] == submission["submission_sha256"]
     assert bridge_receipt["execution_location"] == "host_runner"
     assert bridge_receipt["submission_location"] == "wordpress_request"
+    assert bridge_receipt["commit_location"] == "host_runner"
     assert bridge_receipt["mutation_performed"] is False
     assert bridge_receipt["result"]["plugin_present"] is True
 
@@ -143,6 +146,7 @@ with tempfile.TemporaryDirectory() as td:
         },
         "submission_location": "wordpress_request",
         "execution_location": "host_runner",
+        "commit_location": "host_runner",
         "production_authorized": False,
         "created_at": "2026-09-25T00:00:30+00:00",
         "authorizing": False,
@@ -164,6 +168,7 @@ with tempfile.TemporaryDirectory() as td:
         },
         "submission_location": "wordpress_request",
         "execution_location": "host_runner",
+        "commit_location": "host_runner",
         "created_at": write_outer_plan["created_at"],
         "production_authorized": False,
     }
@@ -186,7 +191,52 @@ with tempfile.TemporaryDirectory() as td:
     assert write_receipt["actor_ref"] == "agent:bridge-ci"
     assert write_receipt["mutation_performed"] is True
     assert write_receipt["readback_verdict"] == "PASS"
+    assert write_receipt["submission_location"] == "wordpress_request"
+    assert write_receipt["execution_location"] == "host_runner"
+    assert write_receipt["commit_location"] == "host_runner"
     assert (Path(profile["runner_workspace"]) / "bridge-write.txt").read_bytes() == workspace_payload
+
+    # Commit/executor location is plan identity. A material location change
+    # changes the approved plan digest and is rejected until a new admitted
+    # executor/location policy and fresh authorization are produced.
+    location_drift_plan = dict(write_outer_plan)
+    original_plan_sha = location_drift_plan["plan_sha256"]
+    location_drift_plan["commit_location"] = "wordpress_request"
+    location_drift_plan.pop("plan_sha256", None)
+    location_drift_plan["plan_sha256"] = runner._bridge_digest(location_drift_plan)
+    assert location_drift_plan["plan_sha256"] != original_plan_sha
+    location_drift_id = str(uuid.uuid4())
+    location_drift = {
+        "contract": "mad4b.host-bridge-submission.v1",
+        "job_id": location_drift_id,
+        "idempotency_key": "bridge-ci-location-drift",
+        "plan": location_drift_plan,
+        "plan_sha256": location_drift_plan["plan_sha256"],
+        "approval_ref": "approval:bridge-ci-write",
+        "authority": {
+            "policy_decision_sha256": "a" * 64,
+            "agent_public_id": "agent:bridge-ci",
+            "approval_ticket_id": "ticket:bridge-ci",
+        },
+        "submission_location": "wordpress_request",
+        "execution_location": "host_runner",
+        "commit_location": "wordpress_request",
+        "created_at": location_drift_plan["created_at"],
+        "production_authorized": False,
+    }
+    location_drift["submission_sha256"] = runner._bridge_digest(location_drift)
+    (bridge / "queued" / f"{location_drift_id}.json").write_text(
+        json.dumps(location_drift, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    result = runner.consume_bridge_spool(profile_path, 10)
+    assert result["processed_count"] == 1, result
+    assert result["processed"][0]["state"] == "DEAD_LETTERED", result
+    location_incident = json.loads(
+        (bridge / "dead-letter" / f"{location_drift_id}.json").read_text(encoding="utf-8")
+    )
+    assert location_incident["blind_retry_allowed"] is False
+    assert not (Path(profile["runner_workspace"]) / "bridge-write.txt").read_bytes() == b""
 
     # Missing write approval/authority never reaches the operation and is dead-lettered.
     denied_payload = b"must-not-be-written\n"
@@ -219,6 +269,7 @@ with tempfile.TemporaryDirectory() as td:
         },
         "submission_location": "wordpress_request",
         "execution_location": "host_runner",
+        "commit_location": "host_runner",
         "created_at": denied_outer["created_at"],
         "production_authorized": False,
     }
