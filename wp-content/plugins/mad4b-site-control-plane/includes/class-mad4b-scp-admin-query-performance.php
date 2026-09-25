@@ -10,6 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Admin_Query_Performance {
 	const CONTRACT = 'mad4b.admin-query-performance.v1';
 	const OPTION = 'mad4b_scp_admin_query_performance_v1';
+	const JOB_OPTION = 'mad4b_scp_admin_query_performance_job_v1';
+	const CRON_HOOK = 'mad4b_scp_admin_query_performance_async';
 	const INDEX_VERSION = 1;
 
 	private static $booted = false;
@@ -19,6 +21,7 @@ final class MAD4B_SCP_Admin_Query_Performance {
 		self::$booted = true;
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_status_ability' ), 36 );
 		add_action( 'admin_post_mad4b_apply_admin_query_indexes', array( __CLASS__, 'handle_explicit_apply' ) );
+		add_action( self::CRON_HOOK, array( __CLASS__, 'run_scheduled_apply' ), 10, 1 );
 	}
 
 	public static function register_status_ability() {
@@ -70,6 +73,7 @@ final class MAD4B_SCP_Admin_Query_Performance {
 			'ready' => $ready,
 			'indexes' => $indexes,
 			'last_apply' => is_array( $stored ) ? $stored : array(),
+			'maintenance_job' => self::maintenance_job_status(),
 			'query_signatures' => array(
 				array(
 					'id' => 'attachment_meta_key_discovery',
@@ -96,6 +100,90 @@ final class MAD4B_SCP_Admin_Query_Performance {
 		$url = add_query_arg( array( 'page' => 'mad4b-control-plane', 'mad4b_performance_apply' => $state ), admin_url( 'admin.php' ) );
 		wp_safe_redirect( $url );
 		exit;
+	}
+
+	public static function maintenance_job_status() {
+		$job = get_option( self::JOB_OPTION, array() );
+		return is_array( $job ) ? $job : array();
+	}
+
+	public static function enqueue_explicit( array $expected_identity = array() ) {
+		if ( 'staging' !== self::environment() ) return new WP_Error( 'mad4b_admin_query_performance_staging_only', 'Performance-index maintenance is Staging-only.' );
+		$current = self::maintenance_job_status();
+		if ( is_array( $current ) && in_array( isset( $current['status'] ) ? (string) $current['status'] : '', array( 'pending', 'running' ), true ) ) {
+			return array( 'contract' => 'mad4b.admin-query-performance-job.v1', 'state' => 'already_queued', 'job' => $current, 'production_changed' => false );
+		}
+		$identity = self::current_build_identity();
+		if ( is_wp_error( $identity ) ) return $identity;
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $key ) {
+			if ( isset( $expected_identity[ $key ] ) && '' !== (string) $expected_identity[ $key ] && ! hash_equals( strtolower( (string) $identity[ $key ] ), strtolower( (string) $expected_identity[ $key ] ) ) ) {
+				return new WP_Error( 'mad4b_admin_query_performance_build_changed', 'Exact build identity changed before maintenance job admission.' );
+			}
+		}
+		$job = array(
+			'contract' => 'mad4b.admin-query-performance-job.v1',
+			'job_id' => strtolower( wp_generate_uuid4() ),
+			'status' => 'pending',
+			'expected_identity' => $identity,
+			'queued_at' => gmdate( 'c' ),
+			'started_at' => '',
+			'completed_at' => '',
+			'result' => array(),
+			'production_changed' => false,
+		);
+		if ( ! update_option( self::JOB_OPTION, $job, false ) ) {
+			$stored = self::maintenance_job_status();
+			if ( empty( $stored ) || ! hash_equals( (string) $job['job_id'], (string) ( isset( $stored['job_id'] ) ? $stored['job_id'] : '' ) ) ) return new WP_Error( 'mad4b_admin_query_performance_job_persist_failed', 'Unable to persist performance maintenance job.' );
+		}
+		if ( ! wp_next_scheduled( self::CRON_HOOK, array( $job['job_id'] ) ) ) wp_schedule_single_event( time() + 5, self::CRON_HOOK, array( $job['job_id'] ) );
+		return array( 'contract' => 'mad4b.admin-query-performance-job.v1', 'state' => 'queued', 'job' => $job, 'production_changed' => false );
+	}
+
+	public static function run_scheduled_apply( $job_id ) {
+		$job = self::maintenance_job_status();
+		if ( empty( $job ) || ! hash_equals( (string) ( isset( $job['job_id'] ) ? $job['job_id'] : '' ), (string) $job_id ) || 'pending' !== ( isset( $job['status'] ) ? (string) $job['status'] : '' ) ) return;
+		if ( 'staging' !== self::environment() ) {
+			$job['status'] = 'blocked';
+			$job['completed_at'] = gmdate( 'c' );
+			$job['result'] = array( 'state' => 'environment_changed' );
+			update_option( self::JOB_OPTION, $job, false );
+			return;
+		}
+		$identity = self::current_build_identity();
+		$expected = isset( $job['expected_identity'] ) && is_array( $job['expected_identity'] ) ? $job['expected_identity'] : array();
+		if ( is_wp_error( $identity ) || ! self::identity_matches( $identity, $expected ) ) {
+			$job['status'] = 'blocked';
+			$job['completed_at'] = gmdate( 'c' );
+			$job['result'] = array( 'state' => 'build_identity_changed' );
+			update_option( self::JOB_OPTION, $job, false );
+			return;
+		}
+		$job['status'] = 'running';
+		$job['started_at'] = gmdate( 'c' );
+		update_option( self::JOB_OPTION, $job, false );
+		$result = self::apply_indexes();
+		$job['status'] = is_array( $result ) && ! empty( $result['ready'] ) ? 'completed' : 'failed';
+		$job['completed_at'] = gmdate( 'c' );
+		$job['result'] = is_array( $result ) ? $result : array( 'state' => 'invalid_result' );
+		update_option( self::JOB_OPTION, $job, false );
+	}
+
+	private static function current_build_identity() {
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_admin_query_performance_provenance_unavailable', 'Build provenance is unavailable.' );
+		$p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( ! is_array( $p ) || empty( $p['manifest_valid'] ) || empty( $p['runtime_manifest_match'] ) || ! empty( $p['stale'] ) ) return new WP_Error( 'mad4b_admin_query_performance_provenance_not_ready', 'Current build provenance is not ready.' );
+		return array(
+			'source_commit_sha' => strtolower( (string) ( isset( $p['source_commit_sha'] ) ? $p['source_commit_sha'] : '' ) ),
+			'build_fingerprint' => strtolower( (string) ( isset( $p['build_fingerprint'] ) ? $p['build_fingerprint'] : '' ) ),
+			'package_manifest_digest' => strtolower( (string) ( isset( $p['package_manifest_digest'] ) ? $p['package_manifest_digest'] : '' ) ),
+		);
+	}
+
+	private static function identity_matches( array $current, array $expected ) {
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $key ) {
+			if ( empty( $current[ $key ] ) || empty( $expected[ $key ] ) || ! hash_equals( (string) $current[ $key ], (string) $expected[ $key ] ) ) return false;
+		}
+		return true;
 	}
 
 	public static function apply_explicit() {
