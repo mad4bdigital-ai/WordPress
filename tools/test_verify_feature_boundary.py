@@ -127,7 +127,11 @@ def run_case(changed, *, feature=None, grant_catalog=None, expect_error=None, br
         assert result["ready"] is True
         assert result["trusted_verifier_source"] == "base"
         assert result["pull_request_code_executed"] is False
-        assert result["grant_source"] == "base"
+        if result.get("mode") in {"specification", "implementation", "implementation_spec_maintenance"}:
+            assert result["grant_source"] == "base"
+        else:
+            assert "grant_source" not in result
+        return result
 
 run_case([
     "specs/007-content-intelligence-workflow-platform/feature.json",
