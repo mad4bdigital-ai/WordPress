@@ -128,44 +128,11 @@ jobs:
               text=True,
           ).splitlines()
 
-          spec_allowed = [
-              "specs/007-content-intelligence-workflow-platform/",
-              ".github/workflows/feature-007-spec-ci.yml",
-              ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-              "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/SKILL.md",
-              "plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md",
-              "tools/mad4b_pre_staging_hybrid_audit.py",
-          ]
-          implementation_allowed = [
-              ".github/workflows/feature-007-critical-kernel.yml",
-              ".github/workflows/feature-007-spec-ci.yml",
-              ".github/workflows/mad4b-admin-performance.yml",
-              ".github/workflows/mad4b-control-plane-package.yml",
-              ".github/workflows/mad4b-live-acceptance-evidence.yml",
-              ".github/workflows/mad4b-wpml-external-diagnostic.yml",
-              ".github/workflows/mad4b-oauth-resource-bridge.yml",
-              ".github/workflows/mad4b-provider-compatibility-engine.yml",
-              ".github/workflows/mad4b-owner-attestation-rerun.yml",
-              ".github/workflows/mad4b-release-verdict.yml",
-              ".github/workflows/mad4b-repository-governance.yml",
-              ".github/workflows/mad4b-site-control-plane.yml",
-              ".github/workflows/mad4b-context-authority.yml",
-              ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-              ".github/mad4b-repository-governance-policy.json",
-              "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/SKILL.md",
-              "specs/007-content-intelligence-workflow-platform/",
-              "tools/mad4b_recovery_plane.py",
-              "tools/mad4b_host_runner.py",
-              "tools/mad4b_host_runner_bootstrap.py",
-              "tools/mad4b_pre_staging_hybrid_audit.py",
-              "tools/verify_release_root_trust.py",
-              "tools/verify_repository_owner_attestation.py",
-              "wp-content/plugins/mad4b-site-control-plane/",
-          ]
-          cross_feature_dependencies = [
-              ".github/workflows/wpl-client-contract.yml",
-              "specs/006-agent-governed-reversible-control-plane/data-model.md",
-          ]
+          feature_dir = str(feature.get("feature_directory") or "").strip("/")
+          expected_feature_dir = "specs/007-content-intelligence-workflow-platform"
+          if feature_dir != expected_feature_dir:
+              raise SystemExit(f"FEATURE_DIRECTORY_POLICY_DRIFT:{feature_dir!r}")
+
           implementation_prefixes = ("feat/007-", "fix/007-")
           spec_maintenance_prefixes = ("spec/007-",)
           expected_branch_policy = {
@@ -175,42 +142,104 @@ jobs:
               "requires_exact_pr_base_ancestry": True,
               "mutable_metadata_cannot_widen_policy": True,
           }
-
-          # Mutable metadata is descriptive evidence only. It mirrors workflow-owned
-          # prefixes and therefore cannot nominate one stale long-lived implementation branch.
           if feature.get("implementation_branch_policy") != expected_branch_policy:
               raise SystemExit("IMPLEMENTATION_METADATA_BRANCH_POLICY_DRIFT")
-          if feature.get("implementation_allowed_paths") != implementation_allowed:
-              raise SystemExit("IMPLEMENTATION_METADATA_ALLOWLIST_DRIFT")
-          if feature.get("cross_feature_contract_dependencies") != cross_feature_dependencies:
+
+          boundary = feature.get("implementation_boundary_contract") or {}
+          expected_boundary = {
+              "contract": "mad4b.feature007-dynamic-boundary.v2",
+              "feature_directory": expected_feature_dir,
+              "runtime_root": "wp-content/plugins/mad4b-site-control-plane/",
+              "workflow_prefixes": ["feature-007-", "mad4b-"],
+              "tool_prefixes": ["mad4b_", "verify_"],
+              "skill_inventory_source": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+              "cross_feature_dependencies_are_exact": True,
+              "mutable_metadata_cannot_widen_policy": True,
+          }
+          if boundary != expected_boundary:
+              raise SystemExit("IMPLEMENTATION_DYNAMIC_BOUNDARY_POLICY_DRIFT")
+
+          cross_feature_dependencies = feature.get("cross_feature_contract_dependencies") or []
+          expected_cross_feature_dependencies = [
+              ".github/workflows/wpl-client-contract.yml",
+              "specs/006-agent-governed-reversible-control-plane/data-model.md",
+          ]
+          if cross_feature_dependencies != expected_cross_feature_dependencies:
               raise SystemExit("CROSS_FEATURE_METADATA_DEPENDENCY_DRIFT")
 
-          def permitted(path, entries):
-              return any(path == entry or (entry.endswith("/") and path.startswith(entry)) for entry in entries)
+          skill_manifest = json.load(open(boundary["skill_inventory_source"], encoding="utf-8"))
+          if skill_manifest.get("contract") != "mad4b.skill-seed-manifest.v1":
+              raise SystemExit("SKILL_INVENTORY_CONTRACT_INVALID")
+          skill_names = {
+              str(row.get("name") or "")
+              for row in skill_manifest.get("skills", [])
+              if isinstance(row, dict) and row.get("name")
+          }
+
+          def is_feature_owned(path):
+              if path.startswith(expected_feature_dir + "/"):
+                  return True
+              if path.startswith(boundary["runtime_root"]):
+                  return True
+              if path == "wp-content/plugins/mcp-adapter.zip":
+                  return True
+              if path == ".github/mad4b-repository-governance-policy.json":
+                  return True
+              if path.startswith(".github/workflows/"):
+                  name = path.rsplit("/", 1)[-1]
+                  return any(name.startswith(prefix) for prefix in boundary["workflow_prefixes"])
+              if path.startswith("tools/"):
+                  name = path.rsplit("/", 1)[-1]
+                  return (
+                      any(name.startswith(prefix) for prefix in boundary["tool_prefixes"])
+                      or name == "capture-functional-gap-contract-evidence.py"
+                  )
+              for skill_name in skill_names:
+                  if path.startswith(f"plugins/mad4b-wordpress/skills/{skill_name}/"):
+                      return True
+                  if path.startswith(f"wp-content/plugins/mad4b-site-control-plane/skill-seeds/{skill_name}/"):
+                      return True
+              return False
+
+          def is_spec_maintenance_owned(path):
+              if path.startswith(expected_feature_dir + "/"):
+                  return True
+              if path in {
+                  ".github/workflows/feature-007-spec-ci.yml",
+                  ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+                  "tools/mad4b_pre_staging_hybrid_audit.py",
+              }:
+                  return True
+              for skill_name in skill_names:
+                  if path.startswith(f"plugins/mad4b-wordpress/skills/{skill_name}/"):
+                      return True
+                  if path.startswith(f"wp-content/plugins/mad4b-site-control-plane/skill-seeds/{skill_name}/"):
+                      return True
+              return False
+
+          def is_exact_cross_feature_dependency(path):
+              return path in cross_feature_dependencies
 
           if status == "specification":
-              forbidden = [p for p in changed if not permitted(p, spec_allowed)]
-              boundary_mode = "specification"
+              forbidden = [p for p in changed if not is_spec_maintenance_owned(p)]
+              boundary_mode = "specification_dynamic"
           elif status == "implementation":
               if any(head_branch.startswith(prefix) for prefix in implementation_prefixes):
-                  permitted_entries = implementation_allowed + cross_feature_dependencies
-                  forbidden = [p for p in changed if not permitted(p, permitted_entries)]
+                  forbidden = [
+                      p for p in changed
+                      if not is_feature_owned(p) and not is_exact_cross_feature_dependency(p)
+                  ]
                   touched_cross_feature = [
                       p for p in changed
-                      if p.startswith("specs/")
-                      and not p.startswith("specs/007-content-intelligence-workflow-platform/")
+                      if p.startswith("specs/") and not p.startswith(expected_feature_dir + "/")
                   ]
-                  undeclared = [p for p in touched_cross_feature if p not in cross_feature_dependencies]
+                  undeclared = [p for p in touched_cross_feature if not is_exact_cross_feature_dependency(p)]
                   if undeclared:
                       raise SystemExit("UNDECLARED_CROSS_FEATURE_CHANGE: " + ",".join(sorted(undeclared)))
-                  boundary_mode = "implementation"
+                  boundary_mode = "implementation_dynamic"
               elif any(head_branch.startswith(prefix) for prefix in spec_maintenance_prefixes):
-                  # Feature implementation has started, but specification maintenance must
-                  # remain possible on isolated spec branches. This path is intentionally
-                  # narrower than the implementation branch: only the immutable workflow-
-                  # owned spec allowlist is accepted, so feature.json cannot self-widen it.
-                  forbidden = [p for p in changed if not permitted(p, spec_allowed)]
-                  boundary_mode = "implementation_spec_maintenance"
+                  forbidden = [p for p in changed if not is_spec_maintenance_owned(p)]
+                  boundary_mode = "implementation_spec_maintenance_dynamic"
               else:
                   raise SystemExit(
                       "IMPLEMENTATION_BRANCH_MISMATCH expected_prefixes="
