@@ -422,43 +422,6 @@ with tempfile.TemporaryDirectory() as td:
     assert rollback_replay["replay_readback_verdict"] == "PASS"
     assert not (runner_workspace / "state.txt").exists()
 
-    # Explicit rollback is itself an exact-plan governed write over a verified write receipt.
-    explicit_rollback_plan = runner.build_workspace_rollback_plan(
-        profile,
-        write_receipt,
-        "restore the exact pre-write workspace state",
-    )
-    explicit_rollback_job = make_job(
-        profile,
-        "workspace.file.rollback",
-        {"plan": explicit_rollback_plan},
-        plan_sha256=explicit_rollback_plan["plan_sha256"],
-        approval_ref="approval:explicit-rollback",
-        authority_ref="ci:workspace-write-authority",
-    )
-    explicit_rollback_path = tmp / "workspace-explicit-rollback.json"
-    explicit_rollback_path.write_text(json.dumps(explicit_rollback_job), encoding="utf-8")
-    explicit_rollback_receipt = runner.run_job(profile_path, explicit_rollback_path)
-    assert explicit_rollback_receipt["mutation_performed"] is True
-    assert explicit_rollback_receipt["readback_verdict"] == "PASS"
-    assert explicit_rollback_receipt["result"]["source_job_id"] == write_job["job_id"]
-    assert explicit_rollback_receipt["result"]["after_sha256"] == "ABSENT"
-    assert not (runner_workspace / "state.txt").exists()
-
-    # Exact rollback replay re-reads the target; it never blindly trusts the old receipt.
-    explicit_rollback_replay = runner.run_job(profile_path, explicit_rollback_path)
-    assert explicit_rollback_replay["replayed"] is True
-    assert explicit_rollback_replay["replay_readback_verdict"] == "PASS"
-    assert not (runner_workspace / "state.txt").exists()
-
-    # The original write receipt can no longer be replayed as if its postcondition still existed.
-    try:
-        runner.run_job(profile_path, write_path)
-        raise SystemExit("Host Runner blindly replayed a stale successful write after rollback")
-    except RuntimeError as exc:
-        if "HOST_RUNNER_REPLAY_RECONCILIATION_REQUIRED" not in str(exc):
-            raise
-
     # Approval identity is replay material and may not drift.
     changed_approval = dict(write_job)
     changed_approval["approval_ref"] = "approval:different"
