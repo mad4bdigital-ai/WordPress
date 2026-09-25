@@ -97,9 +97,10 @@ def verify(template: dict, policy: dict, readback: dict | None = None) -> dict:
     if policy.get("require_no_bypass_actors") is not True:
         raise ValueError("repository governance policy must forbid bypass actors")
     expected_attestation = {
-        "scope": "environment",
-        "environment_name": "repository-governance",
-        "variable_name": "MAD4B_RULESET_ATTESTATION",
+        "scope": "owner_issue_comment",
+        "issue_title": "MAD4B Repository Governance Attestations",
+        "authorized_author_login": "mad4bdigital-ai",
+        "comment_marker": "MAD4B_RULESET_ATTESTATION",
         "contract": "mad4b.repository-ruleset-attestation.v1",
         "require_zero_bypass_actors": True,
         "bind_ruleset_updated_at": True,
@@ -221,9 +222,9 @@ def verify(template: dict, policy: dict, readback: dict | None = None) -> dict:
         ],
         "rule_types": sorted(expected_types),
         "readback_verified": readback_verified,
-        "ruleset_attestation_scope": "environment",
-        "ruleset_attestation_environment": "repository-governance",
-        "ruleset_attestation_variable": "MAD4B_RULESET_ATTESTATION",
+        "ruleset_attestation_scope": "owner_issue_comment",
+        "ruleset_attestation_issue_title": "MAD4B Repository Governance Attestations",
+        "ruleset_attestation_author_login": "mad4bdigital-ai",
         "mutation_performed": False,
     }
 
