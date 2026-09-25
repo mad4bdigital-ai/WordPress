@@ -44,6 +44,12 @@ def build(readback: dict, policy: dict, template: dict, repository: str, policy_
     attestation_policy = policy.get("ruleset_attestation") or {}
     if attestation_policy.get("contract") != CONTRACT:
         raise ValueError("ruleset attestation policy contract mismatch")
+    if attestation_policy.get("scope") != "environment":
+        raise ValueError("ruleset attestation policy scope must be environment")
+    if attestation_policy.get("environment_name") != "repository-governance":
+        raise ValueError("ruleset attestation environment name mismatch")
+    if attestation_policy.get("variable_name") != "MAD4B_RULESET_ATTESTATION":
+        raise ValueError("ruleset attestation variable name mismatch")
     if attestation_policy.get("require_zero_bypass_actors") is not True:
         raise ValueError("ruleset attestation policy must require zero bypass actors")
     if attestation_policy.get("bind_ruleset_updated_at") is not True:
@@ -71,6 +77,8 @@ def build(readback: dict, policy: dict, template: dict, repository: str, policy_
     return {
         "contract": CONTRACT,
         "repository": repository,
+        "attestation_scope": "environment",
+        "attestation_environment": "repository-governance",
         "ruleset_id": ruleset_id,
         "ruleset_name": str(readback.get("name") or ""),
         "ruleset_source_type": "Repository",
