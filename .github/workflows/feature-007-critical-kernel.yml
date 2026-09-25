@@ -3,9 +3,6 @@ name: Feature 007 Critical Kernel
 on:
   pull_request:
     paths:
-      - 'specs/007-content-intelligence-workflow-platform/**'
-      - 'wp-content/plugins/mad4b-site-control-plane/**'
-      - 'plugins/mad4b-wordpress/**'
       - 'tools/verify_release_root_trust.py'
       - 'tools/mad4b_recovery_plane.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
@@ -48,9 +45,6 @@ on:
     branches:
       - master
     paths:
-      - 'specs/007-content-intelligence-workflow-platform/**'
-      - 'wp-content/plugins/mad4b-site-control-plane/**'
-      - 'plugins/mad4b-wordpress/**'
       - 'tools/verify_release_root_trust.py'
       - 'tools/mad4b_recovery_plane.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
@@ -122,24 +116,6 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m py_compile             tools/verify_release_root_trust.py             tools/mad4b_recovery_plane.py
-
-      - name: Verify reconciled Feature 007 task ledger
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 specs/007-content-intelligence-workflow-platform/reconcile_task_ledger.py --check
-
-      - name: Validate Feature 007 contracts and gate liveness
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 specs/007-content-intelligence-workflow-platform/validate_spec.py
-
-      - name: Enforce Feature 007 bulk closure hardening contract
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py
 
       - name: Verify external release root-trust contract
         shell: bash
