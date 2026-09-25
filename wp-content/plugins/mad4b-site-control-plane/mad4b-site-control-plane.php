@@ -145,6 +145,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-authority.p
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-candidate-binding.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-planning-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-rest-compatibility.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-closure-matrix.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-write-runtime-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-truth.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-certification.php';
