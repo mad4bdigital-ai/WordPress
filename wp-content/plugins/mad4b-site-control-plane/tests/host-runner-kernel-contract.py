@@ -481,6 +481,52 @@ with tempfile.TemporaryDirectory() as td:
     assert outside_write.read_bytes() == b"outside-original\n"
     (runner_workspace / "swap.txt").unlink()
 
+    # Post-mutation readback failure is not success: it rolls back exact prior state.
+    readback_target = runner_workspace / "readback.txt"
+    readback_target.write_bytes(b"before-readback-failure\n")
+    readback_new = b"after-readback-failure\n"
+    readback_plan = runner.build_workspace_replace_plan(
+        profile,
+        "readback.txt",
+        readback_new,
+        "postcondition readback failure fixture",
+    )
+    readback_job = make_job(
+        profile,
+        "workspace.file.replace",
+        {
+            "plan": readback_plan,
+            "new_content_b64": __import__("base64").b64encode(readback_new).decode(),
+        },
+        plan_sha256=readback_plan["plan_sha256"],
+        approval_ref="approval:readback-failure",
+        authority_ref="ci:workspace-write-authority",
+    )
+    readback_job_path = tmp / "readback-failure-write.json"
+    readback_job_path.write_text(json.dumps(readback_job), encoding="utf-8")
+    original_atomic_bytes = runner.atomic_bytes_write
+    def corrupt_only_authoritative_write(path, raw):
+        if path == readback_target and raw == readback_new:
+            return original_atomic_bytes(path, b"corrupt-postcondition\n")
+        return original_atomic_bytes(path, raw)
+    runner.atomic_bytes_write = corrupt_only_authoritative_write
+    try:
+        runner.run_job(profile_path, readback_job_path)
+        raise SystemExit("Host Runner accepted failed postcondition readback")
+    except RuntimeError as exc:
+        if "postcondition readback failed" not in str(exc):
+            raise
+    finally:
+        runner.atomic_bytes_write = original_atomic_bytes
+    assert readback_target.read_bytes() == b"before-readback-failure\n"
+    readback_journal = json.loads(
+        (wp / "wp-content" / "mad4b-runner" / "journals" / f"{readback_job['job_id']}.json")
+        .read_text(encoding="utf-8")
+    )
+    assert readback_journal["state"] == "ROLLED_BACK_AFTER_FAILURE"
+    assert readback_journal["rollback_verified"] is True
+    assert readback_journal["blind_retry_allowed"] is False
+
     # Receipt persistence failure after a write forces verified rollback.
     rollback_target = runner_workspace / "rollback.txt"
     rollback_target.write_bytes(b"before-rollback\n")
@@ -576,5 +622,22 @@ with tempfile.TemporaryDirectory() as td:
     assert uncertain_journal["rollback_verified"] is False
     assert uncertain_journal["blind_retry_allowed"] is False
     assert uncertain_target.read_bytes() == uncertain_new
+
+    # Reconciliation is read-only and classifies durable, rolled-back and uncertain outcomes.
+    reconciliation = runner.reconcile(profile_path)
+    assert reconciliation["mutation_performed"] is False
+    assert reconciliation["blind_retry_allowed"] is False
+    by_job = {row["job_id"]: row for row in reconciliation["entries"]}
+    assert by_job[write_job["job_id"]]["reconciliation_status"] == "DURABLE_RECEIPT_PRESENT"
+    assert by_job[readback_job["job_id"]]["reconciliation_status"] == "ROLLED_BACK_OBSERVED_NO_RECEIPT"
+    assert by_job[rollback_job["job_id"]]["reconciliation_status"] == "ROLLED_BACK_OBSERVED_NO_RECEIPT"
+    assert by_job[uncertain_job["job_id"]]["reconciliation_status"] == "RUNTIME_EFFECT_OBSERVED_NO_RECEIPT"
+    assert by_job[uncertain_job["job_id"]]["reconciliation_required"] is True
+    assert by_job[uncertain_job["job_id"]]["blind_retry_allowed"] is False
+    assert reconciliation["reconciliation_required_count"] >= 1
+
+    doctor_after_faults = runner.doctor(profile_path)
+    assert doctor_after_faults["reconciliation_required_count"] >= 1
+    assert doctor_after_faults["mutation_performed"] is False
 
 print("mad4b.host-runner.bounded-kernel.v2: PASS")
