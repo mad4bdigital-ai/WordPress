@@ -23,10 +23,13 @@ final class MAD4B_SCP_Artifacts {
 
 	public static function artifact_types() {
 		return array(
-			'context_pack', 'keyword_research', 'serp_research', 'competitor_set',
-			'competitor_analysis', 'information_gain', 'blueprint', 'draft',
-			'fact_qa', 'editorial_qa', 'seo_qa', 'media_plan', 'publication_candidate',
-			'publication_verification',
+			'context_pack', 'writer_profile_snapshot',
+			'keyword_research', 'serp_research', 'competitor_set', 'scraped_page',
+			'topic_coverage_matrix', 'question_coverage_matrix', 'entity_coverage_matrix',
+			'evidence_coverage_matrix', 'ux_coverage_matrix', 'competitor_analysis',
+			'information_gain', 'blueprint', 'section_plan', 'draft', 'fact_ledger',
+			'fact_qa', 'editorial_qa', 'seo_qa', 'final_qa', 'media_plan',
+			'publish_manifest', 'publication_candidate', 'publication_verification',
 		);
 	}
 
