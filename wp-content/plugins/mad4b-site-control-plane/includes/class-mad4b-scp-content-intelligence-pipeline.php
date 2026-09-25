@@ -146,6 +146,8 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 	public static function build_blueprint( $input ) {
 		$job_id = self::job_id( $input );
 		if ( is_wp_error( $job_id ) ) return $job_id;
+		$writer = self::job_writer_profile( $job_id );
+		if ( is_wp_error( $writer ) ) return $writer;
 		$context_id = self::artifact_id( $input, 'context_artifact_id' );
 		if ( is_wp_error( $context_id ) ) return $context_id;
 		$context = self::active_artifact( $context_id, $job_id, 'context_pack' );
