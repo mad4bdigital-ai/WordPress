@@ -25,6 +25,10 @@ $healthy = MAD4B_SCP_Operator_Doctor::classify_snapshot( array(
 	'overdue_outbox_count' => 0,
 	'stale_inbox_count' => 0,
 	'dead_lettered_outbox_count' => 0,
+	'orphan_job_count' => 0,
+	'host_runner_uncertain_count' => 0,
+	'host_runner_recovery_required_count' => 0,
+	'host_runner_dead_lettered_count' => 0,
 ) );
 $check( true === $healthy['healthy'], 'empty snapshot was not healthy' );
 $check( 0 === $healthy['finding_count'], 'empty snapshot produced findings' );
@@ -41,13 +45,27 @@ $degraded = MAD4B_SCP_Operator_Doctor::classify_snapshot( array(
 	'overdue_outbox_count' => 4,
 	'stale_inbox_count' => 1,
 	'dead_lettered_outbox_count' => 5,
+	'orphan_job_count' => 2,
+	'host_runner_uncertain_count' => 1,
+	'host_runner_recovery_required_count' => 1,
+	'host_runner_dead_lettered_count' => 2,
 ) );
 $check( false === $degraded['healthy'], 'degraded snapshot was reported healthy' );
-$check( 5 === $degraded['finding_count'], 'degraded snapshot finding count mismatch' );
+$check( 9 === $degraded['finding_count'], 'degraded snapshot finding count mismatch' );
 $check( 'high' === $degraded['findings'][0]['severity'], 'findings were not severity ordered' );
 
 $ids = array_column( $degraded['findings'], 'finding_id' );
-foreach ( array( 'expired-active-leases', 'stuck-content-jobs', 'overdue-outbox', 'stale-inbox', 'dead-letter-growth' ) as $id ) {
+foreach ( array(
+	'expired-active-leases',
+	'stuck-content-jobs',
+	'overdue-outbox',
+	'stale-inbox',
+	'dead-letter-growth',
+	'orphan-content-jobs',
+	'host-runner-uncertain-mutations',
+	'host-runner-recovery-required',
+	'host-runner-dead-letter',
+) as $id ) {
 	$check( in_array( $id, $ids, true ), 'missing Doctor finding: ' . $id );
 }
 foreach ( $degraded['findings'] as $finding ) {
@@ -73,8 +91,15 @@ foreach ( array(
 	"'destructive' => false",
 	"'idempotent' => true",
 	"'replay_available' => false",
-	"'site_uuid_via_content_job_join'",
+	"'site_uuid_via_content_job_join_and_fixed_host_runner_evidence_root'",
 	"o.status='dead_lettered'",
+	"content_job_events",
+	"MUTATED_BUT_EVIDENCE_UNCERTAIN",
+	"RECOVERY_REQUIRED",
+	"DEAD_LETTERED",
+	"mad4b-runner",
+	"journals",
+	"blind_retry_allowed",
 ) as $marker ) {
 	$check( false !== strpos( $source, $marker ), 'Doctor contract marker missing: ' . $marker );
 }
