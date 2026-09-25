@@ -38,6 +38,7 @@ IMMUTABLE_FEATURE_PATHS = {
     ".specify/feature.json",
     ".specify/memory/constitution.md",
     REPOSITORY_POLICY_PATH,
+    ".github/mad4b-master-ruleset-template.json",
     ".github/workflows/mad4b-repository-governance.yml",
     ".github/workflows/mad4b-release-verdict.yml",
     ".github/workflows/mad4b-owner-attestation-rerun.yml",
@@ -45,6 +46,8 @@ IMMUTABLE_FEATURE_PATHS = {
     "tools/verify_repository_governance.py",
     "tools/verify_repository_owner_attestation.py",
     "tools/verify_feature_boundary.py",
+    "tools/verify_feature_boundary_bootstrap_transition.py",
+    "tools/Apply-Mad4bMasterRuleset.ps1",
     GRANT_CATALOG_PATH,
     OBSOLETE_SELF_POLICY,
 }
