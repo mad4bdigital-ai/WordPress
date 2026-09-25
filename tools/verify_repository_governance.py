@@ -493,10 +493,6 @@ def main() -> int:
         )
     else:
         if ruleset_attestation is None:
-            config = policy.get("ruleset_attestation") or {}
-            variable_name = str(config.get("variable_name") or "")
-            if variable_name != "MAD4B_RULESET_ATTESTATION":
-                raise SystemExit("repository ruleset attestation variable name drifted")
             selected_owner_attestation = load_owner_ruleset_attestation(
                 args.repository,
                 governed_ruleset,
@@ -512,9 +508,7 @@ def main() -> int:
             )
             is expected_unattributed_approval
         )
-        response_only_approval_evidence_source = (
-            "repository_variable:MAD4B_RULESET_ATTESTATION"
-        )
+        response_only_approval_evidence_source = "owner_issue_comment"
 
     pull_ready = (
         int(pull_params.get("required_approving_review_count", -1))
