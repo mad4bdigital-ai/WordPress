@@ -24,6 +24,7 @@ function update_option( $k, $v, $autoload = null ) { $GLOBALS['option'] = $v; re
 function is_admin() { return false; }
 function get_num_queries() { return 37; }
 $_SERVER['REQUEST_TIME_FLOAT'] = microtime(true) - 0.125;
+$_GET['mad4b_frontend_probe'] = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 
 final class MAD4B_SCP_Live_Acceptance_Observer {
     const TELEMETRY_OPTION = 'mad4b_scp_live_acceptance_observation_v1';
@@ -136,6 +137,8 @@ $check(37 === $perf['db_queries'], 'frontend DB query count captured');
 $check($perf['peak_memory_bytes'] > 0, 'frontend peak memory captured');
 $check($perf['server_elapsed_ms'] >= 100, 'frontend server elapsed captured');
 $check(isset($perf['db_profile']) && !empty($perf['db_profile']['available']), 'DB performance profile available');
+$check(hash('sha256', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee') === $perf['frontend_probe_hash'], 'frontend probe hash must correlate the exact browser job');
+$check(false === strpos(json_encode($perf), 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'), 'raw frontend probe token must never persist in telemetry');
 $check(4 === $perf['db_profile']['query_rows_observed'], 'DB performance profile query rows');
 $check(1 === $perf['db_profile']['duplicate_query_count'], 'duplicate query count derived');
 $check(1 === $perf['db_profile']['duplicate_group_count'], 'duplicate query group derived');
