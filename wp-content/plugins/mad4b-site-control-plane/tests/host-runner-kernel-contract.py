@@ -711,7 +711,10 @@ with tempfile.TemporaryDirectory() as td:
     assert reconciliation["mutation_performed"] is False
     assert reconciliation["blind_retry_allowed"] is False
     by_job = {row["job_id"]: row for row in reconciliation["entries"]}
-    assert by_job[write_job["job_id"]]["reconciliation_status"] == "DURABLE_RECEIPT_PRESENT"
+    assert by_job[write_job["job_id"]]["reconciliation_status"] == "SUPERSEDED_BY_VERIFIED_ROLLBACK"
+    assert by_job[write_job["job_id"]]["superseded_by_verified_rollback_job_id"] == explicit_rollback_job["job_id"]
+    assert by_job[write_job["job_id"]]["reconciliation_required"] is False
+    assert by_job[explicit_rollback_job["job_id"]]["reconciliation_status"] == "DURABLE_RECEIPT_PRESENT"
     assert by_job[readback_job["job_id"]]["reconciliation_status"] == "ROLLED_BACK_OBSERVED_NO_RECEIPT"
     assert by_job[rollback_job["job_id"]]["reconciliation_status"] == "ROLLED_BACK_OBSERVED_NO_RECEIPT"
     assert by_job[uncertain_job["job_id"]]["reconciliation_status"] == "RUNTIME_EFFECT_OBSERVED_NO_RECEIPT"
