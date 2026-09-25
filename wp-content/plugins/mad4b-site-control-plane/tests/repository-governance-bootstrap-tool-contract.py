@@ -374,10 +374,26 @@ aggregate_verify_pos = script.index(
     '& $PythonCommand "tools/verify_repository_governance.py"',
     attestation_build_pos,
 )
+environment_ensure_pos = script.index('Write-Host "=== ENSURE GOVERNANCE ENVIRONMENT ==="')
 variable_publish_pos = script.index('Write-Host "=== UPSERT ENVIRONMENT RULESET ATTESTATION VARIABLE ==="')
-if not (attestation_build_pos < aggregate_verify_pos < variable_publish_pos):
+variable_endpoint_pos = script.index(
+    '$variableEndpoint = "repos/$Repository/environments/$environmentName/variables/$variableName"',
+    variable_publish_pos,
+)
+variable_readback_pos = script.index(
+    'Write-Host "ruleset_attestation_readback=verified"',
+    variable_endpoint_pos,
+)
+if not (
+    attestation_build_pos
+    < aggregate_verify_pos
+    < environment_ensure_pos
+    < variable_publish_pos
+    < variable_endpoint_pos
+    < variable_readback_pos
+):
     raise SystemExit(
-        "ruleset attestation must be built and aggregate-verified before repository-variable publish"
+        "ruleset attestation must be built, aggregate-verified, environment-scoped, published, and exactly read back in order"
     )
 
-print("ruleset_attestation_publish_order=build+verify+publish")
+print("ruleset_attestation_publish_order=build+verify+environment+publish+readback")
