@@ -46,6 +46,7 @@ final class MAD4B_SCP_Capability_Traits {
 					'required_traits' => array( 'type' => 'object', 'additionalProperties' => true ),
 					'release_ring' => array( 'type' => 'string', 'enum' => array( 'shadow', 'canary', 'active' ) ),
 					'require_certified' => array( 'type' => 'boolean' ),
+					'preferred_provider' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64 ),
 				),
 				'required' => array( 'capability_id' ),
 				'additionalProperties' => false,
@@ -254,6 +255,7 @@ final class MAD4B_SCP_Capability_Traits {
 		$required = isset( $input['required_traits'] ) && is_array( $input['required_traits'] ) ? $input['required_traits'] : array();
 		$release_ring = isset( $input['release_ring'] ) ? sanitize_key( (string) $input['release_ring'] ) : '';
 		$require_certified = ! empty( $input['require_certified'] );
+		$preferred_provider = isset( $input['preferred_provider'] ) ? sanitize_key( (string) $input['preferred_provider'] ) : '';
 		if ( '' === trim( $capability_id ) ) {
 			return array(
 				'contract' => self::RESOLUTION_CONTRACT,
@@ -298,16 +300,36 @@ final class MAD4B_SCP_Capability_Traits {
 			);
 			if ( empty( $violations ) ) $eligible[] = $row; else $rejected[] = $row;
 		}
+		$selected_provider = 1 === count( $eligible ) ? (string) $eligible[0]['provider_id'] : '';
+		$raw_ambiguous = count( $eligible ) > 1;
+		$preference_applied = false;
+		$preference_reason = '';
+		if ( $raw_ambiguous && '' !== $preferred_provider ) {
+			$matches = array_values( array_filter( $eligible, static function( $row ) use ( $preferred_provider ) {
+				return isset( $row['provider_id'] ) && hash_equals( $preferred_provider, (string) $row['provider_id'] );
+			} ) );
+			if ( 1 === count( $matches ) ) {
+				$selected_provider = $preferred_provider;
+				$preference_applied = true;
+			} else {
+				$preference_reason = 'preferred_provider_not_eligible';
+			}
+		}
 		$resolution = array(
 			'contract' => self::RESOLUTION_CONTRACT,
 			'capability_id' => $capability_id,
 			'required_traits' => $required,
 			'release_ring' => $release_ring,
 			'require_certified' => $require_certified,
+			'preferred_provider' => $preferred_provider,
 			'eligible' => $eligible,
 			'rejected' => $rejected,
-			'selected_provider' => 1 === count( $eligible ) ? (string) $eligible[0]['provider_id'] : '',
-			'ambiguous' => count( $eligible ) > 1,
+			'selected_provider' => $selected_provider,
+			'ambiguous' => $raw_ambiguous && '' === $selected_provider,
+			'raw_ambiguous' => $raw_ambiguous,
+			'preference_applied' => $preference_applied,
+			'preference_reason' => $preference_reason,
+			'implicit_tie_breaking' => false,
 			'non_authorizing' => true,
 			'mutation_performed' => false,
 		);
