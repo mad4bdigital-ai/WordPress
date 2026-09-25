@@ -948,6 +948,8 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		if ( empty( $scan['complete'] ) ) return new WP_Error( 'mad4b_brand_materialization_reconcile_scan_incomplete', 'Brand materialization reconciliation requires a complete provider scan.', array( 'truncation_reasons' => isset( $scan['truncation_reasons'] ) ? $scan['truncation_reasons'] : array() ) );
 
 		$candidates = array();
+		$identity_candidates = array();
+		$identity_drift = array();
 		$expected_properties = array(
 			'mad4b_kind' => 'brand_context',
 			'mad4b_artifact' => (string) $identity['artifact_id'],
@@ -963,15 +965,49 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				if ( ! isset( $properties[ $key ] ) || ! hash_equals( (string) $value, (string) $properties[ $key ] ) ) { $identity_match = false; break; }
 			}
 			if ( ! $identity_match ) continue;
-			if ( ! isset( $asset['title'] ) || ! hash_equals( (string) $identity['name'], (string) $asset['title'] ) ) continue;
-			if ( empty( $asset['parent_folder_id'] ) || ! hash_equals( (string) $identity['target_folder_id'], (string) $asset['parent_folder_id'] ) ) continue;
-			if ( empty( $asset['content_complete'] ) ) continue;
-			if ( empty( $asset['content_hash'] ) || ! hash_equals( (string) $identity['draft_content_sha256'], strtolower( (string) $asset['content_hash'] ) ) ) continue;
+			$identity_candidates[] = $asset;
+			$drift = array();
+			if ( ! isset( $asset['title'] ) || ! hash_equals( (string) $identity['name'], (string) $asset['title'] ) ) $drift[] = 'name';
+			if ( empty( $asset['parent_folder_id'] ) || ! hash_equals( (string) $identity['target_folder_id'], (string) $asset['parent_folder_id'] ) ) $drift[] = 'parent_folder';
+			if ( empty( $asset['content_complete'] ) ) $drift[] = 'content_incomplete';
+			if ( empty( $asset['content_hash'] ) || ! hash_equals( (string) $identity['draft_content_sha256'], strtolower( (string) $asset['content_hash'] ) ) ) $drift[] = 'content_hash';
 			$mime = isset( $asset['mimeType'] ) ? strtolower( (string) $asset['mimeType'] ) : '';
-			if ( ! hash_equals( strtolower( (string) $identity['expected_mime_type'] ), $mime ) ) continue;
+			if ( ! hash_equals( strtolower( (string) $identity['expected_mime_type'] ), $mime ) ) $drift[] = 'mime_type';
+			if ( ! empty( $drift ) ) {
+				$identity_drift[] = array(
+					'file_id' => isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '',
+					'fields' => $drift,
+				);
+				continue;
+			}
 			$candidates[] = $asset;
 		}
-		if ( 0 === count( $candidates ) ) {
+		if ( count( $identity_candidates ) > 1 ) {
+			return new WP_Error(
+				'mad4b_brand_materialization_reconcile_duplicate_identity',
+				'More than one provider file carries the exact Brand materialization identity. Automatic retry and deletion remain blocked.',
+				array(
+					'identity_candidate_count' => count( $identity_candidates ),
+					'verified_candidate_count' => count( $candidates ),
+					'scan_generation' => isset( $scan['scan_generation'] ) ? (string) $scan['scan_generation'] : '',
+					'provider_identity' => $expected_properties,
+				)
+			);
+		}
+		if ( 1 === count( $identity_candidates ) && 1 !== count( $candidates ) ) {
+			return new WP_Error(
+				'mad4b_brand_materialization_reconcile_identity_drift',
+				'The exact Brand materialization provider identity exists, but its bound file no longer matches the expected receipt fields. No-effect release is forbidden.',
+				array(
+					'identity_candidate_count' => 1,
+					'verified_candidate_count' => count( $candidates ),
+					'drift' => $identity_drift,
+					'scan_generation' => isset( $scan['scan_generation'] ) ? (string) $scan['scan_generation'] : '',
+					'provider_identity' => $expected_properties,
+				)
+			);
+		}
+		if ( 0 === count( $identity_candidates ) ) {
 			$observation = array(
 				'contract' => 'mad4b.brand-context-materialization-reconciliation-result.v1',
 				'reconciliation_contract' => 'mad4b.brand-context-materialization-zero-observation.v1',
@@ -1050,12 +1086,13 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				)
 			);
 		}
-		if ( 1 !== count( $candidates ) ) {
+		if ( 1 !== count( $candidates ) || 1 !== count( $identity_candidates ) ) {
 			return new WP_Error(
 				'mad4b_brand_materialization_reconcile_ambiguous',
 				'More than one exact provider candidate matches the pending Brand materialization; automatic reconciliation is unsafe and the idempotency claim remains fail-closed.',
 				array(
 					'candidate_count' => count( $candidates ),
+					'identity_candidate_count' => count( $identity_candidates ),
 					'scan_generation' => isset( $scan['scan_generation'] ) ? (string) $scan['scan_generation'] : '',
 					'scope_key' => (string) $identity['scope_key'],
 					'idempotency_key' => (string) $identity['idempotency_key'],
