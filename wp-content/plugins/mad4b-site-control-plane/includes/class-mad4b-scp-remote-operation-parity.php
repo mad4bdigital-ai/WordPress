@@ -300,6 +300,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			$builtin_row['trust_class'] = 'core';
 		}
 		unset( $builtin_row );
+		$builtin_operation_ids = array_fill_keys( array_map( 'sanitize_key', array_keys( $rows ) ), true );
 		$filtered = apply_filters( 'mad4b_scp_remote_operation_catalog', $rows );
 		if ( is_array( $filtered ) ) $rows = array_slice( $filtered, 0, 500, true );
 		$required = array( 'feature_id', 'capability_tags', 'provider', 'remote_ability', 'authority_surface', 'executor', 'remote_mode', 'production_policy', 'human_decision_required', 'registrar_id', 'source_plugin', 'trust_class' );
@@ -322,6 +323,40 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_trust_class_invalid', 'trust_class' => (string) $row['trust_class'] );
 				continue;
 			}
+			$is_builtin = isset( $builtin_operation_ids[ $key ] );
+			if ( $is_builtin ) {
+				if ( 'core' !== (string) $row['trust_class']
+					|| 'mad4b-core' !== (string) $row['registrar_id']
+					|| 'mad4b-site-control-plane' !== (string) $row['source_plugin'] ) {
+					self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'builtin_registration_identity_drift' );
+					continue;
+				}
+			} else {
+				if ( 'core' === (string) $row['trust_class']
+					|| 'mad4b-core' === (string) $row['registrar_id']
+					|| 'mad4b-site-control-plane' === (string) $row['source_plugin'] ) {
+					self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'external_registration_core_impersonation_denied' );
+					continue;
+				}
+				if ( 'certified_addon' === (string) $row['trust_class'] ) {
+					if ( ! class_exists( 'MAD4B_SCP_Addon_Registry' ) || ! method_exists( 'MAD4B_SCP_Addon_Registry', 'execution_binding' ) ) {
+						self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'certified_addon_registry_unavailable' );
+						continue;
+					}
+					$binding = MAD4B_SCP_Addon_Registry::execution_binding( (string) $row['source_plugin'] );
+					if ( is_wp_error( $binding ) ) {
+						self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'certified_addon_pair_not_current', 'error_code' => $binding->get_error_code() );
+						continue;
+					}
+					$binding_provider = isset( $binding['provider_id'] ) ? sanitize_key( (string) $binding['provider_id'] ) : '';
+					if ( '' === $binding_provider || $binding_provider !== sanitize_key( (string) $row['provider'] ) ) {
+						self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'certified_addon_provider_binding_mismatch' );
+						continue;
+					}
+					$row['addon_pair_fingerprint'] = isset( $binding['pair_fingerprint'] ) ? (string) $binding['pair_fingerprint'] : '';
+					$row['addon_certification_fingerprint'] = isset( $binding['certification_fingerprint'] ) ? (string) $binding['certification_fingerprint'] : '';
+				}
+			}
 			$row['operation_id'] = $key;
 			$row['catalog_contract'] = self::CONTRACT;
 			$row['catalog_version'] = 2;
@@ -331,7 +366,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			$executor = self::executor_status( isset( $row['executor'] ) ? (string) $row['executor'] : '' );
 			$row['executor_available'] = ! empty( $executor['available'] );
 			$row['executor_state'] = isset( $executor['state'] ) ? (string) $executor['state'] : 'unknown';
-			$row['remote_parity_ready'] = ! $row['manual_only'] && $row['remote_registered'] && $row['executor_available'];
+			$row['execution_eligible'] = 'informational' !== (string) $row['trust_class'];
+			$row['remote_parity_ready'] = ! $row['manual_only'] && $row['remote_registered'] && $row['executor_available'] && $row['execution_eligible'];
 			$normalized[ $key ] = $row;
 		}
 		ksort( $normalized, SORT_STRING );
@@ -366,6 +402,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'registrar_id' => isset( $row['registrar_id'] ) ? (string) $row['registrar_id'] : '',
 			'source_plugin' => isset( $row['source_plugin'] ) ? (string) $row['source_plugin'] : '',
 			'trust_class' => isset( $row['trust_class'] ) ? (string) $row['trust_class'] : '',
+			'addon_pair_fingerprint' => isset( $row['addon_pair_fingerprint'] ) ? (string) $row['addon_pair_fingerprint'] : '',
+			'addon_certification_fingerprint' => isset( $row['addon_certification_fingerprint'] ) ? (string) $row['addon_certification_fingerprint'] : '',
 			'capability_tags' => isset( $row['capability_tags'] ) && is_array( $row['capability_tags'] ) ? array_values( array_map( 'strval', $row['capability_tags'] ) ) : array(),
 		);
 		sort( $payload['capability_tags'], SORT_STRING );
