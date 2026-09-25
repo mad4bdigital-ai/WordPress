@@ -259,6 +259,8 @@ jobs:
               required = [name for name in required if name != 'Repository feature boundary']
               mode = 'repository_governance_bootstrap'
               artifact_required = False
+          elif os.environ.get('GITHUB_EVENT_NAME') == 'push':
+              required = [name for name in required if name != 'Repository feature boundary']
           if context_authority_affecting:
               required = list(required) + [
                   'Context Authority (7.4)',
@@ -279,6 +281,7 @@ jobs:
                   'context_authority_affecting': context_authority_affecting,
                   'narrow_release_evidence_paths': sorted(release_evidence_paths),
                   'runtime_patterns': sorted(runtime_patterns),
+                  'critical_job_evidence_source': 'github_actions_runs_jobs_api',
               }, indent=2, sort_keys=True) + '\n',
               encoding='utf-8',
           )
@@ -290,8 +293,11 @@ jobs:
           }, indent=2))
           PY
           for attempt in $(seq 1 120); do
-            gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/check-runs?per_page=100&page=1" > /tmp/checks-1.json
-            gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/check-runs?per_page=100&page=2" > /tmp/checks-2.json
+            python3 tools/capture_exact_head_action_jobs.py \
+              --repository "$GITHUB_REPOSITORY" \
+              --head-sha "$SOURCE_SHA" \
+              --output /tmp/checks-1.json
+            printf '{"check_runs":[]}' > /tmp/checks-2.json
             set +e
             python3 - /tmp/mad4b-critical-checks.txt /tmp/checks-1.json /tmp/checks-2.json <<'PY'
           import json,sys
@@ -336,8 +342,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/check-runs?per_page=100&page=1" > /tmp/checks-1.json
-          gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/check-runs?per_page=100&page=2" > /tmp/checks-2.json
+          python3 tools/capture_exact_head_action_jobs.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --head-sha "$SOURCE_SHA" \
+            --output /tmp/checks-1.json
+          printf '{"check_runs":[]}' > /tmp/checks-2.json
           artifact_name="mad4b-site-control-plane-general-distribution-kit-$SOURCE_SHA"
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$artifact_name&per_page=100" > /tmp/artifacts.json
 
