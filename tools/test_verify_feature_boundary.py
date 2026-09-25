@@ -193,6 +193,15 @@ run_case(
     expect_error="REPOSITORY_ROOT_CHANGE_BRANCH_FORBIDDEN",
 )
 
+with patch.object(mod.subprocess, "run", return_value=SimpleNamespace(returncode=0)), \
+     patch.object(mod, "run", return_value=""), \
+     patch.object(mod, "changed_paths", return_value=[".github/workflows/mad4b-release-verdict.yml"]), \
+     patch.object(mod, "load_json_at", side_effect=fake_load):
+    bootstrap = mod.verify(BASE, HEAD, mod.BOOTSTRAP_ROOT_BRANCH)
+assert bootstrap["mode"] == "repository_governance_bootstrap"
+assert bootstrap["bootstrap_exception"] is True
+assert bootstrap["owner_attestation_required"] is True
+
 with patch.object(mod.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout="", stderr="")), \
      patch.object(mod, "run", return_value=""), \
      patch.object(mod, "changed_paths", return_value=["README.md"]):
