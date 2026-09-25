@@ -202,7 +202,21 @@ def _is_link_like(path: Path) -> bool:
     return bool(int(getattr(stat_result, "st_file_attributes", 0)) & 0x400)
 
 
+def _reject_link_ancestors(path: Path) -> None:
+    absolute = path.absolute()
+    root = Path(absolute.anchor) if absolute.anchor else Path.cwd().anchor
+    stop = Path(root) if not isinstance(root, Path) else root
+    current = absolute
+    while True:
+        if _is_link_like(current):
+            raise ValueError(f"link/reparse path component forbidden: {current}")
+        if current == stop or current.parent == current:
+            return
+        current = current.parent
+
+
 def load_json_bounded(path: Path, max_bytes: int = MAX_JOB_BYTES) -> dict[str, Any]:
+    _reject_link_ancestors(path)
     if _is_link_like(path) or not path.is_file():
         raise ValueError(f"JSON source is not a regular file: {path}")
     raw = path.read_bytes()
@@ -264,6 +278,7 @@ def load_profile(path: Path) -> dict[str, Any]:
     if not root_raw:
         raise ValueError("Host Runner profile wordpress_root missing")
     root_input = Path(root_raw).expanduser()
+    _reject_link_ancestors(root_input)
     if _is_link_like(root_input):
         raise ValueError("Host Runner profile WordPress root symlink is forbidden")
     root = root_input.resolve()
@@ -278,6 +293,7 @@ def load_profile(path: Path) -> dict[str, Any]:
     if not key_file_raw:
         raise ValueError("Host Runner integrity_key_file missing")
     key_file_input = Path(key_file_raw).expanduser()
+    _reject_link_ancestors(key_file_input)
     if _is_link_like(key_file_input):
         raise ValueError("Host Runner integrity key symlink is forbidden")
     key_file = key_file_input.resolve()
@@ -321,6 +337,7 @@ def load_profile(path: Path) -> dict[str, Any]:
     receipt_root_input = Path(
         str(profile.get("receipt_root") or (root / "wp-content/mad4b-runner/receipts"))
     ).expanduser()
+    _reject_link_ancestors(receipt_root_input)
     if _is_link_like(receipt_root_input):
         raise ValueError("Host Runner receipt_root symlink is forbidden")
 
