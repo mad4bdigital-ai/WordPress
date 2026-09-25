@@ -363,8 +363,31 @@
     {
       "id": "intent_registry",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "intent_registry_reconciled"
+      "status": "PARTIAL",
+      "gate": "intent_registry_reconciled",
+      "evidence": {
+        "contract": "mad4b.intent-ownership.v1",
+        "registry_contract": "mad4b.intent-registry.v1",
+        "schema_version": 11,
+        "authoritative_table": "mad4b_intent_relations",
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php",
+        "runtime_test": "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-runtime.php",
+        "many_to_many": true,
+        "role_based": true,
+        "confidence_and_evidence_backed": true,
+        "versioned_history": true,
+        "stale_scope_cas": true,
+        "cannibalization_is_derived": true,
+        "overlap_alone_is_conflict": false,
+        "bootstrap_does_not_create_intent_claims": true,
+        "repository_only": true
+      },
+      "remainder": [
+        "obtain exact-head schema v11 MariaDB PASS for Intent Registry runtime reconciliation",
+        "feed the bounded ETG Staging bootstrap inventory into Intent Registry reconciliation",
+        "prove live CREATE_NEW/SUPPORT_EXISTING/UPDATE_EXISTING/CONSOLIDATE/HUMAN_REVIEW job-resolution policy against the exact deployed candidate"
+      ]
     },
     {
       "id": "content_job_domain",
@@ -413,7 +436,7 @@
       "gate": "artifact_lineage_ready",
       "evidence": {
         "contract": "mad4b.artifact-registry.v1",
-        "schema_version": 10,
+        "schema_version": 11,
         "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php",
         "runtime_test": "wp-content/plugins/mad4b-site-control-plane/tests/artifact-registry-runtime.php",
         "durable_tables": [
@@ -426,12 +449,14 @@
         "supersedes_lineage": true,
         "downstream_invalidation": true,
         "site_isolation": true,
-        "repository_only": true
+        "repository_only": true,
+        "content_pipeline_implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+        "content_pipeline_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php",
+        "context_research_blueprint_draft_qa_producers_integrated": true
       },
       "remainder": [
-        "obtain exact-head schema v10 MariaDB PASS including Artifact Registry runtime lineage",
-        "bind artifact lineage evidence to the exact deployed ETG candidate",
-        "integrate Context/Research/Blueprint/Draft/QA producers with immutable Artifact IDs"
+        "obtain exact-head schema v11 MariaDB PASS including Artifact Registry runtime lineage",
+        "bind artifact lineage evidence to the exact deployed ETG candidate"
       ]
     },
     {
