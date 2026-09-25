@@ -98,6 +98,7 @@ def validate_ruleset_attestation(
         "ruleset_source": repository,
         "ruleset_updated_at": str(ruleset.get("updated_at") or ""),
         "bypass_actor_count": 0,
+        "require_extra_approval_for_unattributed_changes": True,
         "policy_sha256": hashlib.sha256(policy_path.read_bytes()).hexdigest(),
         "template_sha256": hashlib.sha256(template_path.read_bytes()).hexdigest(),
         "verified_readback": True,
@@ -184,6 +185,7 @@ def main() -> int:
     )
     bypass_evidence_sources = {}
     ruleset_attestation_verified = False
+    ruleset_attestation = None
     if args.allow_bootstrap_hidden_bypass_evidence and (
         "ruleset_attestation" in policy or "required_repository_ruleset_name" in policy
     ):
@@ -232,7 +234,7 @@ def main() -> int:
             variable_name = str(config.get("variable_name") or "")
             if variable_name != "MAD4B_RULESET_ATTESTATION":
                 raise SystemExit("repository ruleset attestation variable name drifted")
-            attestation = validate_ruleset_attestation(
+            ruleset_attestation = validate_ruleset_attestation(
                 os.environ.get(variable_name, ""),
                 args.repository,
                 row,
@@ -341,6 +343,42 @@ def main() -> int:
     expected_unattributed_approval = bool(
         pr_policy.get("require_extra_approval_for_unattributed_changes_readback", True)
     )
+    response_only_approval_evidence_source = "direct_ruleset_detail"
+    if "require_extra_approval_for_unattributed_changes" in pull_params:
+        response_only_approval_ready = (
+            bool(pull_params.get("require_extra_approval_for_unattributed_changes"))
+            == expected_unattributed_approval
+        )
+    elif args.allow_bootstrap_hidden_bypass_evidence:
+        response_only_approval_ready = expected_unattributed_approval is True
+        response_only_approval_evidence_source = (
+            "one_time_pr66_bootstrap_owner_attestation_required"
+        )
+    else:
+        if ruleset_attestation is None:
+            config = policy.get("ruleset_attestation") or {}
+            variable_name = str(config.get("variable_name") or "")
+            if variable_name != "MAD4B_RULESET_ATTESTATION":
+                raise SystemExit("repository ruleset attestation variable name drifted")
+            ruleset_attestation = validate_ruleset_attestation(
+                os.environ.get(variable_name, ""),
+                args.repository,
+                governed_ruleset,
+                policy,
+                args.policy,
+                args.template,
+            )
+            ruleset_attestation_verified = True
+        response_only_approval_ready = (
+            ruleset_attestation.get(
+                "require_extra_approval_for_unattributed_changes"
+            )
+            is expected_unattributed_approval
+        )
+        response_only_approval_evidence_source = (
+            "repository_variable:MAD4B_RULESET_ATTESTATION"
+        )
+
     pull_ready = (
         int(pull_params.get("required_approving_review_count", -1))
         == int(pr_policy.get("required_approving_review_count", 0))
@@ -354,11 +392,7 @@ def main() -> int:
         == bool(pr_policy.get("required_review_thread_resolution", True))
         and list(pull_params.get("required_reviewers") or [])
         == expected_required_reviewers
-        and "require_extra_approval_for_unattributed_changes" in pull_params
-        and bool(
-            pull_params.get("require_extra_approval_for_unattributed_changes")
-        )
-        == expected_unattributed_approval
+        and response_only_approval_ready
         and set(pull_params.get("allowed_merge_methods") or [])
         == expected_merge_methods
     )
@@ -438,6 +472,7 @@ def main() -> int:
         "bypass_actor_count": 0,
         "bypass_evidence_sources": bypass_evidence_sources,
         "ruleset_attestation_verified": ruleset_attestation_verified,
+        "response_only_approval_evidence_source": response_only_approval_evidence_source,
         "bootstrap_hidden_bypass_exception": bool(
             args.allow_bootstrap_hidden_bypass_evidence
         ),
