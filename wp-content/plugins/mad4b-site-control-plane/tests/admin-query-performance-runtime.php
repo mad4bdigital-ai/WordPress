@@ -14,6 +14,8 @@ class MAD4B_Perf_WPDB {
 	public $last_error = '';
 	public $queries = array();
 	public $indexes = array();
+	public $agent_query_count = 0;
+	public $agent_row = array( 'id' => 7, 'public_id' => 'agent-public-1', 'slug' => 'chatgpt', 'label' => 'ChatGPT', 'status' => 'enabled', 'environment' => 'staging', 'revision' => 1 );
 
 	public function __construct() {
 		$this->indexes = array(
@@ -28,6 +30,20 @@ class MAD4B_Perf_WPDB {
 				array( 'Key_name' => 'meta_key', 'Column_name' => 'meta_key', 'Seq_in_index' => 1 ),
 			),
 		);
+	}
+	public function prepare( $sql, ...$args ) {
+		foreach ( $args as $arg ) {
+			$replacement = is_int( $arg ) ? (string) $arg : "'" . str_replace( "'", "''", (string) $arg ) . "'";
+			$sql = preg_replace( '/%[ds]/', $replacement, $sql, 1 );
+		}
+		return $sql;
+	}
+	public function get_row( $sql, $output = null ) {
+		if ( false !== strpos( $sql, 'FROM wp_mad4b_scp_agents' ) ) {
+			$this->agent_query_count++;
+			return false !== strpos( $sql, "'agent-public-1'" ) ? $this->agent_row : null;
+		}
+		return null;
 	}
 	public function get_results( $sql, $output = null ) {
 		if ( preg_match( '/SHOW INDEX FROM .([^'.chr(96).']+)./', $sql, $m ) ) return isset( $this->indexes[$m[1]] ) ? $this->indexes[$m[1]] : array();
@@ -60,8 +76,12 @@ final class MAD4B_SCP_Site_Profile {
 	public static function current_environment() { return $GLOBALS['mad4b_perf_env']; }
 }
 final class MAD4B_SCP_Policy { public static function can_read() { return true; } }
+final class MAD4B_SCP_Schema {
+	public static function tables() { return array( 'agents' => 'wp_mad4b_scp_agents' ); }
+}
 
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-query-performance.php';
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-agent-registry.php';
 
 function mad4b_perf_assert( $condition, $message ) {
 	if ( ! $condition ) { fwrite( STDERR, "FAIL: {$message}\n" ); exit( 1 ); }
@@ -91,4 +111,12 @@ mad4b_perf_assert( 0 === count( $GLOBALS['wpdb']->queries ), 'Production must ne
 mad4b_perf_assert( 'not_applicable' === $production['state'], 'Production index bootstrap must be not applicable' );
 mad4b_perf_assert( empty( $production['production_changed'] ), 'Production unchanged truth must remain explicit' );
 
-echo "mad4b.admin-query-performance.runtime.v1: PASS\n";
+$GLOBALS['mad4b_perf_env'] = 'staging';
+$GLOBALS['wpdb'] = new MAD4B_Perf_WPDB();
+for ( $i = 0; $i < 2000; $i++ ) {
+	$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( 'agent-public-1' );
+	mad4b_perf_assert( is_array( $agent ) && 7 === (int) $agent['id'], 'request-local cached agent lookup returned an unexpected row' );
+}
+mad4b_perf_assert( 1 === $GLOBALS['wpdb']->agent_query_count, 'repeated request-local agent lookups must collapse to one database query' );
+
+echo "mad4b.admin-query-performance.runtime.v2: PASS\n";
