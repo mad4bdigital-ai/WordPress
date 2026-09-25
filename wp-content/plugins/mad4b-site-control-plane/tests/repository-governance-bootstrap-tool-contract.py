@@ -58,24 +58,21 @@ required = [
     'previous ruleset restore did not verify against the exact pre-apply state',
     'newly-created ruleset still exists after automatic rollback',
     '"tools/build_repository_ruleset_attestation.py"',
+    '"tools/publish_repository_ruleset_attestation.py"',
     '$RulesetAttestationPath = Join-Path $env:TEMP "mad4b-ruleset-attestation.json"',
+    '$RulesetAttestationPublicationPath = Join-Path $env:TEMP "mad4b-ruleset-attestation-publication.json"',
     '--readback $ReadbackPath --policy $PolicyPath --template $TemplatePath --repository $Repository --output $RulesetAttestationPath',
-    '$attestationScope -ne "environment"',
-    '$environmentName -ne "repository-governance"',
-    '$variableName -ne "MAD4B_RULESET_ATTESTATION"',
-    '"repos/$Repository/environments/$environmentName"',
-    'governance environment create/update failed',
-    'governance_environment_readback=verified',
-    '"repos/$Repository/environments/$environmentName/variables/$variableName"',
-    '"--method","PATCH"',
-    '"--method","POST"',
-    '"repos/$Repository/environments/$environmentName/variables"',
-    'environment-scoped ruleset attestation variable upsert failed',
-    'environment-scoped ruleset attestation variable readback mismatch',
-    'ruleset_attestation_readback=verified',
-    '[Environment]::SetEnvironmentVariable($variableName, $attestationValue, "Process")',
+    '--repository $Repository --policy $PolicyPath --template $TemplatePath --attestation $RulesetAttestationPath --output $RulesetAttestationPublicationPath',
+    'Write-Host "=== PUBLISH OWNER RULESET ATTESTATION ==="',
+    '$publication.published -ne $true',
+    '$publication.readback_verified -ne $true',
+    '[string]$publication.authenticated_owner_login -ne "mad4bdigital-ai"',
+    '[string]$publication.comment_author_login -ne "mad4bdigital-ai"',
+    'ruleset_attestation_scope=owner_issue_comment',
+    'ruleset_attestation_publish_readback=verified',
+    'Write-Host "=== VERIFY AGGREGATE GOVERNANCE WITH PUBLISHED ATTESTATION ==="',
     '$status.ruleset_attestation_verified -ne $true',
-    'freshly-built attestation did not satisfy aggregate repository governance',
+    'published owner attestation did not satisfy aggregate repository governance',
     '--require-ruleset-attestation',
 ]
 
@@ -86,6 +83,10 @@ if missing:
 for forbidden in [
     '$current = @($currentRaw | ConvertFrom-Json)',
     '"repos/$Repository/rulesets/$rulesetId?includes_parents=true"',
+    '[Environment]::SetEnvironmentVariable',
+    '/environments/$environmentName/variables',
+    'UPSERT ENVIRONMENT RULESET ATTESTATION VARIABLE',
+    'ruleset_attestation_scope=environment',
 ]:
     if forbidden in script:
         raise SystemExit("legacy Windows PowerShell empty-array parser returned: " + forbidden)
@@ -364,36 +365,46 @@ with tempfile.TemporaryDirectory() as td:
 
 print("ruleset_attestation_builder=executable")
 print("ruleset_attestation_nonzero_bypass_rejection=pass")
-print("ruleset_attestation_scope=environment")
-print("ruleset_attestation_environment=repository-governance")
-print("ruleset_attestation_variable=upsert_and_readback")
+print("ruleset_attestation_scope=owner_issue_comment")
+print("ruleset_attestation_ledger=owner_authored_append_only_issue")
 
+publisher = Path("tools/publish_repository_ruleset_attestation.py")
+if not publisher.is_file():
+    raise SystemExit("repository ruleset attestation publisher is missing")
+publisher_text = publisher.read_text(encoding="utf-8")
+for needle in [
+    "mad4b.repository-ruleset-attestation-publication.v1",
+    "owner_issue_comment",
+    "MAD4B Repository Governance Attestations",
+    "MAD4B_RULESET_ATTESTATION",
+    "multiple owner-authored governance attestation ledgers exist",
+    "published ruleset attestation comment body mismatch",
+    "ruleset attestation comment readback body mismatch",
+    "policy_sha256",
+    "template_sha256",
+    "required-status-check binding mismatch",
+    "rule-type binding mismatch",
+]:
+    if needle not in publisher_text:
+        raise SystemExit(f"ruleset attestation publisher contract missing: {needle}")
+
+for forbidden in [
+    "/environments/",
+    "SetEnvironmentVariable",
+    "MAD4B_RULESET_ATTESTATION =",
+]:
+    if forbidden in publisher_text:
+        raise SystemExit(f"ruleset attestation publisher regressed to environment storage: {forbidden}")
 
 attestation_build_pos = script.index('Write-Host "=== BUILD RULESET ATTESTATION ==="')
+owner_publish_pos = script.index('Write-Host "=== PUBLISH OWNER RULESET ATTESTATION ==="')
 aggregate_verify_pos = script.index(
-    '& $PythonCommand "tools/verify_repository_governance.py"',
-    attestation_build_pos,
+    'Write-Host "=== VERIFY AGGREGATE GOVERNANCE WITH PUBLISHED ATTESTATION ==="',
+    owner_publish_pos,
 )
-environment_ensure_pos = script.index('Write-Host "=== ENSURE GOVERNANCE ENVIRONMENT ==="')
-variable_publish_pos = script.index('Write-Host "=== UPSERT ENVIRONMENT RULESET ATTESTATION VARIABLE ==="')
-variable_endpoint_pos = script.index(
-    '$variableEndpoint = "repos/$Repository/environments/$environmentName/variables/$variableName"',
-    variable_publish_pos,
-)
-variable_readback_pos = script.index(
-    'Write-Host "ruleset_attestation_readback=verified"',
-    variable_endpoint_pos,
-)
-if not (
-    attestation_build_pos
-    < aggregate_verify_pos
-    < environment_ensure_pos
-    < variable_publish_pos
-    < variable_endpoint_pos
-    < variable_readback_pos
-):
+if not (attestation_build_pos < owner_publish_pos < aggregate_verify_pos):
     raise SystemExit(
-        "ruleset attestation must be built, aggregate-verified, environment-scoped, published, and exactly read back in order"
+        "ruleset attestation must be built, owner-published with exact readback, then aggregate-verified"
     )
 
-print("ruleset_attestation_publish_order=build+verify+environment+publish+readback")
+print("ruleset_attestation_publish_order=build+owner_publish+readback+aggregate_verify")
