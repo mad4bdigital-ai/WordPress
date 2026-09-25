@@ -23,8 +23,85 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	const MAX_DRAFT_BYTES = 120000;
 	const DRAFT_INDEX_OPTION = 'mad4b_scp_brand_draft_index_v1';
 	const MAX_DRAFT_INDEX_ENTRIES = 256;
+	const RECONCILE_HOOK = 'mad4b_scp_brand_materialization_reconcile';
+	const MAX_AUTOMATIC_RECONCILE_ATTEMPTS = 8;
 
 	private static $authority_readback_cache = array();
+
+	public static function boot() {
+		add_action( self::RECONCILE_HOOK, array( __CLASS__, 'run_scheduled_materialization_reconciliation' ), 10, 1 );
+	}
+
+	private static function automatic_reconcile_delay( $attempt, $minimum = 30 ) {
+		$attempt = max( 1, (int) $attempt );
+		$steps = array( 30, 60, 120, 300, 600, 1800, 3600, 7200 );
+		$index = min( count( $steps ) - 1, $attempt - 1 );
+		return max( (int) $minimum, (int) $steps[ $index ] );
+	}
+
+	private static function schedule_materialization_reconciliation( array $identity, $attempt = 1, $minimum_delay = 30 ) {
+		$attempt = max( 1, (int) $attempt );
+		if ( $attempt > self::MAX_AUTOMATIC_RECONCILE_ATTEMPTS ) {
+			return new WP_Error( 'mad4b_brand_materialization_reconcile_retry_exhausted', 'Automatic Brand materialization reconciliation reached its bounded retry limit. The governed remote reconciliation ability remains available.' );
+		}
+		if ( ! function_exists( 'wp_schedule_single_event' ) || ! function_exists( 'wp_next_scheduled' ) ) {
+			return new WP_Error( 'mad4b_brand_materialization_scheduler_unavailable', 'WordPress scheduled-event API is unavailable. Use the governed remote reconciliation ability.' );
+		}
+		$payload = array(
+			'artifact_id' => isset( $identity['artifact_id'] ) ? (string) $identity['artifact_id'] : '',
+			'expected_draft_content_sha256' => isset( $identity['draft_content_sha256'] ) ? (string) $identity['draft_content_sha256'] : '',
+			'source_id' => isset( $identity['source_id'] ) ? (string) $identity['source_id'] : '',
+			'format' => isset( $identity['format'] ) ? (string) $identity['format'] : 'markdown',
+			'_automatic_reconcile_attempt' => $attempt,
+		);
+		$delay = self::automatic_reconcile_delay( $attempt, $minimum_delay );
+		$args = array( $payload );
+		$existing = wp_next_scheduled( self::RECONCILE_HOOK, $args );
+		if ( false !== $existing ) {
+			return array( 'scheduled' => true, 'idempotent' => true, 'hook' => self::RECONCILE_HOOK, 'run_at_epoch' => (int) $existing, 'attempt' => $attempt );
+		}
+		$run_at = time() + $delay;
+		$scheduled = wp_schedule_single_event( $run_at, self::RECONCILE_HOOK, $args, true );
+		if ( is_wp_error( $scheduled ) ) return $scheduled;
+		if ( false === $scheduled ) return new WP_Error( 'mad4b_brand_materialization_schedule_failed', 'Automatic Brand materialization reconciliation could not be scheduled.' );
+		return array( 'scheduled' => true, 'idempotent' => false, 'hook' => self::RECONCILE_HOOK, 'run_at_epoch' => $run_at, 'attempt' => $attempt );
+	}
+
+	public static function run_scheduled_materialization_reconciliation( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$attempt = isset( $input['_automatic_reconcile_attempt'] ) ? max( 1, (int) $input['_automatic_reconcile_attempt'] ) : 1;
+		$result = self::reconcile_materialization( $input );
+		if ( is_wp_error( $result ) ) {
+			$retryable = in_array(
+				$result->get_error_code(),
+				array(
+					'mad4b_brand_materialization_reconcile_scan_incomplete',
+					'mad4b_google_drive_request_failed',
+					'mad4b_google_drive_token_refresh_failed',
+					'mad4b_google_drive_connection_unavailable',
+				),
+				true
+			);
+			if ( $retryable && $attempt < self::MAX_AUTOMATIC_RECONCILE_ATTEMPTS ) {
+				$identity = self::materialization_identity( $input );
+				if ( ! is_wp_error( $identity ) ) self::schedule_materialization_reconciliation( $identity, $attempt + 1, 60 );
+			}
+		}
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record(
+				'mad4b/context-brand-materialization-auto-reconcile',
+				array(
+					'artifact_id' => isset( $input['artifact_id'] ) ? (string) $input['artifact_id'] : '',
+					'source_id' => isset( $input['source_id'] ) ? (string) $input['source_id'] : '',
+					'attempt' => $attempt,
+					'result' => is_wp_error( $result ) ? 'error' : ( isset( $result['status'] ) ? (string) $result['status'] : 'ok' ),
+					'error_code' => is_wp_error( $result ) ? $result->get_error_code() : '',
+				),
+				is_wp_error( $result ) ? 'failure' : 'ok'
+			);
+		}
+		return $result;
+	}
 
 	public static function expected_categories() {
 		return array(
@@ -791,15 +868,18 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$name = (string) $identity['name'];
 		$created = MAD4B_SCP_Context_Provider_Gateway::create_brand_asset( $source_id, $name, $content, $format, (array) $identity['provider_identity'] );
 		if ( is_wp_error( $created ) ) {
+			$scheduled_reconciliation = self::schedule_materialization_reconciliation( $identity, 1, 30 );
 			return new WP_Error(
 				'mad4b_brand_materialize_provider_outcome_uncertain',
-				'Provider creation did not return a committed Brand Context receipt. Reconcile the durable idempotency claim before retry.',
+				'Provider creation did not return a committed Brand Context receipt. The durable claim remains fail-closed and automatic reconciliation has been requested where scheduling is available.',
 				array(
 					'provider_error_code' => $created->get_error_code(),
 					'provider_error_data' => $created->get_error_data(),
 					'scope_key' => $scope_key,
 					'idempotency_key' => $idempotency_key,
 					'request_sha256' => $request_sha256,
+					'automatic_reconciliation' => is_wp_error( $scheduled_reconciliation ) ? array( 'scheduled' => false, 'error_code' => $scheduled_reconciliation->get_error_code() ) : $scheduled_reconciliation,
+					'remote_reconciliation_ability' => 'context/reconcile-brand-materialization',
 				)
 			);
 		}
@@ -886,9 +966,9 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			$candidates[] = $asset;
 		}
 		if ( 0 === count( $candidates ) ) {
-			$proof = array(
+			$observation = array(
 				'contract' => 'mad4b.brand-context-materialization-reconciliation-result.v1',
-				'reconciliation_contract' => 'mad4b.brand-context-materialization-no-effect.v1',
+				'reconciliation_contract' => 'mad4b.brand-context-materialization-zero-observation.v1',
 				'artifact_id' => (string) $identity['artifact_id'],
 				'source_id' => (string) $identity['source_id'],
 				'target_folder_id' => (string) $identity['target_folder_id'],
@@ -901,6 +981,47 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				'provider_candidate_count' => 0,
 				'provider_scan_generation' => isset( $scan['scan_generation'] ) ? (string) $scan['scan_generation'] : '',
 			);
+			$observation_ref = MAD4B_SCP_Context_Provider_Gateway::materialization_zero_observation_ref( $observation );
+			if ( is_wp_error( $observation_ref ) ) return $observation_ref;
+			$ledger = MAD4B_SCP_Durable_Execution::record_idempotency_reconciliation_observation(
+				(string) $identity['scope_key'],
+				(string) $identity['idempotency_key'],
+				(string) $identity['request_sha256'],
+				(string) $observation_ref,
+				$observation
+			);
+			if ( is_wp_error( $ledger ) ) return $ledger;
+			$count = isset( $ledger['observation_count'] ) ? (int) $ledger['observation_count'] : 0;
+			$elapsed = isset( $ledger['elapsed_seconds'] ) ? (int) $ledger['elapsed_seconds'] : 0;
+			$minimum = isset( $ledger['minimum_interval_seconds'] ) ? (int) $ledger['minimum_interval_seconds'] : MAD4B_SCP_Durable_Execution::NO_EFFECT_MIN_OBSERVATION_SECONDS;
+			if ( $count < 2 || $elapsed < $minimum ) {
+				$attempt = isset( $input['_automatic_reconcile_attempt'] ) ? max( 1, (int) $input['_automatic_reconcile_attempt'] ) + 1 : 1;
+				$scheduled = self::schedule_materialization_reconciliation( $identity, $attempt, max( 30, $minimum - $elapsed + 5 ) );
+				return array(
+					'contract' => 'mad4b.brand-context-materialization-reconciliation-result.v1',
+					'status' => 'verification_pending',
+					'artifact_id' => (string) $identity['artifact_id'],
+					'source_id' => (string) $identity['source_id'],
+					'provider_candidate_count' => 0,
+					'provider_scan_complete' => true,
+					'provider_scan_generation' => isset( $scan['scan_generation'] ) ? (string) $scan['scan_generation'] : '',
+					'durable_observation_count' => $count,
+					'durable_observation_elapsed_seconds' => $elapsed,
+					'minimum_observation_interval_seconds' => $minimum,
+					'idempotency_released' => false,
+					'safe_to_retry' => false,
+					'automatic_reconciliation' => is_wp_error( $scheduled ) ? array( 'scheduled' => false, 'error_code' => $scheduled->get_error_code() ) : $scheduled,
+					'remote_reconciliation_ability' => 'context/reconcile-brand-materialization',
+				);
+			}
+			$proof = $observation;
+			$proof['reconciliation_contract'] = 'mad4b.brand-context-materialization-no-effect.v1';
+			$proof['durable_observation_count'] = $count;
+			$proof['durable_observation_elapsed_seconds'] = $elapsed;
+			$proof['durable_scan_generations'] = array_values( array_unique( array_map(
+				static function ( $row ) { return is_array( $row ) && isset( $row['provider_scan_generation'] ) ? (string) $row['provider_scan_generation'] : ''; },
+				isset( $ledger['observations'] ) && is_array( $ledger['observations'] ) ? $ledger['observations'] : array()
+			) ) );
 			$reconciliation_ref = MAD4B_SCP_Context_Provider_Gateway::materialization_no_effect_ref( $proof );
 			if ( is_wp_error( $reconciliation_ref ) ) return $reconciliation_ref;
 			$released = MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect(
