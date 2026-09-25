@@ -96,6 +96,7 @@ final class MAD4B_SCP_Data_Governance {
 		$approval = array();
 		$redact = array();
 		$requirements = array();
+		$rights_summary = array();
 
 		if ( '' === $purpose ) $hard[] = 'purpose_required';
 		if ( empty( $data_classes ) ) $hard[] = 'data_classification_required';
@@ -105,6 +106,15 @@ final class MAD4B_SCP_Data_Governance {
 			if ( ! is_array( $record ) ) { $hard[] = 'rights_record_invalid'; continue; }
 			$class = strtoupper( trim( (string) ( $record['rights_class'] ?? 'UNKNOWN' ) ) );
 			$review = sanitize_key( (string) ( $record['review_status'] ?? 'unknown' ) );
+			$rights_summary[] = array(
+				'rights_class' => $class,
+				'review_status' => $review,
+				'attribution_required' => ! empty( $record['attribution_required'] ),
+				'modification_allowed' => ! empty( $record['modification_allowed'] ),
+				'commercial_use_allowed' => ! empty( $record['commercial_use_allowed'] ),
+				'source_artifact_id' => isset( $record['source_artifact_id'] ) ? strtolower( trim( (string) $record['source_artifact_id'] ) ) : '',
+				'license_id' => isset( $record['license_id'] ) ? substr( sanitize_text_field( (string) $record['license_id'] ), 0, 191 ) : '',
+			);
 			if ( 'PROHIBITED' === $class ) $hard[] = 'rights_prohibited';
 			if ( 'UNKNOWN' === $class && in_array( $purpose, $publication_purposes, true ) ) $hard[] = 'rights_unknown_for_reuse';
 			if ( 'PERMITTED_REFERENCE_ONLY' === $class && in_array( $purpose, $publication_purposes, true ) ) $hard[] = 'reference_only_reuse_denied';
@@ -160,6 +170,19 @@ final class MAD4B_SCP_Data_Governance {
 		elseif ( ! empty( $redact ) ) $decision = 'REDACT_THEN_ALLOW';
 		else $decision = 'ALLOW';
 
+		usort( $rights_summary, static function( $a, $b ) {
+			return strcmp( wp_json_encode( $a ), wp_json_encode( $b ) );
+		} );
+		$processor_profile = array(
+			'provider_id' => $provider_id,
+			'processor_type' => $processor_type,
+			'region' => $region,
+			'training_use' => $provider_training,
+			'retention_days' => $retention,
+			'allowed_data_classes' => $allowed,
+			'prohibited_data_classes' => $prohibited,
+		);
+
 		$evidence = array(
 			'purpose' => $purpose,
 			'data_classes' => $data_classes,
@@ -168,6 +191,8 @@ final class MAD4B_SCP_Data_Governance {
 			'region' => $region,
 			'policy_revision' => sanitize_text_field( (string) ( $policy['policy_revision'] ?? '' ) ),
 			'rights_record_count' => count( $rights ),
+			'rights_summary_fingerprint' => self::digest( $rights_summary ),
+			'processor_profile_fingerprint' => self::digest( $processor_profile ),
 		);
 
 		return array(
@@ -194,8 +219,15 @@ final class MAD4B_SCP_Data_Governance {
 		if ( strlen( $reason ) < 3 ) return new WP_Error( 'mad4b_data_governance_reason_required', 'A bounded reason is required to persist data-governance evidence.' );
 		if ( ! class_exists( 'MAD4B_SCP_Artifacts' ) ) return new WP_Error( 'mad4b_data_governance_artifacts_unavailable', 'Artifact Registry is unavailable.' );
 
+		$source_artifact_ids = isset( $input['source_artifact_ids'] ) && is_array( $input['source_artifact_ids'] ) ? array_values( array_unique( $input['source_artifact_ids'] ) ) : array();
+		if ( count( $source_artifact_ids ) > 64 ) return new WP_Error( 'mad4b_data_governance_source_limit', 'Too many source artifacts for one data-governance decision.' );
+		foreach ( $source_artifact_ids as $source_artifact_id ) {
+			if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', strtolower( trim( (string) $source_artifact_id ) ) ) ) {
+				return new WP_Error( 'mad4b_data_governance_source_invalid', 'Source Artifact identity is invalid.' );
+			}
+		}
 		$decision_input = $input;
-		unset( $decision_input['job_id'], $decision_input['reason'] );
+		unset( $decision_input['job_id'], $decision_input['reason'], $decision_input['source_artifact_ids'] );
 		$decision = self::evaluate( $decision_input );
 
 		$payload = array(
@@ -211,6 +243,7 @@ final class MAD4B_SCP_Data_Governance {
 			'raw_rights_records_persisted' => false,
 			'raw_source_content_persisted' => false,
 			'raw_secrets_persisted' => false,
+			'source_artifact_ids' => array_map( 'strval', $source_artifact_ids ),
 			'authorizing' => false,
 		);
 		$result = MAD4B_SCP_Artifacts::append_artifact(
@@ -229,6 +262,17 @@ final class MAD4B_SCP_Data_Governance {
 			)
 		);
 		if ( is_wp_error( $result ) ) return $result;
+		$artifact_id = isset( $result['artifact']['artifact_id'] ) ? (string) $result['artifact']['artifact_id'] : '';
+		if ( '' !== $artifact_id && method_exists( 'MAD4B_SCP_Artifacts', 'link_artifacts' ) ) {
+			foreach ( $source_artifact_ids as $source_artifact_id ) {
+				$link = MAD4B_SCP_Artifacts::link_artifacts( array(
+					'from_artifact_id' => $artifact_id,
+					'to_artifact_id' => strtolower( trim( (string) $source_artifact_id ) ),
+					'relation' => 'uses',
+				) );
+				if ( is_wp_error( $link ) ) return $link;
+			}
+		}
 		return array(
 			'contract' => 'mad4b.data-governance-record.v1',
 			'decision' => (string) $decision['decision'],
