@@ -914,6 +914,10 @@ def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict
             "wp_config_sha256": sha256_file(config) if config.is_file() else "",
             "plugin_present": (root / "wp-content/plugins/mad4b-site-control-plane").is_dir(),
             "environment": profile["environment"],
+            "readonly": True,
+            "authorizing": False,
+            "authority_class": "read_only_non_authorizing",
+            "production_authorized": False,
             "mutation_performed": False,
         }
 
