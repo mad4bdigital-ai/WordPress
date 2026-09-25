@@ -204,9 +204,9 @@ final class MAD4B_SCP_Intent_Registry {
 					$changed = $wpdb->update(
 						$t['intent_relations'],
 						array( 'valid_to' => $now ),
-						array( 'relation_id' => $row['relation_id'], 'site_uuid' => $site_uuid, 'valid_to' => null ),
+						array( 'relation_id' => $row['relation_id'], 'site_uuid' => $site_uuid ),
 						array( '%s' ),
-						array( '%s','%s',null )
+						array( '%s','%s' )
 					);
 					if ( false === $changed ) throw new RuntimeException( 'intent_relation_close_failed:' . (string) $wpdb->last_error );
 					$closed[] = $row['relation_id'];
@@ -223,9 +223,9 @@ final class MAD4B_SCP_Intent_Registry {
 					$changed = $wpdb->update(
 						$t['intent_relations'],
 						array( 'valid_to' => $now ),
-						array( 'relation_id' => $prior['relation_id'], 'site_uuid' => $site_uuid, 'valid_to' => null ),
+						array( 'relation_id' => $prior['relation_id'], 'site_uuid' => $site_uuid ),
 						array( '%s' ),
-						array( '%s','%s',null )
+						array( '%s','%s' )
 					);
 					if ( false === $changed ) throw new RuntimeException( 'intent_relation_close_failed:' . (string) $wpdb->last_error );
 					$closed[] = $prior['relation_id'];
