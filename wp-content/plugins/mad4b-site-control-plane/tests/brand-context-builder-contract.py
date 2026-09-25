@@ -63,6 +63,7 @@ for marker in [
     "mad4b_request",
     "MAD4B_SCP_Context_Provider_Gateway::read_context_asset",
     "MAD4B_SCP_Context_Provider_Gateway::scan_source",
+    "MAD4B_SCP_Context_Provider_Gateway::find_brand_materialization_candidates",
     "MAD4B_SCP_Context_Provider_Gateway::create_brand_asset",
     "MAD4B_SCP_Context_Provider_Gateway::rollback_created_brand_asset",
     "MAD4B_SCP_Context_Provider_Gateway::materialization_reconciliation_ref",
@@ -119,7 +120,7 @@ if "MAD4B_SCP_Context_Provider_Gateway::create_asset" in materialize_section:
 
 reconcile_section = builder[builder.index("public static function reconcile_materialization"):builder.index("public static function rollback_materialized_draft")]
 for earlier, later in [
-    ("MAD4B_SCP_Context_Provider_Gateway::scan_source", "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation"),
+    ("MAD4B_SCP_Context_Provider_Gateway::find_brand_materialization_candidates", "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation"),
     ("MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect", "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation"),
     ("1 !== count( $candidates )", "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation"),
 ]:
@@ -134,6 +135,11 @@ if "'safe_to_retry' => true" in reconcile_section:
     safe_pos = reconcile_section.rindex("'safe_to_retry' => true")
     if not (pending_pos < release_pos < safe_pos):
         raise SystemExit("Brand reconciliation can declare retry safe before delayed durable no-effect release")
+
+if "MAD4B_SCP_Context_Provider_Gateway::find_brand_materialization_candidates" not in reconcile_section:
+    raise SystemExit("Brand reconciliation must use provider identity lookup")
+if "MAD4B_SCP_Context_Provider_Gateway::scan_source" in reconcile_section:
+    raise SystemExit("Brand reconciliation must not depend on a full source scan")
 
 rollback_section = builder[builder.index("public static function rollback_materialized_draft"):]
 for earlier, later in [
@@ -173,6 +179,7 @@ for marker in [
     "scan_source",
     "create_asset",
     "create_brand_asset",
+    "find_brand_materialization_candidates",
     "rollback_created_brand_asset",
     "materialization_reconciliation_ref",
     "materialization_zero_observation_ref",
@@ -227,6 +234,7 @@ for marker in [
 
 for marker in [
     "create_brand_asset",
+    "find_brand_materialization_candidates",
     "brand_materialization_properties",
     "appProperties",
     "mad4b_kind",
