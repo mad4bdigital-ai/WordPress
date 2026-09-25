@@ -160,6 +160,21 @@ def main() -> int:
             continue
         detail_path = f"rulesets/{ruleset_id}?includes_parents=true"
         detail = gh_json(args.repository, detail_path)
+        if not isinstance(detail, dict):
+            raise SystemExit(f"ruleset detail is not an object: id={ruleset_id}")
+        if isinstance(row, dict):
+            for metadata_key in (
+                "id",
+                "name",
+                "target",
+                "source_type",
+                "source",
+                "enforcement",
+                "created_at",
+                "updated_at",
+            ):
+                if metadata_key not in detail and metadata_key in row:
+                    detail[metadata_key] = row[metadata_key]
         if (
             isinstance(detail, dict)
             and "bypass_actors" not in detail
