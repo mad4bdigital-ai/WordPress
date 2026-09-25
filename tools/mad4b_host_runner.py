@@ -638,10 +638,15 @@ def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict
     if operation_id == "runtime.status.read":
         if inputs:
             raise ValueError("runtime.status.read takes no input fields")
+        config = root / "wp-config.php"
         return {
+            "contract": "mad4b.runtime-status-read.v1",
+            "operation_id": "runtime.status.read",
             "wordpress_root": str(root),
-            "wp_config_sha256": sha256_file(root / "wp-config.php"),
+            "wp_config_present": config.is_file(),
+            "wp_config_sha256": sha256_file(config) if config.is_file() else "",
             "plugin_present": (root / "wp-content/plugins/mad4b-site-control-plane").is_dir(),
+            "environment": profile["environment"],
             "mutation_performed": False,
         }
 
