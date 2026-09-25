@@ -69,9 +69,10 @@ def validate_ruleset_attestation(
 ) -> dict:
     config = policy.get("ruleset_attestation") or {}
     expected_config = {
-        "scope": "environment",
-        "environment_name": "repository-governance",
-        "variable_name": "MAD4B_RULESET_ATTESTATION",
+        "scope": "owner_issue_comment",
+        "issue_title": "MAD4B Repository Governance Attestations",
+        "authorized_author_login": "mad4bdigital-ai",
+        "comment_marker": "MAD4B_RULESET_ATTESTATION",
         "contract": "mad4b.repository-ruleset-attestation.v1",
         "require_zero_bypass_actors": True,
         "bind_ruleset_updated_at": True,
@@ -93,8 +94,10 @@ def validate_ruleset_attestation(
     if attestation.get("contract") != expected_config["contract"]:
         raise SystemExit("repository ruleset attestation contract mismatch")
     expected = {
-        "attestation_scope": "environment",
-        "attestation_environment": "repository-governance",
+        "attestation_scope": "owner_issue_comment",
+        "attestation_issue_title": "MAD4B Repository Governance Attestations",
+        "attestation_author_login": "mad4bdigital-ai",
+        "attestation_comment_marker": "MAD4B_RULESET_ATTESTATION",
         "repository": repository,
         "ruleset_id": int(ruleset.get("id") or 0),
         "ruleset_name": str(ruleset.get("name") or ""),
@@ -116,6 +119,107 @@ def validate_ruleset_attestation(
     if not expected["ruleset_updated_at"]:
         raise SystemExit("live ruleset updated_at is unavailable for attestation freshness")
     return attestation
+
+
+def load_owner_ruleset_attestation(
+    repository: str,
+    ruleset: dict,
+    policy: dict,
+    policy_path: Path,
+    template_path: Path | None,
+) -> dict:
+    config = policy.get("ruleset_attestation") or {}
+    issue_title = str(config.get("issue_title") or "")
+    owner_login = str(config.get("authorized_author_login") or "").lower()
+    marker = str(config.get("comment_marker") or "")
+    if issue_title != "MAD4B Repository Governance Attestations":
+        raise SystemExit("ruleset attestation issue title drifted")
+    if owner_login != "mad4bdigital-ai":
+        raise SystemExit("ruleset attestation authorized owner drifted")
+    if marker != "MAD4B_RULESET_ATTESTATION":
+        raise SystemExit("ruleset attestation comment marker drifted")
+
+    owner_issues = []
+    page = 1
+    while True:
+        rows = gh_json(repository, f"issues?state=all&per_page=100&page={page}")
+        if not isinstance(rows, list):
+            raise SystemExit("GitHub issues response is not a list")
+        for row in rows:
+            if not isinstance(row, dict) or "pull_request" in row:
+                continue
+            if str(row.get("title") or "") != issue_title:
+                continue
+            if str(((row.get("user") or {}).get("login") or "")).lower() != owner_login:
+                continue
+            issue_number = int(row.get("number") or 0)
+            if issue_number > 0:
+                owner_issues.append(issue_number)
+        if len(rows) < 100:
+            break
+        page += 1
+        if page > 50:
+            raise SystemExit("ruleset attestation issue pagination exceeded safety bound")
+
+    if not owner_issues:
+        raise SystemExit("owner-authored repository governance attestation issue is missing")
+
+    matches = []
+    stale = 0
+    prefix = marker + "\n"
+    for issue_number in sorted(set(owner_issues)):
+        page = 1
+        while True:
+            comments = gh_json(
+                repository,
+                f"issues/{issue_number}/comments?per_page=100&page={page}",
+            )
+            if not isinstance(comments, list):
+                raise SystemExit("GitHub attestation comments response is not a list")
+            for row in comments:
+                if not isinstance(row, dict):
+                    continue
+                if str(((row.get("user") or {}).get("login") or "")).lower() != owner_login:
+                    continue
+                body = str(row.get("body") or "").strip()
+                if not body.startswith(prefix):
+                    continue
+                raw_value = body[len(prefix):].strip()
+                try:
+                    attestation = validate_ruleset_attestation(
+                        raw_value,
+                        repository,
+                        ruleset,
+                        policy,
+                        policy_path,
+                        template_path,
+                    )
+                except SystemExit:
+                    stale += 1
+                    continue
+                matches.append(
+                    {
+                        "comment_id": int(row.get("id") or 0),
+                        "issue_number": issue_number,
+                        "created_at": str(row.get("created_at") or ""),
+                        "updated_at": str(row.get("updated_at") or ""),
+                        "attestation": attestation,
+                    }
+                )
+            if len(comments) < 100:
+                break
+            page += 1
+            if page > 50:
+                raise SystemExit("ruleset attestation comment pagination exceeded safety bound")
+
+    if not matches:
+        raise SystemExit(
+            "no owner-authored ruleset attestation comment matches the current governed ruleset"
+        )
+    matches.sort(key=lambda item: (item["comment_id"], item["updated_at"]))
+    selected = matches[-1]
+    selected["stale_owner_attestation_count"] = stale
+    return selected
 
 
 def ref_matches(value: str, pattern: str, default_ref: str) -> bool:
@@ -250,22 +354,16 @@ def main() -> int:
                 )
                 continue
 
-            config = policy.get("ruleset_attestation") or {}
-            variable_name = str(config.get("variable_name") or "")
-            if variable_name != "MAD4B_RULESET_ATTESTATION":
-                raise SystemExit("repository ruleset attestation variable name drifted")
-            ruleset_attestation = validate_ruleset_attestation(
-                os.environ.get(variable_name, ""),
+            selected_owner_attestation = load_owner_ruleset_attestation(
                 args.repository,
                 row,
                 policy,
                 args.policy,
                 args.template,
             )
+            ruleset_attestation = selected_owner_attestation["attestation"]
             ruleset_attestation_verified = True
-            bypass_evidence_sources[str(row_id)] = (
-                "environment_variable:repository-governance:" + variable_name
-            )
+            bypass_evidence_sources[str(row_id)] = "owner_issue_comment"
 
     governed_rulesets = [
         row
@@ -300,22 +398,18 @@ def main() -> int:
             raise SystemExit(
                 "ruleset attestation cannot be required while the bootstrap hidden-bypass exception is active"
             )
-        config = policy.get("ruleset_attestation") or {}
-        variable_name = str(config.get("variable_name") or "")
-        if variable_name != "MAD4B_RULESET_ATTESTATION":
-            raise SystemExit("repository ruleset attestation variable name drifted")
-        ruleset_attestation = validate_ruleset_attestation(
-            os.environ.get(variable_name, ""),
+        selected_owner_attestation = load_owner_ruleset_attestation(
             args.repository,
             governed_ruleset,
             policy,
             args.policy,
             args.template,
         )
+        ruleset_attestation = selected_owner_attestation["attestation"]
         ruleset_attestation_verified = True
         bypass_evidence_sources.setdefault(
             str(int(governed_ruleset.get("id") or 0)),
-            "direct_ruleset_detail+environment_variable:repository-governance:" + variable_name,
+            "direct_ruleset_detail+owner_issue_comment",
         )
 
     governed_rules = [
@@ -403,14 +497,14 @@ def main() -> int:
             variable_name = str(config.get("variable_name") or "")
             if variable_name != "MAD4B_RULESET_ATTESTATION":
                 raise SystemExit("repository ruleset attestation variable name drifted")
-            ruleset_attestation = validate_ruleset_attestation(
-                os.environ.get(variable_name, ""),
+            selected_owner_attestation = load_owner_ruleset_attestation(
                 args.repository,
                 governed_ruleset,
                 policy,
                 args.policy,
                 args.template,
             )
+            ruleset_attestation = selected_owner_attestation["attestation"]
             ruleset_attestation_verified = True
         response_only_approval_ready = (
             ruleset_attestation.get(
@@ -516,8 +610,9 @@ def main() -> int:
         "bypass_evidence_sources": bypass_evidence_sources,
         "ruleset_attestation_verified": ruleset_attestation_verified,
         "ruleset_attestation_required": bool(args.require_ruleset_attestation),
-        "ruleset_attestation_scope": "environment",
-        "ruleset_attestation_environment": "repository-governance",
+        "ruleset_attestation_scope": "owner_issue_comment",
+        "ruleset_attestation_issue_title": "MAD4B Repository Governance Attestations",
+        "ruleset_attestation_author_login": "mad4bdigital-ai",
         "response_only_approval_evidence_source": response_only_approval_evidence_source,
         "bootstrap_hidden_bypass_exception": bool(
             args.allow_bootstrap_hidden_bypass_evidence
