@@ -117,8 +117,32 @@ def atomic_json_write(path: Path, value: dict[str, Any]) -> None:
         pass
 
 
+def _is_link_like(path: Path) -> bool:
+    """Reject symbolic links and Windows reparse/junction objects fail-closed."""
+    try:
+        if _is_link_like(path):
+            return True
+    except OSError:
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    if callable(is_junction):
+        try:
+            if is_junction():
+                return True
+        except OSError:
+            return True
+    try:
+        stat_result = os.lstat(path)
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+    # Windows FILE_ATTRIBUTE_REPARSE_POINT. On POSIX st_file_attributes is absent.
+    return bool(int(getattr(stat_result, "st_file_attributes", 0)) & 0x400)
+
+
 def load_json_bounded(path: Path, max_bytes: int = MAX_JOB_BYTES) -> dict[str, Any]:
-    if path.is_symlink() or not path.is_file():
+    if _is_link_like(path) or not path.is_file():
         raise ValueError(f"JSON source is not a regular file: {path}")
     raw = path.read_bytes()
     if len(raw) > max_bytes:
@@ -152,7 +176,7 @@ def _reject_symlink_chain(path: Path, stop: Path) -> None:
     current = path
     stop = stop.resolve()
     while True:
-        if current.is_symlink():
+        if _is_link_like(current):
             raise ValueError(f"symlink path component forbidden: {current}")
         if current == stop:
             return
@@ -179,13 +203,13 @@ def load_profile(path: Path) -> dict[str, Any]:
     if not root_raw:
         raise ValueError("Host Runner profile wordpress_root missing")
     root_input = Path(root_raw).expanduser()
-    if root_input.is_symlink():
+    if _is_link_like(root_input):
         raise ValueError("Host Runner profile WordPress root symlink is forbidden")
     root = root_input.resolve()
     if not root.is_dir():
         raise ValueError("Host Runner profile WordPress root is invalid")
     wp_config = root / "wp-config.php"
-    if wp_config.is_symlink() or not wp_config.is_file():
+    if _is_link_like(wp_config) or not wp_config.is_file():
         raise ValueError("Host Runner profile WordPress root guard failed")
     wp_config_sha256 = sha256_file(wp_config)
 
@@ -193,7 +217,7 @@ def load_profile(path: Path) -> dict[str, Any]:
     if not key_file_raw:
         raise ValueError("Host Runner integrity_key_file missing")
     key_file_input = Path(key_file_raw).expanduser()
-    if key_file_input.is_symlink():
+    if _is_link_like(key_file_input):
         raise ValueError("Host Runner integrity key symlink is forbidden")
     key_file = key_file_input.resolve()
     if not key_file.is_file():
@@ -230,13 +254,13 @@ def load_profile(path: Path) -> dict[str, Any]:
     expected_workspace = (root / "wp-content" / "mad4b-runner").resolve()
     if not _is_within(runner_workspace, expected_workspace):
         raise ValueError("Host Runner workspace escaped dedicated runner root")
-    if runner_workspace.exists() and (runner_workspace.is_symlink() or not runner_workspace.is_dir()):
+    if runner_workspace.exists() and (_is_link_like(runner_workspace) or not runner_workspace.is_dir()):
         raise ValueError("Host Runner workspace must be a regular directory")
 
     receipt_root_input = Path(
         str(profile.get("receipt_root") or (root / "wp-content/mad4b-runner/receipts"))
     ).expanduser()
-    if receipt_root_input.is_symlink():
+    if _is_link_like(receipt_root_input):
         raise ValueError("Host Runner receipt_root symlink is forbidden")
 
     normalized = {
@@ -266,7 +290,7 @@ def load_profile(path: Path) -> dict[str, Any]:
         candidate = Path(normalized[evidence_root_key])
         if not _is_within(candidate, expected_workspace):
             raise ValueError(f"Host Runner {evidence_root_key} escaped dedicated runner workspace")
-        if candidate.exists() and (candidate.is_symlink() or not candidate.is_dir()):
+        if candidate.exists() and (_is_link_like(candidate) or not candidate.is_dir()):
             raise ValueError(f"Host Runner {evidence_root_key} must be a regular directory")
     normalized["target_fingerprint"] = sha256_bytes(canonical_json({
         "site_uuid": site_uuid,
@@ -402,7 +426,7 @@ def confined_file(profile: dict[str, Any], zone: str, relative: str) -> Path:
     resolved = candidate.resolve(strict=True)
     if not _is_within(resolved, base):
         raise ValueError("Host Runner path escaped configured zone")
-    if resolved.is_symlink() or not resolved.is_file():
+    if _is_link_like(resolved) or not resolved.is_file():
         raise ValueError("Host Runner target must be a regular file")
     return resolved
 
@@ -423,9 +447,9 @@ def plan_digest(plan: dict[str, Any]) -> str:
 def atomic_bytes_write(path: Path, raw: bytes) -> None:
     if len(raw) > MAX_WRITE_BYTES:
         raise ValueError("Host Runner write exceeds bounded byte budget")
-    if path.parent.is_symlink() or not path.parent.is_dir():
+    if _is_link_like(path.parent) or not path.parent.is_dir():
         raise ValueError("Host Runner target parent is invalid")
-    if path.exists() and path.is_symlink():
+    if path.exists() and _is_link_like(path):
         raise ValueError("Host Runner target symlink is forbidden")
     tmp = path.with_name(path.name + f".tmp-{uuid.uuid4().hex}")
     with tmp.open("wb") as handle:
@@ -443,7 +467,7 @@ def atomic_bytes_write(path: Path, raw: bytes) -> None:
 def workspace_file_identity(path: Path) -> str:
     if not path.exists():
         return "ABSENT"
-    if path.is_symlink() or not path.is_file():
+    if _is_link_like(path) or not path.is_file():
         raise ValueError("Host Runner workspace target must be a regular file")
     return sha256_file(path)
 
@@ -463,7 +487,7 @@ def build_workspace_replace_plan(
     if len(reason) < 3 or len(reason) > 500:
         raise ValueError("Host Runner workspace write reason is invalid")
     workspace = Path(profile["runner_workspace"])
-    if workspace.exists() and (workspace.is_symlink() or not workspace.is_dir()):
+    if workspace.exists() and (_is_link_like(workspace) or not workspace.is_dir()):
         raise ValueError("Host Runner workspace is invalid")
     target = workspace / relative_path
     expected_before = workspace_file_identity(target) if workspace.exists() else "ABSENT"
@@ -510,7 +534,7 @@ def build_workspace_rollback_plan(
         raise ValueError("Host Runner rollback source job id is invalid")
 
     receipt_path = Path(profile["receipt_root"]) / f"{source_job_id}.json"
-    if receipt_path.is_symlink() or not receipt_path.is_file():
+    if _is_link_like(receipt_path) or not receipt_path.is_file():
         raise ValueError("Host Runner rollback source durable receipt is unavailable")
     persisted_receipt = load_json_bounded(receipt_path, MAX_RECEIPT_BYTES)
     required_receipt_fields = (
@@ -526,7 +550,7 @@ def build_workspace_rollback_plan(
         raise ValueError("Host Runner rollback source durable receipt result mismatch")
 
     source_journal_path = Path(profile["journal_root"]) / f"{source_job_id}.json"
-    if source_journal_path.is_symlink() or not source_journal_path.is_file():
+    if _is_link_like(source_journal_path) or not source_journal_path.is_file():
         raise ValueError("Host Runner rollback source durable journal is unavailable")
     source_journal = load_json_bounded(source_journal_path, MAX_RECEIPT_BYTES)
     if source_journal.get("contract") != "mad4b.host-runner-mutation-journal.v1":
@@ -564,7 +588,7 @@ def build_workspace_rollback_plan(
 
     source_snapshot = Path(profile["rollback_root"]) / f"{source_job_id}.bin"
     if before != "ABSENT":
-        if source_snapshot.is_symlink() or not source_snapshot.is_file():
+        if _is_link_like(source_snapshot) or not source_snapshot.is_file():
             raise ValueError("Host Runner rollback source snapshot is unavailable")
         if not hmac.compare_digest(sha256_file(source_snapshot), before):
             raise ValueError("Host Runner rollback source snapshot identity mismatch")
@@ -637,7 +661,7 @@ def _validate_workspace_rollback_plan(
     source_snapshot = None
     if restore != "ABSENT":
         source_snapshot = Path(profile["rollback_root"]) / f"{source_job_id}.bin"
-        if source_snapshot.is_symlink() or not source_snapshot.is_file():
+        if _is_link_like(source_snapshot) or not source_snapshot.is_file():
             raise ValueError("Host Runner rollback source snapshot is unavailable")
         if not hmac.compare_digest(sha256_file(source_snapshot), restore):
             raise ValueError("Host Runner rollback source snapshot identity mismatch")
@@ -767,7 +791,7 @@ def _validate_workspace_plan(
     if not hmac.compare_digest(sha256_bytes(raw), str(plan.get("expected_after_sha256") or "")):
         raise ValueError("Host Runner replacement content does not match plan")
     workspace = Path(profile["runner_workspace"])
-    if workspace.exists() and (workspace.is_symlink() or not workspace.is_dir()):
+    if workspace.exists() and (_is_link_like(workspace) or not workspace.is_dir()):
         raise ValueError("Host Runner workspace is invalid")
     target = workspace / relative
     return plan, raw, target
@@ -780,7 +804,7 @@ def _rollback_workspace_replace(result: dict[str, Any]) -> bool:
     try:
         if before == "ABSENT":
             if target.exists():
-                if target.is_symlink() or not target.is_file():
+                if _is_link_like(target) or not target.is_file():
                     return False
                 target.unlink()
                 fd = os.open(str(target.parent), os.O_RDONLY)
@@ -789,7 +813,7 @@ def _rollback_workspace_replace(result: dict[str, Any]) -> bool:
                 finally:
                     os.close(fd)
             return not target.exists()
-        if rollback_path is None or rollback_path.is_symlink() or not rollback_path.is_file():
+        if rollback_path is None or _is_link_like(rollback_path) or not rollback_path.is_file():
             return False
         atomic_bytes_write(target, rollback_path.read_bytes())
         return hmac.compare_digest(workspace_file_identity(target), before)
@@ -801,7 +825,7 @@ def execute_workspace_replace(profile: dict[str, Any], verified: dict[str, Any])
     plan, raw, target = _validate_workspace_plan(profile, verified)
     workspace = Path(profile["runner_workspace"])
     workspace.mkdir(parents=True, exist_ok=True)
-    if workspace.is_symlink() or not workspace.is_dir():
+    if _is_link_like(workspace) or not workspace.is_dir():
         raise ValueError("Host Runner workspace is invalid after initialization")
     _reject_symlink_chain(target, workspace)
     before = workspace_file_identity(target)
@@ -812,7 +836,7 @@ def execute_workspace_replace(profile: dict[str, Any], verified: dict[str, Any])
     rollback_root = Path(profile["rollback_root"])
     journal_root.mkdir(parents=True, exist_ok=True)
     rollback_root.mkdir(parents=True, exist_ok=True)
-    if journal_root.is_symlink() or rollback_root.is_symlink():
+    if _is_link_like(journal_root) or _is_link_like(rollback_root):
         raise ValueError("Host Runner evidence workspace symlink is forbidden")
     token = verified["job_id"]
     journal_path = journal_root / f"{token}.json"
@@ -886,7 +910,7 @@ def plugin_tree_digest(root: Path) -> tuple[str, int]:
     rows: list[bytes] = []
     count = 0
     for path in sorted(root.rglob("*")):
-        if path.is_symlink():
+        if _is_link_like(path):
             raise ValueError(f"symlink forbidden in package tree: {path}")
         if not path.is_file():
             continue
@@ -963,7 +987,7 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
     job = load_json_bounded(job_path)
     verified = verify_job(job, profile)
     receipt_root = Path(profile["receipt_root"])
-    if receipt_root.exists() and receipt_root.is_symlink():
+    if receipt_root.exists() and _is_link_like(receipt_root):
         raise ValueError("Host Runner receipt root symlink is forbidden")
     receipt_root.mkdir(parents=True, exist_ok=True)
     receipt_path = receipt_root / f"{verified['job_id']}.json"
@@ -1127,7 +1151,7 @@ def record_failure_evidence(profile: dict[str, Any], job: dict[str, Any], exc: E
         if state == "RECOVERY_REQUIRED"
         else profile["dead_letter_root"]
     )
-    if root.exists() and (root.is_symlink() or not root.is_dir()):
+    if root.exists() and (_is_link_like(root) or not root.is_dir()):
         raise ValueError("Host Runner incident evidence root is invalid")
     root.mkdir(parents=True, exist_ok=True)
     path = root / f"{job_id}.json"
@@ -1178,10 +1202,10 @@ def _incident_summary(root: Path) -> dict[str, Any]:
     result = {"path": str(root), "exists": root.is_dir(), "count": 0, "items": []}
     if not root.is_dir():
         return result
-    if root.is_symlink():
+    if _is_link_like(root):
         raise ValueError("Host Runner incident root symlink is forbidden")
     for path in sorted(root.glob("*.json")):
-        if path.is_symlink() or not path.is_file():
+        if _is_link_like(path) or not path.is_file():
             continue
         try:
             row = load_json_bounded(path, MAX_RECEIPT_BYTES)
@@ -1204,16 +1228,16 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
     journal_root = Path(profile["journal_root"])
     receipt_root = Path(profile["receipt_root"])
     workspace = Path(profile["runner_workspace"])
-    if journal_root.exists() and (journal_root.is_symlink() or not journal_root.is_dir()):
+    if journal_root.exists() and (_is_link_like(journal_root) or not journal_root.is_dir()):
         raise ValueError("Host Runner journal root is invalid")
-    if receipt_root.exists() and (receipt_root.is_symlink() or not receipt_root.is_dir()):
+    if receipt_root.exists() and (_is_link_like(receipt_root) or not receipt_root.is_dir()):
         raise ValueError("Host Runner receipt root is invalid")
 
     receipts: dict[str, dict[str, Any]] = {}
     verified_rollbacks: dict[str, str] = {}
     if receipt_root.is_dir():
         for receipt_path in sorted(receipt_root.glob("*.json")):
-            if receipt_path.is_symlink() or not receipt_path.is_file():
+            if _is_link_like(receipt_path) or not receipt_path.is_file():
                 continue
             receipt = load_json_bounded(receipt_path, MAX_RECEIPT_BYTES)
             if receipt.get("contract") != RECEIPT_CONTRACT:
@@ -1235,7 +1259,7 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
     if journal_root.is_dir():
         for journal_path in sorted(journal_root.glob("*.json")):
-            if journal_path.is_symlink() or not journal_path.is_file():
+            if _is_link_like(journal_path) or not journal_path.is_file():
                 continue
             journal = load_json_bounded(journal_path, MAX_RECEIPT_BYTES)
             if journal.get("contract") != "mad4b.host-runner-mutation-journal.v1":
@@ -1493,7 +1517,7 @@ def reconcile_bridge_spool(
     bridge_root = Path(profile["bridge_root"])
     for name in ("queued", "running", "receipts", "dead-letter", "recovery-required"):
         path = bridge_root / name
-        if path.exists() and (path.is_symlink() or not path.is_dir()):
+        if path.exists() and (_is_link_like(path) or not path.is_dir()):
             raise ValueError("Host Bridge spool directory is invalid")
         path.mkdir(parents=True, exist_ok=True)
 
@@ -1503,7 +1527,7 @@ def reconcile_bridge_spool(
     reconciled: list[dict[str, Any]] = []
 
     for running in sorted((bridge_root / "running").glob("*.json"))[:limit]:
-        if running.is_symlink() or not running.is_file():
+        if _is_link_like(running) or not running.is_file():
             continue
         row = load_json_bounded(running, MAX_RECEIPT_BYTES)
         submission, lease_expires_raw = _bridge_running_submission(row)
@@ -1532,7 +1556,7 @@ def reconcile_bridge_spool(
         local_receipt_path = receipt_root / f"{job_id}.json"
         journal_path = journal_root / f"{job_id}.json"
 
-        if bridge_receipt_path.is_file() and not bridge_receipt_path.is_symlink():
+        if bridge_receipt_path.is_file() and not _is_link_like(bridge_receipt_path):
             receipt = load_json_bounded(bridge_receipt_path, MAX_RECEIPT_BYTES)
             if str(receipt.get("bridge_submission_sha256") or "") != supplied_submission_sha:
                 raise ValueError("Host Bridge durable receipt lineage mismatch")
@@ -1540,14 +1564,14 @@ def reconcile_bridge_spool(
             reconciled.append({"job_id": job_id, "state": "STALE_RUNNING_CLEARED_DURABLE_BRIDGE_RECEIPT"})
             continue
 
-        if local_receipt_path.is_file() and not local_receipt_path.is_symlink():
+        if local_receipt_path.is_file() and not _is_link_like(local_receipt_path):
             receipt = load_json_bounded(local_receipt_path, MAX_RECEIPT_BYTES)
             if receipt.get("contract") != RECEIPT_CONTRACT:
                 raise ValueError("Host Bridge local receipt contract mismatch during reconciliation")
             if str(receipt.get("bridge_submission_sha256") or "") != supplied_submission_sha:
                 raise ValueError("Host Bridge local receipt lineage mismatch during reconciliation")
             signed_job_path = Path(profile["bridge_job_root"]) / f"{job_id}.json"
-            if signed_job_path.is_symlink() or not signed_job_path.is_file():
+            if _is_link_like(signed_job_path) or not signed_job_path.is_file():
                 incident = {
                     "contract": "mad4b.host-bridge-incident.v1",
                     "job_id": job_id,
@@ -1579,7 +1603,7 @@ def reconcile_bridge_spool(
             reconciled.append({"job_id": job_id, "state": "BRIDGE_RECEIPT_REPAIRED_FROM_LOCAL_RECEIPT"})
             continue
 
-        if journal_path.is_file() and not journal_path.is_symlink():
+        if journal_path.is_file() and not _is_link_like(journal_path):
             journal = load_json_bounded(journal_path, MAX_RECEIPT_BYTES)
             if journal.get("contract") != "mad4b.host-runner-mutation-journal.v1":
                 raise ValueError("Host Bridge mutation journal contract mismatch during reconciliation")
@@ -1629,11 +1653,11 @@ def consume_bridge_spool(profile_path: Path, limit: int = 1) -> dict[str, Any]:
     if limit < 1 or limit > 100:
         raise ValueError("Host Bridge consume limit must be 1..100")
     bridge_root = Path(profile["bridge_root"])
-    if bridge_root.exists() and (bridge_root.is_symlink() or not bridge_root.is_dir()):
+    if bridge_root.exists() and (_is_link_like(bridge_root) or not bridge_root.is_dir()):
         raise ValueError("Host Bridge spool root is invalid")
     for name in ("queued", "running", "receipts", "dead-letter", "recovery-required"):
         path = bridge_root / name
-        if path.exists() and (path.is_symlink() or not path.is_dir()):
+        if path.exists() and (_is_link_like(path) or not path.is_dir()):
             raise ValueError("Host Bridge spool directory is invalid")
         path.mkdir(parents=True, exist_ok=True)
     job_root = Path(profile["bridge_job_root"])
@@ -1641,7 +1665,7 @@ def consume_bridge_spool(profile_path: Path, limit: int = 1) -> dict[str, Any]:
 
     processed = []
     for queued in sorted((bridge_root / "queued").glob("*.json"))[:limit]:
-        if queued.is_symlink() or not queued.is_file():
+        if _is_link_like(queued) or not queued.is_file():
             continue
         submission = load_json_bounded(queued, MAX_RECEIPT_BYTES)
         job_id = str(submission.get("job_id") or "").lower()
