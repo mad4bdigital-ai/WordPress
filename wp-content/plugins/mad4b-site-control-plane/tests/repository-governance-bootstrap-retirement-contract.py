@@ -48,9 +48,11 @@ for needle in one_time_verdict_required:
         raise SystemExit(f"one-time feature-boundary bootstrap Release Verdict binding missing: {needle}")
 
 schema_binding_required = [
-    "import fnmatch, json, os, re, subprocess",
-    "schema_checks = re.findall",
+    "critical_kernel_text.splitlines()",
+    "stripped.startswith('name: Schema ')",
+    "stripped.endswith(' real MariaDB upgrade')",
     "critical kernel must expose exactly one real MariaDB schema check",
+    "schema_check = schema_checks[0]",
     "schema_check,",
 ]
 for needle in schema_binding_required:
