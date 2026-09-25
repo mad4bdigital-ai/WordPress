@@ -65,6 +65,29 @@ for marker in [
     if marker not in builder:
         raise SystemExit(f"missing Brand Context Builder invariant: {marker}")
 
+append_section = builder[builder.index("public static function append_draft"):builder.index("private static function source_scan_snapshot")]
+if append_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > append_section.index("self::find_existing_draft( $idempotency_key )"):
+    raise SystemExit("Brand draft legacy lookup occurs before atomic durable idempotency claim")
+
+materialize_section = builder[builder.index("public static function materialize_draft"):builder.index("public static function rollback_materialized_draft")]
+if materialize_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > materialize_section.index("MAD4B_SCP_Context_Provider_Gateway::create_asset"):
+    raise SystemExit("Brand materialization provider create occurs before durable idempotency claim")
+
+rollback_section = builder[builder.index("public static function rollback_materialized_draft"):]
+for earlier, later in [
+    ("begin_generated_brand_rollback", "MAD4B_SCP_Context_Provider_Gateway::rollback_created_brand_asset"),
+    ("MAD4B_SCP_Context_Provider_Gateway::rollback_created_brand_asset", "mark_generated_brand_draft_rolled_back"),
+]:
+    if rollback_section.index(earlier) > rollback_section.index(later):
+        raise SystemExit(f"Brand rollback ordering invariant violated: {earlier} must precede {later}")
+
+live_section = builder[builder.index("private static function live_content_evidence"):builder.index("private static function structure_evidence")]
+semantic_section = live_section[live_section.index("$semantic_identity = array("):live_section.index("$record = array_merge")]
+if "modified_gmt" in semantic_section:
+    raise SystemExit("Observation timestamp/modified metadata must not participate in semantic content identity")
+if "hash( 'sha256', self::stable_json( $semantic_identity ) )" not in live_section:
+    raise SystemExit("Live evidence content hash must bind semantic identity only")
+
 for forbidden in [
     "review_asset(",
     "'review_status' => 'approved'",
