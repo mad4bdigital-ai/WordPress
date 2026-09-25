@@ -20,6 +20,7 @@ jobs:
   governance:
     name: Repository governance policy
     runs-on: ubuntu-latest
+    environment: repository-governance
     timeout-minutes: 5
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
