@@ -15,7 +15,7 @@ final class MAD4B_SCP_Skill_Seeder {
 	const CONTRACT = 'mad4b.skill-seeder.v1';
 	const OPTION = 'mad4b_scp_skill_seed_v1';
 	const INSPECTION_CONTRACT = 'mad4b.skill-seed-inspection.v1';
-	const SEED_VERSION = 6;
+	const SEED_VERSION = 7;
 	const SEED_DIR = 'skill-seeds';
 
 	private static $ran = false;
@@ -358,6 +358,7 @@ final class MAD4B_SCP_Skill_Seeder {
 			array( 'level' => 'provider', 'target' => 'jet-engine', 'name' => 'jetengine-content-modeling', 'enabled' => false ),
 			array( 'level' => 'workflow', 'target' => 'archive-audit', 'name' => 'wordpress-archive-audit' ),
 			array( 'level' => 'workflow', 'target' => 'change-safety', 'name' => 'wordpress-change-safety' ),
+			array( 'level' => 'workflow', 'target' => 'extension-strategy', 'name' => 'wordpress-extension-strategy' ),
 			array( 'level' => 'workflow', 'target' => 'release-orchestration', 'name' => 'wordpress-release-orchestration' ),
 			array( 'level' => 'workflow', 'target' => 'browser-acceptance', 'name' => 'wordpress-browser-acceptance' ),
 			array(
