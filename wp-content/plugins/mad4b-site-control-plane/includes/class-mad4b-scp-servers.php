@@ -38,6 +38,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/data-processing-evaluate',
 				'mad4b/decommission-preflight',
 				'mad4b/scheduler-admission-evaluate',
+				'mad4b/scheduler-fair-rank',
 				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status',
 				'mad4b/site-bootstrap-snapshot',
 			), $governed_status ),
