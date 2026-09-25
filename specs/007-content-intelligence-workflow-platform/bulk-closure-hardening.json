@@ -276,6 +276,26 @@
         "implement one reversible write executor using plan/apply/readback/rollback",
         "run ETG Staging Host Runner canary and cross-executor semantic conformance"
       ]
+    },
+    "wp_mad4b_cli": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php",
+        ".github/workflows/feature-007-critical-kernel.yml"
+      ],
+      "proven": [
+        "canonical wp mad4b read-only command namespace",
+        "delegation to existing Schema, Site Profile and runtime provenance services",
+        "machine-readable non-authorizing JSON responses",
+        "no shell, eval, raw SQL or mutation command surface"
+      ],
+      "remaining": [
+        "prove commands on ETG Staging with exact runtime identity",
+        "implement write commands only after shared semantic plan/apply service is available",
+        "prove MCP/WP-CLI/Host Runner normalized semantic conformance"
+      ]
     }
   }
 }
