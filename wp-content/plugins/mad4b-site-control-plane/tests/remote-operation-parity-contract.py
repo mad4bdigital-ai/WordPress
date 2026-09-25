@@ -104,12 +104,23 @@ for ability in [
     'mad4b/admin-query-performance-apply',
     'mad4b/admin-query-performance-reconcile',
 ]:
-    if ability not in servers:
-        raise SystemExit(f'{ability} missing from bounded enrollment surface')
-    # Remote parity operations are bootstrap/maintenance tools, not normal governed-write inventory.
-    write_section = servers.split("'mad4b-admin' => array(", 1)[0]
-    if ability in write_section and "'mad4b-enrollment'" not in servers:
-        raise SystemExit(f'{ability} unexpectedly entered normal write surface')
+    if ability not in parity:
+        raise SystemExit(f'{ability} missing from Remote Operation Parity enrollment inventory')
+
+if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in servers:
+    raise SystemExit('bounded enrollment server is not sourced from Remote Operation Parity enrollment inventory')
+
+write_start = servers.find("'mad4b-write' => array(")
+admin_start = servers.find("'mad4b-admin' => array(", write_start + 1)
+write_section = servers[write_start:admin_start] if write_start >= 0 and admin_start > write_start else ''
+for ability in [
+    'mad4b/reconcile-managed-skills',
+    'mad4b/frontend-performance-sample-run',
+    'mad4b/admin-query-performance-apply',
+    'mad4b/admin-query-performance-reconcile',
+]:
+    if ability in write_section:
+        raise SystemExit(f'{ability} unexpectedly entered normal governed-write inventory')
 
 if "class-mad4b-scp-remote-operation-parity.php" not in main:
     raise SystemExit('remote operation parity runtime is not loaded by the plugin')
