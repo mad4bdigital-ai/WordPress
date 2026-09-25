@@ -339,8 +339,26 @@
     {
       "id": "site_bootstrap",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "site_bootstrap_reconciled"
+      "status": "PARTIAL",
+      "gate": "site_bootstrap_reconciled",
+      "evidence": {
+        "contract": "mad4b.site-content-bootstrap.v1",
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php",
+        "read_only": true,
+        "provider_neutral_inventory": true,
+        "canonical_collision_analysis": true,
+        "multilingual_shared_canonical_not_automatic_conflict": true,
+        "no_backfill": true,
+        "no_intent_claim_creation": true,
+        "deterministic_snapshot_sha256": true,
+        "repository_only": true
+      },
+      "remainder": [
+        "obtain exact-head Critical Kernel PASS for the read-only existing-site bootstrap",
+        "run the bounded inventory snapshot against exact ETG Staging candidate",
+        "feed the resulting inventory into the Intent Registry without creating historical artifacts or content mutations"
+      ]
     },
     {
       "id": "intent_registry",
@@ -578,8 +596,25 @@
     {
       "id": "security_ai_eval_faults",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "kernel_quality_verified"
+      "status": "PARTIAL",
+      "gate": "kernel_quality_verified",
+      "evidence": {
+        "contract": "mad4b.feature007.security-ai-eval-faults.v1",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/security-ai-eval-faults-contract.py",
+        "no_generic_shell_on_new_execution_planes": true,
+        "no_raw_sql_on_host_bridge": true,
+        "content_job_vendor_neutral": true,
+        "qa_direct_publish_forbidden": true,
+        "uncertainty_blind_retry_denied": true,
+        "repository_live_evidence_separation_enforced": true,
+        "fault_fixture_accounting_complete": true,
+        "repository_only": true
+      },
+      "remainder": [
+        "obtain exact-head Critical Kernel PASS for the cross-surface safety/eval contract",
+        "execute live ETG fault canaries for the repository-proven fault classes",
+        "add AI data-processing/rights/provider-model eval fixtures when those live provider adapters are enabled"
+      ]
     },
     {
       "id": "operator_doctor_dlq",
