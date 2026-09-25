@@ -540,6 +540,7 @@ jobs:
                   'Runtime-affecting and release-evidence changes require an exact-head General Distribution artifact and verify its internal canonical identity before repository_release_ready can become true.',
                   'Repository-non-runtime changes may satisfy repository_merge_gate_ready without claiming repository_release_ready.',
                   'The only feature-boundary bootstrap exception is bound to the one-time branch chore/bootstrap-feature-boundary-policy-20260925, still requires exact-head Owner Attestation, and disappears once the root workflow is on master.',
+                  'Outside that one-time feature-boundary bootstrap, repository governance must verify ready for every merge-gate PASS.',
                   'Every master-bound pull request requires an authorized OWNER_ATTEST_SINGLE_OWNER comment bound to the exact current head SHA.',
                   'Repository success does not substitute for live ETG Staging acceptance.',
                   'Live performance and rollback drill remain external deployment gates.',
