@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
   "source_tasks_git_blob_sha": "e990bab0ffcd938396cac29a6823d939eca9aed3",
-  "override_git_blob_sha": "45872dee9a0018cdd1ab43d8b3ea483bec81765f",
+  "override_git_blob_sha": "96363bd17313b7bb937d835de5e77062f5684e2b",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -11,15 +11,15 @@
   "counts": {
     "DEFERRED": 1,
     "DONE": 13,
-    "OPEN": 613,
-    "PARTIAL": 31
+    "OPEN": 610,
+    "PARTIAL": 34
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
       "DONE": 13,
-      "OPEN": 492,
-      "PARTIAL": 17
+      "OPEN": 489,
+      "PARTIAL": 20
     },
     "P1": {
       "DEFERRED": 0,
@@ -1081,10 +1081,14 @@
       "phase": 6,
       "priority": "P0",
       "summary": "Usage/cost/budget metadata.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-pack.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php"
+      ],
+      "reason": "WriterProfile identity/version is now sourced from ContentJob and bound immutably through ContextPack, Draft and QA fingerprints; live WriterProfile asset resolution remains open."
     },
     {
       "task_id": "T0607",
@@ -1321,10 +1325,13 @@
       "phase": 8,
       "priority": "P0",
       "summary": "Section assembly lineage.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php"
+      ],
+      "reason": "ArticleDraft now carries immutable ContentJob WriterProfile id/version/fingerprint and QA fails closed on drift; live writer/provider execution remains open."
     },
     {
       "task_id": "T0807",
@@ -5791,10 +5798,13 @@
       "phase": 34,
       "priority": "P0",
       "summary": "Bind CapabilityProfile fingerprint into plans.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workflow-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/workflow-provider-plan-fingerprint-contract.php"
+      ],
+      "reason": "Workflow provider plans now bind CapabilityProfile and certification fingerprints into plan_sha256/execution_binding; remaining non-workflow provider plan families and live exact-candidate proof remain open."
     },
     {
       "task_id": "T3404",
