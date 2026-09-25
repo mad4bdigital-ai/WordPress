@@ -7,6 +7,9 @@ on:
       - '.github/workflows/feature-007-spec-ci.yml'
       - 'tools/mad4b_recovery_plane.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php'
 
 permissions:
   contents: read
@@ -135,3 +138,8 @@ jobs:
 
       - name: Enforce bulk closure hardening contract
         run: python wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py
+
+      - name: Enforce fenced remote work queue contract
+        run: |
+          python wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php
