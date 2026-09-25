@@ -253,13 +253,15 @@
   },
   "domain_evidence": {
     "protected_backup_restore": {
-      "repository_status": "PARTIAL",
+      "repository_status": "PROVEN",
       "live_status": "PENDING",
       "evidence_refs": [
         "tools/mad4b_recovery_plane.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
         ".github/workflows/feature-007-critical-kernel.yml",
-        "workflow_run:36078194633"
+        "workflow_run:36078194633",
+        "workflow_run:36095311341",
+        "head:220077c06566cd6876ca3f57683a7de4e3cfb53e"
       ],
       "proven": [
         "bounded Staging-only exact-plan Control Plane snapshot",
@@ -274,9 +276,9 @@
         "corrupted snapshot invalidates readiness and cannot produce a restore plan"
       ],
       "remaining": [
-        "create protected backup on ETG Staging for the exact currently deployed runtime",
-        "bind live backup receipt to rollout evidence",
-        "repeat corrupt/interrupted restore using the live protected backup path"
+        "create and verify protected backup on ETG Staging for the exact currently deployed runtime",
+        "prove live protected-root isolation/capacity and bind the live backup receipt to rollout evidence",
+        "repeat corrupt/interrupted restore drill using the live protected backup path"
       ]
     },
     "host_runner_kernel": {
@@ -287,7 +289,13 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
         ".github/workflows/feature-007-critical-kernel.yml",
         "workflow_run:36078194633",
-        "workflow_run:36078596096"
+        "workflow_run:36078596096",
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py",
+        "workflow_run:36095311341",
+        "head:220077c06566cd6876ca3f57683a7de4e3cfb53e"
       ],
       "proven": [
         "Staging-only read-only standalone runner process",
@@ -313,17 +321,24 @@
         "Doctor exposes reconciliation-required counts without mutation",
         "explicit rollback of a previously successful workspace write requires a new exact plan and approval",
         "write receipt replay revalidates the current postcondition and fails to reconciliation after state divergence",
-        "rollback itself has durable receipt semantics and exact replay readback"
+        "rollback itself has durable receipt semantics and exact replay readback",
+        "exact attested runner package bootstrap is confined to the dedicated runner zone",
+        "single-use expiring target-bound enrollment is repository-proven",
+        "bootstrap/enrollment create no standing Host Write/Execution or Production authority",
+        "WordPress Host Bridge queues semantic read and reversible-write submissions without executing host commands",
+        "Host Bridge reversible write requires exact authorization/approval and executes through the same Host Runner semantic operation",
+        "bridge repair/requeue denies blind retry and requires fresh job/idempotency/authorization",
+        "cross-executor runtime.status.read result and authority class parity is repository-proven"
       ],
       "remaining": [
-        "implement governed scheduler/queue pickup and fenced lease integration",
-        "implement attested runner package bootstrap and single-use enrollment",
-        "run ETG Staging Host Runner canary",
-        "prove write semantic parity through an authorized WordPress/MCP bridge"
+        "integrate/certify a supported hosting-profile scheduler channel for the fixed runner descriptor",
+        "bind queue pickup to durable lease/fencing semantics for actual scheduled Host Runner workers",
+        "run ETG Staging Host Runner canary against protected live storage",
+        "prove live MCP/WordPress/Host Runner write authority parity on the exact deployed candidate"
       ]
     },
     "wp_mad4b_cli": {
-      "repository_status": "PARTIAL",
+      "repository_status": "PROVEN",
       "live_status": "PENDING",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
@@ -331,7 +346,9 @@
         ".github/workflows/feature-007-critical-kernel.yml",
         "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py",
-        "workflow_run:36078194633"
+        "workflow_run:36078194633",
+        "workflow_run:36095311341",
+        "head:220077c06566cd6876ca3f57683a7de4e3cfb53e"
       ],
       "proven": [
         "canonical wp mad4b read-only command namespace",
@@ -339,12 +356,14 @@
         "machine-readable non-authorizing JSON responses",
         "no shell, eval, raw SQL or mutation command surface",
         "runtime.status.read emits normalized mad4b.runtime-status-read.v1 semantics",
-        "WP-CLI and Host Runner return equivalent normalized runtime.status.read results on the same target"
+        "WP-CLI and Host Runner return equivalent normalized runtime.status.read results on the same target",
+        "WP-CLI and Host Runner expose the same read_only_non_authorizing authority class for runtime.status.read",
+        "cross-executor runtime.status.read remains production_authorized=false and mutation_performed=false"
       ],
       "remaining": [
-        "prove commands on ETG Staging with exact runtime identity",
-        "implement write commands only after shared semantic plan/apply service is available",
-        "extend parity from WP-CLI↔Host Runner read semantics to MCP and reversible write semantics"
+        "prove canonical wp mad4b reads on ETG Staging with the exact selected runtime release",
+        "keep write commands unavailable until a shared governed semantic plan/apply service is explicitly certified",
+        "prove live MCP/WP-CLI/Host Runner authority parity on the deployed candidate"
       ]
     }
   },
