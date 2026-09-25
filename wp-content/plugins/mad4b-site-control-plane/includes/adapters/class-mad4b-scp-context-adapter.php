@@ -246,6 +246,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			false,
 			true,
 			false
+		);
 		$this->add_ability(
 			'context/brand-draft-append',
 			'Append Evidence-Bound Brand Context Draft',
@@ -323,7 +324,6 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			false,
 			true,
 			false
-		);
 		);
 	}
 
