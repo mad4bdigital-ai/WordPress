@@ -13,6 +13,7 @@ SPEC = ROOT / "specs/007-content-intelligence-workflow-platform"
 
 content_jobs = (ROOT / "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php").read_text(encoding="utf-8")
 durable = (ROOT / "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php").read_text(encoding="utf-8")
+provider = (ROOT / "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php").read_text(encoding="utf-8")
 runner = (ROOT / "tools/mad4b_host_runner.py").read_text(encoding="utf-8")
 gate = json.loads((SPEC / "gate-graph.json").read_text(encoding="utf-8"))
 closure = json.loads((SPEC / "implementation-closure.json").read_text(encoding="utf-8"))
@@ -83,6 +84,89 @@ for state, targets in host_states.items():
     if state != "MUTATION_STARTED" and targets:
         raise SystemExit(f"terminal Host Runner state has outgoing transitions: {state}")
 
+# Provider certification/release eligibility model: enumerate the same evidence
+# dimensions used by the implementation and prove quarantine/evidence invariants.
+for marker in (
+    "if ( ! $structural ) return self::LEVEL_QUARANTINED;",
+    "if ( ! $artifact_authority_bound ) return self::LEVEL_DISCOVERED;",
+    "if ( empty( $behavioral['behavioral_verified'] ) ) return self::LEVEL_DISCOVERED;",
+    "if ( $reversible && empty( $behavioral['rollback_verified'] ) ) return self::LEVEL_DISCOVERED;",
+    "'write_eligible' => 'read' !== $risk && $artifact_authority_bound && $write_level_eligible && self::ACTIVATION_ACTIVE === $activation_stage",
+    "'production_activation' => false",
+):
+    if marker not in provider:
+        raise SystemExit(f"provider certification invariant missing: {marker}")
+
+WRITE_LEVELS = {"BOUNDED_WRITE_COMPATIBLE", "REVERSIBLE_WRITE_CERTIFIED", "FULLY_CERTIFIED"}
+
+def provider_level(available, structural, exact, risk, reversible, behavioral, rollback, artifact_bound):
+    if not available:
+        return "UNKNOWN"
+    if not structural:
+        return "QUARANTINED"
+    if risk == "read":
+        return "FULLY_CERTIFIED" if exact else "READ_COMPATIBLE"
+    if not artifact_bound:
+        return "DISCOVERED"
+    if risk == "high_risk_write":
+        return "DISCOVERED"
+    if exact:
+        return "REVERSIBLE_WRITE_CERTIFIED" if reversible else ("BOUNDED_WRITE_COMPATIBLE" if risk == "bounded_write" else "DISCOVERED")
+    if not behavioral:
+        return "DISCOVERED"
+    if reversible and not rollback:
+        return "DISCOVERED"
+    if reversible:
+        return "REVERSIBLE_WRITE_CERTIFIED"
+    return "BOUNDED_WRITE_COMPATIBLE" if risk == "bounded_write" else "DISCOVERED"
+
+def activation_stage(risk, level, behavioral, canary=False):
+    if risk == "read":
+        return "active"
+    if risk == "high_risk_write":
+        return "canary" if behavioral or canary else "shadow"
+    return "active" if level in WRITE_LEVELS else "shadow"
+
+for available in (False, True):
+    for structural in (False, True):
+        for exact in (False, True):
+            for risk in ("read", "bounded_write", "high_risk_write"):
+                for reversible in (False, True):
+                    for behavioral in (False, True):
+                        for rollback in (False, True):
+                            for artifact_bound in (False, True):
+                                level = provider_level(
+                                    available, structural, exact, risk, reversible,
+                                    behavioral, rollback, artifact_bound
+                                )
+                                stage = activation_stage(risk, level, behavioral)
+                                write_eligible = (
+                                    risk != "read"
+                                    and artifact_bound
+                                    and level in WRITE_LEVELS
+                                    and stage == "active"
+                                )
+                                if available and not structural and level != "QUARANTINED":
+                                    raise SystemExit("structural provider mismatch escaped quarantine")
+                                if level == "QUARANTINED" and write_eligible:
+                                    raise SystemExit("quarantined capability became write eligible")
+                                if not artifact_bound and risk != "read" and write_eligible:
+                                    raise SystemExit("write became eligible without artifact authority")
+                                if reversible and risk != "read" and not exact and (not behavioral or not rollback) and write_eligible:
+                                    raise SystemExit("reversible write skipped behavioral/rollback evidence")
+                                if risk == "high_risk_write" and write_eligible:
+                                    raise SystemExit("high-risk capability became active without separate promotion authority")
+
+# Promotion/revocation truth: eligibility is recomputed from current evidence, so
+# removing authority/evidence or structural compatibility immediately removes write eligibility.
+eligible_level = provider_level(True, True, False, "bounded_write", True, True, True, True)
+if eligible_level != "REVERSIBLE_WRITE_CERTIFIED":
+    raise SystemExit("expected reversible provider certification state unavailable")
+if provider_level(True, True, False, "bounded_write", True, True, True, False) in WRITE_LEVELS:
+    raise SystemExit("artifact-authority revocation did not demote provider eligibility")
+if provider_level(True, False, False, "bounded_write", True, True, True, True) != "QUARANTINED":
+    raise SystemExit("structural drift did not quarantine provider capability")
+
 # Gate graph structural proof: unique IDs, resolved dependencies, DAG,
 # every declared terminal reachable from roots, every blocker closable.
 nodes = gate.get("gates", [])
@@ -114,7 +198,7 @@ while queue:
 if len(visited) != len(ids):
     raise SystemExit("gate graph contains a cycle")
 
-roots = set(gate.get("root_gates", []))
+roots = set(gate.get("roots", []))
 terminals = set(gate.get("terminal_states", []))
 if not roots or not terminals:
     raise SystemExit("gate graph missing roots or terminals")
