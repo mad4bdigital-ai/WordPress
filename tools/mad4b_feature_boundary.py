@@ -83,7 +83,7 @@ def main():
         "skill_inventory_source": SKILL_INVENTORY_SOURCE,
         "cross_feature_dependencies_are_exact": True,
         "mutable_metadata_cannot_widen_policy": True,
-        "repository_governance_files_are_immutable": True,
+        "repository_governance_changes_are_separately_governed": True,
     }
     if binding != expected_binding:
         fail("FEATURE_BOUNDARY_BINDING_DRIFT")
