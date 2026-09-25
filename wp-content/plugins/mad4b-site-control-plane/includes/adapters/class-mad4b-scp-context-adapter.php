@@ -464,7 +464,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'control_plane_build_fingerprint' => $control_plane_build_fingerprint,
 			'critical_files' => $critical_hashes,
 			'rollback_contracts' => $contracts,
-			'brand_materialization_rollback_contract' => MAD4B_SCP_Brand_Context_Builder::ROLLBACK_CONTRACT,
+			'brand_materialization_rollback_contract' => 'mad4b.rollback.google-drive-brand-context-create.v1',
 		);
 		$json = function_exists( 'wp_json_encode' )
 			? wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
