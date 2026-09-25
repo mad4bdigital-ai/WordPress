@@ -24,6 +24,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/publication-verification-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/policy-resolution-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php'
@@ -40,6 +41,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-draft.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-publication-verification.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-pack.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php'
@@ -106,6 +108,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/publication-verification-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/policy-resolution-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php'
@@ -122,6 +125,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-draft.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-publication-verification.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-pack.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php'
@@ -287,6 +291,20 @@ jobs:
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php
           php wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php
+
+      - name: Verify governed WordPress draft orchestration
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-draft.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php
+
+      - name: Verify publication verification reducer
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-publication-verification.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/publication-verification-contract.php
 
       - name: Verify formal Critical Kernel state proof
         shell: bash
