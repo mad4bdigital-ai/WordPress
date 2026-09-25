@@ -760,6 +760,12 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'idempotency_key' => $idempotency_key,
 			'scope_key' => $scope_key,
 			'request_sha256' => $request_sha256,
+			'provider_identity' => array(
+				'artifact_id' => $artifact_id,
+				'source_id' => $source_id,
+				'idempotency_key' => $idempotency_key,
+				'request_sha256' => $request_sha256,
+			),
 		);
 	}
 
@@ -783,7 +789,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		if ( null !== $replay ) return $replay;
 
 		$name = (string) $identity['name'];
-		$created = MAD4B_SCP_Context_Provider_Gateway::create_asset( $source_id, $name, $content, $format );
+		$created = MAD4B_SCP_Context_Provider_Gateway::create_brand_asset( $source_id, $name, $content, $format, (array) $identity['provider_identity'] );
 		if ( is_wp_error( $created ) ) {
 			return new WP_Error(
 				'mad4b_brand_materialize_provider_outcome_uncertain',
@@ -855,8 +861,21 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		if ( empty( $scan['complete'] ) ) return new WP_Error( 'mad4b_brand_materialization_reconcile_scan_incomplete', 'Brand materialization reconciliation requires a complete provider scan.', array( 'truncation_reasons' => isset( $scan['truncation_reasons'] ) ? $scan['truncation_reasons'] : array() ) );
 
 		$candidates = array();
+		$expected_properties = array(
+			'mad4b_kind' => 'brand_context',
+			'mad4b_artifact' => (string) $identity['artifact_id'],
+			'mad4b_source' => (string) $identity['source_id'],
+			'mad4b_idempotency' => (string) $identity['idempotency_key'],
+			'mad4b_request' => (string) $identity['request_sha256'],
+		);
 		foreach ( isset( $scan['assets'] ) && is_array( $scan['assets'] ) ? $scan['assets'] : array() as $asset ) {
 			if ( ! is_array( $asset ) ) continue;
+			$properties = isset( $asset['appProperties'] ) && is_array( $asset['appProperties'] ) ? $asset['appProperties'] : array();
+			$identity_match = true;
+			foreach ( $expected_properties as $key => $value ) {
+				if ( ! isset( $properties[ $key ] ) || ! hash_equals( (string) $value, (string) $properties[ $key ] ) ) { $identity_match = false; break; }
+			}
+			if ( ! $identity_match ) continue;
 			if ( ! isset( $asset['title'] ) || ! hash_equals( (string) $identity['name'], (string) $asset['title'] ) ) continue;
 			if ( empty( $asset['parent_folder_id'] ) || ! hash_equals( (string) $identity['target_folder_id'], (string) $asset['parent_folder_id'] ) ) continue;
 			if ( empty( $asset['content_complete'] ) ) continue;
@@ -876,6 +895,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				'expected_content_sha256' => (string) $identity['draft_content_sha256'],
 				'expected_mime_type' => (string) $identity['expected_mime_type'],
 				'format' => (string) $identity['format'],
+				'provider_identity' => $expected_properties,
 				'provider_scan_complete' => true,
 				'provider_candidate_count' => 0,
 				'provider_scan_generation' => isset( $scan['scan_generation'] ) ? (string) $scan['scan_generation'] : '',
@@ -952,6 +972,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				'idempotency_key' => (string) $identity['idempotency_key'],
 				'provider_scan_complete' => true,
 				'provider_candidate_count' => 1,
+				'provider_identity' => $expected_properties,
 				'provider_scan_generation' => isset( $scan['scan_generation'] ) ? (string) $scan['scan_generation'] : '',
 				'reconciled' => true,
 			),
