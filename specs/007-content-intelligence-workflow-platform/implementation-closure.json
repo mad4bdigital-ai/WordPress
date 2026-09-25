@@ -907,11 +907,21 @@
         "private_keys_exported": false,
         "grants_recreated_on_import": false,
         "production_authority_recreated_on_import": false,
-        "repository_only": true
+        "repository_only": true,
+        "export_bundle_contract": "mad4b.export-bundle.v1",
+        "import_validation_contract": "mad4b.import-bundle-validation.v1",
+        "deterministic_section_checksums": true,
+        "bundle_checksum": true,
+        "site_remap_validation": true,
+        "collision_validation": true,
+        "missing_external_ref_validation": true,
+        "forbidden_authority_material_fail_closed": true,
+        "export_build_mutation_performed": false,
+        "import_validation_mutation_performed": false
       },
       "remainder": [
-        "bind preflight to live provider/site inventories and actual export bundle generation/import validation",
-        "implement governed quiesce/drain/revoke/remove actions behind explicit authority and rollback/recovery policy",
+        "bind export-bundle builder to live governed provider/site inventory readers instead of caller-supplied snapshots",
+        "implement governed quiesce/drain/revoke/remove and actual import actions behind explicit authority and rollback/recovery policy",
         "prove complete ETG Staging provider/site decommission rehearsal including late callbacks and central registry cleanup"
       ]
     }
