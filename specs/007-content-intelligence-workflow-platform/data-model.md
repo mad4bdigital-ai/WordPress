@@ -1,6 +1,6 @@
 # Data Model — Feature 007
 
-Schema version: `10`
+Schema version: `11`
 
 ## Modeling principles
 
@@ -11,6 +11,17 @@ Schema version: `10`
 5. State transitions are append-only events.
 6. Provider/runtime observations are facts; certification is a separate decision.
 7. Generic tables carry typed payloads rather than creating one table for every content artifact.
+
+## Schema v11 additive intent authority
+
+Schema v11 adds the site-level `IntentRelation` authority store. The table is the
+authoritative current/version history for intent ownership across a site, locale and
+market. Job-scoped `intent_registry` ContentArtifacts are immutable evidence
+snapshots/projections of that authority and MUST NOT become a second current-state
+authority source.
+
+The migration is additive, preserves all v10 Artifact/Durable Execution tables, does
+not widen authority, and remains forward-fix only.
 
 ## Core entities
 
