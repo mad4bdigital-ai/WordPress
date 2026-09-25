@@ -99,7 +99,9 @@
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence-reconciler.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence-reconciler.php",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
       ],
       "remaining": [
         "prove provider/Host Runner duplicate delivery under live staging execution"
@@ -308,7 +310,10 @@
         "post-mutation readback failure cannot become success and rolls back exact prior workspace state",
         "read-only reconciliation classifies durable receipt, rolled-back, effect-without-receipt and divergent target states",
         "uncertain effects require reconciliation and keep blind retry disabled",
-        "Doctor exposes reconciliation-required counts without mutation"
+        "Doctor exposes reconciliation-required counts without mutation",
+        "explicit rollback of a previously successful workspace write requires a new exact plan and approval",
+        "write receipt replay revalidates the current postcondition and fails to reconciliation after state divergence",
+        "rollback itself has durable receipt semantics and exact replay readback"
       ],
       "remaining": [
         "implement governed scheduler/queue pickup and fenced lease integration",
