@@ -141,8 +141,9 @@ final class MAD4B_SCP_Context_Pack {
 				$conditional[] = 'destination.knowledge';
 				break;
 		}
+		// WriterProfile is content-addressed authority bound by the ContentJob.
+		// Never project an arbitrary writer reference when the job has no exact binding.
 		if ( ! empty( $job['writer_profile_id'] ) ) $required[] = 'writer.profile';
-		else $conditional[] = 'writer.profile';
 
 		$required = array_values( array_unique( array_intersect( self::knowledge_classes(), $required ) ) );
 		$conditional = array_values( array_diff( array_unique( array_intersect( self::knowledge_classes(), $conditional ) ), $required ) );
