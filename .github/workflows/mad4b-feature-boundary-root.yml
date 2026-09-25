@@ -1,0 +1,72 @@
+name: MAD4B Feature Boundary Root Trust
+
+on:
+  pull_request:
+    paths:
+      - '.github/mad4b-feature-boundary-root-policy.json'
+      - '.github/workflows/mad4b-feature-boundary-root.yml'
+      - 'tools/verify_feature_boundary.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-feature-boundary-root-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  root-contract:
+    name: Repository-owned feature boundary root
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Compile trusted verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/verify_feature_boundary.py
+
+      - name: Execute root policy self-test
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/verify_feature_boundary.py --self-test --output /tmp/MAD4B-FEATURE-BOUNDARY-SELFTEST.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open('/tmp/MAD4B-FEATURE-BOUNDARY-SELFTEST.json',encoding='utf-8'))
+          assert p['contract']=='mad4b.feature-boundary-verdict.v1'
+          assert p['self_test'] is True
+          assert p['ready'] is True
+          assert p['case_count'] >= 7
+          print('MAD4B_FEATURE_BOUNDARY_ROOT_SELFTEST: PASS')
+          PY
+
+      - name: Verify policy is repository-root scoped
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          p=json.load(open('.github/mad4b-feature-boundary-root-policy.json',encoding='utf-8'))
+          assert p['contract']=='mad4b.repository-feature-boundary-root-policy.v1'
+          assert p['target_branch']=='master'
+          assert p['source_of_truth']=='repository_owned_exact_base'
+          assert p['metadata_cannot_widen_policy'] is True
+          assert p['repository_owned_changes_require_separate_governance_pr'] is True
+          assert '.github/workflows/mad4b-release-verdict.yml' in p['repository_owned_exact_paths']
+          assert '007' in p['features']
+          print('MAD4B_FEATURE_BOUNDARY_ROOT_POLICY: PASS')
+          PY
