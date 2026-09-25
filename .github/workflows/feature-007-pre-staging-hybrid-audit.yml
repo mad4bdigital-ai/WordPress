@@ -82,7 +82,7 @@ jobs:
             file_type
             localhost
             no_unfiltered_uploads
-            plugin_header_text_domain
+            plugin_header_fields
             plugin_updater
           exclude-directories: |
             tests
