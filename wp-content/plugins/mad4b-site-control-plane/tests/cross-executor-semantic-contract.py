@@ -103,6 +103,10 @@ with tempfile.TemporaryDirectory() as td:
         "wp_config_sha256",
         "plugin_present",
         "environment",
+        "readonly",
+        "authorizing",
+        "authority_class",
+        "production_authorized",
         "mutation_performed",
     ]
     for key_name in keys:
@@ -118,5 +122,11 @@ with tempfile.TemporaryDirectory() as td:
         raise SystemExit("runtime status semantic contract drift")
     if host["mutation_performed"] is not False:
         raise SystemExit("runtime status semantic read mutated target")
+    if host["authority_class"] != "read_only_non_authorizing":
+        raise SystemExit("runtime status authority class drift")
+    if host["readonly"] is not True or host["authorizing"] is not False:
+        raise SystemExit("runtime status authority semantics drift")
+    if host["production_authorized"] is not False:
+        raise SystemExit("runtime status unexpectedly authorizes Production")
 
 print("mad4b.cross-executor.runtime-status.v1: PASS")
