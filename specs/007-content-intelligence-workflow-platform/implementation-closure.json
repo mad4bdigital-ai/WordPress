@@ -790,7 +790,37 @@
     {
       "id": "cron_provider_backlog",
       "priority": "MATURITY_REQUIRED",
-      "status": "OPEN"
+      "status": "PARTIAL",
+      "gate": "scheduler_backlog_semantics_ready",
+      "evidence": {
+        "contract": "mad4b.scheduler-admission.v1",
+        "source_contracts": [
+          "mad4b.cron-growth.v1",
+          "mad4b.fairness-local-autonomy.v1"
+        ],
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php",
+        "decisions": [
+          "ADMIT",
+          "QUEUE",
+          "RESERVED_LANE",
+          "DENY",
+          "FAIL_CLOSED"
+        ],
+        "queued_quota_enforced": true,
+        "concurrency_quota_enforced": true,
+        "provider_rate_limit_backpressure": true,
+        "reserved_operational_lane": true,
+        "high_risk_central_outage_fail_closed": true,
+        "authority_bypassed": false,
+        "dispatch_performed": false,
+        "repository_only": true
+      },
+      "remainder": [
+        "implement durable provider-neutral queue ordering/weighted-fair scheduling rather than admission evaluation only",
+        "bind actual WordPress/Host/external cron adapters to exact desired/expected state and budgets",
+        "prove noisy-neighbor, anti-starvation and provider-backlog behavior under disposable/live ETG load"
+      ]
     },
     {
       "id": "growth_fairness_localization_evalops",
@@ -800,7 +830,30 @@
     {
       "id": "decommission_portability",
       "priority": "MATURITY_REQUIRED",
-      "status": "OPEN"
+      "status": "PARTIAL",
+      "gate": "decommission_portability_ready",
+      "evidence": {
+        "contract": "mad4b.decommission-portability-preflight.v1",
+        "source_contract": "mad4b.decommission-portability.v1",
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php",
+        "active_work_blocks_decommission": true,
+        "credentials_webhooks_schedules_inventory": true,
+        "unresolved_writes_block": true,
+        "dlq_and_runner_leases_inventory": true,
+        "evidence_retention_required": true,
+        "export_manifest_checksums_required": true,
+        "secrets_exported": false,
+        "private_keys_exported": false,
+        "grants_recreated_on_import": false,
+        "production_authority_recreated_on_import": false,
+        "repository_only": true
+      },
+      "remainder": [
+        "bind preflight to live provider/site inventories and actual export bundle generation/import validation",
+        "implement governed quiesce/drain/revoke/remove actions behind explicit authority and rollback/recovery policy",
+        "prove complete ETG Staging provider/site decommission rehearsal including late callbacks and central registry cleanup"
+      ]
     }
   ],
   "observed_live_etg_state": {
