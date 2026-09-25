@@ -85,6 +85,16 @@ final class MAD4B_SCP_Admin_Query_Performance {
 		);
 	}
 
+	public static function handle_explicit_apply() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required to apply MAD4B performance indexes.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
+		check_admin_referer( 'mad4b_apply_admin_query_indexes', 'mad4b_admin_query_performance_nonce' );
+		$result = self::maybe_ensure_staging_indexes();
+		$state = is_array( $result ) && isset( $result['state'] ) ? sanitize_key( (string) $result['state'] ) : ( ! empty( $result['ready'] ) ? 'ready' : 'unknown' );
+		$url = add_query_arg( array( 'page' => 'mad4b-control-plane', 'mad4b_performance_apply' => $state ), admin_url( 'admin.php' ) );
+		wp_safe_redirect( $url );
+		exit;
+	}
+
 	public static function maybe_ensure_staging_indexes() {
 		if ( self::is_forbidden_automatic_lifecycle_request() ) return array( 'contract' => self::CONTRACT, 'environment' => self::environment(), 'state' => 'lifecycle_protected', 'production_changed' => false );
 		if ( 'staging' !== self::environment() ) return array( 'contract' => self::CONTRACT, 'environment' => self::environment(), 'state' => 'not_applicable', 'production_changed' => false );
@@ -138,6 +148,16 @@ final class MAD4B_SCP_Admin_Query_Performance {
 		);
 		update_option( self::OPTION, $record, false );
 		return array_merge( $after, array( 'last_apply' => $record ) );
+	}
+
+	private static function is_forbidden_automatic_lifecycle_request() {
+		if ( defined( 'WP_CLI' ) && WP_CLI ) return false;
+		if ( ! is_admin() ) return true;
+		$pagenow = isset( $GLOBALS['pagenow'] ) ? sanitize_key( (string) $GLOBALS['pagenow'] ) : '';
+		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle observation only.
+		if ( in_array( $pagenow, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return true;
+		if ( in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true ) ) return true;
+		return false;
 	}
 
 	private static function create_index( array $spec ) {
