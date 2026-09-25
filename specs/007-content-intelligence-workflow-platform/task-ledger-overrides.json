@@ -420,6 +420,22 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php"
       ],
       "reason": "ArticleDraft now carries immutable ContentJob WriterProfile id/version/fingerprint and QA fails closed on drift; live writer/provider execution remains open."
+    },
+    "T3005": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Portable bundle generation now computes deterministic per-section and whole-bundle checksums; live blob export and external storage transfer remain open."
+    },
+    "T3010": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Read-only import validation now verifies bundle/section integrity, site remapping, collisions and missing external refs while forbidding authority material; actual governed import remains open."
     }
   }
 }
