@@ -10,6 +10,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-path-security-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-path-security-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php'
@@ -234,6 +236,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py
+
+      - name: Verify POSIX Host Runner link path security
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/host-runner-path-security-contract.py
 
       - name: Verify Host Runner bootstrap and enrollment
         shell: bash
@@ -528,6 +536,35 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+
+  host-runner-windows-path-security:
+    name: Host Runner Windows reparse path security
+    runs-on: windows-latest
+    timeout-minutes: 8
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact implementation head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source identity
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne $env:SOURCE_SHA) {
+            throw "Exact source identity mismatch."
+          }
+
+      - name: Compile Host Runner
+        shell: pwsh
+        run: |
+          python -m py_compile tools/mad4b_host_runner.py
+
+      - name: Deny Windows junction/reparse path traversal
+        shell: pwsh
+        run: |
+          python wp-content/plugins/mad4b-site-control-plane/tests/host-runner-path-security-contract.py
 
   schema-mariadb-v6-v11:
     name: Schema v6 v7 v8 v9 to v11 real MariaDB upgrade
