@@ -83,6 +83,10 @@ require(registry, 'mad4b_grant_server_ability_mismatch', 'grant-server-ability-d
 require(registry, 'mad4b_grant_provider_mismatch', 'grant-provider-denial')
 require(registry, 'mad4b_scp_allow_breakglass_grant_creation', 'breakglass-exception-hook')
 require(registry, 'mad4b_breakglass_grant_creation_denied', 'breakglass-default-denial')
+require(registry, 'private static $agent_by_public_id = array();', 'agent-request-cache')
+require(registry, 'array_key_exists( $public_id, self::$agent_by_public_id )', 'agent-request-cache-hit')
+require(registry, 'self::$agent_by_public_id[ $public_id ] = $row ? $row : null;', 'agent-request-negative-cache')
+require(registry, 'self::invalidate_agent_cache( $public_id );', 'agent-cache-update-invalidation')
 
 # Server membership has a single provider-aware source of truth.
 require(servers, 'public static function provider_for_ability', 'server-provider-resolver')
