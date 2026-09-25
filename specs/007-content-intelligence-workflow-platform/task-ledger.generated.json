@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
   "source_tasks_git_blob_sha": "e990bab0ffcd938396cac29a6823d939eca9aed3",
-  "override_git_blob_sha": "629bc50c357455f3c7989a2f986adaecb5c5454c",
+  "override_git_blob_sha": "f56bcc3019dddd1c36bff9e63f16168270619cd3",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -11,15 +11,15 @@
   "counts": {
     "DEFERRED": 1,
     "DONE": 13,
-    "OPEN": 608,
-    "PARTIAL": 36
+    "OPEN": 602,
+    "PARTIAL": 42
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
       "DONE": 13,
-      "OPEN": 489,
-      "PARTIAL": 20
+      "OPEN": 483,
+      "PARTIAL": 26
     },
     "P1": {
       "DEFERRED": 0,
@@ -4063,40 +4063,52 @@
       "phase": 24,
       "priority": "P0",
       "summary": "Implement read-only SiteBootstrapSnapshot.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php"
+      ],
+      "reason": "Read-only SiteBootstrapSnapshot is implemented with bounded completeness and deterministic fingerprinting; exact ETG live inventory proof remains open."
     },
     {
       "task_id": "T2402",
       "phase": 24,
       "priority": "P0",
       "summary": "Normalize posts/pages/CPTs/taxonomies/languages.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php"
+      ],
+      "reason": "Bootstrap normalizes governed public post types, taxonomies and active languages; exact ETG plugin/language inventory proof remains open."
     },
     {
       "task_id": "T2403",
       "phase": 24,
       "priority": "P0",
       "summary": "Normalize URLs/canonicals/SEO/indexability.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php"
+      ],
+      "reason": "Bootstrap observes canonical URLs, SEO metadata and indexability without mutation; exact ETG provider-specific observations remain live-bound."
     },
     {
       "task_id": "T2404",
       "phase": 24,
       "priority": "P0",
       "summary": "Normalize media and internal/outbound links.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php"
+      ],
+      "reason": "Bootstrap records bounded media and internal/outbound link observations; exact ETG inventory completeness remains live-bound."
     },
     {
       "task_id": "T2405",
@@ -4123,10 +4135,13 @@
       "phase": 24,
       "priority": "P0",
       "summary": "Implement Intent Registry.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php"
+      ],
+      "reason": "Authoritative v11 Intent Registry plus explicit read-only Bootstrap→Intent reconciliation planning are implemented; exact live reconciliation remains open."
     },
     {
       "task_id": "T2408",
@@ -4183,10 +4198,14 @@
       "phase": 24,
       "priority": "P0",
       "summary": "GATE Bootstrap performs no mutation.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php"
+      ],
+      "reason": "Bootstrap snapshot and Bootstrap→Intent planning explicitly report no mutation, no IntentClaim creation and no Artifact creation; exact-head/live proof remains open."
     },
     {
       "task_id": "T2414",
