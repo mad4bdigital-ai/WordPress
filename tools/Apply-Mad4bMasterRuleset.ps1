@@ -118,7 +118,26 @@ if ($named.Count -gt 1) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: duplicate MAD4B governance rulesets detected."
 } elseif ($named.Count -eq 1) {
     $rulesetId = [string]$named[0].id
-    Write-Host "Existing named ruleset detected; no mutation will be attempted. id=$rulesetId"
+    Write-Host "=== RECONCILE EXISTING RULESET ==="
+    Write-Host "Existing named ruleset detected; applying the exact reviewed template. id=$rulesetId"
+    $updateArgs = @(
+        "api",
+        "--method","PUT",
+        "-H","Accept: application/vnd.github+json",
+        "-H","X-GitHub-Api-Version: 2026-03-10",
+        "repos/$Repository/rulesets/$rulesetId",
+        "--input",$TemplatePath
+    )
+    $updatedRaw = & gh @updateArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "GOVERNANCE_APPLY_FAIL_CLOSED: repository ruleset reconciliation failed. Ensure the active gh credential has Administration:write for this repository."
+    }
+    $updated = $updatedRaw | ConvertFrom-Json
+    if ($null -eq $updated -or [string]$updated.id -ne $rulesetId) {
+        throw "GOVERNANCE_APPLY_FAIL_CLOSED: reconciled ruleset response did not preserve the expected ruleset id."
+    }
+    $mutationPerformed = $true
+    Write-Host "Reconciled existing ruleset id=$rulesetId"
 } else {
     Write-Host "=== CREATE RULESET ==="
     $createArgs = @("api","--method","POST","-H","Accept: application/vnd.github+json","-H","X-GitHub-Api-Version: 2026-03-10","repos/$Repository/rulesets","--input",$TemplatePath)
@@ -158,6 +177,7 @@ Write-Host ""
 Write-Host "APPLY_MAD4B_MASTER_RULESET:$rulesetId:ready"
 Write-Host "mutation_performed=$($mutationPerformed.ToString().ToLowerInvariant())"
 Write-Host "required_check=Repository release verdict"
+Write-Host "required_check=Repository feature boundary"
 Write-Host "required_check_integration_id=15368"
 Write-Host "target_ref=refs/heads/master"
 Write-Host "reviewed_head=$currentHead"
