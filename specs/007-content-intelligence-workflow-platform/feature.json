@@ -151,6 +151,7 @@
     ".github/workflows/mad4b-provider-compatibility-engine.yml",
     ".github/workflows/mad4b-owner-attestation-rerun.yml",
     ".github/workflows/mad4b-release-verdict.yml",
+    ".github/workflows/mad4b-site-control-plane.yml",
     ".github/workflows/mad4b-repository-governance.yml",
     ".github/mad4b-repository-governance-policy.json",
     "specs/007-content-intelligence-workflow-platform/",
