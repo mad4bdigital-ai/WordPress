@@ -14,6 +14,8 @@ SPEC = ROOT / "specs/007-content-intelligence-workflow-platform"
 content_jobs = (ROOT / "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php").read_text(encoding="utf-8")
 durable = (ROOT / "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php").read_text(encoding="utf-8")
 provider = (ROOT / "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php").read_text(encoding="utf-8")
+artifacts = (ROOT / "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php").read_text(encoding="utf-8")
+publication = (ROOT / "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-publication-verification.php").read_text(encoding="utf-8")
 runner = (ROOT / "tools/mad4b_host_runner.py").read_text(encoding="utf-8")
 gate = json.loads((SPEC / "gate-graph.json").read_text(encoding="utf-8"))
 closure = json.loads((SPEC / "implementation-closure.json").read_text(encoding="utf-8"))
@@ -166,6 +168,59 @@ if provider_level(True, True, False, "bounded_write", True, True, True, False) i
     raise SystemExit("artifact-authority revocation did not demote provider eligibility")
 if provider_level(True, False, False, "bounded_write", True, True, True, True) != "QUARANTINED":
     raise SystemExit("structural drift did not quarantine provider capability")
+
+# Artifact evidence lifecycle: evidence is never deleted as part of ordinary
+# supersession/invalidation; descendants become stale while supersedes edges stay
+# intact so provenance remains reconstructable.
+for marker in (
+    "'status' => 'active'",
+    "array( 'status' => 'superseded' )",
+    "array( 'status' => 'stale' )",
+    "self::invalidate_descendants_locked( $previous_id",
+    "if ( 'supersedes' === (string) $edge['relation'] ) continue;",
+    "MAX_INVALIDATION_NODES = 1000",
+):
+    if marker not in artifacts:
+        raise SystemExit(f"artifact evidence lifecycle invariant missing: {marker}")
+for forbidden in (
+    "$wpdb->delete( $t['artifacts']",
+    "DELETE FROM {$t['artifacts']}",
+    "$wpdb->delete( $t['artifact_edges']",
+):
+    if forbidden in artifacts:
+        raise SystemExit(f"ordinary artifact lifecycle deletes provenance evidence: {forbidden}")
+
+# Publication verification is an evidence reducer, never publication authority.
+for marker in (
+    "'publication_mutation_performed' => false",
+    "'authorizing' => false",
+    "'inferred_from_publication' => false",
+    "'cache_purge_performed' => false",
+):
+    if marker not in publication:
+        raise SystemExit(f"publication reducer authority invariant missing: {marker}")
+
+def publication_verdict(origin_ok: bool, edge_ok: bool, elapsed: int, timeout: int):
+    if not origin_ok:
+        return "FAIL"
+    if edge_ok:
+        return "PASS"
+    if elapsed <= timeout:
+        return "PENDING_PROPAGATION"
+    return "FAIL"
+
+for origin_ok in (False, True):
+    for edge_ok in (False, True):
+        for elapsed in (0, 299, 300, 301, 86400):
+            verdict = publication_verdict(origin_ok, edge_ok, elapsed, 300)
+            if verdict == "PASS" and not (origin_ok and edge_ok):
+                raise SystemExit("publication PASS reachable without origin+edge convergence")
+            if not origin_ok and verdict != "FAIL":
+                raise SystemExit("origin mismatch did not dominate publication verdict")
+            if origin_ok and not edge_ok and elapsed <= 300 and verdict != "PENDING_PROPAGATION":
+                raise SystemExit("bounded propagation window lost pending state")
+            if origin_ok and not edge_ok and elapsed > 300 and verdict != "FAIL":
+                raise SystemExit("publication propagation timeout did not fail closed")
 
 # Gate graph structural proof: unique IDs, resolved dependencies, DAG,
 # every declared terminal reachable from roots, every blocker closable.
