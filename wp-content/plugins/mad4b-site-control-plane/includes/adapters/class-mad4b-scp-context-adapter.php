@@ -32,12 +32,18 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/reference-profile',
 				'context/retrieve',
 				'context/compliance-check',
+				'context/brand-gap-plan',
+				'context/source-scan-plan',
 			),
 			'content' => array(),
 			'write' => array(
 				'context/create-drive-asset',
 				'context/update-drive-asset',
 				'context/recreate-drive-asset',
+				'context/brand-draft-append',
+				'context/source-scan-apply',
+				'context/materialize-brand-draft',
+				'context/rollback-materialized-brand-draft',
 			),
 			'admin' => array(),
 		);
@@ -164,6 +170,27 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			)
 		);
 
+
+		$this->add_ability(
+			'context/brand-gap-plan',
+			'Build Brand Context Gap Plan',
+			'brand_gap_plan',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array() )
+		);
+		$this->add_ability(
+			'context/source-scan-plan',
+			'Plan Context Source Scan',
+			'source_scan_plan',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema(
+				array(
+					'source_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				),
+				array( 'source_id' )
+			)
+		);
+
 		$write_permission = array( 'MAD4B_SCP_Policy', 'can_admin' );
 		$this->add_ability(
 			'context/create-drive-asset',
@@ -219,6 +246,84 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			false,
 			true,
 			false
+		$this->add_ability(
+			'context/brand-draft-append',
+			'Append Evidence-Bound Brand Context Draft',
+			'brand_draft_append',
+			$write_permission,
+			$this->schema(
+				array(
+					'category' => array( 'type' => 'string', 'enum' => array( 'tone_of_voice', 'editorial_guidelines' ) ),
+					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Brand_Context_Builder::MAX_DRAFT_BYTES ),
+					'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+					'evidence_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				),
+				array( 'category', 'content', 'expected_plan_sha256', 'evidence_digest' )
+			),
+			'write',
+			false,
+			true,
+			false
+		);
+		$this->add_ability(
+			'context/source-scan-apply',
+			'Apply Exact Context Source Scan Plan',
+			'source_scan_apply',
+			$write_permission,
+			$this->schema(
+				array(
+					'source_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+					'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+					'expected_registry_revision' => array( 'type' => 'integer', 'minimum' => 0 ),
+					'expected_provider_inventory_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				),
+				array( 'source_id', 'expected_plan_sha256', 'expected_registry_revision', 'expected_provider_inventory_digest' )
+			),
+			'write',
+			false,
+			true,
+			false
+		);
+		$this->add_ability(
+			'context/materialize-brand-draft',
+			'Materialize Brand Context Draft to Managed Drive',
+			'materialize_brand_draft',
+			$write_permission,
+			$this->schema(
+				array(
+					'artifact_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
+					'expected_artifact_content_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+					'source_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+					'format' => array( 'type' => 'string', 'enum' => array( 'markdown', 'text' ), 'default' => 'markdown' ),
+				),
+				array( 'artifact_id', 'expected_artifact_content_sha256', 'source_id' )
+			),
+			'write',
+			false,
+			true,
+			false
+		);
+		$this->add_ability(
+			'context/rollback-materialized-brand-draft',
+			'Rollback Exact Materialized Brand Context Draft',
+			'rollback_materialized_brand_draft',
+			$write_permission,
+			$this->schema(
+				array(
+					'source_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+					'asset_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+					'file_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 255 ),
+					'target_folder_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 255 ),
+					'after_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+					'mime_type' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191 ),
+				),
+				array( 'source_id', 'asset_id', 'file_id', 'target_folder_id', 'after_sha256', 'mime_type' )
+			),
+			'write',
+			false,
+			true,
+			false
+		);
 		);
 	}
 
@@ -226,6 +331,9 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		$ability_name = (string) $ability_name;
 		if ( ! in_array( $ability_name, $this->ability_names()['write'], true ) ) return true;
 		if ( ! $this->is_available() ) return new WP_Error( 'mad4b_context_provider_unavailable', 'Context Authority Google Drive provider is unavailable.' );
+		if ( in_array( $ability_name, array( 'context/brand-draft-append', 'context/source-scan-apply' ), true ) ) {
+			return true;
+		}
 		if ( 'context/create-drive-asset' === $ability_name ) {
 			return new WP_Error(
 				'mad4b_google_drive_create_rollback_not_certified',
@@ -239,6 +347,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'context/create-drive-asset' => array( 'operation' => 'create', 'count_key' => 'create_source_count' ),
 			'context/update-drive-asset' => array( 'operation' => 'update', 'count_key' => 'update_source_count' ),
 			'context/recreate-drive-asset' => array( 'operation' => 'recreate', 'count_key' => 'recreate_source_count' ),
+			'context/materialize-brand-draft' => array( 'operation' => 'create', 'count_key' => 'create_source_count' ),
+			'context/rollback-materialized-brand-draft' => array( 'operation' => 'create', 'count_key' => 'create_source_count' ),
 		);
 		if ( ! isset( $operation_map[ $ability_name ] ) ) return new WP_Error( 'mad4b_context_write_operation_unknown', 'Context write ability has no source policy mapping.' );
 		$mapping = $operation_map[ $ability_name ];
@@ -272,6 +382,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'restore_update_state',
 				'reversible_recreate_state',
 				'restore_recreate_state',
+				'rollback_created_brand_asset',
 			),
 			'MAD4B_SCP_Context_Authority' => array(
 				'source',
@@ -583,6 +694,30 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function context_compliance_check( $input ) {
 		return MAD4B_SCP_Context_Intelligence::compliance_check( is_array( $input ) ? $input : array() );
+	}
+
+	public function brand_gap_plan( $input = array() ) {
+		return MAD4B_SCP_Brand_Context_Builder::gap_plan( is_array( $input ) ? $input : array() );
+	}
+
+	public function source_scan_plan( $input ) {
+		return MAD4B_SCP_Brand_Context_Builder::source_scan_plan( is_array( $input ) ? $input : array() );
+	}
+
+	public function brand_draft_append( $input ) {
+		return MAD4B_SCP_Brand_Context_Builder::append_draft( is_array( $input ) ? $input : array() );
+	}
+
+	public function source_scan_apply( $input ) {
+		return MAD4B_SCP_Brand_Context_Builder::source_scan_apply( is_array( $input ) ? $input : array() );
+	}
+
+	public function materialize_brand_draft( $input ) {
+		return MAD4B_SCP_Brand_Context_Builder::materialize_draft( is_array( $input ) ? $input : array() );
+	}
+
+	public function rollback_materialized_brand_draft( $input ) {
+		return MAD4B_SCP_Brand_Context_Builder::rollback_materialized_draft( is_array( $input ) ? $input : array() );
 	}
 
 	public function create_drive_asset( $input ) {
