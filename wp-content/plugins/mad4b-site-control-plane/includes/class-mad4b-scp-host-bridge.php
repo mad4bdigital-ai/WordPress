@@ -262,7 +262,7 @@ final class MAD4B_SCP_Host_Bridge {
 		$recovery = $spool . '/recovery-required/' . $job_id . '.json';
 		if ( is_file( $recovery ) ) {
 			$incident = self::read_json( $recovery );
-			return array(
+			$repair = array(
 				'contract' => 'mad4b.host-operation-repair-plan.v1',
 				'source_job_id' => $job_id,
 				'incident_state' => 'RECOVERY_REQUIRED',
@@ -270,8 +270,13 @@ final class MAD4B_SCP_Host_Bridge {
 				'requeue_allowed' => false,
 				'reconciliation_required' => true,
 				'blind_retry_allowed' => false,
+				'fresh_job_id_required' => true,
+				'fresh_idempotency_required' => true,
+				'fresh_authorization_required' => true,
 				'mutation_performed' => false,
 			);
+			$repair['repair_plan_sha256'] = self::digest( $repair );
+			return $repair;
 		}
 		if ( ! is_file( $dead ) ) return new WP_Error( 'mad4b_host_incident_missing', 'No dead-letter/recovery incident exists for this Host job.' );
 		$incident = self::read_json( $dead );
