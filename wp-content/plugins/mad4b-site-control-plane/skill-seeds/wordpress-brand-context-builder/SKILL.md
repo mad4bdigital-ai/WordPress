@@ -33,8 +33,8 @@ Never claim Brand Core is ready merely because a draft exists or was uploaded.
 5. Generate only missing categories.
 6. Submit each finished draft through `context/brand-draft-append` with the exact `plan_sha256` and `evidence_digest`.
 7. Do not create duplicate drafts. The runtime uses a deterministic idempotency key derived from site, category, evidence digest, and builder version.
-8. Preview/review the Artifact before materialization.
-9. Materialize only through `context/materialize-brand-draft`, using Markdown or plain text.
+8. Preview/review the Artifact before materialization. Keep the returned `draft_content_sha256`; it is the exact text binding for the next step.
+9. Materialize only through `context/materialize-brand-draft`, using Markdown or plain text and passing the exact `expected_draft_content_sha256`.
 10. Run `context/source-scan-plan` and then `context/source-scan-apply` with exact plan/revision/inventory bindings.
 11. Review the resulting Context asset. Approval must remain exact-content-hash bound.
 12. Re-read `context/brand-core-coverage`. Ready means the exact category is present as approved Brand Authority with matching reviewed content hash.
@@ -101,7 +101,7 @@ A generated file may be rolled back only through `context/rollback-materialized-
 
 still match the creation receipt.
 
-If content or parent membership changed after creation, rollback must fail closed and surface recovery-required state. Never delete arbitrary Drive files.
+The materialization receipt includes `artifact_id`, category, source/file/parent/MIME/content bindings and `receipt_sha256`. Pass the complete unchanged receipt to rollback. If Artifact binding, receipt SHA, content or parent membership changed after creation, rollback must fail closed and surface recovery-required state. Never delete arbitrary Drive files.
 
 ## Acceptance rules
 
