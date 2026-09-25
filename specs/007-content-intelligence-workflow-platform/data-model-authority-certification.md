@@ -150,3 +150,36 @@ Unique active identity:
 - verdict
 - evidence_sha256
 - created_at
+
+
+## ApprovalTicket Candidate Binding
+
+Approval authority is bound to an exact candidate and exact site/runtime identity. The
+binding contract is `mad4b.approval-candidate-binding.v2`.
+
+Required binding material includes:
+- approval_ticket_id
+- site_uuid
+- site_profile_binding
+- site_profile_revision
+- site_profile_digest
+- server/ability/provider identity
+- target fingerprint
+- candidate source/build/package identity where applicable
+- expiry / one-time claim state
+- binding_sha256
+
+A clone, copy, restore, migration or environment duplication MUST NOT inherit an
+approval merely because database rows or plugin files were copied. The cloned target
+must reconcile its own site identity and obtain a fresh exact binding when the
+effective target identity differs.
+
+Site Profile drift after authorization invalidates the candidate binding. A change in
+site UUID, Site Profile revision/digest, environment, authority mapping, target
+fingerprint or exact candidate identity requires a new authorization decision rather
+than silently reusing the old approval.
+
+The current expected version is `10`; approval services fail closed when the required
+physical schema or the expected binding fields are unavailable. Schema evolution may
+advance this version only with an explicit migration and corresponding approval-model
+contract update.
