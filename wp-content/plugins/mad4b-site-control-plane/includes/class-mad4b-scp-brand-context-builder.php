@@ -701,12 +701,13 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		);
 	}
 
-	public static function materialize_draft( $input ) {
+	private static function materialization_identity( $input ) {
+		$input = is_array( $input ) ? $input : array();
 		$artifact_id = strtolower( trim( (string) ( isset( $input['artifact_id'] ) ? $input['artifact_id'] : '' ) ) );
 		$source_id = strtolower( trim( (string) ( isset( $input['source_id'] ) ? $input['source_id'] : '' ) ) );
 		$format = sanitize_key( isset( $input['format'] ) ? (string) $input['format'] : 'markdown' );
 		if ( ! in_array( $format, array( 'markdown', 'text' ), true ) ) return new WP_Error( 'mad4b_brand_materialize_format_invalid', 'Brand drafts may initially materialize only as Markdown or plain text.' );
-		if ( ! class_exists( 'MAD4B_SCP_Durable_Execution' ) || ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) return new WP_Error( 'mad4b_brand_materialize_runtime_unavailable', 'Durable execution and Context Provider Gateway are required.' );
+		if ( ! class_exists( 'MAD4B_SCP_Durable_Execution' ) || ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) || ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return new WP_Error( 'mad4b_brand_materialize_runtime_unavailable', 'Durable execution, Context Authority and Context Provider Gateway are required.' );
 		$record = MAD4B_SCP_Artifacts::get_artifact( array( 'artifact_id' => $artifact_id ) );
 		if ( is_wp_error( $record ) || empty( $record['artifact'] ) ) return is_wp_error( $record ) ? $record : new WP_Error( 'mad4b_brand_materialize_artifact_missing', 'Brand draft Artifact was not found.' );
 		$artifact = $record['artifact'];
@@ -718,7 +719,10 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$draft_content_sha256 = hash( 'sha256', $content );
 		$expected_sha = strtolower( trim( (string) ( isset( $input['expected_draft_content_sha256'] ) ? $input['expected_draft_content_sha256'] : '' ) ) );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_sha ) || ! hash_equals( $draft_content_sha256, $expected_sha ) ) return new WP_Error( 'mad4b_brand_materialize_artifact_stale', 'Brand draft text changed before materialization.' );
-
+		$source = MAD4B_SCP_Context_Authority::source( $source_id );
+		if ( empty( $source ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
+		$target_folder_id = isset( $source['external_root_id'] ) ? (string) $source['external_root_id'] : '';
+		if ( '' === $target_folder_id || 'root' === $target_folder_id ) return new WP_Error( 'mad4b_brand_materialize_source_root_invalid', 'Brand materialization requires a specific governed source folder.' );
 		$idempotency_key = hash( 'sha256', 'brand-materialize|' . $artifact_id . '|' . $source_id . '|' . $format );
 		$scope_key = MAD4B_SCP_Durable_Execution::scope_key( self::site_uuid(), self::CONTRACT, 'materialize_draft', $artifact_id . '|' . $source_id );
 		$request_sha256 = hash( 'sha256', self::stable_json( array(
@@ -728,12 +732,44 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'draft_content_sha256' => $draft_content_sha256,
 			'category' => $category,
 		) ) );
+		return array(
+			'artifact_id' => $artifact_id,
+			'source_id' => $source_id,
+			'format' => $format,
+			'artifact' => $artifact,
+			'payload' => $payload,
+			'category' => $category,
+			'content' => $content,
+			'draft_content_sha256' => $draft_content_sha256,
+			'name' => self::suggested_name( $category, $format ),
+			'target_folder_id' => $target_folder_id,
+			'expected_mime_type' => 'markdown' === $format ? 'text/markdown' : 'text/plain',
+			'idempotency_key' => $idempotency_key,
+			'scope_key' => $scope_key,
+			'request_sha256' => $request_sha256,
+		);
+	}
+
+	public static function materialize_draft( $input ) {
+		$identity = self::materialization_identity( $input );
+		if ( is_wp_error( $identity ) ) return $identity;
+		$artifact_id = (string) $identity['artifact_id'];
+		$source_id = (string) $identity['source_id'];
+		$format = (string) $identity['format'];
+		$artifact = $identity['artifact'];
+		$payload = $identity['payload'];
+		$category = (string) $identity['category'];
+		$content = (string) $identity['content'];
+		$draft_content_sha256 = (string) $identity['draft_content_sha256'];
+		$idempotency_key = (string) $identity['idempotency_key'];
+		$scope_key = (string) $identity['scope_key'];
+		$request_sha256 = (string) $identity['request_sha256'];
 		$claim = MAD4B_SCP_Durable_Execution::begin_idempotency( $scope_key, $idempotency_key, $request_sha256, 2592000 );
 		if ( is_wp_error( $claim ) ) return $claim;
 		$replay = self::replay_idempotency_result( $claim );
 		if ( null !== $replay ) return $replay;
 
-		$name = self::suggested_name( $category, $format );
+		$name = (string) $identity['name'];
 		$created = MAD4B_SCP_Context_Provider_Gateway::create_asset( $source_id, $name, $content, $format );
 		if ( is_wp_error( $created ) ) {
 			return new WP_Error(
@@ -794,6 +830,94 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				array( 'receipt' => $result, 'idempotency_error_code' => $completed->get_error_code(), 'scope_key' => $scope_key, 'idempotency_key' => $idempotency_key, 'request_sha256' => $request_sha256 )
 			);
 		}
+		return $result;
+	}
+
+	public static function reconcile_materialization( $input ) {
+		$identity = self::materialization_identity( $input );
+		if ( is_wp_error( $identity ) ) return $identity;
+		if ( ! class_exists( 'MAD4B_SCP_Durable_Execution' ) || ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) return new WP_Error( 'mad4b_brand_materialize_runtime_unavailable', 'Durable execution and Context Provider Gateway are required.' );
+		$scan = MAD4B_SCP_Context_Provider_Gateway::scan_source( (string) $identity['source_id'] );
+		if ( is_wp_error( $scan ) ) return $scan;
+		if ( empty( $scan['complete'] ) ) return new WP_Error( 'mad4b_brand_materialization_reconcile_scan_incomplete', 'Brand materialization reconciliation requires a complete provider scan.', array( 'truncation_reasons' => isset( $scan['truncation_reasons'] ) ? $scan['truncation_reasons'] : array() ) );
+
+		$candidates = array();
+		foreach ( isset( $scan['assets'] ) && is_array( $scan['assets'] ) ? $scan['assets'] : array() as $asset ) {
+			if ( ! is_array( $asset ) ) continue;
+			if ( ! isset( $asset['title'] ) || ! hash_equals( (string) $identity['name'], (string) $asset['title'] ) ) continue;
+			if ( empty( $asset['parent_folder_id'] ) || ! hash_equals( (string) $identity['target_folder_id'], (string) $asset['parent_folder_id'] ) ) continue;
+			if ( empty( $asset['content_complete'] ) ) continue;
+			if ( empty( $asset['content_hash'] ) || ! hash_equals( (string) $identity['draft_content_sha256'], strtolower( (string) $asset['content_hash'] ) ) ) continue;
+			$mime = isset( $asset['mimeType'] ) ? strtolower( (string) $asset['mimeType'] ) : '';
+			if ( ! hash_equals( strtolower( (string) $identity['expected_mime_type'] ), $mime ) ) continue;
+			$candidates[] = $asset;
+		}
+		if ( 1 !== count( $candidates ) ) {
+			return new WP_Error(
+				0 === count( $candidates ) ? 'mad4b_brand_materialization_reconcile_not_observed' : 'mad4b_brand_materialization_reconcile_ambiguous',
+				0 === count( $candidates ) ? 'No exact provider effect was observed for the pending Brand materialization. Keep the durable claim fail-closed and reconcile again before retry.' : 'More than one exact provider candidate matches the pending Brand materialization; automatic reconciliation is unsafe.',
+				array(
+					'candidate_count' => count( $candidates ),
+					'scan_generation' => isset( $scan['scan_generation'] ) ? (string) $scan['scan_generation'] : '',
+					'scope_key' => (string) $identity['scope_key'],
+					'idempotency_key' => (string) $identity['idempotency_key'],
+					'request_sha256' => (string) $identity['request_sha256'],
+				)
+			);
+		}
+		$candidate = $candidates[0];
+		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $identity['source_id'], $candidate );
+		if ( is_wp_error( $registered ) ) return $registered;
+		$receipt = array(
+			'artifact_id' => (string) $identity['artifact_id'],
+			'category' => (string) $identity['category'],
+			'source_id' => (string) $identity['source_id'],
+			'asset_id' => isset( $registered['asset_id'] ) ? (string) $registered['asset_id'] : '',
+			'file_id' => isset( $candidate['file_id'] ) ? (string) $candidate['file_id'] : '',
+			'target_folder_id' => (string) $identity['target_folder_id'],
+			'after_sha256' => (string) $identity['draft_content_sha256'],
+			'mime_type' => isset( $registered['mime_type'] ) ? (string) $registered['mime_type'] : ( isset( $candidate['mimeType'] ) ? (string) $candidate['mimeType'] : '' ),
+			'format' => (string) $identity['format'],
+		);
+		foreach ( array( 'asset_id', 'file_id', 'mime_type' ) as $field ) if ( '' === $receipt[ $field ] ) return new WP_Error( 'mad4b_brand_materialization_reconcile_binding_invalid', 'Provider reconciliation did not yield a complete exact materialization binding.', array( 'field' => $field ) );
+		$receipt_sha256 = hash( 'sha256', self::stable_json( $receipt ) );
+		$marked = MAD4B_SCP_Context_Authority::mark_generated_brand_draft(
+			$receipt['asset_id'],
+			(string) $identity['category'],
+			(string) $identity['artifact_id'],
+			isset( $identity['payload']['evidence_digest'] ) ? (string) $identity['payload']['evidence_digest'] : '',
+			$receipt_sha256
+		);
+		if ( is_wp_error( $marked ) ) return $marked;
+
+		$result = array_merge(
+			array(
+				'contract' => self::MATERIALIZE_CONTRACT,
+				'reconciliation_contract' => 'mad4b.brand-context-materialization-reconciliation.v1',
+				'rollback_contract' => self::ROLLBACK_CONTRACT,
+				'receipt_sha256' => $receipt_sha256,
+				'brand_core_ready' => false,
+				'review_status' => 'unreviewed',
+				'idempotency_scope_key' => (string) $identity['scope_key'],
+				'idempotency_key' => (string) $identity['idempotency_key'],
+				'provider_scan_complete' => true,
+				'provider_candidate_count' => 1,
+				'provider_scan_generation' => isset( $scan['scan_generation'] ) ? (string) $scan['scan_generation'] : '',
+				'reconciled' => true,
+			),
+			$receipt
+		);
+		$reconciliation_ref = MAD4B_SCP_Context_Provider_Gateway::materialization_reconciliation_ref( $result );
+		if ( is_wp_error( $reconciliation_ref ) ) return $reconciliation_ref;
+		$completed = MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation(
+			(string) $identity['scope_key'],
+			(string) $identity['idempotency_key'],
+			(string) $identity['request_sha256'],
+			(string) $reconciliation_ref,
+			$result
+		);
+		if ( is_wp_error( $completed ) ) return $completed;
+		$result['reconciliation_ref'] = (string) $reconciliation_ref;
 		return $result;
 	}
 
