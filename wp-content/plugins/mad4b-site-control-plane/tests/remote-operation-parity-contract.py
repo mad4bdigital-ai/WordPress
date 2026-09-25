@@ -56,10 +56,18 @@ required_parity_markers = [
     "'synchronous_ddl' => false",
     "'pending_external_executor'",
     "'manual_interaction_required' => false",
+    "const SKILLS_LOCK_TTL = 900;",
+    "compare_and_swap_option",
+    "refresh_skills_lock",
+    "mad4b_remote_skill_lock_reclaim_raced",
+    "mad4b_remote_skill_lock_heartbeat_raced",
 ]
 for marker in required_parity_markers:
     if marker not in parity:
         raise SystemExit(f'missing remote parity/discoverability invariant: {marker}')
+
+if "delete_option( self::SKILLS_LOCK_OPTION" in parity:
+    raise SystemExit("direct delete_option Skills lock reclamation is ABA-unsafe; CAS option fencing is required")
 
 for forbidden in [
     'shell_exec(',
