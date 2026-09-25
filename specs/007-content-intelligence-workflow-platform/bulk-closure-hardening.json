@@ -252,6 +252,30 @@
         "bind live backup receipt to rollout evidence",
         "inject corrupt/interrupted restore using the live protected backup path"
       ]
+    },
+    "host_runner_kernel": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        ".github/workflows/feature-007-critical-kernel.yml"
+      ],
+      "proven": [
+        "Staging-only read-only standalone runner process",
+        "fixed semantic operation registry with no generic shell/network executor",
+        "HMAC-authenticated expiring exact-profile job envelope",
+        "target fingerprint and operation fingerprint binding",
+        "named-zone path traversal and symlink confinement",
+        "durable idempotent receipt replay with conflict detection",
+        "execution_location=host_runner truthfulness"
+      ],
+      "remaining": [
+        "implement governed scheduler/queue pickup and fenced lease integration",
+        "implement attested runner package bootstrap and single-use enrollment",
+        "implement one reversible write executor using plan/apply/readback/rollback",
+        "run ETG Staging Host Runner canary and cross-executor semantic conformance"
+      ]
     }
   }
 }
