@@ -7,8 +7,6 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-intelligence.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
@@ -31,10 +29,6 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-contract.py'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py'
-      - 'wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json'
-      - 'wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-brand-context-builder/SKILL.md'
-      - 'plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-write-mount-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-site-binding-runtime.php'
@@ -86,8 +80,6 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-intelligence.php
-          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php
-          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php
@@ -134,12 +126,6 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/context-intelligence-contract.py
-
-      - name: Enforce Brand Context Builder governance
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py
 
       - name: Execute Context Authority runtime
         shell: bash
