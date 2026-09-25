@@ -689,7 +689,79 @@ jobs:
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
-          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/skill-seeds/wordpress-site-diagnostics/SKILL.md'
+          python3 - "$control_zip" "$plugin" <<'PY'
+          import json, re, sys, zipfile
+          from pathlib import Path
+
+          archive = Path(sys.argv[1])
+          source_plugin = Path(sys.argv[2])
+          manifest_path = source_plugin / 'config' / 'skill-seed-manifest.json'
+          seed_root = source_plugin / 'skill-seeds'
+          prefix = 'mad4b-site-control-plane/skill-seeds/'
+          suffix = '/SKILL.md'
+
+          if manifest_path.is_file():
+              manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+              if manifest.get('contract') != 'mad4b.skill-seed-manifest.v1':
+                  raise SystemExit('package Skill manifest contract invalid')
+              rows = manifest.get('skills')
+              if not isinstance(rows, list) or not rows:
+                  raise SystemExit('package Skill manifest inventory missing')
+              expected = {
+                  str(row.get('name') or '')
+                  for row in rows
+                  if isinstance(row, dict) and row.get('name')
+              }
+              if len(expected) != len(rows):
+                  raise SystemExit('package Skill manifest contains duplicate/invalid rows')
+              inventory_source = 'manifest'
+          else:
+              expected = {
+                  p.parent.name
+                  for p in seed_root.glob('*/SKILL.md')
+                  if p.is_file()
+              }
+              inventory_source = 'seed_tree'
+
+          if not expected:
+              raise SystemExit('package Skill inventory is empty')
+          if any(not re.fullmatch(r'[a-z0-9][a-z0-9-]{1,95}', name) for name in expected):
+              raise SystemExit('package Skill inventory contains an unsafe name')
+
+          with zipfile.ZipFile(archive) as zf:
+              names = set(zf.namelist())
+              actual = {
+                  name[len(prefix):-len(suffix)]
+                  for name in names
+                  if name.startswith(prefix)
+                  and name.endswith(suffix)
+                  and '/' not in name[len(prefix):-len(suffix)]
+              }
+              if actual != expected:
+                  raise SystemExit(
+                      'ZIP Skill inventory mismatch '
+                      f'missing={sorted(expected-actual)} extra={sorted(actual-expected)}'
+                  )
+              for name in sorted(expected):
+                  source_skill = seed_root / name / 'SKILL.md'
+                  archived_skill = prefix + name + suffix
+                  if not source_skill.is_file():
+                      raise SystemExit(f'source Skill missing during ZIP verification: {name}')
+                  if zf.read(archived_skill) != source_skill.read_bytes():
+                      raise SystemExit(f'ZIP/source Skill byte drift: {name}')
+
+              if manifest_path.is_file():
+                  archived_manifest = 'mad4b-site-control-plane/config/skill-seed-manifest.json'
+                  if archived_manifest not in names:
+                      raise SystemExit('ZIP Skill manifest missing')
+                  if zf.read(archived_manifest) != manifest_path.read_bytes():
+                      raise SystemExit('ZIP/source Skill manifest byte drift')
+
+          print(
+              'ZIP Skill inventory: PASS '
+              f'inventory_source={inventory_source} count={len(expected)}'
+          )
+          PY
           if unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/tests/'; then
             echo 'Development tests must not ship in the staging plugin ZIP.' >&2
             exit 1
