@@ -73,8 +73,10 @@ for state in host_states:
 for marker in (
     '"blind_retry_allowed": False',
     "HOST_RUNNER_REPLAY_RECONCILIATION_REQUIRED",
-    '"state": "RECOVERY_REQUIRED"',
-    '"state": "DEAD_LETTERED"',
+    '"RECOVERY_REQUIRED"',
+    '"DEAD_LETTERED"',
+    '"state": state',
+    'state = "RECOVERY_REQUIRED" if reason_code == "recovery_required" else "DEAD_LETTERED"',
 ):
     if marker not in runner:
         raise SystemExit(f"Host Runner fail-closed state invariant missing: {marker}")
