@@ -280,7 +280,15 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $RulesetAttestationPath
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: privileged ruleset attestation build failed."
 }
 $policyObject = Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json
+$attestationScope = [string]$policyObject.ruleset_attestation.scope
+$environmentName = [string]$policyObject.ruleset_attestation.environment_name
 $variableName = [string]$policyObject.ruleset_attestation.variable_name
+if ($attestationScope -ne "environment") {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: ruleset attestation scope must be environment."
+}
+if ($environmentName -ne "repository-governance") {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: unexpected ruleset attestation environment name."
+}
 if ($variableName -ne "MAD4B_RULESET_ATTESTATION") {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: unexpected ruleset attestation variable name."
 }
@@ -308,8 +316,31 @@ if ($status.ready -ne $true -or $status.ruleset_attestation_verified -ne $true) 
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: aggregate governance did not verify the freshly-built ruleset attestation."
 }
 
-Write-Host "=== UPSERT RULESET ATTESTATION VARIABLE ==="
-$variableEndpoint = "repos/$Repository/actions/variables/$variableName"
+Write-Host "=== ENSURE GOVERNANCE ENVIRONMENT ==="
+$environmentEndpoint = "repos/$Repository/environments/$environmentName"
+$environmentRaw = & gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" $environmentEndpoint 2>$null
+$environmentExists = $LASTEXITCODE -eq 0
+if (-not $environmentExists) {
+    $EnvironmentPayloadPath = Join-Path $env:TEMP "mad4b-governance-environment.json"
+    [System.IO.File]::WriteAllText($EnvironmentPayloadPath, "{}", $Utf8NoBom)
+    & gh api --method PUT -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" $environmentEndpoint --input $EnvironmentPayloadPath | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "GOVERNANCE_APPLY_FAIL_CLOSED: governance environment create/update failed. Administration:write is required."
+    }
+}
+$environmentReadbackRaw = & gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" $environmentEndpoint
+if ($LASTEXITCODE -ne 0) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: governance environment readback failed."
+}
+$environmentReadback = $environmentReadbackRaw | ConvertFrom-Json
+if ([string]$environmentReadback.name -ne $environmentName) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: governance environment readback mismatch."
+}
+Write-Host "ruleset_attestation_environment=$environmentName"
+Write-Host "governance_environment_readback=verified"
+
+Write-Host "=== UPSERT ENVIRONMENT RULESET ATTESTATION VARIABLE ==="
+$variableEndpoint = "repos/$Repository/environments/$environmentName/variables/$variableName"
 $existingVariableRaw = & gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" $variableEndpoint 2>$null
 $variableExists = $LASTEXITCODE -eq 0
 if ($variableExists) {
@@ -326,23 +357,25 @@ if ($variableExists) {
         "api","--method","POST",
         "-H","Accept: application/vnd.github+json",
         "-H","X-GitHub-Api-Version: 2026-03-10",
-        "repos/$Repository/actions/variables",
+        "repos/$Repository/environments/$environmentName/variables",
         "--raw-field","name=$variableName",
         "--raw-field","value=$attestationValue"
     )
 }
 & gh @variableArgs | Out-Null
 if ($LASTEXITCODE -ne 0) {
-    throw "GOVERNANCE_APPLY_FAIL_CLOSED: repository ruleset attestation variable upsert failed."
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: environment-scoped ruleset attestation variable upsert failed."
 }
 $variableReadbackRaw = & gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" $variableEndpoint
 if ($LASTEXITCODE -ne 0) {
-    throw "GOVERNANCE_APPLY_FAIL_CLOSED: repository ruleset attestation variable readback failed."
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: environment-scoped ruleset attestation variable readback failed."
 }
 $variableReadback = $variableReadbackRaw | ConvertFrom-Json
 if ([string]$variableReadback.name -ne $variableName -or [string]$variableReadback.value -ne [string]$attestationValue) {
-    throw "GOVERNANCE_APPLY_FAIL_CLOSED: repository ruleset attestation variable readback mismatch."
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: environment-scoped ruleset attestation variable readback mismatch."
 }
+Write-Host "ruleset_attestation_scope=environment"
+Write-Host "ruleset_attestation_environment=$environmentName"
 Write-Host "ruleset_attestation_variable=$variableName"
 Write-Host "ruleset_attestation_readback=verified"
 
@@ -353,5 +386,7 @@ Write-Host "required_check=Repository release verdict"
 Write-Host "required_check=Repository feature boundary"
 Write-Host "required_check_integration_id=15368"
 Write-Host "target_ref=refs/heads/master"
+Write-Host "ruleset_attestation_scope=environment"
+Write-Host "ruleset_attestation_environment=$environmentName"
 Write-Host "ruleset_attestation_variable=$variableName"
 Write-Host "reviewed_head=$currentHead"
