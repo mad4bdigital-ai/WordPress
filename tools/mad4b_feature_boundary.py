@@ -133,6 +133,8 @@ def main():
         return False
 
     changed=changed_paths(args.base)
+    if args.policy in changed:
+        fail(f"FEATURE_BOUNDARY_POLICY_MUST_BE_REPOSITORY_OWNED:{args.policy}")
     immutable=[p for p in changed if p in policy["immutable_global_paths"]]
     if immutable:
         fail("IMMUTABLE_GLOBAL_METADATA_CHANGED:" + ",".join(sorted(immutable)))
