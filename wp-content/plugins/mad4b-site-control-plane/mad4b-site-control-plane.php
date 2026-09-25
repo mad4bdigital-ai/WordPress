@@ -115,6 +115,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-snapshot-identity.p
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-exporter.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-runtime-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-abilities.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-operation-parity.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-adapter-base.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-context-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-skills-adapter.php';
