@@ -933,6 +933,60 @@ final class MAD4B_SCP_Context_Authority {
 		);
 	}
 
+	public static function mark_generated_brand_draft( $asset_id, $category, $artifact_id, $evidence_digest ) {
+		return self::with_registry_lock(
+			'mark_generated_brand_draft',
+			static function () use ( $asset_id, $category, $artifact_id, $evidence_digest ) {
+				$asset_id = strtolower( trim( sanitize_text_field( (string) $asset_id ) ) );
+				$category = sanitize_key( (string) $category );
+				if ( ! in_array( $category, array( 'tone_of_voice', 'editorial_guidelines' ), true ) ) return new WP_Error( 'mad4b_brand_generated_category_invalid', 'Generated Brand Context category is invalid.' );
+				$records = self::raw_assets();
+				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_generated_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				$records[ $asset_id ]['category'] = $category;
+				$records[ $asset_id ]['authority_class'] = 'brand_authority';
+				$records[ $asset_id ]['required'] = true;
+				$records[ $asset_id ]['classification_source'] = 'brand_context_builder';
+				$records[ $asset_id ]['review_status'] = 'unreviewed';
+				$records[ $asset_id ]['reviewed_content_hash'] = '';
+				$records[ $asset_id ]['review_decision'] = '';
+				$records[ $asset_id ]['generated_artifact_id'] = strtolower( trim( (string) $artifact_id ) );
+				$records[ $asset_id ]['generation_evidence_digest'] = strtolower( trim( (string) $evidence_digest ) );
+				if ( isset( $records[ $asset_id ]['quality'] ) && is_array( $records[ $asset_id ]['quality'] ) ) $records[ $asset_id ]['quality']['provisional'] = true;
+				$sources = self::raw_sources();
+				$profile = self::refreshed_profile_record( $records, $sources, true );
+				$changes = array( self::ASSETS_OPTION => $records );
+				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+				$commit = self::commit_option_changes( $changes, 'mad4b_brand_generated_registry_write_failed', 'Generated Brand Context registry state could not be committed.' );
+				return is_wp_error( $commit ) ? $commit : $records[ $asset_id ];
+			}
+		);
+	}
+
+	public static function mark_generated_brand_draft_rolled_back( $asset_id, $file_id, $content_sha256 ) {
+		return self::with_registry_lock(
+			'mark_generated_brand_draft_rolled_back',
+			static function () use ( $asset_id, $file_id, $content_sha256 ) {
+				$asset_id = strtolower( trim( (string) $asset_id ) );
+				$records = self::raw_assets();
+				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_rollback_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				$current = $records[ $asset_id ];
+				if ( empty( $current['file_id'] ) || ! hash_equals( (string) $current['file_id'], (string) $file_id ) ) return new WP_Error( 'mad4b_brand_rollback_file_binding_drift', 'Generated Brand Context file binding changed before rollback finalization.' );
+				if ( empty( $current['content_hash'] ) || ! hash_equals( strtolower( (string) $current['content_hash'] ), strtolower( (string) $content_sha256 ) ) ) return new WP_Error( 'mad4b_brand_rollback_content_drift', 'Generated Brand Context content changed before rollback finalization.' );
+				$records[ $asset_id ]['status'] = 'unavailable';
+				$records[ $asset_id ]['availability_reason'] = 'generated_file_rolled_back';
+				$records[ $asset_id ]['review_status'] = 'unreviewed';
+				$records[ $asset_id ]['reviewed_content_hash'] = '';
+				$records[ $asset_id ]['rolled_back_at'] = gmdate( 'c' );
+				$sources = self::raw_sources();
+				$profile = self::refreshed_profile_record( $records, $sources, true );
+				$changes = array( self::ASSETS_OPTION => $records );
+				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+				$commit = self::commit_option_changes( $changes, 'mad4b_brand_rollback_registry_write_failed', 'Brand Context rollback registry state could not be committed.' );
+				return is_wp_error( $commit ) ? $commit : $records[ $asset_id ];
+			}
+		);
+	}
+
 	public static function mark_asset_recreated( $old_asset_id, array $new_asset ){
 		return self::with_registry_lock(
 			'mark_asset_recreated',
