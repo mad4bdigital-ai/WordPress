@@ -1029,8 +1029,9 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
         "approval_ref": verified["approval_ref"],
         "bridge_submission_sha256": verified["bridge_submission_sha256"],
         "input_sha256": verified["input_sha256"],
-        "execution_location": "host_runner",
+        "execution_location": str(job.get("execution_location") or "host_runner"),
         "submission_location": str(job.get("submission_location") or "external_job_file"),
+        "commit_location": str(job.get("commit_location") or "host_runner"),
         "started_at": utc_now(),
         "completed_at": utc_now(),
         "result": {k: v for k, v in result.items() if not k.startswith("_")},
@@ -1357,8 +1358,18 @@ def _bridge_submission_to_job(profile: dict[str, Any], submission: dict[str, Any
         raise ValueError("Host Bridge WordPress root target mismatch")
     if str(target.get("target_fingerprint") or "") != profile["target_fingerprint"]:
         raise ValueError("Host Bridge target fingerprint mismatch")
-    if plan.get("execution_location") != "host_runner" or plan.get("submission_location") != "wordpress_request":
+    if plan.get("submission_location") != "wordpress_request":
+        raise ValueError("Host Bridge submission location truthfulness mismatch")
+    if plan.get("execution_location") != "host_runner":
         raise ValueError("Host Bridge execution location truthfulness mismatch")
+    if plan.get("commit_location") != "host_runner":
+        raise ValueError("Host Bridge commit location truthfulness mismatch")
+    if submission.get("submission_location") != "wordpress_request":
+        raise ValueError("Host Bridge submission envelope location mismatch")
+    if submission.get("execution_location") != "host_runner":
+        raise ValueError("Host Bridge submission execution location mismatch")
+    if submission.get("commit_location") != "host_runner":
+        raise ValueError("Host Bridge submission commit location mismatch")
     if plan.get("production_authorized") is not False or submission.get("production_authorized") is not False:
         raise ValueError("Host Bridge submission attempted Production authorization")
     if plan.get("authorizing") is not False or plan.get("mutation_performed") is not False:
@@ -1426,6 +1437,8 @@ def _bridge_submission_to_job(profile: dict[str, Any], submission: dict[str, Any
         "approval_ref": approval_ref,
         "bridge_submission_sha256": supplied_submission_sha,
         "submission_location": "wordpress_request",
+        "execution_location": "host_runner",
+        "commit_location": "host_runner",
     }
     job["mac_sha256"] = job_mac(job, profile["_integrity_key"])
     return job
