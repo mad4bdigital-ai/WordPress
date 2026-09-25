@@ -43,6 +43,7 @@ IMMUTABLE_FEATURE_PATHS = {
     ".github/workflows/mad4b-release-verdict.yml",
     ".github/workflows/mad4b-owner-attestation-rerun.yml",
     ".github/workflows/mad4b-feature-boundary-root.yml",
+    ".github/workflows/mad4b-governance-remote-apply.yml",
     "tools/verify_repository_governance.py",
     "tools/verify_repository_owner_attestation.py",
     "tools/verify_feature_boundary.py",
