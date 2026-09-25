@@ -107,16 +107,6 @@ final class MAD4B_SCP_Workflow_Providers {
 					? $capability_certification['capabilities'][ $capability_id ]
 					: array();
 				$capability_certified = 'read' === $risk ? ! empty( $capability_status['read_eligible'] ) : ! empty( $capability_status['write_eligible'] );
-		$provider_key = isset( $definition['provider_key'] ) ? sanitize_key( (string) $definition['provider_key'] ) : '';
-		$capability_profile = ( '' !== $provider_key && '' !== $capability_id && class_exists( 'MAD4B_SCP_Capability_Traits' ) )
-			? MAD4B_SCP_Capability_Traits::profile( $provider_key, $capability_id )
-			: array();
-		$profile_fingerprint = isset( $capability_profile['profile_fingerprint'] ) ? strtolower( trim( (string) $capability_profile['profile_fingerprint'] ) ) : '';
-		$certification_fingerprint = empty( $capability_status ) ? '' : hash( 'sha256', wp_json_encode( self::canonicalize( $capability_status ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
-		$release_ring = isset( $capability_status['activation_stage'] ) ? sanitize_key( (string) $capability_status['activation_stage'] ) : 'shadow';
-		if ( '' !== $capability_id && ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $profile_fingerprint ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $certification_fingerprint ) ) ) {
-			$capability_certified = false;
-		}
 				$requires = isset( $operation_definition['requires'] ) && is_array( $operation_definition['requires'] ) ? array_values( $operation_definition['requires'] ) : array();
 				$requires_provider_certification = in_array( 'provider_capability_certified', $requires, true );
 				$config_blocker = isset( $operation_definition['blocker'] ) ? sanitize_key( (string) $operation_definition['blocker'] ) : '';
@@ -200,6 +190,17 @@ final class MAD4B_SCP_Workflow_Providers {
 			? $capability_certification['capabilities'][ $capability_id ]
 			: array();
 		$capability_certified = 'read' === $risk ? ! empty( $capability_status['read_eligible'] ) : ! empty( $capability_status['write_eligible'] );
+		$provider_key = isset( $definition['provider_key'] ) ? sanitize_key( (string) $definition['provider_key'] ) : '';
+		$capability_profile = ( '' !== $provider_key && '' !== $capability_id && class_exists( 'MAD4B_SCP_Capability_Traits' ) )
+			? MAD4B_SCP_Capability_Traits::profile( $provider_key, $capability_id )
+			: array();
+		$profile_fingerprint = isset( $capability_profile['profile_fingerprint'] ) ? strtolower( trim( (string) $capability_profile['profile_fingerprint'] ) ) : '';
+		$certification_json = empty( $capability_status ) ? '' : wp_json_encode( self::canonicalize( $capability_status ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$certification_fingerprint = is_string( $certification_json ) && '' !== $certification_json ? hash( 'sha256', $certification_json ) : '';
+		$release_ring = isset( $capability_status['activation_stage'] ) ? sanitize_key( (string) $capability_status['activation_stage'] ) : 'shadow';
+		if ( '' !== $capability_id && ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $profile_fingerprint ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $certification_fingerprint ) ) ) {
+			$capability_certified = false;
+		}
 		$requires = isset( $operation_definition['requires'] ) && is_array( $operation_definition['requires'] ) ? array_values( $operation_definition['requires'] ) : array();
 		$requires_provider_certification = in_array( 'provider_capability_certified', $requires, true );
 		$blocker = isset( $operation_definition['blocker'] ) ? sanitize_key( (string) $operation_definition['blocker'] ) : '';
