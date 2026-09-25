@@ -18,6 +18,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	const BUILDER_SPEC_VERSION = '1';
 	const MAX_LIVE_SAMPLES = 24;
 	const MAX_SAMPLE_BYTES = 1800;
+	const MAX_AUTHORITY_EVIDENCE_BYTES = 40000;
 	const MAX_DRAFT_BYTES = 120000;
 
 	public static function expected_categories() {
@@ -161,6 +162,8 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	}
 
 	public static function gap_plan( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$include_authoritative_content = ! array_key_exists( 'include_authoritative_content', $input ) || ! empty( $input['include_authoritative_content'] );
 		$site_uuid = self::site_uuid();
 		if ( '' === $site_uuid ) return new WP_Error( 'mad4b_brand_builder_site_identity_unavailable', 'Site Profile identity is unavailable.' );
 		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return new WP_Error( 'mad4b_brand_builder_context_unavailable', 'Context Authority is unavailable.' );
@@ -168,6 +171,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$approved = self::approved_assets_by_category();
 		$missing = array();
 		$authoritative_assets = array();
+		$authority_read_blockers = array();
 		$conflicts = array();
 		foreach ( self::expected_categories() as $category => $label ) {
 			$rows = isset( $approved[ $category ] ) ? $approved[ $category ] : array();
@@ -176,7 +180,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			foreach ( $rows as $asset ) {
 				$hash = isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '';
 				if ( '' !== $hash ) $hashes[ $hash ] = true;
-				$authoritative_assets[] = array(
+				$entry = array(
 					'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
 					'category' => $category,
 					'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
@@ -187,6 +191,19 @@ final class MAD4B_SCP_Brand_Context_Builder {
 					'observed_at' => gmdate( 'c' ),
 					'reason' => 'approved_brand_authority',
 				);
+				if ( $include_authoritative_content && class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ) {
+					$readback = MAD4B_SCP_Google_Drive_Context::read_context_asset( (string) $entry['asset_id'] );
+					if ( is_wp_error( $readback ) ) {
+						$authority_read_blockers[] = 'authority_read_failed:' . (string) $entry['asset_id'] . ':' . $readback->get_error_code();
+					} else {
+						$content = isset( $readback['content'] ) ? (string) $readback['content'] : '';
+						$entry['content'] = strlen( $content ) > self::MAX_AUTHORITY_EVIDENCE_BYTES ? substr( $content, 0, self::MAX_AUTHORITY_EVIDENCE_BYTES ) : $content;
+						$entry['content_bytes'] = strlen( $content );
+						$entry['content_truncated'] = strlen( $content ) > self::MAX_AUTHORITY_EVIDENCE_BYTES;
+						$entry['provider_observed_at'] = isset( $readback['observed_at'] ) ? (string) $readback['observed_at'] : '';
+					}
+				}
+				$authoritative_assets[] = $entry;
 			}
 			if ( count( $hashes ) > 1 ) $conflicts[] = array( 'category' => $category, 'code' => 'multiple_approved_brand_authorities' );
 		}
@@ -196,12 +213,32 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$registry_revision = (int) MAD4B_SCP_Context_Authority::registry_revision();
 		$context_fingerprint = (string) MAD4B_SCP_Context_Authority::context_fingerprint();
 		$authority_manifest_fingerprint = (string) MAD4B_SCP_Context_Authority::authority_manifest_fingerprint();
-		$evidence = array(
-			'authoritative_assets' => $authoritative_assets,
-			'live_content' => $live_content,
+		$evidence_identity = array(
+			'authoritative_assets' => array_map(
+				static function ( $row ) {
+					return array(
+						'asset_id' => isset( $row['asset_id'] ) ? (string) $row['asset_id'] : '',
+						'category' => isset( $row['category'] ) ? (string) $row['category'] : '',
+						'content_hash' => isset( $row['content_hash'] ) ? (string) $row['content_hash'] : '',
+						'reviewed_content_hash' => isset( $row['reviewed_content_hash'] ) ? (string) $row['reviewed_content_hash'] : '',
+					);
+				},
+				$authoritative_assets
+			),
+			'live_content' => array_map(
+				static function ( $row ) {
+					return array(
+						'content_id' => isset( $row['content_id'] ) ? (string) $row['content_id'] : '',
+						'post_type' => isset( $row['post_type'] ) ? (string) $row['post_type'] : '',
+						'content_hash' => isset( $row['content_hash'] ) ? (string) $row['content_hash'] : '',
+						'language' => isset( $row['language'] ) ? (string) $row['language'] : '',
+					);
+				},
+				$live_content
+			),
 			'live_structure' => $structure,
 		);
-		$evidence_digest = hash( 'sha256', self::stable_json( $evidence ) );
+		$evidence_digest = hash( 'sha256', self::stable_json( $evidence_identity ) );
 		$drafts = array();
 		$names = array(
 			'tone_of_voice' => 'Egypt Tour Gates - Tone of Voice.md',
@@ -219,6 +256,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		if ( empty( $approved['brand_strategy'] ) ) $hard_blockers[] = 'approved_brand_strategy_required';
 		if ( empty( $live_content ) ) $hard_blockers[] = 'live_content_evidence_required';
 		if ( ! empty( $conflicts ) ) $hard_blockers[] = 'brand_authority_conflict_requires_review';
+		foreach ( $authority_read_blockers as $blocker ) $hard_blockers[] = $blocker;
 
 		$plan_basis = array(
 			'contract' => self::PLAN_CONTRACT,
@@ -247,6 +285,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				'drafts' => $drafts,
 				'generation_is_authority' => false,
 				'approval_required_before_brand_core_ready' => true,
+				'authoritative_content_included' => $include_authoritative_content,
 			)
 		);
 	}
