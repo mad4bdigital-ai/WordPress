@@ -97,7 +97,7 @@ final class MAD4B_SCP_Intent_Registry {
 		$limit = isset( $input['limit'] ) ? max( 1, min( 1000, absint( $input['limit'] ) ) ) : 200;
 		$t = MAD4B_SCP_Schema::tables();
 
-		$where = array( 'site_uuid=%s', 'valid_to IS NULL' );
+		$where = array( "site_uuid=%s", "valid_to=''", 'current_relation_key IS NOT NULL' );
 		$args = array( $site_uuid );
 		if ( '' !== $intent_id ) { $where[] = 'intent_id=%s'; $args[] = $intent_id; }
 		if ( '' !== $locale ) { $where[] = 'locale=%s'; $args[] = $locale; }
@@ -169,12 +169,13 @@ final class MAD4B_SCP_Intent_Registry {
 		if ( is_wp_error( $desired ) ) return $desired;
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
+		$now_iso = gmdate( 'c' );
 
 		$wpdb->query( 'START TRANSACTION' );
 		try {
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
-					"SELECT * FROM {$t['intent_relations']} WHERE site_uuid=%s AND locale=%s AND market=%s AND intent_id=%s AND valid_to IS NULL ORDER BY content_id ASC,revision ASC,id ASC FOR UPDATE",
+					"SELECT * FROM {$t['intent_relations']} WHERE site_uuid=%s AND locale=%s AND market=%s AND intent_id=%s AND valid_to='' AND current_relation_key IS NOT NULL ORDER BY content_id ASC,revision ASC,id ASC FOR UPDATE",
 					$site_uuid,
 					$locale,
 					$market,
@@ -201,14 +202,16 @@ final class MAD4B_SCP_Intent_Registry {
 
 			foreach ( $current_by_content as $content_id => $row ) {
 				if ( ! isset( $desired_by_content[ $content_id ] ) ) {
-					$changed = $wpdb->update(
-						$t['intent_relations'],
-						array( 'valid_to' => $now ),
-						array( 'relation_id' => $row['relation_id'], 'site_uuid' => $site_uuid ),
-						array( '%s' ),
-						array( '%s','%s' )
+					$changed = $wpdb->query(
+						$wpdb->prepare(
+							"UPDATE {$t['intent_relations']} SET valid_to=%s,current_relation_key=NULL,owner_scope_key=NULL WHERE relation_id=%s AND revision=%d AND site_uuid=%s AND valid_to='' AND current_relation_key IS NOT NULL",
+							$now_iso,
+							$row['relation_id'],
+							(int) $row['revision'],
+							$site_uuid
+						)
 					);
-					if ( false === $changed ) throw new RuntimeException( 'intent_relation_close_failed:' . (string) $wpdb->last_error );
+					if ( 1 !== (int) $changed ) throw new RuntimeException( 'intent_relation_close_failed:' . (string) $wpdb->last_error );
 					$closed[] = $row['relation_id'];
 				}
 			}
@@ -220,14 +223,16 @@ final class MAD4B_SCP_Intent_Registry {
 					continue;
 				}
 				if ( is_array( $prior ) ) {
-					$changed = $wpdb->update(
-						$t['intent_relations'],
-						array( 'valid_to' => $now ),
-						array( 'relation_id' => $prior['relation_id'], 'site_uuid' => $site_uuid ),
-						array( '%s' ),
-						array( '%s','%s' )
+					$changed = $wpdb->query(
+						$wpdb->prepare(
+							"UPDATE {$t['intent_relations']} SET valid_to=%s,current_relation_key=NULL,owner_scope_key=NULL WHERE relation_id=%s AND revision=%d AND site_uuid=%s AND valid_to='' AND current_relation_key IS NOT NULL",
+							$now_iso,
+							$prior['relation_id'],
+							(int) $prior['revision'],
+							$site_uuid
+						)
 					);
-					if ( false === $changed ) throw new RuntimeException( 'intent_relation_close_failed:' . (string) $wpdb->last_error );
+					if ( 1 !== (int) $changed ) throw new RuntimeException( 'intent_relation_close_failed:' . (string) $wpdb->last_error );
 					$closed[] = $prior['relation_id'];
 				}
 
@@ -264,15 +269,17 @@ final class MAD4B_SCP_Intent_Registry {
 						'role' => $row['role'],
 						'confidence' => $row['confidence'],
 						'evidence_json' => $evidence_json,
+						'analysis_signals_json' => $analysis_signals_json,
 						'source' => $row['source'],
 						'revision' => $revision,
-						'valid_from' => '' !== $row['valid_from'] ? self::mysql_datetime( $row['valid_from'] ) : $now,
-						'valid_to' => null,
+						'valid_from' => '' !== $row['valid_from'] ? $row['valid_from'] : $now_iso,
+						'valid_to' => '',
+						'current_relation_key' => $current_relation_key,
 						'owner_scope_key' => $owner_scope_key,
 						'relation_sha256' => $relation_sha,
 						'created_at' => $now,
 					),
-					array( '%s','%s','%s','%s','%s','%s','%s','%f','%s','%s','%d','%s',null,'%s','%s','%s' )
+					array( '%s','%s','%s','%s','%s','%s','%s','%f','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s' )
 				);
 				if ( false === $ok ) throw new RuntimeException( 'intent_relation_insert_failed:' . (string) $wpdb->last_error );
 				$inserted[] = $relation_id;
@@ -280,7 +287,7 @@ final class MAD4B_SCP_Intent_Registry {
 
 			$after_rows = $wpdb->get_results(
 				$wpdb->prepare(
-					"SELECT * FROM {$t['intent_relations']} WHERE site_uuid=%s AND locale=%s AND market=%s AND intent_id=%s AND valid_to IS NULL ORDER BY content_id ASC,revision ASC,id ASC",
+					"SELECT * FROM {$t['intent_relations']} WHERE site_uuid=%s AND locale=%s AND market=%s AND intent_id=%s AND valid_to='' AND current_relation_key IS NOT NULL ORDER BY content_id ASC,revision ASC,id ASC",
 					$site_uuid,
 					$locale,
 					$market,
@@ -478,7 +485,9 @@ final class MAD4B_SCP_Intent_Registry {
 	private static function normalize_db_row( $row ) {
 		if ( ! is_array( $row ) ) return array();
 		$evidence = json_decode( (string) ( $row['evidence_json'] ?? '' ), true );
-		$evidence = is_array( $evidence ) ? $evidence : array();
+		$evidence = is_array( $evidence ) ? array_values( $evidence ) : array();
+		$signals = json_decode( (string) ( $row['analysis_signals_json'] ?? '' ), true );
+		$signals = is_array( $signals ) ? $signals : array();
 		return array(
 			'relation_id' => (string) ( $row['relation_id'] ?? '' ),
 			'site_uuid' => (string) ( $row['site_uuid'] ?? '' ),
@@ -488,12 +497,12 @@ final class MAD4B_SCP_Intent_Registry {
 			'market' => (string) ( $row['market'] ?? '' ),
 			'role' => (string) ( $row['role'] ?? '' ),
 			'confidence' => (float) ( $row['confidence'] ?? 0 ),
-			'evidence_refs' => isset( $evidence['evidence_refs'] ) && is_array( $evidence['evidence_refs'] ) ? array_values( $evidence['evidence_refs'] ) : array(),
-			'analysis_signals' => self::normalize_signals( isset( $evidence['analysis_signals'] ) && is_array( $evidence['analysis_signals'] ) ? $evidence['analysis_signals'] : array() ),
+			'evidence_refs' => $evidence,
+			'analysis_signals' => self::normalize_signals( $signals ),
 			'source' => (string) ( $row['source'] ?? '' ),
 			'revision' => (int) ( $row['revision'] ?? 0 ),
 			'valid_from' => (string) ( $row['valid_from'] ?? '' ),
-			'valid_to' => null === ( $row['valid_to'] ?? null ) ? '' : (string) $row['valid_to'],
+			'valid_to' => (string) ( $row['valid_to'] ?? '' ),
 			'relation_sha256' => (string) ( $row['relation_sha256'] ?? '' ),
 		);
 	}
