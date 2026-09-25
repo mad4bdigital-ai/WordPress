@@ -52,7 +52,15 @@ $degraded = MAD4B_SCP_Operator_Doctor::classify_snapshot( array(
 ) );
 $check( false === $degraded['healthy'], 'degraded snapshot was reported healthy' );
 $check( 9 === $degraded['finding_count'], 'degraded snapshot finding count mismatch' );
-$check( 'high' === $degraded['findings'][0]['severity'], 'findings were not severity ordered' );
+$check( 'critical' === $degraded['findings'][0]['severity'], 'critical finding did not sort first' );
+$check( 'host-runner-uncertain-mutations' === $degraded['findings'][0]['finding_id'], 'uncertain mutation was not the highest-severity finding' );
+$severity_order = array( 'critical' => 0, 'high' => 1, 'medium' => 2, 'low' => 3, 'info' => 4 );
+$previous_rank = -1;
+foreach ( $degraded['findings'] as $finding ) {
+	$rank = isset( $severity_order[ $finding['severity'] ] ) ? $severity_order[ $finding['severity'] ] : 99;
+	$check( $rank >= $previous_rank, 'findings were not monotonically severity ordered' );
+	$previous_rank = $rank;
+}
 
 $ids = array_column( $degraded['findings'], 'finding_id' );
 foreach ( array(
