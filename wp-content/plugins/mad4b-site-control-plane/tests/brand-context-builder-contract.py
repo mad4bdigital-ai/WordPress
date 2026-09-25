@@ -26,6 +26,12 @@ for marker in [
     "const MATERIALIZE_CONTRACT = 'mad4b.brand-context-materialization.v1'",
     "const ROLLBACK_CONTRACT = 'mad4b.rollback.google-drive-brand-context-create.v1'",
     "const MAX_LIVE_CANDIDATES = 96",
+    "const DRAFT_INDEX_OPTION = 'mad4b_scp_brand_draft_index_v1'",
+    "const MAX_DRAFT_INDEX_ENTRIES = 256",
+    "private static $authority_readback_cache = array()",
+    "private static function authority_readback(",
+    "private static function index_draft_artifact(",
+    "legacy fallback/backfill only",
     "mb_strcut",
     "wpml_element_language_code",
     "wpml_post_language_details",
@@ -166,6 +172,9 @@ for marker in [
 ]:
     if marker not in drive:
         raise SystemExit(f"Google Drive exact-created rollback invariant missing: {marker}")
+
+if "require_once dirname( __DIR__ ) . '/class-mad4b-scp-brand-context-builder.php';" not in adapter:
+    raise SystemExit("Context Adapter must load Brand Context Builder explicitly for partial/runtime-isolated boot")
 
 for marker in [
     "'context/brand-gap-plan'",
