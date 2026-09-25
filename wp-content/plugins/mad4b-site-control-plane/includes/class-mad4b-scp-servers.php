@@ -37,6 +37,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve',
 				'mad4b/data-processing-evaluate',
 				'mad4b/decommission-preflight',
+				'mad4b/export-bundle-build', 'mad4b/import-bundle-validate',
 				'mad4b/scheduler-admission-evaluate',
 				'mad4b/scheduler-fair-rank',
 				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status',
