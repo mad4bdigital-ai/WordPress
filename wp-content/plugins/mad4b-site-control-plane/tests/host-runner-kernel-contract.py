@@ -119,6 +119,36 @@ with tempfile.TemporaryDirectory() as td:
     }), encoding="utf-8")
     profile = runner.load_profile(profile_path)
 
+    # Canonicalization must not hide a caller-supplied symlinked WordPress root.
+    root_link = tmp / "wordpress-link"
+    root_link.symlink_to(wp, target_is_directory=True)
+    root_link_profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    root_link_profile["wordpress_root"] = str(root_link)
+    root_link_profile_path = tmp / "profile-root-link.json"
+    root_link_profile_path.write_text(json.dumps(root_link_profile), encoding="utf-8")
+    try:
+        runner.load_profile(root_link_profile_path)
+        raise SystemExit("Host Runner accepted symlinked WordPress root")
+    except ValueError as exc:
+        if "root symlink is forbidden" not in str(exc):
+            raise
+
+    # Receipt evidence location cannot be a symlink even when it resolves inside the runner zone.
+    real_receipts = wp / "wp-content" / "mad4b-runner" / "real-receipts"
+    real_receipts.mkdir(parents=True)
+    receipt_link = wp / "wp-content" / "mad4b-runner" / "receipt-link"
+    receipt_link.symlink_to(real_receipts, target_is_directory=True)
+    receipt_link_profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    receipt_link_profile["receipt_root"] = str(receipt_link)
+    receipt_link_profile_path = tmp / "profile-receipt-link.json"
+    receipt_link_profile_path.write_text(json.dumps(receipt_link_profile), encoding="utf-8")
+    try:
+        runner.load_profile(receipt_link_profile_path)
+        raise SystemExit("Host Runner accepted symlinked receipt root")
+    except ValueError as exc:
+        if "receipt_root symlink is forbidden" not in str(exc):
+            raise
+
     doctor = runner.doctor(profile_path)
     assert doctor["generic_shell_available"] is False
     assert doctor["write_operations_available"] is True
@@ -284,6 +314,19 @@ with tempfile.TemporaryDirectory() as td:
         raise SystemExit("package.integrity.verify accepted caller path")
     except ValueError as exc:
         if "takes no caller-defined paths" not in str(exc):
+            raise
+
+    # Reversible payload budget is lower than the signed envelope budget so base64+plan fit safely.
+    try:
+        runner.build_workspace_replace_plan(
+            profile,
+            "oversized.txt",
+            b"x" * (runner.MAX_WRITE_BYTES + 1),
+            "oversized payload must fail",
+        )
+        raise SystemExit("Host Runner accepted oversized reversible write payload")
+    except ValueError as exc:
+        if "too large" not in str(exc):
             raise
 
     # Dedicated runner-workspace write: exact plan + approval + readback + durable receipt.
