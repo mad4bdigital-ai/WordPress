@@ -630,17 +630,25 @@ final class MAD4B_SCP_Context_Authority {
 						continue;
 					}
 					$prior = isset( $previous[ $normalized['asset_id'] ] ) ? $previous[ $normalized['asset_id'] ] : array();
-					$human_classification = 'human' === ( isset( $prior['classification_source'] ) ? (string) $prior['classification_source'] : '' );
-					if ( $human_classification ) {
-						// Human classification/authority is governance metadata and survives
-						// content refresh. Approval evidence is bound to the exact content
-						// hash and must never be recreated by a later provider rescan.
+					$prior_classification_source = isset( $prior['classification_source'] ) ? (string) $prior['classification_source'] : '';
+					$human_classification = 'human' === $prior_classification_source;
+					$generated_classification = 'brand_context_builder' === $prior_classification_source;
+					if ( $human_classification || $generated_classification ) {
+						// Explicit human or governed generated classification/authority survives
+						// provider rescans. Approval evidence remains exact-content-hash bound.
 						$normalized['category'] = isset( $prior['category'] ) ? (string) $prior['category'] : $normalized['category'];
-						$normalized['classification_confidence'] = 1.0;
-						$normalized['classification_source'] = 'human';
+						$normalized['classification_confidence'] = $human_classification ? 1.0 : ( isset( $prior['classification_confidence'] ) ? (float) $prior['classification_confidence'] : 1.0 );
+						$normalized['classification_source'] = $human_classification ? 'human' : 'brand_context_builder';
 						$normalized['authority_class'] = isset( $prior['authority_class'] ) ? (string) $prior['authority_class'] : $normalized['authority_class'];
 						$normalized['required'] = ! empty( $prior['required'] );
 						$normalized['priority'] = isset( $prior['priority'] ) ? (int) $prior['priority'] : $normalized['priority'];
+
+						if ( $generated_classification ) {
+							foreach ( array( 'generated_artifact_id', 'generation_evidence_digest', 'materialization_receipt_sha256' ) as $generated_field ) {
+								if ( array_key_exists( $generated_field, $prior ) ) $normalized[ $generated_field ] = $prior[ $generated_field ];
+							}
+						}
+
 						$same_content = ! empty( $prior['content_hash'] ) && hash_equals( (string) $prior['content_hash'], (string) $normalized['content_hash'] );
 						$prior_review_status = isset( $prior['review_status'] ) ? (string) $prior['review_status'] : '';
 						$prior_reviewed_hash = isset( $prior['reviewed_content_hash'] ) ? strtolower( trim( (string) $prior['reviewed_content_hash'] ) ) : '';
@@ -649,6 +657,7 @@ final class MAD4B_SCP_Context_Authority {
 							&& ! empty( $prior['reviewed_at'] )
 							&& preg_match( '/^[a-f0-9]{64}$/', $prior_reviewed_hash )
 							&& hash_equals( $prior_reviewed_hash, (string) $normalized['content_hash'] );
+
 						if ( $prior_review_bound ) {
 							$normalized['reviewed_by'] = isset( $prior['reviewed_by'] ) ? absint( $prior['reviewed_by'] ) : 0;
 							$normalized['reviewed_at'] = (string) $prior['reviewed_at'];
@@ -660,6 +669,16 @@ final class MAD4B_SCP_Context_Authority {
 								$normalized['quality_score'] = isset( $prior['quality_score'] ) ? (int) $prior['quality_score'] : $normalized['quality_score'];
 								$normalized['quality'] = $prior['quality'];
 							}
+						} elseif ( $generated_classification && $same_content && in_array( $prior_review_status, array( '', 'unreviewed' ), true ) ) {
+							$normalized['reviewed_by'] = 0;
+							$normalized['reviewed_at'] = '';
+							$normalized['review_status'] = 'unreviewed';
+							$normalized['reviewed_content_hash'] = '';
+							$normalized['review_decision'] = '';
+							$normalized['review_note'] = '';
+							$normalized['review_actor_type'] = '';
+							$normalized['review_agent_public_id'] = '';
+							if ( isset( $normalized['quality'] ) && is_array( $normalized['quality'] ) ) $normalized['quality']['provisional'] = true;
 						} else {
 							$normalized['reviewed_by'] = 0;
 							$normalized['reviewed_at'] = '';
