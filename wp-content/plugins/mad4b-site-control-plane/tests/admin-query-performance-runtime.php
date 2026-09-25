@@ -64,6 +64,7 @@ $GLOBALS['wpdb'] = new MAD4B_Perf_WPDB();
 
 function add_action() {}
 function sanitize_key( $v ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $v ) ); }
+function wp_unslash( $v ) { return $v; }
 function wp_get_environment_type() { return $GLOBALS['mad4b_perf_env']; }
 function is_admin() { return ! empty( $GLOBALS['mad4b_perf_admin'] ); }
 function current_user_can( $cap ) { return 'manage_options' === $cap; }
@@ -89,6 +90,13 @@ function mad4b_perf_assert( $condition, $message ) {
 
 $initial = MAD4B_SCP_Admin_Query_Performance::status();
 mad4b_perf_assert( empty( $initial['ready'] ), 'standard single-column meta indexes must not masquerade as compound optimization' );
+
+$GLOBALS['pagenow'] = 'update.php';
+$_REQUEST['action'] = 'upload-plugin';
+$protected = MAD4B_SCP_Admin_Query_Performance::maybe_ensure_staging_indexes();
+mad4b_perf_assert( 'lifecycle_protected' === $protected['state'], 'plugin upload lifecycle must be protected from performance DDL' );
+mad4b_perf_assert( 0 === count( $GLOBALS['wpdb']->queries ), 'plugin upload lifecycle must execute zero performance DDL statements' );
+unset( $GLOBALS['pagenow'], $_REQUEST['action'] );
 
 $applied = MAD4B_SCP_Admin_Query_Performance::maybe_ensure_staging_indexes();
 mad4b_perf_assert( ! empty( $applied['ready'] ), 'Staging compound indexes were not applied' );
@@ -119,4 +127,4 @@ for ( $i = 0; $i < 2000; $i++ ) {
 }
 mad4b_perf_assert( 1 === $GLOBALS['wpdb']->agent_query_count, 'repeated request-local agent lookups must collapse to one database query' );
 
-echo "mad4b.admin-query-performance.runtime.v2: PASS\n";
+echo "mad4b.admin-query-performance.runtime.v3: PASS\n";
