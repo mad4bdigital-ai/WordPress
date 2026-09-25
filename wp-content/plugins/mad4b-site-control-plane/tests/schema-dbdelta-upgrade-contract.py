@@ -279,7 +279,7 @@ def main():
         "private static function migration_receipt_valid",
         "private static function migration_origin_version",
         "private static function normalize_intent_relation_indexes",
-        "DROP INDEX \`current_owner_scope\`",
+        "DROP INDEX `current_owner_scope`",
         "$from_version = self::migration_origin_version( $installed_version );",
         "private static function persist_and_verify_option",
         "'mad4b_schema_migration_receipt_persist_failed'",
