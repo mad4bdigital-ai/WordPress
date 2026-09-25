@@ -18,7 +18,7 @@ for marker in (
     "public static function begin_idempotency",
     "public static function reclaim_idempotency",
     "public static function release_idempotency_after_verified_no_effect",
-    "released_after_verified_no_effect",
+    "released_verified_no_effect",
     "reclaimed_after_verified_no_effect",
     "idempotency_no_effect",
     "mad4b_idempotency_reconciliation_required",
@@ -109,7 +109,7 @@ for marker in (
     "START TRANSACTION",
     "FOR UPDATE",
     "reconciliation_verified( 'idempotency_no_effect'",
-    "status='released_after_verified_no_effect'",
+    "status='released_verified_no_effect'",
     "claim_epoch=%d",
     "status='pending'",
     "COMMIT",
@@ -121,7 +121,7 @@ for marker in (
 begin = DURABLE[DURABLE.index("public static function begin_idempotency"):]
 begin = begin[: begin.index("public static function complete_idempotency")]
 for marker in (
-    "'released_after_verified_no_effect' === (string) $row['status']",
+    "'released_verified_no_effect' === (string) $row['status']",
     "claim_epoch=%d",
     "status='pending'",
     "reconciliation_ref=''",
