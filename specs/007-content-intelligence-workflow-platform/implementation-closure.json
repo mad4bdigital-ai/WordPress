@@ -750,11 +750,16 @@
         "durable_lease_terminal_non_reclaim": true,
         "host_runner_terminal_journal_model": true,
         "gate_dag_acyclicity_and_blocker_closure": true,
-        "repository_only": true
+        "repository_only": true,
+        "provider_certification_release_ring_model": true,
+        "artifact_evidence_monotonicity_model": true,
+        "publication_verdict_reducer_model": true,
+        "ordinary_artifact_provenance_deletion_forbidden": true,
+        "publication_pass_requires_origin_and_edge_convergence": true
       },
       "remainder": [
-        "obtain exact-head Critical Kernel PASS for the formal-state contract",
-        "extend the state proof to artifact/publication/provider states as those implementations land"
+        "obtain exact-head Critical Kernel PASS for the extended formal-state contract",
+        "add permanent model fixtures for any future production state-machine defect discovered in these families"
       ]
     },
     {
