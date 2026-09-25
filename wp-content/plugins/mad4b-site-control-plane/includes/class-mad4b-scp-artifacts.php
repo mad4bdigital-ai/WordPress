@@ -29,7 +29,7 @@ final class MAD4B_SCP_Artifacts {
 			'evidence_coverage_matrix', 'ux_coverage_matrix', 'competitor_analysis',
 			'information_gain', 'blueprint', 'blueprint_qa', 'section_plan', 'draft', 'fact_ledger',
 			'fact_qa', 'editorial_qa', 'seo_qa', 'final_qa', 'media_plan',
-			'publish_manifest', 'publication_candidate', 'publication_verification', 'data_governance_decision',
+			'publish_manifest', 'publication_candidate', 'publication_verification', 'data_governance_decision', 'brand_context_draft',
 		);
 	}
 
