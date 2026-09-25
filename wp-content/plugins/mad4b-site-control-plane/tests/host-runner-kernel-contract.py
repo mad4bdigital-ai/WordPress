@@ -369,6 +369,43 @@ with tempfile.TemporaryDirectory() as td:
     assert write_replay["replayed"] is True
     assert (runner_workspace / "state.txt").read_bytes() == replacement
 
+    # A successful reversible write can be explicitly rolled back under a new exact plan+approval.
+    rollback_plan = runner.build_workspace_rollback_plan(
+        profile,
+        write_receipt,
+        "explicitly rollback successful workspace write",
+    )
+    rollback_job = make_job(
+        profile,
+        "workspace.file.rollback",
+        {"plan": rollback_plan},
+        plan_sha256=rollback_plan["plan_sha256"],
+        approval_ref="approval:ci-workspace-rollback",
+        authority_ref="ci:workspace-write-authority",
+    )
+    rollback_path = tmp / "explicit-success-rollback.json"
+    rollback_path.write_text(json.dumps(rollback_job), encoding="utf-8")
+    rollback_receipt = runner.run_job(profile_path, rollback_path)
+    assert rollback_receipt["mutation_performed"] is True
+    assert rollback_receipt["readback_verdict"] == "PASS"
+    assert rollback_receipt["result"]["source_job_id"] == write_job["job_id"]
+    assert rollback_receipt["result"]["after_sha256"] == "ABSENT"
+    assert not (runner_workspace / "state.txt").exists()
+
+    # The original successful write receipt is historical evidence, not proof of current postcondition.
+    try:
+        runner.run_job(profile_path, write_path)
+        raise SystemExit("Host Runner replay returned stale success after explicit rollback")
+    except RuntimeError as exc:
+        if "HOST_RUNNER_REPLAY_RECONCILIATION_REQUIRED" not in str(exc):
+            raise
+
+    # Exact rollback replay remains valid while the rollback postcondition is still current.
+    rollback_replay = runner.run_job(profile_path, rollback_path)
+    assert rollback_replay["replayed"] is True
+    assert rollback_replay["replay_readback_verdict"] == "PASS"
+    assert not (runner_workspace / "state.txt").exists()
+
     # Approval identity is replay material and may not drift.
     changed_approval = dict(write_job)
     changed_approval["approval_ref"] = "approval:different"
