@@ -91,18 +91,27 @@ final class MAD4B_SCP_Admin_Query_Performance {
 	public static function handle_explicit_apply() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required to apply MAD4B performance indexes.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		check_admin_referer( 'mad4b_apply_admin_query_indexes', 'mad4b_admin_query_performance_nonce' );
-		$result = self::maybe_ensure_staging_indexes();
+		$result = self::apply_explicit();
 		$state = is_array( $result ) && isset( $result['state'] ) ? sanitize_key( (string) $result['state'] ) : ( ! empty( $result['ready'] ) ? 'ready' : 'unknown' );
 		$url = add_query_arg( array( 'page' => 'mad4b-control-plane', 'mad4b_performance_apply' => $state ), admin_url( 'admin.php' ) );
 		wp_safe_redirect( $url );
 		exit;
 	}
 
+	public static function apply_explicit() {
+		if ( 'staging' !== self::environment() ) return array( 'contract' => self::CONTRACT, 'environment' => self::environment(), 'state' => 'not_applicable', 'production_changed' => false );
+		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_admin_query_performance_admin_required', 'Administrator capability is required to apply MAD4B performance indexes.' );
+		return self::apply_indexes();
+	}
+
 	public static function maybe_ensure_staging_indexes() {
 		if ( self::is_forbidden_automatic_lifecycle_request() ) return array( 'contract' => self::CONTRACT, 'environment' => self::environment(), 'state' => 'lifecycle_protected', 'production_changed' => false );
 		if ( 'staging' !== self::environment() ) return array( 'contract' => self::CONTRACT, 'environment' => self::environment(), 'state' => 'not_applicable', 'production_changed' => false );
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return array( 'contract' => self::CONTRACT, 'environment' => 'staging', 'state' => 'admin_required', 'production_changed' => false );
+		return self::apply_indexes();
+	}
 
+	private static function apply_indexes() {
 		$stored = get_option( self::OPTION, array() );
 		if ( is_array( $stored ) && self::INDEX_VERSION === (int) ( isset( $stored['index_version'] ) ? $stored['index_version'] : 0 ) ) {
 			if ( ! empty( $stored['ready_after'] ) ) return array( 'contract' => self::CONTRACT, 'environment' => 'staging', 'state' => 'already_applied', 'index_version' => self::INDEX_VERSION, 'production_changed' => false );
