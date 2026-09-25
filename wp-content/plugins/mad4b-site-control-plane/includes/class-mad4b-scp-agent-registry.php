@@ -3,7 +3,15 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Agent_Registry {
+	private static $agent_by_public_id = array();
+
 	private static function now() { return current_time( 'mysql', true ); }
+
+	private static function invalidate_agent_cache( $public_id = '' ) {
+		$public_id = trim( (string) $public_id );
+		if ( '' === $public_id ) { self::$agent_by_public_id = array(); return; }
+		unset( self::$agent_by_public_id[ $public_id ] );
+	}
 
 	public static function create_agent( array $args ) {
 		global $wpdb;
@@ -43,8 +51,12 @@ final class MAD4B_SCP_Agent_Registry {
 
 	public static function get_agent_by_public_id( $public_id ) {
 		global $wpdb; $t = MAD4B_SCP_Schema::tables();
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['agents']} WHERE public_id = %s LIMIT 1", (string) $public_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		return $row ? $row : null;
+		$public_id = trim( (string) $public_id );
+		if ( '' === $public_id ) return null;
+		if ( array_key_exists( $public_id, self::$agent_by_public_id ) ) return self::$agent_by_public_id[ $public_id ];
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['agents']} WHERE public_id = %s LIMIT 1", $public_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		self::$agent_by_public_id[ $public_id ] = $row ? $row : null;
+		return self::$agent_by_public_id[ $public_id ];
 	}
 
 	public static function update_agent( $public_id, array $changes, $expected_revision ) {
@@ -67,6 +79,7 @@ final class MAD4B_SCP_Agent_Registry {
 		if ( array_key_exists( 'wp_user_id', $changes ) ) { $data['wp_user_id'] = absint( $changes['wp_user_id'] ); $formats[] = '%d'; }
 		$updated = $wpdb->update( $t['agents'], $data, array( 'id' => (int) $agent['id'], 'revision' => (int) $agent['revision'] ), $formats, array( '%d','%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( false === $updated || 0 === $updated ) return new WP_Error( 'mad4b_agent_update_failed', 'Agent update failed or became stale.' );
+		self::invalidate_agent_cache( $public_id );
 		return self::get_agent_by_id( $agent['id'] );
 	}
 
