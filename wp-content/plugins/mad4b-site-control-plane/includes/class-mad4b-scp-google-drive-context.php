@@ -1247,6 +1247,34 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return $state;
 	}
 
+	public static function rollback_created_brand_asset( array $receipt ) {
+		foreach ( array( 'source_id', 'asset_id', 'file_id', 'target_folder_id', 'after_sha256', 'mime_type' ) as $field ) {
+			if ( empty( $receipt[ $field ] ) ) return new WP_Error( 'mad4b_brand_create_rollback_receipt_incomplete', 'Brand Context create rollback receipt is incomplete.', array( 'field' => $field ) );
+		}
+		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( (string) $receipt['asset_id'] ) : array();
+		if ( empty( $asset ) ) return new WP_Error( 'mad4b_brand_create_rollback_asset_missing', 'Generated Brand Context asset is missing.' );
+		foreach ( array( 'source_id', 'file_id' ) as $field ) {
+			if ( empty( $asset[ $field ] ) || ! hash_equals( (string) $asset[ $field ], (string) $receipt[ $field ] ) ) return new WP_Error( 'mad4b_brand_create_rollback_binding_drift', 'Generated Brand Context binding changed after creation.', array( 'field' => $field ) );
+		}
+		$source = self::write_source( (string) $receipt['source_id'], 'create' );
+		if ( is_wp_error( $source ) ) return $source;
+		$membership = self::assert_file_within_source( (string) $receipt['file_id'], $source );
+		if ( is_wp_error( $membership ) ) return $membership;
+		$metadata = self::get_file_metadata( (string) $receipt['file_id'] );
+		if ( is_wp_error( $metadata ) ) return $metadata;
+		$parents = isset( $metadata['parents'] ) && is_array( $metadata['parents'] ) ? array_values( array_filter( array_map( 'strval', $metadata['parents'] ) ) ) : array();
+		if ( 1 !== count( $parents ) || ! hash_equals( (string) $receipt['target_folder_id'], (string) reset( $parents ) ) ) return new WP_Error( 'mad4b_brand_create_rollback_parent_drift', 'Generated Brand Context parent folder changed; rollback denied.' );
+		$mime = isset( $metadata['mimeType'] ) ? (string) $metadata['mimeType'] : '';
+		if ( ! hash_equals( (string) $receipt['mime_type'], $mime ) ) return new WP_Error( 'mad4b_brand_create_rollback_mime_drift', 'Generated Brand Context MIME type changed; rollback denied.' );
+		$content = self::fetch_text_content( $metadata );
+		if ( is_wp_error( $content ) ) return $content;
+		$current_sha = hash( 'sha256', (string) $content );
+		if ( ! hash_equals( strtolower( (string) $receipt['after_sha256'] ), strtolower( $current_sha ) ) ) return new WP_Error( 'mad4b_brand_create_rollback_content_drift', 'Generated Brand Context file changed after creation; rollback denied.', array( 'current_sha256' => $current_sha ) );
+		$deleted = self::delete_provider_file_for_rollback( (string) $receipt['file_id'], $source );
+		if ( is_wp_error( $deleted ) ) return $deleted;
+		return array( 'contract' => 'mad4b.rollback.google-drive-brand-context-create.v1', 'provider_deleted' => true, 'file_id' => (string) $receipt['file_id'], 'content_sha256' => $current_sha );
+	}
+
 	public static function restore_update_state( array $target, array $before_state ) {
 		$asset_id = isset( $target['asset_id'] ) ? (string) $target['asset_id'] : '';
 		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
