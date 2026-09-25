@@ -236,7 +236,7 @@ with tempfile.TemporaryDirectory() as td:
         (bridge / "dead-letter" / f"{location_drift_id}.json").read_text(encoding="utf-8")
     )
     assert location_incident["blind_retry_allowed"] is False
-    assert not (Path(profile["runner_workspace"]) / "bridge-write.txt").read_bytes() == b""
+    assert (Path(profile["runner_workspace"]) / "bridge-write.txt").read_bytes() == workspace_payload
 
     # Missing write approval/authority never reaches the operation and is dead-lettered.
     denied_payload = b"must-not-be-written\n"
