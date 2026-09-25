@@ -152,3 +152,47 @@ print("critical_job_evidence=github_actions_runs_jobs_api")
 print("root_trust_expression_check=template_proof")
 print("push_boundary_wait=disabled_pr_only_check")
 print("merge_gate_requires=governance_ready")
+
+# Remote governance apply keeps human approval as the decision while removing manual transport.
+remote_apply_path = Path(".github/workflows/mad4b-governance-remote-apply.yml")
+if not remote_apply_path.is_file():
+    raise SystemExit("remote repository governance apply workflow is missing")
+remote_apply = remote_apply_path.read_text(encoding="utf-8")
+
+remote_apply_required = [
+    "issue_comment:",
+    "github.event.comment.user.login == 'mad4bdigital-ai'",
+    "APPLY_MAD4B_MASTER_RULESET_REMOTE",
+    "expected_master_sha:",
+    "secrets.MAD4B_OWNER_GOVERNANCE_TOKEN",
+    'gh api user --jq ".login"',
+    "MAD4B Repository Governance Attestations",
+    'repos/$GITHUB_REPOSITORY/commits/master',
+    "persist-credentials: false",
+    'git switch -C master "$EXPECTED_HEAD"',
+    "Apply-Mad4bMasterRuleset.ps1",
+    'APPLY_MAD4B_MASTER_RULESET:$GITHUB_REPOSITORY:$EXPECTED_HEAD',
+    "cancel-in-progress: false",
+    "repository governance owner credential is unavailable",
+    "authenticated governance identity is not the authorized owner",
+    "current master does not match approved exact head",
+    "approval surface is neither merged bootstrap PR #66 nor the owner governance ledger",
+]
+for needle in remote_apply_required:
+    if needle not in remote_apply:
+        raise SystemExit(f"remote repository governance apply contract missing: {needle}")
+
+for forbidden in [
+    "pull_request_target:",
+    "workflow_dispatch:",
+    "repository_dispatch:",
+    "permissions: write-all",
+    "github.event.pull_request.head.sha",
+]:
+    if forbidden in remote_apply:
+        raise SystemExit(f"remote repository governance apply exposes unsafe trigger/authority: {forbidden}")
+
+print("remote_ruleset_apply=owner_comment+exact_master+canonical_template")
+print("remote_ruleset_apply_transport=github_actions")
+print("remote_ruleset_apply_scope=bootstrap_pr66_or_owner_governance_ledger")
+print("manual_terminal_required=false")
