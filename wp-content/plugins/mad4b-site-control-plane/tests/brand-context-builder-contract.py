@@ -32,6 +32,8 @@ for marker in [
     "evidence_digest",
     "expected_plan_sha256",
     "expected_provider_inventory_digest",
+    "expected_draft_content_sha256",
+    "receipt_sha256",
     "expected_registry_revision",
     "mad4b_context_source_scan_incomplete",
     "array( 'markdown', 'text' )",
@@ -63,6 +65,9 @@ for marker in [
     "'review_status'] = 'unreviewed'",
     "'reviewed_content_hash'] = ''",
     "mark_generated_brand_draft_rolled_back",
+    "materialization_receipt_sha256",
+    "mad4b_brand_rollback_artifact_binding_drift",
+    "mad4b_brand_rollback_receipt_binding_drift",
     "generated_file_rolled_back",
 ]:
     if marker not in authority:
@@ -76,6 +81,8 @@ for marker in [
     "mad4b_brand_create_rollback_parent_drift",
     "mad4b_brand_create_rollback_mime_drift",
     "mad4b_brand_create_rollback_content_drift",
+    "mad4b_brand_create_rollback_artifact_mismatch",
+    "mad4b_brand_create_rollback_receipt_mismatch",
     "delete_provider_file_for_rollback",
 ]:
     if marker not in drive:
@@ -91,6 +98,8 @@ for marker in [
     "mad4b_google_drive_create_rollback_not_certified",
     "MAD4B_SCP_Brand_Context_Builder::MAX_DRAFT_BYTES",
     "MAD4B_SCP_Brand_Context_Builder::ROLLBACK_CONTRACT",
+    "expected_draft_content_sha256",
+    "receipt_sha256",
     "includes/class-mad4b-scp-brand-context-builder.php",
 ]:
     if marker not in adapter:
@@ -114,6 +123,7 @@ for marker in [
     "context/source-scan-apply",
     "context/materialize-brand-draft",
     "context/rollback-materialized-brand-draft",
+    "include_authoritative_content=true",
     "Approved brand rule",
     "Observed live pattern",
     "Recommended normalization",
