@@ -103,6 +103,7 @@ class MAD4B_SCP_Brand_Context_Builder {
 	public static function source_scan_plan() { return array(); }
 	public static function source_scan_apply() { return array(); }
 	public static function materialize_draft() { return array(); }
+	public static function reconcile_materialization() { return array(); }
 	public static function rollback_materialized_draft() { return array(); }
 }
 
