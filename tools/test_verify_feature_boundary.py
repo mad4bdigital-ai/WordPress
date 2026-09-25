@@ -94,7 +94,7 @@ def fake_load(ref, path):
         return SKILLS
     raise AssertionError(path)
 
-def run_case(changed, *, feature=None, grant_catalog=None, expect_error=None, branch=BRANCH):
+def run_case(changed, *, feature=None, grant_catalog=None, expect_error=None, branch=BRANCH, pr_number=0):
     current_feature = feature if feature is not None else FEATURE
     current_grants = grant_catalog if grant_catalog is not None else GRANT_CATALOG
 
@@ -115,7 +115,7 @@ def run_case(changed, *, feature=None, grant_catalog=None, expect_error=None, br
          patch.object(mod, "find_feature_json", return_value=FEATURE_PATH), \
          patch.object(mod, "load_json_at", side_effect=loader):
         try:
-            result = mod.verify(BASE, HEAD, branch)
+            result = mod.verify(BASE, HEAD, branch, pr_number)
         except RuntimeError as exc:
             if expect_error is None:
                 raise
@@ -201,10 +201,18 @@ with patch.object(mod.subprocess, "run", return_value=SimpleNamespace(returncode
      patch.object(mod, "run", return_value=""), \
      patch.object(mod, "changed_paths", return_value=[".github/workflows/mad4b-release-verdict.yml"]), \
      patch.object(mod, "load_json_at", side_effect=fake_load):
-    bootstrap = mod.verify(BASE, HEAD, mod.BOOTSTRAP_ROOT_BRANCH)
+    bootstrap = mod.verify(BASE, HEAD, mod.BOOTSTRAP_ROOT_BRANCH, mod.BOOTSTRAP_PR_NUMBER)
 assert bootstrap["mode"] == "repository_governance_bootstrap"
 assert bootstrap["bootstrap_exception"] is True
 assert bootstrap["owner_attestation_required"] is True
+assert bootstrap["bootstrap_pr_number"] == 66
+
+run_case(
+    [".github/workflows/mad4b-release-verdict.yml"],
+    branch=mod.BOOTSTRAP_ROOT_BRANCH,
+    pr_number=67,
+    expect_error="REPOSITORY_BOOTSTRAP_PR_MISMATCH",
+)
 
 with patch.object(mod.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout="", stderr="")), \
      patch.object(mod, "run", return_value=""), \
