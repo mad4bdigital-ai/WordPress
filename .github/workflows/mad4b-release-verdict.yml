@@ -30,10 +30,7 @@ jobs:
   verdict:
     name: Repository release verdict
     runs-on: ubuntu-latest
-    environment: repository-governance
     timeout-minutes: 25
-    env:
-      MAD4B_RULESET_ATTESTATION: ${{ vars.MAD4B_RULESET_ATTESTATION }}
     steps:
       - name: Checkout exact head
         uses: actions/checkout@v4
