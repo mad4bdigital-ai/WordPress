@@ -107,6 +107,12 @@ if ( empty($GLOBALS['actions']['shutdown'][8]) ) { fwrite(STDERR,"FAIL: bridge s
 
 $check = function($c,$m){ if(!$c){fwrite(STDERR,"FAIL: $m\n");exit(1);} };
 $check(str_repeat('a',64) === MAD4B_SCP_Query_Monitor_Evidence_Bridge::request_build_fingerprint_for_test(), 'request build fingerprint must pin at request bootstrap');
+$probe_method = new ReflectionMethod('MAD4B_SCP_Query_Monitor_Evidence_Bridge', 'request_frontend_probe_hash');
+$probe_method->setAccessible(true);
+$_GET['mad4b_frontend_probe'] = '11111111-2222-4333-8444-555555555555';
+$check('' === $probe_method->invoke(null), 'unrelated UUID-shaped probe must not enter telemetry evidence');
+$_GET['mad4b_frontend_probe'] = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+$check(hash('sha256', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee') === $probe_method->invoke(null), 'active governed browser probe must be accepted');
 $GLOBALS['current_build_fingerprint'] = str_repeat('b',64);
 $check(str_repeat('a',64) === MAD4B_SCP_Query_Monitor_Evidence_Bridge::request_build_fingerprint_for_test(), 'mid-request provenance replacement must not change pinned build identity');
 
