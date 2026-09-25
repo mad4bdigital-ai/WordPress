@@ -129,14 +129,17 @@
       ]
     },
     "symlink_swap_before_commit": {
-      "repository_status": "PARTIAL",
+      "repository_status": "PROVEN",
       "live_status": "PENDING",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
-        "tools/mad4b_recovery_plane.py"
+        "tools/mad4b_recovery_plane.py",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
       ],
       "remaining": [
-        "prove immediate pre-commit path revalidation in the general host filesystem executor"
+        "repeat the exact pre-commit symlink/reparse swap denial on the enrolled ETG Staging Host Runner"
       ]
     },
     "zip_slip_path_traversal": {
@@ -149,13 +152,17 @@
       "remaining": []
     },
     "shell_executable_injection": {
-      "repository_status": "PENDING",
+      "repository_status": "PARTIAL",
       "live_status": "PENDING",
       "evidence_refs": [
-        "specs/007-content-intelligence-workflow-platform/contracts/governed-tool-execution.md"
+        "specs/007-content-intelligence-workflow-platform/contracts/governed-tool-execution.md",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
       ],
       "remaining": [
-        "implement concrete structured-argv executor and executable/shell-metacharacter denial fixtures"
+        "the current kernel has no subprocess/shell executor and rejects unknown shell operations plus injected command fields",
+        "when a concrete fixed-process semantic adapter is admitted, prove executable identity, argv schema, timeout and output-budget negatives before eligibility"
       ]
     },
     "output_timeout_exhaustion": {
@@ -191,13 +198,16 @@
       ]
     },
     "rollback_failure": {
-      "repository_status": "PENDING",
+      "repository_status": "PROVEN",
       "live_status": "PENDING",
       "evidence_refs": [
-        "specs/007-content-intelligence-workflow-platform/contracts/bulk-runtime-closure-hardening.md"
+        "specs/007-content-intelligence-workflow-platform/contracts/bulk-runtime-closure-hardening.md",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
       ],
       "remaining": [
-        "inject rollback failure after a reversible host write and surface recovery-required evidence"
+        "repeat rollback-failure uncertainty behavior on the enrolled ETG Staging Host Runner storage"
       ]
     },
     "evidence_persistence_failure": {
@@ -223,13 +233,16 @@
       ]
     },
     "backup_corruption_restore_interruption": {
-      "repository_status": "PENDING",
+      "repository_status": "PROVEN",
       "live_status": "PENDING",
       "evidence_refs": [
-        "specs/007-content-intelligence-workflow-platform/contracts/bulk-runtime-closure-hardening.md"
+        "specs/007-content-intelligence-workflow-platform/contracts/bulk-runtime-closure-hardening.md",
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36078194633"
       ],
       "remaining": [
-        "prepare protected backup root, create exact-runtime backup, inject corruption/interruption, and prove restore handling"
+        "repeat corruption/interruption restore drill against the protected ETG Staging backup path"
       ]
     }
   },
@@ -240,18 +253,25 @@
       "evidence_refs": [
         "tools/mad4b_recovery_plane.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
-        ".github/workflows/feature-007-critical-kernel.yml"
+        ".github/workflows/feature-007-critical-kernel.yml",
+        "workflow_run:36078194633"
       ],
       "proven": [
         "bounded Staging-only exact-plan Control Plane snapshot",
         "exact target tree and wp-config hash binding without copying wp-config bytes",
         "atomic backup directory commit with manifest and receipt readback",
-        "symlink source and stale-plan denial"
+        "symlink source and stale-plan denial",
+        "backup readiness requires at least one verified snapshot, not directory existence",
+        "per-file manifest, manifest digest, exact plugin-tree digest and wp-config target binding verification",
+        "exact-plan restore from protected snapshot with owner-plan binding",
+        "post-restore exact tree readback and durable receipt",
+        "receipt interruption rolls back to the exact pre-restore candidate",
+        "corrupted snapshot invalidates readiness and cannot produce a restore plan"
       ],
       "remaining": [
         "create protected backup on ETG Staging for the exact currently deployed runtime",
         "bind live backup receipt to rollout evidence",
-        "inject corrupt/interrupted restore using the live protected backup path"
+        "repeat corrupt/interrupted restore using the live protected backup path"
       ]
     },
     "host_runner_kernel": {
@@ -260,7 +280,8 @@
       "evidence_refs": [
         "tools/mad4b_host_runner.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
-        ".github/workflows/feature-007-critical-kernel.yml"
+        ".github/workflows/feature-007-critical-kernel.yml",
+        "workflow_run:36078194633"
       ],
       "proven": [
         "Staging-only read-only standalone runner process",
@@ -271,13 +292,21 @@
         "durable idempotent receipt replay with conflict detection",
         "execution_location=host_runner truthfulness",
         "exact runner executable SHA-256 and executor fingerprint binding",
-        "job replay binding includes site, target, executor, actor, authority and idempotency identity"
+        "job replay binding includes site, target, executor, actor, authority and idempotency identity",
+        "one exact-plan reversible write confined to wp-content/mad4b-runner/workspace only",
+        "write job requires exact plan SHA and approval reference",
+        "immediate pre-commit expected-state and symlink revalidation",
+        "atomic write plus postcondition readback and durable receipt",
+        "receipt persistence failure performs verified rollback when possible",
+        "rollback failure records MUTATED_BUT_EVIDENCE_UNCERTAIN with blind retry disabled",
+        "WordPress-root and receipt-root symlink denial before canonicalization",
+        "bounded reversible payload sized below signed job-envelope budget"
       ],
       "remaining": [
         "implement governed scheduler/queue pickup and fenced lease integration",
         "implement attested runner package bootstrap and single-use enrollment",
-        "implement one reversible write executor using plan/apply/readback/rollback",
-        "run ETG Staging Host Runner canary and cross-executor semantic conformance"
+        "run ETG Staging Host Runner canary",
+        "prove write semantic parity through an authorized WordPress/MCP bridge"
       ]
     },
     "wp_mad4b_cli": {
@@ -286,19 +315,31 @@
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php",
-        ".github/workflows/feature-007-critical-kernel.yml"
+        ".github/workflows/feature-007-critical-kernel.yml",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py",
+        "workflow_run:36078194633"
       ],
       "proven": [
         "canonical wp mad4b read-only command namespace",
         "delegation to existing Schema, Site Profile and runtime provenance services",
         "machine-readable non-authorizing JSON responses",
-        "no shell, eval, raw SQL or mutation command surface"
+        "no shell, eval, raw SQL or mutation command surface",
+        "runtime.status.read emits normalized mad4b.runtime-status-read.v1 semantics",
+        "WP-CLI and Host Runner return equivalent normalized runtime.status.read results on the same target"
       ],
       "remaining": [
         "prove commands on ETG Staging with exact runtime identity",
         "implement write commands only after shared semantic plan/apply service is available",
-        "prove MCP/WP-CLI/Host Runner normalized semantic conformance"
+        "extend parity from WP-CLI↔Host Runner read semantics to MCP and reversible write semantics"
       ]
     }
+  },
+  "last_repository_evidence": {
+    "exact_head_sha": "f654e3bf77bfefc7456b661d09f2c61420d17d14",
+    "critical_kernel_run_id": 36078194633,
+    "root_trust_recovery_job": "SUCCESS",
+    "schema_mariadb_job": "SUCCESS",
+    "live_claim": false
   }
 }
