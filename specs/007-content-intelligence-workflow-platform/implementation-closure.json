@@ -142,13 +142,17 @@
         "enrollment_write_eligible_false": true,
         "enrollment_production_authorized_false": true,
         "cross_executor_read_semantic_contract": "mad4b.runtime-status-read.v1",
-        "wpcli_hostrunner_read_parity_repository_proven": true
+        "wpcli_hostrunner_read_parity_repository_proven": true,
+        "host_runner_bootstrap_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py",
+        "bootstrap_repository_implementation_present": true,
+        "single_use_enrollment_repository_implementation_present": true,
+        "bootstrap_creates_standing_host_authority": false
       },
       "remainder": [
+        "certify the bounded Host Runner bootstrap/enrollment flow on an actual supported ETG Staging hosting channel",
         "implement governed WordPress Host Bridge queue/control surface without generic shell",
         "prove MCP/WP-CLI/Host Runner authority parity for one read and one reversible write",
-        "prove live ETG Host Runner canary and recovery storage behavior",
-        "certify one hosting-profile scheduler/bootstrap channel that applies the fixed descriptor without interactive terminal"
+        "prove live ETG Host Runner canary and recovery storage behavior"
       ]
     },
     {
@@ -245,8 +249,23 @@
     {
       "id": "capability_traits",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "capability_traits_ready"
+      "status": "PARTIAL",
+      "gate": "capability_traits_ready",
+      "evidence": {
+        "contract": "mad4b.capability-traits.v1",
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "catalog": "wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php",
+        "bitflows_explicit_trait_profile": true,
+        "unknown_traits_fail_closed": true,
+        "resolution_non_authorizing": true,
+        "repository_only": true
+      },
+      "remainder": [
+        "declare and conformance-test semantic traits for remaining provider capabilities instead of inheriting unknown defaults",
+        "bind selected CapabilityProfile fingerprint into all governed provider execution plans",
+        "prove exact live provider trait evidence before eligibility on ETG Staging"
+      ]
     },
     {
       "id": "multi_authority_live",
@@ -280,14 +299,13 @@
       "status": "DONE",
       "gate": "gate_liveness_verified",
       "evidence": {
-        "contract": "mad4b.feature007-critical-gate-graph.v4",
+        "contract": "mad4b.gate-dag-bootstrap-liveness.v1",
         "validator": "specs/007-content-intelligence-workflow-platform/validate_spec.py",
-        "graph": "specs/007-content-intelligence-workflow-platform/gate-graph.json",
-        "acyclicity_proven": true,
-        "dependency_integrity_proven": true,
-        "root_to_terminal_reachability_proven": true,
-        "every_blocking_gate_reaches_terminal": true,
-        "workflow_run_id": 36078194548
+        "task": "T3651",
+        "proof": "reverse DAG reachability requires every KERNEL_BLOCKER/LIVE_PRECONDITION gate to reach a terminal state",
+        "prior_ci_run_id": 36079388568,
+        "repository_only": true,
+        "live_runtime_authority_created": false
       }
     },
     {
@@ -333,10 +351,12 @@
         "illegal_transition_rejection_proven": true,
         "terminal_immutability_proven": true,
         "cross_site_lookup_denial_proven": true,
-        "event_hash_chain_proven": true
+        "event_hash_chain_proven": true,
+        "concurrent_cas_test": "wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh",
+        "concurrent_cas_test_admitted_to_ci": true
       },
       "remainder": [
-        "prove true concurrent competing transition CAS behavior in the admitted fault suite",
+        "obtain exact-head MariaDB CI proof that two simultaneous revision-1 transitions produce exactly one success and one revision conflict",
         "bind exact post-merge deployed-candidate live evidence before marking content_job_domain_ready"
       ]
     },
@@ -411,14 +431,41 @@
     {
       "id": "operator_doctor_dlq",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "operator_recovery_review_ready"
+      "status": "PARTIAL",
+      "gate": "operator_recovery_review_ready",
+      "evidence": {
+        "host_runner": "tools/mad4b_host_runner.py",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "dead_letter_store": true,
+        "recovery_required_store": true,
+        "payload_persisted": false,
+        "blind_retry_allowed": false,
+        "doctor_counts_incidents": true,
+        "repository_only": true
+      },
+      "remainder": [
+        "integrate Host Runner DLQ/recovery incidents into the WordPress operator control surface",
+        "add governed requeue/repair-plan actions with fresh policy and idempotency checks",
+        "prove stuck-lease/orphan-job diagnosis on exact deployed ETG candidate"
+      ]
     },
     {
       "id": "formal_state_proof",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "formal_critical_state_verified"
+      "status": "PARTIAL",
+      "gate": "formal_critical_state_verified",
+      "evidence": {
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/formal-critical-state-contract.py",
+        "content_job_terminal_non_resurrection": true,
+        "durable_lease_terminal_non_reclaim": true,
+        "host_runner_terminal_journal_model": true,
+        "gate_dag_acyclicity_and_blocker_closure": true,
+        "repository_only": true
+      },
+      "remainder": [
+        "obtain exact-head Critical Kernel PASS for the formal-state contract",
+        "extend the state proof to artifact/publication/provider states as those implementations land"
+      ]
     },
     {
       "id": "etg_vertical_slice",
