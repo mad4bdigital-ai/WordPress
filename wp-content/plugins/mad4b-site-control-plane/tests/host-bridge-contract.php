@@ -206,7 +206,7 @@ $blocked=MAD4B_SCP_Host_Bridge::requeue(array(
 	'job_id'=>'78787878-9090-4123-8abc-787878787878',
 	'idempotency_key'=>'idem-recovery-blocked',
 ));
-$check(is_wp_error($blocked) && 'mad4b_host_repair_plan_digest_invalid'===$blocked->get_error_code() || is_wp_error($blocked), 'recovery-required requeue was not denied');
+$check(is_wp_error($blocked) && 'mad4b_host_requeue_reconciliation_required'===$blocked->get_error_code(), 'recovery-required requeue was not denied for reconciliation');
 
 // Stale target plan must fail after root identity changes.
 file_put_contents($tmp . '/wp-config.php', "<?php // changed target\n");
