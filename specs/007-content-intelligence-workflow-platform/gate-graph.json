@@ -237,6 +237,34 @@
       "depends_on": [
         "etg_exact_runtime_release_deployed"
       ]
+    },
+    {
+      "id": "provider_resolver_dynamic_cert_ready",
+      "depends_on": [
+        "capability_traits_ready",
+        "provider_exact_certified"
+      ]
+    },
+    {
+      "id": "rights_ai_data_ready",
+      "depends_on": [
+        "artifact_lineage_ready",
+        "policy_engine_ready"
+      ]
+    },
+    {
+      "id": "scheduler_backlog_semantics_ready",
+      "depends_on": [
+        "durable_execution_ready",
+        "provider_exact_certified"
+      ]
+    },
+    {
+      "id": "decommission_portability_ready",
+      "depends_on": [
+        "operator_recovery_review_ready",
+        "durable_execution_ready"
+      ]
     }
   ],
   "bootstrap_transitions": [
