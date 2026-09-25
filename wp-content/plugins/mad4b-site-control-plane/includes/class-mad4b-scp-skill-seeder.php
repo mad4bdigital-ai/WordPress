@@ -15,7 +15,7 @@ final class MAD4B_SCP_Skill_Seeder {
 	const CONTRACT = 'mad4b.skill-seeder.v1';
 	const OPTION = 'mad4b_scp_skill_seed_v1';
 	const INSPECTION_CONTRACT = 'mad4b.skill-seed-inspection.v1';
-	const SEED_VERSION = 10;
+	const SEED_VERSION = 11;
 	const SEED_DIR = 'skill-seeds';
 	const SEED_MANIFEST_CONTRACT = 'mad4b.skill-seed-manifest.v1';
 	const SEED_MANIFEST_FILE = 'config/skill-seed-manifest.json';
