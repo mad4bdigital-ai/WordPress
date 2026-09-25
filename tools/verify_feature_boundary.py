@@ -25,6 +25,7 @@ GRANT_CATALOG_PATH = ".github/mad4b-feature-boundary-grants.json"
 GRANT_CATALOG_CONTRACT = "mad4b.repository-feature-boundary-grants.v1"
 OBSOLETE_SELF_POLICY = ".github/mad4b-feature-boundary-policy.json"
 BOOTSTRAP_ROOT_BRANCH = "chore/bootstrap-feature-boundary-policy-20260925"
+BOOTSTRAP_PR_NUMBER = 66
 RELEASE_CRITICAL_ROOT_PATHS = {
     ".github/workflows/feature-007-critical-kernel.yml",
     ".github/workflows/mad4b-control-plane-package.yml",
@@ -129,7 +130,7 @@ def find_feature_json(head: str, feature_id: str) -> str:
     return matches[0]
 
 
-def verify(base: str, head: str, head_branch: str) -> dict:
+def verify(base: str, head: str, head_branch: str, pr_number: int = 0) -> dict:
     ancestry = subprocess.run(
         ["git", "merge-base", "--is-ancestor", base, head],
         text=True,
@@ -145,7 +146,10 @@ def verify(base: str, head: str, head_branch: str) -> dict:
             if p in IMMUTABLE_FEATURE_PATHS or p in RELEASE_CRITICAL_ROOT_PATHS
         )
         if root_changes:
-            bootstrap = head_branch == BOOTSTRAP_ROOT_BRANCH
+            bootstrap_branch_match = head_branch == BOOTSTRAP_ROOT_BRANCH
+            bootstrap = bootstrap_branch_match and int(pr_number or 0) == BOOTSTRAP_PR_NUMBER
+            if bootstrap_branch_match and not bootstrap:
+                fail("REPOSITORY_BOOTSTRAP_PR_MISMATCH:" + str(pr_number or 0))
             if not (bootstrap or head_branch.startswith("chore/governance-") or head_branch.startswith("gov/")):
                 fail("REPOSITORY_ROOT_CHANGE_BRANCH_FORBIDDEN:" + head_branch)
             return {
@@ -164,6 +168,7 @@ def verify(base: str, head: str, head_branch: str) -> dict:
                 "owner_attestation_scope": "exact_head",
                 "bootstrap_exception": bootstrap,
                 "bootstrap_branch": BOOTSTRAP_ROOT_BRANCH if bootstrap else "",
+                "bootstrap_pr_number": BOOTSTRAP_PR_NUMBER if bootstrap else 0,
                 "trusted_verifier_source": "base",
                 "pull_request_code_executed": False,
             }
@@ -330,10 +335,11 @@ def main() -> int:
     ap.add_argument("--base", required=True)
     ap.add_argument("--head", required=True)
     ap.add_argument("--head-branch", required=True)
+    ap.add_argument("--pr-number", type=int, default=0)
     ap.add_argument("--output", type=Path)
     args = ap.parse_args()
     try:
-        result = verify(args.base, args.head, args.head_branch)
+        result = verify(args.base, args.head, args.head_branch, args.pr_number)
     except (RuntimeError, subprocess.CalledProcessError) as exc:
         result = {
             "contract": CONTRACT,
