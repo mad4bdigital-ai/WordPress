@@ -27,6 +27,19 @@ resource_writer = (wp / 'includes' / 'class-mad4b-scp-skill-resource-writer.php'
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+
+for marker in [
+    "private static function request_is_wordpress_plugin_lifecycle()",
+    "array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' )",
+    "array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' )",
+    "$plugin_lifecycle = self::request_is_wordpress_plugin_lifecycle();",
+    "if ( ! $plugin_lifecycle && ( ! MAD4B_SCP_Schema::is_ready()",
+    "if ( ! $plugin_lifecycle && false === get_option( MAD4B_SCP_Audit::LEGACY_OPTION, false ) )",
+    "if ( ! $plugin_lifecycle && ! is_wp_error( self::$schema_error ) && self::request_requires_skill_reconciliation() )",
+]:
+    if marker not in plugin_boot:
+        raise SystemExit(f'missing plugin upload lifecycle protection invariant: {marker}')
+
 readme = (portable / 'README.md').read_text(encoding='utf-8')
 
 for marker in [
