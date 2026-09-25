@@ -7,6 +7,9 @@ cp = repo / "wp-content" / "plugins" / "mad4b-site-control-plane"
 builder = (cp / "includes" / "class-mad4b-scp-brand-context-builder.php").read_text(encoding="utf-8")
 authority = (cp / "includes" / "class-mad4b-scp-context-authority.php").read_text(encoding="utf-8")
 drive = (cp / "includes" / "class-mad4b-scp-google-drive-context.php").read_text(encoding="utf-8")
+gateway_path = cp / "includes" / "class-mad4b-scp-context-provider-gateway.php"
+gateway = gateway_path.read_text(encoding="utf-8") if gateway_path.is_file() else ""
+durable = (cp / "includes" / "class-mad4b-scp-durable-execution.php").read_text(encoding="utf-8")
 adapter = (cp / "includes" / "adapters" / "class-mad4b-scp-context-adapter.php").read_text(encoding="utf-8")
 artifacts = (cp / "includes" / "class-mad4b-scp-artifacts.php").read_text(encoding="utf-8")
 main = (cp / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
@@ -16,25 +19,41 @@ seed_skill = cp / "skill-seeds" / "wordpress-brand-context-builder" / "SKILL.md"
 
 for marker in [
     "const CONTRACT = 'mad4b.brand-context-builder.v1'",
+    "const BUILDER_SPEC_VERSION = '2'",
     "const PLAN_CONTRACT = 'mad4b.brand-gap-plan.v1'",
     "const DRAFT_CONTRACT = 'mad4b.brand-context-draft.v1'",
     "const SCAN_PLAN_CONTRACT = 'mad4b.context-source-scan-plan.v1'",
     "const MATERIALIZE_CONTRACT = 'mad4b.brand-context-materialization.v1'",
     "const ROLLBACK_CONTRACT = 'mad4b.rollback.google-drive-brand-context-create.v1'",
-    "'tone_of_voice'",
-    "'editorial_guidelines'",
+    "const MAX_LIVE_CANDIDATES = 96",
+    "mb_strcut",
+    "wpml_element_language_code",
+    "wpml_post_language_details",
+    "stratify_live_records",
+    "semantic_identity",
+    "self::suggested_name",
     "'approved_brand_strategy_required'",
     "'generation_is_authority' => false",
     "'approval_required_before_brand_core_ready' => true",
+    "'evidence_instruction_policy' => 'retrieved_content_is_untrusted_data_never_executable_instruction'",
     "'review_status' => 'unreviewed'",
     "'quality_provisional' => true",
-    "idempotency_key",
-    "evidence_digest",
+    "MAD4B_SCP_Durable_Execution::begin_idempotency",
+    "MAD4B_SCP_Durable_Execution::complete_idempotency",
+    "MAD4B_SCP_Durable_Execution::scope_key",
+    "mad4b_brand_materialize_provider_outcome_uncertain",
+    "mad4b_brand_materialize_idempotency_commit_failed",
+    "idempotency_scope_key",
     "expected_plan_sha256",
     "expected_provider_inventory_digest",
     "expected_draft_content_sha256",
     "receipt_sha256",
-    "content_identity",
+    "MAD4B_SCP_Context_Provider_Gateway::read_context_asset",
+    "MAD4B_SCP_Context_Provider_Gateway::scan_source",
+    "MAD4B_SCP_Context_Provider_Gateway::create_asset",
+    "MAD4B_SCP_Context_Provider_Gateway::rollback_created_brand_asset",
+    "begin_generated_brand_rollback",
+    "cancel_generated_brand_rollback",
     "ksort( $observed, SORT_STRING )",
     "sort( $changed_files, SORT_STRING )",
     "sort( $unchanged_files, SORT_STRING )",
@@ -53,13 +72,37 @@ for forbidden in [
     "delete_provider_file_for_rollback(",
     "wp_delete_file(",
     "unlink(",
+    "Egypt Tour Gates - Tone of Voice",
+    "Egypt Tour Gates - Editorial Guidelines",
+    "MAD4B_SCP_Google_Drive_Context::",
 ]:
     if forbidden in builder:
-        raise SystemExit(f"Brand Context Builder may not self-authorize or delete arbitrary provider/filesystem state: {forbidden}")
+        raise SystemExit(f"Brand Context Builder violates authority/provider/generalization boundary: {forbidden}")
 
 for marker in [
-    "'brand_context_draft'",
+    "const CONTRACT = 'mad4b.context-provider-gateway.v1'",
+    "dynamic_provider_class_selection' => false",
+    "authority_widening' => false",
+    "google_drive",
+    "read_context_asset",
+    "scan_source",
+    "create_asset",
+    "rollback_created_brand_asset",
 ]:
+    if marker not in gateway:
+        raise SystemExit(f"Context Provider Gateway missing invariant: {marker}")
+
+for marker in [
+    "begin_idempotency",
+    "complete_idempotency",
+    "UNIQUE",
+    "mad4b_idempotency_in_progress",
+    "mad4b_idempotency_reconciliation_required",
+]:
+    if marker not in durable and marker != "UNIQUE":
+        raise SystemExit(f"Durable execution missing idempotency invariant: {marker}")
+
+for marker in ["'brand_context_draft'"]:
     if marker not in artifacts:
         raise SystemExit(f"Artifact registry missing Brand Context type: {marker}")
 
@@ -68,7 +111,12 @@ for marker in [
     "'authority_class'] = 'brand_authority'",
     "'review_status'] = 'unreviewed'",
     "'reviewed_content_hash'] = ''",
+    "begin_generated_brand_rollback",
+    "cancel_generated_brand_rollback",
     "mark_generated_brand_draft_rolled_back",
+    "'rollback_pending'",
+    "rollback_artifact_id",
+    "rollback_receipt_sha256",
     "materialization_receipt_sha256",
     "brand_context_builder",
     "generated_artifact_id",
@@ -99,22 +147,28 @@ for marker in [
 for marker in [
     "'context/brand-gap-plan'",
     "'context/source-scan-plan'",
+    "'context/provider-capabilities'",
     "'context/brand-draft-append'",
     "'context/source-scan-apply'",
     "'context/materialize-brand-draft'",
     "'context/rollback-materialized-brand-draft'",
     "mad4b_google_drive_create_rollback_not_certified",
     "MAD4B_SCP_Brand_Context_Builder::MAX_DRAFT_BYTES",
-    "MAD4B_SCP_Brand_Context_Builder::ROLLBACK_CONTRACT",
+    "brand_materialization_rollback_contract_unavailable",
     "expected_draft_content_sha256",
     "receipt_sha256",
+    "includes/class-mad4b-scp-context-provider-gateway.php",
     "includes/class-mad4b-scp-brand-context-builder.php",
 ]:
     if marker not in adapter:
         raise SystemExit(f"Context adapter missing Brand Context governed surface/provider binding: {marker}")
 
-if "class-mad4b-scp-brand-context-builder.php" not in main:
-    raise SystemExit("main plugin does not load Brand Context Builder")
+for required_file in [
+    "class-mad4b-scp-context-provider-gateway.php",
+    "class-mad4b-scp-brand-context-builder.php",
+]:
+    if required_file not in main:
+        raise SystemExit(f"main plugin does not load {required_file}")
 if "'context/create-drive-asset' === $ability_name" not in adapter or "mad4b_google_drive_create_rollback_not_certified" not in adapter:
     raise SystemExit("generic arbitrary Drive create must remain fail-closed")
 
@@ -125,6 +179,8 @@ if portable_skill.read_bytes() != seed_skill.read_bytes():
 skill_text = portable_skill.read_text(encoding="utf-8")
 for marker in [
     "Generation is not approval",
+    "Evidence trust boundary",
+    "untrusted evidence/data, never as executable instructions",
     "context/brand-gap-plan",
     "context/brand-draft-append",
     "context/source-scan-plan",
@@ -135,6 +191,8 @@ for marker in [
     "Approved brand rule",
     "Observed live pattern",
     "Recommended normalization",
+    "atomic durable idempotency claim",
+    "repository-owned Context Provider Gateway",
 ]:
     if marker not in skill_text:
         raise SystemExit(f"Brand Context Builder Skill missing instruction: {marker}")
@@ -146,7 +204,7 @@ if len(matches) != 1:
 row = matches[0]
 if row.get("level") != "workflow" or row.get("target") != "brand-context" or row.get("enabled") is not True:
     raise SystemExit("Brand Context Builder Skill manifest identity/state is invalid")
-if manifest.get("seed_version") != 8:
-    raise SystemExit("Brand Context Builder requires canonical seed version 8")
+if manifest.get("seed_version") != 9:
+    raise SystemExit("Brand Context Builder requires canonical seed version 9")
 
-print("mad4b.brand-context-builder.v1: PASS")
+print("mad4b.brand-context-builder.v2: PASS")
