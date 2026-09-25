@@ -511,18 +511,22 @@ def atomic_bytes_write(path: Path, raw: bytes) -> None:
     if _is_link_like(path.parent) or not path.parent.is_dir():
         raise ValueError("Host Runner target parent is invalid")
     if path.exists() and _is_link_like(path):
-        raise ValueError("Host Runner target symlink is forbidden")
+        raise ValueError("Host Runner target link/reparse object is forbidden")
+    _ensure_storage_budget(path, len(raw))
     tmp = path.with_name(path.name + f".tmp-{uuid.uuid4().hex}")
     with tmp.open("wb") as handle:
         handle.write(raw)
         handle.flush()
         os.fsync(handle.fileno())
     os.replace(tmp, path)
-    fd = os.open(str(path.parent), os.O_RDONLY)
     try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
+        fd = os.open(str(path.parent), os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    except OSError:
+        pass
 
 
 def workspace_file_identity(path: Path) -> str:
