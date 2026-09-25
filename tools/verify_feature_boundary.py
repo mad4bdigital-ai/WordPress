@@ -101,6 +101,11 @@ def feature_grant(base: str, feature_id: str) -> dict:
         fail("FEATURE_BOUNDARY_GRANT_GOVERNANCE_MUTATION_MUST_DENY")
     if grant.get("metadata_cannot_widen_grant") is not True:
         fail("FEATURE_BOUNDARY_GRANT_METADATA_WIDENING_MUST_DENY")
+    if grant.get("release_critical_workflows_must_be_baseline_owned") is not True:
+        fail("FEATURE_BOUNDARY_RELEASE_CRITICAL_BASELINE_OWNERSHIP_REQUIRED")
+    blocked = grant.get("self_certifying_paths_forbidden") or []
+    if not isinstance(blocked, list) or any(not isinstance(path, str) or not path for path in blocked):
+        fail("FEATURE_BOUNDARY_SELF_CERTIFYING_PATHS_INVALID")
     return grant
 
 
@@ -198,6 +203,12 @@ def verify(base: str, head: str, head_branch: str) -> dict:
     immutable = sorted(p for p in changed if p in IMMUTABLE_FEATURE_PATHS)
     if immutable:
         fail("REPOSITORY_ROOT_OF_TRUST_CHANGED_FROM_FEATURE:" + ",".join(immutable))
+    self_certifying = sorted(
+        p for p in changed
+        if p in set(str(x) for x in (grant.get("self_certifying_paths_forbidden") or []))
+    )
+    if self_certifying:
+        fail("SELF_CERTIFYING_RELEASE_CRITICAL_CHANGE:" + ",".join(self_certifying))
 
     allowed_prefixes = tuple(str(x) for x in (grant.get("allowed_path_prefixes") or []))
     allowed_exact = set(str(x) for x in (grant.get("allowed_exact_paths") or []))
@@ -260,6 +271,7 @@ def verify(base: str, head: str, head_branch: str) -> dict:
         "grant_source": "base",
         "allowed_path_prefix_count": len(allowed_prefixes),
         "allowed_exact_path_count": len(allowed_exact),
+        "self_certifying_paths_forbidden": sorted(str(x) for x in (grant.get("self_certifying_paths_forbidden") or [])),
         "forbidden": [],
         "immutable_changed": [],
         "trusted_verifier_source": "base",
