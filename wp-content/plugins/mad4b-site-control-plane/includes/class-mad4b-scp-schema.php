@@ -472,6 +472,33 @@ final class MAD4B_SCP_Schema {
 			KEY to_invalidated (to_artifact_id,invalidated)
 		) $charset;";
 
+		$sql[] = "CREATE TABLE {$t['intent_relations']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			relation_id char(36) NOT NULL,
+			site_uuid char(36) NOT NULL,
+			locale varchar(32) NOT NULL,
+			market varchar(64) NOT NULL,
+			intent_id varchar(191) NOT NULL,
+			content_id varchar(191) NOT NULL,
+			role varchar(32) NOT NULL,
+			confidence decimal(6,5) NOT NULL DEFAULT 0,
+			evidence_json longtext NOT NULL,
+			source varchar(64) NOT NULL,
+			revision bigint(20) unsigned NOT NULL,
+			valid_from datetime NOT NULL,
+			valid_to datetime NULL,
+			owner_scope_key char(64) NULL,
+			relation_sha256 char(64) NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY relation_id (relation_id),
+			UNIQUE KEY current_owner_scope (owner_scope_key),
+			UNIQUE KEY scope_content_revision (site_uuid,locale,market,intent_id,content_id,revision),
+			KEY scope_lookup (site_uuid,locale,market,intent_id,valid_to),
+			KEY content_lookup (site_uuid,content_id,valid_to),
+			KEY relation_sha256 (relation_sha256)
+		) $charset;";
+
 		$sql[] = "CREATE TABLE {$t['work_leases']} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			work_id char(36) NOT NULL,
