@@ -3,6 +3,7 @@
 define('ABSPATH',__DIR__.'/');
 function add_action($h,$c,$p=10){}
 function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/','',str_replace('.','_',trim((string)$v))));}
+function sanitize_text_field($v){return trim(strip_tags((string)$v));}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 require dirname(__DIR__).'/includes/class-mad4b-scp-scheduler-admission.php';
 $fail=static function($m){fwrite(STDERR,"FAIL scheduler-admission-contract: $m\n");exit(1);};
