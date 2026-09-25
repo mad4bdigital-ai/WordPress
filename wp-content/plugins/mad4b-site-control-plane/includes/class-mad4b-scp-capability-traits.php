@@ -44,6 +44,8 @@ final class MAD4B_SCP_Capability_Traits {
 				'properties' => array(
 					'capability_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 100 ),
 					'required_traits' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'release_ring' => array( 'type' => 'string', 'enum' => array( 'shadow', 'canary', 'active' ) ),
+					'require_certified' => array( 'type' => 'boolean' ),
 				),
 				'required' => array( 'capability_id' ),
 				'additionalProperties' => false,
@@ -198,10 +200,60 @@ final class MAD4B_SCP_Capability_Traits {
 		return array( $actual === $requirement, 'trait_mismatch' );
 	}
 
+	private static function certification_ring_status( array $profile, $ring, $require_certified ) {
+		$ring = sanitize_key( (string) $ring );
+		$cert = isset( $profile['certification'] ) && is_array( $profile['certification'] ) ? $profile['certification'] : array();
+		$caps = isset( $cert['capabilities'] ) && is_array( $cert['capabilities'] ) ? $cert['capabilities'] : array();
+		$status = ! empty( $caps ) ? reset( $caps ) : array();
+		$status = is_array( $status ) ? $status : array();
+		$level = isset( $status['certification_level'] ) ? (string) $status['certification_level'] : 'UNKNOWN';
+		$activation = isset( $status['activation_stage'] ) ? sanitize_key( (string) $status['activation_stage'] ) : 'shadow';
+		$risk = isset( $profile['risk'] ) ? (string) $profile['risk'] : 'unknown';
+		$read_eligible = ! empty( $status['read_eligible'] );
+		$write_eligible = ! empty( $status['write_eligible'] );
+		$canary_eligible = ! empty( $status['canary_eligible'] );
+		$known = 1 === count( $caps ) && ! in_array( $level, array( 'UNKNOWN', 'QUARANTINED' ), true );
+		$eligible = true;
+		$reason = '';
+		if ( $require_certified && ! $known ) {
+			$eligible = false;
+			$reason = 'certification_required';
+		} elseif ( '' !== $ring ) {
+			if ( ! $known ) {
+				$eligible = false;
+				$reason = 'release_ring_certification_unknown';
+			} elseif ( 'shadow' === $ring ) {
+				$eligible = true;
+			} elseif ( 'canary' === $ring ) {
+				$eligible = 'read' === $risk ? $read_eligible : $canary_eligible;
+				if ( ! $eligible ) $reason = 'provider_not_canary_eligible';
+			} elseif ( 'active' === $ring ) {
+				$eligible = 'active' === $activation && ( 'read' === $risk ? $read_eligible : $write_eligible );
+				if ( ! $eligible ) $reason = 'provider_not_active_eligible';
+			} else {
+				$eligible = false;
+				$reason = 'release_ring_invalid';
+			}
+		}
+		return array(
+			'eligible' => $eligible,
+			'reason_code' => $reason,
+			'release_ring' => $ring,
+			'certification_level' => $level,
+			'activation_stage' => $activation,
+			'read_eligible' => $read_eligible,
+			'write_eligible' => $write_eligible,
+			'canary_eligible' => $canary_eligible,
+			'certification_fingerprint' => empty( $cert ) ? '' : self::fingerprint( $cert ),
+		);
+	}
+
 	public static function resolve( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 		$capability_id = isset( $input['capability_id'] ) ? (string) $input['capability_id'] : '';
 		$required = isset( $input['required_traits'] ) && is_array( $input['required_traits'] ) ? $input['required_traits'] : array();
+		$release_ring = isset( $input['release_ring'] ) ? sanitize_key( (string) $input['release_ring'] ) : '';
+		$require_certified = ! empty( $input['require_certified'] );
 		if ( '' === trim( $capability_id ) ) {
 			return array(
 				'contract' => self::RESOLUTION_CONTRACT,
@@ -229,10 +281,18 @@ final class MAD4B_SCP_Capability_Traits {
 				list( $match, $reason ) = self::trait_match( $profile['traits'][ $trait ], $requirement );
 				if ( ! $match ) $violations[] = array( 'trait' => $trait, 'reason_code' => $reason, 'actual' => $profile['traits'][ $trait ] );
 			}
+			$ring_status = self::certification_ring_status( $profile, $release_ring, $require_certified );
+			if ( ! $ring_status['eligible'] ) {
+				$violations[] = array( 'trait' => 'provider_certification', 'reason_code' => $ring_status['reason_code'] );
+			}
 			$row = array(
 				'provider_id' => $provider_id,
 				'capability_id' => $profile['capability_id'],
 				'profile_fingerprint' => $profile['profile_fingerprint'],
+				'certification_fingerprint' => $ring_status['certification_fingerprint'],
+				'certification_level' => $ring_status['certification_level'],
+				'activation_stage' => $ring_status['activation_stage'],
+				'release_ring' => $release_ring,
 				'traits' => $profile['traits'],
 				'violations' => $violations,
 			);
@@ -242,6 +302,8 @@ final class MAD4B_SCP_Capability_Traits {
 			'contract' => self::RESOLUTION_CONTRACT,
 			'capability_id' => $capability_id,
 			'required_traits' => $required,
+			'release_ring' => $release_ring,
+			'require_certified' => $require_certified,
 			'eligible' => $eligible,
 			'rejected' => $rejected,
 			'selected_provider' => 1 === count( $eligible ) ? (string) $eligible[0]['provider_id'] : '',
