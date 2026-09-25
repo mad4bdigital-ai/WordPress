@@ -67,7 +67,11 @@
         "shadow",
         "canary",
         "active"
-      ]
+      ],
+      "execution_binding_contract": "mad4b.wordpress-addon-execution-binding.v1",
+      "commit_guard_required": true,
+      "expected_pair_fingerprint_required": true,
+      "expected_certification_fingerprint_required": true
     },
     "FORK": {
       "requires": [
@@ -139,6 +143,7 @@
   "addon_manifest_required_fields": [
     "addon_id",
     "plugin_file",
+    "source_root",
     "base_provider",
     "compatible_versions",
     "extension_points",
@@ -199,7 +204,8 @@
       "shell_execution",
       "direct_plugin_state_mutation",
       "direct_unbounded_post_or_option_mutation",
-      "unbounded_outbound_http"
-    ]
+      "direct_outbound_http"
+    ],
+    "source_root_required": true
   }
 }
