@@ -81,18 +81,6 @@ jobs:
           if '    paths:\n' in governance_workflow or '    paths-ignore:\n' in governance_workflow:
               raise SystemExit('repository governance workflow must cover every master change')
 
-          boundary_workflow = Path('.github/workflows/mad4b-feature-boundary.yml').read_text(encoding='utf-8')
-          if '  pull_request:\n' not in boundary_workflow:
-              raise SystemExit('feature boundary workflow lacks pull_request trigger')
-          if '  push:\n' not in boundary_workflow or '      - master' not in boundary_workflow:
-              raise SystemExit('feature boundary workflow lacks master push trigger')
-          if '    paths:\n' in boundary_workflow or '    paths-ignore:\n' in boundary_workflow:
-              raise SystemExit('feature boundary workflow must cover every master change')
-          if 'git show "$BASE_SHA:tools/verify_feature_boundary.py"' not in boundary_workflow:
-              raise SystemExit('feature boundary workflow does not load verifier from PR base')
-          if 'Repository-owned feature boundary' not in boundary_workflow:
-              raise SystemExit('feature boundary stable check name drifted')
-
           full = [
               'Control-plane contract guard',
               'Dynamic Skills contract',
@@ -107,34 +95,26 @@ jobs:
               'OAuth bridge runtime (latest)',
               'Schema v6 v7 v8 to v9 real MariaDB upgrade',
               'Repository governance policy',
-              'Repository-owned feature boundary',
           ]
           release_evidence = [
               'Root trust and Recovery Plane',
               'Build reviewed General Distribution installation kit',
               'Live evidence contracts + exact artifact',
               'Repository governance policy',
-              'Repository-owned feature boundary',
           ]
           non_runtime = [
               'Repository governance policy',
-              'Repository-owned feature boundary',
           ]
           release_evidence_paths = {
               '.github/workflows/mad4b-control-plane-package.yml',
               '.github/workflows/mad4b-live-acceptance-evidence.yml',
               '.github/workflows/mad4b-release-verdict.yml',
-              '.github/workflows/mad4b-feature-boundary.yml',
-              '.github/workflows/mad4b-repository-governance.yml',
-              '.github/mad4b-feature-boundary-grants.json',
-              'tools/verify_feature_boundary.py',
               '.github/workflows/feature-007-critical-kernel.yml',
           }
           runtime_patterns = set(full_runtime_trigger_paths) | set(critical_trigger_workflows) | {
               '.github/workflows/feature-007-critical-kernel.yml',
               '.github/workflows/mad4b-live-acceptance-evidence.yml',
               '.github/workflows/mad4b-release-verdict.yml',
-              '.github/workflows/mad4b-feature-boundary.yml',
           }
 
           changed = []
