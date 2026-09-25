@@ -705,6 +705,8 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
             "idempotency_key": verified["idempotency_key"],
             "actor_ref": verified["actor_ref"],
             "authority_ref": verified["authority_ref"],
+            "plan_sha256": verified["plan_sha256"],
+            "approval_ref": verified["approval_ref"],
         }
         for key, expected in replay_bindings.items():
             if not hmac.compare_digest(str(existing.get(key) or ""), str(expected)):
