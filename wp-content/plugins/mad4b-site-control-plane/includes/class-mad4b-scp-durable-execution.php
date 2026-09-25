@@ -51,11 +51,11 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
 			return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
 		}
-		if ( 'released_after_verified_no_effect' === (string) $row['status'] ) {
+		if ( 'released_verified_no_effect' === (string) $row['status'] ) {
 			$current_epoch = isset( $row['claim_epoch'] ) ? max( 1, (int) $row['claim_epoch'] ) : 1;
 			$next_epoch = $current_epoch + 1;
 			$reclaimed = $wpdb->query( $wpdb->prepare(
-				"UPDATE {$t['idempotency']} SET status='pending',claim_epoch=%d,result_json=NULL,result_sha256='',reconciliation_ref='',expires_at=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='released_after_verified_no_effect'",
+				"UPDATE {$t['idempotency']} SET status='pending',claim_epoch=%d,result_json=NULL,result_sha256='',reconciliation_ref='',expires_at=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='released_verified_no_effect'",
 				$next_epoch, $expires, $now, (int) $row['id'], $request_sha256, $current_epoch
 			) );
 			if ( 1 === (int) $reclaimed ) {
@@ -245,7 +245,7 @@ final class MAD4B_SCP_Durable_Execution {
 				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
 			}
-			if ( 'released_after_verified_no_effect' === (string) $row['status'] ) {
+			if ( 'released_verified_no_effect' === (string) $row['status'] ) {
 				$wpdb->query( 'COMMIT' );
 				return array(
 					'contract' => self::IDEMPOTENCY_CONTRACT,
@@ -276,7 +276,7 @@ final class MAD4B_SCP_Durable_Execution {
 				return $verified;
 			}
 			$updated = $wpdb->query( $wpdb->prepare(
-				"UPDATE {$t['idempotency']} SET status='released_after_verified_no_effect',result_json=%s,result_sha256=%s,reconciliation_ref=%s,expires_at=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='pending'",
+				"UPDATE {$t['idempotency']} SET status='released_verified_no_effect',result_json=%s,result_sha256=%s,reconciliation_ref=%s,expires_at=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='pending'",
 				$json, $result_sha256, $reconciliation_ref, $now, $now, (int) $row['id'], $request_sha256, isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0
 			) );
 			if ( 1 !== (int) $updated ) throw new RuntimeException( 'idempotency_no_effect_release_cas_failed' );
