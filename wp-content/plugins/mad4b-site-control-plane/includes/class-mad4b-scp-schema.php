@@ -601,6 +601,7 @@ final class MAD4B_SCP_Schema {
 			);
 		}
 		self::migrate_legacy_candidate_bindings();
+		self::normalize_intent_relation_indexes();
 		self::$physical_status_cache = null;
 		$physical = self::physical_integrity_status();
 		if ( empty( $physical['ready'] ) ) {
@@ -744,6 +745,30 @@ final class MAD4B_SCP_Schema {
 			'outbox' => array( 'outbox_id' => true, 'provider_idempotency' => true ),
 			'inbox' => array( 'provider_event' => true ),
 		);
+	}
+
+	private static function normalize_intent_relation_indexes() {
+		global $wpdb;
+		$t = self::tables();
+		$table = isset( $t['intent_relations'] ) ? (string) $t['intent_relations'] : '';
+		if ( '' === $table ) return;
+		$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $found !== $table ) return;
+		$rows = $wpdb->get_results( "SHOW INDEX FROM `{$table}`", ARRAY_A );
+		$legacy_unique = false;
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			if ( 'current_owner_scope' === (string) ( $row['Key_name'] ?? '' ) ) {
+				$legacy_unique = true;
+				break;
+			}
+		}
+		if ( $legacy_unique ) {
+			$result = $wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `current_owner_scope`" );
+			if ( false === $result ) {
+				throw new RuntimeException( 'intent_relation_legacy_owner_index_drop_failed:' . (string) $wpdb->last_error );
+			}
+		}
 	}
 
 	private static function migrate_legacy_candidate_bindings() {
