@@ -64,16 +64,21 @@ require dirname(__DIR__) . '/includes/class-mad4b-scp-governed-draft.php';
 $fail=static function($m){fwrite(STDERR,"FAIL governed-draft-contract: $m\n");exit(1);};
 $check=static function($c,$m) use($fail){if(!$c)$fail($m);};
 $job='11111111-2222-4333-8444-555555555555';
+$writer_fp=hash('sha256',json_encode(array(
+	'contract'=>'mad4b.writer-profile-binding.v1',
+	'writer_profile_id'=>'writer-1',
+	'writer_profile_version'=>'3',
+),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
 $draft_id='22222222-3333-4444-8555-666666666666';
 $qa_id='33333333-4444-4555-8666-777777777777';
 
 MAD4B_SCP_Artifacts::$rows[$draft_id]=array(
 	'artifact_id'=>$draft_id,'job_id'=>$job,'artifact_type'=>'draft','status'=>'active',
-	'payload'=>array('contract'=>'mad4b.article-draft.v1','content'=>'Approved draft content.'),
+	'payload'=>array('contract'=>'mad4b.article-draft.v1','content'=>'Approved draft content.','writer_profile_id'=>'writer-1','writer_profile_version'=>'3','writer_profile_fingerprint'=>$writer_fp),
 );
 MAD4B_SCP_Artifacts::$rows[$qa_id]=array(
 	'artifact_id'=>$qa_id,'job_id'=>$job,'artifact_type'=>'final_qa','status'=>'active',
-	'payload'=>array('contract'=>'mad4b.final-qa.v1','draft_artifact_id'=>$draft_id,'pass'=>false,'hard_blockers'=>array('unsupported_claim'),'can_publish'=>false,'publication_authorized'=>false),
+	'payload'=>array('contract'=>'mad4b.final-qa.v1','draft_artifact_id'=>$draft_id,'writer_profile_id'=>'writer-1','writer_profile_version'=>'3','writer_profile_fingerprint'=>$writer_fp,'pass'=>false,'hard_blockers'=>array('unsupported_claim'),'can_publish'=>false,'publication_authorized'=>false),
 );
 
 $blocked=MAD4B_SCP_Governed_Draft::plan(array(
@@ -83,7 +88,7 @@ $blocked=MAD4B_SCP_Governed_Draft::plan(array(
 $check(is_wp_error($blocked) && 'mad4b_draft_final_qa_blocked'===$blocked->get_error_code(),'FinalQA blocker did not block draft');
 
 MAD4B_SCP_Artifacts::$rows[$qa_id]['payload']=array(
-	'contract'=>'mad4b.final-qa.v1','draft_artifact_id'=>$draft_id,'pass'=>true,'hard_blockers'=>array(),'can_publish'=>false,'publication_authorized'=>false,
+	'contract'=>'mad4b.final-qa.v1','draft_artifact_id'=>$draft_id,'writer_profile_id'=>'writer-1','writer_profile_version'=>'3','writer_profile_fingerprint'=>$writer_fp,'pass'=>true,'hard_blockers'=>array(),'can_publish'=>false,'publication_authorized'=>false,
 );
 
 $plan=MAD4B_SCP_Governed_Draft::plan(array(
@@ -92,17 +97,19 @@ $plan=MAD4B_SCP_Governed_Draft::plan(array(
 ));
 $check(is_array($plan) && 'draft'===$plan['intended_status'],'draft plan failed');
 $check(false===$plan['can_publish'] && false===$plan['publication_authorized'],'plan widened publish authority');
+$check('writer-1'===$plan['writer_profile_id'] && '3'===$plan['writer_profile_version'],'plan lost WriterProfile identity/version');
+$check($writer_fp===$plan['writer_profile_fingerprint'],'plan lost WriterProfile fingerprint');
 
 // A passing FinalQA for another draft in the same job may never authorize this draft.
 $foreign_draft_id='55555555-6666-4777-8888-999999999999';
 $foreign_qa_id='66666666-7777-4888-8999-aaaaaaaaaaaa';
 MAD4B_SCP_Artifacts::$rows[$foreign_draft_id]=array(
 	'artifact_id'=>$foreign_draft_id,'job_id'=>$job,'artifact_type'=>'draft','status'=>'active',
-	'payload'=>array('contract'=>'mad4b.article-draft.v1','content'=>'Foreign draft content.'),
+	'payload'=>array('contract'=>'mad4b.article-draft.v1','content'=>'Foreign draft content.','writer_profile_id'=>'writer-1','writer_profile_version'=>'3','writer_profile_fingerprint'=>$writer_fp),
 );
 MAD4B_SCP_Artifacts::$rows[$foreign_qa_id]=array(
 	'artifact_id'=>$foreign_qa_id,'job_id'=>$job,'artifact_type'=>'final_qa','status'=>'active',
-	'payload'=>array('contract'=>'mad4b.final-qa.v1','draft_artifact_id'=>$foreign_draft_id,'pass'=>true,'hard_blockers'=>array(),'can_publish'=>false,'publication_authorized'=>false),
+	'payload'=>array('contract'=>'mad4b.final-qa.v1','draft_artifact_id'=>$foreign_draft_id,'writer_profile_id'=>'writer-1','writer_profile_version'=>'3','writer_profile_fingerprint'=>$writer_fp,'pass'=>true,'hard_blockers'=>array(),'can_publish'=>false,'publication_authorized'=>false),
 );
 $foreign_qa=MAD4B_SCP_Governed_Draft::plan(array(
 	'job_id'=>$job,'draft_artifact_id'=>$draft_id,'final_qa_artifact_id'=>$foreign_qa_id,
@@ -115,6 +122,12 @@ $tampered=$plan;
 $tampered['publication_authorized']=true;
 $denied=MAD4B_SCP_Governed_Draft::apply(array('plan'=>$tampered));
 $check(is_wp_error($denied) && 'mad4b_draft_plan_authority_invalid'===$denied->get_error_code(),'tampered publish authority was accepted');
+
+$stale_writer_plan=$plan;
+MAD4B_SCP_Artifacts::$rows[$qa_id]['payload']['writer_profile_version']='4';
+$writer_stale=MAD4B_SCP_Governed_Draft::apply(array('plan'=>$stale_writer_plan));
+$check(is_wp_error($writer_stale) && 'mad4b_draft_writer_profile_lineage_mismatch'===$writer_stale->get_error_code(),'WriterProfile drift was accepted after plan');
+MAD4B_SCP_Artifacts::$rows[$qa_id]['payload']['writer_profile_version']='3';
 
 $applied=MAD4B_SCP_Governed_Draft::apply(array('plan'=>$plan));
 $check(is_array($applied) && 'draft'===$applied['post_status'],'draft create failed');
