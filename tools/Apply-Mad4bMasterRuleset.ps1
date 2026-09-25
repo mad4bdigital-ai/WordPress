@@ -40,7 +40,7 @@ $PythonCommand = if (Get-Command python -ErrorAction SilentlyContinue) { "python
 if (-not $PythonCommand) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: Python is required for governed readback."
 }
-foreach ($RequiredPath in @($TemplatePath, $PolicyPath, "tools/verify_repository_governance.py", "tools/verify_repository_ruleset_template.py")) {
+foreach ($RequiredPath in @($TemplatePath, $PolicyPath, "tools/verify_repository_governance.py", "tools/verify_repository_ruleset_template.py", "tools/verify_repository_ruleset_restore.py")) {
     if (-not (Test-Path -LiteralPath $RequiredPath -PathType Leaf)) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: required file not found: $RequiredPath"
     }
@@ -138,8 +138,11 @@ $rulesetId = $null
 $mutationPerformed = $false
 $rollbackMode = "none"
 $RollbackPayloadPath = Join-Path $env:TEMP "mad4b-ruleset-pre-apply-backup.json"
+$BeforeReadbackPath = Join-Path $env:TEMP "mad4b-ruleset-before-readback.json"
 $ReadbackPath = Join-Path $env:TEMP "mad4b-ruleset-readback.json"
-Remove-Item -LiteralPath $RollbackPayloadPath,$ReadbackPath -Force -ErrorAction SilentlyContinue
+$RollbackReadbackPath = Join-Path $env:TEMP "mad4b-ruleset-rollback-readback.json"
+$RollbackVerificationPath = Join-Path $env:TEMP "mad4b-ruleset-rollback-verification.json"
+Remove-Item -LiteralPath $RollbackPayloadPath,$BeforeReadbackPath,$ReadbackPath,$RollbackReadbackPath,$RollbackVerificationPath -Force -ErrorAction SilentlyContinue
 if ($named.Count -gt 1) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: duplicate MAD4B governance rulesets detected."
 } elseif ($named.Count -eq 1) {
@@ -148,6 +151,7 @@ if ($named.Count -gt 1) {
     if ($LASTEXITCODE -ne 0) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: unable to capture exact pre-apply ruleset for rollback."
     }
+    [System.IO.File]::WriteAllText($BeforeReadbackPath, [string]$beforeRaw, $Utf8NoBom)
     $before = $beforeRaw | ConvertFrom-Json
     if ($null -eq $before.PSObject.Properties["bypass_actors"]) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: bypass-actor state is not observable with the active credential; mutation is forbidden."
@@ -238,14 +242,32 @@ if ($readbackTemplateRc -ne 0) {
         if ($LASTEXITCODE -ne 0) {
             throw "GOVERNANCE_APPLY_RECOVERY_REQUIRED: canonical readback mismatched and previous ruleset restoration failed. ruleset_id=$rulesetId"
         }
+        $rollbackRaw = & gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" "repos/$Repository/rulesets/$rulesetId"
+        if ($LASTEXITCODE -ne 0) {
+            throw "GOVERNANCE_APPLY_RECOVERY_REQUIRED: previous ruleset PUT returned success but restore readback failed. ruleset_id=$rulesetId"
+        }
+        [System.IO.File]::WriteAllText($RollbackReadbackPath, [string]$rollbackRaw, $Utf8NoBom)
+        & $PythonCommand "tools/verify_repository_ruleset_restore.py" --before $BeforeReadbackPath --after $RollbackReadbackPath --repository $Repository --output $RollbackVerificationPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "GOVERNANCE_APPLY_RECOVERY_REQUIRED: previous ruleset restore did not verify against the exact pre-apply state. ruleset_id=$rulesetId"
+        }
         Write-Host "ruleset_rollback=restored_previous"
+        Write-Host "ruleset_rollback_readback=verified"
     } elseif ($mutationPerformed -and $rollbackMode -eq "delete") {
         Write-Host "=== ROLLBACK CREATED RULESET ==="
         & gh api --method DELETE -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" "repos/$Repository/rulesets/$rulesetId"
         if ($LASTEXITCODE -ne 0) {
             throw "GOVERNANCE_APPLY_RECOVERY_REQUIRED: canonical readback mismatched and newly-created ruleset deletion failed. ruleset_id=$rulesetId"
         }
+        $postDeleteIds = @(& gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" "repos/$Repository/rulesets?includes_parents=false" --jq ".[].id")
+        if ($LASTEXITCODE -ne 0) {
+            throw "GOVERNANCE_APPLY_RECOVERY_REQUIRED: newly-created ruleset DELETE returned success but deletion readback failed. ruleset_id=$rulesetId"
+        }
+        if (@($postDeleteIds | ForEach-Object { [string]$_ }) -contains [string]$rulesetId) {
+            throw "GOVERNANCE_APPLY_RECOVERY_REQUIRED: newly-created ruleset still exists after automatic rollback. ruleset_id=$rulesetId"
+        }
         Write-Host "ruleset_rollback=deleted_new_ruleset"
+        Write-Host "ruleset_rollback_deletion_readback=verified"
     }
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: live ruleset did not exactly match the canonical template after mutation; automatic rollback completed."
 }
