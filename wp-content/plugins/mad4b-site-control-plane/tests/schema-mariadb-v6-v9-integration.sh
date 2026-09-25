@@ -10,7 +10,7 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 export MAD4B_SCHEMA_CURRENT_FILE="$CURRENT_SCHEMA"
-CURRENT_VERSION="$(sed -nE 's/^[[:space:]]*const VERSION = ([0-9]+);/\\1/p' "$CURRENT_SCHEMA" | head -n1)"
+CURRENT_VERSION="$(sed -nE 's/^[[:space:]]*const VERSION = ([0-9]+);/\1/p' "$CURRENT_SCHEMA" | head -n1)"
 if [[ ! "$CURRENT_VERSION" =~ ^[0-9]+$ ]] || [ "$CURRENT_VERSION" -lt 9 ]; then
     echo "Unable to resolve supported current MAD4B schema version from $CURRENT_SCHEMA: ${CURRENT_VERSION:-<empty>}" >&2
     exit 2
