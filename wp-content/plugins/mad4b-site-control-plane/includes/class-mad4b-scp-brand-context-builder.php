@@ -436,8 +436,12 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		global $wpdb;
 		$idempotency_key = strtolower( trim( (string) $idempotency_key ) );
 		$index = self::draft_index();
-		if ( isset( $index[ $idempotency_key ]['artifact_id'] ) ) {
-			$result = MAD4B_SCP_Artifacts::get_artifact( array( 'artifact_id' => (string) $index[ $idempotency_key ]['artifact_id'] ) );
+		if ( isset( $index[ $idempotency_key ] ) && is_array( $index[ $idempotency_key ] ) ) {
+			$indexed = $index[ $idempotency_key ];
+			if ( 'legacy_miss' === ( isset( $indexed['lookup_state'] ) ? (string) $indexed['lookup_state'] : '' ) ) return array();
+			$indexed_artifact_id = isset( $indexed['artifact_id'] ) ? (string) $indexed['artifact_id'] : '';
+			if ( '' === $indexed_artifact_id ) return array();
+			$result = MAD4B_SCP_Artifacts::get_artifact( array( 'artifact_id' => $indexed_artifact_id ) );
 			if ( ! is_wp_error( $result ) && isset( $result['artifact'] ) && is_array( $result['artifact'] ) ) {
 				$artifact = $result['artifact'];
 				$metadata = isset( $artifact['metadata'] ) && is_array( $artifact['metadata'] ) ? $artifact['metadata'] : array();
@@ -462,7 +466,16 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			),
 			ARRAY_A
 		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- legacy fallback/backfill only.
-		if ( ! is_array( $row ) || empty( $row['artifact_id'] ) ) return array();
+		if ( ! is_array( $row ) || empty( $row['artifact_id'] ) ) {
+			$index = self::draft_index();
+			$index[ $idempotency_key ] = array(
+				'artifact_id' => '',
+				'lookup_state' => 'legacy_miss',
+				'updated_at' => gmdate( 'c' ),
+			);
+			self::save_draft_index( $index );
+			return array();
+		}
 		$result = MAD4B_SCP_Artifacts::get_artifact( array( 'artifact_id' => (string) $row['artifact_id'] ) );
 		if ( ! is_wp_error( $result ) ) self::index_draft_artifact( $idempotency_key, (string) $row['artifact_id'] );
 		return is_wp_error( $result ) ? array() : $result;
