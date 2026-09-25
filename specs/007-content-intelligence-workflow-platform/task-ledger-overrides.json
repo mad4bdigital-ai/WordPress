@@ -69,14 +69,15 @@
       "reason": "One-time repository-governance bootstrap exception is retired."
     },
     "T3612": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php",
-        "workflow_run:36075527334"
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh",
+        "workflow_run:36095311341"
       ],
-      "reason": "ContentJob create/read/transition/cancel is implemented over the current additive schema v11 and passes disposable WordPress/MariaDB lifecycle proof; exact deployed-candidate live evidence remains open."
+      "reason": "ContentJob create/read/transition/cancel, lifecycle invariants, site isolation, hash-chained events and true concurrent revision CAS are implemented and proven on disposable WordPress/MariaDB v11."
     },
     "T3635": {
       "status": "DONE",
@@ -170,20 +171,20 @@
       "evidence_refs": [
         "tools/mad4b_recovery_plane.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
-        "workflow_run:36078194633"
+        "workflow_run:36095311341"
       ],
-      "reason": "Protected backup exact-tree verification, restore, corruption detection and interrupted restore rollback are repository-proven; live ETG protected-root capacity/exact-runtime receipt remains open."
+      "reason": "Protected backup exact-tree integrity, restore, corruption rejection and interrupted-restore rollback are repository-proven; ETG protected-root capacity/exact-live-runtime receipt remains a live precondition."
     },
     "T3649": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
         "tools/mad4b_host_runner.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py",
-        "workflow_run:36078194633"
+        "workflow_run:36095311341"
       ],
-      "reason": "WP-CLI and Host Runner produce equivalent mad4b.runtime-status-read.v1 results on one target; MCP and reversible-write authority parity remain open."
+      "reason": "WP-CLI and Host Runner execute runtime.status.read on the same target with identical normalized result and identical read-only/non-authorizing authority class."
     },
     "T3650": {
       "status": "PARTIAL",
@@ -896,6 +897,25 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
       ],
       "reason": "Non-interactive install/enrollment is proven in repository fixture; certification on a supported real hosting profile remains open."
+    },
+    "T3646": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py",
+        "workflow_run:36095311341"
+      ],
+      "reason": "Exact attested runner package install and single-use enrollment are repository-proven with no standing Host/Production authority; actual supported hosting scheduler registration remains unproven."
+    },
+    "T3652": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-runtime.php",
+        "workflow_run:36095311341"
+      ],
+      "reason": "Real MariaDB runtime proof detects stuck/orphan jobs, expired leases, stale inbox, provider DLQ and Host Runner uncertain/recovery-required/dead-letter states while remaining site-scoped, read-only and non-authorizing."
     }
   }
 }
