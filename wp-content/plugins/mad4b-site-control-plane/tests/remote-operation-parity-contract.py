@@ -39,7 +39,23 @@ required_parity_markers = [
     "'human_decision_required'",
     "apply_filters( 'mad4b_scp_remote_operation_catalog', $rows )",
     "$row['catalog_contract'] = self::CONTRACT;",
-    "$row['catalog_version'] = 1;",
+    "$row['catalog_version'] = 2;",
+    "'registration_digest'",
+    "'registrar_id'",
+    "'source_plugin'",
+    "'trust_class'",
+    "'executor_available'",
+    "'executor_state'",
+    "'rejected_registrations'",
+    "'rejected_registration_count'",
+    "'external_browser_agent'",
+    "'wordpress_cron_maintenance_worker'",
+    "'checkpointed_convergence'",
+    "'durable_external_executor_request'",
+    "'durable_scheduled_operation'",
+    "'synchronous_ddl' => false",
+    "'pending_external_executor'",
+    "'manual_interaction_required' => false",
 ]
 for marker in required_parity_markers:
     if marker not in parity:
@@ -53,6 +69,7 @@ for forbidden in [
     'proc_open(',
     'eval(',
     'mad4b/database-raw-query',
+    'wp_remote_get(',
 ]:
     if forbidden in parity:
         raise SystemExit(f'forbidden generic execution primitive in remote parity runtime: {forbidden}')
@@ -80,11 +97,18 @@ if "class-mad4b-scp-remote-operation-parity.php" not in main:
     raise SystemExit('remote operation parity runtime is not loaded by the plugin')
 
 for marker in [
-    'public static function apply_explicit()',
-    'return self::apply_indexes();',
+    'public static function enqueue_explicit(',
+    'public static function run_scheduled_apply(',
+    "const CRON_HOOK = 'mad4b_scp_admin_query_performance_async';",
+    "MAD4B_SCP_Audit::record(",
+    "wp_schedule_single_event(",
+    "mad4b_admin_query_performance_cron_disabled",
 ]:
     if marker not in perf:
-        raise SystemExit(f'performance maintenance lacks remote-callable service parity: {marker}')
+        raise SystemExit(f'performance maintenance lacks durable queued execution invariant: {marker}')
+
+if "self::apply_explicit();" in perf.split("public static function handle_explicit_apply()", 1)[1].split("public static function maintenance_job_status()", 1)[0]:
+    raise SystemExit('wp-admin performance action must enqueue maintenance instead of running DDL synchronously')
 
 if 'One service, many frontends' not in generalization:
     raise SystemExit('generalization contract lost one-service-many-frontends rule')
