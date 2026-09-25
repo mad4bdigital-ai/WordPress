@@ -213,11 +213,9 @@ def main() -> int:
         == bool(pr_policy.get("required_review_thread_resolution", True))
         and list(pull_params.get("required_reviewers") or [])
         == expected_required_reviewers
+        and "require_extra_approval_for_unattributed_changes" in pull_params
         and bool(
-            pull_params.get(
-                "require_extra_approval_for_unattributed_changes",
-                True,
-            )
+            pull_params.get("require_extra_approval_for_unattributed_changes")
         )
         == expected_unattributed_approval
         and set(pull_params.get("allowed_merge_methods") or [])
