@@ -16,6 +16,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';
 	const FRONTEND_SAMPLE_ABILITY = 'mad4b/frontend-performance-sample-run';
 	const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';
+	const WORK_QUEUE_ABILITY = 'mad4b/remote-operation-work-queue';
+	const WORK_CLAIM_ABILITY = 'mad4b/remote-operation-work-claim';
+	const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';
 	const SKILLS_STATE_OPTION = 'mad4b_scp_remote_skills_reconciliation_v1';
 	const BROWSER_REQUEST_OPTION = 'mad4b_scp_remote_browser_sample_request_v1';
 
@@ -79,6 +82,22 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			);
 		}
 
+		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::WORK_QUEUE_ABILITY ) ) ) {
+			wp_register_ability(
+				self::WORK_QUEUE_ABILITY,
+				array(
+					'label' => 'Get Remote Operation Work Queue',
+					'description' => 'Inspect bounded semantic work awaiting an external governed executor without exposing lease secrets.',
+					'category' => 'mad4b-read',
+					'execute_callback' => array( __CLASS__, 'remote_work_queue' ),
+					'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+					'input_schema' => self::work_queue_schema(),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => self::meta( true, true ),
+				)
+			);
+		}
+
 		self::register_remote_operation(
 			self::SKILLS_ABILITY,
 			'Reconcile Managed Skills Remotely',
@@ -103,6 +122,24 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'Apply only the fixed additive MAD4B Staging performance indexes exposed by the existing performance maintenance service.',
 			self::operation_schema( self::PERFORMANCE_CONFIRMATION ),
 			array( __CLASS__, 'apply_performance_indexes' ),
+			true
+		);
+
+		self::register_remote_operation(
+			self::WORK_CLAIM_ABILITY,
+			'Claim Remote Operation Work',
+			'Claim one bounded semantic external-executor job with an expiring fenced lease. No generic command execution is exposed.',
+			self::work_claim_schema(),
+			array( __CLASS__, 'claim_remote_work' ),
+			false
+		);
+
+		self::register_remote_operation(
+			self::WORK_COMPLETE_ABILITY,
+			'Complete Remote Operation Work',
+			'Complete a leased semantic job only after WordPress independently observes the required acceptance evidence.',
+			self::work_complete_schema(),
+			array( __CLASS__, 'complete_remote_work' ),
 			true
 		);
 	}
@@ -176,6 +213,19 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'mad4b-enrollment',
 				'executor' => 'external_browser_agent',
 				'remote_mode' => 'durable_external_executor_request',
+				'production_policy' => 'deny',
+				'human_decision_required' => false,
+			),
+			'external_executor_work_claim' => array(
+				'feature_id' => 'remote-operation-parity',
+				'capability_tags' => array( 'external-executor', 'queue', 'lease', 'fencing', 'browser', 'acceptance' ),
+				'provider' => 'remote-work-queue',
+				'status_ability' => self::WORK_QUEUE_ABILITY,
+				'local_surface' => '',
+				'remote_ability' => self::WORK_CLAIM_ABILITY,
+				'authority_surface' => 'mad4b-enrollment',
+				'executor' => 'external_browser_agent',
+				'remote_mode' => 'leased_semantic_work_queue',
 				'production_policy' => 'deny',
 				'human_decision_required' => false,
 			),
@@ -426,6 +476,13 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$observed_delta = max( 0, $current_count - $baseline );
 		$request['observed_sample_delta'] = $observed_delta;
 		$request['telemetry_sample_count'] = $current_count;
+		if ( ! empty( $request['work_job_id'] ) && class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) {
+			$work_job = MAD4B_SCP_Remote_Work_Queue::get_job( (string) $request['work_job_id'] );
+			if ( ! is_wp_error( $work_job ) ) {
+				$request['work_job_status'] = isset( $work_job['effective_status'] ) ? (string) $work_job['effective_status'] : ( isset( $work_job['status'] ) ? (string) $work_job['status'] : '' );
+				$request['work_claim_generation'] = isset( $work_job['claim_generation'] ) ? (int) $work_job['claim_generation'] : 0;
+			}
+		}
 		if ( 'pending_external_executor' === ( isset( $request['status'] ) ? (string) $request['status'] : '' )
 			&& isset( $request['expires_at_epoch'] ) && time() > (int) $request['expires_at_epoch'] ) {
 			$request['status'] = 'expired_waiting_executor';
@@ -477,6 +534,1756 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'type' => 'object',
 			'properties' => $properties,
 			'required' => array( 'expected_source_commit_sha', 'expected_build_fingerprint', 'expected_package_manifest_digest', 'sample_count', 'confirmation' ),
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function work_queue_schema() {
+		return array(
+			'type' => 'object',
+			'properties' => array(
+				'operation_id' => array( 'type' => 'string', 'enum' => array( 'frontend_performance_sampling' ) ),
+				'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}
+		return array(
+			'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
+			'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+			'expected_package_manifest_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+		);
+	}
+
+	private static function assert_exact_build( $input ) {
+		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_remote_operation_input_invalid', 'Input must be an object.' );
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_remote_operation_provenance_unavailable', 'Build provenance authority is unavailable.' );
+		$p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( ! is_array( $p ) || empty( $p['manifest_present'] ) || empty( $p['manifest_valid'] ) || empty( $p['runtime_manifest_match'] ) || ! empty( $p['stale'] ) || ! empty( $p['provenance_mismatch'] ) ) return new WP_Error( 'mad4b_remote_operation_provenance_not_ready', 'Exact current build provenance is not ready.' );
+
+		$expected_sha = strtolower( trim( (string) ( isset( $input['expected_source_commit_sha'] ) ? $input['expected_source_commit_sha'] : '' ) ) );
+		$expected_build = strtolower( trim( (string) ( isset( $input['expected_build_fingerprint'] ) ? $input['expected_build_fingerprint'] : '' ) ) );
+		$expected_manifest = strtolower( trim( (string) ( isset( $input['expected_package_manifest_digest'] ) ? $input['expected_package_manifest_digest'] : '' ) ) );
+		$current_sha = strtolower( (string) ( isset( $p['source_commit_sha'] ) ? $p['source_commit_sha'] : '' ) );
+		$current_build = strtolower( (string) ( isset( $p['build_fingerprint'] ) ? $p['build_fingerprint'] : '' ) );
+		$current_manifest = strtolower( (string) ( isset( $p['package_manifest_digest'] ) ? $p['package_manifest_digest'] : '' ) );
+
+		if ( ! hash_equals( $current_sha, $expected_sha ) ) return new WP_Error( 'mad4b_remote_operation_candidate_mismatch', 'Source commit changed before remote operation execution.' );
+		if ( ! hash_equals( $current_build, $expected_build ) ) return new WP_Error( 'mad4b_remote_operation_build_mismatch', 'Build fingerprint changed before remote operation execution.' );
+		if ( ! hash_equals( $current_manifest, $expected_manifest ) ) return new WP_Error( 'mad4b_remote_operation_manifest_mismatch', 'Package manifest changed before remote operation execution.' );
+		return $p;
+	}
+
+	private static function enter( $operation ) {
+		if ( ! empty( self::$running[ $operation ] ) ) return false;
+		self::$running[ $operation ] = true;
+		return true;
+	}
+
+	private static function leave( $operation ) {
+		unset( self::$running[ $operation ] );
+	}
+
+	private static function audit( $event, array $data, $status = 'ok' ) {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return true;
+		$result = MAD4B_SCP_Audit::record( $event, array_merge( array(
+			'contract' => self::CONTRACT,
+			'remote_operation' => true,
+			'production_mutation' => false,
+		), $data ), $status );
+		return is_wp_error( $result ) ? $result : true;
+	}
+
+	public static function remote_work_queue( $input = array() ) {
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
+		$input = is_array( $input ) ? $input : array();
+		if ( ! empty( $input['job_id'] ) ) {
+			$job = MAD4B_SCP_Remote_Work_Queue::get_job( (string) $input['job_id'] );
+			return is_wp_error( $job ) ? $job : array( 'contract' => MAD4B_SCP_Remote_Work_Queue::CONTRACT, 'read_only' => true, 'mutation_performed' => false, 'count' => 1, 'items' => array( $job ) );
+		}
+		return MAD4B_SCP_Remote_Work_Queue::list_jobs( isset( $input['operation_id'] ) ? (string) $input['operation_id'] : '' );
+	}
+
+	public static function claim_remote_work( $input ) {
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
+		$identity = array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		);
+		$result = MAD4B_SCP_Remote_Work_Queue::claim(
+			(string) $input['job_id'],
+			(string) $input['executor_id'],
+			isset( $input['lease_seconds'] ) ? (int) $input['lease_seconds'] : 300,
+			$identity
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::WORK_CLAIM_ABILITY, array(
+			'job_id' => (string) $input['job_id'],
+			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
+			'claim_generation' => isset( $result['job']['claim_generation'] ) ? (int) $result['job']['claim_generation'] : 0,
+		) );
+		return is_wp_error( $audit ) ? $audit : $result;
+	}
+
+	public static function complete_remote_work( $input ) {
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
+		$job = MAD4B_SCP_Remote_Work_Queue::get_job( (string) $input['job_id'] );
+		if ( is_wp_error( $job ) ) return $job;
+		if ( 'frontend_performance_sampling' !== ( isset( $job['operation_id'] ) ? (string) $job['operation_id'] : '' ) ) return new WP_Error( 'mad4b_remote_work_completion_operation_unsupported', 'This remote work completion verifier does not support the requested semantic operation.' );
+		$payload = isset( $job['payload'] ) && is_array( $job['payload'] ) ? $job['payload'] : array();
+		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
+		$current_count = isset( $performance['evaluation_window']['sample_count'] ) ? (int) $performance['evaluation_window']['sample_count'] : 0;
+		$baseline = isset( $payload['baseline_sample_count'] ) ? (int) $payload['baseline_sample_count'] : 0;
+		$required = isset( $payload['requested_samples'] ) ? max( 1, (int) $payload['requested_samples'] ) : 1;
+		$delta = max( 0, $current_count - $baseline );
+		if ( $delta < $required ) return new WP_Error(
+			'mad4b_remote_work_evidence_not_observed',
+			'External executor completion is denied until current-build Frontend telemetry independently observes the requested samples.',
+			array( 'required_sample_delta' => $required, 'observed_sample_delta' => $delta, 'telemetry_sample_count' => $current_count )
+		);
+		$result = MAD4B_SCP_Remote_Work_Queue::complete(
+			(string) $input['job_id'],
+			(string) $input['executor_id'],
+			(string) $input['lease_token'],
+			array(
+				'verification' => 'query_monitor_frontend_telemetry',
+				'required_sample_delta' => $required,
+				'observed_sample_delta' => $delta,
+				'telemetry_sample_count' => $current_count,
+				'verified_at' => gmdate( 'c' ),
+			)
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		$request = get_option( self::BROWSER_REQUEST_OPTION, array() );
+		if ( is_array( $request ) && isset( $request['work_job_id'] ) && hash_equals( (string) $request['work_job_id'], (string) $input['job_id'] ) ) {
+			$request['status'] = 'observed';
+			$request['work_job_status'] = 'completed';
+			$request['observed_sample_delta'] = $delta;
+			$request['telemetry_sample_count'] = $current_count;
+			$request['completed_at'] = gmdate( 'c' );
+			self::persist_browser_request( $request );
+		}
+		$audit = self::audit( self::WORK_COMPLETE_ABILITY, array(
+			'job_id' => (string) $input['job_id'],
+			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
+			'observed_sample_delta' => $delta,
+		) );
+		return is_wp_error( $audit ) ? $audit : $result;
+	}
+
+	public static function reconcile_managed_skills( $input ) {
+		if ( self::SKILLS_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_remote_skill_confirmation_required', 'Exact managed Skill reconciliation confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Seeder' ) || ! class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) || ! class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ) return new WP_Error( 'mad4b_remote_skill_services_unavailable', 'Managed Skill reconciliation services are unavailable.' );
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry' ) || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return new WP_Error( 'mad4b_remote_skill_editor_disabled', 'Managed Skill reconciliation requires the governed Skill editor to be enabled.' );
+		if ( ! self::enter( 'skills' ) ) return new WP_Error( 'mad4b_remote_skill_reentry_denied', 'Managed Skill reconciliation is already running in this request.' );
+
+		$identity = array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		);
+		$previous = self::skills_job_status();
+		$attempt = isset( $previous['attempt'] ) ? max( 0, (int) $previous['attempt'] ) + 1 : 1;
+		$state = array(
+			'contract' => 'mad4b.remote-managed-skills-reconciliation-state.v1',
+			'operation_id' => ! empty( $previous['operation_id'] ) && isset( $previous['expected_identity']['source_commit_sha'] ) && hash_equals( (string) $previous['expected_identity']['source_commit_sha'], $identity['source_commit_sha'] ) ? (string) $previous['operation_id'] : strtolower( wp_generate_uuid4() ),
+			'expected_identity' => $identity,
+			'attempt' => $attempt,
+			'status' => 'running',
+			'stage' => 'preflight',
+			'last_error_code' => '',
+			'updated_at' => gmdate( 'c' ),
+			'production_mutation' => false,
+		);
+		$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+		try {
+			$seed_before = MAD4B_SCP_Skill_Seeder::inspect();
+			$provider_before = MAD4B_SCP_Skill_Provider_Discovery::inspect();
+			if ( ! empty( $seed_before['conflicts'] ) || ! empty( $provider_before['conflicts'] ) ) {
+				$state['status'] = 'blocked';
+				$state['stage'] = 'preflight';
+				$state['last_error_code'] = 'mad4b_remote_skill_conflict';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return new WP_Error( 'mad4b_remote_skill_conflict', 'Managed Skill reconciliation is blocked by current conflicts.', array( 'seed_conflicts' => isset( $seed_before['conflicts'] ) ? $seed_before['conflicts'] : array(), 'provider_conflicts' => isset( $provider_before['conflicts'] ) ? $provider_before['conflicts'] : array(), 'checkpoint' => $state ) );
+			}
+
+			$state['stage'] = 'seed_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$seed = MAD4B_SCP_Skill_Seeder::bootstrap();
+			if ( is_wp_error( $seed ) || ! is_array( $seed ) || 'ready' !== ( isset( $seed['state'] ) ? (string) $seed['state'] : '' ) ) {
+				$error = is_wp_error( $seed ) ? $seed : new WP_Error( 'mad4b_remote_skill_seed_failed', 'Canonical Skill seed reconciliation did not reach ready state.', array( 'seed' => $seed ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return $error;
+			}
+			$state['stage'] = 'seed_ready';
+			$state['seed_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$state['stage'] = 'provider_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$providers = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
+			if ( is_wp_error( $providers ) || ! is_array( $providers ) || 'ready' !== ( isset( $providers['state'] ) ? (string) $providers['state'] : '' ) ) {
+				$error = is_wp_error( $providers ) ? $providers : new WP_Error( 'mad4b_remote_skill_provider_failed', 'Provider Skill reconciliation did not reach ready state.', array( 'providers' => $providers ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return $error;
+			}
+			$state['stage'] = 'provider_ready';
+			$state['provider_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$state['stage'] = 'runtime_certification';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$certification = MAD4B_SCP_Skill_Runtime_Certification::observe();
+			if ( ! is_array( $certification ) || empty( $certification['ready'] ) ) {
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = 'mad4b_remote_skill_certification_failed';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return new WP_Error( 'mad4b_remote_skill_certification_failed', 'Managed Skill reconciliation completed but runtime certification is not ready.', array( 'certification' => $certification, 'checkpoint' => $state ) );
+			}
+
+			$state['status'] = 'completed';
+			$state['stage'] = 'certified';
+			$state['certification_ready'] = true;
+			$state['last_error_code'] = '';
+			$state['updated_at'] = gmdate( 'c' );
+			$state['completed_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$audit = self::audit( self::SKILLS_ABILITY, array(
+				'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+				'operation_id' => (string) $state['operation_id'],
+				'attempt' => (int) $state['attempt'],
+				'seed_before' => $seed_before,
+				'provider_before' => $provider_before,
+				'certification_ready' => true,
+			) );
+			if ( is_wp_error( $audit ) ) return $audit;
+
+			return array(
+				'contract' => 'mad4b.remote-managed-skills-reconciliation.v2',
+				'state' => 'ready',
+				'ready' => true,
+				'checkpoint' => $state,
+				'seed' => $seed,
+				'providers' => $providers,
+				'certification' => $certification,
+				'remote_operation' => true,
+				'production_mutation' => false,
+			);
+		} finally {
+			self::leave( 'skills' );
+		}
+	}
+
+	public static function collect_frontend_samples( $input ) {
+		if ( self::FRONTEND_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_frontend_sample_confirmation_required', 'Exact Frontend sampling confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		$count = isset( $input['sample_count'] ) ? max( 1, min( 3, (int) $input['sample_count'] ) ) : 1;
+		$path = isset( $input['target_path'] ) ? trim( (string) $input['target_path'] ) : '/';
+		if ( '' === $path ) $path = '/';
+		if ( 1 !== preg_match( '#^/[A-Za-z0-9/_\.\-]*$#', $path ) || false !== strpos( $path, '..' ) ) return new WP_Error( 'mad4b_frontend_sample_path_invalid', 'Frontend sample target must be a bounded same-origin relative path.' );
+
+		$current = self::frontend_sample_request_status();
+		if ( ! empty( $current ) && 'pending_external_executor' === ( isset( $current['status'] ) ? (string) $current['status'] : '' ) && time() < (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
+			$same = hash_equals( (string) ( isset( $current['target_path'] ) ? $current['target_path'] : '' ), $path )
+				&& (int) ( isset( $current['requested_samples'] ) ? $current['requested_samples'] : 0 ) === $count
+				&& hash_equals( (string) ( isset( $current['expected_identity']['source_commit_sha'] ) ? $current['expected_identity']['source_commit_sha'] : '' ), strtolower( (string) $input['expected_source_commit_sha'] ) );
+			if ( $same ) return array( 'contract' => 'mad4b.remote-frontend-performance-sampling.v2', 'state' => 'already_queued', 'request' => $current, 'manual_interaction_required' => false, 'production_mutation' => false );
+			return new WP_Error( 'mad4b_frontend_sample_request_in_flight', 'A different current-build browser sampling request is already pending.' );
+		}
+
+		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
+		$baseline = isset( $performance['evaluation_window']['sample_count'] ) ? (int) $performance['evaluation_window']['sample_count'] : 0;
+		$request = array(
+			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
+			'request_id' => strtolower( wp_generate_uuid4() ),
+			'status' => 'pending_external_executor',
+			'execution_mode' => 'external_browser_agent',
+			'executor_contract' => 'mad4b.browser-acceptance-core.v1',
+			'target_path' => $path,
+			'target_url' => home_url( $path ),
+			'requested_samples' => $count,
+			'baseline_sample_count' => $baseline,
+			'expected_identity' => array(
+				'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+				'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+				'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+			),
+			'created_at' => gmdate( 'c' ),
+			'expires_at' => gmdate( 'c', time() + HOUR_IN_SECONDS ),
+			'expires_at_epoch' => time() + HOUR_IN_SECONDS,
+			'manual_interaction_required' => false,
+			'production_mutation' => false,
+		);
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
+		$work = MAD4B_SCP_Remote_Work_Queue::enqueue(
+			'frontend_performance_sampling',
+			array(
+				'request_id' => (string) $request['request_id'],
+				'target_path' => $path,
+				'target_url' => (string) $request['target_url'],
+				'requested_samples' => $count,
+				'baseline_sample_count' => $baseline,
+			),
+			(array) $request['expected_identity'],
+			HOUR_IN_SECONDS
+		);
+		if ( is_wp_error( $work ) ) return $work;
+		$request['work_job_id'] = isset( $work['job']['job_id'] ) ? (string) $work['job']['job_id'] : '';
+		$request['work_queue_state'] = isset( $work['state'] ) ? (string) $work['state'] : '';
+		if ( '' === $request['work_job_id'] ) return new WP_Error( 'mad4b_frontend_sample_work_job_missing', 'Frontend browser sampling could not obtain a durable external work job.' );
+		if ( ! self::persist_browser_request( $request ) ) return new WP_Error( 'mad4b_frontend_sample_request_persist_failed', 'Frontend browser sampling request could not be durably read back.' );
+		do_action( 'mad4b_scp_remote_browser_request_enqueued', $request );
+		$audit = self::audit( self::FRONTEND_SAMPLE_ABILITY, array(
+			'source_commit_sha' => (string) $request['expected_identity']['source_commit_sha'],
+			'request_id' => (string) $request['request_id'],
+			'target_path' => $path,
+			'requested_samples' => $count,
+			'execution_mode' => 'external_browser_agent',
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
+			'state' => 'queued',
+			'request' => $request,
+			'manual_interaction_required' => false,
+			'browser_runtime_evidence_required' => true,
+			'production_mutation' => false,
+		);
+	}
+
+	public static function apply_performance_indexes( $input ) {
+		if ( self::PERFORMANCE_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_performance_index_confirmation_required', 'Exact performance-index confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) || ! method_exists( 'MAD4B_SCP_Admin_Query_Performance', 'enqueue_explicit' ) ) return new WP_Error( 'mad4b_performance_index_service_unavailable', 'Queued performance-index maintenance service is unavailable.' );
+		$result = MAD4B_SCP_Admin_Query_Performance::enqueue_explicit( array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		) );
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::PERFORMANCE_INDEX_ABILITY, array(
+			'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+			'queue_state' => isset( $result['state'] ) ? (string) $result['state'] : '',
+			'job_id' => isset( $result['job']['job_id'] ) ? (string) $result['job']['job_id'] : '',
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-admin-query-performance-apply.v2',
+			'state' => isset( $result['state'] ) ? (string) $result['state'] : 'queued',
+			'job' => isset( $result['job'] ) ? $result['job'] : array(),
+			'synchronous_ddl' => false,
+			'remote_operation' => true,
+			'production_mutation' => false,
+		);
+	}
+
+}
+
+MAD4B_SCP_Remote_Operation_Parity::boot();
+ ),
+			),
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function work_claim_schema() {
+		$properties = self::exact_build_properties();
+		$properties['job_id'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}
+		return array(
+			'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
+			'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+			'expected_package_manifest_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+		);
+	}
+
+	private static function assert_exact_build( $input ) {
+		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_remote_operation_input_invalid', 'Input must be an object.' );
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_remote_operation_provenance_unavailable', 'Build provenance authority is unavailable.' );
+		$p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( ! is_array( $p ) || empty( $p['manifest_present'] ) || empty( $p['manifest_valid'] ) || empty( $p['runtime_manifest_match'] ) || ! empty( $p['stale'] ) || ! empty( $p['provenance_mismatch'] ) ) return new WP_Error( 'mad4b_remote_operation_provenance_not_ready', 'Exact current build provenance is not ready.' );
+
+		$expected_sha = strtolower( trim( (string) ( isset( $input['expected_source_commit_sha'] ) ? $input['expected_source_commit_sha'] : '' ) ) );
+		$expected_build = strtolower( trim( (string) ( isset( $input['expected_build_fingerprint'] ) ? $input['expected_build_fingerprint'] : '' ) ) );
+		$expected_manifest = strtolower( trim( (string) ( isset( $input['expected_package_manifest_digest'] ) ? $input['expected_package_manifest_digest'] : '' ) ) );
+		$current_sha = strtolower( (string) ( isset( $p['source_commit_sha'] ) ? $p['source_commit_sha'] : '' ) );
+		$current_build = strtolower( (string) ( isset( $p['build_fingerprint'] ) ? $p['build_fingerprint'] : '' ) );
+		$current_manifest = strtolower( (string) ( isset( $p['package_manifest_digest'] ) ? $p['package_manifest_digest'] : '' ) );
+
+		if ( ! hash_equals( $current_sha, $expected_sha ) ) return new WP_Error( 'mad4b_remote_operation_candidate_mismatch', 'Source commit changed before remote operation execution.' );
+		if ( ! hash_equals( $current_build, $expected_build ) ) return new WP_Error( 'mad4b_remote_operation_build_mismatch', 'Build fingerprint changed before remote operation execution.' );
+		if ( ! hash_equals( $current_manifest, $expected_manifest ) ) return new WP_Error( 'mad4b_remote_operation_manifest_mismatch', 'Package manifest changed before remote operation execution.' );
+		return $p;
+	}
+
+	private static function enter( $operation ) {
+		if ( ! empty( self::$running[ $operation ] ) ) return false;
+		self::$running[ $operation ] = true;
+		return true;
+	}
+
+	private static function leave( $operation ) {
+		unset( self::$running[ $operation ] );
+	}
+
+	private static function audit( $event, array $data, $status = 'ok' ) {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return true;
+		$result = MAD4B_SCP_Audit::record( $event, array_merge( array(
+			'contract' => self::CONTRACT,
+			'remote_operation' => true,
+			'production_mutation' => false,
+		), $data ), $status );
+		return is_wp_error( $result ) ? $result : true;
+	}
+
+	public static function reconcile_managed_skills( $input ) {
+		if ( self::SKILLS_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_remote_skill_confirmation_required', 'Exact managed Skill reconciliation confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Seeder' ) || ! class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) || ! class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ) return new WP_Error( 'mad4b_remote_skill_services_unavailable', 'Managed Skill reconciliation services are unavailable.' );
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry' ) || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return new WP_Error( 'mad4b_remote_skill_editor_disabled', 'Managed Skill reconciliation requires the governed Skill editor to be enabled.' );
+		if ( ! self::enter( 'skills' ) ) return new WP_Error( 'mad4b_remote_skill_reentry_denied', 'Managed Skill reconciliation is already running in this request.' );
+
+		$identity = array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		);
+		$previous = self::skills_job_status();
+		$attempt = isset( $previous['attempt'] ) ? max( 0, (int) $previous['attempt'] ) + 1 : 1;
+		$state = array(
+			'contract' => 'mad4b.remote-managed-skills-reconciliation-state.v1',
+			'operation_id' => ! empty( $previous['operation_id'] ) && isset( $previous['expected_identity']['source_commit_sha'] ) && hash_equals( (string) $previous['expected_identity']['source_commit_sha'], $identity['source_commit_sha'] ) ? (string) $previous['operation_id'] : strtolower( wp_generate_uuid4() ),
+			'expected_identity' => $identity,
+			'attempt' => $attempt,
+			'status' => 'running',
+			'stage' => 'preflight',
+			'last_error_code' => '',
+			'updated_at' => gmdate( 'c' ),
+			'production_mutation' => false,
+		);
+		$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+		try {
+			$seed_before = MAD4B_SCP_Skill_Seeder::inspect();
+			$provider_before = MAD4B_SCP_Skill_Provider_Discovery::inspect();
+			if ( ! empty( $seed_before['conflicts'] ) || ! empty( $provider_before['conflicts'] ) ) {
+				$state['status'] = 'blocked';
+				$state['stage'] = 'preflight';
+				$state['last_error_code'] = 'mad4b_remote_skill_conflict';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return new WP_Error( 'mad4b_remote_skill_conflict', 'Managed Skill reconciliation is blocked by current conflicts.', array( 'seed_conflicts' => isset( $seed_before['conflicts'] ) ? $seed_before['conflicts'] : array(), 'provider_conflicts' => isset( $provider_before['conflicts'] ) ? $provider_before['conflicts'] : array(), 'checkpoint' => $state ) );
+			}
+
+			$state['stage'] = 'seed_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$seed = MAD4B_SCP_Skill_Seeder::bootstrap();
+			if ( is_wp_error( $seed ) || ! is_array( $seed ) || 'ready' !== ( isset( $seed['state'] ) ? (string) $seed['state'] : '' ) ) {
+				$error = is_wp_error( $seed ) ? $seed : new WP_Error( 'mad4b_remote_skill_seed_failed', 'Canonical Skill seed reconciliation did not reach ready state.', array( 'seed' => $seed ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return $error;
+			}
+			$state['stage'] = 'seed_ready';
+			$state['seed_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$state['stage'] = 'provider_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$providers = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
+			if ( is_wp_error( $providers ) || ! is_array( $providers ) || 'ready' !== ( isset( $providers['state'] ) ? (string) $providers['state'] : '' ) ) {
+				$error = is_wp_error( $providers ) ? $providers : new WP_Error( 'mad4b_remote_skill_provider_failed', 'Provider Skill reconciliation did not reach ready state.', array( 'providers' => $providers ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return $error;
+			}
+			$state['stage'] = 'provider_ready';
+			$state['provider_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$state['stage'] = 'runtime_certification';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$certification = MAD4B_SCP_Skill_Runtime_Certification::observe();
+			if ( ! is_array( $certification ) || empty( $certification['ready'] ) ) {
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = 'mad4b_remote_skill_certification_failed';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return new WP_Error( 'mad4b_remote_skill_certification_failed', 'Managed Skill reconciliation completed but runtime certification is not ready.', array( 'certification' => $certification, 'checkpoint' => $state ) );
+			}
+
+			$state['status'] = 'completed';
+			$state['stage'] = 'certified';
+			$state['certification_ready'] = true;
+			$state['last_error_code'] = '';
+			$state['updated_at'] = gmdate( 'c' );
+			$state['completed_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$audit = self::audit( self::SKILLS_ABILITY, array(
+				'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+				'operation_id' => (string) $state['operation_id'],
+				'attempt' => (int) $state['attempt'],
+				'seed_before' => $seed_before,
+				'provider_before' => $provider_before,
+				'certification_ready' => true,
+			) );
+			if ( is_wp_error( $audit ) ) return $audit;
+
+			return array(
+				'contract' => 'mad4b.remote-managed-skills-reconciliation.v2',
+				'state' => 'ready',
+				'ready' => true,
+				'checkpoint' => $state,
+				'seed' => $seed,
+				'providers' => $providers,
+				'certification' => $certification,
+				'remote_operation' => true,
+				'production_mutation' => false,
+			);
+		} finally {
+			self::leave( 'skills' );
+		}
+	}
+
+	public static function collect_frontend_samples( $input ) {
+		if ( self::FRONTEND_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_frontend_sample_confirmation_required', 'Exact Frontend sampling confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		$count = isset( $input['sample_count'] ) ? max( 1, min( 3, (int) $input['sample_count'] ) ) : 1;
+		$path = isset( $input['target_path'] ) ? trim( (string) $input['target_path'] ) : '/';
+		if ( '' === $path ) $path = '/';
+		if ( 1 !== preg_match( '#^/[A-Za-z0-9/_\.\-]*$#', $path ) || false !== strpos( $path, '..' ) ) return new WP_Error( 'mad4b_frontend_sample_path_invalid', 'Frontend sample target must be a bounded same-origin relative path.' );
+
+		$current = self::frontend_sample_request_status();
+		if ( ! empty( $current ) && 'pending_external_executor' === ( isset( $current['status'] ) ? (string) $current['status'] : '' ) && time() < (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
+			$same = hash_equals( (string) ( isset( $current['target_path'] ) ? $current['target_path'] : '' ), $path )
+				&& (int) ( isset( $current['requested_samples'] ) ? $current['requested_samples'] : 0 ) === $count
+				&& hash_equals( (string) ( isset( $current['expected_identity']['source_commit_sha'] ) ? $current['expected_identity']['source_commit_sha'] : '' ), strtolower( (string) $input['expected_source_commit_sha'] ) );
+			if ( $same ) return array( 'contract' => 'mad4b.remote-frontend-performance-sampling.v2', 'state' => 'already_queued', 'request' => $current, 'manual_interaction_required' => false, 'production_mutation' => false );
+			return new WP_Error( 'mad4b_frontend_sample_request_in_flight', 'A different current-build browser sampling request is already pending.' );
+		}
+
+		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
+		$baseline = isset( $performance['evaluation_window']['sample_count'] ) ? (int) $performance['evaluation_window']['sample_count'] : 0;
+		$request = array(
+			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
+			'request_id' => strtolower( wp_generate_uuid4() ),
+			'status' => 'pending_external_executor',
+			'execution_mode' => 'external_browser_agent',
+			'executor_contract' => 'mad4b.browser-acceptance-core.v1',
+			'target_path' => $path,
+			'target_url' => home_url( $path ),
+			'requested_samples' => $count,
+			'baseline_sample_count' => $baseline,
+			'expected_identity' => array(
+				'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+				'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+				'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+			),
+			'created_at' => gmdate( 'c' ),
+			'expires_at' => gmdate( 'c', time() + HOUR_IN_SECONDS ),
+			'expires_at_epoch' => time() + HOUR_IN_SECONDS,
+			'manual_interaction_required' => false,
+			'production_mutation' => false,
+		);
+		if ( ! self::persist_browser_request( $request ) ) return new WP_Error( 'mad4b_frontend_sample_request_persist_failed', 'Frontend browser sampling request could not be durably read back.' );
+		do_action( 'mad4b_scp_remote_browser_request_enqueued', $request );
+		$audit = self::audit( self::FRONTEND_SAMPLE_ABILITY, array(
+			'source_commit_sha' => (string) $request['expected_identity']['source_commit_sha'],
+			'request_id' => (string) $request['request_id'],
+			'target_path' => $path,
+			'requested_samples' => $count,
+			'execution_mode' => 'external_browser_agent',
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
+			'state' => 'queued',
+			'request' => $request,
+			'manual_interaction_required' => false,
+			'browser_runtime_evidence_required' => true,
+			'production_mutation' => false,
+		);
+	}
+
+	public static function apply_performance_indexes( $input ) {
+		if ( self::PERFORMANCE_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_performance_index_confirmation_required', 'Exact performance-index confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) || ! method_exists( 'MAD4B_SCP_Admin_Query_Performance', 'enqueue_explicit' ) ) return new WP_Error( 'mad4b_performance_index_service_unavailable', 'Queued performance-index maintenance service is unavailable.' );
+		$result = MAD4B_SCP_Admin_Query_Performance::enqueue_explicit( array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		) );
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::PERFORMANCE_INDEX_ABILITY, array(
+			'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+			'queue_state' => isset( $result['state'] ) ? (string) $result['state'] : '',
+			'job_id' => isset( $result['job']['job_id'] ) ? (string) $result['job']['job_id'] : '',
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-admin-query-performance-apply.v2',
+			'state' => isset( $result['state'] ) ? (string) $result['state'] : 'queued',
+			'job' => isset( $result['job'] ) ? $result['job'] : array(),
+			'synchronous_ddl' => false,
+			'remote_operation' => true,
+			'production_mutation' => false,
+		);
+	}
+
+}
+
+MAD4B_SCP_Remote_Operation_Parity::boot();
+ );
+		$properties['executor_id'] = array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[A-Za-z0-9._-]+
+		return array(
+			'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
+			'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+			'expected_package_manifest_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+		);
+	}
+
+	private static function assert_exact_build( $input ) {
+		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_remote_operation_input_invalid', 'Input must be an object.' );
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_remote_operation_provenance_unavailable', 'Build provenance authority is unavailable.' );
+		$p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( ! is_array( $p ) || empty( $p['manifest_present'] ) || empty( $p['manifest_valid'] ) || empty( $p['runtime_manifest_match'] ) || ! empty( $p['stale'] ) || ! empty( $p['provenance_mismatch'] ) ) return new WP_Error( 'mad4b_remote_operation_provenance_not_ready', 'Exact current build provenance is not ready.' );
+
+		$expected_sha = strtolower( trim( (string) ( isset( $input['expected_source_commit_sha'] ) ? $input['expected_source_commit_sha'] : '' ) ) );
+		$expected_build = strtolower( trim( (string) ( isset( $input['expected_build_fingerprint'] ) ? $input['expected_build_fingerprint'] : '' ) ) );
+		$expected_manifest = strtolower( trim( (string) ( isset( $input['expected_package_manifest_digest'] ) ? $input['expected_package_manifest_digest'] : '' ) ) );
+		$current_sha = strtolower( (string) ( isset( $p['source_commit_sha'] ) ? $p['source_commit_sha'] : '' ) );
+		$current_build = strtolower( (string) ( isset( $p['build_fingerprint'] ) ? $p['build_fingerprint'] : '' ) );
+		$current_manifest = strtolower( (string) ( isset( $p['package_manifest_digest'] ) ? $p['package_manifest_digest'] : '' ) );
+
+		if ( ! hash_equals( $current_sha, $expected_sha ) ) return new WP_Error( 'mad4b_remote_operation_candidate_mismatch', 'Source commit changed before remote operation execution.' );
+		if ( ! hash_equals( $current_build, $expected_build ) ) return new WP_Error( 'mad4b_remote_operation_build_mismatch', 'Build fingerprint changed before remote operation execution.' );
+		if ( ! hash_equals( $current_manifest, $expected_manifest ) ) return new WP_Error( 'mad4b_remote_operation_manifest_mismatch', 'Package manifest changed before remote operation execution.' );
+		return $p;
+	}
+
+	private static function enter( $operation ) {
+		if ( ! empty( self::$running[ $operation ] ) ) return false;
+		self::$running[ $operation ] = true;
+		return true;
+	}
+
+	private static function leave( $operation ) {
+		unset( self::$running[ $operation ] );
+	}
+
+	private static function audit( $event, array $data, $status = 'ok' ) {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return true;
+		$result = MAD4B_SCP_Audit::record( $event, array_merge( array(
+			'contract' => self::CONTRACT,
+			'remote_operation' => true,
+			'production_mutation' => false,
+		), $data ), $status );
+		return is_wp_error( $result ) ? $result : true;
+	}
+
+	public static function reconcile_managed_skills( $input ) {
+		if ( self::SKILLS_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_remote_skill_confirmation_required', 'Exact managed Skill reconciliation confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Seeder' ) || ! class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) || ! class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ) return new WP_Error( 'mad4b_remote_skill_services_unavailable', 'Managed Skill reconciliation services are unavailable.' );
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry' ) || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return new WP_Error( 'mad4b_remote_skill_editor_disabled', 'Managed Skill reconciliation requires the governed Skill editor to be enabled.' );
+		if ( ! self::enter( 'skills' ) ) return new WP_Error( 'mad4b_remote_skill_reentry_denied', 'Managed Skill reconciliation is already running in this request.' );
+
+		$identity = array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		);
+		$previous = self::skills_job_status();
+		$attempt = isset( $previous['attempt'] ) ? max( 0, (int) $previous['attempt'] ) + 1 : 1;
+		$state = array(
+			'contract' => 'mad4b.remote-managed-skills-reconciliation-state.v1',
+			'operation_id' => ! empty( $previous['operation_id'] ) && isset( $previous['expected_identity']['source_commit_sha'] ) && hash_equals( (string) $previous['expected_identity']['source_commit_sha'], $identity['source_commit_sha'] ) ? (string) $previous['operation_id'] : strtolower( wp_generate_uuid4() ),
+			'expected_identity' => $identity,
+			'attempt' => $attempt,
+			'status' => 'running',
+			'stage' => 'preflight',
+			'last_error_code' => '',
+			'updated_at' => gmdate( 'c' ),
+			'production_mutation' => false,
+		);
+		$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+		try {
+			$seed_before = MAD4B_SCP_Skill_Seeder::inspect();
+			$provider_before = MAD4B_SCP_Skill_Provider_Discovery::inspect();
+			if ( ! empty( $seed_before['conflicts'] ) || ! empty( $provider_before['conflicts'] ) ) {
+				$state['status'] = 'blocked';
+				$state['stage'] = 'preflight';
+				$state['last_error_code'] = 'mad4b_remote_skill_conflict';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return new WP_Error( 'mad4b_remote_skill_conflict', 'Managed Skill reconciliation is blocked by current conflicts.', array( 'seed_conflicts' => isset( $seed_before['conflicts'] ) ? $seed_before['conflicts'] : array(), 'provider_conflicts' => isset( $provider_before['conflicts'] ) ? $provider_before['conflicts'] : array(), 'checkpoint' => $state ) );
+			}
+
+			$state['stage'] = 'seed_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$seed = MAD4B_SCP_Skill_Seeder::bootstrap();
+			if ( is_wp_error( $seed ) || ! is_array( $seed ) || 'ready' !== ( isset( $seed['state'] ) ? (string) $seed['state'] : '' ) ) {
+				$error = is_wp_error( $seed ) ? $seed : new WP_Error( 'mad4b_remote_skill_seed_failed', 'Canonical Skill seed reconciliation did not reach ready state.', array( 'seed' => $seed ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return $error;
+			}
+			$state['stage'] = 'seed_ready';
+			$state['seed_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$state['stage'] = 'provider_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$providers = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
+			if ( is_wp_error( $providers ) || ! is_array( $providers ) || 'ready' !== ( isset( $providers['state'] ) ? (string) $providers['state'] : '' ) ) {
+				$error = is_wp_error( $providers ) ? $providers : new WP_Error( 'mad4b_remote_skill_provider_failed', 'Provider Skill reconciliation did not reach ready state.', array( 'providers' => $providers ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return $error;
+			}
+			$state['stage'] = 'provider_ready';
+			$state['provider_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$state['stage'] = 'runtime_certification';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$certification = MAD4B_SCP_Skill_Runtime_Certification::observe();
+			if ( ! is_array( $certification ) || empty( $certification['ready'] ) ) {
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = 'mad4b_remote_skill_certification_failed';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return new WP_Error( 'mad4b_remote_skill_certification_failed', 'Managed Skill reconciliation completed but runtime certification is not ready.', array( 'certification' => $certification, 'checkpoint' => $state ) );
+			}
+
+			$state['status'] = 'completed';
+			$state['stage'] = 'certified';
+			$state['certification_ready'] = true;
+			$state['last_error_code'] = '';
+			$state['updated_at'] = gmdate( 'c' );
+			$state['completed_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$audit = self::audit( self::SKILLS_ABILITY, array(
+				'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+				'operation_id' => (string) $state['operation_id'],
+				'attempt' => (int) $state['attempt'],
+				'seed_before' => $seed_before,
+				'provider_before' => $provider_before,
+				'certification_ready' => true,
+			) );
+			if ( is_wp_error( $audit ) ) return $audit;
+
+			return array(
+				'contract' => 'mad4b.remote-managed-skills-reconciliation.v2',
+				'state' => 'ready',
+				'ready' => true,
+				'checkpoint' => $state,
+				'seed' => $seed,
+				'providers' => $providers,
+				'certification' => $certification,
+				'remote_operation' => true,
+				'production_mutation' => false,
+			);
+		} finally {
+			self::leave( 'skills' );
+		}
+	}
+
+	public static function collect_frontend_samples( $input ) {
+		if ( self::FRONTEND_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_frontend_sample_confirmation_required', 'Exact Frontend sampling confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		$count = isset( $input['sample_count'] ) ? max( 1, min( 3, (int) $input['sample_count'] ) ) : 1;
+		$path = isset( $input['target_path'] ) ? trim( (string) $input['target_path'] ) : '/';
+		if ( '' === $path ) $path = '/';
+		if ( 1 !== preg_match( '#^/[A-Za-z0-9/_\.\-]*$#', $path ) || false !== strpos( $path, '..' ) ) return new WP_Error( 'mad4b_frontend_sample_path_invalid', 'Frontend sample target must be a bounded same-origin relative path.' );
+
+		$current = self::frontend_sample_request_status();
+		if ( ! empty( $current ) && 'pending_external_executor' === ( isset( $current['status'] ) ? (string) $current['status'] : '' ) && time() < (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
+			$same = hash_equals( (string) ( isset( $current['target_path'] ) ? $current['target_path'] : '' ), $path )
+				&& (int) ( isset( $current['requested_samples'] ) ? $current['requested_samples'] : 0 ) === $count
+				&& hash_equals( (string) ( isset( $current['expected_identity']['source_commit_sha'] ) ? $current['expected_identity']['source_commit_sha'] : '' ), strtolower( (string) $input['expected_source_commit_sha'] ) );
+			if ( $same ) return array( 'contract' => 'mad4b.remote-frontend-performance-sampling.v2', 'state' => 'already_queued', 'request' => $current, 'manual_interaction_required' => false, 'production_mutation' => false );
+			return new WP_Error( 'mad4b_frontend_sample_request_in_flight', 'A different current-build browser sampling request is already pending.' );
+		}
+
+		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
+		$baseline = isset( $performance['evaluation_window']['sample_count'] ) ? (int) $performance['evaluation_window']['sample_count'] : 0;
+		$request = array(
+			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
+			'request_id' => strtolower( wp_generate_uuid4() ),
+			'status' => 'pending_external_executor',
+			'execution_mode' => 'external_browser_agent',
+			'executor_contract' => 'mad4b.browser-acceptance-core.v1',
+			'target_path' => $path,
+			'target_url' => home_url( $path ),
+			'requested_samples' => $count,
+			'baseline_sample_count' => $baseline,
+			'expected_identity' => array(
+				'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+				'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+				'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+			),
+			'created_at' => gmdate( 'c' ),
+			'expires_at' => gmdate( 'c', time() + HOUR_IN_SECONDS ),
+			'expires_at_epoch' => time() + HOUR_IN_SECONDS,
+			'manual_interaction_required' => false,
+			'production_mutation' => false,
+		);
+		if ( ! self::persist_browser_request( $request ) ) return new WP_Error( 'mad4b_frontend_sample_request_persist_failed', 'Frontend browser sampling request could not be durably read back.' );
+		do_action( 'mad4b_scp_remote_browser_request_enqueued', $request );
+		$audit = self::audit( self::FRONTEND_SAMPLE_ABILITY, array(
+			'source_commit_sha' => (string) $request['expected_identity']['source_commit_sha'],
+			'request_id' => (string) $request['request_id'],
+			'target_path' => $path,
+			'requested_samples' => $count,
+			'execution_mode' => 'external_browser_agent',
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
+			'state' => 'queued',
+			'request' => $request,
+			'manual_interaction_required' => false,
+			'browser_runtime_evidence_required' => true,
+			'production_mutation' => false,
+		);
+	}
+
+	public static function apply_performance_indexes( $input ) {
+		if ( self::PERFORMANCE_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_performance_index_confirmation_required', 'Exact performance-index confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) || ! method_exists( 'MAD4B_SCP_Admin_Query_Performance', 'enqueue_explicit' ) ) return new WP_Error( 'mad4b_performance_index_service_unavailable', 'Queued performance-index maintenance service is unavailable.' );
+		$result = MAD4B_SCP_Admin_Query_Performance::enqueue_explicit( array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		) );
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::PERFORMANCE_INDEX_ABILITY, array(
+			'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+			'queue_state' => isset( $result['state'] ) ? (string) $result['state'] : '',
+			'job_id' => isset( $result['job']['job_id'] ) ? (string) $result['job']['job_id'] : '',
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-admin-query-performance-apply.v2',
+			'state' => isset( $result['state'] ) ? (string) $result['state'] : 'queued',
+			'job' => isset( $result['job'] ) ? $result['job'] : array(),
+			'synchronous_ddl' => false,
+			'remote_operation' => true,
+			'production_mutation' => false,
+		);
+	}
+
+}
+
+MAD4B_SCP_Remote_Operation_Parity::boot();
+ );
+		$properties['lease_seconds'] = array( 'type' => 'integer', 'minimum' => 60, 'maximum' => 900 );
+		return array(
+			'type' => 'object',
+			'properties' => $properties,
+			'required' => array( 'expected_source_commit_sha', 'expected_build_fingerprint', 'expected_package_manifest_digest', 'job_id', 'executor_id' ),
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function work_complete_schema() {
+		$properties = self::exact_build_properties();
+		$properties['job_id'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}
+		return array(
+			'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
+			'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+			'expected_package_manifest_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+		);
+	}
+
+	private static function assert_exact_build( $input ) {
+		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_remote_operation_input_invalid', 'Input must be an object.' );
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_remote_operation_provenance_unavailable', 'Build provenance authority is unavailable.' );
+		$p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( ! is_array( $p ) || empty( $p['manifest_present'] ) || empty( $p['manifest_valid'] ) || empty( $p['runtime_manifest_match'] ) || ! empty( $p['stale'] ) || ! empty( $p['provenance_mismatch'] ) ) return new WP_Error( 'mad4b_remote_operation_provenance_not_ready', 'Exact current build provenance is not ready.' );
+
+		$expected_sha = strtolower( trim( (string) ( isset( $input['expected_source_commit_sha'] ) ? $input['expected_source_commit_sha'] : '' ) ) );
+		$expected_build = strtolower( trim( (string) ( isset( $input['expected_build_fingerprint'] ) ? $input['expected_build_fingerprint'] : '' ) ) );
+		$expected_manifest = strtolower( trim( (string) ( isset( $input['expected_package_manifest_digest'] ) ? $input['expected_package_manifest_digest'] : '' ) ) );
+		$current_sha = strtolower( (string) ( isset( $p['source_commit_sha'] ) ? $p['source_commit_sha'] : '' ) );
+		$current_build = strtolower( (string) ( isset( $p['build_fingerprint'] ) ? $p['build_fingerprint'] : '' ) );
+		$current_manifest = strtolower( (string) ( isset( $p['package_manifest_digest'] ) ? $p['package_manifest_digest'] : '' ) );
+
+		if ( ! hash_equals( $current_sha, $expected_sha ) ) return new WP_Error( 'mad4b_remote_operation_candidate_mismatch', 'Source commit changed before remote operation execution.' );
+		if ( ! hash_equals( $current_build, $expected_build ) ) return new WP_Error( 'mad4b_remote_operation_build_mismatch', 'Build fingerprint changed before remote operation execution.' );
+		if ( ! hash_equals( $current_manifest, $expected_manifest ) ) return new WP_Error( 'mad4b_remote_operation_manifest_mismatch', 'Package manifest changed before remote operation execution.' );
+		return $p;
+	}
+
+	private static function enter( $operation ) {
+		if ( ! empty( self::$running[ $operation ] ) ) return false;
+		self::$running[ $operation ] = true;
+		return true;
+	}
+
+	private static function leave( $operation ) {
+		unset( self::$running[ $operation ] );
+	}
+
+	private static function audit( $event, array $data, $status = 'ok' ) {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return true;
+		$result = MAD4B_SCP_Audit::record( $event, array_merge( array(
+			'contract' => self::CONTRACT,
+			'remote_operation' => true,
+			'production_mutation' => false,
+		), $data ), $status );
+		return is_wp_error( $result ) ? $result : true;
+	}
+
+	public static function reconcile_managed_skills( $input ) {
+		if ( self::SKILLS_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_remote_skill_confirmation_required', 'Exact managed Skill reconciliation confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Seeder' ) || ! class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) || ! class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ) return new WP_Error( 'mad4b_remote_skill_services_unavailable', 'Managed Skill reconciliation services are unavailable.' );
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry' ) || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return new WP_Error( 'mad4b_remote_skill_editor_disabled', 'Managed Skill reconciliation requires the governed Skill editor to be enabled.' );
+		if ( ! self::enter( 'skills' ) ) return new WP_Error( 'mad4b_remote_skill_reentry_denied', 'Managed Skill reconciliation is already running in this request.' );
+
+		$identity = array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		);
+		$previous = self::skills_job_status();
+		$attempt = isset( $previous['attempt'] ) ? max( 0, (int) $previous['attempt'] ) + 1 : 1;
+		$state = array(
+			'contract' => 'mad4b.remote-managed-skills-reconciliation-state.v1',
+			'operation_id' => ! empty( $previous['operation_id'] ) && isset( $previous['expected_identity']['source_commit_sha'] ) && hash_equals( (string) $previous['expected_identity']['source_commit_sha'], $identity['source_commit_sha'] ) ? (string) $previous['operation_id'] : strtolower( wp_generate_uuid4() ),
+			'expected_identity' => $identity,
+			'attempt' => $attempt,
+			'status' => 'running',
+			'stage' => 'preflight',
+			'last_error_code' => '',
+			'updated_at' => gmdate( 'c' ),
+			'production_mutation' => false,
+		);
+		$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+		try {
+			$seed_before = MAD4B_SCP_Skill_Seeder::inspect();
+			$provider_before = MAD4B_SCP_Skill_Provider_Discovery::inspect();
+			if ( ! empty( $seed_before['conflicts'] ) || ! empty( $provider_before['conflicts'] ) ) {
+				$state['status'] = 'blocked';
+				$state['stage'] = 'preflight';
+				$state['last_error_code'] = 'mad4b_remote_skill_conflict';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return new WP_Error( 'mad4b_remote_skill_conflict', 'Managed Skill reconciliation is blocked by current conflicts.', array( 'seed_conflicts' => isset( $seed_before['conflicts'] ) ? $seed_before['conflicts'] : array(), 'provider_conflicts' => isset( $provider_before['conflicts'] ) ? $provider_before['conflicts'] : array(), 'checkpoint' => $state ) );
+			}
+
+			$state['stage'] = 'seed_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$seed = MAD4B_SCP_Skill_Seeder::bootstrap();
+			if ( is_wp_error( $seed ) || ! is_array( $seed ) || 'ready' !== ( isset( $seed['state'] ) ? (string) $seed['state'] : '' ) ) {
+				$error = is_wp_error( $seed ) ? $seed : new WP_Error( 'mad4b_remote_skill_seed_failed', 'Canonical Skill seed reconciliation did not reach ready state.', array( 'seed' => $seed ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return $error;
+			}
+			$state['stage'] = 'seed_ready';
+			$state['seed_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$state['stage'] = 'provider_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$providers = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
+			if ( is_wp_error( $providers ) || ! is_array( $providers ) || 'ready' !== ( isset( $providers['state'] ) ? (string) $providers['state'] : '' ) ) {
+				$error = is_wp_error( $providers ) ? $providers : new WP_Error( 'mad4b_remote_skill_provider_failed', 'Provider Skill reconciliation did not reach ready state.', array( 'providers' => $providers ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return $error;
+			}
+			$state['stage'] = 'provider_ready';
+			$state['provider_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$state['stage'] = 'runtime_certification';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$certification = MAD4B_SCP_Skill_Runtime_Certification::observe();
+			if ( ! is_array( $certification ) || empty( $certification['ready'] ) ) {
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = 'mad4b_remote_skill_certification_failed';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return new WP_Error( 'mad4b_remote_skill_certification_failed', 'Managed Skill reconciliation completed but runtime certification is not ready.', array( 'certification' => $certification, 'checkpoint' => $state ) );
+			}
+
+			$state['status'] = 'completed';
+			$state['stage'] = 'certified';
+			$state['certification_ready'] = true;
+			$state['last_error_code'] = '';
+			$state['updated_at'] = gmdate( 'c' );
+			$state['completed_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$audit = self::audit( self::SKILLS_ABILITY, array(
+				'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+				'operation_id' => (string) $state['operation_id'],
+				'attempt' => (int) $state['attempt'],
+				'seed_before' => $seed_before,
+				'provider_before' => $provider_before,
+				'certification_ready' => true,
+			) );
+			if ( is_wp_error( $audit ) ) return $audit;
+
+			return array(
+				'contract' => 'mad4b.remote-managed-skills-reconciliation.v2',
+				'state' => 'ready',
+				'ready' => true,
+				'checkpoint' => $state,
+				'seed' => $seed,
+				'providers' => $providers,
+				'certification' => $certification,
+				'remote_operation' => true,
+				'production_mutation' => false,
+			);
+		} finally {
+			self::leave( 'skills' );
+		}
+	}
+
+	public static function collect_frontend_samples( $input ) {
+		if ( self::FRONTEND_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_frontend_sample_confirmation_required', 'Exact Frontend sampling confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		$count = isset( $input['sample_count'] ) ? max( 1, min( 3, (int) $input['sample_count'] ) ) : 1;
+		$path = isset( $input['target_path'] ) ? trim( (string) $input['target_path'] ) : '/';
+		if ( '' === $path ) $path = '/';
+		if ( 1 !== preg_match( '#^/[A-Za-z0-9/_\.\-]*$#', $path ) || false !== strpos( $path, '..' ) ) return new WP_Error( 'mad4b_frontend_sample_path_invalid', 'Frontend sample target must be a bounded same-origin relative path.' );
+
+		$current = self::frontend_sample_request_status();
+		if ( ! empty( $current ) && 'pending_external_executor' === ( isset( $current['status'] ) ? (string) $current['status'] : '' ) && time() < (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
+			$same = hash_equals( (string) ( isset( $current['target_path'] ) ? $current['target_path'] : '' ), $path )
+				&& (int) ( isset( $current['requested_samples'] ) ? $current['requested_samples'] : 0 ) === $count
+				&& hash_equals( (string) ( isset( $current['expected_identity']['source_commit_sha'] ) ? $current['expected_identity']['source_commit_sha'] : '' ), strtolower( (string) $input['expected_source_commit_sha'] ) );
+			if ( $same ) return array( 'contract' => 'mad4b.remote-frontend-performance-sampling.v2', 'state' => 'already_queued', 'request' => $current, 'manual_interaction_required' => false, 'production_mutation' => false );
+			return new WP_Error( 'mad4b_frontend_sample_request_in_flight', 'A different current-build browser sampling request is already pending.' );
+		}
+
+		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
+		$baseline = isset( $performance['evaluation_window']['sample_count'] ) ? (int) $performance['evaluation_window']['sample_count'] : 0;
+		$request = array(
+			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
+			'request_id' => strtolower( wp_generate_uuid4() ),
+			'status' => 'pending_external_executor',
+			'execution_mode' => 'external_browser_agent',
+			'executor_contract' => 'mad4b.browser-acceptance-core.v1',
+			'target_path' => $path,
+			'target_url' => home_url( $path ),
+			'requested_samples' => $count,
+			'baseline_sample_count' => $baseline,
+			'expected_identity' => array(
+				'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+				'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+				'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+			),
+			'created_at' => gmdate( 'c' ),
+			'expires_at' => gmdate( 'c', time() + HOUR_IN_SECONDS ),
+			'expires_at_epoch' => time() + HOUR_IN_SECONDS,
+			'manual_interaction_required' => false,
+			'production_mutation' => false,
+		);
+		if ( ! self::persist_browser_request( $request ) ) return new WP_Error( 'mad4b_frontend_sample_request_persist_failed', 'Frontend browser sampling request could not be durably read back.' );
+		do_action( 'mad4b_scp_remote_browser_request_enqueued', $request );
+		$audit = self::audit( self::FRONTEND_SAMPLE_ABILITY, array(
+			'source_commit_sha' => (string) $request['expected_identity']['source_commit_sha'],
+			'request_id' => (string) $request['request_id'],
+			'target_path' => $path,
+			'requested_samples' => $count,
+			'execution_mode' => 'external_browser_agent',
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
+			'state' => 'queued',
+			'request' => $request,
+			'manual_interaction_required' => false,
+			'browser_runtime_evidence_required' => true,
+			'production_mutation' => false,
+		);
+	}
+
+	public static function apply_performance_indexes( $input ) {
+		if ( self::PERFORMANCE_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_performance_index_confirmation_required', 'Exact performance-index confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) || ! method_exists( 'MAD4B_SCP_Admin_Query_Performance', 'enqueue_explicit' ) ) return new WP_Error( 'mad4b_performance_index_service_unavailable', 'Queued performance-index maintenance service is unavailable.' );
+		$result = MAD4B_SCP_Admin_Query_Performance::enqueue_explicit( array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		) );
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::PERFORMANCE_INDEX_ABILITY, array(
+			'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+			'queue_state' => isset( $result['state'] ) ? (string) $result['state'] : '',
+			'job_id' => isset( $result['job']['job_id'] ) ? (string) $result['job']['job_id'] : '',
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-admin-query-performance-apply.v2',
+			'state' => isset( $result['state'] ) ? (string) $result['state'] : 'queued',
+			'job' => isset( $result['job'] ) ? $result['job'] : array(),
+			'synchronous_ddl' => false,
+			'remote_operation' => true,
+			'production_mutation' => false,
+		);
+	}
+
+}
+
+MAD4B_SCP_Remote_Operation_Parity::boot();
+ );
+		$properties['executor_id'] = array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[A-Za-z0-9._-]+
+		return array(
+			'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
+			'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+			'expected_package_manifest_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+		);
+	}
+
+	private static function assert_exact_build( $input ) {
+		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_remote_operation_input_invalid', 'Input must be an object.' );
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_remote_operation_provenance_unavailable', 'Build provenance authority is unavailable.' );
+		$p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( ! is_array( $p ) || empty( $p['manifest_present'] ) || empty( $p['manifest_valid'] ) || empty( $p['runtime_manifest_match'] ) || ! empty( $p['stale'] ) || ! empty( $p['provenance_mismatch'] ) ) return new WP_Error( 'mad4b_remote_operation_provenance_not_ready', 'Exact current build provenance is not ready.' );
+
+		$expected_sha = strtolower( trim( (string) ( isset( $input['expected_source_commit_sha'] ) ? $input['expected_source_commit_sha'] : '' ) ) );
+		$expected_build = strtolower( trim( (string) ( isset( $input['expected_build_fingerprint'] ) ? $input['expected_build_fingerprint'] : '' ) ) );
+		$expected_manifest = strtolower( trim( (string) ( isset( $input['expected_package_manifest_digest'] ) ? $input['expected_package_manifest_digest'] : '' ) ) );
+		$current_sha = strtolower( (string) ( isset( $p['source_commit_sha'] ) ? $p['source_commit_sha'] : '' ) );
+		$current_build = strtolower( (string) ( isset( $p['build_fingerprint'] ) ? $p['build_fingerprint'] : '' ) );
+		$current_manifest = strtolower( (string) ( isset( $p['package_manifest_digest'] ) ? $p['package_manifest_digest'] : '' ) );
+
+		if ( ! hash_equals( $current_sha, $expected_sha ) ) return new WP_Error( 'mad4b_remote_operation_candidate_mismatch', 'Source commit changed before remote operation execution.' );
+		if ( ! hash_equals( $current_build, $expected_build ) ) return new WP_Error( 'mad4b_remote_operation_build_mismatch', 'Build fingerprint changed before remote operation execution.' );
+		if ( ! hash_equals( $current_manifest, $expected_manifest ) ) return new WP_Error( 'mad4b_remote_operation_manifest_mismatch', 'Package manifest changed before remote operation execution.' );
+		return $p;
+	}
+
+	private static function enter( $operation ) {
+		if ( ! empty( self::$running[ $operation ] ) ) return false;
+		self::$running[ $operation ] = true;
+		return true;
+	}
+
+	private static function leave( $operation ) {
+		unset( self::$running[ $operation ] );
+	}
+
+	private static function audit( $event, array $data, $status = 'ok' ) {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return true;
+		$result = MAD4B_SCP_Audit::record( $event, array_merge( array(
+			'contract' => self::CONTRACT,
+			'remote_operation' => true,
+			'production_mutation' => false,
+		), $data ), $status );
+		return is_wp_error( $result ) ? $result : true;
+	}
+
+	public static function reconcile_managed_skills( $input ) {
+		if ( self::SKILLS_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_remote_skill_confirmation_required', 'Exact managed Skill reconciliation confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Seeder' ) || ! class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) || ! class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ) return new WP_Error( 'mad4b_remote_skill_services_unavailable', 'Managed Skill reconciliation services are unavailable.' );
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry' ) || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return new WP_Error( 'mad4b_remote_skill_editor_disabled', 'Managed Skill reconciliation requires the governed Skill editor to be enabled.' );
+		if ( ! self::enter( 'skills' ) ) return new WP_Error( 'mad4b_remote_skill_reentry_denied', 'Managed Skill reconciliation is already running in this request.' );
+
+		$identity = array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		);
+		$previous = self::skills_job_status();
+		$attempt = isset( $previous['attempt'] ) ? max( 0, (int) $previous['attempt'] ) + 1 : 1;
+		$state = array(
+			'contract' => 'mad4b.remote-managed-skills-reconciliation-state.v1',
+			'operation_id' => ! empty( $previous['operation_id'] ) && isset( $previous['expected_identity']['source_commit_sha'] ) && hash_equals( (string) $previous['expected_identity']['source_commit_sha'], $identity['source_commit_sha'] ) ? (string) $previous['operation_id'] : strtolower( wp_generate_uuid4() ),
+			'expected_identity' => $identity,
+			'attempt' => $attempt,
+			'status' => 'running',
+			'stage' => 'preflight',
+			'last_error_code' => '',
+			'updated_at' => gmdate( 'c' ),
+			'production_mutation' => false,
+		);
+		$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+		try {
+			$seed_before = MAD4B_SCP_Skill_Seeder::inspect();
+			$provider_before = MAD4B_SCP_Skill_Provider_Discovery::inspect();
+			if ( ! empty( $seed_before['conflicts'] ) || ! empty( $provider_before['conflicts'] ) ) {
+				$state['status'] = 'blocked';
+				$state['stage'] = 'preflight';
+				$state['last_error_code'] = 'mad4b_remote_skill_conflict';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return new WP_Error( 'mad4b_remote_skill_conflict', 'Managed Skill reconciliation is blocked by current conflicts.', array( 'seed_conflicts' => isset( $seed_before['conflicts'] ) ? $seed_before['conflicts'] : array(), 'provider_conflicts' => isset( $provider_before['conflicts'] ) ? $provider_before['conflicts'] : array(), 'checkpoint' => $state ) );
+			}
+
+			$state['stage'] = 'seed_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$seed = MAD4B_SCP_Skill_Seeder::bootstrap();
+			if ( is_wp_error( $seed ) || ! is_array( $seed ) || 'ready' !== ( isset( $seed['state'] ) ? (string) $seed['state'] : '' ) ) {
+				$error = is_wp_error( $seed ) ? $seed : new WP_Error( 'mad4b_remote_skill_seed_failed', 'Canonical Skill seed reconciliation did not reach ready state.', array( 'seed' => $seed ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return $error;
+			}
+			$state['stage'] = 'seed_ready';
+			$state['seed_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$state['stage'] = 'provider_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$providers = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
+			if ( is_wp_error( $providers ) || ! is_array( $providers ) || 'ready' !== ( isset( $providers['state'] ) ? (string) $providers['state'] : '' ) ) {
+				$error = is_wp_error( $providers ) ? $providers : new WP_Error( 'mad4b_remote_skill_provider_failed', 'Provider Skill reconciliation did not reach ready state.', array( 'providers' => $providers ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return $error;
+			}
+			$state['stage'] = 'provider_ready';
+			$state['provider_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$state['stage'] = 'runtime_certification';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$certification = MAD4B_SCP_Skill_Runtime_Certification::observe();
+			if ( ! is_array( $certification ) || empty( $certification['ready'] ) ) {
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = 'mad4b_remote_skill_certification_failed';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return new WP_Error( 'mad4b_remote_skill_certification_failed', 'Managed Skill reconciliation completed but runtime certification is not ready.', array( 'certification' => $certification, 'checkpoint' => $state ) );
+			}
+
+			$state['status'] = 'completed';
+			$state['stage'] = 'certified';
+			$state['certification_ready'] = true;
+			$state['last_error_code'] = '';
+			$state['updated_at'] = gmdate( 'c' );
+			$state['completed_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$audit = self::audit( self::SKILLS_ABILITY, array(
+				'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+				'operation_id' => (string) $state['operation_id'],
+				'attempt' => (int) $state['attempt'],
+				'seed_before' => $seed_before,
+				'provider_before' => $provider_before,
+				'certification_ready' => true,
+			) );
+			if ( is_wp_error( $audit ) ) return $audit;
+
+			return array(
+				'contract' => 'mad4b.remote-managed-skills-reconciliation.v2',
+				'state' => 'ready',
+				'ready' => true,
+				'checkpoint' => $state,
+				'seed' => $seed,
+				'providers' => $providers,
+				'certification' => $certification,
+				'remote_operation' => true,
+				'production_mutation' => false,
+			);
+		} finally {
+			self::leave( 'skills' );
+		}
+	}
+
+	public static function collect_frontend_samples( $input ) {
+		if ( self::FRONTEND_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_frontend_sample_confirmation_required', 'Exact Frontend sampling confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		$count = isset( $input['sample_count'] ) ? max( 1, min( 3, (int) $input['sample_count'] ) ) : 1;
+		$path = isset( $input['target_path'] ) ? trim( (string) $input['target_path'] ) : '/';
+		if ( '' === $path ) $path = '/';
+		if ( 1 !== preg_match( '#^/[A-Za-z0-9/_\.\-]*$#', $path ) || false !== strpos( $path, '..' ) ) return new WP_Error( 'mad4b_frontend_sample_path_invalid', 'Frontend sample target must be a bounded same-origin relative path.' );
+
+		$current = self::frontend_sample_request_status();
+		if ( ! empty( $current ) && 'pending_external_executor' === ( isset( $current['status'] ) ? (string) $current['status'] : '' ) && time() < (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
+			$same = hash_equals( (string) ( isset( $current['target_path'] ) ? $current['target_path'] : '' ), $path )
+				&& (int) ( isset( $current['requested_samples'] ) ? $current['requested_samples'] : 0 ) === $count
+				&& hash_equals( (string) ( isset( $current['expected_identity']['source_commit_sha'] ) ? $current['expected_identity']['source_commit_sha'] : '' ), strtolower( (string) $input['expected_source_commit_sha'] ) );
+			if ( $same ) return array( 'contract' => 'mad4b.remote-frontend-performance-sampling.v2', 'state' => 'already_queued', 'request' => $current, 'manual_interaction_required' => false, 'production_mutation' => false );
+			return new WP_Error( 'mad4b_frontend_sample_request_in_flight', 'A different current-build browser sampling request is already pending.' );
+		}
+
+		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
+		$baseline = isset( $performance['evaluation_window']['sample_count'] ) ? (int) $performance['evaluation_window']['sample_count'] : 0;
+		$request = array(
+			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
+			'request_id' => strtolower( wp_generate_uuid4() ),
+			'status' => 'pending_external_executor',
+			'execution_mode' => 'external_browser_agent',
+			'executor_contract' => 'mad4b.browser-acceptance-core.v1',
+			'target_path' => $path,
+			'target_url' => home_url( $path ),
+			'requested_samples' => $count,
+			'baseline_sample_count' => $baseline,
+			'expected_identity' => array(
+				'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+				'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+				'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+			),
+			'created_at' => gmdate( 'c' ),
+			'expires_at' => gmdate( 'c', time() + HOUR_IN_SECONDS ),
+			'expires_at_epoch' => time() + HOUR_IN_SECONDS,
+			'manual_interaction_required' => false,
+			'production_mutation' => false,
+		);
+		if ( ! self::persist_browser_request( $request ) ) return new WP_Error( 'mad4b_frontend_sample_request_persist_failed', 'Frontend browser sampling request could not be durably read back.' );
+		do_action( 'mad4b_scp_remote_browser_request_enqueued', $request );
+		$audit = self::audit( self::FRONTEND_SAMPLE_ABILITY, array(
+			'source_commit_sha' => (string) $request['expected_identity']['source_commit_sha'],
+			'request_id' => (string) $request['request_id'],
+			'target_path' => $path,
+			'requested_samples' => $count,
+			'execution_mode' => 'external_browser_agent',
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
+			'state' => 'queued',
+			'request' => $request,
+			'manual_interaction_required' => false,
+			'browser_runtime_evidence_required' => true,
+			'production_mutation' => false,
+		);
+	}
+
+	public static function apply_performance_indexes( $input ) {
+		if ( self::PERFORMANCE_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_performance_index_confirmation_required', 'Exact performance-index confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) || ! method_exists( 'MAD4B_SCP_Admin_Query_Performance', 'enqueue_explicit' ) ) return new WP_Error( 'mad4b_performance_index_service_unavailable', 'Queued performance-index maintenance service is unavailable.' );
+		$result = MAD4B_SCP_Admin_Query_Performance::enqueue_explicit( array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		) );
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::PERFORMANCE_INDEX_ABILITY, array(
+			'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+			'queue_state' => isset( $result['state'] ) ? (string) $result['state'] : '',
+			'job_id' => isset( $result['job']['job_id'] ) ? (string) $result['job']['job_id'] : '',
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-admin-query-performance-apply.v2',
+			'state' => isset( $result['state'] ) ? (string) $result['state'] : 'queued',
+			'job' => isset( $result['job'] ) ? $result['job'] : array(),
+			'synchronous_ddl' => false,
+			'remote_operation' => true,
+			'production_mutation' => false,
+		);
+	}
+
+}
+
+MAD4B_SCP_Remote_Operation_Parity::boot();
+ );
+		$properties['lease_token'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}
+		return array(
+			'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
+			'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+			'expected_package_manifest_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+		);
+	}
+
+	private static function assert_exact_build( $input ) {
+		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_remote_operation_input_invalid', 'Input must be an object.' );
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_remote_operation_provenance_unavailable', 'Build provenance authority is unavailable.' );
+		$p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( ! is_array( $p ) || empty( $p['manifest_present'] ) || empty( $p['manifest_valid'] ) || empty( $p['runtime_manifest_match'] ) || ! empty( $p['stale'] ) || ! empty( $p['provenance_mismatch'] ) ) return new WP_Error( 'mad4b_remote_operation_provenance_not_ready', 'Exact current build provenance is not ready.' );
+
+		$expected_sha = strtolower( trim( (string) ( isset( $input['expected_source_commit_sha'] ) ? $input['expected_source_commit_sha'] : '' ) ) );
+		$expected_build = strtolower( trim( (string) ( isset( $input['expected_build_fingerprint'] ) ? $input['expected_build_fingerprint'] : '' ) ) );
+		$expected_manifest = strtolower( trim( (string) ( isset( $input['expected_package_manifest_digest'] ) ? $input['expected_package_manifest_digest'] : '' ) ) );
+		$current_sha = strtolower( (string) ( isset( $p['source_commit_sha'] ) ? $p['source_commit_sha'] : '' ) );
+		$current_build = strtolower( (string) ( isset( $p['build_fingerprint'] ) ? $p['build_fingerprint'] : '' ) );
+		$current_manifest = strtolower( (string) ( isset( $p['package_manifest_digest'] ) ? $p['package_manifest_digest'] : '' ) );
+
+		if ( ! hash_equals( $current_sha, $expected_sha ) ) return new WP_Error( 'mad4b_remote_operation_candidate_mismatch', 'Source commit changed before remote operation execution.' );
+		if ( ! hash_equals( $current_build, $expected_build ) ) return new WP_Error( 'mad4b_remote_operation_build_mismatch', 'Build fingerprint changed before remote operation execution.' );
+		if ( ! hash_equals( $current_manifest, $expected_manifest ) ) return new WP_Error( 'mad4b_remote_operation_manifest_mismatch', 'Package manifest changed before remote operation execution.' );
+		return $p;
+	}
+
+	private static function enter( $operation ) {
+		if ( ! empty( self::$running[ $operation ] ) ) return false;
+		self::$running[ $operation ] = true;
+		return true;
+	}
+
+	private static function leave( $operation ) {
+		unset( self::$running[ $operation ] );
+	}
+
+	private static function audit( $event, array $data, $status = 'ok' ) {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return true;
+		$result = MAD4B_SCP_Audit::record( $event, array_merge( array(
+			'contract' => self::CONTRACT,
+			'remote_operation' => true,
+			'production_mutation' => false,
+		), $data ), $status );
+		return is_wp_error( $result ) ? $result : true;
+	}
+
+	public static function reconcile_managed_skills( $input ) {
+		if ( self::SKILLS_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_remote_skill_confirmation_required', 'Exact managed Skill reconciliation confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Seeder' ) || ! class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) || ! class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ) return new WP_Error( 'mad4b_remote_skill_services_unavailable', 'Managed Skill reconciliation services are unavailable.' );
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry' ) || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return new WP_Error( 'mad4b_remote_skill_editor_disabled', 'Managed Skill reconciliation requires the governed Skill editor to be enabled.' );
+		if ( ! self::enter( 'skills' ) ) return new WP_Error( 'mad4b_remote_skill_reentry_denied', 'Managed Skill reconciliation is already running in this request.' );
+
+		$identity = array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		);
+		$previous = self::skills_job_status();
+		$attempt = isset( $previous['attempt'] ) ? max( 0, (int) $previous['attempt'] ) + 1 : 1;
+		$state = array(
+			'contract' => 'mad4b.remote-managed-skills-reconciliation-state.v1',
+			'operation_id' => ! empty( $previous['operation_id'] ) && isset( $previous['expected_identity']['source_commit_sha'] ) && hash_equals( (string) $previous['expected_identity']['source_commit_sha'], $identity['source_commit_sha'] ) ? (string) $previous['operation_id'] : strtolower( wp_generate_uuid4() ),
+			'expected_identity' => $identity,
+			'attempt' => $attempt,
+			'status' => 'running',
+			'stage' => 'preflight',
+			'last_error_code' => '',
+			'updated_at' => gmdate( 'c' ),
+			'production_mutation' => false,
+		);
+		$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+		try {
+			$seed_before = MAD4B_SCP_Skill_Seeder::inspect();
+			$provider_before = MAD4B_SCP_Skill_Provider_Discovery::inspect();
+			if ( ! empty( $seed_before['conflicts'] ) || ! empty( $provider_before['conflicts'] ) ) {
+				$state['status'] = 'blocked';
+				$state['stage'] = 'preflight';
+				$state['last_error_code'] = 'mad4b_remote_skill_conflict';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return new WP_Error( 'mad4b_remote_skill_conflict', 'Managed Skill reconciliation is blocked by current conflicts.', array( 'seed_conflicts' => isset( $seed_before['conflicts'] ) ? $seed_before['conflicts'] : array(), 'provider_conflicts' => isset( $provider_before['conflicts'] ) ? $provider_before['conflicts'] : array(), 'checkpoint' => $state ) );
+			}
+
+			$state['stage'] = 'seed_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$seed = MAD4B_SCP_Skill_Seeder::bootstrap();
+			if ( is_wp_error( $seed ) || ! is_array( $seed ) || 'ready' !== ( isset( $seed['state'] ) ? (string) $seed['state'] : '' ) ) {
+				$error = is_wp_error( $seed ) ? $seed : new WP_Error( 'mad4b_remote_skill_seed_failed', 'Canonical Skill seed reconciliation did not reach ready state.', array( 'seed' => $seed ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return $error;
+			}
+			$state['stage'] = 'seed_ready';
+			$state['seed_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$state['stage'] = 'provider_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$providers = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
+			if ( is_wp_error( $providers ) || ! is_array( $providers ) || 'ready' !== ( isset( $providers['state'] ) ? (string) $providers['state'] : '' ) ) {
+				$error = is_wp_error( $providers ) ? $providers : new WP_Error( 'mad4b_remote_skill_provider_failed', 'Provider Skill reconciliation did not reach ready state.', array( 'providers' => $providers ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return $error;
+			}
+			$state['stage'] = 'provider_ready';
+			$state['provider_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$state['stage'] = 'runtime_certification';
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+			$certification = MAD4B_SCP_Skill_Runtime_Certification::observe();
+			if ( ! is_array( $certification ) || empty( $certification['ready'] ) ) {
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = 'mad4b_remote_skill_certification_failed';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+				return new WP_Error( 'mad4b_remote_skill_certification_failed', 'Managed Skill reconciliation completed but runtime certification is not ready.', array( 'certification' => $certification, 'checkpoint' => $state ) );
+			}
+
+			$state['status'] = 'completed';
+			$state['stage'] = 'certified';
+			$state['certification_ready'] = true;
+			$state['last_error_code'] = '';
+			$state['updated_at'] = gmdate( 'c' );
+			$state['completed_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+		if ( is_wp_error( $persisted ) ) return $persisted;
+
+			$audit = self::audit( self::SKILLS_ABILITY, array(
+				'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+				'operation_id' => (string) $state['operation_id'],
+				'attempt' => (int) $state['attempt'],
+				'seed_before' => $seed_before,
+				'provider_before' => $provider_before,
+				'certification_ready' => true,
+			) );
+			if ( is_wp_error( $audit ) ) return $audit;
+
+			return array(
+				'contract' => 'mad4b.remote-managed-skills-reconciliation.v2',
+				'state' => 'ready',
+				'ready' => true,
+				'checkpoint' => $state,
+				'seed' => $seed,
+				'providers' => $providers,
+				'certification' => $certification,
+				'remote_operation' => true,
+				'production_mutation' => false,
+			);
+		} finally {
+			self::leave( 'skills' );
+		}
+	}
+
+	public static function collect_frontend_samples( $input ) {
+		if ( self::FRONTEND_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_frontend_sample_confirmation_required', 'Exact Frontend sampling confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		$count = isset( $input['sample_count'] ) ? max( 1, min( 3, (int) $input['sample_count'] ) ) : 1;
+		$path = isset( $input['target_path'] ) ? trim( (string) $input['target_path'] ) : '/';
+		if ( '' === $path ) $path = '/';
+		if ( 1 !== preg_match( '#^/[A-Za-z0-9/_\.\-]*$#', $path ) || false !== strpos( $path, '..' ) ) return new WP_Error( 'mad4b_frontend_sample_path_invalid', 'Frontend sample target must be a bounded same-origin relative path.' );
+
+		$current = self::frontend_sample_request_status();
+		if ( ! empty( $current ) && 'pending_external_executor' === ( isset( $current['status'] ) ? (string) $current['status'] : '' ) && time() < (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
+			$same = hash_equals( (string) ( isset( $current['target_path'] ) ? $current['target_path'] : '' ), $path )
+				&& (int) ( isset( $current['requested_samples'] ) ? $current['requested_samples'] : 0 ) === $count
+				&& hash_equals( (string) ( isset( $current['expected_identity']['source_commit_sha'] ) ? $current['expected_identity']['source_commit_sha'] : '' ), strtolower( (string) $input['expected_source_commit_sha'] ) );
+			if ( $same ) return array( 'contract' => 'mad4b.remote-frontend-performance-sampling.v2', 'state' => 'already_queued', 'request' => $current, 'manual_interaction_required' => false, 'production_mutation' => false );
+			return new WP_Error( 'mad4b_frontend_sample_request_in_flight', 'A different current-build browser sampling request is already pending.' );
+		}
+
+		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
+		$baseline = isset( $performance['evaluation_window']['sample_count'] ) ? (int) $performance['evaluation_window']['sample_count'] : 0;
+		$request = array(
+			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
+			'request_id' => strtolower( wp_generate_uuid4() ),
+			'status' => 'pending_external_executor',
+			'execution_mode' => 'external_browser_agent',
+			'executor_contract' => 'mad4b.browser-acceptance-core.v1',
+			'target_path' => $path,
+			'target_url' => home_url( $path ),
+			'requested_samples' => $count,
+			'baseline_sample_count' => $baseline,
+			'expected_identity' => array(
+				'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+				'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+				'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+			),
+			'created_at' => gmdate( 'c' ),
+			'expires_at' => gmdate( 'c', time() + HOUR_IN_SECONDS ),
+			'expires_at_epoch' => time() + HOUR_IN_SECONDS,
+			'manual_interaction_required' => false,
+			'production_mutation' => false,
+		);
+		if ( ! self::persist_browser_request( $request ) ) return new WP_Error( 'mad4b_frontend_sample_request_persist_failed', 'Frontend browser sampling request could not be durably read back.' );
+		do_action( 'mad4b_scp_remote_browser_request_enqueued', $request );
+		$audit = self::audit( self::FRONTEND_SAMPLE_ABILITY, array(
+			'source_commit_sha' => (string) $request['expected_identity']['source_commit_sha'],
+			'request_id' => (string) $request['request_id'],
+			'target_path' => $path,
+			'requested_samples' => $count,
+			'execution_mode' => 'external_browser_agent',
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
+			'state' => 'queued',
+			'request' => $request,
+			'manual_interaction_required' => false,
+			'browser_runtime_evidence_required' => true,
+			'production_mutation' => false,
+		);
+	}
+
+	public static function apply_performance_indexes( $input ) {
+		if ( self::PERFORMANCE_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_performance_index_confirmation_required', 'Exact performance-index confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) || ! method_exists( 'MAD4B_SCP_Admin_Query_Performance', 'enqueue_explicit' ) ) return new WP_Error( 'mad4b_performance_index_service_unavailable', 'Queued performance-index maintenance service is unavailable.' );
+		$result = MAD4B_SCP_Admin_Query_Performance::enqueue_explicit( array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		) );
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::PERFORMANCE_INDEX_ABILITY, array(
+			'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+			'queue_state' => isset( $result['state'] ) ? (string) $result['state'] : '',
+			'job_id' => isset( $result['job']['job_id'] ) ? (string) $result['job']['job_id'] : '',
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-admin-query-performance-apply.v2',
+			'state' => isset( $result['state'] ) ? (string) $result['state'] : 'queued',
+			'job' => isset( $result['job'] ) ? $result['job'] : array(),
+			'synchronous_ddl' => false,
+			'remote_operation' => true,
+			'production_mutation' => false,
+		);
+	}
+
+}
+
+MAD4B_SCP_Remote_Operation_Parity::boot();
+ );
+		return array(
+			'type' => 'object',
+			'properties' => $properties,
+			'required' => array( 'expected_source_commit_sha', 'expected_build_fingerprint', 'expected_package_manifest_digest', 'job_id', 'executor_id', 'lease_token' ),
 			'additionalProperties' => false,
 		);
 	}
