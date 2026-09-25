@@ -36,6 +36,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
 				'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve',
 				'mad4b/data-processing-evaluate',
+				'mad4b/research-provider-plan',
 				'mad4b/decommission-preflight',
 				'mad4b/export-bundle-build', 'mad4b/import-bundle-validate',
 				'mad4b/scheduler-admission-evaluate',
