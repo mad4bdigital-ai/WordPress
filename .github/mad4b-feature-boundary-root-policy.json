@@ -12,14 +12,22 @@
   ],
   "repository_owned_exact_paths": [
     ".github/mad4b-feature-boundary-root-policy.json",
+    ".github/mad4b-master-ruleset-template.json",
     ".github/mad4b-repository-governance-policy.json",
     ".github/workflows/mad4b-feature-boundary-root.yml",
     ".github/workflows/mad4b-repository-governance.yml",
     ".github/workflows/mad4b-release-verdict.yml",
     ".github/workflows/mad4b-owner-attestation-rerun.yml",
+    "tools/Apply-Mad4bMasterRuleset.ps1",
+    "tools/build_repository_ruleset_attestation.py",
+    "tools/publish_repository_ruleset_attestation.py",
     "tools/verify_feature_boundary.py",
     "tools/verify_repository_governance.py",
-    "tools/verify_repository_owner_attestation.py"
+    "tools/verify_repository_owner_attestation.py",
+    "tools/verify_repository_ruleset_restore.py",
+    "tools/verify_repository_ruleset_template.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-retirement-contract.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py"
   ],
   "features": {
     "007": {
@@ -57,5 +65,16 @@
         "specs/006-agent-governed-reversible-control-plane/data-model.md"
       ]
     }
+  },
+  "governance_branch_prefixes": [
+    "chore/governance-",
+    "gov/"
+  ],
+  "single_owner_safety": {
+    "authorized_owner_logins": [
+      "mad4bdigital-ai"
+    ],
+    "attestation_command": "OWNER_ATTEST_SINGLE_OWNER",
+    "owner_attestation_remains_exact_sha_scoped": true
   }
 }
