@@ -395,6 +395,31 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
       ],
       "reason": "Deterministic weighted-aging queue ranking and anti-starvation semantics are implemented without authority/quota bypass; durable multi-worker fair scheduling and load proof remain open."
+    },
+    "T3403": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workflow-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/workflow-provider-plan-fingerprint-contract.php"
+      ],
+      "reason": "Workflow provider plans now bind CapabilityProfile and certification fingerprints into plan_sha256/execution_binding; remaining non-workflow provider plan families and live exact-candidate proof remain open."
+    },
+    "T0606": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-pack.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php"
+      ],
+      "reason": "WriterProfile identity/version is now sourced from ContentJob and bound immutably through ContextPack, Draft and QA fingerprints; live WriterProfile asset resolution remains open."
+    },
+    "T0806": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php"
+      ],
+      "reason": "ArticleDraft now carries immutable ContentJob WriterProfile id/version/fingerprint and QA fails closed on drift; live writer/provider execution remains open."
     }
   }
 }
