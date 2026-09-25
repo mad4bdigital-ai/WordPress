@@ -139,6 +139,17 @@ with tempfile.TemporaryDirectory() as td:
         if "different authority_ref" not in str(exc):
             raise
 
+    # Operations reject undeclared fields instead of silently ignoring caller input.
+    status_extra = make_job(profile, "runtime.status.read", {"unexpected": True})
+    status_extra_path = tmp / "status-with-extra-input.json"
+    status_extra_path.write_text(json.dumps(status_extra), encoding="utf-8")
+    try:
+        runner.run_job(profile_path, status_extra_path)
+        raise SystemExit("runtime.status.read accepted undeclared input")
+    except ValueError as exc:
+        if "takes no input fields" not in str(exc):
+            raise
+
     # Fixed-zone file hash succeeds and returns a normalized relative path.
     hash_job = make_job(profile, "filesystem.hash.read", {
         "zone": "plugin_root",
