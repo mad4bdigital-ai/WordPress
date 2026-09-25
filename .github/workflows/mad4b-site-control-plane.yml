@@ -390,13 +390,9 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           developer="$root/includes/class-mad4b-scp-developer-runtime.php"
 
-          # Runtime planes remain command-execution free. Test fixtures are
-          # intentionally excluded because they contain forbidden primitive
-          # strings as negative assertions and must never be mistaken for runtime.
-          {
-            find "$root/includes" -type f -name '*.php' ! -path "$developer" -print0
-            printf '%s\0' "$root/mad4b-site-control-plane.php"
-          } | if xargs -0 grep -nEH '\b(eval|assert|exec|shell_exec|system|passthru|popen|proc_open)\s*\('; then
+          # The default/control/content/admin planes remain command-execution free.
+          if find "$root" -type f -name '*.php' ! -path "$developer" -print0 \
+            | xargs -0 grep -nEH '\b(eval|assert|exec|shell_exec|system|passthru|popen|proc_open)\s*\('; then
             echo 'Forbidden arbitrary execution primitive detected outside the isolated Developer Plane.' >&2
             exit 1
           fi
