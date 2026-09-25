@@ -1,0 +1,130 @@
+name: MAD4B Feature Boundary
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-feature-boundary-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  feature-boundary:
+    name: Repository-owned feature boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify repository-owned feature boundary
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          HEAD_BRANCH: ${{ github.head_ref || '' }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "push" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            test -f tools/verify_feature_boundary.py
+            test -f .github/mad4b-feature-boundary-grants.json
+            python3 -m py_compile tools/verify_feature_boundary.py
+            python3 tools/verify_feature_boundary.py --self-test
+            python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('.github/mad4b-feature-boundary-grants.json').read_text(encoding='utf-8'))
+          if data.get('contract')!='mad4b.feature-boundary-grants.v1':
+              raise SystemExit('feature-boundary grant catalog contract mismatch on trusted branch')
+          print('repository-owned feature boundary trusted-branch self-test: PASS')
+          PY
+            exit 0
+          fi
+
+          test -n "$BASE_SHA"
+          test -n "$HEAD_SHA"
+
+          if ! git cat-file -e "$BASE_SHA:tools/verify_feature_boundary.py" 2>/dev/null; then
+            python3 - "$BASE_SHA" "$HEAD_SHA" "$HEAD_BRANCH" <<'PY'
+          import json
+          import subprocess
+          import sys
+
+          base, head, branch = sys.argv[1:4]
+          changed=subprocess.check_output(['git','diff','--name-only',f'{base}...{head}'],text=True).splitlines()
+          allowed={
+              '.github/mad4b-feature-boundary-grants.json',
+              '.github/workflows/mad4b-feature-boundary.yml',
+              '.github/workflows/mad4b-release-verdict.yml',
+              '.github/workflows/mad4b-repository-governance.yml',
+              'tools/verify_feature_boundary.py',
+          }
+          if branch != 'governance/feature-boundary-root-of-trust-20260926':
+              raise SystemExit('FEATURE_BOUNDARY_BASELINE_ROOT_MISSING')
+          if not changed or not set(changed).issubset(allowed):
+              raise SystemExit('FEATURE_BOUNDARY_BOOTSTRAP_SCOPE_WIDENED:' + ','.join(sorted(set(changed)-allowed)))
+          print('feature-boundary initial bootstrap scope: PASS')
+          PY
+            python3 -m py_compile tools/verify_feature_boundary.py
+            python3 tools/verify_feature_boundary.py --self-test
+            exit 0
+          fi
+
+          git show "$BASE_SHA:tools/verify_feature_boundary.py" > /tmp/verify_feature_boundary.py
+          git show "$BASE_SHA:.github/mad4b-feature-boundary-grants.json" > /tmp/mad4b-feature-boundary-grants.json
+
+          FEATURE_ID="$(python3 - "$BASE_SHA" "$HEAD_SHA" "$HEAD_BRANCH" <<'PY'
+          import json
+          import re
+          import subprocess
+          import sys
+
+          base, head, branch = sys.argv[1:4]
+          grants=json.loads(subprocess.check_output(['git','show',f'{base}:.github/mad4b-feature-boundary-grants.json'],text=True))
+          governed=set((grants.get('features') or {}).keys())
+          changed=subprocess.check_output(['git','diff','--name-only',f'{base}...{head}'],text=True).splitlines()
+
+          candidates=set()
+          match=re.match(r'^(?:feat|fix|spec)/([0-9]{3})-', branch)
+          if match and match.group(1) in governed:
+              candidates.add(match.group(1))
+          for path in changed:
+              m=re.match(r'^specs/([0-9]{3})-[^/]+/', path)
+              if m and m.group(1) in governed:
+                  candidates.add(m.group(1))
+
+          if not candidates:
+              print('')
+          elif len(candidates)==1:
+              print(next(iter(candidates)))
+          else:
+              raise SystemExit('MULTIPLE_GOVERNED_FEATURES_CHANGED:' + ','.join(sorted(candidates)))
+          PY
+          )"
+
+          if [ -z "$FEATURE_ID" ]; then
+            echo "MAD4B_FEATURE_BOUNDARY_NOT_APPLICABLE"
+            exit 0
+          fi
+
+          python3 /tmp/verify_feature_boundary.py             --base "$BASE_SHA"             --head "$HEAD_SHA"             --head-branch "$HEAD_BRANCH"             --output /tmp/MAD4B-FEATURE-BOUNDARY.json
+
+      - name: Upload boundary evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-feature-boundary-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/MAD4B-FEATURE-BOUNDARY.json
+          if-no-files-found: ignore
+          retention-days: 14
