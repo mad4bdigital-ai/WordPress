@@ -34,7 +34,10 @@ final class MAD4B_SCP_Artifacts {
 	}
 
 	public static function relations() {
-		return array( 'derived_from', 'uses', 'qa_of', 'publication_of', 'supersedes' );
+		return array(
+			'derived_from', 'selected_from', 'uses', 'qa_of', 'verifies',
+			'publication_of', 'summarizes', 'cites', 'invalidates', 'replaces', 'supersedes',
+		);
 	}
 
 	public static function register_abilities() {
