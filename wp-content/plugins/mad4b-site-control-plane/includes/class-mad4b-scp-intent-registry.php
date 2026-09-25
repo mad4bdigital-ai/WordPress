@@ -3,15 +3,16 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Job-scoped, versioned Intent Registry over the immutable Artifact Registry.
+ * Site-global, versioned Intent Registry.
  *
- * The registry deliberately models many-to-many ownership and treats
- * cannibalization as derived evidence, never as a consequence of overlap alone.
+ * The v11 intent_relations table is the authoritative registry. Artifact
+ * snapshots may reference this state later, but they never replace authority.
+ * Intent ownership is many-to-many and cannibalization is derived evidence.
  */
 final class MAD4B_SCP_Intent_Registry {
 	const CONTRACT = 'mad4b.intent-ownership.v1';
-	const SNAPSHOT_CONTRACT = 'mad4b.intent-registry-snapshot.v1';
-	const MAX_RELATIONS = 500;
+	const REGISTRY_CONTRACT = 'mad4b.intent-registry.v1';
+	const MAX_RELATIONS_PER_SCOPE = 500;
 	const MAX_EVIDENCE_REFS = 32;
 
 	private static $booted = false;
@@ -41,9 +42,9 @@ final class MAD4B_SCP_Intent_Registry {
 
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
-		self::register( 'mad4b/intent-registry-current', 'Get Intent Registry Snapshot', 'current', true );
+		self::register( 'mad4b/intent-registry-current', 'Get Intent Registry State', 'current', true );
 		self::register( 'mad4b/intent-conflicts-analyze', 'Analyze Intent Ownership Conflicts', 'analyze', true );
-		self::register( 'mad4b/intent-registry-reconcile', 'Reconcile Intent Registry Snapshot', 'reconcile', false );
+		self::register( 'mad4b/intent-registry-reconcile', 'Reconcile Intent Registry Scope', 'reconcile', false );
 	}
 
 	private static function register( $name, $label, $method, $readonly ) {
@@ -72,22 +73,61 @@ final class MAD4B_SCP_Intent_Registry {
 		);
 	}
 
+	private static function schema_ready() {
+		return class_exists( 'MAD4B_SCP_Schema' )
+			&& MAD4B_SCP_Schema::VERSION >= 11
+			&& MAD4B_SCP_Schema::critical_ready();
+	}
+
+	private static function site_uuid() {
+		$uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) ) : '';
+		return 1 === preg_match( '/^[a-f0-9-]{36}$/', $uuid ) ? $uuid : '';
+	}
+
 	public static function current( $input ) {
-		$job_id = self::uuid( $input['job_id'] ?? '' );
-		if ( '' === $job_id ) return new WP_Error( 'mad4b_intent_job_invalid', 'ContentJob ID is invalid.' );
-		$current = self::current_snapshot( $job_id );
-		if ( is_wp_error( $current ) ) return $current;
+		global $wpdb;
+		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_intent_schema_unavailable', 'Intent Registry schema is not ready.' );
+		$site_uuid = self::site_uuid();
+		if ( '' === $site_uuid ) return new WP_Error( 'mad4b_intent_site_identity_unavailable', 'Site Profile identity is unavailable.' );
+
+		$intent_id = self::bounded_key( $input['intent_id'] ?? '', 191 );
+		$locale = self::bounded_key( $input['locale'] ?? '', 32 );
+		$market = self::bounded_key( $input['market'] ?? '', 64 );
+		$content_id = self::bounded_key( $input['content_id'] ?? '', 191 );
+		$limit = isset( $input['limit'] ) ? max( 1, min( 1000, absint( $input['limit'] ) ) ) : 200;
+		$t = MAD4B_SCP_Schema::tables();
+
+		$where = array( 'site_uuid=%s', 'valid_to IS NULL' );
+		$args = array( $site_uuid );
+		if ( '' !== $intent_id ) { $where[] = 'intent_id=%s'; $args[] = $intent_id; }
+		if ( '' !== $locale ) { $where[] = 'locale=%s'; $args[] = $locale; }
+		if ( '' !== $market ) { $where[] = 'market=%s'; $args[] = $market; }
+		if ( '' !== $content_id ) { $where[] = 'content_id=%s'; $args[] = $content_id; }
+		$args[] = $limit;
+
+		$sql = "SELECT * FROM {$t['intent_relations']} WHERE " . implode( ' AND ', $where )
+			. ' ORDER BY intent_id ASC,locale ASC,market ASC,content_id ASC,revision ASC,id ASC LIMIT %d';
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A );
+		$relations = array_map( array( __CLASS__, 'normalize_db_row' ), is_array( $rows ) ? $rows : array() );
+		$scope_sha = self::scope_sha256( $relations );
+
 		return array(
-			'contract' => self::SNAPSHOT_CONTRACT,
-			'job_id' => $job_id,
-			'registry' => $current,
+			'contract' => self::REGISTRY_CONTRACT,
+			'site_uuid' => $site_uuid,
+			'relations' => $relations,
+			'relation_count' => count( $relations ),
+			'scope_sha256' => $scope_sha,
+			'complete_for_query' => count( $relations ) < $limit,
+			'many_to_many' => true,
+			'cannibalization_is_derived' => true,
+			'overlap_alone_is_conflict' => false,
 			'mutation_performed' => false,
 		);
 	}
 
 	public static function analyze( $input ) {
 		$relations = isset( $input['relations'] ) && is_array( $input['relations'] ) ? $input['relations'] : array();
-		$normalized = self::normalize_relations( $relations, array() );
+		$normalized = self::normalize_analysis_relations( $relations );
 		if ( is_wp_error( $normalized ) ) return $normalized;
 		return array(
 			'contract' => 'mad4b.intent-conflict-analysis.v1',
@@ -99,140 +139,279 @@ final class MAD4B_SCP_Intent_Registry {
 		);
 	}
 
+	/**
+	 * Reconcile one complete intent+locale+market scope.
+	 *
+	 * Caller supplies the exact current scope hash (or ABSENT). The relation
+	 * set is the desired active state for that scope. Historical rows are kept.
+	 */
 	public static function reconcile( $input ) {
-		if ( ! class_exists( 'MAD4B_SCP_Artifacts' ) ) {
-			return new WP_Error( 'mad4b_intent_artifact_registry_unavailable', 'Artifact Registry is unavailable.' );
-		}
-		$job_id = self::uuid( $input['job_id'] ?? '' );
-		if ( '' === $job_id ) return new WP_Error( 'mad4b_intent_job_invalid', 'ContentJob ID is invalid.' );
-		$relations = isset( $input['relations'] ) && is_array( $input['relations'] ) ? $input['relations'] : null;
-		if ( null === $relations ) return new WP_Error( 'mad4b_intent_relations_required', 'Intent relations snapshot is required.' );
+		global $wpdb;
+		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_intent_schema_unavailable', 'Intent Registry schema is not ready.' );
+		$site_uuid = self::site_uuid();
+		if ( '' === $site_uuid ) return new WP_Error( 'mad4b_intent_site_identity_unavailable', 'Site Profile identity is unavailable.' );
 
-		$current = self::current_snapshot( $job_id );
-		if ( is_wp_error( $current ) ) return $current;
-		$expected_id = strtolower( trim( (string) ( $input['expected_registry_artifact_id'] ?? '' ) ) );
-		$expected_sha = strtolower( trim( (string) ( $input['expected_registry_sha256'] ?? '' ) ) );
-		$current_id = is_array( $current ) ? (string) ( $current['artifact_id'] ?? '' ) : '';
-		$current_sha = is_array( $current ) ? (string) ( $current['content_sha256'] ?? '' ) : '';
-		if ( '' !== $current_id ) {
-			if ( ! hash_equals( $current_id, $expected_id ) || ! hash_equals( $current_sha, $expected_sha ) ) {
-				return new WP_Error( 'mad4b_intent_registry_stale', 'Intent Registry changed since the requested reconcile plan.' );
+		$intent_id = self::bounded_key( $input['intent_id'] ?? '', 191 );
+		$locale = self::bounded_key( $input['locale'] ?? '', 32 );
+		$market = self::bounded_key( $input['market'] ?? '', 64 );
+		$expected_scope_sha = strtolower( trim( (string) ( $input['expected_scope_sha256'] ?? '' ) ) );
+		$desired_raw = isset( $input['relations'] ) && is_array( $input['relations'] ) ? $input['relations'] : null;
+		$reason = trim( sanitize_text_field( (string) ( $input['reason'] ?? '' ) ) );
+		if ( '' === $intent_id || '' === $locale || '' === $market ) return new WP_Error( 'mad4b_intent_scope_invalid', 'Intent/locale/market scope is incomplete.' );
+		if ( null === $desired_raw ) return new WP_Error( 'mad4b_intent_relations_required', 'Complete desired relation set is required.' );
+		if ( count( $desired_raw ) > self::MAX_RELATIONS_PER_SCOPE ) return new WP_Error( 'mad4b_intent_relation_limit', 'Intent scope exceeds bounded relation limit.' );
+		if ( 'ABSENT' !== $expected_scope_sha && 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_scope_sha ) ) {
+			return new WP_Error( 'mad4b_intent_scope_sha_invalid', 'Expected intent scope SHA is invalid.' );
+		}
+		if ( strlen( $reason ) < 3 || strlen( $reason ) > 500 ) return new WP_Error( 'mad4b_intent_reason_required', 'Reconcile reason is required.' );
+
+		$desired = self::normalize_desired_scope( $desired_raw, $intent_id, $locale, $market );
+		if ( is_wp_error( $desired ) ) return $desired;
+		$t = MAD4B_SCP_Schema::tables();
+		$now = gmdate( 'Y-m-d H:i:s' );
+
+		$wpdb->query( 'START TRANSACTION' );
+		try {
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT * FROM {$t['intent_relations']} WHERE site_uuid=%s AND locale=%s AND market=%s AND intent_id=%s AND valid_to IS NULL ORDER BY content_id ASC,revision ASC,id ASC FOR UPDATE",
+					$site_uuid,
+					$locale,
+					$market,
+					$intent_id
+				),
+				ARRAY_A
+			);
+			$current = array_map( array( __CLASS__, 'normalize_db_row' ), is_array( $rows ) ? $rows : array() );
+			$current_sha = self::scope_sha256( $current );
+			$expected = empty( $current ) ? 'ABSENT' : $current_sha;
+			if ( ! hash_equals( $expected, $expected_scope_sha ) ) throw new RuntimeException( 'intent_scope_stale' );
+
+			$current_by_content = array();
+			foreach ( $current as $row ) {
+				if ( isset( $current_by_content[ $row['content_id'] ] ) ) throw new RuntimeException( 'intent_scope_multiple_active_relations' );
+				$current_by_content[ $row['content_id'] ] = $row;
 			}
-		} elseif ( '' !== $expected_id || '' !== $expected_sha ) {
-			return new WP_Error( 'mad4b_intent_registry_expected_absent', 'Intent Registry is absent but caller supplied prior identity.' );
+			$desired_by_content = array();
+			foreach ( $desired as $row ) $desired_by_content[ $row['content_id'] ] = $row;
+
+			$closed = array();
+			$inserted = array();
+			$unchanged = array();
+
+			foreach ( $current_by_content as $content_id => $row ) {
+				if ( ! isset( $desired_by_content[ $content_id ] ) ) {
+					$changed = $wpdb->update(
+						$t['intent_relations'],
+						array( 'valid_to' => $now ),
+						array( 'relation_id' => $row['relation_id'], 'site_uuid' => $site_uuid, 'valid_to' => null ),
+						array( '%s' ),
+						array( '%s','%s',null )
+					);
+					if ( false === $changed ) throw new RuntimeException( 'intent_relation_close_failed:' . (string) $wpdb->last_error );
+					$closed[] = $row['relation_id'];
+				}
+			}
+
+			foreach ( $desired_by_content as $content_id => $row ) {
+				$prior = $current_by_content[ $content_id ] ?? null;
+				if ( is_array( $prior ) && hash_equals( self::semantic_sha256( $prior ), self::semantic_sha256( $row ) ) ) {
+					$unchanged[] = $prior['relation_id'];
+					continue;
+				}
+				if ( is_array( $prior ) ) {
+					$changed = $wpdb->update(
+						$t['intent_relations'],
+						array( 'valid_to' => $now ),
+						array( 'relation_id' => $prior['relation_id'], 'site_uuid' => $site_uuid, 'valid_to' => null ),
+						array( '%s' ),
+						array( '%s','%s',null )
+					);
+					if ( false === $changed ) throw new RuntimeException( 'intent_relation_close_failed:' . (string) $wpdb->last_error );
+					$closed[] = $prior['relation_id'];
+				}
+
+				$max_revision = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT MAX(revision) FROM {$t['intent_relations']} WHERE site_uuid=%s AND locale=%s AND market=%s AND intent_id=%s AND content_id=%s",
+						$site_uuid,
+						$locale,
+						$market,
+						$intent_id,
+						$content_id
+					)
+				);
+				$revision = max( 1, $max_revision + 1 );
+				$relation_id = strtolower( wp_generate_uuid4() );
+				$evidence_json = self::stable_json(
+					array(
+						'evidence_refs' => $row['evidence_refs'],
+						'analysis_signals' => $row['analysis_signals'],
+					)
+				);
+				$relation_sha = self::semantic_sha256( $row );
+				$owner_scope_key = hash( 'sha256', $site_uuid . " " . $locale . " " . $market . " " . $intent_id . " " . $row['role'] );
+
+				$ok = $wpdb->insert(
+					$t['intent_relations'],
+					array(
+						'relation_id' => $relation_id,
+						'site_uuid' => $site_uuid,
+						'locale' => $locale,
+						'market' => $market,
+						'intent_id' => $intent_id,
+						'content_id' => $content_id,
+						'role' => $row['role'],
+						'confidence' => $row['confidence'],
+						'evidence_json' => $evidence_json,
+						'source' => $row['source'],
+						'revision' => $revision,
+						'valid_from' => '' !== $row['valid_from'] ? self::mysql_datetime( $row['valid_from'] ) : $now,
+						'valid_to' => null,
+						'owner_scope_key' => $owner_scope_key,
+						'relation_sha256' => $relation_sha,
+						'created_at' => $now,
+					),
+					array( '%s','%s','%s','%s','%s','%s','%s','%f','%s','%s','%d','%s',null,'%s','%s','%s' )
+				);
+				if ( false === $ok ) throw new RuntimeException( 'intent_relation_insert_failed:' . (string) $wpdb->last_error );
+				$inserted[] = $relation_id;
+			}
+
+			$after_rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT * FROM {$t['intent_relations']} WHERE site_uuid=%s AND locale=%s AND market=%s AND intent_id=%s AND valid_to IS NULL ORDER BY content_id ASC,revision ASC,id ASC",
+					$site_uuid,
+					$locale,
+					$market,
+					$intent_id
+				),
+				ARRAY_A
+			);
+			$after = array_map( array( __CLASS__, 'normalize_db_row' ), is_array( $after_rows ) ? $after_rows : array() );
+			if ( count( $after ) !== count( $desired ) ) throw new RuntimeException( 'intent_scope_postcondition_count_mismatch' );
+			$after_semantic = array();
+			foreach ( $after as $row ) $after_semantic[ $row['content_id'] ] = self::semantic_sha256( $row );
+			foreach ( $desired as $row ) {
+				if ( ! isset( $after_semantic[ $row['content_id'] ] ) || ! hash_equals( $after_semantic[ $row['content_id'] ], self::semantic_sha256( $row ) ) ) {
+					throw new RuntimeException( 'intent_scope_postcondition_mismatch' );
+				}
+			}
+
+			if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+				$audit = MAD4B_SCP_Audit::record(
+					'mad4b/intent-registry-reconcile',
+					array(
+						'site_uuid' => $site_uuid,
+						'intent_id' => $intent_id,
+						'locale' => $locale,
+						'market' => $market,
+						'expected_scope_sha256' => $expected_scope_sha,
+						'result_scope_sha256' => self::scope_sha256( $after ),
+						'inserted_count' => count( $inserted ),
+						'closed_count' => count( $closed ),
+						'unchanged_count' => count( $unchanged ),
+						'reason' => $reason,
+					),
+					'ok',
+					true
+				);
+				if ( is_wp_error( $audit ) ) throw new RuntimeException( $audit->get_error_code() );
+			}
+			if ( false === $wpdb->query( 'COMMIT' ) ) throw new RuntimeException( 'intent_registry_commit_failed' );
+			if ( class_exists( 'MAD4B_SCP_Audit' ) ) MAD4B_SCP_Audit::transaction_committed();
+		} catch ( Throwable $e ) {
+			$wpdb->query( 'ROLLBACK' );
+			if ( class_exists( 'MAD4B_SCP_Audit' ) ) MAD4B_SCP_Audit::transaction_rolled_back();
+			if ( 'intent_scope_stale' === $e->getMessage() ) return new WP_Error( 'mad4b_intent_scope_stale', 'Intent scope changed since expected state was captured.' );
+			if ( 'intent_scope_multiple_active_relations' === $e->getMessage() ) return new WP_Error( 'mad4b_intent_scope_inconsistent', 'Intent scope contains multiple active relations for one content item.' );
+			return new WP_Error( 'mad4b_intent_reconcile_failed', 'Unable to reconcile Intent Registry scope.', array( 'cause' => $e->getMessage() ) );
 		}
 
-		$previous_relations = array();
-		if ( is_array( $current ) && isset( $current['payload']['relations'] ) && is_array( $current['payload']['relations'] ) ) {
-			$previous_relations = $current['payload']['relations'];
-		}
-		$normalized = self::normalize_relations( $relations, $previous_relations );
-		if ( is_wp_error( $normalized ) ) return $normalized;
-		$analysis = self::analyze_relations( $normalized );
-		$payload = array(
-			'contract' => self::SNAPSHOT_CONTRACT,
-			'relations' => $normalized,
+		$analysis = self::analyze_relations( $after );
+		return array(
+			'contract' => self::CONTRACT,
+			'site_uuid' => $site_uuid,
+			'intent_id' => $intent_id,
+			'locale' => $locale,
+			'market' => $market,
+			'relations' => $after,
+			'relation_count' => count( $after ),
+			'scope_sha256' => self::scope_sha256( $after ),
+			'inserted_relation_ids' => $inserted,
+			'closed_relation_ids' => array_values( array_unique( $closed ) ),
+			'unchanged_relation_ids' => $unchanged,
 			'conflict_analysis' => $analysis,
-			'relation_count' => count( $normalized ),
 			'many_to_many' => true,
 			'cannibalization_is_derived' => true,
 			'overlap_alone_is_conflict' => false,
-		);
-		$result = MAD4B_SCP_Artifacts::append_artifact(
-			array(
-				'job_id' => $job_id,
-				'artifact_type' => 'intent_registry',
-				'payload' => $payload,
-				'metadata' => array(
-					'previous_registry_artifact_id' => $current_id,
-					'previous_registry_sha256' => $current_sha,
-				),
-				'producer_stage' => 'SITE_DISCOVERY',
-				'producer_ref' => 'mad4b-intent-registry',
-				'reason' => 'reconcile versioned many-to-many intent ownership registry',
-			)
-		);
-		if ( is_wp_error( $result ) ) return $result;
-		return array(
-			'contract' => self::CONTRACT,
-			'registry_artifact_id' => (string) $result['artifact']['artifact_id'],
-			'registry_sha256' => (string) $result['artifact']['content_sha256'],
-			'relation_count' => count( $normalized ),
-			'conflict_analysis' => $analysis,
-			'mutation_performed' => true,
+			'mutation_performed' => ! empty( $inserted ) || ! empty( $closed ),
 		);
 	}
 
-	public static function normalize_relations( array $relations, array $previous_relations = array() ) {
-		if ( count( $relations ) > self::MAX_RELATIONS ) {
-			return new WP_Error( 'mad4b_intent_relation_limit', 'Intent Registry relation count exceeds bounded limit.' );
-		}
-		$previous = array();
-		foreach ( $previous_relations as $row ) {
-			if ( ! is_array( $row ) || empty( $row['relation_id'] ) ) continue;
-			$previous[ (string) $row['relation_id'] ] = $row;
-		}
+	public static function normalize_analysis_relations( array $relations ) {
+		if ( count( $relations ) > self::MAX_RELATIONS_PER_SCOPE ) return new WP_Error( 'mad4b_intent_relation_limit', 'Intent relation count exceeds bounded limit.' );
 		$out = array();
 		$seen = array();
 		foreach ( $relations as $row ) {
 			if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_intent_relation_invalid', 'Intent relation must be an object.' );
-			$relation_id = self::bounded_key( $row['relation_id'] ?? '', 191 );
-			$intent_id = self::bounded_key( $row['intent_id'] ?? '', 191 );
-			$content_id = self::bounded_key( $row['content_id'] ?? '', 191 );
-			$site = self::bounded_string( $row['site'] ?? '', 191 );
-			$locale = self::bounded_key( $row['locale'] ?? '', 32 );
-			$market = self::bounded_key( $row['market'] ?? '', 64 );
-			$role = strtoupper( self::bounded_key( $row['role'] ?? '', 64 ) );
-			$source = strtolower( self::bounded_key( $row['source'] ?? '', 32 ) );
-			$confidence = isset( $row['confidence'] ) ? (float) $row['confidence'] : -1.0;
-			$valid_from = self::bounded_string( $row['valid_from'] ?? '', 64 );
-			$valid_to = self::bounded_string( $row['valid_to'] ?? '', 64 );
-			if ( '' === $relation_id || '' === $intent_id || '' === $content_id || '' === $site || '' === $locale || '' === $market ) {
-				return new WP_Error( 'mad4b_intent_relation_identity_invalid', 'Intent relation identity is incomplete.' );
-			}
-			if ( isset( $seen[ $relation_id ] ) ) return new WP_Error( 'mad4b_intent_relation_duplicate', 'Intent relation ID is duplicated.' );
-			$seen[ $relation_id ] = true;
-			if ( ! in_array( $role, self::roles(), true ) ) return new WP_Error( 'mad4b_intent_role_invalid', 'Intent relation role is invalid.' );
-			if ( ! in_array( $source, self::sources(), true ) ) return new WP_Error( 'mad4b_intent_source_invalid', 'Intent relation source is invalid.' );
-			if ( $confidence < 0.0 || $confidence > 1.0 ) return new WP_Error( 'mad4b_intent_confidence_invalid', 'Intent relation confidence must be between 0 and 1.' );
-			$evidence = isset( $row['evidence_refs'] ) && is_array( $row['evidence_refs'] ) ? array_values( $row['evidence_refs'] ) : array();
-			if ( count( $evidence ) > self::MAX_EVIDENCE_REFS ) return new WP_Error( 'mad4b_intent_evidence_limit', 'Intent evidence refs exceed bounded limit.' );
-			$evidence = array_values( array_unique( array_filter( array_map( static function ( $value ) {
-				$value = trim( (string) $value );
-				return strlen( $value ) <= 191 ? $value : '';
-			}, $evidence ) ) ) );
-			sort( $evidence, SORT_STRING );
-			$signals = self::normalize_signals( isset( $row['analysis_signals'] ) && is_array( $row['analysis_signals'] ) ? $row['analysis_signals'] : array() );
-			$normalized = array(
-				'relation_id' => $relation_id,
-				'intent_id' => $intent_id,
-				'content_id' => $content_id,
-				'site' => $site,
-				'locale' => $locale,
-				'market' => $market,
-				'role' => $role,
-				'confidence' => round( $confidence, 6 ),
-				'evidence_refs' => $evidence,
-				'valid_from' => $valid_from,
-				'valid_to' => $valid_to,
-				'source' => $source,
-				'analysis_signals' => $signals,
-			);
-			$prior = isset( $previous[ $relation_id ] ) && is_array( $previous[ $relation_id ] ) ? $previous[ $relation_id ] : null;
-			$revision = 1;
-			if ( $prior ) {
-				$prior_compare = $prior;
-				unset( $prior_compare['revision'] );
-				$revision = (int) ( $prior['revision'] ?? 1 );
-				if ( self::stable_json( $prior_compare ) !== self::stable_json( $normalized ) ) $revision++;
-			}
-			$normalized['revision'] = max( 1, $revision );
+			$normalized = self::normalize_semantic_row( $row );
+			if ( is_wp_error( $normalized ) ) return $normalized;
+			$key = $normalized['intent_id'] . " " . $normalized['locale'] . " " . $normalized['market'] . " " . $normalized['content_id'];
+			if ( isset( $seen[ $key ] ) ) return new WP_Error( 'mad4b_intent_relation_duplicate', 'Intent/content scope is duplicated.' );
+			$seen[ $key ] = true;
 			$out[] = $normalized;
 		}
-		usort( $out, static function ( $a, $b ) {
-			return strcmp( $a['intent_id'] . " " . $a['locale'] . " " . $a['market'] . " " . $a['relation_id'], $b['intent_id'] . " " . $b['locale'] . " " . $b['market'] . " " . $b['relation_id'] );
-		} );
+		usort( $out, array( __CLASS__, 'compare_relations' ) );
 		return $out;
+	}
+
+	private static function normalize_desired_scope( array $relations, $intent_id, $locale, $market ) {
+		$prepared = array();
+		foreach ( $relations as $row ) {
+			if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_intent_relation_invalid', 'Intent relation must be an object.' );
+			$row['intent_id'] = $intent_id;
+			$row['locale'] = $locale;
+			$row['market'] = $market;
+			$prepared[] = $row;
+		}
+		return self::normalize_analysis_relations( $prepared );
+	}
+
+	private static function normalize_semantic_row( array $row ) {
+		$intent_id = self::bounded_key( $row['intent_id'] ?? '', 191 );
+		$content_id = self::bounded_key( $row['content_id'] ?? '', 191 );
+		$locale = self::bounded_key( $row['locale'] ?? '', 32 );
+		$market = self::bounded_key( $row['market'] ?? '', 64 );
+		$role = strtoupper( self::bounded_key( $row['role'] ?? '', 64 ) );
+		$source = strtolower( self::bounded_key( $row['source'] ?? '', 32 ) );
+		$confidence = isset( $row['confidence'] ) ? (float) $row['confidence'] : -1.0;
+		$valid_from = self::bounded_string( $row['valid_from'] ?? '', 64 );
+		$valid_to = self::bounded_string( $row['valid_to'] ?? '', 64 );
+		if ( '' === $intent_id || '' === $content_id || '' === $locale || '' === $market ) return new WP_Error( 'mad4b_intent_relation_identity_invalid', 'Intent relation identity is incomplete.' );
+		if ( ! in_array( $role, self::roles(), true ) ) return new WP_Error( 'mad4b_intent_role_invalid', 'Intent relation role is invalid.' );
+		if ( ! in_array( $source, self::sources(), true ) ) return new WP_Error( 'mad4b_intent_source_invalid', 'Intent relation source is invalid.' );
+		if ( $confidence < 0.0 || $confidence > 1.0 ) return new WP_Error( 'mad4b_intent_confidence_invalid', 'Intent relation confidence must be between 0 and 1.' );
+		$evidence = isset( $row['evidence_refs'] ) && is_array( $row['evidence_refs'] ) ? array_values( $row['evidence_refs'] ) : array();
+		if ( count( $evidence ) > self::MAX_EVIDENCE_REFS ) return new WP_Error( 'mad4b_intent_evidence_limit', 'Intent evidence refs exceed bounded limit.' );
+		$evidence = array_values( array_unique( array_filter( array_map( static function ( $value ) {
+			$value = trim( (string) $value );
+			return strlen( $value ) <= 191 ? $value : '';
+		}, $evidence ) ) ) );
+		sort( $evidence, SORT_STRING );
+		return array(
+			'intent_id' => $intent_id,
+			'content_id' => $content_id,
+			'locale' => $locale,
+			'market' => $market,
+			'role' => $role,
+			'confidence' => round( $confidence, 5 ),
+			'evidence_refs' => $evidence,
+			'valid_from' => $valid_from,
+			'valid_to' => $valid_to,
+			'source' => $source,
+			'analysis_signals' => self::normalize_signals( isset( $row['analysis_signals'] ) && is_array( $row['analysis_signals'] ) ? $row['analysis_signals'] : array() ),
+		);
 	}
 
 	public static function analyze_relations( array $relations ) {
@@ -261,11 +440,9 @@ final class MAD4B_SCP_Intent_Registry {
 			} elseif ( count( $owners ) > 1 ) {
 				$strong = 0;
 				foreach ( $owners as $row ) {
-					$signals = isset( $row['analysis_signals'] ) ? $row['analysis_signals'] : array();
 					$score = 0;
-					foreach ( array( 'serp_overlap','same_page_purpose','indexable','canonical_competes','performance_overlap' ) as $signal ) {
-						if ( ! empty( $signals[ $signal ] ) ) $score++;
-					}
+					$signals = isset( $row['analysis_signals'] ) && is_array( $row['analysis_signals'] ) ? $row['analysis_signals'] : array();
+					foreach ( array( 'serp_overlap','same_page_purpose','indexable','canonical_competes','performance_overlap' ) as $signal ) if ( ! empty( $signals[ $signal ] ) ) $score++;
 					if ( (float) $row['confidence'] >= 0.75 && $score >= 3 ) $strong++;
 				}
 				if ( $strong >= 2 ) {
@@ -298,23 +475,76 @@ final class MAD4B_SCP_Intent_Registry {
 		return $out;
 	}
 
-	private static function current_snapshot( $job_id ) {
-		if ( ! class_exists( 'MAD4B_SCP_Artifacts' ) ) return null;
-		$list = MAD4B_SCP_Artifacts::list_artifacts( array( 'job_id' => $job_id, 'artifact_type' => 'intent_registry' ) );
-		if ( is_wp_error( $list ) ) return $list;
-		$items = isset( $list['items'] ) && is_array( $list['items'] ) ? $list['items'] : array();
-		for ( $i = count( $items ) - 1; $i >= 0; $i-- ) {
-			if ( 'active' === (string) ( $items[ $i ]['status'] ?? '' ) ) return $items[ $i ];
+	private static function normalize_db_row( $row ) {
+		if ( ! is_array( $row ) ) return array();
+		$evidence = json_decode( (string) ( $row['evidence_json'] ?? '' ), true );
+		$evidence = is_array( $evidence ) ? $evidence : array();
+		return array(
+			'relation_id' => (string) ( $row['relation_id'] ?? '' ),
+			'site_uuid' => (string) ( $row['site_uuid'] ?? '' ),
+			'intent_id' => (string) ( $row['intent_id'] ?? '' ),
+			'content_id' => (string) ( $row['content_id'] ?? '' ),
+			'locale' => (string) ( $row['locale'] ?? '' ),
+			'market' => (string) ( $row['market'] ?? '' ),
+			'role' => (string) ( $row['role'] ?? '' ),
+			'confidence' => (float) ( $row['confidence'] ?? 0 ),
+			'evidence_refs' => isset( $evidence['evidence_refs'] ) && is_array( $evidence['evidence_refs'] ) ? array_values( $evidence['evidence_refs'] ) : array(),
+			'analysis_signals' => self::normalize_signals( isset( $evidence['analysis_signals'] ) && is_array( $evidence['analysis_signals'] ) ? $evidence['analysis_signals'] : array() ),
+			'source' => (string) ( $row['source'] ?? '' ),
+			'revision' => (int) ( $row['revision'] ?? 0 ),
+			'valid_from' => (string) ( $row['valid_from'] ?? '' ),
+			'valid_to' => null === ( $row['valid_to'] ?? null ) ? '' : (string) $row['valid_to'],
+			'relation_sha256' => (string) ( $row['relation_sha256'] ?? '' ),
+		);
+	}
+
+	private static function semantic_sha256( array $row ) {
+		$semantic = array(
+			'intent_id' => (string) ( $row['intent_id'] ?? '' ),
+			'content_id' => (string) ( $row['content_id'] ?? '' ),
+			'locale' => (string) ( $row['locale'] ?? '' ),
+			'market' => (string) ( $row['market'] ?? '' ),
+			'role' => (string) ( $row['role'] ?? '' ),
+			'confidence' => round( (float) ( $row['confidence'] ?? 0 ), 5 ),
+			'evidence_refs' => isset( $row['evidence_refs'] ) && is_array( $row['evidence_refs'] ) ? array_values( $row['evidence_refs'] ) : array(),
+			'source' => (string) ( $row['source'] ?? '' ),
+			'analysis_signals' => self::normalize_signals( isset( $row['analysis_signals'] ) && is_array( $row['analysis_signals'] ) ? $row['analysis_signals'] : array() ),
+		);
+		return hash( 'sha256', self::stable_json( $semantic ) );
+	}
+
+	private static function scope_sha256( array $relations ) {
+		if ( empty( $relations ) ) return 'ABSENT';
+		$rows = array();
+		foreach ( $relations as $row ) {
+			$rows[] = array(
+				'relation_id' => (string) ( $row['relation_id'] ?? '' ),
+				'content_id' => (string) ( $row['content_id'] ?? '' ),
+				'revision' => (int) ( $row['revision'] ?? 0 ),
+				'relation_sha256' => (string) ( $row['relation_sha256'] ?? self::semantic_sha256( $row ) ),
+			);
 		}
-		return null;
+		usort( $rows, static function ( $a, $b ) { return strcmp( $a['content_id'] . " " . $a['relation_id'], $b['content_id'] . " " . $b['relation_id'] ); } );
+		return hash( 'sha256', self::stable_json( $rows ) );
+	}
+
+	private static function compare_relations( $a, $b ) {
+		return strcmp(
+			(string) $a['intent_id'] . " " . (string) $a['locale'] . " " . (string) $a['market'] . " " . (string) $a['content_id'],
+			(string) $b['intent_id'] . " " . (string) $b['locale'] . " " . (string) $b['market'] . " " . (string) $b['content_id']
+		);
 	}
 
 	private static function normalize_signals( array $signals ) {
 		$out = array();
-		foreach ( array( 'serp_overlap','same_page_purpose','indexable','canonical_competes','performance_overlap' ) as $key ) {
-			$out[ $key ] = ! empty( $signals[ $key ] );
-		}
+		foreach ( array( 'serp_overlap','same_page_purpose','indexable','canonical_competes','performance_overlap' ) as $key ) $out[ $key ] = ! empty( $signals[ $key ] );
 		return $out;
+	}
+
+	private static function mysql_datetime( $value ) {
+		$ts = strtotime( (string) $value );
+		if ( false === $ts ) throw new RuntimeException( 'intent_valid_from_invalid' );
+		return gmdate( 'Y-m-d H:i:s', $ts );
 	}
 
 	private static function bounded_key( $value, $max ) {
@@ -326,11 +556,6 @@ final class MAD4B_SCP_Intent_Registry {
 	private static function bounded_string( $value, $max ) {
 		$value = trim( (string) $value );
 		return strlen( $value ) <= $max ? $value : '';
-	}
-
-	private static function uuid( $value ) {
-		$value = strtolower( trim( (string) $value ) );
-		return 1 === preg_match( '/^[a-f0-9-]{36}$/', $value ) ? $value : '';
 	}
 
 	private static function stable_json( $value ) {
