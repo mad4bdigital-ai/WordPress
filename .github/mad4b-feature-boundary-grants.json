@@ -1,0 +1,58 @@
+{
+  "contract": "mad4b.feature-boundary-grants.v1",
+  "repository_governance_contract": "mad4b.repository-governance-policy.v1",
+  "repository_governance_policy_path": ".github/mad4b-repository-governance-policy.json",
+  "verifier_path": "tools/verify_feature_boundary.py",
+  "immutable_global_paths": [
+    ".github/mad4b-repository-governance-policy.json",
+    ".github/mad4b-feature-boundary-grants.json",
+    "tools/verify_feature_boundary.py",
+    ".specify/feature.json",
+    ".specify/memory/constitution.md"
+  ],
+  "features": {
+    "007": {
+      "feature_directory": "specs/007-content-intelligence-workflow-platform",
+      "implementation_branch_prefixes": [
+        "feat/007-",
+        "fix/007-"
+      ],
+      "specification_branch_prefixes": [
+        "spec/007-"
+      ],
+      "implementation_allowed_prefixes": [
+        "specs/007-content-intelligence-workflow-platform/",
+        "wp-content/plugins/mad4b-site-control-plane/"
+      ],
+      "implementation_allowed_exact_paths": [
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        ".github/workflows/feature-007-spec-ci.yml",
+        ".github/workflows/mad4b-admin-performance.yml",
+        ".github/workflows/mad4b-control-plane-package.yml",
+        ".github/workflows/mad4b-site-control-plane.yml",
+        "plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md",
+        "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/SKILL.md",
+        "tools/mad4b_host_runner.py",
+        "tools/mad4b_host_runner_bootstrap.py",
+        "tools/mad4b_pre_staging_hybrid_audit.py",
+        "tools/mad4b_recovery_plane.py",
+        "tools/capture-functional-gap-contract-evidence.py",
+        "wp-content/plugins/mcp-adapter.zip"
+      ],
+      "specification_allowed_prefixes": [
+        "specs/007-content-intelligence-workflow-platform/"
+      ],
+      "specification_allowed_exact_paths": [
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        ".github/workflows/feature-007-spec-ci.yml",
+        "plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md",
+        "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/SKILL.md",
+        "tools/mad4b_pre_staging_hybrid_audit.py"
+      ],
+      "cross_feature_contract_dependencies": [
+        ".github/workflows/wpl-client-contract.yml",
+        "specs/006-agent-governed-reversible-control-plane/data-model.md"
+      ]
+    }
+  }
+}
