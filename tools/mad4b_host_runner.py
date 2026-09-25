@@ -1546,7 +1546,31 @@ def reconcile_bridge_spool(
                 raise ValueError("Host Bridge local receipt contract mismatch during reconciliation")
             if str(receipt.get("bridge_submission_sha256") or "") != supplied_submission_sha:
                 raise ValueError("Host Bridge local receipt lineage mismatch during reconciliation")
-            bridge_receipt = dict(receipt)
+            signed_job_path = Path(profile["bridge_job_root"]) / f"{job_id}.json"
+            if signed_job_path.is_symlink() or not signed_job_path.is_file():
+                incident = {
+                    "contract": "mad4b.host-bridge-incident.v1",
+                    "job_id": job_id,
+                    "submission_sha256": supplied_submission_sha,
+                    "reason_code": "local_receipt_without_signed_job_evidence",
+                    "failure_class": "MissingSignedJobEvidence",
+                    "failure_message_sha256": sha256_bytes(b"local receipt exists but signed job evidence is missing"),
+                    "blind_retry_allowed": False,
+                    "payload_persisted": False,
+                    "reconciliation_required": True,
+                    "created_at": utc_now(),
+                }
+                atomic_json_write(bridge_root / "recovery-required" / f"{job_id}.json", incident)
+                running.unlink()
+                reconciled.append({"job_id": job_id, "state": "RECOVERY_REQUIRED"})
+                continue
+            # The normal replay path revalidates all replay bindings and, for
+            # writes, the current postcondition. Evidence repair therefore
+            # cannot bless a receipt whose target has drifted since execution.
+            replay = run_job(profile_path, signed_job_path)
+            if replay.get("replayed") is not True:
+                raise RuntimeError("Host Bridge local receipt reconciliation did not use replay path")
+            bridge_receipt = dict(replay)
             bridge_receipt["bridge_contract"] = "mad4b.host-bridge-execution.v1"
             bridge_receipt["bridge_submission_sha256"] = supplied_submission_sha
             bridge_receipt["reconciled_from_stale_running"] = True
