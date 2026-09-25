@@ -71,6 +71,12 @@ jobs:
           set -euo pipefail
           python3 tools/test_verify_repository_governance_attestation.py
 
+      - name: Verify owner-comment attestation publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/test_publish_repository_ruleset_attestation.py
+
       - name: Verify one-time feature-boundary bootstrap transition
         if: github.event_name == 'pull_request' && github.event.pull_request.number == 66 && github.event.pull_request.head.ref == 'chore/bootstrap-feature-boundary-policy-20260925'
         shell: bash
