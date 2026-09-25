@@ -16,6 +16,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';
 	const FRONTEND_SAMPLE_ABILITY = 'mad4b/frontend-performance-sample-run';
 	const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';
+	const PERFORMANCE_RECONCILE_ABILITY = 'mad4b/admin-query-performance-reconcile';
 	const WORK_QUEUE_ABILITY = 'mad4b/remote-operation-work-queue';
 	const WORK_CLAIM_ABILITY = 'mad4b/remote-operation-work-claim';
 	const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';
@@ -27,6 +28,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const SKILLS_CONFIRMATION = 'RECONCILE MANAGED SKILLS';
 	const FRONTEND_CONFIRMATION = 'COLLECT FRONTEND PERFORMANCE SAMPLES';
 	const PERFORMANCE_CONFIRMATION = 'APPLY STAGING PERFORMANCE INDEXES';
+	const PERFORMANCE_RECONCILE_CONFIRMATION = 'RECONCILE STALE STAGING PERFORMANCE INDEXES';
 
 	private static $booted = false;
 	private static $running = array();
@@ -43,6 +45,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			self::SKILLS_ABILITY,
 			self::FRONTEND_SAMPLE_ABILITY,
 			self::PERFORMANCE_INDEX_ABILITY,
+			self::PERFORMANCE_RECONCILE_ABILITY,
 			self::WORK_CLAIM_ABILITY,
 			self::WORK_COMPLETE_ABILITY,
 		);
@@ -264,6 +267,19 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'mad4b-enrollment',
 				'executor' => 'wordpress_cron_maintenance_worker',
 				'remote_mode' => 'durable_scheduled_operation',
+				'production_policy' => 'deny',
+				'human_decision_required' => false,
+			),
+			'admin_query_performance_reconciliation' => array(
+				'feature_id' => 'admin-query-performance',
+				'capability_tags' => array( 'database', 'index', 'performance', 'maintenance', 'reconciliation', 'uncertain-execution' ),
+				'provider' => 'wordpress-database',
+				'status_ability' => 'mad4b/admin-query-performance-status',
+				'local_surface' => '',
+				'remote_ability' => self::PERFORMANCE_RECONCILE_ABILITY,
+				'authority_surface' => 'mad4b-enrollment',
+				'executor' => 'wordpress_native',
+				'remote_mode' => 'postcondition_only_reconciliation',
 				'production_policy' => 'deny',
 				'human_decision_required' => false,
 			),
@@ -1172,6 +1188,35 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'request' => $request,
 			'manual_interaction_required' => false,
 			'browser_runtime_evidence_required' => true,
+			'production_mutation' => false,
+		);
+	}
+
+	public static function reconcile_performance_indexes( $input ) {
+		if ( self::PERFORMANCE_RECONCILE_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_performance_reconcile_confirmation_required', 'Exact performance maintenance reconciliation confirmation is required.' );
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) || ! method_exists( 'MAD4B_SCP_Admin_Query_Performance', 'reconcile_stale_job' ) ) return new WP_Error( 'mad4b_performance_reconcile_service_unavailable', 'Performance maintenance reconciliation service is unavailable.' );
+		$result = MAD4B_SCP_Admin_Query_Performance::reconcile_stale_job( array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		) );
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::PERFORMANCE_RECONCILE_ABILITY, array(
+			'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+			'reconciliation_state' => isset( $result['state'] ) ? (string) $result['state'] : '',
+			'job_id' => isset( $result['job']['job_id'] ) ? (string) $result['job']['job_id'] : '',
+			'ready' => ! empty( $result['ready'] ),
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-admin-query-performance-reconciliation.v1',
+			'state' => isset( $result['state'] ) ? (string) $result['state'] : 'unknown',
+			'ready' => ! empty( $result['ready'] ),
+			'job' => isset( $result['job'] ) ? $result['job'] : array(),
+			'blind_retry_performed' => false,
+			'remote_operation' => true,
 			'production_mutation' => false,
 		);
 	}
