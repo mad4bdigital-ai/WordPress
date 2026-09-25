@@ -51,6 +51,7 @@ def make_job(profile, operation_id, inputs, *, job_id=None, created=None, expire
         "site_uuid": profile["site_uuid"],
         "environment": profile["environment"],
         "target_fingerprint": profile["target_fingerprint"],
+        "executor_fingerprint": profile["executor_fingerprint"],
         "operation_id": operation_id,
         "operation_version": runner.OPERATIONS[operation_id]["version"],
         "operation_fingerprint": runner.operation_fingerprint(operation_id),
@@ -87,6 +88,7 @@ with tempfile.TemporaryDirectory() as td:
         "environment": "staging",
         "wordpress_root": str(wp),
         "integrity_key_file": str(key),
+        "expected_runner_sha256": runner.sha256_file(Path(runner.__file__).resolve()),
         "receipt_root": str(wp / "wp-content" / "mad4b-runner" / "receipts"),
         "allowed_operations": sorted(runner.OPERATIONS),
     }), encoding="utf-8")
@@ -178,6 +180,19 @@ with tempfile.TemporaryDirectory() as td:
         raise SystemExit("Host Runner followed symlink outside zone")
     except ValueError as exc:
         if "symlink" not in str(exc):
+            raise
+
+    # Executor identity is approval material: a different runner fingerprint fails even with a valid MAC.
+    executor_drift = make_job(profile, "runtime.status.read", {})
+    executor_drift["executor_fingerprint"] = "0" * 64
+    executor_drift["mac_sha256"] = runner.job_mac(executor_drift, profile["_integrity_key"])
+    executor_drift_path = tmp / "executor-drift.json"
+    executor_drift_path.write_text(json.dumps(executor_drift), encoding="utf-8")
+    try:
+        runner.run_job(profile_path, executor_drift_path)
+        raise SystemExit("Host Runner accepted executor drift after plan binding")
+    except ValueError as exc:
+        if "executor fingerprint mismatch" not in str(exc):
             raise
 
     # MAC tampering fails before operation execution.
