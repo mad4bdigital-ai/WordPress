@@ -48,6 +48,19 @@ if "class-mad4b-scp-provider-closure-matrix.php" not in main:
     raise SystemExit('provider closure matrix runtime is not loaded by the plugin')
 
 for marker in [
+    "'provider_behavioral_recertification' => array(",
+    "'remote_ability' => 'mad4b/provider-behavioral-recertify'",
+    "'remote_mode' => 'exact_reversible_probe'",
+    "'provider_canary_execution' => array(",
+    "'remote_ability' => 'mad4b/provider-canary-execute'",
+    "'remote_mode' => 'owner_governed_canary'",
+    "'production_policy' => 'deny'",
+    "'human_decision_required' => true",
+]:
+    if marker not in matrix:
+        raise SystemExit(f'provider closure operation is not remotely discoverable/fail-closed: {marker}')
+
+for marker in [
     "'staging_candidate_binding' => array(",
     "'remote_ability' => 'mad4b/staging-write-candidate-bind'",
     "'full_staging_authority_convergence' => array(",
