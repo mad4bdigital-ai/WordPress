@@ -77,6 +77,7 @@ def build(readback: dict, policy: dict, template: dict, repository: str, policy_
         "ruleset_source": repository,
         "ruleset_updated_at": updated_at,
         "bypass_actor_count": 0,
+        "require_extra_approval_for_unattributed_changes": True,
         "policy_sha256": sha256(policy_path),
         "template_sha256": sha256(template_path),
         "required_status_checks": verified.get("required_status_checks", []),
