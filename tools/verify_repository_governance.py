@@ -117,18 +117,35 @@ def main() -> int:
     if not pull_rules:
         raise SystemExit("pull_request rule missing")
     expected_merge_methods = set(pr_policy.get("allowed_merge_methods") or [])
+    expected_required_reviewers = pr_policy.get("required_reviewers") or []
+    expected_unattributed_approval = bool(
+        pr_policy.get("require_extra_approval_for_unattributed_changes_readback", True)
+    )
     if not any(
         int((rule.get("parameters") or {}).get("required_approving_review_count", -1))
         == int(pr_policy.get("required_approving_review_count", 0))
+        and bool((rule.get("parameters") or {}).get("dismiss_stale_reviews_on_push"))
+        == bool(pr_policy.get("dismiss_stale_reviews_on_push", False))
+        and bool((rule.get("parameters") or {}).get("require_code_owner_review"))
+        == bool(pr_policy.get("require_code_owner_review", False))
         and bool((rule.get("parameters") or {}).get("require_last_push_approval"))
         == bool(pr_policy.get("require_last_push_approval", False))
         and bool((rule.get("parameters") or {}).get("required_review_thread_resolution"))
         == bool(pr_policy.get("required_review_thread_resolution", True))
+        and list((rule.get("parameters") or {}).get("required_reviewers") or [])
+        == list(expected_required_reviewers)
+        and bool(
+            (rule.get("parameters") or {}).get(
+                "require_extra_approval_for_unattributed_changes",
+                True,
+            )
+        )
+        == expected_unattributed_approval
         and set((rule.get("parameters") or {}).get("allowed_merge_methods") or [])
         == expected_merge_methods
         for rule in pull_rules
     ):
-        raise SystemExit("pull_request rule does not satisfy single-owner-safe review/merge policy")
+        raise SystemExit("pull_request rule does not satisfy exact governed review/merge policy")
 
     status_policy = policy.get("required_status_checks") or {}
     required_rows = status_policy.get("contexts") or []
