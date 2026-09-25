@@ -1,0 +1,61 @@
+{
+  "contract": "mad4b.repository-feature-boundary-root-policy.v1",
+  "target_branch": "master",
+  "source_of_truth": "repository_owned_exact_base",
+  "metadata_cannot_widen_policy": true,
+  "repository_owned_changes_require_separate_governance_pr": true,
+  "policy_path": ".github/mad4b-feature-boundary-root-policy.json",
+  "verifier_path": "tools/verify_feature_boundary.py",
+  "immutable_global_paths": [
+    ".specify/feature.json",
+    ".specify/memory/constitution.md"
+  ],
+  "repository_owned_exact_paths": [
+    ".github/mad4b-feature-boundary-root-policy.json",
+    ".github/mad4b-repository-governance-policy.json",
+    ".github/workflows/mad4b-feature-boundary-root.yml",
+    ".github/workflows/mad4b-repository-governance.yml",
+    ".github/workflows/mad4b-release-verdict.yml",
+    ".github/workflows/mad4b-owner-attestation-rerun.yml",
+    "tools/verify_feature_boundary.py",
+    "tools/verify_repository_governance.py",
+    "tools/verify_repository_owner_attestation.py"
+  ],
+  "features": {
+    "007": {
+      "feature_directory": "specs/007-content-intelligence-workflow-platform",
+      "feature_json": "specs/007-content-intelligence-workflow-platform/feature.json",
+      "implementation_branch_prefixes": [
+        "feat/007-",
+        "fix/007-"
+      ],
+      "specification_branch_prefixes": [
+        "spec/007-"
+      ],
+      "runtime_roots": [
+        "wp-content/plugins/mad4b-site-control-plane/"
+      ],
+      "skill_roots": [
+        "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/",
+        "plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/"
+      ],
+      "exact_feature_paths": [
+        "wp-content/plugins/mcp-adapter.zip",
+        ".github/workflows/feature-007-critical-kernel.yml",
+        ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        ".github/workflows/feature-007-spec-ci.yml",
+        ".github/workflows/mad4b-admin-performance.yml",
+        ".github/workflows/mad4b-context-authority.yml",
+        ".github/workflows/mad4b-control-plane-package.yml",
+        ".github/workflows/mad4b-site-control-plane.yml",
+        "tools/mad4b_host_runner.py",
+        "tools/mad4b_host_runner_bootstrap.py",
+        "tools/mad4b_pre_staging_hybrid_audit.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "exact_cross_feature_dependencies": [
+        "specs/006-agent-governed-reversible-control-plane/data-model.md"
+      ]
+    }
+  }
+}
