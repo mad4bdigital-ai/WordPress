@@ -9,6 +9,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
@@ -42,6 +43,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -57,6 +59,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
@@ -90,6 +93,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -149,6 +153,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py
+
+      - name: Verify canonical read-only wp mad4b CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php
 
       - name: Verify execution Commit Guard contract
         shell: bash
