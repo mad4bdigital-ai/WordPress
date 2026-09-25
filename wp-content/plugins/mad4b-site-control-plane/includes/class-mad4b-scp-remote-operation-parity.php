@@ -564,22 +564,49 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			&& hash_equals( hash( 'sha256', $expected_json ), hash( 'sha256', $stored_json ) );
 	}
 
+	private static function matched_frontend_probe_samples( array $performance, $probe_hash, $not_before = '' ) {
+		$probe_hash = strtolower( trim( (string) $probe_hash ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $probe_hash ) ) return 0;
+		$not_before_epoch = '' !== trim( (string) $not_before ) ? strtotime( (string) $not_before . ' UTC' ) : false;
+		if ( false === $not_before_epoch ) return 0;
+		$samples = isset( $performance['evaluation_window']['samples'] ) && is_array( $performance['evaluation_window']['samples'] )
+			? $performance['evaluation_window']['samples']
+			: array();
+		$count = 0;
+		foreach ( $samples as $sample ) {
+			if ( ! is_array( $sample ) || 'frontend' !== ( isset( $sample['request_class'] ) ? (string) $sample['request_class'] : '' ) ) continue;
+			$actual = isset( $sample['frontend_probe_hash'] ) ? strtolower( trim( (string) $sample['frontend_probe_hash'] ) ) : '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $actual ) || ! hash_equals( $probe_hash, $actual ) ) continue;
+			$observed = isset( $sample['observed_at'] ) ? strtotime( (string) $sample['observed_at'] . ' UTC' ) : false;
+			if ( false === $observed || $observed < $not_before_epoch ) continue;
+			$count++;
+		}
+		return $count;
+	}
+
 	private static function frontend_sample_request_status() {
 		$request = get_option( self::BROWSER_REQUEST_OPTION, array() );
 		if ( ! is_array( $request ) || empty( $request ) ) return array();
 		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
 		$current_count = isset( $performance['evaluation_window']['sample_count'] ) ? (int) $performance['evaluation_window']['sample_count'] : 0;
-		$baseline = isset( $request['baseline_sample_count'] ) ? (int) $request['baseline_sample_count'] : 0;
-		$observed_delta = max( 0, $current_count - $baseline );
-		$request['observed_sample_delta'] = $observed_delta;
 		$request['telemetry_sample_count'] = $current_count;
+		$claimed_at = '';
 		if ( ! empty( $request['work_job_id'] ) && class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) {
 			$work_job = MAD4B_SCP_Remote_Work_Queue::get_job( (string) $request['work_job_id'] );
 			if ( ! is_wp_error( $work_job ) ) {
 				$request['work_job_status'] = isset( $work_job['effective_status'] ) ? (string) $work_job['effective_status'] : ( isset( $work_job['status'] ) ? (string) $work_job['status'] : '' );
 				$request['work_claim_generation'] = isset( $work_job['claim_generation'] ) ? (int) $work_job['claim_generation'] : 0;
+				$claimed_at = isset( $work_job['claimed_at'] ) ? (string) $work_job['claimed_at'] : '';
 			}
 		}
+		$observed_probe_samples = self::matched_frontend_probe_samples(
+			$performance,
+			isset( $request['probe_hash'] ) ? (string) $request['probe_hash'] : '',
+			$claimed_at
+		);
+		$request['observed_probe_samples'] = $observed_probe_samples;
+		$request['observed_sample_delta'] = $observed_probe_samples;
+		$request['evidence_ready'] = $observed_probe_samples >= (int) ( isset( $request['requested_samples'] ) ? $request['requested_samples'] : 0 );
 		if ( 'pending_external_executor' === ( isset( $request['status'] ) ? (string) $request['status'] : '' )
 			&& isset( $request['expires_at_epoch'] ) && time() > (int) $request['expires_at_epoch'] ) {
 			$request['status'] = 'expired_waiting_executor';
@@ -588,14 +615,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				$request['status'] = 'persistence_failed';
 				$request['persistence_state'] = 'failed';
 			}
-		} elseif ( 'pending_external_executor' === ( isset( $request['status'] ) ? (string) $request['status'] : '' )
-			&& $observed_delta >= (int) ( isset( $request['requested_samples'] ) ? $request['requested_samples'] : 0 ) ) {
+		} elseif ( 'completed' === ( isset( $request['work_job_status'] ) ? (string) $request['work_job_status'] : '' )
+			&& ! empty( $request['evidence_ready'] ) ) {
 			$request['status'] = 'observed';
 			$request['completed_at'] = gmdate( 'c' );
-			if ( ! self::persist_browser_request( $request ) ) {
-				$request['status'] = 'persistence_failed';
-				$request['persistence_state'] = 'failed';
-			}
 		}
 		return $request;
 	}
