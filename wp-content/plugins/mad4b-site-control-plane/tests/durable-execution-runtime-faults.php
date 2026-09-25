@@ -97,6 +97,13 @@ $reconcile_filter = static function ( $verified, $kind, $context ) {
 		&& 'reconcile:idempotency:verified-readback' === $context['reconciliation_ref'] ) {
 		return true;
 	}
+	if ( 'idempotency_observation' === $kind
+		&& isset( $context['reconciliation_ref'] )
+		&& 0 === strpos( (string) $context['reconciliation_ref'], 'reconcile:idempotency:observation:' )
+		&& isset( $context['result']['provider_candidate_count'] )
+		&& 0 === (int) $context['result']['provider_candidate_count'] ) {
+		return true;
+	}
 	if ( 'idempotency_no_effect' === $kind
 		&& isset( $context['reconciliation_ref'] )
 		&& 'reconcile:idempotency:no-effect' === $context['reconciliation_ref']
@@ -219,7 +226,7 @@ $check( is_array( $id_complete ) && ! empty( $id_complete['completed'] ), 'recla
 $replayed = MAD4B_SCP_Durable_Execution::begin_idempotency( $scope, $idempotency_key, $request_sha, 3600 );
 $check( is_array( $replayed ) && ! empty( $replayed['replayed'] ) && $result === $replayed['result'], 'completed idempotency did not replay exact durable result' );
 
-// Verified provider no-effect may release a pending claim for one CAS-protected retry.
+// Verified provider no-effect requires separated durable observations before one CAS-protected retry.
 $no_effect_scope = MAD4B_SCP_Durable_Execution::scope_key(
 	'site-' . wp_generate_uuid4(),
 	'brand-context',
@@ -230,12 +237,99 @@ $no_effect_key = 'ci-no-effect-' . wp_generate_uuid4();
 $no_effect_request = hash( 'sha256', 'request:' . $no_effect_key );
 $no_effect_claim_a = MAD4B_SCP_Durable_Execution::begin_idempotency( $no_effect_scope, $no_effect_key, $no_effect_request, 3600 );
 $check( is_array( $no_effect_claim_a ) && 1 === (int) $no_effect_claim_a['claim_epoch'], 'no-effect fixture initial claim failed' );
+
+$provider_identity = array(
+	'mad4b_kind' => 'brand_context',
+	'mad4b_artifact' => wp_generate_uuid4(),
+	'mad4b_source' => hash( 'sha256', 'source:' . $no_effect_key ),
+	'mad4b_idempotency' => hash( 'sha256', 'idem:' . $no_effect_key ),
+	'mad4b_request' => $no_effect_request,
+);
 $no_effect_proof = array(
-	'contract' => 'ci.no-effect-proof.v1',
+	'contract' => 'ci.no-effect-proof.v2',
 	'provider_scan_complete' => true,
 	'provider_candidate_count' => 0,
-	'scan_generation' => hash( 'sha256', 'scan:' . $no_effect_key ),
+	'provider_identity' => $provider_identity,
 );
+
+$premature_release = MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect(
+	$no_effect_scope,
+	$no_effect_key,
+	$no_effect_request,
+	'reconcile:idempotency:no-effect',
+	$no_effect_proof
+);
+$check( 'mad4b_idempotency_no_effect_observations_required' === $error_code( $premature_release ), 'no-effect release bypassed durable observation requirement' );
+
+$observation_a = array(
+	'contract' => 'ci.no-effect-observation.v1',
+	'provider_scan_complete' => true,
+	'provider_candidate_count' => 0,
+	'provider_scan_generation' => hash( 'sha256', 'scan-a:' . $no_effect_key ),
+	'provider_identity' => $provider_identity,
+);
+$record_a = MAD4B_SCP_Durable_Execution::record_idempotency_reconciliation_observation(
+	$no_effect_scope,
+	$no_effect_key,
+	$no_effect_request,
+	'reconcile:idempotency:observation:a',
+	$observation_a
+);
+$check( is_array( $record_a ) && 1 === (int) $record_a['observation_count'], 'first no-effect observation was not durably recorded' );
+
+$one_observation_release = MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect(
+	$no_effect_scope,
+	$no_effect_key,
+	$no_effect_request,
+	'reconcile:idempotency:no-effect',
+	$no_effect_proof
+);
+$check( 'mad4b_idempotency_no_effect_observations_insufficient' === $error_code( $one_observation_release ), 'single provider observation released a retry' );
+
+$observation_b = $observation_a;
+$observation_b['provider_scan_generation'] = hash( 'sha256', 'scan-b:' . $no_effect_key );
+$record_b = MAD4B_SCP_Durable_Execution::record_idempotency_reconciliation_observation(
+	$no_effect_scope,
+	$no_effect_key,
+	$no_effect_request,
+	'reconcile:idempotency:observation:b',
+	$observation_b
+);
+$check( is_array( $record_b ) && 2 === (int) $record_b['observation_count'], 'second distinct no-effect observation was not recorded' );
+
+$too_soon_release = MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect(
+	$no_effect_scope,
+	$no_effect_key,
+	$no_effect_request,
+	'reconcile:idempotency:no-effect',
+	$no_effect_proof
+);
+$check( 'mad4b_idempotency_no_effect_observation_window_pending' === $error_code( $too_soon_release ), 'back-to-back provider observations released a retry without the minimum window' );
+
+// Age only the first durable observation inside this disposable DB fixture.
+$row = $wpdb->get_row(
+	$wpdb->prepare(
+		"SELECT * FROM {$tables['idempotency']} WHERE scope_key=%s AND idempotency_key=%s LIMIT 1",
+		$no_effect_scope,
+		$no_effect_key
+	),
+	ARRAY_A
+);
+$check( is_array( $row ) && ! empty( $row['result_json'] ), 'no-effect observation ledger was not persisted' );
+$ledger = json_decode( (string) $row['result_json'], true );
+$check( is_array( $ledger ) && isset( $ledger['observations'][0] ), 'no-effect observation ledger is corrupt' );
+$ledger['observations'][0]['observed_at_epoch'] = time() - MAD4B_SCP_Durable_Execution::NO_EFFECT_MIN_OBSERVATION_SECONDS - 5;
+$ledger['observations'][0]['observed_at'] = gmdate( 'c', (int) $ledger['observations'][0]['observed_at_epoch'] );
+$ledger_json = wp_json_encode( $ledger, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+$aged = $wpdb->update(
+	$tables['idempotency'],
+	array( 'result_json' => $ledger_json, 'result_sha256' => hash( 'sha256', $ledger_json ) ),
+	array( 'scope_key' => $no_effect_scope, 'idempotency_key' => $no_effect_key ),
+	array( '%s', '%s' ),
+	array( '%s', '%s' )
+);
+$check( 1 === (int) $aged, 'unable to age no-effect observation ledger fixture' );
+
 $no_effect_release = MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect(
 	$no_effect_scope,
 	$no_effect_key,
@@ -243,7 +337,7 @@ $no_effect_release = MAD4B_SCP_Durable_Execution::release_idempotency_after_veri
 	'reconcile:idempotency:no-effect',
 	$no_effect_proof
 );
-$check( is_array( $no_effect_release ) && ! empty( $no_effect_release['released'] ), 'verified no-effect did not release pending idempotency' );
+$check( is_array( $no_effect_release ) && ! empty( $no_effect_release['released'] ), 'separated verified no-effect observations did not release pending idempotency' );
 $no_effect_claim_b = MAD4B_SCP_Durable_Execution::begin_idempotency( $no_effect_scope, $no_effect_key, $no_effect_request, 3600 );
 $check(
 	is_array( $no_effect_claim_b )
