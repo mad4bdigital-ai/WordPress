@@ -17,6 +17,11 @@ for marker in (
     "mad4b.execution-inbox.v1",
     "public static function begin_idempotency",
     "public static function reclaim_idempotency",
+    "public static function record_idempotency_reconciliation_observation",
+    "mad4b.idempotency-reconciliation-observations.v1",
+    "NO_EFFECT_MIN_OBSERVATION_SECONDS",
+    "MAX_RECONCILIATION_OBSERVATIONS",
+    "idempotency_observation",
     "public static function release_idempotency_after_verified_no_effect",
     "released_verified_no_effect",
     "reclaimed_after_verified_no_effect",
@@ -115,6 +120,13 @@ no_effect_release = no_effect_release[: no_effect_release.index("public static f
 for marker in (
     "START TRANSACTION",
     "FOR UPDATE",
+    "RECONCILIATION_OBSERVATIONS_CONTRACT",
+    "count( $observations ) < 2",
+    "count( array_unique( $generations ) ) < 2",
+    "NO_EFFECT_MIN_OBSERVATION_SECONDS",
+    "mad4b_idempotency_no_effect_observation_window_pending",
+    "mad4b_idempotency_no_effect_observation_identity_drift",
+    "mad4b_idempotency_no_effect_proof_identity_drift",
     "reconciliation_verified( 'idempotency_no_effect'",
     "status='released_verified_no_effect'",
     "claim_epoch=%d",
@@ -124,6 +136,24 @@ for marker in (
 ):
     if marker not in no_effect_release:
         raise SystemExit(f"verified no-effect idempotency release is not fail-closed: {marker}")
+
+observation = DURABLE[DURABLE.index("public static function record_idempotency_reconciliation_observation"):]
+observation = observation[: observation.index("public static function release_idempotency_after_verified_no_effect")]
+for marker in (
+    "START TRANSACTION",
+    "FOR UPDATE",
+    "reconciliation_verified( 'idempotency_observation'",
+    "provider_scan_generation",
+    "observation_sha256",
+    "observed_at_epoch",
+    "MAX_RECONCILIATION_OBSERVATIONS",
+    "status='pending'",
+    "claim_epoch=%d",
+    "COMMIT",
+    "ROLLBACK",
+):
+    if marker not in observation:
+        raise SystemExit(f"idempotency reconciliation observation ledger is incomplete: {marker}")
 
 begin = DURABLE[DURABLE.index("public static function begin_idempotency"):]
 begin = begin[: begin.index("public static function complete_idempotency")]
