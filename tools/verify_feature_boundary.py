@@ -24,6 +24,13 @@ REPOSITORY_POLICY_PATH = ".github/mad4b-repository-governance-policy.json"
 GRANT_CATALOG_PATH = ".github/mad4b-feature-boundary-grants.json"
 GRANT_CATALOG_CONTRACT = "mad4b.repository-feature-boundary-grants.v1"
 OBSOLETE_SELF_POLICY = ".github/mad4b-feature-boundary-policy.json"
+RELEASE_CRITICAL_ROOT_PATHS = {
+    ".github/workflows/feature-007-critical-kernel.yml",
+    ".github/workflows/mad4b-control-plane-package.yml",
+    ".github/workflows/mad4b-site-control-plane.yml",
+    ".github/workflows/mad4b-live-acceptance-evidence.yml",
+    "tools/verify_release_root_trust.py",
+}
 IMMUTABLE_FEATURE_PATHS = {
     ".specify/feature.json",
     ".specify/memory/constitution.md",
@@ -131,6 +138,30 @@ def verify(base: str, head: str, head_branch: str) -> dict:
     match = FEATURE_BRANCH_RE.match(head_branch)
     changed = changed_paths(base, head)
     if not match:
+        root_changes = sorted(
+            p for p in changed
+            if p in IMMUTABLE_FEATURE_PATHS or p in RELEASE_CRITICAL_ROOT_PATHS
+        )
+        if root_changes:
+            if not (head_branch.startswith("chore/governance-") or head_branch.startswith("gov/")):
+                fail("REPOSITORY_ROOT_CHANGE_BRANCH_FORBIDDEN:" + head_branch)
+            return {
+                "contract": CONTRACT,
+                "ready": True,
+                "mode": "repository_governance_change",
+                "base_sha": base,
+                "head_sha": head,
+                "head_branch": head_branch,
+                "changed_file_count": len(changed),
+                "feature_id": "",
+                "forbidden": [],
+                "immutable_changed": root_changes,
+                "repository_root_changes": root_changes,
+                "owner_attestation_required": True,
+                "owner_attestation_scope": "exact_head",
+                "trusted_verifier_source": "base",
+                "pull_request_code_executed": False,
+            }
         return {
             "contract": CONTRACT,
             "ready": True,
@@ -142,7 +173,10 @@ def verify(base: str, head: str, head_branch: str) -> dict:
             "feature_id": "",
             "forbidden": [],
             "immutable_changed": [],
+            "repository_root_changes": [],
+            "owner_attestation_required": False,
             "trusted_verifier_source": "base",
+            "pull_request_code_executed": False,
         }
 
     feature_id = match.group("feature_id")
@@ -282,6 +316,7 @@ def verify(base: str, head: str, head_branch: str) -> dict:
         "trusted_verifier_source": "base",
         "pull_request_code_executed": False,
         "repository_governance_files_are_immutable": True,
+        "owner_attestation_required": False,
     }
 
 
