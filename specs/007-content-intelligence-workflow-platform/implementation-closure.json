@@ -300,10 +300,18 @@
         "resolution_non_authorizing": true,
         "repository_only": true,
         "workflow_plan_profile_fingerprint_bound": true,
-        "certification_drift_invalidates_plan": true
+        "certification_drift_invalidates_plan": true,
+        "catalog_capability_count": 17,
+        "explicit_trait_keys_per_capability": 14,
+        "semantic_unknowns_outside_measured_bounds_forbidden": true,
+        "allowed_unknown_trait_keys": [
+          "max_runtime_seconds",
+          "max_payload_bytes"
+        ],
+        "catalog_trait_conformance_test": "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php"
       },
       "remainder": [
-        "declare and conformance-test semantic traits for remaining provider capabilities instead of inheriting unknown defaults",
+        "measure and bind max_runtime_seconds/max_payload_bytes from trusted provider/runtime evidence instead of unknown placeholders",
         "extend selected CapabilityProfile fingerprint binding to non-workflow provider plan families as they are admitted",
         "prove exact live provider trait evidence before eligibility on ETG Staging"
       ]
