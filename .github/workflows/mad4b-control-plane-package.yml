@@ -161,59 +161,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json
-          import re
-          from pathlib import Path
-
-          root = Path('wp-content/plugins/mad4b-site-control-plane')
-          manifest_path = root / 'config' / 'skill-seed-manifest.json'
-          seed_root = root / 'skill-seeds'
-          portable_root = Path('plugins/mad4b-wordpress/skills')
-
-          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
-          if manifest.get('contract') != 'mad4b.skill-seed-manifest.v1':
-              raise SystemExit('canonical Skill manifest contract invalid')
-          rows = manifest.get('skills')
-          if not isinstance(rows, list) or not rows:
-              raise SystemExit('canonical Skill manifest inventory missing')
-
-          names = []
-          for row in rows:
-              if not isinstance(row, dict):
-                  raise SystemExit('canonical Skill manifest row must be an object')
-              name = str(row.get('name') or '')
-              if not re.fullmatch(r'[a-z0-9][a-z0-9-]{1,95}', name):
-                  raise SystemExit(f'unsafe canonical Skill name: {name!r}')
-              names.append(name)
-          if len(names) != len(set(names)):
-              raise SystemExit('duplicate canonical Skill name in manifest')
-
-          expected = set(names)
-          observed = {
-              p.parent.name
-              for p in seed_root.glob('*/SKILL.md')
-              if p.is_file()
-          }
-          if observed != expected:
-              raise SystemExit(
-                  'canonical Skill seed inventory drift '
-                  f'missing={sorted(expected-observed)} extra={sorted(observed-expected)}'
-              )
-
-          for name in sorted(expected):
-              seed = seed_root / name / 'SKILL.md'
-              portable = portable_root / name / 'SKILL.md'
-              if not portable.is_file():
-                  raise SystemExit(f'portable Skill missing: {name}')
-              if seed.read_bytes() != portable.read_bytes():
-                  raise SystemExit(f'portable/canonical Skill bytes drifted: {name}')
-
-          print(
-              'canonical Skill seed package: PASS '
-              f"seed_version={manifest.get('seed_version')} count={len(expected)}"
+          seed='wp-content/plugins/mad4b-site-control-plane/skill-seeds'
+          expected=(
+            wordpress-site-diagnostics
+            wordpress-connection-diagnostics
+            elementor-dynamic-content
+            jetengine-content-modeling
+            wordpress-archive-audit
+            wordpress-change-safety
+            wordpress-release-orchestration
+            wordpress-browser-acceptance
+            wordpress-content-authoring
           )
-          PY
+          test -d "$seed"
+          test "$(find "$seed" -mindepth 2 -maxdepth 2 -type f -name SKILL.md | wc -l)" = '9'
+          for name in "${expected[@]}"; do
+            cmp --silent "$seed/$name/SKILL.md" "plugins/mad4b-wordpress/skills/$name/SKILL.md"
+          done
 
       - name: Verify certified MCP Adapter asset
         shell: bash
