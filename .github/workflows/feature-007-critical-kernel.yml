@@ -37,6 +37,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/policy-resolution-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/formal-critical-state-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/security-ai-eval-faults-contract.py'
@@ -606,6 +608,13 @@ jobs:
         run: |
           set -euo pipefail
           bash wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh
+
+      - name: Prove Operator Doctor and DLQ runtime diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file \
+            wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-runtime.php
 
       - name: Prove Artifact Registry runtime lineage
         shell: bash
