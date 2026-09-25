@@ -46,6 +46,10 @@ class MAD4B_SCP_Context_Authority {
 	public static function begin_recreated_asset_rollback() { return true; }
 	public static function cancel_recreated_asset_rollback() { return true; }
 	public static function rollback_recreated_asset() { return true; }
+	public static function mark_generated_brand_draft() { return true; }
+	public static function begin_generated_brand_rollback() { return true; }
+	public static function cancel_generated_brand_rollback() { return true; }
+	public static function mark_generated_brand_draft_rolled_back() { return true; }
 }
 
 class MAD4B_SCP_Google_Drive_Context {
@@ -57,6 +61,7 @@ class MAD4B_SCP_Google_Drive_Context {
 	public static function create_asset() { return array(); }
 	public static function update_asset() { return array(); }
 	public static function recreate_asset() { return array(); }
+	public static function rollback_created_brand_asset() { return true; }
 	public static function reversible_update_state( $asset_id = '', $expected = '' ) {
 		return array(
 			'asset_id' => $asset_id ? (string) $asset_id : str_repeat( 'd', 64 ),
