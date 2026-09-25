@@ -90,6 +90,12 @@ def verify(template: dict, policy: dict, readback: dict | None = None) -> dict:
         raise ValueError("repository governance policy contract mismatch")
     if policy.get("target_ref") != "refs/heads/master" or policy.get("target_branch") != "master":
         raise ValueError("repository governance target must remain master")
+    if policy.get("required_repository_ruleset_name") != EXPECTED_NAME:
+        raise ValueError("repository governance policy canonical ruleset name mismatch")
+    if policy.get("required_ruleset_enforcement") != "active":
+        raise ValueError("repository governance policy must require active enforcement")
+    if policy.get("require_no_bypass_actors") is not True:
+        raise ValueError("repository governance policy must forbid bypass actors")
 
     if template.get("name") != EXPECTED_NAME:
         raise ValueError("ruleset template name mismatch")
@@ -178,11 +184,10 @@ def verify(template: dict, policy: dict, readback: dict | None = None) -> dict:
         expected_unattributed = bool(
             pr_policy.get("require_extra_approval_for_unattributed_changes_readback", True)
         )
+        if "require_extra_approval_for_unattributed_changes" not in readback_pull_params:
+            raise ValueError("live readback unattributed-approval invariant is missing")
         if bool(
-            readback_pull_params.get(
-                "require_extra_approval_for_unattributed_changes",
-                True,
-            )
+            readback_pull_params.get("require_extra_approval_for_unattributed_changes")
         ) != expected_unattributed:
             raise ValueError("live readback unattributed-approval invariant drift")
         if mutable_ruleset(readback) != mutable_ruleset(template):
