@@ -62,6 +62,28 @@ $fail = static function ( $message ) {
 };
 $check = static function ( $condition, $message ) use ( $fail ) { if ( ! $condition ) $fail( $message ); };
 
+$catalog=json_decode(file_get_contents(dirname(__DIR__).'/config/provider-capability-contracts.json'),true);
+$required_traits=array(
+ 'idempotency_model','cancellation','resume','durable_wait','retry_semantics','ordering_guarantees',
+ 'max_runtime_seconds','max_payload_bytes','callback_model','execution_history_retention',
+ 'concurrency_model','compensation_support','local_or_remote','evidence_strength',
+);
+$unknown_allowed=array('max_runtime_seconds','max_payload_bytes');
+$catalog_capability_count=0;
+foreach((array)($catalog['providers']??array()) as $provider_id=>$provider){
+ foreach((array)($provider['capabilities']??array()) as $capability_id=>$capability){
+  ++$catalog_capability_count;
+  $traits=is_array($capability['traits']??null)?$capability['traits']:array();
+  foreach($required_traits as $trait){
+   $check(array_key_exists($trait,$traits),"catalog capability missing explicit trait: $provider_id/$capability_id/$trait");
+   if('unknown'===$traits[$trait]){
+    $check(in_array($trait,$unknown_allowed,true),"semantic trait remains unknown outside measured runtime/payload bounds: $provider_id/$capability_id/$trait");
+   }
+  }
+ }
+}
+$check(17===$catalog_capability_count,'catalog capability count changed without updating conformance expectation');
+
 $profile = MAD4B_SCP_Capability_Traits::profile( 'bit_pi', 'flow.execute' );
 $check( 'mad4b.capability-profile.v1' === $profile['contract'], 'profile contract mismatch' );
 $check( 'bit_pi' === $profile['provider_id'], 'provider mismatch' );
