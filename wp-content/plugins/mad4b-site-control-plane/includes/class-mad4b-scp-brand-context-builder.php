@@ -813,6 +813,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'after_sha256' => (string) $created['content_sha256'],
 			'mime_type' => (string) $created['mime_type'],
 			'format' => $format,
+			'provider_identity' => isset( $created['app_properties'] ) && is_array( $created['app_properties'] ) ? $created['app_properties'] : (array) $identity['provider_identity'],
 		);
 		$receipt_sha256 = hash( 'sha256', self::stable_json( $receipt ) );
 		$marked = MAD4B_SCP_Context_Authority::mark_generated_brand_draft(
@@ -948,6 +949,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'after_sha256' => (string) $identity['draft_content_sha256'],
 			'mime_type' => isset( $registered['mime_type'] ) ? (string) $registered['mime_type'] : ( isset( $candidate['mimeType'] ) ? (string) $candidate['mimeType'] : '' ),
 			'format' => (string) $identity['format'],
+			'provider_identity' => $expected_properties,
 		);
 		foreach ( array( 'asset_id', 'file_id', 'mime_type' ) as $field ) if ( '' === $receipt[ $field ] ) return new WP_Error( 'mad4b_brand_materialization_reconcile_binding_invalid', 'Provider reconciliation did not yield a complete exact materialization binding.', array( 'field' => $field ) );
 		$receipt_sha256 = hash( 'sha256', self::stable_json( $receipt ) );
@@ -1003,11 +1005,22 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'after_sha256' => isset( $input['after_sha256'] ) ? (string) $input['after_sha256'] : '',
 			'mime_type' => isset( $input['mime_type'] ) ? (string) $input['mime_type'] : '',
 			'format' => isset( $input['format'] ) ? sanitize_key( (string) $input['format'] ) : '',
+			'provider_identity' => isset( $input['provider_identity'] ) && is_array( $input['provider_identity'] ) ? $input['provider_identity'] : array(),
 		);
 		$expected_receipt_sha256 = strtolower( trim( (string) ( isset( $input['receipt_sha256'] ) ? $input['receipt_sha256'] : '' ) ) );
 		$current_receipt_sha256 = hash( 'sha256', self::stable_json( $receipt ) );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_receipt_sha256 ) || ! hash_equals( $current_receipt_sha256, $expected_receipt_sha256 ) ) return new WP_Error( 'mad4b_brand_materialize_receipt_mismatch', 'Brand materialization rollback receipt does not match the exact creation result.' );
 		if ( ! in_array( $receipt['category'], self::generatable_categories(), true ) || ! in_array( $receipt['format'], array( 'markdown', 'text' ), true ) ) return new WP_Error( 'mad4b_brand_materialize_receipt_scope_invalid', 'Brand materialization rollback receipt is outside the certified Brand Core scope.' );
+		$expected_provider_identity = array(
+			'mad4b_kind' => 'brand_context',
+			'mad4b_artifact' => (string) $receipt['artifact_id'],
+			'mad4b_source' => (string) $receipt['source_id'],
+			'mad4b_idempotency' => isset( $receipt['provider_identity']['mad4b_idempotency'] ) ? strtolower( (string) $receipt['provider_identity']['mad4b_idempotency'] ) : '',
+			'mad4b_request' => isset( $receipt['provider_identity']['mad4b_request'] ) ? strtolower( (string) $receipt['provider_identity']['mad4b_request'] ) : '',
+		);
+		foreach ( $expected_provider_identity as $key => $value ) {
+			if ( ! isset( $receipt['provider_identity'][ $key ] ) || ! hash_equals( (string) $value, (string) $receipt['provider_identity'][ $key ] ) ) return new WP_Error( 'mad4b_brand_materialize_provider_identity_invalid', 'Brand materialization rollback receipt provider identity is invalid.', array( 'field' => $key ) );
+		}
 		if ( ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) return new WP_Error( 'mad4b_context_provider_gateway_unavailable', 'Context Provider Gateway is unavailable.' );
 		$receipt['receipt_sha256'] = $expected_receipt_sha256;
 		$intent = MAD4B_SCP_Context_Authority::begin_generated_brand_rollback( $receipt['asset_id'], $receipt['artifact_id'], $expected_receipt_sha256 );
