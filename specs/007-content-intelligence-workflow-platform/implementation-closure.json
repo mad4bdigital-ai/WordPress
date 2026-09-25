@@ -419,8 +419,29 @@
     {
       "id": "context_writer",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "context_writer_ready"
+      "status": "PARTIAL",
+      "gate": "context_writer_ready",
+      "evidence": {
+        "requirements_contract": "mad4b.job-knowledge-requirements.v1",
+        "context_pack_contract": "mad4b.context-pack.v1",
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-pack.php",
+        "runtime_test": "wp-content/plugins/mad4b-site-control-plane/tests/context-pack-runtime.php",
+        "artifact_registry_contract": "mad4b.artifact-registry.v1",
+        "context_authority_reused": true,
+        "raw_drive_direct_read": false,
+        "approved_exact_hash_assets_only": true,
+        "brand_match_fail_closed": true,
+        "explicit_language_filter": true,
+        "content_addressed_asset_version": true,
+        "bounded_source_assets": 64,
+        "deterministic_context_pack_sha256": true,
+        "repository_only": true
+      },
+      "remainder": [
+        "obtain exact-head MariaDB PASS for ContextPack persisted through schema v10 Artifact Registry",
+        "prove the same requirements/dispatcher behavior against the exact deployed ETG Context Authority registry",
+        "implement immutable WriterProfile version binding before declaring context_writer_ready"
+      ]
     },
     {
       "id": "research_competitive",
