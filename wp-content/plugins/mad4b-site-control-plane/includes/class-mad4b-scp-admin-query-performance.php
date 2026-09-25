@@ -17,8 +17,8 @@ final class MAD4B_SCP_Admin_Query_Performance {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		add_action( 'admin_init', array( __CLASS__, 'maybe_ensure_staging_indexes' ), 2 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_status_ability' ), 36 );
+		add_action( 'admin_post_mad4b_apply_admin_query_indexes', array( __CLASS__, 'handle_explicit_apply' ) );
 	}
 
 	public static function register_status_ability() {
@@ -86,6 +86,7 @@ final class MAD4B_SCP_Admin_Query_Performance {
 	}
 
 	public static function maybe_ensure_staging_indexes() {
+		if ( self::is_forbidden_automatic_lifecycle_request() ) return array( 'contract' => self::CONTRACT, 'environment' => self::environment(), 'state' => 'lifecycle_protected', 'production_changed' => false );
 		if ( 'staging' !== self::environment() ) return array( 'contract' => self::CONTRACT, 'environment' => self::environment(), 'state' => 'not_applicable', 'production_changed' => false );
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return array( 'contract' => self::CONTRACT, 'environment' => 'staging', 'state' => 'admin_required', 'production_changed' => false );
 
