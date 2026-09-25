@@ -122,6 +122,7 @@ $check( is_array( $writer_job ) && isset( $writer_job['job']['job_id'] ), 'write
 $writer_job_id = $writer_job['job']['job_id'];
 $writer_requirements = MAD4B_SCP_Context_Pack::resolve_requirements( array( 'job_id' => $writer_job_id ) );
 $check( is_array( $writer_requirements ) && 64 === strlen( $writer_requirements['writer_profile_fingerprint'] ), 'content-addressed WriterProfile binding missing' );
+$check( in_array( 'writer.profile', $writer_requirements['required_classes'], true ), 'bound WriterProfile is not a required knowledge class' );
 $check( hash_equals( $writer_asset['content_hash'], $writer_requirements['writer_profile_version'] ), 'WriterProfile version is not exact content hash' );
 $original_writer_hash = MAD4B_SCP_Context_Authority::$assets['writer']['content_hash'];
 MAD4B_SCP_Context_Authority::$assets['writer']['content_hash'] = hash( 'sha256', 'mutated writer profile without new job binding' );
@@ -137,6 +138,8 @@ foreach ( array( 'brand.core', 'audience.primary', 'voice.language' ) as $requir
 	$check( in_array( $required, $requirements['required_classes'], true ), 'missing base requirement ' . $required );
 }
 $check( in_array( 'seo.strategy', $requirements['conditional_classes'], true ), 'article SEO should be conditional' );
+$check( ! in_array( 'writer.profile', $requirements['required_classes'], true ), 'unbound WriterProfile became required' );
+$check( ! in_array( 'writer.profile', $requirements['conditional_classes'], true ), 'unbound WriterProfile leaked into conditional context' );
 $check( 64 === strlen( $requirements['job_requirements_sha256'] ), 'requirements digest missing' );
 
 $preview1 = MAD4B_SCP_Context_Pack::preview( array( 'job_id' => $job_id ) );
