@@ -113,7 +113,25 @@ jobs:
               raise SystemExit('repository governance workflow must cover every master change')
 
           boundary_workflow = Path('.github/workflows/mad4b-feature-boundary-root.yml').read_text(encoding='utf-8')
-          base_ref_expression = 'ref:           if 'python3 tools/verify_feature_boundary.py' not in boundary_workflow:
+          expression_open = '$' + chr(123) + chr(123)
+          expression_close = chr(125) + chr(125)
+          base_ref_expression = (
+              'ref: ' + expression_open
+              + ' github.event.pull_request.base.sha '
+              + expression_close
+          )
+          head_ref_expression = (
+              'ref: ' + expression_open
+              + ' github.event.pull_request.head.sha '
+              + expression_close
+          )
+          if '  pull_request_target:\n' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must use pull_request_target')
+          if 'permissions:\n  contents: read\n' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must remain read-only')
+          if base_ref_expression not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must checkout the trusted PR base')
+          if 'python3 tools/verify_feature_boundary.py' not in boundary_workflow:
               raise SystemExit('repository feature-boundary root must execute the baseline-owned verifier')
           if 'python3 tools/verify_repository_owner_attestation.py' not in boundary_workflow:
               raise SystemExit('repository feature-boundary root must verify exact-head owner attestation for root changes')
