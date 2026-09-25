@@ -162,23 +162,29 @@ jobs:
         run: |
           set -euo pipefail
           seed='wp-content/plugins/mad4b-site-control-plane/skill-seeds'
-          expected=(
-            wordpress-site-diagnostics
-            wordpress-connection-diagnostics
-            elementor-dynamic-content
-            jetengine-content-modeling
-            wordpress-archive-audit
-            wordpress-change-safety
-            wordpress-release-orchestration
-            wordpress-browser-acceptance
-            wordpress-extension-strategy
-            wordpress-content-authoring
-          )
-          test -d "$seed"
-          test "$(find "$seed" -mindepth 2 -maxdepth 2 -type f -name SKILL.md | wc -l)" = '10'
-          for name in "${expected[@]}"; do
-            cmp --silent "$seed/$name/SKILL.md" "plugins/mad4b-wordpress/skills/$name/SKILL.md"
-          done
+          manifest='wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json'
+          test -d "$seed" -a -f "$manifest"
+          python3 - "$manifest" "$seed" <<'PY'
+          import json, pathlib, sys
+          manifest = json.load(open(sys.argv[1], encoding='utf-8'))
+          seed = pathlib.Path(sys.argv[2])
+          if manifest.get('contract') != 'mad4b.skill-seed-manifest.v1':
+              raise SystemExit('canonical Skill seed manifest contract mismatch')
+          rows = manifest.get('skills', [])
+          names = [row.get('name') for row in rows if isinstance(row, dict)]
+          if not names or len(names) != len(rows) or len(names) != len(set(names)):
+              raise SystemExit('canonical Skill seed manifest names invalid or duplicated')
+          actual = sorted(p.parent.name for p in seed.glob('*/SKILL.md'))
+          if sorted(names) != actual:
+              raise SystemExit(f'canonical Skill seed inventory mismatch expected={sorted(names)} actual={actual}')
+          portable = pathlib.Path('plugins/mad4b-wordpress/skills')
+          for name in names:
+              left = (seed / name / 'SKILL.md').read_bytes()
+              right = (portable / name / 'SKILL.md').read_bytes()
+              if left != right:
+                  raise SystemExit(f'canonical/portable Skill drift: {name}')
+          print(f'canonical Skill seed manifest parity: PASS count={len(names)}')
+          PY
 
       - name: Verify certified MCP Adapter asset
         shell: bash
