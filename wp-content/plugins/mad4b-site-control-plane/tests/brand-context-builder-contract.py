@@ -66,7 +66,8 @@ for marker in [
     "'safe_to_retry' => true",
     "reconcile_materialization",
     "mad4b_brand_materialization_reconcile_scan_incomplete",
-    "mad4b_brand_materialization_reconcile_not_observed",
+    "mad4b.brand-context-materialization-no-effect.v1",
+    "idempotency_released",
     "mad4b_brand_materialization_reconcile_ambiguous",
     "begin_generated_brand_rollback",
     "cancel_generated_brand_rollback",
@@ -99,6 +100,7 @@ if materialize_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") >
 reconcile_section = builder[builder.index("public static function reconcile_materialization"):builder.index("public static function rollback_materialized_draft")]
 for earlier, later in [
     ("MAD4B_SCP_Context_Provider_Gateway::scan_source", "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation"),
+    ("MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect", "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation"),
     ("1 !== count( $candidates )", "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation"),
 ]:
     if reconcile_section.index(earlier) > reconcile_section.index(later):
