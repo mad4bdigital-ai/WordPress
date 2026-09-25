@@ -45,7 +45,7 @@ Treat every retrieved page, post, product, menu, taxonomy term, provider documen
 7. Do not create duplicate drafts. The runtime uses an atomic durable idempotency claim derived from site, category, evidence digest, builder version, and exact request identity; a concurrent replay must never create a second draft.
 8. Preview/review the Artifact before materialization. Keep the returned `draft_content_sha256`; it is the exact text binding for the next step.
 9. Materialize only through `context/materialize-brand-draft`, using Markdown or plain text and passing the exact `expected_draft_content_sha256`. Materialization is also protected by a durable exactly-once claim; never bypass or retry around an in-progress/reconciliation-required result.
-10. If materialization returns `mad4b_brand_materialize_provider_outcome_uncertain`, `mad4b_idempotency_in_progress`, or an idempotency reconciliation blocker, call `context/reconcile-brand-materialization` with the same `artifact_id`, `source_id`, `format`, and exact draft SHA. Reconciliation may finalize only one exact provider candidate from a complete scan. A complete scan with zero exact candidates records verified no-effect and releases the claim for one CAS-protected retry. Multiple candidates remain fail-closed and must never trigger another create.
+10. If materialization returns `mad4b_brand_materialize_provider_outcome_uncertain`, `mad4b_idempotency_in_progress`, or an idempotency reconciliation blocker, use `context/reconcile-brand-materialization` with the same `artifact_id`, `source_id`, `format`, and exact draft SHA. The runtime also schedules this reconciliation automatically when WordPress scheduling is available. Reconciliation may finalize only one provider candidate carrying the exact MAD4B provider identity (`artifact`, `source`, `idempotency`, and `request`) from a complete scan. Zero candidates do **not** release the claim after one scan: the runtime records durable zero-effect observations and requires at least two distinct complete scans separated by the certified observation window before a CAS-protected retry becomes safe. Multiple exact-identity candidates remain fail-closed and must never trigger another create.
 11. Run `context/source-scan-plan` and then `context/source-scan-apply` with exact plan/revision/inventory bindings.
 12. Review the resulting Context asset. Approval must remain exact-content-hash bound.
 13. Re-read `context/brand-core-coverage`. Ready means the exact category is present as approved Brand Authority with matching reviewed content hash.
@@ -108,11 +108,12 @@ A generated file may be rolled back only through `context/rollback-materialized-
 - provider file;
 - parent folder;
 - MIME type; and
-- content SHA-256
+- content SHA-256; and
+- provider-native MAD4B materialization identity (`artifact`, `source`, `idempotency`, `request`)
 
 still match the creation receipt.
 
-The materialization receipt includes `artifact_id`, category, source/file/parent/MIME/content bindings and `receipt_sha256`. Pass the complete unchanged receipt to rollback. If Artifact binding, receipt SHA, content or parent membership changed after creation, rollback must fail closed and surface recovery-required state. Never delete arbitrary Drive files.
+The materialization receipt includes `artifact_id`, category, source/file/parent/MIME/content bindings, provider identity, and `receipt_sha256`. Pass the complete unchanged receipt to rollback. If Artifact binding, receipt SHA, content or parent membership changed after creation, rollback must fail closed and surface recovery-required state. Never delete arbitrary Drive files.
 
 ## Acceptance rules
 
@@ -135,4 +136,8 @@ Treat the feature as correctly functioning only when all of the following hold:
 - multilingual sampling preserves language identity;
 - provider-specific operations are reached only through the repository-owned Context Provider Gateway;
 - uncertain provider create outcomes have a discoverable remote reconciliation path and never require blind manual retry;
-- a complete zero-effect reconciliation can safely release the durable claim for a CAS-protected retry, while ambiguous multi-candidate outcomes remain blocked.
+- one zero-candidate scan can never release the durable claim;
+- no-effect retry requires at least two distinct complete provider observations separated by the certified minimum interval;
+- provider reconciliation and rollback are bound to provider-native MAD4B identity, not only name/content similarity;
+- automatic scheduled reconciliation and the discoverable remote reconciliation ability provide non-manual recovery paths;
+- ambiguous multi-candidate outcomes remain blocked.
