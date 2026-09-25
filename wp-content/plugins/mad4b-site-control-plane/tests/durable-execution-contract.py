@@ -17,6 +17,10 @@ for marker in (
     "mad4b.execution-inbox.v1",
     "public static function begin_idempotency",
     "public static function reclaim_idempotency",
+    "public static function release_idempotency_after_verified_no_effect",
+    "released_after_verified_no_effect",
+    "reclaimed_after_verified_no_effect",
+    "idempotency_no_effect",
     "mad4b_idempotency_reconciliation_required",
     "mad4b_idempotency_hash_conflict",
     "claim_epoch",
@@ -98,6 +102,32 @@ for marker in (
 ):
     if marker not in idempotency_reclaim:
         raise SystemExit(f"idempotency reclaim is not fail-closed: {marker}")
+
+no_effect_release = DURABLE[DURABLE.index("public static function release_idempotency_after_verified_no_effect"):]
+no_effect_release = no_effect_release[: no_effect_release.index("public static function reclaim_idempotency")]
+for marker in (
+    "START TRANSACTION",
+    "FOR UPDATE",
+    "reconciliation_verified( 'idempotency_no_effect'",
+    "status='released_after_verified_no_effect'",
+    "claim_epoch=%d",
+    "status='pending'",
+    "COMMIT",
+    "ROLLBACK",
+):
+    if marker not in no_effect_release:
+        raise SystemExit(f"verified no-effect idempotency release is not fail-closed: {marker}")
+
+begin = DURABLE[DURABLE.index("public static function begin_idempotency"):]
+begin = begin[: begin.index("public static function complete_idempotency")]
+for marker in (
+    "'released_after_verified_no_effect' === (string) $row['status']",
+    "claim_epoch=%d",
+    "status='pending'",
+    "reclaimed_after_verified_no_effect",
+):
+    if marker not in begin:
+        raise SystemExit(f"verified no-effect retry CAS is incomplete: {marker}")
 
 lease_reclaim = DURABLE[DURABLE.index("public static function reclaim_lease"):]
 lease_reclaim = lease_reclaim[: lease_reclaim.index("public static function heartbeat")]
