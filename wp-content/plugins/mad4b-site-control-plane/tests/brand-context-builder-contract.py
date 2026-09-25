@@ -11,6 +11,7 @@ gateway_path = cp / "includes" / "class-mad4b-scp-context-provider-gateway.php"
 gateway = gateway_path.read_text(encoding="utf-8") if gateway_path.is_file() else ""
 durable = (cp / "includes" / "class-mad4b-scp-durable-execution.php").read_text(encoding="utf-8")
 adapter = (cp / "includes" / "adapters" / "class-mad4b-scp-context-adapter.php").read_text(encoding="utf-8")
+remote_parity = (cp / "includes" / "class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8")
 artifacts = (cp / "includes" / "class-mad4b-scp-artifacts.php").read_text(encoding="utf-8")
 main = (cp / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 manifest = json.loads((cp / "config" / "skill-seed-manifest.json").read_text(encoding="utf-8"))
@@ -66,7 +67,18 @@ for marker in [
     "MAD4B_SCP_Context_Provider_Gateway::rollback_created_brand_asset",
     "MAD4B_SCP_Context_Provider_Gateway::materialization_reconciliation_ref",
     "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation",
+    "MAD4B_SCP_Durable_Execution::record_idempotency_reconciliation_observation",
     "MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect",
+    "materialization_zero_observation_ref",
+    "mad4b.brand-context-materialization-zero-observation.v1",
+    "verification_pending",
+    "'safe_to_retry' => false",
+    "minimum_observation_interval_seconds",
+    "schedule_materialization_reconciliation",
+    "RECONCILE_HOOK",
+    "MAX_AUTOMATIC_RECONCILE_ATTEMPTS",
+    "run_scheduled_materialization_reconciliation",
+    "remote_reconciliation_ability",
     "materialization_no_effect_ref",
     "released_verified_no_effect",
     "'safe_to_retry' => true",
@@ -114,6 +126,15 @@ for earlier, later in [
     if reconcile_section.index(earlier) > reconcile_section.index(later):
         raise SystemExit(f"Brand materialization reconciliation ordering invariant violated: {earlier} must precede {later}")
 
+if reconcile_section.index("MAD4B_SCP_Durable_Execution::record_idempotency_reconciliation_observation") > reconcile_section.index("MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect"):
+    raise SystemExit("No-effect release occurs before durable provider observation persistence")
+if "'safe_to_retry' => true" in reconcile_section:
+    pending_pos = reconcile_section.index("'safe_to_retry' => false")
+    release_pos = reconcile_section.index("MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect")
+    safe_pos = reconcile_section.rindex("'safe_to_retry' => true")
+    if not (pending_pos < release_pos < safe_pos):
+        raise SystemExit("Brand reconciliation can declare retry safe before delayed durable no-effect release")
+
 rollback_section = builder[builder.index("public static function rollback_materialized_draft"):]
 for earlier, later in [
     ("begin_generated_brand_rollback", "MAD4B_SCP_Context_Provider_Gateway::rollback_created_brand_asset"),
@@ -154,6 +175,10 @@ for marker in [
     "create_brand_asset",
     "rollback_created_brand_asset",
     "materialization_reconciliation_ref",
+    "materialization_zero_observation_ref",
+    "MATERIALIZATION_ZERO_OBSERVATION_CONTRACT",
+    "minimum_no_effect_observations",
+    "minimum_observation_interval_seconds",
     "materialization_no_effect_ref",
     "verify_durable_reconciliation",
 ]:
@@ -163,6 +188,9 @@ for marker in [
 for marker in [
     "begin_idempotency",
     "complete_idempotency",
+    "record_idempotency_reconciliation_observation",
+    "RECONCILIATION_OBSERVATIONS_CONTRACT",
+    "NO_EFFECT_MIN_OBSERVATION_SECONDS",
     "UNIQUE",
     "mad4b_idempotency_in_progress",
     "mad4b_idempotency_reconciliation_required",
@@ -256,6 +284,16 @@ for required_file in [
 if "'context/create-drive-asset' === $ability_name" not in adapter or "mad4b_google_drive_create_rollback_not_certified" not in adapter:
     raise SystemExit("generic arbitrary Drive create must remain fail-closed")
 
+for marker in [
+    "'brand_context_materialization_reconciliation'",
+    "'context/reconcile-brand-materialization'",
+    "'durable_multi_observation_reconciliation'",
+    "'context-provider-gateway'",
+    "'human_decision_required' => false",
+]:
+    if marker not in remote_parity:
+        raise SystemExit(f"Brand materialization reconciliation is not remotely discoverable: {marker}")
+
 if not portable_skill.is_file() or not seed_skill.is_file():
     raise SystemExit("Brand Context Builder Skill is not packaged in portable and canonical seed locations")
 if portable_skill.read_bytes() != seed_skill.read_bytes():
@@ -280,6 +318,10 @@ for marker in [
     "repository-owned Context Provider Gateway",
     "context/reconcile-brand-materialization",
     "discoverable remote reconciliation path",
+    "Zero candidates do **not** release the claim after one scan",
+    "at least two distinct complete scans",
+    "automatic scheduled reconciliation",
+    "provider-native MAD4B identity",
 ]:
     if marker not in skill_text:
         raise SystemExit(f"Brand Context Builder Skill missing instruction: {marker}")
