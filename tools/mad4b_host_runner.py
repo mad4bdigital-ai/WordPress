@@ -38,6 +38,7 @@ MAX_JOB_BYTES = 65536
 MAX_RECEIPT_BYTES = 262144
 MAX_WRITE_BYTES = 32768
 WORKSPACE_PLAN_CONTRACT = "mad4b.host-runner-workspace-replace-plan.v1"
+WORKSPACE_ROLLBACK_PLAN_CONTRACT = "mad4b.host-runner-workspace-rollback-plan.v1"
 
 # Fixed semantic operation registry. There is intentionally no generic command or shell surface.
 OPERATIONS: dict[str, dict[str, Any]] = {
@@ -57,6 +58,13 @@ OPERATIONS: dict[str, dict[str, Any]] = {
         "zones": ["plugin_root"],
     },
     "workspace.file.replace": {
+        "version": 1,
+        "risk": "reversible_write",
+        "zones": ["runner_workspace"],
+        "requires_plan": True,
+        "requires_approval": True,
+    },
+    "workspace.file.rollback": {
         "version": 1,
         "risk": "reversible_write",
         "zones": ["runner_workspace"],
@@ -468,6 +476,214 @@ def build_workspace_replace_plan(
     return plan
 
 
+def build_workspace_rollback_plan(
+    profile: dict[str, Any],
+    prior_receipt: dict[str, Any],
+    reason: str,
+) -> dict[str, Any]:
+    if "workspace.file.rollback" not in profile["allowed_operations"]:
+        raise ValueError("Host Runner workspace rollback operation is not enabled")
+    if prior_receipt.get("contract") != RECEIPT_CONTRACT:
+        raise ValueError("Host Runner prior receipt contract mismatch")
+    if prior_receipt.get("operation_id") != "workspace.file.replace":
+        raise ValueError("Host Runner rollback source must be workspace.file.replace")
+    if prior_receipt.get("mutation_performed") is not True or prior_receipt.get("readback_verdict") != "PASS":
+        raise ValueError("Host Runner rollback source receipt is not a verified mutation")
+    if prior_receipt.get("profile_id") != profile["profile_id"] or prior_receipt.get("site_uuid") != profile["site_uuid"]:
+        raise ValueError("Host Runner rollback source identity mismatch")
+    if prior_receipt.get("target_fingerprint") != profile["target_fingerprint"]:
+        raise ValueError("Host Runner rollback source target fingerprint mismatch")
+
+    source_job_id = str(prior_receipt.get("job_id") or "")
+    if not re.fullmatch(r"[a-f0-9-]{36}", source_job_id):
+        raise ValueError("Host Runner rollback source job id is invalid")
+    result = prior_receipt.get("result")
+    if not isinstance(result, dict):
+        raise ValueError("Host Runner rollback source result missing")
+    relative = _workspace_relative(str(result.get("relative_path") or ""))
+    before = str(result.get("before_sha256") or "")
+    after = str(result.get("after_sha256") or "")
+    if before != "ABSENT" and not re.fullmatch(r"[a-f0-9]{64}", before):
+        raise ValueError("Host Runner rollback source before identity is invalid")
+    if not re.fullmatch(r"[a-f0-9]{64}", after):
+        raise ValueError("Host Runner rollback source after identity is invalid")
+    reason = str(reason or "").strip()
+    if len(reason) < 3 or len(reason) > 500:
+        raise ValueError("Host Runner workspace rollback reason is invalid")
+
+    workspace = Path(profile["runner_workspace"])
+    target = workspace / relative
+    current = workspace_file_identity(target) if workspace.exists() else "ABSENT"
+    if not hmac.compare_digest(current, after):
+        raise ValueError("Host Runner rollback source target no longer matches verified postcondition")
+
+    source_snapshot = Path(profile["rollback_root"]) / f"{source_job_id}.bin"
+    if before != "ABSENT":
+        if source_snapshot.is_symlink() or not source_snapshot.is_file():
+            raise ValueError("Host Runner rollback source snapshot is unavailable")
+        if not hmac.compare_digest(sha256_file(source_snapshot), before):
+            raise ValueError("Host Runner rollback source snapshot identity mismatch")
+
+    plan = {
+        "contract": WORKSPACE_ROLLBACK_PLAN_CONTRACT,
+        "operation_id": "workspace.file.rollback",
+        "operation_version": OPERATIONS["workspace.file.rollback"]["version"],
+        "operation_fingerprint": operation_fingerprint("workspace.file.rollback"),
+        "profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "executor_fingerprint": profile["executor_fingerprint"],
+        "source_job_id": source_job_id,
+        "relative_path": relative,
+        "expected_current_sha256": after,
+        "restore_sha256": before,
+        "reason": reason,
+    }
+    plan["plan_sha256"] = plan_digest(plan)
+    return plan
+
+
+def _validate_workspace_rollback_plan(
+    profile: dict[str, Any],
+    verified: dict[str, Any],
+) -> tuple[dict[str, Any], Path, Path | None]:
+    inputs = verified["input"]
+    if set(inputs) != {"plan"}:
+        raise ValueError("workspace.file.rollback input fields are invalid")
+    plan = inputs.get("plan")
+    if not isinstance(plan, dict) or plan.get("contract") != WORKSPACE_ROLLBACK_PLAN_CONTRACT:
+        raise ValueError("Host Runner workspace rollback plan contract mismatch")
+    supplied_plan_sha = str(plan.get("plan_sha256") or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{64}", supplied_plan_sha) or plan_digest(plan) != supplied_plan_sha:
+        raise ValueError("Host Runner workspace rollback plan digest mismatch")
+    if not hmac.compare_digest(supplied_plan_sha, verified["plan_sha256"]):
+        raise ValueError("Host Runner rollback job is not bound to exact plan")
+    expected = {
+        "operation_id": "workspace.file.rollback",
+        "operation_version": OPERATIONS["workspace.file.rollback"]["version"],
+        "operation_fingerprint": operation_fingerprint("workspace.file.rollback"),
+        "profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "executor_fingerprint": profile["executor_fingerprint"],
+    }
+    for key, value in expected.items():
+        if str(plan.get(key)) != str(value):
+            raise ValueError(f"Host Runner workspace rollback plan identity drift: {key}")
+
+    source_job_id = str(plan.get("source_job_id") or "")
+    if not re.fullmatch(r"[a-f0-9-]{36}", source_job_id):
+        raise ValueError("Host Runner rollback source job id is invalid")
+    relative = _workspace_relative(str(plan.get("relative_path") or ""))
+    expected_current = str(plan.get("expected_current_sha256") or "")
+    restore = str(plan.get("restore_sha256") or "")
+    if not re.fullmatch(r"[a-f0-9]{64}", expected_current):
+        raise ValueError("Host Runner rollback expected current identity is invalid")
+    if restore != "ABSENT" and not re.fullmatch(r"[a-f0-9]{64}", restore):
+        raise ValueError("Host Runner rollback restore identity is invalid")
+
+    workspace = Path(profile["runner_workspace"])
+    target = workspace / relative
+    current = workspace_file_identity(target) if workspace.exists() else "ABSENT"
+    if not hmac.compare_digest(current, expected_current):
+        raise ValueError("Host Runner rollback target changed since plan")
+    source_snapshot = None
+    if restore != "ABSENT":
+        source_snapshot = Path(profile["rollback_root"]) / f"{source_job_id}.bin"
+        if source_snapshot.is_symlink() or not source_snapshot.is_file():
+            raise ValueError("Host Runner rollback source snapshot is unavailable")
+        if not hmac.compare_digest(sha256_file(source_snapshot), restore):
+            raise ValueError("Host Runner rollback source snapshot identity mismatch")
+    return plan, target, source_snapshot
+
+
+def execute_workspace_rollback(profile: dict[str, Any], verified: dict[str, Any]) -> dict[str, Any]:
+    plan, target, source_snapshot = _validate_workspace_rollback_plan(profile, verified)
+    workspace = Path(profile["runner_workspace"])
+    journal_root = Path(profile["journal_root"])
+    rollback_root = Path(profile["rollback_root"])
+    journal_root.mkdir(parents=True, exist_ok=True)
+    rollback_root.mkdir(parents=True, exist_ok=True)
+    token = verified["job_id"]
+    journal_path = journal_root / f"{token}.json"
+    rollback_path = rollback_root / f"{token}.bin"
+    if journal_path.exists() or rollback_path.exists():
+        raise ValueError("Host Runner rollback evidence target already exists")
+
+    before = str(plan["expected_current_sha256"])
+    # Snapshot current post-write state so a failed rollback can itself be reversed.
+    current_raw = target.read_bytes()
+    atomic_bytes_write(rollback_path, current_raw)
+    if not hmac.compare_digest(sha256_file(rollback_path), before):
+        raise RuntimeError("Host Runner rollback-of-rollback snapshot readback failed")
+
+    journal = {
+        "contract": "mad4b.host-runner-mutation-journal.v1",
+        "job_id": verified["job_id"],
+        "plan_sha256": verified["plan_sha256"],
+        "approval_ref": verified["approval_ref"],
+        "operation_id": verified["operation_id"],
+        "relative_path": plan["relative_path"],
+        "before_sha256": before,
+        "expected_after_sha256": plan["restore_sha256"],
+        "source_job_id": plan["source_job_id"],
+        "state": "MUTATION_STARTED",
+        "terminal": False,
+        "blind_retry_allowed": False,
+        "created_at": utc_now(),
+    }
+    atomic_json_write(journal_path, journal)
+
+    result = {
+        "relative_path": plan["relative_path"],
+        "before_sha256": before,
+        "after_sha256": plan["restore_sha256"],
+        "source_job_id": plan["source_job_id"],
+        "plan_sha256": verified["plan_sha256"],
+        "approval_ref": verified["approval_ref"],
+        "rollback_available": True,
+        "mutation_performed": True,
+        "readback_verdict": "PENDING",
+        "_target_path": str(target),
+        "_rollback_path": str(rollback_path),
+        "_journal_path": str(journal_path),
+    }
+    try:
+        _reject_symlink_chain(target, workspace)
+        if not hmac.compare_digest(workspace_file_identity(target), before):
+            raise ValueError("Host Runner rollback target changed at commit boundary")
+        if plan["restore_sha256"] == "ABSENT":
+            target.unlink()
+            fd = os.open(str(target.parent), os.O_RDONLY)
+            try:
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+        else:
+            assert source_snapshot is not None
+            atomic_bytes_write(target, source_snapshot.read_bytes())
+        if not hmac.compare_digest(workspace_file_identity(target), str(plan["restore_sha256"])):
+            raise RuntimeError("Host Runner rollback postcondition readback failed")
+        result["readback_verdict"] = "PASS"
+        return result
+    except Exception:
+        rolled_back = _rollback_workspace_replace(result)
+        failure = dict(journal)
+        failure.update({
+            "terminal": True,
+            "completed_at": utc_now(),
+            "state": "ROLLED_BACK_AFTER_FAILURE" if rolled_back else "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+            "rollback_verified": rolled_back,
+        })
+        try:
+            atomic_json_write(journal_path, failure)
+        except Exception:
+            pass
+        raise
+
+
 def _validate_workspace_plan(
     profile: dict[str, Any],
     verified: dict[str, Any],
@@ -687,6 +903,9 @@ def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict
     if operation_id == "workspace.file.replace":
         return execute_workspace_replace(profile, verified)
 
+    if operation_id == "workspace.file.rollback":
+        return execute_workspace_rollback(profile, verified)
+
     raise ValueError("Host Runner operation has no implementation")
 
 
@@ -722,6 +941,17 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
         for key, expected in replay_bindings.items():
             if not hmac.compare_digest(str(existing.get(key) or ""), str(expected)):
                 raise ValueError(f"Host Runner job_id replayed with different {key}")
+        if existing.get("mutation_performed") is True:
+            result = existing.get("result")
+            if not isinstance(result, dict):
+                raise ValueError("Host Runner write receipt result is missing")
+            relative = _workspace_relative(str(result.get("relative_path") or ""))
+            expected_after = str(result.get("after_sha256") or "")
+            target = Path(profile["runner_workspace"]) / relative
+            current = workspace_file_identity(target) if Path(profile["runner_workspace"]).exists() else "ABSENT"
+            if not hmac.compare_digest(current, expected_after):
+                raise RuntimeError("HOST_RUNNER_REPLAY_RECONCILIATION_REQUIRED")
+            existing["replay_readback_verdict"] = "PASS"
         existing["replayed"] = True
         return existing
 
