@@ -67,14 +67,26 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		return is_array( $jobs ) ? $jobs : array();
 	}
 
-	private static function save_jobs( array $jobs ) {
-		if ( count( $jobs ) > self::MAX_JOBS ) {
-			uasort( $jobs, static function ( $a, $b ) {
-				return (int) ( isset( $a['created_at_epoch'] ) ? $a['created_at_epoch'] : 0 )
-					<=> (int) ( isset( $b['created_at_epoch'] ) ? $b['created_at_epoch'] : 0 );
-			} );
-			$jobs = array_slice( $jobs, -self::MAX_JOBS, null, true );
+	private static function prune_reclaimable_jobs( array $jobs ) {
+		$reclaimable = array();
+		foreach ( $jobs as $job_id => $job ) {
+			if ( ! is_array( $job ) ) { $reclaimable[ $job_id ] = 0; continue; }
+			$status = isset( $job['status'] ) ? (string) $job['status'] : '';
+			$expired = self::now() > (int) ( isset( $job['expires_at_epoch'] ) ? $job['expires_at_epoch'] : 0 );
+			if ( 'completed' === $status || $expired ) {
+				$reclaimable[ $job_id ] = (int) ( isset( $job['created_at_epoch'] ) ? $job['created_at_epoch'] : 0 );
+			}
 		}
+		asort( $reclaimable, SORT_NUMERIC );
+		foreach ( array_keys( $reclaimable ) as $job_id ) {
+			if ( count( $jobs ) < self::MAX_JOBS ) break;
+			unset( $jobs[ $job_id ] );
+		}
+		return $jobs;
+	}
+
+	private static function save_jobs( array $jobs ) {
+		if ( count( $jobs ) > self::MAX_JOBS ) return false;
 		update_option( self::OPTION, $jobs, false );
 		$stored = get_option( self::OPTION, array() );
 		if ( ! is_array( $stored ) ) return false;
@@ -164,7 +176,7 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		) ) );
 
 		return self::with_lock( 'enqueue', static function () use ( $operation_id, $payload, $expected_identity, $ttl_seconds, $semantic_digest ) {
-			$jobs = self::jobs();
+			$jobs = self::prune_reclaimable_jobs( self::jobs() );
 			foreach ( $jobs as $existing ) {
 				if ( ! is_array( $existing ) ) continue;
 				if ( hash_equals( $semantic_digest, (string) ( isset( $existing['semantic_digest'] ) ? $existing['semantic_digest'] : '' ) )
@@ -172,6 +184,12 @@ final class MAD4B_SCP_Remote_Work_Queue {
 					&& self::now() <= (int) ( isset( $existing['expires_at_epoch'] ) ? $existing['expires_at_epoch'] : 0 ) ) {
 					return array( 'state' => 'already_queued', 'job' => self::public_job( $existing ) );
 				}
+			}
+			if ( count( $jobs ) >= self::MAX_JOBS ) {
+				return new WP_Error(
+					'mad4b_remote_work_queue_capacity_exhausted',
+					'Remote work queue is full of active non-reclaimable jobs; no active work was discarded.'
+				);
 			}
 			$job_id = strtolower( wp_generate_uuid4() );
 			$job = array(
