@@ -191,6 +191,33 @@ $read = MAD4B_SCP_Capability_Traits::profile( 'bit_pi', 'flows.read' );
 $check( 'read_repeatable' === $read['traits']['idempotency_model'], 'Bit Flows read idempotency declaration mismatch' );
 $check( false === $read['traits']['durable_wait'], 'Bit Flows read durable_wait declaration mismatch' );
 
+$required_trait_keys = array(
+	'traits_scope','idempotency_model','cancellation','resume','durable_wait','retry_semantics',
+	'ordering_guarantees','max_runtime_seconds','max_payload_bytes','callback_model',
+	'execution_history_retention','concurrency_model','compensation_support','local_or_remote','evidence_strength',
+);
+$catalog = json_decode( file_get_contents( dirname( __DIR__ ) . '/config/provider-capability-contracts.json' ), true );
+foreach ( $catalog['providers'] as $provider_id => $provider ) {
+	foreach ( $provider['capabilities'] as $capability_id => $capability ) {
+		$traits = isset( $capability['traits'] ) && is_array( $capability['traits'] ) ? $capability['traits'] : array();
+		foreach ( $required_trait_keys as $key ) {
+			$check( array_key_exists( $key, $traits ), 'capability trait declaration incomplete: ' . $provider_id . '/' . $capability_id . '/' . $key );
+		}
+		$risk = isset( $capability['risk'] ) ? (string) $capability['risk'] : '';
+		if ( 'read' === $risk ) {
+			$check( 'read_repeatable' === $traits['idempotency_model'], 'read capability idempotency is not explicit: ' . $provider_id . '/' . $capability_id );
+			$check( 'same_observation' === $traits['retry_semantics'], 'read capability retry semantics are not explicit: ' . $provider_id . '/' . $capability_id );
+			$check( false === $traits['compensation_support'], 'read capability unexpectedly declares compensation: ' . $provider_id . '/' . $capability_id );
+		} else {
+			$check( 'mad4b_guarded' === $traits['idempotency_model'], 'write capability lacks guarded idempotency: ' . $provider_id . '/' . $capability_id );
+			$check( 'reconciliation_required_on_uncertain' === $traits['retry_semantics'], 'write capability can retry uncertainty blindly: ' . $provider_id . '/' . $capability_id );
+			$expected_compensation = ! empty( $capability['reversible'] );
+			$check( $expected_compensation === $traits['compensation_support'], 'compensation trait disagrees with reversible contract: ' . $provider_id . '/' . $capability_id );
+		}
+		$check( 'local_wordpress' === $traits['local_or_remote'], 'packaged provider execution locality is not explicit: ' . $provider_id . '/' . $capability_id );
+	}
+}
+
 $main_source = file_get_contents( dirname( __DIR__ ) . '/mad4b-site-control-plane.php' );
 $servers_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
 $check( false !== strpos( $main_source, 'class-mad4b-scp-capability-traits.php' ), 'capability trait service is not loaded by plugin runtime' );
