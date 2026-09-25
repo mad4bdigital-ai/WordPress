@@ -27,6 +27,134 @@ def fail(group: str, message: str) -> None:
 def record(group: str, **payload) -> None:
     checks[group] = payload
 
+
+def _mask_php_noncode(source: str) -> str:
+    """Mask quoted strings and comments while preserving offsets/newlines."""
+    out = list(source)
+    i = 0
+    state = "code"
+    quote = ""
+    while i < len(source):
+        ch = source[i]
+        nxt = source[i + 1] if i + 1 < len(source) else ""
+        if state == "code":
+            if ch in ("'", '"', chr(96)):
+                state = "string"
+                quote = ch
+                out[i] = " "
+            elif ch == "/" and nxt == "/":
+                state = "line_comment"
+                out[i] = out[i + 1] = " "
+                i += 1
+            elif ch == "/" and nxt == "*":
+                state = "block_comment"
+                out[i] = out[i + 1] = " "
+                i += 1
+            elif ch == "#" and nxt != "[":
+                state = "line_comment"
+                out[i] = " "
+        elif state == "string":
+            if ch == "\\":
+                out[i] = " "
+                if i + 1 < len(source):
+                    if source[i + 1] != "\n":
+                        out[i + 1] = " "
+                    i += 1
+            elif ch == quote:
+                out[i] = " "
+                state = "code"
+                quote = ""
+            elif ch != "\n":
+                out[i] = " "
+        elif state == "line_comment":
+            if ch == "\n":
+                state = "code"
+            else:
+                out[i] = " "
+        elif state == "block_comment":
+            if ch == "*" and nxt == "/":
+                out[i] = out[i + 1] = " "
+                i += 1
+                state = "code"
+            elif ch != "\n":
+                out[i] = " "
+        i += 1
+    return "".join(out)
+
+
+def _php_structural_inventory(source: str) -> tuple[list[str], list[dict]]:
+    """Find named classes and method duplicates within the same class scope."""
+    masked = _mask_php_noncode(source)
+    class_opens: dict[int, list[str]] = {}
+    named_classes: list[str] = []
+
+    named_re = re.compile(
+        r"(?m)^\s*(?:final\s+|abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)\b"
+    )
+    for match in named_re.finditer(masked):
+        brace = masked.find("{", match.end())
+        if brace < 0:
+            continue
+        name = match.group(1)
+        named_classes.append(name)
+        class_opens.setdefault(brace, []).append(name)
+
+    anon_index = 0
+    for match in re.finditer(r"\bnew\s+class\b", masked):
+        brace = masked.find("{", match.end())
+        if brace < 0:
+            continue
+        anon_index += 1
+        line = masked.count("\n", 0, match.start()) + 1
+        class_opens.setdefault(brace, []).append(f"<anonymous#{anon_index}@L{line}>")
+
+    method_events: dict[int, tuple[str, int]] = {}
+    for match in re.finditer(
+        r"(?m)^\s*(?:(?:public|protected|private)\s+)?(?:static\s+)?function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(",
+        masked,
+    ):
+        method_events[match.start()] = (
+            match.group(1),
+            masked.count("\n", 0, match.start()) + 1,
+        )
+
+    positions = set(method_events)
+    positions.update(i for i, ch in enumerate(masked) if ch in "{}")
+    depth = 0
+    class_stack: list[tuple[str, int]] = []
+    methods_by_scope: dict[str, list[tuple[str, int]]] = {}
+
+    for pos in sorted(positions):
+        if pos in method_events and class_stack:
+            method_name, line = method_events[pos]
+            scope = class_stack[-1][0]
+            methods_by_scope.setdefault(scope, []).append((method_name, line))
+
+        ch = masked[pos]
+        if ch == "{":
+            depth += 1
+            for scope in class_opens.get(pos, []):
+                class_stack.append((scope, depth))
+        elif ch == "}":
+            depth = max(0, depth - 1)
+            while class_stack and class_stack[-1][1] > depth:
+                class_stack.pop()
+
+    duplicates: list[dict] = []
+    for scope, rows in methods_by_scope.items():
+        names = [name for name, _line in rows]
+        repeated = sorted({name for name in names if names.count(name) > 1})
+        if repeated:
+            duplicates.append({
+                "class_scope": scope,
+                "methods": repeated,
+                "lines": {
+                    method: [line for name, line in rows if name == method]
+                    for method in repeated
+                },
+            })
+    return named_classes, duplicates
+
 skill_rel = Path("wordpress-extension-strategy") / "SKILL.md"
 portable_skill = PORTABLE / "skills" / skill_rel
 seed_skill = CP / "skill-seeds" / skill_rel
@@ -183,18 +311,21 @@ duplicate_classes: list[dict] = []
 duplicate_methods: list[dict] = []
 for path in class_files:
     src = path.read_text(encoding="utf-8")
-    for cls in re.findall(r"(?m)^\s*(?:final\s+|abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)\b", src):
+    named_classes, scoped_method_duplicates = _php_structural_inventory(src)
+    for cls in named_classes:
         if cls in classes:
-            duplicate_classes.append({"class": cls, "first": classes[cls], "second": str(path.relative_to(REPO))})
+            duplicate_classes.append({
+                "class": cls,
+                "first": classes[cls],
+                "second": str(path.relative_to(REPO)),
+            })
         else:
             classes[cls] = str(path.relative_to(REPO))
-    methods = re.findall(
-        r"(?m)^\s*(?:(?:public|protected|private)\s+)?(?:static\s+)?function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(",
-        src,
-    )
-    dups = sorted({m for m in methods if methods.count(m) > 1})
-    if dups:
-        duplicate_methods.append({"file": str(path.relative_to(REPO)), "methods": dups})
+    for duplicate in scoped_method_duplicates:
+        duplicate_methods.append({
+            "file": str(path.relative_to(REPO)),
+            **duplicate,
+        })
 
 if duplicate_classes:
     fail("structural_integrity", f"duplicate class declarations: {duplicate_classes}")
