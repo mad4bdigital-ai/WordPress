@@ -36,6 +36,14 @@
     ],
     "strict_required_status_checks_policy": true
   },
+  "ruleset_attestation": {
+    "variable_name": "MAD4B_RULESET_ATTESTATION",
+    "contract": "mad4b.repository-ruleset-attestation.v1",
+    "require_zero_bypass_actors": true,
+    "bind_ruleset_updated_at": true,
+    "bind_policy_sha256": true,
+    "bind_template_sha256": true
+  },
   "single_owner_safety": {
     "external_review_count_required": 0,
     "last_pusher_may_complete_owner_attestation_outside_github_review": true,
