@@ -310,10 +310,12 @@ if sorted(manifest_names) != seed_names or sorted(manifest_names) != portable_na
 record("skill_manifest", manifest=str(skill_manifest_path.relative_to(REPO)), count=len(manifest_names), seed_names=seed_names)
 
 class_files = sorted((CP / "includes").glob("class-mad4b-scp-*.php"))
+adapter_files = sorted((CP / "includes" / "adapters").glob("class-mad4b-scp-*.php"))
+structural_files = class_files + adapter_files
 classes: dict[str, str] = {}
 duplicate_classes: list[dict] = []
 duplicate_methods: list[dict] = []
-for path in class_files:
+for path in structural_files:
     src = path.read_text(encoding="utf-8")
     named_classes, scoped_method_duplicates = _php_structural_inventory(src)
     for cls in named_classes:
@@ -339,6 +341,7 @@ if duplicate_methods:
 line_caps = {
     CP / "includes" / "class-mad4b-scp-content-jobs.php": 1200,
     CP / "includes" / "class-mad4b-scp-scheduler-admission.php": 1200,
+    CP / "includes" / "adapters" / "class-mad4b-scp-context-adapter.php": 1200,
 }
 line_counts = {}
 for path, cap in line_caps.items():
@@ -349,6 +352,8 @@ for path, cap in line_caps.items():
 record(
     "structural_integrity",
     class_files=len(class_files),
+    adapter_files=len(adapter_files),
+    structural_files=len(structural_files),
     duplicate_classes=duplicate_classes,
     duplicate_methods=duplicate_methods,
     guarded_line_counts=line_counts,
