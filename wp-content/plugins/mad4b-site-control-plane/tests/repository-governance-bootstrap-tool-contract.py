@@ -17,6 +17,13 @@ required = [
     '"--input",$TemplatePath',
     'repository ruleset reconciliation failed',
     'Reconciled existing ruleset id=$rulesetId',
+    '$currentBranch = (& git branch --show-current).Trim()',
+    '$currentBranch -ne "master"',
+    'ruleset activation is post-merge only',
+    '"repos/$Repository/commits/master"',
+    '$remoteMaster -ne $currentHead',
+    'post_merge_master_verified=true',
+    '$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository:$($ExpectedHead.ToLowerInvariant())"',
 ]
 
 missing = [needle for needle in required if needle not in script]
@@ -39,3 +46,5 @@ for required_check in ["Repository release verdict", "Repository feature boundar
 
 print("ruleset_shape_guard=id,name,enforcement")
 print("existing_named_ruleset=reconciled_to_exact_template")
+print("activation_timing=post_merge_master_only")
+print("confirmation_scope=repository_plus_exact_head")
