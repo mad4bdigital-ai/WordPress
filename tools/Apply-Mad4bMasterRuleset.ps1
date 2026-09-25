@@ -296,7 +296,7 @@ Remove-Item -LiteralPath $GovernanceStatusPath -Force -ErrorAction SilentlyConti
 $previousAttestationEnv = [Environment]::GetEnvironmentVariable($variableName, "Process")
 try {
     [Environment]::SetEnvironmentVariable($variableName, $attestationValue, "Process")
-    & $PythonCommand "tools/verify_repository_governance.py" --repository $Repository --policy $PolicyPath --template $TemplatePath --output $GovernanceStatusPath
+    & $PythonCommand "tools/verify_repository_governance.py" --repository $Repository --policy $PolicyPath --template $TemplatePath --require-ruleset-attestation --output $GovernanceStatusPath
     if ($LASTEXITCODE -ne 0) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: canonical ruleset and freshly-built attestation did not satisfy aggregate repository governance."
     }
