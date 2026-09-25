@@ -184,8 +184,10 @@ def load_profile(path: Path) -> dict[str, Any]:
     root = root_input.resolve()
     if not root.is_dir():
         raise ValueError("Host Runner profile WordPress root is invalid")
-    if not (root / "wp-config.php").is_file():
+    wp_config = root / "wp-config.php"
+    if wp_config.is_symlink() or not wp_config.is_file():
         raise ValueError("Host Runner profile WordPress root guard failed")
+    wp_config_sha256 = sha256_file(wp_config)
 
     key_file_raw = str(profile.get("integrity_key_file") or "")
     if not key_file_raw:
@@ -243,6 +245,7 @@ def load_profile(path: Path) -> dict[str, Any]:
         "site_uuid": site_uuid,
         "environment": environment,
         "wordpress_root": str(root),
+        "wp_config_sha256": wp_config_sha256,
         "allowed_operations": sorted(set(allowed)),
         "runner_source_sha256": runner_source_sha256,
         "executor_fingerprint": executor_fingerprint,
@@ -266,10 +269,10 @@ def load_profile(path: Path) -> dict[str, Any]:
         if candidate.exists() and (candidate.is_symlink() or not candidate.is_dir()):
             raise ValueError(f"Host Runner {evidence_root_key} must be a regular directory")
     normalized["target_fingerprint"] = sha256_bytes(canonical_json({
-        "profile_id": profile_id,
         "site_uuid": site_uuid,
         "environment": environment,
         "wordpress_root": str(root),
+        "wp_config_sha256": wp_config_sha256,
     }))
     normalized["_integrity_key"] = key
     return normalized
