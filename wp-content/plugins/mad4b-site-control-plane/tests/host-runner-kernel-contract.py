@@ -48,6 +48,7 @@ def make_job(profile, operation_id, inputs, *, job_id=None, created=None, expire
         "contract": runner.JOB_CONTRACT,
         "job_id": job_id or str(uuid.uuid4()),
         "profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
         "environment": profile["environment"],
         "target_fingerprint": profile["target_fingerprint"],
         "operation_id": operation_id,
@@ -57,6 +58,9 @@ def make_job(profile, operation_id, inputs, *, job_id=None, created=None, expire
         "expires_at": iso(expires or (now + timedelta(minutes=5))),
         "input": inputs,
         "input_sha256": runner.sha256_bytes(runner.canonical_json(inputs)),
+        "idempotency_key": "idem-" + (job_id or "new-" + str(uuid.uuid4())),
+        "actor_ref": "ci:operator",
+        "authority_ref": "ci:read-authority",
         "submission_location": "contract_test",
     }
     job["mac_sha256"] = runner.job_mac(job, profile["_integrity_key"])
@@ -79,6 +83,7 @@ with tempfile.TemporaryDirectory() as td:
     profile_path.write_text(json.dumps({
         "contract": runner.PROFILE_CONTRACT,
         "profile_id": "ci-host-runner",
+        "site_uuid": "11111111-2222-4333-8444-555555555555",
         "environment": "staging",
         "wordpress_root": str(wp),
         "integrity_key_file": str(key),
