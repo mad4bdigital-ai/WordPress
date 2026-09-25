@@ -109,6 +109,8 @@ final class MAD4B_SCP_Context_Pack {
 	public static function resolve_requirements( $input ) {
 		$job = self::job( isset( $input['job_id'] ) ? $input['job_id'] : '' );
 		if ( is_wp_error( $job ) ) return $job;
+		$writer = self::writer_profile_binding( $job );
+		if ( is_wp_error( $writer ) ) return $writer;
 		$required = array( 'brand.core', 'audience.primary', 'voice.language' );
 		$conditional = array( 'brand.positioning', 'evidence', 'legal.compliance', 'pricing' );
 
@@ -154,8 +156,9 @@ final class MAD4B_SCP_Context_Pack {
 			'language' => (string) $job['language'],
 			'country' => (string) $job['country'],
 			'content_type' => (string) $job['content_type'],
-			'writer_profile_id' => (string) $job['writer_profile_id'],
-			'writer_profile_version' => (string) $job['writer_profile_version'],
+			'writer_profile_id' => $writer['writer_profile_id'],
+			'writer_profile_version' => $writer['writer_profile_version'],
+			'writer_profile_fingerprint' => $writer['writer_profile_fingerprint'],
 			'required_classes' => $required,
 			'conditional_classes' => $conditional,
 			'resolver_version' => '1',
@@ -302,6 +305,9 @@ final class MAD4B_SCP_Context_Pack {
 			'brand_id' => (string) $job['brand_id'],
 			'language' => (string) $job['language'],
 			'country' => (string) $job['country'],
+			'writer_profile_id' => (string) $requirements['writer_profile_id'],
+			'writer_profile_version' => (string) $requirements['writer_profile_version'],
+			'writer_profile_fingerprint' => (string) $requirements['writer_profile_fingerprint'],
 			'site_brand_match' => true,
 			'provisional_context_allowed' => false,
 		);
@@ -315,6 +321,27 @@ final class MAD4B_SCP_Context_Pack {
 		) ) );
 		$payload['mutation_performed'] = false;
 		return $payload;
+	}
+
+	private static function writer_profile_binding( array $job ) {
+		$id = isset( $job['writer_profile_id'] ) ? trim( (string) $job['writer_profile_id'] ) : '';
+		$version = isset( $job['writer_profile_version'] ) ? trim( (string) $job['writer_profile_version'] ) : '';
+		if ( ( '' === $id ) xor ( '' === $version ) ) {
+			return new WP_Error( 'mad4b_writer_profile_binding_incomplete', 'WriterProfile identity and version must be bound together.' );
+		}
+		$fingerprint = '';
+		if ( '' !== $id ) {
+			$fingerprint = self::digest( array(
+				'contract' => 'mad4b.writer-profile-binding.v1',
+				'writer_profile_id' => $id,
+				'writer_profile_version' => $version,
+			) );
+		}
+		return array(
+			'writer_profile_id' => $id,
+			'writer_profile_version' => $version,
+			'writer_profile_fingerprint' => $fingerprint,
+		);
 	}
 
 	private static function job( $job_id ) {
