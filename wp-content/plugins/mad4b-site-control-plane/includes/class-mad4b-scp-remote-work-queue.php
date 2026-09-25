@@ -45,6 +45,23 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		return false === $json ? '' : $json;
 	}
 
+
+	private static function delete_option_if_unchanged( $name, $expected ) {
+		global $wpdb;
+		if ( ! isset( $wpdb->options ) ) return false;
+		$serialized = maybe_serialize( $expected );
+		$deleted = $wpdb->delete(
+			$wpdb->options,
+			array( 'option_name' => (string) $name, 'option_value' => $serialized ),
+			array( '%s', '%s' )
+		);
+		if ( 1 === (int) $deleted ) {
+			wp_cache_delete( (string) $name, 'options' );
+			return true;
+		}
+		return false;
+	}
+
 	private static function jobs() {
 		$jobs = get_option( self::OPTION, array() );
 		return is_array( $jobs ) ? $jobs : array();
@@ -77,7 +94,9 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		if ( add_option( self::LOCK_OPTION, $record, '', false ) ) return $owner;
 		$current = get_option( self::LOCK_OPTION, array() );
 		if ( is_array( $current ) && self::now() > (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
-			delete_option( self::LOCK_OPTION );
+			if ( ! self::delete_option_if_unchanged( self::LOCK_OPTION, $current ) ) {
+				return new WP_Error( 'mad4b_remote_work_queue_lock_reclaim_raced', 'Remote work queue lock changed while reclaiming an expired lease.' );
+			}
 			if ( add_option( self::LOCK_OPTION, $record, '', false ) ) return $owner;
 		}
 		return new WP_Error( 'mad4b_remote_work_queue_busy', 'Remote work queue is currently locked by another mutation.' );
@@ -85,7 +104,9 @@ final class MAD4B_SCP_Remote_Work_Queue {
 
 	private static function release_lock( $owner ) {
 		$current = get_option( self::LOCK_OPTION, array() );
-		if ( is_array( $current ) && isset( $current['owner'] ) && hash_equals( (string) $current['owner'], (string) $owner ) ) delete_option( self::LOCK_OPTION );
+		if ( is_array( $current ) && isset( $current['owner'] ) && hash_equals( (string) $current['owner'], (string) $owner ) ) {
+			self::delete_option_if_unchanged( self::LOCK_OPTION, $current );
+		}
 	}
 
 	private static function with_lock( $operation, $callback ) {
