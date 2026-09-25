@@ -62,7 +62,7 @@ for marker in [
     "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation",
     "MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect",
     "materialization_no_effect_ref",
-    "released_after_verified_no_effect",
+    "released_verified_no_effect",
     "'safe_to_retry' => true",
     "reconcile_materialization",
     "mad4b_brand_materialization_reconcile_scan_incomplete",
@@ -86,7 +86,7 @@ append_section = builder[builder.index("public static function append_draft"):bu
 if append_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > append_section.index("self::find_existing_draft( $idempotency_key )"):
     raise SystemExit("Brand draft legacy lookup occurs before atomic durable idempotency claim")
 
-if "released_after_verified_no_effect" not in durable:
+if "released_verified_no_effect" not in durable:
     raise SystemExit("Durable execution must preserve a released-after-verified-no-effect terminal/reclaimable state")
 if "release_idempotency_after_verified_no_effect" not in durable:
     raise SystemExit("Durable execution lacks verified no-effect idempotency release")
