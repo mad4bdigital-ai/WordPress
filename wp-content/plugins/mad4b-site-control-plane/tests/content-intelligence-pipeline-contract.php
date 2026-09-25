@@ -19,6 +19,17 @@ function wp_has_ability($n){return false;}
 final class MAD4B_SCP_Policy {
 	public static function can_mutate(){ return true; }
 }
+final class MAD4B_SCP_Content_Jobs {
+	public static $writer_profile_id = 'writer-1';
+	public static $writer_profile_version = '3';
+	public static function get_job($input){
+		return array('job'=>array(
+			'job_id'=>$input['job_id'],
+			'writer_profile_id'=>self::$writer_profile_id,
+			'writer_profile_version'=>self::$writer_profile_version,
+		));
+	}
+}
 
 final class MAD4B_SCP_Artifacts {
 	public static $rows = array();
@@ -61,6 +72,11 @@ require dirname(__DIR__) . '/includes/class-mad4b-scp-content-intelligence-pipel
 $fail=static function($m){fwrite(STDERR,"FAIL content-intelligence-pipeline-contract: $m\n");exit(1);};
 $check=static function($c,$m) use($fail){if(!$c)$fail($m);};
 $job='11111111-2222-4333-8444-555555555555';
+$writer_profile_fingerprint=hash('sha256',json_encode(array(
+	'contract'=>'mad4b.writer-profile-binding.v1',
+	'writer_profile_id'=>'writer-1',
+	'writer_profile_version'=>'3',
+),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
 
 $context_id='00000000-0000-4000-8000-000000000001';
 $research_id='00000000-0000-4000-8000-000000000002';
@@ -70,7 +86,7 @@ MAD4B_SCP_Artifacts::$rows[$context_id]=array(
 	'artifact_type'=>'context_pack',
 	'status'=>'active',
 	'version'=>1,
-	'payload'=>array('contract'=>'mad4b.context-pack.v1','ready'=>true),
+	'payload'=>array('contract'=>'mad4b.context-pack.v1','ready'=>true,'writer_profile_id'=>'writer-1','writer_profile_version'=>'3','writer_profile_fingerprint'=>$writer_profile_fingerprint),
 	'metadata'=>array(),
 	'producer_stage'=>'KNOWLEDGE_DISPATCH',
 );
@@ -139,6 +155,9 @@ $draft=MAD4B_SCP_Content_Intelligence_Pipeline::append_draft(array(
 	'content'=>'Evidence-backed article draft.','section_count'=>2,
 ));
 $check(is_array($draft) && true===$draft['artifact']['payload']['can_write'],'Approved draft append failed');
+$check('writer-1'===$draft['artifact']['payload']['writer_profile_id'],'Draft did not bind WriterProfile id from ContentJob');
+$check('3'===$draft['artifact']['payload']['writer_profile_version'],'Draft did not bind WriterProfile version from ContentJob');
+$check($writer_profile_fingerprint===$draft['artifact']['payload']['writer_profile_fingerprint'],'Draft WriterProfile fingerprint mismatch');
 $draft_id=$draft['artifact']['artifact_id'];
 
 // A passing QA artifact for another Blueprint may never authorize this Blueprint.
@@ -194,6 +213,18 @@ $check(false===$qa['can_publish'] && false===$qa['publication_authorized'],'QA b
 $final=MAD4B_SCP_Artifacts::$rows[$qa['final_qa_artifact_id']];
 $check(false===$final['payload']['pass'],'FinalQA artifact pass mismatch');
 $check(false===$final['payload']['can_publish'],'FinalQA artifact unexpectedly publishable');
+$check($writer_profile_fingerprint===$final['payload']['writer_profile_fingerprint'],'FinalQA lost WriterProfile lineage');
+
+// Changing the ContentJob WriterProfile after Context/Draft creation must fail closed.
+MAD4B_SCP_Content_Jobs::$writer_profile_version='4';
+$writer_drift=MAD4B_SCP_Content_Intelligence_Pipeline::append_qa_bundle(array(
+	'job_id'=>$job,'draft_artifact_id'=>$draft_id,
+	'fact_ledger'=>array('claims'=>array(),'hard_blockers'=>array()),
+	'editorial_qa'=>array('findings'=>array(),'hard_blockers'=>array()),
+	'seo_qa'=>array('findings'=>array(),'hard_blockers'=>array()),
+));
+$check(is_wp_error($writer_drift) && 'mad4b_writer_profile_draft_mismatch'===$writer_drift->get_error_code(),'WriterProfile version drift did not invalidate Draft/QA lineage');
+MAD4B_SCP_Content_Jobs::$writer_profile_version='3';
 
 // Stale upstream evidence invalidates future planning.
 MAD4B_SCP_Artifacts::$rows[$context_id]['status']='stale';
