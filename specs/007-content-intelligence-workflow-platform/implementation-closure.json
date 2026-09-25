@@ -298,11 +298,13 @@
         "bitflows_explicit_trait_profile": true,
         "unknown_traits_fail_closed": true,
         "resolution_non_authorizing": true,
-        "repository_only": true
+        "repository_only": true,
+        "workflow_plan_profile_fingerprint_bound": true,
+        "certification_drift_invalidates_plan": true
       },
       "remainder": [
         "declare and conformance-test semantic traits for remaining provider capabilities instead of inheriting unknown defaults",
-        "bind selected CapabilityProfile fingerprint into all governed provider execution plans",
+        "extend selected CapabilityProfile fingerprint binding to non-workflow provider plan families as they are admitted",
         "prove exact live provider trait evidence before eligibility on ETG Staging"
       ]
     },
@@ -506,12 +508,18 @@
         "content_addressed_asset_version": true,
         "bounded_source_assets": 64,
         "deterministic_context_pack_sha256": true,
-        "repository_only": true
+        "repository_only": true,
+        "writer_profile_binding_contract": "mad4b.writer-profile-binding.v1",
+        "writer_profile_source_of_truth": "ContentJob",
+        "writer_profile_bound_contextpack": true,
+        "writer_profile_bound_draft": true,
+        "writer_profile_bound_final_qa": true,
+        "writer_profile_stale_denial": true
       },
       "remainder": [
         "obtain exact-head MariaDB PASS for ContextPack persisted through schema v11 Artifact Registry",
         "prove the same requirements/dispatcher behavior against the exact deployed ETG Context Authority registry",
-        "implement immutable WriterProfile version binding before declaring context_writer_ready"
+        "prove exact live WriterProfile asset/version evidence resolves to the ContentJob-bound immutable fingerprint"
       ]
     },
     {
@@ -567,12 +575,14 @@
         "hard_blockers_not_averaged": true,
         "final_qa_can_publish_false": true,
         "publication_authorized_false": true,
-        "repository_only": true
+        "repository_only": true,
+        "immutable_writer_profile_lineage": true,
+        "writer_profile_drift_fails_closed": true
       },
       "remainder": [
         "obtain exact-head Critical Kernel PASS for the Blueprint/Draft/QA contract",
         "prove the same artifact lineage and stale-evidence gates against the exact deployed ETG candidate",
-        "bind real WriterProfile version evidence and model/provider outputs through governed Skills/providers"
+        "bind live model/provider outputs through governed Skills/providers to the immutable ContentJob WriterProfile fingerprint"
       ]
     },
     {
@@ -600,7 +610,9 @@
         "server_write_candidate": "mad4b/draft-apply",
         "write_authority_plane_required": true,
         "public_publish_capability_present": false,
-        "contract_executed_by_critical_kernel": true
+        "contract_executed_by_critical_kernel": true,
+        "writer_profile_bound_into_plan_digest": true,
+        "writer_profile_revalidated_at_apply": true
       },
       "remainder": [
         "obtain exact-head Critical Kernel PASS for governed draft orchestration",
@@ -770,10 +782,14 @@
         "non_authorizing": true,
         "automatic_activation": false,
         "ambiguous_multi_provider_selection": false,
-        "repository_only": true
+        "repository_only": true,
+        "workflow_plan_profile_fingerprint_bound": true,
+        "workflow_plan_certification_fingerprint_bound": true,
+        "workflow_plan_release_ring_bound": true,
+        "certification_drift_invalidates_plan_sha256": true
       },
       "remainder": [
-        "bind selected profile/certification fingerprints into every governed provider execution plan",
+        "extend the same profile/certification fingerprint binding to every future governed provider execution plan family, not only workflow-plan",
         "define explicit operator/policy preference for multi-provider ambiguity instead of silent tie-breaking",
         "prove shadow→canary→active promotion and rollback against exact ETG Staging provider identities"
       ]
