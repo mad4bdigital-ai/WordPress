@@ -44,8 +44,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 \\
-            | sort -z \\
+          find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 \
+            | sort -z \
             | xargs -0 -n1 php -l
 
       - name: Dynamic Skill distribution contract
