@@ -150,6 +150,9 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 		if ( is_wp_error( $context_id ) ) return $context_id;
 		$context = self::active_artifact( $context_id, $job_id, 'context_pack' );
 		if ( is_wp_error( $context ) ) return $context;
+		if ( ! self::context_writer_matches( $context, $writer ) ) {
+			return new WP_Error( 'mad4b_writer_profile_context_mismatch', 'ContextPack WriterProfile binding does not match the ContentJob.' );
+		}
 		$research_ids = isset( $input['research_artifact_ids'] ) && is_array( $input['research_artifact_ids'] ) ? array_values( $input['research_artifact_ids'] ) : array();
 		if ( empty( $research_ids ) ) return new WP_Error( 'mad4b_can_plan_research_missing', 'CAN_PLAN requires at least one active research artifact.' );
 		$research = array();
@@ -214,6 +217,8 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 	public static function append_draft( $input ) {
 		$job_id = self::job_id( $input );
 		if ( is_wp_error( $job_id ) ) return $job_id;
+		$writer = self::job_writer_profile( $job_id );
+		if ( is_wp_error( $writer ) ) return $writer;
 		$blueprint_id = self::artifact_id( $input, 'blueprint_artifact_id' );
 		if ( is_wp_error( $blueprint_id ) ) return $blueprint_id;
 		$qa_id = self::artifact_id( $input, 'blueprint_qa_artifact_id' );
@@ -241,8 +246,9 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			'blueprint_artifact_id' => $blueprint_id,
 			'blueprint_qa_artifact_id' => $qa_id,
 			'context_artifact_id' => $context_id,
-			'writer_profile_id' => isset( $input['writer_profile_id'] ) ? substr( sanitize_text_field( (string) $input['writer_profile_id'] ), 0, 191 ) : '',
-			'writer_profile_version' => isset( $input['writer_profile_version'] ) ? substr( sanitize_text_field( (string) $input['writer_profile_version'] ), 0, 64 ) : '',
+			'writer_profile_id' => $writer['writer_profile_id'],
+			'writer_profile_version' => $writer['writer_profile_version'],
+			'writer_profile_fingerprint' => $writer['writer_profile_fingerprint'],
 			'content' => $content,
 			'section_count' => isset( $input['section_count'] ) ? max( 0, (int) $input['section_count'] ) : 0,
 			'can_write' => true,
@@ -260,6 +266,11 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 		if ( is_wp_error( $draft_id ) ) return $draft_id;
 		$draft = self::active_artifact( $draft_id, $job_id, 'draft' );
 		if ( is_wp_error( $draft ) ) return $draft;
+		$writer = self::job_writer_profile( $job_id );
+		if ( is_wp_error( $writer ) ) return $writer;
+		if ( ! self::draft_writer_matches( $draft, $writer ) ) {
+			return new WP_Error( 'mad4b_writer_profile_draft_mismatch', 'ArticleDraft WriterProfile binding does not match the ContentJob.' );
+		}
 		$definitions = array(
 			'fact_ledger' => array( 'stage' => 'FACT_QA', 'contract' => 'mad4b.fact-ledger.v1', 'input' => 'fact_ledger' ),
 			'editorial_qa' => array( 'stage' => 'EDITORIAL_QA', 'contract' => 'mad4b.editorial-qa.v1', 'input' => 'editorial_qa' ),
@@ -275,6 +286,9 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			$payload = array_merge( $row, array(
 				'contract' => $def['contract'],
 				'draft_artifact_id' => $draft_id,
+				'writer_profile_id' => $writer['writer_profile_id'],
+				'writer_profile_version' => $writer['writer_profile_version'],
+				'writer_profile_fingerprint' => $writer['writer_profile_fingerprint'],
 				'hard_blockers' => $component_hard,
 				'pass' => empty( $component_hard ),
 			) );
@@ -288,6 +302,9 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 		$final = array(
 			'contract' => 'mad4b.final-qa.v1',
 			'draft_artifact_id' => $draft_id,
+			'writer_profile_id' => $writer['writer_profile_id'],
+			'writer_profile_version' => $writer['writer_profile_version'],
+			'writer_profile_fingerprint' => $writer['writer_profile_fingerprint'],
 			'component_artifact_ids' => $created,
 			'hard_blockers' => $hard_blockers,
 			'pass' => empty( $hard_blockers ),
@@ -308,6 +325,48 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			'publication_authorized' => false,
 			'mutation_performed' => true,
 		);
+	}
+
+	private static function job_writer_profile( $job_id ) {
+		if ( ! class_exists( 'MAD4B_SCP_Content_Jobs' ) ) return new WP_Error( 'mad4b_content_job_service_unavailable', 'ContentJob service is unavailable.' );
+		$result = MAD4B_SCP_Content_Jobs::get_job( array( 'job_id' => $job_id ) );
+		if ( is_wp_error( $result ) ) return $result;
+		$job = isset( $result['job'] ) && is_array( $result['job'] ) ? $result['job'] : array();
+		$id = trim( (string) ( $job['writer_profile_id'] ?? '' ) );
+		$version = trim( (string) ( $job['writer_profile_version'] ?? '' ) );
+		if ( '' === $id || '' === $version ) return new WP_Error( 'mad4b_writer_profile_required', 'ContentJob must bind an immutable WriterProfile identity and version.' );
+		$fingerprint = self::digest_value( array(
+			'contract' => 'mad4b.writer-profile-binding.v1',
+			'writer_profile_id' => $id,
+			'writer_profile_version' => $version,
+		) );
+		return array(
+			'writer_profile_id' => $id,
+			'writer_profile_version' => $version,
+			'writer_profile_fingerprint' => $fingerprint,
+		);
+	}
+
+	private static function context_writer_matches( array $context, array $writer ) {
+		$payload = isset( $context['payload'] ) && is_array( $context['payload'] ) ? $context['payload'] : array();
+		return isset( $payload['writer_profile_id'], $payload['writer_profile_version'], $payload['writer_profile_fingerprint'] )
+			&& hash_equals( $writer['writer_profile_id'], (string) $payload['writer_profile_id'] )
+			&& hash_equals( $writer['writer_profile_version'], (string) $payload['writer_profile_version'] )
+			&& hash_equals( $writer['writer_profile_fingerprint'], (string) $payload['writer_profile_fingerprint'] );
+	}
+
+	private static function draft_writer_matches( array $draft, array $writer ) {
+		$payload = isset( $draft['payload'] ) && is_array( $draft['payload'] ) ? $draft['payload'] : array();
+		return isset( $payload['writer_profile_id'], $payload['writer_profile_version'], $payload['writer_profile_fingerprint'] )
+			&& hash_equals( $writer['writer_profile_id'], (string) $payload['writer_profile_id'] )
+			&& hash_equals( $writer['writer_profile_version'], (string) $payload['writer_profile_version'] )
+			&& hash_equals( $writer['writer_profile_fingerprint'], (string) $payload['writer_profile_fingerprint'] );
+	}
+
+	private static function digest_value( $value ) {
+		$value = self::sort_value( $value );
+		$json = wp_json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return false === $json ? '' : hash( 'sha256', $json );
 	}
 
 	private static function append( $job_id, $type, $stage, array $payload, array $metadata, $reason ) {
