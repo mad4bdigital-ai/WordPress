@@ -134,8 +134,8 @@
     "remote_operation_parity",
     "future_capability_discoverability"
   ],
-  "coverage_audit_version": "2026-09-25.v9-bulk-runtime-closure-hardening",
-  "coverage_status": "architecture-frozen-bulk-runtime-closure-hardening-with-executable-ci-invariants",
+  "coverage_audit_version": "2026-09-25.v10-root-trust-brand-context-hardening",
+  "coverage_status": "architecture-frozen-root-trust-separated-brand-context-v2-with-durable-idempotency-provider-gateway-and-crash-safe-rollback",
   "quality_model": "mad4b.feature007.quality.v1",
   "operating_model": "long-lived-multi-site-governed-platform",
   "required_phase_count": 37,
@@ -152,8 +152,6 @@
     ".github/workflows/mad4b-wpml-external-diagnostic.yml",
     ".github/workflows/mad4b-oauth-resource-bridge.yml",
     ".github/workflows/mad4b-provider-compatibility-engine.yml",
-    ".github/workflows/mad4b-owner-attestation-rerun.yml",
-    ".github/workflows/mad4b-release-verdict.yml",
     ".github/workflows/mad4b-site-control-plane.yml",
     ".github/workflows/mad4b-context-authority.yml",
     ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
@@ -226,6 +224,15 @@
     "skill_inventory_source": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
     "cross_feature_dependencies_are_exact": true,
     "mutable_metadata_cannot_widen_policy": true,
-    "repository_governance_changes_are_separately_governed": true
+    "repository_governance_files_are_immutable": true
+  },
+  "repository_root_trust_dependency": {
+    "contract": "mad4b.repository-feature-boundary.v1",
+    "bootstrap_pr": 66,
+    "trusted_verifier_path": "tools/verify_feature_boundary.py",
+    "trusted_workflow_path": ".github/workflows/mad4b-feature-boundary-root.yml",
+    "verifier_source": "pull_request_base",
+    "pull_request_code_executed_by_root_check": false,
+    "repository_governance_changes_forbidden_from_feature": true
   }
 }
