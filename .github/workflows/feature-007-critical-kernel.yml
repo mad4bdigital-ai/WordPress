@@ -6,9 +6,11 @@ on:
       - 'tools/verify_release_root_trust.py'
       - 'tools/mad4b_recovery_plane.py'
       - 'tools/mad4b_host_runner.py'
+      - 'tools/mad4b_host_runner_bootstrap.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py'
@@ -60,9 +62,11 @@ on:
       - 'tools/verify_release_root_trust.py'
       - 'tools/mad4b_recovery_plane.py'
       - 'tools/mad4b_host_runner.py'
+      - 'tools/mad4b_host_runner_bootstrap.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
@@ -138,7 +142,8 @@ jobs:
           python3 -m py_compile \
             tools/verify_release_root_trust.py \
             tools/mad4b_recovery_plane.py \
-            tools/mad4b_host_runner.py
+            tools/mad4b_host_runner.py \
+            tools/mad4b_host_runner_bootstrap.py
 
       - name: Verify external release root-trust contract
         shell: bash
@@ -157,6 +162,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py
+
+      - name: Verify Host Runner bootstrap and enrollment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py
 
       - name: Verify canonical read-only wp mad4b CLI
         shell: bash
