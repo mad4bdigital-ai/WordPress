@@ -265,6 +265,7 @@ for needle in [
     "policy_sha256",
     "template_sha256",
     "bypass_actor_count",
+    "require_extra_approval_for_unattributed_changes",
 ]:
     if needle not in builder_text:
         raise SystemExit(f"ruleset attestation builder contract missing: {needle}")
