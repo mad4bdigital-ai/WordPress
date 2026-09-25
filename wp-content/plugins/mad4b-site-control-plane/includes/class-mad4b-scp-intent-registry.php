@@ -350,6 +350,63 @@ final class MAD4B_SCP_Intent_Registry {
 		);
 	}
 
+	public static function normalize_relations( array $relations, array $previous = array() ) {
+		$normalized = self::normalize_analysis_relations( $relations );
+		if ( is_wp_error( $normalized ) ) return $normalized;
+
+		$input_by_identity = array();
+		$seen_relation_ids = array();
+		foreach ( $relations as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$key = self::relation_identity_key( $row );
+			if ( '' !== $key ) $input_by_identity[ $key ] = $row;
+			$relation_id = isset( $row['relation_id'] ) ? self::bounded_key( $row['relation_id'], 191 ) : '';
+			if ( '' !== $relation_id ) {
+				if ( isset( $seen_relation_ids[ $relation_id ] ) ) return new WP_Error( 'mad4b_intent_relation_duplicate', 'Intent relation ID is duplicated.' );
+				$seen_relation_ids[ $relation_id ] = true;
+			}
+		}
+
+		$previous_by_identity = array();
+		foreach ( $previous as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$key = self::relation_identity_key( $row );
+			if ( '' !== $key ) $previous_by_identity[ $key ] = $row;
+		}
+
+		$out = array();
+		foreach ( $normalized as $row ) {
+			$key = self::relation_identity_key( $row );
+			$input = isset( $input_by_identity[ $key ] ) ? $input_by_identity[ $key ] : array();
+			$prior = isset( $previous_by_identity[ $key ] ) ? $previous_by_identity[ $key ] : null;
+			$relation_id = isset( $input['relation_id'] ) ? self::bounded_key( $input['relation_id'], 191 ) : '';
+			$revision = 1;
+			if ( is_array( $prior ) ) {
+				$prior_revision = max( 1, (int) ( $prior['revision'] ?? 1 ) );
+				$prior_semantic = self::normalize_semantic_row( $prior );
+				$revision = ! is_wp_error( $prior_semantic ) && hash_equals( self::semantic_sha256( $prior_semantic ), self::semantic_sha256( $row ) )
+					? $prior_revision
+					: $prior_revision + 1;
+				if ( '' === $relation_id && isset( $prior['relation_id'] ) ) $relation_id = self::bounded_key( $prior['relation_id'], 191 );
+			}
+			$row['relation_id'] = $relation_id;
+			$row['revision'] = $revision;
+			$row['relation_sha256'] = self::semantic_sha256( $row );
+			$out[] = $row;
+		}
+		usort( $out, array( __CLASS__, 'compare_relations' ) );
+		return $out;
+	}
+
+	private static function relation_identity_key( array $row ) {
+		$intent_id = isset( $row['intent_id'] ) ? self::bounded_key( $row['intent_id'], 191 ) : '';
+		$content_id = isset( $row['content_id'] ) ? self::bounded_key( $row['content_id'], 191 ) : '';
+		$locale = isset( $row['locale'] ) ? self::bounded_key( $row['locale'], 32 ) : '';
+		$market = isset( $row['market'] ) ? self::bounded_key( $row['market'], 64 ) : '';
+		if ( '' === $intent_id || '' === $content_id || '' === $locale || '' === $market ) return '';
+		return $intent_id . "\0" . $locale . "\0" . $market . "\0" . $content_id;
+	}
+
 	public static function normalize_analysis_relations( array $relations ) {
 		if ( count( $relations ) > self::MAX_RELATIONS_PER_SCOPE ) return new WP_Error( 'mad4b_intent_relation_limit', 'Intent relation count exceeds bounded limit.' );
 		$out = array();
