@@ -154,7 +154,8 @@ final class MAD4B_SCP_Intent_Registry {
 		$intent_id = self::bounded_key( $input['intent_id'] ?? '', 191 );
 		$locale = self::bounded_key( $input['locale'] ?? '', 32 );
 		$market = self::bounded_key( $input['market'] ?? '', 64 );
-		$expected_scope_sha = strtolower( trim( (string) ( $input['expected_scope_sha256'] ?? '' ) ) );
+		$expected_scope_raw = trim( (string) ( $input['expected_scope_sha256'] ?? '' ) );
+		$expected_scope_sha = 'ABSENT' === strtoupper( $expected_scope_raw ) ? 'ABSENT' : strtolower( $expected_scope_raw );
 		$desired_raw = isset( $input['relations'] ) && is_array( $input['relations'] ) ? $input['relations'] : null;
 		$reason = trim( sanitize_text_field( (string) ( $input['reason'] ?? '' ) ) );
 		if ( '' === $intent_id || '' === $locale || '' === $market ) return new WP_Error( 'mad4b_intent_scope_invalid', 'Intent/locale/market scope is incomplete.' );
