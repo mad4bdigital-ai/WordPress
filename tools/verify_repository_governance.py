@@ -100,52 +100,133 @@ def main() -> int:
         if bypass:
             raise SystemExit(f"applicable ruleset contains bypass actors: {bypass}")
 
-    all_rules = []
-    for ruleset in applicable:
-        for rule in ruleset.get("rules") or []:
-            if isinstance(rule, dict):
-                all_rules.append((ruleset, rule))
+    expected_ruleset_name = str(
+        policy.get("required_repository_ruleset_name")
+        or "MAD4B master release governance"
+    )
+    governed_rulesets = [
+        row
+        for row in applicable
+        if str(row.get("name") or "") == expected_ruleset_name
+        and str(row.get("source_type") or "") == "Repository"
+    ]
+    if len(governed_rulesets) != 1:
+        raise SystemExit(
+            "exactly one active repository-owned canonical MAD4B ruleset must apply: "
+            + repr(
+                [
+                    {
+                        "id": row.get("id"),
+                        "name": row.get("name"),
+                        "source_type": row.get("source_type"),
+                        "source": row.get("source"),
+                    }
+                    for row in governed_rulesets
+                ]
+            )
+        )
+    governed_ruleset = governed_rulesets[0]
+    if str(governed_ruleset.get("source") or "") not in {"", args.repository}:
+        raise SystemExit(
+            "canonical MAD4B ruleset source does not match repository: "
+            + repr(governed_ruleset.get("source"))
+        )
 
+    governed_rules = [
+        rule
+        for rule in (governed_ruleset.get("rules") or [])
+        if isinstance(rule, dict)
+    ]
     required_types = set(policy.get("required_rule_types") or [])
-    present_types = {str(rule.get("type") or "") for _, rule in all_rules}
-    missing_types = sorted(required_types - present_types)
-    if missing_types:
-        raise SystemExit(f"required repository rule types missing: {missing_types}")
+    present_types = {str(rule.get("type") or "") for rule in governed_rules}
+    if present_types != required_types:
+        raise SystemExit(
+            "canonical MAD4B ruleset rule types drift: "
+            f"expected={sorted(required_types)!r} actual={sorted(present_types)!r}"
+        )
+    rule_counts = {
+        rule_type: sum(
+            1 for rule in governed_rules
+            if str(rule.get("type") or "") == rule_type
+        )
+        for rule_type in required_types
+    }
+    duplicate_or_missing = {
+        rule_type: count
+        for rule_type, count in rule_counts.items()
+        if count != 1
+    }
+    if duplicate_or_missing:
+        raise SystemExit(
+            "canonical MAD4B ruleset must contain exactly one rule per governed type: "
+            + repr(duplicate_or_missing)
+        )
+
+    for simple_type in ("deletion", "non_fast_forward"):
+        if simple_type in required_types:
+            simple_rule = next(
+                rule for rule in governed_rules
+                if rule.get("type") == simple_type
+            )
+            if set(simple_rule) != {"type"}:
+                raise SystemExit(
+                    f"canonical {simple_type} rule contains unexpected parameters"
+                )
 
     pr_policy = policy.get("pull_request") or {}
-    pull_rules = [rule for _, rule in all_rules if rule.get("type") == "pull_request"]
-    if not pull_rules:
-        raise SystemExit("pull_request rule missing")
+    pull_rule = next(
+        rule for rule in governed_rules
+        if rule.get("type") == "pull_request"
+    )
+    pull_params = pull_rule.get("parameters") or {}
+    allowed_pull_fields = {
+        "allowed_merge_methods",
+        "dismiss_stale_reviews_on_push",
+        "require_code_owner_review",
+        "require_last_push_approval",
+        "required_approving_review_count",
+        "required_review_thread_resolution",
+        "required_reviewers",
+        "require_extra_approval_for_unattributed_changes",
+    }
+    unknown_pull_fields = sorted(set(pull_params) - allowed_pull_fields)
+    if unknown_pull_fields:
+        raise SystemExit(
+            "canonical pull_request rule contains ungoverned parameters: "
+            + repr(unknown_pull_fields)
+        )
     expected_merge_methods = set(pr_policy.get("allowed_merge_methods") or [])
-    expected_required_reviewers = pr_policy.get("required_reviewers") or []
+    expected_required_reviewers = list(pr_policy.get("required_reviewers") or [])
     expected_unattributed_approval = bool(
         pr_policy.get("require_extra_approval_for_unattributed_changes_readback", True)
     )
-    if not any(
-        int((rule.get("parameters") or {}).get("required_approving_review_count", -1))
+    pull_ready = (
+        int(pull_params.get("required_approving_review_count", -1))
         == int(pr_policy.get("required_approving_review_count", 0))
-        and bool((rule.get("parameters") or {}).get("dismiss_stale_reviews_on_push"))
+        and bool(pull_params.get("dismiss_stale_reviews_on_push"))
         == bool(pr_policy.get("dismiss_stale_reviews_on_push", False))
-        and bool((rule.get("parameters") or {}).get("require_code_owner_review"))
+        and bool(pull_params.get("require_code_owner_review"))
         == bool(pr_policy.get("require_code_owner_review", False))
-        and bool((rule.get("parameters") or {}).get("require_last_push_approval"))
+        and bool(pull_params.get("require_last_push_approval"))
         == bool(pr_policy.get("require_last_push_approval", False))
-        and bool((rule.get("parameters") or {}).get("required_review_thread_resolution"))
+        and bool(pull_params.get("required_review_thread_resolution"))
         == bool(pr_policy.get("required_review_thread_resolution", True))
-        and list((rule.get("parameters") or {}).get("required_reviewers") or [])
-        == list(expected_required_reviewers)
+        and list(pull_params.get("required_reviewers") or [])
+        == expected_required_reviewers
         and bool(
-            (rule.get("parameters") or {}).get(
+            pull_params.get(
                 "require_extra_approval_for_unattributed_changes",
                 True,
             )
         )
         == expected_unattributed_approval
-        and set((rule.get("parameters") or {}).get("allowed_merge_methods") or [])
+        and set(pull_params.get("allowed_merge_methods") or [])
         == expected_merge_methods
-        for rule in pull_rules
-    ):
-        raise SystemExit("pull_request rule does not satisfy exact governed review/merge policy")
+    )
+    if not pull_ready:
+        raise SystemExit(
+            "canonical pull_request rule does not satisfy exact governed review/merge policy"
+        )
 
     status_policy = policy.get("required_status_checks") or {}
     required_rows = status_policy.get("contexts") or []
@@ -154,29 +235,46 @@ def main() -> int:
         for row in required_rows
         if isinstance(row, dict)
     }
-    if not required_checks or any(not context or integration_id < 1 for context, integration_id in required_checks):
-        raise SystemExit("repository governance policy must pin every required check to a source integration")
-    status_rules = [rule for _, rule in all_rules if rule.get("type") == "required_status_checks"]
-    matched_status_rule = None
-    for rule in status_rules:
-        params = rule.get("parameters") or {}
-        actual_checks = {
-            (str(row.get("context") or ""), int(row.get("integration_id") or 0))
-            for row in params.get("required_status_checks") or []
-            if isinstance(row, dict)
-        }
-        if (
-            required_checks.issubset(actual_checks)
-            and bool(params.get("strict_required_status_checks_policy"))
-            == bool(status_policy.get("strict_required_status_checks_policy", True))
-        ):
-            matched_status_rule = rule
-            break
-    if matched_status_rule is None:
+    if not required_checks or any(
+        not context or integration_id < 1
+        for context, integration_id in required_checks
+    ):
         raise SystemExit(
-            "required status-check policy missing or source integration is not pinned: "
-            + repr(sorted(required_checks))
+            "repository governance policy must pin every required check to a source integration"
         )
+
+    status_rule = next(
+        rule for rule in governed_rules
+        if rule.get("type") == "required_status_checks"
+    )
+    status_params = status_rule.get("parameters") or {}
+    allowed_status_fields = {
+        "do_not_enforce_on_create",
+        "required_status_checks",
+        "strict_required_status_checks_policy",
+    }
+    unknown_status_fields = sorted(set(status_params) - allowed_status_fields)
+    if unknown_status_fields:
+        raise SystemExit(
+            "canonical required_status_checks rule contains ungoverned parameters: "
+            + repr(unknown_status_fields)
+        )
+    actual_checks = {
+        (str(row.get("context") or ""), int(row.get("integration_id") or 0))
+        for row in status_params.get("required_status_checks") or []
+        if isinstance(row, dict)
+    }
+    if actual_checks != required_checks:
+        raise SystemExit(
+            "canonical required status checks drift: "
+            f"expected={sorted(required_checks)!r} actual={sorted(actual_checks)!r}"
+        )
+    if bool(status_params.get("strict_required_status_checks_policy")) != bool(
+        status_policy.get("strict_required_status_checks_policy", True)
+    ):
+        raise SystemExit("canonical strict required-status-check policy drift")
+    if bool(status_params.get("do_not_enforce_on_create", False)):
+        raise SystemExit("canonical required status checks must enforce on branch creation")
 
     result = {
         "contract": "mad4b.repository-governance-status.v1",
@@ -185,6 +283,13 @@ def main() -> int:
         "ready": True,
         "applicable_ruleset_ids": [row.get("id") for row in applicable],
         "applicable_ruleset_names": [row.get("name") for row in applicable],
+        "governed_ruleset_id": governed_ruleset.get("id"),
+        "governed_ruleset_name": governed_ruleset.get("name"),
+        "governed_ruleset_source_type": governed_ruleset.get("source_type"),
+        "inherited_or_additional_applicable_ruleset_ids": [
+            row.get("id") for row in applicable
+            if row.get("id") != governed_ruleset.get("id")
+        ],
         "required_rule_types": sorted(required_types),
         "required_status_checks": [
             {"context": context, "integration_id": integration_id}
@@ -193,6 +298,8 @@ def main() -> int:
         "strict_required_status_checks_policy": True,
         "bypass_actor_count": 0,
         "allowed_merge_methods": sorted(expected_merge_methods),
+        "required_reviewers": expected_required_reviewers,
+        "require_extra_approval_for_unattributed_changes": expected_unattributed_approval,
         "single_owner_safe": True,
     }
     encoded = json.dumps(result, indent=2, sort_keys=True) + "\n"
