@@ -229,6 +229,7 @@ for protected_root in [
     "tools/verify_repository_ruleset_template.py",
     "tools/verify_repository_ruleset_restore.py",
     "tools/build_repository_ruleset_attestation.py",
+    "tools/publish_repository_ruleset_attestation.py",
 ]:
     run_case(
         [protected_root],
