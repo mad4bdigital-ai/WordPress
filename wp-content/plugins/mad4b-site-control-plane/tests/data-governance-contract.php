@@ -1,10 +1,31 @@
 <?php
 
 define( 'ABSPATH', __DIR__ . '/' );
+class WP_Error {
+ private $code; private $message;
+ public function __construct($code,$message=''){ $this->code=$code; $this->message=$message; }
+ public function get_error_code(){ return $this->code; }
+}
+function is_wp_error($v){return $v instanceof WP_Error;}
 function add_action($h,$c,$p=10){}
 function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/','',str_replace('.','_',trim((string)$v))));}
 function sanitize_text_field($v){return trim((string)$v);}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
+
+final class MAD4B_SCP_Artifacts {
+ public static $last=array();
+ public static function append_artifact($input){
+  self::$last=$input;
+  return array('artifact'=>array(
+   'artifact_id'=>'77777777-7777-4777-8777-777777777777',
+   'job_id'=>$input['job_id'],
+   'artifact_type'=>$input['artifact_type'],
+   'payload'=>$input['payload'],
+   'metadata'=>$input['metadata'],
+   'status'=>'active',
+  ));
+ }
+}
 
 require dirname(__DIR__) . '/includes/class-mad4b-scp-data-governance.php';
 
@@ -61,6 +82,30 @@ $approval['destination_profile']['allowed_data_classes'][]='internal_confidentia
 $approval['site_policy']['approval_required_data_classes']=array('internal_confidential');
 $review=MAD4B_SCP_Data_Governance::evaluate($approval);
 $check('REQUIRE_APPROVAL'===$review['decision'],'approval-required class did not block automatic allow');
+
+$record_input=$base;
+$record_input['job_id']='11111111-2222-4333-8444-555555555555';
+$record_input['reason']='persist governed data decision evidence';
+$record_input['rights_records']=array(array(
+ 'rights_class'=>'LICENSED',
+ 'review_status'=>'approved',
+ 'attribution_required'=>true,
+ 'raw_source_text'=>'TOP_SECRET_SOURCE_TEXT_SHOULD_NEVER_PERSIST',
+ 'license_document'=>'PRIVATE_LICENSE_DOCUMENT_SHOULD_NEVER_PERSIST',
+));
+$record=MAD4B_SCP_Data_Governance::record_decision($record_input);
+$check(is_array($record) && true===$record['mutation_performed'],'durable data-governance decision was not recorded');
+$check(false===$record['provider_call_performed'] && false===$record['authority_created'],'recording widened provider/authority behavior');
+$check('data_governance_decision'===MAD4B_SCP_Artifacts::$last['artifact_type'],'wrong durable artifact type');
+$persisted=json_encode(MAD4B_SCP_Artifacts::$last);
+$check(false===strpos($persisted,'TOP_SECRET_SOURCE_TEXT_SHOULD_NEVER_PERSIST'),'raw source text leaked into durable evidence');
+$check(false===strpos($persisted,'PRIVATE_LICENSE_DOCUMENT_SHOULD_NEVER_PERSIST'),'raw license document leaked into durable evidence');
+$check(true===MAD4B_SCP_Artifacts::$last['payload']['payload_minimized'],'payload minimization evidence missing');
+$check(false===MAD4B_SCP_Artifacts::$last['payload']['raw_rights_records_persisted'],'raw rights persistence flag widened');
+$check(1===preg_match('/^[a-f0-9]{64}$/',$record['decision_fingerprint']),'recorded decision fingerprint invalid');
+
+$artifact_source=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-artifacts.php');
+$check(false!==strpos($artifact_source,"'data_governance_decision'"),'data-governance artifact type not registered');
 
 $source=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-data-governance.php');
 foreach(array('wp_insert_post(','wp_update_post(','$wpdb->','shell_exec(','exec(','proc_open(','curl_exec(') as $forbidden){
