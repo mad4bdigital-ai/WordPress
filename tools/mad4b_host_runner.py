@@ -398,6 +398,17 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
             raise ValueError("Host Runner job_id replayed with different input")
         if not hmac.compare_digest(str(existing.get("operation_fingerprint") or ""), verified["operation_fingerprint"]):
             raise ValueError("Host Runner job_id replayed with different operation")
+        replay_bindings = {
+            "profile_id": profile["profile_id"],
+            "site_uuid": profile["site_uuid"],
+            "target_fingerprint": profile["target_fingerprint"],
+            "idempotency_key": verified["idempotency_key"],
+            "actor_ref": verified["actor_ref"],
+            "authority_ref": verified["authority_ref"],
+        }
+        for key, expected in replay_bindings.items():
+            if not hmac.compare_digest(str(existing.get(key) or ""), str(expected)):
+                raise ValueError(f"Host Runner job_id replayed with different {key}")
         existing["replayed"] = True
         return existing
 
