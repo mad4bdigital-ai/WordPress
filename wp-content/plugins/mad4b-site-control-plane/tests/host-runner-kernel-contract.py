@@ -118,6 +118,8 @@ with tempfile.TemporaryDirectory() as td:
         "allowed_operations": sorted(runner.OPERATIONS),
     }), encoding="utf-8")
     profile = runner.load_profile(profile_path)
+    if not isinstance(profile.get("_integrity_key"), (bytes, bytearray)):
+        raise SystemExit("Host Runner normalized profile lost binary HMAC key material")
 
     # Canonicalization must not hide a caller-supplied symlinked WordPress root.
     root_link = tmp / "wordpress-link"
