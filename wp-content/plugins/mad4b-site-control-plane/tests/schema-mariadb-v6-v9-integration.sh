@@ -194,7 +194,7 @@ $before = MAD4B_SCP_Schema::status( true );
 $result = MAD4B_SCP_Schema::install_or_upgrade();
 if ( is_wp_error( $result ) ) {
     fwrite( STDERR, wp_json_encode( array(
-        'stage' => 'retry_v9',
+        'stage' => 'retry_current',
         'source_version' => $from,
         'code' => $result->get_error_code(),
         'message' => $result->get_error_message(),
@@ -203,7 +203,7 @@ if ( is_wp_error( $result ) ) {
     exit( 31 );
 }
 $after = MAD4B_SCP_Schema::status( true );
-echo wp_json_encode( array( 'stage' => 'retry_v9', 'source_version' => $from, 'before' => $before, 'after' => $after ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL;
+echo wp_json_encode( array( 'stage' => 'retry_current', 'source_version' => $from, 'before' => $before, 'after' => $after ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL;
 if ( empty( $after['ready'] ) || empty( $after['migration']['receipt_valid'] ) || empty( $after['physical_integrity']['ready'] ) ) exit( 32 );
 PHP
 
@@ -276,7 +276,7 @@ export MAD4B_SCHEMA_BROKEN_V8_FILE="$broken_v8_file"
 
 # The failed v8 attempt created durable tables but intentionally left the
 # canonical schema marker at v6. Seed one durable row to prove repair preserves
-# sparse historical data while v9 adds its missing fencing column.
+# sparse historical data while the current schema adds any missing durable fencing columns.
 export MAD4B_SCHEMA_FROM_FILE="$broken_v8_file"
 export MAD4B_EXPECTED_FROM_VERSION="8"
 "$WP_CLI" "${common[@]}" eval-file "$tmp/seed-sparse.php"

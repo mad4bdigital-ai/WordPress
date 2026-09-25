@@ -390,13 +390,18 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           developer="$root/includes/class-mad4b-scp-developer-runtime.php"
 
-          # The default/control/content/admin planes remain command-execution free.
-          if find "$root" -type f -name '*.php' ! -path "$developer" -print0 \
-            | xargs -0 grep -nEH '\b(eval|assert|exec|shell_exec|system|passthru|popen|proc_open)\s*\('; then
+          # The default/control/content/admin runtime planes remain command-execution free.
+          # Contract tests intentionally contain forbidden primitive names as negative
+          # fixtures, so the executable-source scan excludes only the canonical tests subtree.
+          if find "$root" -type f -name '*.php' \
+            ! -path "$root/tests/*" \
+            ! -path "$developer" -print0 \
+            | xargs -0 -r grep -nEH '\b(eval|assert|exec|shell_exec|system|passthru|popen|proc_open)\s*\('; then
             echo 'Forbidden arbitrary execution primitive detected outside the isolated Developer Plane.' >&2
             exit 1
           fi
 
+          test -d "$root/tests"
           # The Developer Plane gets one process primitive only. PHP eval() and
           # shell helper primitives remain forbidden; wp eval is invoked as argv.
           test -f "$developer"
