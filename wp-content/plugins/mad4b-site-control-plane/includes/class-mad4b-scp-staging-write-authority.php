@@ -213,6 +213,16 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return true;
 	}
 
+	private static function artifact_identity_matches_source( $artifact_identity, $source_commit_sha ) {
+		$artifact_identity = trim( (string) $artifact_identity );
+		$source_commit_sha = strtolower( trim( (string) $source_commit_sha ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $source_commit_sha ) ) return false;
+		if ( '' === $artifact_identity || strlen( $artifact_identity ) > 191 ) return false;
+		if ( 0 !== strpos( $artifact_identity, 'mad4b-site-control-plane-' ) ) return false;
+		if ( 1 !== preg_match( '/^[A-Za-z0-9._-]+$/', $artifact_identity ) ) return false;
+		return 1 === preg_match( '/-' . preg_quote( $source_commit_sha, '/' ) . '$/', $artifact_identity );
+	}
+
 	public static function candidate_binding_status() {
 		$status = self::raw_status();
 		$current = self::current_candidate_identity();
@@ -223,7 +233,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$source_build_bound = 1 === preg_match( '/^[a-f0-9]{40}$/', $stored_sha ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $stored_build );
 		$identity_complete = $source_build_bound
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $stored_manifest )
-			&& 1 === preg_match( '/^mad4b-site-control-plane-general-distribution-kit-[a-f0-9]{40}$/', $stored_artifact );
+			&& self::artifact_identity_matches_source( $stored_artifact, $stored_sha );
 		// Once authority has ever been package-bound, losing any member of the
 		// four-part package identity is itself a stale-candidate condition.
 		$required = ! empty( $current['available'] ) || $source_build_bound;
@@ -258,7 +268,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$complete = 1 === preg_match( '/^[a-f0-9]{40}$/', $sha )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $build )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $manifest )
-			&& 1 === preg_match( '/^mad4b-site-control-plane-general-distribution-kit-[a-f0-9]{40}$/', $artifact );
+			&& self::artifact_identity_matches_source( $artifact, $sha );
 		return array(
 			'source_commit_sha' => $sha,
 			'build_fingerprint' => $build,
