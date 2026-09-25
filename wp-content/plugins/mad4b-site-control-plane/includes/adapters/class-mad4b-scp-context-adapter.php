@@ -6,6 +6,10 @@ if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) ) {
 	require_once dirname( __DIR__ ) . '/class-mad4b-scp-brand-context-builder.php';
 }
 
+if ( ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) {
+	require_once dirname( __DIR__ ) . '/class-mad4b-scp-context-provider-gateway.php';
+}
+
 final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 	const PROVIDER_CONTRACT = 'mad4b.google-drive-context-provider.v1';
 	public function id() { return 'context'; }
