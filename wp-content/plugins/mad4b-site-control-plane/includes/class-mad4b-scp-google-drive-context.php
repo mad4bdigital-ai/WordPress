@@ -1312,7 +1312,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	public static function rollback_created_brand_asset( array $receipt, $allow_unmarked = false ) {
-		foreach ( array( 'artifact_id', 'source_id', 'asset_id', 'file_id', 'target_folder_id', 'after_sha256', 'mime_type', 'receipt_sha256' ) as $field ) {
+		foreach ( array( 'artifact_id', 'source_id', 'asset_id', 'file_id', 'target_folder_id', 'after_sha256', 'mime_type', 'receipt_sha256', 'provider_identity' ) as $field ) {
 			if ( empty( $receipt[ $field ] ) ) return new WP_Error( 'mad4b_brand_create_rollback_receipt_incomplete', 'Brand Context create rollback receipt is incomplete.', array( 'field' => $field ) );
 		}
 		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( (string) $receipt['asset_id'] ) : array();
@@ -1328,6 +1328,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $membership ) ) return $membership;
 		$metadata = self::get_file_metadata( (string) $receipt['file_id'] );
 		if ( is_wp_error( $metadata ) ) return $metadata;
+		$expected_properties = is_array( $receipt['provider_identity'] ) ? $receipt['provider_identity'] : array();
+		$observed_properties = isset( $metadata['appProperties'] ) && is_array( $metadata['appProperties'] ) ? $metadata['appProperties'] : array();
+		foreach ( array( 'mad4b_kind', 'mad4b_artifact', 'mad4b_source', 'mad4b_idempotency', 'mad4b_request' ) as $key ) {
+			if ( empty( $expected_properties[ $key ] ) || empty( $observed_properties[ $key ] ) || ! hash_equals( (string) $expected_properties[ $key ], (string) $observed_properties[ $key ] ) ) {
+				return new WP_Error( 'mad4b_brand_create_rollback_provider_identity_drift', 'Generated Brand Context provider identity changed; rollback denied.', array( 'field' => $key ) );
+			}
+		}
 		$parents = isset( $metadata['parents'] ) && is_array( $metadata['parents'] ) ? array_values( array_filter( array_map( 'strval', $metadata['parents'] ) ) ) : array();
 		if ( 1 !== count( $parents ) || ! hash_equals( (string) $receipt['target_folder_id'], (string) reset( $parents ) ) ) return new WP_Error( 'mad4b_brand_create_rollback_parent_drift', 'Generated Brand Context parent folder changed; rollback denied.' );
 		$mime = isset( $metadata['mimeType'] ) ? (string) $metadata['mimeType'] : '';
