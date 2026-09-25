@@ -253,11 +253,13 @@ def load_profile(path: Path) -> dict[str, Any]:
         "rollback_root": str((expected_workspace / "rollback").resolve()),
         "dead_letter_root": str((expected_workspace / "dead-letter").resolve()),
         "recovery_required_root": str((expected_workspace / "recovery-required").resolve()),
+        "bridge_root": str((expected_workspace / "bridge").resolve()),
+        "bridge_job_root": str((expected_workspace / "bridge-jobs").resolve()),
     }
     receipt_root = Path(normalized["receipt_root"])
     if not _is_within(receipt_root, expected_workspace):
         raise ValueError("Host Runner receipt_root escaped dedicated runner workspace")
-    for evidence_root_key in ("journal_root", "rollback_root", "dead_letter_root", "recovery_required_root"):
+    for evidence_root_key in ("journal_root", "rollback_root", "dead_letter_root", "recovery_required_root", "bridge_root", "bridge_job_root"):
         candidate = Path(normalized[evidence_root_key])
         if not _is_within(candidate, expected_workspace):
             raise ValueError(f"Host Runner {evidence_root_key} escaped dedicated runner workspace")
@@ -338,6 +340,9 @@ def verify_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Host Runner input digest mismatch")
     plan_sha256 = str(job.get("plan_sha256") or "").lower()
     approval_ref = str(job.get("approval_ref") or "")
+    bridge_submission_sha256 = str(job.get("bridge_submission_sha256") or "").lower()
+    if bridge_submission_sha256 and not re.fullmatch(r"[a-f0-9]{64}", bridge_submission_sha256):
+        raise ValueError("Host Runner bridge submission digest is invalid")
     if definition.get("risk") != "read_only":
         if not re.fullmatch(r"[a-f0-9]{64}", plan_sha256):
             raise ValueError("Host Runner write job plan_sha256 is invalid")
@@ -1014,6 +1019,7 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
         "authority_ref": verified["authority_ref"],
         "plan_sha256": verified["plan_sha256"],
         "approval_ref": verified["approval_ref"],
+        "bridge_submission_sha256": verified["bridge_submission_sha256"],
         "input_sha256": verified["input_sha256"],
         "execution_location": "host_runner",
         "submission_location": str(job.get("submission_location") or "external_job_file"),
@@ -1308,6 +1314,171 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
     }
 
 
+def _bridge_digest(value: dict[str, Any]) -> str:
+    material = dict(value)
+    for key in ("plan_sha256", "submission_sha256", "authorizing", "mutation_performed", "queued", "replayed"):
+        material.pop(key, None)
+    return sha256_bytes(canonical_json(material))
+
+
+def _bridge_submission_to_job(profile: dict[str, Any], submission: dict[str, Any]) -> dict[str, Any]:
+    if submission.get("contract") != "mad4b.host-bridge-submission.v1":
+        raise ValueError("Host Bridge submission contract mismatch")
+    supplied_submission_sha = str(submission.get("submission_sha256") or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{64}", supplied_submission_sha):
+        raise ValueError("Host Bridge submission digest is invalid")
+    if not hmac.compare_digest(supplied_submission_sha, _bridge_digest(submission)):
+        raise ValueError("Host Bridge submission digest mismatch")
+
+    plan = submission.get("plan")
+    if not isinstance(plan, dict) or plan.get("contract") != "mad4b.host-operation-plan.v1":
+        raise ValueError("Host Bridge plan contract mismatch")
+    plan_sha = str(plan.get("plan_sha256") or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{64}", plan_sha) or not hmac.compare_digest(plan_sha, _bridge_digest(plan)):
+        raise ValueError("Host Bridge plan digest mismatch")
+    if plan.get("runner_profile_id") != profile["profile_id"]:
+        raise ValueError("Host Bridge runner profile mismatch")
+    target = plan.get("target")
+    if not isinstance(target, dict):
+        raise ValueError("Host Bridge target missing")
+    if str(target.get("site_uuid") or "") != profile["site_uuid"]:
+        raise ValueError("Host Bridge site target mismatch")
+    if str(target.get("environment") or "") != profile["environment"]:
+        raise ValueError("Host Bridge environment target mismatch")
+    if str(target.get("wordpress_root") or "") != profile["wordpress_root"]:
+        raise ValueError("Host Bridge WordPress root target mismatch")
+    if plan.get("execution_location") != "host_runner" or plan.get("submission_location") != "wordpress_request":
+        raise ValueError("Host Bridge execution location truthfulness mismatch")
+    if submission.get("production_authorized") is not False:
+        raise ValueError("Host Bridge submission attempted Production authorization")
+
+    operation_id = str(plan.get("operation_id") or "")
+    if operation_id not in profile["allowed_operations"] or operation_id not in OPERATIONS:
+        raise ValueError("Host Bridge operation is not eligible for this runner")
+    definition = OPERATIONS[operation_id]
+    if int(plan.get("operation_version") or 0) != int(definition["version"]):
+        raise ValueError("Host Bridge operation version mismatch")
+    inputs = plan.get("arguments")
+    if not isinstance(inputs, dict):
+        raise ValueError("Host Bridge operation arguments must be an object")
+
+    is_write = definition.get("risk") != "read_only"
+    approval_ref = str(submission.get("approval_ref") or "")
+    authority = submission.get("authority") if isinstance(submission.get("authority"), dict) else {}
+    if is_write:
+        if not approval_ref:
+            raise ValueError("Host Bridge write submission missing approval")
+        authority_ref = str(authority.get("policy_decision_sha256") or "")
+        actor_ref = str(authority.get("agent_public_id") or "")
+        if not re.fullmatch(r"[a-f0-9]{64}", authority_ref):
+            raise ValueError("Host Bridge write authority evidence missing")
+        if not actor_ref:
+            raise ValueError("Host Bridge write actor evidence missing")
+        nested_plan = inputs.get("plan")
+        if not isinstance(nested_plan, dict):
+            raise ValueError("Host Bridge write submission missing exact operation plan")
+        execution_plan_sha = str(nested_plan.get("plan_sha256") or "").lower()
+        if not re.fullmatch(r"[a-f0-9]{64}", execution_plan_sha):
+            raise ValueError("Host Bridge write operation plan digest missing")
+    else:
+        approval_ref = ""
+        authority_ref = "wordpress:bridge-read-policy"
+        actor_ref = str(authority.get("agent_public_id") or "wordpress:bridge-read")
+        execution_plan_sha = ""
+
+    job = {
+        "contract": JOB_CONTRACT,
+        "job_id": str(submission.get("job_id") or "").lower(),
+        "profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "executor_fingerprint": profile["executor_fingerprint"],
+        "operation_id": operation_id,
+        "operation_version": definition["version"],
+        "operation_fingerprint": operation_fingerprint(operation_id),
+        "created_at": utc_now(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat().replace("+00:00", "Z"),
+        "input": inputs,
+        "input_sha256": sha256_bytes(canonical_json(inputs)),
+        "idempotency_key": str(submission.get("idempotency_key") or ""),
+        "actor_ref": actor_ref,
+        "authority_ref": authority_ref,
+        "plan_sha256": execution_plan_sha,
+        "approval_ref": approval_ref,
+        "bridge_submission_sha256": supplied_submission_sha,
+        "submission_location": "wordpress_request",
+    }
+    job["mac_sha256"] = job_mac(job, profile["_integrity_key"])
+    return job
+
+
+def consume_bridge_spool(profile_path: Path, limit: int = 1) -> dict[str, Any]:
+    profile = load_profile(profile_path)
+    if limit < 1 or limit > 100:
+        raise ValueError("Host Bridge consume limit must be 1..100")
+    bridge_root = Path(profile["bridge_root"])
+    if bridge_root.exists() and (bridge_root.is_symlink() or not bridge_root.is_dir()):
+        raise ValueError("Host Bridge spool root is invalid")
+    for name in ("queued", "running", "receipts", "dead-letter", "recovery-required"):
+        path = bridge_root / name
+        if path.exists() and (path.is_symlink() or not path.is_dir()):
+            raise ValueError("Host Bridge spool directory is invalid")
+        path.mkdir(parents=True, exist_ok=True)
+    job_root = Path(profile["bridge_job_root"])
+    job_root.mkdir(parents=True, exist_ok=True)
+
+    processed = []
+    for queued in sorted((bridge_root / "queued").glob("*.json"))[:limit]:
+        if queued.is_symlink() or not queued.is_file():
+            continue
+        submission = load_json_bounded(queued, MAX_RECEIPT_BYTES)
+        job_id = str(submission.get("job_id") or "").lower()
+        if not re.fullmatch(r"[a-f0-9-]{36}", job_id):
+            raise ValueError("Host Bridge queued job id invalid")
+        running = bridge_root / "running" / f"{job_id}.json"
+        if running.exists():
+            raise RuntimeError("Host Bridge job already running")
+        os.replace(queued, running)
+        job_path = job_root / f"{job_id}.json"
+        try:
+            job = _bridge_submission_to_job(profile, submission)
+            atomic_json_write(job_path, job)
+            receipt = run_job_with_failure_evidence(profile_path, job_path)
+            bridge_receipt = dict(receipt)
+            bridge_receipt["bridge_contract"] = "mad4b.host-bridge-execution.v1"
+            bridge_receipt["bridge_submission_sha256"] = submission["submission_sha256"]
+            atomic_json_write(bridge_root / "receipts" / f"{job_id}.json", bridge_receipt)
+            running.unlink(missing_ok=True)
+            processed.append({"job_id": job_id, "state": "SUCCEEDED"})
+        except Exception as exc:
+            reason = _failure_reason_code(exc)
+            incident_dir = "recovery-required" if reason == "recovery_required" else "dead-letter"
+            incident = {
+                "contract": "mad4b.host-bridge-incident.v1",
+                "job_id": job_id,
+                "submission_sha256": str(submission.get("submission_sha256") or ""),
+                "reason_code": reason,
+                "failure_class": exc.__class__.__name__,
+                "failure_message_sha256": sha256_bytes(str(exc).encode()),
+                "blind_retry_allowed": False,
+                "payload_persisted": False,
+                "created_at": utc_now(),
+            }
+            atomic_json_write(bridge_root / incident_dir / f"{job_id}.json", incident)
+            running.unlink(missing_ok=True)
+            processed.append({"job_id": job_id, "state": "RECOVERY_REQUIRED" if incident_dir == "recovery-required" else "DEAD_LETTERED"})
+    return {
+        "contract": "mad4b.host-bridge-consume.v1",
+        "profile_id": profile["profile_id"],
+        "processed": processed,
+        "processed_count": len(processed),
+        "mutation_performed": bool(processed),
+        "generic_shell_available": False,
+        "production_authorized": False,
+    }
+
+
 def doctor(profile_path: Path) -> dict[str, Any]:
     profile = load_profile(profile_path)
     root = Path(profile["wordpress_root"])
@@ -1356,6 +1527,9 @@ def main() -> int:
     doctor_p.add_argument("--profile", required=True, type=Path)
     reconcile_p = sub.add_parser("reconcile")
     reconcile_p.add_argument("--profile", required=True, type=Path)
+    bridge_p = sub.add_parser("consume-bridge-spool")
+    bridge_p.add_argument("--profile", required=True, type=Path)
+    bridge_p.add_argument("--limit", type=int, default=1)
     run_p = sub.add_parser("run-job")
     run_p.add_argument("--profile", required=True, type=Path)
     run_p.add_argument("--job", required=True, type=Path)
@@ -1365,6 +1539,8 @@ def main() -> int:
             result = doctor(args.profile)
         elif args.command == "reconcile":
             result = reconcile(args.profile)
+        elif args.command == "consume-bridge-spool":
+            result = consume_bridge_spool(args.profile, args.limit)
         else:
             result = run_job_with_failure_evidence(args.profile, args.job)
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as exc:
