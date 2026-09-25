@@ -402,22 +402,29 @@ with tempfile.TemporaryDirectory() as td:
         if "approval_ref is required" not in str(exc):
             raise
 
-    # Caller command/shell/argv cannot be smuggled into a semantic write.
-    shell_smuggle = dict(write_job)
-    shell_smuggle["job_id"] = str(uuid.uuid4())
-    shell_smuggle["idempotency_key"] = "idem-shell-smuggle"
-    shell_smuggle["input"] = dict(write_job["input"])
-    shell_smuggle["input"]["command"] = "sh -c 'id'"
-    shell_smuggle["input_sha256"] = runner.sha256_bytes(runner.canonical_json(shell_smuggle["input"]))
-    shell_smuggle["mac_sha256"] = runner.job_mac(shell_smuggle, profile["_integrity_key"])
-    shell_smuggle_path = tmp / "shell-smuggle.json"
-    shell_smuggle_path.write_text(json.dumps(shell_smuggle), encoding="utf-8")
-    try:
-        runner.run_job(profile_path, shell_smuggle_path)
-        raise SystemExit("Host Runner accepted caller shell/command field")
-    except ValueError as exc:
-        if "input fields are invalid" not in str(exc):
-            raise
+    # Caller command/shell/executable/argv cannot be smuggled into a semantic write.
+    injection_fields = {
+        "command": "sh -c 'id'",
+        "shell": "/bin/sh",
+        "executable": "/usr/bin/python3",
+        "argv": ["-c", "import os; os.system('id')"],
+    }
+    for field_name, field_value in injection_fields.items():
+        injected = dict(write_job)
+        injected["job_id"] = str(uuid.uuid4())
+        injected["idempotency_key"] = f"idem-injection-{field_name}"
+        injected["input"] = dict(write_job["input"])
+        injected["input"][field_name] = field_value
+        injected["input_sha256"] = runner.sha256_bytes(runner.canonical_json(injected["input"]))
+        injected["mac_sha256"] = runner.job_mac(injected, profile["_integrity_key"])
+        injected_path = tmp / f"injection-{field_name}.json"
+        injected_path.write_text(json.dumps(injected), encoding="utf-8")
+        try:
+            runner.run_job(profile_path, injected_path)
+            raise SystemExit(f"Host Runner accepted caller {field_name} injection")
+        except ValueError as exc:
+            if "input fields are invalid" not in str(exc):
+                raise
 
     # Stale plan is denied after target state changes.
     stale_bytes = b"stale-plan-new\n"
