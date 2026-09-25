@@ -47,6 +47,7 @@ IMMUTABLE_FEATURE_PATHS = {
     "tools/verify_repository_owner_attestation.py",
     "tools/verify_feature_boundary.py",
     "tools/verify_feature_boundary_bootstrap_transition.py",
+    "tools/verify_repository_ruleset_template.py",
     "tools/Apply-Mad4bMasterRuleset.ps1",
     GRANT_CATALOG_PATH,
     OBSOLETE_SELF_POLICY,
