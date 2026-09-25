@@ -2075,6 +2075,22 @@ final class MAD4B_SCP_Context_Authority {
 			$content_hash = hash( 'sha256', $basis );
 		}
 		$asset_id = hash( 'sha256', (string) $source['source_id'] . '|' . $file_id );
+		$provider_identity = array();
+		$app_properties = isset( $asset['appProperties'] ) && is_array( $asset['appProperties'] ) ? $asset['appProperties'] : array();
+		if ( isset( $app_properties['mad4b_kind'] ) && 'brand_context' === (string) $app_properties['mad4b_kind'] ) {
+			$candidate_identity = array(
+				'mad4b_kind' => 'brand_context',
+				'mad4b_artifact' => isset( $app_properties['mad4b_artifact'] ) ? strtolower( trim( (string) $app_properties['mad4b_artifact'] ) ) : '',
+				'mad4b_source' => isset( $app_properties['mad4b_source'] ) ? strtolower( trim( (string) $app_properties['mad4b_source'] ) ) : '',
+				'mad4b_idempotency' => isset( $app_properties['mad4b_idempotency'] ) ? strtolower( trim( (string) $app_properties['mad4b_idempotency'] ) ) : '',
+				'mad4b_request' => isset( $app_properties['mad4b_request'] ) ? strtolower( trim( (string) $app_properties['mad4b_request'] ) ) : '',
+			);
+			$valid_identity = 1 === preg_match( '/^[a-f0-9-]{36}$/', $candidate_identity['mad4b_artifact'] );
+			foreach ( array( 'mad4b_source', 'mad4b_idempotency', 'mad4b_request' ) as $identity_field ) {
+				$valid_identity = $valid_identity && 1 === preg_match( '/^[a-f0-9]{64}$/', $candidate_identity[ $identity_field ] );
+			}
+			if ( $valid_identity ) $provider_identity = $candidate_identity;
+		}
 		return array(
 			'contract' => self::ASSET_CONTRACT,
 			'asset_id' => $asset_id,
@@ -2084,6 +2100,7 @@ final class MAD4B_SCP_Context_Authority {
 			'source_mode' => (string) $source['mode'],
 			'task_scope' => isset( $source['task_scope'] ) ? (string) $source['task_scope'] : '',
 			'provider' => (string) $source['provider'],
+			'provider_identity' => $provider_identity,
 			'file_id' => $file_id,
 			'parent_folder_id' => $parent_folder_id,
 			'title' => $title,
