@@ -187,14 +187,17 @@
       ]
     },
     "readback_failure_after_mutation": {
-      "repository_status": "PARTIAL",
+      "repository_status": "PROVEN",
       "live_status": "PENDING",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
-        "tools/mad4b_recovery_plane.py"
+        "tools/mad4b_recovery_plane.py",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078596096"
       ],
       "remaining": [
-        "prove the generic executor transitions to reconciliation/recovery-required state when postcondition readback fails"
+        "repeat post-mutation readback failure handling on the enrolled ETG Staging Host Runner"
       ]
     },
     "rollback_failure": {
@@ -281,7 +284,8 @@
         "tools/mad4b_host_runner.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
         ".github/workflows/feature-007-critical-kernel.yml",
-        "workflow_run:36078194633"
+        "workflow_run:36078194633",
+        "workflow_run:36078596096"
       ],
       "proven": [
         "Staging-only read-only standalone runner process",
@@ -300,7 +304,11 @@
         "receipt persistence failure performs verified rollback when possible",
         "rollback failure records MUTATED_BUT_EVIDENCE_UNCERTAIN with blind retry disabled",
         "WordPress-root and receipt-root symlink denial before canonicalization",
-        "bounded reversible payload sized below signed job-envelope budget"
+        "bounded reversible payload sized below signed job-envelope budget",
+        "post-mutation readback failure cannot become success and rolls back exact prior workspace state",
+        "read-only reconciliation classifies durable receipt, rolled-back, effect-without-receipt and divergent target states",
+        "uncertain effects require reconciliation and keep blind retry disabled",
+        "Doctor exposes reconciliation-required counts without mutation"
       ],
       "remaining": [
         "implement governed scheduler/queue pickup and fenced lease integration",
@@ -336,8 +344,8 @@
     }
   },
   "last_repository_evidence": {
-    "exact_head_sha": "f654e3bf77bfefc7456b661d09f2c61420d17d14",
-    "critical_kernel_run_id": 36078194633,
+    "exact_head_sha": "74627ac13c371cc247df35561713682884793367",
+    "critical_kernel_run_id": 36078596096,
     "root_trust_recovery_job": "SUCCESS",
     "schema_mariadb_job": "SUCCESS",
     "live_claim": false
