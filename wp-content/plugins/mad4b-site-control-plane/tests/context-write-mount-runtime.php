@@ -33,7 +33,7 @@ abstract class MAD4B_SCP_Adapter_Base {
 
 class MAD4B_SCP_Context_Authority {
 	public static $assets = array();
-	public static function source() { return array( 'source_id' => str_repeat( 'e', 64 ) ); }
+	public static function source() { return array( 'source_id' => str_repeat( 'e', 64 ), 'provider' => 'google_drive', 'external_root_id' => 'folder-fixture', 'recursive' => true ); }
 	public static function asset( $asset_id = '' ) { return isset( self::$assets[ $asset_id ] ) ? self::$assets[ $asset_id ] : array(); }
 	public static function source_allows_write() { return true; }
 	public static function source_write_policy() { return 'read_only'; }
@@ -57,6 +57,9 @@ class MAD4B_SCP_Google_Drive_Context {
 	const MAX_REVERSIBLE_TEXT_BYTES = 196608;
 	public static $status = array();
 	public static function write_capability_status() { return self::$status; }
+	public static function read_context_asset() { return array( 'content' => 'fixture', 'observed_at' => gmdate( 'c' ) ); }
+	public static function scan_folder() { return array( 'files' => array() ); }
+	public static function rollback_created_brand_asset() { return true; }
 	public static function asset_write_capabilities() { return array( 'update' => false, 'recreate' => false, 'blockers' => array() ); }
 	public static function create_asset() { return array(); }
 	public static function update_asset() { return array(); }
@@ -90,13 +93,7 @@ class MAD4B_SCP_External_Handshake_Evidence {
 	public static function build_fingerprint() { return str_repeat( 'c', 64 ); }
 }
 
-class MAD4B_SCP_Context_Provider_Gateway {
-	public static function capabilities() { return array( 'contract' => 'mad4b.context-provider-gateway.v1', 'providers' => array( 'google_drive' => array() ) ); }
-	public static function read_context_asset() { return array(); }
-	public static function scan_source() { return array(); }
-	public static function create_asset() { return array(); }
-	public static function rollback_created_brand_asset() { return array(); }
-}
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-provider-gateway.php';
 
 class MAD4B_SCP_Brand_Context_Builder {
 	const ROLLBACK_CONTRACT = 'mad4b.rollback.google-drive-brand-context-create.v1';
@@ -110,6 +107,7 @@ class MAD4B_SCP_Brand_Context_Builder {
 }
 
 require dirname( __DIR__ ) . '/includes/adapters/class-mad4b-scp-context-adapter.php';
+if ( ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) { fwrite( STDERR, "FAIL: real Context provider gateway did not load\n" ); exit( 1 ); }
 
 function mad4b_context_mount_assert( $condition, $message, $context = null ) {
 	if ( $condition ) return;
