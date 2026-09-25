@@ -145,6 +145,41 @@ $bit_unknown = array_values( array_filter( $unknown['rejected'], static function
 $check( 1 === count( $bit_unknown ), 'unknown Bit Flows trait was not rejected' );
 $check( 'trait_unknown' === $bit_unknown[0]['violations'][0]['reason_code'], 'unknown trait did not fail closed' );
 
+$catalog_fixture=json_decode(file_get_contents(dirname(__DIR__).'/config/provider-capability-contracts.json'),true);
+$catalog_fixture['providers']['alt_pi']=$catalog_fixture['providers']['bit_pi'];
+$rp=new ReflectionProperty('MAD4B_SCP_Capability_Traits','catalog');
+$rp->setAccessible(true);
+$rp->setValue(null,$catalog_fixture);
+
+$ambiguous=MAD4B_SCP_Capability_Traits::resolve(array(
+	'capability_id'=>'flow.execute',
+	'required_traits'=>array('local_or_remote'=>'local_wordpress'),
+));
+$check(true===$ambiguous['ambiguous'],'multiple eligible providers were silently tie-broken');
+$check(true===$ambiguous['raw_ambiguous'],'raw ambiguity evidence missing');
+$check(''===$ambiguous['selected_provider'],'ambiguous resolver selected provider implicitly');
+$check(false===$ambiguous['implicit_tie_breaking'],'implicit tie-breaking flag changed');
+
+$preferred=MAD4B_SCP_Capability_Traits::resolve(array(
+	'capability_id'=>'flow.execute',
+	'required_traits'=>array('local_or_remote'=>'local_wordpress'),
+	'preferred_provider'=>'alt_pi',
+));
+$check(false===$preferred['ambiguous'],'explicit eligible preference did not resolve ambiguity');
+$check('alt_pi'===$preferred['selected_provider'],'preferred provider was not selected');
+$check(true===$preferred['preference_applied'],'preference application evidence missing');
+$check(true===$preferred['non_authorizing'],'preference resolution became authorizing');
+
+$bad_preference=MAD4B_SCP_Capability_Traits::resolve(array(
+	'capability_id'=>'flow.execute',
+	'required_traits'=>array('local_or_remote'=>'local_wordpress'),
+	'preferred_provider'=>'not_eligible',
+));
+$check(true===$bad_preference['ambiguous'],'ineligible preference silently resolved ambiguity');
+$check(''===$bad_preference['selected_provider'],'ineligible preference fell back silently');
+$check('preferred_provider_not_eligible'===$bad_preference['preference_reason'],'ineligible preference reason missing');
+MAD4B_SCP_Capability_Traits::clear_cache();
+
 $missing = MAD4B_SCP_Capability_Traits::resolve( array(
 	'capability_id' => 'does.not.exist',
 	'required_traits' => array( 'durable_wait' => true ),
