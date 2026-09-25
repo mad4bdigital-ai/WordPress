@@ -1,5 +1,7 @@
 # Data Model — Feature 007
 
+Schema version: `10`
+
 ## Modeling principles
 
 1. Stable public IDs are opaque strings/UUID-like identifiers; database auto IDs are internal.
@@ -470,8 +472,8 @@ RefreshRecommendation references a published content identity and proposes a new
 Prefer additive tables:
 - {prefix}mad4b_content_jobs
 - {prefix}mad4b_content_job_events
-- {prefix}mad4b_content_artifacts
-- {prefix}mad4b_content_artifact_edges
+- {prefix}mad4b_artifacts
+- {prefix}mad4b_artifact_edges
 - {prefix}mad4b_writer_profiles
 
 Provider certification tables should reuse existing provider certification storage where possible rather than duplicate it.
