@@ -571,7 +571,39 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'type' => 'object',
 			'properties' => array(
 				'operation_id' => array( 'type' => 'string', 'enum' => array( 'frontend_performance_sampling' ) ),
-				'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}
+				'job_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' ),
+			),
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function work_claim_schema() {
+		$properties = self::exact_build_properties();
+		$properties['job_id'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' );
+		$properties['executor_id'] = array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[A-Za-z0-9._-]+$' );
+		$properties['lease_seconds'] = array( 'type' => 'integer', 'minimum' => 60, 'maximum' => 900 );
+		return array(
+			'type' => 'object',
+			'properties' => $properties,
+			'required' => array( 'expected_source_commit_sha', 'expected_build_fingerprint', 'expected_package_manifest_digest', 'job_id', 'executor_id' ),
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function work_complete_schema() {
+		$properties = self::exact_build_properties();
+		$properties['job_id'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' );
+		$properties['executor_id'] = array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[A-Za-z0-9._-]+$' );
+		$properties['lease_token'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' );
+		return array(
+			'type' => 'object',
+			'properties' => $properties,
+			'required' => array( 'expected_source_commit_sha', 'expected_build_fingerprint', 'expected_package_manifest_digest', 'job_id', 'executor_id', 'lease_token' ),
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function exact_build_properties() {
 		return array(
 			'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
 			'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
