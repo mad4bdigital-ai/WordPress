@@ -123,19 +123,19 @@ jobs:
               'OAuth bridge runtime (latest)',
               'Schema v6 v7 v8 v9 to v11 real MariaDB upgrade',
               'Repository governance policy',
-          ]
               'Repository feature boundary',
+          ]
           release_evidence = [
               'Root trust and Recovery Plane',
               'Build reviewed General Distribution installation kit',
               'Live evidence contracts + exact artifact',
               'Repository governance policy',
-          ]
               'Repository feature boundary',
+          ]
           non_runtime = [
               'Repository governance policy',
-          ]
               'Repository feature boundary',
+          ]
           release_evidence_paths = {
               '.github/workflows/mad4b-control-plane-package.yml',
               '.github/workflows/mad4b-live-acceptance-evidence.yml',
