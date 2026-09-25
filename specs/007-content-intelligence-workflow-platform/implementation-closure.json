@@ -158,11 +158,18 @@
         "host_bridge_production_authorized": false,
         "bridge_to_runner_repository_proven": true,
         "host_bridge_repair_requeue_governed": true,
-        "host_bridge_blind_retry": false
+        "host_bridge_blind_retry": false,
+        "exact_repository_proof_head": "220077c06566cd6876ca3f57683a7de4e3cfb53e",
+        "exact_repository_proof_run_id": 36095311341,
+        "cross_executor_read_result_parity": true,
+        "cross_executor_read_authority_parity": true,
+        "cross_executor_authority_class": "read_only_non_authorizing",
+        "host_bridge_reversible_write_repository_proven": true,
+        "host_bridge_write_requires_exact_authorization": true
       },
       "remainder": [
-        "certify the bounded Host Runner bootstrap/enrollment flow on an actual supported ETG Staging hosting channel",
-        "prove MCP/WP-CLI/Host Runner authority parity for one read and one reversible write",
+        "certify bounded Host Runner bootstrap/enrollment on an actual supported ETG Staging hosting channel",
+        "prove live MCP/WP-CLI/Host Runner authority parity on the exact deployed candidate, including one governed reversible write",
         "prove live ETG Host Runner canary, protected storage, and repair/requeue behavior"
       ]
     },
@@ -181,7 +188,13 @@
         "repository_verified_backup_restore": true,
         "repository_corruption_rejection": true,
         "repository_interrupted_restore_rollback": true,
-        "repository_proof_run_id": 36078596096
+        "repository_proof_run_id": 36078596096,
+        "latest_repository_proof_head": "220077c06566cd6876ca3f57683a7de4e3cfb53e",
+        "latest_repository_proof_run_id": 36095311341,
+        "protected_backup_integrity_repository_proven": true,
+        "corruption_rejection_repository_proven": true,
+        "interrupted_restore_rollback_repository_proven": true,
+        "task_T3648_repository_portion_proven": true
       },
       "remainder": [
         "prove protected ETG Staging backup-root isolation/capacity and create exact-live-runtime backup receipt",
@@ -474,11 +487,15 @@
         "cross_site_lookup_denial_proven": true,
         "event_hash_chain_proven": true,
         "concurrent_cas_test": "wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh",
-        "concurrent_cas_test_admitted_to_ci": true
+        "concurrent_cas_test_admitted_to_ci": true,
+        "exact_repository_proof_head": "220077c06566cd6876ca3f57683a7de4e3cfb53e",
+        "exact_repository_proof_run_id": 36095311341,
+        "concurrent_cas_runtime_proven": true,
+        "concurrent_cas_outcome": "exactly_one_success_and_one_revision_conflict",
+        "implementation_task_T3612_done": true
       },
       "remainder": [
-        "obtain exact-head MariaDB CI proof that two simultaneous revision-1 transitions produce exactly one success and one revision conflict",
-        "bind exact post-merge deployed-candidate live evidence before marking content_job_domain_ready"
+        "bind the post-merge selected runtime release and exact deployed-candidate live readback before marking content_job_domain_ready"
       ]
     },
     {
@@ -756,10 +773,26 @@
         "fresh_job_id_required": true,
         "fresh_idempotency_required": true,
         "fresh_authorization_required": true,
-        "recovery_required_requeue_denied": true
+        "recovery_required_requeue_denied": true,
+        "runtime_test": "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-runtime.php",
+        "exact_repository_proof_head": "220077c06566cd6876ca3f57683a7de4e3cfb53e",
+        "exact_repository_proof_run_id": 36095311341,
+        "real_mariadb_runtime_proven": true,
+        "stuck_job_proven": true,
+        "orphan_job_proven": true,
+        "expired_lease_proven": true,
+        "stale_inbox_proven": true,
+        "provider_dead_letter_proven": true,
+        "host_runner_uncertain_proven": true,
+        "host_runner_recovery_required_proven": true,
+        "host_runner_dead_letter_proven": true,
+        "cross_site_rows_exposed": false,
+        "mutation_performed": false,
+        "authorizing": false,
+        "task_T3652_done": true
       },
       "remainder": [
-        "prove stuck-lease/orphan-job diagnosis on exact deployed ETG candidate"
+        "bind Operator Doctor/DLQ readback to the exact deployed ETG runtime release before closing the live operator gate"
       ]
     },
     {
