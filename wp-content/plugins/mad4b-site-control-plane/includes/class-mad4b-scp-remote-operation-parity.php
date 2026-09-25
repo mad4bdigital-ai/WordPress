@@ -475,22 +475,96 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry' ) || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return new WP_Error( 'mad4b_remote_skill_editor_disabled', 'Managed Skill reconciliation requires the governed Skill editor to be enabled.' );
 		if ( ! self::enter( 'skills' ) ) return new WP_Error( 'mad4b_remote_skill_reentry_denied', 'Managed Skill reconciliation is already running in this request.' );
 
+		$identity = array(
+			'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+			'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+			'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+		);
+		$previous = self::skills_job_status();
+		$attempt = isset( $previous['attempt'] ) ? max( 0, (int) $previous['attempt'] ) + 1 : 1;
+		$state = array(
+			'contract' => 'mad4b.remote-managed-skills-reconciliation-state.v1',
+			'operation_id' => ! empty( $previous['operation_id'] ) && isset( $previous['expected_identity']['source_commit_sha'] ) && hash_equals( (string) $previous['expected_identity']['source_commit_sha'], $identity['source_commit_sha'] ) ? (string) $previous['operation_id'] : strtolower( wp_generate_uuid4() ),
+			'expected_identity' => $identity,
+			'attempt' => $attempt,
+			'status' => 'running',
+			'stage' => 'preflight',
+			'last_error_code' => '',
+			'updated_at' => gmdate( 'c' ),
+			'production_mutation' => false,
+		);
+		self::persist_skills_job( $state );
+
 		try {
 			$seed_before = MAD4B_SCP_Skill_Seeder::inspect();
 			$provider_before = MAD4B_SCP_Skill_Provider_Discovery::inspect();
-			if ( ! empty( $seed_before['conflicts'] ) || ! empty( $provider_before['conflicts'] ) ) return new WP_Error( 'mad4b_remote_skill_conflict', 'Managed Skill reconciliation is blocked by current conflicts.', array( 'seed_conflicts' => isset( $seed_before['conflicts'] ) ? $seed_before['conflicts'] : array(), 'provider_conflicts' => isset( $provider_before['conflicts'] ) ? $provider_before['conflicts'] : array() ) );
+			if ( ! empty( $seed_before['conflicts'] ) || ! empty( $provider_before['conflicts'] ) ) {
+				$state['status'] = 'blocked';
+				$state['stage'] = 'preflight';
+				$state['last_error_code'] = 'mad4b_remote_skill_conflict';
+				$state['updated_at'] = gmdate( 'c' );
+				self::persist_skills_job( $state );
+				return new WP_Error( 'mad4b_remote_skill_conflict', 'Managed Skill reconciliation is blocked by current conflicts.', array( 'seed_conflicts' => isset( $seed_before['conflicts'] ) ? $seed_before['conflicts'] : array(), 'provider_conflicts' => isset( $provider_before['conflicts'] ) ? $provider_before['conflicts'] : array(), 'checkpoint' => $state ) );
+			}
 
+			$state['stage'] = 'seed_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			self::persist_skills_job( $state );
 			$seed = MAD4B_SCP_Skill_Seeder::bootstrap();
-			if ( is_wp_error( $seed ) || ! is_array( $seed ) || 'ready' !== ( isset( $seed['state'] ) ? (string) $seed['state'] : '' ) ) return is_wp_error( $seed ) ? $seed : new WP_Error( 'mad4b_remote_skill_seed_failed', 'Canonical Skill seed reconciliation did not reach ready state.', array( 'seed' => $seed ) );
+			if ( is_wp_error( $seed ) || ! is_array( $seed ) || 'ready' !== ( isset( $seed['state'] ) ? (string) $seed['state'] : '' ) ) {
+				$error = is_wp_error( $seed ) ? $seed : new WP_Error( 'mad4b_remote_skill_seed_failed', 'Canonical Skill seed reconciliation did not reach ready state.', array( 'seed' => $seed ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				self::persist_skills_job( $state );
+				return $error;
+			}
+			$state['stage'] = 'seed_ready';
+			$state['seed_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			self::persist_skills_job( $state );
 
+			$state['stage'] = 'provider_reconciliation';
+			$state['updated_at'] = gmdate( 'c' );
+			self::persist_skills_job( $state );
 			$providers = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
-			if ( is_wp_error( $providers ) || ! is_array( $providers ) || 'ready' !== ( isset( $providers['state'] ) ? (string) $providers['state'] : '' ) ) return is_wp_error( $providers ) ? $providers : new WP_Error( 'mad4b_remote_skill_provider_failed', 'Provider Skill reconciliation did not reach ready state.', array( 'providers' => $providers ) );
+			if ( is_wp_error( $providers ) || ! is_array( $providers ) || 'ready' !== ( isset( $providers['state'] ) ? (string) $providers['state'] : '' ) ) {
+				$error = is_wp_error( $providers ) ? $providers : new WP_Error( 'mad4b_remote_skill_provider_failed', 'Provider Skill reconciliation did not reach ready state.', array( 'providers' => $providers ) );
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $error->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				self::persist_skills_job( $state );
+				return $error;
+			}
+			$state['stage'] = 'provider_ready';
+			$state['provider_ready'] = true;
+			$state['updated_at'] = gmdate( 'c' );
+			self::persist_skills_job( $state );
 
+			$state['stage'] = 'runtime_certification';
+			$state['updated_at'] = gmdate( 'c' );
+			self::persist_skills_job( $state );
 			$certification = MAD4B_SCP_Skill_Runtime_Certification::observe();
-			if ( ! is_array( $certification ) || empty( $certification['ready'] ) ) return new WP_Error( 'mad4b_remote_skill_certification_failed', 'Managed Skill reconciliation completed but runtime certification is not ready.', array( 'certification' => $certification ) );
+			if ( ! is_array( $certification ) || empty( $certification['ready'] ) ) {
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = 'mad4b_remote_skill_certification_failed';
+				$state['updated_at'] = gmdate( 'c' );
+				self::persist_skills_job( $state );
+				return new WP_Error( 'mad4b_remote_skill_certification_failed', 'Managed Skill reconciliation completed but runtime certification is not ready.', array( 'certification' => $certification, 'checkpoint' => $state ) );
+			}
+
+			$state['status'] = 'completed';
+			$state['stage'] = 'certified';
+			$state['certification_ready'] = true;
+			$state['last_error_code'] = '';
+			$state['updated_at'] = gmdate( 'c' );
+			$state['completed_at'] = gmdate( 'c' );
+			self::persist_skills_job( $state );
 
 			$audit = self::audit( self::SKILLS_ABILITY, array(
 				'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+				'operation_id' => (string) $state['operation_id'],
+				'attempt' => (int) $state['attempt'],
 				'seed_before' => $seed_before,
 				'provider_before' => $provider_before,
 				'certification_ready' => true,
@@ -498,9 +572,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			if ( is_wp_error( $audit ) ) return $audit;
 
 			return array(
-				'contract' => 'mad4b.remote-managed-skills-reconciliation.v1',
+				'contract' => 'mad4b.remote-managed-skills-reconciliation.v2',
 				'state' => 'ready',
 				'ready' => true,
+				'checkpoint' => $state,
 				'seed' => $seed,
 				'providers' => $providers,
 				'certification' => $certification,
