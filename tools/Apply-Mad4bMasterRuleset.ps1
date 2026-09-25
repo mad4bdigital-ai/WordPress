@@ -282,7 +282,7 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $RulesetAttestationPath
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: privileged ruleset attestation build failed."
 }
 Write-Host "=== PUBLISH OWNER RULESET ATTESTATION ==="
-& $PythonCommand "tools/publish_repository_ruleset_attestation.py" --repository $Repository --policy $PolicyPath --attestation $RulesetAttestationPath --output $RulesetAttestationPublicationPath
+& $PythonCommand "tools/publish_repository_ruleset_attestation.py" --repository $Repository --policy $PolicyPath --template $TemplatePath --attestation $RulesetAttestationPath --output $RulesetAttestationPublicationPath
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $RulesetAttestationPublicationPath -PathType Leaf)) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: owner-authored ruleset attestation publication failed."
 }
