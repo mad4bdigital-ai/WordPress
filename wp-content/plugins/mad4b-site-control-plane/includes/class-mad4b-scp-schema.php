@@ -495,7 +495,7 @@ final class MAD4B_SCP_Schema {
 			PRIMARY KEY  (id),
 			UNIQUE KEY relation_revision (relation_id,revision),
 			UNIQUE KEY current_relation_key (current_relation_key),
-			UNIQUE KEY current_owner_scope (owner_scope_key),
+			KEY owner_scope_key (owner_scope_key),
 			KEY scope_lookup (site_uuid,locale,market,intent_id,valid_to),
 			KEY content_lookup (site_uuid,content_id,valid_to),
 			KEY relation_sha256 (relation_sha256)
@@ -738,7 +738,7 @@ final class MAD4B_SCP_Schema {
 			'content_job_events' => array( 'event_id' => true, 'job_sequence' => true ),
 			'artifacts' => array( 'artifact_id' => true, 'job_type_version' => true ),
 			'artifact_edges' => array( 'edge_id' => true, 'artifact_relation' => true ),
-			'intent_relations' => array( 'relation_revision' => true, 'current_relation_key' => true, 'current_owner_scope' => true ),
+			'intent_relations' => array( 'relation_revision' => true, 'current_relation_key' => true, 'owner_scope_key' => false ),
 			'work_leases' => array( 'work_id' => true ),
 			'idempotency' => array( 'scope_idempotency' => true ),
 			'outbox' => array( 'outbox_id' => true, 'provider_idempotency' => true ),
