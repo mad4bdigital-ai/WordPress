@@ -26,6 +26,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/publication-verification-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/workflow-provider-plan-fingerprint-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workflow-providers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php'
@@ -329,6 +331,13 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php
+
+      - name: Verify provider fingerprints invalidate workflow plans
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workflow-providers.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/workflow-provider-plan-fingerprint-contract.php
 
       - name: Verify data rights and AI processing governance
         shell: bash
