@@ -897,6 +897,8 @@ def recovery_status(wordpress_root: Path, environment: str) -> dict[str, Any]:
         "capabilities": {
             "status": True,
             "protected_backup_exact_plan": True,
+            "protected_backup_verify": True,
+            "protected_backup_restore_exact_plan": True,
             "disable_current_exact_plan": True,
             "restore_known_good_exact_plan": True,
             "production_authorized": False,
