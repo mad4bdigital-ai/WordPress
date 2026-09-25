@@ -5,13 +5,18 @@
   "verifier_path": "tools/verify_feature_boundary.py",
   "immutable_global_paths": [
     ".github/mad4b-feature-boundary-grants.json",
+    ".github/mad4b-master-ruleset-template.json",
     ".github/mad4b-repository-governance-policy.json",
     ".github/workflows/mad4b-feature-boundary.yml",
+    ".github/workflows/mad4b-owner-attestation-rerun.yml",
     ".github/workflows/mad4b-release-verdict.yml",
     ".github/workflows/mad4b-repository-governance.yml",
     ".specify/feature.json",
     ".specify/memory/constitution.md",
-    "tools/verify_feature_boundary.py"
+    "tools/Apply-Mad4bMasterRuleset.ps1",
+    "tools/verify_feature_boundary.py",
+    "tools/verify_repository_governance.py",
+    "tools/verify_repository_owner_attestation.py"
   ],
   "features": {
     "007": {
