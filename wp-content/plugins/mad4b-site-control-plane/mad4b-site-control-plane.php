@@ -206,6 +206,7 @@ MAD4B_SCP_Connection_Ability::boot();
 MAD4B_SCP_Multi_Authority_Registry::boot();
 MAD4B_SCP_Context_Authority::boot();
 MAD4B_SCP_Context_Provider_Gateway::boot();
+MAD4B_SCP_Brand_Context_Builder::boot();
 MAD4B_SCP_Plugin_Lifecycle::boot();
 MAD4B_SCP_Plugin_Package::boot();
 MAD4B_SCP_Functional_Gap_Runtime_Diagnostic::boot();
