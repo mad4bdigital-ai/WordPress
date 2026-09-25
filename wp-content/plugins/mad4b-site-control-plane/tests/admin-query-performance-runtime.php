@@ -6,6 +6,15 @@ $GLOBALS['mad4b_perf_env'] = 'staging';
 $GLOBALS['mad4b_perf_admin'] = true;
 $GLOBALS['mad4b_perf_options'] = array();
 
+class WP_Error {
+	private $code;
+	private $message;
+	public function __construct( $code, $message = '' ) { $this->code = (string) $code; $this->message = (string) $message; }
+	public function get_error_code() { return $this->code; }
+	public function get_error_message() { return $this->message; }
+}
+function is_wp_error( $value ) { return $value instanceof WP_Error; }
+
 class MAD4B_Perf_WPDB {
 	public $posts = 'wp_posts';
 	public $postmeta = 'wp_postmeta';
@@ -98,18 +107,26 @@ mad4b_perf_assert( 'lifecycle_protected' === $protected['state'], 'plugin upload
 mad4b_perf_assert( 0 === count( $GLOBALS['wpdb']->queries ), 'plugin upload lifecycle must execute zero performance DDL statements' );
 unset( $GLOBALS['pagenow'], $_REQUEST['action'] );
 
-$applied = MAD4B_SCP_Admin_Query_Performance::maybe_ensure_staging_indexes();
-mad4b_perf_assert( ! empty( $applied['ready'] ), 'Staging compound indexes were not applied' );
-mad4b_perf_assert( 2 === count( $GLOBALS['wpdb']->queries ), 'exactly two bounded ALTER TABLE statements are expected' );
+$queued_only = MAD4B_SCP_Admin_Query_Performance::maybe_ensure_staging_indexes();
+mad4b_perf_assert( 'queue_required' === $queued_only['state'], 'ordinary Staging admin requests must never execute performance DDL directly' );
+mad4b_perf_assert( 0 === count( $GLOBALS['wpdb']->queries ), 'queue-only public path must execute zero ALTER TABLE statements' );
+$legacy_direct = MAD4B_SCP_Admin_Query_Performance::apply_explicit();
+mad4b_perf_assert( is_wp_error( $legacy_direct ) && 'mad4b_admin_query_performance_queue_required' === $legacy_direct->get_error_code(), 'legacy public direct-apply path must fail closed to queued maintenance' );
+
+$worker = new ReflectionMethod( 'MAD4B_SCP_Admin_Query_Performance', 'apply_indexes' );
+$worker->setAccessible( true );
+$applied = $worker->invoke( null );
+mad4b_perf_assert( ! empty( $applied['ready'] ), 'scheduled-worker index implementation did not reach ready state' );
+mad4b_perf_assert( 2 === count( $GLOBALS['wpdb']->queries ), 'exactly two bounded ALTER TABLE statements are expected inside the private worker implementation' );
 foreach ( $GLOBALS['wpdb']->queries as $sql ) {
-	mad4b_perf_assert( 0 === strpos( $sql, 'ALTER TABLE ' ), 'only ALTER TABLE is allowed by the bounded performance bootstrap' );
-	mad4b_perf_assert( false !== strpos( $sql, ' ADD INDEX ' ), 'performance bootstrap may only add indexes' );
-	mad4b_perf_assert( false === stripos( $sql, 'DROP ' ), 'performance bootstrap must never drop schema objects' );
+	mad4b_perf_assert( 0 === strpos( $sql, 'ALTER TABLE ' ), 'only ALTER TABLE is allowed by the bounded performance worker' );
+	mad4b_perf_assert( false !== strpos( $sql, ' ADD INDEX ' ), 'performance worker may only add indexes' );
+	mad4b_perf_assert( false === stripos( $sql, 'DROP ' ), 'performance worker must never drop schema objects' );
 }
 $first_count = count( $GLOBALS['wpdb']->queries );
-$again = MAD4B_SCP_Admin_Query_Performance::maybe_ensure_staging_indexes();
-mad4b_perf_assert( $first_count === count( $GLOBALS['wpdb']->queries ), 'successful index bootstrap must not repeat DDL on later admin requests' );
-mad4b_perf_assert( 'already_applied' === $again['state'], 'successful index bootstrap should short-circuit by version marker' );
+$again = $worker->invoke( null );
+mad4b_perf_assert( $first_count === count( $GLOBALS['wpdb']->queries ), 'successful private worker must not repeat DDL after readiness' );
+mad4b_perf_assert( 'already_applied' === $again['state'], 'successful private worker should short-circuit by version marker' );
 
 $GLOBALS['mad4b_perf_env'] = 'production';
 $GLOBALS['mad4b_perf_options'] = array();
