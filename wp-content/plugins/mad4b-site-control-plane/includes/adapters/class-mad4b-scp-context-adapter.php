@@ -293,7 +293,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			$this->schema(
 				array(
 					'artifact_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
-					'expected_draft_content_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64},
+					'expected_draft_content_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 					'source_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
 					'format' => array( 'type' => 'string', 'enum' => array( 'markdown', 'text' ), 'default' => 'markdown' ),
 				),
@@ -320,7 +320,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 					'after_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 					'mime_type' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191 ),
 					'format' => array( 'type' => 'string', 'enum' => array( 'markdown', 'text' ) ),
-					'receipt_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}				),
+					'receipt_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				),
 				array( 'artifact_id', 'category', 'source_id', 'asset_id', 'file_id', 'target_folder_id', 'after_sha256', 'mime_type', 'format', 'receipt_sha256' )
 			),
 			'write',
