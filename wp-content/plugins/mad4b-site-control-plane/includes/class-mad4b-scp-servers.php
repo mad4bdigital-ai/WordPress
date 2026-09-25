@@ -43,7 +43,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/scheduler-fair-rank',
 				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status',
 				'mad4b/site-bootstrap-snapshot',
-				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover',
+				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/provider-closure-matrix',
 			), $governed_status ),
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status',
