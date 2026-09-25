@@ -68,16 +68,55 @@ jobs:
           required={
               '.github/mad4b-repository-governance-policy.json',
               '.github/mad4b-feature-boundary-grants.json',
-              'tools/verify_feature_boundary.py',
+              '.github/mad4b-master-ruleset-template.json',
               '.github/workflows/mad4b-feature-boundary.yml',
               '.github/workflows/mad4b-release-verdict.yml',
               '.github/workflows/mad4b-repository-governance.yml',
+              '.github/workflows/mad4b-owner-attestation-rerun.yml',
+              'tools/Apply-Mad4bMasterRuleset.ps1',
+              'tools/verify_feature_boundary.py',
+              'tools/verify_repository_governance.py',
+              'tools/verify_repository_owner_attestation.py',
           }
           if not required.issubset(immutable):
               raise SystemExit('feature-boundary immutable root incomplete')
           if '007' not in (data.get('features') or {}):
               raise SystemExit('Feature 007 grant missing')
+          PY
+          safety=(json.loads(Path('.github/mad4b-repository-governance-policy.json').read_text(encoding='utf-8')).get('single_owner_safety') or {})
+          if safety.get('attestation_command')!='OWNER_ATTEST_SINGLE_OWNER':
+              raise SystemExit('single-owner attestation command drift')
+          if safety.get('authorized_owner_logins')!=['mad4bdigital-ai']:
+              raise SystemExit('single-owner authorized login drift')
+          if safety.get('owner_attestation_remains_exact_sha_scoped') is not True or safety.get('attestation_stale_on_descendant') is not True:
+              raise SystemExit('single-owner exact-head staleness contract drift')
+
+          boundary=Path('.github/workflows/mad4b-feature-boundary.yml').read_text(encoding='utf-8')
+          for required_marker in [
+              '  pull_request_target:',
+              '    contents: read',
+              'persist-credentials: false',
+              'Checkout trusted base',
+              'git fetch --no-tags --depth=1 origin "$HEAD_SHA"',
+              'python3 tools/verify_feature_boundary.py',
+              'Repository-owned feature boundary',
+          ]:
+              if required_marker not in boundary:
+                  raise SystemExit('trusted feature-boundary workflow marker missing: ' + required_marker)
+          if '  pull_request:\n' in boundary:
+              raise SystemExit('feature-boundary root must not execute from PR HEAD via pull_request')
+          for forbidden_permission in ['contents: write','actions: write','pull-requests: write','issues: write']:
+              if forbidden_permission in boundary:
+                  raise SystemExit('feature-boundary workflow unexpectedly has write permission: ' + forbidden_permission)
+
+          owner_verifier=Path('tools/verify_repository_owner_attestation.py').read_text(encoding='utf-8')
+          for required_marker in ['OWNER_ATTEST_SINGLE_OWNER','live_head != expected_head','authorized_owner_logins','stale_on_descendant']:
+              if required_marker not in owner_verifier:
+                  raise SystemExit('owner attestation verifier marker missing: ' + required_marker)
+
           print('mad4b.feature-boundary-grants.v1: PASS')
+          print('mad4b.repository-owner-attestation.v1: PASS')
+          print('mad4b.feature-boundary-trusted-invocation.v1: PASS')
           PY
 
       - name: Verify active master repository governance
