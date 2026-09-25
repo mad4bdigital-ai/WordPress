@@ -146,6 +146,14 @@ run_case(
 )
 
 run_case(
+    [
+        "wp-content/plugins/mad4b-site-control-plane/tests/"
+        "repository-governance-bootstrap-tool-contract.py"
+    ],
+    expect_error="REPOSITORY_ROOT_OF_TRUST_CHANGED_FROM_FEATURE",
+)
+
+run_case(
     [".github/workflows/mad4b-site-control-plane.yml"],
     expect_error="SELF_CERTIFYING_RELEASE_CRITICAL_CHANGE",
 )
