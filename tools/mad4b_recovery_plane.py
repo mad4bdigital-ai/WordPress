@@ -127,6 +127,7 @@ def protected_backup_status(wordpress_root: Path) -> dict[str, Any]:
     is_dir = backup_root.is_dir() if exists and not symlink else False
     writable = bool(is_dir and os.access(backup_root, os.W_OK))
     receipts = []
+    verified_count = 0
     if is_dir:
         for receipt_path in sorted(backup_root.glob("*/BACKUP-RECEIPT.json")):
             if receipt_path.is_symlink() or not receipt_path.is_file():
@@ -137,24 +138,38 @@ def protected_backup_status(wordpress_root: Path) -> dict[str, Any]:
                 continue
             if row.get("contract") != BACKUP_RECEIPT_CONTRACT:
                 continue
+            backup_id = str(row.get("backup_id") or "")
+            verified = False
+            verification_error = ""
+            try:
+                verification = verify_protected_backup(root, backup_id)
+                verified = verification.get("verified") is True
+            except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as exc:
+                verification_error = str(exc)
+            if verified:
+                verified_count += 1
             receipts.append({
-                "backup_id": row.get("backup_id"),
+                "backup_id": backup_id,
                 "plan_sha256": row.get("plan_sha256"),
                 "plugin_tree_sha256": row.get("plugin_tree_sha256"),
                 "created_at": row.get("created_at"),
                 "receipt_path": str(receipt_path),
+                "verified": verified,
+                "verification_error": verification_error,
             })
+    ready = bool(is_dir and writable and not symlink and verified_count > 0)
     return {
-        "contract": "mad4b.protected-backup-status.v1",
+        "contract": "mad4b.protected-backup-status.v2",
         "path": str(backup_root),
         "exists": exists,
         "is_directory": is_dir,
         "symlink": symlink,
         "writable": writable,
-        "ready": bool(is_dir and writable and not symlink),
+        "ready": ready,
         "backup_count": len(receipts),
+        "verified_backup_count": verified_count,
         "backups": receipts[-20:],
-        "requires_preparation": not bool(is_dir and writable and not symlink),
+        "requires_preparation": not ready,
         "mutation_performed": False,
     }
 
