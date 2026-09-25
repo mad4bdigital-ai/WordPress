@@ -91,6 +91,31 @@
   },
   "generic_quality_tooling": {
     "strategy": "reuse-maintained-tools",
+    "runtime_dependency": false,
+    "release_authority": "MAD4B repository gates remain authoritative; external tools supply evidence and may fail CI but never grant deployment or Production authority",
+    "coverage": {
+      "PHP lint": {
+        "mode": "blocking",
+        "source": "multi-version MAD4B CI"
+      },
+      "WordPress Plugin Check": {
+        "mode": "blocking_observational",
+        "source": "official action pinned by commit SHA",
+        "dependency_note": "action runtime may fetch external test dependencies; failures are actionable but a PASS is not supply-chain provenance"
+      },
+      "WordPressCS": {
+        "mode": "covered_by_plugin_check",
+        "source": "Plugin Check plugin_review_phpcs and security/general checks"
+      },
+      "PHPCompatibilityWP": {
+        "mode": "covered_by_runtime_matrix",
+        "source": "PHP 7.4/8.1/8.3 lint and contract lanes; dedicated ruleset may be added once dependency lock is reproducible"
+      },
+      "PHPStan": {
+        "mode": "advisory_pending_lock",
+        "source": "do not make authoritative until WordPress stubs and analyzer artifact are version-locked"
+      }
+    },
     "recommended": [
       "php-lint",
       "WordPressCS",
@@ -98,7 +123,8 @@
       "PHPStan",
       "WordPress Plugin Check"
     ],
-    "runtime_dependency": false
+    "unknown_external_tool_state": "UNKNOWN_NOT_PASS",
+    "production_authorized": false
   },
   "mad4b_custom_guards": [
     "ability_surface_consistency",
