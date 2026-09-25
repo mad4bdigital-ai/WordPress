@@ -384,6 +384,14 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'restore_recreate_state',
 				'rollback_created_brand_asset',
 			),
+			'MAD4B_SCP_Brand_Context_Builder' => array(
+				'gap_plan',
+				'append_draft',
+				'source_scan_plan',
+				'source_scan_apply',
+				'materialize_draft',
+				'rollback_materialized_draft',
+			),
 			'MAD4B_SCP_Context_Authority' => array(
 				'source',
 				'asset',
@@ -396,6 +404,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'begin_recreated_asset_rollback',
 				'cancel_recreated_asset_rollback',
 				'rollback_recreated_asset',
+				'mark_generated_brand_draft',
+				'mark_generated_brand_draft_rolled_back',
 			),
 			'MAD4B_SCP_External_Handshake_Evidence' => array(
 				'build_fingerprint',
@@ -419,6 +429,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'includes/class-mad4b-scp-context-authority.php',
 			'includes/class-mad4b-scp-google-drive-context.php',
 			'includes/class-mad4b-scp-context-preflight.php',
+			'includes/class-mad4b-scp-brand-context-builder.php',
 		);
 		if ( ! defined( 'MAD4B_SCP_DIR' ) ) {
 			$blockers[] = 'control_plane_runtime_root_unavailable';
@@ -449,6 +460,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'control_plane_build_fingerprint' => $control_plane_build_fingerprint,
 			'critical_files' => $critical_hashes,
 			'rollback_contracts' => $contracts,
+			'brand_materialization_rollback_contract' => MAD4B_SCP_Brand_Context_Builder::ROLLBACK_CONTRACT,
 		);
 		$json = function_exists( 'wp_json_encode' )
 			? wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
