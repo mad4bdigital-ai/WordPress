@@ -20,7 +20,6 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 39 );
-		add_filter( 'mad4b_scp_remote_operation_catalog', array( __CLASS__, 'register_operation_catalog_entry' ), 30 );
 	}
 
 	public static function register_ability() {
@@ -51,59 +50,6 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 				),
 			)
 		);
-	}
-
-	public static function register_operation_catalog_entry( $rows ) {
-		$rows = is_array( $rows ) ? $rows : array();
-		$rows['provider_closure_matrix'] = array(
-			'registrar_id' => 'mad4b-core-provider-certification',
-			'source_plugin' => 'mad4b-site-control-plane',
-			'trust_class' => 'core',
-			'feature_id' => 'provider-certification',
-			'capability_tags' => array( 'provider', 'certification', 'write-eligibility', 'closure', 'diagnostics' ),
-			'provider' => 'core',
-			'status_ability' => self::ABILITY,
-			'local_surface' => '',
-			'remote_ability' => self::ABILITY,
-			'authority_surface' => 'mad4b-read',
-			'executor' => 'wordpress_native',
-			'remote_mode' => 'read_only_diagnostic',
-			'production_policy' => 'read_only',
-			'human_decision_required' => false,
-		);
-		$rows['provider_behavioral_recertification'] = array(
-			'registrar_id' => 'mad4b-core-provider-certification',
-			'source_plugin' => 'mad4b-site-control-plane',
-			'trust_class' => 'core',
-			'feature_id' => 'provider-certification',
-			'capability_tags' => array( 'provider', 'behavioral', 'recertification', 'rollback', 'write-eligibility' ),
-			'provider' => 'core',
-			'status_ability' => self::ABILITY,
-			'local_surface' => '',
-			'remote_ability' => 'mad4b/provider-behavioral-recertify',
-			'authority_surface' => 'mad4b-write',
-			'executor' => 'wordpress_native',
-			'remote_mode' => 'exact_reversible_probe',
-			'production_policy' => 'deny',
-			'human_decision_required' => true,
-		);
-		$rows['provider_canary_execution'] = array(
-			'registrar_id' => 'mad4b-core-provider-certification',
-			'source_plugin' => 'mad4b-site-control-plane',
-			'trust_class' => 'core',
-			'feature_id' => 'provider-certification',
-			'capability_tags' => array( 'provider', 'canary', 'activation', 'high-risk-write', 'rollback' ),
-			'provider' => 'core',
-			'status_ability' => self::ABILITY,
-			'local_surface' => '',
-			'remote_ability' => 'mad4b/provider-canary-execute',
-			'authority_surface' => 'mad4b-write',
-			'executor' => 'wordpress_native',
-			'remote_mode' => 'owner_governed_canary',
-			'production_policy' => 'deny',
-			'human_decision_required' => true,
-		);
-		return $rows;
 	}
 
 	public static function matrix( $input = array() ) {
