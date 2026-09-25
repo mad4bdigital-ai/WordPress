@@ -8,6 +8,15 @@ define( 'PHP_INT_MAX_TEST', PHP_INT_MAX );
 $GLOBALS['actions'] = array();
 $GLOBALS['option'] = array();
 $GLOBALS['current_build_fingerprint'] = str_repeat('a',64);
+$GLOBALS['browser_request'] = array(
+    'request_id' => 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+    'probe_hash' => hash('sha256', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'),
+    'status' => 'pending_external_executor',
+    'expires_at_epoch' => time() + 3600,
+);
+class MAD4B_SCP_Remote_Operation_Parity {
+    const BROWSER_REQUEST_OPTION = 'mad4b_scp_remote_browser_sample_request_v1';
+}
 function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) { $GLOBALS['actions'][$hook][$priority][] = $callback; }
 function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) { $GLOBALS['mad4b_qm_filters'][$hook][$priority][] = $callback; return true; }
 function remove_action( $hook, $callback, $priority = 10 ) {
@@ -19,7 +28,7 @@ function remove_action( $hook, $callback, $priority = 10 ) {
 }
 function sanitize_key( $v ) { return strtolower( preg_replace('/[^a-z0-9_\-]/i','',(string)$v) ); }
 function sanitize_text_field( $v ) { return trim( (string) $v ); }
-function get_option( $k, $d = false ) { return $GLOBALS['option'] ?: $d; }
+function get_option( $k, $d = false ) { if ( MAD4B_SCP_Remote_Operation_Parity::BROWSER_REQUEST_OPTION === $k ) return $GLOBALS['browser_request']; return $GLOBALS['option'] ?: $d; }
 function update_option( $k, $v, $autoload = null ) { $GLOBALS['option'] = $v; return true; }
 function is_admin() { return false; }
 function get_num_queries() { return 37; }
