@@ -96,6 +96,16 @@ def verify(template: dict, policy: dict, readback: dict | None = None) -> dict:
         raise ValueError("repository governance policy must require active enforcement")
     if policy.get("require_no_bypass_actors") is not True:
         raise ValueError("repository governance policy must forbid bypass actors")
+    expected_attestation = {
+        "variable_name": "MAD4B_RULESET_ATTESTATION",
+        "contract": "mad4b.repository-ruleset-attestation.v1",
+        "require_zero_bypass_actors": True,
+        "bind_ruleset_updated_at": True,
+        "bind_policy_sha256": True,
+        "bind_template_sha256": True,
+    }
+    if policy.get("ruleset_attestation") != expected_attestation:
+        raise ValueError("repository governance ruleset attestation policy drift")
 
     if template.get("name") != EXPECTED_NAME:
         raise ValueError("ruleset template name mismatch")
@@ -209,6 +219,7 @@ def verify(template: dict, policy: dict, readback: dict | None = None) -> dict:
         ],
         "rule_types": sorted(expected_types),
         "readback_verified": readback_verified,
+        "ruleset_attestation_variable": "MAD4B_RULESET_ATTESTATION",
         "mutation_performed": False,
     }
 
