@@ -368,6 +368,7 @@ def verify_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
         "risk": definition.get("risk"),
         "plan_sha256": plan_sha256,
         "approval_ref": approval_ref,
+        "bridge_submission_sha256": bridge_submission_sha256,
     }
 
 
