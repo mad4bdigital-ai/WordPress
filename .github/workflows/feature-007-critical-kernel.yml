@@ -56,7 +56,7 @@ on:
       - 'wp-content/plugins/bit-pi.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v10-integration.sh'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v11-integration.sh'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py'
       - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
@@ -137,7 +137,7 @@ on:
       - 'wp-content/plugins/bit-pi.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v10-integration.sh'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v11-integration.sh'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py'
       - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
@@ -456,7 +456,7 @@ jobs:
           retention-days: 14
 
 
-  schema-mariadb-v6-v10:
+  schema-mariadb-v6-v11:
     name: Schema v6 v7 v8 v9 to v11 real MariaDB upgrade
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -525,7 +525,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bash wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v10-integration.sh
+          bash wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v11-integration.sh
 
       - name: Prove durable execution runtime fault semantics
         shell: bash
