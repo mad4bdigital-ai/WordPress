@@ -118,12 +118,27 @@ for marker in [
     "MAD4B_SCP_Audit::record(",
     "wp_schedule_single_event(",
     "mad4b_admin_query_performance_cron_disabled",
+    "const JOB_LOCK_OPTION = 'mad4b_scp_admin_query_performance_job_lock_v1';",
+    "acquire_job_lock",
+    "release_job_lock",
+    "mad4b_admin_query_performance_lock_reclaim_raced",
+    "mad4b_admin_query_performance_queue_required",
 ]:
     if marker not in perf:
         raise SystemExit(f'performance maintenance lacks durable queued execution invariant: {marker}')
 
 if "self::apply_explicit();" in perf.split("public static function handle_explicit_apply()", 1)[1].split("public static function maintenance_job_status()", 1)[0]:
     raise SystemExit('wp-admin performance action must enqueue maintenance instead of running DDL synchronously')
+
+direct_apply = perf.split("public static function apply_explicit()", 1)[1].split("public static function maybe_ensure_staging_indexes()", 1)[0]
+if "apply_indexes()" in direct_apply:
+    raise SystemExit("legacy apply_explicit path must never execute DDL synchronously")
+maybe_apply = perf.split("public static function maybe_ensure_staging_indexes()", 1)[1].split("private static function apply_indexes()", 1)[0]
+if "apply_indexes()" in maybe_apply:
+    raise SystemExit("maybe_ensure_staging_indexes must remain queue-only")
+worker = perf.split("public static function run_scheduled_apply(", 1)[1].split("private static function audit_job(", 1)[0]
+if "$result = self::apply_indexes();" not in worker:
+    raise SystemExit("private performance DDL must be reachable only from the scheduled worker")
 
 if 'One service, many frontends' not in generalization:
     raise SystemExit('generalization contract lost one-service-many-frontends rule')
