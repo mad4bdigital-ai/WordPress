@@ -390,12 +390,21 @@
         "no_backfill": true,
         "no_intent_claim_creation": true,
         "deterministic_snapshot_sha256": true,
-        "repository_only": true
+        "repository_only": true,
+        "normalized_public_post_types": true,
+        "taxonomies_and_languages_observed": true,
+        "canonical_seo_indexability_observed": true,
+        "media_and_link_inventory": true,
+        "bounded_snapshot_completeness": true,
+        "bootstrap_to_intent_plan": "mad4b.intent-bootstrap-reconciliation-plan.v1",
+        "bootstrap_intent_classification_source": "explicit_operator",
+        "bootstrap_intent_plan_mutation_performed": false,
+        "bootstrap_intent_plan_artifacts_created": false
       },
       "remainder": [
-        "obtain exact-head Critical Kernel PASS for the read-only existing-site bootstrap",
+        "obtain exact-head Critical Kernel PASS for the read-only existing-site bootstrap and Bootstrap→Intent contract",
         "run the bounded inventory snapshot against exact ETG Staging candidate",
-        "feed the resulting inventory into the Intent Registry without creating historical artifacts or content mutations"
+        "apply explicitly reviewed Intent reconciliation scopes on ETG Staging through the governed write path"
       ]
     },
     {
@@ -419,11 +428,16 @@
         "cannibalization_is_derived": true,
         "overlap_alone_is_conflict": false,
         "bootstrap_does_not_create_intent_claims": true,
-        "repository_only": true
+        "repository_only": true,
+        "bootstrap_snapshot_lineage_bound": true,
+        "content_fingerprint_lineage_bound": true,
+        "unresolved_inventory_preserved": true,
+        "current_scope_sha_hydrated_before_reconcile": true,
+        "bootstrap_intent_handoff_authorizing": false
       },
       "remainder": [
         "obtain exact-head schema v11 MariaDB PASS for Intent Registry runtime reconciliation",
-        "feed the bounded ETG Staging bootstrap inventory into Intent Registry reconciliation",
+        "run bootstrap inventory + explicit classifications against exact ETG Staging and apply through governed reconcile authority",
         "prove live CREATE_NEW/SUPPORT_EXISTING/UPDATE_EXISTING/CONSOLIDATE/HUMAN_REVIEW job-resolution policy against the exact deployed candidate"
       ]
     },
@@ -679,14 +693,21 @@
           ".github/workflows/mad4b-governed-execution-fence.yml"
         ],
         "evidence_class": "repository_implementation_and_tests",
-        "live_exact_candidate_proven": false
+        "live_exact_candidate_proven": false,
+        "disposable_crashed_worker_expiry": true,
+        "zombie_epoch_fenced": true,
+        "duplicate_provider_event_deduplicated": true,
+        "conflicting_duplicate_event_denied": true,
+        "expired_idempotency_requires_reconciliation": true,
+        "stale_idempotency_claim_cannot_complete": true,
+        "receipt_failure_verified_rollback": true,
+        "receipt_and_rollback_failure_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+        "uncertain_mutation_blind_retry_allowed": false
       },
       "remainder": [
         "prove aggregate/event/artifact consistency on the exact deployed candidate",
-        "prove stale/zombie writer rejection and crash-after-success reconciliation",
-        "prove duplicate/reordered callback effect-once semantics under live/disposable fault tests",
-        "inject runner crash after lease, lease loss before commit, duplicate delivery/replay and side-effect-before-receipt failure",
-        "prove fenced zombie writers cannot commit and uncertain mutations cannot auto-retry as fresh writes"
+        "add explicit out-of-order callback revision-reconciliation fixture when an ordered callback provider contract is admitted",
+        "prove the repository fault suite against final exact-head CI and repeat the critical stale/zombie/uncertain cases on ETG Staging"
       ]
     },
     {
