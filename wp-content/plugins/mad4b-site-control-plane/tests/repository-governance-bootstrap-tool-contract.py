@@ -57,6 +57,16 @@ required = [
     'ruleset_rollback_deletion_readback=verified',
     'previous ruleset restore did not verify against the exact pre-apply state',
     'newly-created ruleset still exists after automatic rollback',
+    '"tools/build_repository_ruleset_attestation.py"',
+    '$RulesetAttestationPath = Join-Path $env:TEMP "mad4b-ruleset-attestation.json"',
+    '--readback $ReadbackPath --policy $PolicyPath --template $TemplatePath --repository $Repository --output $RulesetAttestationPath',
+    '$variableName -ne "MAD4B_RULESET_ATTESTATION"',
+    '"repos/$Repository/actions/variables/$variableName"',
+    '"--method","PATCH"',
+    '"--method","POST"',
+    'repository ruleset attestation variable upsert failed',
+    'repository ruleset attestation variable readback mismatch',
+    'ruleset_attestation_readback=verified',
 ]
 
 missing = [needle for needle in required if needle not in script]
@@ -242,3 +252,99 @@ with tempfile.TemporaryDirectory() as td:
 
 print("rollback_readback_verifier=executable")
 print("rollback_drift_rejection=pass")
+
+
+attestation_builder = Path("tools/build_repository_ruleset_attestation.py")
+if not attestation_builder.is_file():
+    raise SystemExit("repository ruleset attestation builder is missing")
+builder_text = attestation_builder.read_text(encoding="utf-8")
+for needle in [
+    "mad4b.repository-ruleset-attestation.v1",
+    "privileged ruleset readback does not expose bypass actors",
+    "ruleset_updated_at",
+    "policy_sha256",
+    "template_sha256",
+    "bypass_actor_count",
+]:
+    if needle not in builder_text:
+        raise SystemExit(f"ruleset attestation builder contract missing: {needle}")
+
+target_template = json.loads(Path(".github/mad4b-master-ruleset-template.json").read_text(encoding="utf-8"))
+attestation_fixture = {
+    "id": 23968498,
+    "name": target_template["name"],
+    "target": target_template["target"],
+    "source_type": "Repository",
+    "source": "mad4bdigital-ai/WordPress",
+    "enforcement": target_template["enforcement"],
+    "bypass_actors": [],
+    "conditions": target_template["conditions"],
+    "rules": target_template["rules"],
+    "updated_at": "2026-09-26T00:00:00Z",
+}
+with tempfile.TemporaryDirectory() as td:
+    root = Path(td)
+    readback = root / "readback.json"
+    output = root / "attestation.json"
+    readback.write_text(json.dumps(attestation_fixture), encoding="utf-8")
+    build_ok = subprocess.run(
+        [
+            "python3",
+            "tools/build_repository_ruleset_attestation.py",
+            "--readback",
+            str(readback),
+            "--policy",
+            ".github/mad4b-repository-governance-policy.json",
+            "--template",
+            ".github/mad4b-master-ruleset-template.json",
+            "--repository",
+            "mad4bdigital-ai/WordPress",
+            "--output",
+            str(output),
+        ],
+        text=True,
+        capture_output=True,
+    )
+    if build_ok.returncode != 0:
+        raise SystemExit(
+            "ruleset attestation executable PASS fixture failed: "
+            + (build_ok.stderr or build_ok.stdout)
+        )
+    attestation = json.loads(output.read_text(encoding="utf-8"))
+    if (
+        attestation.get("contract") != "mad4b.repository-ruleset-attestation.v1"
+        or attestation.get("bypass_actor_count") != 0
+        or attestation.get("ruleset_updated_at") != "2026-09-26T00:00:00Z"
+        or attestation.get("verified_readback") is not True
+    ):
+        raise SystemExit("ruleset attestation PASS fixture did not bind exact privileged readback")
+
+    unsafe = json.loads(json.dumps(attestation_fixture))
+    unsafe["bypass_actors"] = [
+        {"actor_id": 1, "actor_type": "RepositoryRole", "bypass_mode": "always"}
+    ]
+    readback.write_text(json.dumps(unsafe), encoding="utf-8")
+    build_bad = subprocess.run(
+        [
+            "python3",
+            "tools/build_repository_ruleset_attestation.py",
+            "--readback",
+            str(readback),
+            "--policy",
+            ".github/mad4b-repository-governance-policy.json",
+            "--template",
+            ".github/mad4b-master-ruleset-template.json",
+            "--repository",
+            "mad4bdigital-ai/WordPress",
+            "--output",
+            str(output),
+        ],
+        text=True,
+        capture_output=True,
+    )
+    if build_bad.returncode == 0:
+        raise SystemExit("ruleset attestation builder accepted non-empty bypass actors")
+
+print("ruleset_attestation_builder=executable")
+print("ruleset_attestation_nonzero_bypass_rejection=pass")
+print("ruleset_attestation_variable=upsert_and_readback")
