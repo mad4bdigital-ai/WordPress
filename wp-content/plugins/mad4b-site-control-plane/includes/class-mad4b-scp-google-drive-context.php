@@ -1111,6 +1111,102 @@ final class MAD4B_SCP_Google_Drive_Context {
 		);
 	}
 
+	private static function drive_query_literal( $value ) {
+		$value = (string) $value;
+		return str_replace( array( '\\', "'" ), array( '\\\\', "\\'" ), $value );
+	}
+
+	public static function find_brand_materialization_candidates( $source_id, array $identity ) {
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return new WP_Error( 'mad4b_context_authority_unavailable', 'Context Authority is unavailable.' );
+		$source = MAD4B_SCP_Context_Authority::source( $source_id );
+		if ( empty( $source ) || 'google_drive' !== ( isset( $source['provider'] ) ? (string) $source['provider'] : '' ) ) return new WP_Error( 'mad4b_google_drive_source_not_found', 'Selected Context source is not a Google Drive source.' );
+		$properties = self::brand_materialization_properties( $identity );
+		if ( is_wp_error( $properties ) ) return $properties;
+		$root_id = self::bounded_drive_id( isset( $source['external_root_id'] ) ? $source['external_root_id'] : '' );
+		if ( '' === $root_id || 'root' === $root_id ) return new WP_Error( 'mad4b_google_drive_write_folder_invalid', 'Brand materialization reconciliation requires a specific governed source folder.' );
+		$folder = self::get_folder( $root_id );
+		if ( is_wp_error( $folder ) ) return $folder;
+
+		$q = "'" . self::drive_query_literal( $root_id ) . "' in parents and trashed = false";
+		foreach ( $properties as $key => $value ) {
+			$q .= " and appProperties has { key='" . self::drive_query_literal( $key ) . "' and value='" . self::drive_query_literal( $value ) . "' }";
+		}
+		$params = array(
+			'q' => $q,
+			'pageSize' => 10,
+			'fields' => 'nextPageToken,files(id,name,mimeType,modifiedTime,size,md5Checksum,parents,driveId,webViewLink,appProperties,capabilities(canDownload))',
+			'spaces' => 'drive',
+			'supportsAllDrives' => 'true',
+			'includeItemsFromAllDrives' => 'true',
+		);
+		$url = self::DRIVE_API . '/files?' . http_build_query( $params, '', '&', PHP_QUERY_RFC3986 );
+		$data = self::api_get( $url );
+		if ( is_wp_error( $data ) ) return $data;
+		$next = isset( $data['nextPageToken'] ) ? sanitize_text_field( (string) $data['nextPageToken'] ) : '';
+		$assets = array();
+		foreach ( isset( $data['files'] ) && is_array( $data['files'] ) ? $data['files'] : array() as $child ) {
+			if ( ! is_array( $child ) ) continue;
+			$observed_properties = isset( $child['appProperties'] ) && is_array( $child['appProperties'] ) ? $child['appProperties'] : array();
+			$identity_match = true;
+			foreach ( $properties as $key => $value ) {
+				if ( ! isset( $observed_properties[ $key ] ) || ! hash_equals( (string) $value, (string) $observed_properties[ $key ] ) ) { $identity_match = false; break; }
+			}
+			if ( ! $identity_match ) continue;
+			$content_record = self::fetch_text_content_record( $child );
+			if ( is_wp_error( $content_record ) ) {
+				$content_record = array(
+					'content' => '',
+					'complete' => false,
+					'bytes' => 0,
+					'normalization_status' => 'error',
+					'normalization_reason' => $content_record->get_error_code(),
+				);
+			}
+			$content_complete = ! empty( $content_record['complete'] );
+			$text = $content_complete && isset( $content_record['content'] ) ? (string) $content_record['content'] : '';
+			$basis = '' !== $text
+				? $text
+				: ( isset( $child['md5Checksum'] ) && $child['md5Checksum'] ? (string) $child['md5Checksum'] : (string) ( isset( $child['id'] ) ? $child['id'] : '' ) . '|' . ( isset( $child['modifiedTime'] ) ? $child['modifiedTime'] : '' ) );
+			$assets[] = array(
+				'file_id' => isset( $child['id'] ) ? (string) $child['id'] : '',
+				'parent_folder_id' => ! empty( $child['parents'] ) && is_array( $child['parents'] ) ? (string) reset( $child['parents'] ) : '',
+				'title' => isset( $child['name'] ) ? (string) $child['name'] : 'Untitled',
+				'path' => isset( $child['name'] ) ? (string) $child['name'] : '',
+				'mimeType' => isset( $child['mimeType'] ) ? (string) $child['mimeType'] : '',
+				'modifiedTime' => isset( $child['modifiedTime'] ) ? (string) $child['modifiedTime'] : '',
+				'size' => isset( $child['size'] ) ? (string) $child['size'] : '',
+				'webViewLink' => isset( $child['webViewLink'] ) ? esc_url_raw( (string) $child['webViewLink'] ) : '',
+				'appProperties' => $observed_properties,
+				'normalized_text' => $text,
+				'content_complete' => $content_complete,
+				'content_bytes' => isset( $content_record['bytes'] ) ? (int) $content_record['bytes'] : strlen( $text ),
+				'normalization_status' => isset( $content_record['normalization_status'] ) ? sanitize_key( (string) $content_record['normalization_status'] ) : ( $content_complete ? 'ready' : 'incomplete' ),
+				'normalization_reason' => isset( $content_record['normalization_reason'] ) ? sanitize_key( (string) $content_record['normalization_reason'] ) : '',
+				'content_hash' => hash( 'sha256', $basis ),
+			);
+		}
+		$observed_at = gmdate( 'c' );
+		$scan_generation = hash(
+			'sha256',
+			(string) $source['source_id'] . '|' . (string) $properties['mad4b_idempotency'] . '|' . (string) $properties['mad4b_request'] . '|' . $observed_at . '|' . ( function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : uniqid( 'mad4b-', true ) )
+		);
+		return array(
+			'contract' => 'mad4b.google-drive-brand-materialization-lookup.v1',
+			'scan_generation' => $scan_generation,
+			'started_at' => $observed_at,
+			'completed_at' => gmdate( 'c' ),
+			'folder' => $folder,
+			'recursive' => false,
+			'asset_count' => count( $assets ),
+			'folder_count' => 1,
+			'complete' => '' === $next,
+			'truncated' => '' !== $next,
+			'truncation_reasons' => '' === $next ? array() : array( 'identity_lookup_continuation' ),
+			'assets' => $assets,
+			'provider_identity' => $properties,
+		);
+	}
+
 	public static function create_asset( $source_id, $name, $content, $format = 'markdown' ) {
 		$source = self::write_source( $source_id, 'create' );
 		if ( is_wp_error( $source ) ) return $source;
