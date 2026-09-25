@@ -176,7 +176,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'Build Brand Context Gap Plan',
 			'brand_gap_plan',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
-			$this->schema( array() )
+			$this->schema( array( 'include_authoritative_content' => array( 'type' => 'boolean', 'default' => true ) ) )
 		);
 		$this->add_ability(
 			'context/source-scan-plan',
