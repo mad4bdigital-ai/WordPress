@@ -10,6 +10,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Policy_Resolution {
 	const CONTRACT = 'mad4b.policy-resolution.v1';
+	const CONFIG_CONTRACT = 'mad4b.policy-resolution-config.v1';
+	const CONFIG = 'config/policy-resolution.json';
+
+	private static $config = null;
 
 	private static $precedence = array(
 		'hard_deny',
@@ -22,6 +26,47 @@ final class MAD4B_SCP_Policy_Resolution {
 		'grant',
 		'feature',
 	);
+
+	public static function current_operating_mode() {
+		$config = self::config();
+		if ( is_wp_error( $config ) ) return $config;
+
+		$mode = '';
+		if ( defined( 'MAD4B_SCP_OPERATING_MODE' ) ) {
+			$mode = strtoupper( trim( (string) constant( 'MAD4B_SCP_OPERATING_MODE' ) ) );
+		}
+		if ( '' === $mode && class_exists( 'MAD4B_SCP_Site_Profile' ) ) {
+			$profile = MAD4B_SCP_Site_Profile::profile();
+			if ( is_array( $profile ) && ! empty( $profile['operating_mode'] ) ) {
+				$mode = strtoupper( trim( (string) $profile['operating_mode'] ) );
+			}
+		}
+		if ( '' === $mode ) $mode = (string) $config['default_operating_mode'];
+
+		$filtered = apply_filters( 'mad4b_scp_policy_operating_mode', $mode );
+		if ( is_string( $filtered ) && '' !== trim( $filtered ) ) $mode = strtoupper( trim( $filtered ) );
+		if ( ! in_array( $mode, (array) $config['allowed_operating_modes'], true ) ) {
+			return new WP_Error( 'mad4b_policy_operating_mode_invalid', 'Configured MAD4B operating mode is invalid.' );
+		}
+		return $mode;
+	}
+
+	public static function config_digest() {
+		$config = self::config();
+		if ( is_wp_error( $config ) ) return '';
+		return self::digest( $config );
+	}
+
+	public static function environment_allowed( $environment ) {
+		$config = self::config();
+		if ( is_wp_error( $config ) ) return false;
+		$environment = sanitize_key( (string) $environment );
+		$policy = isset( $config['default_environment_policy'] ) && is_array( $config['default_environment_policy'] )
+			? $config['default_environment_policy']
+			: array();
+		$allowed = isset( $policy[ $environment ] ) && true === $policy[ $environment ];
+		return (bool) apply_filters( 'mad4b_scp_policy_environment_allowed', $allowed, $environment );
+	}
 
 	public static function resolve( array $facts ) {
 		$normalized = self::normalize_facts( $facts );
@@ -187,6 +232,29 @@ final class MAD4B_SCP_Policy_Resolution {
 				'required_approvals' => $required_approvals,
 			)
 		);
+	}
+
+	private static function config() {
+		if ( is_array( self::$config ) ) return self::$config;
+		if ( ! defined( 'MAD4B_SCP_DIR' ) ) return new WP_Error( 'mad4b_policy_config_root_unavailable', 'MAD4B plugin root is unavailable.' );
+		$path = MAD4B_SCP_DIR . self::CONFIG;
+		if ( ! is_readable( $path ) ) return new WP_Error( 'mad4b_policy_config_missing', 'MAD4B policy resolution config is unavailable.' );
+		$raw = file_get_contents( $path );
+		$config = false === $raw ? null : json_decode( $raw, true );
+		if ( ! is_array( $config ) || self::CONFIG_CONTRACT !== (string) ( $config['contract'] ?? '' ) ) {
+			return new WP_Error( 'mad4b_policy_config_invalid', 'MAD4B policy resolution config is invalid.' );
+		}
+		$modes = isset( $config['allowed_operating_modes'] ) && is_array( $config['allowed_operating_modes'] ) ? $config['allowed_operating_modes'] : array();
+		$default = isset( $config['default_operating_mode'] ) ? strtoupper( trim( (string) $config['default_operating_mode'] ) ) : '';
+		$required = array( 'ENTERPRISE_MULTI_OPERATOR', 'SINGLE_OWNER_HARDENED', 'EMERGENCY_RECOVERY' );
+		sort( $modes, SORT_STRING );
+		$sorted_required = $required;
+		sort( $sorted_required, SORT_STRING );
+		if ( $modes !== $sorted_required || ! in_array( $default, $required, true ) ) {
+			return new WP_Error( 'mad4b_policy_config_modes_invalid', 'MAD4B policy resolution operating modes are invalid.' );
+		}
+		self::$config = $config;
+		return self::$config;
 	}
 
 	private static function digest( array $value ) {
