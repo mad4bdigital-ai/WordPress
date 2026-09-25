@@ -60,6 +60,10 @@ for marker in [
     "MAD4B_SCP_Context_Provider_Gateway::rollback_created_brand_asset",
     "MAD4B_SCP_Context_Provider_Gateway::materialization_reconciliation_ref",
     "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation",
+    "MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect",
+    "materialization_no_effect_ref",
+    "released_after_verified_no_effect",
+    "'safe_to_retry' => true",
     "reconcile_materialization",
     "mad4b_brand_materialization_reconcile_scan_incomplete",
     "mad4b_brand_materialization_reconcile_not_observed",
@@ -80,6 +84,13 @@ for marker in [
 append_section = builder[builder.index("public static function append_draft"):builder.index("private static function source_scan_snapshot")]
 if append_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > append_section.index("self::find_existing_draft( $idempotency_key )"):
     raise SystemExit("Brand draft legacy lookup occurs before atomic durable idempotency claim")
+
+if "released_after_verified_no_effect" not in durable:
+    raise SystemExit("Durable execution must preserve a released-after-verified-no-effect terminal/reclaimable state")
+if "release_idempotency_after_verified_no_effect" not in durable:
+    raise SystemExit("Durable execution lacks verified no-effect idempotency release")
+if "status='pending',claim_epoch=%d" not in durable:
+    raise SystemExit("Released no-effect idempotency claims are not reacquired with a CAS claim-epoch transition")
 
 materialize_section = builder[builder.index("public static function materialize_draft"):builder.index("public static function rollback_materialized_draft")]
 if materialize_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > materialize_section.index("MAD4B_SCP_Context_Provider_Gateway::create_asset"):
@@ -132,6 +143,7 @@ for marker in [
     "create_asset",
     "rollback_created_brand_asset",
     "materialization_reconciliation_ref",
+    "materialization_no_effect_ref",
     "verify_durable_reconciliation",
 ]:
     if marker not in gateway:
@@ -256,7 +268,7 @@ if len(matches) != 1:
 row = matches[0]
 if row.get("level") != "workflow" or row.get("target") != "brand-context" or row.get("enabled") is not True:
     raise SystemExit("Brand Context Builder Skill manifest identity/state is invalid")
-if manifest.get("seed_version") != 10:
-    raise SystemExit("Brand Context Builder requires canonical seed version 10")
+if manifest.get("seed_version") != 11:
+    raise SystemExit("Brand Context Builder requires canonical seed version 11")
 
-print("mad4b.brand-context-builder.v3: PASS")
+print("mad4b.brand-context-builder.v4: PASS")
