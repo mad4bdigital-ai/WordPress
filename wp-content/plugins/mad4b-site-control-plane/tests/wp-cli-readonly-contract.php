@@ -2,7 +2,6 @@
 
 define( 'ABSPATH', __DIR__ . '/' );
 define( 'WP_CLI', true );
-define( 'JSON_PRETTY_PRINT', defined( 'JSON_PRETTY_PRINT' ) ? JSON_PRETTY_PRINT : 128 );
 
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function wp_get_environment_type() { return 'staging'; }
