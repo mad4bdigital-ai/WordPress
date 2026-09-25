@@ -69,6 +69,12 @@ jobs:
               "'production_changed' => false",
               "postmeta(post_id,meta_key)",
               "termmeta(term_id,meta_key)",
+              "const JOB_RUNNING_TTL = 1800;",
+              "public static function reconcile_stale_job(",
+              "mad4b_admin_query_performance_reconciliation_required",
+              "'blind_retry_allowed' => false",
+              "stale_running_postconditions_verified_ready",
+              "stale_running_postconditions_verified_incomplete",
           ]:
               if marker_text not in query_perf:
                   raise SystemExit('Missing bounded admin-query performance invariant: ' + marker_text)
@@ -85,6 +91,11 @@ jobs:
                   raise SystemExit('Missing plugin lifecycle performance protection: ' + marker_text)
           if "add_action( 'admin_init', array( __CLASS__, 'maybe_ensure_staging_indexes' )" in query_perf:
               raise SystemExit('Performance DDL must never auto-run from admin_init')
+
+          reconcile_body = query_perf.split("public static function reconcile_stale_job(", 1)[1].split("public static function enqueue_explicit(", 1)[0]
+          if "apply_indexes()" in reconcile_body or "ALTER TABLE" in reconcile_body:
+              raise SystemExit('Stale performance reconciliation must never execute or retry DDL')
+
 
           for marker_text in [
               "final class MAD4B_SCP_Admin_Query_Performance_UI",
