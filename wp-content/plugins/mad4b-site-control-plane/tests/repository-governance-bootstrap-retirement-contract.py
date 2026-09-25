@@ -47,6 +47,18 @@ for needle in one_time_verdict_required:
     if needle not in verdict:
         raise SystemExit(f"one-time feature-boundary bootstrap Release Verdict binding missing: {needle}")
 
+schema_binding_required = [
+    "import fnmatch, json, os, re, subprocess",
+    "schema_checks = re.findall",
+    "critical kernel must expose exactly one real MariaDB schema check",
+    "schema_check,",
+]
+for needle in schema_binding_required:
+    if needle not in verdict:
+        raise SystemExit(f"Release Verdict dynamic schema-check binding missing: {needle}")
+if "Schema v6 v7 v8 v9 to v11 real MariaDB upgrade" in verdict:
+    raise SystemExit("Release Verdict returned to a stale hard-coded schema check name")
+
 required = [
     "repository governance must verify ready for every merge-gate PASS",
     "and governance_ready",
@@ -59,4 +71,5 @@ print("REPOSITORY_GOVERNANCE_BOOTSTRAP_RETIREMENT_CONTRACT: PASS")
 print("legacy_bootstrap_exception=retired")
 print("feature_boundary_bootstrap=pr66_exact_branch_base_policy_only")
 print("post_merge_ruleset_apply_required=true")
+print("schema_check_binding=derived_from_critical_kernel")
 print("merge_gate_requires=governance_ready")
