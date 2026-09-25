@@ -725,7 +725,7 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [x] T3638 P0 Complete the minimal out-of-band Recovery Runner read/disable/known-good-restore surface and contract tests. Evidence: `tools/mad4b_recovery_plane.py`, recovery contract PASS in Critical Kernel run `36075527334`.
 - [x] T3639 P0 Enforce the bulk runtime closure hardening matrix as machine-readable CI input; documentation-only evidence cannot close live gates. Evidence: `bulk-closure-hardening.json`, executable hardening contract, Feature 007 Spec Quality CI PASS on `f654e3bf77bfefc7456b661d09f2c61420d17d14`.
 - [x] T3640 P0 Implement durable mutation intent/journal + atomic receipt persistence and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN. Evidence: Recovery Plane + Host Runner mutation journals, atomic/fsync receipts, Critical Kernel run `36078194633`.
-- [ ] T3641 P0 Prove reconciliation of MUTATED_BUT_EVIDENCE_UNCERTAIN without blind write retry.
+- [x] T3641 P0 Prove reconciliation of MUTATED_BUT_EVIDENCE_UNCERTAIN without blind write retry. Evidence: Host Runner `mad4b.host-runner-reconciliation.v1` + Recovery Plane reconciliation; Critical Kernel run `36078596096` PASS.
 - [ ] T3642 P0 Execute runner crash-after-lease, lease-loss-before-commit, zombie writer and duplicate/replay fixtures.
 - [ ] T3643 P0 Execute crash-after-side-effect-before-receipt and provider-timeout-after-possible-side-effect fixtures.
 - [ ] T3644 P0 Execute symlink/reparse swap, traversal, zip-slip, shell metacharacter and executable injection denial fixtures.
