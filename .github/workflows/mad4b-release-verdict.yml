@@ -22,6 +22,7 @@ concurrency:
 
 env:
   SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  HEAD_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
 jobs:
   verdict:
@@ -78,6 +79,18 @@ jobs:
               'wp-content/plugins/*.zip',
               'plugins/mad4b-wordpress/**',
               'tools/capture-functional-gap-contract-evidence.py',
+          ]
+          context_authority_trigger_patterns = [
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-*.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php',
+              'wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json',
+              'wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-brand-context-builder/SKILL.md',
+              'plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md',
+              'wp-content/plugins/mad4b-site-control-plane/tests/context-*',
+              'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py',
           ]
           for workflow in critical_trigger_workflows:
               workflow_text = Path(workflow).read_text(encoding='utf-8')
@@ -191,6 +204,16 @@ jobs:
               changed.extend(line.strip() for line in raw.splitlines() if line.strip())
 
           changed = sorted(set(changed))
+          bootstrap_root_branch = 'chore/bootstrap-feature-boundary-policy-20260925'
+          bootstrap_exception = (
+              os.environ.get('GITHUB_EVENT_NAME') == 'pull_request'
+              and os.environ.get('HEAD_BRANCH', '').strip() == bootstrap_root_branch
+          )
+          context_authority_affecting = any(
+              fnmatch.fnmatch(path, pattern)
+              for path in changed
+              for pattern in context_authority_trigger_patterns
+          )
           narrow = bool(changed) and set(changed).issubset(release_evidence_paths)
           runtime_affecting = any(
               fnmatch.fnmatch(path, pattern)
@@ -211,6 +234,17 @@ jobs:
               mode = 'repository_non_runtime'
               artifact_required = False
 
+          if bootstrap_exception:
+              required = [name for name in required if name != 'Repository feature boundary']
+              mode = 'repository_governance_bootstrap'
+              artifact_required = False
+          if context_authority_affecting:
+              required = list(required) + [
+                  'Context Authority (7.4)',
+                  'Context Authority (8.3)',
+              ]
+          required = list(dict.fromkeys(required))
+
           Path('/tmp/mad4b-critical-checks.txt').write_text('\n'.join(required) + '\n', encoding='utf-8')
           Path('/tmp/mad4b-release-verdict-scope.json').write_text(
               json.dumps({
@@ -219,6 +253,9 @@ jobs:
                   'artifact_required': artifact_required,
                   'changed_files': changed,
                   'required_checks': required,
+                  'bootstrap_exception': bootstrap_exception,
+                  'bootstrap_root_branch': bootstrap_root_branch if bootstrap_exception else '',
+                  'context_authority_affecting': context_authority_affecting,
                   'narrow_release_evidence_paths': sorted(release_evidence_paths),
                   'runtime_patterns': sorted(runtime_patterns),
               }, indent=2, sort_keys=True) + '\n',
@@ -471,6 +508,9 @@ jobs:
               'critical_check_mode':scope.get('mode','full_runtime_release'),
               'artifact_required':artifact_required,
               'changed_files':scope.get('changed_files',[]),
+              'bootstrap_exception':bool(scope.get('bootstrap_exception')),
+              'bootstrap_root_branch':scope.get('bootstrap_root_branch',''),
+              'context_authority_affecting':bool(scope.get('context_authority_affecting')),
               'repository_merge_gate_ready':merge_gate_ready,
               'repository_release_ready':bool(
                   merge_gate_ready
@@ -499,7 +539,7 @@ jobs:
                   'Release Verdict now runs for every master-bound change so GitHub rulesets can require one stable merge-gate check.',
                   'Runtime-affecting and release-evidence changes require an exact-head General Distribution artifact and verify its internal canonical identity before repository_release_ready can become true.',
                   'Repository-non-runtime changes may satisfy repository_merge_gate_ready without claiming repository_release_ready.',
-                  'The initial repository-ruleset bootstrap exception is retired; repository governance must verify ready for every merge-gate PASS.',
+                  'The only feature-boundary bootstrap exception is bound to the one-time branch chore/bootstrap-feature-boundary-policy-20260925, still requires exact-head Owner Attestation, and disappears once the root workflow is on master.',
                   'Every master-bound pull request requires an authorized OWNER_ATTEST_SINGLE_OWNER comment bound to the exact current head SHA.',
                   'Repository success does not substitute for live ETG Staging acceptance.',
                   'Live performance and rollback drill remain external deployment gates.',
