@@ -11,6 +11,53 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Context_Provider_Gateway {
 	const CONTRACT = 'mad4b.context-provider-gateway.v1';
+	const MATERIALIZATION_RECONCILIATION_CONTRACT = 'mad4b.brand-context-materialization-reconciliation.v1';
+
+	public static function boot() {
+		add_filter( 'mad4b_scp_durable_reconciliation_verified', array( __CLASS__, 'verify_durable_reconciliation' ), 20, 3 );
+	}
+
+	private static function canonicalize( $value ) {
+		if ( ! is_array( $value ) ) return $value;
+		$is_list = empty( $value ) || array_keys( $value ) === range( 0, count( $value ) - 1 );
+		if ( ! $is_list ) ksort( $value, SORT_STRING );
+		foreach ( $value as $key => $item ) $value[ $key ] = self::canonicalize( $item );
+		return $value;
+	}
+
+	public static function materialization_reconciliation_ref( array $result ) {
+		if ( self::MATERIALIZATION_RECONCILIATION_CONTRACT !== ( isset( $result['reconciliation_contract'] ) ? (string) $result['reconciliation_contract'] : '' ) ) return new WP_Error( 'mad4b_brand_reconciliation_contract_invalid', 'Brand materialization reconciliation contract is invalid.' );
+		if ( empty( $result['provider_scan_complete'] ) || 1 !== (int) ( isset( $result['provider_candidate_count'] ) ? $result['provider_candidate_count'] : 0 ) ) return new WP_Error( 'mad4b_brand_reconciliation_evidence_invalid', 'Brand materialization reconciliation requires one exact candidate from a complete provider scan.' );
+		$basis = array(
+			'contract' => self::MATERIALIZATION_RECONCILIATION_CONTRACT,
+			'artifact_id' => isset( $result['artifact_id'] ) ? (string) $result['artifact_id'] : '',
+			'source_id' => isset( $result['source_id'] ) ? (string) $result['source_id'] : '',
+			'asset_id' => isset( $result['asset_id'] ) ? (string) $result['asset_id'] : '',
+			'file_id' => isset( $result['file_id'] ) ? (string) $result['file_id'] : '',
+			'target_folder_id' => isset( $result['target_folder_id'] ) ? (string) $result['target_folder_id'] : '',
+			'after_sha256' => isset( $result['after_sha256'] ) ? strtolower( (string) $result['after_sha256'] ) : '',
+			'mime_type' => isset( $result['mime_type'] ) ? strtolower( (string) $result['mime_type'] ) : '',
+			'format' => isset( $result['format'] ) ? sanitize_key( (string) $result['format'] ) : '',
+			'provider_scan_generation' => isset( $result['provider_scan_generation'] ) ? (string) $result['provider_scan_generation'] : '',
+			'provider_scan_complete' => ! empty( $result['provider_scan_complete'] ),
+			'provider_candidate_count' => isset( $result['provider_candidate_count'] ) ? (int) $result['provider_candidate_count'] : 0,
+		);
+		foreach ( array( 'artifact_id', 'source_id', 'asset_id', 'file_id', 'target_folder_id', 'after_sha256', 'mime_type', 'format', 'provider_scan_generation' ) as $field ) if ( '' === (string) $basis[ $field ] ) return new WP_Error( 'mad4b_brand_reconciliation_binding_incomplete', 'Brand materialization reconciliation binding is incomplete.', array( 'field' => $field ) );
+		$json = wp_json_encode( self::canonicalize( $basis ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $json ) ) return new WP_Error( 'mad4b_brand_reconciliation_encoding_failed', 'Brand materialization reconciliation evidence could not be encoded.' );
+		return 'brand-materialization:' . hash( 'sha256', $json );
+	}
+
+	public static function verify_durable_reconciliation( $verified, $kind, $context ) {
+		if ( true === $verified ) return true;
+		if ( 'idempotency_completion' !== sanitize_key( (string) $kind ) || ! is_array( $context ) ) return $verified;
+		$result = isset( $context['result'] ) && is_array( $context['result'] ) ? $context['result'] : array();
+		if ( self::MATERIALIZATION_RECONCILIATION_CONTRACT !== ( isset( $result['reconciliation_contract'] ) ? (string) $result['reconciliation_contract'] : '' ) ) return $verified;
+		$expected = self::materialization_reconciliation_ref( $result );
+		if ( is_wp_error( $expected ) ) return false;
+		$actual = isset( $context['reconciliation_ref'] ) ? (string) $context['reconciliation_ref'] : '';
+		return '' !== $actual && hash_equals( (string) $expected, $actual );
+	}
 
 	private static function source( $source_id ) {
 		$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
@@ -44,6 +91,12 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 				),
 			),
 			'dynamic_provider_class_selection' => false,
+			'materialization_reconciliation' => array(
+				'contract' => self::MATERIALIZATION_RECONCILIATION_CONTRACT,
+				'complete_scan_required' => true,
+				'exact_candidate_count_required' => 1,
+				'durable_idempotency_completion_supported' => true,
+			),
 			'authority_widening' => false,
 		);
 	}
