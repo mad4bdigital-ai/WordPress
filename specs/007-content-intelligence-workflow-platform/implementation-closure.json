@@ -559,7 +559,9 @@
         "publishing_authority_created": false,
         "provider_execution_performed": false,
         "immutable_lineage": true,
-        "repository_only": true
+        "repository_only": true,
+        "governance_bound_research_provider_plan": true,
+        "provider_plan_external_call_performed": false
       },
       "remainder": [
         "obtain exact-head MariaDB PASS for normalized research/competitive artifact flow",
@@ -847,11 +849,18 @@
         "payload_minimized": true,
         "raw_rights_records_persisted": false,
         "raw_source_content_persisted": false,
-        "durable_provider_call_performed": false
+        "durable_provider_call_performed": false,
+        "research_provider_plan_contract": "mad4b.research-provider-plan.v1",
+        "research_plan_requires_active_data_governance_artifact": true,
+        "research_plan_provider_identity_bound": true,
+        "research_plan_decision_fingerprint_bound": true,
+        "research_plan_rights_fingerprint_bound": true,
+        "research_plan_processor_fingerprint_bound": true,
+        "research_plan_provider_execution_performed": false
       },
       "remainder": [
         "bind durable RightsRecord and provider processing profile registries to exact source/provider identities rather than decision snapshots alone",
-        "prove governed data-processing decision evidence is consumed by provider/model execution plans before any external call",
+        "extend the same data-governance decision consumption to future AI/model execution plan families before any external call",
         "prove live ETG provider/model fallback independently satisfies the same or stricter policy",
         "exercise takedown/deletion propagation and data-subject/tenant retention obligations where applicable"
       ]
