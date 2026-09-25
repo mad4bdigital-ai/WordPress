@@ -109,7 +109,7 @@ jobs:
               'Governed execution fence (latest)',
               'Human approval decision (8.3)',
               'OAuth bridge runtime (latest)',
-              'Schema v6 v7 v8 to v9 real MariaDB upgrade',
+              'Schema v6 v7 v8 v9 to v11 real MariaDB upgrade',
               'Repository governance policy',
           ]
           release_evidence = [
