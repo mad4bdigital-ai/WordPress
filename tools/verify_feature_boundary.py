@@ -53,6 +53,18 @@ IMMUTABLE_FEATURE_PATHS = {
     OBSOLETE_SELF_POLICY,
 }
 
+GOVERNANCE_SUPPORT_PATHS = {
+    "tools/test_verify_feature_boundary.py",
+    "tools/test_verify_repository_owner_attestation.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-retirement-contract.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py",
+}
+SENSITIVE_REPOSITORY_ROOT_PATHS = (
+    IMMUTABLE_FEATURE_PATHS
+    | RELEASE_CRITICAL_ROOT_PATHS
+    | GOVERNANCE_SUPPORT_PATHS
+)
+
 
 def run(*args: str) -> str:
     return subprocess.check_output(list(args), text=True).strip()
@@ -147,7 +159,7 @@ def verify(base: str, head: str, head_branch: str, pr_number: int = 0) -> dict:
     if not match:
         root_changes = sorted(
             p for p in changed
-            if p in IMMUTABLE_FEATURE_PATHS or p in RELEASE_CRITICAL_ROOT_PATHS
+            if p in SENSITIVE_REPOSITORY_ROOT_PATHS
         )
         if root_changes:
             bootstrap_branch_match = head_branch == BOOTSTRAP_ROOT_BRANCH
@@ -156,6 +168,12 @@ def verify(base: str, head: str, head_branch: str, pr_number: int = 0) -> dict:
                 fail("REPOSITORY_BOOTSTRAP_PR_MISMATCH:" + str(pr_number or 0))
             if not (bootstrap or head_branch.startswith("chore/governance-") or head_branch.startswith("gov/")):
                 fail("REPOSITORY_ROOT_CHANGE_BRANCH_FORBIDDEN:" + head_branch)
+            mixed_scope = sorted(
+                p for p in changed
+                if p not in SENSITIVE_REPOSITORY_ROOT_PATHS
+            )
+            if mixed_scope:
+                fail("REPOSITORY_GOVERNANCE_SCOPE_MIXED:" + ",".join(mixed_scope))
             return {
                 "contract": CONTRACT,
                 "ready": True,
