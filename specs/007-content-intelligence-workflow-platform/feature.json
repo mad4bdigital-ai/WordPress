@@ -147,7 +147,6 @@
     ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
     ".github/workflows/feature-007-spec-ci.yml",
     ".github/workflows/mad4b-admin-performance.yml",
-    ".github/workflows/mad4b-context-authority.yml",
     "plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md",
     "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/SKILL.md",
     "specs/007-content-intelligence-workflow-platform/",
@@ -232,6 +231,7 @@
     "feature_metadata_can_widen_grant": false,
     "self_certifying_paths_forbidden": [
       ".github/workflows/feature-007-critical-kernel.yml",
+      ".github/workflows/mad4b-context-authority.yml",
       ".github/workflows/mad4b-control-plane-package.yml",
       ".github/workflows/mad4b-site-control-plane.yml"
     ],
