@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+import json
+from pathlib import Path
+
+repo = Path(__file__).resolve().parents[4]
+cp = repo / "wp-content" / "plugins" / "mad4b-site-control-plane"
+policy_path = cp / "config" / "wordpress-extension-strategy.json"
+portable_skill = repo / "plugins" / "mad4b-wordpress" / "skills" / "wordpress-extension-strategy" / "SKILL.md"
+seed_skill = cp / "skill-seeds" / "wordpress-extension-strategy" / "SKILL.md"
+
+policy = json.loads(policy_path.read_text(encoding="utf-8"))
+if policy.get("contract") != "mad4b.wordpress-extension-strategy.v1":
+    raise SystemExit("extension strategy contract mismatch")
+if policy.get("decision_order") != ["REUSE", "ADDON", "FORK", "NATIVE"]:
+    raise SystemExit("decision order must remain REUSE -> ADDON -> FORK -> NATIVE")
+if policy.get("default_decision") != "REUSE":
+    raise SystemExit("reuse must remain the default decision")
+if policy.get("production_authorized") is not False:
+    raise SystemExit("extension strategy must never authorize Production")
+
+addon = policy.get("decisions", {}).get("ADDON", {})
+required = {
+    "base_provider_identity",
+    "compatible_version_range",
+    "extension_points",
+    "data_ownership",
+    "authority_impact",
+    "rollback_or_disable_path",
+    "runtime_certification",
+    "compatibility_test",
+    "portability_exit_path",
+}
+if not required.issubset(set(addon.get("requires", []))):
+    raise SystemExit("ADDON decision is missing mandatory lifecycle/certification fields")
+for key in [
+    "vendor_patch_allowed",
+    "production_authority_inherited",
+]:
+    if addon.get(key) is not False:
+        raise SystemExit(f"ADDON must fail closed for {key}")
+for key in [
+    "exact_provider_version_runtime_certification_required",
+    "fail_closed_on_unknown_provider_version",
+    "fail_closed_on_missing_extension_point",
+]:
+    if addon.get(key) is not True:
+        raise SystemExit(f"ADDON must require {key}")
+
+generic = policy.get("generic_quality_tooling", {})
+if generic.get("strategy") != "reuse-maintained-tools" or generic.get("runtime_dependency") is not False:
+    raise SystemExit("generic quality tooling must be reused in CI/disposable environments, not embedded as runtime dependency")
+
+expected_tools = {"php-lint","WordPressCS","PHPCompatibilityWP","PHPStan","WordPress Plugin Check"}
+if not expected_tools.issubset(set(generic.get("recommended", []))):
+    raise SystemExit("generic quality tooling baseline is incomplete")
+
+expected_guards = {
+    "ability_surface_consistency",
+    "authority_negative_space",
+    "immutable_lineage",
+    "provider_profile_and_certification_binding",
+    "package_source_manifest_parity",
+    "release_root_trust",
+    "recovery_and_rollback_semantics",
+}
+if not expected_guards.issubset(set(policy.get("mad4b_custom_guards", []))):
+    raise SystemExit("MAD4B-specific guard set is incomplete")
+
+if policy.get("addon_manifest_contract") != "mad4b.wordpress-addon-manifest.v1":
+    raise SystemExit("addon manifest contract must be stable")
+manifest_fields = {
+    "addon_id","base_provider","compatible_versions","extension_points","capabilities",
+    "data_ownership","authority_impact","rollback","certification","tests","portability",
+}
+if not manifest_fields.issubset(set(policy.get("addon_manifest_required_fields", []))):
+    raise SystemExit("addon manifest fields are incomplete")
+
+if not portable_skill.is_file() or not seed_skill.is_file():
+    raise SystemExit("extension strategy Skill is not packaged in both portable and canonical seed locations")
+if portable_skill.read_bytes() != seed_skill.read_bytes():
+    raise SystemExit("portable extension strategy Skill drifted from canonical seed")
+skill = portable_skill.read_text(encoding="utf-8")
+for marker in ["REUSE, ADDON, FORK, or NATIVE", "Add-on-first customization pattern", "never patch vendor files at runtime"]:
+    if marker not in skill:
+        raise SystemExit(f"extension strategy Skill missing marker: {marker}")
+
+print("mad4b.wordpress-extension-strategy.v1: PASS")
