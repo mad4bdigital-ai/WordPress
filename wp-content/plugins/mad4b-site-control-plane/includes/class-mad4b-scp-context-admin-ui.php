@@ -413,7 +413,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<div class="notice notice-error inline"><p><code>brand_context_builder_unavailable</code></p></div></div>';
 			return;
 		}
-		$plan = MAD4B_SCP_Brand_Context_Builder::gap_plan();
+		$plan = MAD4B_SCP_Brand_Context_Builder::gap_plan( array( 'include_authoritative_content' => false ) );
 		if ( is_wp_error( $plan ) ) {
 			echo '<div class="notice notice-error inline"><p><code>' . esc_html( $plan->get_error_code() ) . '</code> · ' . esc_html( $plan->get_error_message() ) . '</p></div></div>';
 			return;
@@ -1113,7 +1113,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			if ( ! wp_verify_nonce( $nonce, 'mad4b_context_intelligence' ) ) {
 				$result = new WP_Error( 'mad4b_context_intelligence_nonce_invalid', 'Context Intelligence request expired. Run the analysis again.' );
 			} elseif ( 'brand_gap' === $action ) {
-				$result = class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) ? MAD4B_SCP_Brand_Context_Builder::gap_plan() : new WP_Error( 'mad4b_brand_builder_unavailable', 'Brand Context Builder is unavailable.' );
+				$result = class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) ? MAD4B_SCP_Brand_Context_Builder::gap_plan( array( 'include_authoritative_content' => true ) ) : new WP_Error( 'mad4b_brand_builder_unavailable', 'Brand Context Builder is unavailable.' );
 			} elseif ( 'conflicts' === $action ) {
 				$result = MAD4B_SCP_Context_Intelligence::conflict_report(
 					array(
