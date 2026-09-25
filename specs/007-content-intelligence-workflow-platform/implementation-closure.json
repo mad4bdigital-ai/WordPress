@@ -786,11 +786,14 @@
         "workflow_plan_profile_fingerprint_bound": true,
         "workflow_plan_certification_fingerprint_bound": true,
         "workflow_plan_release_ring_bound": true,
-        "certification_drift_invalidates_plan_sha256": true
+        "certification_drift_invalidates_plan_sha256": true,
+        "explicit_preferred_provider_contract": true,
+        "raw_ambiguity_reported": true,
+        "ineligible_preference_no_fallback": true,
+        "implicit_tie_breaking": false
       },
       "remainder": [
         "extend the same profile/certification fingerprint binding to every future governed provider execution plan family, not only workflow-plan",
-        "define explicit operator/policy preference for multi-provider ambiguity instead of silent tie-breaking",
         "prove shadow→canary→active promotion and rollback against exact ETG Staging provider identities"
       ]
     },
