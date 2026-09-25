@@ -30,6 +30,7 @@ jobs:
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
       - name: Checkout trusted base only
         uses: actions/checkout@v4
@@ -64,6 +65,7 @@ jobs:
             --base "$BASE_SHA" \
             --head "$HEAD_SHA" \
             --head-branch "$HEAD_BRANCH" \
+            --pr-number "$PR_NUMBER" \
             --output /tmp/MAD4B-FEATURE-BOUNDARY.json
 
       - name: Resolve root-change attestation requirement
