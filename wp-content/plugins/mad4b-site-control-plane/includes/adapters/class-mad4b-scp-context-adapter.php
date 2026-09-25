@@ -447,6 +447,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'create_brand_asset',
 				'rollback_created_brand_asset',
 				'materialization_reconciliation_ref',
+				'materialization_zero_observation_ref',
 				'materialization_no_effect_ref',
 				'verify_durable_reconciliation',
 			),
@@ -535,6 +536,11 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'critical_files' => $critical_hashes,
 			'rollback_contracts' => $contracts,
 			'brand_materialization_rollback_contract' => $brand_materialization_rollback_contract,
+			'brand_materialization_reconciliation_contracts' => array(
+				'positive_effect' => class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ? MAD4B_SCP_Context_Provider_Gateway::MATERIALIZATION_RECONCILIATION_CONTRACT : '',
+				'zero_observation' => class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ? MAD4B_SCP_Context_Provider_Gateway::MATERIALIZATION_ZERO_OBSERVATION_CONTRACT : '',
+				'no_effect' => class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ? MAD4B_SCP_Context_Provider_Gateway::MATERIALIZATION_NO_EFFECT_CONTRACT : '',
+			),
 		);
 		$json = function_exists( 'wp_json_encode' )
 			? wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
