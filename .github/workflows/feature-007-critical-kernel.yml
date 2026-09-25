@@ -63,6 +63,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/config/policy-resolution.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-uncertain-execution-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-uncertain-execution-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
       - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
@@ -438,6 +440,13 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py
+
+      - name: Prove Bit Flows possible-side-effect timeout reconciliation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/bitflows-uncertain-execution-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/bitflows-uncertain-execution-runtime.php
 
       - name: Inspect exact Bit Flows package semantics
         shell: bash
