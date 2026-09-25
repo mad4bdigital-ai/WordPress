@@ -171,10 +171,11 @@ jobs:
             wordpress-change-safety
             wordpress-release-orchestration
             wordpress-browser-acceptance
+            wordpress-extension-strategy
             wordpress-content-authoring
           )
           test -d "$seed"
-          test "$(find "$seed" -mindepth 2 -maxdepth 2 -type f -name SKILL.md | wc -l)" = '9'
+          test "$(find "$seed" -mindepth 2 -maxdepth 2 -type f -name SKILL.md | wc -l)" = '10'
           for name in "${expected[@]}"; do
             cmp --silent "$seed/$name/SKILL.md" "plugins/mad4b-wordpress/skills/$name/SKILL.md"
           done
