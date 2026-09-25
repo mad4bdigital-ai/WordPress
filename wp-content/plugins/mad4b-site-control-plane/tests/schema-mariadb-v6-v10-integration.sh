@@ -283,7 +283,7 @@ export MAD4B_SCHEMA_BROKEN_V8_FILE="$broken_v8_file"
 
 # The failed v8 attempt created durable tables but intentionally left the
 # canonical schema marker at v6. Seed one durable row to prove repair preserves
-# sparse historical data while v9 adds its missing fencing column.
+# sparse historical data while v10 adds artifact lineage without losing v9 fencing state.
 export MAD4B_SCHEMA_FROM_FILE="$broken_v8_file"
 export MAD4B_EXPECTED_FROM_VERSION="8"
 "$WP_CLI" "${common[@]}" eval-file "$tmp/seed-sparse.php"
