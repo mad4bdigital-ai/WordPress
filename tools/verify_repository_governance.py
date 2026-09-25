@@ -43,6 +43,21 @@ def gh_json(repository: str, path: str):
             ) from fallback
 
 
+def public_json(repository: str, path: str):
+    endpoint = f"repos/{repository}/{path.lstrip('/')}"
+    url = "https://api.github.com/" + endpoint
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "mad4b-repository-governance-contract",
+            "X-GitHub-Api-Version": "2026-03-10",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=20) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
 def ref_matches(value: str, pattern: str, default_ref: str) -> bool:
     if pattern == "~ALL":
         return True
@@ -85,7 +100,27 @@ def main() -> int:
         ruleset_id = row.get("id") if isinstance(row, dict) else None
         if not ruleset_id:
             continue
-        details.append(gh_json(args.repository, f"rulesets/{ruleset_id}?includes_parents=true"))
+        detail_path = f"rulesets/{ruleset_id}?includes_parents=true"
+        detail = gh_json(args.repository, detail_path)
+        if (
+            isinstance(detail, dict)
+            and "bypass_actors" not in detail
+            and str(detail.get("source_type") or row.get("source_type") or "") == "Repository"
+        ):
+            try:
+                public_detail = public_json(args.repository, detail_path)
+            except Exception as exc:
+                raise SystemExit(
+                    "bypass-actor evidence is unavailable from authenticated detail "
+                    f"and public detail fallback failed for ruleset {ruleset_id}: {exc}"
+                ) from exc
+            if not isinstance(public_detail, dict) or "bypass_actors" not in public_detail:
+                raise SystemExit(
+                    "bypass-actor evidence is unavailable from both authenticated "
+                    f"and public detail for ruleset {ruleset_id}"
+                )
+            detail = public_detail
+        details.append(detail)
 
     applicable = [row for row in details if isinstance(row, dict) and applies_to_target(row, target_ref)]
     if not applicable:
@@ -305,6 +340,7 @@ def main() -> int:
         ],
         "strict_required_status_checks_policy": True,
         "bypass_actor_count": 0,
+        "bypass_evidence_source": "ruleset_detail_with_public_fallback_when_needed",
         "allowed_merge_methods": sorted(expected_merge_methods),
         "required_reviewers": expected_required_reviewers,
         "require_extra_approval_for_unattributed_changes": expected_unattributed_approval,
