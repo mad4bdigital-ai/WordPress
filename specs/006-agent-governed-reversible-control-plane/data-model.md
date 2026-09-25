@@ -106,7 +106,7 @@ Invariants:
 - the hash covers the canonical approval envelope, not raw request text;
 - a normal governed remote mutation approval uses `mad4b.approval-candidate-binding.v2` and is bound durably to the exact Site Profile UUID, revision and digest together with candidate SHA, build fingerprint, environment and exact enrolled origin/host;
 - the Site Profile binding is independent from operation payload, NHI/grant authority and deployed-build identity; all four axes must remain exact at decision and execution time;
-- cloning the database to another domain, moving between environments, editing the Site Profile policy, changing the Site Profile revision/digest, or deploying a different build invalidates the existing approval instead of carrying authority forward;
+- a database clone to another domain, moving between environments, editing the Site Profile policy, changing the Site Profile revision/digest, or deploying a different build invalidates the existing approval instead of carrying authority forward;
 - successful execution claims atomically transition `approved -> executing`; successful completion finalizes `executing -> used`, while an execution failure finalizes `executing -> failed`;
 - replay of `executing`, `used` or `failed` tickets is denied;
 - expiry is enforced against `expires_at` at decision and execution boundaries;
