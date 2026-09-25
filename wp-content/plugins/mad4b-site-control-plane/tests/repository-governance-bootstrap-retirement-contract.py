@@ -3,6 +3,7 @@ from pathlib import Path
 
 governance = Path(".github/workflows/mad4b-repository-governance.yml").read_text(encoding="utf-8")
 verdict = Path(".github/workflows/mad4b-release-verdict.yml").read_text(encoding="utf-8")
+rerun = Path(".github/workflows/mad4b-owner-attestation-rerun.yml").read_text(encoding="utf-8")
 
 forbidden_governance = [
     "bootstrap_merge_exception",
@@ -51,6 +52,17 @@ for needle in one_time_verdict_required:
     if needle not in verdict:
         raise SystemExit(f"one-time feature-boundary bootstrap Release Verdict binding missing: {needle}")
 
+rerun_required = [
+    "mad4b-feature-boundary-root.yml/runs?event=pull_request_target&per_page=100",
+    "select(any(.pull_requests[]?; .number == $pr))",
+    "FEATURE_BOUNDARY_RERUN_REQUESTED",
+    "FEATURE_BOUNDARY_ALREADY_SUCCESS",
+    "RELEASE_VERDICT_RERUN_REQUESTED",
+]
+for needle in rerun_required:
+    if needle not in rerun:
+        raise SystemExit(f"owner-attestation rerun lifecycle missing: {needle}")
+
 schema_binding_required = [
     "critical_kernel_text.splitlines()",
     "stripped.startswith('name: Schema ')",
@@ -77,5 +89,6 @@ print("REPOSITORY_GOVERNANCE_BOOTSTRAP_RETIREMENT_CONTRACT: PASS")
 print("legacy_bootstrap_exception=retired")
 print("feature_boundary_bootstrap=pr66_exact_branch_base_policy_only")
 print("post_merge_ruleset_apply_required=true")
+print("owner_attestation_reruns=release_verdict+failed_feature_boundary")
 print("schema_check_binding=derived_from_critical_kernel")
 print("merge_gate_requires=governance_ready")
