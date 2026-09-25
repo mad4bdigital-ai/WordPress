@@ -556,8 +556,10 @@ def recovery_status(wordpress_root: Path, environment: str) -> dict[str, Any]:
             "parent_writable": os.access(recovery_root.parent, os.W_OK),
         },
         "recovery_journal": recovery_journal_summary(root),
+        "protected_backup": protected_backup_status(root),
         "capabilities": {
             "status": True,
+            "protected_backup_exact_plan": True,
             "disable_current_exact_plan": True,
             "restore_known_good_exact_plan": True,
             "production_authorized": False,
@@ -1051,6 +1053,17 @@ def main() -> int:
     reconcile_p.add_argument("--wordpress-root", required=True, type=Path)
     reconcile_p.add_argument("--environment", required=True, choices=sorted(SUPPORTED_ENVIRONMENTS))
 
+    backup_plan_p = sub.add_parser("plan-backup")
+    backup_plan_p.add_argument("--wordpress-root", required=True, type=Path)
+    backup_plan_p.add_argument("--environment", required=True, choices=sorted(SUPPORTED_ENVIRONMENTS))
+    backup_plan_p.add_argument("--incident-id", required=True)
+    backup_plan_p.add_argument("--reason", required=True)
+    backup_plan_p.add_argument("--output", required=True, type=Path)
+
+    backup_apply_p = sub.add_parser("apply-backup")
+    backup_apply_p.add_argument("--plan", required=True, type=Path)
+    backup_apply_p.add_argument("--owner-attest-plan-sha", required=True)
+
     disable_plan_p = sub.add_parser("plan-disable")
     disable_plan_p.add_argument("--wordpress-root", required=True, type=Path)
     disable_plan_p.add_argument("--environment", required=True, choices=sorted(SUPPORTED_ENVIRONMENTS))
@@ -1081,6 +1094,17 @@ def main() -> int:
             result = recovery_status(args.wordpress_root, args.environment)
         elif args.command == "reconcile-evidence":
             result = reconcile_recovery_evidence(args.wordpress_root, args.environment)
+        elif args.command == "plan-backup":
+            result = build_backup_plan(
+                args.wordpress_root,
+                args.environment,
+                args.incident_id,
+                args.reason,
+            )
+            atomic_json_write(args.output, result)
+        elif args.command == "apply-backup":
+            plan = root_trust.load_json(args.plan)
+            result = apply_backup(plan, args.owner_attest_plan_sha)
         elif args.command == "plan-disable":
             result = build_disable_plan(
                 args.wordpress_root,
