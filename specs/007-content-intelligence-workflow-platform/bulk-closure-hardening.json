@@ -117,14 +117,15 @@
       ]
     },
     "executor_change_after_approval": {
-      "repository_status": "PARTIAL",
+      "repository_status": "PROVEN",
       "live_status": "PENDING",
       "evidence_refs": [
-        "specs/007-content-intelligence-workflow-platform/contracts/governed-tool-execution.md",
-        "specs/007-content-intelligence-workflow-platform/contracts/cli-host-runner.md"
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "specs/007-content-intelligence-workflow-platform/contracts/governed-tool-execution.md"
       ],
       "remaining": [
-        "implement executor fingerprint/location binding in the concrete Host Runner plan and inject an executor change"
+        "prove the same exact-executor binding on the enrolled ETG Staging runner and any approved fallback set"
       ]
     },
     "symlink_swap_before_commit": {
@@ -268,7 +269,9 @@
         "target fingerprint and operation fingerprint binding",
         "named-zone path traversal and symlink confinement",
         "durable idempotent receipt replay with conflict detection",
-        "execution_location=host_runner truthfulness"
+        "execution_location=host_runner truthfulness",
+        "exact runner executable SHA-256 and executor fingerprint binding",
+        "job replay binding includes site, target, executor, actor, authority and idempotency identity"
       ],
       "remaining": [
         "implement governed scheduler/queue pickup and fenced lease integration",
