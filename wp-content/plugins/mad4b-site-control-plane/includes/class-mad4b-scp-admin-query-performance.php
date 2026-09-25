@@ -13,6 +13,7 @@ final class MAD4B_SCP_Admin_Query_Performance {
 	const JOB_OPTION = 'mad4b_scp_admin_query_performance_job_v1';
 	const JOB_LOCK_OPTION = 'mad4b_scp_admin_query_performance_job_lock_v1';
 	const JOB_LOCK_TTL = 30;
+	const JOB_RUNNING_TTL = 1800;
 	const CRON_HOOK = 'mad4b_scp_admin_query_performance_async';
 	const INDEX_VERSION = 1;
 
@@ -62,6 +63,8 @@ final class MAD4B_SCP_Admin_Query_Performance {
 			if ( ! $present ) $ready = false;
 		}
 		$stored = get_option( self::OPTION, array() );
+		$maintenance_job = self::maintenance_job_status();
+		$maintenance_health = self::maintenance_job_health( $maintenance_job );
 		return array(
 			'contract' => self::CONTRACT,
 			'read_only' => true,
@@ -75,7 +78,8 @@ final class MAD4B_SCP_Admin_Query_Performance {
 			'ready' => $ready,
 			'indexes' => $indexes,
 			'last_apply' => is_array( $stored ) ? $stored : array(),
-			'maintenance_job' => self::maintenance_job_status(),
+			'maintenance_job' => $maintenance_job,
+			'maintenance_job_health' => $maintenance_health,
 			'wp_cron_disabled' => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON,
 			'maintenance_executor_ready' => function_exists( 'wp_schedule_single_event' ) && ! ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ),
 			'query_signatures' => array(
@@ -149,6 +153,82 @@ final class MAD4B_SCP_Admin_Query_Performance {
 		return is_array( $job ) ? $job : array();
 	}
 
+	private static function maintenance_job_health( array $job ) {
+		$status = isset( $job['status'] ) ? sanitize_key( (string) $job['status'] ) : '';
+		$started_at = isset( $job['started_at'] ) ? (string) $job['started_at'] : '';
+		$started_epoch = '' !== $started_at ? strtotime( $started_at . ( false === strpos( $started_at, 'GMT' ) && false === strpos( $started_at, '+' ) && false === strpos( $started_at, 'Z' ) ? ' UTC' : '' ) ) : false;
+		$age = false !== $started_epoch ? max( 0, time() - (int) $started_epoch ) : 0;
+		$stale_running = 'running' === $status && ( false === $started_epoch || $age > self::JOB_RUNNING_TTL );
+		return array(
+			'contract' => 'mad4b.admin-query-performance-job-health.v1',
+			'status' => $status,
+			'running_age_seconds' => $age,
+			'running_ttl_seconds' => self::JOB_RUNNING_TTL,
+			'stale_running' => $stale_running,
+			'reconciliation_required' => $stale_running,
+			'blind_retry_allowed' => false,
+		);
+	}
+
+	public static function reconcile_stale_job( array $expected_identity = array() ) {
+		if ( 'staging' !== self::environment() ) return new WP_Error( 'mad4b_admin_query_performance_reconcile_staging_only', 'Performance-index job reconciliation is Staging-only.' );
+		$identity = self::current_build_identity();
+		if ( is_wp_error( $identity ) ) return $identity;
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $key ) {
+			if ( isset( $expected_identity[ $key ] ) && '' !== (string) $expected_identity[ $key ] && ! hash_equals( strtolower( (string) $identity[ $key ] ), strtolower( (string) $expected_identity[ $key ] ) ) ) {
+				return new WP_Error( 'mad4b_admin_query_performance_reconcile_build_changed', 'Exact build identity changed before maintenance reconciliation.' );
+			}
+		}
+
+		$lock = self::acquire_job_lock( 'reconcile_stale_running' );
+		if ( is_wp_error( $lock ) ) return $lock;
+		try {
+			$job = self::maintenance_job_status();
+			if ( empty( $job ) ) return new WP_Error( 'mad4b_admin_query_performance_reconcile_job_missing', 'No performance maintenance job exists to reconcile.' );
+			$health = self::maintenance_job_health( $job );
+			if ( 'running' !== ( isset( $job['status'] ) ? (string) $job['status'] : '' ) ) {
+				return array( 'contract' => 'mad4b.admin-query-performance-reconciliation.v1', 'state' => 'not_required', 'job' => $job, 'health' => $health, 'production_changed' => false );
+			}
+			if ( empty( $health['stale_running'] ) ) {
+				return new WP_Error( 'mad4b_admin_query_performance_reconcile_not_stale', 'Active performance maintenance job has not exceeded the reconciliation threshold.', array( 'job' => $job, 'health' => $health ) );
+			}
+			$expected = isset( $job['expected_identity'] ) && is_array( $job['expected_identity'] ) ? $job['expected_identity'] : array();
+			if ( ! self::identity_matches( $identity, $expected ) ) {
+				$job['status'] = 'blocked';
+				$job['completed_at'] = gmdate( 'c' );
+				$job['result'] = array( 'state' => 'stale_running_build_identity_changed', 'reconciliation_required' => true, 'blind_retry_allowed' => false );
+				update_option( self::JOB_OPTION, $job, false );
+				self::audit_job( $job, 'reconcile_blocked_build_changed' );
+				return new WP_Error( 'mad4b_admin_query_performance_reconcile_build_drift', 'Stale maintenance work belongs to a different exact build; no automatic retry is allowed.', array( 'job' => $job ) );
+			}
+
+			$observed = self::status();
+			$ready = ! empty( $observed['ready'] );
+			$job['completed_at'] = gmdate( 'c' );
+			$job['reconciled_at'] = gmdate( 'c' );
+			$job['result'] = array(
+				'state' => $ready ? 'stale_running_postconditions_verified_ready' : 'stale_running_postconditions_verified_incomplete',
+				'ready' => $ready,
+				'indexes' => isset( $observed['indexes'] ) && is_array( $observed['indexes'] ) ? $observed['indexes'] : array(),
+				'reconciliation_required' => ! $ready,
+				'blind_retry_allowed' => false,
+				'production_changed' => false,
+			);
+			$job['status'] = $ready ? 'completed' : 'failed_verified_incomplete';
+			update_option( self::JOB_OPTION, $job, false );
+			self::audit_job( $job, $ready ? 'reconciled_completed' : 'reconciled_verified_incomplete' );
+			return array(
+				'contract' => 'mad4b.admin-query-performance-reconciliation.v1',
+				'state' => $ready ? 'completed_after_reconciliation' : 'verified_incomplete',
+				'ready' => $ready,
+				'job' => $job,
+				'production_changed' => false,
+			);
+		} finally {
+			self::release_job_lock( $lock );
+		}
+	}
+
 	public static function enqueue_explicit( array $expected_identity = array() ) {
 		if ( 'staging' !== self::environment() ) return new WP_Error( 'mad4b_admin_query_performance_staging_only', 'Performance-index maintenance is Staging-only.' );
 		if ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ) return new WP_Error( 'mad4b_admin_query_performance_cron_disabled', 'WP-Cron is disabled; the maintenance executor is unavailable.' );
@@ -163,9 +243,22 @@ final class MAD4B_SCP_Admin_Query_Performance {
 		$admission_lock = self::acquire_job_lock( 'enqueue' );
 		if ( is_wp_error( $admission_lock ) ) return $admission_lock;
 		$current = self::maintenance_job_status();
-		if ( is_array( $current ) && in_array( isset( $current['status'] ) ? (string) $current['status'] : '', array( 'pending', 'running' ), true ) ) {
+		$current_status = is_array( $current ) && isset( $current['status'] ) ? (string) $current['status'] : '';
+		if ( 'pending' === $current_status ) {
 			self::release_job_lock( $admission_lock );
 			return array( 'contract' => 'mad4b.admin-query-performance-job.v1', 'state' => 'already_queued', 'job' => $current, 'production_changed' => false );
+		}
+		if ( 'running' === $current_status ) {
+			$health = self::maintenance_job_health( $current );
+			self::release_job_lock( $admission_lock );
+			if ( ! empty( $health['stale_running'] ) ) {
+				return new WP_Error(
+					'mad4b_admin_query_performance_reconciliation_required',
+					'Stale running maintenance work requires postcondition reconciliation before any retry.',
+					array( 'job' => $current, 'health' => $health, 'blind_retry_allowed' => false )
+				);
+			}
+			return array( 'contract' => 'mad4b.admin-query-performance-job.v1', 'state' => 'already_queued', 'job' => $current, 'health' => $health, 'production_changed' => false );
 		}
 		$job = array(
 			'contract' => 'mad4b.admin-query-performance-job.v1',
