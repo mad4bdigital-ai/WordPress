@@ -57,6 +57,32 @@ record(
     byte_identical=skill_ok and portable_skill.read_bytes() == seed_skill.read_bytes(),
 )
 
+# Machine-readable extension architecture policy must agree with the permanent Skill.
+strategy_path = CP / "config" / "wordpress-extension-strategy.json"
+if not strategy_path.is_file():
+    fail("extension_strategy_contract", "machine-readable strategy policy is missing")
+    strategy = {}
+else:
+    strategy = json.loads(strategy_path.read_text(encoding="utf-8"))
+    if strategy.get("contract") != "mad4b.wordpress-extension-strategy.v1":
+        fail("extension_strategy_contract", "strategy contract mismatch")
+    if strategy.get("decision_order") != ["REUSE", "ADDON", "FORK", "NATIVE"]:
+        fail("extension_strategy_contract", "decision order drifted")
+    addon = strategy.get("decisions", {}).get("ADDON", {})
+    if addon.get("vendor_patch_allowed") is not False:
+        fail("extension_strategy_contract", "ADDON may not patch vendor files")
+    if addon.get("production_authority_inherited") is not False:
+        fail("extension_strategy_contract", "ADDON may not inherit Production authority")
+    if addon.get("exact_provider_version_runtime_certification_required") is not True:
+        fail("extension_strategy_contract", "ADDON must require exact-version runtime certification")
+record(
+    "extension_strategy_contract",
+    policy=str(strategy_path.relative_to(REPO)),
+    contract=strategy.get("contract", "") if strategy else "",
+    decision_order=strategy.get("decision_order", []) if strategy else [],
+    addon_manifest_contract=strategy.get("addon_manifest_contract", "") if strategy else "",
+)
+
 class_files = sorted((CP / "includes").glob("class-mad4b-scp-*.php"))
 classes: dict[str, str] = {}
 duplicate_classes: list[dict] = []
