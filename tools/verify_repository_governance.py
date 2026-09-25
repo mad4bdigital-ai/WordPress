@@ -161,13 +161,19 @@ def load_owner_ruleset_attestation(
         if page > 50:
             raise SystemExit("ruleset attestation issue pagination exceeded safety bound")
 
+    owner_issues = sorted(set(owner_issues))
     if not owner_issues:
         raise SystemExit("owner-authored repository governance attestation issue is missing")
+    if len(owner_issues) != 1:
+        raise SystemExit(
+            "repository governance attestation ledger identity is ambiguous: "
+            + repr({"owner_issue_numbers": owner_issues})
+        )
 
     matches = []
     stale = 0
     prefix = marker + "\n"
-    for issue_number in sorted(set(owner_issues)):
+    for issue_number in owner_issues:
         page = 1
         while True:
             comments = gh_json(
