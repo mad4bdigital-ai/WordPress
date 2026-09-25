@@ -120,7 +120,7 @@ def atomic_json_write(path: Path, value: dict[str, Any]) -> None:
 def _is_link_like(path: Path) -> bool:
     """Reject symbolic links and Windows reparse/junction objects fail-closed."""
     try:
-        if _is_link_like(path):
+        if path.is_symlink():
             return True
     except OSError:
         return True
@@ -177,7 +177,7 @@ def _reject_symlink_chain(path: Path, stop: Path) -> None:
     stop = stop.resolve()
     while True:
         if _is_link_like(current):
-            raise ValueError(f"symlink path component forbidden: {current}")
+            raise ValueError(f"link/reparse path component forbidden: {current}")
         if current == stop:
             return
         if current.parent == current:
