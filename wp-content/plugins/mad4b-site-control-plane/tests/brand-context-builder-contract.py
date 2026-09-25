@@ -326,10 +326,10 @@ for marker in [
     "repository-owned Context Provider Gateway",
     "context/reconcile-brand-materialization",
     "discoverable remote reconciliation path",
-    "Zero candidates do **not** release the claim after one scan",
-    "at least two distinct complete scans",
+    "Zero candidates do **not** release the claim after one lookup",
+    "at least two distinct complete identity lookups",
     "automatic scheduled reconciliation",
-    "provider-native MAD4B identity",
+    "provider-native MAD4B identity",\n    "does not depend on enumerating the whole Context source",
 ]:
     if marker not in skill_text:
         raise SystemExit(f"Brand Context Builder Skill missing instruction: {marker}")
@@ -341,7 +341,7 @@ if len(matches) != 1:
 row = matches[0]
 if row.get("level") != "workflow" or row.get("target") != "brand-context" or row.get("enabled") is not True:
     raise SystemExit("Brand Context Builder Skill manifest identity/state is invalid")
-if manifest.get("seed_version") != 12:
-    raise SystemExit("Brand Context Builder requires canonical seed version 12")
+if manifest.get("seed_version") != 13:
+    raise SystemExit("Brand Context Builder requires canonical seed version 13")
 
 print("mad4b.brand-context-builder.v4: PASS")
