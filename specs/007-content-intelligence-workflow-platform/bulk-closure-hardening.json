@@ -44,5 +44,192 @@
     "ordinary_generic_shell_prohibited": true,
     "raw_sql_breakglass_separate": true,
     "production_authority_not_implied": true
+  },
+  "evidence_model": {
+    "contract": "mad4b.feature007-bulk-fixture-evidence.v1",
+    "repository_status_vocabulary": [
+      "PROVEN",
+      "PARTIAL",
+      "PENDING"
+    ],
+    "live_status_vocabulary": [
+      "NOT_REQUIRED",
+      "PENDING",
+      "PROVEN"
+    ],
+    "rule": "repository evidence never implies live ETG or Host Runner evidence"
+  },
+  "fixture_evidence": {
+    "runner_crash_after_lease": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php"
+      ],
+      "remaining": [
+        "execute an actual Host Runner process crash after lease acquisition and prove reconciliation/reclaim"
+      ]
+    },
+    "runner_crash_after_side_effect_before_receipt": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "remaining": [
+        "repeat the uncertainty proof through the actual Host Runner executor after a host-side side effect"
+      ]
+    },
+    "lease_loss_before_commit": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php"
+      ],
+      "remaining": [
+        "prove the same fencing invariant through the enrolled live Host Runner"
+      ]
+    },
+    "duplicate_delivery_replay": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence-reconciler.php"
+      ],
+      "remaining": [
+        "prove provider/Host Runner duplicate delivery under live staging execution"
+      ]
+    },
+    "stale_plan_after_approval": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py"
+      ],
+      "remaining": [
+        "live exact-candidate stale-plan canary"
+      ]
+    },
+    "executor_change_after_approval": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/governed-tool-execution.md",
+        "specs/007-content-intelligence-workflow-platform/contracts/cli-host-runner.md"
+      ],
+      "remaining": [
+        "implement executor fingerprint/location binding in the concrete Host Runner plan and inject an executor change"
+      ]
+    },
+    "symlink_swap_before_commit": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "remaining": [
+        "prove immediate pre-commit path revalidation in the general host filesystem executor"
+      ]
+    },
+    "zip_slip_path_traversal": {
+      "repository_status": "PROVEN",
+      "live_status": "NOT_REQUIRED",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "remaining": []
+    },
+    "shell_executable_injection": {
+      "repository_status": "PENDING",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/governed-tool-execution.md"
+      ],
+      "remaining": [
+        "implement concrete structured-argv executor and executable/shell-metacharacter denial fixtures"
+      ]
+    },
+    "output_timeout_exhaustion": {
+      "repository_status": "PENDING",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/governed-tool-execution.md"
+      ],
+      "remaining": [
+        "implement bounded process/output budgets in the concrete executor and prove timeout/output denial"
+      ]
+    },
+    "provider_timeout_after_possible_side_effect": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "remaining": [
+        "inject provider timeout after possible remote side effect and reconcile through provider readback"
+      ]
+    },
+    "readback_failure_after_mutation": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "remaining": [
+        "prove the generic executor transitions to reconciliation/recovery-required state when postcondition readback fails"
+      ]
+    },
+    "rollback_failure": {
+      "repository_status": "PENDING",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/bulk-runtime-closure-hardening.md"
+      ],
+      "remaining": [
+        "inject rollback failure after a reversible host write and surface recovery-required evidence"
+      ]
+    },
+    "evidence_persistence_failure": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "remaining": [
+        "repeat against live enrolled Recovery/Host Runner storage"
+      ]
+    },
+    "wordpress_boot_unavailable_recovery": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "remaining": [
+        "execute live Staging drill with normal WordPress/Control Plane route intentionally unavailable"
+      ]
+    },
+    "backup_corruption_restore_interruption": {
+      "repository_status": "PENDING",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/bulk-runtime-closure-hardening.md"
+      ],
+      "remaining": [
+        "prepare protected backup root, create exact-runtime backup, inject corruption/interruption, and prove restore handling"
+      ]
+    }
   }
 }
