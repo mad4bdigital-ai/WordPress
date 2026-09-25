@@ -135,14 +135,15 @@
       "reason": "Recovery Plane and Host Runner persist pre-mutation journals plus atomic durable receipts and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN."
     },
     "T3641": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "tools/mad4b_recovery_plane.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
         "tools/mad4b_host_runner.py",
-        "workflow_run:36078194633"
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36078596096"
       ],
-      "reason": "Recovery Plane proves read-only reconciliation of uncertain mutations and Host Runner disables blind retry in uncertainty journals; Host Runner still needs its own normalized reconciliation/status surface."
+      "reason": "Host Runner and Recovery Plane reconcile uncertain mutation evidence read-only against durable receipts and observed target state, with blind retry explicitly disabled."
     },
     "T3644": {
       "status": "PARTIAL",
