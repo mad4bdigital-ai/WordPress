@@ -315,6 +315,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'capture_started_at' => isset( $telemetry['capture_started_at'] ) ? (string) $telemetry['capture_started_at'] : '',
 			'last_observed_at' => isset( $telemetry['last_observed_at'] ) ? (string) $telemetry['last_observed_at'] : '',
 			'latest_frontend_sample' => $latest,
+			'frontend_probe_evidence' => isset( $performance['frontend_probe_evidence'] ) && is_array( $performance['frontend_probe_evidence'] ) ? $performance['frontend_probe_evidence'] : array(),
 			'evaluation_window' => array(
 				'max_samples' => self::PERFORMANCE_WINDOW_MAX,
 				'min_samples' => self::PERFORMANCE_MIN_FRONTEND_SAMPLES,
