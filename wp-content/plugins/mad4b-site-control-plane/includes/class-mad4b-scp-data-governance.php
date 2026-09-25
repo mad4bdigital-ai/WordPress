@@ -211,6 +211,42 @@ final class MAD4B_SCP_Data_Governance {
 		);
 	}
 
+	public static function validate_decision_artifact( $job_id, $artifact_id, $provider_id = '', $allowed_decisions = array( 'ALLOW', 'REDACT_THEN_ALLOW' ) ) {
+		$job_id = strtolower( trim( (string) $job_id ) );
+		$artifact_id = strtolower( trim( (string) $artifact_id ) );
+		$provider_id = sanitize_key( (string) $provider_id );
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $job_id ) || 1 !== preg_match( '/^[a-f0-9-]{36}$/', $artifact_id ) ) {
+			return new WP_Error( 'mad4b_data_governance_evidence_identity_invalid', 'Data-governance evidence identity is invalid.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Artifacts' ) ) return new WP_Error( 'mad4b_data_governance_artifacts_unavailable', 'Artifact Registry is unavailable.' );
+		$result = MAD4B_SCP_Artifacts::get_artifact( array( 'artifact_id' => $artifact_id ) );
+		if ( is_wp_error( $result ) ) return $result;
+		$row = isset( $result['artifact'] ) && is_array( $result['artifact'] ) ? $result['artifact'] : array();
+		if ( ! isset( $row['job_id'] ) || ! hash_equals( $job_id, (string) $row['job_id'] ) ) return new WP_Error( 'mad4b_data_governance_cross_job', 'Data-governance evidence belongs to another ContentJob.' );
+		if ( 'data_governance_decision' !== (string) ( $row['artifact_type'] ?? '' ) ) return new WP_Error( 'mad4b_data_governance_artifact_type_invalid', 'Artifact is not a data-governance decision.' );
+		if ( 'active' !== (string) ( $row['status'] ?? '' ) ) return new WP_Error( 'mad4b_data_governance_artifact_stale', 'Data-governance decision is not active/current.' );
+		$payload = isset( $row['payload'] ) && is_array( $row['payload'] ) ? $row['payload'] : array();
+		$decision = strtoupper( (string) ( $payload['decision'] ?? '' ) );
+		if ( ! in_array( $decision, $allowed_decisions, true ) ) return new WP_Error( 'mad4b_data_governance_decision_denied', 'Data-governance decision does not permit this processing plan.' );
+		$evidence = isset( $payload['evidence'] ) && is_array( $payload['evidence'] ) ? $payload['evidence'] : array();
+		$observed_provider = sanitize_key( (string) ( $evidence['provider_id'] ?? '' ) );
+		if ( '' !== $provider_id && ( '' === $observed_provider || ! hash_equals( $provider_id, $observed_provider ) ) ) {
+			return new WP_Error( 'mad4b_data_governance_provider_mismatch', 'Data-governance decision is bound to a different provider.' );
+		}
+		$fingerprint = strtolower( trim( (string) ( $payload['decision_fingerprint'] ?? '' ) ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return new WP_Error( 'mad4b_data_governance_fingerprint_invalid', 'Data-governance decision fingerprint is invalid.' );
+		return array(
+			'artifact_id' => $artifact_id,
+			'decision' => $decision,
+			'decision_fingerprint' => $fingerprint,
+			'provider_id' => $observed_provider,
+			'policy_revision' => (string) ( $evidence['policy_revision'] ?? '' ),
+			'rights_summary_fingerprint' => (string) ( $evidence['rights_summary_fingerprint'] ?? '' ),
+			'processor_profile_fingerprint' => (string) ( $evidence['processor_profile_fingerprint'] ?? '' ),
+			'authorizing' => false,
+		);
+	}
+
 	public static function record_decision( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 		$job_id = strtolower( trim( (string) ( $input['job_id'] ?? '' ) ) );
