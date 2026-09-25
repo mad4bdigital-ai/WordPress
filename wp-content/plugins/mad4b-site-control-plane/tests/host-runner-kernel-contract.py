@@ -350,7 +350,7 @@ with tempfile.TemporaryDirectory() as td:
         )
         raise SystemExit("Host Runner accepted oversized reversible write payload")
     except ValueError as exc:
-        if "too large" not in str(exc):
+        if getattr(exc, "code", "") != "HOST_RESOURCE_WRITE_BYTES_EXCEEDED":
             raise
 
     # Dedicated runner-workspace write: exact plan + approval + readback + durable receipt.
