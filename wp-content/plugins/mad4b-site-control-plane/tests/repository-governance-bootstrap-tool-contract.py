@@ -374,7 +374,7 @@ aggregate_verify_pos = script.index(
     '& $PythonCommand "tools/verify_repository_governance.py"',
     attestation_build_pos,
 )
-variable_publish_pos = script.index('Write-Host "=== UPSERT RULESET ATTESTATION VARIABLE ==="')
+variable_publish_pos = script.index('Write-Host "=== UPSERT ENVIRONMENT RULESET ATTESTATION VARIABLE ==="')
 if not (attestation_build_pos < aggregate_verify_pos < variable_publish_pos):
     raise SystemExit(
         "ruleset attestation must be built and aggregate-verified before repository-variable publish"
