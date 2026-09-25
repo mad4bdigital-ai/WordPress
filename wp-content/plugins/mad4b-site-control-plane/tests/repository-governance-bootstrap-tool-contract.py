@@ -67,6 +67,9 @@ required = [
     'repository ruleset attestation variable upsert failed',
     'repository ruleset attestation variable readback mismatch',
     'ruleset_attestation_readback=verified',
+    '[Environment]::SetEnvironmentVariable($variableName, $attestationValue, "Process")',
+    '$status.ruleset_attestation_verified -ne $true',
+    'freshly-built attestation did not satisfy aggregate repository governance',
 ]
 
 missing = [needle for needle in required if needle not in script]
@@ -349,3 +352,17 @@ with tempfile.TemporaryDirectory() as td:
 print("ruleset_attestation_builder=executable")
 print("ruleset_attestation_nonzero_bypass_rejection=pass")
 print("ruleset_attestation_variable=upsert_and_readback")
+
+
+attestation_build_pos = script.index('Write-Host "=== BUILD RULESET ATTESTATION ==="')
+aggregate_verify_pos = script.index(
+    '& $PythonCommand "tools/verify_repository_governance.py"',
+    attestation_build_pos,
+)
+variable_publish_pos = script.index('Write-Host "=== UPSERT RULESET ATTESTATION VARIABLE ==="')
+if not (attestation_build_pos < aggregate_verify_pos < variable_publish_pos):
+    raise SystemExit(
+        "ruleset attestation must be built and aggregate-verified before repository-variable publish"
+    )
+
+print("ruleset_attestation_publish_order=build+verify+publish")
