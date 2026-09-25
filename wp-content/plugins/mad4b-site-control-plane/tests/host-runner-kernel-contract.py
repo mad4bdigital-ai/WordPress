@@ -728,4 +728,73 @@ with tempfile.TemporaryDirectory() as td:
     assert any(row["state"] == "DEAD_LETTERED" for row in incident_rows)
     assert any(row["state"] == "RECOVERY_REQUIRED" for row in incident_rows)
 
+    # Fixed resource budgets fail closed with stable reason codes.
+    budgets = runner.resource_budget_status()
+    assert budgets["contract"] == runner.RESOURCE_BUDGET_CONTRACT
+    assert budgets["job_input_bytes"] == runner.MAX_JOB_BYTES
+    assert budgets["receipt_output_bytes"] == runner.MAX_RECEIPT_BYTES
+    assert budgets["workspace_write_bytes"] == runner.MAX_WRITE_BYTES
+    assert budgets["process"]["available"] is False
+    assert budgets["process"]["timeout_seconds"] == 0
+    assert budgets["process"]["output_bytes"] == 0
+    assert budgets["network"]["available"] is False
+    assert budgets["network"]["request_count"] == 0
+    assert budgets["database"]["available"] is False
+    assert budgets["database"]["operation_count"] == 0
+
+    for resource, code in (
+        ("process", "HOST_RESOURCE_PROCESS_DISABLED"),
+        ("network", "HOST_RESOURCE_NETWORK_DISABLED"),
+        ("database", "HOST_RESOURCE_DATABASE_DISABLED"),
+    ):
+        try:
+            runner.assert_resource_capability(resource)
+            raise SystemExit(f"Host Runner unexpectedly enabled {resource}")
+        except runner.HostRunnerResourceError as exc:
+            assert exc.code == code
+
+    oversized_input = tmp / "oversized-job.json"
+    oversized_input.write_bytes(b"{" + b"x" * (runner.MAX_JOB_BYTES + 1) + b"}")
+    try:
+        runner.load_json_bounded(oversized_input)
+        raise SystemExit("Host Runner accepted oversized signed job input")
+    except runner.HostRunnerResourceError as exc:
+        assert exc.code == "HOST_RESOURCE_INPUT_BYTES_EXCEEDED"
+
+    try:
+        runner.atomic_json_write(
+            tmp / "oversized-receipt.json",
+            {"blob": "x" * runner.MAX_RECEIPT_BYTES},
+        )
+        raise SystemExit("Host Runner accepted oversized durable output")
+    except runner.HostRunnerResourceError as exc:
+        assert exc.code == "HOST_RESOURCE_OUTPUT_BYTES_EXCEEDED"
+
+    try:
+        runner.build_workspace_replace_plan(
+            profile,
+            "oversized-write.txt",
+            b"x" * (runner.MAX_WRITE_BYTES + 1),
+            "oversized write must fail closed",
+        )
+        raise SystemExit("Host Runner accepted oversized workspace write")
+    except runner.HostRunnerResourceError as exc:
+        assert exc.code == "HOST_RESOURCE_WRITE_BYTES_EXCEEDED"
+
+    original_disk_usage = runner.shutil.disk_usage
+    class LowDisk:
+        total = runner.MIN_FREE_SPACE_RESERVE_BYTES
+        used = runner.MIN_FREE_SPACE_RESERVE_BYTES
+        free = 0
+    runner.shutil.disk_usage = lambda path: LowDisk()
+    low_disk_target = runner_workspace / "low-disk.txt"
+    try:
+        runner.atomic_bytes_write(low_disk_target, b"x")
+        raise SystemExit("Host Runner write ignored minimum free-space reserve")
+    except runner.HostRunnerResourceError as exc:
+        assert exc.code == "HOST_RESOURCE_DISK_BUDGET_EXCEEDED"
+    finally:
+        runner.shutil.disk_usage = original_disk_usage
+    assert not low_disk_target.exists()
+
 print("mad4b.host-runner.bounded-kernel.v2: PASS")
