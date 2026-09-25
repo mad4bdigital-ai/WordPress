@@ -31,6 +31,22 @@ final class MAD4B_SCP_Content_Jobs {
 	}
 }
 
+final class MAD4B_SCP_Context_Pack {
+	public static function writer_profile_binding_for_job_id( $job_id ) {
+		$id = MAD4B_SCP_Content_Jobs::$writer_profile_id;
+		$version = MAD4B_SCP_Content_Jobs::$writer_profile_version;
+		return array(
+			'writer_profile_id' => $id,
+			'writer_profile_version' => $version,
+			'writer_profile_fingerprint' => hash('sha256',json_encode(array(
+				'contract'=>'mad4b.writer-profile-binding.v1',
+				'writer_profile_id'=>$id,
+				'writer_profile_version'=>$version,
+			),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)),
+		);
+	}
+}
+
 final class MAD4B_SCP_Artifacts {
 	public static $rows = array();
 	public static $links = array();

@@ -74,6 +74,10 @@ final class MAD4B_SCP_Governed_Draft {
 		}
 		$writer = self::writer_binding_from_artifacts( $draft, $qa );
 		if ( is_wp_error( $writer ) ) return $writer;
+		$current_writer = self::current_writer_binding( $job_id );
+		if ( is_wp_error( $current_writer ) ) return $current_writer;
+		$writer_check = self::assert_writer_binding_match( $writer, $current_writer, 'mad4b_draft_writer_profile_current_mismatch' );
+		if ( is_wp_error( $writer_check ) ) return $writer_check;
 
 		$post_type = sanitize_key( (string) ( $input['post_type'] ?? 'post' ) );
 		$type = get_post_type_object( $post_type );
@@ -138,6 +142,10 @@ final class MAD4B_SCP_Governed_Draft {
 		}
 		$writer = self::writer_binding_from_artifacts( $draft, $qa );
 		if ( is_wp_error( $writer ) ) return $writer;
+		$current_writer = self::current_writer_binding( (string) $plan['job_id'] );
+		if ( is_wp_error( $current_writer ) ) return $current_writer;
+		$writer_check = self::assert_writer_binding_match( $writer, $current_writer, 'mad4b_draft_writer_profile_current_mismatch' );
+		if ( is_wp_error( $writer_check ) ) return $writer_check;
 		foreach ( array( 'writer_profile_id', 'writer_profile_version', 'writer_profile_fingerprint' ) as $field ) {
 			if ( ! isset( $plan[ $field ] ) || ! hash_equals( (string) $plan[ $field ], (string) $writer[ $field ] ) ) {
 				return new WP_Error( 'mad4b_draft_writer_profile_stale', 'WriterProfile binding changed since the governed draft plan.' );
@@ -234,6 +242,23 @@ final class MAD4B_SCP_Governed_Draft {
 			'publication_authorized' => false,
 			'mutation_performed' => false,
 		);
+	}
+
+	private static function current_writer_binding( $job_id ) {
+		if ( ! class_exists( 'MAD4B_SCP_Context_Pack' ) || ! method_exists( 'MAD4B_SCP_Context_Pack', 'writer_profile_binding_for_job_id' ) ) {
+			return new WP_Error( 'mad4b_writer_profile_resolver_unavailable', 'WriterProfile current-state resolver is unavailable.' );
+		}
+		return MAD4B_SCP_Context_Pack::writer_profile_binding_for_job_id( $job_id );
+	}
+
+	private static function assert_writer_binding_match( array $expected, array $current, $code ) {
+		foreach ( array( 'writer_profile_id', 'writer_profile_version', 'writer_profile_fingerprint' ) as $field ) {
+			if ( empty( $expected[ $field ] ) || empty( $current[ $field ] )
+				|| ! hash_equals( (string) $expected[ $field ], (string) $current[ $field ] ) ) {
+				return new WP_Error( $code, 'Current approved WriterProfile no longer matches the artifact/plan lineage.' );
+			}
+		}
+		return true;
 	}
 
 	private static function writer_binding_from_artifacts( array $draft, array $qa ) {

@@ -328,23 +328,15 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 	}
 
 	private static function job_writer_profile( $job_id ) {
-		if ( ! class_exists( 'MAD4B_SCP_Content_Jobs' ) ) return new WP_Error( 'mad4b_content_job_service_unavailable', 'ContentJob service is unavailable.' );
-		$result = MAD4B_SCP_Content_Jobs::get_job( array( 'job_id' => $job_id ) );
-		if ( is_wp_error( $result ) ) return $result;
-		$job = isset( $result['job'] ) && is_array( $result['job'] ) ? $result['job'] : array();
-		$id = trim( (string) ( $job['writer_profile_id'] ?? '' ) );
-		$version = trim( (string) ( $job['writer_profile_version'] ?? '' ) );
-		if ( '' === $id || '' === $version ) return new WP_Error( 'mad4b_writer_profile_required', 'ContentJob must bind an immutable WriterProfile identity and version.' );
-		$fingerprint = self::digest_value( array(
-			'contract' => 'mad4b.writer-profile-binding.v1',
-			'writer_profile_id' => $id,
-			'writer_profile_version' => $version,
-		) );
-		return array(
-			'writer_profile_id' => $id,
-			'writer_profile_version' => $version,
-			'writer_profile_fingerprint' => $fingerprint,
-		);
+		if ( ! class_exists( 'MAD4B_SCP_Context_Pack' ) || ! method_exists( 'MAD4B_SCP_Context_Pack', 'writer_profile_binding_for_job_id' ) ) {
+			return new WP_Error( 'mad4b_writer_profile_resolver_unavailable', 'WriterProfile requires the authoritative ContextPack resolver.' );
+		}
+		$writer = MAD4B_SCP_Context_Pack::writer_profile_binding_for_job_id( $job_id );
+		if ( is_wp_error( $writer ) ) return $writer;
+		if ( empty( $writer['writer_profile_id'] ) || empty( $writer['writer_profile_version'] ) || empty( $writer['writer_profile_fingerprint'] ) ) {
+			return new WP_Error( 'mad4b_writer_profile_required', 'ContentJob must bind an immutable WriterProfile identity, approved content hash version and fingerprint.' );
+		}
+		return $writer;
 	}
 
 	private static function context_writer_matches( array $context, array $writer ) {

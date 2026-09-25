@@ -49,6 +49,10 @@ final class MAD4B_SCP_Policy {
 	public static function can_read(){return true;}
 	public static function can_mutate(){return true;}
 }
+final class MAD4B_SCP_Context_Pack {
+	public static $binding = array();
+	public static function writer_profile_binding_for_job_id( $job_id ) { return self::$binding; }
+}
 final class MAD4B_SCP_Artifacts {
 	public static $rows=array();
 	public static function get_artifact($input){
@@ -69,6 +73,11 @@ $writer_fp=hash('sha256',json_encode(array(
 	'writer_profile_id'=>'writer-1',
 	'writer_profile_version'=>'3',
 ),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+MAD4B_SCP_Context_Pack::$binding=array(
+	'writer_profile_id'=>'writer-1',
+	'writer_profile_version'=>'3',
+	'writer_profile_fingerprint'=>$writer_fp,
+);
 $draft_id='22222222-3333-4444-8555-666666666666';
 $qa_id='33333333-4444-4555-8666-777777777777';
 
@@ -128,6 +137,11 @@ MAD4B_SCP_Artifacts::$rows[$qa_id]['payload']['writer_profile_version']='4';
 $writer_stale=MAD4B_SCP_Governed_Draft::apply(array('plan'=>$stale_writer_plan));
 $check(is_wp_error($writer_stale) && 'mad4b_draft_writer_profile_lineage_mismatch'===$writer_stale->get_error_code(),'WriterProfile drift was accepted after plan');
 MAD4B_SCP_Artifacts::$rows[$qa_id]['payload']['writer_profile_version']='3';
+
+MAD4B_SCP_Context_Pack::$binding['writer_profile_fingerprint']=str_repeat('f',64);
+$current_writer_stale=MAD4B_SCP_Governed_Draft::apply(array('plan'=>$plan));
+$check(is_wp_error($current_writer_stale) && 'mad4b_draft_writer_profile_current_mismatch'===$current_writer_stale->get_error_code(),'Current WriterProfile content drift was accepted after plan');
+MAD4B_SCP_Context_Pack::$binding['writer_profile_fingerprint']=$writer_fp;
 
 $applied=MAD4B_SCP_Governed_Draft::apply(array('plan'=>$plan));
 $check(is_array($applied) && 'draft'===$applied['post_status'],'draft create failed');

@@ -323,24 +323,73 @@ final class MAD4B_SCP_Context_Pack {
 		return $payload;
 	}
 
-	private static function writer_profile_binding( array $job ) {
-		$id = isset( $job['writer_profile_id'] ) ? trim( (string) $job['writer_profile_id'] ) : '';
-		$version = isset( $job['writer_profile_version'] ) ? trim( (string) $job['writer_profile_version'] ) : '';
+	public static function writer_profile_binding_for_job_id( $job_id ) {
+		$job = self::job( $job_id );
+		if ( is_wp_error( $job ) ) return $job;
+		return self::writer_profile_binding( $job );
+	}
+
+	public static function writer_profile_binding( array $job ) {
+		$id = strtolower( trim( (string) ( $job['writer_profile_id'] ?? '' ) ) );
+		$version = strtolower( trim( (string) ( $job['writer_profile_version'] ?? '' ) ) );
 		if ( ( '' === $id ) xor ( '' === $version ) ) {
 			return new WP_Error( 'mad4b_writer_profile_binding_incomplete', 'WriterProfile identity and version must be bound together.' );
 		}
-		$fingerprint = '';
-		if ( '' !== $id ) {
-			$fingerprint = self::digest( array(
-				'contract' => 'mad4b.writer-profile-binding.v1',
-				'writer_profile_id' => $id,
-				'writer_profile_version' => $version,
-			) );
+		if ( '' === $id ) {
+			return array(
+				'writer_profile_id' => '',
+				'writer_profile_version' => '',
+				'writer_profile_fingerprint' => '',
+				'writer_profile_content_sha256' => '',
+			);
 		}
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $id ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $version ) ) {
+			return new WP_Error( 'mad4b_writer_profile_identity_invalid', 'WriterProfile must bind an exact Context Authority asset id and content SHA-256 version.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) || ! method_exists( 'MAD4B_SCP_Context_Authority', 'asset' ) ) {
+			return new WP_Error( 'mad4b_writer_profile_authority_unavailable', 'WriterProfile requires the governed Context Authority registry.' );
+		}
+		$asset = MAD4B_SCP_Context_Authority::asset( $id );
+		if ( ! is_array( $asset ) || empty( $asset ) ) {
+			return new WP_Error( 'mad4b_writer_profile_missing', 'WriterProfile asset is not present in the live source-authorized Context registry.' );
+		}
+		$asset_id = strtolower( trim( (string) ( $asset['asset_id'] ?? '' ) ) );
+		$category = sanitize_key( (string) ( $asset['category'] ?? '' ) );
+		$status = (string) ( $asset['status'] ?? '' );
+		$review_status = (string) ( $asset['review_status'] ?? '' );
+		$content_complete = ! array_key_exists( 'content_complete', $asset ) || ! empty( $asset['content_complete'] );
+		$content_hash = strtolower( trim( (string) ( $asset['content_hash'] ?? '' ) ) );
+		$reviewed_hash = strtolower( trim( (string) ( $asset['reviewed_content_hash'] ?? '' ) ) );
+		if ( ! hash_equals( $id, $asset_id ) ) {
+			return new WP_Error( 'mad4b_writer_profile_asset_identity_mismatch', 'WriterProfile asset identity drifted.' );
+		}
+		if ( ! in_array( $category, array( 'writer_reference', 'content_example', 'historical_content' ), true ) ) {
+			return new WP_Error( 'mad4b_writer_profile_category_invalid', 'WriterProfile asset category is not writer-authoritative.' );
+		}
+		if ( 'ready' !== $status || 'approved' !== $review_status || ! $content_complete ) {
+			return new WP_Error( 'mad4b_writer_profile_not_ready', 'WriterProfile asset is not ready, complete and approved.' );
+		}
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $content_hash )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $reviewed_hash )
+			|| ! hash_equals( $content_hash, $reviewed_hash ) ) {
+			return new WP_Error( 'mad4b_writer_profile_review_drift', 'WriterProfile content is not bound to its current approved content hash.' );
+		}
+		if ( ! hash_equals( $version, $content_hash ) ) {
+			return new WP_Error( 'mad4b_writer_profile_version_stale', 'ContentJob WriterProfile version no longer matches the approved content hash.' );
+		}
+		$fingerprint = self::digest( array(
+			'contract' => 'mad4b.writer-profile-binding.v2',
+			'writer_profile_id' => $id,
+			'writer_profile_version' => $version,
+			'writer_profile_content_sha256' => $content_hash,
+			'source_id' => (string) ( $asset['source_id'] ?? '' ),
+			'category' => $category,
+		) );
 		return array(
 			'writer_profile_id' => $id,
 			'writer_profile_version' => $version,
 			'writer_profile_fingerprint' => $fingerprint,
+			'writer_profile_content_sha256' => $content_hash,
 		);
 	}
 

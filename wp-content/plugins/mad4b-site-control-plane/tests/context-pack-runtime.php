@@ -29,6 +29,12 @@ if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) {
 			);
 		}
 		public static function assets() { return self::$assets; }
+		public static function asset( $asset_id ) {
+			foreach ( self::$assets as $asset ) {
+				if ( is_array( $asset ) && isset( $asset['asset_id'] ) && hash_equals( (string) $asset['asset_id'], (string) $asset_id ) ) return $asset;
+			}
+			return array();
+		}
 		public static function authority_manifest_fingerprint() {
 			return hash( 'sha256', wp_json_encode( self::$assets, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 		}
@@ -94,6 +100,36 @@ MAD4B_SCP_Context_Authority::$assets = array(
 	'seo' => $asset( 'seo', 'seo_strategy', 'SEO strategy optional evidence.', 'en' ),
 	'arabic' => $asset( 'arabic', 'brand_strategy', 'Arabic-only context should not match English job.', 'ar' ),
 );
+$writer_asset = $asset( 'writer', 'writer_reference', 'Approved immutable writer profile.', 'en' );
+MAD4B_SCP_Context_Authority::$assets['writer'] = $writer_asset;
+
+$writer_job = MAD4B_SCP_Content_Jobs::create_job( array(
+	'brand_id' => 'brand-context-ci',
+	'subject' => 'WriterProfile binding fixture',
+	'primary_keyword' => 'writer profile',
+	'language' => 'en',
+	'country' => 'eg',
+	'content_type' => 'article',
+	'writer_profile_id' => $writer_asset['asset_id'],
+	'writer_profile_version' => $writer_asset['content_hash'],
+	'research_depth' => 'standard',
+	'automation_level' => 'review_gated',
+	'target_post_type' => 'post',
+	'desired_publish_at' => '',
+	'reason' => 'bind exact approved WriterProfile',
+) );
+$check( is_array( $writer_job ) && isset( $writer_job['job']['job_id'] ), 'writer job create failed' );
+$writer_job_id = $writer_job['job']['job_id'];
+$writer_requirements = MAD4B_SCP_Context_Pack::resolve_requirements( array( 'job_id' => $writer_job_id ) );
+$check( is_array( $writer_requirements ) && 64 === strlen( $writer_requirements['writer_profile_fingerprint'] ), 'content-addressed WriterProfile binding missing' );
+$check( hash_equals( $writer_asset['content_hash'], $writer_requirements['writer_profile_version'] ), 'WriterProfile version is not exact content hash' );
+$original_writer_hash = MAD4B_SCP_Context_Authority::$assets['writer']['content_hash'];
+MAD4B_SCP_Context_Authority::$assets['writer']['content_hash'] = hash( 'sha256', 'mutated writer profile without new job binding' );
+MAD4B_SCP_Context_Authority::$assets['writer']['reviewed_content_hash'] = MAD4B_SCP_Context_Authority::$assets['writer']['content_hash'];
+$writer_drift = MAD4B_SCP_Context_Pack::resolve_requirements( array( 'job_id' => $writer_job_id ) );
+$check( 'mad4b_writer_profile_version_stale' === $error_code( $writer_drift ), 'WriterProfile content drift did not invalidate bound version' );
+MAD4B_SCP_Context_Authority::$assets['writer']['content_hash'] = $original_writer_hash;
+MAD4B_SCP_Context_Authority::$assets['writer']['reviewed_content_hash'] = $original_writer_hash;
 
 $requirements = MAD4B_SCP_Context_Pack::resolve_requirements( array( 'job_id' => $job_id ) );
 $check( is_array( $requirements ), 'requirements resolver failed' );
