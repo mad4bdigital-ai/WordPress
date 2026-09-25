@@ -50,13 +50,29 @@ for marker in [
     "MAD4B_SCP_Remote_Work_Queue::claim(",
     "MAD4B_SCP_Remote_Work_Queue::complete(",
     "mad4b_remote_work_evidence_not_observed",
-    "query_monitor_frontend_telemetry",
+    "query_monitor_frontend_probe_telemetry",
+    "matched_frontend_probe_samples",
+    "'probe_hash'",
+    "'claimed_at'",
 ]:
     if marker not in parity:
         raise SystemExit(f"remote parity work-queue integration missing: {marker}")
 
 if parity.find("frontend_performance_status()") > parity.find("MAD4B_SCP_Remote_Work_Queue::complete("):
     raise SystemExit("remote work completion must verify Frontend telemetry before committing completion")
+
+completion = parity[parity.index("public static function complete_remote_work("):parity.index("public static function reconcile_managed_skills(")]
+if "baseline_sample_count" in completion or "max( 0, $current_count - $baseline )" in completion:
+    raise SystemExit("remote browser completion may not trust a general sample-count delta")
+for marker in (
+    "frontend_probe_hash",
+    "probe_hash",
+    "claimed_at",
+    "matched_frontend_probe_samples",
+    "mad4b_remote_work_probe_binding_missing",
+):
+    if marker not in completion:
+        raise SystemExit("remote browser completion lacks exact probe correlation: " + marker)
 
 for ability in [
     "mad4b/remote-operation-work-queue",
