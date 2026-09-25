@@ -7,7 +7,6 @@ on:
       - '.github/workflows/feature-007-spec-ci.yml'
       - 'tools/mad4b_recovery_plane.py'
       - 'tools/mad4b_feature_boundary.py'
-      - '.github/mad4b-feature-boundary-policy.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py'
 
 permissions:
@@ -118,7 +117,7 @@ jobs:
           BASE="${{ github.event.pull_request.base.sha }}"
           python3 tools/mad4b_feature_boundary.py \
             --feature-json specs/007-content-intelligence-workflow-platform/feature.json \
-            --policy .github/mad4b-feature-boundary-policy.json \
+            --repository-policy .github/mad4b-repository-governance-policy.json \
             --base "$BASE" \
             --head-branch "$HEAD_BRANCH"
 
