@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "aca1e2961cc7528d4f03f34efead72b22c7eb195",
-  "override_git_blob_sha": "0a92b9bd8f4e1ced104bf6da5f018172565c894f",
+  "source_tasks_git_blob_sha": "7e70d6dd6d4ca000bc500dc554db04b18f26eb2b",
+  "override_git_blob_sha": "d746f3b9de0ec5820fecba8132db76da1e12945a",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,16 +10,16 @@
   },
   "counts": {
     "DEFERRED": 1,
-    "DONE": 11,
+    "DONE": 12,
     "OPEN": 638,
-    "PARTIAL": 8
+    "PARTIAL": 7
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 11,
+      "DONE": 12,
       "OPEN": 503,
-      "PARTIAL": 8
+      "PARTIAL": 7
     },
     "P1": {
       "DEFERRED": 0,
@@ -6527,16 +6527,17 @@
       "task_id": "T3641",
       "phase": 36,
       "priority": "P0",
-      "summary": "Prove reconciliation of MUTATED_BUT_EVIDENCE_UNCERTAIN without blind write retry.",
-      "status": "PARTIAL",
-      "checked": false,
+      "summary": "Prove reconciliation of MUTATED_BUT_EVIDENCE_UNCERTAIN without blind write retry. Evidence: Host Runner `mad4b.host-runner-reconciliation.v1` + Recovery Plane reconciliation; Critical Kernel run `36078596096` PASS.",
+      "status": "DONE",
+      "checked": true,
       "evidence_refs": [
-        "tools/mad4b_recovery_plane.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
         "tools/mad4b_host_runner.py",
-        "workflow_run:36078194633"
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36078596096"
       ],
-      "reason": "Recovery Plane proves read-only reconciliation of uncertain mutations and Host Runner disables blind retry in uncertainty journals; Host Runner still needs its own normalized reconciliation/status surface."
+      "reason": "Host Runner and Recovery Plane reconcile uncertain mutation evidence read-only against durable receipts and observed target state, with blind retry explicitly disabled."
     },
     {
       "task_id": "T3642",
