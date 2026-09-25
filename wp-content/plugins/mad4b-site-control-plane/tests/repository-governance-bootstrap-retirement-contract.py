@@ -24,6 +24,29 @@ for needle in forbidden_verdict:
     if needle in verdict:
         raise SystemExit(f"release verdict bootstrap exception not retired: {needle}")
 
+one_time_governance_required = [
+    "github.event.pull_request.number == 66",
+    "github.event.pull_request.head.ref == 'chore/bootstrap-feature-boundary-policy-20260925'",
+    'git show "$BASE_SHA:.github/mad4b-repository-governance-policy.json"',
+    "verify_feature_boundary_bootstrap_transition.py",
+    "policy_path=/tmp/mad4b-bootstrap-base-policy.json",
+    "'post_merge_ruleset_apply_required': True",
+]
+for needle in one_time_governance_required:
+    if needle not in governance:
+        raise SystemExit(f"one-time feature-boundary bootstrap governance binding missing: {needle}")
+
+one_time_verdict_required = [
+    "os.environ.get('PR_NUMBER', '').strip() == '66'",
+    "verify_feature_boundary_bootstrap_transition.py",
+    "mad4b-release-verdict-bootstrap-base-policy.json",
+    "'post_merge_ruleset_apply_required':True",
+    "PR #66 on branch chore/bootstrap-feature-boundary-policy-20260925",
+]
+for needle in one_time_verdict_required:
+    if needle not in verdict:
+        raise SystemExit(f"one-time feature-boundary bootstrap Release Verdict binding missing: {needle}")
+
 required = [
     "repository governance must verify ready for every merge-gate PASS",
     "and governance_ready",
@@ -33,5 +56,7 @@ for needle in required:
         raise SystemExit(f"retired governance enforcement contract missing: {needle}")
 
 print("REPOSITORY_GOVERNANCE_BOOTSTRAP_RETIREMENT_CONTRACT: PASS")
-print("bootstrap_exception=retired")
+print("legacy_bootstrap_exception=retired")
+print("feature_boundary_bootstrap=pr66_exact_branch_base_policy_only")
+print("post_merge_ruleset_apply_required=true")
 print("merge_gate_requires=governance_ready")
