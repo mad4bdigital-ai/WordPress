@@ -30,6 +30,8 @@ PLAN_CONTRACT = "mad4b.recovery-plan.v1"
 RECEIPT_CONTRACT = "mad4b.recovery-receipt.v1"
 DISABLE_PLAN_CONTRACT = "mad4b.recovery-disable-plan.v1"
 DISABLE_RECEIPT_CONTRACT = "mad4b.recovery-disable-receipt.v1"
+BACKUP_PLAN_CONTRACT = "mad4b.protected-backup-plan.v1"
+BACKUP_RECEIPT_CONTRACT = "mad4b.protected-backup-receipt.v1"
 SUPPORTED_ENVIRONMENTS = {"staging"}
 
 
@@ -113,6 +115,226 @@ def target_state(wordpress_root: Path) -> dict[str, Any]:
         "plugin_present": plugin.is_dir(),
         "plugin_tree_sha256": tree_digest(plugin) if plugin.is_dir() else "",
     }
+
+
+def protected_backup_status(wordpress_root: Path) -> dict[str, Any]:
+    root = wordpress_root.expanduser().resolve()
+    backup_root = root / "wp-content" / "mad4b-recovery" / "protected-backups"
+    symlink = backup_root.is_symlink()
+    exists = backup_root.exists()
+    is_dir = backup_root.is_dir() if exists and not symlink else False
+    writable = bool(is_dir and os.access(backup_root, os.W_OK))
+    receipts = []
+    if is_dir:
+        for receipt_path in sorted(backup_root.glob("*/BACKUP-RECEIPT.json")):
+            if receipt_path.is_symlink() or not receipt_path.is_file():
+                continue
+            try:
+                row = json.loads(receipt_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if row.get("contract") != BACKUP_RECEIPT_CONTRACT:
+                continue
+            receipts.append({
+                "backup_id": row.get("backup_id"),
+                "plan_sha256": row.get("plan_sha256"),
+                "plugin_tree_sha256": row.get("plugin_tree_sha256"),
+                "created_at": row.get("created_at"),
+                "receipt_path": str(receipt_path),
+            })
+    return {
+        "contract": "mad4b.protected-backup-status.v1",
+        "path": str(backup_root),
+        "exists": exists,
+        "is_directory": is_dir,
+        "symlink": symlink,
+        "writable": writable,
+        "ready": bool(is_dir and writable and not symlink),
+        "backup_count": len(receipts),
+        "backups": receipts[-20:],
+        "requires_preparation": not bool(is_dir and writable and not symlink),
+        "mutation_performed": False,
+    }
+
+
+def build_backup_plan(
+    wordpress_root: Path,
+    environment: str,
+    incident_id: str,
+    reason: str,
+) -> dict[str, Any]:
+    if environment not in SUPPORTED_ENVIRONMENTS:
+        raise ValueError("Protected backup is Staging-only")
+    state = target_state(wordpress_root)
+    if not state["plugin_present"] or not state["plugin_tree_sha256"]:
+        raise ValueError("Control Plane plugin is absent; protected backup has no source")
+    plan = {
+        "contract": BACKUP_PLAN_CONTRACT,
+        "action": "create_control_plane_backup",
+        "environment": environment,
+        "incident_id": require_incident_id(incident_id),
+        "reason": require_reason(reason),
+        "created_at": utc_now(),
+        "target": state,
+        "scope": {
+            "plugin_slug": PLUGIN_SLUG,
+            "copies_wp_config_bytes": False,
+            "copies_database": False,
+            "arbitrary_paths_allowed": False,
+        },
+        "authorization": {
+            "mode": "SINGLE_OWNER_HARDENED",
+            "exact_plan_attestation_required": True,
+            "production_authorized": False,
+            "breakglass_authority_created": False,
+        },
+    }
+    plan["plan_sha256"] = plan_digest(plan)
+    return plan
+
+
+def assert_backup_plan_current(plan: dict[str, Any]) -> Path:
+    if plan.get("contract") != BACKUP_PLAN_CONTRACT or plan.get("action") != "create_control_plane_backup":
+        raise ValueError("protected backup plan contract/action mismatch")
+    if plan.get("environment") not in SUPPORTED_ENVIRONMENTS:
+        raise ValueError("protected backup environment is not allowed")
+    expected_sha = str(plan.get("plan_sha256", "")).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_sha) or plan_digest(plan) != expected_sha:
+        raise ValueError("protected backup plan digest mismatch")
+    scope = plan.get("scope")
+    if not isinstance(scope, dict) or scope.get("plugin_slug") != PLUGIN_SLUG:
+        raise ValueError("protected backup scope mismatch")
+    if scope.get("copies_wp_config_bytes") is not False or scope.get("copies_database") is not False:
+        raise ValueError("protected backup scope widened beyond Control Plane package")
+    root = Path(str((plan.get("target") or {}).get("wordpress_root", ""))).resolve()
+    current = target_state(root)
+    target = plan.get("target") or {}
+    for key in ("wordpress_root", "wp_config_sha256", "plugin_present", "plugin_tree_sha256"):
+        if current.get(key) != target.get(key):
+            raise ValueError(f"protected backup target changed since plan: {key}")
+    return root
+
+
+def _copy_plugin_snapshot(source: Path, destination: Path) -> list[dict[str, Any]]:
+    if not source.is_dir() or source.is_symlink():
+        raise ValueError("protected backup source plugin directory is invalid")
+    destination.mkdir(parents=True, exist_ok=False)
+    rows = []
+    for path in sorted(source.rglob("*")):
+        if path.is_symlink():
+            raise ValueError(f"symlink forbidden in protected backup source: {path}")
+        rel = path.relative_to(source)
+        out = destination / rel
+        if path.is_dir():
+            out.mkdir(parents=True, exist_ok=True)
+            continue
+        if not path.is_file():
+            raise ValueError(f"unsupported protected backup source entry: {path}")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        raw = path.read_bytes()
+        with out.open("wb") as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        rows.append({
+            "path": rel.as_posix(),
+            "bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        })
+    return rows
+
+
+def apply_backup(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str, Any]:
+    root = assert_backup_plan_current(plan)
+    plan_sha = str(plan["plan_sha256"])
+    if owner_attest_plan_sha.strip().lower() != plan_sha:
+        raise ValueError("OWNER_ATTEST_SINGLE_OWNER does not bind the exact protected backup plan")
+
+    recovery_root = root / "wp-content" / "mad4b-recovery"
+    if recovery_root.is_symlink():
+        raise ValueError("recovery root symlink is forbidden")
+    backup_root = recovery_root / "protected-backups"
+    if backup_root.exists() and backup_root.is_symlink():
+        raise ValueError("protected backup root symlink is forbidden")
+    backup_root.mkdir(parents=True, exist_ok=True)
+    if not backup_root.is_dir() or not os.access(backup_root, os.W_OK):
+        raise ValueError("protected backup root is not writable")
+
+    backup_id = f"{require_incident_id(str(plan['incident_id']))}-{plan_sha[:12]}"
+    stage = backup_root / f".stage-{backup_id}"
+    final = backup_root / backup_id
+    if stage.exists() or final.exists():
+        raise ValueError("protected backup target already exists")
+
+    source = root / "wp-content" / "plugins" / PLUGIN_SLUG
+    stage.mkdir(parents=False, exist_ok=False)
+    try:
+        snapshot = stage / PLUGIN_SLUG
+        rows = _copy_plugin_snapshot(source, snapshot)
+        copied_tree = tree_digest(snapshot)
+        planned_tree = str(plan["target"]["plugin_tree_sha256"])
+        if not hmac.compare_digest(copied_tree, planned_tree):
+            raise ValueError("protected backup tree differs from exact planned runtime")
+
+        manifest_material = [
+            f"{row['path']}\0{row['bytes']}\0{row['sha256']}\n".encode()
+            for row in rows
+        ]
+        manifest_digest = hashlib.sha256(b"".join(manifest_material)).hexdigest()
+        manifest = {
+            "contract": "mad4b.protected-backup-manifest.v1",
+            "backup_id": backup_id,
+            "source_plugin_tree_sha256": planned_tree,
+            "file_count": len(rows),
+            "manifest_sha256": manifest_digest,
+            "files": rows,
+        }
+        atomic_json_write(stage / "BACKUP-MANIFEST.json", manifest)
+        receipt = {
+            "contract": BACKUP_RECEIPT_CONTRACT,
+            "backup_id": backup_id,
+            "environment": plan["environment"],
+            "incident_id": plan["incident_id"],
+            "reason": plan["reason"],
+            "plan_sha256": plan_sha,
+            "owner_attest_plan_sha256": plan_sha,
+            "created_at": utc_now(),
+            "wordpress_root": str(root),
+            "wp_config_sha256": plan["target"]["wp_config_sha256"],
+            "plugin_slug": PLUGIN_SLUG,
+            "plugin_tree_sha256": planned_tree,
+            "backup_manifest_sha256": manifest_digest,
+            "backup_file_count": len(rows),
+            "production_authorized": False,
+            "database_copied": False,
+            "wp_config_bytes_copied": False,
+            "mutation_performed": True,
+        }
+        atomic_json_write(stage / "BACKUP-RECEIPT.json", receipt)
+        os.replace(stage, final)
+        try:
+            directory_fd = os.open(str(backup_root), os.O_RDONLY)
+            os.fsync(directory_fd)
+            os.close(directory_fd)
+        except OSError:
+            pass
+
+        # Post-commit readback over copied bytes and durable receipt.
+        if tree_digest(final / PLUGIN_SLUG) != planned_tree:
+            raise RuntimeError("protected backup post-commit tree readback failed")
+        persisted = json.loads((final / "BACKUP-RECEIPT.json").read_text(encoding="utf-8"))
+        if persisted.get("plan_sha256") != plan_sha or persisted.get("plugin_tree_sha256") != planned_tree:
+            raise RuntimeError("protected backup receipt readback failed")
+        receipt["backup_path"] = str(final)
+        receipt["readback_verified"] = True
+        return receipt
+    except Exception:
+        shutil.rmtree(stage, ignore_errors=True)
+        # If final exists, do not silently delete a possibly-valid committed backup.
+        # Surface recovery/reconciliation instead.
+        if final.exists():
+            raise RuntimeError("PROTECTED_BACKUP_COMMITTED_BUT_READBACK_UNCERTAIN")
+        raise
 
 
 def verify_installed_provenance(plugin_dir: Path) -> dict[str, str]:
