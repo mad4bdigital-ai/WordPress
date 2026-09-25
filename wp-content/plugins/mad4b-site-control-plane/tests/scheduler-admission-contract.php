@@ -33,6 +33,21 @@ $outage=$base;$outage['work']['high_risk']=true;$outage['central_state']=array('
 $r=MAD4B_SCP_Scheduler_Admission::evaluate($outage);
 $check('FAIL_CLOSED'===$r['decision'],'high-risk central outage did not fail closed');
 
+$rank=MAD4B_SCP_Scheduler_Admission::fair_rank(array(
+ 'now_epoch'=>10000,
+ 'items'=>array(
+  array('job_id'=>'job-heavy','tenant_id'=>'t1','site_id'=>'s1','admitted'=>true,'authority_current'=>true,'quota_current'=>true,'enqueued_at_epoch'=>9900,'fairness_weight'=>10,'priority_class'=>'normal'),
+  array('job_id'=>'job-aged','tenant_id'=>'t2','site_id'=>'s2','admitted'=>true,'authority_current'=>true,'quota_current'=>true,'enqueued_at_epoch'=>5000,'fairness_weight'=>1,'priority_class'=>'normal'),
+  array('job_id'=>'job-stale-authority','tenant_id'=>'t3','site_id'=>'s3','admitted'=>true,'authority_current'=>false,'quota_current'=>true,'enqueued_at_epoch'=>1000,'fairness_weight'=>100,'priority_class'=>'high'),
+ ),
+));
+$check('mad4b.scheduler-fair-rank.v1'===$rank['contract'],'fair ranking contract mismatch');
+$check('job-aged'===$rank['next_job_id'],'aging did not prevent weighted starvation');
+$check(true===$rank['anti_starvation'],'anti-starvation evidence missing');
+$check(false===$rank['authority_bypass_allowed'] && false===$rank['quota_bypass_allowed'],'fairness widened authority/quota');
+$rejected_ids=array_map(static function($row){return $row['job_id']??'';},$rank['rejected']);
+$check(in_array('job-stale-authority',$rejected_ids,true),'stale authority entered fair queue');
+
 $source=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-scheduler-admission.php');
 foreach(array('wp_schedule_event(','wp_unschedule_event(','wp_insert_post(','$wpdb->','shell_exec(','exec(','proc_open(') as $forbidden){
  $check(false===strpos($source,$forbidden),'mutation primitive present: '.$forbidden);
