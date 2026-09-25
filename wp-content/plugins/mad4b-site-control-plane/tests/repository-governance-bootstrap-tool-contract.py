@@ -283,9 +283,15 @@ attestation_fixture = {
     "enforcement": target_template["enforcement"],
     "bypass_actors": [],
     "conditions": target_template["conditions"],
-    "rules": target_template["rules"],
+    "rules": json.loads(json.dumps(target_template["rules"])),
     "updated_at": "2026-09-26T00:00:00Z",
 }
+fixture_pull_request = next(
+    row for row in attestation_fixture["rules"] if row.get("type") == "pull_request"
+)
+fixture_pull_request.setdefault("parameters", {})[
+    "require_extra_approval_for_unattributed_changes"
+] = True
 with tempfile.TemporaryDirectory() as td:
     root = Path(td)
     readback = root / "readback.json"
