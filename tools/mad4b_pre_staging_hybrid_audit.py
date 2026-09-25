@@ -361,6 +361,7 @@ critical_runtime = [
     "class-mad4b-scp-content-intelligence-pipeline.php",
     "class-mad4b-scp-content-jobs.php",
     "class-mad4b-scp-context-pack.php",
+    "class-mad4b-scp-brand-context-builder.php",
     "class-mad4b-scp-data-governance.php",
     "class-mad4b-scp-decommission-portability.php",
     "class-mad4b-scp-durable-execution.php",
