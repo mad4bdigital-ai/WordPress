@@ -301,7 +301,9 @@ Invariants:
 
 ## Table 14 — `{prefix}mad4b_intent_relations`
 
-Purpose: site-level, versioned many-to-many intent ownership authority.
+Entity: `IntentRelation`.
+
+Purpose: site-level, versioned many-to-many intent ownership authority with authoritative current/version history.
 
 Key columns:
 - `relation_id` logical relation identity;
