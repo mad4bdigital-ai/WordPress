@@ -723,15 +723,15 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [x] T3636 P0 Replace the stale fixed implementation branch with workflow-owned Feature 007 branch-prefix policy. Evidence: `.github/workflows/feature-007-spec-ci.yml` + `feature.json` branch-policy mirror.
 - [x] T3637 P0 Enforce reviewed-parent versus runtime-release identity separation and runtime-path drift detection in CI. Evidence: baseline-sync v2 + workflow-owned runtime identity paths + `RECAPTURE_REQUIRED` on this runtime-changing PR.
 - [x] T3638 P0 Complete the minimal out-of-band Recovery Runner read/disable/known-good-restore surface and contract tests. Evidence: `tools/mad4b_recovery_plane.py`, recovery contract PASS in Critical Kernel run `36075527334`.
-- [ ] T3639 P0 Enforce the bulk runtime closure hardening matrix as machine-readable CI input; documentation-only evidence cannot close live gates.
-- [ ] T3640 P0 Implement durable mutation intent/journal + atomic receipt persistence and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN.
+- [x] T3639 P0 Enforce the bulk runtime closure hardening matrix as machine-readable CI input; documentation-only evidence cannot close live gates. Evidence: `bulk-closure-hardening.json`, executable hardening contract, Feature 007 Spec Quality CI PASS on `f654e3bf77bfefc7456b661d09f2c61420d17d14`.
+- [x] T3640 P0 Implement durable mutation intent/journal + atomic receipt persistence and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN. Evidence: Recovery Plane + Host Runner mutation journals, atomic/fsync receipts, Critical Kernel run `36078194633`.
 - [ ] T3641 P0 Prove reconciliation of MUTATED_BUT_EVIDENCE_UNCERTAIN without blind write retry.
 - [ ] T3642 P0 Execute runner crash-after-lease, lease-loss-before-commit, zombie writer and duplicate/replay fixtures.
 - [ ] T3643 P0 Execute crash-after-side-effect-before-receipt and provider-timeout-after-possible-side-effect fixtures.
 - [ ] T3644 P0 Execute symlink/reparse swap, traversal, zip-slip, shell metacharacter and executable injection denial fixtures.
 - [ ] T3645 P0 Prove timeout/output/disk/file/network/database resource budgets fail closed with stable reason codes.
 - [ ] T3646 P0 Prove bootstrap executor can install/enroll only the exact attested runner package and exact scheduler entry; no standing Host authority is created.
-- [ ] T3647 P0 Prove WordPress-unbootable Recovery Runner health/read/known-good restore path.
+- [x] T3647 P0 Prove WordPress-unbootable Recovery Runner health/read/known-good restore path. Evidence: standalone Recovery Plane requires neither WordPress boot nor database; recovery contract PASS in Critical Kernel run `36078194633`.
 - [ ] T3648 P0 Prove protected backup integrity/capacity/exact-runtime binding and interrupted/corrupt restore behavior.
 - [ ] T3649 P0 Prove one semantic operation across two executor adapters with normalized-result and authority parity.
 - [ ] T3650 P0 Prove submission/execution/commit location truthfulness and reapproval on material executor-location change.
