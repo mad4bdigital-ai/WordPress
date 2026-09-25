@@ -81,6 +81,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-closure-matrix-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php'
       - 'specs/007-content-intelligence-workflow-platform/contracts/remote-operation-parity-discoverability.md'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php'
@@ -167,6 +169,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-closure-matrix-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php'
       - 'specs/007-content-intelligence-workflow-platform/contracts/remote-operation-parity-discoverability.md'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php'
@@ -298,6 +302,13 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php
+
+      - name: Verify provider closure matrix and authority operation discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-closure-matrix-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php
 
       - name: Verify durable execution contract
         shell: bash
