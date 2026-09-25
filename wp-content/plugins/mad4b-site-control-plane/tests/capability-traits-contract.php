@@ -79,4 +79,16 @@ $read = MAD4B_SCP_Capability_Traits::profile( 'bit_pi', 'flows.read' );
 $check( 'read_repeatable' === $read['traits']['idempotency_model'], 'Bit Flows read idempotency declaration mismatch' );
 $check( false === $read['traits']['durable_wait'], 'Bit Flows read durable_wait declaration mismatch' );
 
+$main_source = file_get_contents( dirname( __DIR__ ) . '/mad4b-site-control-plane.php' );
+$servers_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
+$check( false !== strpos( $main_source, 'class-mad4b-scp-capability-traits.php' ), 'capability trait service is not loaded by plugin runtime' );
+foreach ( array( 'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve' ) as $ability ) {
+	$check( false !== strpos( $servers_source, "'" . $ability . "'" ), 'capability trait ability is not mounted on read plane: ' . $ability );
+}
+$check( false === strpos( $servers_source, "array( 'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve' )," ), 'capability trait mount guard ambiguity' );
+$source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-capability-traits.php' );
+foreach ( array( 'wp_insert_post(', 'wp_update_post(', '$wpdb->insert', '$wpdb->update', 'shell_exec(', 'exec(', 'proc_open(' ) as $forbidden ) {
+	$check( false === strpos( $source, $forbidden ), 'capability trait resolver contains mutation primitive: ' . $forbidden );
+}
+
 echo "mad4b.capability-traits.v1: PASS\n";
