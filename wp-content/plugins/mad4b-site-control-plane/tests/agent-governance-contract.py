@@ -39,7 +39,7 @@ bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
 
 # Schema authority must be normalized and migration must not seed authority.
-require(schema, 'const VERSION = 9;', 'schema-version')
+require(schema, 'const VERSION = 10;', 'schema-version')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
@@ -303,4 +303,4 @@ pos = [bootstrap.index(x) for x in order]
 if pos != sorted(pos):
     raise SystemExit('FAIL bootstrap-order: governance dependencies are loaded out of order')
 
-print('mad4b.site-control-plane.agent-governance-contract.v9: PASS')
+print('mad4b.site-control-plane.agent-governance-contract.v10: PASS')
