@@ -197,6 +197,17 @@ run_case(
     expect_error="REPOSITORY_ROOT_CHANGE_BRANCH_FORBIDDEN",
 )
 
+for protected_root in [
+    ".github/mad4b-master-ruleset-template.json",
+    "tools/Apply-Mad4bMasterRuleset.ps1",
+    "tools/verify_feature_boundary_bootstrap_transition.py",
+]:
+    run_case(
+        [protected_root],
+        branch="chore/ordinary-maintenance",
+        expect_error="REPOSITORY_ROOT_CHANGE_BRANCH_FORBIDDEN",
+    )
+
 with patch.object(mod.subprocess, "run", return_value=SimpleNamespace(returncode=0)), \
      patch.object(mod, "run", return_value=""), \
      patch.object(mod, "changed_paths", return_value=[".github/workflows/mad4b-release-verdict.yml"]), \
