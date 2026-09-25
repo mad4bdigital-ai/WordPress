@@ -28,7 +28,9 @@ for marker in [
     "pair_fingerprint",
     "certification_fingerprint",
     "compatible_range_is_not_execution_authority",
-    "recertification_required_after_plugin_lifecycle_change",
+    "revalidation_required_after_plugin_lifecycle_change",
+    "plugin_lifecycle_invalidates_plan_fingerprint",
+    "runtime_pair_revalidated_on_every_status_read",
     "production_authorized",
 ]:
     if marker not in registry:
