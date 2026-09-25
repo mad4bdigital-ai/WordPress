@@ -18,9 +18,17 @@
       "requires": [
         "supported_public_api",
         "compatible_version",
-        "acceptable_security_and_lifecycle"
+        "acceptable_security_and_lifecycle",
+        "exact_provider_identity",
+        "data_ownership",
+        "authority_exposure",
+        "backup_impact",
+        "update_policy",
+        "certification_level",
+        "portability_exit_path"
       ],
-      "vendor_patch_allowed": false
+      "vendor_patch_allowed": false,
+      "automatic_acceptance": false
     },
     "ADDON": {
       "requires": [
@@ -32,13 +40,34 @@
         "rollback_or_disable_path",
         "runtime_certification",
         "compatibility_test",
-        "portability_exit_path"
+        "portability_exit_path",
+        "supply_chain",
+        "network_access",
+        "multisite",
+        "performance_budget",
+        "observability",
+        "failure_policy",
+        "release_ring",
+        "certified_pairs"
       ],
       "vendor_patch_allowed": false,
       "production_authority_inherited": false,
       "exact_provider_version_runtime_certification_required": true,
       "fail_closed_on_unknown_provider_version": true,
-      "fail_closed_on_missing_extension_point": true
+      "fail_closed_on_missing_extension_point": true,
+      "compatible_range_is_candidate_only": true,
+      "exact_provider_addon_pair_required_for_mutation": true,
+      "plugin_update_invalidates_certification": true,
+      "plugin_deactivation_invalidates_certification": true,
+      "execution_commit_revalidation_required": true,
+      "data_governance_required_for_external_data_transfer": true,
+      "direct_mutation_escape_paths_forbidden": true,
+      "release_ring_required": true,
+      "allowed_release_rings": [
+        "shadow",
+        "canary",
+        "active"
+      ]
     },
     "FORK": {
       "requires": [
@@ -83,6 +112,7 @@
   "addon_manifest_contract": "mad4b.wordpress-addon-manifest.v1",
   "addon_manifest_required_fields": [
     "addon_id",
+    "plugin_file",
     "base_provider",
     "compatible_versions",
     "extension_points",
@@ -92,7 +122,57 @@
     "rollback",
     "certification",
     "tests",
-    "portability"
+    "portability",
+    "supply_chain",
+    "network_access",
+    "multisite",
+    "performance_budget",
+    "observability",
+    "failure_policy",
+    "release_ring",
+    "certified_pairs"
   ],
-  "production_authorized": false
+  "production_authorized": false,
+  "decision_order_semantics": "evaluation_order_not_mandatory_preference",
+  "lifecycle": {
+    "plugin_update": "invalidate_provider_and_addon_certification",
+    "plugin_activation": "invalidate_and_reobserve",
+    "plugin_deactivation": "invalidate_and_fail_closed",
+    "stale_plan": "replan_and_reapprove",
+    "automatic_updates": "never_inherit_previous_certification"
+  },
+  "supply_chain": {
+    "exact_package_identity_required_for_certified_mutation": true,
+    "fields": [
+      "source",
+      "publisher",
+      "license",
+      "distribution_mode",
+      "package_sha256",
+      "update_channel",
+      "reviewed_version",
+      "security_review_status"
+    ],
+    "unknown_security_scan": "UNKNOWN_NOT_PASS"
+  },
+  "multisite_default": "unsupported_unless_manifest_explicit",
+  "addon_security": {
+    "php_is_not_a_sandbox": true,
+    "manifest_is_not_a_security_boundary": true,
+    "required_controls": [
+      "code_review",
+      "static_negative_space_scan",
+      "bounded_adapter_interface",
+      "runtime_certification",
+      "execution_fencing"
+    ],
+    "forbidden_without_explicit_allowlist": [
+      "raw_database_write",
+      "direct_filesystem_write",
+      "shell_execution",
+      "direct_plugin_state_mutation",
+      "direct_unbounded_post_or_option_mutation",
+      "unbounded_outbound_http"
+    ]
+  }
 }
