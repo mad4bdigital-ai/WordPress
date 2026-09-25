@@ -133,6 +133,7 @@ jobs:
               ".github/workflows/feature-007-spec-ci.yml",
               ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
               "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/SKILL.md",
+              "plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md",
               "tools/mad4b_pre_staging_hybrid_audit.py",
           ]
           implementation_allowed = [
@@ -148,6 +149,7 @@ jobs:
               ".github/workflows/mad4b-release-verdict.yml",
               ".github/workflows/mad4b-repository-governance.yml",
               ".github/workflows/mad4b-site-control-plane.yml",
+              ".github/workflows/mad4b-context-authority.yml",
               ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
               ".github/mad4b-repository-governance-policy.json",
               "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/SKILL.md",
