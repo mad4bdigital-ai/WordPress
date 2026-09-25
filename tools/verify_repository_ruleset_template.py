@@ -19,13 +19,52 @@ def load(path: Path) -> dict:
 
 
 def mutable_ruleset(value: dict) -> dict:
+    conditions = json.loads(json.dumps(value.get("conditions") or {}))
+    ref_name = conditions.get("ref_name") if isinstance(conditions, dict) else None
+    if isinstance(ref_name, dict):
+        ref_name["include"] = sorted(str(x) for x in (ref_name.get("include") or []))
+        ref_name["exclude"] = sorted(str(x) for x in (ref_name.get("exclude") or []))
+
+    rules = []
+    for raw in value.get("rules") or []:
+        if not isinstance(raw, dict):
+            continue
+        row = json.loads(json.dumps(raw))
+        params = row.get("parameters")
+        if isinstance(params, dict):
+            if isinstance(params.get("allowed_merge_methods"), list):
+                params["allowed_merge_methods"] = sorted(str(x) for x in params["allowed_merge_methods"])
+            if isinstance(params.get("required_status_checks"), list):
+                params["required_status_checks"] = sorted(
+                    [
+                        {
+                            "context": str(item.get("context") or ""),
+                            "integration_id": int(item.get("integration_id") or 0),
+                        }
+                        for item in params["required_status_checks"]
+                        if isinstance(item, dict)
+                    ],
+                    key=lambda item: (item["context"], item["integration_id"]),
+                )
+        rules.append(row)
+    rules.sort(key=lambda row: str(row.get("type") or ""))
+
+    bypass = value.get("bypass_actors") or []
+    bypass = sorted(
+        [json.loads(json.dumps(item)) for item in bypass if isinstance(item, dict)],
+        key=lambda item: (
+            str(item.get("actor_type") or ""),
+            int(item.get("actor_id") or 0),
+            str(item.get("bypass_mode") or ""),
+        ),
+    )
     return {
         "name": value.get("name"),
         "target": value.get("target"),
         "enforcement": value.get("enforcement"),
-        "bypass_actors": value.get("bypass_actors") or [],
-        "conditions": value.get("conditions") or {},
-        "rules": value.get("rules") or [],
+        "bypass_actors": bypass,
+        "conditions": conditions,
+        "rules": rules,
     }
 
 
