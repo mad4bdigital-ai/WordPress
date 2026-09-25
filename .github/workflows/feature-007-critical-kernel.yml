@@ -5,8 +5,10 @@ on:
     paths:
       - 'tools/verify_release_root_trust.py'
       - 'tools/mad4b_recovery_plane.py'
+      - 'tools/mad4b_host_runner.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
@@ -51,8 +53,10 @@ on:
     paths:
       - 'tools/verify_release_root_trust.py'
       - 'tools/mad4b_recovery_plane.py'
+      - 'tools/mad4b_host_runner.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
@@ -123,7 +127,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m py_compile             tools/verify_release_root_trust.py             tools/mad4b_recovery_plane.py
+          python3 -m py_compile \
+            tools/verify_release_root_trust.py \
+            tools/mad4b_recovery_plane.py \
+            tools/mad4b_host_runner.py
 
       - name: Verify external release root-trust contract
         shell: bash
@@ -136,6 +143,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py
+
+      - name: Verify read-only Host Runner kernel
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py
 
       - name: Verify execution Commit Guard contract
         shell: bash
