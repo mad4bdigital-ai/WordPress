@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Executable contract for the minimal read-only Host Runner kernel."""
+"""Executable contract for the bounded Host Runner kernel."""
 
 from __future__ import annotations
 
@@ -32,17 +32,36 @@ if set(runner.OPERATIONS) != {
     "runtime.status.read",
     "filesystem.hash.read",
     "package.integrity.verify",
+    "workspace.file.replace",
 }:
     raise SystemExit("Host Runner kernel operation registry widened unexpectedly")
-if any(row.get("risk") != "read_only" for row in runner.OPERATIONS.values()):
-    raise SystemExit("Host Runner kernel contains non-read operation")
+writes = {op for op, row in runner.OPERATIONS.items() if row.get("risk") != "read_only"}
+if writes != {"workspace.file.replace"}:
+    raise SystemExit("Host Runner kernel widened write operations unexpectedly")
+if runner.OPERATIONS["workspace.file.replace"].get("zones") != ["runner_workspace"]:
+    raise SystemExit("Host Runner write escaped dedicated runner workspace")
+if runner.OPERATIONS["workspace.file.replace"].get("requires_plan") is not True:
+    raise SystemExit("Host Runner write does not require exact plan")
+if runner.OPERATIONS["workspace.file.replace"].get("requires_approval") is not True:
+    raise SystemExit("Host Runner write does not require approval")
 
 
 def iso(dt):
     return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def make_job(profile, operation_id, inputs, *, job_id=None, created=None, expires=None):
+def make_job(
+    profile,
+    operation_id,
+    inputs,
+    *,
+    job_id=None,
+    created=None,
+    expires=None,
+    plan_sha256="",
+    approval_ref="",
+    authority_ref="ci:read-authority",
+):
     now = datetime.now(timezone.utc)
     job = {
         "contract": runner.JOB_CONTRACT,
@@ -61,9 +80,13 @@ def make_job(profile, operation_id, inputs, *, job_id=None, created=None, expire
         "input_sha256": runner.sha256_bytes(runner.canonical_json(inputs)),
         "idempotency_key": "idem-" + (job_id or "new-" + str(uuid.uuid4())),
         "actor_ref": "ci:operator",
-        "authority_ref": "ci:read-authority",
+        "authority_ref": authority_ref,
         "submission_location": "contract_test",
     }
+    if plan_sha256:
+        job["plan_sha256"] = plan_sha256
+    if approval_ref:
+        job["approval_ref"] = approval_ref
     job["mac_sha256"] = runner.job_mac(job, profile["_integrity_key"])
     return job
 
@@ -77,6 +100,8 @@ with tempfile.TemporaryDirectory() as td:
     (plugin / "mad4b-site-control-plane.php").write_text("<?php // runner plugin\n", encoding="utf-8")
     (plugin / "includes").mkdir()
     (plugin / "includes" / "health.php").write_text("<?php return true;\n", encoding="utf-8")
+    runner_workspace = wp / "wp-content" / "mad4b-runner" / "workspace"
+    runner_workspace.mkdir(parents=True)
 
     key = tmp / "runner.key"
     key.write_bytes(b"k" * 64)
@@ -96,7 +121,7 @@ with tempfile.TemporaryDirectory() as td:
 
     doctor = runner.doctor(profile_path)
     assert doctor["generic_shell_available"] is False
-    assert doctor["write_operations_available"] is False
+    assert doctor["write_operations_available"] is True
     assert doctor["network_available_to_runner_contract"] is False
     assert doctor["mutation_performed"] is False
 
@@ -261,4 +286,250 @@ with tempfile.TemporaryDirectory() as td:
         if "takes no caller-defined paths" not in str(exc):
             raise
 
-print("mad4b.host-runner.readonly-kernel.v1: PASS")
+    # Dedicated runner-workspace write: exact plan + approval + readback + durable receipt.
+    replacement = b"managed workspace state v2\n"
+    plan = runner.build_workspace_replace_plan(
+        profile,
+        "state.txt",
+        replacement,
+        "exercise reversible host write",
+    )
+    write_job = make_job(
+        profile,
+        "workspace.file.replace",
+        {
+            "plan": plan,
+            "new_content_b64": __import__("base64").b64encode(replacement).decode(),
+        },
+        plan_sha256=plan["plan_sha256"],
+        approval_ref="approval:ci-workspace-write",
+        authority_ref="ci:workspace-write-authority",
+    )
+    write_path = tmp / "workspace-write.json"
+    write_path.write_text(json.dumps(write_job), encoding="utf-8")
+    write_receipt = runner.run_job(profile_path, write_path)
+    assert write_receipt["mutation_performed"] is True
+    assert write_receipt["readback_verdict"] == "PASS"
+    assert (runner_workspace / "state.txt").read_bytes() == replacement
+    assert write_receipt["result"]["relative_path"] == "state.txt"
+    assert write_receipt["result"]["plan_sha256"] == plan["plan_sha256"]
+    journal = wp / "wp-content" / "mad4b-runner" / "journals" / f"{write_job['job_id']}.json"
+    journal_row = json.loads(journal.read_text(encoding="utf-8"))
+    assert journal_row["state"] == "DURABLE_VERIFIED_RECEIPT"
+    assert journal_row["terminal"] is True
+    assert journal_row["blind_retry_allowed"] is False
+
+    # Exact replay returns the durable receipt and cannot re-execute the write.
+    write_replay = runner.run_job(profile_path, write_path)
+    assert write_replay["replayed"] is True
+    assert (runner_workspace / "state.txt").read_bytes() == replacement
+
+    # Approval identity is replay material and may not drift.
+    changed_approval = dict(write_job)
+    changed_approval["approval_ref"] = "approval:different"
+    changed_approval["mac_sha256"] = runner.job_mac(changed_approval, profile["_integrity_key"])
+    changed_approval_path = tmp / "workspace-write-approval-drift.json"
+    changed_approval_path.write_text(json.dumps(changed_approval), encoding="utf-8")
+    try:
+        runner.run_job(profile_path, changed_approval_path)
+        raise SystemExit("Host Runner accepted write replay with changed approval")
+    except ValueError as exc:
+        if "different approval_ref" not in str(exc):
+            raise
+
+    # Missing approval fails before mutation.
+    missing_approval = make_job(
+        profile,
+        "workspace.file.replace",
+        {
+            "plan": plan,
+            "new_content_b64": __import__("base64").b64encode(replacement).decode(),
+        },
+        plan_sha256=plan["plan_sha256"],
+        authority_ref="ci:workspace-write-authority",
+    )
+    missing_approval_path = tmp / "missing-approval.json"
+    missing_approval_path.write_text(json.dumps(missing_approval), encoding="utf-8")
+    try:
+        runner.run_job(profile_path, missing_approval_path)
+        raise SystemExit("Host Runner accepted write without approval")
+    except ValueError as exc:
+        if "approval_ref is required" not in str(exc):
+            raise
+
+    # Caller command/shell/argv cannot be smuggled into a semantic write.
+    shell_smuggle = dict(write_job)
+    shell_smuggle["job_id"] = str(uuid.uuid4())
+    shell_smuggle["idempotency_key"] = "idem-shell-smuggle"
+    shell_smuggle["input"] = dict(write_job["input"])
+    shell_smuggle["input"]["command"] = "sh -c 'id'"
+    shell_smuggle["input_sha256"] = runner.sha256_bytes(runner.canonical_json(shell_smuggle["input"]))
+    shell_smuggle["mac_sha256"] = runner.job_mac(shell_smuggle, profile["_integrity_key"])
+    shell_smuggle_path = tmp / "shell-smuggle.json"
+    shell_smuggle_path.write_text(json.dumps(shell_smuggle), encoding="utf-8")
+    try:
+        runner.run_job(profile_path, shell_smuggle_path)
+        raise SystemExit("Host Runner accepted caller shell/command field")
+    except ValueError as exc:
+        if "input fields are invalid" not in str(exc):
+            raise
+
+    # Stale plan is denied after target state changes.
+    stale_bytes = b"stale-plan-new\n"
+    stale_plan = runner.build_workspace_replace_plan(
+        profile,
+        "stale.txt",
+        stale_bytes,
+        "stale plan fixture",
+    )
+    (runner_workspace / "stale.txt").write_bytes(b"drifted after planning\n")
+    stale_job = make_job(
+        profile,
+        "workspace.file.replace",
+        {
+            "plan": stale_plan,
+            "new_content_b64": __import__("base64").b64encode(stale_bytes).decode(),
+        },
+        plan_sha256=stale_plan["plan_sha256"],
+        approval_ref="approval:stale-plan",
+        authority_ref="ci:workspace-write-authority",
+    )
+    stale_job_path = tmp / "stale-write.json"
+    stale_job_path.write_text(json.dumps(stale_job), encoding="utf-8")
+    try:
+        runner.run_job(profile_path, stale_job_path)
+        raise SystemExit("Host Runner accepted stale workspace plan")
+    except ValueError as exc:
+        if "precondition changed since plan" not in str(exc):
+            raise
+
+    # Symlink swap between plan and apply fails at the immediate commit boundary.
+    symlink_bytes = b"must-not-write-outside\n"
+    symlink_plan = runner.build_workspace_replace_plan(
+        profile,
+        "swap.txt",
+        symlink_bytes,
+        "symlink swap fixture",
+    )
+    outside_write = tmp / "outside-write.txt"
+    outside_write.write_bytes(b"outside-original\n")
+    (runner_workspace / "swap.txt").symlink_to(outside_write)
+    symlink_write_job = make_job(
+        profile,
+        "workspace.file.replace",
+        {
+            "plan": symlink_plan,
+            "new_content_b64": __import__("base64").b64encode(symlink_bytes).decode(),
+        },
+        plan_sha256=symlink_plan["plan_sha256"],
+        approval_ref="approval:symlink-swap",
+        authority_ref="ci:workspace-write-authority",
+    )
+    symlink_write_path = tmp / "symlink-write.json"
+    symlink_write_path.write_text(json.dumps(symlink_write_job), encoding="utf-8")
+    try:
+        runner.run_job(profile_path, symlink_write_path)
+        raise SystemExit("Host Runner accepted symlink swap before commit")
+    except ValueError as exc:
+        if "symlink" not in str(exc):
+            raise
+    assert outside_write.read_bytes() == b"outside-original\n"
+    (runner_workspace / "swap.txt").unlink()
+
+    # Receipt persistence failure after a write forces verified rollback.
+    rollback_target = runner_workspace / "rollback.txt"
+    rollback_target.write_bytes(b"before-rollback\n")
+    rollback_new = b"after-rollback\n"
+    rollback_plan = runner.build_workspace_replace_plan(
+        profile,
+        "rollback.txt",
+        rollback_new,
+        "receipt failure rollback fixture",
+    )
+    rollback_job = make_job(
+        profile,
+        "workspace.file.replace",
+        {
+            "plan": rollback_plan,
+            "new_content_b64": __import__("base64").b64encode(rollback_new).decode(),
+        },
+        plan_sha256=rollback_plan["plan_sha256"],
+        approval_ref="approval:rollback",
+        authority_ref="ci:workspace-write-authority",
+    )
+    rollback_job_path = tmp / "rollback-write.json"
+    rollback_job_path.write_text(json.dumps(rollback_job), encoding="utf-8")
+    original_atomic_json = runner.atomic_json_write
+    def fail_write_receipt(path, data):
+        if path.parent.name == "receipts" and data.get("job_id") == rollback_job["job_id"]:
+            raise OSError("simulated Host Runner receipt persistence failure")
+        return original_atomic_json(path, data)
+    runner.atomic_json_write = fail_write_receipt
+    try:
+        runner.run_job(profile_path, rollback_job_path)
+        raise SystemExit("Host Runner write unexpectedly succeeded without durable receipt")
+    except OSError as exc:
+        if "receipt persistence failure" not in str(exc):
+            raise
+    finally:
+        runner.atomic_json_write = original_atomic_json
+    assert rollback_target.read_bytes() == b"before-rollback\n"
+    rollback_journal = json.loads(
+        (wp / "wp-content" / "mad4b-runner" / "journals" / f"{rollback_job['job_id']}.json")
+        .read_text(encoding="utf-8")
+    )
+    assert rollback_journal["state"] == "ROLLED_BACK_AFTER_FAILURE"
+    assert rollback_journal["rollback_verified"] is True
+    assert rollback_journal["blind_retry_allowed"] is False
+
+    # If both receipt persistence and rollback fail, uncertainty is durable and never blind-retried.
+    uncertain_target = runner_workspace / "uncertain.txt"
+    uncertain_target.write_bytes(b"uncertain-before\n")
+    uncertain_new = b"uncertain-after\n"
+    uncertain_plan = runner.build_workspace_replace_plan(
+        profile,
+        "uncertain.txt",
+        uncertain_new,
+        "rollback failure uncertainty fixture",
+    )
+    uncertain_job = make_job(
+        profile,
+        "workspace.file.replace",
+        {
+            "plan": uncertain_plan,
+            "new_content_b64": __import__("base64").b64encode(uncertain_new).decode(),
+        },
+        plan_sha256=uncertain_plan["plan_sha256"],
+        approval_ref="approval:uncertain",
+        authority_ref="ci:workspace-write-authority",
+    )
+    uncertain_job_path = tmp / "uncertain-write.json"
+    uncertain_job_path.write_text(json.dumps(uncertain_job), encoding="utf-8")
+    original_rollback = runner._rollback_workspace_replace
+    def fail_rollback(result):
+        return False
+    def fail_uncertain_receipt(path, data):
+        if path.parent.name == "receipts" and data.get("job_id") == uncertain_job["job_id"]:
+            raise OSError("simulated receipt failure with rollback failure")
+        return original_atomic_json(path, data)
+    runner._rollback_workspace_replace = fail_rollback
+    runner.atomic_json_write = fail_uncertain_receipt
+    try:
+        runner.run_job(profile_path, uncertain_job_path)
+        raise SystemExit("Host Runner uncertainty fixture unexpectedly succeeded")
+    except OSError as exc:
+        if "rollback failure" not in str(exc):
+            raise
+    finally:
+        runner._rollback_workspace_replace = original_rollback
+        runner.atomic_json_write = original_atomic_json
+    uncertain_journal = json.loads(
+        (wp / "wp-content" / "mad4b-runner" / "journals" / f"{uncertain_job['job_id']}.json")
+        .read_text(encoding="utf-8")
+    )
+    assert uncertain_journal["state"] == "MUTATED_BUT_EVIDENCE_UNCERTAIN"
+    assert uncertain_journal["rollback_verified"] is False
+    assert uncertain_journal["blind_retry_allowed"] is False
+    assert uncertain_target.read_bytes() == uncertain_new
+
+print("mad4b.host-runner.bounded-kernel.v2: PASS")
