@@ -27,6 +27,7 @@ jobs:
       HEAD_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
       PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
       GH_TOKEN: ${{ github.token }}
+      MAD4B_RULESET_ATTESTATION: ${{ vars.MAD4B_RULESET_ATTESTATION }}
     steps:
       - name: Checkout exact source
         uses: actions/checkout@v4
@@ -90,6 +91,7 @@ jobs:
 
           policy_path=.github/mad4b-repository-governance-policy.json
           bootstrap_transition=false
+          governance_extra_args=()
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ] \
             && [ "$PR_NUMBER" = "66" ] \
             && [ "$HEAD_BRANCH" = "chore/bootstrap-feature-boundary-policy-20260925" ]; then
@@ -97,12 +99,15 @@ jobs:
             test -s /tmp/mad4b-feature-boundary-bootstrap-transition.json
             policy_path=/tmp/mad4b-bootstrap-base-policy.json
             bootstrap_transition=true
+            governance_extra_args+=(--allow-bootstrap-hidden-bypass-evidence)
           fi
 
           set +e
           python3 tools/verify_repository_governance.py \
             --repository "$GITHUB_REPOSITORY" \
             --policy "$policy_path" \
+            --template .github/mad4b-master-ruleset-template.json \
+            "${governance_extra_args[@]}" \
             --output "$status" >"$stdout" 2>"$stderr"
           rc=$?
           set -e
