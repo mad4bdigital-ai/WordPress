@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "03e8bc6010d6361b35635c00306b8a5345e7b0f0",
-  "override_git_blob_sha": "080e2db0a1fd0d3175749a664c6c92b4b974311e",
+  "source_tasks_git_blob_sha": "aca1e2961cc7528d4f03f34efead72b22c7eb195",
+  "override_git_blob_sha": "0a92b9bd8f4e1ced104bf6da5f018172565c894f",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,16 +10,16 @@
   },
   "counts": {
     "DEFERRED": 1,
-    "DONE": 8,
-    "OPEN": 646,
-    "PARTIAL": 3
+    "DONE": 11,
+    "OPEN": 638,
+    "PARTIAL": 8
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 8,
-      "OPEN": 511,
-      "PARTIAL": 3
+      "DONE": 11,
+      "OPEN": 503,
+      "PARTIAL": 8
     },
     "P1": {
       "DEFERRED": 0,
@@ -6497,31 +6497,46 @@
       "task_id": "T3639",
       "phase": 36,
       "priority": "P0",
-      "summary": "Enforce the bulk runtime closure hardening matrix as machine-readable CI input; documentation-only evidence cannot close live gates.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Enforce the bulk runtime closure hardening matrix as machine-readable CI input; documentation-only evidence cannot close live gates. Evidence: `bulk-closure-hardening.json`, executable hardening contract, Feature 007 Spec Quality CI PASS on `f654e3bf77bfefc7456b661d09f2c61420d17d14`.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/bulk-closure-hardening.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py",
+        "workflow_run:36078194548"
+      ],
+      "reason": "Bulk hardening matrix is machine validated in Feature 007 Spec Quality CI; documentation-only evidence cannot self-close live gates."
     },
     {
       "task_id": "T3640",
       "phase": 36,
       "priority": "P0",
-      "summary": "Implement durable mutation intent/journal + atomic receipt persistence and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Implement durable mutation intent/journal + atomic receipt persistence and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN. Evidence: Recovery Plane + Host Runner mutation journals, atomic/fsync receipts, Critical Kernel run `36078194633`.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Recovery Plane and Host Runner persist pre-mutation journals plus atomic durable receipts and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN."
     },
     {
       "task_id": "T3641",
       "phase": 36,
       "priority": "P0",
       "summary": "Prove reconciliation of MUTATED_BUT_EVIDENCE_UNCERTAIN without blind write retry.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_host_runner.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Recovery Plane proves read-only reconciliation of uncertain mutations and Host Runner disables blind retry in uncertainty journals; Host Runner still needs its own normalized reconciliation/status surface."
     },
     {
       "task_id": "T3642",
@@ -6548,10 +6563,16 @@
       "phase": 36,
       "priority": "P0",
       "summary": "Execute symlink/reparse swap, traversal, zip-slip, shell metacharacter and executable injection denial fixtures.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Traversal, zip-slip, symlink swap, unknown shell operation and injected command fields are denied. A future admitted fixed-process adapter still requires executable/argv-specific negatives."
     },
     {
       "task_id": "T3645",
@@ -6577,41 +6598,59 @@
       "task_id": "T3647",
       "phase": 36,
       "priority": "P0",
-      "summary": "Prove WordPress-unbootable Recovery Runner health/read/known-good restore path.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Prove WordPress-unbootable Recovery Runner health/read/known-good restore path. Evidence: standalone Recovery Plane requires neither WordPress boot nor database; recovery contract PASS in Critical Kernel run `36078194633`.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Standalone Recovery Plane status/disable/known-good restore contracts execute without WordPress boot or database dependency and remain Staging-only."
     },
     {
       "task_id": "T3648",
       "phase": 36,
       "priority": "P0",
       "summary": "Prove protected backup integrity/capacity/exact-runtime binding and interrupted/corrupt restore behavior.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Protected backup exact-tree verification, restore, corruption detection and interrupted restore rollback are repository-proven; live ETG protected-root capacity/exact-runtime receipt remains open."
     },
     {
       "task_id": "T3649",
       "phase": 36,
       "priority": "P0",
       "summary": "Prove one semantic operation across two executor adapters with normalized-result and authority parity.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "WP-CLI and Host Runner produce equivalent mad4b.runtime-status-read.v1 results on one target; MCP and reversible-write authority parity remain open."
     },
     {
       "task_id": "T3650",
       "phase": 36,
       "priority": "P0",
       "summary": "Prove submission/execution/commit location truthfulness and reapproval on material executor-location change.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Host Runner receipts report execution_location=host_runner and executor fingerprint drift invalidates exact jobs; submission/commit-location parity through WordPress Host Bridge remains open."
     },
     {
       "task_id": "T3651",
