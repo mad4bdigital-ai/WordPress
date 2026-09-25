@@ -383,10 +383,17 @@ final class MAD4B_SCP_Host_Bridge {
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
 		$root = defined( 'ABSPATH' ) ? realpath( ABSPATH ) : false;
 		if ( false === $root ) return new WP_Error( 'mad4b_host_wordpress_root_unavailable', 'WordPress root is unavailable.' );
+		$wp_config = $root . DIRECTORY_SEPARATOR . 'wp-config.php';
+		if ( is_link( $wp_config ) || ! is_file( $wp_config ) ) return new WP_Error( 'mad4b_host_wp_config_unavailable', 'WordPress configuration identity is unavailable.' );
+		$wp_config_sha256 = hash_file( 'sha256', $wp_config );
+		if ( ! is_string( $wp_config_sha256 ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $wp_config_sha256 ) ) {
+			return new WP_Error( 'mad4b_host_wp_config_identity_invalid', 'WordPress configuration identity could not be resolved.' );
+		}
 		$payload = array(
 			'site_uuid' => $site_uuid,
 			'environment' => $environment,
 			'wordpress_root' => $root,
+			'wp_config_sha256' => $wp_config_sha256,
 		);
 		$payload['target_fingerprint'] = self::digest( $payload );
 		return $payload;
