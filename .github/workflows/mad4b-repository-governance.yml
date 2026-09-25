@@ -23,6 +23,9 @@ jobs:
     timeout-minutes: 5
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+      HEAD_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+      PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout exact source
@@ -61,6 +64,20 @@ jobs:
           set -euo pipefail
           python3 tools/test_verify_feature_boundary.py
 
+      - name: Verify one-time feature-boundary bootstrap transition
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 66 && github.event.pull_request.head.ref == 'chore/bootstrap-feature-boundary-policy-20260925'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show "$BASE_SHA:.github/mad4b-repository-governance-policy.json" > /tmp/mad4b-bootstrap-base-policy.json
+          python3 tools/verify_feature_boundary_bootstrap_transition.py \
+            --base-policy /tmp/mad4b-bootstrap-base-policy.json \
+            --target-policy .github/mad4b-repository-governance-policy.json \
+            --target-template .github/mad4b-master-ruleset-template.json \
+            --head-branch "$HEAD_BRANCH" \
+            --pr-number "$PR_NUMBER" \
+            --output /tmp/mad4b-feature-boundary-bootstrap-transition.json
+
       - name: Verify active master repository governance
         id: governance
         shell: bash
@@ -71,16 +88,57 @@ jobs:
           status=/tmp/mad4b-repository-governance-status.json
           rm -f "$stdout" "$stderr" "$status"
 
+          policy_path=.github/mad4b-repository-governance-policy.json
+          bootstrap_transition=false
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ] \
+            && [ "$PR_NUMBER" = "66" ] \
+            && [ "$HEAD_BRANCH" = "chore/bootstrap-feature-boundary-policy-20260925" ]; then
+            test -s /tmp/mad4b-bootstrap-base-policy.json
+            test -s /tmp/mad4b-feature-boundary-bootstrap-transition.json
+            policy_path=/tmp/mad4b-bootstrap-base-policy.json
+            bootstrap_transition=true
+          fi
+
           set +e
           python3 tools/verify_repository_governance.py \
             --repository "$GITHUB_REPOSITORY" \
-            --policy .github/mad4b-repository-governance-policy.json \
+            --policy "$policy_path" \
             --output "$status" >"$stdout" 2>"$stderr"
           rc=$?
           set -e
 
           cat "$stdout" || true
           cat "$stderr" >&2 || true
+
+          if [ "$rc" -eq 0 ] && [ "$bootstrap_transition" = "true" ]; then
+            python3 - "$status" /tmp/mad4b-feature-boundary-bootstrap-transition.json <<'PY'
+          import json, sys
+          from pathlib import Path
+
+          status_path = Path(sys.argv[1])
+          transition_path = Path(sys.argv[2])
+          status = json.loads(status_path.read_text(encoding='utf-8'))
+          transition = json.loads(transition_path.read_text(encoding='utf-8'))
+          if transition.get('ready') is not True:
+              raise SystemExit('feature-boundary bootstrap transition is not ready')
+          status.update({
+              'state': 'feature_boundary_bootstrap_transition_ready',
+              'bootstrap_exception': True,
+              'bootstrap_branch': transition.get('bootstrap_branch'),
+              'bootstrap_pr_number': transition.get('bootstrap_pr_number'),
+              'live_policy_source': 'pull_request_base',
+              'target_policy_source': 'pull_request_head',
+              'target_policy_ready': True,
+              'target_required_status_checks': transition.get('target_required_status_checks', []),
+              'added_required_status_checks': transition.get('added_required_status_checks', []),
+              'post_merge_ruleset_apply_required': True,
+              'target_policy_sha256': transition.get('target_policy_sha256', ''),
+              'target_template_sha256': transition.get('target_template_sha256', ''),
+          })
+          status_path.write_text(json.dumps(status, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(status, indent=2, sort_keys=True))
+          PY
+          fi
 
           if [ ! -s "$status" ]; then
             GOVERNANCE_RC="$rc" python3 - "$status" "$stderr" <<'PY'
@@ -103,6 +161,15 @@ jobs:
 
           echo "verification_exit_code=$rc" >> "$GITHUB_OUTPUT"
           exit "$rc"
+
+      - name: Upload feature-boundary bootstrap transition
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.number == 66 && github.event.pull_request.head.ref == 'chore/bootstrap-feature-boundary-policy-20260925'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-feature-boundary-bootstrap-transition-${{ env.SOURCE_SHA }}
+          path: /tmp/mad4b-feature-boundary-bootstrap-transition.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload governance status
         if: always()
