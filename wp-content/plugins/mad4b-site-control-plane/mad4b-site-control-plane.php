@@ -23,6 +23,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-durable-execution.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-jobs.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-artifacts.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-pack.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-bootstrap.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-doctor.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cli.php';
