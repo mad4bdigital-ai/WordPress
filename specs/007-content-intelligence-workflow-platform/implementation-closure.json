@@ -484,20 +484,70 @@
     {
       "id": "blueprint_draft_qa",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "blueprint_draft_qa_ready"
+      "status": "PARTIAL",
+      "gate": "blueprint_draft_qa_ready",
+      "evidence": {
+        "contract": "mad4b.content-intelligence-pipeline.v1",
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php",
+        "artifact_registry_contract": "mad4b.artifact-registry.v1",
+        "can_plan_requires_active_context_and_research": true,
+        "can_write_requires_blueprint_qa_pass": true,
+        "hard_blockers_not_averaged": true,
+        "final_qa_can_publish_false": true,
+        "publication_authorized_false": true,
+        "repository_only": true
+      },
+      "remainder": [
+        "obtain exact-head Critical Kernel PASS for the Blueprint/Draft/QA contract",
+        "prove the same artifact lineage and stale-evidence gates against the exact deployed ETG candidate",
+        "bind real WriterProfile version evidence and model/provider outputs through governed Skills/providers"
+      ]
     },
     {
       "id": "governed_wp_draft",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "governed_wp_draft_ready"
+      "status": "PARTIAL",
+      "gate": "governed_wp_draft_ready",
+      "evidence": {
+        "contract": "mad4b.governed-draft.v1",
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-draft.php",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php",
+        "exact_artifact_binding": true,
+        "final_qa_pass_required": true,
+        "target_stale_denial": true,
+        "create_or_update_draft_only": true,
+        "origin_readback_fingerprint": true,
+        "public_edge_verdict": "NOT_CHECKED",
+        "can_publish": false,
+        "production_authorized": false,
+        "repository_only": true
+      },
+      "remainder": [
+        "obtain exact-head Critical Kernel PASS for governed draft orchestration",
+        "exercise create/update draft on exact ETG Staging candidate through normal authorization/approval path",
+        "record resulting draft mutation/audit evidence without public publication"
+      ]
     },
     {
       "id": "semantic_publication_verification",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "semantic_publication_verification_ready"
+      "status": "PARTIAL",
+      "gate": "semantic_publication_verification_ready",
+      "evidence": {
+        "draft_origin_verification_contract": "mad4b.draft-verification.v1",
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-draft.php",
+        "origin_fingerprint_comparison": true,
+        "public_edge_verdict": "NOT_CHECKED",
+        "third_party_indexing_verdict": "NOT_INFERRED",
+        "public_publication_verification_proven": false,
+        "repository_only": true
+      },
+      "remainder": [
+        "implement public/edge verification contract for an authorized published candidate",
+        "prove canonical/robots/schema/language/media/link/sitemap dimensions on exact ETG Staging",
+        "prove bounded PENDING_PROPAGATION and timeout semantics before marking publication verification ready"
+      ]
     },
     {
       "id": "authoritative_consistency_fencing",
