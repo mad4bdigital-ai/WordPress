@@ -60,12 +60,18 @@ required = [
     '"tools/build_repository_ruleset_attestation.py"',
     '$RulesetAttestationPath = Join-Path $env:TEMP "mad4b-ruleset-attestation.json"',
     '--readback $ReadbackPath --policy $PolicyPath --template $TemplatePath --repository $Repository --output $RulesetAttestationPath',
+    '$attestationScope -ne "environment"',
+    '$environmentName -ne "repository-governance"',
     '$variableName -ne "MAD4B_RULESET_ATTESTATION"',
-    '"repos/$Repository/actions/variables/$variableName"',
+    '"repos/$Repository/environments/$environmentName"',
+    'governance environment create/update failed',
+    'governance_environment_readback=verified',
+    '"repos/$Repository/environments/$environmentName/variables/$variableName"',
     '"--method","PATCH"',
     '"--method","POST"',
-    'repository ruleset attestation variable upsert failed',
-    'repository ruleset attestation variable readback mismatch',
+    '"repos/$Repository/environments/$environmentName/variables"',
+    'environment-scoped ruleset attestation variable upsert failed',
+    'environment-scoped ruleset attestation variable readback mismatch',
     'ruleset_attestation_readback=verified',
     '[Environment]::SetEnvironmentVariable($variableName, $attestationValue, "Process")',
     '$status.ruleset_attestation_verified -ne $true',
@@ -358,6 +364,8 @@ with tempfile.TemporaryDirectory() as td:
 
 print("ruleset_attestation_builder=executable")
 print("ruleset_attestation_nonzero_bypass_rejection=pass")
+print("ruleset_attestation_scope=environment")
+print("ruleset_attestation_environment=repository-governance")
 print("ruleset_attestation_variable=upsert_and_readback")
 
 
