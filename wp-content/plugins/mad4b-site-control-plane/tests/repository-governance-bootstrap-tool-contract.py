@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
 
 script = Path("tools/Apply-Mad4bMasterRuleset.ps1").read_text(encoding="utf-8")
 
@@ -34,6 +35,9 @@ required = [
     'ruleset_rollback=restored_previous',
     'ruleset_rollback=deleted_new_ruleset',
     'GOVERNANCE_APPLY_RECOVERY_REQUIRED',
+    '$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)',
+    '[System.IO.File]::WriteAllText($RollbackPayloadPath, $rollbackPayloadJson, $Utf8NoBom)',
+    '[System.IO.File]::WriteAllText($ReadbackPath, [string]$detailRaw, $Utf8NoBom)',
 ]
 
 missing = [needle for needle in required if needle not in script]
@@ -77,3 +81,25 @@ for needle in [
 print("template_policy_preflight=exact")
 print("post_mutation_readback=canonical")
 print("readback_mismatch_rollback=bounded")
+
+
+canonical_template_proc = subprocess.run(
+    [
+        "python3",
+        "tools/verify_repository_ruleset_template.py",
+        "--template",
+        ".github/mad4b-master-ruleset-template.json",
+        "--policy",
+        ".github/mad4b-repository-governance-policy.json",
+    ],
+    text=True,
+    capture_output=True,
+)
+if canonical_template_proc.returncode != 0:
+    raise SystemExit(
+        "canonical ruleset template executable preflight failed: "
+        + (canonical_template_proc.stderr or canonical_template_proc.stdout)
+    )
+
+print("canonical_template_executable_preflight=pass")
+print("windows_json_encoding=utf8_no_bom")
