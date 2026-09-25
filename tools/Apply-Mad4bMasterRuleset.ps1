@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository"
+$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository:$($ExpectedHead.ToLowerInvariant())"
 if ($Confirmation -ne $ExpectedConfirmation) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: confirmation mismatch. Expected '$ExpectedConfirmation'."
 }
@@ -26,6 +26,10 @@ if ($LASTEXITCODE -ne 0 -or $currentHead -ne $ExpectedHead.ToLowerInvariant()) {
 $dirty = @(& git status --porcelain)
 if ($LASTEXITCODE -ne 0 -or $dirty.Count -ne 0) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: working tree must be clean before governance apply."
+}
+$currentBranch = (& git branch --show-current).Trim()
+if ($LASTEXITCODE -ne 0 -or $currentBranch -ne "master") {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: ruleset activation is post-merge only and must run from the local master branch."
 }
 
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
@@ -64,6 +68,12 @@ Write-Host "=== AUTHORITY PREFLIGHT ==="
 if ($LASTEXITCODE -ne 0) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: gh authentication is not ready."
 }
+$remoteMaster = (& gh api -H "Accept: application/vnd.github+json" "repos/$Repository/commits/master" --jq ".sha").Trim().ToLowerInvariant()
+if ($LASTEXITCODE -ne 0 -or $remoteMaster -ne $currentHead) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: local master is not the exact current repository master. local=$currentHead remote=$remoteMaster"
+}
+Write-Host "remote_master=$remoteMaster"
+Write-Host "post_merge_master_verified=true"
 
 Write-Host "=== CURRENT RULESETS ==="
 $currentArgs = @(
