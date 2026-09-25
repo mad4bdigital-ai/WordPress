@@ -147,6 +147,7 @@ jobs:
               "specs/007-content-intelligence-workflow-platform/",
               "tools/mad4b_recovery_plane.py",
               "tools/mad4b_host_runner.py",
+              "tools/mad4b_host_runner_bootstrap.py",
               "tools/verify_release_root_trust.py",
               "tools/verify_repository_owner_attestation.py",
               "wp-content/plugins/mad4b-site-control-plane/",
