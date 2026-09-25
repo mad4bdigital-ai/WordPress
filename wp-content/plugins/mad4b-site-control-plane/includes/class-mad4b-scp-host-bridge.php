@@ -172,7 +172,7 @@ final class MAD4B_SCP_Host_Bridge {
 			),
 			'submission_location' => 'wordpress_request',
 			'execution_location' => 'host_runner',
-			'created_at' => gmdate( 'c' ),
+			'created_at' => isset( $plan['created_at'] ) ? (string) $plan['created_at'] : '',
 			'production_authorized' => false,
 		);
 		$submission['submission_sha256'] = self::digest( $submission );
