@@ -2,11 +2,11 @@
 
 Status: Normative schema contract aligned with current implementation
 Storage scope: site-local WordPress database tables
-Schema version: `10`
+Schema version: `11`
 Encoding: UTF-8 / JSON text only where structured extension fields are required
 Secret policy: no plaintext bearer/OAuth credential persistence
 
-Schema v10 contains seventeen normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically. It preserves the v6 exact Site Profile/candidate approval binding and all v9 durable execution semantics, while adding immutable Feature 007 Artifact Registry and lineage tables. Clone, origin/environment, profile-policy or deployed-build drift cannot inherit existing governed-write authority. Durable recovery remains fail-closed: expired pending work is not silently reused without explicit reconciliation evidence.
+Schema v11 contains eighteen normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically. It preserves the v6 exact Site Profile/candidate approval binding and all v9 durable execution semantics, while retaining immutable Feature 007 Artifact Registry/lineage tables and adding the site-level versioned Intent Authority relation registry. Clone, origin/environment, profile-policy or deployed-build drift cannot inherit existing governed-write authority. Durable recovery remains fail-closed: expired pending work is not silently reused without explicit reconciliation evidence.
 
 ## Table 1 — `{prefix}mad4b_scp_agents`
 
@@ -299,7 +299,30 @@ Invariants:
 - cross-job or invalid relation semantics fail closed;
 - lineage does not rewrite artifact payload identity.
 
-## Table 14 — `{prefix}mad4b_work_leases`
+## Table 14 — `{prefix}mad4b_intent_relations`
+
+Purpose: site-level, versioned many-to-many intent ownership authority.
+
+Key columns:
+- `relation_id` logical relation identity;
+- `site_uuid`, `locale`, `market`, `intent_id`, `content_id`;
+- `role`, `confidence`, `source`;
+- bounded `evidence_json` and `analysis_signals_json`;
+- monotonic `revision`;
+- `valid_from`, `valid_to`;
+- `current_relation_key` for one active version of the same intent↔content relation;
+- `owner_scope_key` as a non-unique lookup key only;
+- `relation_sha256` and `created_at`.
+
+Invariants:
+- intent ownership remains many-to-many;
+- `current_relation_key` prevents two active revisions of the same logical intent↔content relation;
+- `owner_scope_key` MUST NOT impose one-owner exclusivity;
+- changing a relation closes the prior revision and appends a new revision;
+- cannibalization is derived from explicit evidence/signals and is never inferred from overlap alone;
+- stale expected-scope fingerprints fail before mutation.
+
+## Table 15 — `{prefix}mad4b_work_leases`
 
 Purpose: fenced ownership of long-running work.
 
@@ -319,7 +342,7 @@ Invariants:
 - terminal leases are never resurrected;
 - stale worker/epoch/revision tokens fail closed.
 
-## Table 15 — `{prefix}mad4b_idempotency`
+## Table 16 — `{prefix}mad4b_idempotency`
 
 Purpose: effect-once protection for externally retryable writes.
 
@@ -342,7 +365,7 @@ Invariants:
 - every reclaim increments `claim_epoch`, and stale claim epochs cannot complete or reuse the record;
 - retention exceeds the supported retry/replay horizon.
 
-## Table 16 — `{prefix}mad4b_execution_outbox`
+## Table 17 — `{prefix}mad4b_execution_outbox`
 
 Purpose: durable provider execution intent before asynchronous delivery.
 
@@ -362,7 +385,7 @@ Invariants:
 - duplicate provider/idempotency identity with a different request hash is denied;
 - no claim of exactly-once network delivery is made.
 
-## Table 17 — `{prefix}mad4b_execution_inbox`
+## Table 18 — `{prefix}mad4b_execution_inbox`
 
 Purpose: deduplicate provider callbacks/events.
 
@@ -447,28 +470,28 @@ Joined audit sink dispatch occurs only after explicit transaction commit. Explic
 
 ## Migration strategy
 
-Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `10`. Schema v10 is governed by migration contract `mad4b.schema-migration.v1` with migration ID `20260925-feature007-artifact-lineage-v10`.
+Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `11`. Schema v11 is governed by migration contract `mad4b.schema-migration.v1` with migration ID `20260925-feature007-intent-authority-v11`.
 
 Migration declaration:
-- prerequisite schema identities: fresh install `0`, and supported prior/current versions `6|7|8|9|10`; a future or otherwise unsupported version fails closed instead of being downgraded;
+- prerequisite schema identities: fresh install `0`, and supported prior/current versions `6|7|8|9|10|11`; a future or otherwise unsupported version fails closed instead of being downgraded;
 - forward operation: additive `dbDelta()` creation/update of MAD4B-prefixed tables, columns and indexes only;
-- rollback/forward-fix strategy: forward-fix only; additive v10 objects are preserved so older code can ignore the new surfaces rather than requiring destructive rollback;
+- rollback/forward-fix strategy: forward-fix only; additive v11 objects are preserved so older code can ignore the new surfaces rather than requiring destructive rollback;
 - expected locks/downtime: bounded metadata DDL; no maintenance mode is assumed;
-- data-volume assumption: the eight Feature 007 durable/artifact tables are new or sparse while existing governance rows are preserved;
+- data-volume assumption: the nine Feature 007 durable/artifact/intent tables are new or sparse while existing governance rows are preserved;
 - preflight: supported prerequisite version, usable WordPress DB handle, non-empty site prefix and no future-schema downgrade;
 - post-verification: deep physical integrity, approval-binding columns, durable columns and required unique indexes;
 - evidence: deterministic migration-contract SHA-256, target integrity token, physical-integrity SHA-256 and durable `mad4b.schema-migration-receipt.v1`;
 - partial failure: target version/readiness is not accepted until deep verification, exact option readback and a finalized receipt succeed; retry remains idempotent;
 - retry provenance: if an earlier attempt reached a contract-valid physical-verification receipt before readiness finalization, later idempotent retries preserve that receipt's original `from_version`/run type instead of rewriting an upgrade as a repair;
-- mixed-version window: v10 is additive; prior v9/v6 code does not consume the new artifact surfaces;
+- mixed-version window: v11 is additive; v10 code ignores the new Intent Authority surface;
 - authority widening: forbidden; migration does not create/enable NHI subjects, grants, approvals, provider promotion or Production authority.
 
 Activation/boot rules:
-1. A healthy already-finalized v10 schema short-circuits without repeated DDL.
+1. A healthy already-finalized v11 schema short-circuits without repeated DDL.
 2. Otherwise migration preflight runs before `dbDelta()`; unsupported/future schema identity fails closed.
 3. `dbDelta()` creates/updates only MAD4B-prefixed tables and the operation is idempotent.
 4. Migration never auto-creates enabled NHI authority, and existing global mutation enablement never implies NHI authority.
-5. Schema v10 preserves the v6 Site Profile approval bindings and v9 durable execution tables, and adds two immutable Artifact Registry tables: Artifacts and Artifact Edges.
+5. Schema v11 preserves v10 Artifact Registry and all earlier governance/durable execution tables, and adds the versioned Intent Relations authority table without widening runtime authority.
 6. The idempotency table includes `claim_epoch` and `reconciliation_ref`; reclaim increments the epoch after verified reconciliation, stale claims are fenced, expired active leases require reconciliation, and terminal leases cannot be resurrected.
 7. Legacy option-based or v1 candidate bindings may be migrated only as compatibility evidence; incomplete tenant/profile/build binding remains stale and requires a new v2 exact plan.
 8. New governed remote approval bindings are persisted on the approval row using `mad4b.approval-candidate-binding.v2`.
