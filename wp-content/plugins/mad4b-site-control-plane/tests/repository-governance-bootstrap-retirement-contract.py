@@ -76,38 +76,7 @@ for needle in rerun_required:
         raise SystemExit(f"owner-attestation rerun lifecycle missing: {needle}")
 
 actions_expression_safety_required = [
-    "expression_open = '$' + chr(123) + chr(123)",
-    "expression_close = chr(125) + chr(125)",
-    "base_ref_expression = (",
-    "head_ref_expression = (",
-    "if base_ref_expression not in boundary_workflow:",
-    "if head_ref_expression in boundary_workflow:",
-]
-for needle in actions_expression_safety_required:
-    if needle not in verdict:
-        raise SystemExit(f"Release Verdict root-trust expression safety missing: {needle}")
-
-direct_base_ref = (
-    "ref: $" + chr(123) + chr(123)
-    + " github.event.pull_request.base.sha "
-    + chr(125) + chr(125)
-)
-direct_head_ref = (
-    "ref: $" + chr(123) + chr(123)
-    + " github.event.pull_request.head.sha "
-    + chr(125) + chr(125)
-)
-for forbidden in [
-    "if '" + direct_base_ref + "' not in boundary_workflow:",
-    "if '" + direct_head_ref + "' in boundary_workflow:",
-]:
-    if forbidden in verdict:
-        raise SystemExit(
-            "Release Verdict contains an Actions-interpolated root-trust literal: "
-            + forbidden
-        )
-
-actions_job_evidence_required = [
+    "expression_open = '
     "tools/capture_exact_head_action_jobs.py",
     "github_actions_runs_jobs_api",
     "elif os.environ.get('GITHUB_EVENT_NAME') == 'push':",
@@ -148,64 +117,33 @@ print("post_merge_ruleset_apply_required=true")
 print("ruleset_attestation_storage=owner_issue_comment")
 print("owner_attestation_reruns=release_verdict+failed_feature_boundary")
 print("schema_check_binding=derived_from_critical_kernel")
-print("critical_job_evidence=github_actions_runs_jobs_api")
-print("root_trust_expression_check=interpolation_safe")
+print("critical_job_evidence=github_actions_runs_jobs_api")\nprint("root_trust_expression_check=interpolation_safe")
 print("push_boundary_wait=disabled_pr_only_check")
 print("merge_gate_requires=governance_ready")
- + '{{ github.event.pull_request.base.sha }}'",
-    "head_ref_expression = 'ref:     "tools/capture_exact_head_action_jobs.py",
-    "github_actions_runs_jobs_api",
-    "elif os.environ.get('GITHUB_EVENT_NAME') == 'push':",
-    "required = [name for name in required if name != 'Repository feature boundary']",
-]
-for needle in actions_job_evidence_required:
-    if needle not in verdict:
-        raise SystemExit(f"Release Verdict Actions-job evidence binding missing: {needle}")
-if "/check-runs?per_page=" in verdict:
-    raise SystemExit("Release Verdict returned to the GITHUB_TOKEN-incompatible check-runs API")
-
-schema_binding_required = [
-    "critical_kernel_text.splitlines()",
-    "stripped.startswith('name: Schema ')",
-    "stripped.endswith(' real MariaDB upgrade')",
-    "critical kernel must expose exactly one real MariaDB schema check",
-    "schema_check = schema_checks[0]",
-    "schema_check,",
-]
-for needle in schema_binding_required:
-    if needle not in verdict:
-        raise SystemExit(f"Release Verdict dynamic schema-check binding missing: {needle}")
-if "Schema v6 v7 v8 v9 to v11 real MariaDB upgrade" in verdict:
-    raise SystemExit("Release Verdict returned to a stale hard-coded schema check name")
-
-required = [
-    "repository governance must verify ready for every merge-gate PASS",
-    "and governance_ready",
-]
-for needle in required:
-    if needle not in verdict:
-        raise SystemExit(f"retired governance enforcement contract missing: {needle}")
-
-print("REPOSITORY_GOVERNANCE_BOOTSTRAP_RETIREMENT_CONTRACT: PASS")
-print("legacy_bootstrap_exception=retired")
-print("feature_boundary_bootstrap=pr66_exact_branch_base_policy_only")
-print("post_merge_ruleset_apply_required=true")
-print("ruleset_attestation_storage=owner_issue_comment")
-print("owner_attestation_reruns=release_verdict+failed_feature_boundary")
-print("schema_check_binding=derived_from_critical_kernel")
-print("critical_job_evidence=github_actions_runs_jobs_api")
-print("push_boundary_wait=disabled_pr_only_check")
-print("merge_gate_requires=governance_ready")
- + '{{ github.event.pull_request.head.sha }}'",
+ + chr(123) + chr(123)",
+    "expression_close = chr(125) + chr(125)",
+    "base_ref_expression = (",
+    "head_ref_expression = (",
     "if base_ref_expression not in boundary_workflow:",
     "if head_ref_expression in boundary_workflow:",
 ]
 for needle in actions_expression_safety_required:
     if needle not in verdict:
         raise SystemExit(f"Release Verdict root-trust expression safety missing: {needle}")
+
+direct_base_ref = (
+    "ref: $" + chr(123) + chr(123)
+    + " github.event.pull_request.base.sha "
+    + chr(125) + chr(125)
+)
+direct_head_ref = (
+    "ref: $" + chr(123) + chr(123)
+    + " github.event.pull_request.head.sha "
+    + chr(125) + chr(125)
+)
 for forbidden in [
-    "if 'ref: ${{ github.event.pull_request.base.sha }}' not in boundary_workflow:",
-    "if 'ref: ${{ github.event.pull_request.head.sha }}' in boundary_workflow:",
+    "if '" + direct_base_ref + "' not in boundary_workflow:",
+    "if '" + direct_head_ref + "' in boundary_workflow:",
 ]:
     if forbidden in verdict:
         raise SystemExit(
