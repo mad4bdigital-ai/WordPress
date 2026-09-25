@@ -56,6 +56,9 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 	public static function register_operation_catalog_entry( $rows ) {
 		$rows = is_array( $rows ) ? $rows : array();
 		$rows['provider_closure_matrix'] = array(
+			'registrar_id' => 'mad4b-core-provider-certification',
+			'source_plugin' => 'mad4b-site-control-plane',
+			'trust_class' => 'core',
 			'feature_id' => 'provider-certification',
 			'capability_tags' => array( 'provider', 'certification', 'write-eligibility', 'closure', 'diagnostics' ),
 			'provider' => 'core',
@@ -69,6 +72,9 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'human_decision_required' => false,
 		);
 		$rows['provider_behavioral_recertification'] = array(
+			'registrar_id' => 'mad4b-core-provider-certification',
+			'source_plugin' => 'mad4b-site-control-plane',
+			'trust_class' => 'core',
 			'feature_id' => 'provider-certification',
 			'capability_tags' => array( 'provider', 'behavioral', 'recertification', 'rollback', 'write-eligibility' ),
 			'provider' => 'core',
@@ -82,6 +88,9 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'human_decision_required' => true,
 		);
 		$rows['provider_canary_execution'] = array(
+			'registrar_id' => 'mad4b-core-provider-certification',
+			'source_plugin' => 'mad4b-site-control-plane',
+			'trust_class' => 'core',
 			'feature_id' => 'provider-certification',
 			'capability_tags' => array( 'provider', 'canary', 'activation', 'high-risk-write', 'rollback' ),
 			'provider' => 'core',
