@@ -17,6 +17,8 @@ final class MAD4B_SCP_Skill_Seeder {
 	const INSPECTION_CONTRACT = 'mad4b.skill-seed-inspection.v1';
 	const SEED_VERSION = 7;
 	const SEED_DIR = 'skill-seeds';
+	const SEED_MANIFEST_CONTRACT = 'mad4b.skill-seed-manifest.v1';
+	const SEED_MANIFEST_FILE = 'config/skill-seed-manifest.json';
 
 	private static $ran = false;
 	private static $runtime_status = null;
@@ -37,7 +39,9 @@ final class MAD4B_SCP_Skill_Seeder {
 		$created = array();
 		$refreshed = array();
 		$skipped = array();
-		foreach ( self::seeds() as $seed ) {
+		$seeds = self::seeds();
+		if ( is_wp_error( $seeds ) ) return self::set_status( $seeds->get_error_code(), $created, $refreshed, $skipped );
+		foreach ( $seeds as $seed ) {
 			$result = self::seed_one( $root, $seed );
 			if ( is_wp_error( $result ) ) return self::set_status( $result->get_error_code(), $created, $refreshed, $skipped );
 			if ( ! empty( $result['created'] ) ) $created[] = $seed['name'];
@@ -89,7 +93,21 @@ final class MAD4B_SCP_Skill_Seeder {
 		$would_create = array();
 		$would_refresh = array();
 		$conflicts = array();
-		foreach ( self::seeds() as $seed ) {
+		$seeds = self::seeds();
+		if ( is_wp_error( $seeds ) ) {
+			return array(
+				'contract' => self::INSPECTION_CONTRACT,
+				'ready' => false,
+				'state' => 'seed_manifest_invalid',
+				'error_code' => $seeds->get_error_code(),
+				'read_only' => true,
+				'mutation_performed' => false,
+				'filesystem_write_performed' => false,
+				'option_write_performed' => false,
+				'audit_write_performed' => false,
+			);
+		}
+		foreach ( $seeds as $seed ) {
 			$level = isset( $seed['level'] ) ? sanitize_key( (string) $seed['level'] ) : '';
 			$target = isset( $seed['target'] ) ? sanitize_key( (string) $seed['target'] ) : '';
 			$name = isset( $seed['name'] ) ? sanitize_key( (string) $seed['name'] ) : '';
@@ -351,28 +369,37 @@ final class MAD4B_SCP_Skill_Seeder {
 	}
 
 	private static function seeds() {
-		return array(
-			array( 'level' => 'site', 'target' => '_site', 'name' => 'wordpress-site-diagnostics' ),
-			array( 'level' => 'connection', 'target' => 'mad4b-chatgpt', 'name' => 'wordpress-connection-diagnostics' ),
-			array( 'level' => 'provider', 'target' => 'elementor', 'name' => 'elementor-dynamic-content', 'enabled' => false ),
-			array( 'level' => 'provider', 'target' => 'jet-engine', 'name' => 'jetengine-content-modeling', 'enabled' => false ),
-			array( 'level' => 'workflow', 'target' => 'archive-audit', 'name' => 'wordpress-archive-audit' ),
-			array( 'level' => 'workflow', 'target' => 'change-safety', 'name' => 'wordpress-change-safety' ),
-			array( 'level' => 'workflow', 'target' => 'extension-strategy', 'name' => 'wordpress-extension-strategy' ),
-			array( 'level' => 'workflow', 'target' => 'release-orchestration', 'name' => 'wordpress-release-orchestration' ),
-			array( 'level' => 'workflow', 'target' => 'browser-acceptance', 'name' => 'wordpress-browser-acceptance' ),
-			array(
-				'level' => 'workflow',
-				'target' => 'content-authoring',
-				'name' => 'wordpress-content-authoring',
-				'context_policy' => array(
-					'preset' => 'brand_core',
-					'brand_context_required' => true,
-					'allow_task_context' => true,
-					'allowed_mutation_abilities' => MAD4B_SCP_Context_Preflight::brand_bearing_mutation_abilities(),
-				),
-			),
-		);
+		$path = wp_normalize_path( MAD4B_SCP_DIR . self::SEED_MANIFEST_FILE );
+		if ( ! is_file( $path ) || is_link( $path ) || ! is_readable( $path ) ) return new WP_Error( 'mad4b_skill_seed_manifest_missing', 'Canonical Skill seed manifest is missing or unreadable.' );
+		$raw = file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$data = is_string( $raw ) ? json_decode( $raw, true ) : null;
+		if ( ! is_array( $data ) || self::SEED_MANIFEST_CONTRACT !== ( isset( $data['contract'] ) ? (string) $data['contract'] : '' ) ) return new WP_Error( 'mad4b_skill_seed_manifest_contract_invalid', 'Canonical Skill seed manifest contract is invalid.' );
+		if ( ! isset( $data['seed_version'] ) || self::SEED_VERSION !== (int) $data['seed_version'] ) return new WP_Error( 'mad4b_skill_seed_manifest_version_mismatch', 'Canonical Skill seed manifest version does not match the runtime seed version.' );
+		if ( empty( $data['skills'] ) || ! is_array( $data['skills'] ) ) return new WP_Error( 'mad4b_skill_seed_manifest_empty', 'Canonical Skill seed manifest has no Skill definitions.' );
+
+		$seeds = array();
+		$seen = array();
+		foreach ( $data['skills'] as $row ) {
+			if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_skill_seed_manifest_row_invalid', 'Canonical Skill seed manifest contains an invalid row.' );
+			$level = isset( $row['level'] ) ? sanitize_key( (string) $row['level'] ) : '';
+			$target = isset( $row['target'] ) ? sanitize_key( (string) $row['target'] ) : '';
+			$name = isset( $row['name'] ) ? sanitize_key( (string) $row['name'] ) : '';
+			if ( ! in_array( $level, MAD4B_SCP_Skill_Registry::levels(), true ) || '' === $target || ! preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name ) ) return new WP_Error( 'mad4b_skill_seed_manifest_identity_invalid', 'Canonical Skill seed manifest contains an invalid Skill identity.' );
+			$logical_id = $level . ':' . $target . ':' . $name;
+			if ( isset( $seen[ $logical_id ] ) ) return new WP_Error( 'mad4b_skill_seed_manifest_duplicate', 'Canonical Skill seed manifest contains a duplicate Skill identity.' );
+			$seen[ $logical_id ] = true;
+			$seed = array( 'level' => $level, 'target' => $target, 'name' => $name, 'enabled' => ! array_key_exists( 'enabled', $row ) || (bool) $row['enabled'] );
+			if ( isset( $row['context_policy'] ) && is_array( $row['context_policy'] ) ) {
+				$policy = $row['context_policy'];
+				$source = isset( $policy['allowed_mutation_abilities_source'] ) ? sanitize_key( (string) $policy['allowed_mutation_abilities_source'] ) : '';
+				unset( $policy['allowed_mutation_abilities_source'] );
+				if ( 'brand_bearing' === $source ) $policy['allowed_mutation_abilities'] = MAD4B_SCP_Context_Preflight::brand_bearing_mutation_abilities();
+				elseif ( '' !== $source ) return new WP_Error( 'mad4b_skill_seed_manifest_policy_source_invalid', 'Canonical Skill seed manifest references an unsupported mutation-ability policy source.' );
+				$seed['context_policy'] = $policy;
+			}
+			$seeds[] = $seed;
+		}
+		return $seeds;
 	}
 }
 
