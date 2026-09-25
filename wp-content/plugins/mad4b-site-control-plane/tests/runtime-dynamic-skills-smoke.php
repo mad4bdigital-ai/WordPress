@@ -330,4 +330,4 @@ $plugin = json_decode( (string) $plugin_json, true );
 $capabilities = is_array( $plugin ) && isset( $plugin['extensions']['com.openai']['interface']['capabilities'] ) && is_array( $plugin['extensions']['com.openai']['interface']['capabilities'] ) ? $plugin['extensions']['com.openai']['interface']['capabilities'] : array();
 if ( ! in_array( 'Read', $capabilities, true ) || ! in_array( 'Write', $capabilities, true ) ) $fail( 'Runtime portable plugin.json does not declare Read + Write on certified governed Staging.' );
 
-echo 'mad4b.runtime-dynamic-skills.v7: PASS' . PHP_EOL;
+echo 'mad4b.runtime-dynamic-skills.v8: PASS' . PHP_EOL;
