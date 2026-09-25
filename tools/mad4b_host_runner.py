@@ -153,6 +153,9 @@ def load_profile(path: Path) -> dict[str, Any]:
     profile_id = str(profile.get("profile_id") or "")
     if not re.fullmatch(r"[A-Za-z0-9._-]{3,120}", profile_id):
         raise ValueError("Host Runner profile_id is invalid")
+    site_uuid = str(profile.get("site_uuid") or "").lower()
+    if not re.fullmatch(r"[a-f0-9-]{36}", site_uuid):
+        raise ValueError("Host Runner profile site_uuid is invalid")
 
     root_raw = str(profile.get("wordpress_root") or "")
     if not root_raw:
@@ -166,8 +169,11 @@ def load_profile(path: Path) -> dict[str, Any]:
     key_file_raw = str(profile.get("integrity_key_file") or "")
     if not key_file_raw:
         raise ValueError("Host Runner integrity_key_file missing")
-    key_file = Path(key_file_raw).expanduser().resolve()
-    if key_file.is_symlink() or not key_file.is_file():
+    key_file_input = Path(key_file_raw).expanduser()
+    if key_file_input.is_symlink():
+        raise ValueError("Host Runner integrity key symlink is forbidden")
+    key_file = key_file_input.resolve()
+    if not key_file.is_file():
         raise ValueError("Host Runner integrity key file is invalid")
     key = key_file.read_bytes()
     if len(key) < 32 or len(key) > 4096:
@@ -186,6 +192,7 @@ def load_profile(path: Path) -> dict[str, Any]:
     normalized = {
         "contract": PROFILE_CONTRACT,
         "profile_id": profile_id,
+        "site_uuid": site_uuid,
         "environment": environment,
         "wordpress_root": str(root),
         "allowed_operations": sorted(set(allowed)),
@@ -202,6 +209,7 @@ def load_profile(path: Path) -> dict[str, Any]:
         raise ValueError("Host Runner receipt_root escaped dedicated runner workspace")
     normalized["target_fingerprint"] = sha256_bytes(canonical_json({
         "profile_id": profile_id,
+        "site_uuid": site_uuid,
         "environment": environment,
         "wordpress_root": str(root),
     }))
@@ -223,10 +231,22 @@ def verify_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Host Runner job_id is invalid")
     if job.get("profile_id") != profile["profile_id"]:
         raise ValueError("Host Runner job profile mismatch")
+    if job.get("site_uuid") != profile["site_uuid"]:
+        raise ValueError("Host Runner job site_uuid mismatch")
     if job.get("environment") != profile["environment"]:
         raise ValueError("Host Runner job environment mismatch")
     if job.get("target_fingerprint") != profile["target_fingerprint"]:
         raise ValueError("Host Runner job target fingerprint mismatch")
+
+    idempotency_key = str(job.get("idempotency_key") or "")
+    actor_ref = str(job.get("actor_ref") or "")
+    authority_ref = str(job.get("authority_ref") or "")
+    if not idempotency_key or len(idempotency_key) > 191:
+        raise ValueError("Host Runner idempotency_key is invalid")
+    if not actor_ref or len(actor_ref) > 191:
+        raise ValueError("Host Runner actor_ref is invalid")
+    if not authority_ref or len(authority_ref) > 191:
+        raise ValueError("Host Runner authority_ref is invalid")
 
     operation_id = str(job.get("operation_id") or "")
     if operation_id not in profile["allowed_operations"] or operation_id not in OPERATIONS:
@@ -262,6 +282,9 @@ def verify_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
         "job_id": job_id,
         "operation_id": operation_id,
         "operation_fingerprint": expected_fp,
+        "idempotency_key": idempotency_key,
+        "actor_ref": actor_ref,
+        "authority_ref": authority_ref,
         "input": inputs,
         "input_sha256": input_sha,
     }
@@ -386,10 +409,14 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
         "runner_contract": RUNNER_CONTRACT,
         "job_id": verified["job_id"],
         "profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
         "environment": profile["environment"],
         "target_fingerprint": profile["target_fingerprint"],
         "operation_id": verified["operation_id"],
         "operation_fingerprint": verified["operation_fingerprint"],
+        "idempotency_key": verified["idempotency_key"],
+        "actor_ref": verified["actor_ref"],
+        "authority_ref": verified["authority_ref"],
         "input_sha256": verified["input_sha256"],
         "execution_location": "host_runner",
         "submission_location": str(job.get("submission_location") or "external_job_file"),
@@ -414,6 +441,7 @@ def doctor(profile_path: Path) -> dict[str, Any]:
         "contract": "mad4b.host-runner-doctor.v1",
         "runner_contract": RUNNER_CONTRACT,
         "profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
         "environment": profile["environment"],
         "target_fingerprint": profile["target_fingerprint"],
         "wordpress_root_exists": root.is_dir(),
