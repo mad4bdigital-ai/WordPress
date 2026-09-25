@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
   "source_tasks_git_blob_sha": "e990bab0ffcd938396cac29a6823d939eca9aed3",
-  "override_git_blob_sha": "96363bd17313b7bb937d835de5e77062f5684e2b",
+  "override_git_blob_sha": "629bc50c357455f3c7989a2f986adaecb5c5454c",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -11,8 +11,8 @@
   "counts": {
     "DEFERRED": 1,
     "DONE": 13,
-    "OPEN": 610,
-    "PARTIAL": 34
+    "OPEN": 608,
+    "PARTIAL": 36
   },
   "counts_by_priority": {
     "P0": {
@@ -24,8 +24,8 @@
     "P1": {
       "DEFERRED": 0,
       "DONE": 0,
-      "OPEN": 97,
-      "PARTIAL": 14
+      "OPEN": 95,
+      "PARTIAL": 16
     },
     "P2": {
       "DEFERRED": 1,
@@ -5222,10 +5222,13 @@
       "phase": 30,
       "priority": "P1",
       "summary": "Artifact/blob checksum export.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Portable bundle generation now computes deterministic per-section and whole-bundle checksums; live blob export and external storage transfer remain open."
     },
     {
       "task_id": "T3006",
@@ -5275,10 +5278,13 @@
       "phase": 30,
       "priority": "P1",
       "summary": "Import compatibility/remapping/collision validation.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Read-only import validation now verifies bundle/section integrity, site remapping, collisions and missing external refs while forbidding authority material; actual governed import remains open."
     },
     {
       "task_id": "T3011",
