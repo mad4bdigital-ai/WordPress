@@ -113,6 +113,85 @@
         "workflow_run:36075527334"
       ],
       "reason": "Minimal out-of-band Recovery Plane can inspect provenance, exact-plan disable/quarantine and restore known-good bytes without WordPress boot or database dependency."
+    },
+    "T3639": {
+      "status": "DONE",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/bulk-closure-hardening.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py",
+        "workflow_run:36078194548"
+      ],
+      "reason": "Bulk hardening matrix is machine validated in Feature 007 Spec Quality CI; documentation-only evidence cannot self-close live gates."
+    },
+    "T3640": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Recovery Plane and Host Runner persist pre-mutation journals plus atomic durable receipts and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN."
+    },
+    "T3641": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_host_runner.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Recovery Plane proves read-only reconciliation of uncertain mutations and Host Runner disables blind retry in uncertainty journals; Host Runner still needs its own normalized reconciliation/status surface."
+    },
+    "T3644": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Traversal, zip-slip, symlink swap, unknown shell operation and injected command fields are denied. A future admitted fixed-process adapter still requires executable/argv-specific negatives."
+    },
+    "T3647": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Standalone Recovery Plane status/disable/known-good restore contracts execute without WordPress boot or database dependency and remain Staging-only."
+    },
+    "T3648": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Protected backup exact-tree verification, restore, corruption detection and interrupted restore rollback are repository-proven; live ETG protected-root capacity/exact-runtime receipt remains open."
+    },
+    "T3649": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "WP-CLI and Host Runner produce equivalent mad4b.runtime-status-read.v1 results on one target; MCP and reversible-write authority parity remain open."
+    },
+    "T3650": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Host Runner receipts report execution_location=host_runner and executor fingerprint drift invalidates exact jobs; submission/commit-location parity through WordPress Host Bridge remains open."
     }
   }
 }
