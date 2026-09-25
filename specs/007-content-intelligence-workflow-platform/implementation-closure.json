@@ -156,7 +156,9 @@
         "host_bridge_generic_shell": false,
         "host_bridge_raw_sql": false,
         "host_bridge_production_authorized": false,
-        "bridge_to_runner_repository_proven": true
+        "bridge_to_runner_repository_proven": true,
+        "host_bridge_repair_requeue_governed": true,
+        "host_bridge_blind_retry": false
       },
       "remainder": [
         "certify the bounded Host Runner bootstrap/enrollment flow on an actual supported ETG Staging hosting channel",
@@ -389,8 +391,30 @@
     {
       "id": "artifact_registry_store",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "artifact_lineage_ready"
+      "status": "PARTIAL",
+      "gate": "artifact_lineage_ready",
+      "evidence": {
+        "contract": "mad4b.artifact-registry.v1",
+        "schema_version": 10,
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php",
+        "runtime_test": "wp-content/plugins/mad4b-site-control-plane/tests/artifact-registry-runtime.php",
+        "durable_tables": [
+          "artifacts",
+          "artifact_edges"
+        ],
+        "immutable_versioning": true,
+        "canonical_content_sha256": true,
+        "typed_lineage_edges": true,
+        "supersedes_lineage": true,
+        "downstream_invalidation": true,
+        "site_isolation": true,
+        "repository_only": true
+      },
+      "remainder": [
+        "obtain exact-head schema v10 MariaDB PASS including Artifact Registry runtime lineage",
+        "bind artifact lineage evidence to the exact deployed ETG candidate",
+        "integrate Context/Research/Blueprint/Draft/QA producers with immutable Artifact IDs"
+      ]
     },
     {
       "id": "context_writer",
@@ -471,10 +495,15 @@
         "wordpress_host_bridge_doctor": "mad4b/host-doctor",
         "bridge_dead_letter_visibility": true,
         "bridge_recovery_required_visibility": true,
-        "bridge_cancel_cooperative_only": true
+        "bridge_cancel_cooperative_only": true,
+        "repair_plan_ability": "mad4b/host-operation-repair-plan",
+        "governed_requeue_ability": "mad4b/host-operation-requeue",
+        "fresh_job_id_required": true,
+        "fresh_idempotency_required": true,
+        "fresh_authorization_required": true,
+        "recovery_required_requeue_denied": true
       },
       "remainder": [
-        "add governed requeue/repair-plan actions with fresh policy and idempotency checks",
         "prove stuck-lease/orphan-job diagnosis on exact deployed ETG candidate"
       ]
     },
