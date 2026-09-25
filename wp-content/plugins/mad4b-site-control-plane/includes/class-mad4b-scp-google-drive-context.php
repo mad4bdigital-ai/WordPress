@@ -1247,12 +1247,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return $state;
 	}
 
-	public static function rollback_created_brand_asset( array $receipt ) {
-		foreach ( array( 'source_id', 'asset_id', 'file_id', 'target_folder_id', 'after_sha256', 'mime_type' ) as $field ) {
+	public static function rollback_created_brand_asset( array $receipt, $allow_unmarked = false ) {
+		foreach ( array( 'artifact_id', 'source_id', 'asset_id', 'file_id', 'target_folder_id', 'after_sha256', 'mime_type', 'receipt_sha256' ) as $field ) {
 			if ( empty( $receipt[ $field ] ) ) return new WP_Error( 'mad4b_brand_create_rollback_receipt_incomplete', 'Brand Context create rollback receipt is incomplete.', array( 'field' => $field ) );
 		}
 		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( (string) $receipt['asset_id'] ) : array();
 		if ( empty( $asset ) ) return new WP_Error( 'mad4b_brand_create_rollback_asset_missing', 'Generated Brand Context asset is missing.' );
+		if ( ! $allow_unmarked && ( empty( $asset['generated_artifact_id'] ) || ! hash_equals( strtolower( (string) $asset['generated_artifact_id'] ), strtolower( (string) $receipt['artifact_id'] ) ) ) ) return new WP_Error( 'mad4b_brand_create_rollback_artifact_mismatch', 'Only the exact Brand Context Artifact created by this materialization may be rolled back.' );
+		if ( ! $allow_unmarked && ( empty( $asset['materialization_receipt_sha256'] ) || ! hash_equals( strtolower( (string) $asset['materialization_receipt_sha256'] ), strtolower( (string) $receipt['receipt_sha256'] ) ) ) ) return new WP_Error( 'mad4b_brand_create_rollback_receipt_mismatch', 'Brand Context materialization receipt binding changed; rollback denied.' );
 		foreach ( array( 'source_id', 'file_id' ) as $field ) {
 			if ( empty( $asset[ $field ] ) || ! hash_equals( (string) $asset[ $field ], (string) $receipt[ $field ] ) ) return new WP_Error( 'mad4b_brand_create_rollback_binding_drift', 'Generated Brand Context binding changed after creation.', array( 'field' => $field ) );
 		}
