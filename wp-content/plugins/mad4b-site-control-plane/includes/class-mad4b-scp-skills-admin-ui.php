@@ -79,6 +79,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 			$action = sanitize_key( wp_unslash( $_POST['mad4b_skill_action'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			if ( 'save' === $action ) $message = self::handle_save();
 			if ( 'save_resource' === $action ) $message = self::handle_save_resource();
+			if ( 'reconcile_managed' === $action ) $message = self::handle_reconcile_managed();
 		}
 
 		$status = MAD4B_SCP_Skill_Registry::status();
@@ -93,6 +94,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		elseif ( is_string( $message ) && '' !== $message ) echo '<div class="notice notice-success"><p>' . esc_html( $message ) . '</p></div>';
 
 		self::render_status( $status );
+		self::render_reconcile_managed( $status );
 		self::render_snapshot_note();
 		self::render_skill_table( $skills );
 		self::render_editor( $status, $selected );
@@ -254,6 +256,16 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		echo '</form>';
 	}
 
+	private static function render_reconcile_managed( array $status ) {
+		echo '<h2>' . esc_html__( 'Managed Skill reconciliation', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Explicitly reconcile canonical seed Skills first, then MAD4B-managed provider Skills. User-owned or locally modified Skill files are never overwritten.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<form method="post">';
+		wp_nonce_field( 'mad4b_skill_reconcile_managed', 'mad4b_skill_reconcile_nonce' );
+		echo '<input type="hidden" name="mad4b_skill_action" value="reconcile_managed">';
+		submit_button( __( 'Reconcile Managed Skills', 'mad4b-site-control-plane' ), 'secondary', 'submit', false, array( 'disabled' => empty( $status['editor_enabled'] ) ? 'disabled' : null ) );
+		echo '</form>';
+	}
+
 	private static function render_export( array $status ) {
 		echo '<h2>' . esc_html__( 'Portable Plugin snapshot', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Exports enabled runtime skills into a portable Agent Plugins ZIP with root plugin.json, snapshot identity files, and skills/. The exact Site Profile App mapping is included, and exported capabilities reflect current governed certification: Read, or Read + Write when write authority is ready.', 'mad4b-site-control-plane' ) . '</p>';
@@ -262,6 +274,27 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		echo '<input type="hidden" name="mad4b_skill_action" value="export">';
 		submit_button( __( 'Export Portable Plugin ZIP', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
 		echo '</form>';
+	}
+
+	private static function handle_reconcile_managed() {
+		check_admin_referer( 'mad4b_skill_reconcile_managed', 'mad4b_skill_reconcile_nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_skill_reconcile_forbidden', 'Administrator permission is required to reconcile managed Skills.' );
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Seeder' ) || ! class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) ) return new WP_Error( 'mad4b_skill_reconcile_unavailable', 'Managed Skill reconciliation services are unavailable.' );
+
+		$seed = MAD4B_SCP_Skill_Seeder::bootstrap();
+		if ( is_wp_error( $seed ) ) return $seed;
+		if ( ! is_array( $seed ) || 'ready' !== ( isset( $seed['state'] ) ? (string) $seed['state'] : '' ) ) {
+			return new WP_Error( 'mad4b_skill_seed_reconcile_failed', 'Canonical Skill seed reconciliation did not reach ready state.' );
+		}
+
+		$providers = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
+		if ( is_wp_error( $providers ) ) return $providers;
+		if ( ! is_array( $providers ) || 'ready' !== ( isset( $providers['state'] ) ? (string) $providers['state'] : '' ) ) {
+			return new WP_Error( 'mad4b_skill_provider_reconcile_failed', 'Provider Skill reconciliation did not reach ready state.' );
+		}
+
+		if ( class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ) MAD4B_SCP_Skill_Runtime_Certification::observe();
+		return __( 'Managed Skill seed and provider reconciliation completed with audit evidence.', 'mad4b-site-control-plane' );
 	}
 
 	private static function handle_save() {
