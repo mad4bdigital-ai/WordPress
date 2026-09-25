@@ -34,6 +34,10 @@ def fail(message):
 def load_json(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
+def load_json_from_ref(ref, path):
+    raw = subprocess.check_output(["git", "show", f"{ref}:{path}"], text=True)
+    return json.loads(raw)
+
 def changed_paths(base):
     return subprocess.check_output(
         ["git", "diff", "--name-only", f"{base}...HEAD"],
@@ -63,7 +67,7 @@ def main():
     args = ap.parse_args()
 
     feature = load_json(args.feature_json)
-    repository_policy = load_json(args.repository_policy)
+    repository_policy = load_json_from_ref(args.base, args.repository_policy)
     validate_repository_policy(repository_policy)
 
     feature_id = str(feature.get("feature_id") or "").strip()
@@ -197,7 +201,7 @@ def main():
         "MAD4B_FEATURE_BOUNDARY_OK "
         f"feature={feature_id} status={status} mode={mode} changed={len(changed)} "
         f"skills={len(skill_names)} cross_feature_dependencies={len(cross)} "
-        f"repository_governance_source=baseline-owned repository_owned_sidecar_changes={len(repository_owned)}"
+        f"repository_governance_source=exact-pr-base repository_owned_sidecar_changes={len(repository_owned)}"
     )
 
 if __name__ == "__main__":
