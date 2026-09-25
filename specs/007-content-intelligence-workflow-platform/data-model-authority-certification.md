@@ -179,7 +179,7 @@ site UUID, Site Profile revision/digest, environment, authority mapping, target
 fingerprint or exact candidate identity requires a new authorization decision rather
 than silently reusing the old approval.
 
-The current expected version is `10`; approval services fail closed when the required
+The current expected version is `11`; approval services fail closed when the required
 physical schema or the expected binding fields are unavailable. Schema evolution may
 advance this version only with an explicit migration and corresponding approval-model
 contract update.
