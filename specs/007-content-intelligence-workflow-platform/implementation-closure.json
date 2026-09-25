@@ -446,8 +446,40 @@
     {
       "id": "research_competitive",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "research_intelligence_ready"
+      "status": "PARTIAL",
+      "gate": "research_intelligence_ready",
+      "evidence": {
+        "contract": "mad4b.research-intelligence.v1",
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php",
+        "runtime_test": "wp-content/plugins/mad4b-site-control-plane/tests/research-intelligence-runtime.php",
+        "normalized_artifacts": [
+          "keyword_research",
+          "serp_research",
+          "competitor_set",
+          "scraped_page",
+          "topic_coverage_matrix",
+          "information_gain"
+        ],
+        "provider_states_explicit": [
+          "succeeded",
+          "timeout",
+          "error",
+          "rate_limited"
+        ],
+        "request_sha_idempotency": true,
+        "conflicting_replay_denied": true,
+        "robots_legal_policy_fail_closed": true,
+        "publishing_authority_created": false,
+        "provider_execution_performed": false,
+        "immutable_lineage": true,
+        "repository_only": true
+      },
+      "remainder": [
+        "obtain exact-head MariaDB PASS for normalized research/competitive artifact flow",
+        "connect certified Keyword/SERP/Search/Scrape providers to the normalized recording contracts",
+        "prove live provider timeout/rate-limit/budget/retry behavior on ETG Staging",
+        "bind live research evidence to the exact deployed candidate before research_intelligence_ready"
+      ]
     },
     {
       "id": "blueprint_draft_qa",
