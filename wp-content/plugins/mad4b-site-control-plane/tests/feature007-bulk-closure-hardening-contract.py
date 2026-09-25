@@ -18,6 +18,19 @@ assert matrix["terminal_gate"] == "critical_kernel_vertical_slice_verified"
 assert len(matrix["required_domains"]) == len(set(matrix["required_domains"])) >= 13
 assert len(matrix["required_fault_fixtures"]) == len(set(matrix["required_fault_fixtures"])) >= 16
 assert matrix["mutation_uncertainty_state"] == "MUTATED_BUT_EVIDENCE_UNCERTAIN"
+fixture_evidence = matrix["fixture_evidence"]
+assert set(fixture_evidence) == set(matrix["required_fault_fixtures"])
+for fixture, row in fixture_evidence.items():
+    assert row["repository_status"] in {"PROVEN", "PARTIAL", "PENDING"}, fixture
+    assert row["live_status"] in {"NOT_REQUIRED", "PENDING", "PROVEN"}, fixture
+    assert isinstance(row["evidence_refs"], list) and row["evidence_refs"], fixture
+    if row["repository_status"] in {"PARTIAL", "PENDING"}:
+        assert isinstance(row.get("remaining"), list) and row["remaining"], fixture
+    if row["live_status"] == "PROVEN":
+        assert any(
+            not ref.startswith(("specs/", ".github/", "tools/", "wp-content/"))
+            for ref in row["evidence_refs"]
+        ), fixture
 
 for phrase in [
     "MUTATED_BUT_EVIDENCE_UNCERTAIN",
