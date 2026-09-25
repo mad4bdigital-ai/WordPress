@@ -10,7 +10,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 	const PROVIDER_CONTRACT = 'mad4b.google-drive-context-provider.v1';
 	public function id() { return 'context'; }
 	public function label() { return 'Context Authority'; }
-	public function is_available() { return class_exists( 'MAD4B_SCP_Context_Authority' ) && class_exists( 'MAD4B_SCP_Google_Drive_Context' ); }
+	public function is_available() { return class_exists( 'MAD4B_SCP_Context_Authority' ) && class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ); }
 	protected function certified_provider_key() { return 'google_drive_context'; }
 	protected function mutation_requires_certification() { return false; }
 	protected function detect_plugin_version() { return defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : ''; }
@@ -38,6 +38,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/compliance-check',
 				'context/brand-gap-plan',
 				'context/source-scan-plan',
+				'context/provider-capabilities',
 			),
 			'content' => array(),
 			'write' => array(
@@ -174,6 +175,14 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			)
 		);
 
+
+		$this->add_ability(
+			'context/provider-capabilities',
+			'Context Provider Capabilities',
+			'context_provider_capabilities',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array() )
+		);
 
 		$this->add_ability(
 			'context/brand-gap-plan',
@@ -392,6 +401,13 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'restore_recreate_state',
 				'rollback_created_brand_asset',
 			),
+			'MAD4B_SCP_Context_Provider_Gateway' => array(
+				'capabilities',
+				'read_context_asset',
+				'scan_source',
+				'create_asset',
+				'rollback_created_brand_asset',
+			),
 			'MAD4B_SCP_Brand_Context_Builder' => array(
 				'gap_plan',
 				'append_draft',
@@ -413,6 +429,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'cancel_recreated_asset_rollback',
 				'rollback_recreated_asset',
 				'mark_generated_brand_draft',
+				'begin_generated_brand_rollback',
+				'cancel_generated_brand_rollback',
 				'mark_generated_brand_draft_rolled_back',
 			),
 			'MAD4B_SCP_External_Handshake_Evidence' => array(
@@ -437,6 +455,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'includes/class-mad4b-scp-context-authority.php',
 			'includes/class-mad4b-scp-google-drive-context.php',
 			'includes/class-mad4b-scp-context-preflight.php',
+			'includes/class-mad4b-scp-context-provider-gateway.php',
 			'includes/class-mad4b-scp-brand-context-builder.php',
 		);
 		if ( ! defined( 'MAD4B_SCP_DIR' ) ) {
@@ -462,13 +481,17 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			: '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $control_plane_build_fingerprint ) ) $blockers[] = 'control_plane_build_fingerprint_unavailable';
 
+		$brand_materialization_rollback_contract = class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) && defined( 'MAD4B_SCP_Brand_Context_Builder::ROLLBACK_CONTRACT' )
+			? (string) constant( 'MAD4B_SCP_Brand_Context_Builder::ROLLBACK_CONTRACT' )
+			: '';
+		if ( '' === $brand_materialization_rollback_contract ) $blockers[] = 'brand_materialization_rollback_contract_unavailable';
 		$payload = array(
 			'contract' => self::PROVIDER_CONTRACT,
 			'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '',
 			'control_plane_build_fingerprint' => $control_plane_build_fingerprint,
 			'critical_files' => $critical_hashes,
 			'rollback_contracts' => $contracts,
-			'brand_materialization_rollback_contract' => MAD4B_SCP_Brand_Context_Builder::ROLLBACK_CONTRACT,
+			'brand_materialization_rollback_contract' => $brand_materialization_rollback_contract,
 		);
 		$json = function_exists( 'wp_json_encode' )
 			? wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
@@ -714,6 +737,12 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function context_compliance_check( $input ) {
 		return MAD4B_SCP_Context_Intelligence::compliance_check( is_array( $input ) ? $input : array() );
+	}
+
+	public function context_provider_capabilities( $input = array() ) {
+		return class_exists( 'MAD4B_SCP_Context_Provider_Gateway' )
+			? MAD4B_SCP_Context_Provider_Gateway::capabilities()
+			: array( 'contract' => 'mad4b.context-provider-gateway.v1', 'providers' => array(), 'ready' => false );
 	}
 
 	public function brand_gap_plan( $input = array() ) {
