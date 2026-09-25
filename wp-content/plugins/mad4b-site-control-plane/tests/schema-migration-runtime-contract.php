@@ -152,7 +152,7 @@ mad4b_schema_reset_fixture( 6 );
 $before_calls = $GLOBALS['mad4b_schema_dbdelta_calls'];
 $upgrade = MAD4B_SCP_Schema::install_or_upgrade();
 mad4b_schema_assert( true === $upgrade, 'Supported v6 upgrade must succeed.', $upgrade );
-mad4b_schema_assert( MAD4B_SCP_Schema::VERSION === (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ), 'Schema version must finalize to v9.' );
+mad4b_schema_assert( MAD4B_SCP_Schema::VERSION === (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ), 'Schema version must finalize to v10.' );
 mad4b_schema_assert( MAD4B_SCP_Schema::is_ready(), 'Schema must be ready only after exact receipt/token persistence.' );
 mad4b_schema_assert_receipt( 6, 'upgrade' );
 mad4b_schema_assert( $GLOBALS['mad4b_schema_dbdelta_calls'] > $before_calls, 'Initial upgrade must execute dbDelta.' );
