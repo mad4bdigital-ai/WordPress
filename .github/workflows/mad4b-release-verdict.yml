@@ -25,6 +25,7 @@ env:
   BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
   HEAD_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
   PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
+  MAD4B_RULESET_ATTESTATION: ${{ vars.MAD4B_RULESET_ATTESTATION }}
 
 jobs:
   verdict:
@@ -384,12 +385,16 @@ jobs:
                   except Exception as exc:
                       transition_error=str(exc)
 
-          governance_proc=subprocess.run([
+          governance_cmd=[
               'python3','tools/verify_repository_governance.py',
               '--repository',os.environ['GITHUB_REPOSITORY'],
               '--policy',str(governance_policy),
+              '--template','.github/mad4b-master-ruleset-template.json',
               '--output',str(governance_output),
-          ],text=True,capture_output=True)
+          ]
+          if bootstrap_exception:
+              governance_cmd.append('--allow-bootstrap-hidden-bypass-evidence')
+          governance_proc=subprocess.run(governance_cmd,text=True,capture_output=True)
           governance_ready=governance_proc.returncode == 0 and not transition_error
           governance_reason='; '.join(
               part for part in [
