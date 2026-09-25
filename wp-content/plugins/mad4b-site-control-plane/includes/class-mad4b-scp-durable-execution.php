@@ -51,6 +51,29 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
 			return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
 		}
+		if ( 'released_after_verified_no_effect' === (string) $row['status'] ) {
+			$current_epoch = isset( $row['claim_epoch'] ) ? max( 1, (int) $row['claim_epoch'] ) : 1;
+			$next_epoch = $current_epoch + 1;
+			$reclaimed = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$t['idempotency']} SET status='pending',claim_epoch=%d,result_json=NULL,result_sha256='',expires_at=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='released_after_verified_no_effect'",
+				$next_epoch, $expires, $now, (int) $row['id'], $request_sha256, $current_epoch
+			) );
+			if ( 1 === (int) $reclaimed ) {
+				return array(
+					'contract' => self::IDEMPOTENCY_CONTRACT,
+					'claimed' => true,
+					'reclaimed_after_verified_no_effect' => true,
+					'replayed' => false,
+					'scope_key' => $scope_key,
+					'idempotency_key' => $idempotency_key,
+					'request_sha256' => $request_sha256,
+					'claim_epoch' => $next_epoch,
+					'expires_at' => $expires,
+					'previous_reconciliation_ref' => isset( $row['reconciliation_ref'] ) ? (string) $row['reconciliation_ref'] : '',
+				);
+			}
+			return new WP_Error( 'mad4b_idempotency_in_progress', 'The same idempotent operation was reclaimed concurrently after verified no-effect reconciliation.' );
+		}
 		$expired = empty( $row['expires_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) <= time();
 		if ( 'pending' === (string) $row['status'] && $expired ) {
 			return new WP_Error(
@@ -191,6 +214,89 @@ final class MAD4B_SCP_Durable_Execution {
 			return new WP_Error( 'mad4b_idempotency_reconcile_failed', 'Unable to complete idempotency from verified provider readback.', array( 'cause' => $e->getMessage() ) );
 		}
 	}
+
+
+	public static function release_idempotency_after_verified_no_effect( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $proof ) {
+		global $wpdb;
+		$scope_key = strtolower( trim( (string) $scope_key ) );
+		$idempotency_key = trim( (string) $idempotency_key );
+		$request_sha256 = strtolower( trim( (string) $request_sha256 ) );
+		$reconciliation_ref = trim( (string) $reconciliation_ref );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $scope_key ) || ! preg_match( '/^[a-f0-9]{64}$/', $request_sha256 ) ) return new WP_Error( 'mad4b_idempotency_no_effect_identity_invalid', 'No-effect reconciliation identity is invalid.' );
+		if ( '' === $idempotency_key || strlen( $idempotency_key ) > 191 ) return new WP_Error( 'mad4b_idempotency_key_invalid', 'Idempotency key is missing or too long.' );
+		if ( '' === $reconciliation_ref || strlen( $reconciliation_ref ) > 191 ) return new WP_Error( 'mad4b_idempotency_reconciliation_evidence_required', 'No-effect reconciliation requires bounded provider evidence.' );
+		$json = wp_json_encode( $proof, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $json ) ) return new WP_Error( 'mad4b_idempotency_no_effect_proof_invalid', 'No-effect reconciliation proof is not serializable.' );
+		if ( strlen( $json ) > 262144 ) return new WP_Error( 'mad4b_idempotency_result_too_large', 'No-effect reconciliation proof exceeds bounded storage.' );
+		$result_sha256 = hash( 'sha256', $json );
+		$t = MAD4B_SCP_Schema::tables();
+		$now = gmdate( 'Y-m-d H:i:s' );
+		$wpdb->query( 'START TRANSACTION' );
+		try {
+			$row = $wpdb->get_row( $wpdb->prepare(
+				"SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s FOR UPDATE",
+				$scope_key, $idempotency_key
+			), ARRAY_A );
+			if ( ! is_array( $row ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_missing', 'Cannot release an unknown idempotency record.' );
+			}
+			if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
+			}
+			if ( 'released_after_verified_no_effect' === (string) $row['status'] ) {
+				$wpdb->query( 'COMMIT' );
+				return array(
+					'contract' => self::IDEMPOTENCY_CONTRACT,
+					'released' => true,
+					'idempotent' => true,
+					'scope_key' => $scope_key,
+					'idempotency_key' => $idempotency_key,
+					'claim_epoch' => isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0,
+					'reconciliation_ref' => isset( $row['reconciliation_ref'] ) ? (string) $row['reconciliation_ref'] : '',
+				);
+			}
+			if ( 'pending' !== (string) $row['status'] ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_no_effect_state_denied', 'Only a pending idempotency record can be released after verified no-effect reconciliation.' );
+			}
+			$context = array(
+				'scope_key' => $scope_key,
+				'idempotency_key' => $idempotency_key,
+				'request_sha256' => $request_sha256,
+				'claim_epoch' => isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0,
+				'reconciliation_ref' => $reconciliation_ref,
+				'result_sha256' => $result_sha256,
+				'result' => $proof,
+			);
+			$verified = self::reconciliation_verified( 'idempotency_no_effect', $context );
+			if ( is_wp_error( $verified ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return $verified;
+			}
+			$updated = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$t['idempotency']} SET status='released_after_verified_no_effect',result_json=%s,result_sha256=%s,reconciliation_ref=%s,expires_at=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='pending'",
+				$json, $result_sha256, $reconciliation_ref, $now, $now, (int) $row['id'], $request_sha256, isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0
+			) );
+			if ( 1 !== (int) $updated ) throw new RuntimeException( 'idempotency_no_effect_release_cas_failed' );
+			$wpdb->query( 'COMMIT' );
+			return array(
+				'contract' => self::IDEMPOTENCY_CONTRACT,
+				'released' => true,
+				'idempotent' => false,
+				'scope_key' => $scope_key,
+				'idempotency_key' => $idempotency_key,
+				'claim_epoch' => isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0,
+				'reconciliation_ref' => $reconciliation_ref,
+				'result_sha256' => $result_sha256,
+			);
+		} catch ( Throwable $e ) {
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'mad4b_idempotency_no_effect_release_failed', 'Unable to release idempotency after verified provider no-effect reconciliation.', array( 'cause' => $e->getMessage() ) );
+		}
+	}
+
 
 	public static function reclaim_idempotency( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $ttl_seconds = 86400 ) {
 		global $wpdb;
