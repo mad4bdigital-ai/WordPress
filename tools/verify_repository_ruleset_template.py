@@ -32,6 +32,11 @@ def mutable_ruleset(value: dict) -> dict:
         row = json.loads(json.dumps(raw))
         params = row.get("parameters")
         if isinstance(params, dict):
+            if row.get("type") == "pull_request":
+                params["required_reviewers"] = params.get("required_reviewers") or []
+                params["require_extra_approval_for_unattributed_changes"] = bool(
+                    params.get("require_extra_approval_for_unattributed_changes", True)
+                )
             if isinstance(params.get("allowed_merge_methods"), list):
                 params["allowed_merge_methods"] = sorted(str(x) for x in params["allowed_merge_methods"])
             if isinstance(params.get("required_status_checks"), list):
@@ -129,6 +134,7 @@ def verify(template: dict, policy: dict, readback: dict | None = None) -> dict:
         "require_last_push_approval": bool(pr_policy.get("require_last_push_approval", False)),
         "required_approving_review_count": int(pr_policy.get("required_approving_review_count", 0)),
         "required_review_thread_resolution": bool(pr_policy.get("required_review_thread_resolution", True)),
+        "required_reviewers": list(pr_policy.get("required_reviewers") or []),
     }
     if pr_params != expected_pr:
         raise ValueError(f"pull_request rule differs from policy: expected={expected_pr!r} actual={pr_params!r}")
@@ -161,6 +167,24 @@ def verify(template: dict, policy: dict, readback: dict | None = None) -> dict:
 
     readback_verified = False
     if readback is not None:
+        readback_pull = next(
+            (
+                row for row in (readback.get("rules") or [])
+                if isinstance(row, dict) and row.get("type") == "pull_request"
+            ),
+            {},
+        )
+        readback_pull_params = readback_pull.get("parameters") or {}
+        expected_unattributed = bool(
+            pr_policy.get("require_extra_approval_for_unattributed_changes_readback", True)
+        )
+        if bool(
+            readback_pull_params.get(
+                "require_extra_approval_for_unattributed_changes",
+                True,
+            )
+        ) != expected_unattributed:
+            raise ValueError("live readback unattributed-approval invariant drift")
         if mutable_ruleset(readback) != mutable_ruleset(template):
             raise ValueError("live ruleset mutable fields do not exactly match canonical template")
         readback_verified = True
