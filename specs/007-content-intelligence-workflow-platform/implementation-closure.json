@@ -122,29 +122,46 @@
         "wordpress_boot_required": false,
         "database_required": false,
         "recovery_contract_workflow_run_id": 36075527334,
-        "out_of_band_status_disable_restore_contract_proven": true
+        "out_of_band_status_disable_restore_contract_proven": true,
+        "host_runner_contract": "mad4b.host-runner.v1",
+        "host_runner_reconciliation_contract": "mad4b.host-runner-reconciliation.v1",
+        "bounded_reversible_workspace_write": true,
+        "exact_plan_and_approval_binding": true,
+        "precommit_symlink_and_expected_state_revalidation": true,
+        "postcondition_readback_failure_rollback_proven": true,
+        "rollback_failure_uncertainty_proven": true,
+        "blind_retry_on_uncertainty": false,
+        "wp_cli_host_runner_read_semantic_parity": true,
+        "latest_repository_proof_head": "74627ac13c371cc247df35561713682884793367",
+        "latest_repository_proof_run_id": 36078596096
       },
       "remainder": [
-        "prove the out-of-band Recovery Plane on ETG/host profile with exact filesystem target",
         "implement and certify terminal-independent steady-state Host Runner bootstrap/enrollment",
-        "prove cross-executor semantic conformance for at least one read and one reversible host write"
+        "implement governed WordPress Host Bridge queue/control surface without generic shell",
+        "prove MCP/WP-CLI/Host Runner authority parity for one read and one reversible write",
+        "prove live ETG Host Runner canary and recovery storage behavior"
       ]
     },
     {
       "id": "protected_backup_recovery",
       "priority": "LIVE_PRECONDITION",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "gate": "protected_backup_recovery_ready",
       "evidence": {
         "exists": false,
         "writable": false,
         "ready": false,
         "requires_preparation": true,
-        "mutation_performed": false
+        "mutation_performed": false,
+        "repository_verified_backup_create": true,
+        "repository_verified_backup_restore": true,
+        "repository_corruption_rejection": true,
+        "repository_interrupted_restore_rollback": true,
+        "repository_proof_run_id": 36078596096
       },
       "remainder": [
-        "prove protected backup root isolation, integrity digest, capacity/readiness and exact-runtime binding",
-        "perform restore rehearsal including corruption/interruption handling; backup existence alone is not readiness"
+        "prove protected ETG Staging backup-root isolation/capacity and create exact-live-runtime backup receipt",
+        "execute live restore rehearsal against that protected root before deployment"
       ]
     },
     {
