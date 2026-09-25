@@ -1348,10 +1348,14 @@ def _bridge_submission_to_job(profile: dict[str, Any], submission: dict[str, Any
         raise ValueError("Host Bridge environment target mismatch")
     if str(target.get("wordpress_root") or "") != profile["wordpress_root"]:
         raise ValueError("Host Bridge WordPress root target mismatch")
+    if str(target.get("target_fingerprint") or "") != profile["target_fingerprint"]:
+        raise ValueError("Host Bridge target fingerprint mismatch")
     if plan.get("execution_location") != "host_runner" or plan.get("submission_location") != "wordpress_request":
         raise ValueError("Host Bridge execution location truthfulness mismatch")
-    if submission.get("production_authorized") is not False:
+    if plan.get("production_authorized") is not False or submission.get("production_authorized") is not False:
         raise ValueError("Host Bridge submission attempted Production authorization")
+    if plan.get("authorizing") is not False or plan.get("mutation_performed") is not False:
+        raise ValueError("Host Bridge plan must remain non-authorizing and non-mutating")
 
     operation_id = str(plan.get("operation_id") or "")
     if operation_id not in profile["allowed_operations"] or operation_id not in OPERATIONS:
@@ -1359,6 +1363,12 @@ def _bridge_submission_to_job(profile: dict[str, Any], submission: dict[str, Any
     definition = OPERATIONS[operation_id]
     if int(plan.get("operation_version") or 0) != int(definition["version"]):
         raise ValueError("Host Bridge operation version mismatch")
+    expected_risk = str(definition.get("risk") or "")
+    if str(plan.get("risk") or "") != expected_risk:
+        raise ValueError("Host Bridge operation risk mismatch")
+    expected_approval = bool(definition.get("requires_approval", expected_risk != "read_only"))
+    if bool(plan.get("approval_required")) is not expected_approval:
+        raise ValueError("Host Bridge approval requirement mismatch")
     inputs = plan.get("arguments")
     if not isinstance(inputs, dict):
         raise ValueError("Host Bridge operation arguments must be an object")
