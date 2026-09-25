@@ -571,6 +571,7 @@ def execute_workspace_replace(profile: dict[str, Any], verified: dict[str, Any])
         "plan_sha256": verified["plan_sha256"],
         "approval_ref": verified["approval_ref"],
         "operation_id": verified["operation_id"],
+        "relative_path": plan["relative_path"],
         "before_sha256": before,
         "expected_after_sha256": plan["expected_after_sha256"],
         "state": "MUTATION_STARTED",
@@ -773,6 +774,7 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
                     "plan_sha256": verified["plan_sha256"],
                     "approval_ref": verified["approval_ref"],
                     "operation_id": verified["operation_id"],
+                    "relative_path": result.get("relative_path"),
                     "before_sha256": result.get("before_sha256"),
                     "expected_after_sha256": result.get("after_sha256"),
                     "state": "ROLLED_BACK_AFTER_FAILURE" if rolled_back else "MUTATED_BUT_EVIDENCE_UNCERTAIN",
@@ -794,6 +796,7 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
             "plan_sha256": verified["plan_sha256"],
             "approval_ref": verified["approval_ref"],
             "operation_id": verified["operation_id"],
+            "relative_path": result.get("relative_path"),
             "before_sha256": result.get("before_sha256"),
             "expected_after_sha256": result.get("after_sha256"),
             "state": "DURABLE_VERIFIED_RECEIPT",
@@ -812,9 +815,106 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
     return receipt
 
 
+def reconcile(profile_path: Path) -> dict[str, Any]:
+    profile = load_profile(profile_path)
+    journal_root = Path(profile["journal_root"])
+    receipt_root = Path(profile["receipt_root"])
+    workspace = Path(profile["runner_workspace"])
+    if journal_root.exists() and (journal_root.is_symlink() or not journal_root.is_dir()):
+        raise ValueError("Host Runner journal root is invalid")
+    if receipt_root.exists() and (receipt_root.is_symlink() or not receipt_root.is_dir()):
+        raise ValueError("Host Runner receipt root is invalid")
+
+    entries: list[dict[str, Any]] = []
+    if journal_root.is_dir():
+        for journal_path in sorted(journal_root.glob("*.json")):
+            if journal_path.is_symlink() or not journal_path.is_file():
+                continue
+            journal = load_json_bounded(journal_path, MAX_RECEIPT_BYTES)
+            if journal.get("contract") != "mad4b.host-runner-mutation-journal.v1":
+                raise ValueError("Host Runner mutation journal contract mismatch")
+            job_id = str(journal.get("job_id") or "")
+            plan_sha = str(journal.get("plan_sha256") or "")
+            operation_id = str(journal.get("operation_id") or "")
+            relative_path = str(journal.get("relative_path") or "")
+            before = str(journal.get("before_sha256") or "")
+            expected_after = str(journal.get("expected_after_sha256") or "")
+
+            receipt_present = False
+            receipt_path = receipt_root / f"{job_id}.json"
+            if receipt_path.is_file() and not receipt_path.is_symlink():
+                receipt = load_json_bounded(receipt_path, MAX_RECEIPT_BYTES)
+                receipt_present = (
+                    receipt.get("contract") == RECEIPT_CONTRACT
+                    and str(receipt.get("job_id") or "") == job_id
+                    and hmac.compare_digest(str(receipt.get("plan_sha256") or ""), plan_sha)
+                    and receipt.get("readback_verdict") == "PASS"
+                )
+
+            current_identity = ""
+            if operation_id == "workspace.file.replace" and relative_path:
+                relative_path = _workspace_relative(relative_path)
+                target = workspace / relative_path
+                if workspace.exists():
+                    _reject_symlink_chain(target, workspace)
+                    current_identity = workspace_file_identity(target)
+                else:
+                    current_identity = "ABSENT"
+
+            if receipt_present:
+                status = "DURABLE_RECEIPT_PRESENT"
+                reconciliation_required = False
+            elif current_identity and hmac.compare_digest(current_identity, expected_after):
+                status = "RUNTIME_EFFECT_OBSERVED_NO_RECEIPT"
+                reconciliation_required = True
+            elif current_identity and hmac.compare_digest(current_identity, before):
+                status = "ROLLED_BACK_OBSERVED_NO_RECEIPT"
+                reconciliation_required = False
+            else:
+                status = "TARGET_STATE_DIVERGED"
+                reconciliation_required = True
+
+            entries.append({
+                "job_id": job_id,
+                "operation_id": operation_id,
+                "relative_path": relative_path,
+                "plan_sha256": plan_sha,
+                "journal_state": str(journal.get("state") or ""),
+                "journal_terminal": bool(journal.get("terminal")),
+                "durable_receipt_present": receipt_present,
+                "current_identity": current_identity,
+                "before_sha256": before,
+                "expected_after_sha256": expected_after,
+                "reconciliation_status": status,
+                "reconciliation_required": reconciliation_required,
+                "blind_retry_allowed": False,
+                "mutation_performed": False,
+            })
+
+    counts: dict[str, int] = {}
+    for row in entries:
+        status = row["reconciliation_status"]
+        counts[status] = counts.get(status, 0) + 1
+    return {
+        "contract": "mad4b.host-runner-reconciliation.v1",
+        "runner_contract": RUNNER_CONTRACT,
+        "profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "executor_fingerprint": profile["executor_fingerprint"],
+        "entries": entries,
+        "counts": counts,
+        "reconciliation_required_count": sum(1 for row in entries if row["reconciliation_required"]),
+        "blind_retry_allowed": False,
+        "mutation_performed": False,
+    }
+
+
 def doctor(profile_path: Path) -> dict[str, Any]:
     profile = load_profile(profile_path)
     root = Path(profile["wordpress_root"])
+    reconciliation = reconcile(profile_path)
     return {
         "contract": "mad4b.host-runner-doctor.v1",
         "runner_contract": RUNNER_CONTRACT,
@@ -835,6 +935,8 @@ def doctor(profile_path: Path) -> dict[str, Any]:
             OPERATIONS[op].get("risk") != "read_only" for op in profile["allowed_operations"]
         ),
         "network_available_to_runner_contract": False,
+        "reconciliation_required_count": reconciliation["reconciliation_required_count"],
+        "reconciliation_counts": reconciliation["counts"],
         "mutation_performed": False,
     }
 
@@ -844,12 +946,19 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     doctor_p = sub.add_parser("doctor")
     doctor_p.add_argument("--profile", required=True, type=Path)
+    reconcile_p = sub.add_parser("reconcile")
+    reconcile_p.add_argument("--profile", required=True, type=Path)
     run_p = sub.add_parser("run-job")
     run_p.add_argument("--profile", required=True, type=Path)
     run_p.add_argument("--job", required=True, type=Path)
     args = parser.parse_args()
     try:
-        result = doctor(args.profile) if args.command == "doctor" else run_job(args.profile, args.job)
+        if args.command == "doctor":
+            result = doctor(args.profile)
+        elif args.command == "reconcile":
+            result = reconcile(args.profile)
+        else:
+            result = run_job(args.profile, args.job)
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as exc:
         print(f"HOST_RUNNER: FAIL: {exc}", file=sys.stderr)
         return 1
