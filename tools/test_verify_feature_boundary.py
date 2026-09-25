@@ -224,6 +224,7 @@ run_case(
 
 for protected_root in [
     ".github/mad4b-master-ruleset-template.json",
+    ".github/workflows/mad4b-governance-remote-apply.yml",
     "tools/Apply-Mad4bMasterRuleset.ps1",
     "tools/verify_feature_boundary_bootstrap_transition.py",
     "tools/verify_repository_ruleset_template.py",
