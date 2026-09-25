@@ -719,7 +719,7 @@ if legacy_rigid in write:
 
 import re as _re
 _exact_sha = '6efd5a0f266fbc84c2e49221694340209ee189af'
-_safe = _re.compile(r'^[A-Za-z0-9._-]+
+_safe = _re.compile(r'[A-Za-z0-9._-]+')
 def _artifact_identity_valid(value, sha):
     return (
         bool(_re.fullmatch(r'[a-f0-9]{40}', sha))
