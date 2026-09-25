@@ -34,7 +34,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/schema-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/context-authority-status',
 				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
-				'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve',
+				'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve', 'mad4b/addon-registry-status',
 				'mad4b/data-processing-evaluate',
 				'mad4b/research-provider-plan',
 				'mad4b/decommission-preflight',
