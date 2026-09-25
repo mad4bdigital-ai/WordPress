@@ -64,4 +64,29 @@ jobs:
           )"
           test -n "$run_id"
           gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/rerun"
-          echo "RERUN_REQUESTED run_id=$run_id head_sha=$head_sha comment_id=$COMMENT_ID"
+          echo "RELEASE_VERDICT_RERUN_REQUESTED run_id=$run_id head_sha=$head_sha comment_id=$COMMENT_ID"
+
+          boundary="$(
+            gh api -H 'Accept: application/vnd.github+json' \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/mad4b-feature-boundary-root.yml/runs?event=pull_request_target&per_page=100" \
+            | jq -c --argjson pr "$PR_NUMBER" '
+                [.workflow_runs[]
+                 | select(any(.pull_requests[]?; .number == $pr))
+                 | select(.status == "completed")]
+                | sort_by(.id)
+                | last // empty
+              '
+          )"
+          if [ -n "$boundary" ]; then
+            boundary_run_id="$(jq -r '.id // empty' <<<"$boundary")"
+            boundary_conclusion="$(jq -r '.conclusion // empty' <<<"$boundary")"
+            test -n "$boundary_run_id"
+            if [ "$boundary_conclusion" != success ]; then
+              gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$boundary_run_id/rerun"
+              echo "FEATURE_BOUNDARY_RERUN_REQUESTED run_id=$boundary_run_id pr=$PR_NUMBER comment_id=$COMMENT_ID"
+            else
+              echo "FEATURE_BOUNDARY_ALREADY_SUCCESS run_id=$boundary_run_id pr=$PR_NUMBER"
+            fi
+          else
+            echo "FEATURE_BOUNDARY_RUN_NOT_FOUND pr=$PR_NUMBER; release verdict rerun was still requested"
+          fi
