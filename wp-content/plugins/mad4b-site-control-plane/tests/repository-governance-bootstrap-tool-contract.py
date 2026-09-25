@@ -70,6 +70,7 @@ required = [
     '[Environment]::SetEnvironmentVariable($variableName, $attestationValue, "Process")',
     '$status.ruleset_attestation_verified -ne $true',
     'freshly-built attestation did not satisfy aggregate repository governance',
+    '--require-ruleset-attestation',
 ]
 
 missing = [needle for needle in required if needle not in script]
