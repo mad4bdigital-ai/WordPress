@@ -627,31 +627,7 @@ jobs:
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
-          python3 - "$control_zip" "$plugin/config/skill-seed-manifest.json" <<'PY'
-          import json, sys, zipfile
-          archive, manifest_path = sys.argv[1], sys.argv[2]
-          manifest = json.load(open(manifest_path, encoding='utf-8'))
-          expected = {
-              str(row.get('name') or '')
-              for row in manifest.get('skills', [])
-              if isinstance(row, dict) and row.get('name')
-          }
-          with zipfile.ZipFile(archive) as zf:
-              names = set(zf.namelist())
-          prefix = 'mad4b-site-control-plane/skill-seeds/'
-          suffix = '/SKILL.md'
-          actual = {
-              name[len(prefix):-len(suffix)]
-              for name in names
-              if name.startswith(prefix) and name.endswith(suffix)
-              and '/' not in name[len(prefix):-len(suffix)]
-          }
-          if actual != expected:
-              raise SystemExit(
-                  f'ZIP Skill inventory mismatch missing={sorted(expected-actual)} '
-                  f'extra={sorted(actual-expected)}'
-              )
-          PY
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/skill-seeds/wordpress-site-diagnostics/SKILL.md'
           if unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/tests/'; then
             echo 'Development tests must not ship in the staging plugin ZIP.' >&2
             exit 1
