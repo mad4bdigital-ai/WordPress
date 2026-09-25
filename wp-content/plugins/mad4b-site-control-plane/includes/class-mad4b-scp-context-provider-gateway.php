@@ -13,6 +13,7 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 	const CONTRACT = 'mad4b.context-provider-gateway.v1';
 	const MATERIALIZATION_RECONCILIATION_CONTRACT = 'mad4b.brand-context-materialization-reconciliation.v1';
 	const MATERIALIZATION_NO_EFFECT_CONTRACT = 'mad4b.brand-context-materialization-no-effect.v1';
+	const MATERIALIZATION_ZERO_OBSERVATION_CONTRACT = 'mad4b.brand-context-materialization-zero-observation.v1';
 
 	public static function boot() {
 		add_filter( 'mad4b_scp_durable_reconciliation_verified', array( __CLASS__, 'verify_durable_reconciliation' ), 20, 3 );
@@ -66,6 +67,31 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 		return 'brand-materialization:' . hash( 'sha256', $json );
 	}
 
+	public static function materialization_zero_observation_ref( array $observation ) {
+		if ( self::MATERIALIZATION_ZERO_OBSERVATION_CONTRACT !== ( isset( $observation['reconciliation_contract'] ) ? (string) $observation['reconciliation_contract'] : '' ) ) return new WP_Error( 'mad4b_brand_zero_observation_contract_invalid', 'Brand materialization zero-effect observation contract is invalid.' );
+		if ( empty( $observation['provider_scan_complete'] ) || 0 !== (int) ( isset( $observation['provider_candidate_count'] ) ? $observation['provider_candidate_count'] : -1 ) ) return new WP_Error( 'mad4b_brand_zero_observation_invalid', 'Brand materialization zero-effect observation requires a complete provider scan with zero exact candidates.' );
+		if ( ! self::valid_materialization_provider_identity( isset( $observation['provider_identity'] ) ? $observation['provider_identity'] : array() ) ) return new WP_Error( 'mad4b_brand_zero_observation_provider_identity_invalid', 'Brand materialization zero-effect observation provider identity is invalid.' );
+		$basis = array(
+			'contract' => self::MATERIALIZATION_ZERO_OBSERVATION_CONTRACT,
+			'artifact_id' => isset( $observation['artifact_id'] ) ? (string) $observation['artifact_id'] : '',
+			'source_id' => isset( $observation['source_id'] ) ? (string) $observation['source_id'] : '',
+			'target_folder_id' => isset( $observation['target_folder_id'] ) ? (string) $observation['target_folder_id'] : '',
+			'expected_name' => isset( $observation['expected_name'] ) ? (string) $observation['expected_name'] : '',
+			'expected_content_sha256' => isset( $observation['expected_content_sha256'] ) ? strtolower( (string) $observation['expected_content_sha256'] ) : '',
+			'expected_mime_type' => isset( $observation['expected_mime_type'] ) ? strtolower( (string) $observation['expected_mime_type'] ) : '',
+			'format' => isset( $observation['format'] ) ? sanitize_key( (string) $observation['format'] ) : '',
+			'provider_scan_generation' => isset( $observation['provider_scan_generation'] ) ? (string) $observation['provider_scan_generation'] : '',
+			'provider_scan_complete' => true,
+			'provider_candidate_count' => 0,
+			'provider_identity' => isset( $observation['provider_identity'] ) && is_array( $observation['provider_identity'] ) ? $observation['provider_identity'] : array(),
+		);
+		foreach ( array( 'artifact_id', 'source_id', 'target_folder_id', 'expected_name', 'expected_content_sha256', 'expected_mime_type', 'format', 'provider_scan_generation' ) as $field ) if ( '' === (string) $basis[ $field ] ) return new WP_Error( 'mad4b_brand_zero_observation_binding_incomplete', 'Brand materialization zero-effect observation binding is incomplete.', array( 'field' => $field ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $basis['expected_content_sha256'] ) ) return new WP_Error( 'mad4b_brand_zero_observation_content_hash_invalid', 'Brand materialization zero-effect observation requires an exact SHA-256 content identity.' );
+		$json = wp_json_encode( self::canonicalize( $basis ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $json ) ) return new WP_Error( 'mad4b_brand_zero_observation_encoding_failed', 'Brand materialization zero-effect observation could not be encoded.' );
+		return 'brand-materialization-zero:' . hash( 'sha256', $json );
+	}
+
 	public static function materialization_no_effect_ref( array $proof ) {
 		if ( self::MATERIALIZATION_NO_EFFECT_CONTRACT !== ( isset( $proof['reconciliation_contract'] ) ? (string) $proof['reconciliation_contract'] : '' ) ) return new WP_Error( 'mad4b_brand_no_effect_contract_invalid', 'Brand materialization no-effect reconciliation contract is invalid.' );
 		if ( empty( $proof['provider_scan_complete'] ) || 0 !== (int) ( isset( $proof['provider_candidate_count'] ) ? $proof['provider_candidate_count'] : -1 ) ) return new WP_Error( 'mad4b_brand_no_effect_evidence_invalid', 'Brand materialization no-effect reconciliation requires a complete provider scan with zero exact candidates.' );
@@ -97,6 +123,10 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 		if ( ! is_array( $context ) ) return $verified;
 		$result = isset( $context['result'] ) && is_array( $context['result'] ) ? $context['result'] : array();
 		$actual = isset( $context['reconciliation_ref'] ) ? (string) $context['reconciliation_ref'] : '';
+		if ( 'idempotency_observation' === $kind && self::MATERIALIZATION_ZERO_OBSERVATION_CONTRACT === ( isset( $result['reconciliation_contract'] ) ? (string) $result['reconciliation_contract'] : '' ) ) {
+			$expected = self::materialization_zero_observation_ref( $result );
+			return ! is_wp_error( $expected ) && '' !== $actual && hash_equals( (string) $expected, $actual );
+		}
 		if ( 'idempotency_completion' === $kind && self::MATERIALIZATION_RECONCILIATION_CONTRACT === ( isset( $result['reconciliation_contract'] ) ? (string) $result['reconciliation_contract'] : '' ) ) {
 			$expected = self::materialization_reconciliation_ref( $result );
 			return ! is_wp_error( $expected ) && '' !== $actual && hash_equals( (string) $expected, $actual );
@@ -144,6 +174,9 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 			'materialization_reconciliation' => array(
 				'contract' => self::MATERIALIZATION_RECONCILIATION_CONTRACT,
 				'no_effect_contract' => self::MATERIALIZATION_NO_EFFECT_CONTRACT,
+				'zero_observation_contract' => self::MATERIALIZATION_ZERO_OBSERVATION_CONTRACT,
+				'minimum_no_effect_observations' => 2,
+				'minimum_observation_interval_seconds' => class_exists( 'MAD4B_SCP_Durable_Execution' ) ? MAD4B_SCP_Durable_Execution::NO_EFFECT_MIN_OBSERVATION_SECONDS : 60,
 				'complete_scan_required' => true,
 				'exact_candidate_count_required' => 1,
 				'durable_idempotency_completion_supported' => true,
