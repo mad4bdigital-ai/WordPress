@@ -224,7 +224,8 @@
     "skill_inventory_source": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
     "cross_feature_dependencies_are_exact": true,
     "mutable_metadata_cannot_widen_policy": true,
-    "repository_governance_files_are_immutable": true
+    "repository_governance_files_are_immutable": true,
+    "grant_catalog_path": ".github/mad4b-feature-boundary-grants.json"
   },
   "repository_root_trust_dependency": {
     "contract": "mad4b.repository-feature-boundary.v1",
@@ -233,6 +234,9 @@
     "trusted_workflow_path": ".github/workflows/mad4b-feature-boundary-root.yml",
     "verifier_source": "pull_request_base",
     "pull_request_code_executed_by_root_check": false,
-    "repository_governance_changes_forbidden_from_feature": true
+    "repository_governance_changes_forbidden_from_feature": true,
+    "grant_catalog_path": ".github/mad4b-feature-boundary-grants.json",
+    "grant_source": "pull_request_base",
+    "feature_metadata_can_widen_grant": false
   }
 }
