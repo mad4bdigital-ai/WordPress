@@ -124,6 +124,19 @@ with tempfile.TemporaryDirectory() as td:
         if "different operation" not in str(exc):
             raise
 
+    # Same job id/input/operation with changed authority identity is not an exact replay.
+    authority_conflict = dict(job)
+    authority_conflict["authority_ref"] = "ci:different-read-authority"
+    authority_conflict["mac_sha256"] = runner.job_mac(authority_conflict, profile["_integrity_key"])
+    authority_conflict_path = tmp / "authority-conflict.json"
+    authority_conflict_path.write_text(json.dumps(authority_conflict), encoding="utf-8")
+    try:
+        runner.run_job(profile_path, authority_conflict_path)
+        raise SystemExit("Host Runner accepted same job id with changed authority")
+    except ValueError as exc:
+        if "different authority_ref" not in str(exc):
+            raise
+
     # Fixed-zone file hash succeeds and returns a normalized relative path.
     hash_job = make_job(profile, "filesystem.hash.read", {
         "zone": "plugin_root",
