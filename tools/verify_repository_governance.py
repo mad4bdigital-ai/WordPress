@@ -69,6 +69,8 @@ def validate_ruleset_attestation(
 ) -> dict:
     config = policy.get("ruleset_attestation") or {}
     expected_config = {
+        "scope": "environment",
+        "environment_name": "repository-governance",
         "variable_name": "MAD4B_RULESET_ATTESTATION",
         "contract": "mad4b.repository-ruleset-attestation.v1",
         "require_zero_bypass_actors": True,
@@ -260,7 +262,7 @@ def main() -> int:
             )
             ruleset_attestation_verified = True
             bypass_evidence_sources[str(row_id)] = (
-                "repository_variable:" + variable_name
+                "environment_variable:repository-governance:" + variable_name
             )
 
     governed_rulesets = [
@@ -311,7 +313,7 @@ def main() -> int:
         ruleset_attestation_verified = True
         bypass_evidence_sources.setdefault(
             str(int(governed_ruleset.get("id") or 0)),
-            "direct_ruleset_detail+repository_variable:" + variable_name,
+            "direct_ruleset_detail+environment_variable:repository-governance:" + variable_name,
         )
 
     governed_rules = [
@@ -512,6 +514,8 @@ def main() -> int:
         "bypass_evidence_sources": bypass_evidence_sources,
         "ruleset_attestation_verified": ruleset_attestation_verified,
         "ruleset_attestation_required": bool(args.require_ruleset_attestation),
+        "ruleset_attestation_scope": "environment",
+        "ruleset_attestation_environment": "repository-governance",
         "response_only_approval_evidence_source": response_only_approval_evidence_source,
         "bootstrap_hidden_bypass_exception": bool(
             args.allow_bootstrap_hidden_bypass_evidence
