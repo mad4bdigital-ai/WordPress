@@ -564,7 +564,15 @@
         "public_edge_verdict": "NOT_CHECKED",
         "can_publish": false,
         "production_authorized": false,
-        "repository_only": true
+        "repository_only": true,
+        "server_read_mounts": [
+          "mad4b/draft-plan",
+          "mad4b/draft-verify"
+        ],
+        "server_write_candidate": "mad4b/draft-apply",
+        "write_authority_plane_required": true,
+        "public_publish_capability_present": false,
+        "contract_executed_by_critical_kernel": true
       },
       "remainder": [
         "obtain exact-head Critical Kernel PASS for governed draft orchestration",
@@ -584,12 +592,25 @@
         "public_edge_verdict": "NOT_CHECKED",
         "third_party_indexing_verdict": "NOT_INFERRED",
         "public_publication_verification_proven": false,
-        "repository_only": true
+        "repository_only": true,
+        "contract": "mad4b.publication-verification.v1",
+        "reducer_implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-publication-verification.php",
+        "reducer_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/publication-verification-contract.php",
+        "content_read_mount": "mad4b/publication-verification-evaluate",
+        "origin_and_public_edge_separated": true,
+        "pending_propagation_bounded": true,
+        "propagation_timeout_fail_closed": true,
+        "required_dimension_missing_fails": true,
+        "indexing_not_inferred": true,
+        "cache_purge_performed": false,
+        "publication_mutation_performed": false,
+        "authorizing": false
       },
       "remainder": [
-        "implement public/edge verification contract for an authorized published candidate",
-        "prove canonical/robots/schema/language/media/link/sitemap dimensions on exact ETG Staging",
-        "prove bounded PENDING_PROPAGATION and timeout semantics before marking publication verification ready"
+        "obtain exact-head Critical Kernel PASS for publication verification reducer",
+        "connect certified origin/public-edge observation adapters on exact ETG Staging",
+        "prove canonical/robots/schema/language/media/link/sitemap dimensions on exact deployed candidate",
+        "prove live bounded PENDING_PROPAGATION and timeout behavior before marking publication verification ready"
       ]
     },
     {
