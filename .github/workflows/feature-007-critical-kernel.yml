@@ -10,6 +10,10 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
@@ -159,6 +163,13 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php
+
+      - name: Prove WP-CLI and Host Runner semantic parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py
 
       - name: Verify execution Commit Guard contract
         shell: bash
