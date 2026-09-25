@@ -1,6 +1,6 @@
 <?php
 /**
- * Runtime acceptance for the declared Feature 007 Schema v10 migration.
+ * Runtime acceptance for the declared Feature 007 Schema v11 migration.
  *
  * This harness executes the real MAD4B_SCP_Schema migration service against a
  * bounded WordPress-like DB/options fixture. It verifies migration lifecycle
