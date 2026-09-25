@@ -429,7 +429,11 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		foreach ( array_intersect( array_keys( $observed ), array_keys( $current ) ) as $file_id ) {
 			$before = isset( $current[ $file_id ]['content_hash'] ) ? (string) $current[ $file_id ]['content_hash'] : '';
 			$after = isset( $observed[ $file_id ]['content_hash'] ) ? (string) $observed[ $file_id ]['content_hash'] : '';
-			( '' !== $before && '' !== $after && hash_equals( $before, $after ) ? $unchanged_files : $changed_files )[] = $file_id;
+			if ( '' !== $before && '' !== $after && hash_equals( $before, $after ) ) {
+				$unchanged_files[] = $file_id;
+			} else {
+				$changed_files[] = $file_id;
+			}
 		}
 		sort( $changed_files, SORT_STRING );
 		sort( $unchanged_files, SORT_STRING );
