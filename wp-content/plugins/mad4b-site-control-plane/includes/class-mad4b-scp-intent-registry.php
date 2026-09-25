@@ -236,26 +236,20 @@ final class MAD4B_SCP_Intent_Registry {
 					$closed[] = $prior['relation_id'];
 				}
 
+				$relation_id = is_array( $prior ) ? (string) $prior['relation_id'] : strtolower( wp_generate_uuid4() );
 				$max_revision = (int) $wpdb->get_var(
 					$wpdb->prepare(
-						"SELECT MAX(revision) FROM {$t['intent_relations']} WHERE site_uuid=%s AND locale=%s AND market=%s AND intent_id=%s AND content_id=%s",
+						"SELECT MAX(revision) FROM {$t['intent_relations']} WHERE site_uuid=%s AND relation_id=%s",
 						$site_uuid,
-						$locale,
-						$market,
-						$intent_id,
-						$content_id
+						$relation_id
 					)
 				);
 				$revision = max( 1, $max_revision + 1 );
-				$relation_id = strtolower( wp_generate_uuid4() );
-				$evidence_json = self::stable_json(
-					array(
-						'evidence_refs' => $row['evidence_refs'],
-						'analysis_signals' => $row['analysis_signals'],
-					)
-				);
+				$evidence_json = self::stable_json( $row['evidence_refs'] );
+				$analysis_signals_json = self::stable_json( $row['analysis_signals'] );
 				$relation_sha = self::semantic_sha256( $row );
-				$owner_scope_key = hash( 'sha256', $site_uuid . " " . $locale . " " . $market . " " . $intent_id . " " . $row['role'] );
+				$current_relation_key = hash( 'sha256', $site_uuid . "\0" . $locale . "\0" . $market . "\0" . $intent_id . "\0" . $content_id );
+				$owner_scope_key = hash( 'sha256', $site_uuid . "\0" . $locale . "\0" . $market . "\0" . $intent_id . "\0" . $row['role'] );
 
 				$ok = $wpdb->insert(
 					$t['intent_relations'],
