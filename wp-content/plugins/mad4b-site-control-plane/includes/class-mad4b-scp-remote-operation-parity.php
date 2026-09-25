@@ -21,7 +21,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';
 	const SKILLS_STATE_OPTION = 'mad4b_scp_remote_skills_reconciliation_v1';
 	const SKILLS_LOCK_OPTION = 'mad4b_scp_remote_skills_reconciliation_lock_v1';
-	const SKILLS_LOCK_TTL = 180;
+	const SKILLS_LOCK_TTL = 900;
 	const BROWSER_REQUEST_OPTION = 'mad4b_scp_remote_browser_sample_request_v1';
 
 	const SKILLS_CONFIRMATION = 'RECONCILE MANAGED SKILLS';
@@ -475,13 +475,57 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		return true;
 	}
 
+	private static function compare_and_swap_option( $name, $expected, $replacement = null ) {
+		global $wpdb;
+		if ( ! isset( $wpdb->options ) ) return false;
+		$where = array(
+			'option_name' => (string) $name,
+			'option_value' => maybe_serialize( $expected ),
+		);
+		if ( null === $replacement ) {
+			$changed = $wpdb->delete( $wpdb->options, $where, array( '%s', '%s' ) );
+		} else {
+			$changed = $wpdb->update(
+				$wpdb->options,
+				array( 'option_value' => maybe_serialize( $replacement ) ),
+				$where,
+				array( '%s' ),
+				array( '%s', '%s' )
+			);
+		}
+		if ( 1 === (int) $changed ) {
+			wp_cache_delete( (string) $name, 'options' );
+			return true;
+		}
+		return false;
+	}
+
+	private static function refresh_skills_lock( $owner ) {
+		$current = get_option( self::SKILLS_LOCK_OPTION, array() );
+		if ( ! is_array( $current ) || empty( $current['owner'] ) || ! hash_equals( (string) $current['owner'], (string) $owner ) ) {
+			return new WP_Error( 'mad4b_remote_skill_lock_fenced', 'Managed Skill reconciliation lost its durable lock ownership.' );
+		}
+		if ( time() > (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
+			return new WP_Error( 'mad4b_remote_skill_lock_expired', 'Managed Skill reconciliation lock expired before heartbeat.' );
+		}
+		$next = $current;
+		$next['expires_at_epoch'] = time() + self::SKILLS_LOCK_TTL;
+		$next['heartbeat_at'] = gmdate( 'c' );
+		if ( ! self::compare_and_swap_option( self::SKILLS_LOCK_OPTION, $current, $next ) ) {
+			return new WP_Error( 'mad4b_remote_skill_lock_heartbeat_raced', 'Managed Skill reconciliation lock changed during heartbeat.' );
+		}
+		return true;
+	}
+
 	private static function acquire_skills_lock() {
 		$owner = strtolower( wp_generate_uuid4() );
 		$record = array( 'owner' => $owner, 'expires_at_epoch' => time() + self::SKILLS_LOCK_TTL, 'acquired_at' => gmdate( 'c' ) );
 		if ( add_option( self::SKILLS_LOCK_OPTION, $record, '', false ) ) return $owner;
 		$current = get_option( self::SKILLS_LOCK_OPTION, array() );
 		if ( is_array( $current ) && time() > (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
-			delete_option( self::SKILLS_LOCK_OPTION );
+			if ( ! self::compare_and_swap_option( self::SKILLS_LOCK_OPTION, $current, null ) ) {
+				return new WP_Error( 'mad4b_remote_skill_lock_reclaim_raced', 'Managed Skill reconciliation lock changed while reclaiming an expired lease.' );
+			}
 			if ( add_option( self::SKILLS_LOCK_OPTION, $record, '', false ) ) return $owner;
 		}
 		return new WP_Error( 'mad4b_remote_skill_reconciliation_busy', 'Managed Skill reconciliation already has an active durable lease.' );
@@ -489,7 +533,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 
 	private static function release_skills_lock( $owner ) {
 		$current = get_option( self::SKILLS_LOCK_OPTION, array() );
-		if ( is_array( $current ) && isset( $current['owner'] ) && hash_equals( (string) $current['owner'], (string) $owner ) ) delete_option( self::SKILLS_LOCK_OPTION );
+		if ( is_array( $current ) && isset( $current['owner'] ) && hash_equals( (string) $current['owner'], (string) $owner ) ) {
+			self::compare_and_swap_option( self::SKILLS_LOCK_OPTION, $current, null );
+		}
 	}
 
 	private static function skills_job_status() {
@@ -797,6 +843,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		}
 
 		try {
+			$heartbeat = self::refresh_skills_lock( $skills_lock );
+			if ( is_wp_error( $heartbeat ) ) return $heartbeat;
 			$seed_before = MAD4B_SCP_Skill_Seeder::inspect();
 			$provider_before = MAD4B_SCP_Skill_Provider_Discovery::inspect();
 			if ( ! empty( $seed_before['conflicts'] ) || ! empty( $provider_before['conflicts'] ) ) {
@@ -814,9 +862,13 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			$persisted = self::persist_skills_job( $state );
 		if ( is_wp_error( $persisted ) ) return $persisted;
 			$resume_seed = $same_identity && ! empty( $previous['seed_ready'] ) && ! empty( $seed_before['ready'] );
+			$heartbeat = self::refresh_skills_lock( $skills_lock );
+			if ( is_wp_error( $heartbeat ) ) return $heartbeat;
 			$seed = $resume_seed
 				? array( 'state' => 'ready', 'ready' => true, 'resumed' => true, 'inspection' => $seed_before )
 				: MAD4B_SCP_Skill_Seeder::bootstrap();
+			$heartbeat = self::refresh_skills_lock( $skills_lock );
+			if ( is_wp_error( $heartbeat ) ) return $heartbeat;
 			$state['seed_resumed'] = $resume_seed;
 			if ( is_wp_error( $seed ) || ! is_array( $seed ) || 'ready' !== ( isset( $seed['state'] ) ? (string) $seed['state'] : '' ) ) {
 				$error = is_wp_error( $seed ) ? $seed : new WP_Error( 'mad4b_remote_skill_seed_failed', 'Canonical Skill seed reconciliation did not reach ready state.', array( 'seed' => $seed ) );
@@ -838,9 +890,13 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			$persisted = self::persist_skills_job( $state );
 		if ( is_wp_error( $persisted ) ) return $persisted;
 			$resume_provider = $same_identity && ! empty( $previous['provider_ready'] ) && ! empty( $provider_before['ready'] );
+			$heartbeat = self::refresh_skills_lock( $skills_lock );
+			if ( is_wp_error( $heartbeat ) ) return $heartbeat;
 			$providers = $resume_provider
 				? array( 'state' => 'ready', 'ready' => true, 'resumed' => true, 'inspection' => $provider_before )
 				: MAD4B_SCP_Skill_Provider_Discovery::reconcile();
+			$heartbeat = self::refresh_skills_lock( $skills_lock );
+			if ( is_wp_error( $heartbeat ) ) return $heartbeat;
 			$state['provider_resumed'] = $resume_provider;
 			if ( is_wp_error( $providers ) || ! is_array( $providers ) || 'ready' !== ( isset( $providers['state'] ) ? (string) $providers['state'] : '' ) ) {
 				$error = is_wp_error( $providers ) ? $providers : new WP_Error( 'mad4b_remote_skill_provider_failed', 'Provider Skill reconciliation did not reach ready state.', array( 'providers' => $providers ) );
@@ -861,7 +917,11 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			$state['updated_at'] = gmdate( 'c' );
 			$persisted = self::persist_skills_job( $state );
 		if ( is_wp_error( $persisted ) ) return $persisted;
+			$heartbeat = self::refresh_skills_lock( $skills_lock );
+			if ( is_wp_error( $heartbeat ) ) return $heartbeat;
 			$certification = MAD4B_SCP_Skill_Runtime_Certification::observe();
+			$heartbeat = self::refresh_skills_lock( $skills_lock );
+			if ( is_wp_error( $heartbeat ) ) return $heartbeat;
 			if ( ! is_array( $certification ) || empty( $certification['ready'] ) ) {
 				$state['status'] = 'blocked';
 				$state['last_error_code'] = 'mad4b_remote_skill_certification_failed';
