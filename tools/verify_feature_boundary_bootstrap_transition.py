@@ -81,9 +81,10 @@ def main() -> int:
     if target.get("required_repository_ruleset_name") != "MAD4B master release governance":
         raise SystemExit("bootstrap target canonical repository ruleset name drifted")
     expected_ruleset_attestation = {
-        "scope": "environment",
-        "environment_name": "repository-governance",
-        "variable_name": "MAD4B_RULESET_ATTESTATION",
+        "scope": "owner_issue_comment",
+        "issue_title": "MAD4B Repository Governance Attestations",
+        "authorized_author_login": "mad4bdigital-ai",
+        "comment_marker": "MAD4B_RULESET_ATTESTATION",
         "contract": "mad4b.repository-ruleset-attestation.v1",
         "require_zero_bypass_actors": True,
         "bind_ruleset_updated_at": True,
@@ -239,9 +240,9 @@ def main() -> int:
         "pull_request_live_semantics_preserved": True,
         "response_only_unattributed_approval_required": True,
         "ruleset_attestation_required_after_bootstrap": True,
-        "ruleset_attestation_scope": "environment",
-        "ruleset_attestation_environment": "repository-governance",
-        "ruleset_attestation_variable": "MAD4B_RULESET_ATTESTATION",
+        "ruleset_attestation_scope": "owner_issue_comment",
+        "ruleset_attestation_issue_title": "MAD4B Repository Governance Attestations",
+        "ruleset_attestation_author_login": "mad4bdigital-ai",
         "target_policy_sha256": hashlib.sha256(args.target_policy.read_bytes()).hexdigest(),
         "target_template_sha256": hashlib.sha256(args.target_template.read_bytes()).hexdigest(),
     }
