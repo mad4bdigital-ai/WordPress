@@ -50,6 +50,7 @@ IMMUTABLE_FEATURE_PATHS = {
     "tools/verify_repository_ruleset_template.py",
     "tools/verify_repository_ruleset_restore.py",
     "tools/build_repository_ruleset_attestation.py",
+    "tools/publish_repository_ruleset_attestation.py",
     "tools/Apply-Mad4bMasterRuleset.ps1",
     GRANT_CATALOG_PATH,
     OBSOLETE_SELF_POLICY,
