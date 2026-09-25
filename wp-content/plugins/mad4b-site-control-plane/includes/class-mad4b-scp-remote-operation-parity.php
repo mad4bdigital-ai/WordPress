@@ -25,6 +25,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 
 	private static $booted = false;
 	private static $running = array();
+	private static $catalog_rejections = array();
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -90,7 +91,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		self::register_remote_operation(
 			self::FRONTEND_SAMPLE_ABILITY,
 			'Collect Frontend Performance Samples',
-			'Issue bounded same-origin Frontend requests so current-build Query Monitor telemetry can collect server-side performance samples without a manual browser visit.',
+			'Queue bounded exact-build Frontend sampling for an external governed browser executor; server self-loopback is never treated as browser-runtime evidence.',
 			self::frontend_sample_schema(),
 			array( __CLASS__, 'collect_frontend_samples' ),
 			false
@@ -228,26 +229,55 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( is_array( $filtered ) ) $rows = array_slice( $filtered, 0, 500, true );
 		$required = array( 'feature_id', 'capability_tags', 'provider', 'remote_ability', 'authority_surface', 'executor', 'remote_mode', 'production_policy', 'human_decision_required', 'registrar_id', 'source_plugin', 'trust_class' );
 		$normalized = array();
+		self::$catalog_rejections = array();
 		foreach ( $rows as $key => $row ) {
-			$key = sanitize_key( (string) $key );
-			if ( '' === $key || ! is_array( $row ) ) continue;
-			$valid = true;
-			foreach ( $required as $field ) {
-				if ( ! array_key_exists( $field, $row ) ) { $valid = false; break; }
+			$raw_key = (string) $key;
+			$key = sanitize_key( $raw_key );
+			if ( '' === $key || ! is_array( $row ) ) {
+				self::$catalog_rejections[] = array( 'operation_id' => $raw_key, 'reason' => 'invalid_operation_registration_shape' );
+				continue;
 			}
-			if ( ! $valid || ! is_array( $row['capability_tags'] ) ) continue;
-			if ( ! in_array( (string) $row['trust_class'], array( 'core', 'certified_addon', 'informational' ), true ) ) continue;
+			$missing_fields = array();
+			foreach ( $required as $field ) if ( ! array_key_exists( $field, $row ) ) $missing_fields[] = $field;
+			if ( ! empty( $missing_fields ) || ! is_array( $row['capability_tags'] ) ) {
+				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_metadata_incomplete', 'missing_fields' => $missing_fields );
+				continue;
+			}
+			if ( ! in_array( (string) $row['trust_class'], array( 'core', 'certified_addon', 'informational' ), true ) ) {
+				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_trust_class_invalid', 'trust_class' => (string) $row['trust_class'] );
+				continue;
+			}
 			$row['operation_id'] = $key;
 			$row['catalog_contract'] = self::CONTRACT;
 			$row['catalog_version'] = 2;
 			$row['registration_digest'] = self::operation_registration_digest( $key, $row );
 			$row['remote_registered'] = function_exists( 'wp_has_ability' ) && wp_has_ability( (string) $row['remote_ability'] );
 			$row['manual_only'] = empty( $row['remote_ability'] );
-			$row['remote_parity_ready'] = ! $row['manual_only'] && $row['remote_registered'];
+			$executor = self::executor_status( isset( $row['executor'] ) ? (string) $row['executor'] : '' );
+			$row['executor_available'] = ! empty( $executor['available'] );
+			$row['executor_state'] = isset( $executor['state'] ) ? (string) $executor['state'] : 'unknown';
+			$row['remote_parity_ready'] = ! $row['manual_only'] && $row['remote_registered'] && $row['executor_available'];
 			$normalized[ $key ] = $row;
 		}
 		ksort( $normalized, SORT_STRING );
 		return $normalized;
+	}
+
+	private static function executor_status( $executor ) {
+		$executor = sanitize_key( (string) $executor );
+		if ( 'external_browser_agent' === $executor ) {
+			if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) || ! method_exists( 'MAD4B_SCP_Browser_Acceptance_Core', 'capabilities' ) ) return array( 'available' => false, 'state' => 'browser_acceptance_core_unavailable' );
+			$capabilities = MAD4B_SCP_Browser_Acceptance_Core::capabilities();
+			$count = is_array( $capabilities ) && isset( $capabilities['provider_count'] ) ? (int) $capabilities['provider_count'] : 0;
+			return array( 'available' => $count > 0, 'state' => $count > 0 ? 'browser_provider_available' : 'browser_provider_waiting' );
+		}
+		if ( 'wordpress_cron_maintenance_worker' === $executor ) {
+			if ( ! function_exists( 'wp_schedule_single_event' ) ) return array( 'available' => false, 'state' => 'wp_cron_api_unavailable' );
+			if ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ) return array( 'available' => false, 'state' => 'wp_cron_disabled' );
+			return array( 'available' => true, 'state' => 'wp_cron_available' );
+		}
+		if ( in_array( $executor, array( 'wordpress_native', 'wordpress_native_database_ddl' ), true ) ) return array( 'available' => true, 'state' => 'wordpress_runtime_available' );
+		return array( 'available' => '' !== $executor, 'state' => '' !== $executor ? 'externally_managed_executor' : 'executor_unspecified' );
 	}
 
 	private static function operation_registration_digest( $operation_id, array $row ) {
@@ -315,6 +345,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'query' => $query,
 			'count' => count( $matches ),
 			'operations' => $matches,
+			'rejected_registration_count' => count( self::$catalog_rejections ),
+			'rejected_registrations' => array_values( self::$catalog_rejections ),
 			'ability_hint_count' => count( $ability_hints ),
 			'ability_hints' => $ability_hints,
 			'discovery_federation' => array(
@@ -342,6 +374,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'manual_only_count' => count( $missing ),
 			'manual_only_operations' => $missing,
 			'operations' => $operations,
+			'rejected_registration_count' => count( self::$catalog_rejections ),
+			'rejected_registrations' => array_values( self::$catalog_rejections ),
 			'skills_reconciliation_job' => self::skills_job_status(),
 			'frontend_sample_request' => self::frontend_sample_request_status(),
 			'generic_remote_admin_exposed' => false,
@@ -377,6 +411,11 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$request['observed_sample_delta'] = $observed_delta;
 		$request['telemetry_sample_count'] = $current_count;
 		if ( 'pending_external_executor' === ( isset( $request['status'] ) ? (string) $request['status'] : '' )
+			&& isset( $request['expires_at_epoch'] ) && time() > (int) $request['expires_at_epoch'] ) {
+			$request['status'] = 'expired_waiting_executor';
+			$request['completed_at'] = gmdate( 'c' );
+			update_option( self::BROWSER_REQUEST_OPTION, $request, false );
+		} elseif ( 'pending_external_executor' === ( isset( $request['status'] ) ? (string) $request['status'] : '' )
 			&& $observed_delta >= (int) ( isset( $request['requested_samples'] ) ? $request['requested_samples'] : 0 ) ) {
 			$request['status'] = 'observed';
 			$request['completed_at'] = gmdate( 'c' );
