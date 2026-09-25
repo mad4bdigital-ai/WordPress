@@ -30,6 +30,29 @@ final class MAD4B_SCP_Research_Intelligence {
 		self::register( 'mad4b/research-scrape-record', 'Record Scraped Page', 'record_scraped_page' );
 		self::register( 'mad4b/research-coverage-build', 'Build Coverage Matrix', 'build_coverage_matrix' );
 		self::register( 'mad4b/research-information-gain-build', 'Build Information Gain Plan', 'build_information_gain' );
+		self::register_read( 'mad4b/research-provider-plan', 'Plan Governed Research Provider Processing', 'provider_plan' );
+	}
+
+	private static function register_read( $name, $label, $method ) {
+		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) return;
+		wp_register_ability(
+			$name,
+			array(
+				'label' => $label,
+				'description' => $label . '; requires exact data-governance evidence and never calls the provider.',
+				'category' => 'mad4b-read',
+				'execute_callback' => array( __CLASS__, $method ),
+				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+				'input_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => array(
+					'public' => false,
+					'show_in_rest' => false,
+					'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+					'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+				),
+			)
+		);
 	}
 
 	private static function register( $name, $label, $method ) {
@@ -52,6 +75,42 @@ final class MAD4B_SCP_Research_Intelligence {
 				),
 			)
 		);
+	}
+
+	public static function provider_plan( $input ) {
+		$input = is_array( $input ) ? $input : array();
+		$job_id = self::job_id( $input );
+		if ( is_wp_error( $job_id ) ) return $job_id;
+		$provider_id = isset( $input['provider_id'] ) ? sanitize_key( (string) $input['provider_id'] ) : '';
+		$request_sha = isset( $input['request_sha256'] ) ? strtolower( trim( (string) $input['request_sha256'] ) ) : '';
+		$governance_id = isset( $input['data_governance_artifact_id'] ) ? strtolower( trim( (string) $input['data_governance_artifact_id'] ) ) : '';
+		$purpose = isset( $input['purpose'] ) ? sanitize_key( (string) $input['purpose'] ) : 'research';
+		if ( '' === $provider_id || strlen( $provider_id ) > 64 ) return new WP_Error( 'mad4b_research_provider_invalid', 'Research provider identity is required.' );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $request_sha ) ) return new WP_Error( 'mad4b_research_request_digest_invalid', 'Research request fingerprint is required.' );
+		if ( ! class_exists( 'MAD4B_SCP_Data_Governance' ) || ! method_exists( 'MAD4B_SCP_Data_Governance', 'validate_decision_artifact' ) ) {
+			return new WP_Error( 'mad4b_research_data_governance_unavailable', 'Data-governance evidence validator is unavailable.' );
+		}
+		$governance = MAD4B_SCP_Data_Governance::validate_decision_artifact( $job_id, $governance_id, $provider_id );
+		if ( is_wp_error( $governance ) ) return $governance;
+		$plan = array(
+			'contract' => 'mad4b.research-provider-plan.v1',
+			'job_id' => $job_id,
+			'provider_id' => $provider_id,
+			'purpose' => $purpose,
+			'request_sha256' => $request_sha,
+			'data_governance_artifact_id' => (string) $governance['artifact_id'],
+			'data_governance_decision' => (string) $governance['decision'],
+			'data_governance_fingerprint' => (string) $governance['decision_fingerprint'],
+			'rights_summary_fingerprint' => (string) $governance['rights_summary_fingerprint'],
+			'processor_profile_fingerprint' => (string) $governance['processor_profile_fingerprint'],
+			'policy_revision' => (string) $governance['policy_revision'],
+			'execution_ready' => true,
+			'provider_execution_performed' => false,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
+		$plan['plan_sha256'] = self::digest( $plan );
+		return $plan;
 	}
 
 	public static function record_keyword( $input ) {
