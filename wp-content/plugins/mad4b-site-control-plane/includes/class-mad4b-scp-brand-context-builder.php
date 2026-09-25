@@ -110,8 +110,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			}
 			$language = '';
 			if ( function_exists( 'pll_get_post_language' ) ) $language = (string) pll_get_post_language( (int) $post->ID, 'slug' );
-			$record = array(
-				'source' => 'wordpress_live_content',
+			$content_identity = array(
 				'content_id' => 'post:' . (int) $post->ID,
 				'post_type' => (string) $post->post_type,
 				'title' => self::bounded_text( $title, 300 ),
@@ -119,10 +118,16 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				'seo' => $seo,
 				'language' => sanitize_key( $language ),
 				'modified_gmt' => isset( $post->post_modified_gmt ) ? (string) $post->post_modified_gmt : '',
-				'observed_at' => gmdate( 'c' ),
-				'reason' => 'published_live_brand_expression',
 			);
-			$record['content_hash'] = hash( 'sha256', self::stable_json( $record ) );
+			$record = array_merge(
+				array( 'source' => 'wordpress_live_content' ),
+				$content_identity,
+				array(
+					'observed_at' => gmdate( 'c' ),
+					'reason' => 'published_live_brand_expression',
+				)
+			);
+			$record['content_hash'] = hash( 'sha256', self::stable_json( $content_identity ) );
 			$items[] = $record;
 		}
 		return $items;
@@ -236,7 +241,11 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				},
 				$live_content
 			),
-			'live_structure' => $structure,
+			'live_structure' => array(
+				'menus' => isset( $structure['menus'] ) ? $structure['menus'] : array(),
+				'taxonomies' => isset( $structure['taxonomies'] ) ? $structure['taxonomies'] : array(),
+				'locale' => isset( $structure['locale'] ) ? (string) $structure['locale'] : '',
+			),
 		);
 		$evidence_digest = hash( 'sha256', self::stable_json( $evidence_identity ) );
 		$drafts = array();
@@ -409,8 +418,12 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			if ( ! is_array( $asset ) || empty( $asset['file_id'] ) ) continue;
 			$observed[ (string) $asset['file_id'] ] = $asset;
 		}
+		ksort( $observed, SORT_STRING );
+		ksort( $current, SORT_STRING );
 		$new_files = array_values( array_diff( array_keys( $observed ), array_keys( $current ) ) );
 		$missing_files = array_values( array_diff( array_keys( $current ), array_keys( $observed ) ) );
+		sort( $new_files, SORT_STRING );
+		sort( $missing_files, SORT_STRING );
 		$changed_files = array();
 		$unchanged_files = array();
 		foreach ( array_intersect( array_keys( $observed ), array_keys( $current ) ) as $file_id ) {
@@ -418,6 +431,8 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			$after = isset( $observed[ $file_id ]['content_hash'] ) ? (string) $observed[ $file_id ]['content_hash'] : '';
 			( '' !== $before && '' !== $after && hash_equals( $before, $after ) ? $unchanged_files : $changed_files )[] = $file_id;
 		}
+		sort( $changed_files, SORT_STRING );
+		sort( $unchanged_files, SORT_STRING );
 		$inventory_digest = hash( 'sha256', self::stable_json( $observed ) );
 		$basis = array(
 			'contract' => self::SCAN_PLAN_CONTRACT,
