@@ -70,6 +70,13 @@ $check(is_array($plan) && 64===strlen($plan['plan_sha256']), 'read plan failed')
 $check('wordpress_request'===$plan['submission_location'], 'submission location false');
 $check('host_runner'===$plan['execution_location'], 'execution location false');
 $check(false===$plan['mutation_performed'], 'planning mutated');
+$check(isset($plan['target']['wp_config_sha256']) && 64===strlen($plan['target']['wp_config_sha256']), 'target wp-config identity missing');
+$target_material=$plan['target'];
+$target_fingerprint=$target_material['target_fingerprint'];
+unset($target_material['target_fingerprint']);
+ksort($target_material,SORT_STRING);
+$expected_target_fingerprint=hash('sha256',json_encode($target_material,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+$check(hash_equals($expected_target_fingerprint,$target_fingerprint), 'target fingerprint canonical material drifted');
 
 $job='aaaaaaaa-1111-4222-8333-bbbbbbbbbbbb';
 $apply = MAD4B_SCP_Host_Bridge::apply(array(
