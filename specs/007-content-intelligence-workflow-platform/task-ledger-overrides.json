@@ -67,6 +67,52 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-retirement-contract.py"
       ],
       "reason": "One-time repository-governance bootstrap exception is retired."
+    },
+    "T3612": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php",
+        "workflow_run:36075527334"
+      ],
+      "reason": "ContentJob create/read/transition/cancel is implemented over schema v9 and passes disposable WordPress/MariaDB lifecycle proof; exact deployed-candidate live evidence remains open."
+    },
+    "T3635": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/verify_repository_owner_attestation.py",
+        ".github/workflows/mad4b-release-verdict.yml",
+        ".github/mad4b-repository-governance-policy.json",
+        "workflow_run:36075527449"
+      ],
+      "reason": "Repository Release Verdict now fails closed when exact-head authorized owner attestation is absent; stale-on-descendant policy is machine enforced."
+    },
+    "T3636": {
+      "status": "DONE",
+      "evidence_refs": [
+        ".github/workflows/feature-007-spec-ci.yml",
+        "specs/007-content-intelligence-workflow-platform/feature.json"
+      ],
+      "reason": "Fixed historical implementation branch was replaced by workflow-owned feat/007-* and fix/007-* policy mirrored by mutable metadata."
+    },
+    "T3637": {
+      "status": "DONE",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/baseline-synchronization.md",
+        ".github/workflows/feature-007-spec-ci.yml",
+        "specs/007-content-intelligence-workflow-platform/feature.json"
+      ],
+      "reason": "Reviewed repository parent and deployable runtime release are separate identities; workflow-owned runtime paths force RECAPTURE_REQUIRED on runtime deltas."
+    },
+    "T3638": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36075527334"
+      ],
+      "reason": "Minimal out-of-band Recovery Plane can inspect provenance, exact-plan disable/quarantine and restore known-good bytes without WordPress boot or database dependency."
     }
   }
 }
