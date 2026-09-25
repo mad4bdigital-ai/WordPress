@@ -16,9 +16,6 @@ for marker in (
     "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
     "'mad4b/staging-write-candidate-binding-audit'",
-    "'mad4b/reconcile-managed-skills'",
-    "'mad4b/frontend-performance-sample-run'",
-    "'mad4b/admin-query-performance-apply'",
     "can_enrollment_transport",
     "MAD4B Enrollment MCP",
 ):
