@@ -251,11 +251,13 @@ def load_profile(path: Path) -> dict[str, Any]:
         "runner_workspace": str(runner_workspace),
         "journal_root": str((expected_workspace / "journals").resolve()),
         "rollback_root": str((expected_workspace / "rollback").resolve()),
+        "dead_letter_root": str((expected_workspace / "dead-letter").resolve()),
+        "recovery_required_root": str((expected_workspace / "recovery-required").resolve()),
     }
     receipt_root = Path(normalized["receipt_root"])
     if not _is_within(receipt_root, expected_workspace):
         raise ValueError("Host Runner receipt_root escaped dedicated runner workspace")
-    for evidence_root_key in ("journal_root", "rollback_root"):
+    for evidence_root_key in ("journal_root", "rollback_root", "dead_letter_root", "recovery_required_root"):
         candidate = Path(normalized[evidence_root_key])
         if not _is_within(candidate, expected_workspace):
             raise ValueError(f"Host Runner {evidence_root_key} escaped dedicated runner workspace")
@@ -1079,6 +1081,109 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
     return receipt
 
 
+def _failure_reason_code(exc: Exception) -> str:
+    message = str(exc)
+    if "RECONCILIATION_REQUIRED" in message or "MUTATED_BUT_EVIDENCE_UNCERTAIN" in message:
+        return "recovery_required"
+    if "expired" in message:
+        return "job_expired"
+    if "integrity" in message or "MAC" in message:
+        return "job_integrity_invalid"
+    if "operation is not allowed" in message or "unknown" in message:
+        return "operation_denied"
+    if "path" in message or "symlink" in message or "workspace" in message:
+        return "path_policy_denied"
+    if "approval" in message:
+        return "approval_required"
+    if "plan" in message or "target changed" in message:
+        return "dependency_changed"
+    return "execution_failed"
+
+
+def record_failure_evidence(profile: dict[str, Any], job: dict[str, Any], exc: Exception) -> dict[str, Any] | None:
+    job_id = str(job.get("job_id") or "").lower()
+    if not re.fullmatch(r"[a-f0-9-]{36}", job_id):
+        return None
+    operation_id = str(job.get("operation_id") or "")
+    reason_code = _failure_reason_code(exc)
+    state = "RECOVERY_REQUIRED" if reason_code == "recovery_required" else "DEAD_LETTERED"
+    root = Path(
+        profile["recovery_required_root"]
+        if state == "RECOVERY_REQUIRED"
+        else profile["dead_letter_root"]
+    )
+    if root.exists() and (root.is_symlink() or not root.is_dir()):
+        raise ValueError("Host Runner incident evidence root is invalid")
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / f"{job_id}.json"
+    row = {
+        "contract": "mad4b.host-runner-incident.v1",
+        "state": state,
+        "job_id": job_id,
+        "profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "executor_fingerprint": profile["executor_fingerprint"],
+        "operation_id": operation_id,
+        "operation_fingerprint": str(job.get("operation_fingerprint") or ""),
+        "input_sha256": str(job.get("input_sha256") or ""),
+        "idempotency_key": str(job.get("idempotency_key") or ""),
+        "actor_ref": str(job.get("actor_ref") or ""),
+        "authority_ref": str(job.get("authority_ref") or ""),
+        "plan_sha256": str(job.get("plan_sha256") or ""),
+        "approval_ref": str(job.get("approval_ref") or ""),
+        "reason_code": reason_code,
+        "failure_class": exc.__class__.__name__,
+        "failure_message_sha256": sha256_bytes(str(exc).encode()),
+        "payload_persisted": False,
+        "blind_retry_allowed": False,
+        "mutation_performed": False,
+        "created_at": utc_now(),
+    }
+    atomic_json_write(path, row)
+    row["evidence_path"] = str(path)
+    return row
+
+
+def run_job_with_failure_evidence(profile_path: Path, job_path: Path) -> dict[str, Any]:
+    try:
+        return run_job(profile_path, job_path)
+    except Exception as exc:
+        try:
+            profile = load_profile(profile_path)
+            job = load_json_bounded(job_path)
+            record_failure_evidence(profile, job, exc)
+        except Exception:
+            pass
+        raise
+
+
+def _incident_summary(root: Path) -> dict[str, Any]:
+    result = {"path": str(root), "exists": root.is_dir(), "count": 0, "items": []}
+    if not root.is_dir():
+        return result
+    if root.is_symlink():
+        raise ValueError("Host Runner incident root symlink is forbidden")
+    for path in sorted(root.glob("*.json")):
+        if path.is_symlink() or not path.is_file():
+            continue
+        try:
+            row = load_json_bounded(path, MAX_RECEIPT_BYTES)
+        except (OSError, ValueError, json.JSONDecodeError):
+            continue
+        result["items"].append({
+            "job_id": row.get("job_id"),
+            "state": row.get("state"),
+            "operation_id": row.get("operation_id"),
+            "reason_code": row.get("reason_code"),
+            "created_at": row.get("created_at"),
+            "blind_retry_allowed": row.get("blind_retry_allowed"),
+        })
+    result["count"] = len(result["items"])
+    return result
+
+
 def reconcile(profile_path: Path) -> dict[str, Any]:
     profile = load_profile(profile_path)
     journal_root = Path(profile["journal_root"])
@@ -1207,6 +1312,8 @@ def doctor(profile_path: Path) -> dict[str, Any]:
     profile = load_profile(profile_path)
     root = Path(profile["wordpress_root"])
     reconciliation = reconcile(profile_path)
+    dead_letter = _incident_summary(Path(profile["dead_letter_root"]))
+    recovery_required = _incident_summary(Path(profile["recovery_required_root"]))
     return {
         "contract": "mad4b.host-runner-doctor.v1",
         "runner_contract": RUNNER_CONTRACT,
@@ -1229,6 +1336,15 @@ def doctor(profile_path: Path) -> dict[str, Any]:
         "network_available_to_runner_contract": False,
         "reconciliation_required_count": reconciliation["reconciliation_required_count"],
         "reconciliation_counts": reconciliation["counts"],
+        "dead_letter_count": dead_letter["count"],
+        "recovery_required_incident_count": recovery_required["count"],
+        "dead_letter": dead_letter,
+        "recovery_required": recovery_required,
+        "operator_review_required": bool(
+            reconciliation["reconciliation_required_count"]
+            or dead_letter["count"]
+            or recovery_required["count"]
+        ),
         "mutation_performed": False,
     }
 
@@ -1250,7 +1366,7 @@ def main() -> int:
         elif args.command == "reconcile":
             result = reconcile(args.profile)
         else:
-            result = run_job(args.profile, args.job)
+            result = run_job_with_failure_evidence(args.profile, args.job)
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as exc:
         print(f"HOST_RUNNER: FAIL: {exc}", file=sys.stderr)
         return 1
