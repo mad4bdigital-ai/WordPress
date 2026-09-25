@@ -81,6 +81,8 @@ def main() -> int:
     if target.get("required_repository_ruleset_name") != "MAD4B master release governance":
         raise SystemExit("bootstrap target canonical repository ruleset name drifted")
     expected_ruleset_attestation = {
+        "scope": "environment",
+        "environment_name": "repository-governance",
         "variable_name": "MAD4B_RULESET_ATTESTATION",
         "contract": "mad4b.repository-ruleset-attestation.v1",
         "require_zero_bypass_actors": True,
@@ -237,6 +239,8 @@ def main() -> int:
         "pull_request_live_semantics_preserved": True,
         "response_only_unattributed_approval_required": True,
         "ruleset_attestation_required_after_bootstrap": True,
+        "ruleset_attestation_scope": "environment",
+        "ruleset_attestation_environment": "repository-governance",
         "ruleset_attestation_variable": "MAD4B_RULESET_ATTESTATION",
         "target_policy_sha256": hashlib.sha256(args.target_policy.read_bytes()).hexdigest(),
         "target_template_sha256": hashlib.sha256(args.target_template.read_bytes()).hexdigest(),
