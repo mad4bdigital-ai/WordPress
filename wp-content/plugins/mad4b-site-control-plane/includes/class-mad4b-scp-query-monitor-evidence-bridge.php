@@ -398,6 +398,12 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		);
 	}
 
+	private static function request_frontend_probe_hash() {
+		$raw = isset( $_GET['mad4b_frontend_probe'] ) ? strtolower( trim( (string) $_GET['mad4b_frontend_probe'] ) ) : '';
+		if ( '' === $raw || 1 !== preg_match( '/^[a-f0-9-]{36}$/', $raw ) ) return '';
+		return hash( 'sha256', $raw );
+	}
+
 	private static function performance_sample( $class ) {
 		$started = isset( $_SERVER['REQUEST_TIME_FLOAT'] ) && is_numeric( $_SERVER['REQUEST_TIME_FLOAT'] ) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : 0.0;
 		$elapsed = $started > 0 ? max( 0.0, ( microtime( true ) - $started ) * 1000.0 ) : 0.0;
@@ -410,6 +416,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			'db_queries' => $queries,
 			'peak_memory_bytes' => $peak,
 			'sample_id' => self::request_sample_id(),
+			'frontend_probe_hash' => 'frontend' === (string) $class ? self::request_frontend_probe_hash() : '',
 			'current_memory_bytes' => $current_memory,
 			'db_profile' => self::query_performance_profile(),
 			'http_api_profile' => self::empty_http_api_profile(),
