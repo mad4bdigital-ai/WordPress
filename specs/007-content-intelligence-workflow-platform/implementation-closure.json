@@ -120,7 +120,9 @@
         "exact_plan_disable_contract": "mad4b.recovery-disable-plan.v1",
         "exact_plan_restore_contract": "mad4b.recovery-plan.v1",
         "wordpress_boot_required": false,
-        "database_required": false
+        "database_required": false,
+        "recovery_contract_workflow_run_id": 36075527334,
+        "out_of_band_status_disable_restore_contract_proven": true
       },
       "remainder": [
         "prove the out-of-band Recovery Plane on ETG/host profile with exact filesystem target",
@@ -187,7 +189,12 @@
       "remainder": [
         "prove Recovery Runner remains usable with WordPress HTTP/plugin boot/control-plane route unavailable",
         "inject receipt-persistence failure and prove reconciliation-required uncertainty state"
-      ]
+      ],
+      "evidence": {
+        "repository_recovery_contract_workflow_run_id": 36075527334,
+        "out_of_band_without_wordpress_boot_contract_proven": true,
+        "live_etg_drill_proven": false
+      }
     },
     {
       "id": "bitflows_1_29_exact_certification",
@@ -286,12 +293,18 @@
         "optimistic_revision": true,
         "immutable_terminal_states": true,
         "hash_chained_events": true,
-        "provider_side_effects": false
+        "provider_side_effects": false,
+        "disposable_runtime_workflow_run_id": 36075527334,
+        "disposable_mariadb_runtime_proven": true,
+        "stale_revision_rejection_proven": true,
+        "illegal_transition_rejection_proven": true,
+        "terminal_immutability_proven": true,
+        "cross_site_lookup_denial_proven": true,
+        "event_hash_chain_proven": true
       },
       "remainder": [
-        "prove create/read/transition/cancel against disposable MariaDB WordPress runtime",
-        "prove stale revision and concurrent transition rejection at runtime",
-        "bind exact post-merge deployed-candidate live evidence before marking the gate DONE"
+        "prove true concurrent competing transition CAS behavior in the admitted fault suite",
+        "bind exact post-merge deployed-candidate live evidence before marking content_job_domain_ready"
       ]
     },
     {
