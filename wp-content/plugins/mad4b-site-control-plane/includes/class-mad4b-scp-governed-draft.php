@@ -72,6 +72,8 @@ final class MAD4B_SCP_Governed_Draft {
 		if ( ! empty( $qa['payload']['can_publish'] ) || ! empty( $qa['payload']['publication_authorized'] ) ) {
 			return new WP_Error( 'mad4b_draft_qa_authority_invalid', 'QA artifact must not create publishing authority.' );
 		}
+		$writer = self::writer_binding_from_artifacts( $draft, $qa );
+		if ( is_wp_error( $writer ) ) return $writer;
 
 		$post_type = sanitize_key( (string) ( $input['post_type'] ?? 'post' ) );
 		$type = get_post_type_object( $post_type );
@@ -100,6 +102,9 @@ final class MAD4B_SCP_Governed_Draft {
 			'draft_artifact_sha256' => (string) ( $draft['content_sha256'] ?? hash( 'sha256', self::stable_json( $draft['payload'] ) ) ),
 			'final_qa_artifact_id' => $qa_id,
 			'final_qa_artifact_sha256' => (string) ( $qa['content_sha256'] ?? hash( 'sha256', self::stable_json( $qa['payload'] ) ) ),
+			'writer_profile_id' => $writer['writer_profile_id'],
+			'writer_profile_version' => $writer['writer_profile_version'],
+			'writer_profile_fingerprint' => $writer['writer_profile_fingerprint'],
 			'post_id' => $post_id,
 			'post_type' => $post_type,
 			'post_title' => $title,
@@ -130,6 +135,13 @@ final class MAD4B_SCP_Governed_Draft {
 		if ( empty( $qa['payload']['pass'] ) || ! empty( $qa['payload']['hard_blockers'] ) ) return new WP_Error( 'mad4b_draft_final_qa_blocked', 'FinalQA changed or is blocked.' );
 		if ( ! isset( $qa['payload']['draft_artifact_id'] ) || ! hash_equals( (string) $plan['draft_artifact_id'], (string) $qa['payload']['draft_artifact_id'] ) ) {
 			return new WP_Error( 'mad4b_draft_final_qa_lineage_mismatch', 'FinalQA no longer certifies the planned ArticleDraft.' );
+		}
+		$writer = self::writer_binding_from_artifacts( $draft, $qa );
+		if ( is_wp_error( $writer ) ) return $writer;
+		foreach ( array( 'writer_profile_id', 'writer_profile_version', 'writer_profile_fingerprint' ) as $field ) {
+			if ( ! isset( $plan[ $field ] ) || ! hash_equals( (string) $plan[ $field ], (string) $writer[ $field ] ) ) {
+				return new WP_Error( 'mad4b_draft_writer_profile_stale', 'WriterProfile binding changed since the governed draft plan.' );
+			}
 		}
 		if ( ! hash_equals( (string) $plan['draft_artifact_sha256'], self::artifact_sha( $draft ) ) ) return new WP_Error( 'mad4b_draft_artifact_stale', 'Draft artifact changed since plan.' );
 		if ( ! hash_equals( (string) $plan['final_qa_artifact_sha256'], self::artifact_sha( $qa ) ) ) return new WP_Error( 'mad4b_draft_qa_stale', 'FinalQA artifact changed since plan.' );
@@ -222,6 +234,25 @@ final class MAD4B_SCP_Governed_Draft {
 			'publication_authorized' => false,
 			'mutation_performed' => false,
 		);
+	}
+
+	private static function writer_binding_from_artifacts( array $draft, array $qa ) {
+		$draft_payload = isset( $draft['payload'] ) && is_array( $draft['payload'] ) ? $draft['payload'] : array();
+		$qa_payload = isset( $qa['payload'] ) && is_array( $qa['payload'] ) ? $qa['payload'] : array();
+		$fields = array( 'writer_profile_id', 'writer_profile_version', 'writer_profile_fingerprint' );
+		$out = array();
+		foreach ( $fields as $field ) {
+			$left = isset( $draft_payload[ $field ] ) ? trim( (string) $draft_payload[ $field ] ) : '';
+			$right = isset( $qa_payload[ $field ] ) ? trim( (string) $qa_payload[ $field ] ) : '';
+			if ( '' === $left || '' === $right || ! hash_equals( $left, $right ) ) {
+				return new WP_Error( 'mad4b_draft_writer_profile_lineage_mismatch', 'Draft and FinalQA WriterProfile lineage do not match.' );
+			}
+			$out[ $field ] = $left;
+		}
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $out['writer_profile_fingerprint'] ) ) {
+			return new WP_Error( 'mad4b_draft_writer_profile_fingerprint_invalid', 'WriterProfile fingerprint is invalid.' );
+		}
+		return $out;
 	}
 
 	private static function validate_plan( array $plan ) {
