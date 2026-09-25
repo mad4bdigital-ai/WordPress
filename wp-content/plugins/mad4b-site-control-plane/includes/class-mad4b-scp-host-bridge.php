@@ -37,6 +37,8 @@ final class MAD4B_SCP_Host_Bridge {
 		self::register( 'mad4b/host-operation-apply', 'Apply Host Operation Plan', 'apply', false );
 		self::register( 'mad4b/host-operation-status', 'Host Operation Status', 'status', true );
 		self::register( 'mad4b/host-operation-cancel', 'Cancel Queued Host Operation', 'cancel', false );
+		self::register( 'mad4b/host-operation-repair-plan', 'Plan Host Operation Repair', 'repair_plan', true );
+		self::register( 'mad4b/host-operation-requeue', 'Requeue Host Operation', 'requeue', false );
 		self::register( 'mad4b/host-operation-receipt', 'Read Host Operation Receipt', 'receipt', true );
 		self::register( 'mad4b/host-doctor', 'Host Runner Doctor', 'doctor', true );
 	}
@@ -249,6 +251,88 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( is_wp_error( $write ) ) return $write;
 		@unlink( $queued );
 		return $mark;
+	}
+
+	public static function repair_plan( $input ) {
+		$job_id = self::job_id_from_input( $input );
+		if ( is_wp_error( $job_id ) ) return $job_id;
+		$spool = self::spool_root();
+		if ( is_wp_error( $spool ) ) return $spool;
+		$dead = $spool . '/dead-letter/' . $job_id . '.json';
+		$recovery = $spool . '/recovery-required/' . $job_id . '.json';
+		if ( is_file( $recovery ) ) {
+			$incident = self::read_json( $recovery );
+			return array(
+				'contract' => 'mad4b.host-operation-repair-plan.v1',
+				'source_job_id' => $job_id,
+				'incident_state' => 'RECOVERY_REQUIRED',
+				'incident_sha256' => is_wp_error( $incident ) ? '' : self::digest( $incident ),
+				'requeue_allowed' => false,
+				'reconciliation_required' => true,
+				'blind_retry_allowed' => false,
+				'mutation_performed' => false,
+			);
+		}
+		if ( ! is_file( $dead ) ) return new WP_Error( 'mad4b_host_incident_missing', 'No dead-letter/recovery incident exists for this Host job.' );
+		$incident = self::read_json( $dead );
+		if ( is_wp_error( $incident ) ) return $incident;
+		$replacement_plan = isset( $input['replacement_plan'] ) && is_array( $input['replacement_plan'] ) ? $input['replacement_plan'] : array();
+		$valid = self::validate_plan( $replacement_plan );
+		if ( is_wp_error( $valid ) ) return $valid;
+		$repair = array(
+			'contract' => 'mad4b.host-operation-repair-plan.v1',
+			'source_job_id' => $job_id,
+			'incident_state' => 'DEAD_LETTERED',
+			'incident_sha256' => self::digest( $incident ),
+			'replacement_plan' => $replacement_plan,
+			'replacement_plan_sha256' => (string) $replacement_plan['plan_sha256'],
+			'requeue_allowed' => true,
+			'reconciliation_required' => false,
+			'blind_retry_allowed' => false,
+			'fresh_job_id_required' => true,
+			'fresh_idempotency_required' => true,
+			'fresh_authorization_required' => true,
+			'mutation_performed' => false,
+		);
+		$repair['repair_plan_sha256'] = self::digest( $repair );
+		return $repair;
+	}
+
+	public static function requeue( $input ) {
+		$repair = isset( $input['repair_plan'] ) && is_array( $input['repair_plan'] ) ? $input['repair_plan'] : array();
+		if ( 'mad4b.host-operation-repair-plan.v1' !== (string) ( $repair['contract'] ?? '' ) ) return new WP_Error( 'mad4b_host_repair_plan_invalid', 'Host repair plan contract is invalid.' );
+		$repair_sha = isset( $repair['repair_plan_sha256'] ) ? strtolower( trim( (string) $repair['repair_plan_sha256'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $repair_sha ) || ! hash_equals( $repair_sha, self::digest( $repair ) ) ) return new WP_Error( 'mad4b_host_repair_plan_digest_invalid', 'Host repair plan digest mismatch.' );
+		if ( empty( $repair['requeue_allowed'] ) || ! empty( $repair['reconciliation_required'] ) ) return new WP_Error( 'mad4b_host_requeue_reconciliation_required', 'Recovery-required Host incidents cannot be requeued before reconciliation.' );
+		$source_job_id = isset( $repair['source_job_id'] ) ? strtolower( trim( (string) $repair['source_job_id'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $source_job_id ) ) return new WP_Error( 'mad4b_host_job_id_invalid', 'Source Host job id is invalid.' );
+		$spool = self::spool_root();
+		if ( is_wp_error( $spool ) ) return $spool;
+		$incident_path = $spool . '/dead-letter/' . $source_job_id . '.json';
+		if ( ! is_file( $incident_path ) ) return new WP_Error( 'mad4b_host_incident_missing', 'Source dead-letter incident is unavailable.' );
+		$incident = self::read_json( $incident_path );
+		if ( is_wp_error( $incident ) ) return $incident;
+		if ( ! hash_equals( (string) $repair['incident_sha256'], self::digest( $incident ) ) ) return new WP_Error( 'mad4b_host_incident_changed', 'Source Host incident changed since repair planning.' );
+
+		$new_job_id = isset( $input['job_id'] ) ? strtolower( trim( (string) $input['job_id'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $new_job_id ) || hash_equals( $new_job_id, $source_job_id ) ) return new WP_Error( 'mad4b_host_requeue_job_id_invalid', 'Requeue requires a fresh Host job id.' );
+		$idempotency_key = isset( $input['idempotency_key'] ) ? trim( (string) $input['idempotency_key'] ) : '';
+		if ( '' === $idempotency_key || strlen( $idempotency_key ) > 191 ) return new WP_Error( 'mad4b_host_idempotency_invalid', 'Requeue requires a fresh idempotency key.' );
+
+		$apply_input = array(
+			'plan' => $repair['replacement_plan'],
+			'job_id' => $new_job_id,
+			'idempotency_key' => $idempotency_key,
+			'approval_ref' => isset( $input['approval_ref'] ) ? (string) $input['approval_ref'] : '',
+			'server_id' => isset( $input['server_id'] ) ? (string) $input['server_id'] : '',
+			'_mad4b_approval_ticket_id' => isset( $input['_mad4b_approval_ticket_id'] ) ? (string) $input['_mad4b_approval_ticket_id'] : '',
+		);
+		$result = self::apply( $apply_input );
+		if ( is_wp_error( $result ) ) return $result;
+		$result['repair_plan_sha256'] = $repair_sha;
+		$result['requeued_from_job_id'] = $source_job_id;
+		$result['blind_retry'] = false;
+		return $result;
 	}
 
 	public static function doctor( $input = array() ) {
