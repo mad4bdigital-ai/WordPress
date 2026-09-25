@@ -62,42 +62,32 @@ $fail=static function($m){fwrite(STDERR,"FAIL content-intelligence-pipeline-cont
 $check=static function($c,$m) use($fail){if(!$c)$fail($m);};
 $job='11111111-2222-4333-8444-555555555555';
 
-$bad_context=MAD4B_SCP_Content_Intelligence_Pipeline::build_context_pack(array(
+$context_id='00000000-0000-4000-8000-000000000001';
+$research_id='00000000-0000-4000-8000-000000000002';
+MAD4B_SCP_Artifacts::$rows[$context_id]=array(
+	'artifact_id'=>$context_id,
 	'job_id'=>$job,
-	'sources'=>array(array(
-		'source_id'=>'brand-1','asset_id'=>'asset-1','version'=>'1',
-		'authority_state'=>'unknown','review_state'=>'pending',
-		'fingerprint'=>str_repeat('a',64),'bytes'=>100,
-	)),
-));
-$check(is_wp_error($bad_context) && 'mad4b_context_source_ineligible'===$bad_context->get_error_code(),'unreviewed context was accepted');
-
-$context=MAD4B_SCP_Content_Intelligence_Pipeline::build_context_pack(array(
+	'artifact_type'=>'context_pack',
+	'status'=>'active',
+	'version'=>1,
+	'payload'=>array('contract'=>'mad4b.context-pack.v1','ready'=>true),
+	'metadata'=>array(),
+	'producer_stage'=>'KNOWLEDGE_DISPATCH',
+);
+MAD4B_SCP_Artifacts::$rows[$research_id]=array(
+	'artifact_id'=>$research_id,
 	'job_id'=>$job,
-	'sources'=>array(
-		array('source_id'=>'z-source','asset_id'=>'asset-2','version'=>'2','authority_state'=>'approved','review_state'=>'reviewed','fingerprint'=>str_repeat('b',64),'bytes'=>120),
-		array('source_id'=>'a-source','asset_id'=>'asset-1','version'=>'1','authority_state'=>'authoritative','review_state'=>'approved','fingerprint'=>str_repeat('a',64),'bytes'=>100),
+	'artifact_type'=>'serp_research',
+	'status'=>'active',
+	'version'=>1,
+	'payload'=>array(
+		'contract'=>'mad4b.research-intelligence.v1',
+		'provider_id'=>'provider-ci',
+		'request_fingerprint'=>str_repeat('c',64),
 	),
-));
-$check(is_array($context) && 'context_pack'===$context['artifact']['artifact_type'],'ContextPack append failed');
-$context_id=$context['artifact']['artifact_id'];
-$check('a-source'===$context['artifact']['payload']['sources'][0]['source_id'],'ContextPack source order is not deterministic');
-$check(220===$context['artifact']['payload']['total_declared_bytes'],'ContextPack bounded bytes incorrect');
-
-$research=MAD4B_SCP_Content_Intelligence_Pipeline::append_research(array(
-	'job_id'=>$job,
-	'research_type'=>'serp_research',
-	'provider_id'=>'provider-ci',
-	'collected_at'=>'2026-09-25T00:00:00Z',
-	'request_fingerprint'=>str_repeat('c',64),
-	'source_refs'=>array('serp:1','serp:2'),
-	'normalized_data'=>array('queries'=>array('alpha'),'results'=>array(array('rank'=>1,'url'=>'https://example.test/'))),
-	'usage'=>array('requests'=>1),
-	'cost'=>array('currency'=>'USD','amount'=>'0.01'),
-	'freshness'=>'fresh',
-));
-$check(is_array($research) && 'serp_research'===$research['artifact']['artifact_type'],'Research append failed');
-$research_id=$research['artifact']['artifact_id'];
+	'metadata'=>array(),
+	'producer_stage'=>'SERP_RESEARCH',
+);
 
 $no_research=MAD4B_SCP_Content_Intelligence_Pipeline::build_blueprint(array(
 	'job_id'=>$job,
@@ -174,6 +164,8 @@ $check(is_wp_error($stale) && 'mad4b_artifact_stale'===$stale->get_error_code(),
 
 // No direct provider SDK, WordPress publication or shell execution exists in semantic pipeline.
 $source=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-content-intelligence-pipeline.php');
+$check(false===strpos($source, "'mad4b/context-pack-build'"), 'pipeline duplicated ContextPack public ability');
+$check(false===strpos($source, "'mad4b/research-artifact-append'"), 'pipeline duplicated Research public ability');
 foreach(array('wp_insert_post(','wp_update_post(','wp_publish_post(','shell_exec(','proc_open(','curl_exec(','OpenAI','Anthropic') as $forbidden){
 	$check(false===strpos($source,$forbidden),'forbidden side effect/provider coupling present: '.$forbidden);
 }
