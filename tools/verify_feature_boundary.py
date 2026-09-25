@@ -121,8 +121,13 @@ def find_feature_json(head: str, feature_id: str) -> str:
 
 
 def verify(base: str, head: str, head_branch: str) -> dict:
-    if run("git", "merge-base", "--is-ancestor", base, head) != "":
-        pass
+    ancestry = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", base, head],
+        text=True,
+        capture_output=True,
+    )
+    if ancestry.returncode != 0:
+        fail(f"FEATURE_BASE_NOT_ANCESTOR:base={base}:head={head}")
     match = FEATURE_BRANCH_RE.match(head_branch)
     changed = changed_paths(base, head)
     if not match:
