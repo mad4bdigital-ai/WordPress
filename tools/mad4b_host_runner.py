@@ -36,7 +36,7 @@ RUNNER_CONTRACT = "mad4b.host-runner.v1"
 SUPPORTED_ENVIRONMENTS = {"staging"}
 MAX_JOB_BYTES = 65536
 MAX_RECEIPT_BYTES = 262144
-MAX_WRITE_BYTES = 65536
+MAX_WRITE_BYTES = 32768
 WORKSPACE_PLAN_CONTRACT = "mad4b.host-runner-workspace-replace-plan.v1"
 
 # Fixed semantic operation registry. There is intentionally no generic command or shell surface.
@@ -170,8 +170,11 @@ def load_profile(path: Path) -> dict[str, Any]:
     root_raw = str(profile.get("wordpress_root") or "")
     if not root_raw:
         raise ValueError("Host Runner profile wordpress_root missing")
-    root = Path(root_raw).expanduser().resolve()
-    if not root.is_dir() or root.is_symlink():
+    root_input = Path(root_raw).expanduser()
+    if root_input.is_symlink():
+        raise ValueError("Host Runner profile WordPress root symlink is forbidden")
+    root = root_input.resolve()
+    if not root.is_dir():
         raise ValueError("Host Runner profile WordPress root is invalid")
     if not (root / "wp-config.php").is_file():
         raise ValueError("Host Runner profile WordPress root guard failed")
@@ -220,6 +223,12 @@ def load_profile(path: Path) -> dict[str, Any]:
     if runner_workspace.exists() and (runner_workspace.is_symlink() or not runner_workspace.is_dir()):
         raise ValueError("Host Runner workspace must be a regular directory")
 
+    receipt_root_input = Path(
+        str(profile.get("receipt_root") or (root / "wp-content/mad4b-runner/receipts"))
+    ).expanduser()
+    if receipt_root_input.is_symlink():
+        raise ValueError("Host Runner receipt_root symlink is forbidden")
+
     normalized = {
         "contract": PROFILE_CONTRACT,
         "profile_id": profile_id,
@@ -230,11 +239,7 @@ def load_profile(path: Path) -> dict[str, Any]:
         "runner_source_sha256": runner_source_sha256,
         "executor_fingerprint": executor_fingerprint,
         "integrity_key_file": str(key_file),
-        "receipt_root": str(
-            Path(str(profile.get("receipt_root") or (root / "wp-content/mad4b-runner/receipts")))
-            .expanduser()
-            .resolve()
-        ),
+        "receipt_root": str(receipt_root_input.resolve()),
         "runner_workspace": str(runner_workspace),
         "journal_root": str((expected_workspace / "journals").resolve()),
         "rollback_root": str((expected_workspace / "rollback").resolve()),
