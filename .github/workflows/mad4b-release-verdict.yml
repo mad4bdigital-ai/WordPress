@@ -31,6 +31,7 @@ jobs:
   verdict:
     name: Repository release verdict
     runs-on: ubuntu-latest
+    environment: repository-governance
     timeout-minutes: 25
     steps:
       - name: Checkout exact head
