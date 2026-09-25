@@ -271,7 +271,10 @@ def verify(base: str, head: str, head_branch: str, pr_number: int = 0) -> dict:
     if sorted(cross) != granted_cross:
         fail("CROSS_FEATURE_DEPENDENCY_GRANT_DRIFT")
 
-    immutable = sorted(p for p in changed if p in IMMUTABLE_FEATURE_PATHS)
+    immutable = sorted(
+        p for p in changed
+        if p in IMMUTABLE_FEATURE_PATHS or p in GOVERNANCE_SUPPORT_PATHS
+    )
     if immutable:
         fail("REPOSITORY_ROOT_OF_TRUST_CHANGED_FROM_FEATURE:" + ",".join(immutable))
     self_certifying = sorted(
