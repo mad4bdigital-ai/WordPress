@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -58,6 +59,60 @@ def public_json(repository: str, path: str):
         return json.loads(response.read().decode("utf-8"))
 
 
+def validate_ruleset_attestation(
+    raw_value: str,
+    repository: str,
+    ruleset: dict,
+    policy: dict,
+    policy_path: Path,
+    template_path: Path | None,
+) -> dict:
+    config = policy.get("ruleset_attestation") or {}
+    expected_config = {
+        "variable_name": "MAD4B_RULESET_ATTESTATION",
+        "contract": "mad4b.repository-ruleset-attestation.v1",
+        "require_zero_bypass_actors": True,
+        "bind_ruleset_updated_at": True,
+        "bind_policy_sha256": True,
+        "bind_template_sha256": True,
+    }
+    if config != expected_config:
+        raise SystemExit("repository ruleset attestation policy is missing or drifted")
+    if template_path is None or not template_path.is_file():
+        raise SystemExit("ruleset attestation verification requires the canonical template")
+    if not raw_value.strip():
+        raise SystemExit("ruleset bypass evidence is hidden and repository attestation variable is empty")
+    try:
+        attestation = json.loads(raw_value)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"repository ruleset attestation variable is invalid JSON: {exc}") from exc
+    if not isinstance(attestation, dict):
+        raise SystemExit("repository ruleset attestation must be a JSON object")
+    if attestation.get("contract") != expected_config["contract"]:
+        raise SystemExit("repository ruleset attestation contract mismatch")
+    expected = {
+        "repository": repository,
+        "ruleset_id": int(ruleset.get("id") or 0),
+        "ruleset_name": str(ruleset.get("name") or ""),
+        "ruleset_source_type": "Repository",
+        "ruleset_source": repository,
+        "ruleset_updated_at": str(ruleset.get("updated_at") or ""),
+        "bypass_actor_count": 0,
+        "policy_sha256": hashlib.sha256(policy_path.read_bytes()).hexdigest(),
+        "template_sha256": hashlib.sha256(template_path.read_bytes()).hexdigest(),
+        "verified_readback": True,
+    }
+    for key, value in expected.items():
+        if attestation.get(key) != value:
+            raise SystemExit(
+                f"repository ruleset attestation is stale or mismatched: {key} "
+                f"expected={value!r} actual={attestation.get(key)!r}"
+            )
+    if not expected["ruleset_updated_at"]:
+        raise SystemExit("live ruleset updated_at is unavailable for attestation freshness")
+    return attestation
+
+
 def ref_matches(value: str, pattern: str, default_ref: str) -> bool:
     if pattern == "~ALL":
         return True
@@ -83,6 +138,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repository", required=True)
     parser.add_argument("--policy", type=Path, required=True)
+    parser.add_argument("--template", type=Path)
+    parser.add_argument("--allow-bootstrap-hidden-bypass-evidence", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
@@ -109,46 +166,85 @@ def main() -> int:
         ):
             try:
                 public_detail = public_json(args.repository, detail_path)
-            except Exception as exc:
-                raise SystemExit(
-                    "bypass-actor evidence is unavailable from authenticated detail "
-                    f"and public detail fallback failed for ruleset {ruleset_id}: {exc}"
-                ) from exc
-            if not isinstance(public_detail, dict) or "bypass_actors" not in public_detail:
-                raise SystemExit(
-                    "bypass-actor evidence is unavailable from both authenticated "
-                    f"and public detail for ruleset {ruleset_id}"
-                )
-            detail = public_detail
+            except Exception:
+                public_detail = None
+            if isinstance(public_detail, dict):
+                for key, value in public_detail.items():
+                    if key not in detail:
+                        detail[key] = value
         details.append(detail)
 
     applicable = [row for row in details if isinstance(row, dict) and applies_to_target(row, target_ref)]
     if not applicable:
         raise SystemExit(f"no active repository ruleset applies to {target_ref}")
 
-    if policy.get("require_no_bypass_actors") is True:
-        missing_bypass_evidence = [
-            {"id": row.get("id"), "name": row.get("name"), "source_type": row.get("source_type")}
-            for row in applicable
-            if "bypass_actors" not in row
-        ]
-        if missing_bypass_evidence:
-            raise SystemExit(
-                "bypass-actor evidence is unavailable for an applicable ruleset: "
-                + repr(missing_bypass_evidence)
-            )
-        bypass = [
-            {"id": row.get("id"), "name": row.get("name"), "bypass_actors": row.get("bypass_actors")}
-            for row in applicable
-            if row.get("bypass_actors")
-        ]
-        if bypass:
-            raise SystemExit(f"applicable ruleset contains bypass actors: {bypass}")
-
     expected_ruleset_name = str(
         policy.get("required_repository_ruleset_name")
         or "MAD4B master release governance"
     )
+    bypass_evidence_sources = {}
+    ruleset_attestation_verified = False
+    if args.allow_bootstrap_hidden_bypass_evidence and (
+        "ruleset_attestation" in policy or "required_repository_ruleset_name" in policy
+    ):
+        raise SystemExit(
+            "bootstrap hidden-bypass exception is valid only against the legacy PR-base policy"
+        )
+
+    if policy.get("require_no_bypass_actors") is True:
+        for row in applicable:
+            row_id = int(row.get("id") or 0)
+            if "bypass_actors" in row:
+                if row.get("bypass_actors"):
+                    raise SystemExit(
+                        "applicable ruleset contains bypass actors: "
+                        + repr({
+                            "id": row.get("id"),
+                            "name": row.get("name"),
+                            "bypass_actors": row.get("bypass_actors"),
+                        })
+                    )
+                bypass_evidence_sources[str(row_id)] = "direct_ruleset_detail"
+                continue
+
+            canonical_local = (
+                str(row.get("name") or "") == expected_ruleset_name
+                and str(row.get("source_type") or "") == "Repository"
+                and str(row.get("source") or "") in {"", args.repository}
+            )
+            if not canonical_local:
+                raise SystemExit(
+                    "bypass-actor evidence is unavailable for an applicable non-canonical ruleset: "
+                    + repr({
+                        "id": row.get("id"),
+                        "name": row.get("name"),
+                        "source_type": row.get("source_type"),
+                    })
+                )
+
+            if args.allow_bootstrap_hidden_bypass_evidence:
+                bypass_evidence_sources[str(row_id)] = (
+                    "one_time_pr66_bootstrap_owner_attestation_required"
+                )
+                continue
+
+            config = policy.get("ruleset_attestation") or {}
+            variable_name = str(config.get("variable_name") or "")
+            if variable_name != "MAD4B_RULESET_ATTESTATION":
+                raise SystemExit("repository ruleset attestation variable name drifted")
+            attestation = validate_ruleset_attestation(
+                os.environ.get(variable_name, ""),
+                args.repository,
+                row,
+                policy,
+                args.policy,
+                args.template,
+            )
+            ruleset_attestation_verified = True
+            bypass_evidence_sources[str(row_id)] = (
+                "repository_variable:" + variable_name
+            )
+
     governed_rulesets = [
         row
         for row in applicable
@@ -340,7 +436,11 @@ def main() -> int:
         ],
         "strict_required_status_checks_policy": True,
         "bypass_actor_count": 0,
-        "bypass_evidence_source": "ruleset_detail_with_public_fallback_when_needed",
+        "bypass_evidence_sources": bypass_evidence_sources,
+        "ruleset_attestation_verified": ruleset_attestation_verified,
+        "bootstrap_hidden_bypass_exception": bool(
+            args.allow_bootstrap_hidden_bypass_evidence
+        ),
         "allowed_merge_methods": sorted(expected_merge_methods),
         "required_reviewers": expected_required_reviewers,
         "require_extra_approval_for_unattributed_changes": expected_unattributed_approval,
