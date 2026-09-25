@@ -37,9 +37,10 @@
     "strict_required_status_checks_policy": true
   },
   "ruleset_attestation": {
-    "scope": "environment",
-    "environment_name": "repository-governance",
-    "variable_name": "MAD4B_RULESET_ATTESTATION",
+    "scope": "owner_issue_comment",
+    "issue_title": "MAD4B Repository Governance Attestations",
+    "authorized_author_login": "mad4bdigital-ai",
+    "comment_marker": "MAD4B_RULESET_ATTESTATION",
     "contract": "mad4b.repository-ruleset-attestation.v1",
     "require_zero_bypass_actors": true,
     "bind_ruleset_updated_at": true,
