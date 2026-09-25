@@ -97,6 +97,13 @@ $reconcile_filter = static function ( $verified, $kind, $context ) {
 		&& 'reconcile:idempotency:verified-readback' === $context['reconciliation_ref'] ) {
 		return true;
 	}
+	if ( 'idempotency_no_effect' === $kind
+		&& isset( $context['reconciliation_ref'] )
+		&& 'reconcile:idempotency:no-effect' === $context['reconciliation_ref']
+		&& isset( $context['result']['provider_candidate_count'] )
+		&& 0 === (int) $context['result']['provider_candidate_count'] ) {
+		return true;
+	}
 	return $verified;
 };
 add_filter( 'mad4b_scp_durable_reconciliation_verified', $reconcile_filter, PHP_INT_MAX, 3 );
@@ -211,6 +218,44 @@ $check( is_array( $id_complete ) && ! empty( $id_complete['completed'] ), 'recla
 
 $replayed = MAD4B_SCP_Durable_Execution::begin_idempotency( $scope, $idempotency_key, $request_sha, 3600 );
 $check( is_array( $replayed ) && ! empty( $replayed['replayed'] ) && $result === $replayed['result'], 'completed idempotency did not replay exact durable result' );
+
+// Verified provider no-effect may release a pending claim for one CAS-protected retry.
+$no_effect_scope = MAD4B_SCP_Durable_Execution::scope_key(
+	'site-' . wp_generate_uuid4(),
+	'brand-context',
+	'materialize',
+	'asset-' . wp_generate_uuid4()
+);
+$no_effect_key = 'ci-no-effect-' . wp_generate_uuid4();
+$no_effect_request = hash( 'sha256', 'request:' . $no_effect_key );
+$no_effect_claim_a = MAD4B_SCP_Durable_Execution::begin_idempotency( $no_effect_scope, $no_effect_key, $no_effect_request, 3600 );
+$check( is_array( $no_effect_claim_a ) && 1 === (int) $no_effect_claim_a['claim_epoch'], 'no-effect fixture initial claim failed' );
+$no_effect_proof = array(
+	'contract' => 'ci.no-effect-proof.v1',
+	'provider_scan_complete' => true,
+	'provider_candidate_count' => 0,
+	'scan_generation' => hash( 'sha256', 'scan:' . $no_effect_key ),
+);
+$no_effect_release = MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect(
+	$no_effect_scope,
+	$no_effect_key,
+	$no_effect_request,
+	'reconcile:idempotency:no-effect',
+	$no_effect_proof
+);
+$check( is_array( $no_effect_release ) && ! empty( $no_effect_release['released'] ), 'verified no-effect did not release pending idempotency' );
+$no_effect_claim_b = MAD4B_SCP_Durable_Execution::begin_idempotency( $no_effect_scope, $no_effect_key, $no_effect_request, 3600 );
+$check(
+	is_array( $no_effect_claim_b )
+	&& ! empty( $no_effect_claim_b['claimed'] )
+	&& ! empty( $no_effect_claim_b['reclaimed_after_verified_no_effect'] )
+	&& 2 === (int) $no_effect_claim_b['claim_epoch'],
+	'verified no-effect retry did not reacquire with a new claim epoch'
+);
+$no_effect_parallel = MAD4B_SCP_Durable_Execution::begin_idempotency( $no_effect_scope, $no_effect_key, $no_effect_request, 3600 );
+$check( 'mad4b_idempotency_in_progress' === $error_code( $no_effect_parallel ), 'parallel retry bypassed no-effect CAS claim' );
+$no_effect_complete = MAD4B_SCP_Durable_Execution::complete_idempotency( $no_effect_claim_b, array( 'state' => 'created_after_verified_no_effect' ) );
+$check( is_array( $no_effect_complete ) && ! empty( $no_effect_complete['completed'] ), 'reacquired no-effect claim could not complete' );
 
 // ---- Outbox/inbox effect-once boundaries ----
 $job_id = wp_generate_uuid4();
