@@ -40,6 +40,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-contracts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-traits.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-data-governance.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-decommission-portability.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-scheduler-admission.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-impact-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-approval-tickets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-budgets.php';
