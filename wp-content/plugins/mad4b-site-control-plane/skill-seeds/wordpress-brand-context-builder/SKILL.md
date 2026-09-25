@@ -20,7 +20,7 @@ Never claim Brand Core is ready merely because a draft exists or was uploaded.
 
 ## Workflow
 
-1. Call `context/brand-gap-plan`.
+1. Call `context/brand-gap-plan` with `include_authoritative_content=true` so approved Brand Authority is re-read from the provider and hash-verified before synthesis.
 2. Stop if `hard_blockers` is non-empty or `conflicts` is non-empty.
 3. Use only evidence returned by the exact plan:
    - approved Brand Context assets;
