@@ -364,6 +364,8 @@ def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict
     root = Path(profile["wordpress_root"])
 
     if operation_id == "runtime.status.read":
+        if inputs:
+            raise ValueError("runtime.status.read takes no input fields")
         return {
             "wordpress_root": str(root),
             "wp_config_sha256": sha256_file(root / "wp-config.php"),
