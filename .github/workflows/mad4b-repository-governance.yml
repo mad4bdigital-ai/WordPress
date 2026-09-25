@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-owner-attestation-contract.py
+          python3 tools/test_verify_repository_owner_attestation.py
 
       - name: Verify baseline-owned feature boundary contract
         shell: bash
