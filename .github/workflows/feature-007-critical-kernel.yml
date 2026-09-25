@@ -20,12 +20,14 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/policy-resolution-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/formal-critical-state-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy-resolution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/policy-resolution.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py'
@@ -81,12 +83,14 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/policy-resolution-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/formal-critical-state-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy-resolution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/policy-resolution.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py'
@@ -239,6 +243,13 @@ jobs:
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy-resolution.php
           php wp-content/plugins/mad4b-site-control-plane/tests/policy-resolution-contract.php
+
+      - name: Verify read-only Operator Doctor
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php
 
       - name: Verify Ability category and schema diagnostic contract
         shell: bash
