@@ -436,6 +436,55 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
       ],
       "reason": "Read-only import validation now verifies bundle/section integrity, site remapping, collisions and missing external refs while forbidding authority material; actual governed import remains open."
+    },
+    "T2401": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php"
+      ],
+      "reason": "Read-only SiteBootstrapSnapshot is implemented with bounded completeness and deterministic fingerprinting; exact ETG live inventory proof remains open."
+    },
+    "T2402": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php"
+      ],
+      "reason": "Bootstrap normalizes governed public post types, taxonomies and active languages; exact ETG plugin/language inventory proof remains open."
+    },
+    "T2403": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php"
+      ],
+      "reason": "Bootstrap observes canonical URLs, SEO metadata and indexability without mutation; exact ETG provider-specific observations remain live-bound."
+    },
+    "T2404": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php"
+      ],
+      "reason": "Bootstrap records bounded media and internal/outbound link observations; exact ETG inventory completeness remains live-bound."
+    },
+    "T2407": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php"
+      ],
+      "reason": "Authoritative v11 Intent Registry plus explicit read-only Bootstrap→Intent reconciliation planning are implemented; exact live reconciliation remains open."
+    },
+    "T2413": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php"
+      ],
+      "reason": "Bootstrap snapshot and Bootstrap→Intent planning explicitly report no mutation, no IntentClaim creation and no Artifact creation; exact-head/live proof remains open."
     }
   }
 }
