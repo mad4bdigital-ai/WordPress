@@ -93,6 +93,55 @@ $invalid_confidence = MAD4B_SCP_Intent_Registry::normalize_analysis_relations(
 );
 $check( is_wp_error( $invalid_confidence ) && 'mad4b_intent_confidence_invalid' === $invalid_confidence->get_error_code(), 'out-of-range confidence did not fail closed' );
 
+$snapshot_sha = str_repeat( 'a', 64 );
+$bootstrap = array(
+	'contract' => 'mad4b.site-content-bootstrap.v1',
+	'complete' => true,
+	'blocking_reasons' => array(),
+	'snapshot_sha256' => $snapshot_sha,
+	'mutation_performed' => false,
+	'intent_claims_created' => false,
+	'artifacts_created' => false,
+	'items' => array(
+		array( 'contract'=>'mad4b.content-inventory-item.v1','content_id'=>'site-1:post:10','locale'=>'en','content_fingerprint'=>str_repeat('b',64) ),
+		array( 'contract'=>'mad4b.content-inventory-item.v1','content_id'=>'site-1:post:11','locale'=>'en','content_fingerprint'=>str_repeat('c',64) ),
+	),
+);
+$bootstrap_plan = MAD4B_SCP_Intent_Registry::bootstrap_plan_from_snapshot(
+	$bootstrap,
+	array(
+		array(
+			'content_id'=>'site-1:post:10',
+			'intent_id'=>'intent:visa',
+			'market'=>'eg',
+			'role'=>'PRIMARY_OWNER',
+			'confidence'=>0.95,
+			'evidence_refs'=>array('operator:review-1'),
+		),
+	)
+);
+$check( is_array($bootstrap_plan) && 'mad4b.intent-bootstrap-reconciliation-plan.v1' === $bootstrap_plan['contract'], 'bootstrap→Intent planner contract failed' );
+$check( false === $bootstrap_plan['mutation_performed'] && false === $bootstrap_plan['authorizing'], 'bootstrap→Intent planner mutated or authorized' );
+$check( 1 === count($bootstrap_plan['scopes']), 'bootstrap→Intent planner scope count mismatch' );
+$check( false === $bootstrap_plan['classification_complete'], 'partial explicit classification became complete' );
+$check( array('site-1:post:11') === $bootstrap_plan['unresolved_content_ids'], 'unclassified inventory was not preserved as unresolved' );
+$planned_relation = $bootstrap_plan['scopes'][0]['relations'][0];
+$check( 'operator' === $planned_relation['source'], 'bootstrap classification source was not explicit operator evidence' );
+$check( in_array('bootstrap:' . $snapshot_sha,$planned_relation['evidence_refs'],true), 'bootstrap snapshot lineage missing from Intent plan' );
+$check( in_array('content-sha256:' . str_repeat('b',64),$planned_relation['evidence_refs'],true), 'content fingerprint lineage missing from Intent plan' );
+
+$unknown_content = MAD4B_SCP_Intent_Registry::bootstrap_plan_from_snapshot(
+	$bootstrap,
+	array(array('content_id'=>'site-1:post:999','intent_id'=>'intent:x','market'=>'eg','role'=>'PRIMARY_OWNER','confidence'=>0.9))
+);
+$check( is_wp_error($unknown_content) && 'mad4b_intent_bootstrap_content_unknown' === $unknown_content->get_error_code(), 'bootstrap planner accepted content outside exact snapshot' );
+
+$incomplete_bootstrap = $bootstrap;
+$incomplete_bootstrap['complete'] = false;
+$incomplete_bootstrap['blocking_reasons'] = array('inventory_bound_exceeded_or_incomplete');
+$blocked_bootstrap = MAD4B_SCP_Intent_Registry::bootstrap_plan_from_snapshot($incomplete_bootstrap,array());
+$check( is_wp_error($blocked_bootstrap) && 'mad4b_intent_bootstrap_incomplete' === $blocked_bootstrap->get_error_code(), 'incomplete bootstrap inventory fed Intent Registry' );
+
 $source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-intent-registry.php' );
 $schema = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-schema.php' );
 $servers = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
@@ -101,6 +150,7 @@ $main = file_get_contents( dirname( __DIR__ ) . '/mad4b-site-control-plane.php' 
 foreach ( array(
 	"'mad4b/intent-registry-current'",
 	"'mad4b/intent-conflicts-analyze'",
+	"'mad4b/intent-bootstrap-plan'",
 	"'mad4b/intent-registry-reconcile'",
 	"'many_to_many' => true",
 	"'cannibalization_is_derived' => true",
@@ -127,6 +177,7 @@ $check( false !== strpos( $main, 'class-mad4b-scp-intent-registry.php' ), 'Inten
 $check( false !== strpos( $source, 'The v11 intent_relations table is the authoritative registry' ), 'Intent Registry authority drifted back to artifacts' );
 $check( false !== strpos( $servers, "'mad4b/intent-registry-current'" ), 'Intent Registry current read is not mounted' );
 $check( false !== strpos( $servers, "'mad4b/intent-conflicts-analyze'" ), 'Intent conflict analysis read is not mounted' );
+$check( false !== strpos( $servers, "'mad4b/intent-bootstrap-plan'" ), 'Bootstrap→Intent planner is not mounted on read plane' );
 $check( false !== strpos( $servers, "'mad4b/intent-registry-reconcile'" ), 'Intent Registry reconcile is not governed write candidate' );
 
 foreach ( array(
