@@ -92,6 +92,16 @@ def main() -> int:
         raise SystemExit(f"no active repository ruleset applies to {target_ref}")
 
     if policy.get("require_no_bypass_actors") is True:
+        missing_bypass_evidence = [
+            {"id": row.get("id"), "name": row.get("name"), "source_type": row.get("source_type")}
+            for row in applicable
+            if "bypass_actors" not in row
+        ]
+        if missing_bypass_evidence:
+            raise SystemExit(
+                "bypass-actor evidence is unavailable for an applicable ruleset: "
+                + repr(missing_bypass_evidence)
+            )
         bypass = [
             {"id": row.get("id"), "name": row.get("name"), "bypass_actors": row.get("bypass_actors")}
             for row in applicable
