@@ -44,6 +44,9 @@ required = [
     '$rollbackRules = @()',
     'PSObject.Properties["require_extra_approval_for_unattributed_changes"]',
     'PSObject.Properties.Remove("require_extra_approval_for_unattributed_changes")',
+    '$before.PSObject.Properties["bypass_actors"]',
+    'bypass-actor state is not observable',
+    'existing canonical ruleset contains bypass actors',
 ]
 
 missing = [needle for needle in required if needle not in script]
@@ -111,3 +114,4 @@ print("canonical_template_executable_preflight=pass")
 print("windows_json_encoding=utf8_no_bom")
 print("repository_ruleset_discovery=local_only")
 print("rollback_payload=response_only_fields_stripped")
+print("bypass_evidence=explicit")
