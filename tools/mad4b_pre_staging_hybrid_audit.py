@@ -225,7 +225,7 @@ if addon_catalog.get("contract") != "mad4b.wordpress-addon-catalog.v1":
 if addon_catalog.get("defaults", {}).get("production_authorized") is not False:
     fail("addon_registry", "add-on catalog may not authorize Production")
 addon_required_fields = {
-    "addon_id","plugin_file","base_provider","compatible_versions","extension_points","capabilities",
+    "addon_id","plugin_file","source_root","base_provider","compatible_versions","extension_points","capabilities",
     "data_ownership","authority_impact","rollback","certification","tests","portability",
     "supply_chain","network_access","multisite","performance_budget","observability","failure_policy",
     "release_ring","certified_pairs",
@@ -255,7 +255,9 @@ for manifest in addon_catalog.get("addons", []):
     if not isinstance(manifest.get("network_access", {}).get("allowed_hosts"), list):
         addon_violations.append(f"{addon_id}:network_allowlist_missing")
     source_root = manifest.get("source_root")
-    if source_root:
+    if not isinstance(source_root, str) or not source_root.strip():
+        addon_violations.append(f"{addon_id}:source_root_required")
+    else:
         root = (REPO / str(source_root)).resolve()
         try:
             root.relative_to(REPO.resolve())
@@ -272,6 +274,8 @@ for manifest in addon_catalog.get("addons", []):
             "eval": r"\beval\s*\(",
             "direct_wpdb_query": r"\$wpdb\s*->\s*(?:query|insert|update|delete)\s*\(",
             "direct_filesystem_write": r"\b(?:file_put_contents|fwrite|unlink|rename)\s*\(",
+            "direct_outbound_http": r"\bwp_remote_(?:get|post|request|head)\s*\(",
+            "direct_content_or_option_mutation": r"\b(?:wp_update_post|update_option|add_option|delete_option)\s*\(",
         }
         for php_file in root.rglob("*.php"):
             src = php_file.read_text(encoding="utf-8", errors="replace")
