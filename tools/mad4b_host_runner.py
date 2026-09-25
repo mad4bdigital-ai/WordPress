@@ -3,20 +3,21 @@
 
 Repository slice:
 - Staging-only.
-- Read-only semantic operations only.
+- Read-only operations plus one dedicated-workspace reversible write.
 - No shell/subprocess/network execution.
 - HMAC-authenticated job envelopes.
 - Exact local runner profile / target fingerprint binding.
 - Named filesystem zones with canonical path confinement.
 - Durable idempotent receipts.
 
-Write operations, scheduler/bootstrap enrollment, provider CLI/API adapters, and
-Production eligibility remain unavailable until separately implemented/certified.
+General host/site writes, scheduler/bootstrap enrollment, provider CLI/API adapters,
+and Production eligibility remain unavailable until separately implemented/certified.
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import hmac
 import json
@@ -35,8 +36,10 @@ RUNNER_CONTRACT = "mad4b.host-runner.v1"
 SUPPORTED_ENVIRONMENTS = {"staging"}
 MAX_JOB_BYTES = 65536
 MAX_RECEIPT_BYTES = 262144
+MAX_WRITE_BYTES = 65536
+WORKSPACE_PLAN_CONTRACT = "mad4b.host-runner-workspace-replace-plan.v1"
 
-# Fixed read-only operation registry. There is intentionally no generic command.
+# Fixed semantic operation registry. There is intentionally no generic command or shell surface.
 OPERATIONS: dict[str, dict[str, Any]] = {
     "runtime.status.read": {
         "version": 1,
@@ -52,6 +55,13 @@ OPERATIONS: dict[str, dict[str, Any]] = {
         "version": 1,
         "risk": "read_only",
         "zones": ["plugin_root"],
+    },
+    "workspace.file.replace": {
+        "version": 1,
+        "risk": "reversible_write",
+        "zones": ["runner_workspace"],
+        "requires_plan": True,
+        "requires_approval": True,
     },
 }
 
@@ -203,6 +213,13 @@ def load_profile(path: Path) -> dict[str, Any]:
         },
     }))
 
+    runner_workspace = (root / "wp-content" / "mad4b-runner" / "workspace").resolve()
+    expected_workspace = (root / "wp-content" / "mad4b-runner").resolve()
+    if not _is_within(runner_workspace, expected_workspace):
+        raise ValueError("Host Runner workspace escaped dedicated runner root")
+    if runner_workspace.exists() and (runner_workspace.is_symlink() or not runner_workspace.is_dir()):
+        raise ValueError("Host Runner workspace must be a regular directory")
+
     normalized = {
         "contract": PROFILE_CONTRACT,
         "profile_id": profile_id,
@@ -218,11 +235,19 @@ def load_profile(path: Path) -> dict[str, Any]:
             .expanduser()
             .resolve()
         ),
+        "runner_workspace": str(runner_workspace),
+        "journal_root": str((expected_workspace / "journals").resolve()),
+        "rollback_root": str((expected_workspace / "rollback").resolve()),
     }
     receipt_root = Path(normalized["receipt_root"])
-    expected_workspace = (root / "wp-content" / "mad4b-runner").resolve()
     if not _is_within(receipt_root, expected_workspace):
         raise ValueError("Host Runner receipt_root escaped dedicated runner workspace")
+    for key in ("journal_root", "rollback_root"):
+        candidate = Path(normalized[key])
+        if not _is_within(candidate, expected_workspace):
+            raise ValueError(f"Host Runner {key} escaped dedicated runner workspace")
+        if candidate.exists() and (candidate.is_symlink() or not candidate.is_dir()):
+            raise ValueError(f"Host Runner {key} must be a regular directory")
     normalized["target_fingerprint"] = sha256_bytes(canonical_json({
         "profile_id": profile_id,
         "site_uuid": site_uuid,
@@ -272,7 +297,8 @@ def verify_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
     operation_id = str(job.get("operation_id") or "")
     if operation_id not in profile["allowed_operations"] or operation_id not in OPERATIONS:
         raise ValueError("Host Runner operation is not allowed")
-    if job.get("operation_version") != OPERATIONS[operation_id]["version"]:
+    definition = OPERATIONS[operation_id]
+    if job.get("operation_version") != definition["version"]:
         raise ValueError("Host Runner operation version mismatch")
     expected_fp = operation_fingerprint(operation_id)
     if not hmac.compare_digest(str(job.get("operation_fingerprint") or ""), expected_fp):
@@ -295,6 +321,16 @@ def verify_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
     input_sha = sha256_bytes(canonical_json(inputs))
     if not hmac.compare_digest(str(job.get("input_sha256") or ""), input_sha):
         raise ValueError("Host Runner input digest mismatch")
+    plan_sha256 = str(job.get("plan_sha256") or "").lower()
+    approval_ref = str(job.get("approval_ref") or "")
+    if definition.get("risk") != "read_only":
+        if not re.fullmatch(r"[a-f0-9]{64}", plan_sha256):
+            raise ValueError("Host Runner write job plan_sha256 is invalid")
+        if not approval_ref or len(approval_ref) > 191:
+            raise ValueError("Host Runner write job approval_ref is required")
+    elif plan_sha256 or approval_ref:
+        raise ValueError("Host Runner read-only job cannot carry write approval material")
+
     expected_mac = job_mac(job, profile["_integrity_key"])
     supplied_mac = str(job.get("mac_sha256") or "")
     if not re.fullmatch(r"[a-f0-9]{64}", supplied_mac) or not hmac.compare_digest(supplied_mac, expected_mac):
@@ -309,6 +345,9 @@ def verify_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
         "authority_ref": authority_ref,
         "input": inputs,
         "input_sha256": input_sha,
+        "risk": definition.get("risk"),
+        "plan_sha256": plan_sha256,
+        "approval_ref": approval_ref,
     }
 
 
@@ -317,6 +356,7 @@ def zone_root(profile: dict[str, Any], zone: str) -> Path:
     zones = {
         "wordpress_root": root,
         "plugin_root": root / "wp-content" / "plugins" / "mad4b-site-control-plane",
+        "runner_workspace": Path(profile["runner_workspace"]),
     }
     if zone not in zones:
         raise ValueError("unknown Host Runner filesystem zone")
@@ -341,6 +381,238 @@ def confined_file(profile: dict[str, Any], zone: str, relative: str) -> Path:
     if resolved.is_symlink() or not resolved.is_file():
         raise ValueError("Host Runner target must be a regular file")
     return resolved
+
+
+def _workspace_relative(value: str) -> str:
+    value = str(value or "")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,190}", value):
+        raise ValueError("Host Runner workspace filename is invalid")
+    return value
+
+
+def plan_digest(plan: dict[str, Any]) -> str:
+    material = dict(plan)
+    material.pop("plan_sha256", None)
+    return sha256_bytes(canonical_json(material))
+
+
+def atomic_bytes_write(path: Path, raw: bytes) -> None:
+    if len(raw) > MAX_WRITE_BYTES:
+        raise ValueError("Host Runner write exceeds bounded byte budget")
+    if path.parent.is_symlink() or not path.parent.is_dir():
+        raise ValueError("Host Runner target parent is invalid")
+    if path.exists() and path.is_symlink():
+        raise ValueError("Host Runner target symlink is forbidden")
+    tmp = path.with_name(path.name + f".tmp-{uuid.uuid4().hex}")
+    with tmp.open("wb") as handle:
+        handle.write(raw)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp, path)
+    fd = os.open(str(path.parent), os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def workspace_file_identity(path: Path) -> str:
+    if not path.exists():
+        return "ABSENT"
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("Host Runner workspace target must be a regular file")
+    return sha256_file(path)
+
+
+def build_workspace_replace_plan(
+    profile: dict[str, Any],
+    relative_path: str,
+    new_content: bytes,
+    reason: str,
+) -> dict[str, Any]:
+    if "workspace.file.replace" not in profile["allowed_operations"]:
+        raise ValueError("Host Runner workspace write operation is not enabled")
+    relative_path = _workspace_relative(relative_path)
+    if not isinstance(new_content, (bytes, bytearray)) or len(new_content) > MAX_WRITE_BYTES:
+        raise ValueError("Host Runner replacement content is invalid or too large")
+    reason = str(reason or "").strip()
+    if len(reason) < 3 or len(reason) > 500:
+        raise ValueError("Host Runner workspace write reason is invalid")
+    workspace = Path(profile["runner_workspace"])
+    if workspace.exists() and (workspace.is_symlink() or not workspace.is_dir()):
+        raise ValueError("Host Runner workspace is invalid")
+    target = workspace / relative_path
+    expected_before = workspace_file_identity(target) if workspace.exists() else "ABSENT"
+    plan = {
+        "contract": WORKSPACE_PLAN_CONTRACT,
+        "operation_id": "workspace.file.replace",
+        "operation_version": OPERATIONS["workspace.file.replace"]["version"],
+        "operation_fingerprint": operation_fingerprint("workspace.file.replace"),
+        "profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "executor_fingerprint": profile["executor_fingerprint"],
+        "relative_path": relative_path,
+        "expected_before_sha256": expected_before,
+        "expected_after_sha256": sha256_bytes(bytes(new_content)),
+        "byte_count": len(new_content),
+        "reason": reason,
+    }
+    plan["plan_sha256"] = plan_digest(plan)
+    return plan
+
+
+def _validate_workspace_plan(
+    profile: dict[str, Any],
+    verified: dict[str, Any],
+) -> tuple[dict[str, Any], bytes, Path]:
+    inputs = verified["input"]
+    if set(inputs) != {"plan", "new_content_b64"}:
+        raise ValueError("workspace.file.replace input fields are invalid")
+    plan = inputs.get("plan")
+    if not isinstance(plan, dict) or plan.get("contract") != WORKSPACE_PLAN_CONTRACT:
+        raise ValueError("Host Runner workspace plan contract mismatch")
+    supplied_plan_sha = str(plan.get("plan_sha256") or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{64}", supplied_plan_sha) or plan_digest(plan) != supplied_plan_sha:
+        raise ValueError("Host Runner workspace plan digest mismatch")
+    if not hmac.compare_digest(supplied_plan_sha, verified["plan_sha256"]):
+        raise ValueError("Host Runner job is not bound to exact workspace plan")
+    expected = {
+        "operation_id": "workspace.file.replace",
+        "operation_version": OPERATIONS["workspace.file.replace"]["version"],
+        "operation_fingerprint": operation_fingerprint("workspace.file.replace"),
+        "profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "executor_fingerprint": profile["executor_fingerprint"],
+    }
+    for key, value in expected.items():
+        if str(plan.get(key)) != str(value):
+            raise ValueError(f"Host Runner workspace plan identity drift: {key}")
+    relative = _workspace_relative(str(plan.get("relative_path") or ""))
+    try:
+        raw = base64.b64decode(str(inputs["new_content_b64"]), validate=True)
+    except Exception as exc:
+        raise ValueError("Host Runner replacement content is not valid base64") from exc
+    if len(raw) > MAX_WRITE_BYTES or len(raw) != int(plan.get("byte_count") or -1):
+        raise ValueError("Host Runner replacement content byte budget mismatch")
+    if not hmac.compare_digest(sha256_bytes(raw), str(plan.get("expected_after_sha256") or "")):
+        raise ValueError("Host Runner replacement content does not match plan")
+    workspace = Path(profile["runner_workspace"])
+    if workspace.exists() and (workspace.is_symlink() or not workspace.is_dir()):
+        raise ValueError("Host Runner workspace is invalid")
+    target = workspace / relative
+    return plan, raw, target
+
+
+def _rollback_workspace_replace(result: dict[str, Any]) -> bool:
+    target = Path(result["_target_path"])
+    rollback_path = Path(result["_rollback_path"]) if result.get("_rollback_path") else None
+    before = str(result["before_sha256"])
+    try:
+        if before == "ABSENT":
+            if target.exists():
+                if target.is_symlink() or not target.is_file():
+                    return False
+                target.unlink()
+                fd = os.open(str(target.parent), os.O_RDONLY)
+                try:
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
+            return not target.exists()
+        if rollback_path is None or rollback_path.is_symlink() or not rollback_path.is_file():
+            return False
+        atomic_bytes_write(target, rollback_path.read_bytes())
+        return hmac.compare_digest(workspace_file_identity(target), before)
+    except OSError:
+        return False
+
+
+def execute_workspace_replace(profile: dict[str, Any], verified: dict[str, Any]) -> dict[str, Any]:
+    plan, raw, target = _validate_workspace_plan(profile, verified)
+    workspace = Path(profile["runner_workspace"])
+    workspace.mkdir(parents=True, exist_ok=True)
+    if workspace.is_symlink() or not workspace.is_dir():
+        raise ValueError("Host Runner workspace is invalid after initialization")
+    _reject_symlink_chain(target, workspace)
+    before = workspace_file_identity(target)
+    if not hmac.compare_digest(before, str(plan.get("expected_before_sha256") or "")):
+        raise ValueError("Host Runner workspace precondition changed since plan")
+
+    journal_root = Path(profile["journal_root"])
+    rollback_root = Path(profile["rollback_root"])
+    journal_root.mkdir(parents=True, exist_ok=True)
+    rollback_root.mkdir(parents=True, exist_ok=True)
+    if journal_root.is_symlink() or rollback_root.is_symlink():
+        raise ValueError("Host Runner evidence workspace symlink is forbidden")
+    token = verified["job_id"]
+    journal_path = journal_root / f"{token}.json"
+    rollback_path = rollback_root / f"{token}.bin"
+    if journal_path.exists() or rollback_path.exists():
+        raise ValueError("Host Runner write evidence target already exists")
+
+    if before != "ABSENT":
+        original = target.read_bytes()
+        atomic_bytes_write(rollback_path, original)
+        if not hmac.compare_digest(sha256_file(rollback_path), before):
+            raise RuntimeError("Host Runner rollback snapshot readback failed")
+
+    journal = {
+        "contract": "mad4b.host-runner-mutation-journal.v1",
+        "job_id": verified["job_id"],
+        "plan_sha256": verified["plan_sha256"],
+        "approval_ref": verified["approval_ref"],
+        "operation_id": verified["operation_id"],
+        "before_sha256": before,
+        "expected_after_sha256": plan["expected_after_sha256"],
+        "state": "MUTATION_STARTED",
+        "terminal": False,
+        "blind_retry_allowed": False,
+        "created_at": utc_now(),
+    }
+    atomic_json_write(journal_path, journal)
+
+    result = {
+        "relative_path": plan["relative_path"],
+        "before_sha256": before,
+        "after_sha256": plan["expected_after_sha256"],
+        "bytes": len(raw),
+        "plan_sha256": verified["plan_sha256"],
+        "approval_ref": verified["approval_ref"],
+        "rollback_available": before != "ABSENT",
+        "mutation_performed": True,
+        "readback_verdict": "PENDING",
+        "_target_path": str(target),
+        "_rollback_path": str(rollback_path) if before != "ABSENT" else "",
+        "_journal_path": str(journal_path),
+    }
+    try:
+        # Immediate pre-commit path and expected-state revalidation.
+        _reject_symlink_chain(target, workspace)
+        if not hmac.compare_digest(workspace_file_identity(target), before):
+            raise ValueError("Host Runner workspace target changed at commit boundary")
+        atomic_bytes_write(target, raw)
+        if not hmac.compare_digest(workspace_file_identity(target), plan["expected_after_sha256"]):
+            raise RuntimeError("Host Runner workspace postcondition readback failed")
+        result["readback_verdict"] = "PASS"
+        return result
+    except Exception:
+        rolled_back = _rollback_workspace_replace(result)
+        failure = dict(journal)
+        failure.update({
+            "terminal": True,
+            "completed_at": utc_now(),
+            "state": "ROLLED_BACK_AFTER_FAILURE" if rolled_back else "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+            "rollback_verified": rolled_back,
+        })
+        try:
+            atomic_json_write(journal_path, failure)
+        except Exception:
+            pass
+        raise
 
 
 def plugin_tree_digest(root: Path) -> tuple[str, int]:
@@ -401,6 +673,9 @@ def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict
             "mutation_performed": False,
         }
 
+    if operation_id == "workspace.file.replace":
+        return execute_workspace_replace(profile, verified)
+
     raise ValueError("Host Runner operation has no implementation")
 
 
@@ -438,8 +713,11 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
         return existing
 
     result = execute_operation(profile, verified)
-    if result.get("mutation_performed") is not False:
-        raise RuntimeError("read-only Host Runner kernel observed a mutation")
+    is_write = verified["risk"] != "read_only"
+    if is_write and result.get("mutation_performed") is not True:
+        raise RuntimeError("Host Runner write operation did not report mutation")
+    if not is_write and result.get("mutation_performed") is not False:
+        raise RuntimeError("Host Runner read-only operation observed a mutation")
     receipt = {
         "contract": RECEIPT_CONTRACT,
         "runner_contract": RUNNER_CONTRACT,
@@ -455,20 +733,70 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
         "idempotency_key": verified["idempotency_key"],
         "actor_ref": verified["actor_ref"],
         "authority_ref": verified["authority_ref"],
+        "plan_sha256": verified["plan_sha256"],
+        "approval_ref": verified["approval_ref"],
         "input_sha256": verified["input_sha256"],
         "execution_location": "host_runner",
         "submission_location": str(job.get("submission_location") or "external_job_file"),
         "started_at": utc_now(),
         "completed_at": utc_now(),
-        "result": result,
-        "mutation_performed": False,
-        "readback_verdict": "PASS",
+        "result": {k: v for k, v in result.items() if not k.startswith("_")},
+        "mutation_performed": bool(result.get("mutation_performed")),
+        "readback_verdict": str(result.get("readback_verdict") or "PASS"),
         "replayed": False,
     }
-    atomic_json_write(receipt_path, receipt)
-    persisted = load_json_bounded(receipt_path, MAX_RECEIPT_BYTES)
-    if persisted.get("job_id") != verified["job_id"] or persisted.get("readback_verdict") != "PASS":
-        raise RuntimeError("Host Runner durable receipt readback failed")
+    try:
+        atomic_json_write(receipt_path, receipt)
+        persisted = load_json_bounded(receipt_path, MAX_RECEIPT_BYTES)
+        if persisted.get("job_id") != verified["job_id"] or persisted.get("readback_verdict") != "PASS":
+            raise RuntimeError("Host Runner durable receipt readback failed")
+    except Exception:
+        if is_write:
+            rolled_back = _rollback_workspace_replace(result)
+            journal_path = Path(str(result.get("_journal_path") or ""))
+            if journal_path:
+                state = {
+                    "contract": "mad4b.host-runner-mutation-journal.v1",
+                    "job_id": verified["job_id"],
+                    "plan_sha256": verified["plan_sha256"],
+                    "approval_ref": verified["approval_ref"],
+                    "operation_id": verified["operation_id"],
+                    "before_sha256": result.get("before_sha256"),
+                    "expected_after_sha256": result.get("after_sha256"),
+                    "state": "ROLLED_BACK_AFTER_FAILURE" if rolled_back else "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+                    "terminal": True,
+                    "rollback_verified": rolled_back,
+                    "blind_retry_allowed": False,
+                    "completed_at": utc_now(),
+                }
+                try:
+                    atomic_json_write(journal_path, state)
+                except Exception:
+                    pass
+        raise
+    if is_write:
+        journal_path = Path(str(result.get("_journal_path") or ""))
+        completed = {
+            "contract": "mad4b.host-runner-mutation-journal.v1",
+            "job_id": verified["job_id"],
+            "plan_sha256": verified["plan_sha256"],
+            "approval_ref": verified["approval_ref"],
+            "operation_id": verified["operation_id"],
+            "before_sha256": result.get("before_sha256"),
+            "expected_after_sha256": result.get("after_sha256"),
+            "state": "DURABLE_VERIFIED_RECEIPT",
+            "terminal": True,
+            "rollback_verified": False,
+            "blind_retry_allowed": False,
+            "receipt_path": str(receipt_path),
+            "completed_at": utc_now(),
+        }
+        try:
+            atomic_json_write(journal_path, completed)
+        except Exception:
+            receipt["journal_completion_persisted"] = False
+        else:
+            receipt["journal_completion_persisted"] = True
     return receipt
 
 
@@ -491,7 +819,9 @@ def doctor(profile_path: Path) -> dict[str, Any]:
             op: operation_fingerprint(op) for op in profile["allowed_operations"]
         },
         "generic_shell_available": False,
-        "write_operations_available": False,
+        "write_operations_available": any(
+            OPERATIONS[op].get("risk") != "read_only" for op in profile["allowed_operations"]
+        ),
         "network_available_to_runner_contract": False,
         "mutation_performed": False,
     }
