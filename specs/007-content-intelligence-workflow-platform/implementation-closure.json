@@ -146,11 +146,20 @@
         "host_runner_bootstrap_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py",
         "bootstrap_repository_implementation_present": true,
         "single_use_enrollment_repository_implementation_present": true,
-        "bootstrap_creates_standing_host_authority": false
+        "bootstrap_creates_standing_host_authority": false,
+        "host_bridge_implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "host_bridge_contract": "mad4b.host-bridge.v1",
+        "host_bridge_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php",
+        "host_bridge_runner_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py",
+        "host_bridge_submission_location": "wordpress_request",
+        "host_bridge_execution_location": "host_runner",
+        "host_bridge_generic_shell": false,
+        "host_bridge_raw_sql": false,
+        "host_bridge_production_authorized": false,
+        "bridge_to_runner_repository_proven": true
       },
       "remainder": [
         "certify the bounded Host Runner bootstrap/enrollment flow on an actual supported ETG Staging hosting channel",
-        "implement governed WordPress Host Bridge queue/control surface without generic shell",
         "prove MCP/WP-CLI/Host Runner authority parity for one read and one reversible write",
         "prove live ETG Host Runner canary and recovery storage behavior"
       ]
@@ -290,8 +299,25 @@
     {
       "id": "policy_engine",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "policy_engine_ready"
+      "status": "PARTIAL",
+      "gate": "policy_engine_ready",
+      "evidence": {
+        "contract": "mad4b.policy-resolution.v1",
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy-resolution.php",
+        "config": "wp-content/plugins/mad4b-site-control-plane/config/policy-resolution.json",
+        "authorization_integration": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/policy-resolution-contract.php",
+        "deterministic_precedence": true,
+        "tightening_cannot_widen": true,
+        "decision_sha256": true,
+        "single_owner_hardened_mode": true,
+        "repository_only": true
+      },
+      "remainder": [
+        "bind exact live ETG policy-resolution evidence to the deployed candidate",
+        "prove provider/capability policy fingerprints are committed into live execution plans",
+        "prove policy mode and kill-switch behavior through the live authority path"
+      ]
     },
     {
       "id": "gate_liveness",
@@ -441,10 +467,13 @@
         "payload_persisted": false,
         "blind_retry_allowed": false,
         "doctor_counts_incidents": true,
-        "repository_only": true
+        "repository_only": true,
+        "wordpress_host_bridge_doctor": "mad4b/host-doctor",
+        "bridge_dead_letter_visibility": true,
+        "bridge_recovery_required_visibility": true,
+        "bridge_cancel_cooperative_only": true
       },
       "remainder": [
-        "integrate Host Runner DLQ/recovery incidents into the WordPress operator control surface",
         "add governed requeue/repair-plan actions with fresh policy and idempotency checks",
         "prove stuck-lease/orphan-job diagnosis on exact deployed ETG candidate"
       ]
