@@ -162,7 +162,11 @@ with tempfile.TemporaryDirectory() as td:
         runner.load_profile(receipt_link_profile_path)
         raise SystemExit("Host Runner accepted symlinked receipt root")
     except ValueError as exc:
-        if "receipt_root symlink is forbidden" not in str(exc):
+        message = str(exc)
+        if (
+            "receipt_root symlink is forbidden" not in message
+            and "link/reparse path component forbidden" not in message
+        ):
             raise
 
     doctor = runner.doctor(profile_path)
