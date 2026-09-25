@@ -44,6 +44,9 @@ The platform MUST preserve human agency for decisions and approvals while removi
      - human_decision_required
      - remote parity readiness
    - Discovery MUST support search without prior knowledge of an ability name.
+   - Extension registrations MUST declare `registrar_id`, `source_plugin`, and `trust_class`; the catalog computes a stable registration digest.
+   - Rejected or incomplete registrations MUST be surfaced as findings rather than silently disappearing.
+   - `remote_parity_ready` requires both a registered semantic ability and an available executor.
 
 6. **Future feature onboarding**
    - New features, provider adapters, maintenance controls, browser acceptance operations, Host Runner operations, and addon capabilities MUST register their operations in the governed catalog.
@@ -57,6 +60,19 @@ The platform MUST preserve human agency for decisions and approvals while removi
 8. **Executor replaceability**
    - WordPress-native execution, browser runner, Host Runner, provider API, and provider CLI may implement the same semantic operation.
    - Replacing the executor must not change the operation identity or silently widen authority.
+   - External browser acceptance MUST use an actual external browser executor. A PHP/server loopback request is not browser-runtime evidence.
+   - Long-running maintenance such as schema/index DDL MUST be admitted as durable/scheduled work and MUST NOT keep an MCP or admin HTTP request open while executing.
+   - Executor unavailability is an operational waiting/blocking state, not a reason to require a human-only transport step.
+
+9. **Partial convergence and resume**
+   - Multi-stage remote operations MUST persist stage/checkpoint state when an earlier stage may succeed before a later stage fails.
+   - Retrying the same exact-build operation MUST be safe and resumable through idempotent stages.
+   - A missing executor may leave durable work pending, but must not silently downgrade to manual-only execution.
+
+10. **Registration trust**
+   - Core and addon registrations MUST publish provenance metadata and a stable digest.
+   - Unknown or incomplete registrations are non-authorizing and MUST be reported as rejected catalog entries.
+   - Informational discovery metadata MUST never itself grant write authority.
 
 ## Initial registered parity operations
 - Managed Skills reconciliation
