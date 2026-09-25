@@ -24,6 +24,16 @@ required = [
     '$remoteMaster -ne $currentHead',
     'post_merge_master_verified=true',
     '$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository:$($ExpectedHead.ToLowerInvariant())"',
+    '"tools/verify_repository_ruleset_template.py"',
+    'canonical ruleset template does not exactly implement repository governance policy',
+    '$rollbackMode = "restore"',
+    '$rollbackMode = "delete"',
+    'pre_apply_ruleset_snapshot=ready',
+    '--readback $ReadbackPath',
+    'canonical_readback_match=true',
+    'ruleset_rollback=restored_previous',
+    'ruleset_rollback=deleted_new_ruleset',
+    'GOVERNANCE_APPLY_RECOVERY_REQUIRED',
 ]
 
 missing = [needle for needle in required if needle not in script]
@@ -48,3 +58,22 @@ print("ruleset_shape_guard=id,name,enforcement")
 print("existing_named_ruleset=reconciled_to_exact_template")
 print("activation_timing=post_merge_master_only")
 print("confirmation_scope=repository_plus_exact_head")
+
+
+ruleset_verifier = Path("tools/verify_repository_ruleset_template.py")
+if not ruleset_verifier.is_file():
+    raise SystemExit("canonical ruleset verifier is missing")
+ruleset_text = ruleset_verifier.read_text(encoding="utf-8")
+for needle in [
+    "mad4b.repository-ruleset-template.v1",
+    "live ruleset mutable fields do not exactly match canonical template",
+    "required status checks differ from policy",
+    "pull_request rule differs from policy",
+    "ruleset template contains ungoverned conditions",
+]:
+    if needle not in ruleset_text:
+        raise SystemExit(f"canonical ruleset verifier contract missing: {needle}")
+
+print("template_policy_preflight=exact")
+print("post_mutation_readback=canonical")
+print("readback_mismatch_rollback=bounded")
