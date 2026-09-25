@@ -96,6 +96,12 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 		if ( self::MATERIALIZATION_NO_EFFECT_CONTRACT !== ( isset( $proof['reconciliation_contract'] ) ? (string) $proof['reconciliation_contract'] : '' ) ) return new WP_Error( 'mad4b_brand_no_effect_contract_invalid', 'Brand materialization no-effect reconciliation contract is invalid.' );
 		if ( empty( $proof['provider_scan_complete'] ) || 0 !== (int) ( isset( $proof['provider_candidate_count'] ) ? $proof['provider_candidate_count'] : -1 ) ) return new WP_Error( 'mad4b_brand_no_effect_evidence_invalid', 'Brand materialization no-effect reconciliation requires a complete provider scan with zero exact candidates.' );
 		if ( ! self::valid_materialization_provider_identity( isset( $proof['provider_identity'] ) ? $proof['provider_identity'] : array() ) ) return new WP_Error( 'mad4b_brand_no_effect_provider_identity_invalid', 'Brand materialization no-effect provider identity is invalid.' );
+		$observation_count = isset( $proof['durable_observation_count'] ) ? (int) $proof['durable_observation_count'] : 0;
+		$observation_elapsed = isset( $proof['durable_observation_elapsed_seconds'] ) ? (int) $proof['durable_observation_elapsed_seconds'] : 0;
+		$scan_generations = isset( $proof['durable_scan_generations'] ) && is_array( $proof['durable_scan_generations'] ) ? array_values( array_unique( array_filter( array_map( 'strval', $proof['durable_scan_generations'] ) ) ) ) : array();
+		if ( $observation_count < 2 || count( $scan_generations ) < 2 ) return new WP_Error( 'mad4b_brand_no_effect_observations_insufficient', 'Brand materialization no-effect proof requires at least two distinct durable provider observations.' );
+		$minimum_interval = class_exists( 'MAD4B_SCP_Durable_Execution' ) ? MAD4B_SCP_Durable_Execution::NO_EFFECT_MIN_OBSERVATION_SECONDS : 60;
+		if ( $observation_elapsed < $minimum_interval ) return new WP_Error( 'mad4b_brand_no_effect_observation_window_pending', 'Brand materialization no-effect observations have not reached the certified minimum interval.', array( 'elapsed_seconds' => $observation_elapsed, 'minimum_interval_seconds' => $minimum_interval ) );
 		$basis = array(
 			'contract' => self::MATERIALIZATION_NO_EFFECT_CONTRACT,
 			'artifact_id' => isset( $proof['artifact_id'] ) ? (string) $proof['artifact_id'] : '',
@@ -109,6 +115,9 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 			'provider_scan_complete' => ! empty( $proof['provider_scan_complete'] ),
 			'provider_candidate_count' => isset( $proof['provider_candidate_count'] ) ? (int) $proof['provider_candidate_count'] : -1,
 			'provider_identity' => isset( $proof['provider_identity'] ) && is_array( $proof['provider_identity'] ) ? $proof['provider_identity'] : array(),
+			'durable_observation_count' => $observation_count,
+			'durable_observation_elapsed_seconds' => $observation_elapsed,
+			'durable_scan_generations' => $scan_generations,
 		);
 		foreach ( array( 'artifact_id', 'source_id', 'target_folder_id', 'expected_name', 'expected_content_sha256', 'expected_mime_type', 'format', 'provider_scan_generation' ) as $field ) if ( '' === (string) $basis[ $field ] ) return new WP_Error( 'mad4b_brand_no_effect_binding_incomplete', 'Brand materialization no-effect reconciliation binding is incomplete.', array( 'field' => $field ) );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $basis['expected_content_sha256'] ) ) return new WP_Error( 'mad4b_brand_no_effect_content_hash_invalid', 'Brand materialization no-effect reconciliation requires an exact SHA-256 content identity.' );
