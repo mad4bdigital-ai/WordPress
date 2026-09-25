@@ -80,6 +80,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php'
+      - 'specs/007-content-intelligence-workflow-platform/contracts/remote-operation-parity-discoverability.md'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
@@ -163,6 +166,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php'
+      - 'specs/007-content-intelligence-workflow-platform/contracts/remote-operation-parity-discoverability.md'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
@@ -285,6 +291,13 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py
+
+      - name: Verify remote operation parity and future discoverability
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php
 
       - name: Verify durable execution contract
         shell: bash
