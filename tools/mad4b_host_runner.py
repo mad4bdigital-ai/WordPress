@@ -189,6 +189,20 @@ def load_profile(path: Path) -> dict[str, Any]:
             raise ValueError(f"Host Runner profile requests unknown operation: {operation_id}")
         allowed.append(operation_id)
 
+    runner_source_sha256 = sha256_file(Path(__file__).resolve())
+    expected_runner_sha256 = str(profile.get("expected_runner_sha256") or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{64}", expected_runner_sha256):
+        raise ValueError("Host Runner expected_runner_sha256 is invalid")
+    if not hmac.compare_digest(expected_runner_sha256, runner_source_sha256):
+        raise ValueError("Host Runner executable identity does not match profile")
+    executor_fingerprint = sha256_bytes(canonical_json({
+        "runner_contract": RUNNER_CONTRACT,
+        "runner_source_sha256": runner_source_sha256,
+        "operations": {
+            op: operation_fingerprint(op) for op in sorted(set(allowed))
+        },
+    }))
+
     normalized = {
         "contract": PROFILE_CONTRACT,
         "profile_id": profile_id,
@@ -196,6 +210,8 @@ def load_profile(path: Path) -> dict[str, Any]:
         "environment": environment,
         "wordpress_root": str(root),
         "allowed_operations": sorted(set(allowed)),
+        "runner_source_sha256": runner_source_sha256,
+        "executor_fingerprint": executor_fingerprint,
         "integrity_key_file": str(key_file),
         "receipt_root": str(
             Path(str(profile.get("receipt_root") or (root / "wp-content/mad4b-runner/receipts")))
@@ -237,6 +253,11 @@ def verify_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Host Runner job environment mismatch")
     if job.get("target_fingerprint") != profile["target_fingerprint"]:
         raise ValueError("Host Runner job target fingerprint mismatch")
+    if not hmac.compare_digest(
+        str(job.get("executor_fingerprint") or ""),
+        str(profile["executor_fingerprint"])
+    ):
+        raise ValueError("Host Runner executor fingerprint mismatch")
 
     idempotency_key = str(job.get("idempotency_key") or "")
     actor_ref = str(job.get("actor_ref") or "")
@@ -282,6 +303,7 @@ def verify_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
         "job_id": job_id,
         "operation_id": operation_id,
         "operation_fingerprint": expected_fp,
+        "executor_fingerprint": profile["executor_fingerprint"],
         "idempotency_key": idempotency_key,
         "actor_ref": actor_ref,
         "authority_ref": authority_ref,
@@ -402,6 +424,7 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
             "profile_id": profile["profile_id"],
             "site_uuid": profile["site_uuid"],
             "target_fingerprint": profile["target_fingerprint"],
+            "executor_fingerprint": profile["executor_fingerprint"],
             "idempotency_key": verified["idempotency_key"],
             "actor_ref": verified["actor_ref"],
             "authority_ref": verified["authority_ref"],
@@ -425,6 +448,8 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
         "target_fingerprint": profile["target_fingerprint"],
         "operation_id": verified["operation_id"],
         "operation_fingerprint": verified["operation_fingerprint"],
+        "executor_fingerprint": verified["executor_fingerprint"],
+        "runner_source_sha256": profile["runner_source_sha256"],
         "idempotency_key": verified["idempotency_key"],
         "actor_ref": verified["actor_ref"],
         "authority_ref": verified["authority_ref"],
@@ -455,6 +480,8 @@ def doctor(profile_path: Path) -> dict[str, Any]:
         "site_uuid": profile["site_uuid"],
         "environment": profile["environment"],
         "target_fingerprint": profile["target_fingerprint"],
+        "runner_source_sha256": profile["runner_source_sha256"],
+        "executor_fingerprint": profile["executor_fingerprint"],
         "wordpress_root_exists": root.is_dir(),
         "wp_config_present": (root / "wp-config.php").is_file(),
         "allowed_operations": profile["allowed_operations"],
