@@ -37,6 +37,8 @@
     "strict_required_status_checks_policy": true
   },
   "ruleset_attestation": {
+    "scope": "environment",
+    "environment_name": "repository-governance",
     "variable_name": "MAD4B_RULESET_ATTESTATION",
     "contract": "mad4b.repository-ruleset-attestation.v1",
     "require_zero_bypass_actors": true,
