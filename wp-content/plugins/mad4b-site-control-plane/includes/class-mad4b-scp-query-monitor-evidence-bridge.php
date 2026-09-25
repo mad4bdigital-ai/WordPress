@@ -433,7 +433,15 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	private static function request_frontend_probe_hash() {
 		$raw = isset( $_GET['mad4b_frontend_probe'] ) ? strtolower( trim( (string) $_GET['mad4b_frontend_probe'] ) ) : '';
 		if ( '' === $raw || 1 !== preg_match( '/^[a-f0-9-]{36}$/', $raw ) ) return '';
-		return hash( 'sha256', $raw );
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) ) return '';
+		$request = get_option( MAD4B_SCP_Remote_Operation_Parity::BROWSER_REQUEST_OPTION, array() );
+		if ( ! is_array( $request ) || empty( $request['request_id'] ) || empty( $request['probe_hash'] ) ) return '';
+		if ( isset( $request['expires_at_epoch'] ) && time() > (int) $request['expires_at_epoch'] ) return '';
+		if ( ! in_array( (string) ( isset( $request['status'] ) ? $request['status'] : '' ), array( 'pending_external_executor', 'observed' ), true ) ) return '';
+		if ( ! hash_equals( strtolower( (string) $request['request_id'] ), $raw ) ) return '';
+		$hash = hash( 'sha256', $raw );
+		$expected = strtolower( trim( (string) $request['probe_hash'] ) );
+		return 1 === preg_match( '/^[a-f0-9]{64}$/', $expected ) && hash_equals( $expected, $hash ) ? $hash : '';
 	}
 
 	private static function performance_sample( $class ) {
