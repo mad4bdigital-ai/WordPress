@@ -193,6 +193,15 @@
         "workflow_run:36078194633"
       ],
       "reason": "Host Runner receipts report execution_location=host_runner and executor fingerprint drift invalidates exact jobs; submission/commit-location parity through WordPress Host Bridge remains open."
+    },
+    "T3651": {
+      "status": "DONE",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/validate_spec.py",
+        "specs/007-content-intelligence-workflow-platform/gate-graph.json",
+        "workflow_run:36078194548"
+      ],
+      "reason": "Feature validator proves acyclicity, valid dependencies, root-to-terminal reachability and forward terminal closure for every KERNEL_BLOCKER/LIVE_PRECONDITION workstream."
     }
   }
 }
