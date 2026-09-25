@@ -247,12 +247,12 @@ def load_profile(path: Path) -> dict[str, Any]:
     receipt_root = Path(normalized["receipt_root"])
     if not _is_within(receipt_root, expected_workspace):
         raise ValueError("Host Runner receipt_root escaped dedicated runner workspace")
-    for key in ("journal_root", "rollback_root"):
-        candidate = Path(normalized[key])
+    for evidence_root_key in ("journal_root", "rollback_root"):
+        candidate = Path(normalized[evidence_root_key])
         if not _is_within(candidate, expected_workspace):
-            raise ValueError(f"Host Runner {key} escaped dedicated runner workspace")
+            raise ValueError(f"Host Runner {evidence_root_key} escaped dedicated runner workspace")
         if candidate.exists() and (candidate.is_symlink() or not candidate.is_dir()):
-            raise ValueError(f"Host Runner {key} must be a regular directory")
+            raise ValueError(f"Host Runner {evidence_root_key} must be a regular directory")
     normalized["target_fingerprint"] = sha256_bytes(canonical_json({
         "profile_id": profile_id,
         "site_uuid": site_uuid,
