@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
 
 concurrency:
   group: mad4b-repository-governance-${{ github.event.pull_request.number || github.ref }}
@@ -20,7 +21,6 @@ jobs:
   governance:
     name: Repository governance policy
     runs-on: ubuntu-latest
-    environment: repository-governance
     timeout-minutes: 5
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -28,7 +28,6 @@ jobs:
       HEAD_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
       PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
       GH_TOKEN: ${{ github.token }}
-      MAD4B_RULESET_ATTESTATION: ${{ vars.MAD4B_RULESET_ATTESTATION }}
     steps:
       - name: Checkout exact source
         uses: actions/checkout@v4
