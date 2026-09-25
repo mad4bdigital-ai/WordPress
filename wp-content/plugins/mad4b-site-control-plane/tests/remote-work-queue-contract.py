@@ -14,6 +14,9 @@ for marker in [
     "delete_option_if_unchanged",
     "$wpdb->delete(",
     "mad4b_remote_work_queue_lock_reclaim_raced",
+    "prune_reclaimable_jobs",
+    "mad4b_remote_work_queue_capacity_exhausted",
+    "no active work was discarded",
     "'lease_token_sha256'",
     "'claim_generation'",
     "'lease_expired'",
@@ -27,6 +30,9 @@ for marker in [
 
 if "delete_option( self::LOCK_OPTION" in queue:
     raise SystemExit("direct delete_option lock reclamation is ABA-unsafe; CAS delete is required")
+
+if "array_slice( $jobs, -self::MAX_JOBS" in queue:
+    raise SystemExit("silent MAX_JOBS slicing may evict active remote work")
 
 for forbidden in [
     "shell_exec(",
