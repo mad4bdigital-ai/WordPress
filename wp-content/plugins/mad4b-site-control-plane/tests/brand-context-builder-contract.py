@@ -291,7 +291,7 @@ if len(matches) != 1:
 row = matches[0]
 if row.get("level") != "workflow" or row.get("target") != "brand-context" or row.get("enabled") is not True:
     raise SystemExit("Brand Context Builder Skill manifest identity/state is invalid")
-if manifest.get("seed_version") != 11:
-    raise SystemExit("Brand Context Builder requires canonical seed version 11")
+if manifest.get("seed_version") != 12:
+    raise SystemExit("Brand Context Builder requires canonical seed version 12")
 
 print("mad4b.brand-context-builder.v4: PASS")
