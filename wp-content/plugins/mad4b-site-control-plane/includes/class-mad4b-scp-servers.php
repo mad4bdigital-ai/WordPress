@@ -59,7 +59,7 @@ final class MAD4B_SCP_Servers {
 			'mad4b-content' => array(
 				'mad4b/content-get-post', 'mad4b/content-update-post',
 				'mad4b/content-job-list', 'mad4b/content-job-get', 'mad4b/content-job-events',
-				'mad4b/intent-registry-current', 'mad4b/intent-conflicts-analyze',
+				'mad4b/intent-registry-current', 'mad4b/intent-conflicts-analyze', 'mad4b/intent-bootstrap-plan',
 				'mad4b/draft-plan', 'mad4b/draft-verify', 'mad4b/publication-verification-evaluate',
 			),
 			'mad4b-admin' => array(
