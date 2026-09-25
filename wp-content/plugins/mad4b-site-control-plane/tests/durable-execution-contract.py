@@ -87,6 +87,13 @@ for marker in (
     if marker not in SCHEMA:
         raise SystemExit(f"durable schema contract missing: {marker}")
 
+# Idempotency status literals must fit the physical varchar(32) contract.
+idempotency_surface = DURABLE[DURABLE.index("public static function begin_idempotency"):DURABLE.index("public static function scope_key")]
+status_literals = sorted(set(re.findall(r"status='([^']+)'", idempotency_surface)))
+oversized_statuses = [value for value in status_literals if len(value) > 32]
+if oversized_statuses:
+    raise SystemExit(f"idempotency status literal exceeds varchar(32): {oversized_statuses}")
+
 # Expired work cannot become reusable merely because a clock elapsed.
 idempotency_reclaim = DURABLE[DURABLE.index("public static function reclaim_idempotency"):]
 idempotency_reclaim = idempotency_reclaim[: idempotency_reclaim.index("public static function scope_key")]
