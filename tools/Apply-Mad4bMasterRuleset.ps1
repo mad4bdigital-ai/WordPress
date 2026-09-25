@@ -10,6 +10,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 $ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository:$($ExpectedHead.ToLowerInvariant())"
 if ($Confirmation -ne $ExpectedConfirmation) {
@@ -156,7 +157,8 @@ if ($named.Count -gt 1) {
         conditions = $before.conditions
         rules = @($before.rules)
     }
-    $rollbackPayload | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $RollbackPayloadPath -Encoding utf8
+    $rollbackPayloadJson = $rollbackPayload | ConvertTo-Json -Depth 100
+    [System.IO.File]::WriteAllText($RollbackPayloadPath, $rollbackPayloadJson, $Utf8NoBom)
     $rollbackMode = "restore"
     Write-Host "pre_apply_ruleset_snapshot=ready"
     Write-Host "=== RECONCILE EXISTING RULESET ==="
@@ -204,7 +206,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 $detail = $detailRaw | ConvertFrom-Json
 $detail | ConvertTo-Json -Depth 100
-$detailRaw | Set-Content -LiteralPath $ReadbackPath -Encoding utf8
+[System.IO.File]::WriteAllText($ReadbackPath, [string]$detailRaw, $Utf8NoBom)
 
 & $PythonCommand "tools/verify_repository_ruleset_template.py" --template $TemplatePath --policy $PolicyPath --readback $ReadbackPath --output $TemplateVerificationPath
 $readbackTemplateRc = $LASTEXITCODE
