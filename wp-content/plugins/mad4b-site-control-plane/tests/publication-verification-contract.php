@@ -9,7 +9,7 @@ class WP_Error {
 	public function get_error_message(){ return $this->message; }
 }
 function is_wp_error($v){ return $v instanceof WP_Error; }
-function sanitize_key($v){ return strtolower(preg_replace('/[^a-z0-9_\-]/','',(string)$v)); }
+function sanitize_key($v){ $v=strtolower((string)$v); return preg_replace('/[^a-z0-9_\-]/','',$v); }
 function sanitize_text_field($v){ return trim(strip_tags((string)$v)); }
 function add_action($h,$c,$p=10){}
 function wp_register_ability($n,$a){}
