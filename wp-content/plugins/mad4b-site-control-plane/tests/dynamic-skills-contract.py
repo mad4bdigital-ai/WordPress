@@ -127,7 +127,6 @@ for marker in [
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-seeder.v1'",
-    "const SEED_VERSION = 7",
     "const SEED_DIR = 'skill-seeds'",
     "const SEED_MANIFEST_CONTRACT = 'mad4b.skill-seed-manifest.v1'",
     "const SEED_MANIFEST_FILE = 'config/skill-seed-manifest.json'",
@@ -337,8 +336,12 @@ if not re.fullmatch(r'plugin_asdk_app_[A-Za-z0-9]+', app_id):
 
 if seed_manifest.get('contract') != 'mad4b.skill-seed-manifest.v1':
     raise SystemExit('canonical Skill seed manifest contract is invalid')
-if seed_manifest.get('seed_version') != 7:
-    raise SystemExit('canonical Skill seed manifest version mismatch')
+seed_version = seed_manifest.get('seed_version')
+if not isinstance(seed_version, int) or seed_version < 1:
+    raise SystemExit('canonical Skill seed manifest version is invalid')
+match = re.search(r"const SEED_VERSION = ([0-9]+);", seeder)
+if not match or int(match.group(1)) != seed_version:
+    raise SystemExit('canonical Skill seed manifest/runtime version mismatch')
 manifest_rows = seed_manifest.get('skills', [])
 if not isinstance(manifest_rows, list) or not manifest_rows:
     raise SystemExit('canonical Skill seed manifest must contain Skills')
@@ -367,6 +370,10 @@ for skill_dir in (portable / 'skills').iterdir():
         raise SystemExit(f'{skill_dir.name} frontmatter name must match folder')
     if 'description:' not in text.split('---', 2)[1]:
         raise SystemExit(f'{skill_dir.name} missing frontmatter description')
+    if skill_dir.name == 'wordpress-brand-context-builder':
+        for marker in ('context/brand-gap-plan', 'context/brand-draft-append', 'context/materialize-brand-draft', 'context/source-scan-plan', 'context/source-scan-apply', 'Generation is not approval'):
+            if marker not in text:
+                raise SystemExit(f'wordpress-brand-context-builder missing governed workflow instruction: {marker}')
     if skill_dir.name == 'wordpress-release-orchestration':
         for marker in ('plan_sha256', 'expected_plan_sha256', 'expected_state_sha256', 're-planning and re-approval'):
             if marker not in text:
