@@ -238,11 +238,36 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			}
 			$matches[ $operation_id ] = $row;
 		}
+		$ability_hints = array();
+		if ( function_exists( 'wp_get_abilities' ) ) {
+			foreach ( wp_get_abilities() as $ability_name => $ability ) {
+				if ( count( $ability_hints ) >= 100 ) break;
+				if ( class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'is_chatgpt_full_catalog_candidate' ) && ! MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $ability_name ) ) continue;
+				$label = is_object( $ability ) && method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '';
+				$description = is_object( $ability ) && method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '';
+				$category = is_object( $ability ) && method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
+				if ( '' !== $query && false === strpos( strtolower( (string) $ability_name . ' ' . $label . ' ' . $description . ' ' . $category ), $query ) ) continue;
+				$ability_hints[] = array(
+					'ability_name' => (string) $ability_name,
+					'label' => $label,
+					'description' => $description,
+					'category' => $category,
+				);
+			}
+		}
 		return array(
 			'contract' => 'mad4b.operation-discovery.v1',
 			'query' => $query,
 			'count' => count( $matches ),
 			'operations' => $matches,
+			'ability_hint_count' => count( $ability_hints ),
+			'ability_hints' => $ability_hints,
+			'discovery_federation' => array(
+				'operations' => self::DISCOVER_ABILITY,
+				'abilities' => 'mad4b/tool-discover',
+				'addons' => 'mad4b/addon-registry-status',
+				'capability_traits' => 'mad4b/capability-trait-resolve',
+			),
 			'future_feature_discovery' => true,
 			'requires_prior_ability_name' => false,
 		);
@@ -266,6 +291,12 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'raw_shell_exposed' => false,
 			'raw_sql_exposed' => false,
 			'production_mutation_allowed' => false,
+			'discovery_federation' => array(
+				'operations' => self::DISCOVER_ABILITY,
+				'abilities' => 'mad4b/tool-discover',
+				'addons' => 'mad4b/addon-registry-status',
+				'capability_traits' => 'mad4b/capability-trait-resolve',
+			),
 		);
 	}
 
