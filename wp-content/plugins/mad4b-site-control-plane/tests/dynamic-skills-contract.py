@@ -19,6 +19,7 @@ for label, source in [('skill-registry', registry), ('skill-seeder', seeder)]:
 
 provider_discovery = (wp / 'includes' / 'class-mad4b-scp-skill-provider-discovery.php').read_text(encoding='utf-8')
 provider_catalog = json.loads((wp / 'config' / 'skill-provider-catalog.json').read_text(encoding='utf-8'))
+seed_manifest = json.loads((wp / 'config' / 'skill-seed-manifest.json').read_text(encoding='utf-8'))
 abilities = (wp / 'includes' / 'class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
 adapter = (wp / 'includes' / 'adapters' / 'class-mad4b-scp-skills-adapter.php').read_text(encoding='utf-8')
 admin = (wp / 'includes' / 'class-mad4b-scp-skills-admin-ui.php').read_text(encoding='utf-8')
@@ -80,6 +81,8 @@ for marker in [
     "const CONTRACT = 'mad4b.skill-seeder.v1'",
     "const SEED_VERSION = 7",
     "const SEED_DIR = 'skill-seeds'",
+    "const SEED_MANIFEST_CONTRACT = 'mad4b.skill-seed-manifest.v1'",
+    "const SEED_MANIFEST_FILE = 'config/skill-seed-manifest.json'",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Skill_Registry::editor_enabled()",
     "MAD4B_SCP_Audit::storage_status()",
@@ -292,17 +295,17 @@ app_id = app.get('apps', {}).get('mad4b-wordpress', {}).get('id', '')
 if not re.fullmatch(r'plugin_asdk_app_[A-Za-z0-9]+', app_id):
     raise SystemExit('portable app mapping must use a real plugin_asdk_app technical ID')
 
-expected_skills = {
-    'wordpress-site-diagnostics',
-    'wordpress-connection-diagnostics',
-    'elementor-dynamic-content',
-    'jetengine-content-modeling',
-    'wordpress-archive-audit',
-    'wordpress-change-safety',
-    'wordpress-release-orchestration',
-    'wordpress-browser-acceptance',
-    'wordpress-content-authoring',
-}
+if seed_manifest.get('contract') != 'mad4b.skill-seed-manifest.v1':
+    raise SystemExit('canonical Skill seed manifest contract is invalid')
+if seed_manifest.get('seed_version') != 7:
+    raise SystemExit('canonical Skill seed manifest version mismatch')
+manifest_rows = seed_manifest.get('skills', [])
+if not isinstance(manifest_rows, list) or not manifest_rows:
+    raise SystemExit('canonical Skill seed manifest must contain Skills')
+expected_skills = {row.get('name') for row in manifest_rows if isinstance(row, dict)}
+if None in expected_skills or len(expected_skills) != len(manifest_rows):
+    raise SystemExit('canonical Skill seed manifest contains duplicate or invalid names')
+
 found = set()
 seed_root = wp / 'skill-seeds'
 for skill_dir in (portable / 'skills').iterdir():
@@ -335,7 +338,7 @@ for skill_dir in (portable / 'skills').iterdir():
 if not expected_skills.issubset(found):
     raise SystemExit(f'missing portable seed skills: {sorted(expected_skills - found)}')
 if {p.parent.name for p in seed_root.glob('*/SKILL.md')} != expected_skills:
-    raise SystemExit('canonical Control Plane seed set must exactly match the ten portable baseline Skills')
+    raise SystemExit('canonical Control Plane seed set must exactly match the canonical Skill seed manifest')
 
 entry = next((x for x in marketplace.get('plugins', []) if x.get('name') == 'mad4b-wordpress'), None)
 if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpress':
