@@ -26,6 +26,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/publication-verification-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/policy-resolution-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php'
@@ -323,6 +325,13 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php
+
+      - name: Verify data rights and AI processing governance
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php
 
       - name: Verify deterministic policy resolution
         shell: bash
