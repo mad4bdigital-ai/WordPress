@@ -149,6 +149,12 @@ if ($named.Count -gt 1) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: unable to capture exact pre-apply ruleset for rollback."
     }
     $before = $beforeRaw | ConvertFrom-Json
+    if ($null -eq $before.PSObject.Properties["bypass_actors"]) {
+        throw "GOVERNANCE_APPLY_FAIL_CLOSED: bypass-actor state is not observable with the active credential; mutation is forbidden."
+    }
+    if (@($before.bypass_actors).Count -ne 0) {
+        throw "GOVERNANCE_APPLY_FAIL_CLOSED: existing canonical ruleset contains bypass actors; automatic reconciliation is forbidden."
+    }
     if ([string]$before.source_type -ne "Repository" -or [string]$before.source -ne $Repository) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: selected canonical ruleset is not repository-owned by $Repository."
     }
