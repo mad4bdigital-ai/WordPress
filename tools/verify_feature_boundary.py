@@ -58,10 +58,15 @@ def validate_grants(grants):
     required_immutable={
         GRANTS_PATH,
         REPOSITORY_POLICY_PATH,
-        "tools/verify_feature_boundary.py",
+        ".github/mad4b-master-ruleset-template.json",
         ".github/workflows/mad4b-feature-boundary.yml",
         ".github/workflows/mad4b-release-verdict.yml",
         ".github/workflows/mad4b-repository-governance.yml",
+        ".github/workflows/mad4b-owner-attestation-rerun.yml",
+        "tools/Apply-Mad4bMasterRuleset.ps1",
+        "tools/verify_feature_boundary.py",
+        "tools/verify_repository_governance.py",
+        "tools/verify_repository_owner_attestation.py",
     }
     if not isinstance(immutable,list) or not required_immutable.issubset(set(immutable)):
         fail("grant_immutable_root_incomplete", missing=sorted(required_immutable-set(immutable or [])))
@@ -107,10 +112,15 @@ def self_test():
     immutable={
         GRANTS_PATH,
         REPOSITORY_POLICY_PATH,
-        "tools/verify_feature_boundary.py",
+        ".github/mad4b-master-ruleset-template.json",
         ".github/workflows/mad4b-feature-boundary.yml",
         ".github/workflows/mad4b-release-verdict.yml",
         ".github/workflows/mad4b-repository-governance.yml",
+        ".github/workflows/mad4b-owner-attestation-rerun.yml",
+        "tools/Apply-Mad4bMasterRuleset.ps1",
+        "tools/verify_feature_boundary.py",
+        "tools/verify_repository_governance.py",
+        "tools/verify_repository_owner_attestation.py",
     }
     assert GRANTS_PATH in immutable and ".github/workflows/mad4b-feature-boundary.yml" in immutable and "runtime/a.php" not in immutable
     print("mad4b.feature-boundary-root-of-trust.self-test: PASS")
