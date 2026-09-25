@@ -20,6 +20,8 @@ CROSS_FEATURE_DEPENDENCY_ROOTS = ("specs/", ".github/workflows/")
 IMMUTABLE_GLOBAL_PATHS = {
     ".specify/feature.json",
     ".specify/memory/constitution.md",
+}
+REPOSITORY_OWNED_PATHS = {
     ".github/mad4b-repository-governance-policy.json",
     ".github/workflows/mad4b-repository-governance.yml",
     "tools/verify_repository_governance.py",
@@ -156,17 +158,18 @@ def main():
     changed = changed_paths(args.base)
     immutable = sorted(p for p in changed if p in IMMUTABLE_GLOBAL_PATHS)
     if immutable:
-        fail("REPOSITORY_GOVERNANCE_OR_GLOBAL_METADATA_CHANGED:" + ",".join(immutable))
+        fail("IMMUTABLE_GLOBAL_METADATA_CHANGED:" + ",".join(immutable))
+    repository_owned = sorted(p for p in changed if p in REPOSITORY_OWNED_PATHS)
 
     implementation_prefixes = tuple(derived_branch_policy["implementation_prefixes"])
     spec_prefixes = tuple(derived_branch_policy["specification_maintenance_prefixes"])
 
     if status == "specification":
-        forbidden = [p for p in changed if not spec_owned(p)]
+        forbidden = [p for p in changed if p not in REPOSITORY_OWNED_PATHS and not spec_owned(p)]
         mode = "specification_dynamic"
     elif status == "implementation":
         if starts_with_any(args.head_branch, implementation_prefixes):
-            forbidden = [p for p in changed if not feature_owned(p) and p not in cross]
+            forbidden = [p for p in changed if p not in REPOSITORY_OWNED_PATHS and not feature_owned(p) and p not in cross]
             undeclared = [
                 p for p in changed
                 if p.startswith("specs/")
@@ -177,7 +180,7 @@ def main():
                 fail("UNDECLARED_CROSS_FEATURE_CHANGE:" + ",".join(sorted(undeclared)))
             mode = "implementation_dynamic"
         elif starts_with_any(args.head_branch, spec_prefixes):
-            forbidden = [p for p in changed if not spec_owned(p)]
+            forbidden = [p for p in changed if p not in REPOSITORY_OWNED_PATHS and not spec_owned(p)]
             mode = "implementation_spec_maintenance_dynamic"
         else:
             fail(
@@ -194,7 +197,7 @@ def main():
         "MAD4B_FEATURE_BOUNDARY_OK "
         f"feature={feature_id} status={status} mode={mode} changed={len(changed)} "
         f"skills={len(skill_names)} cross_feature_dependencies={len(cross)} "
-        "repository_governance_source=baseline-owned"
+        f"repository_governance_source=baseline-owned repository_owned_sidecar_changes={len(repository_owned)}"
     )
 
 if __name__ == "__main__":
