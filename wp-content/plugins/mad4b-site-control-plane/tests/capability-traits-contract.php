@@ -11,6 +11,49 @@ function sanitize_key( $value ) {
 function sanitize_text_field( $value ) { return trim( (string) $value ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 
+final class MAD4B_SCP_Provider_Compatibility_Certification {
+	public static function capability_certification( $input = array() ) {
+		$provider = isset( $input['provider_id'] ) ? (string) $input['provider_id'] : '';
+		$capability = isset( $input['capability_id'] ) ? (string) $input['capability_id'] : '';
+		if ( 'bit_pi' !== $provider ) {
+			return array( 'contract' => 'mad4b.provider-capability-certification-result.v1', 'capabilities' => array(), 'match_count' => 0, 'authorizing' => false );
+		}
+		if ( 'flow.execute' === $capability ) {
+			return array(
+				'contract' => 'mad4b.provider-capability-certification-result.v1',
+				'capabilities' => array(
+					'flow.execute' => array(
+						'certification_level' => 'REVERSIBLE_WRITE_CERTIFIED',
+						'activation_stage' => 'canary',
+						'read_eligible' => false,
+						'write_eligible' => false,
+						'canary_eligible' => true,
+					),
+				),
+				'match_count' => 1,
+				'authorizing' => false,
+			);
+		}
+		if ( 'flows.read' === $capability ) {
+			return array(
+				'contract' => 'mad4b.provider-capability-certification-result.v1',
+				'capabilities' => array(
+					'flows.read' => array(
+						'certification_level' => 'READ_COMPATIBLE',
+						'activation_stage' => 'active',
+						'read_eligible' => true,
+						'write_eligible' => false,
+						'canary_eligible' => true,
+					),
+				),
+				'match_count' => 1,
+				'authorizing' => false,
+			);
+		}
+		return array( 'contract' => 'mad4b.provider-capability-certification-result.v1', 'capabilities' => array(), 'match_count' => 0, 'authorizing' => false );
+	}
+}
+
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-capability-traits.php';
 
 $fail = static function ( $message ) {
@@ -47,6 +90,40 @@ $check( true === $eligible['non_authorizing'], 'resolution became authorizing' )
 $check( false === $eligible['mutation_performed'], 'resolution reported mutation' );
 $eligible_ids = array_map( static function( $row ) { return $row['provider_id']; }, $eligible['eligible'] );
 $check( in_array( 'bit_pi', $eligible_ids, true ), 'matching Bit Flows capability was not eligible' );
+
+$canary = MAD4B_SCP_Capability_Traits::resolve( array(
+	'capability_id' => 'flow.execute',
+	'required_traits' => array( 'local_or_remote' => 'local_wordpress' ),
+	'release_ring' => 'canary',
+	'require_certified' => true,
+) );
+$canary_ids = array_map( static function( $row ) { return $row['provider_id']; }, $canary['eligible'] );
+$check( in_array( 'bit_pi', $canary_ids, true ), 'certified Bit Flows canary was not eligible' );
+$bit_canary = array_values( array_filter( $canary['eligible'], static function( $row ) { return 'bit_pi' === $row['provider_id']; } ) );
+$check( 1 === count( $bit_canary ), 'Bit Flows canary resolution count mismatch' );
+$check( 'canary' === $bit_canary[0]['activation_stage'], 'Bit Flows activation stage mismatch' );
+$check( 1 === preg_match( '/^[a-f0-9]{64}$/', $bit_canary[0]['certification_fingerprint'] ), 'certification fingerprint missing' );
+$check( true === $canary['non_authorizing'], 'release-ring resolution became authorizing' );
+
+$active_write = MAD4B_SCP_Capability_Traits::resolve( array(
+	'capability_id' => 'flow.execute',
+	'required_traits' => array( 'local_or_remote' => 'local_wordpress' ),
+	'release_ring' => 'active',
+	'require_certified' => true,
+) );
+$active_write_rejected = array_values( array_filter( $active_write['rejected'], static function( $row ) { return 'bit_pi' === $row['provider_id']; } ) );
+$check( 1 === count( $active_write_rejected ), 'non-active write provider was not rejected from active ring' );
+$ring_reasons = array_map( static function( $v ) { return $v['reason_code']; }, $active_write_rejected[0]['violations'] );
+$check( in_array( 'provider_not_active_eligible', $ring_reasons, true ), 'active ring rejection reason missing' );
+
+$active_read = MAD4B_SCP_Capability_Traits::resolve( array(
+	'capability_id' => 'flows.read',
+	'required_traits' => array( 'idempotency_model' => 'read_repeatable' ),
+	'release_ring' => 'active',
+	'require_certified' => true,
+) );
+$active_read_ids = array_map( static function( $row ) { return $row['provider_id']; }, $active_read['eligible'] );
+$check( in_array( 'bit_pi', $active_read_ids, true ), 'active certified read provider was not eligible' );
 
 $mismatch = MAD4B_SCP_Capability_Traits::resolve( array(
 	'capability_id' => 'flow.execute',
