@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""Repository-only pre-Staging hybrid audit for Feature 007.
+
+Generic language/runtime quality stays delegated to maintained tools (PHP lint,
+WordPressCS/PHPCompatibility/PHPStan/Plugin Check when configured by CI).
+This script owns only MAD4B-specific invariants that generic tooling cannot
+understand.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[1]
+CP = REPO / "wp-content" / "plugins" / "mad4b-site-control-plane"
+PORTABLE = REPO / "plugins" / "mad4b-wordpress"
+DIST = REPO / "dist"
+
+errors: list[str] = []
+checks: dict[str, dict] = {}
+
+def fail(group: str, message: str) -> None:
+    errors.append(f"{group}: {message}")
+
+def record(group: str, **payload) -> None:
+    checks[group] = payload
+
+skill_rel = Path("wordpress-extension-strategy") / "SKILL.md"
+portable_skill = PORTABLE / "skills" / skill_rel
+seed_skill = CP / "skill-seeds" / skill_rel
+skill_ok = portable_skill.is_file() and seed_skill.is_file()
+if not skill_ok:
+    fail("extension_strategy_skill", "portable or canonical seed Skill is missing")
+else:
+    p = portable_skill.read_bytes()
+    s = seed_skill.read_bytes()
+    if p != s:
+        fail("extension_strategy_skill", "portable Skill and canonical seed differ")
+    text = p.decode("utf-8")
+    for marker in [
+        "REUSE, ADDON, FORK, or NATIVE",
+        "Add-on-first customization pattern",
+        "never patch vendor files at runtime",
+        "exact compatible provider/version range",
+        "Production authority",
+        "Quality-tool reuse",
+    ]:
+        if marker not in text:
+            fail("extension_strategy_skill", f"missing policy marker: {marker}")
+record(
+    "extension_strategy_skill",
+    portable=str(portable_skill.relative_to(REPO)),
+    canonical_seed=str(seed_skill.relative_to(REPO)),
+    sha256=hashlib.sha256(portable_skill.read_bytes()).hexdigest() if portable_skill.is_file() else "",
+    byte_identical=skill_ok and portable_skill.read_bytes() == seed_skill.read_bytes(),
+)
+
+class_files = sorted((CP / "includes").glob("class-mad4b-scp-*.php"))
+classes: dict[str, str] = {}
+duplicate_classes: list[dict] = []
+duplicate_methods: list[dict] = []
+for path in class_files:
+    src = path.read_text(encoding="utf-8")
+    for cls in re.findall(r"(?m)^\s*(?:final\s+|abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)\b", src):
+        if cls in classes:
+            duplicate_classes.append({"class": cls, "first": classes[cls], "second": str(path.relative_to(REPO))})
+        else:
+            classes[cls] = str(path.relative_to(REPO))
+    methods = re.findall(
+        r"(?m)^\s*(?:(?:public|protected|private)\s+)?(?:static\s+)?function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(",
+        src,
+    )
+    dups = sorted({m for m in methods if methods.count(m) > 1})
+    if dups:
+        duplicate_methods.append({"file": str(path.relative_to(REPO)), "methods": dups})
+
+if duplicate_classes:
+    fail("structural_integrity", f"duplicate class declarations: {duplicate_classes}")
+if duplicate_methods:
+    fail("structural_integrity", f"duplicate named methods inside canonical class files: {duplicate_methods}")
+
+line_caps = {
+    CP / "includes" / "class-mad4b-scp-content-jobs.php": 1200,
+    CP / "includes" / "class-mad4b-scp-scheduler-admission.php": 1200,
+}
+line_counts = {}
+for path, cap in line_caps.items():
+    count = len(path.read_text(encoding="utf-8").splitlines())
+    line_counts[str(path.relative_to(REPO))] = {"lines": count, "cap": cap}
+    if count > cap:
+        fail("structural_integrity", f"{path.name} grew to {count} lines (cap {cap})")
+record(
+    "structural_integrity",
+    class_files=len(class_files),
+    duplicate_classes=duplicate_classes,
+    duplicate_methods=duplicate_methods,
+    guarded_line_counts=line_counts,
+)
+
+critical_runtime = [
+    "class-mad4b-scp-artifacts.php",
+    "class-mad4b-scp-capability-traits.php",
+    "class-mad4b-scp-content-intelligence-pipeline.php",
+    "class-mad4b-scp-content-jobs.php",
+    "class-mad4b-scp-context-pack.php",
+    "class-mad4b-scp-data-governance.php",
+    "class-mad4b-scp-decommission-portability.php",
+    "class-mad4b-scp-durable-execution.php",
+    "class-mad4b-scp-governed-draft.php",
+    "class-mad4b-scp-host-bridge.php",
+    "class-mad4b-scp-operator-doctor.php",
+    "class-mad4b-scp-publication-verification.php",
+    "class-mad4b-scp-research-intelligence.php",
+    "class-mad4b-scp-scheduler-admission.php",
+    "class-mad4b-scp-workflow-providers.php",
+]
+bootstrap = (CP / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
+missing_runtime = []
+unloaded_runtime = []
+for name in critical_runtime:
+    path = CP / "includes" / name
+    if not path.is_file():
+        missing_runtime.append(name)
+    if name not in bootstrap:
+        unloaded_runtime.append(name)
+if missing_runtime:
+    fail("runtime_package_completeness", f"missing runtime files: {missing_runtime}")
+if unloaded_runtime:
+    fail("runtime_package_completeness", f"runtime files not loaded by plugin bootstrap: {unloaded_runtime}")
+record(
+    "runtime_package_completeness",
+    critical_files=len(critical_runtime),
+    missing=missing_runtime,
+    not_bootstrapped=unloaded_runtime,
+)
+
+servers = (CP / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+read_abilities = [
+    "mad4b/capability-trait-profile",
+    "mad4b/capability-trait-resolve",
+    "mad4b/data-processing-evaluate",
+    "mad4b/research-provider-plan",
+    "mad4b/decommission-preflight",
+    "mad4b/export-bundle-build",
+    "mad4b/import-bundle-validate",
+    "mad4b/scheduler-admission-evaluate",
+    "mad4b/scheduler-fair-rank",
+    "mad4b/operator-doctor",
+]
+write_abilities = ["mad4b/data-processing-record-decision"]
+missing_surface_markers = [a for a in read_abilities + write_abilities if a not in servers]
+if missing_surface_markers:
+    fail("ability_surface_consistency", f"server projection missing abilities: {missing_surface_markers}")
+if "mad4b/database-raw-query" not in servers or "'mad4b-breakglass'" not in servers:
+    fail("ability_surface_consistency", "raw SQL breakglass isolation marker is missing")
+record(
+    "ability_surface_consistency",
+    read_expected=read_abilities,
+    write_expected=write_abilities,
+    missing=missing_surface_markers,
+    raw_sql_normal_write_forbidden=True,
+)
+
+lineage_requirements = {
+    "includes/class-mad4b-scp-context-pack.php": [
+        "writer_profile_id", "writer_profile_version", "writer_profile_fingerprint"
+    ],
+    "includes/class-mad4b-scp-content-intelligence-pipeline.php": [
+        "writer_profile_id", "writer_profile_version", "writer_profile_fingerprint"
+    ],
+    "includes/class-mad4b-scp-governed-draft.php": [
+        "writer_profile_id", "writer_profile_version", "writer_profile_fingerprint", "plan_sha256"
+    ],
+    "includes/class-mad4b-scp-workflow-providers.php": [
+        "provider_profile_fingerprint", "capability_certification_fingerprint", "provider_release_ring", "plan_sha256"
+    ],
+    "includes/class-mad4b-scp-data-governance.php": [
+        "rights_summary_fingerprint", "processor_profile_fingerprint"
+    ],
+}
+lineage_missing = {}
+for rel, markers in lineage_requirements.items():
+    src = (CP / rel).read_text(encoding="utf-8")
+    missing = [m for m in markers if m not in src]
+    if missing:
+        lineage_missing[rel] = missing
+if lineage_missing:
+    fail("immutable_lineage", f"missing lineage markers: {lineage_missing}")
+record("immutable_lineage", requirements=lineage_requirements, missing=lineage_missing)
+
+bounded_files = [
+    CP / "includes" / "class-mad4b-scp-host-bridge.php",
+    CP / "includes" / "class-mad4b-scp-data-governance.php",
+    CP / "includes" / "class-mad4b-scp-decommission-portability.php",
+    CP / "includes" / "class-mad4b-scp-scheduler-admission.php",
+    CP / "includes" / "class-mad4b-scp-publication-verification.php",
+]
+forbidden_patterns = {
+    "shell_exec(": r"\bshell_exec\s*\(",
+    "exec(": r"(?<![A-Za-z0-9_])exec\s*\(",
+    "system(": r"(?<![A-Za-z0-9_])system\s*\(",
+    "passthru(": r"\bpassthru\s*\(",
+    "proc_open(": r"\bproc_open\s*\(",
+    "eval(": r"\beval\s*\(",
+}
+negative_hits = []
+for path in bounded_files:
+    src = path.read_text(encoding="utf-8")
+    for label, pattern in forbidden_patterns.items():
+        if re.search(pattern, src):
+            negative_hits.append({"file": str(path.relative_to(REPO)), "primitive": label})
+if negative_hits:
+    fail("authority_negative_space", f"forbidden execution primitives found: {negative_hits}")
+record(
+    "authority_negative_space",
+    scanned=[str(p.relative_to(REPO)) for p in bounded_files],
+    forbidden_hits=negative_hits,
+    generic_shell_allowed=False,
+    raw_sql_normal_surface_allowed=False,
+    production_authority_implied=False,
+)
+
+verdict = "PASS" if not errors else "FAIL"
+result = {
+    "contract": "mad4b.pre-staging-hybrid-audit.v1",
+    "verdict": verdict,
+    "repository_only": True,
+    "staging_certification_implied": False,
+    "production_authorized": False,
+    "generic_quality_tooling_policy": {
+        "reuse_external_tools": True,
+        "recommended": [
+            "PHP lint",
+            "WordPressCS",
+            "PHPCompatibilityWP",
+            "PHPStan + WordPress stubs",
+            "WordPress Plugin Check",
+        ],
+        "mad4b_custom_scope": [
+            "structural integrity",
+            "runtime/package completeness",
+            "ability surface consistency",
+            "immutable lineage",
+            "authority negative-space",
+        ],
+    },
+    "checks": checks,
+    "errors": errors,
+}
+DIST.mkdir(exist_ok=True)
+out = DIST / "pre-staging-hybrid-audit.json"
+out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+print(json.dumps(result, indent=2, sort_keys=True))
+if errors:
+    raise SystemExit(1)
