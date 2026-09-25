@@ -24,6 +24,7 @@ jobs:
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       GH_TOKEN: ${{ github.token }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
     steps:
       - name: Checkout exact source
         uses: actions/checkout@v4
@@ -36,6 +37,23 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Verify exact-head owner-attestation governance contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-owner-attestation-contract.py
+
+      - name: Enforce monotonic repository governance policy
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$BASE_SHA"
+          git show "$BASE_SHA:.github/mad4b-repository-governance-policy.json" > /tmp/mad4b-base-governance-policy.json
+          python3 tools/verify_repository_governance_policy_monotonic.py \
+            --base-policy /tmp/mad4b-base-governance-policy.json \
+            --candidate-policy .github/mad4b-repository-governance-policy.json
 
       - name: Verify governance bootstrap tool contract
         shell: bash
