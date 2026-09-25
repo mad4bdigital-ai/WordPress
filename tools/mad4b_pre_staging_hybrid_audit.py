@@ -83,6 +83,100 @@ record(
     addon_manifest_contract=strategy.get("addon_manifest_contract", "") if strategy else "",
 )
 
+
+# Add-on catalog and static policy enforcement. The catalog may be empty, but
+# every future item must satisfy the same fail-closed contract before Staging.
+addon_catalog_path = CP / "config" / "wordpress-addon-catalog.json"
+if not addon_catalog_path.is_file():
+    fail("addon_registry", "wordpress add-on catalog is missing")
+    addon_catalog = {}
+else:
+    addon_catalog = json.loads(addon_catalog_path.read_text(encoding="utf-8"))
+if addon_catalog.get("contract") != "mad4b.wordpress-addon-catalog.v1":
+    fail("addon_registry", "wordpress add-on catalog contract mismatch")
+if addon_catalog.get("defaults", {}).get("production_authorized") is not False:
+    fail("addon_registry", "add-on catalog may not authorize Production")
+addon_required_fields = {
+    "addon_id","plugin_file","base_provider","compatible_versions","extension_points","capabilities",
+    "data_ownership","authority_impact","rollback","certification","tests","portability",
+    "supply_chain","network_access","multisite","performance_budget","observability","failure_policy",
+    "release_ring","certified_pairs",
+}
+addon_violations = []
+addon_static_hits = []
+for manifest in addon_catalog.get("addons", []):
+    if not isinstance(manifest, dict):
+        addon_violations.append("manifest_not_object")
+        continue
+    addon_id = manifest.get("addon_id", "<unknown>")
+    missing = sorted(addon_required_fields - set(manifest))
+    if missing:
+        addon_violations.append(f"{addon_id}:missing={missing}")
+    authority = manifest.get("authority_impact", {})
+    if authority.get("inherits_production_authority") is not False or authority.get("adds_generic_shell") is not False or authority.get("adds_raw_sql") is not False:
+        addon_violations.append(f"{addon_id}:authority_boundary_invalid")
+    if manifest.get("portability", {}).get("vendor_files_modified") is not False:
+        addon_violations.append(f"{addon_id}:vendor_patch_invalid")
+    certification = manifest.get("certification", {})
+    if certification.get("exact_provider_version_required") is not True or certification.get("exact_addon_version_required") is not True:
+        addon_violations.append(f"{addon_id}:exact_pair_not_required")
+    if manifest.get("release_ring") not in {"shadow","canary","active"}:
+        addon_violations.append(f"{addon_id}:release_ring_invalid")
+    if manifest.get("failure_policy", {}).get("reconcile_before_retry_after_uncertain_write") is not True:
+        addon_violations.append(f"{addon_id}:uncertain_retry_policy_invalid")
+    if not isinstance(manifest.get("network_access", {}).get("allowed_hosts"), list):
+        addon_violations.append(f"{addon_id}:network_allowlist_missing")
+    source_root = manifest.get("source_root")
+    if source_root:
+        root = (REPO / str(source_root)).resolve()
+        try:
+            root.relative_to(REPO.resolve())
+        except ValueError:
+            addon_violations.append(f"{addon_id}:source_root_escape")
+            continue
+        if not root.is_dir():
+            addon_violations.append(f"{addon_id}:source_root_missing")
+            continue
+        forbidden = {
+            "shell_exec": r"\bshell_exec\s*\(",
+            "proc_open": r"\bproc_open\s*\(",
+            "passthru": r"\bpassthru\s*\(",
+            "eval": r"\beval\s*\(",
+            "direct_wpdb_query": r"\$wpdb\s*->\s*(?:query|insert|update|delete)\s*\(",
+            "direct_filesystem_write": r"\b(?:file_put_contents|fwrite|unlink|rename)\s*\(",
+        }
+        for php_file in root.rglob("*.php"):
+            src = php_file.read_text(encoding="utf-8", errors="replace")
+            for label, pattern in forbidden.items():
+                if re.search(pattern, src):
+                    addon_static_hits.append({"addon_id": addon_id, "file": str(php_file.relative_to(REPO)), "primitive": label})
+if addon_violations:
+    fail("addon_registry", f"manifest violations: {addon_violations}")
+if addon_static_hits:
+    fail("addon_registry", f"forbidden direct execution/mutation primitives: {addon_static_hits}")
+record(
+    "addon_registry",
+    catalog=str(addon_catalog_path.relative_to(REPO)),
+    addon_count=len(addon_catalog.get("addons", [])) if isinstance(addon_catalog.get("addons"), list) else 0,
+    violations=addon_violations,
+    static_hits=addon_static_hits,
+    exact_pair_certification_required=True,
+    lifecycle_invalidation_required=True,
+    production_authorized=False,
+)
+
+# Canonical Skill inventory must have one source of truth.
+skill_manifest_path = CP / "config" / "skill-seed-manifest.json"
+skill_manifest = json.loads(skill_manifest_path.read_text(encoding="utf-8")) if skill_manifest_path.is_file() else {}
+if skill_manifest.get("contract") != "mad4b.skill-seed-manifest.v1":
+    fail("skill_manifest", "canonical Skill seed manifest missing or invalid")
+manifest_names = [row.get("name") for row in skill_manifest.get("skills", []) if isinstance(row, dict)]
+seed_names = sorted(p.parent.name for p in (CP / "skill-seeds").glob("*/SKILL.md"))
+portable_names = sorted(p.parent.name for p in (PORTABLE / "skills").glob("*/SKILL.md"))
+if sorted(manifest_names) != seed_names or sorted(manifest_names) != portable_names:
+    fail("skill_manifest", f"Skill inventory drift manifest={sorted(manifest_names)} seed={seed_names} portable={portable_names}")
+record("skill_manifest", manifest=str(skill_manifest_path.relative_to(REPO)), count=len(manifest_names), seed_names=seed_names)
+
 class_files = sorted((CP / "includes").glob("class-mad4b-scp-*.php"))
 classes: dict[str, str] = {}
 duplicate_classes: list[dict] = []
@@ -127,6 +221,7 @@ record(
 
 critical_runtime = [
     "class-mad4b-scp-artifacts.php",
+    "class-mad4b-scp-addon-registry.php",
     "class-mad4b-scp-capability-traits.php",
     "class-mad4b-scp-content-intelligence-pipeline.php",
     "class-mad4b-scp-content-jobs.php",
@@ -165,6 +260,7 @@ record(
 servers = (CP / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 read_abilities = [
     "mad4b/capability-trait-profile",
+    "mad4b/addon-registry-status",
     "mad4b/capability-trait-resolve",
     "mad4b/data-processing-evaluate",
     "mad4b/research-provider-plan",
