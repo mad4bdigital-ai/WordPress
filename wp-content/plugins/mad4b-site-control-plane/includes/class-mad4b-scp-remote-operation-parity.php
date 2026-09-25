@@ -141,6 +141,15 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		);
 
 		self::register_remote_operation(
+			self::PERFORMANCE_RECONCILE_ABILITY,
+			'Reconcile Stale Performance Maintenance Remotely',
+			'Finalize stale Staging performance maintenance only from independently observed index postconditions; never retries uncertain DDL automatically.',
+			self::operation_schema( self::PERFORMANCE_RECONCILE_CONFIRMATION ),
+			array( __CLASS__, 'reconcile_performance_indexes' ),
+			true
+		);
+
+		self::register_remote_operation(
 			self::WORK_CLAIM_ABILITY,
 			'Claim Remote Operation Work',
 			'Claim one bounded semantic external-executor job with an expiring fenced lease. No generic command execution is exposed.',
