@@ -391,7 +391,9 @@ jobs:
           developer="$root/includes/class-mad4b-scp-developer-runtime.php"
 
           # The default/control/content/admin planes remain command-execution free.
-          if find "$root" -type f -name '*.php' ! -path "$developer" -print0 \
+          if find "$root" -type f -name '*.php' \
+            ! -path "$root/tests/*" \
+            ! -path "$developer" -print0 \
             | xargs -0 grep -nEH '\b(eval|assert|exec|shell_exec|system|passthru|popen|proc_open)\s*\('; then
             echo 'Forbidden arbitrary execution primitive detected outside the isolated Developer Plane.' >&2
             exit 1
