@@ -438,7 +438,7 @@ final class MAD4B_SCP_Host_Bridge {
 	}
 
 	private static function digest( array $value ) {
-		unset( $value['plan_sha256'], $value['submission_sha256'], $value['authorizing'], $value['mutation_performed'], $value['queued'], $value['replayed'] );
+		unset( $value['plan_sha256'], $value['repair_plan_sha256'], $value['submission_sha256'], $value['authorizing'], $value['mutation_performed'], $value['queued'], $value['replayed'] );
 		$value = self::canonicalize( $value );
 		if ( is_wp_error( $value ) ) return '';
 		$json = wp_json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
