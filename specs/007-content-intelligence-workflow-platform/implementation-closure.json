@@ -842,10 +842,14 @@
         "high_risk_central_outage_fail_closed": true,
         "authority_bypassed": false,
         "dispatch_performed": false,
-        "repository_only": true
+        "repository_only": true,
+        "weighted_aging_ranker": true,
+        "anti_starvation": true,
+        "fair_rank_authority_bypass": false,
+        "fair_rank_quota_bypass": false
       },
       "remainder": [
-        "implement durable provider-neutral queue ordering/weighted-fair scheduling rather than admission evaluation only",
+        "implement durable multi-worker provider-neutral queue ownership/leases around the read-only admission/ranking model",
         "bind actual WordPress/Host/external cron adapters to exact desired/expected state and budgets",
         "prove noisy-neighbor, anti-starvation and provider-backlog behavior under disposable/live ETG load"
       ]
