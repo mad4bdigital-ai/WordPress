@@ -297,9 +297,10 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$needle = '%"idempotency_key":"' . $wpdb->esc_like( (string) $idempotency_key ) . '"%';
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT artifact_id FROM {$t['artifacts']} WHERE site_uuid=%s AND artifact_type=%s AND metadata_json LIKE %s ORDER BY id DESC LIMIT 1",
+				"SELECT artifact_id FROM {$t['artifacts']} WHERE site_uuid=%s AND artifact_type=%s AND status=%s AND metadata_json LIKE %s ORDER BY id DESC LIMIT 1",
 				self::site_uuid(),
 				'brand_context_draft',
+				'active',
 				$needle
 			),
 			ARRAY_A
@@ -325,6 +326,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		if ( ! empty( $plan['hard_blockers'] ) ) return new WP_Error( 'mad4b_brand_draft_blocked', 'Brand draft generation is blocked by current evidence.', array( 'blockers' => $plan['hard_blockers'] ) );
 		if ( ! in_array( $category, $plan['missing_categories'], true ) ) return new WP_Error( 'mad4b_brand_draft_category_not_missing', 'Requested Brand Core category is no longer missing.' );
 
+		$draft_content_sha256 = hash( 'sha256', $content );
 		$idempotency_key = hash( 'sha256', self::site_uuid() . '|' . $category . '|' . $plan['evidence_digest'] . '|' . self::BUILDER_SPEC_VERSION );
 		$existing = self::find_existing_draft( $idempotency_key );
 		if ( ! empty( $existing ) ) {
@@ -356,6 +358,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'contract' => self::DRAFT_CONTRACT,
 			'category' => $category,
 			'content' => $content,
+			'content_sha256' => $draft_content_sha256,
 			'evidence_digest' => (string) $plan['evidence_digest'],
 			'source_asset_ids' => $source_asset_ids,
 			'source_content_ids' => $source_content_ids,
@@ -374,6 +377,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 					'plan_sha256' => (string) $plan['plan_sha256'],
 					'evidence_digest' => (string) $plan['evidence_digest'],
 					'builder_spec_version' => self::BUILDER_SPEC_VERSION,
+					'draft_content_sha256' => $draft_content_sha256,
 					'suggested_name' => 'tone_of_voice' === $category ? 'Egypt Tour Gates - Tone of Voice.md' : 'Egypt Tour Gates - Editorial Guidelines.md',
 				),
 				'producer_stage' => 'DRAFT',
@@ -384,6 +388,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		if ( is_wp_error( $artifact ) ) return $artifact;
 		$artifact['idempotent'] = false;
 		$artifact['idempotency_key'] = $idempotency_key;
+		$artifact['draft_content_sha256'] = $draft_content_sha256;
 		$artifact['brand_core_ready'] = false;
 		return $artifact;
 	}
@@ -466,21 +471,14 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$category = sanitize_key( isset( $payload['category'] ) ? (string) $payload['category'] : '' );
 		if ( ! in_array( $category, self::generatable_categories(), true ) ) return new WP_Error( 'mad4b_brand_materialize_category_invalid', 'Artifact category is not materializable.' );
 		$content = isset( $payload['content'] ) ? (string) $payload['content'] : '';
-		$expected_sha = strtolower( trim( (string) ( isset( $input['expected_artifact_content_sha256'] ) ? $input['expected_artifact_content_sha256'] : '' ) ) );
-		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_sha ) || ! hash_equals( (string) $artifact['content_sha256'], $expected_sha ) ) return new WP_Error( 'mad4b_brand_materialize_artifact_stale', 'Brand draft Artifact changed before materialization.' );
+		$draft_content_sha256 = hash( 'sha256', $content );
+		$expected_sha = strtolower( trim( (string) ( isset( $input['expected_draft_content_sha256'] ) ? $input['expected_draft_content_sha256'] : '' ) ) );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_sha ) || ! hash_equals( $draft_content_sha256, $expected_sha ) ) return new WP_Error( 'mad4b_brand_materialize_artifact_stale', 'Brand draft text changed before materialization.' );
 		$name = 'tone_of_voice' === $category ? 'Egypt Tour Gates - Tone of Voice.md' : 'Egypt Tour Gates - Editorial Guidelines.md';
 		if ( 'text' === $format ) $name = preg_replace( '/\.md$/', '.txt', $name );
 		$created = MAD4B_SCP_Google_Drive_Context::create_asset( $source_id, $name, $content, $format );
 		if ( is_wp_error( $created ) ) return $created;
-		$marked = MAD4B_SCP_Context_Authority::mark_generated_brand_draft(
-			(string) $created['asset_id'],
-			$category,
-			$artifact_id,
-			isset( $payload['evidence_digest'] ) ? (string) $payload['evidence_digest'] : ''
-		);
-		if ( is_wp_error( $marked ) ) return $marked;
-		return array(
-			'contract' => self::MATERIALIZE_CONTRACT,
+		$receipt = array(
 			'artifact_id' => $artifact_id,
 			'category' => $category,
 			'source_id' => (string) $created['source_id'],
@@ -490,25 +488,55 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'after_sha256' => (string) $created['content_sha256'],
 			'mime_type' => (string) $created['mime_type'],
 			'format' => $format,
-			'rollback_contract' => self::ROLLBACK_CONTRACT,
-			'brand_core_ready' => false,
-			'review_status' => 'unreviewed',
+		);
+		$receipt_sha256 = hash( 'sha256', self::stable_json( $receipt ) );
+		$marked = MAD4B_SCP_Context_Authority::mark_generated_brand_draft(
+			(string) $created['asset_id'],
+			$category,
+			$artifact_id,
+			isset( $payload['evidence_digest'] ) ? (string) $payload['evidence_digest'] : '',
+			$receipt_sha256
+		);
+		if ( is_wp_error( $marked ) ) {
+			$compensation = MAD4B_SCP_Google_Drive_Context::rollback_created_brand_asset( array_merge( $receipt, array( 'receipt_sha256' => $receipt_sha256 ) ), true );
+			if ( is_wp_error( $compensation ) ) return new WP_Error( 'mad4b_brand_materialize_compensation_failed', 'Brand draft was created but registry marking and exact provider compensation both failed; recovery is required.', array( 'mark_error_code' => $marked->get_error_code(), 'rollback_error_code' => $compensation->get_error_code(), 'receipt_sha256' => $receipt_sha256 ) );
+			$registry_cleanup = MAD4B_SCP_Context_Authority::mark_generated_brand_draft_rolled_back( (string) $created['asset_id'], (string) $created['file_id'], (string) $created['content_sha256'], $artifact_id, $receipt_sha256, true );
+			if ( is_wp_error( $registry_cleanup ) ) return new WP_Error( 'mad4b_brand_materialize_compensation_registry_failed', 'Brand draft provider create was rolled back but registry cleanup failed; recovery is required.', array( 'mark_error_code' => $marked->get_error_code(), 'cleanup_error_code' => $registry_cleanup->get_error_code(), 'receipt_sha256' => $receipt_sha256 ) );
+			return $marked;
+		}
+		return array_merge(
+			array(
+				'contract' => self::MATERIALIZE_CONTRACT,
+				'rollback_contract' => self::ROLLBACK_CONTRACT,
+				'receipt_sha256' => $receipt_sha256,
+				'brand_core_ready' => false,
+				'review_status' => 'unreviewed',
+			),
+			$receipt
 		);
 	}
 
 	public static function rollback_materialized_draft( $input ) {
 		$receipt = array(
+			'artifact_id' => isset( $input['artifact_id'] ) ? (string) $input['artifact_id'] : '',
+			'category' => isset( $input['category'] ) ? sanitize_key( (string) $input['category'] ) : '',
 			'source_id' => isset( $input['source_id'] ) ? (string) $input['source_id'] : '',
 			'asset_id' => isset( $input['asset_id'] ) ? (string) $input['asset_id'] : '',
 			'file_id' => isset( $input['file_id'] ) ? (string) $input['file_id'] : '',
 			'target_folder_id' => isset( $input['target_folder_id'] ) ? (string) $input['target_folder_id'] : '',
 			'after_sha256' => isset( $input['after_sha256'] ) ? (string) $input['after_sha256'] : '',
 			'mime_type' => isset( $input['mime_type'] ) ? (string) $input['mime_type'] : '',
+			'format' => isset( $input['format'] ) ? sanitize_key( (string) $input['format'] ) : '',
 		);
+		$expected_receipt_sha256 = strtolower( trim( (string) ( isset( $input['receipt_sha256'] ) ? $input['receipt_sha256'] : '' ) ) );
+		$current_receipt_sha256 = hash( 'sha256', self::stable_json( $receipt ) );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_receipt_sha256 ) || ! hash_equals( $current_receipt_sha256, $expected_receipt_sha256 ) ) return new WP_Error( 'mad4b_brand_materialize_receipt_mismatch', 'Brand materialization rollback receipt does not match the exact creation result.' );
+		if ( ! in_array( $receipt['category'], self::generatable_categories(), true ) || ! in_array( $receipt['format'], array( 'markdown', 'text' ), true ) ) return new WP_Error( 'mad4b_brand_materialize_receipt_scope_invalid', 'Brand materialization rollback receipt is outside the certified Brand Core scope.' );
+		$receipt['receipt_sha256'] = $expected_receipt_sha256;
 		$rolled = MAD4B_SCP_Google_Drive_Context::rollback_created_brand_asset( $receipt );
 		if ( is_wp_error( $rolled ) ) return $rolled;
-		$registry = MAD4B_SCP_Context_Authority::mark_generated_brand_draft_rolled_back( $receipt['asset_id'], $receipt['file_id'], $receipt['after_sha256'] );
-		if ( is_wp_error( $registry ) ) return new WP_Error( 'mad4b_brand_materialize_rollback_recovery_required', 'Provider rollback succeeded but Context registry finalization failed.', array( 'registry_error_code' => $registry->get_error_code(), 'provider_deleted' => true ) );
-		return array( 'contract' => self::ROLLBACK_CONTRACT, 'status' => 'rolled_back', 'asset_id' => $receipt['asset_id'], 'file_id' => $receipt['file_id'], 'verified' => true );
+		$registry = MAD4B_SCP_Context_Authority::mark_generated_brand_draft_rolled_back( $receipt['asset_id'], $receipt['file_id'], $receipt['after_sha256'], $receipt['artifact_id'], $expected_receipt_sha256, false );
+		if ( is_wp_error( $registry ) ) return new WP_Error( 'mad4b_brand_materialize_rollback_recovery_required', 'Provider rollback succeeded but Context registry finalization failed.', array( 'registry_error_code' => $registry->get_error_code(), 'provider_deleted' => true, 'receipt_sha256' => $expected_receipt_sha256 ) );
+		return array( 'contract' => self::ROLLBACK_CONTRACT, 'status' => 'rolled_back', 'artifact_id' => $receipt['artifact_id'], 'asset_id' => $receipt['asset_id'], 'file_id' => $receipt['file_id'], 'receipt_sha256' => $expected_receipt_sha256, 'verified' => true );
 	}
 }
