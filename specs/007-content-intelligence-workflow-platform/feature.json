@@ -160,7 +160,10 @@
     "tools/mad4b_host_runner_bootstrap.py",
     "tools/verify_release_root_trust.py",
     "tools/verify_repository_owner_attestation.py",
-    "wp-content/plugins/mad4b-site-control-plane/"
+    "wp-content/plugins/mad4b-site-control-plane/",
+    ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+    "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/SKILL.md",
+    "tools/mad4b_pre_staging_hybrid_audit.py"
   ],
   "cross_feature_contract_dependencies": [
     ".github/workflows/wpl-client-contract.yml",
