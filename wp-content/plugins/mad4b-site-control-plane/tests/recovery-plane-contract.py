@@ -478,8 +478,99 @@ with tempfile.TemporaryDirectory() as td:
             raise SystemExit("protected backup leaked wp-config bytes")
 
     status = recovery.protected_backup_status(wp)
-    if status["ready"] is not True or status["backup_count"] != 1:
+    if status["ready"] is not True or status["backup_count"] != 1 or status["verified_backup_count"] != 1:
         raise SystemExit("protected backup root did not become ready with one verified backup")
+
+    verified_backup = recovery.verify_protected_backup(wp, receipt["backup_id"])
+    if verified_backup["verified"] is not True:
+        raise SystemExit("protected backup verification did not pass exact snapshot")
+
+    # Simulate a later candidate deployment, then restore the protected pre-deployment snapshot.
+    candidate = live / "mad4b-site-control-plane.php"
+    candidate.write_text("<?php // later candidate runtime\n", encoding="utf-8")
+    restore_plan = recovery.build_backup_restore_plan(
+        wp,
+        "staging",
+        receipt["backup_id"],
+        "INC-PROTECTED-BACKUP-RESTORE",
+        "Restore exact pre-deployment protected backup after candidate regression.",
+    )
+    try:
+        recovery.apply_backup_restore(restore_plan, "0" * 64)
+        raise SystemExit("protected backup restore accepted wrong owner plan attestation")
+    except ValueError as exc:
+        if "OWNER_ATTEST_SINGLE_OWNER" not in str(exc):
+            raise
+    restored = recovery.apply_backup_restore(
+        restore_plan,
+        restore_plan["plan_sha256"],
+    )
+    if restored["readback_verified"] is not True or restored["production_authorized"] is not False:
+        raise SystemExit("protected backup restore receipt is not verified or widened Production")
+    if recovery.tree_digest(live) != plan["target"]["plugin_tree_sha256"]:
+        raise SystemExit("protected backup restore did not recover exact snapshot tree")
+
+    # Receipt interruption after a successful file switch must roll back to the exact pre-restore candidate.
+    candidate.write_text("<?php // second candidate before interrupted rollback\n", encoding="utf-8")
+    candidate_before = recovery.tree_digest(live)
+    interrupted_plan = recovery.build_backup_restore_plan(
+        wp,
+        "staging",
+        receipt["backup_id"],
+        "INC-PROTECTED-BACKUP-INTERRUPT",
+        "Inject receipt interruption after protected backup switch.",
+    )
+    original_atomic_json = recovery.atomic_json_write
+    def fail_backup_restore_receipt(path, data):
+        if data.get("contract") == recovery.BACKUP_RESTORE_RECEIPT_CONTRACT:
+            raise OSError("simulated protected backup restore receipt interruption")
+        return original_atomic_json(path, data)
+    recovery.atomic_json_write = fail_backup_restore_receipt
+    try:
+        recovery.apply_backup_restore(
+            interrupted_plan,
+            interrupted_plan["plan_sha256"],
+        )
+        raise SystemExit("protected backup restore unexpectedly survived receipt interruption")
+    except OSError as exc:
+        if "receipt interruption" not in str(exc):
+            raise
+    finally:
+        recovery.atomic_json_write = original_atomic_json
+    if recovery.tree_digest(live) != candidate_before:
+        raise SystemExit("interrupted protected backup restore did not roll back exact prior candidate")
+    journals = recovery.recovery_journal_summary(wp)
+    interrupted_rows = [
+        row for row in journals["entries"]
+        if row.get("plan_sha256") == interrupted_plan["plan_sha256"]
+    ]
+    if len(interrupted_rows) != 1 or interrupted_rows[0].get("evidence_state") != "ROLLED_BACK_AFTER_FAILURE":
+        raise SystemExit("interrupted protected backup restore did not persist rollback evidence")
+
+    # Backup corruption must invalidate readiness and block every new restore plan.
+    snapshot_file = backup / recovery.PLUGIN_SLUG / "mad4b-site-control-plane.php"
+    snapshot_file.write_text("<?php // corrupted protected backup\n", encoding="utf-8")
+    try:
+        recovery.verify_protected_backup(wp, receipt["backup_id"])
+        raise SystemExit("protected backup corruption was not detected")
+    except ValueError as exc:
+        if "mismatch" not in str(exc):
+            raise
+    corrupted_status = recovery.protected_backup_status(wp)
+    if corrupted_status["ready"] is not False or corrupted_status["verified_backup_count"] != 0:
+        raise SystemExit("corrupted protected backup still satisfied readiness")
+    try:
+        recovery.build_backup_restore_plan(
+            wp,
+            "staging",
+            receipt["backup_id"],
+            "INC-CORRUPT-BACKUP-RESTORE",
+            "Corrupt backup must never produce a restore plan.",
+        )
+        raise SystemExit("corrupted protected backup produced a restore plan")
+    except ValueError as exc:
+        if "mismatch" not in str(exc):
+            raise
 
 # Backup source symlinks fail closed instead of following content outside plugin root.
 with tempfile.TemporaryDirectory() as td:
