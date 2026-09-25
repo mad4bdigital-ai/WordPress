@@ -133,13 +133,22 @@
         "blind_retry_on_uncertainty": false,
         "wp_cli_host_runner_read_semantic_parity": true,
         "latest_repository_proof_head": "74627ac13c371cc247df35561713682884793367",
-        "latest_repository_proof_run_id": 36078596096
+        "latest_repository_proof_run_id": 36078596096,
+        "host_runner_bootstrap_tool": "tools/mad4b_host_runner_bootstrap.py",
+        "host_runner_bootstrap_contract": "mad4b.host-runner-bootstrap-plan.v1",
+        "host_runner_enrollment_contract": "mad4b.runner-enrollment.v1",
+        "bootstrap_repository_proven": true,
+        "single_use_enrollment_repository_proven": true,
+        "enrollment_write_eligible_false": true,
+        "enrollment_production_authorized_false": true,
+        "cross_executor_read_semantic_contract": "mad4b.runtime-status-read.v1",
+        "wpcli_hostrunner_read_parity_repository_proven": true
       },
       "remainder": [
-        "implement and certify terminal-independent steady-state Host Runner bootstrap/enrollment",
         "implement governed WordPress Host Bridge queue/control surface without generic shell",
         "prove MCP/WP-CLI/Host Runner authority parity for one read and one reversible write",
-        "prove live ETG Host Runner canary and recovery storage behavior"
+        "prove live ETG Host Runner canary and recovery storage behavior",
+        "certify one hosting-profile scheduler/bootstrap channel that applies the fixed descriptor without interactive terminal"
       ]
     },
     {
@@ -268,11 +277,18 @@
     {
       "id": "gate_liveness",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
+      "status": "DONE",
       "gate": "gate_liveness_verified",
-      "remainder": [
-        "prove every blocking gate has a path to the terminal gate in addition to acyclicity and terminal reachability"
-      ]
+      "evidence": {
+        "contract": "mad4b.feature007-critical-gate-graph.v4",
+        "validator": "specs/007-content-intelligence-workflow-platform/validate_spec.py",
+        "graph": "specs/007-content-intelligence-workflow-platform/gate-graph.json",
+        "acyclicity_proven": true,
+        "dependency_integrity_proven": true,
+        "root_to_terminal_reachability_proven": true,
+        "every_blocking_gate_reaches_terminal": true,
+        "workflow_run_id": 36078194548
+      }
     },
     {
       "id": "site_bootstrap",
