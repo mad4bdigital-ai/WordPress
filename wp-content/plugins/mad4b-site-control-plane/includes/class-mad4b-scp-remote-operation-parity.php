@@ -786,22 +786,28 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$payload = isset( $job['payload'] ) && is_array( $job['payload'] ) ? $job['payload'] : array();
 		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
 		$current_count = isset( $performance['evaluation_window']['sample_count'] ) ? (int) $performance['evaluation_window']['sample_count'] : 0;
-		$baseline = isset( $payload['baseline_sample_count'] ) ? (int) $payload['baseline_sample_count'] : 0;
 		$required = isset( $payload['requested_samples'] ) ? max( 1, (int) $payload['requested_samples'] ) : 1;
-		$delta = max( 0, $current_count - $baseline );
-		if ( $delta < $required ) return new WP_Error(
+		$probe_hash = isset( $payload['probe_hash'] ) ? strtolower( trim( (string) $payload['probe_hash'] ) ) : '';
+		$claimed_at = isset( $job['claimed_at'] ) ? (string) $job['claimed_at'] : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $probe_hash ) || '' === $claimed_at ) {
+			return new WP_Error( 'mad4b_remote_work_probe_binding_missing', 'Remote browser work lacks an exact probe identity or authoritative claim timestamp.' );
+		}
+		$matched = self::matched_frontend_probe_samples( $performance, $probe_hash, $claimed_at );
+		if ( $matched < $required ) return new WP_Error(
 			'mad4b_remote_work_evidence_not_observed',
-			'External executor completion is denied until current-build Frontend telemetry independently observes the requested samples.',
-			array( 'required_sample_delta' => $required, 'observed_sample_delta' => $delta, 'telemetry_sample_count' => $current_count )
+			'External executor completion is denied until current-build Frontend telemetry independently observes the exact claimed probe samples.',
+			array( 'required_probe_samples' => $required, 'observed_probe_samples' => $matched, 'telemetry_sample_count' => $current_count, 'probe_hash' => $probe_hash )
 		);
 		$result = MAD4B_SCP_Remote_Work_Queue::complete(
 			(string) $input['job_id'],
 			(string) $input['executor_id'],
 			(string) $input['lease_token'],
 			array(
-				'verification' => 'query_monitor_frontend_telemetry',
-				'required_sample_delta' => $required,
-				'observed_sample_delta' => $delta,
+				'verification' => 'query_monitor_frontend_probe_telemetry',
+				'probe_hash' => $probe_hash,
+				'claimed_at' => $claimed_at,
+				'required_probe_samples' => $required,
+				'observed_probe_samples' => $matched,
 				'telemetry_sample_count' => $current_count,
 				'verified_at' => gmdate( 'c' ),
 			)
@@ -811,7 +817,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( is_array( $request ) && isset( $request['work_job_id'] ) && hash_equals( (string) $request['work_job_id'], (string) $input['job_id'] ) ) {
 			$request['status'] = 'observed';
 			$request['work_job_status'] = 'completed';
-			$request['observed_sample_delta'] = $delta;
+			$request['observed_probe_samples'] = $matched;
+			$request['observed_sample_delta'] = $matched;
+			$request['evidence_ready'] = true;
 			$request['telemetry_sample_count'] = $current_count;
 			$request['completed_at'] = gmdate( 'c' );
 			self::persist_browser_request( $request );
@@ -819,7 +827,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$audit = self::audit( self::WORK_COMPLETE_ABILITY, array(
 			'job_id' => (string) $input['job_id'],
 			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
-			'observed_sample_delta' => $delta,
+			'observed_probe_samples' => $matched,
+			'probe_hash' => $probe_hash,
 		) );
 		return is_wp_error( $audit ) ? $audit : $result;
 	}
@@ -1010,14 +1019,18 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 
 		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
 		$baseline = isset( $performance['evaluation_window']['sample_count'] ) ? (int) $performance['evaluation_window']['sample_count'] : 0;
+		$request_id = strtolower( wp_generate_uuid4() );
+		$probe_hash = hash( 'sha256', $request_id );
+		$target_url = add_query_arg( 'mad4b_frontend_probe', $request_id, home_url( $path ) );
 		$request = array(
 			'contract' => 'mad4b.remote-frontend-performance-sampling.v2',
-			'request_id' => strtolower( wp_generate_uuid4() ),
+			'request_id' => $request_id,
+			'probe_hash' => $probe_hash,
 			'status' => 'pending_external_executor',
 			'execution_mode' => 'external_browser_agent',
 			'executor_contract' => 'mad4b.browser-acceptance-core.v1',
 			'target_path' => $path,
-			'target_url' => home_url( $path ),
+			'target_url' => $target_url,
 			'requested_samples' => $count,
 			'baseline_sample_count' => $baseline,
 			'expected_identity' => array(
@@ -1036,6 +1049,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'frontend_performance_sampling',
 			array(
 				'request_id' => (string) $request['request_id'],
+				'probe_hash' => (string) $request['probe_hash'],
 				'target_path' => $path,
 				'target_url' => (string) $request['target_url'],
 				'requested_samples' => $count,
@@ -1053,6 +1067,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$audit = self::audit( self::FRONTEND_SAMPLE_ABILITY, array(
 			'source_commit_sha' => (string) $request['expected_identity']['source_commit_sha'],
 			'request_id' => (string) $request['request_id'],
+			'probe_hash' => (string) $request['probe_hash'],
 			'target_path' => $path,
 			'requested_samples' => $count,
 			'execution_mode' => 'external_browser_agent',
