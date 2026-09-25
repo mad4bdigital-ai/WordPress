@@ -443,6 +443,34 @@ if bulk_hardening_path.exists():
         if rules.get(key) is not True:
             errors.append(f"bulk_hardening:closure_rule_missing:{key}")
 
+    evidence_model=hardening.get("evidence_model",{})
+    if evidence_model.get("contract") != "mad4b.feature007-bulk-fixture-evidence.v1":
+        errors.append("bulk_hardening:evidence_model_contract_mismatch")
+    repo_allowed=set(evidence_model.get("repository_status_vocabulary",[]))
+    live_allowed=set(evidence_model.get("live_status_vocabulary",[]))
+    fixture_evidence=hardening.get("fixture_evidence",{})
+    if set(fixture_evidence) != set(fixtures):
+        errors.append("bulk_hardening:fixture_evidence_key_mismatch")
+    for fixture in fixtures:
+        row=fixture_evidence.get(fixture,{})
+        repo_status=row.get("repository_status")
+        live_status=row.get("live_status")
+        refs=row.get("evidence_refs")
+        remainder=row.get("remaining",[])
+        if repo_status not in repo_allowed:
+            errors.append(f"bulk_hardening:fixture_repository_status_invalid:{fixture}:{repo_status}")
+        if live_status not in live_allowed:
+            errors.append(f"bulk_hardening:fixture_live_status_invalid:{fixture}:{live_status}")
+        if not isinstance(refs,list) or not refs or any(not isinstance(x,str) or not x.strip() for x in refs):
+            errors.append(f"bulk_hardening:fixture_evidence_refs_missing:{fixture}")
+        if repo_status in {"PARTIAL","PENDING"} and (not isinstance(remainder,list) or not remainder):
+            errors.append(f"bulk_hardening:fixture_remainder_missing:{fixture}")
+        if live_status == "PROVEN":
+            # Live proof must carry at least one explicit non-repository evidence
+            # reference; repository paths alone can never self-close a live gate.
+            if all(str(x).startswith(("specs/",".github/","tools/","wp-content/")) for x in refs):
+                errors.append(f"bulk_hardening:live_proven_without_external_evidence:{fixture}")
+
 for rel in ["spec.md","plan.md","coverage-audit.md"]:
     p=require_file(rel)
     if p.exists() and "Production" not in p.read_text(encoding="utf-8"):
