@@ -130,7 +130,9 @@
     "critical_kernel_vertical_slice_verified",
     "repository_governance_bootstrap_retirement",
     "etg_exact_runtime_release_deployment",
-    "runtime_root_trust_readback"
+    "runtime_root_trust_readback",
+    "remote_operation_parity",
+    "future_capability_discoverability"
   ],
   "coverage_audit_version": "2026-09-25.v9-bulk-runtime-closure-hardening",
   "coverage_status": "architecture-frozen-bulk-runtime-closure-hardening-with-executable-ci-invariants",
@@ -214,5 +216,7 @@
   },
   "bulk_closure_hardening_contract": "mad4b.feature007-bulk-closure-hardening.v1",
   "bulk_closure_hardening_ledger": "bulk-closure-hardening.json",
-  "mutation_uncertainty_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN"
+  "mutation_uncertainty_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+  "remote_operation_parity_contract": "mad4b.remote-operation-parity.v1",
+  "future_discoverability_policy": "all automation-eligible operations require governed remote parity and discoverable metadata"
 }
