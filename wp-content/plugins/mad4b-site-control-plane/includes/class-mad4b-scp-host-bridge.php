@@ -113,6 +113,7 @@ final class MAD4B_SCP_Host_Bridge {
 			'arguments' => self::canonicalize( $args ),
 			'submission_location' => 'wordpress_request',
 			'execution_location' => 'host_runner',
+			'commit_location' => 'host_runner',
 			'production_authorized' => false,
 			'created_at' => gmdate( 'c' ),
 		);
@@ -174,6 +175,7 @@ final class MAD4B_SCP_Host_Bridge {
 			),
 			'submission_location' => 'wordpress_request',
 			'execution_location' => 'host_runner',
+			'commit_location' => 'host_runner',
 			'created_at' => isset( $plan['created_at'] ) ? (string) $plan['created_at'] : '',
 			'production_authorized' => false,
 		);
@@ -372,7 +374,9 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( ! isset( $plan['target']['target_fingerprint'] ) || ! hash_equals( (string) $current['target_fingerprint'], (string) $plan['target']['target_fingerprint'] ) ) {
 			return new WP_Error( 'mad4b_host_plan_target_stale', 'Host target changed since plan.' );
 		}
+		if ( 'wordpress_request' !== (string) ( $plan['submission_location'] ?? '' ) ) return new WP_Error( 'mad4b_host_submission_location_invalid', 'Host plan submission location is not WordPress request.' );
 		if ( 'host_runner' !== (string) ( $plan['execution_location'] ?? '' ) ) return new WP_Error( 'mad4b_host_execution_location_invalid', 'Host plan execution location is not Host Runner.' );
+		if ( 'host_runner' !== (string) ( $plan['commit_location'] ?? '' ) ) return new WP_Error( 'mad4b_host_commit_location_invalid', 'Host plan commit location is not Host Runner.' );
 		return true;
 	}
 
