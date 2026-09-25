@@ -227,6 +227,12 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 		$qa = self::active_artifact( $qa_id, $job_id, 'blueprint_qa' );
 		if ( is_wp_error( $qa ) ) return $qa;
 		if ( empty( $qa['payload']['can_write'] ) || empty( $qa['payload']['pass'] ) ) return new WP_Error( 'mad4b_can_write_blocked', 'CAN_WRITE is blocked by Blueprint QA.' );
+		if ( ! isset( $qa['payload']['blueprint_artifact_id'] ) || ! hash_equals( $blueprint_id, (string) $qa['payload']['blueprint_artifact_id'] ) ) {
+			return new WP_Error( 'mad4b_blueprint_qa_lineage_mismatch', 'Blueprint QA does not certify the selected Blueprint.' );
+		}
+		if ( ! isset( $blueprint['payload']['context_artifact_id'] ) || ! hash_equals( $context_id, (string) $blueprint['payload']['context_artifact_id'] ) ) {
+			return new WP_Error( 'mad4b_blueprint_context_lineage_mismatch', 'Selected ContextPack does not match the Blueprint lineage.' );
+		}
 		$content = isset( $input['content'] ) ? (string) $input['content'] : '';
 		if ( '' === trim( $content ) ) return new WP_Error( 'mad4b_draft_content_required', 'ArticleDraft content is required.' );
 		if ( strlen( $content ) > self::MAX_DRAFT_BYTES ) return new WP_Error( 'mad4b_draft_size_limit', 'ArticleDraft exceeds bounded payload budget.' );
