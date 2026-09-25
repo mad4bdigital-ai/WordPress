@@ -32,6 +32,8 @@ DISABLE_PLAN_CONTRACT = "mad4b.recovery-disable-plan.v1"
 DISABLE_RECEIPT_CONTRACT = "mad4b.recovery-disable-receipt.v1"
 BACKUP_PLAN_CONTRACT = "mad4b.protected-backup-plan.v1"
 BACKUP_RECEIPT_CONTRACT = "mad4b.protected-backup-receipt.v1"
+BACKUP_RESTORE_PLAN_CONTRACT = "mad4b.protected-backup-restore-plan.v1"
+BACKUP_RESTORE_RECEIPT_CONTRACT = "mad4b.protected-backup-restore-receipt.v1"
 SUPPORTED_ENVIRONMENTS = {"staging"}
 
 
@@ -334,6 +336,326 @@ def apply_backup(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str, 
         # Surface recovery/reconciliation instead.
         if final.exists():
             raise RuntimeError("PROTECTED_BACKUP_COMMITTED_BUT_READBACK_UNCERTAIN")
+        raise
+
+
+def verify_protected_backup(wordpress_root: Path, backup_id: str) -> dict[str, Any]:
+    root = wordpress_root.expanduser().resolve()
+    backup_id = str(backup_id or "")
+    if not re.fullmatch(r"[A-Za-z0-9._-]{3,220}", backup_id):
+        raise ValueError("protected backup_id is invalid")
+    backup_root = root / "wp-content" / "mad4b-recovery" / "protected-backups"
+    if backup_root.is_symlink() or not backup_root.is_dir():
+        raise ValueError("protected backup root is unavailable")
+    backup = backup_root / backup_id
+    if backup.is_symlink() or not backup.is_dir():
+        raise ValueError("protected backup directory is invalid")
+    if backup.parent.resolve() != backup_root.resolve():
+        raise ValueError("protected backup escaped backup root")
+
+    receipt_path = backup / "BACKUP-RECEIPT.json"
+    manifest_path = backup / "BACKUP-MANIFEST.json"
+    snapshot = backup / PLUGIN_SLUG
+    if receipt_path.is_symlink() or manifest_path.is_symlink() or snapshot.is_symlink():
+        raise ValueError("protected backup metadata or snapshot symlink is forbidden")
+    if not receipt_path.is_file() or not manifest_path.is_file() or not snapshot.is_dir():
+        raise ValueError("protected backup is incomplete")
+
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if receipt.get("contract") != BACKUP_RECEIPT_CONTRACT:
+        raise ValueError("protected backup receipt contract mismatch")
+    if manifest.get("contract") != "mad4b.protected-backup-manifest.v1":
+        raise ValueError("protected backup manifest contract mismatch")
+    if receipt.get("backup_id") != backup_id or manifest.get("backup_id") != backup_id:
+        raise ValueError("protected backup identity mismatch")
+    if receipt.get("wordpress_root") != str(root):
+        raise ValueError("protected backup target root mismatch")
+    current_wp_config = root_trust.sha256_file(root / "wp-config.php")
+    if not hmac.compare_digest(str(receipt.get("wp_config_sha256") or ""), current_wp_config):
+        raise ValueError("protected backup wp-config target binding drift")
+
+    rows: list[dict[str, Any]] = []
+    for file_path in sorted(snapshot.rglob("*")):
+        if file_path.is_symlink():
+            raise ValueError(f"symlink forbidden in protected backup snapshot: {file_path}")
+        if not file_path.is_file():
+            continue
+        rel = file_path.relative_to(snapshot).as_posix()
+        raw = file_path.read_bytes()
+        rows.append({
+            "path": rel,
+            "bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        })
+    expected_rows = manifest.get("files")
+    if not isinstance(expected_rows, list) or expected_rows != rows:
+        raise ValueError("protected backup manifest file inventory mismatch")
+    manifest_material = [
+        f"{row['path']}\0{row['bytes']}\0{row['sha256']}\n".encode()
+        for row in rows
+    ]
+    manifest_sha = hashlib.sha256(b"".join(manifest_material)).hexdigest()
+    if not hmac.compare_digest(manifest_sha, str(manifest.get("manifest_sha256") or "")):
+        raise ValueError("protected backup manifest digest mismatch")
+    if not hmac.compare_digest(manifest_sha, str(receipt.get("backup_manifest_sha256") or "")):
+        raise ValueError("protected backup receipt manifest digest mismatch")
+    tree_sha = tree_digest(snapshot)
+    expected_tree = str(receipt.get("plugin_tree_sha256") or "")
+    if not hmac.compare_digest(tree_sha, expected_tree):
+        raise ValueError("protected backup plugin tree digest mismatch")
+    if not hmac.compare_digest(tree_sha, str(manifest.get("source_plugin_tree_sha256") or "")):
+        raise ValueError("protected backup manifest tree digest mismatch")
+    if int(receipt.get("backup_file_count") or -1) != len(rows) or int(manifest.get("file_count") or -1) != len(rows):
+        raise ValueError("protected backup file count mismatch")
+
+    return {
+        "contract": "mad4b.protected-backup-verification.v1",
+        "verified": True,
+        "backup_id": backup_id,
+        "backup_path": str(backup),
+        "snapshot_path": str(snapshot),
+        "wordpress_root": str(root),
+        "wp_config_sha256": current_wp_config,
+        "plugin_tree_sha256": tree_sha,
+        "backup_manifest_sha256": manifest_sha,
+        "file_count": len(rows),
+        "source_backup_plan_sha256": str(receipt.get("plan_sha256") or ""),
+        "mutation_performed": False,
+    }
+
+
+def build_backup_restore_plan(
+    wordpress_root: Path,
+    environment: str,
+    backup_id: str,
+    incident_id: str,
+    reason: str,
+) -> dict[str, Any]:
+    if environment not in SUPPORTED_ENVIRONMENTS:
+        raise ValueError("Protected backup restore is Staging-only")
+    verification = verify_protected_backup(wordpress_root, backup_id)
+    before = target_state(wordpress_root)
+    plan = {
+        "contract": BACKUP_RESTORE_PLAN_CONTRACT,
+        "action": "restore_protected_backup",
+        "environment": environment,
+        "incident_id": require_incident_id(incident_id),
+        "reason": require_reason(reason),
+        "created_at": utc_now(),
+        "target_before": before,
+        "backup": {
+            "backup_id": verification["backup_id"],
+            "plugin_tree_sha256": verification["plugin_tree_sha256"],
+            "backup_manifest_sha256": verification["backup_manifest_sha256"],
+            "source_backup_plan_sha256": verification["source_backup_plan_sha256"],
+        },
+        "scope": {
+            "plugin_slug": PLUGIN_SLUG,
+            "database_mutation": False,
+            "wp_config_mutation": False,
+            "arbitrary_paths_allowed": False,
+        },
+        "authorization": {
+            "mode": "SINGLE_OWNER_HARDENED",
+            "exact_plan_attestation_required": True,
+            "production_authorized": False,
+            "breakglass_authority_created": False,
+        },
+        "postconditions": {
+            "plugin_tree_sha256": verification["plugin_tree_sha256"],
+            "rollback_to_target_before_required_on_failure": True,
+            "durable_receipt_required": True,
+        },
+    }
+    plan["plan_sha256"] = plan_digest(plan)
+    return plan
+
+
+def assert_backup_restore_plan_current(plan: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
+    if plan.get("contract") != BACKUP_RESTORE_PLAN_CONTRACT or plan.get("action") != "restore_protected_backup":
+        raise ValueError("protected backup restore plan contract/action mismatch")
+    if plan.get("environment") not in SUPPORTED_ENVIRONMENTS:
+        raise ValueError("protected backup restore environment is not allowed")
+    expected_sha = str(plan.get("plan_sha256") or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{64}", expected_sha) or plan_digest(plan) != expected_sha:
+        raise ValueError("protected backup restore plan digest mismatch")
+    scope = plan.get("scope")
+    if not isinstance(scope, dict) or scope.get("plugin_slug") != PLUGIN_SLUG:
+        raise ValueError("protected backup restore scope mismatch")
+    if scope.get("database_mutation") is not False or scope.get("wp_config_mutation") is not False:
+        raise ValueError("protected backup restore widened scope")
+
+    before = plan.get("target_before")
+    if not isinstance(before, dict):
+        raise ValueError("protected backup restore target_before missing")
+    root = Path(str(before.get("wordpress_root") or "")).resolve()
+    current = target_state(root)
+    for key in ("wordpress_root", "wp_config_sha256", "plugin_present", "plugin_tree_sha256"):
+        if current.get(key) != before.get(key):
+            raise ValueError(f"protected backup restore target changed since plan: {key}")
+
+    backup = plan.get("backup")
+    if not isinstance(backup, dict):
+        raise ValueError("protected backup restore backup identity missing")
+    verification = verify_protected_backup(root, str(backup.get("backup_id") or ""))
+    for key in ("plugin_tree_sha256", "backup_manifest_sha256", "source_backup_plan_sha256"):
+        if str(verification.get(key) or "") != str(backup.get(key) or ""):
+            raise ValueError(f"protected backup restore source drift: {key}")
+    return root, verification
+
+
+def apply_backup_restore(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str, Any]:
+    root, verification = assert_backup_restore_plan_current(plan)
+    plan_sha = str(plan["plan_sha256"])
+    if owner_attest_plan_sha.strip().lower() != plan_sha:
+        raise ValueError("OWNER_ATTEST_SINGLE_OWNER does not bind exact protected backup restore plan")
+
+    recovery_root = root / "wp-content" / "mad4b-recovery"
+    if recovery_root.is_symlink():
+        raise ValueError("recovery root symlink is forbidden")
+    staging_root = recovery_root / "restore-staging"
+    quarantine_root = recovery_root / "quarantine"
+    journal_root = recovery_root / "recovery-journal"
+    receipt_root = recovery_root / "receipts"
+    for directory in (staging_root, quarantine_root, journal_root, receipt_root):
+        directory.mkdir(parents=True, exist_ok=True)
+        if directory.is_symlink() or not directory.is_dir():
+            raise ValueError("protected backup restore evidence directory is invalid")
+
+    token = f"{require_incident_id(str(plan['incident_id']))}-{plan_sha[:12]}-backup-restore"
+    stage = staging_root / token
+    rollback = quarantine_root / f"{token}-previous"
+    journal_path = journal_root / f"{token}.json"
+    receipt_path = receipt_root / f"{token}.json"
+    if any(p.exists() for p in (stage, rollback, journal_path, receipt_path)):
+        raise ValueError("protected backup restore execution target already exists")
+
+    snapshot = Path(verification["snapshot_path"])
+    _copy_plugin_snapshot(snapshot, stage)
+    expected_tree = str(verification["plugin_tree_sha256"])
+    if not hmac.compare_digest(tree_digest(stage), expected_tree):
+        shutil.rmtree(stage, ignore_errors=True)
+        raise ValueError("protected backup restore staged tree verification failed")
+
+    live = root / "wp-content" / "plugins" / PLUGIN_SLUG
+    before = plan["target_before"]
+    journal = {
+        "contract": "mad4b.recovery-mutation-journal.v1",
+        "action": "restore_protected_backup",
+        "plan_sha256": plan_sha,
+        "incident_id": plan["incident_id"],
+        "mutation_started": False,
+        "terminal": False,
+        "evidence_state": "PLANNED",
+        "blind_retry_allowed": False,
+        "expected_post_identity": {
+            "plugin_present": True,
+            "plugin_tree_sha256": expected_tree,
+        },
+        "created_at": utc_now(),
+    }
+    atomic_json_write(journal_path, journal)
+
+    moved_old = False
+    moved_new = False
+    try:
+        started = dict(journal)
+        started.update({
+            "mutation_started": True,
+            "evidence_state": "MUTATION_STARTED",
+            "mutation_started_at": utc_now(),
+        })
+        atomic_json_write(journal_path, started)
+
+        if live.exists():
+            if live.is_symlink() or not live.is_dir():
+                raise ValueError("protected backup restore live plugin target is invalid")
+            os.replace(live, rollback)
+            moved_old = True
+        os.replace(stage, live)
+        moved_new = True
+
+        if not hmac.compare_digest(tree_digest(live), expected_tree):
+            raise RuntimeError("protected backup restore postcondition readback failed")
+
+        receipt = {
+            "contract": BACKUP_RESTORE_RECEIPT_CONTRACT,
+            "action": "restore_protected_backup",
+            "environment": plan["environment"],
+            "incident_id": plan["incident_id"],
+            "reason": plan["reason"],
+            "plan_sha256": plan_sha,
+            "owner_attest_plan_sha256": plan_sha,
+            "backup_id": verification["backup_id"],
+            "backup_manifest_sha256": verification["backup_manifest_sha256"],
+            "source_backup_plan_sha256": verification["source_backup_plan_sha256"],
+            "wordpress_root": str(root),
+            "wp_config_sha256": before["wp_config_sha256"],
+            "previous_plugin_present": bool(before["plugin_present"]),
+            "previous_plugin_tree_sha256": str(before["plugin_tree_sha256"]),
+            "restored_plugin_tree_sha256": expected_tree,
+            "rollback_path": str(rollback) if moved_old else "",
+            "readback_verified": True,
+            "production_authorized": False,
+            "database_mutation": False,
+            "wp_config_mutation": False,
+            "mutation_performed": True,
+            "evidence_state": "DURABLE_VERIFIED_RECEIPT",
+            "created_at": utc_now(),
+        }
+        atomic_json_write(receipt_path, receipt)
+        persisted = json.loads(receipt_path.read_text(encoding="utf-8"))
+        if persisted.get("plan_sha256") != plan_sha or persisted.get("restored_plugin_tree_sha256") != expected_tree:
+            raise RuntimeError("protected backup restore receipt readback failed")
+
+        completed = dict(started)
+        completed.update({
+            "terminal": True,
+            "evidence_state": "DURABLE_VERIFIED_RECEIPT",
+            "receipt_path": str(receipt_path),
+            "completed_at": utc_now(),
+        })
+        try:
+            atomic_json_write(journal_path, completed)
+            receipt["journal_completion_persisted"] = True
+        except Exception:
+            receipt["journal_completion_persisted"] = False
+        receipt["receipt_path"] = str(receipt_path)
+        receipt["journal_path"] = str(journal_path)
+        return receipt
+    except Exception:
+        rollback_verified = False
+        try:
+            if moved_new and live.exists():
+                if live.is_symlink():
+                    raise RuntimeError("protected backup restore live target became symlink")
+                shutil.rmtree(live)
+            if moved_old and rollback.exists():
+                os.replace(rollback, live)
+            current = target_state(root)
+            rollback_verified = all(
+                current.get(key) == before.get(key)
+                for key in ("wordpress_root", "wp_config_sha256", "plugin_present", "plugin_tree_sha256")
+            )
+        except Exception:
+            rollback_verified = False
+
+        failure = dict(journal)
+        failure.update({
+            "mutation_started": bool(moved_old or moved_new),
+            "terminal": True,
+            "evidence_state": "ROLLED_BACK_AFTER_FAILURE" if rollback_verified else "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+            "rollback_verified": rollback_verified,
+            "blind_retry_allowed": False,
+            "completed_at": utc_now(),
+        })
+        try:
+            atomic_json_write(journal_path, failure)
+        except Exception:
+            pass
+        if stage.exists():
+            shutil.rmtree(stage, ignore_errors=True)
         raise
 
 
@@ -1064,6 +1386,22 @@ def main() -> int:
     backup_apply_p.add_argument("--plan", required=True, type=Path)
     backup_apply_p.add_argument("--owner-attest-plan-sha", required=True)
 
+    backup_verify_p = sub.add_parser("verify-backup")
+    backup_verify_p.add_argument("--wordpress-root", required=True, type=Path)
+    backup_verify_p.add_argument("--backup-id", required=True)
+
+    backup_restore_plan_p = sub.add_parser("plan-backup-restore")
+    backup_restore_plan_p.add_argument("--wordpress-root", required=True, type=Path)
+    backup_restore_plan_p.add_argument("--environment", required=True, choices=sorted(SUPPORTED_ENVIRONMENTS))
+    backup_restore_plan_p.add_argument("--backup-id", required=True)
+    backup_restore_plan_p.add_argument("--incident-id", required=True)
+    backup_restore_plan_p.add_argument("--reason", required=True)
+    backup_restore_plan_p.add_argument("--output", required=True, type=Path)
+
+    backup_restore_apply_p = sub.add_parser("apply-backup-restore")
+    backup_restore_apply_p.add_argument("--plan", required=True, type=Path)
+    backup_restore_apply_p.add_argument("--owner-attest-plan-sha", required=True)
+
     disable_plan_p = sub.add_parser("plan-disable")
     disable_plan_p.add_argument("--wordpress-root", required=True, type=Path)
     disable_plan_p.add_argument("--environment", required=True, choices=sorted(SUPPORTED_ENVIRONMENTS))
@@ -1105,6 +1443,20 @@ def main() -> int:
         elif args.command == "apply-backup":
             plan = root_trust.load_json(args.plan)
             result = apply_backup(plan, args.owner_attest_plan_sha)
+        elif args.command == "verify-backup":
+            result = verify_protected_backup(args.wordpress_root, args.backup_id)
+        elif args.command == "plan-backup-restore":
+            result = build_backup_restore_plan(
+                args.wordpress_root,
+                args.environment,
+                args.backup_id,
+                args.incident_id,
+                args.reason,
+            )
+            atomic_json_write(args.output, result)
+        elif args.command == "apply-backup-restore":
+            plan = root_trust.load_json(args.plan)
+            result = apply_backup_restore(plan, args.owner_attest_plan_sha)
         elif args.command == "plan-disable":
             result = build_disable_plan(
                 args.wordpress_root,
