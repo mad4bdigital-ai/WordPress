@@ -190,14 +190,28 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'human_decision_required' => false,
 			),
 		);
-		foreach ( $rows as $key => &$row ) {
+		$filtered = apply_filters( 'mad4b_scp_remote_operation_catalog', $rows );
+		if ( is_array( $filtered ) ) $rows = array_slice( $filtered, 0, 500, true );
+		$required = array( 'feature_id', 'capability_tags', 'provider', 'remote_ability', 'authority_surface', 'executor', 'remote_mode', 'production_policy', 'human_decision_required' );
+		$normalized = array();
+		foreach ( $rows as $key => $row ) {
+			$key = sanitize_key( (string) $key );
+			if ( '' === $key || ! is_array( $row ) ) continue;
+			$valid = true;
+			foreach ( $required as $field ) {
+				if ( ! array_key_exists( $field, $row ) ) { $valid = false; break; }
+			}
+			if ( ! $valid || ! is_array( $row['capability_tags'] ) ) continue;
 			$row['operation_id'] = $key;
-			$row['remote_registered'] = function_exists( 'wp_has_ability' ) && wp_has_ability( $row['remote_ability'] );
+			$row['catalog_contract'] = self::CONTRACT;
+			$row['catalog_version'] = 1;
+			$row['remote_registered'] = function_exists( 'wp_has_ability' ) && wp_has_ability( (string) $row['remote_ability'] );
 			$row['manual_only'] = empty( $row['remote_ability'] );
 			$row['remote_parity_ready'] = ! $row['manual_only'] && $row['remote_registered'];
+			$normalized[ $key ] = $row;
 		}
-		unset( $row );
-		return $rows;
+		ksort( $normalized, SORT_STRING );
+		return $normalized;
 	}
 
 	public static function discover( $input = array() ) {
