@@ -55,7 +55,7 @@ final class MAD4B_SCP_Durable_Execution {
 			$current_epoch = isset( $row['claim_epoch'] ) ? max( 1, (int) $row['claim_epoch'] ) : 1;
 			$next_epoch = $current_epoch + 1;
 			$reclaimed = $wpdb->query( $wpdb->prepare(
-				"UPDATE {$t['idempotency']} SET status='pending',claim_epoch=%d,result_json=NULL,result_sha256='',expires_at=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='released_after_verified_no_effect'",
+				"UPDATE {$t['idempotency']} SET status='pending',claim_epoch=%d,result_json=NULL,result_sha256='',reconciliation_ref='',expires_at=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='released_after_verified_no_effect'",
 				$next_epoch, $expires, $now, (int) $row['id'], $request_sha256, $current_epoch
 			) );
 			if ( 1 === (int) $reclaimed ) {
