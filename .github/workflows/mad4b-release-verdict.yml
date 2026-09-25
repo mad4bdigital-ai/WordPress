@@ -133,8 +133,23 @@ jobs:
           critical_kernel_text = Path(
               '.github/workflows/feature-007-critical-kernel.yml'
           ).read_text(encoding='utf-8')
-          schema_checks = re.findall(
-              r'^\s+name:\s+(Schema [^\n]+ real MariaDB upgrade)\s*
+          schema_checks = []
+          for raw_line in critical_kernel_text.splitlines():
+              stripped = raw_line.strip()
+              if (
+                  stripped.startswith('name: Schema ')
+                  and stripped.endswith(' real MariaDB upgrade')
+              ):
+                  schema_checks.append(stripped[len('name: '):])
+          if len(schema_checks) != 1:
+              raise SystemExit(
+                  'critical kernel must expose exactly one real MariaDB schema check; '
+                  f'observed={schema_checks!r}'
+              )
+          schema_check = schema_checks[0]
+
+          full = [
+              'Control-plane contract guard',
               'Dynamic Skills contract',
               'Dynamic Skills + governed write generic Staging runtime',
               'Dynamic Skills + write authority Production fail-closed runtime',
