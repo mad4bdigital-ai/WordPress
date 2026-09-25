@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -94,6 +95,7 @@ def self_test():
     assert allowed("runtime/a.php", sample["implementation_allowed_prefixes"], sample["implementation_allowed_exact_paths"])
     assert allowed(".github/workflows/feature-007-ci.yml", sample["implementation_allowed_prefixes"], sample["implementation_allowed_exact_paths"])
     assert not allowed(".github/workflows/other.yml", sample["implementation_allowed_prefixes"], sample["implementation_allowed_exact_paths"])
+    assert re.match(r"^(?:feat|fix|spec)/([0-9]{3})-", "feat/007-example").group(1) == "007"
     immutable={GRANTS_PATH,REPOSITORY_POLICY_PATH,"tools/verify_feature_boundary.py"}
     assert GRANTS_PATH in immutable and "runtime/a.php" not in immutable
     print("mad4b.feature-boundary-root-of-trust.self-test: PASS")
@@ -126,17 +128,10 @@ def main():
         fail("repository_policy_target_mismatch")
 
     changed=git("diff","--name-only",f"{args.base}...{args.head}").stdout.splitlines()
-    feature_candidates=sorted({
-        p.split("/",2)[1]
-        for p in changed
-        if p.startswith("specs/") and len(p.split("/",2))>=3 and p.split("/",2)[1][:3].isdigit()
-    })
-    if not feature_candidates:
-        fail("feature_identity_not_derivable_from_change_set")
-    ids={x[:3] for x in feature_candidates}
-    if len(ids)!=1:
-        fail("multiple_feature_ids_changed", feature_ids=sorted(ids))
-    feature_id=next(iter(ids))
+    branch_match=re.match(r"^(?:feat|fix|spec)/([0-9]{3})-", args.head_branch)
+    if not branch_match:
+        fail("feature_identity_not_derivable_from_branch", branch=args.head_branch)
+    feature_id=branch_match.group(1)
     grant=(grants.get("features") or {}).get(feature_id)
     if not isinstance(grant,dict):
         fail("feature_not_granted", feature_id=feature_id)
