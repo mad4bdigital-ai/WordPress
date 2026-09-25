@@ -2,6 +2,7 @@
 """Contract guard for Feature 007 durable execution primitives."""
 
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 DURABLE = (ROOT / "includes/class-mad4b-scp-durable-execution.php").read_text(encoding="utf-8")
@@ -55,9 +56,14 @@ if load_marker not in MAIN:
 if MAIN.index(load_marker) > MAIN.index("includes/class-mad4b-scp-authorization.php"):
     raise SystemExit("durable execution must be loaded before governed execution is authorized")
 
+version_match = re.search(r"const VERSION = (\d+);", SCHEMA)
+if not version_match or int(version_match.group(1)) < 9:
+    raise SystemExit("durable schema version must remain >= 9")
+schema_version = int(version_match.group(1))
+if f"mad4b_scp_schema_integrity_v{schema_version}" not in SCHEMA:
+    raise SystemExit("durable schema integrity option does not match current schema version")
+
 for marker in (
-    "const VERSION = 9;",
-    "mad4b_scp_schema_integrity_v9",
     "'work_leases' => $wpdb->prefix . 'mad4b_work_leases'",
     "'idempotency' => $wpdb->prefix . 'mad4b_idempotency'",
     "'outbox' => $wpdb->prefix . 'mad4b_execution_outbox'",
