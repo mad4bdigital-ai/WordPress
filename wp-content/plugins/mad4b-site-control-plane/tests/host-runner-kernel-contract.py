@@ -142,7 +142,11 @@ with tempfile.TemporaryDirectory() as td:
         runner.load_profile(root_link_profile_path)
         raise SystemExit("Host Runner accepted symlinked WordPress root")
     except ValueError as exc:
-        if "root symlink is forbidden" not in str(exc):
+        message = str(exc)
+        if (
+            "root symlink is forbidden" not in message
+            and "link/reparse path component forbidden" not in message
+        ):
             raise
 
     # Receipt evidence location cannot be a symlink even when it resolves inside the runner zone.
