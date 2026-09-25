@@ -11,6 +11,8 @@ final class MAD4B_SCP_Admin_Query_Performance {
 	const CONTRACT = 'mad4b.admin-query-performance.v1';
 	const OPTION = 'mad4b_scp_admin_query_performance_v1';
 	const JOB_OPTION = 'mad4b_scp_admin_query_performance_job_v1';
+	const JOB_LOCK_OPTION = 'mad4b_scp_admin_query_performance_job_lock_v1';
+	const JOB_LOCK_TTL = 30;
 	const CRON_HOOK = 'mad4b_scp_admin_query_performance_async';
 	const INDEX_VERSION = 1;
 
@@ -104,6 +106,44 @@ final class MAD4B_SCP_Admin_Query_Performance {
 		exit;
 	}
 
+	private static function delete_option_if_unchanged( $name, $expected ) {
+		global $wpdb;
+		if ( ! isset( $wpdb->options ) ) return false;
+		$deleted = $wpdb->delete(
+			$wpdb->options,
+			array( 'option_name' => (string) $name, 'option_value' => maybe_serialize( $expected ) ),
+			array( '%s', '%s' )
+		);
+		if ( 1 === (int) $deleted ) {
+			wp_cache_delete( (string) $name, 'options' );
+			return true;
+		}
+		return false;
+	}
+
+	private static function acquire_job_lock( $operation ) {
+		$owner = strtolower( wp_generate_uuid4() );
+		$record = array(
+			'owner' => $owner,
+			'operation' => sanitize_key( (string) $operation ),
+			'expires_at_epoch' => time() + self::JOB_LOCK_TTL,
+		);
+		if ( add_option( self::JOB_LOCK_OPTION, $record, '', false ) ) return $owner;
+		$current = get_option( self::JOB_LOCK_OPTION, array() );
+		if ( is_array( $current ) && time() > (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
+			if ( ! self::delete_option_if_unchanged( self::JOB_LOCK_OPTION, $current ) ) return new WP_Error( 'mad4b_admin_query_performance_lock_reclaim_raced', 'Performance maintenance lock changed while reclaiming an expired lease.' );
+			if ( add_option( self::JOB_LOCK_OPTION, $record, '', false ) ) return $owner;
+		}
+		return new WP_Error( 'mad4b_admin_query_performance_busy', 'Performance maintenance admission is already in progress.' );
+	}
+
+	private static function release_job_lock( $owner ) {
+		$current = get_option( self::JOB_LOCK_OPTION, array() );
+		if ( is_array( $current ) && isset( $current['owner'] ) && hash_equals( (string) $current['owner'], (string) $owner ) ) {
+			self::delete_option_if_unchanged( self::JOB_LOCK_OPTION, $current );
+		}
+	}
+
 	public static function maintenance_job_status() {
 		$job = get_option( self::JOB_OPTION, array() );
 		return is_array( $job ) ? $job : array();
@@ -113,16 +153,19 @@ final class MAD4B_SCP_Admin_Query_Performance {
 		if ( 'staging' !== self::environment() ) return new WP_Error( 'mad4b_admin_query_performance_staging_only', 'Performance-index maintenance is Staging-only.' );
 		if ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ) return new WP_Error( 'mad4b_admin_query_performance_cron_disabled', 'WP-Cron is disabled; the maintenance executor is unavailable.' );
 		if ( ! function_exists( 'wp_schedule_single_event' ) ) return new WP_Error( 'mad4b_admin_query_performance_cron_unavailable', 'WP-Cron scheduling API is unavailable.' );
-		$current = self::maintenance_job_status();
-		if ( is_array( $current ) && in_array( isset( $current['status'] ) ? (string) $current['status'] : '', array( 'pending', 'running' ), true ) ) {
-			return array( 'contract' => 'mad4b.admin-query-performance-job.v1', 'state' => 'already_queued', 'job' => $current, 'production_changed' => false );
-		}
 		$identity = self::current_build_identity();
 		if ( is_wp_error( $identity ) ) return $identity;
 		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $key ) {
 			if ( isset( $expected_identity[ $key ] ) && '' !== (string) $expected_identity[ $key ] && ! hash_equals( strtolower( (string) $identity[ $key ] ), strtolower( (string) $expected_identity[ $key ] ) ) ) {
 				return new WP_Error( 'mad4b_admin_query_performance_build_changed', 'Exact build identity changed before maintenance job admission.' );
 			}
+		}
+		$admission_lock = self::acquire_job_lock( 'enqueue' );
+		if ( is_wp_error( $admission_lock ) ) return $admission_lock;
+		$current = self::maintenance_job_status();
+		if ( is_array( $current ) && in_array( isset( $current['status'] ) ? (string) $current['status'] : '', array( 'pending', 'running' ), true ) ) {
+			self::release_job_lock( $admission_lock );
+			return array( 'contract' => 'mad4b.admin-query-performance-job.v1', 'state' => 'already_queued', 'job' => $current, 'production_changed' => false );
 		}
 		$job = array(
 			'contract' => 'mad4b.admin-query-performance-job.v1',
@@ -137,8 +180,12 @@ final class MAD4B_SCP_Admin_Query_Performance {
 		);
 		if ( ! update_option( self::JOB_OPTION, $job, false ) ) {
 			$stored = self::maintenance_job_status();
-			if ( empty( $stored ) || ! hash_equals( (string) $job['job_id'], (string) ( isset( $stored['job_id'] ) ? $stored['job_id'] : '' ) ) ) return new WP_Error( 'mad4b_admin_query_performance_job_persist_failed', 'Unable to persist performance maintenance job.' );
+			if ( empty( $stored ) || ! hash_equals( (string) $job['job_id'], (string) ( isset( $stored['job_id'] ) ? $stored['job_id'] : '' ) ) ) {
+				self::release_job_lock( $admission_lock );
+				return new WP_Error( 'mad4b_admin_query_performance_job_persist_failed', 'Unable to persist performance maintenance job.' );
+			}
 		}
+		self::release_job_lock( $admission_lock );
 		if ( ! wp_next_scheduled( self::CRON_HOOK, array( $job['job_id'] ) ) ) {
 			$scheduled = wp_schedule_single_event( time() + 5, self::CRON_HOOK, array( $job['job_id'] ), true );
 			if ( is_wp_error( $scheduled ) || false === $scheduled ) {
@@ -155,14 +202,20 @@ final class MAD4B_SCP_Admin_Query_Performance {
 	}
 
 	public static function run_scheduled_apply( $job_id ) {
+		$worker_lock = self::acquire_job_lock( 'worker_start' );
+		if ( is_wp_error( $worker_lock ) ) return;
 		$job = self::maintenance_job_status();
-		if ( empty( $job ) || ! hash_equals( (string) ( isset( $job['job_id'] ) ? $job['job_id'] : '' ), (string) $job_id ) || 'pending' !== ( isset( $job['status'] ) ? (string) $job['status'] : '' ) ) return;
+		if ( empty( $job ) || ! hash_equals( (string) ( isset( $job['job_id'] ) ? $job['job_id'] : '' ), (string) $job_id ) || 'pending' !== ( isset( $job['status'] ) ? (string) $job['status'] : '' ) ) {
+			self::release_job_lock( $worker_lock );
+			return;
+		}
 		if ( 'staging' !== self::environment() ) {
 			$job['status'] = 'blocked';
 			$job['completed_at'] = gmdate( 'c' );
 			$job['result'] = array( 'state' => 'environment_changed' );
 			update_option( self::JOB_OPTION, $job, false );
 			self::audit_job( $job, 'blocked' );
+			self::release_job_lock( $worker_lock );
 			return;
 		}
 		$identity = self::current_build_identity();
@@ -173,17 +226,28 @@ final class MAD4B_SCP_Admin_Query_Performance {
 			$job['result'] = array( 'state' => 'build_identity_changed' );
 			update_option( self::JOB_OPTION, $job, false );
 			self::audit_job( $job, 'blocked' );
+			self::release_job_lock( $worker_lock );
 			return;
 		}
 		$job['status'] = 'running';
 		$job['started_at'] = gmdate( 'c' );
 		update_option( self::JOB_OPTION, $job, false );
+		self::release_job_lock( $worker_lock );
 		$result = self::apply_indexes();
+		$finalize_lock = self::acquire_job_lock( 'worker_finalize' );
+		if ( is_wp_error( $finalize_lock ) ) return;
+		$current = self::maintenance_job_status();
+		if ( empty( $current ) || ! hash_equals( (string) ( isset( $current['job_id'] ) ? $current['job_id'] : '' ), (string) $job_id ) || 'running' !== ( isset( $current['status'] ) ? (string) $current['status'] : '' ) ) {
+			self::release_job_lock( $finalize_lock );
+			return;
+		}
+		$job = $current;
 		$job['status'] = is_array( $result ) && ! empty( $result['ready'] ) ? 'completed' : 'failed';
 		$job['completed_at'] = gmdate( 'c' );
 		$job['result'] = is_array( $result ) ? $result : array( 'state' => 'invalid_result' );
 		update_option( self::JOB_OPTION, $job, false );
 		self::audit_job( $job, (string) $job['status'] );
+		self::release_job_lock( $finalize_lock );
 	}
 
 	private static function audit_job( array $job, $event_state ) {
