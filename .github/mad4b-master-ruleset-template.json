@@ -28,7 +28,8 @@
         "require_code_owner_review": false,
         "require_last_push_approval": false,
         "required_approving_review_count": 0,
-        "required_review_thread_resolution": true
+        "required_review_thread_resolution": true,
+        "required_reviewers": []
       }
     },
     {
@@ -38,6 +39,10 @@
         "required_status_checks": [
           {
             "context": "Repository release verdict",
+            "integration_id": 15368
+          },
+          {
+            "context": "Repository feature boundary",
             "integration_id": 15368
           }
         ],

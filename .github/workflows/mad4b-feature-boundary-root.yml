@@ -1,0 +1,111 @@
+name: MAD4B Feature Boundary Root
+
+on:
+  pull_request_target:
+    branches:
+      - master
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - converted_to_draft
+      - edited
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: mad4b-feature-boundary-root-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  repository-feature-boundary:
+    name: Repository feature boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Checkout trusted base only
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify trusted verifier source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$BASE_SHA"
+          test -f tools/verify_feature_boundary.py
+          test -f tools/verify_repository_owner_attestation.py
+          test -f .github/mad4b-repository-governance-policy.json
+          test -f .github/mad4b-feature-boundary-grants.json
+
+      - name: Fetch untrusted head as data only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$HEAD_SHA"
+          test "$(git rev-parse FETCH_HEAD)" = "$HEAD_SHA"
+          git cat-file -e "$HEAD_SHA^{commit}"
+
+      - name: Enforce baseline-owned feature boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/verify_feature_boundary.py \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --head-branch "$HEAD_BRANCH" \
+            --pr-number "$PR_NUMBER" \
+            --output /tmp/MAD4B-FEATURE-BOUNDARY.json
+
+      - name: Resolve root-change attestation requirement
+        id: boundary-policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          data=json.loads(Path('/tmp/MAD4B-FEATURE-BOUNDARY.json').read_text(encoding='utf-8'))
+          required=bool(data.get('owner_attestation_required'))
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as fh:
+              fh.write('owner_attestation_required=' + ('true' if required else 'false') + '\n')
+          print('root-change exact-head owner attestation required=' + str(required).lower())
+          PY
+
+      - name: Verify exact-head owner attestation for repository-root change
+        if: steps.boundary-policy.outputs.owner_attestation_required == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          python3 tools/verify_repository_owner_attestation.py             --repository "$GITHUB_REPOSITORY"             --pr-number "$PR_NUMBER"             --expected-head "$HEAD_SHA"             --policy .github/mad4b-repository-governance-policy.json             --output /tmp/MAD4B-ROOT-OWNER-ATTESTATION.json
+
+      - name: Upload repository-root owner attestation evidence
+        if: always() && steps.boundary-policy.outputs.owner_attestation_required == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-root-owner-attestation-${{ env.HEAD_SHA }}
+          path: /tmp/MAD4B-ROOT-OWNER-ATTESTATION.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload feature boundary evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-feature-boundary-${{ env.HEAD_SHA }}
+          path: /tmp/MAD4B-FEATURE-BOUNDARY.json
+          if-no-files-found: error
+          retention-days: 30

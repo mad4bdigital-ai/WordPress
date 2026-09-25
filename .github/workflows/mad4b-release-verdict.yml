@@ -14,6 +14,7 @@ permissions:
   actions: read
   checks: read
   pull-requests: read
+  issues: read
 
 concurrency:
   group: mad4b-release-verdict-${{ github.event.pull_request.number || github.ref }}
@@ -21,6 +22,9 @@ concurrency:
 
 env:
   SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+  HEAD_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+  PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
 
 jobs:
   verdict:
@@ -34,6 +38,21 @@ jobs:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
 
+      - name: Verify exact-head owner attestation
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/verify_repository_owner_attestation.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --pr-number "$PR_NUMBER" \
+            --expected-head "$SOURCE_SHA" \
+            --policy .github/mad4b-repository-governance-policy.json \
+            --output /tmp/mad4b-owner-attestation.json
+
       - name: Wait for exact-head critical checks
         env:
           GH_TOKEN: ${{ github.token }}
@@ -42,7 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import fnmatch, json, os, subprocess
+          import fnmatch, json, os, re, subprocess
           from pathlib import Path
 
           critical_trigger_workflows = [
@@ -63,6 +82,18 @@ jobs:
               'plugins/mad4b-wordpress/**',
               'tools/capture-functional-gap-contract-evidence.py',
           ]
+          context_authority_trigger_patterns = [
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-*.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php',
+              'wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json',
+              'wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-brand-context-builder/SKILL.md',
+              'plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md',
+              'wp-content/plugins/mad4b-site-control-plane/tests/context-*',
+              'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py',
+          ]
           for workflow in critical_trigger_workflows:
               workflow_text = Path(workflow).read_text(encoding='utf-8')
               if '  pull_request:\n' not in workflow_text:
@@ -81,6 +112,54 @@ jobs:
           if '    paths:\n' in governance_workflow or '    paths-ignore:\n' in governance_workflow:
               raise SystemExit('repository governance workflow must cover every master change')
 
+          boundary_workflow = Path('.github/workflows/mad4b-feature-boundary-root.yml').read_text(encoding='utf-8')
+          expression_open = chr(36) + chr(123) + chr(123)
+          expression_close = chr(125) + chr(125)
+          base_ref_expression = (
+              'ref: ' + expression_open
+              + ' github.event.pull_request.base.sha '
+              + expression_close
+          )
+          head_ref_expression = (
+              'ref: ' + expression_open
+              + ' github.event.pull_request.head.sha '
+              + expression_close
+          )
+          if '  pull_request_target:\n' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must use pull_request_target')
+          if 'permissions:\n  contents: read\n' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must remain read-only')
+          if base_ref_expression not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must checkout the trusted PR base')
+          if 'python3 tools/verify_feature_boundary.py' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must execute the baseline-owned verifier')
+          if 'python3 tools/verify_repository_owner_attestation.py' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must verify exact-head owner attestation for root changes')
+          if 'owner_attestation_required' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must condition root-change attestation on baseline verifier evidence')
+          if 'issues: read' not in boundary_workflow or 'pull-requests: read' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root lacks read-only PR/comment permissions required for owner attestation')
+          if head_ref_expression in boundary_workflow:
+              raise SystemExit('repository feature-boundary root may not checkout PR head as executable workflow source')
+
+          critical_kernel_text = Path(
+              '.github/workflows/feature-007-critical-kernel.yml'
+          ).read_text(encoding='utf-8')
+          schema_checks = []
+          for raw_line in critical_kernel_text.splitlines():
+              stripped = raw_line.strip()
+              if (
+                  stripped.startswith('name: Schema ')
+                  and stripped.endswith(' real MariaDB upgrade')
+              ):
+                  schema_checks.append(stripped[len('name: '):])
+          if len(schema_checks) != 1:
+              raise SystemExit(
+                  'critical kernel must expose exactly one real MariaDB schema check; '
+                  f'observed={schema_checks!r}'
+              )
+          schema_check = schema_checks[0]
+
           full = [
               'Control-plane contract guard',
               'Dynamic Skills contract',
@@ -93,17 +172,20 @@ jobs:
               'Governed execution fence (latest)',
               'Human approval decision (8.3)',
               'OAuth bridge runtime (latest)',
-              'Schema v6 v7 v8 to v9 real MariaDB upgrade',
+              schema_check,
               'Repository governance policy',
+              'Repository feature boundary',
           ]
           release_evidence = [
               'Root trust and Recovery Plane',
               'Build reviewed General Distribution installation kit',
               'Live evidence contracts + exact artifact',
               'Repository governance policy',
+              'Repository feature boundary',
           ]
           non_runtime = [
               'Repository governance policy',
+              'Repository feature boundary',
           ]
           release_evidence_paths = {
               '.github/workflows/mad4b-control-plane-package.yml',
@@ -154,6 +236,17 @@ jobs:
               changed.extend(line.strip() for line in raw.splitlines() if line.strip())
 
           changed = sorted(set(changed))
+          bootstrap_root_branch = 'chore/bootstrap-feature-boundary-policy-20260925'
+          bootstrap_exception = (
+              os.environ.get('GITHUB_EVENT_NAME') == 'pull_request'
+              and os.environ.get('HEAD_BRANCH', '').strip() == bootstrap_root_branch
+              and os.environ.get('PR_NUMBER', '').strip() == '66'
+          )
+          context_authority_affecting = any(
+              fnmatch.fnmatch(path, pattern)
+              for path in changed
+              for pattern in context_authority_trigger_patterns
+          )
           narrow = bool(changed) and set(changed).issubset(release_evidence_paths)
           runtime_affecting = any(
               fnmatch.fnmatch(path, pattern)
@@ -174,6 +267,19 @@ jobs:
               mode = 'repository_non_runtime'
               artifact_required = False
 
+          if bootstrap_exception:
+              required = [name for name in required if name != 'Repository feature boundary']
+              mode = 'repository_governance_bootstrap'
+              artifact_required = False
+          elif os.environ.get('GITHUB_EVENT_NAME') == 'push':
+              required = [name for name in required if name != 'Repository feature boundary']
+          if context_authority_affecting:
+              required = list(required) + [
+                  'Context Authority (7.4)',
+                  'Context Authority (8.3)',
+              ]
+          required = list(dict.fromkeys(required))
+
           Path('/tmp/mad4b-critical-checks.txt').write_text('\n'.join(required) + '\n', encoding='utf-8')
           Path('/tmp/mad4b-release-verdict-scope.json').write_text(
               json.dumps({
@@ -182,8 +288,12 @@ jobs:
                   'artifact_required': artifact_required,
                   'changed_files': changed,
                   'required_checks': required,
+                  'bootstrap_exception': bootstrap_exception,
+                  'bootstrap_root_branch': bootstrap_root_branch if bootstrap_exception else '',
+                  'context_authority_affecting': context_authority_affecting,
                   'narrow_release_evidence_paths': sorted(release_evidence_paths),
                   'runtime_patterns': sorted(runtime_patterns),
+                  'critical_job_evidence_source': 'github_actions_runs_jobs_api',
               }, indent=2, sort_keys=True) + '\n',
               encoding='utf-8',
           )
@@ -195,8 +305,11 @@ jobs:
           }, indent=2))
           PY
           for attempt in $(seq 1 120); do
-            gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/check-runs?per_page=100&page=1" > /tmp/checks-1.json
-            gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/check-runs?per_page=100&page=2" > /tmp/checks-2.json
+            python3 tools/capture_exact_head_action_jobs.py \
+              --repository "$GITHUB_REPOSITORY" \
+              --head-sha "$SOURCE_SHA" \
+              --output /tmp/checks-1.json
+            printf '{"check_runs":[]}' > /tmp/checks-2.json
             set +e
             python3 - /tmp/mad4b-critical-checks.txt /tmp/checks-1.json /tmp/checks-2.json <<'PY'
           import json,sys
@@ -241,8 +354,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/check-runs?per_page=100&page=1" > /tmp/checks-1.json
-          gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/check-runs?per_page=100&page=2" > /tmp/checks-2.json
+          python3 tools/capture_exact_head_action_jobs.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --head-sha "$SOURCE_SHA" \
+            --output /tmp/checks-1.json
+          printf '{"check_runs":[]}' > /tmp/checks-2.json
           artifact_name="mad4b-site-control-plane-general-distribution-kit-$SOURCE_SHA"
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$artifact_name&per_page=100" > /tmp/artifacts.json
 
@@ -255,20 +371,78 @@ jobs:
           artifact_required=bool(scope.get('artifact_required'))
 
           governance_output=Path('/tmp/mad4b-release-verdict-governance.json')
-          governance_proc=subprocess.run([
+          bootstrap_exception=bool(scope.get('bootstrap_exception'))
+          governance_policy=Path('.github/mad4b-repository-governance-policy.json')
+          transition_status={}
+          transition_error=''
+          if bootstrap_exception:
+              base_sha=os.environ.get('BASE_SHA','').strip()
+              if len(base_sha)!=40:
+                  transition_error='bootstrap base SHA is missing or invalid'
+              else:
+                  try:
+                      base_policy_raw=subprocess.check_output(
+                          ['git','show',f"{base_sha}:.github/mad4b-repository-governance-policy.json"],
+                          text=True,
+                      )
+                      base_policy_path=Path('/tmp/mad4b-release-verdict-bootstrap-base-policy.json')
+                      base_policy_path.write_text(base_policy_raw,encoding='utf-8')
+                      transition_path=Path('/tmp/mad4b-release-verdict-bootstrap-transition.json')
+                      transition_proc=subprocess.run([
+                          'python3','tools/verify_feature_boundary_bootstrap_transition.py',
+                          '--base-policy',str(base_policy_path),
+                          '--target-policy','.github/mad4b-repository-governance-policy.json',
+                          '--target-template','.github/mad4b-master-ruleset-template.json',
+                          '--head-branch',os.environ.get('HEAD_BRANCH',''),
+                          '--pr-number',os.environ.get('PR_NUMBER',''),
+                          '--output',str(transition_path),
+                      ],text=True,capture_output=True)
+                      if transition_proc.returncode != 0:
+                          transition_error=(transition_proc.stderr or transition_proc.stdout or '').strip()
+                      elif transition_path.is_file():
+                          transition_status=json.loads(transition_path.read_text(encoding='utf-8'))
+                          governance_policy=base_policy_path
+                  except Exception as exc:
+                      transition_error=str(exc)
+
+          governance_cmd=[
               'python3','tools/verify_repository_governance.py',
               '--repository',os.environ['GITHUB_REPOSITORY'],
-              '--policy','.github/mad4b-repository-governance-policy.json',
+              '--policy',str(governance_policy),
+              '--template','.github/mad4b-master-ruleset-template.json',
               '--output',str(governance_output),
-          ],text=True,capture_output=True)
-          governance_ready=governance_proc.returncode == 0
-          governance_reason=(governance_proc.stderr or governance_proc.stdout or '').strip()
+          ]
+          if bootstrap_exception:
+              governance_cmd.append('--allow-bootstrap-hidden-bypass-evidence')
+          governance_proc=subprocess.run(governance_cmd,text=True,capture_output=True)
+          governance_ready=governance_proc.returncode == 0 and not transition_error
+          governance_reason='; '.join(
+              part for part in [
+                  transition_error,
+                  (governance_proc.stderr or governance_proc.stdout or '').strip() if governance_proc.returncode != 0 else '',
+              ] if part
+          )
           governance_status={}
           if governance_output.is_file():
               try:
                   governance_status=json.loads(governance_output.read_text(encoding='utf-8'))
               except Exception:
                   governance_status={}
+          if bootstrap_exception and governance_ready:
+              governance_status.update({
+                  'state':'feature_boundary_bootstrap_transition_ready',
+                  'bootstrap_exception':True,
+                  'bootstrap_branch':scope.get('bootstrap_root_branch',''),
+                  'bootstrap_pr_number':66,
+                  'live_policy_source':'pull_request_base',
+                  'target_policy_source':'pull_request_head',
+                  'target_policy_ready':transition_status.get('ready') is True,
+                  'target_required_status_checks':transition_status.get('target_required_status_checks',[]),
+                  'added_required_status_checks':transition_status.get('added_required_status_checks',[]),
+                  'post_merge_ruleset_apply_required':True,
+                  'target_policy_sha256':transition_status.get('target_policy_sha256',''),
+                  'target_template_sha256':transition_status.get('target_template_sha256',''),
+              })
           runs=[]
           for path in sys.argv[3:5]:
               runs.extend(json.load(open(path,encoding='utf-8')).get('check_runs',[]))
@@ -287,9 +461,20 @@ jobs:
               value['status']=='completed' and value['conclusion']=='success'
               for value in critical.values()
           )
+          owner_attestation_required=os.environ.get('GITHUB_EVENT_NAME')=='pull_request'
+          owner_attestation=None
+          owner_attestation_ready=not owner_attestation_required
+          owner_path=Path('/tmp/mad4b-owner-attestation.json')
+          if owner_path.is_file():
+              try:
+                  owner_attestation=json.loads(owner_path.read_text(encoding='utf-8'))
+                  owner_attestation_ready=owner_attestation.get('verified') is True
+              except Exception:
+                  owner_attestation_ready=False
           merge_gate_ready=bool(
               critical_checks_ready
               and governance_ready
+              and owner_attestation_ready
           )
 
           live=latest.get('Live ETG managed browser acceptance')
@@ -423,6 +608,9 @@ jobs:
               'critical_check_mode':scope.get('mode','full_runtime_release'),
               'artifact_required':artifact_required,
               'changed_files':scope.get('changed_files',[]),
+              'bootstrap_exception':bool(scope.get('bootstrap_exception')),
+              'bootstrap_root_branch':scope.get('bootstrap_root_branch',''),
+              'context_authority_affecting':bool(scope.get('context_authority_affecting')),
               'repository_merge_gate_ready':merge_gate_ready,
               'repository_release_ready':bool(
                   merge_gate_ready
@@ -443,13 +631,17 @@ jobs:
               'ready_for_review_authorized':False,
               'merge_authorized':False,
               'production_authorized':False,
-              'owner_attestation_required_for_exact_head':True,
+              'owner_attestation_required_for_exact_head':owner_attestation_required,
+              'owner_attestation_verified':owner_attestation_ready,
+              'owner_attestation':owner_attestation,
               'attestation_stale_on_descendant':True,
               'notes':[
                   'Release Verdict now runs for every master-bound change so GitHub rulesets can require one stable merge-gate check.',
                   'Runtime-affecting and release-evidence changes require an exact-head General Distribution artifact and verify its internal canonical identity before repository_release_ready can become true.',
                   'Repository-non-runtime changes may satisfy repository_merge_gate_ready without claiming repository_release_ready.',
-                  'The initial repository-ruleset bootstrap exception is retired; repository governance must verify ready for every merge-gate PASS.',
+                  'The only feature-boundary bootstrap exception is bound to PR #66 on branch chore/bootstrap-feature-boundary-policy-20260925, verifies the live ruleset against the PR-base policy plus a monotonic target transition, still requires exact-head Owner Attestation, and disappears once the root workflow is on master.',
+                  'Outside that one-time feature-boundary bootstrap, repository governance must verify ready for every merge-gate PASS.',
+                  'Every master-bound pull request requires an authorized OWNER_ATTEST_SINGLE_OWNER comment bound to the exact current head SHA.',
                   'Repository success does not substitute for live ETG Staging acceptance.',
                   'Live performance and rollback drill remain external deployment gates.',
                   'Production and Breakglass/raw-SQL authority are not granted by this verdict.',
