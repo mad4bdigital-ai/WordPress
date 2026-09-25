@@ -825,11 +825,20 @@
         "raw_secrets_persisted": false,
         "legal_determination": false,
         "non_authorizing": true,
-        "repository_only": true
+        "repository_only": true,
+        "durable_decision_artifact": "data_governance_decision",
+        "durable_decision_contract": "mad4b.data-governance-evidence.v1",
+        "rights_summary_fingerprint_bound": true,
+        "processor_profile_fingerprint_bound": true,
+        "source_artifact_lineage_bound": true,
+        "payload_minimized": true,
+        "raw_rights_records_persisted": false,
+        "raw_source_content_persisted": false,
+        "durable_provider_call_performed": false
       },
       "remainder": [
-        "bind durable RightsRecord and provider processing profiles to exact Artifact/Provider identities",
-        "record governed data-processing decisions in durable artifact/execution evidence without raw secrets",
+        "bind durable RightsRecord and provider processing profile registries to exact source/provider identities rather than decision snapshots alone",
+        "prove governed data-processing decision evidence is consumed by provider/model execution plans before any external call",
         "prove live ETG provider/model fallback independently satisfies the same or stricter policy",
         "exercise takedown/deletion propagation and data-subject/tenant retention obligations where applicable"
       ]
