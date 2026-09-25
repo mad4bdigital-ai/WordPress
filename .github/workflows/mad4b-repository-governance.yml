@@ -55,6 +55,12 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-owner-attestation-contract.py
 
+      - name: Verify baseline-owned feature boundary contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/test_verify_feature_boundary.py
+
       - name: Verify active master repository governance
         id: governance
         shell: bash
