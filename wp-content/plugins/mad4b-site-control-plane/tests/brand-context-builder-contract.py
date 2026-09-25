@@ -54,9 +54,15 @@ for marker in [
     "expected_provider_inventory_digest",
     "expected_draft_content_sha256",
     "receipt_sha256",
+    "provider_identity",
+    "mad4b_kind",
+    "mad4b_artifact",
+    "mad4b_source",
+    "mad4b_idempotency",
+    "mad4b_request",
     "MAD4B_SCP_Context_Provider_Gateway::read_context_asset",
     "MAD4B_SCP_Context_Provider_Gateway::scan_source",
-    "MAD4B_SCP_Context_Provider_Gateway::create_asset",
+    "MAD4B_SCP_Context_Provider_Gateway::create_brand_asset",
     "MAD4B_SCP_Context_Provider_Gateway::rollback_created_brand_asset",
     "MAD4B_SCP_Context_Provider_Gateway::materialization_reconciliation_ref",
     "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation",
@@ -94,8 +100,10 @@ if "status='pending',claim_epoch=%d" not in durable:
     raise SystemExit("Released no-effect idempotency claims are not reacquired with a CAS claim-epoch transition")
 
 materialize_section = builder[builder.index("public static function materialize_draft"):builder.index("public static function rollback_materialized_draft")]
-if materialize_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > materialize_section.index("MAD4B_SCP_Context_Provider_Gateway::create_asset"):
-    raise SystemExit("Brand materialization provider create occurs before durable idempotency claim")
+if materialize_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > materialize_section.index("MAD4B_SCP_Context_Provider_Gateway::create_brand_asset"):
+    raise SystemExit("Brand materialization provider-bound create occurs before durable idempotency claim")
+if "MAD4B_SCP_Context_Provider_Gateway::create_asset" in materialize_section:
+    raise SystemExit("Brand materialization must not use generic provider create")
 
 reconcile_section = builder[builder.index("public static function reconcile_materialization"):builder.index("public static function rollback_materialized_draft")]
 for earlier, later in [
@@ -143,6 +151,7 @@ for marker in [
     "read_context_asset",
     "scan_source",
     "create_asset",
+    "create_brand_asset",
     "rollback_created_brand_asset",
     "materialization_reconciliation_ref",
     "materialization_no_effect_ref",
@@ -189,7 +198,16 @@ for marker in [
         raise SystemExit(f"Context Authority missing generated Brand Context review/rollback invariant: {marker}")
 
 for marker in [
+    "create_brand_asset",
+    "brand_materialization_properties",
+    "appProperties",
+    "mad4b_kind",
+    "mad4b_artifact",
+    "mad4b_source",
+    "mad4b_idempotency",
+    "mad4b_request",
     "rollback_created_brand_asset",
+    "mad4b_brand_create_rollback_provider_identity_drift",
     "target_folder_id",
     "after_sha256",
     "mime_type",
@@ -220,6 +238,9 @@ for marker in [
     "brand_materialization_rollback_contract_unavailable",
     "expected_draft_content_sha256",
     "receipt_sha256",
+    "provider_identity",
+    "mad4b_idempotency",
+    "mad4b_request",
     "includes/class-mad4b-scp-context-provider-gateway.php",
     "includes/class-mad4b-scp-brand-context-builder.php",
 ]:
