@@ -556,7 +556,11 @@ with tempfile.TemporaryDirectory() as td:
         runner.run_job(profile_path, symlink_write_path)
         raise SystemExit("Host Runner accepted symlink swap before commit")
     except ValueError as exc:
-        if "symlink" not in str(exc):
+        message = str(exc)
+        if (
+            "symlink" not in message
+            and "link/reparse path component forbidden" not in message
+        ):
             raise
     assert outside_write.read_bytes() == b"outside-original\n"
     (runner_workspace / "swap.txt").unlink()
