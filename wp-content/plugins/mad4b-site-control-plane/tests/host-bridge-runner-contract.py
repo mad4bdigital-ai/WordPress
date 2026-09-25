@@ -288,6 +288,172 @@ with tempfile.TemporaryDirectory() as td:
     assert denied_incident["blind_retry_allowed"] is False
     assert denied_incident["payload_persisted"] is False
 
+    # Stale running claim before any mutation intent is safe to requeue.
+    crash_before_id = str(uuid.uuid4())
+    crash_before_plan = dict(plan)
+    crash_before_plan["created_at"] = "2026-09-25T00:02:00+00:00"
+    crash_before_plan.pop("plan_sha256", None)
+    crash_before_plan["plan_sha256"] = runner._bridge_digest(crash_before_plan)
+    crash_before_submission = {
+        "contract": "mad4b.host-bridge-submission.v1",
+        "job_id": crash_before_id,
+        "idempotency_key": "bridge-ci-crash-before-mutation",
+        "plan": crash_before_plan,
+        "plan_sha256": crash_before_plan["plan_sha256"],
+        "approval_ref": "",
+        "authority": {
+            "policy_decision_sha256": "",
+            "agent_public_id": "",
+            "approval_ticket_id": "",
+        },
+        "submission_location": "wordpress_request",
+        "execution_location": "host_runner",
+        "commit_location": "host_runner",
+        "created_at": crash_before_plan["created_at"],
+        "production_authorized": False,
+    }
+    crash_before_submission["submission_sha256"] = runner._bridge_digest(crash_before_submission)
+    crash_before_claim = runner._bridge_running_claim(profile, crash_before_submission, 30)
+    crash_before_claim["lease_expires_at"] = "2020-01-01T00:00:00Z"
+    (bridge / "running" / f"{crash_before_id}.json").write_text(
+        json.dumps(crash_before_claim, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    reconcile = runner.reconcile_bridge_spool(profile_path, stale_seconds=30, limit=10)
+    states = {row["job_id"]: row["state"] for row in reconcile["reconciled"]}
+    assert states[crash_before_id] == "SAFE_REQUEUED_BEFORE_MUTATION", reconcile
+    assert (bridge / "queued" / f"{crash_before_id}.json").is_file()
+    assert not (bridge / "running" / f"{crash_before_id}.json").exists()
+    result = runner.consume_bridge_spool(profile_path, 10)
+    assert result["processed_count"] == 1, result
+    assert result["processed"][0]["state"] == "SUCCEEDED", result
+
+    # Crash after local durable execution receipt but before bridge receipt:
+    # reconcile evidence, never execute the semantic operation a second time.
+    crash_receipt_id = str(uuid.uuid4())
+    crash_receipt_plan = dict(plan)
+    crash_receipt_plan["created_at"] = "2026-09-25T00:03:00+00:00"
+    crash_receipt_plan.pop("plan_sha256", None)
+    crash_receipt_plan["plan_sha256"] = runner._bridge_digest(crash_receipt_plan)
+    crash_receipt_submission = {
+        "contract": "mad4b.host-bridge-submission.v1",
+        "job_id": crash_receipt_id,
+        "idempotency_key": "bridge-ci-crash-after-local-receipt",
+        "plan": crash_receipt_plan,
+        "plan_sha256": crash_receipt_plan["plan_sha256"],
+        "approval_ref": "",
+        "authority": {
+            "policy_decision_sha256": "",
+            "agent_public_id": "",
+            "approval_ticket_id": "",
+        },
+        "submission_location": "wordpress_request",
+        "execution_location": "host_runner",
+        "commit_location": "host_runner",
+        "created_at": crash_receipt_plan["created_at"],
+        "production_authorized": False,
+    }
+    crash_receipt_submission["submission_sha256"] = runner._bridge_digest(crash_receipt_submission)
+    local_job = runner._bridge_submission_to_job(profile, crash_receipt_submission)
+    local_job_path = Path(profile["bridge_job_root"]) / f"{crash_receipt_id}.json"
+    local_job_path.parent.mkdir(parents=True, exist_ok=True)
+    local_job_path.write_text(json.dumps(local_job, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    local_receipt = runner.run_job(profile_path, local_job_path)
+    assert local_receipt["bridge_submission_sha256"] == crash_receipt_submission["submission_sha256"]
+    assert not (bridge / "receipts" / f"{crash_receipt_id}.json").exists()
+    crash_receipt_claim = runner._bridge_running_claim(profile, crash_receipt_submission, 30)
+    crash_receipt_claim["lease_expires_at"] = "2020-01-01T00:00:00Z"
+    (bridge / "running" / f"{crash_receipt_id}.json").write_text(
+        json.dumps(crash_receipt_claim, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    reconcile = runner.reconcile_bridge_spool(profile_path, stale_seconds=30, limit=10)
+    states = {row["job_id"]: row["state"] for row in reconcile["reconciled"]}
+    assert states[crash_receipt_id] == "BRIDGE_RECEIPT_REPAIRED_FROM_LOCAL_RECEIPT", reconcile
+    repaired = json.loads((bridge / "receipts" / f"{crash_receipt_id}.json").read_text(encoding="utf-8"))
+    assert repaired["reconciled_from_stale_running"] is True
+    assert repaired["bridge_submission_sha256"] == crash_receipt_submission["submission_sha256"]
+    assert repaired["replayed"] is False
+
+    # Stale running write with a mutation-intent journal is never blind-retried.
+    crash_after_id = str(uuid.uuid4())
+    crash_after_payload = b"must-not-blind-retry\n"
+    crash_after_execution_plan = runner.build_workspace_replace_plan(
+        profile,
+        "bridge-crash-after-side-effect.txt",
+        crash_after_payload,
+        "stale running write mutation evidence fixture",
+    )
+    crash_after_outer = dict(write_outer_plan)
+    crash_after_outer["created_at"] = "2026-09-25T00:04:00+00:00"
+    crash_after_outer["arguments"] = {
+        "plan": crash_after_execution_plan,
+        "new_content_b64": base64.b64encode(crash_after_payload).decode(),
+    }
+    crash_after_outer.pop("plan_sha256", None)
+    crash_after_outer["plan_sha256"] = runner._bridge_digest(crash_after_outer)
+    crash_after_submission = {
+        "contract": "mad4b.host-bridge-submission.v1",
+        "job_id": crash_after_id,
+        "idempotency_key": "bridge-ci-crash-after-mutation-intent",
+        "plan": crash_after_outer,
+        "plan_sha256": crash_after_outer["plan_sha256"],
+        "approval_ref": "approval:bridge-ci-crash-after",
+        "authority": {
+            "policy_decision_sha256": "b" * 64,
+            "agent_public_id": "agent:bridge-ci-crash-after",
+            "approval_ticket_id": "ticket:bridge-ci-crash-after",
+        },
+        "submission_location": "wordpress_request",
+        "execution_location": "host_runner",
+        "commit_location": "host_runner",
+        "created_at": crash_after_outer["created_at"],
+        "production_authorized": False,
+    }
+    crash_after_submission["submission_sha256"] = runner._bridge_digest(crash_after_submission)
+    crash_after_claim = runner._bridge_running_claim(profile, crash_after_submission, 30)
+    crash_after_claim["lease_expires_at"] = "2020-01-01T00:00:00Z"
+    (bridge / "running" / f"{crash_after_id}.json").write_text(
+        json.dumps(crash_after_claim, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    journal_root = Path(profile["journal_root"])
+    journal_root.mkdir(parents=True, exist_ok=True)
+    (journal_root / f"{crash_after_id}.json").write_text(
+        json.dumps(
+            {
+                "contract": "mad4b.host-runner-mutation-journal.v1",
+                "job_id": crash_after_id,
+                "operation_id": "workspace.file.replace",
+                "plan_sha256": crash_after_execution_plan["plan_sha256"],
+                "approval_ref": crash_after_submission["approval_ref"],
+                "relative_path": "bridge-crash-after-side-effect.txt",
+                "before_sha256": "ABSENT",
+                "expected_after_sha256": runner.sha256_bytes(crash_after_payload),
+                "state": "MUTATION_STARTED",
+                "terminal": False,
+                "blind_retry_allowed": False,
+                "created_at": "2026-09-25T00:04:01Z",
+            },
+            sort_keys=True,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    reconcile = runner.reconcile_bridge_spool(profile_path, stale_seconds=30, limit=10)
+    states = {row["job_id"]: row["state"] for row in reconcile["reconciled"]}
+    assert states[crash_after_id] == "RECOVERY_REQUIRED", reconcile
+    assert not (bridge / "queued" / f"{crash_after_id}.json").exists()
+    assert not (bridge / "running" / f"{crash_after_id}.json").exists()
+    crash_after_incident = json.loads(
+        (bridge / "recovery-required" / f"{crash_after_id}.json").read_text(encoding="utf-8")
+    )
+    assert crash_after_incident["blind_retry_allowed"] is False
+    assert crash_after_incident["reconciliation_required"] is True
+    assert crash_after_incident["journal_state"] == "MUTATION_STARTED"
+    assert not (Path(profile["runner_workspace"]) / "bridge-crash-after-side-effect.txt").exists()
+
     # Tampered bridge evidence dead-letters rather than executing.
     bad_id = str(uuid.uuid4())
     bad = dict(submission)
