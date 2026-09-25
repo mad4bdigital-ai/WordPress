@@ -71,6 +71,12 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$input = is_array( $input ) ? $input : array();
 		$attempt = isset( $input['_automatic_reconcile_attempt'] ) ? max( 1, (int) $input['_automatic_reconcile_attempt'] ) : 1;
 		$result = self::reconcile_materialization( $input );
+		if ( is_array( $result )
+			&& 'verified_no_effect' === ( isset( $result['status'] ) ? (string) $result['status'] : '' )
+			&& ! empty( $result['safe_to_retry'] )
+			&& ! empty( $result['idempotency_released'] ) ) {
+			$result = self::materialize_draft( $input );
+		}
 		if ( is_wp_error( $result ) ) {
 			$retryable = in_array(
 				$result->get_error_code(),
