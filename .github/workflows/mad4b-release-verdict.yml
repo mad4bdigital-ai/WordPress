@@ -113,7 +113,7 @@ jobs:
               raise SystemExit('repository governance workflow must cover every master change')
 
           boundary_workflow = Path('.github/workflows/mad4b-feature-boundary-root.yml').read_text(encoding='utf-8')
-          expression_open = '$' + chr(123) + chr(123)
+          expression_open = chr(36) + chr(123) + chr(123)
           expression_close = chr(125) + chr(125)
           base_ref_expression = (
               'ref: ' + expression_open
