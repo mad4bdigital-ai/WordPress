@@ -78,7 +78,7 @@ for marker in [
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-seeder.v1'",
-    "const SEED_VERSION = 6",
+    "const SEED_VERSION = 7",
     "const SEED_DIR = 'skill-seeds'",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Skill_Registry::editor_enabled()",
@@ -99,6 +99,7 @@ for marker in [
     "jetengine-content-modeling",
     "wordpress-archive-audit",
     "wordpress-change-safety",
+    "wordpress-extension-strategy",
     "wordpress-release-orchestration",
     "wordpress-browser-acceptance",
     "wordpress-content-authoring",
@@ -334,7 +335,7 @@ for skill_dir in (portable / 'skills').iterdir():
 if not expected_skills.issubset(found):
     raise SystemExit(f'missing portable seed skills: {sorted(expected_skills - found)}')
 if {p.parent.name for p in seed_root.glob('*/SKILL.md')} != expected_skills:
-    raise SystemExit('canonical Control Plane seed set must exactly match the nine portable baseline Skills')
+    raise SystemExit('canonical Control Plane seed set must exactly match the ten portable baseline Skills')
 
 entry = next((x for x in marketplace.get('plugins', []) if x.get('name') == 'mad4b-wordpress'), None)
 if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpress':
