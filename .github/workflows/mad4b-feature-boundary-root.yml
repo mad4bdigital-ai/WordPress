@@ -1,0 +1,67 @@
+name: MAD4B Feature Boundary Root
+
+on:
+  pull_request_target:
+    branches:
+      - master
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - converted_to_draft
+      - edited
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-feature-boundary-root-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  repository-feature-boundary:
+    name: Repository feature boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+    steps:
+      - name: Checkout trusted base only
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify trusted verifier source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$BASE_SHA"
+          test -f tools/verify_feature_boundary.py
+          test -f .github/mad4b-repository-governance-policy.json
+
+      - name: Fetch untrusted head as data only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$HEAD_SHA"
+          test "$(git rev-parse FETCH_HEAD)" = "$HEAD_SHA"
+          git cat-file -e "$HEAD_SHA^{commit}"
+
+      - name: Enforce baseline-owned feature boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/verify_feature_boundary.py             --base "$BASE_SHA"             --head "$HEAD_SHA"             --head-branch "$HEAD_BRANCH"             --output /tmp/MAD4B-FEATURE-BOUNDARY.json
+
+      - name: Upload feature boundary evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-feature-boundary-${{ env.HEAD_SHA }}
+          path: /tmp/MAD4B-FEATURE-BOUNDARY.json
+          if-no-files-found: error
+          retention-days: 30
