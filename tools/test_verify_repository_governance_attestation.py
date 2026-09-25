@@ -36,6 +36,8 @@ with tempfile.TemporaryDirectory() as td:
     }
     attestation = {
         "contract": "mad4b.repository-ruleset-attestation.v1",
+        "attestation_scope": "environment",
+        "attestation_environment": "repository-governance",
         "repository": REPOSITORY,
         "ruleset_id": 23968498,
         "ruleset_name": "MAD4B master release governance",
@@ -59,6 +61,8 @@ with tempfile.TemporaryDirectory() as td:
     assert result["ruleset_id"] == 23968498
 
     cases = {
+        "wrong_scope": ("attestation_scope", "repository"),
+        "wrong_environment": ("attestation_environment", "other"),
         "stale_updated_at": ("ruleset_updated_at", "2026-09-25T00:00:00Z"),
         "wrong_policy_sha": ("policy_sha256", "0" * 64),
         "wrong_template_sha": ("template_sha256", "1" * 64),
