@@ -49,6 +49,34 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-retirement-contract.py
 
+      - name: Verify repository-owned feature boundary root of trust
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/verify_feature_boundary.py
+          python3 tools/verify_feature_boundary.py --self-test
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('.github/mad4b-feature-boundary-grants.json')
+          data=json.loads(p.read_text(encoding='utf-8'))
+          if data.get('contract')!='mad4b.feature-boundary-grants.v1':
+              raise SystemExit('feature-boundary grants contract mismatch')
+          if data.get('repository_governance_contract')!='mad4b.repository-governance-policy.v1':
+              raise SystemExit('feature-boundary repository policy binding mismatch')
+          immutable=set(data.get('immutable_global_paths') or [])
+          required={
+              '.github/mad4b-repository-governance-policy.json',
+              '.github/mad4b-feature-boundary-grants.json',
+              'tools/verify_feature_boundary.py',
+          }
+          if not required.issubset(immutable):
+              raise SystemExit('feature-boundary immutable root incomplete')
+          if '007' not in (data.get('features') or {}):
+              raise SystemExit('Feature 007 grant missing')
+          print('mad4b.feature-boundary-grants.v1: PASS')
+          PY
+
       - name: Verify active master repository governance
         id: governance
         shell: bash
