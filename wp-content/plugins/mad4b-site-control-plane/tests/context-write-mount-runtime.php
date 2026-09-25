@@ -62,6 +62,7 @@ class MAD4B_SCP_Google_Drive_Context {
 	public static function rollback_created_brand_asset() { return true; }
 	public static function asset_write_capabilities() { return array( 'update' => false, 'recreate' => false, 'blockers' => array() ); }
 	public static function create_asset() { return array(); }
+	public static function create_brand_asset() { return array(); }
 	public static function update_asset() { return array(); }
 	public static function recreate_asset() { return array(); }
 	public static function reversible_update_state( $asset_id = '', $expected = '' ) {
