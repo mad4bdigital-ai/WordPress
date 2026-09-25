@@ -101,7 +101,6 @@ for marker in [
     "mad4b_skill_seed_refresh_rollback_failed",
     "context_policy_sha256",
     "allowed_mutation_abilities",
-    "'enabled' => false",
     "class-mad4b-scp-skill-provider-discovery.php",
     "MAD4B_SCP_Skill_Provider_Discovery",
     "plugins_loaded",
@@ -298,6 +297,11 @@ if not isinstance(manifest_rows, list) or not manifest_rows:
 expected_skills = {row.get('name') for row in manifest_rows if isinstance(row, dict)}
 if None in expected_skills or len(expected_skills) != len(manifest_rows):
     raise SystemExit('canonical Skill seed manifest contains duplicate or invalid names')
+provider_seed_rows = [row for row in manifest_rows if isinstance(row, dict) and row.get('level') == 'provider']
+if not provider_seed_rows:
+    raise SystemExit('canonical Skill seed manifest must retain provider seed coverage')
+if any(row.get('enabled') is not False for row in provider_seed_rows):
+    raise SystemExit('provider-level canonical Skill seeds must fail closed disabled by default')
 
 found = set()
 seed_root = wp / 'skill-seeds'
