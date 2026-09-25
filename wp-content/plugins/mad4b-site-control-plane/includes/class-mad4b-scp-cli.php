@@ -125,6 +125,10 @@ final class MAD4B_SCP_CLI {
 			'wp_config_sha256' => $config_present ? (string) hash_file( 'sha256', $config ) : '',
 			'plugin_present' => '' !== $plugin_root && is_dir( $plugin_root ),
 			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : '',
+			'readonly' => true,
+			'authorizing' => false,
+			'authority_class' => 'read_only_non_authorizing',
+			'production_authorized' => false,
 			'mutation_performed' => false,
 		);
 	}
