@@ -17,7 +17,7 @@ final class MAD4B_SCP_Data_Governance {
 
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
-		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/data-processing-evaluate' ) ) return;
+		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/data-processing-evaluate' ) ) ) {
 		wp_register_ability(
 			'mad4b/data-processing-evaluate',
 			array(
@@ -36,6 +36,27 @@ final class MAD4B_SCP_Data_Governance {
 				),
 			)
 		);
+		}
+		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/data-processing-record-decision' ) ) ) {
+			wp_register_ability(
+				'mad4b/data-processing-record-decision',
+				array(
+					'label' => 'Record Data Processing Decision',
+					'description' => 'Persist one payload-minimized rights/data-processing decision as immutable ContentJob evidence. This does not call a provider or grant authority.',
+					'category' => 'mad4b-write',
+					'execute_callback' => array( __CLASS__, 'record_decision' ),
+					'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_mutate' ),
+					'input_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => array(
+						'public' => false,
+						'show_in_rest' => false,
+						'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'write' ),
+						'annotations' => array( 'readonly' => false, 'destructive' => false, 'idempotent' => false ),
+					),
+				)
+			);
+		}
 	}
 
 	private static function norm_list( $value ) {
@@ -162,6 +183,60 @@ final class MAD4B_SCP_Data_Governance {
 			'mutation_performed' => false,
 			'legal_determination' => false,
 			'raw_secrets_persisted' => false,
+		);
+	}
+
+	public static function record_decision( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$job_id = strtolower( trim( (string) ( $input['job_id'] ?? '' ) ) );
+		$reason = sanitize_text_field( (string) ( $input['reason'] ?? '' ) );
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $job_id ) ) return new WP_Error( 'mad4b_data_governance_job_invalid', 'ContentJob ID is invalid.' );
+		if ( strlen( $reason ) < 3 ) return new WP_Error( 'mad4b_data_governance_reason_required', 'A bounded reason is required to persist data-governance evidence.' );
+		if ( ! class_exists( 'MAD4B_SCP_Artifacts' ) ) return new WP_Error( 'mad4b_data_governance_artifacts_unavailable', 'Artifact Registry is unavailable.' );
+
+		$decision_input = $input;
+		unset( $decision_input['job_id'], $decision_input['reason'] );
+		$decision = self::evaluate( $decision_input );
+
+		$payload = array(
+			'contract' => 'mad4b.data-governance-evidence.v1',
+			'decision' => (string) $decision['decision'],
+			'hard_denials' => (array) $decision['hard_denials'],
+			'approval_requirements' => (array) $decision['approval_requirements'],
+			'redact_data_classes' => (array) $decision['redact_data_classes'],
+			'requirements' => (array) $decision['requirements'],
+			'evidence' => (array) $decision['evidence'],
+			'decision_fingerprint' => (string) $decision['decision_fingerprint'],
+			'payload_minimized' => true,
+			'raw_rights_records_persisted' => false,
+			'raw_source_content_persisted' => false,
+			'raw_secrets_persisted' => false,
+			'authorizing' => false,
+		);
+		$result = MAD4B_SCP_Artifacts::append_artifact(
+			array(
+				'job_id' => $job_id,
+				'artifact_type' => 'data_governance_decision',
+				'payload' => $payload,
+				'metadata' => array(
+					'decision_fingerprint' => (string) $decision['decision_fingerprint'],
+					'policy_revision' => (string) ( $decision['evidence']['policy_revision'] ?? '' ),
+					'provider_id' => (string) ( $decision['evidence']['provider_id'] ?? '' ),
+				),
+				'producer_stage' => 'DATA_GOVERNANCE',
+				'producer_ref' => self::CONTRACT,
+				'reason' => $reason,
+			)
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		return array(
+			'contract' => 'mad4b.data-governance-record.v1',
+			'decision' => (string) $decision['decision'],
+			'decision_fingerprint' => (string) $decision['decision_fingerprint'],
+			'artifact' => isset( $result['artifact'] ) ? $result['artifact'] : array(),
+			'provider_call_performed' => false,
+			'authority_created' => false,
+			'mutation_performed' => true,
 		);
 	}
 }
