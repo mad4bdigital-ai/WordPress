@@ -403,6 +403,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'create_asset',
 				'rollback_created_brand_asset',
 				'materialization_reconciliation_ref',
+				'materialization_no_effect_ref',
 				'verify_durable_reconciliation',
 			),
 			'MAD4B_SCP_Brand_Context_Builder' => array(
