@@ -221,16 +221,22 @@ final class MAD4B_SCP_Admin_Query_Performance {
 	}
 
 	public static function apply_explicit() {
-		if ( 'staging' !== self::environment() ) return array( 'contract' => self::CONTRACT, 'environment' => self::environment(), 'state' => 'not_applicable', 'production_changed' => false );
-		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_admin_query_performance_admin_required', 'Administrator capability is required to apply MAD4B performance indexes.' );
-		return self::apply_indexes();
+		return new WP_Error(
+			'mad4b_admin_query_performance_queue_required',
+			'Synchronous performance-index DDL is disabled; use the governed queued maintenance operation.'
+		);
 	}
 
 	public static function maybe_ensure_staging_indexes() {
 		if ( self::is_forbidden_automatic_lifecycle_request() ) return array( 'contract' => self::CONTRACT, 'environment' => self::environment(), 'state' => 'lifecycle_protected', 'production_changed' => false );
 		if ( 'staging' !== self::environment() ) return array( 'contract' => self::CONTRACT, 'environment' => self::environment(), 'state' => 'not_applicable', 'production_changed' => false );
-		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return array( 'contract' => self::CONTRACT, 'environment' => 'staging', 'state' => 'admin_required', 'production_changed' => false );
-		return self::apply_indexes();
+		return array(
+			'contract' => self::CONTRACT,
+			'environment' => 'staging',
+			'state' => 'queue_required',
+			'queued_executor' => self::CRON_HOOK,
+			'production_changed' => false,
+		);
 	}
 
 	private static function apply_indexes() {
