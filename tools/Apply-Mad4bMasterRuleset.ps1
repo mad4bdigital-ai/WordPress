@@ -92,7 +92,7 @@ $currentArgs = @(
     "api",
     "-H","Accept: application/vnd.github+json",
     "-H","X-GitHub-Api-Version: 2026-03-10",
-    "repos/$Repository/rulesets?includes_parents=true",
+    "repos/$Repository/rulesets?includes_parents=false",
     "--jq",".[] | @json"
 )
 $currentLines = @(& gh @currentArgs)
@@ -149,13 +149,27 @@ if ($named.Count -gt 1) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: unable to capture exact pre-apply ruleset for rollback."
     }
     $before = $beforeRaw | ConvertFrom-Json
+    if ([string]$before.source_type -ne "Repository" -or [string]$before.source -ne $Repository) {
+        throw "GOVERNANCE_APPLY_FAIL_CLOSED: selected canonical ruleset is not repository-owned by $Repository."
+    }
+    $rollbackRules = @()
+    foreach ($rule in @($before.rules)) {
+        $rollbackRule = ([string]($rule | ConvertTo-Json -Depth 100)) | ConvertFrom-Json
+        if ([string]$rollbackRule.type -eq "pull_request" -and $null -ne $rollbackRule.parameters) {
+            $responseOnly = $rollbackRule.parameters.PSObject.Properties["require_extra_approval_for_unattributed_changes"]
+            if ($null -ne $responseOnly) {
+                $rollbackRule.parameters.PSObject.Properties.Remove("require_extra_approval_for_unattributed_changes")
+            }
+        }
+        $rollbackRules += $rollbackRule
+    }
     $rollbackPayload = [ordered]@{
         name = $before.name
         target = $before.target
         enforcement = $before.enforcement
         bypass_actors = @($before.bypass_actors)
         conditions = $before.conditions
-        rules = @($before.rules)
+        rules = $rollbackRules
     }
     $rollbackPayloadJson = $rollbackPayload | ConvertTo-Json -Depth 100
     [System.IO.File]::WriteAllText($RollbackPayloadPath, $rollbackPayloadJson, $Utf8NoBom)
