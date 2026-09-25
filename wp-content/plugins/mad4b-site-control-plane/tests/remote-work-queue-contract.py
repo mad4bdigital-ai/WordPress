@@ -11,6 +11,9 @@ for marker in [
     "'frontend_performance_sampling'",
     "const LOCK_OPTION = 'mad4b_scp_remote_work_queue_lock_v1';",
     "add_option( self::LOCK_OPTION",
+    "delete_option_if_unchanged",
+    "$wpdb->delete(",
+    "mad4b_remote_work_queue_lock_reclaim_raced",
     "'lease_token_sha256'",
     "'claim_generation'",
     "'lease_expired'",
@@ -21,6 +24,9 @@ for marker in [
 ]:
     if marker not in queue:
         raise SystemExit(f"remote work queue invariant missing: {marker}")
+
+if "delete_option( self::LOCK_OPTION" in queue:
+    raise SystemExit("direct delete_option lock reclamation is ABA-unsafe; CAS delete is required")
 
 for forbidden in [
     "shell_exec(",
