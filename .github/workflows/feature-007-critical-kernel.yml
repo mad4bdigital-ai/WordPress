@@ -11,8 +11,10 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py'
@@ -365,3 +367,9 @@ jobs:
         run: |
           set -euo pipefail
           wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file             wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php
+
+      - name: Prove ContentJob runtime domain semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file             wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php
