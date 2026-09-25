@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "7e70d6dd6d4ca000bc500dc554db04b18f26eb2b",
-  "override_git_blob_sha": "d746f3b9de0ec5820fecba8132db76da1e12945a",
+  "source_tasks_git_blob_sha": "e990bab0ffcd938396cac29a6823d939eca9aed3",
+  "override_git_blob_sha": "8ae0a8a8cfd7451043419915a2f412e191c026fe",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,15 +10,15 @@
   },
   "counts": {
     "DEFERRED": 1,
-    "DONE": 12,
-    "OPEN": 638,
+    "DONE": 13,
+    "OPEN": 637,
     "PARTIAL": 7
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 12,
-      "OPEN": 503,
+      "DONE": 13,
+      "OPEN": 502,
       "PARTIAL": 7
     },
     "P1": {
@@ -6657,11 +6657,15 @@
       "task_id": "T3651",
       "phase": 36,
       "priority": "P0",
-      "summary": "Extend gate-liveness proof so every blocking gate has a path to a terminal state, not only terminal reachability.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Extend gate-liveness proof so every blocking gate has a path to a terminal state, not only terminal reachability. Evidence: `validate_spec.py` reverse-DAG `reaches_terminal()` check for every KERNEL_BLOCKER/LIVE_PRECONDITION; Feature 007 Spec Quality CI PASS.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/validate_spec.py",
+        "specs/007-content-intelligence-workflow-platform/gate-graph.json",
+        "workflow_run:36078194548"
+      ],
+      "reason": "Feature validator proves acyclicity, valid dependencies, root-to-terminal reachability and forward terminal closure for every KERNEL_BLOCKER/LIVE_PRECONDITION workstream."
     },
     {
       "task_id": "T3652",
