@@ -53,6 +53,31 @@ def main() -> int:
         if policy.get("contract") != "mad4b.repository-governance-policy.v1":
             raise SystemExit(f"{label} repository governance policy contract mismatch")
 
+    base_allowed_keys = {
+        "contract",
+        "target_branch",
+        "target_ref",
+        "required_ruleset_enforcement",
+        "require_no_bypass_actors",
+        "required_rule_types",
+        "pull_request",
+        "required_status_checks",
+        "single_owner_safety",
+    }
+    target_allowed_keys = set(base_allowed_keys) | {"required_repository_ruleset_name"}
+    if set(base) != base_allowed_keys:
+        raise SystemExit(
+            "bootstrap base governance policy shape drift: "
+            + repr(sorted(set(base) ^ base_allowed_keys))
+        )
+    if set(target) != target_allowed_keys:
+        raise SystemExit(
+            "bootstrap target governance policy shape drift: "
+            + repr(sorted(set(target) ^ target_allowed_keys))
+        )
+    if target.get("required_repository_ruleset_name") != "MAD4B master release governance":
+        raise SystemExit("bootstrap target canonical repository ruleset name drifted")
+
     immutable_keys = (
         "target_branch",
         "target_ref",
@@ -100,17 +125,19 @@ def main() -> int:
 
     base_owner = base.get("single_owner_safety") or {}
     target_owner = target.get("single_owner_safety") or {}
-    for key, value in base_owner.items():
-        if target_owner.get(key) != value:
-            raise SystemExit(f"bootstrap transition changed existing single-owner safety field: {key}")
-    if target_owner.get("authorized_owner_logins") != ["mad4bdigital-ai"]:
-        raise SystemExit("bootstrap target must bind the exact authorized owner login")
-    if target_owner.get("attestation_command") != "OWNER_ATTEST_SINGLE_OWNER":
-        raise SystemExit("bootstrap target attestation command drifted")
-    if target_owner.get("attestation_stale_on_descendant") is not True:
-        raise SystemExit("bootstrap target must stale attestation on descendant heads")
-    if target_owner.get("required_by_repository_release_verdict") is not True:
-        raise SystemExit("bootstrap target must require exact-head attestation in Release Verdict")
+    expected_target_owner = dict(base_owner)
+    expected_target_owner.update(
+        {
+            "authorized_owner_logins": ["mad4bdigital-ai"],
+            "attestation_command": "OWNER_ATTEST_SINGLE_OWNER",
+            "attestation_stale_on_descendant": True,
+            "required_by_repository_release_verdict": True,
+        }
+    )
+    if target_owner != expected_target_owner:
+        raise SystemExit(
+            "bootstrap target single-owner safety must be an exact monotonic enrichment"
+        )
 
     if template.get("name") != "MAD4B master release governance":
         raise SystemExit("target ruleset template name mismatch")
@@ -124,8 +151,20 @@ def main() -> int:
 
     rules = [row for row in template.get("rules") or [] if isinstance(row, dict)]
     rule_types = {str(row.get("type") or "") for row in rules}
-    if rule_types != set(target.get("required_rule_types") or []):
+    expected_rule_types = set(target.get("required_rule_types") or [])
+    if rule_types != expected_rule_types:
         raise SystemExit("target ruleset template rule types drift from target governance policy")
+    counts = {
+        rule_type: sum(1 for row in rules if row.get("type") == rule_type)
+        for rule_type in expected_rule_types
+    }
+    if any(count != 1 for count in counts.values()):
+        raise SystemExit("target ruleset template must contain exactly one rule per governed type")
+    for simple in ("deletion", "non_fast_forward"):
+        if simple in expected_rule_types:
+            row = next(item for item in rules if item.get("type") == simple)
+            if set(row) != {"type"}:
+                raise SystemExit(f"target {simple} rule contains ungoverned parameters")
 
     pull_rules = [row for row in rules if row.get("type") == "pull_request"]
     if len(pull_rules) != 1:
@@ -152,6 +191,14 @@ def main() -> int:
         raise SystemExit("target ruleset template checks do not exactly match target governance policy")
     if bool(status_params.get("strict_required_status_checks_policy")) is not True:
         raise SystemExit("target ruleset template must keep strict required status checks")
+    if bool(status_params.get("do_not_enforce_on_create", False)):
+        raise SystemExit("target ruleset template must enforce required checks on branch creation")
+    if set(status_params) != {
+        "do_not_enforce_on_create",
+        "required_status_checks",
+        "strict_required_status_checks_policy",
+    }:
+        raise SystemExit("target required_status_checks rule contains ungoverned parameters")
 
     result = {
         "contract": "mad4b.feature-boundary-governance-bootstrap-transition.v1",
