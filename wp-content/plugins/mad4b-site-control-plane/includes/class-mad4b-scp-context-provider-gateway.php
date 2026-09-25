@@ -176,6 +176,7 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 					'scan_source' => class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && method_exists( 'MAD4B_SCP_Google_Drive_Context', 'scan_folder' ),
 					'create_asset' => class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && method_exists( 'MAD4B_SCP_Google_Drive_Context', 'create_asset' ),
 					'create_brand_asset' => class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && method_exists( 'MAD4B_SCP_Google_Drive_Context', 'create_brand_asset' ),
+					'find_brand_materialization_candidates' => class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && method_exists( 'MAD4B_SCP_Google_Drive_Context', 'find_brand_materialization_candidates' ),
 					'rollback_created_brand_asset' => class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && method_exists( 'MAD4B_SCP_Google_Drive_Context', 'rollback_created_brand_asset' ),
 				),
 			),
@@ -228,6 +229,15 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 		if ( is_wp_error( $provider ) ) return $provider;
 		if ( 'google_drive' === $provider ) return MAD4B_SCP_Google_Drive_Context::create_asset( $source_id, $name, $content, $format );
 		return new WP_Error( 'mad4b_context_provider_create_unsupported', 'Context provider does not expose certified asset creation.' );
+	}
+
+	public static function find_brand_materialization_candidates( $source_id, array $identity ) {
+		$source = self::source( $source_id );
+		if ( is_wp_error( $source ) ) return $source;
+		$provider = self::provider_from_source( $source );
+		if ( is_wp_error( $provider ) ) return $provider;
+		if ( 'google_drive' === $provider ) return MAD4B_SCP_Google_Drive_Context::find_brand_materialization_candidates( $source_id, $identity );
+		return new WP_Error( 'mad4b_context_provider_brand_lookup_unsupported', 'Context provider does not expose certified Brand materialization identity lookup.' );
 	}
 
 	public static function create_brand_asset( $source_id, $name, $content, $format, array $identity ) {
