@@ -6,7 +6,6 @@ on:
       - 'specs/007-content-intelligence-workflow-platform/**'
       - '.github/workflows/feature-007-spec-ci.yml'
       - 'tools/mad4b_recovery_plane.py'
-      - 'tools/mad4b_feature_boundary.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py'
 
 permissions:
@@ -108,18 +107,25 @@ jobs:
           BASE="${{ github.event.pull_request.base.sha }}"
           git diff --exit-code "$BASE"...HEAD -- .specify/feature.json .specify/memory/constitution.md
 
-      - name: Enforce repository-governed dynamic feature boundary
+      - name: Enforce baseline-owned repository feature boundary
         shell: bash
         env:
           HEAD_BRANCH: ${{ github.head_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           BASE="${{ github.event.pull_request.base.sha }}"
-          python3 tools/mad4b_feature_boundary.py \
-            --feature-json specs/007-content-intelligence-workflow-platform/feature.json \
-            --repository-policy .github/mad4b-repository-governance-policy.json \
+          if ! git cat-file -e "$BASE:tools/verify_feature_boundary.py" 2>/dev/null; then
+            echo "ROOT_OF_TRUST_BOOTSTRAP_REQUIRED base=$BASE expected=tools/verify_feature_boundary.py"
+            echo "Merge the separately governed repository root-of-trust prerequisite before Feature 007 can pass this gate."
+            exit 1
+          fi
+          git show "$BASE:tools/verify_feature_boundary.py" > /tmp/verify_feature_boundary.py
+          python3 /tmp/verify_feature_boundary.py \
             --base "$BASE" \
-            --head-branch "$HEAD_BRANCH"
+            --head "$HEAD_SHA" \
+            --head-branch "$HEAD_BRANCH" \
+            --output /tmp/MAD4B-FEATURE-BOUNDARY.json
 
       - name: Verify reconciled task ledger
         run: python specs/007-content-intelligence-workflow-platform/reconcile_task_ledger.py --check
