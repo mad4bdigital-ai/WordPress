@@ -391,7 +391,7 @@ with tempfile.TemporaryDirectory() as td:
         write_receipt,
         "explicitly rollback successful workspace write",
     )
-    rollback_job = make_job(
+    explicit_rollback_job = make_job(
         profile,
         "workspace.file.rollback",
         {"plan": rollback_plan},
@@ -399,9 +399,9 @@ with tempfile.TemporaryDirectory() as td:
         approval_ref="approval:ci-workspace-rollback",
         authority_ref="ci:workspace-write-authority",
     )
-    rollback_path = tmp / "explicit-success-rollback.json"
-    rollback_path.write_text(json.dumps(rollback_job), encoding="utf-8")
-    rollback_receipt = runner.run_job(profile_path, rollback_path)
+    explicit_rollback_path = tmp / "explicit-success-rollback.json"
+    explicit_rollback_path.write_text(json.dumps(explicit_rollback_job), encoding="utf-8")
+    rollback_receipt = runner.run_job(profile_path, explicit_rollback_path)
     assert rollback_receipt["mutation_performed"] is True
     assert rollback_receipt["readback_verdict"] == "PASS"
     assert rollback_receipt["result"]["source_job_id"] == write_job["job_id"]
@@ -417,7 +417,7 @@ with tempfile.TemporaryDirectory() as td:
             raise
 
     # Exact rollback replay remains valid while the rollback postcondition is still current.
-    rollback_replay = runner.run_job(profile_path, rollback_path)
+    rollback_replay = runner.run_job(profile_path, explicit_rollback_path)
     assert rollback_replay["replayed"] is True
     assert rollback_replay["replay_readback_verdict"] == "PASS"
     assert not (runner_workspace / "state.txt").exists()
