@@ -481,7 +481,7 @@
         "repository_only": true
       },
       "remainder": [
-        "obtain exact-head MariaDB PASS for ContextPack persisted through schema v10 Artifact Registry",
+        "obtain exact-head MariaDB PASS for ContextPack persisted through schema v11 Artifact Registry",
         "prove the same requirements/dispatcher behavior against the exact deployed ETG Context Authority registry",
         "implement immutable WriterProfile version binding before declaring context_writer_ready"
       ]
@@ -722,12 +722,70 @@
     {
       "id": "provider_resolver_rings_dynamic_cert",
       "priority": "MATURITY_REQUIRED",
-      "status": "OPEN"
+      "status": "PARTIAL",
+      "gate": "provider_resolver_dynamic_cert_ready",
+      "evidence": {
+        "contract": "mad4b.capability-trait-resolution.v1",
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php",
+        "release_rings": [
+          "shadow",
+          "canary",
+          "active"
+        ],
+        "certification_aware_resolution": true,
+        "trait_requirements_hard": true,
+        "unknown_certification_fail_closed": true,
+        "quarantined_certification_fail_closed": true,
+        "profile_fingerprint_bound": true,
+        "certification_fingerprint_bound": true,
+        "non_authorizing": true,
+        "automatic_activation": false,
+        "ambiguous_multi_provider_selection": false,
+        "repository_only": true
+      },
+      "remainder": [
+        "bind selected profile/certification fingerprints into every governed provider execution plan",
+        "define explicit operator/policy preference for multi-provider ambiguity instead of silent tie-breaking",
+        "prove shadow→canary→active promotion and rollback against exact ETG Staging provider identities"
+      ]
     },
     {
       "id": "rights_ai_data",
       "priority": "MATURITY_REQUIRED",
-      "status": "OPEN"
+      "status": "PARTIAL",
+      "gate": "rights_ai_data_ready",
+      "evidence": {
+        "rights_contract": "mad4b.content-rights.v1",
+        "ai_processing_contract": "mad4b.ai-data-processing.v1",
+        "data_flow_contract": "mad4b.data-flow-policy.v1",
+        "decision_contract": "mad4b.data-governance-decision.v1",
+        "implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php",
+        "decisions": [
+          "ALLOW",
+          "REDACT_THEN_ALLOW",
+          "LOCAL_ONLY",
+          "REQUIRE_APPROVAL",
+          "DENY"
+        ],
+        "rights_unknown_does_not_imply_reuse_permission": true,
+        "prohibited_rights_fail_closed": true,
+        "residency_constraints_hard": true,
+        "training_use_constraints_hard": true,
+        "retention_constraints_hard": true,
+        "provider_allowlist_hard": true,
+        "raw_secrets_persisted": false,
+        "legal_determination": false,
+        "non_authorizing": true,
+        "repository_only": true
+      },
+      "remainder": [
+        "bind durable RightsRecord and provider processing profiles to exact Artifact/Provider identities",
+        "record governed data-processing decisions in durable artifact/execution evidence without raw secrets",
+        "prove live ETG provider/model fallback independently satisfies the same or stricter policy",
+        "exercise takedown/deletion propagation and data-subject/tenant retention obligations where applicable"
+      ]
     },
     {
       "id": "cron_provider_backlog",
