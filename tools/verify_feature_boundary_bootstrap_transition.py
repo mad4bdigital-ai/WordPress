@@ -64,7 +64,10 @@ def main() -> int:
         "required_status_checks",
         "single_owner_safety",
     }
-    target_allowed_keys = set(base_allowed_keys) | {"required_repository_ruleset_name"}
+    target_allowed_keys = set(base_allowed_keys) | {
+        "required_repository_ruleset_name",
+        "ruleset_attestation",
+    }
     if set(base) != base_allowed_keys:
         raise SystemExit(
             "bootstrap base governance policy shape drift: "
@@ -77,6 +80,16 @@ def main() -> int:
         )
     if target.get("required_repository_ruleset_name") != "MAD4B master release governance":
         raise SystemExit("bootstrap target canonical repository ruleset name drifted")
+    expected_ruleset_attestation = {
+        "variable_name": "MAD4B_RULESET_ATTESTATION",
+        "contract": "mad4b.repository-ruleset-attestation.v1",
+        "require_zero_bypass_actors": True,
+        "bind_ruleset_updated_at": True,
+        "bind_policy_sha256": True,
+        "bind_template_sha256": True,
+    }
+    if target.get("ruleset_attestation") != expected_ruleset_attestation:
+        raise SystemExit("bootstrap target ruleset attestation contract drifted")
 
     immutable_keys = (
         "target_branch",
@@ -223,6 +236,8 @@ def main() -> int:
         "post_merge_ruleset_apply_required": True,
         "pull_request_live_semantics_preserved": True,
         "response_only_unattributed_approval_required": True,
+        "ruleset_attestation_required_after_bootstrap": True,
+        "ruleset_attestation_variable": "MAD4B_RULESET_ATTESTATION",
         "target_policy_sha256": hashlib.sha256(args.target_policy.read_bytes()).hexdigest(),
         "target_template_sha256": hashlib.sha256(args.target_template.read_bytes()).hexdigest(),
     }
