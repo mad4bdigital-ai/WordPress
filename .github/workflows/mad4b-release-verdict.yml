@@ -22,7 +22,9 @@ concurrency:
 
 env:
   SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
   HEAD_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+  PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
 
 jobs:
   verdict:
@@ -208,6 +210,7 @@ jobs:
           bootstrap_exception = (
               os.environ.get('GITHUB_EVENT_NAME') == 'pull_request'
               and os.environ.get('HEAD_BRANCH', '').strip() == bootstrap_root_branch
+              and os.environ.get('PR_NUMBER', '').strip() == '66'
           )
           context_authority_affecting = any(
               fnmatch.fnmatch(path, pattern)
@@ -329,20 +332,74 @@ jobs:
           artifact_required=bool(scope.get('artifact_required'))
 
           governance_output=Path('/tmp/mad4b-release-verdict-governance.json')
+          bootstrap_exception=bool(scope.get('bootstrap_exception'))
+          governance_policy=Path('.github/mad4b-repository-governance-policy.json')
+          transition_status={}
+          transition_error=''
+          if bootstrap_exception:
+              base_sha=os.environ.get('BASE_SHA','').strip()
+              if len(base_sha)!=40:
+                  transition_error='bootstrap base SHA is missing or invalid'
+              else:
+                  try:
+                      base_policy_raw=subprocess.check_output(
+                          ['git','show',f"{base_sha}:.github/mad4b-repository-governance-policy.json"],
+                          text=True,
+                      )
+                      base_policy_path=Path('/tmp/mad4b-release-verdict-bootstrap-base-policy.json')
+                      base_policy_path.write_text(base_policy_raw,encoding='utf-8')
+                      transition_path=Path('/tmp/mad4b-release-verdict-bootstrap-transition.json')
+                      transition_proc=subprocess.run([
+                          'python3','tools/verify_feature_boundary_bootstrap_transition.py',
+                          '--base-policy',str(base_policy_path),
+                          '--target-policy','.github/mad4b-repository-governance-policy.json',
+                          '--target-template','.github/mad4b-master-ruleset-template.json',
+                          '--head-branch',os.environ.get('HEAD_BRANCH',''),
+                          '--pr-number',os.environ.get('PR_NUMBER',''),
+                          '--output',str(transition_path),
+                      ],text=True,capture_output=True)
+                      if transition_proc.returncode != 0:
+                          transition_error=(transition_proc.stderr or transition_proc.stdout or '').strip()
+                      elif transition_path.is_file():
+                          transition_status=json.loads(transition_path.read_text(encoding='utf-8'))
+                          governance_policy=base_policy_path
+                  except Exception as exc:
+                      transition_error=str(exc)
+
           governance_proc=subprocess.run([
               'python3','tools/verify_repository_governance.py',
               '--repository',os.environ['GITHUB_REPOSITORY'],
-              '--policy','.github/mad4b-repository-governance-policy.json',
+              '--policy',str(governance_policy),
               '--output',str(governance_output),
           ],text=True,capture_output=True)
-          governance_ready=governance_proc.returncode == 0
-          governance_reason=(governance_proc.stderr or governance_proc.stdout or '').strip()
+          governance_ready=governance_proc.returncode == 0 and not transition_error
+          governance_reason='; '.join(
+              part for part in [
+                  transition_error,
+                  (governance_proc.stderr or governance_proc.stdout or '').strip() if governance_proc.returncode != 0 else '',
+              ] if part
+          )
           governance_status={}
           if governance_output.is_file():
               try:
                   governance_status=json.loads(governance_output.read_text(encoding='utf-8'))
               except Exception:
                   governance_status={}
+          if bootstrap_exception and governance_ready:
+              governance_status.update({
+                  'state':'feature_boundary_bootstrap_transition_ready',
+                  'bootstrap_exception':True,
+                  'bootstrap_branch':scope.get('bootstrap_root_branch',''),
+                  'bootstrap_pr_number':66,
+                  'live_policy_source':'pull_request_base',
+                  'target_policy_source':'pull_request_head',
+                  'target_policy_ready':transition_status.get('ready') is True,
+                  'target_required_status_checks':transition_status.get('target_required_status_checks',[]),
+                  'added_required_status_checks':transition_status.get('added_required_status_checks',[]),
+                  'post_merge_ruleset_apply_required':True,
+                  'target_policy_sha256':transition_status.get('target_policy_sha256',''),
+                  'target_template_sha256':transition_status.get('target_template_sha256',''),
+              })
           runs=[]
           for path in sys.argv[3:5]:
               runs.extend(json.load(open(path,encoding='utf-8')).get('check_runs',[]))
@@ -539,7 +596,7 @@ jobs:
                   'Release Verdict now runs for every master-bound change so GitHub rulesets can require one stable merge-gate check.',
                   'Runtime-affecting and release-evidence changes require an exact-head General Distribution artifact and verify its internal canonical identity before repository_release_ready can become true.',
                   'Repository-non-runtime changes may satisfy repository_merge_gate_ready without claiming repository_release_ready.',
-                  'The only feature-boundary bootstrap exception is bound to the one-time branch chore/bootstrap-feature-boundary-policy-20260925, still requires exact-head Owner Attestation, and disappears once the root workflow is on master.',
+                  'The only feature-boundary bootstrap exception is bound to PR #66 on branch chore/bootstrap-feature-boundary-policy-20260925, verifies the live ruleset against the PR-base policy plus a monotonic target transition, still requires exact-head Owner Attestation, and disappears once the root workflow is on master.',
                   'Outside that one-time feature-boundary bootstrap, repository governance must verify ready for every merge-gate PASS.',
                   'Every master-bound pull request requires an authorized OWNER_ATTEST_SINGLE_OWNER comment bound to the exact current head SHA.',
                   'Repository success does not substitute for live ETG Staging acceptance.',
