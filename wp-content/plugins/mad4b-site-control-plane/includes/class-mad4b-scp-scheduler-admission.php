@@ -15,23 +15,22 @@ final class MAD4B_SCP_Scheduler_Admission {
 	}
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
-		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/scheduler-admission-evaluate' ) ) return;
-		wp_register_ability( 'mad4b/scheduler-admission-evaluate', array(
-			'label' => 'Scheduler Admission Evaluation',
-			'description' => 'Evaluate fair scheduling, backlog, quota, provider throttling and local-autonomy constraints. Read-only.',
-			'category' => 'mad4b-read',
-			'execute_callback' => array( __CLASS__, 'evaluate' ),
-			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
-			'input_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-			'meta' => array(
-				'public' => false, 'show_in_rest' => false,
-				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
-				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
-			),
-		) );
-	}
-
+		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/scheduler-admission-evaluate' ) ) ) {
+			wp_register_ability( 'mad4b/scheduler-admission-evaluate', array(
+				'label' => 'Scheduler Admission Evaluation',
+				'description' => 'Evaluate fair scheduling, backlog, quota, provider throttling and local-autonomy constraints. Read-only.',
+				'category' => 'mad4b-read',
+				'execute_callback' => array( __CLASS__, 'evaluate' ),
+				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+				'input_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => array(
+					'public' => false, 'show_in_rest' => false,
+					'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+					'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+				),
+			) );
+		}
 		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/scheduler-fair-rank' ) ) ) {
 			wp_register_ability( 'mad4b/scheduler-fair-rank', array(
 				'label' => 'Scheduler Fair Queue Ranking',
@@ -48,6 +47,7 @@ final class MAD4B_SCP_Scheduler_Admission {
 				),
 			) );
 		}
+	}
 
 	private static function stable( $value ) {
 		if ( is_array( $value ) ) {
