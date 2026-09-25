@@ -11,6 +11,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py'
+- 'wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py'
@@ -25,6 +27,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
+- 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy-resolution.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php'
@@ -186,6 +189,18 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py
+
+      - name: Verify governed WordPress Host Bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php
+
+      - name: Prove Host Bridge to Runner end-to-end
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py
 
       - name: Verify canonical read-only wp mad4b CLI
         shell: bash
