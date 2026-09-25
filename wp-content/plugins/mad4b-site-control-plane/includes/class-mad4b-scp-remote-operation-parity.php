@@ -569,6 +569,22 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $probe_hash ) ) return 0;
 		$not_before_epoch = '' !== trim( (string) $not_before ) ? strtotime( (string) $not_before . ' UTC' ) : false;
 		if ( false === $not_before_epoch ) return 0;
+
+		$ledger = isset( $performance['frontend_probe_evidence'] ) && is_array( $performance['frontend_probe_evidence'] )
+			? $performance['frontend_probe_evidence']
+			: array();
+		if ( isset( $ledger[ $probe_hash ] ) && is_array( $ledger[ $probe_hash ] ) ) {
+			$count = 0;
+			foreach ( (array) ( isset( $ledger[ $probe_hash ]['observations'] ) ? $ledger[ $probe_hash ]['observations'] : array() ) as $observation ) {
+				if ( ! is_array( $observation ) ) continue;
+				$observed = isset( $observation['observed_at'] ) ? strtotime( (string) $observation['observed_at'] . ' UTC' ) : false;
+				if ( false !== $observed && $observed >= $not_before_epoch ) $count++;
+			}
+			return $count;
+		}
+
+		// Upgrade compatibility only: exact probe evidence from the bounded sample
+		// window may exist before the dedicated ledger has been populated.
 		$samples = isset( $performance['evaluation_window']['samples'] ) && is_array( $performance['evaluation_window']['samples'] )
 			? $performance['evaluation_window']['samples']
 			: array();
