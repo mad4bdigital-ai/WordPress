@@ -58,6 +58,12 @@ for marker in [
     "MAD4B_SCP_Context_Provider_Gateway::scan_source",
     "MAD4B_SCP_Context_Provider_Gateway::create_asset",
     "MAD4B_SCP_Context_Provider_Gateway::rollback_created_brand_asset",
+    "MAD4B_SCP_Context_Provider_Gateway::materialization_reconciliation_ref",
+    "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation",
+    "reconcile_materialization",
+    "mad4b_brand_materialization_reconcile_scan_incomplete",
+    "mad4b_brand_materialization_reconcile_not_observed",
+    "mad4b_brand_materialization_reconcile_ambiguous",
     "begin_generated_brand_rollback",
     "cancel_generated_brand_rollback",
     "ksort( $observed, SORT_STRING )",
@@ -78,6 +84,14 @@ if append_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > appe
 materialize_section = builder[builder.index("public static function materialize_draft"):builder.index("public static function rollback_materialized_draft")]
 if materialize_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > materialize_section.index("MAD4B_SCP_Context_Provider_Gateway::create_asset"):
     raise SystemExit("Brand materialization provider create occurs before durable idempotency claim")
+
+reconcile_section = builder[builder.index("public static function reconcile_materialization"):builder.index("public static function rollback_materialized_draft")]
+for earlier, later in [
+    ("MAD4B_SCP_Context_Provider_Gateway::scan_source", "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation"),
+    ("1 !== count( $candidates )", "MAD4B_SCP_Durable_Execution::complete_idempotency_from_reconciliation"),
+]:
+    if reconcile_section.index(earlier) > reconcile_section.index(later):
+        raise SystemExit(f"Brand materialization reconciliation ordering invariant violated: {earlier} must precede {later}")
 
 rollback_section = builder[builder.index("public static function rollback_materialized_draft"):]
 for earlier, later in [
@@ -117,6 +131,8 @@ for marker in [
     "scan_source",
     "create_asset",
     "rollback_created_brand_asset",
+    "materialization_reconciliation_ref",
+    "verify_durable_reconciliation",
 ]:
     if marker not in gateway:
         raise SystemExit(f"Context Provider Gateway missing invariant: {marker}")
@@ -183,6 +199,7 @@ for marker in [
     "'context/brand-draft-append'",
     "'context/source-scan-apply'",
     "'context/materialize-brand-draft'",
+    "'context/reconcile-brand-materialization'",
     "'context/rollback-materialized-brand-draft'",
     "mad4b_google_drive_create_rollback_not_certified",
     "MAD4B_SCP_Brand_Context_Builder::MAX_DRAFT_BYTES",
@@ -218,6 +235,7 @@ for marker in [
     "context/source-scan-plan",
     "context/source-scan-apply",
     "context/materialize-brand-draft",
+    "context/reconcile-brand-materialization",
     "context/rollback-materialized-brand-draft",
     "include_authoritative_content=true",
     "Approved brand rule",
@@ -225,6 +243,8 @@ for marker in [
     "Recommended normalization",
     "atomic durable idempotency claim",
     "repository-owned Context Provider Gateway",
+    "context/reconcile-brand-materialization",
+    "discoverable remote reconciliation path",
 ]:
     if marker not in skill_text:
         raise SystemExit(f"Brand Context Builder Skill missing instruction: {marker}")
@@ -236,7 +256,7 @@ if len(matches) != 1:
 row = matches[0]
 if row.get("level") != "workflow" or row.get("target") != "brand-context" or row.get("enabled") is not True:
     raise SystemExit("Brand Context Builder Skill manifest identity/state is invalid")
-if manifest.get("seed_version") != 9:
-    raise SystemExit("Brand Context Builder requires canonical seed version 9")
+if manifest.get("seed_version") != 10:
+    raise SystemExit("Brand Context Builder requires canonical seed version 10")
 
-print("mad4b.brand-context-builder.v2: PASS")
+print("mad4b.brand-context-builder.v3: PASS")
