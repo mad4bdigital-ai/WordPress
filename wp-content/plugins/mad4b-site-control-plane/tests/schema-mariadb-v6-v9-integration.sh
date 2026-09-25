@@ -9,8 +9,13 @@ WP_CLI="${WP_CLI:-wp}"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-export MAD4B_SCHEMA_V9_FILE="$CURRENT_SCHEMA"
-grep -Fq "const VERSION = 9;" "$CURRENT_SCHEMA"
+export MAD4B_SCHEMA_CURRENT_FILE="$CURRENT_SCHEMA"
+CURRENT_VERSION="$(sed -nE 's/^[[:space:]]*const VERSION = ([0-9]+);/\\1/p' "$CURRENT_SCHEMA" | head -n1)"
+if [[ ! "$CURRENT_VERSION" =~ ^[0-9]+$ ]] || [ "$CURRENT_VERSION" -lt 9 ]; then
+    echo "Unable to resolve supported current MAD4B schema version from $CURRENT_SCHEMA: ${CURRENT_VERSION:-<empty>}" >&2
+    exit 2
+fi
+export MAD4B_EXPECTED_TARGET_VERSION="$CURRENT_VERSION"
 
 cat > "$tmp/install-v6.php" <<'PHP'
 <?php
@@ -82,12 +87,12 @@ echo wp_json_encode( array(
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL;
 PHP
 
-cat > "$tmp/upgrade-v9.php" <<'PHP'
+cat > "$tmp/upgrade-current.php" <<'PHP'
 <?php
-$schema = getenv( 'MAD4B_SCHEMA_V9_FILE' );
+$schema = getenv( 'MAD4B_SCHEMA_CURRENT_FILE' );
 $from = (int) getenv( 'MAD4B_EXPECTED_FROM_VERSION' );
 if ( ! is_string( $schema ) || '' === $schema || ! is_file( $schema ) ) {
-    fwrite( STDERR, "Missing MAD4B_SCHEMA_V9_FILE\n" );
+    fwrite( STDERR, "Missing MAD4B_SCHEMA_CURRENT_FILE\n" );
     exit( 20 );
 }
 require $schema;
@@ -95,7 +100,7 @@ $before = MAD4B_SCP_Schema::status( true );
 $result = MAD4B_SCP_Schema::install_or_upgrade();
 if ( is_wp_error( $result ) ) {
     fwrite( STDERR, wp_json_encode( array(
-        'stage' => 'upgrade_to_v9',
+        'stage' => 'upgrade_to_current',
         'source_version' => $from,
         'before' => $before,
         'code' => $result->get_error_code(),
@@ -107,13 +112,13 @@ if ( is_wp_error( $result ) ) {
 $after = MAD4B_SCP_Schema::status( true );
 $receipt = isset( $after['migration']['receipt'] ) && is_array( $after['migration']['receipt'] ) ? $after['migration']['receipt'] : array();
 echo wp_json_encode( array(
-    'stage' => 'upgrade_to_v9',
+    'stage' => 'upgrade_to_current',
     'source_version' => $from,
     'db_version' => $GLOBALS['wpdb']->db_version(),
     'before' => $before,
     'after' => $after,
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL;
-if ( 9 !== (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) ) exit( 22 );
+if ( (int) MAD4B_SCP_Schema::VERSION !== (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) ) exit( 22 );
 if ( empty( $after['ready'] ) || empty( $after['migration']['receipt_valid'] ) || empty( $after['physical_integrity']['ready'] ) ) exit( 23 );
 if ( $from !== (int) ( $receipt['from_version'] ?? -1 ) || 'upgrade' !== ( $receipt['run_type'] ?? '' ) ) exit( 24 );
 if ( $from >= 7 ) {
@@ -176,12 +181,12 @@ if ( 6 !== (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) ) exit( 42 );
 if ( $expected !== $missing ) exit( 43 );
 PHP
 
-cat > "$tmp/retry-v9.php" <<'PHP'
+cat > "$tmp/retry-current.php" <<'PHP'
 <?php
-$schema = getenv( 'MAD4B_SCHEMA_V9_FILE' );
+$schema = getenv( 'MAD4B_SCHEMA_CURRENT_FILE' );
 $from = (int) getenv( 'MAD4B_EXPECTED_FROM_VERSION' );
 if ( ! is_string( $schema ) || '' === $schema || ! is_file( $schema ) ) {
-    fwrite( STDERR, "Missing MAD4B_SCHEMA_V9_FILE\n" );
+    fwrite( STDERR, "Missing MAD4B_SCHEMA_CURRENT_FILE\n" );
     exit( 30 );
 }
 require $schema;
@@ -237,15 +242,15 @@ for scenario in "${scenarios[@]}"; do
     echo "=== SEED SPARSE HISTORICAL DURABLE STATE v${version} ==="
     "$WP_CLI" "${common[@]}" eval-file "$tmp/seed-sparse.php"
 
-    echo "=== REAL MARIADB SCHEMA v${version} -> v9 UPGRADE ==="
-    "$WP_CLI" "${common[@]}" eval-file "$tmp/upgrade-v9.php"
+    echo "=== REAL MARIADB SCHEMA v${version} -> v${CURRENT_VERSION} UPGRADE ==="
+    "$WP_CLI" "${common[@]}" eval-file "$tmp/upgrade-current.php"
 
-    echo "=== REAL MARIADB SCHEMA v9 IDEMPOTENT RETRY (origin v${version}) ==="
-    "$WP_CLI" "${common[@]}" eval-file "$tmp/retry-v9.php"
+    echo "=== REAL MARIADB SCHEMA v${CURRENT_VERSION} IDEMPOTENT RETRY (origin v${version}) ==="
+    "$WP_CLI" "${common[@]}" eval-file "$tmp/retry-current.php"
 done
 
 echo
-echo "=== HYBRID REPAIR: HEALTHY v6 -> KNOWN-BROKEN v8 PARTIAL STATE -> CURRENT v9 ==="
+echo "=== HYBRID REPAIR: HEALTHY v6 -> KNOWN-BROKEN v8 PARTIAL STATE -> CURRENT v${CURRENT_VERSION} ==="
 "$WP_CLI" "${common[@]}" db reset --yes
 "$WP_CLI" "${common[@]}" core install \
   --url=http://mad4b-schema.test \
@@ -277,9 +282,9 @@ export MAD4B_EXPECTED_FROM_VERSION="8"
 "$WP_CLI" "${common[@]}" eval-file "$tmp/seed-sparse.php"
 
 export MAD4B_EXPECTED_FROM_VERSION="6"
-"$WP_CLI" "${common[@]}" eval-file "$tmp/upgrade-v9.php"
-"$WP_CLI" "${common[@]}" eval-file "$tmp/retry-v9.php"
+"$WP_CLI" "${common[@]}" eval-file "$tmp/upgrade-current.php"
+"$WP_CLI" "${common[@]}" eval-file "$tmp/retry-current.php"
 
 echo
-echo "mad4b.schema-mariadb-v6-v7-v8-to-v9.integration.v1: PASS"
-echo "mad4b.schema-broken-v8-partial-repair.v1: PASS"
+echo "mad4b.schema-mariadb-v6-v7-v8-to-current.integration.v2: PASS target_version=${CURRENT_VERSION}"
+echo "mad4b.schema-broken-v8-partial-repair-to-current.v2: PASS target_version=${CURRENT_VERSION}"
