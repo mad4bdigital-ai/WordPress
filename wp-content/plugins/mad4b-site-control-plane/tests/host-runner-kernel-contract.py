@@ -371,6 +371,20 @@ with tempfile.TemporaryDirectory() as td:
     assert write_replay["replayed"] is True
     assert (runner_workspace / "state.txt").read_bytes() == replacement
 
+    # Rollback lineage must come from the durable receipt+journal store, not a fabricated in-memory object.
+    fabricated_receipt = dict(write_receipt)
+    fabricated_receipt["job_id"] = str(uuid.uuid4())
+    try:
+        runner.build_workspace_rollback_plan(
+            profile,
+            fabricated_receipt,
+            "fabricated rollback receipt must fail",
+        )
+        raise SystemExit("Host Runner accepted fabricated rollback source receipt")
+    except ValueError as exc:
+        if "durable receipt is unavailable" not in str(exc):
+            raise
+
     # A successful reversible write can be explicitly rolled back under a new exact plan+approval.
     rollback_plan = runner.build_workspace_rollback_plan(
         profile,
