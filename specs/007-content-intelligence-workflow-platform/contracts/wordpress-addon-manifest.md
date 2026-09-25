@@ -113,7 +113,7 @@ A manifest is a **governance declaration, not a PHP sandbox or security boundary
 
 - Version ranges are discovery/candidate hints only; they never authorize mutation.
 - Mutation requires an exact certified `(provider_version, addon_version)` pair and current runtime provider certification.
-- Provider or add-on update, activation/deactivation, package-fingerprint change, or extension-point fingerprint drift invalidates certification and stale plans.
+- Provider or add-on update, activation/deactivation, package-fingerprint change, or extension-point fingerprint drift invalidates cached plan fingerprints and forces current runtime revalidation. Repository-certified exact pairs may requalify only after that revalidation; no lifecycle event inherits a prior plan fingerprint.
 - Execution must revalidate the pair/certification fingerprint at the commit boundary; drift means re-plan and re-approval.
 - Add-on activation never creates Production authority.
 - Never patch vendor files at runtime.
