@@ -68,6 +68,32 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'production_policy' => 'read_only',
 			'human_decision_required' => false,
 		);
+		$rows['provider_behavioral_recertification'] = array(
+			'feature_id' => 'provider-certification',
+			'capability_tags' => array( 'provider', 'behavioral', 'recertification', 'rollback', 'write-eligibility' ),
+			'provider' => 'core',
+			'status_ability' => self::ABILITY,
+			'local_surface' => '',
+			'remote_ability' => 'mad4b/provider-behavioral-recertify',
+			'authority_surface' => 'mad4b-write',
+			'executor' => 'wordpress_native',
+			'remote_mode' => 'exact_reversible_probe',
+			'production_policy' => 'deny',
+			'human_decision_required' => true,
+		);
+		$rows['provider_canary_execution'] = array(
+			'feature_id' => 'provider-certification',
+			'capability_tags' => array( 'provider', 'canary', 'activation', 'high-risk-write', 'rollback' ),
+			'provider' => 'core',
+			'status_ability' => self::ABILITY,
+			'local_surface' => '',
+			'remote_ability' => 'mad4b/provider-canary-execute',
+			'authority_surface' => 'mad4b-write',
+			'executor' => 'wordpress_native',
+			'remote_mode' => 'owner_governed_canary',
+			'production_policy' => 'deny',
+			'human_decision_required' => true,
+		);
 		return $rows;
 	}
 
