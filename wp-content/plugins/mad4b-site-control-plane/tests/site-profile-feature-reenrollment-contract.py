@@ -15,13 +15,16 @@ for marker in (
     "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
     "'mad4b/staging-write-candidate-binding-audit'",
+    "'mad4b/reconcile-managed-skills'",
+    "'mad4b/frontend-performance-sample-run'",
+    "'mad4b/admin-query-performance-apply'",
     "can_enrollment_transport",
     "MAD4B Enrollment MCP",
 ):
     if marker not in servers:
         raise SystemExit('missing enrollment server contract: ' + marker)
 
-base_entry = "array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/multi-authority-registry-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' )"
+base_entry = "array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/multi-authority-registry-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit', 'mad4b/reconcile-managed-skills', 'mad4b/frontend-performance-sample-run', 'mad4b/admin-query-performance-apply' )"
 enrollment_start = servers.index("'mad4b-enrollment' =>")
 enrollment_end = servers.index("'mad4b-content' =>", enrollment_start)
 segment = servers[enrollment_start:enrollment_end]
@@ -37,7 +40,7 @@ for forbidden in ('mad4b/database-update', 'mad4b/database-raw-query', 'mad4b/fi
     if forbidden in segment:
         raise SystemExit('dangerous ability leaked into enrollment inventory: ' + forbidden)
 write_candidates = servers[servers.index('private static function core_write_candidates'):servers.index('private static function registered_adapter_write_candidates')]
-for bounded in ('mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind'):
+for bounded in ('mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/reconcile-managed-skills', 'mad4b/frontend-performance-sample-run', 'mad4b/admin-query-performance-apply'):
     if bounded in write_candidates:
         raise SystemExit('bounded enrollment ability leaked into normal write candidates: ' + bounded)
 
