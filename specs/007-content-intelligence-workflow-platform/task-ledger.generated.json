@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "e990bab0ffcd938396cac29a6823d939eca9aed3",
-  "override_git_blob_sha": "f56bcc3019dddd1c36bff9e63f16168270619cd3",
+  "source_tasks_git_blob_sha": "e189037b5fee4beb0d7af5027fe5ed21dc9f0a40",
+  "override_git_blob_sha": "8ca97d77edbf6c26b6e49042d740ecd8e132cccc",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -9,29 +9,29 @@
     "bulk_completion_without_evidence_forbidden": true
   },
   "counts": {
-    "DEFERRED": 1,
-    "DONE": 13,
-    "OPEN": 602,
-    "PARTIAL": 42
+    "DEFERRED": 2,
+    "DONE": 39,
+    "OPEN": 551,
+    "PARTIAL": 66
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 13,
-      "OPEN": 483,
-      "PARTIAL": 26
+      "DONE": 32,
+      "OPEN": 446,
+      "PARTIAL": 44
     },
     "P1": {
       "DEFERRED": 0,
-      "DONE": 0,
-      "OPEN": 95,
-      "PARTIAL": 16
+      "DONE": 6,
+      "OPEN": 84,
+      "PARTIAL": 21
     },
     "P2": {
-      "DEFERRED": 1,
-      "DONE": 0,
-      "OPEN": 24,
-      "PARTIAL": 0
+      "DEFERRED": 2,
+      "DONE": 1,
+      "OPEN": 21,
+      "PARTIAL": 1
     }
   },
   "task_count": 658,
@@ -1597,141 +1597,183 @@
       "task_id": "T1101",
       "phase": 11,
       "priority": "P0",
-      "summary": "Define ToolOperationDefinition registry and operation fingerprints.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Define ToolOperationDefinition registry and operation fingerprints. Evidence: `tools/mad4b_host_runner.py` fixed operation registry/fingerprints + `host-runner-kernel-contract.py`.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "reason": "Fixed semantic operation registry and operation fingerprints are implemented and contract guarded."
     },
     {
       "task_id": "T1102",
       "phase": 11,
       "priority": "P0",
       "summary": "Define ToolExecutorProfile and non-authorizing executor resolver.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "reason": "Exact runner profiles exist, but a general non-authorizing resolver across all executor/provider families is not complete."
     },
     {
       "task_id": "T1103",
       "phase": 11,
       "priority": "P0",
-      "summary": "Define HostTarget + canonical target/root identity.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Define HostTarget + canonical target/root identity. Evidence: Host Runner profile/target fingerprint + bootstrap target/root binding contracts.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "Canonical WordPress root, site/target identity and target fingerprint are exact-profile bound."
     },
     {
       "task_id": "T1104",
       "phase": 11,
       "priority": "P0",
       "summary": "Define Host Read/Write/Execution/Breakglass/Recovery/Production authority classes.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/cli-host-runner.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "reason": "Host write/execution/recovery/Production separation is implemented in current surfaces; complete authority-class registry coverage remains open."
     },
     {
       "task_id": "T1105",
       "phase": 11,
       "priority": "P0",
       "summary": "GATE Prove WordPress grants, Developer and Full Staging Authority do not imply Host Execution.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "tools/mad4b_host_runner_bootstrap.py"
+      ],
+      "reason": "Host execution requires separate profile/queue/runner evidence and is not implied by WordPress grants, but exact live Full-Staging/Developer negative certification remains open."
     },
     {
       "task_id": "T1106",
       "phase": 11,
       "priority": "P0",
       "summary": "Implement first read-only semantic operations: schema/runtime/package/filesystem/log/php/db/cron diagnostics.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php"
+      ],
+      "reason": "runtime/package/filesystem diagnostics exist; schema/log/php/db/cron semantic operation coverage remains incomplete."
     },
     {
       "task_id": "T1107",
       "phase": 11,
       "priority": "P0",
-      "summary": "Implement `wp mad4b` namespace over shared application services.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Implement `wp mad4b` namespace over shared application services. Evidence: `class-mad4b-scp-cli.php` + `wp-cli-readonly-contract.php`.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php"
+      ],
+      "reason": "Canonical wp mad4b namespace is implemented over existing application services."
     },
     {
       "task_id": "T1108",
       "phase": 11,
       "priority": "P0",
-      "summary": "Add machine-readable CLI discovery and normalized JSON output.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Add machine-readable CLI discovery and normalized JSON output. Evidence: `wp mad4b discover/status` JSON contracts and normalized runtime status output.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php"
+      ],
+      "reason": "CLI discovery/status emit normalized machine-readable JSON."
     },
     {
       "task_id": "T1109",
       "phase": 11,
       "priority": "P0",
       "summary": "GATE Prove MCP and WP-CLI equivalent normalized diagnostic result.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py"
+      ],
+      "reason": "WP-CLI↔Host Runner normalized parity is proven; MCP↔WP-CLI parity is still open."
     },
     {
       "task_id": "T1110",
       "phase": 11,
       "priority": "P0",
       "summary": "Implement Host Runner job envelope, queue, lease and fencing.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "reason": "Signed job envelope and durable queue/receipts exist; integrated lease/fencing for the actual Host Runner worker remains incomplete."
     },
     {
       "task_id": "T1111",
       "phase": 11,
       "priority": "P0",
       "summary": "Implement Host Runner idempotency/retry/timeout/output/resource budgets.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "reason": "Idempotency/replay/reconciliation and bounded envelope/payload exist; concrete fixed-process timeout/output/resource budgets remain open."
     },
     {
       "task_id": "T1112",
       "phase": 11,
       "priority": "P0",
       "summary": "Implement ToolExecutionReceipt + bounded stdout/stderr evidence.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "reason": "Tool execution receipts are durable; bounded stdout/stderr evidence remains pending until a fixed-process semantic adapter exists."
     },
     {
       "task_id": "T1113",
       "phase": 11,
       "priority": "P0",
-      "summary": "Implement named filesystem zones and realpath/symlink/zip-slip/TOCTOU defenses.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Implement named filesystem zones and realpath/symlink/zip-slip/TOCTOU defenses. Evidence: named runner zones, realpath/symlink/TOCTOU defenses + negative contract suite.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "reason": "Named filesystem zones, traversal/symlink confinement and immediate pre-commit target revalidation are implemented."
     },
     {
       "task_id": "T1114",
       "phase": 11,
       "priority": "P0",
       "summary": "Implement process policy: fixed executable + structured argv, no caller shell strings.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/governed-tool-execution.md",
+        "tools/mad4b_host_runner.py"
+      ],
+      "reason": "Caller shell/command execution is denied; no fixed-process executor has been admitted yet, so structured argv runtime proof remains open."
     },
     {
       "task_id": "T1115",
@@ -1748,70 +1790,93 @@
       "phase": 11,
       "priority": "P0",
       "summary": "Implement network destination/SSRF policy for tool executors.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-isolation.php"
+      ],
+      "reason": "Host Runner currently has no network primitive and provider isolation fails closed; explicit executor destination/SSRF policy remains incomplete."
     },
     {
       "task_id": "T1117",
       "phase": 11,
       "priority": "P0",
-      "summary": "Add CLI/Runner/Tool Doctor findings and RepairPlan integration.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Add CLI/Runner/Tool Doctor findings and RepairPlan integration. Evidence: Host Runner Doctor/reconciliation + Host Bridge repair-plan/requeue/doctor.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php"
+      ],
+      "reason": "Doctor, reconciliation, RepairPlan and governed requeue are implemented."
     },
     {
       "task_id": "T1118",
       "phase": 11,
       "priority": "P0",
-      "summary": "GATE Shell/flag/path injection negative suite.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "GATE Shell/flag/path injection negative suite. Evidence: Host Runner/Host Bridge shell-command/path/symlink injection negative suites.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php",
+        ".github/workflows/mad4b-site-control-plane.yml"
+      ],
+      "reason": "Shell/command/path/symlink injection is denied by runtime contracts and ordinary-catalog security scan."
     },
     {
       "task_id": "T1119",
       "phase": 11,
       "priority": "P0",
       "summary": "GATE Runner crash/zombie-worker/lease-fencing suite.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "reason": "Durable lease/zombie fencing and Host Runner uncertainty are tested separately; actual runner-process crash-after-lease proof remains open."
     },
     {
       "task_id": "T1120",
       "phase": 11,
       "priority": "P0",
-      "summary": "Define minimal WordPress-independent Recovery Runner.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Define minimal WordPress-independent Recovery Runner. Evidence: `tools/mad4b_recovery_plane.py` WordPress-independent Recovery Plane.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py"
+      ],
+      "reason": "Minimal WordPress-independent Recovery Plane is implemented."
     },
     {
       "task_id": "T1121",
       "phase": 11,
       "priority": "P0",
-      "summary": "GATE Recovery Runner reads package/runtime health while WordPress/plugin boot is broken.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "GATE Recovery Runner reads package/runtime health while WordPress/plugin boot is broken. Evidence: Recovery Plane status/disable/restore contracts execute without WordPress boot/database dependency.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py"
+      ],
+      "reason": "Recovery status/disable/restore operate without WordPress boot or database dependency."
     },
     {
       "task_id": "T1122",
       "phase": 11,
       "priority": "P0",
-      "summary": "GATE Recovery Runner restores an attested known-good package without content publication authority.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "GATE Recovery Runner restores an attested known-good package without content publication authority. Evidence: attested known-good exact-plan restore contract with Production=false and no publication authority.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py"
+      ],
+      "reason": "Externally attested known-good package restore is exact-plan bound and does not create content/Production authority."
     },
     {
       "task_id": "T1123",
@@ -1847,21 +1912,27 @@
       "task_id": "T1126",
       "phase": 11,
       "priority": "P1",
-      "summary": "Certify account-local WP-CLI/Host Runner mappings.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Certify account-local WP-CLI/Host Runner mappings. Evidence: WP-CLI ↔ Host Runner account-local runtime.status mapping contract.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php",
+        "tools/mad4b_host_runner.py"
+      ],
+      "reason": "Account-local WP-CLI and Host Runner mappings share normalized runtime.status semantics."
     },
     {
       "task_id": "T1127",
       "phase": 11,
       "priority": "P1",
-      "summary": "GATE Prove one semantic operation across two executor adapters without Skill/domain changes.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "GATE Prove one semantic operation across two executor adapters without Skill/domain changes. Evidence: `cross-executor-semantic-contract.py` proves `runtime.status.read` across WP-CLI and Host Runner without domain change.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py"
+      ],
+      "reason": "runtime.status.read is proven across WP-CLI and Host Runner without Skill/domain semantic change."
     },
     {
       "task_id": "T1128",
@@ -1878,30 +1949,38 @@
       "phase": 11,
       "priority": "P1",
       "summary": "Add provider-channel drift/quarantine handling.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-isolation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-provider-isolation-contract.py"
+      ],
+      "reason": "Provider-channel drift/isolation fail-closed controls exist; complete Host Runner/provider channel quarantine lifecycle is open."
     },
     {
       "task_id": "T1130",
       "phase": 11,
       "priority": "P1",
       "summary": "Add reversible plugin.package stage/apply/rollback operation.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "reason": "Plugin package stage/restore exists through Recovery Plane; ordinary governed Host Runner plugin.package semantic operation is not yet admitted."
     },
     {
       "task_id": "T1131",
       "phase": 11,
       "priority": "P1",
       "summary": "Add bounded host.files.patch with atomic swap/readback.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "reason": "Atomic exact-plan file replacement is proven only inside the dedicated runner workspace; general bounded host.files.patch is not admitted."
     },
     {
       "task_id": "T1132",
@@ -1917,31 +1996,41 @@
       "task_id": "T1133",
       "phase": 11,
       "priority": "P1",
-      "summary": "Add backup.create/restore contracts + restore rehearsal.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Add backup.create/restore contracts + restore rehearsal. Evidence: protected backup create/verify/restore + corruption/interruption rollback contract.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py"
+      ],
+      "reason": "Protected backup create/verify/restore plus corruption and interrupted-restore rollback are implemented."
     },
     {
       "task_id": "T1134",
       "phase": 11,
       "priority": "P1",
       "summary": "Add bounded database migration/repair operations; keep raw SQL separate.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/schema-live-migration-mariadb-runtime.py"
+      ],
+      "reason": "Bounded schema migration/repair exists inside Control Plane; a Host Runner database repair semantic operation remains open and raw SQL stays separate."
     },
     {
       "task_id": "T1135",
       "phase": 11,
       "priority": "P1",
-      "summary": "Add Host Runner DLQ/replay safety.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Add Host Runner DLQ/replay safety. Evidence: Host Bridge dead-letter, repair-plan, fresh requeue, replay conflict and recovery-required semantics.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py"
+      ],
+      "reason": "Dead-letter, replay conflict, repair-plan, recovery-required and fresh governed requeue semantics are implemented."
     },
     {
       "task_id": "T1136",
@@ -1967,81 +2056,107 @@
       "task_id": "T1138",
       "phase": 11,
       "priority": "P1",
-      "summary": "GATE No generic shell, arbitrary `wp eval`, arbitrary PHP or generic raw SQL in ordinary catalog.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "GATE No generic shell, arbitrary `wp eval`, arbitrary PHP or generic raw SQL in ordinary catalog. Evidence: ordinary catalog security scan + Host Runner/Bridge contracts prove no generic shell, arbitrary `wp eval`, PHP or raw SQL surface.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        ".github/workflows/mad4b-site-control-plane.yml",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "reason": "Ordinary catalog exposes no generic shell, arbitrary wp eval/PHP, or generic raw SQL."
     },
     {
       "task_id": "T1139",
       "phase": 11,
       "priority": "P2",
       "summary": "Add standalone `mad4b` CLI when an operation must not require WordPress bootstrap.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "tools/mad4b_host_runner.py"
+      ],
+      "reason": "Standalone recovery and runner CLIs exist for WordPress-independent operations; a unified standalone `mad4b` CLI is not complete."
     },
     {
       "task_id": "T1140",
       "phase": 11,
       "priority": "P2",
       "summary": "Add bounded SSH executor only where provider/API/runner cannot satisfy certified requirement.",
-      "status": "OPEN",
+      "status": "DEFERRED",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/cli-host-runner.md"
+      ],
+      "reason": "SSH executor is intentionally deferred until provider/API/Host Runner cannot satisfy a certified requirement; adding it now would widen attack surface without need."
     },
     {
       "task_id": "T1141",
       "phase": 11,
       "priority": "P2",
-      "summary": "GATE Production Host Authority remains distinct and denied by default.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "GATE Production Host Authority remains distinct and denied by default. Evidence: Host Runner/Bootstrap/Recovery contracts keep Production authority false and separate.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "tools/mad4b_host_runner_bootstrap.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "reason": "Production Host Authority remains separate and false by default across runner/bootstrap/recovery surfaces."
     },
     {
       "task_id": "T1142",
       "phase": 11,
       "priority": "P0",
-      "summary": "Define WordPress Host Bridge abilities: capabilities/plan/apply/status/cancel/receipt/doctor.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Define WordPress Host Bridge abilities: capabilities/plan/apply/status/cancel/receipt/doctor. Evidence: Host Bridge capabilities/plan/apply/status/cancel/receipt/doctor/repair/requeue abilities.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php"
+      ],
+      "reason": "Host Bridge exposes bounded capabilities/plan/apply/status/cancel/receipt/doctor/repair/requeue abilities."
     },
     {
       "task_id": "T1143",
       "phase": 11,
       "priority": "P0",
-      "summary": "Implement exact-plan enqueue path; WordPress request process MUST NOT become generic shell executor.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Implement exact-plan enqueue path; WordPress request process MUST NOT become generic shell executor. Evidence: exact-plan Host Bridge spool submission; WordPress process never executes host commands.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py"
+      ],
+      "reason": "WordPress process performs exact-plan queue submission only; authoritative host execution remains in Host Runner."
     },
     {
       "task_id": "T1144",
       "phase": 11,
       "priority": "P0",
       "summary": "Define durable queue backend profile and Recovery Plane independence requirement.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "reason": "Dedicated durable filesystem spool and Recovery Plane independence exist; lease-backed durable queue profile is not complete."
     },
     {
       "task_id": "T1145",
       "phase": 11,
       "priority": "P0",
-      "summary": "GATE Apply submission cannot mutate reviewed operation/target/executor/argv/authority.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "GATE Apply submission cannot mutate reviewed operation/target/executor/argv/authority. Evidence: immutable plan digest/target/executor/authority validation before runner execution.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py"
+      ],
+      "reason": "Apply/consume validates immutable plan, target, executor and authority evidence before execution."
     },
     {
       "task_id": "T1146",
@@ -2058,10 +2173,13 @@
       "phase": 11,
       "priority": "P0",
       "summary": "Certify runner/CLI executable provenance, resolved path and package hash.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "tools/mad4b_host_runner_bootstrap.py"
+      ],
+      "reason": "Runner executable/package provenance is exact-SHA bound; complete CLI/provider executable provenance inventory remains open."
     },
     {
       "task_id": "T1148",
@@ -2078,130 +2196,168 @@
       "phase": 11,
       "priority": "P0",
       "summary": "Enforce offline authorization windows and fresh commit-guard validation for queued host writes.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "reason": "Expiring job/profile/target evidence and precommit revalidation exist; full offline authorization-window + fresh central commit-guard integration remains open."
     },
     {
       "task_id": "T1150",
       "phase": 11,
       "priority": "P0",
       "summary": "GATE Zombie/expired runner cannot commit after fencing loss.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
+        "tools/mad4b_host_runner.py"
+      ],
+      "reason": "Durable execution fencing blocks stale workers and Host Runner revalidates target/evidence; actual runner lease-loss commit denial is not yet proven end-to-end."
     },
     {
       "task_id": "T1151",
       "phase": 11,
       "priority": "P0",
-      "summary": "GATE Recovery Runner trust does not depend on the broken package it may replace.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "GATE Recovery Runner trust does not depend on the broken package it may replace. Evidence: Recovery Plane verifies/restores independently from the plugin package it may replace.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py"
+      ],
+      "reason": "Recovery trust and package verification do not depend on loading the package being replaced."
     },
     {
       "task_id": "T1152",
       "phase": 11,
       "priority": "P1",
-      "summary": "Add artifact-input hash/attestation verification before host package staging.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Add artifact-input hash/attestation verification before host package staging. Evidence: Runner bootstrap and Recovery Plane verify exact package/artifact digest/attestation before staging.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "Artifact/package hashes and trust evidence are verified before runner/package staging."
     },
     {
       "task_id": "T1153",
       "phase": 11,
       "priority": "P1",
       "summary": "Add executor runtime-profile compatibility evidence (OS/PHP/WP-CLI/provider CLI/filesystem/process semantics).",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "tools/mad4b_host_runner.py"
+      ],
+      "reason": "Runner runtime profile/target identity exists; full OS/PHP/WP-CLI/provider CLI/process compatibility evidence is incomplete."
     },
     {
       "task_id": "T1154",
       "phase": 11,
       "priority": "P0",
-      "summary": "GATE Prove submission_location and authoritative execution_location are truthful and exact-plan bound across direct and queued host execution.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "GATE Prove submission_location and authoritative execution_location are truthful and exact-plan bound across direct and queued host execution. Evidence: Host Bridge→Runner contract binds `submission_location=wordpress_request`, `execution_location=host_runner`, plan and authority.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "reason": "submission_location and execution_location remain truthful and exact-plan bound across queued execution."
     },
     {
       "task_id": "T1155",
       "phase": 11,
       "priority": "P0",
-      "summary": "Define RunnerPackage attestation/manifest/runtime-profile contract.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Define RunnerPackage attestation/manifest/runtime-profile contract. Evidence: `mad4b_host_runner_bootstrap.py` RunnerPackage manifest/runtime-profile contract.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "RunnerPackage manifest, attestation and runtime-profile contract are implemented."
     },
     {
       "task_id": "T1156",
       "phase": 11,
       "priority": "P0",
-      "summary": "Define bounded runner bootstrap BootstrapTransition and authority requirements.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Define bounded runner bootstrap BootstrapTransition and authority requirements. Evidence: bounded Staging-only bootstrap transition with no standing authority creation.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "Bounded Staging-only bootstrap transition is exact-package/target bound and non-authorizing."
     },
     {
       "task_id": "T1157",
       "phase": 11,
       "priority": "P0",
-      "summary": "Implement one-time target-bound RunnerEnrollment identity handshake.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "Implement one-time target-bound RunnerEnrollment identity handshake. Evidence: target-bound single-use RunnerEnrollment handshake contract.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "One-time target-bound RunnerEnrollment handshake is implemented."
     },
     {
       "task_id": "T1158",
       "phase": 11,
       "priority": "P0",
       "summary": "Implement provider-neutral bootstrap channel resolver with no privilege-widening fallback.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py"
+      ],
+      "reason": "Bootstrap descriptors are provider-neutral and non-widening; multi-channel resolver certification is incomplete."
     },
     {
       "task_id": "T1159",
       "phase": 11,
       "priority": "P0",
       "summary": "Implement exact cron/service wake-up registration + readback/removal profile.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "Wake-up/scheduler descriptor is exact and validated; actual cron/service registration, readback and removal on a supported host remains open."
     },
     {
       "task_id": "T1160",
       "phase": 11,
       "priority": "P0",
-      "summary": "GATE Reject replayed enrollment, wrong target/root, untrusted package and unexpected scheduling command.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "summary": "GATE Reject replayed enrollment, wrong target/root, untrusted package and unexpected scheduling command. Evidence: bootstrap negative suite rejects enrollment replay, wrong target/root, untrusted package and unexpected scheduler command.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "Negative suite rejects enrollment replay, wrong target/root, untrusted package and unexpected scheduler command."
     },
     {
       "task_id": "T1161",
       "phase": 11,
       "priority": "P0",
       "summary": "GATE Prove one supported hosting profile installs/enrolls Host Runner without interactive terminal.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "Non-interactive install/enrollment is proven in repository fixture; certification on a supported real hosting profile remains open."
     },
     {
       "task_id": "T1162",
