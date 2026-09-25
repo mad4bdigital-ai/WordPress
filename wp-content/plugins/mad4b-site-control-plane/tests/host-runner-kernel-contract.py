@@ -265,7 +265,11 @@ with tempfile.TemporaryDirectory() as td:
         runner.run_job(profile_path, symlink_path)
         raise SystemExit("Host Runner followed symlink outside zone")
     except ValueError as exc:
-        if "symlink" not in str(exc):
+        message = str(exc)
+        if (
+            "symlink" not in message
+            and "link/reparse path component forbidden" not in message
+        ):
             raise
 
     # Executor identity is approval material: a different runner fingerprint fails even with a valid MAC.
