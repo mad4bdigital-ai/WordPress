@@ -66,6 +66,9 @@ final class MAD4B_SCP_Governed_Draft {
 		if ( empty( $qa['payload']['pass'] ) || ! empty( $qa['payload']['hard_blockers'] ) ) {
 			return new WP_Error( 'mad4b_draft_final_qa_blocked', 'FinalQA hard blockers prevent WordPress draft mutation.' );
 		}
+		if ( ! isset( $qa['payload']['draft_artifact_id'] ) || ! hash_equals( $draft_id, (string) $qa['payload']['draft_artifact_id'] ) ) {
+			return new WP_Error( 'mad4b_draft_final_qa_lineage_mismatch', 'FinalQA does not certify the selected ArticleDraft.' );
+		}
 		if ( ! empty( $qa['payload']['can_publish'] ) || ! empty( $qa['payload']['publication_authorized'] ) ) {
 			return new WP_Error( 'mad4b_draft_qa_authority_invalid', 'QA artifact must not create publishing authority.' );
 		}
@@ -125,6 +128,9 @@ final class MAD4B_SCP_Governed_Draft {
 		$qa = self::artifact( (string) $plan['final_qa_artifact_id'], (string) $plan['job_id'], 'final_qa' );
 		if ( is_wp_error( $qa ) ) return $qa;
 		if ( empty( $qa['payload']['pass'] ) || ! empty( $qa['payload']['hard_blockers'] ) ) return new WP_Error( 'mad4b_draft_final_qa_blocked', 'FinalQA changed or is blocked.' );
+		if ( ! isset( $qa['payload']['draft_artifact_id'] ) || ! hash_equals( (string) $plan['draft_artifact_id'], (string) $qa['payload']['draft_artifact_id'] ) ) {
+			return new WP_Error( 'mad4b_draft_final_qa_lineage_mismatch', 'FinalQA no longer certifies the planned ArticleDraft.' );
+		}
 		if ( ! hash_equals( (string) $plan['draft_artifact_sha256'], self::artifact_sha( $draft ) ) ) return new WP_Error( 'mad4b_draft_artifact_stale', 'Draft artifact changed since plan.' );
 		if ( ! hash_equals( (string) $plan['final_qa_artifact_sha256'], self::artifact_sha( $qa ) ) ) return new WP_Error( 'mad4b_draft_qa_stale', 'FinalQA artifact changed since plan.' );
 
