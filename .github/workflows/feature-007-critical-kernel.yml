@@ -14,8 +14,6 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
@@ -68,6 +66,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
@@ -157,7 +157,7 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py
 
-      - name: Verify read-only Host Runner kernel
+      - name: Verify bounded Host Runner kernel
         shell: bash
         run: |
           set -euo pipefail
