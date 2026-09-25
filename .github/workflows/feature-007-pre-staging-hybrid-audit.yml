@@ -66,6 +66,20 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-registry-contract.py
 
+      - name: WordPress Plugin Check (pinned official action)
+        uses: WordPress/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e
+        with:
+          build-dir: './wp-content/plugins/mad4b-site-control-plane'
+          categories: |
+            security
+            general
+            performance
+          include-experimental: 'false'
+          ignore-errors: 'false'
+          ignore-warnings: 'false'
+          strict: 'false'
+          slug: 'mad4b-site-control-plane'
+
       - name: MAD4B-specific pre-Staging audit
         shell: bash
         run: |
