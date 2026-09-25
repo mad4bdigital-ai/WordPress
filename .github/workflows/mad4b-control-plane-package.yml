@@ -161,23 +161,45 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          seed='wp-content/plugins/mad4b-site-control-plane/skill-seeds'
-          expected=(
-            wordpress-site-diagnostics
-            wordpress-connection-diagnostics
-            elementor-dynamic-content
-            jetengine-content-modeling
-            wordpress-archive-audit
-            wordpress-change-safety
-            wordpress-release-orchestration
-            wordpress-browser-acceptance
-            wordpress-content-authoring
-          )
-          test -d "$seed"
-          test "$(find "$seed" -mindepth 2 -maxdepth 2 -type f -name SKILL.md | wc -l)" = '9'
-          for name in "${expected[@]}"; do
-            cmp --silent "$seed/$name/SKILL.md" "plugins/mad4b-wordpress/skills/$name/SKILL.md"
-          done
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('wp-content/plugins/mad4b-site-control-plane')
+          seed = root / 'skill-seeds'
+          portable = Path('plugins/mad4b-wordpress/skills')
+          manifest_path = root / 'config/skill-seed-manifest.json'
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+
+          if manifest.get('contract') != 'mad4b.skill-seed-manifest.v1':
+              raise SystemExit('canonical Skill manifest contract mismatch')
+
+          rows = manifest.get('skills')
+          if not isinstance(rows, list):
+              raise SystemExit('canonical Skill manifest rows missing')
+
+          expected = sorted({
+              str(row.get('name') or '').strip()
+              for row in rows
+              if isinstance(row, dict) and row.get('enabled') is True and str(row.get('name') or '').strip()
+          })
+          if len(expected) != len([row for row in rows if isinstance(row, dict) and row.get('enabled') is True]):
+              raise SystemExit('enabled Skill manifest contains missing or duplicate names')
+
+          seeded = sorted(p.parent.name for p in seed.glob('*/SKILL.md'))
+          if seeded != expected:
+              raise SystemExit(f'canonical Skill seed inventory mismatch expected={expected} actual={seeded}')
+
+          for name in expected:
+              seed_file = seed / name / 'SKILL.md'
+              portable_file = portable / name / 'SKILL.md'
+              if not portable_file.is_file():
+                  raise SystemExit(f'portable Skill missing: {name}')
+              if seed_file.read_bytes() != portable_file.read_bytes():
+                  raise SystemExit(f'portable/canonical Skill bytes drifted: {name}')
+
+          print(f'canonical Skill seed package: PASS count={len(expected)} seed_version={manifest.get("seed_version")}')
+          PY
 
       - name: Verify certified MCP Adapter asset
         shell: bash
