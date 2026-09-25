@@ -25,7 +25,6 @@ env:
   BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
   HEAD_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
   PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
-  MAD4B_RULESET_ATTESTATION: ${{ vars.MAD4B_RULESET_ATTESTATION }}
 
 jobs:
   verdict:
@@ -33,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: repository-governance
     timeout-minutes: 25
+    env:
+      MAD4B_RULESET_ATTESTATION: ${{ vars.MAD4B_RULESET_ATTESTATION }}
     steps:
       - name: Checkout exact head
         uses: actions/checkout@v4
