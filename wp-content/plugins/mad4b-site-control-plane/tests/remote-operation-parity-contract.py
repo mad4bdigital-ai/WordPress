@@ -15,6 +15,8 @@ required_parity_markers = [
     "const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';",
     "const FRONTEND_SAMPLE_ABILITY = 'mad4b/frontend-performance-sample-run';",
     "const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';",
+    "const PERFORMANCE_RECONCILE_ABILITY = 'mad4b/admin-query-performance-reconcile';",
+    "const PERFORMANCE_RECONCILE_CONFIRMATION = 'RECONCILE STALE STAGING PERFORMANCE INDEXES';",
     "'generic_remote_admin' => false",
     "'production_mutation_allowed' => false",
     "'raw_shell_exposed' => false",
@@ -100,6 +102,7 @@ for ability in [
     'mad4b/reconcile-managed-skills',
     'mad4b/frontend-performance-sample-run',
     'mad4b/admin-query-performance-apply',
+    'mad4b/admin-query-performance-reconcile',
 ]:
     if ability not in servers:
         raise SystemExit(f'{ability} missing from bounded enrollment surface')
@@ -123,6 +126,10 @@ for marker in [
     "release_job_lock",
     "mad4b_admin_query_performance_lock_reclaim_raced",
     "mad4b_admin_query_performance_queue_required",
+    "const JOB_RUNNING_TTL = 1800;",
+    "public static function reconcile_stale_job(",
+    "mad4b_admin_query_performance_reconciliation_required",
+    "'blind_retry_allowed' => false",
 ]:
     if marker not in perf:
         raise SystemExit(f'performance maintenance lacks durable queued execution invariant: {marker}')
@@ -139,6 +146,10 @@ if "apply_indexes()" in maybe_apply:
 worker = perf.split("public static function run_scheduled_apply(", 1)[1].split("private static function audit_job(", 1)[0]
 if "$result = self::apply_indexes();" not in worker:
     raise SystemExit("private performance DDL must be reachable only from the scheduled worker")
+
+if "apply_indexes()" in perf.split("public static function reconcile_stale_job(", 1)[1].split("public static function enqueue_explicit(", 1)[0]:
+    raise SystemExit("stale performance reconciliation must never execute or retry DDL")
+
 
 if 'One service, many frontends' not in generalization:
     raise SystemExit('generalization contract lost one-service-many-frontends rule')
