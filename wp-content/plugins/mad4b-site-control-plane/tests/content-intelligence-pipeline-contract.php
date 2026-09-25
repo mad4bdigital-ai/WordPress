@@ -141,6 +141,48 @@ $draft=MAD4B_SCP_Content_Intelligence_Pipeline::append_draft(array(
 $check(is_array($draft) && true===$draft['artifact']['payload']['can_write'],'Approved draft append failed');
 $draft_id=$draft['artifact']['artifact_id'];
 
+// A passing QA artifact for another Blueprint may never authorize this Blueprint.
+$other_blueprint_id='00000000-0000-4000-8000-999999999991';
+MAD4B_SCP_Artifacts::$rows[$other_blueprint_id]=array(
+	'artifact_id'=>$other_blueprint_id,
+	'job_id'=>$job,
+	'artifact_type'=>'blueprint',
+	'status'=>'active',
+	'version'=>1,
+	'payload'=>array('contract'=>'mad4b.content-blueprint.v1','context_artifact_id'=>$context_id,'can_plan'=>true),
+	'metadata'=>array(),
+	'producer_stage'=>'BLUEPRINT',
+);
+$foreign_qa=MAD4B_SCP_Content_Intelligence_Pipeline::blueprint_qa(array(
+	'job_id'=>$job,'blueprint_artifact_id'=>$other_blueprint_id,
+	'hard_blockers'=>array(),'warnings'=>array(),
+));
+$foreign_draft=MAD4B_SCP_Content_Intelligence_Pipeline::append_draft(array(
+	'job_id'=>$job,'blueprint_artifact_id'=>$blueprint_id,
+	'blueprint_qa_artifact_id'=>$foreign_qa['artifact']['artifact_id'],
+	'context_artifact_id'=>$context_id,'content'=>'Must be rejected',
+));
+$check(is_wp_error($foreign_draft) && 'mad4b_blueprint_qa_lineage_mismatch'===$foreign_draft->get_error_code(),'Draft accepted QA from another Blueprint');
+
+// A Blueprint may not be paired with a different active ContextPack.
+$other_context_id='00000000-0000-4000-8000-999999999992';
+MAD4B_SCP_Artifacts::$rows[$other_context_id]=array(
+	'artifact_id'=>$other_context_id,
+	'job_id'=>$job,
+	'artifact_type'=>'context_pack',
+	'status'=>'active',
+	'version'=>1,
+	'payload'=>array('contract'=>'mad4b.context-pack.v1','ready'=>true),
+	'metadata'=>array(),
+	'producer_stage'=>'KNOWLEDGE_DISPATCH',
+);
+$context_mismatch=MAD4B_SCP_Content_Intelligence_Pipeline::append_draft(array(
+	'job_id'=>$job,'blueprint_artifact_id'=>$blueprint_id,
+	'blueprint_qa_artifact_id'=>$pass_qa_id,
+	'context_artifact_id'=>$other_context_id,'content'=>'Must be rejected',
+));
+$check(is_wp_error($context_mismatch) && 'mad4b_blueprint_context_lineage_mismatch'===$context_mismatch->get_error_code(),'Draft accepted ContextPack outside Blueprint lineage');
+
 $qa=MAD4B_SCP_Content_Intelligence_Pipeline::append_qa_bundle(array(
 	'job_id'=>$job,'draft_artifact_id'=>$draft_id,
 	'fact_ledger'=>array('claims'=>array(),'hard_blockers'=>array('unsupported_claim')),
