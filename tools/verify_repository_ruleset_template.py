@@ -97,6 +97,8 @@ def verify(template: dict, policy: dict, readback: dict | None = None) -> dict:
     if policy.get("require_no_bypass_actors") is not True:
         raise ValueError("repository governance policy must forbid bypass actors")
     expected_attestation = {
+        "scope": "environment",
+        "environment_name": "repository-governance",
         "variable_name": "MAD4B_RULESET_ATTESTATION",
         "contract": "mad4b.repository-ruleset-attestation.v1",
         "require_zero_bypass_actors": True,
@@ -219,6 +221,8 @@ def verify(template: dict, policy: dict, readback: dict | None = None) -> dict:
         ],
         "rule_types": sorted(expected_types),
         "readback_verified": readback_verified,
+        "ruleset_attestation_scope": "environment",
+        "ruleset_attestation_environment": "repository-governance",
         "ruleset_attestation_variable": "MAD4B_RULESET_ATTESTATION",
         "mutation_performed": False,
     }
