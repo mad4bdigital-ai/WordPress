@@ -154,11 +154,9 @@
     ".github/workflows/mad4b-provider-compatibility-engine.yml",
     ".github/workflows/mad4b-owner-attestation-rerun.yml",
     ".github/workflows/mad4b-release-verdict.yml",
-    ".github/workflows/mad4b-repository-governance.yml",
     ".github/workflows/mad4b-site-control-plane.yml",
     ".github/workflows/mad4b-context-authority.yml",
     ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-    ".github/mad4b-repository-governance-policy.json",
     "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/SKILL.md",
     "plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md",
     "specs/007-content-intelligence-workflow-platform/",
@@ -167,7 +165,6 @@
     "tools/mad4b_host_runner_bootstrap.py",
     "tools/mad4b_pre_staging_hybrid_audit.py",
     "tools/verify_release_root_trust.py",
-    "tools/verify_repository_owner_attestation.py",
     "wp-content/plugins/mad4b-site-control-plane/"
   ],
   "cross_feature_contract_dependencies": [
@@ -223,11 +220,12 @@
   "future_discoverability_policy": "all automation-eligible operations require governed remote parity and discoverable metadata",
   "implementation_allowed_paths_semantics": "legacy-descriptive-evidence-only",
   "implementation_boundary_policy": {
-    "contract": "mad4b.feature-boundary-binding.v1",
-    "policy_contract": "mad4b.feature-boundary-policy.v1",
-    "policy_path": ".github/mad4b-feature-boundary-policy.json",
+    "contract": "mad4b.feature-boundary-binding.v2",
+    "policy_contract": "mad4b.repository-governance-policy.v1",
+    "policy_path": ".github/mad4b-repository-governance-policy.json",
     "skill_inventory_source": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
     "cross_feature_dependencies_are_exact": true,
-    "mutable_metadata_cannot_widen_policy": true
+    "mutable_metadata_cannot_widen_policy": true,
+    "repository_governance_changes_are_separately_governed": true
   }
 }
