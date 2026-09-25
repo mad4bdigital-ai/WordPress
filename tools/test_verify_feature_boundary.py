@@ -227,6 +227,7 @@ for protected_root in [
     "tools/Apply-Mad4bMasterRuleset.ps1",
     "tools/verify_feature_boundary_bootstrap_transition.py",
     "tools/verify_repository_ruleset_template.py",
+    "tools/verify_repository_ruleset_restore.py",
 ]:
     run_case(
         [protected_root],
