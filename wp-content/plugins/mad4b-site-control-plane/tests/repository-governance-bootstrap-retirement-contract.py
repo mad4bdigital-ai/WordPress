@@ -76,7 +76,39 @@ for needle in rerun_required:
         raise SystemExit(f"owner-attestation rerun lifecycle missing: {needle}")
 
 actions_expression_safety_required = [
-    "base_ref_expression = 'ref:     "tools/capture_exact_head_action_jobs.py",
+    "expression_open = '$' + chr(123) + chr(123)",
+    "expression_close = chr(125) + chr(125)",
+    "base_ref_expression = (",
+    "head_ref_expression = (",
+    "if base_ref_expression not in boundary_workflow:",
+    "if head_ref_expression in boundary_workflow:",
+]
+for needle in actions_expression_safety_required:
+    if needle not in verdict:
+        raise SystemExit(f"Release Verdict root-trust expression safety missing: {needle}")
+
+direct_base_ref = (
+    "ref: $" + chr(123) + chr(123)
+    + " github.event.pull_request.base.sha "
+    + chr(125) + chr(125)
+)
+direct_head_ref = (
+    "ref: $" + chr(123) + chr(123)
+    + " github.event.pull_request.head.sha "
+    + chr(125) + chr(125)
+)
+for forbidden in [
+    "if '" + direct_base_ref + "' not in boundary_workflow:",
+    "if '" + direct_head_ref + "' in boundary_workflow:",
+]:
+    if forbidden in verdict:
+        raise SystemExit(
+            "Release Verdict contains an Actions-interpolated root-trust literal: "
+            + forbidden
+        )
+
+actions_job_evidence_required = [
+    "tools/capture_exact_head_action_jobs.py",
     "github_actions_runs_jobs_api",
     "elif os.environ.get('GITHUB_EVENT_NAME') == 'push':",
     "required = [name for name in required if name != 'Repository feature boundary']",
