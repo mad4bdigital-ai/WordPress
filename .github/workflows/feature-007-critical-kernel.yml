@@ -5,25 +5,86 @@ on:
     paths:
       - 'tools/verify_release_root_trust.py'
       - 'tools/mad4b_recovery_plane.py'
+      - 'tools/mad4b_host_runner.py'
+      - 'tools/mad4b_host_runner_bootstrap.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-path-security-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-path-security-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/publication-verification-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/workflow-provider-plan-fingerprint-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workflow-providers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/research-provider-plan-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/policy-resolution-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/formal-critical-state-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/security-ai-eval-faults-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/artifact-registry-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-pack-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/research-intelligence-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-draft.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-publication-verification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-pack.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy-resolution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/policy-resolution.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-uncertain-execution-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-uncertain-execution-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
       - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
       - 'wp-content/plugins/bit-pi.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v9-integration.sh'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v11-integration.sh'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py'
       - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-closure-matrix-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php'
+      - 'specs/007-content-intelligence-workflow-platform/contracts/remote-operation-parity-discoverability.md'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
@@ -36,6 +97,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -47,10 +109,50 @@ on:
     paths:
       - 'tools/verify_release_root_trust.py'
       - 'tools/mad4b_recovery_plane.py'
+      - 'tools/mad4b_host_runner.py'
+      - 'tools/mad4b_host_runner_bootstrap.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/publication-verification-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/policy-resolution-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/formal-critical-state-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/security-ai-eval-faults-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/artifact-registry-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-pack-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/research-intelligence-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-draft.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-publication-verification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-pack.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy-resolution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/policy-resolution.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
@@ -59,13 +161,18 @@ on:
       - 'wp-content/plugins/bit-pi.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v9-integration.sh'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v11-integration.sh'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py'
       - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-closure-matrix-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php'
+      - 'specs/007-content-intelligence-workflow-platform/contracts/remote-operation-parity-discoverability.md'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
@@ -78,6 +185,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -115,7 +223,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m py_compile             tools/verify_release_root_trust.py             tools/mad4b_recovery_plane.py
+          python3 -m py_compile \
+            tools/verify_release_root_trust.py \
+            tools/mad4b_recovery_plane.py \
+            tools/mad4b_host_runner.py \
+            tools/mad4b_host_runner_bootstrap.py
 
       - name: Verify external release root-trust contract
         shell: bash
@@ -129,6 +241,49 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py
 
+      - name: Verify bounded Host Runner kernel
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py
+
+      - name: Verify POSIX Host Runner link path security
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/host-runner-path-security-contract.py
+
+      - name: Verify Host Runner bootstrap and enrollment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py
+
+      - name: Verify governed WordPress Host Bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php
+
+      - name: Prove Host Bridge to Runner end-to-end
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py
+
+      - name: Verify canonical read-only wp mad4b CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php
+
+      - name: Prove WP-CLI and Host Runner semantic parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py
+
       - name: Verify execution Commit Guard contract
         shell: bash
         run: |
@@ -141,11 +296,134 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py
 
+      - name: Verify remote operation parity and future discoverability
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php
+
+      - name: Verify provider closure matrix and authority operation discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-closure-matrix-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php
+
       - name: Verify durable execution contract
         shell: bash
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py
+
+      - name: Verify ContentJob domain contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py
+
+      - name: Verify Intent Registry semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php
+
+      - name: Verify Blueprint Draft QA semantic pipeline
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php
+
+      - name: Verify governed WordPress draft orchestration
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-draft.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php
+
+      - name: Verify publication verification reducer
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-publication-verification.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/publication-verification-contract.php
+
+      - name: Verify formal Critical Kernel state proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/formal-critical-state-contract.py
+
+      - name: Verify cross-surface security AI eval faults
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/security-ai-eval-faults-contract.py
+
+      - name: Verify capability trait resolver contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php
+
+      - name: Verify provider fingerprints invalidate workflow plans
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workflow-providers.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/workflow-provider-plan-fingerprint-contract.php
+
+      - name: Verify data rights and AI processing governance
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php
+
+      - name: Verify governance-bound research provider planning
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/research-provider-plan-contract.php
+
+      - name: Verify scheduler backlog and local autonomy admission
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php
+
+      - name: Verify decommission and portability preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php
+
+      - name: Verify deterministic policy resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy-resolution.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/policy-resolution-contract.php
+
+      - name: Verify read-only Operator Doctor
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php
+
+      - name: Verify read-only existing-site bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php
 
       - name: Verify Ability category and schema diagnostic contract
         shell: bash
@@ -159,7 +437,7 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py
 
-      - name: Verify Schema v9 migration runtime lifecycle
+      - name: Verify Schema v11 migration runtime lifecycle
         shell: bash
         run: |
           set -euo pipefail
@@ -194,6 +472,13 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py
+
+      - name: Prove Bit Flows possible-side-effect timeout reconciliation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/bitflows-uncertain-execution-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/bitflows-uncertain-execution-runtime.php
 
       - name: Inspect exact Bit Flows package semantics
         shell: bash
@@ -276,8 +561,37 @@ jobs:
           retention-days: 14
 
 
-  schema-mariadb-v6-v9:
-    name: Schema v6 v7 v8 to v9 real MariaDB upgrade
+  host-runner-windows-path-security:
+    name: Host Runner Windows reparse path security
+    runs-on: windows-latest
+    timeout-minutes: 8
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact implementation head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source identity
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne $env:SOURCE_SHA) {
+            throw "Exact source identity mismatch."
+          }
+
+      - name: Compile Host Runner
+        shell: pwsh
+        run: |
+          python -m py_compile tools/mad4b_host_runner.py
+
+      - name: Deny Windows junction/reparse path traversal
+        shell: pwsh
+        run: |
+          python wp-content/plugins/mad4b-site-control-plane/tests/host-runner-path-security-contract.py
+
+  schema-mariadb-v6-v11:
+    name: Schema v6 v7 v8 v9 to v11 real MariaDB upgrade
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -341,8 +655,57 @@ jobs:
           '
           wp core install             --allow-root             --url=http://mad4b-schema.test             --title='MAD4B Schema Migration'             --admin_user=admin             --admin_password='mad4b-schema-ci-only'             --admin_email=ci@example.invalid             --skip-email
 
-      - name: Prove real MariaDB schema v6 to v9 migration
+      - name: Prove real MariaDB schema v6 v7 v8 v9 to v11 migration
         shell: bash
         run: |
           set -euo pipefail
-          bash wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v9-integration.sh
+          bash wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v11-integration.sh
+
+      - name: Prove durable execution runtime fault semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file             wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php
+
+      - name: Prove ContentJob runtime domain semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file             wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php
+
+      - name: Prove ContentJob concurrent revision CAS
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh
+
+      - name: Prove Operator Doctor and DLQ runtime diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file \
+            wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-runtime.php
+
+      - name: Prove Artifact Registry runtime lineage
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file             wp-content/plugins/mad4b-site-control-plane/tests/artifact-registry-runtime.php
+
+      - name: Prove Intent Registry v11 runtime reconciliation
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file             wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-runtime.php
+
+      - name: Prove governed ContextPack runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file             wp-content/plugins/mad4b-site-control-plane/tests/context-pack-runtime.php
+
+      - name: Prove normalized Research Intelligence runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file             wp-content/plugins/mad4b-site-control-plane/tests/research-intelligence-runtime.php
