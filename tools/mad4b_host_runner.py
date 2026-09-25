@@ -1444,6 +1444,162 @@ def _bridge_submission_to_job(profile: dict[str, Any], submission: dict[str, Any
     return job
 
 
+def _bridge_running_claim(
+    profile: dict[str, Any],
+    submission: dict[str, Any],
+    lease_seconds: int = 300,
+) -> dict[str, Any]:
+    if lease_seconds < 30 or lease_seconds > 3600:
+        raise ValueError("Host Bridge running lease must be 30..3600 seconds")
+    now = datetime.now(timezone.utc)
+    return {
+        "contract": "mad4b.host-bridge-running.v1",
+        "job_id": str(submission.get("job_id") or "").lower(),
+        "submission_sha256": str(submission.get("submission_sha256") or "").lower(),
+        "submission": submission,
+        "runner_profile_id": profile["profile_id"],
+        "runner_instance_id": f"{profile['profile_id']}:{os.getpid()}",
+        "claimed_at": now.isoformat().replace("+00:00", "Z"),
+        "lease_expires_at": (now + timedelta(seconds=lease_seconds)).isoformat().replace("+00:00", "Z"),
+        "mutation_performed": False,
+    }
+
+
+def _bridge_running_submission(row: dict[str, Any]) -> tuple[dict[str, Any], str]:
+    contract = str(row.get("contract") or "")
+    if contract == "mad4b.host-bridge-running.v1":
+        submission = row.get("submission")
+        if not isinstance(submission, dict):
+            raise ValueError("Host Bridge running claim submission missing")
+        return submission, str(row.get("lease_expires_at") or "")
+    if contract == "mad4b.host-bridge-submission.v1":
+        # Crash may occur after queued->running rename but before claim metadata
+        # is persisted. The original submission itself remains recoverable.
+        return row, ""
+    raise ValueError("Host Bridge running record contract mismatch")
+
+
+def reconcile_bridge_spool(
+    profile_path: Path,
+    stale_seconds: int = 300,
+    limit: int = 100,
+) -> dict[str, Any]:
+    profile = load_profile(profile_path)
+    if stale_seconds < 30 or stale_seconds > 86400:
+        raise ValueError("Host Bridge stale_seconds must be 30..86400")
+    if limit < 1 or limit > 100:
+        raise ValueError("Host Bridge reconciliation limit must be 1..100")
+
+    bridge_root = Path(profile["bridge_root"])
+    for name in ("queued", "running", "receipts", "dead-letter", "recovery-required"):
+        path = bridge_root / name
+        if path.exists() and (path.is_symlink() or not path.is_dir()):
+            raise ValueError("Host Bridge spool directory is invalid")
+        path.mkdir(parents=True, exist_ok=True)
+
+    receipt_root = Path(profile["receipt_root"])
+    journal_root = Path(profile["journal_root"])
+    now = datetime.now(timezone.utc)
+    reconciled: list[dict[str, Any]] = []
+
+    for running in sorted((bridge_root / "running").glob("*.json"))[:limit]:
+        if running.is_symlink() or not running.is_file():
+            continue
+        row = load_json_bounded(running, MAX_RECEIPT_BYTES)
+        submission, lease_expires_raw = _bridge_running_submission(row)
+        job_id = str(submission.get("job_id") or "").lower()
+        if not re.fullmatch(r"[a-f0-9-]{36}", job_id) or running.stem != job_id:
+            raise ValueError("Host Bridge running job identity mismatch")
+        supplied_submission_sha = str(submission.get("submission_sha256") or "").lower()
+        if not re.fullmatch(r"[a-f0-9]{64}", supplied_submission_sha):
+            raise ValueError("Host Bridge running submission digest invalid")
+        if not hmac.compare_digest(supplied_submission_sha, _bridge_digest(submission)):
+            raise ValueError("Host Bridge running submission digest mismatch")
+
+        stale = False
+        if lease_expires_raw:
+            try:
+                lease_expires = datetime.fromisoformat(lease_expires_raw.replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise ValueError("Host Bridge running lease timestamp invalid") from exc
+            stale = lease_expires <= now
+        else:
+            stale = (now.timestamp() - running.stat().st_mtime) >= stale_seconds
+        if not stale:
+            continue
+
+        bridge_receipt_path = bridge_root / "receipts" / f"{job_id}.json"
+        local_receipt_path = receipt_root / f"{job_id}.json"
+        journal_path = journal_root / f"{job_id}.json"
+
+        if bridge_receipt_path.is_file() and not bridge_receipt_path.is_symlink():
+            receipt = load_json_bounded(bridge_receipt_path, MAX_RECEIPT_BYTES)
+            if str(receipt.get("bridge_submission_sha256") or "") != supplied_submission_sha:
+                raise ValueError("Host Bridge durable receipt lineage mismatch")
+            running.unlink()
+            reconciled.append({"job_id": job_id, "state": "STALE_RUNNING_CLEARED_DURABLE_BRIDGE_RECEIPT"})
+            continue
+
+        if local_receipt_path.is_file() and not local_receipt_path.is_symlink():
+            receipt = load_json_bounded(local_receipt_path, MAX_RECEIPT_BYTES)
+            if receipt.get("contract") != RECEIPT_CONTRACT:
+                raise ValueError("Host Bridge local receipt contract mismatch during reconciliation")
+            if str(receipt.get("bridge_submission_sha256") or "") != supplied_submission_sha:
+                raise ValueError("Host Bridge local receipt lineage mismatch during reconciliation")
+            bridge_receipt = dict(receipt)
+            bridge_receipt["bridge_contract"] = "mad4b.host-bridge-execution.v1"
+            bridge_receipt["bridge_submission_sha256"] = supplied_submission_sha
+            bridge_receipt["reconciled_from_stale_running"] = True
+            atomic_json_write(bridge_receipt_path, bridge_receipt)
+            running.unlink()
+            reconciled.append({"job_id": job_id, "state": "BRIDGE_RECEIPT_REPAIRED_FROM_LOCAL_RECEIPT"})
+            continue
+
+        if journal_path.is_file() and not journal_path.is_symlink():
+            journal = load_json_bounded(journal_path, MAX_RECEIPT_BYTES)
+            if journal.get("contract") != "mad4b.host-runner-mutation-journal.v1":
+                raise ValueError("Host Bridge mutation journal contract mismatch during reconciliation")
+            incident = {
+                "contract": "mad4b.host-bridge-incident.v1",
+                "job_id": job_id,
+                "submission_sha256": supplied_submission_sha,
+                "reason_code": "stale_running_with_mutation_evidence",
+                "failure_class": "StaleRunningMutationEvidence",
+                "failure_message_sha256": sha256_bytes(
+                    f"{journal.get('state','')}:{journal.get('plan_sha256','')}".encode()
+                ),
+                "blind_retry_allowed": False,
+                "payload_persisted": False,
+                "reconciliation_required": True,
+                "journal_state": str(journal.get("state") or ""),
+                "created_at": utc_now(),
+            }
+            atomic_json_write(bridge_root / "recovery-required" / f"{job_id}.json", incident)
+            running.unlink()
+            reconciled.append({"job_id": job_id, "state": "RECOVERY_REQUIRED"})
+            continue
+
+        # No execution receipt and no mutation journal means execution never
+        # crossed the mutation-intent boundary. Requeue the exact signed
+        # semantic submission instead of inventing a new job/approval.
+        queued = bridge_root / "queued" / f"{job_id}.json"
+        if queued.exists():
+            raise RuntimeError("Host Bridge stale-running reconciliation found conflicting queued job")
+        atomic_json_write(queued, submission)
+        running.unlink()
+        reconciled.append({"job_id": job_id, "state": "SAFE_REQUEUED_BEFORE_MUTATION"})
+
+    return {
+        "contract": "mad4b.host-bridge-reconciliation.v1",
+        "profile_id": profile["profile_id"],
+        "reconciled": reconciled,
+        "reconciled_count": len(reconciled),
+        "blind_retry_allowed": False,
+        "production_authorized": False,
+        "mutation_performed": bool(reconciled),
+    }
+
+
 def consume_bridge_spool(profile_path: Path, limit: int = 1) -> dict[str, Any]:
     profile = load_profile(profile_path)
     if limit < 1 or limit > 100:
@@ -1471,6 +1627,8 @@ def consume_bridge_spool(profile_path: Path, limit: int = 1) -> dict[str, Any]:
         if running.exists():
             raise RuntimeError("Host Bridge job already running")
         os.replace(queued, running)
+        claim = _bridge_running_claim(profile, submission)
+        atomic_json_write(running, claim)
         job_path = job_root / f"{job_id}.json"
         try:
             job = _bridge_submission_to_job(profile, submission)
@@ -1561,6 +1719,10 @@ def main() -> int:
     bridge_p = sub.add_parser("consume-bridge-spool")
     bridge_p.add_argument("--profile", required=True, type=Path)
     bridge_p.add_argument("--limit", type=int, default=1)
+    bridge_reconcile_p = sub.add_parser("reconcile-bridge-spool")
+    bridge_reconcile_p.add_argument("--profile", required=True, type=Path)
+    bridge_reconcile_p.add_argument("--stale-seconds", type=int, default=300)
+    bridge_reconcile_p.add_argument("--limit", type=int, default=100)
     run_p = sub.add_parser("run-job")
     run_p.add_argument("--profile", required=True, type=Path)
     run_p.add_argument("--job", required=True, type=Path)
@@ -1572,6 +1734,8 @@ def main() -> int:
             result = reconcile(args.profile)
         elif args.command == "consume-bridge-spool":
             result = consume_bridge_spool(args.profile, args.limit)
+        elif args.command == "reconcile-bridge-spool":
+            result = reconcile_bridge_spool(args.profile, args.stale_seconds, args.limit)
         else:
             result = run_job_with_failure_evidence(args.profile, args.job)
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as exc:
