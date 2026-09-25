@@ -14,6 +14,7 @@ function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 
 final class MAD4B_SCP_Artifacts {
  public static $last=array();
+ public static $links=array();
  public static function append_artifact($input){
   self::$last=$input;
   return array('artifact'=>array(
@@ -24,6 +25,10 @@ final class MAD4B_SCP_Artifacts {
    'metadata'=>$input['metadata'],
    'status'=>'active',
   ));
+ }
+ public static function link_artifacts($input){
+  self::$links[]=$input;
+  return array('mutation_performed'=>true);
  }
 }
 
@@ -86,6 +91,10 @@ $check('REQUIRE_APPROVAL'===$review['decision'],'approval-required class did not
 $record_input=$base;
 $record_input['job_id']='11111111-2222-4333-8444-555555555555';
 $record_input['reason']='persist governed data decision evidence';
+$record_input['source_artifact_ids']=array(
+ 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+ 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+);
 $record_input['rights_records']=array(array(
  'rights_class'=>'LICENSED',
  'review_status'=>'approved',
@@ -103,6 +112,20 @@ $check(false===strpos($persisted,'PRIVATE_LICENSE_DOCUMENT_SHOULD_NEVER_PERSIST'
 $check(true===MAD4B_SCP_Artifacts::$last['payload']['payload_minimized'],'payload minimization evidence missing');
 $check(false===MAD4B_SCP_Artifacts::$last['payload']['raw_rights_records_persisted'],'raw rights persistence flag widened');
 $check(1===preg_match('/^[a-f0-9]{64}$/',$record['decision_fingerprint']),'recorded decision fingerprint invalid');
+$check(1===preg_match('/^[a-f0-9]{64}$/',MAD4B_SCP_Artifacts::$last['payload']['evidence']['rights_summary_fingerprint']),'rights summary fingerprint missing');
+$check(1===preg_match('/^[a-f0-9]{64}$/',MAD4B_SCP_Artifacts::$last['payload']['evidence']['processor_profile_fingerprint']),'processor profile fingerprint missing');
+$check(2===count(MAD4B_SCP_Artifacts::$links),'source artifact lineage links missing');
+$check('uses'===MAD4B_SCP_Artifacts::$links[0]['relation'],'data-governance lineage relation mismatch');
+
+$changed=$base;
+$changed['destination_profile']['retention_days']=8;
+$changed_eval=MAD4B_SCP_Data_Governance::evaluate($changed);
+$check($ok['evidence']['processor_profile_fingerprint']!==$changed_eval['evidence']['processor_profile_fingerprint'],'processor profile change did not alter fingerprint');
+
+$changed_rights=$base;
+$changed_rights['rights_records'][0]['attribution_required']=true;
+$changed_rights_eval=MAD4B_SCP_Data_Governance::evaluate($changed_rights);
+$check($ok['evidence']['rights_summary_fingerprint']!==$changed_rights_eval['evidence']['rights_summary_fingerprint'],'rights summary change did not alter fingerprint');
 
 $artifact_source=file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-artifacts.php');
 $check(false!==strpos($artifact_source,"'data_governance_decision'"),'data-governance artifact type not registered');
