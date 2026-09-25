@@ -2,6 +2,7 @@
   "contract": "mad4b.repository-governance-policy.v1",
   "target_branch": "master",
   "target_ref": "refs/heads/master",
+  "required_repository_ruleset_name": "MAD4B master release governance",
   "required_ruleset_enforcement": "active",
   "require_no_bypass_actors": true,
   "required_rule_types": [
