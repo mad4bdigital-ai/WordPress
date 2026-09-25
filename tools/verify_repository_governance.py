@@ -93,6 +93,8 @@ def validate_ruleset_attestation(
     if attestation.get("contract") != expected_config["contract"]:
         raise SystemExit("repository ruleset attestation contract mismatch")
     expected = {
+        "attestation_scope": "environment",
+        "attestation_environment": "repository-governance",
         "repository": repository,
         "ruleset_id": int(ruleset.get("id") or 0),
         "ruleset_name": str(ruleset.get("name") or ""),
