@@ -38,6 +38,16 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 13 );
 	}
 
+	public static function enrollment_abilities() {
+		return array(
+			self::SKILLS_ABILITY,
+			self::FRONTEND_SAMPLE_ABILITY,
+			self::PERFORMANCE_INDEX_ABILITY,
+			self::WORK_CLAIM_ABILITY,
+			self::WORK_COMPLETE_ABILITY,
+		);
+	}
+
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 
