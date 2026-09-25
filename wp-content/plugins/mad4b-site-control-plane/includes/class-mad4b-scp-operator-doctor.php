@@ -94,8 +94,11 @@ final class MAD4B_SCP_Operator_Doctor {
 		return array(
 			'contract' => self::DLQ_CONTRACT,
 			'site_uuid' => $snapshot['site_uuid'],
-			'dead_lettered_count' => (int) $snapshot['dead_lettered_outbox_count'],
-			'items' => $snapshot['dead_lettered_outbox'],
+			'dead_lettered_count' => (int) $snapshot['dead_lettered_outbox_count'] + (int) ( $snapshot['host_runner_dead_lettered_count'] ?? 0 ),
+			'items' => array(
+				'provider_outbox' => $snapshot['dead_lettered_outbox'],
+				'host_runner' => $snapshot['host_runner_dead_lettered'] ?? array(),
+			),
 			'replay_available' => false,
 			'replay_reason' => 'governed_replay_plan_not_implemented',
 			'original_items_preserved' => true,
@@ -153,6 +156,43 @@ final class MAD4B_SCP_Operator_Doctor {
 			);
 		}
 
+		if ( ! empty( $snapshot['orphan_job_count'] ) ) {
+			$findings[] = self::finding(
+				'orphan-content-jobs',
+				'high',
+				'content_job_without_event_history',
+				array( 'count' => (int) $snapshot['orphan_job_count'] ),
+				array( 'content_job.inspect', 'content_job.repair-plan' )
+			);
+		}
+		if ( ! empty( $snapshot['host_runner_uncertain_count'] ) ) {
+			$findings[] = self::finding(
+				'host-runner-uncertain-mutations',
+				'critical',
+				'mutated_but_evidence_uncertain',
+				array( 'count' => (int) $snapshot['host_runner_uncertain_count'] ),
+				array( 'host_runner.reconcile', 'recovery.inspect' )
+			);
+		}
+		if ( ! empty( $snapshot['host_runner_recovery_required_count'] ) ) {
+			$findings[] = self::finding(
+				'host-runner-recovery-required',
+				'high',
+				'host_runner_recovery_required',
+				array( 'count' => (int) $snapshot['host_runner_recovery_required_count'] ),
+				array( 'host_runner.reconcile', 'recovery.plan' )
+			);
+		}
+		if ( ! empty( $snapshot['host_runner_dead_lettered_count'] ) ) {
+			$findings[] = self::finding(
+				'host-runner-dead-letter',
+				'high',
+				'host_runner_dead_lettered_work_present',
+				array( 'count' => (int) $snapshot['host_runner_dead_lettered_count'] ),
+				array( 'dead_letter.inspect', 'host_runner.reconcile' )
+			);
+		}
+
 		$severity_order = array( 'critical' => 0, 'high' => 1, 'medium' => 2, 'low' => 3, 'info' => 4 );
 		usort( $findings, static function ( $a, $b ) use ( $severity_order ) {
 			$left = isset( $severity_order[ $a['severity'] ] ) ? $severity_order[ $a['severity'] ] : 99;
@@ -194,6 +234,57 @@ final class MAD4B_SCP_Operator_Doctor {
 		);
 	}
 
+	private static function host_runner_incidents( $limit ) {
+		$content_root = defined( 'WP_CONTENT_DIR' )
+			? rtrim( (string) WP_CONTENT_DIR, '/\\' )
+			: rtrim( (string) ABSPATH, '/\\' ) . DIRECTORY_SEPARATOR . 'wp-content';
+		$runner_root = $content_root . DIRECTORY_SEPARATOR . 'mad4b-runner';
+		if ( ! is_dir( $runner_root ) || is_link( $runner_root ) ) {
+			return array( 'available' => false, 'journal_root' => $runner_root . DIRECTORY_SEPARATOR . 'journals', 'counts' => array(), 'incidents' => array() );
+		}
+		$resolved_runner = realpath( $runner_root );
+		if ( false === $resolved_runner ) return array( 'available' => false, 'journal_root' => '', 'counts' => array(), 'incidents' => array() );
+		$journal_root = $resolved_runner . DIRECTORY_SEPARATOR . 'journals';
+		if ( ! is_dir( $journal_root ) || is_link( $journal_root ) ) return array( 'available' => false, 'journal_root' => $journal_root, 'counts' => array(), 'incidents' => array() );
+		$resolved_journal = realpath( $journal_root );
+		$normalized_runner = rtrim( str_replace( '\\', '/', $resolved_runner ), '/' );
+		$normalized_journal = false === $resolved_journal ? '' : str_replace( '\\', '/', $resolved_journal );
+		if ( '' === $normalized_journal || 0 !== strpos( $normalized_journal, $normalized_runner . '/' ) ) {
+			return array( 'available' => false, 'journal_root' => $journal_root, 'counts' => array(), 'incidents' => array() );
+		}
+
+		$paths = glob( $resolved_journal . DIRECTORY_SEPARATOR . '*.json' );
+		$paths = is_array( $paths ) ? $paths : array();
+		usort( $paths, static function ( $a, $b ) { return (int) filemtime( $b ) - (int) filemtime( $a ); } );
+		$paths = array_slice( $paths, 0, max( 1, min( 100, absint( $limit ) ) ) );
+		$counts = array();
+		$incidents = array();
+		$interesting = array( 'MUTATED_BUT_EVIDENCE_UNCERTAIN', 'RECOVERY_REQUIRED', 'DEAD_LETTERED', 'ROLLED_BACK_AFTER_FAILURE' );
+		foreach ( $paths as $path ) {
+			if ( is_link( $path ) || ! is_file( $path ) ) continue;
+			$size = filesize( $path );
+			if ( false === $size || $size < 2 || $size > 262144 ) continue;
+			$raw = file_get_contents( $path );
+			$row = false === $raw ? null : json_decode( $raw, true );
+			if ( ! is_array( $row ) || 'mad4b.host-runner-mutation-journal.v1' !== (string) ( $row['contract'] ?? '' ) ) continue;
+			$state = strtoupper( str_replace( '-', '_', sanitize_key( (string) ( $row['state'] ?? '' ) ) ) );
+			if ( '' === $state ) continue;
+			$counts[ $state ] = isset( $counts[ $state ] ) ? (int) $counts[ $state ] + 1 : 1;
+			if ( ! in_array( $state, $interesting, true ) ) continue;
+			$incidents[] = array(
+				'job_id' => isset( $row['job_id'] ) ? substr( sanitize_text_field( (string) $row['job_id'] ), 0, 64 ) : '',
+				'operation_id' => isset( $row['operation_id'] ) ? substr( sanitize_text_field( (string) $row['operation_id'] ), 0, 160 ) : '',
+				'state' => $state,
+				'plan_sha256' => isset( $row['plan_sha256'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $row['plan_sha256'] ) ? (string) $row['plan_sha256'] : '',
+				'terminal' => ! empty( $row['terminal'] ),
+				'blind_retry_allowed' => ! empty( $row['blind_retry_allowed'] ),
+				'completed_at' => isset( $row['completed_at'] ) ? substr( sanitize_text_field( (string) $row['completed_at'] ), 0, 64 ) : '',
+			);
+		}
+		ksort( $counts, SORT_STRING );
+		return array( 'available' => true, 'journal_root' => $resolved_journal, 'counts' => $counts, 'incidents' => $incidents );
+	}
+
 	private static function snapshot( $stale_seconds, $limit ) {
 		global $wpdb;
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::critical_ready() ) {
@@ -215,6 +306,14 @@ final class MAD4B_SCP_Operator_Doctor {
 				"SELECT job_id,state,stage,job_revision,updated_at FROM {$t['content_jobs']} WHERE site_uuid=%s AND state IN ('QUEUED','RUNNING','WAITING_REVIEW','BLOCKED') AND updated_at<%s ORDER BY updated_at ASC LIMIT %d",
 				$site_uuid,
 				$cutoff,
+				$limit
+			),
+			ARRAY_A
+		);
+		$orphan_jobs = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT j.job_id,j.state,j.stage,j.job_revision,j.created_at FROM {$t['content_jobs']} j LEFT JOIN {$t['content_job_events']} e ON e.job_id=j.job_id WHERE j.site_uuid=%s GROUP BY j.id,j.job_id,j.state,j.stage,j.job_revision,j.created_at HAVING COUNT(e.id)=0 ORDER BY j.created_at ASC LIMIT %d",
+				$site_uuid,
 				$limit
 			),
 			ARRAY_A
@@ -255,6 +354,8 @@ final class MAD4B_SCP_Operator_Doctor {
 			ARRAY_A
 		);
 
+		$host_runner = self::host_runner_incidents( $limit );
+
 		$state_counts = array();
 		foreach ( is_array( $job_states ) ? $job_states : array() as $row ) {
 			$state = isset( $row['state'] ) ? sanitize_key( (string) $row['state'] ) : '';
@@ -270,6 +371,8 @@ final class MAD4B_SCP_Operator_Doctor {
 			'job_state_counts' => $state_counts,
 			'stuck_job_count' => is_array( $stuck_jobs ) ? count( $stuck_jobs ) : 0,
 			'stuck_jobs' => is_array( $stuck_jobs ) ? $stuck_jobs : array(),
+			'orphan_job_count' => is_array( $orphan_jobs ) ? count( $orphan_jobs ) : 0,
+			'orphan_jobs' => is_array( $orphan_jobs ) ? $orphan_jobs : array(),
 			'expired_active_lease_count' => is_array( $expired_leases ) ? count( $expired_leases ) : 0,
 			'expired_active_leases' => is_array( $expired_leases ) ? $expired_leases : array(),
 			'overdue_outbox_count' => is_array( $overdue_outbox ) ? count( $overdue_outbox ) : 0,
@@ -278,7 +381,14 @@ final class MAD4B_SCP_Operator_Doctor {
 			'stale_inbox' => is_array( $stale_inbox ) ? $stale_inbox : array(),
 			'dead_lettered_outbox_count' => is_array( $dead ) ? count( $dead ) : 0,
 			'dead_lettered_outbox' => is_array( $dead ) ? $dead : array(),
-			'query_scope' => 'site_uuid_via_content_job_join',
+			'host_runner_evidence_available' => ! empty( $host_runner['available'] ),
+			'host_runner_state_counts' => isset( $host_runner['counts'] ) ? $host_runner['counts'] : array(),
+			'host_runner_uncertain_count' => isset( $host_runner['counts']['MUTATED_BUT_EVIDENCE_UNCERTAIN'] ) ? (int) $host_runner['counts']['MUTATED_BUT_EVIDENCE_UNCERTAIN'] : 0,
+			'host_runner_recovery_required_count' => isset( $host_runner['counts']['RECOVERY_REQUIRED'] ) ? (int) $host_runner['counts']['RECOVERY_REQUIRED'] : 0,
+			'host_runner_dead_lettered_count' => isset( $host_runner['counts']['DEAD_LETTERED'] ) ? (int) $host_runner['counts']['DEAD_LETTERED'] : 0,
+			'host_runner_incidents' => isset( $host_runner['incidents'] ) ? $host_runner['incidents'] : array(),
+			'host_runner_dead_lettered' => isset( $host_runner['incidents'] ) ? array_values( array_filter( $host_runner['incidents'], static function ( $row ) { return 'DEAD_LETTERED' === (string) $row['state']; } ) ) : array(),
+			'query_scope' => 'site_uuid_via_content_job_join_and_fixed_host_runner_evidence_root',
 			'cross_site_rows_exposed' => false,
 			'mutation_performed' => false,
 		);
