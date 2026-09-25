@@ -20,42 +20,38 @@ $fail = static function ( $message ) {
 };
 $check = static function ( $condition, $message ) use ( $fail ) { if ( ! $condition ) $fail( $message ); };
 
-$base = static function ( $id, $intent, $content, $role, $confidence = 0.8, $signals = array() ) {
+$base = static function ( $intent, $content, $role, $confidence = 0.8, $signals = array() ) {
 	return array(
-		'relation_id' => $id,
 		'intent_id' => $intent,
 		'content_id' => $content,
-		'site' => 'https://example.test',
 		'locale' => 'en',
 		'market' => 'eg',
 		'role' => $role,
 		'confidence' => $confidence,
 		'evidence_refs' => array( 'artifact:evidence-1' ),
-		'valid_from' => '2026-09-25T00:00:00Z',
+		'valid_from' => '',
 		'valid_to' => '',
 		'source' => 'operator',
 		'analysis_signals' => $signals,
 	);
 };
 
-$healthy = MAD4B_SCP_Intent_Registry::normalize_relations(
+$healthy = MAD4B_SCP_Intent_Registry::normalize_analysis_relations(
 	array(
-		$base( 'rel-primary', 'intent:visa', 'post:10', 'PRIMARY_OWNER', 0.95 ),
-		$base( 'rel-support', 'intent:visa', 'post:11', 'SUPPORTING', 0.82 ),
-	),
-	array()
+		$base( 'intent:visa', 'post:10', 'PRIMARY_OWNER', 0.95 ),
+		$base( 'intent:visa', 'post:11', 'SUPPORTING', 0.82 ),
+	)
 );
 $check( is_array( $healthy ) && 2 === count( $healthy ), 'healthy many-to-many relations did not normalize' );
 $analysis = MAD4B_SCP_Intent_Registry::analyze_relations( $healthy );
 $check( 1 === count( $analysis ), 'healthy relation group count mismatch' );
 $check( 'HEALTHY_SUPPORT' === $analysis[0]['outcome'], 'primary+supporting relation was not healthy support' );
 
-$overlap = MAD4B_SCP_Intent_Registry::normalize_relations(
+$overlap = MAD4B_SCP_Intent_Registry::normalize_analysis_relations(
 	array(
-		$base( 'rel-owner-a', 'intent:hotel', 'post:20', 'PRIMARY_OWNER', 0.91 ),
-		$base( 'rel-owner-b', 'intent:hotel', 'post:21', 'INFORMATIONAL_OWNER', 0.88 ),
-	),
-	array()
+		$base( 'intent:hotel', 'post:20', 'PRIMARY_OWNER', 0.91 ),
+		$base( 'intent:hotel', 'post:21', 'INFORMATIONAL_OWNER', 0.88 ),
+	)
 );
 $analysis = MAD4B_SCP_Intent_Registry::analyze_relations( $overlap );
 $check( 'POSSIBLE_OVERLAP' === $analysis[0]['outcome'], 'multiple owners without evidence became cannibalization' );
@@ -67,61 +63,38 @@ $signals = array(
 	'canonical_competes' => false,
 	'performance_overlap' => false,
 );
-$risk = MAD4B_SCP_Intent_Registry::normalize_relations(
+$risk = MAD4B_SCP_Intent_Registry::normalize_analysis_relations(
 	array(
-		$base( 'rel-risk-a', 'intent:flight', 'post:30', 'PRIMARY_OWNER', 0.91, $signals ),
-		$base( 'rel-risk-b', 'intent:flight', 'post:31', 'TRANSACTIONAL_OWNER', 0.89, $signals ),
-	),
-	array()
+		$base( 'intent:flight', 'post:30', 'PRIMARY_OWNER', 0.91, $signals ),
+		$base( 'intent:flight', 'post:31', 'TRANSACTIONAL_OWNER', 0.89, $signals ),
+	)
 );
 $analysis = MAD4B_SCP_Intent_Registry::analyze_relations( $risk );
 $check( 'CANNIBALIZATION_RISK' === $analysis[0]['outcome'], 'explicit high-confidence competition signals did not produce risk' );
 $check( false !== strpos( $analysis[0]['reason_codes'][0], 'explicit_competition_signals' ), 'risk omitted evidence-based reason' );
 
-$historical = $base( 'rel-old', 'intent:flight', 'post:32', 'HISTORICAL_RETIRED', 0.99, $signals );
-$with_history = MAD4B_SCP_Intent_Registry::normalize_relations(
-	array_merge( $risk, array( $historical ) ),
-	array()
+$historical = $base( 'intent:flight', 'post:32', 'HISTORICAL_RETIRED', 0.99, $signals );
+$with_history = MAD4B_SCP_Intent_Registry::normalize_analysis_relations(
+	array_merge( $risk, array( $historical ) )
 );
 $analysis = MAD4B_SCP_Intent_Registry::analyze_relations( $with_history );
 $check( 2 === $analysis[0]['relation_count'], 'historical relation affected current conflict analysis' );
 
-$duplicate = MAD4B_SCP_Intent_Registry::normalize_relations(
+$duplicate = MAD4B_SCP_Intent_Registry::normalize_analysis_relations(
 	array(
-		$base( 'rel-dup', 'intent:x', 'post:1', 'PRIMARY_OWNER' ),
-		$base( 'rel-dup', 'intent:x', 'post:2', 'SUPPORTING' ),
-	),
-	array()
+		$base( 'intent:x', 'post:1', 'PRIMARY_OWNER' ),
+		$base( 'intent:x', 'post:1', 'SUPPORTING' ),
+	)
 );
-$check( is_wp_error( $duplicate ) && 'mad4b_intent_relation_duplicate' === $duplicate->get_error_code(), 'duplicate relation id did not fail closed' );
+$check( is_wp_error( $duplicate ) && 'mad4b_intent_relation_duplicate' === $duplicate->get_error_code(), 'duplicate intent/content relation did not fail closed' );
 
-$previous = $healthy;
-$previous[0]['revision'] = 7;
-$previous[1]['revision'] = 3;
-$same = MAD4B_SCP_Intent_Registry::normalize_relations(
-	array(
-		$base( 'rel-primary', 'intent:visa', 'post:10', 'PRIMARY_OWNER', 0.95 ),
-		$base( 'rel-support', 'intent:visa', 'post:11', 'SUPPORTING', 0.82 ),
-	),
-	$previous
+$invalid_confidence = MAD4B_SCP_Intent_Registry::normalize_analysis_relations(
+	array( $base( 'intent:x', 'post:9', 'PRIMARY_OWNER', 1.1 ) )
 );
-$by_id = array();
-foreach ( $same as $row ) $by_id[ $row['relation_id'] ] = $row;
-$check( 7 === $by_id['rel-primary']['revision'], 'unchanged relation revision advanced' );
-$check( 3 === $by_id['rel-support']['revision'], 'unchanged support relation revision advanced' );
-
-$changed_relations = array(
-	$base( 'rel-primary', 'intent:visa', 'post:10', 'PRIMARY_OWNER', 0.96 ),
-	$base( 'rel-support', 'intent:visa', 'post:11', 'SUPPORTING', 0.82 ),
-);
-$changed = MAD4B_SCP_Intent_Registry::normalize_relations( $changed_relations, $previous );
-$by_id = array();
-foreach ( $changed as $row ) $by_id[ $row['relation_id'] ] = $row;
-$check( 8 === $by_id['rel-primary']['revision'], 'changed relation revision did not increment' );
-$check( 3 === $by_id['rel-support']['revision'], 'unrelated relation revision drifted' );
+$check( is_wp_error( $invalid_confidence ) && 'mad4b_intent_confidence_invalid' === $invalid_confidence->get_error_code(), 'out-of-range confidence did not fail closed' );
 
 $source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-intent-registry.php' );
-$artifacts = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-artifacts.php' );
+$schema = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-schema.php' );
 $servers = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
 $main = file_get_contents( dirname( __DIR__ ) . '/mad4b-site-control-plane.php' );
 
@@ -132,13 +105,24 @@ foreach ( array(
 	"'many_to_many' => true",
 	"'cannibalization_is_derived' => true",
 	"'overlap_alone_is_conflict' => false",
-	"'artifact_type' => 'intent_registry'",
-	"'expected_registry_artifact_id'",
-	"'expected_registry_sha256'",
+	"'expected_scope_sha256'",
+	'intent_scope_stale',
+	'current_relation_key',
+	'SELECT MAX(revision)',
+	'analysis_signals_json',
 ) as $marker ) {
 	$check( false !== strpos( $source, $marker ), 'Intent Registry marker missing: ' . $marker );
 }
-$check( false !== strpos( $artifacts, "'intent_registry'" ), 'Intent Registry artifact type is not registered' );
+foreach ( array(
+	"const VERSION = 11;",
+	"'intent_relations' =>",
+	"UNIQUE KEY relation_revision (relation_id,revision)",
+	"UNIQUE KEY current_relation_key (current_relation_key)",
+	"KEY owner_scope_key (owner_scope_key)",
+) as $marker ) {
+	$check( false !== strpos( $schema, $marker ), 'Intent Registry schema marker missing: ' . $marker );
+}
+$check( false === strpos( $schema, 'UNIQUE KEY current_owner_scope' ), 'Intent schema reintroduced false single-owner exclusivity' );
 $check( false !== strpos( $main, 'class-mad4b-scp-intent-registry.php' ), 'Intent Registry runtime is not loaded' );
 $check( false !== strpos( $servers, "'mad4b/intent-registry-current'" ), 'Intent Registry current read is not mounted' );
 $check( false !== strpos( $servers, "'mad4b/intent-conflicts-analyze'" ), 'Intent conflict analysis read is not mounted' );
