@@ -697,7 +697,7 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3609 P0 Implement Policy Resolution Engine, gate DAG parser/liveness and truthful operating-mode blocker sets.
 - [ ] T3610 P0 Implement existing-site bootstrap normalized content/SEO/canonical/media/link inventory.
 - [ ] T3611 P0 Implement many-to-many Intent Registry ownership/collision/cannibalization decisions.
-- [ ] T3612 P0 Implement ContentJob domain create/transition/cancel/read services over the durable substrate.
+- [x] T3612 P0 Implement ContentJob domain create/transition/cancel/read services over the durable substrate. Evidence: ContentJob service + contract/runtime/concurrent CAS tests; Critical Kernel run `36095311341` MariaDB job PASS.
 - [ ] T3613 P0 Implement immutable Artifact Registry/Store/edges/lineage/invalidation with tenant-safe addressing.
 - [ ] T3614 P0 Implement aggregate/event/artifact consistency checker and BLOCKED_FOR_RECONCILIATION path.
 - [ ] T3615 P0 Complete fencing failure model: stale/zombie writers, crash-after-success and duplicate/reordered callbacks.
@@ -733,10 +733,10 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3646 P0 Prove bootstrap executor can install/enroll only the exact attested runner package and exact scheduler entry; no standing Host authority is created.
 - [x] T3647 P0 Prove WordPress-unbootable Recovery Runner health/read/known-good restore path. Evidence: standalone Recovery Plane requires neither WordPress boot nor database; recovery contract PASS in Critical Kernel run `36078194633`.
 - [ ] T3648 P0 Prove protected backup integrity/capacity/exact-runtime binding and interrupted/corrupt restore behavior.
-- [ ] T3649 P0 Prove one semantic operation across two executor adapters with normalized-result and authority parity.
+- [x] T3649 P0 Prove one semantic operation across two executor adapters with normalized-result and authority parity. Evidence: `runtime.status.read` parity across WP-CLI and Host Runner including read-only/non-authorizing authority class; Critical Kernel run `36095311341` PASS.
 - [ ] T3650 P0 Prove submission/execution/commit location truthfulness and reapproval on material executor-location change.
 - [x] T3651 P0 Extend gate-liveness proof so every blocking gate has a path to a terminal state, not only terminal reachability. Evidence: `validate_spec.py` reverse-DAG `reaches_terminal()` check for every KERNEL_BLOCKER/LIVE_PRECONDITION; Feature 007 Spec Quality CI PASS.
-- [ ] T3652 P0 Prove Doctor/DLQ/reconciliation behavior for stuck lease, orphan job, uncertain mutation and recovery-required states.
+- [x] T3652 P0 Prove Doctor/DLQ/reconciliation behavior for stuck lease, orphan job, uncertain mutation and recovery-required states. Evidence: real MariaDB `operator-doctor-runtime.php` plus Host Runner journals; Critical Kernel run `36095311341` PASS.
 - [ ] T3653 P0 Recertify exact installed Bit Flows 1.29.0 against permanent behavioral/security probes before execution eligibility.
 - [ ] T3654 P0 Run the complete request→plan→approval→execution→readback→durable receipt→rollback vertical slice and link all evidence to the terminal gate.
 - [ ] T3630 P0 GATE Execute exact ETG Staging linked evidence chain and emit CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED only when every hard dependency is satisfied.
