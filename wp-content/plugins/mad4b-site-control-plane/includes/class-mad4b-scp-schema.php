@@ -3,12 +3,12 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Schema {
-	const VERSION = 9;
+	const VERSION = 10;
 	const OPTION  = 'mad4b_scp_schema_version';
-	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v9';
+	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v10';
 	const MIGRATION_CONTRACT = 'mad4b.schema-migration.v1';
-	const MIGRATION_ID = '20260924-feature007-durable-execution-v9';
-	const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v9';
+	const MIGRATION_ID = '20260925-feature007-artifact-lineage-v10';
+	const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v10';
 	const LEGACY_BINDINGS_OPTION = 'mad4b_scp_approval_candidate_bindings_v1';
 
 	private static $critical_ready_cache = null;
@@ -21,6 +21,7 @@ final class MAD4B_SCP_Schema {
 			'approvals' => $wpdb->prefix . 'mad4b_scp_approval_tickets', 'mutations' => $wpdb->prefix . 'mad4b_scp_mutations', 'budgets' => $wpdb->prefix . 'mad4b_scp_agent_budgets',
 			'budget_windows' => $wpdb->prefix . 'mad4b_scp_agent_budget_windows', 'audit_events' => $wpdb->prefix . 'mad4b_scp_audit_events', 'audit_heads' => $wpdb->prefix . 'mad4b_scp_audit_heads',
 			'content_jobs' => $wpdb->prefix . 'mad4b_content_jobs', 'content_job_events' => $wpdb->prefix . 'mad4b_content_job_events',
+			'artifacts' => $wpdb->prefix . 'mad4b_artifacts', 'artifact_edges' => $wpdb->prefix . 'mad4b_artifact_edges',
 			'work_leases' => $wpdb->prefix . 'mad4b_work_leases', 'idempotency' => $wpdb->prefix . 'mad4b_idempotency',
 			'outbox' => $wpdb->prefix . 'mad4b_execution_outbox', 'inbox' => $wpdb->prefix . 'mad4b_execution_inbox',
 		);
@@ -31,7 +32,7 @@ final class MAD4B_SCP_Schema {
 			'contract' => self::MIGRATION_CONTRACT,
 			'migration_id' => self::MIGRATION_ID,
 			'target_schema_version' => self::VERSION,
-			'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9 ),
+			'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9, 10 ),
 			'forward_operation' => 'dbdelta_additive_mad4b_tables_columns_and_indexes',
 			'rollback_or_forward_fix' => 'forward_fix_only_preserve_additive_schema_old_code_ignores_new_surfaces',
 			'destructive' => false,
@@ -51,7 +52,7 @@ final class MAD4B_SCP_Schema {
 				'integrity_token_written_after_verification_only',
 			),
 			'partial_failure_recovery' => 'target_version_and_integrity_token_not_advanced_until_deep_verification_passes_retry_is_idempotent',
-			'mixed_version_compatibility' => 'additive_v9_schema_is_readable_by_previous_v6_runtime_new_surfaces_remain_unused',
+			'mixed_version_compatibility' => 'additive_v10_schema_preserves_v9_runtime_tables_and_old_code_ignores_new_artifact_surfaces',
 			'authority_widening' => false,
 		);
 	}
@@ -428,6 +429,48 @@ final class MAD4B_SCP_Schema {
 			KEY created_at (created_at)
 		) $charset;";
 
+		$sql[] = "CREATE TABLE {$t['artifacts']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			artifact_id char(36) NOT NULL,
+			site_uuid char(36) NOT NULL,
+			job_id char(36) NOT NULL,
+			artifact_type varchar(64) NOT NULL,
+			version bigint(20) unsigned NOT NULL,
+			status varchar(32) NOT NULL DEFAULT 'active',
+			content_sha256 char(64) NOT NULL,
+			payload_json longtext NOT NULL,
+			metadata_json longtext NULL,
+			producer_stage varchar(64) NOT NULL DEFAULT '',
+			producer_ref varchar(191) NOT NULL DEFAULT '',
+			supersedes_artifact_id char(36) NOT NULL DEFAULT '',
+			created_by_actor varchar(191) NOT NULL DEFAULT '',
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY artifact_id (artifact_id),
+			UNIQUE KEY job_type_version (job_id,artifact_type,version),
+			KEY job_created (job_id,created_at),
+			KEY site_type (site_uuid,artifact_type),
+			KEY content_sha256 (content_sha256)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['artifact_edges']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			edge_id char(36) NOT NULL,
+			site_uuid char(36) NOT NULL,
+			job_id char(36) NOT NULL,
+			from_artifact_id char(36) NOT NULL,
+			to_artifact_id char(36) NOT NULL,
+			relation varchar(64) NOT NULL,
+			invalidated tinyint(1) NOT NULL DEFAULT 0,
+			reason_code varchar(64) NOT NULL DEFAULT '',
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY edge_id (edge_id),
+			UNIQUE KEY artifact_relation (from_artifact_id,to_artifact_id,relation),
+			KEY job_relation (job_id,relation),
+			KEY to_invalidated (to_artifact_id,invalidated)
+		) $charset;";
+
 		$sql[] = "CREATE TABLE {$t['work_leases']} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			work_id char(36) NOT NULL,
@@ -643,13 +686,15 @@ final class MAD4B_SCP_Schema {
 		foreach ( self::required_durable_columns() as $table => $columns ) foreach ( $columns as $column ) $durable[] = $table . '.' . $column;
 		$indexes = array();
 		foreach ( self::required_durable_indexes() as $table => $required ) foreach ( $required as $name => $unique ) $indexes[] = $table . '.' . $name . ':' . ( $unique ? 'unique' : 'index' );
-		return hash( 'sha256', 'mad4b-schema-v9|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) . '|' . implode( '|', $durable ) . '|' . implode( '|', $indexes ) );
+		return hash( 'sha256', 'mad4b-schema-v10|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) . '|' . implode( '|', $durable ) . '|' . implode( '|', $indexes ) );
 	}
 	private static function required_approval_binding_columns() { return array( 'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment', 'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at' ); }
 	private static function required_durable_columns() {
 		return array(
 			'content_jobs' => array( 'job_id', 'site_uuid', 'state', 'stage', 'current_artifact_id', 'job_revision', 'updated_at' ),
 			'content_job_events' => array( 'event_id', 'job_id', 'sequence', 'event_type', 'plan_sha256', 'artifact_id', 'entry_sha256', 'created_at' ),
+			'artifacts' => array( 'artifact_id', 'site_uuid', 'job_id', 'artifact_type', 'version', 'status', 'content_sha256', 'payload_json', 'producer_stage', 'supersedes_artifact_id', 'created_at' ),
+			'artifact_edges' => array( 'edge_id', 'site_uuid', 'job_id', 'from_artifact_id', 'to_artifact_id', 'relation', 'invalidated', 'reason_code', 'created_at' ),
 			'work_leases' => array( 'work_id', 'aggregate_type', 'aggregate_id', 'worker_id', 'lease_epoch', 'expected_aggregate_revision', 'status', 'heartbeat_at', 'expires_at', 'reconciliation_ref' ),
 			'idempotency' => array( 'scope_key', 'idempotency_key', 'request_sha256', 'claim_epoch', 'status', 'result_sha256', 'reconciliation_ref', 'expires_at' ),
 			'outbox' => array( 'outbox_id', 'job_id', 'expected_job_revision', 'provider_id', 'capability_id', 'workflow_plan_sha256', 'idempotency_key', 'request_sha256', 'status', 'attempts', 'available_at' ),
@@ -660,6 +705,8 @@ final class MAD4B_SCP_Schema {
 		return array(
 			'content_jobs' => array( 'job_id' => true ),
 			'content_job_events' => array( 'event_id' => true, 'job_sequence' => true ),
+			'artifacts' => array( 'artifact_id' => true, 'job_type_version' => true ),
+			'artifact_edges' => array( 'edge_id' => true, 'artifact_relation' => true ),
 			'work_leases' => array( 'work_id' => true ),
 			'idempotency' => array( 'scope_idempotency' => true ),
 			'outbox' => array( 'outbox_id' => true, 'provider_idempotency' => true ),
