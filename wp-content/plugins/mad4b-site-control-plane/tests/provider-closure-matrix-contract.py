@@ -9,7 +9,9 @@ parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').rea
 required = [
     "const CONTRACT = 'mad4b.provider-closure-matrix.v1';",
     "const ABILITY = 'mad4b/provider-closure-matrix';",
-    "MAD4B_SCP_Local_OAuth_Server::consent_grant_projection()",
+    "MAD4B_SCP_Servers::blocked_write_tools()",
+    "MAD4B_SCP_Staging_Write_Authority::status()",
+    "MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()",
     "MAD4B_SCP_Provider_Compatibility_Certification::inventory()",
     "MAD4B_SCP_Provider_Compatibility_Certification::recertification_plan",
     "'authorizing' => false",
@@ -20,12 +22,21 @@ required = [
     "'evidence_required'",
     "'owner_review_required'",
     "'provider_gated_count'",
+    "'ambiguous_mapping'",
+    "'candidate_count'",
+    "'candidates'",
+    "'ambiguous_provider_capability_mapping'",
+    "'resolve_provider_capability_mapping'",
+    "'registrar_id' => 'mad4b-core-provider-certification'",
+    "'source_plugin' => 'mad4b-site-control-plane'",
+    "'trust_class' => 'core'",
 ]
 for marker in required:
     if marker not in matrix:
         raise SystemExit(f'missing provider closure matrix invariant: {marker}')
 
 for forbidden in [
+    'MAD4B_SCP_Local_OAuth_Server::consent_grant_projection',
     'update_option(',
     'delete_option(',
     'wp_insert_post(',
