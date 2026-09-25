@@ -254,8 +254,33 @@
     {
       "id": "provider_side_channel",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "provider_side_channel_safe"
+      "status": "PARTIAL",
+      "gate": "provider_side_channel_safe",
+      "evidence": {
+        "isolation_contract": "mad4b.mcp-provider-isolation.v3",
+        "isolation_implementation": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-isolation.php",
+        "isolation_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/mcp-provider-isolation-contract.py",
+        "peer_governance_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/mcp-side-channel-governance-contract.py",
+        "runtime_baseline_test": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-side-channel-baseline.php",
+        "runtime_blocker_test": "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-side-channel-blocker.php",
+        "exact_provider_route_descriptors": true,
+        "exact_server_callback_descriptors": true,
+        "default_server_suppression": true,
+        "provider_owned_kill_switches": true,
+        "unknown_routes_fail_closed": true,
+        "unknown_server_callbacks_fail_closed": true,
+        "mutation_authorization_peer_guard_before_budget_and_approval": true,
+        "provider_settings_mutated": false,
+        "provider_plugins_disabled": false,
+        "authority_created": false,
+        "production_auto_configured": false,
+        "repository_only": true
+      },
+      "remainder": [
+        "obtain exact-head CI/runtime proof for clean peer baseline and rogue public-write blocker on the final candidate",
+        "run live ETG provider-side-channel inventory after exact deployment and bind it to runtime identity",
+        "prove all enabled third-party MCP/provider transports are either isolated, reviewed non-transport, or fail-closed before write authority"
+      ]
     },
     {
       "id": "capability_traits",
