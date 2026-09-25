@@ -719,10 +719,10 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3632 P0 After protected backup readiness, deploy the exact selected runtime release artifact to ETG Staging; repository HEAD equality is not required when the repository delta is proven non-runtime.
 - [ ] T3633 P0 Read back runtime-release source SHA, build fingerprint, package manifest digest, archive SHA and all seven Root Trust/provenance files from the deployed runtime; UNKNOWN filesystem evidence cannot satisfy the gate.
 - [ ] T3634 P0 Re-run runtime/schema/authority/fail-closed diagnostics on the exact deployed candidate before Bit Flows or content canaries.
-- [ ] T3635 P0 Enforce exact-head OWNER_ATTEST_SINGLE_OWNER as a repository merge-gate input, including stale-on-descendant behavior and authorized-owner identity.
-- [ ] T3636 P0 Replace the stale fixed implementation branch with workflow-owned Feature 007 branch-prefix policy.
-- [ ] T3637 P0 Enforce reviewed-parent versus runtime-release identity separation and runtime-path drift detection in CI.
-- [ ] T3638 P0 Complete the minimal out-of-band Recovery Runner read/disable/known-good-restore surface and contract tests.
+- [x] T3635 P0 Enforce exact-head OWNER_ATTEST_SINGLE_OWNER as a repository merge-gate input, including stale-on-descendant behavior and authorized-owner identity. Evidence: verifier + repository policy + Release Verdict gate; run `36075527449` fail-closed on missing exact-head attestation.
+- [x] T3636 P0 Replace the stale fixed implementation branch with workflow-owned Feature 007 branch-prefix policy. Evidence: `.github/workflows/feature-007-spec-ci.yml` + `feature.json` branch-policy mirror.
+- [x] T3637 P0 Enforce reviewed-parent versus runtime-release identity separation and runtime-path drift detection in CI. Evidence: baseline-sync v2 + workflow-owned runtime identity paths + `RECAPTURE_REQUIRED` on this runtime-changing PR.
+- [x] T3638 P0 Complete the minimal out-of-band Recovery Runner read/disable/known-good-restore surface and contract tests. Evidence: `tools/mad4b_recovery_plane.py`, recovery contract PASS in Critical Kernel run `36075527334`.
 - [ ] T3639 P0 Enforce the bulk runtime closure hardening matrix as machine-readable CI input; documentation-only evidence cannot close live gates.
 - [ ] T3640 P0 Implement durable mutation intent/journal + atomic receipt persistence and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN.
 - [ ] T3641 P0 Prove reconciliation of MUTATED_BUT_EVIDENCE_UNCERTAIN without blind write retry.
