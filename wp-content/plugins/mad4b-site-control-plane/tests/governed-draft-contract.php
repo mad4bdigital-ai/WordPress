@@ -73,7 +73,7 @@ MAD4B_SCP_Artifacts::$rows[$draft_id]=array(
 );
 MAD4B_SCP_Artifacts::$rows[$qa_id]=array(
 	'artifact_id'=>$qa_id,'job_id'=>$job,'artifact_type'=>'final_qa','status'=>'active',
-	'payload'=>array('contract'=>'mad4b.final-qa.v1','pass'=>false,'hard_blockers'=>array('unsupported_claim'),'can_publish'=>false,'publication_authorized'=>false),
+	'payload'=>array('contract'=>'mad4b.final-qa.v1','draft_artifact_id'=>$draft_id,'pass'=>false,'hard_blockers'=>array('unsupported_claim'),'can_publish'=>false,'publication_authorized'=>false),
 );
 
 $blocked=MAD4B_SCP_Governed_Draft::plan(array(
@@ -83,7 +83,7 @@ $blocked=MAD4B_SCP_Governed_Draft::plan(array(
 $check(is_wp_error($blocked) && 'mad4b_draft_final_qa_blocked'===$blocked->get_error_code(),'FinalQA blocker did not block draft');
 
 MAD4B_SCP_Artifacts::$rows[$qa_id]['payload']=array(
-	'contract'=>'mad4b.final-qa.v1','pass'=>true,'hard_blockers'=>array(),'can_publish'=>false,'publication_authorized'=>false,
+	'contract'=>'mad4b.final-qa.v1','draft_artifact_id'=>$draft_id,'pass'=>true,'hard_blockers'=>array(),'can_publish'=>false,'publication_authorized'=>false,
 );
 
 $plan=MAD4B_SCP_Governed_Draft::plan(array(
@@ -92,6 +92,23 @@ $plan=MAD4B_SCP_Governed_Draft::plan(array(
 ));
 $check(is_array($plan) && 'draft'===$plan['intended_status'],'draft plan failed');
 $check(false===$plan['can_publish'] && false===$plan['publication_authorized'],'plan widened publish authority');
+
+// A passing FinalQA for another draft in the same job may never authorize this draft.
+$foreign_draft_id='55555555-6666-4777-8888-999999999999';
+$foreign_qa_id='66666666-7777-4888-8999-aaaaaaaaaaaa';
+MAD4B_SCP_Artifacts::$rows[$foreign_draft_id]=array(
+	'artifact_id'=>$foreign_draft_id,'job_id'=>$job,'artifact_type'=>'draft','status'=>'active',
+	'payload'=>array('contract'=>'mad4b.article-draft.v1','content'=>'Foreign draft content.'),
+);
+MAD4B_SCP_Artifacts::$rows[$foreign_qa_id]=array(
+	'artifact_id'=>$foreign_qa_id,'job_id'=>$job,'artifact_type'=>'final_qa','status'=>'active',
+	'payload'=>array('contract'=>'mad4b.final-qa.v1','draft_artifact_id'=>$foreign_draft_id,'pass'=>true,'hard_blockers'=>array(),'can_publish'=>false,'publication_authorized'=>false),
+);
+$foreign_qa=MAD4B_SCP_Governed_Draft::plan(array(
+	'job_id'=>$job,'draft_artifact_id'=>$draft_id,'final_qa_artifact_id'=>$foreign_qa_id,
+	'post_type'=>'post','post_title'=>'Must be denied',
+));
+$check(is_wp_error($foreign_qa) && 'mad4b_draft_final_qa_lineage_mismatch'===$foreign_qa->get_error_code(),'FinalQA from another draft authorized mutation');
 $check(false===$plan['mutation_performed'],'plan mutated');
 
 $tampered=$plan;
