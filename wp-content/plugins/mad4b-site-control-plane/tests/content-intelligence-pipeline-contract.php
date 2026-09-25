@@ -23,7 +23,7 @@ final class MAD4B_SCP_Policy {
 final class MAD4B_SCP_Artifacts {
 	public static $rows = array();
 	public static $links = array();
-	private static $counter = 1;
+	private static $counter = 3;
 
 	public static function append_artifact($input){
 		$id=sprintf('00000000-0000-4000-8000-%012d', self::$counter++);
