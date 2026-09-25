@@ -75,6 +75,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-drive-context.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-preflight.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-intelligence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-commit-guard.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy-resolution.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-fence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mutation-manager.php';
