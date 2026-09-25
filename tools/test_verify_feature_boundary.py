@@ -93,7 +93,7 @@ def fake_load(ref, path):
         return SKILLS
     raise AssertionError(path)
 
-def run_case(changed, *, feature=None, grant_catalog=None, expect_error=None):
+def run_case(changed, *, feature=None, grant_catalog=None, expect_error=None, branch=BRANCH):
     current_feature = feature if feature is not None else FEATURE
     current_grants = grant_catalog if grant_catalog is not None else GRANT_CATALOG
 
@@ -113,7 +113,7 @@ def run_case(changed, *, feature=None, grant_catalog=None, expect_error=None):
          patch.object(mod, "find_feature_json", return_value=FEATURE_PATH), \
          patch.object(mod, "load_json_at", side_effect=loader):
         try:
-            result = mod.verify(BASE, HEAD, BRANCH)
+            result = mod.verify(BASE, HEAD, branch)
         except RuntimeError as exc:
             if expect_error is None:
                 raise
@@ -170,5 +170,30 @@ run_case(
     feature=bad_binding,
     expect_error="FEATURE_BOUNDARY_BINDING_DRIFT",
 )
+
+governance_result = run_case(
+    [".github/workflows/mad4b-release-verdict.yml"],
+    branch="chore/governance-release-root-hardening",
+)
+# run_case returns None only for expected failures; repeat directly for result assertions.
+with patch.object(mod, "run", return_value=""), \
+     patch.object(mod, "changed_paths", return_value=[".github/workflows/mad4b-release-verdict.yml"]), \
+     patch.object(mod, "load_json_at", side_effect=fake_load):
+    governance_result = mod.verify(BASE, HEAD, "chore/governance-release-root-hardening")
+assert governance_result["mode"] == "repository_governance_change"
+assert governance_result["owner_attestation_required"] is True
+assert governance_result["pull_request_code_executed"] is False
+
+run_case(
+    [".github/workflows/mad4b-release-verdict.yml"],
+    branch="chore/ordinary-maintenance",
+    expect_error="REPOSITORY_ROOT_CHANGE_BRANCH_FORBIDDEN",
+)
+
+with patch.object(mod, "run", return_value=""), \
+     patch.object(mod, "changed_paths", return_value=["README.md"]):
+    ordinary = mod.verify(BASE, HEAD, "chore/documentation")
+assert ordinary["mode"] == "non_feature_branch"
+assert ordinary["owner_attestation_required"] is False
 
 print("mad4b.repository-feature-boundary.v1: PASS")
