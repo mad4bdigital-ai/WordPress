@@ -59,11 +59,29 @@ def main() -> int:
         "required_ruleset_enforcement",
         "require_no_bypass_actors",
         "required_rule_types",
-        "pull_request",
     )
     for key in immutable_keys:
         if base.get(key) != target.get(key):
             raise SystemExit(f"bootstrap transition may not change repository governance field: {key}")
+
+    base_pr = base.get("pull_request") or {}
+    target_pr = target.get("pull_request") or {}
+    for key, value in base_pr.items():
+        if target_pr.get(key) != value:
+            raise SystemExit(f"bootstrap transition changed existing pull_request policy field: {key}")
+    expected_target_pr = dict(base_pr)
+    expected_target_pr.update(
+        {
+            "dismiss_stale_reviews_on_push": False,
+            "require_code_owner_review": False,
+            "required_reviewers": [],
+            "require_extra_approval_for_unattributed_changes_readback": True,
+        }
+    )
+    if target_pr != expected_target_pr:
+        raise SystemExit(
+            "bootstrap transition pull_request enrichment must exactly codify current live defaults"
+        )
 
     base_status = base.get("required_status_checks") or {}
     target_status = target.get("required_status_checks") or {}
@@ -109,6 +127,18 @@ def main() -> int:
     if rule_types != set(target.get("required_rule_types") or []):
         raise SystemExit("target ruleset template rule types drift from target governance policy")
 
+    pull_rules = [row for row in rules if row.get("type") == "pull_request"]
+    if len(pull_rules) != 1:
+        raise SystemExit("target ruleset template must contain exactly one pull_request rule")
+    template_pr = (pull_rules[0].get("parameters") or {})
+    expected_template_pr = {
+        key: value
+        for key, value in target_pr.items()
+        if key != "require_extra_approval_for_unattributed_changes_readback"
+    }
+    if template_pr != expected_template_pr:
+        raise SystemExit("target ruleset template pull_request parameters drift from target policy")
+
     status_rules = [row for row in rules if row.get("type") == "required_status_checks"]
     if len(status_rules) != 1:
         raise SystemExit("target ruleset template must contain exactly one required_status_checks rule")
@@ -144,6 +174,8 @@ def main() -> int:
             for name, integration_id in sorted(added)
         ],
         "post_merge_ruleset_apply_required": True,
+        "pull_request_live_semantics_preserved": True,
+        "response_only_unattributed_approval_required": True,
         "target_policy_sha256": hashlib.sha256(args.target_policy.read_bytes()).hexdigest(),
         "target_template_sha256": hashlib.sha256(args.target_template.read_bytes()).hexdigest(),
     }
