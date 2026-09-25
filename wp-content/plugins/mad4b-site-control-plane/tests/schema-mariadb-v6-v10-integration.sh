@@ -9,8 +9,8 @@ WP_CLI="${WP_CLI:-wp}"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-export MAD4B_SCHEMA_V10_FILE="$CURRENT_SCHEMA"
-grep -Fq "const VERSION = 10;" "$CURRENT_SCHEMA"
+export MAD4B_SCHEMA_V11_FILE="$CURRENT_SCHEMA"
+grep -Fq "const VERSION = 11;" "$CURRENT_SCHEMA"
 
 cat > "$tmp/install-v6.php" <<'PHP'
 <?php
@@ -82,12 +82,12 @@ echo wp_json_encode( array(
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL;
 PHP
 
-cat > "$tmp/upgrade-v10.php" <<'PHP'
+cat > "$tmp/upgrade-v11.php" <<'PHP'
 <?php
-$schema = getenv( 'MAD4B_SCHEMA_V10_FILE' );
+$schema = getenv( 'MAD4B_SCHEMA_V11_FILE' );
 $from = (int) getenv( 'MAD4B_EXPECTED_FROM_VERSION' );
 if ( ! is_string( $schema ) || '' === $schema || ! is_file( $schema ) ) {
-    fwrite( STDERR, "Missing MAD4B_SCHEMA_V10_FILE\n" );
+    fwrite( STDERR, "Missing MAD4B_SCHEMA_V11_FILE\n" );
     exit( 20 );
 }
 require $schema;
@@ -95,7 +95,7 @@ $before = MAD4B_SCP_Schema::status( true );
 $result = MAD4B_SCP_Schema::install_or_upgrade();
 if ( is_wp_error( $result ) ) {
     fwrite( STDERR, wp_json_encode( array(
-        'stage' => 'upgrade_to_v10',
+        'stage' => 'upgrade_to_v11',
         'source_version' => $from,
         'before' => $before,
         'code' => $result->get_error_code(),
@@ -107,22 +107,22 @@ if ( is_wp_error( $result ) ) {
 $after = MAD4B_SCP_Schema::status( true );
 $receipt = isset( $after['migration']['receipt'] ) && is_array( $after['migration']['receipt'] ) ? $after['migration']['receipt'] : array();
 echo wp_json_encode( array(
-    'stage' => 'upgrade_to_v10',
+    'stage' => 'upgrade_to_v11',
     'source_version' => $from,
     'db_version' => $GLOBALS['wpdb']->db_version(),
     'before' => $before,
     'after' => $after,
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL;
-if ( 10 !== (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) ) exit( 22 );
+if ( 11 !== (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) ) exit( 22 );
 if ( empty( $after['ready'] ) || empty( $after['migration']['receipt_valid'] ) || empty( $after['physical_integrity']['ready'] ) ) exit( 23 );
 if ( $from !== (int) ( $receipt['from_version'] ?? -1 ) || 'upgrade' !== ( $receipt['run_type'] ?? '' ) ) exit( 24 );
 global $wpdb;
 $t = MAD4B_SCP_Schema::tables();
-foreach ( array( 'artifacts', 'artifact_edges' ) as $artifact_table_key ) {
+foreach ( array( 'artifacts', 'artifact_edges', 'intent_relations' ) as $artifact_table_key ) {
     $physical_name = $t[ $artifact_table_key ];
     if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $physical_name ) ) !== $physical_name ) {
         fwrite( STDERR, wp_json_encode( array(
-            'stage' => 'verify_artifact_tables_after_upgrade',
+            'stage' => 'verify_feature007_tables_after_upgrade',
             'source_version' => $from,
             'missing_table' => $artifact_table_key,
         ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL );
@@ -187,12 +187,12 @@ if ( 6 !== (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) ) exit( 42 );
 if ( $expected !== $missing ) exit( 43 );
 PHP
 
-cat > "$tmp/retry-v10.php" <<'PHP'
+cat > "$tmp/retry-v11.php" <<'PHP'
 <?php
-$schema = getenv( 'MAD4B_SCHEMA_V10_FILE' );
+$schema = getenv( 'MAD4B_SCHEMA_V11_FILE' );
 $from = (int) getenv( 'MAD4B_EXPECTED_FROM_VERSION' );
 if ( ! is_string( $schema ) || '' === $schema || ! is_file( $schema ) ) {
-    fwrite( STDERR, "Missing MAD4B_SCHEMA_V10_FILE\n" );
+    fwrite( STDERR, "Missing MAD4B_SCHEMA_V11_FILE\n" );
     exit( 30 );
 }
 require $schema;
@@ -200,7 +200,7 @@ $before = MAD4B_SCP_Schema::status( true );
 $result = MAD4B_SCP_Schema::install_or_upgrade();
 if ( is_wp_error( $result ) ) {
     fwrite( STDERR, wp_json_encode( array(
-        'stage' => 'retry_v10',
+        'stage' => 'retry_v11',
         'source_version' => $from,
         'code' => $result->get_error_code(),
         'message' => $result->get_error_message(),
@@ -209,7 +209,7 @@ if ( is_wp_error( $result ) ) {
     exit( 31 );
 }
 $after = MAD4B_SCP_Schema::status( true );
-echo wp_json_encode( array( 'stage' => 'retry_v10', 'source_version' => $from, 'before' => $before, 'after' => $after ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL;
+echo wp_json_encode( array( 'stage' => 'retry_v11', 'source_version' => $from, 'before' => $before, 'after' => $after ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL;
 if ( empty( $after['ready'] ) || empty( $after['migration']['receipt_valid'] ) || empty( $after['physical_integrity']['ready'] ) ) exit( 32 );
 PHP
 
@@ -249,15 +249,15 @@ for scenario in "${scenarios[@]}"; do
     echo "=== SEED SPARSE HISTORICAL DURABLE STATE v${version} ==="
     "$WP_CLI" "${common[@]}" eval-file "$tmp/seed-sparse.php"
 
-    echo "=== REAL MARIADB SCHEMA v${version} -> v10 UPGRADE ==="
-    "$WP_CLI" "${common[@]}" eval-file "$tmp/upgrade-v10.php"
+    echo "=== REAL MARIADB SCHEMA v${version} -> v11 UPGRADE ==="
+    "$WP_CLI" "${common[@]}" eval-file "$tmp/upgrade-v11.php"
 
-    echo "=== REAL MARIADB SCHEMA v10 IDEMPOTENT RETRY (origin v${version}) ==="
-    "$WP_CLI" "${common[@]}" eval-file "$tmp/retry-v10.php"
+    echo "=== REAL MARIADB SCHEMA v11 IDEMPOTENT RETRY (origin v${version}) ==="
+    "$WP_CLI" "${common[@]}" eval-file "$tmp/retry-v11.php"
 done
 
 echo
-echo "=== HYBRID REPAIR: HEALTHY v6 -> KNOWN-BROKEN v8 PARTIAL STATE -> CURRENT v10 ==="
+echo "=== HYBRID REPAIR: HEALTHY v6 -> KNOWN-BROKEN v8 PARTIAL STATE -> CURRENT v11 ==="
 "$WP_CLI" "${common[@]}" db reset --yes
 "$WP_CLI" "${common[@]}" core install \
   --url=http://mad4b-schema.test \
@@ -283,15 +283,15 @@ export MAD4B_SCHEMA_BROKEN_V8_FILE="$broken_v8_file"
 
 # The failed v8 attempt created durable tables but intentionally left the
 # canonical schema marker at v6. Seed one durable row to prove repair preserves
-# sparse historical data while v10 adds artifact lineage without losing v9 fencing state.
+# sparse historical data while v11 adds artifact lineage and intent ownership without losing prior fencing state.
 export MAD4B_SCHEMA_FROM_FILE="$broken_v8_file"
 export MAD4B_EXPECTED_FROM_VERSION="8"
 "$WP_CLI" "${common[@]}" eval-file "$tmp/seed-sparse.php"
 
 export MAD4B_EXPECTED_FROM_VERSION="6"
-"$WP_CLI" "${common[@]}" eval-file "$tmp/upgrade-v10.php"
-"$WP_CLI" "${common[@]}" eval-file "$tmp/retry-v10.php"
+"$WP_CLI" "${common[@]}" eval-file "$tmp/upgrade-v11.php"
+"$WP_CLI" "${common[@]}" eval-file "$tmp/retry-v11.php"
 
 echo
-echo "mad4b.schema-mariadb-v6-v7-v8-to-v10.integration.v1: PASS"
-echo "mad4b.schema-broken-v8-partial-repair-to-v10.v1: PASS"
+echo "mad4b.schema-mariadb-v6-v7-v8-to-v11.integration.v1: PASS"
+echo "mad4b.schema-broken-v8-partial-repair-to-v11.v1: PASS"
