@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Context_Provider_Gateway {
 	const CONTRACT = 'mad4b.context-provider-gateway.v1';
 	const MATERIALIZATION_RECONCILIATION_CONTRACT = 'mad4b.brand-context-materialization-reconciliation.v1';
+	const MATERIALIZATION_NO_EFFECT_CONTRACT = 'mad4b.brand-context-materialization-no-effect.v1';
 
 	public static function boot() {
 		add_filter( 'mad4b_scp_durable_reconciliation_verified', array( __CLASS__, 'verify_durable_reconciliation' ), 20, 3 );
@@ -48,15 +49,44 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 		return 'brand-materialization:' . hash( 'sha256', $json );
 	}
 
+	public static function materialization_no_effect_ref( array $proof ) {
+		if ( self::MATERIALIZATION_NO_EFFECT_CONTRACT !== ( isset( $proof['reconciliation_contract'] ) ? (string) $proof['reconciliation_contract'] : '' ) ) return new WP_Error( 'mad4b_brand_no_effect_contract_invalid', 'Brand materialization no-effect reconciliation contract is invalid.' );
+		if ( empty( $proof['provider_scan_complete'] ) || 0 !== (int) ( isset( $proof['provider_candidate_count'] ) ? $proof['provider_candidate_count'] : -1 ) ) return new WP_Error( 'mad4b_brand_no_effect_evidence_invalid', 'Brand materialization no-effect reconciliation requires a complete provider scan with zero exact candidates.' );
+		$basis = array(
+			'contract' => self::MATERIALIZATION_NO_EFFECT_CONTRACT,
+			'artifact_id' => isset( $proof['artifact_id'] ) ? (string) $proof['artifact_id'] : '',
+			'source_id' => isset( $proof['source_id'] ) ? (string) $proof['source_id'] : '',
+			'target_folder_id' => isset( $proof['target_folder_id'] ) ? (string) $proof['target_folder_id'] : '',
+			'expected_name' => isset( $proof['expected_name'] ) ? (string) $proof['expected_name'] : '',
+			'expected_content_sha256' => isset( $proof['expected_content_sha256'] ) ? strtolower( (string) $proof['expected_content_sha256'] ) : '',
+			'expected_mime_type' => isset( $proof['expected_mime_type'] ) ? strtolower( (string) $proof['expected_mime_type'] ) : '',
+			'format' => isset( $proof['format'] ) ? sanitize_key( (string) $proof['format'] ) : '',
+			'provider_scan_generation' => isset( $proof['provider_scan_generation'] ) ? (string) $proof['provider_scan_generation'] : '',
+			'provider_scan_complete' => ! empty( $proof['provider_scan_complete'] ),
+			'provider_candidate_count' => isset( $proof['provider_candidate_count'] ) ? (int) $proof['provider_candidate_count'] : -1,
+		);
+		foreach ( array( 'artifact_id', 'source_id', 'target_folder_id', 'expected_name', 'expected_content_sha256', 'expected_mime_type', 'format', 'provider_scan_generation' ) as $field ) if ( '' === (string) $basis[ $field ] ) return new WP_Error( 'mad4b_brand_no_effect_binding_incomplete', 'Brand materialization no-effect reconciliation binding is incomplete.', array( 'field' => $field ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $basis['expected_content_sha256'] ) ) return new WP_Error( 'mad4b_brand_no_effect_content_hash_invalid', 'Brand materialization no-effect reconciliation requires an exact SHA-256 content identity.' );
+		$json = wp_json_encode( self::canonicalize( $basis ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $json ) ) return new WP_Error( 'mad4b_brand_no_effect_encoding_failed', 'Brand materialization no-effect reconciliation evidence could not be encoded.' );
+		return 'brand-materialization-no-effect:' . hash( 'sha256', $json );
+	}
+
 	public static function verify_durable_reconciliation( $verified, $kind, $context ) {
 		if ( true === $verified ) return true;
-		if ( 'idempotency_completion' !== sanitize_key( (string) $kind ) || ! is_array( $context ) ) return $verified;
+		$kind = sanitize_key( (string) $kind );
+		if ( ! is_array( $context ) ) return $verified;
 		$result = isset( $context['result'] ) && is_array( $context['result'] ) ? $context['result'] : array();
-		if ( self::MATERIALIZATION_RECONCILIATION_CONTRACT !== ( isset( $result['reconciliation_contract'] ) ? (string) $result['reconciliation_contract'] : '' ) ) return $verified;
-		$expected = self::materialization_reconciliation_ref( $result );
-		if ( is_wp_error( $expected ) ) return false;
 		$actual = isset( $context['reconciliation_ref'] ) ? (string) $context['reconciliation_ref'] : '';
-		return '' !== $actual && hash_equals( (string) $expected, $actual );
+		if ( 'idempotency_completion' === $kind && self::MATERIALIZATION_RECONCILIATION_CONTRACT === ( isset( $result['reconciliation_contract'] ) ? (string) $result['reconciliation_contract'] : '' ) ) {
+			$expected = self::materialization_reconciliation_ref( $result );
+			return ! is_wp_error( $expected ) && '' !== $actual && hash_equals( (string) $expected, $actual );
+		}
+		if ( 'idempotency_no_effect' === $kind && self::MATERIALIZATION_NO_EFFECT_CONTRACT === ( isset( $result['reconciliation_contract'] ) ? (string) $result['reconciliation_contract'] : '' ) ) {
+			$expected = self::materialization_no_effect_ref( $result );
+			return ! is_wp_error( $expected ) && '' !== $actual && hash_equals( (string) $expected, $actual );
+		}
+		return $verified;
 	}
 
 	private static function source( $source_id ) {
@@ -93,9 +123,11 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 			'dynamic_provider_class_selection' => false,
 			'materialization_reconciliation' => array(
 				'contract' => self::MATERIALIZATION_RECONCILIATION_CONTRACT,
+				'no_effect_contract' => self::MATERIALIZATION_NO_EFFECT_CONTRACT,
 				'complete_scan_required' => true,
 				'exact_candidate_count_required' => 1,
 				'durable_idempotency_completion_supported' => true,
+				'durable_no_effect_release_supported' => true,
 			),
 			'authority_widening' => false,
 		);
