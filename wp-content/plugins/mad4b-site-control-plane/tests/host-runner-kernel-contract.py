@@ -122,6 +122,14 @@ with tempfile.TemporaryDirectory() as td:
     profile = runner.load_profile(profile_path)
     if not isinstance(profile.get("_integrity_key"), (bytes, bytearray)):
         raise SystemExit("Host Runner normalized profile lost binary HMAC key material")
+    expected_target_fingerprint = runner.sha256_bytes(runner.canonical_json({
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "wordpress_root": profile["wordpress_root"],
+        "wp_config_sha256": profile["wp_config_sha256"],
+    }))
+    if profile["target_fingerprint"] != expected_target_fingerprint:
+        raise SystemExit("Host Runner target fingerprint canonical material drifted")
 
     # Canonicalization must not hide a caller-supplied symlinked WordPress root.
     root_link = tmp / "wordpress-link"
