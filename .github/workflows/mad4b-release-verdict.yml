@@ -106,6 +106,12 @@ jobs:
               raise SystemExit('repository feature-boundary root must checkout the trusted PR base')
           if 'python3 tools/verify_feature_boundary.py' not in boundary_workflow:
               raise SystemExit('repository feature-boundary root must execute the baseline-owned verifier')
+          if 'python3 tools/verify_repository_owner_attestation.py' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must verify exact-head owner attestation for root changes')
+          if 'owner_attestation_required' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must condition root-change attestation on baseline verifier evidence')
+          if 'issues: read' not in boundary_workflow or 'pull-requests: read' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root lacks read-only PR/comment permissions required for owner attestation')
           if 'ref: ${{ github.event.pull_request.head.sha }}' in boundary_workflow:
               raise SystemExit('repository feature-boundary root may not checkout PR head as executable workflow source')
 
