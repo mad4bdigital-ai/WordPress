@@ -189,6 +189,32 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'production_policy' => 'deny',
 				'human_decision_required' => false,
 			),
+			'staging_candidate_binding' => array(
+				'feature_id' => 'staging-write-authority',
+				'capability_tags' => array( 'candidate', 'binding', 'write-authority', 'bootstrap', 'staging' ),
+				'provider' => 'core',
+				'status_ability' => 'mad4b/staging-write-candidate-binding-audit',
+				'local_surface' => '',
+				'remote_ability' => 'mad4b/staging-write-candidate-bind',
+				'authority_surface' => 'mad4b-enrollment',
+				'executor' => 'wordpress_native',
+				'remote_mode' => 'exact_candidate_binding',
+				'production_policy' => 'deny',
+				'human_decision_required' => true,
+			),
+			'full_staging_authority_convergence' => array(
+				'feature_id' => 'full-staging-authority',
+				'capability_tags' => array( 'authority', 'convergence', 'candidate-binding', 'developer', 'breakglass', 'staging' ),
+				'provider' => 'core',
+				'status_ability' => 'mad4b/full-staging-authority-status',
+				'local_surface' => '',
+				'remote_ability' => 'mad4b/full-staging-authority-apply',
+				'authority_surface' => 'mad4b-enrollment',
+				'executor' => 'wordpress_native',
+				'remote_mode' => 'exact_plan_composite_convergence',
+				'production_policy' => 'deny',
+				'human_decision_required' => true,
+			),
 		);
 		$filtered = apply_filters( 'mad4b_scp_remote_operation_catalog', $rows );
 		if ( is_array( $filtered ) ) $rows = array_slice( $filtered, 0, 500, true );
