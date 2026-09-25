@@ -44,6 +44,8 @@ final class MAD4B_SCP_CLI {
 		$runtime = self::runtime_provenance();
 		self::emit( array(
 			'contract' => 'mad4b.cli-status.v1',
+			'operation_id' => 'runtime.status.read',
+			'semantic_result' => self::runtime_status_semantic_result(),
 			'site_profile' => $site,
 			'schema' => $schema,
 			'runtime' => $runtime,
@@ -104,6 +106,27 @@ final class MAD4B_SCP_CLI {
 			'generic_shell_available' => false,
 			'raw_sql_available' => false,
 		) );
+	}
+
+	private static function runtime_status_semantic_result() {
+		$root = defined( 'ABSPATH' ) ? (string) ABSPATH : '';
+		$real_root = '' !== $root ? realpath( $root ) : false;
+		if ( false !== $real_root ) $root = rtrim( (string) $real_root, '/\\' );
+		$config = '' !== $root ? $root . DIRECTORY_SEPARATOR . 'wp-config.php' : '';
+		$plugin_root = defined( 'WP_PLUGIN_DIR' )
+			? rtrim( (string) WP_PLUGIN_DIR, '/\\' ) . DIRECTORY_SEPARATOR . 'mad4b-site-control-plane'
+			: ( '' !== $root ? $root . DIRECTORY_SEPARATOR . 'wp-content' . DIRECTORY_SEPARATOR . 'plugins' . DIRECTORY_SEPARATOR . 'mad4b-site-control-plane' : '' );
+		$config_present = '' !== $config && is_file( $config );
+		return array(
+			'contract' => 'mad4b.runtime-status-read.v1',
+			'operation_id' => 'runtime.status.read',
+			'wordpress_root' => $root,
+			'wp_config_present' => $config_present,
+			'wp_config_sha256' => $config_present ? (string) hash_file( 'sha256', $config ) : '',
+			'plugin_present' => '' !== $plugin_root && is_dir( $plugin_root ),
+			'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : '',
+			'mutation_performed' => false,
+		);
 	}
 
 	private static function runtime_provenance() {
