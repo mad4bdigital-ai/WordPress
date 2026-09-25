@@ -33,8 +33,8 @@ required_parity_markers = [
     "'production_policy'",
     "'human_decision_required'",
     "apply_filters( 'mad4b_scp_remote_operation_catalog', $rows )",
-    "'catalog_contract' => self::CONTRACT",
-    "'catalog_version' => 1",
+    "$row['catalog_contract'] = self::CONTRACT;",
+    "$row['catalog_version'] = 1;",
 ]
 for marker in required_parity_markers:
     if marker not in parity:
