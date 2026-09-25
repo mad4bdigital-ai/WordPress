@@ -373,7 +373,7 @@ with tempfile.TemporaryDirectory() as td:
     repaired = json.loads((bridge / "receipts" / f"{crash_receipt_id}.json").read_text(encoding="utf-8"))
     assert repaired["reconciled_from_stale_running"] is True
     assert repaired["bridge_submission_sha256"] == crash_receipt_submission["submission_sha256"]
-    assert repaired["replayed"] is False
+    assert repaired["replayed"] is True
 
     # Stale running write with a mutation-intent journal is never blind-retried.
     crash_after_id = str(uuid.uuid4())
