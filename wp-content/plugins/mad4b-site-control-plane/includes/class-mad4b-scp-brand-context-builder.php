@@ -865,10 +865,47 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			if ( ! hash_equals( strtolower( (string) $identity['expected_mime_type'] ), $mime ) ) continue;
 			$candidates[] = $asset;
 		}
+		if ( 0 === count( $candidates ) ) {
+			$proof = array(
+				'contract' => 'mad4b.brand-context-materialization-reconciliation-result.v1',
+				'reconciliation_contract' => 'mad4b.brand-context-materialization-no-effect.v1',
+				'artifact_id' => (string) $identity['artifact_id'],
+				'source_id' => (string) $identity['source_id'],
+				'target_folder_id' => (string) $identity['target_folder_id'],
+				'expected_name' => (string) $identity['name'],
+				'expected_content_sha256' => (string) $identity['draft_content_sha256'],
+				'expected_mime_type' => (string) $identity['expected_mime_type'],
+				'format' => (string) $identity['format'],
+				'provider_scan_complete' => true,
+				'provider_candidate_count' => 0,
+				'provider_scan_generation' => isset( $scan['scan_generation'] ) ? (string) $scan['scan_generation'] : '',
+			);
+			$reconciliation_ref = MAD4B_SCP_Context_Provider_Gateway::materialization_no_effect_ref( $proof );
+			if ( is_wp_error( $reconciliation_ref ) ) return $reconciliation_ref;
+			$released = MAD4B_SCP_Durable_Execution::release_idempotency_after_verified_no_effect(
+				(string) $identity['scope_key'],
+				(string) $identity['idempotency_key'],
+				(string) $identity['request_sha256'],
+				(string) $reconciliation_ref,
+				$proof
+			);
+			if ( is_wp_error( $released ) ) return $released;
+			return array_merge(
+				$proof,
+				array(
+					'status' => 'verified_no_effect',
+					'idempotency_released' => true,
+					'safe_to_retry' => true,
+					'reconciliation_ref' => (string) $reconciliation_ref,
+					'idempotency_scope_key' => (string) $identity['scope_key'],
+					'idempotency_key' => (string) $identity['idempotency_key'],
+				)
+			);
+		}
 		if ( 1 !== count( $candidates ) ) {
 			return new WP_Error(
-				0 === count( $candidates ) ? 'mad4b_brand_materialization_reconcile_not_observed' : 'mad4b_brand_materialization_reconcile_ambiguous',
-				0 === count( $candidates ) ? 'No exact provider effect was observed for the pending Brand materialization. Keep the durable claim fail-closed and reconcile again before retry.' : 'More than one exact provider candidate matches the pending Brand materialization; automatic reconciliation is unsafe.',
+				'mad4b_brand_materialization_reconcile_ambiguous',
+				'More than one exact provider candidate matches the pending Brand materialization; automatic reconciliation is unsafe and the idempotency claim remains fail-closed.',
 				array(
 					'candidate_count' => count( $candidates ),
 					'scan_generation' => isset( $scan['scan_generation'] ) ? (string) $scan['scan_generation'] : '',
