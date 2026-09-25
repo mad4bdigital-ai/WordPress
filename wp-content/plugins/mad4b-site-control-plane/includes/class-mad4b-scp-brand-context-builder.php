@@ -943,9 +943,19 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$identity = self::materialization_identity( $input );
 		if ( is_wp_error( $identity ) ) return $identity;
 		if ( ! class_exists( 'MAD4B_SCP_Durable_Execution' ) || ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) return new WP_Error( 'mad4b_brand_materialize_runtime_unavailable', 'Durable execution and Context Provider Gateway are required.' );
-		$scan = MAD4B_SCP_Context_Provider_Gateway::scan_source( (string) $identity['source_id'] );
+		$scan = MAD4B_SCP_Context_Provider_Gateway::find_brand_materialization_candidates(
+			(string) $identity['source_id'],
+			(array) $identity['provider_identity']
+		);
 		if ( is_wp_error( $scan ) ) return $scan;
-		if ( empty( $scan['complete'] ) ) return new WP_Error( 'mad4b_brand_materialization_reconcile_scan_incomplete', 'Brand materialization reconciliation requires a complete provider scan.', array( 'truncation_reasons' => isset( $scan['truncation_reasons'] ) ? $scan['truncation_reasons'] : array() ) );
+		if ( empty( $scan['complete'] ) ) return new WP_Error(
+			'mad4b_brand_materialization_reconcile_scan_incomplete',
+			'Brand materialization reconciliation requires a complete exact provider-identity lookup.',
+			array(
+				'lookup_contract' => isset( $scan['contract'] ) ? (string) $scan['contract'] : '',
+				'truncation_reasons' => isset( $scan['truncation_reasons'] ) ? $scan['truncation_reasons'] : array(),
+			)
+		);
 
 		$candidates = array();
 		$identity_candidates = array();
