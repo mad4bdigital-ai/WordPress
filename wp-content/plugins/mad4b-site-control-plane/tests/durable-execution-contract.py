@@ -124,6 +124,7 @@ for marker in (
     "'released_after_verified_no_effect' === (string) $row['status']",
     "claim_epoch=%d",
     "status='pending'",
+    "reconciliation_ref=''",
     "reclaimed_after_verified_no_effect",
 ):
     if marker not in begin:
