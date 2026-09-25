@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Remote_Operation_Parity {
 	const CONTRACT = 'mad4b.remote-operation-parity.v1';
 	const STATUS_ABILITY = 'mad4b/remote-operation-parity-status';
+	const DISCOVER_ABILITY = 'mad4b/operation-discover';
 	const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';
 	const FRONTEND_SAMPLE_ABILITY = 'mad4b/frontend-performance-sample-run';
 	const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';
@@ -42,6 +43,33 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 					'execute_callback' => array( __CLASS__, 'status' ),
 					'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
 					'input_schema' => array( 'type' => 'object', 'additionalProperties' => false ),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => self::meta( true, true ),
+				)
+			);
+		}
+
+		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::DISCOVER_ABILITY ) ) ) {
+			wp_register_ability(
+				self::DISCOVER_ABILITY,
+				array(
+					'label' => 'Discover Governed Operations',
+					'description' => 'Search the governed operation catalog by feature, operation, provider, executor, authority surface, remote mode, or free-text capability intent without knowing an ability name in advance.',
+					'category' => 'mad4b-read',
+					'execute_callback' => array( __CLASS__, 'discover' ),
+					'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+					'input_schema' => array(
+						'type' => 'object',
+						'properties' => array(
+							'query' => array( 'type' => 'string', 'maxLength' => 160 ),
+							'feature_id' => array( 'type' => 'string', 'maxLength' => 96 ),
+							'authority_surface' => array( 'type' => 'string', 'maxLength' => 64 ),
+							'executor' => array( 'type' => 'string', 'maxLength' => 96 ),
+							'provider' => array( 'type' => 'string', 'maxLength' => 96 ),
+							'remote_ready_only' => array( 'type' => 'boolean' ),
+						),
+						'additionalProperties' => false,
+					),
 					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 					'meta' => self::meta( true, true ),
 				)
@@ -123,6 +151,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	public static function catalog() {
 		$rows = array(
 			'managed_skills_reconciliation' => array(
+				'feature_id' => 'dynamic-skills',
+				'capability_tags' => array( 'skills', 'seed', 'provider-reconciliation', 'maintenance', 'bootstrap' ),
+				'provider' => 'core',
+				'status_ability' => 'mad4b/skills-runtime-certification',
 				'local_surface' => 'wp-admin:MAD4B/Skills/Reconcile Managed Skills',
 				'remote_ability' => self::SKILLS_ABILITY,
 				'authority_surface' => 'mad4b-enrollment',
@@ -132,6 +164,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'human_decision_required' => false,
 			),
 			'frontend_performance_sampling' => array(
+				'feature_id' => 'live-acceptance-performance',
+				'capability_tags' => array( 'frontend', 'performance', 'sampling', 'acceptance', 'telemetry' ),
+				'provider' => 'wordpress-http',
+				'status_ability' => 'mad4b/frontend-performance-status',
 				'local_surface' => 'frontend-browser-visit',
 				'remote_ability' => self::FRONTEND_SAMPLE_ABILITY,
 				'authority_surface' => 'mad4b-enrollment',
@@ -141,6 +177,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'human_decision_required' => false,
 			),
 			'admin_query_performance_indexes' => array(
+				'feature_id' => 'admin-query-performance',
+				'capability_tags' => array( 'database', 'index', 'performance', 'maintenance', 'ddl' ),
+				'provider' => 'wordpress-database',
+				'status_ability' => 'mad4b/admin-query-performance-status',
 				'local_surface' => 'wp-admin:MAD4B/Performance/Apply performance indexes',
 				'remote_ability' => self::PERFORMANCE_INDEX_ABILITY,
 				'authority_surface' => 'mad4b-enrollment',
@@ -158,6 +198,40 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		}
 		unset( $row );
 		return $rows;
+	}
+
+	public static function discover( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$query = isset( $input['query'] ) ? strtolower( trim( sanitize_text_field( (string) $input['query'] ) ) ) : '';
+		$feature_id = isset( $input['feature_id'] ) ? sanitize_key( (string) $input['feature_id'] ) : '';
+		$surface = isset( $input['authority_surface'] ) ? sanitize_key( (string) $input['authority_surface'] ) : '';
+		$executor = isset( $input['executor'] ) ? sanitize_key( (string) $input['executor'] ) : '';
+		$provider = isset( $input['provider'] ) ? sanitize_key( (string) $input['provider'] ) : '';
+		$remote_ready_only = ! empty( $input['remote_ready_only'] );
+		$matches = array();
+		foreach ( self::catalog() as $operation_id => $row ) {
+			if ( '' !== $feature_id && $feature_id !== sanitize_key( (string) $row['feature_id'] ) ) continue;
+			if ( '' !== $surface && $surface !== sanitize_key( (string) $row['authority_surface'] ) ) continue;
+			if ( '' !== $executor && $executor !== sanitize_key( (string) $row['executor'] ) ) continue;
+			if ( '' !== $provider && $provider !== sanitize_key( (string) $row['provider'] ) ) continue;
+			if ( $remote_ready_only && empty( $row['remote_parity_ready'] ) ) continue;
+			if ( '' !== $query ) {
+				$haystack = strtolower( implode( ' ', array_merge(
+					array( $operation_id, (string) $row['feature_id'], (string) $row['remote_ability'], (string) $row['local_surface'], (string) $row['executor'], (string) $row['provider'], (string) $row['authority_surface'], (string) $row['remote_mode'], (string) $row['status_ability'] ),
+					isset( $row['capability_tags'] ) && is_array( $row['capability_tags'] ) ? array_map( 'strval', $row['capability_tags'] ) : array()
+				) ) );
+				if ( false === strpos( $haystack, $query ) ) continue;
+			}
+			$matches[ $operation_id ] = $row;
+		}
+		return array(
+			'contract' => 'mad4b.operation-discovery.v1',
+			'query' => $query,
+			'count' => count( $matches ),
+			'operations' => $matches,
+			'future_feature_discovery' => true,
+			'requires_prior_ability_name' => false,
+		);
 	}
 
 	public static function status() {
