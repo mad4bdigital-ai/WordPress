@@ -231,5 +231,27 @@
         "prepare protected backup root, create exact-runtime backup, inject corruption/interruption, and prove restore handling"
       ]
     }
+  },
+  "domain_evidence": {
+    "protected_backup_restore": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        ".github/workflows/feature-007-critical-kernel.yml"
+      ],
+      "proven": [
+        "bounded Staging-only exact-plan Control Plane snapshot",
+        "exact target tree and wp-config hash binding without copying wp-config bytes",
+        "atomic backup directory commit with manifest and receipt readback",
+        "symlink source and stale-plan denial"
+      ],
+      "remaining": [
+        "create protected backup on ETG Staging for the exact currently deployed runtime",
+        "bind live backup receipt to rollout evidence",
+        "inject corrupt/interrupted restore using the live protected backup path"
+      ]
+    }
   }
 }
