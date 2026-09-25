@@ -274,18 +274,6 @@ if ($readbackTemplateRc -ne 0) {
 }
 Write-Host "canonical_readback_match=true"
 
-$GovernanceStatusPath = Join-Path $env:TEMP "mad4b-repository-governance-status.json"
-Remove-Item -LiteralPath $GovernanceStatusPath -Force -ErrorAction SilentlyContinue
-& $PythonCommand "tools/verify_repository_governance.py" --repository $Repository --policy $PolicyPath --template $TemplatePath --output $GovernanceStatusPath
-if ($LASTEXITCODE -ne 0) {
-    throw "GOVERNANCE_APPLY_FAIL_CLOSED: canonical ruleset readback matched, but aggregate repository-governance verification failed. The exact canonical mutation is retained; inspect diagnostics before any further governance change."
-}
-
-$status = Get-Content -LiteralPath $GovernanceStatusPath -Raw | ConvertFrom-Json
-if ($status.ready -ne $true) {
-    throw "GOVERNANCE_APPLY_FAIL_CLOSED: readback did not reach ready=true."
-}
-
 Write-Host "=== BUILD RULESET ATTESTATION ==="
 & $PythonCommand "tools/build_repository_ruleset_attestation.py" --readback $ReadbackPath --policy $PolicyPath --template $TemplatePath --repository $Repository --output $RulesetAttestationPath
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $RulesetAttestationPath -PathType Leaf)) {
@@ -300,6 +288,24 @@ $attestationObject = Get-Content -LiteralPath $RulesetAttestationPath -Raw | Con
 $attestationValue = $attestationObject | ConvertTo-Json -Depth 100 -Compress
 if ([string]::IsNullOrWhiteSpace($attestationValue)) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: ruleset attestation JSON is empty."
+}
+
+# Validate the exact attestation against aggregate governance before persisting it.
+$GovernanceStatusPath = Join-Path $env:TEMP "mad4b-repository-governance-status.json"
+Remove-Item -LiteralPath $GovernanceStatusPath -Force -ErrorAction SilentlyContinue
+$previousAttestationEnv = [Environment]::GetEnvironmentVariable($variableName, "Process")
+try {
+    [Environment]::SetEnvironmentVariable($variableName, $attestationValue, "Process")
+    & $PythonCommand "tools/verify_repository_governance.py" --repository $Repository --policy $PolicyPath --template $TemplatePath --output $GovernanceStatusPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "GOVERNANCE_APPLY_FAIL_CLOSED: canonical ruleset and freshly-built attestation did not satisfy aggregate repository governance."
+    }
+} finally {
+    [Environment]::SetEnvironmentVariable($variableName, $previousAttestationEnv, "Process")
+}
+$status = Get-Content -LiteralPath $GovernanceStatusPath -Raw | ConvertFrom-Json
+if ($status.ready -ne $true -or $status.ruleset_attestation_verified -ne $true) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: aggregate governance did not verify the freshly-built ruleset attestation."
 }
 
 Write-Host "=== UPSERT RULESET ATTESTATION VARIABLE ==="
