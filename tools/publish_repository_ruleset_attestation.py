@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -61,7 +63,13 @@ def list_owner_ledgers(repository: str, title: str, owner_login: str) -> list[di
     return found
 
 
-def publish(repository: str, policy: dict, attestation: dict) -> dict:
+def publish(
+    repository: str,
+    policy: dict,
+    attestation: dict,
+    policy_path: Path,
+    template_path: Path,
+) -> dict:
     config = policy.get("ruleset_attestation") or {}
     expected = {
         "scope": "owner_issue_comment",
@@ -94,14 +102,52 @@ def publish(repository: str, policy: dict, attestation: dict) -> dict:
         "attestation_author_login": owner_login,
         "attestation_comment_marker": expected["comment_marker"],
         "repository": repository,
+        "ruleset_name": str(policy.get("required_repository_ruleset_name") or ""),
+        "ruleset_source_type": "Repository",
+        "ruleset_source": repository,
         "bypass_actor_count": 0,
         "require_extra_approval_for_unattributed_changes": True,
         "verified_readback": True,
+        "policy_sha256": hashlib.sha256(policy_path.read_bytes()).hexdigest(),
+        "template_sha256": hashlib.sha256(template_path.read_bytes()).hexdigest(),
     }.items():
         if attestation.get(field) != value:
             raise ValueError(
                 f"ruleset attestation publication binding mismatch: {field}"
             )
+
+    ruleset_id = int(attestation.get("ruleset_id") or 0)
+    ruleset_updated_at = str(attestation.get("ruleset_updated_at") or "")
+    if ruleset_id < 1 or not ruleset_updated_at:
+        raise ValueError("ruleset attestation must bind a positive ruleset id and updated_at")
+
+    expected_checks = sorted(
+        (
+            str(row.get("context") or ""),
+            int(row.get("integration_id") or 0),
+        )
+        for row in ((policy.get("required_status_checks") or {}).get("contexts") or [])
+        if isinstance(row, dict)
+    )
+    observed_checks = sorted(
+        (
+            str(row.get("context") or ""),
+            int(row.get("integration_id") or 0),
+        )
+        for row in (attestation.get("required_status_checks") or [])
+        if isinstance(row, dict)
+    )
+    if not expected_checks or observed_checks != expected_checks:
+        raise ValueError("ruleset attestation required-status-check binding mismatch")
+
+    expected_rule_types = sorted(str(x) for x in (policy.get("required_rule_types") or []))
+    observed_rule_types = sorted(str(x) for x in (attestation.get("rule_types") or []))
+    if not expected_rule_types or observed_rule_types != expected_rule_types:
+        raise ValueError("ruleset attestation rule-type binding mismatch")
+
+    for field in ("policy_sha256", "template_sha256"):
+        if re.fullmatch(r"[a-f0-9]{64}", str(attestation.get(field) or "")) is None:
+            raise ValueError(f"ruleset attestation {field} is not a canonical SHA-256")
 
     ledgers = list_owner_ledgers(repository, expected["issue_title"], owner_login)
     if len(ledgers) > 1:
@@ -176,6 +222,7 @@ def main() -> int:
     parser.add_argument("--repository", required=True)
     parser.add_argument("--policy", required=True, type=Path)
     parser.add_argument("--attestation", required=True, type=Path)
+    parser.add_argument("--template", required=True, type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     try:
@@ -183,6 +230,8 @@ def main() -> int:
             args.repository,
             load(args.policy),
             load(args.attestation),
+            args.policy,
+            args.template,
         )
     except (
         ValueError,
