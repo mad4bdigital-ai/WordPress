@@ -387,6 +387,14 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php"
       ],
       "reason": "Decommission preflight/export invariants are implemented; governed quiesce/export/import/revoke and final live proof remain open."
+    },
+    "T2802": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "Deterministic weighted-aging queue ranking and anti-starvation semantics are implemented without authority/quota bypass; durable multi-worker fair scheduling and load proof remain open."
     }
   }
 }
