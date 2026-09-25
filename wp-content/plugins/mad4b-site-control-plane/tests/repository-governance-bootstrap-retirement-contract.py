@@ -32,7 +32,8 @@ one_time_governance_required = [
     "verify_feature_boundary_bootstrap_transition.py",
     "policy_path=/tmp/mad4b-bootstrap-base-policy.json",
     "governance_extra_args+=(--allow-bootstrap-hidden-bypass-evidence)",
-    "MAD4B_RULESET_ATTESTATION",
+    "test_verify_repository_governance_attestation.py",
+    "test_publish_repository_ruleset_attestation.py",
     "'post_merge_ruleset_apply_required': True",
 ]
 for needle in one_time_governance_required:
@@ -44,13 +45,24 @@ one_time_verdict_required = [
     "verify_feature_boundary_bootstrap_transition.py",
     "mad4b-release-verdict-bootstrap-base-policy.json",
     "governance_cmd.append('--allow-bootstrap-hidden-bypass-evidence')",
-    "MAD4B_RULESET_ATTESTATION",
     "'post_merge_ruleset_apply_required':True",
     "PR #66 on branch chore/bootstrap-feature-boundary-policy-20260925",
 ]
 for needle in one_time_verdict_required:
     if needle not in verdict:
         raise SystemExit(f"one-time feature-boundary bootstrap Release Verdict binding missing: {needle}")
+
+for legacy_storage in [
+    "MAD4B_RULESET_ATTESTATION",
+    "repository-governance",
+]:
+    if legacy_storage == "repository-governance":
+        continue
+    if legacy_storage in governance or legacy_storage in verdict:
+        raise SystemExit(
+            "repository governance workflows returned to legacy environment attestation storage: "
+            + legacy_storage
+        )
 
 rerun_required = [
     "mad4b-feature-boundary-root.yml/runs?event=pull_request_target&per_page=100",
@@ -89,6 +101,7 @@ print("REPOSITORY_GOVERNANCE_BOOTSTRAP_RETIREMENT_CONTRACT: PASS")
 print("legacy_bootstrap_exception=retired")
 print("feature_boundary_bootstrap=pr66_exact_branch_base_policy_only")
 print("post_merge_ruleset_apply_required=true")
+print("ruleset_attestation_storage=owner_issue_comment")
 print("owner_attestation_reruns=release_verdict+failed_feature_boundary")
 print("schema_check_binding=derived_from_critical_kernel")
 print("merge_gate_requires=governance_ready")
