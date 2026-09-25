@@ -163,7 +163,7 @@
       "remainder": [
         "certify the bounded Host Runner bootstrap/enrollment flow on an actual supported ETG Staging hosting channel",
         "prove MCP/WP-CLI/Host Runner authority parity for one read and one reversible write",
-        "prove live ETG Host Runner canary and recovery storage behavior"
+        "prove live ETG Host Runner canary, protected storage, and repair/requeue behavior"
       ]
     },
     {
@@ -225,16 +225,19 @@
     {
       "id": "recovery_live_drill",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "gate": "recovery_live_verified",
       "remainder": [
-        "prove Recovery Runner remains usable with WordPress HTTP/plugin boot/control-plane route unavailable",
-        "inject receipt-persistence failure and prove reconciliation-required uncertainty state"
+        "execute the same drill on ETG Staging with normal WordPress/Control Plane route intentionally unavailable",
+        "bind live recovery evidence to the exact deployed runtime-release identity and protected storage path"
       ],
       "evidence": {
         "repository_recovery_contract_workflow_run_id": 36075527334,
         "out_of_band_without_wordpress_boot_contract_proven": true,
-        "live_etg_drill_proven": false
+        "live_etg_drill_proven": false,
+        "wordpress_boot_unavailable_repository_proven": true,
+        "receipt_persistence_uncertainty_repository_proven": true,
+        "blind_retry_disabled_on_uncertainty": true
       }
     },
     {
