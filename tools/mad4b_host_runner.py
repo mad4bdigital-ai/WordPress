@@ -1055,6 +1055,29 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
     if receipt_root.exists() and (receipt_root.is_symlink() or not receipt_root.is_dir()):
         raise ValueError("Host Runner receipt root is invalid")
 
+    receipts: dict[str, dict[str, Any]] = {}
+    verified_rollbacks: dict[str, str] = {}
+    if receipt_root.is_dir():
+        for receipt_path in sorted(receipt_root.glob("*.json")):
+            if receipt_path.is_symlink() or not receipt_path.is_file():
+                continue
+            receipt = load_json_bounded(receipt_path, MAX_RECEIPT_BYTES)
+            if receipt.get("contract") != RECEIPT_CONTRACT:
+                raise ValueError("Host Runner receipt contract mismatch during reconciliation")
+            job_id = str(receipt.get("job_id") or "")
+            if not re.fullmatch(r"[a-f0-9-]{36}", job_id):
+                raise ValueError("Host Runner receipt job id is invalid during reconciliation")
+            receipts[job_id] = receipt
+            if (
+                receipt.get("operation_id") == "workspace.file.rollback"
+                and receipt.get("mutation_performed") is True
+                and receipt.get("readback_verdict") == "PASS"
+                and isinstance(receipt.get("result"), dict)
+            ):
+                source_job_id = str(receipt["result"].get("source_job_id") or "")
+                if re.fullmatch(r"[a-f0-9-]{36}", source_job_id):
+                    verified_rollbacks[source_job_id] = job_id
+
     entries: list[dict[str, Any]] = []
     if journal_root.is_dir():
         for journal_path in sorted(journal_root.glob("*.json")):
@@ -1070,19 +1093,16 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
             before = str(journal.get("before_sha256") or "")
             expected_after = str(journal.get("expected_after_sha256") or "")
 
-            receipt_present = False
-            receipt_path = receipt_root / f"{job_id}.json"
-            if receipt_path.is_file() and not receipt_path.is_symlink():
-                receipt = load_json_bounded(receipt_path, MAX_RECEIPT_BYTES)
-                receipt_present = (
-                    receipt.get("contract") == RECEIPT_CONTRACT
-                    and str(receipt.get("job_id") or "") == job_id
-                    and hmac.compare_digest(str(receipt.get("plan_sha256") or ""), plan_sha)
-                    and receipt.get("readback_verdict") == "PASS"
-                )
+            receipt = receipts.get(job_id)
+            receipt_present = bool(
+                isinstance(receipt, dict)
+                and str(receipt.get("job_id") or "") == job_id
+                and hmac.compare_digest(str(receipt.get("plan_sha256") or ""), plan_sha)
+                and receipt.get("readback_verdict") == "PASS"
+            )
 
             current_identity = ""
-            if operation_id == "workspace.file.replace" and relative_path:
+            if operation_id in {"workspace.file.replace", "workspace.file.rollback"} and relative_path:
                 relative_path = _workspace_relative(relative_path)
                 target = workspace / relative_path
                 if workspace.exists():
@@ -1091,9 +1111,16 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
                 else:
                     current_identity = "ABSENT"
 
-            if receipt_present:
+            superseded_by = verified_rollbacks.get(job_id, "")
+            if receipt_present and current_identity and hmac.compare_digest(current_identity, expected_after):
                 status = "DURABLE_RECEIPT_PRESENT"
                 reconciliation_required = False
+            elif receipt_present and superseded_by:
+                status = "SUPERSEDED_BY_VERIFIED_ROLLBACK"
+                reconciliation_required = False
+            elif receipt_present:
+                status = "DURABLE_RECEIPT_POSTCONDITION_DRIFT"
+                reconciliation_required = True
             elif current_identity and hmac.compare_digest(current_identity, expected_after):
                 status = "RUNTIME_EFFECT_OBSERVED_NO_RECEIPT"
                 reconciliation_required = True
@@ -1112,6 +1139,7 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
                 "journal_state": str(journal.get("state") or ""),
                 "journal_terminal": bool(journal.get("terminal")),
                 "durable_receipt_present": receipt_present,
+                "superseded_by_verified_rollback_job_id": superseded_by,
                 "current_identity": current_identity,
                 "before_sha256": before,
                 "expected_after_sha256": expected_after,
