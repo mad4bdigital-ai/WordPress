@@ -66,3 +66,10 @@ Jobs/plans/evidence refer to secret bindings or opaque handles. Reusable secret 
 
 ## Rule 20 — Provider brands decompose into channels
 A hosting/provider brand may expose API, CLI, MCP/plugin, local runner and recovery channels. Each is discovered/certified separately; the brand name never implies capability equivalence.
+
+
+## Rule 21 — Remote operation parity
+Any automation-eligible local operation must have a bounded governed remote counterpart. A wp-admin button, browser step, WP-CLI command, provider console action or maintenance screen may be a frontend, but must not be the only transport. Human-only transport gaps are engineering defects, not governance.
+
+## Rule 22 — Discoverability before dependency
+New features, operations, providers, executors and maintenance capabilities must register semantic metadata in a discoverable catalog before other workflows depend on their exact ability names. Discovery must work by intent, feature, provider, executor and authority surface without prior name knowledge.
