@@ -32,6 +32,23 @@ final class MAD4B_SCP_Scheduler_Admission {
 		) );
 	}
 
+		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/scheduler-fair-rank' ) ) ) {
+			wp_register_ability( 'mad4b/scheduler-fair-rank', array(
+				'label' => 'Scheduler Fair Queue Ranking',
+				'description' => 'Rank already-admitted queued work with deterministic weighted aging. Read-only and non-authorizing.',
+				'category' => 'mad4b-read',
+				'execute_callback' => array( __CLASS__, 'fair_rank' ),
+				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+				'input_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => array(
+					'public' => false, 'show_in_rest' => false,
+					'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+					'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+				),
+			) );
+		}
+
 	private static function stable( $value ) {
 		if ( is_array( $value ) ) {
 			$is_list = array_keys( $value ) === range( 0, count( $value ) - 1 );
@@ -114,6 +131,65 @@ final class MAD4B_SCP_Scheduler_Admission {
 			'authorizing' => false,
 		);
 	}
+
+	public static function fair_rank( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$items = isset( $input['items'] ) && is_array( $input['items'] ) ? array_values( $input['items'] ) : array();
+		$now = isset( $input['now_epoch'] ) ? max( 0, (int) $input['now_epoch'] ) : 0;
+		if ( $now <= 0 ) {
+			return array(
+				'contract' => 'mad4b.scheduler-fair-rank.v1',
+				'eligible' => array(), 'rejected' => array(),
+				'reason_code' => 'now_epoch_required',
+				'authorizing' => false, 'mutation_performed' => false,
+			);
+		}
+		$eligible = array();
+		$rejected = array();
+		foreach ( $items as $index => $item ) {
+			if ( ! is_array( $item ) ) { $rejected[] = array( 'index' => $index, 'reason_code' => 'item_invalid' ); continue; }
+			$id = sanitize_text_field( (string) ( $item['job_id'] ?? '' ) );
+			$tenant = sanitize_key( (string) ( $item['tenant_id'] ?? '' ) );
+			$site = sanitize_key( (string) ( $item['site_id'] ?? '' ) );
+			$admitted = ! empty( $item['admitted'] );
+			$authority_current = ! array_key_exists( 'authority_current', $item ) || ! empty( $item['authority_current'] );
+			$quota_current = ! array_key_exists( 'quota_current', $item ) || ! empty( $item['quota_current'] );
+			$enqueued_at = isset( $item['enqueued_at_epoch'] ) ? max( 0, (int) $item['enqueued_at_epoch'] ) : 0;
+			$weight = isset( $item['fairness_weight'] ) ? max( 1, (int) $item['fairness_weight'] ) : 1;
+			$priority = sanitize_key( (string) ( $item['priority_class'] ?? 'normal' ) );
+			if ( '' === $id || '' === $tenant || '' === $site || $enqueued_at <= 0 || $enqueued_at > $now ) {
+				$rejected[] = array( 'job_id' => $id, 'reason_code' => 'queue_identity_invalid' ); continue;
+			}
+			if ( ! $admitted ) { $rejected[] = array( 'job_id' => $id, 'reason_code' => 'not_admitted' ); continue; }
+			if ( ! $authority_current ) { $rejected[] = array( 'job_id' => $id, 'reason_code' => 'authority_not_current' ); continue; }
+			if ( ! $quota_current ) { $rejected[] = array( 'job_id' => $id, 'reason_code' => 'quota_not_current' ); continue; }
+			$age = max( 0, $now - $enqueued_at );
+			$priority_boost = in_array( $priority, array( 'incident', 'recovery', 'high' ), true ) ? 3600 : 0;
+			// Aging dominates bounded weight over time; low-weight work therefore cannot starve forever.
+			$score = $age + $priority_boost + min( 3600, 300 * $weight );
+			$eligible[] = array(
+				'job_id' => $id, 'tenant_id' => $tenant, 'site_id' => $site,
+				'priority_class' => $priority, 'fairness_weight' => $weight,
+				'age_seconds' => $age, 'fair_score' => $score,
+			);
+		}
+		usort( $eligible, static function( $a, $b ) {
+			if ( $a['fair_score'] === $b['fair_score'] ) return strcmp( $a['job_id'], $b['job_id'] );
+			return $a['fair_score'] > $b['fair_score'] ? -1 : 1;
+		} );
+		return array(
+			'contract' => 'mad4b.scheduler-fair-rank.v1',
+			'eligible' => $eligible,
+			'rejected' => $rejected,
+			'next_job_id' => empty( $eligible ) ? '' : (string) $eligible[0]['job_id'],
+			'anti_starvation' => true,
+			'authority_bypass_allowed' => false,
+			'quota_bypass_allowed' => false,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
+	}
+
 }
 
 MAD4B_SCP_Scheduler_Admission::boot();
