@@ -24,10 +24,12 @@ REPOSITORY_POLICY_PATH = ".github/mad4b-repository-governance-policy.json"
 GRANT_CATALOG_PATH = ".github/mad4b-feature-boundary-grants.json"
 GRANT_CATALOG_CONTRACT = "mad4b.repository-feature-boundary-grants.v1"
 OBSOLETE_SELF_POLICY = ".github/mad4b-feature-boundary-policy.json"
+BOOTSTRAP_ROOT_BRANCH = "chore/bootstrap-feature-boundary-policy-20260925"
 RELEASE_CRITICAL_ROOT_PATHS = {
     ".github/workflows/feature-007-critical-kernel.yml",
     ".github/workflows/mad4b-control-plane-package.yml",
     ".github/workflows/mad4b-site-control-plane.yml",
+    ".github/workflows/mad4b-context-authority.yml",
     ".github/workflows/mad4b-live-acceptance-evidence.yml",
     "tools/verify_release_root_trust.py",
 }
@@ -143,12 +145,13 @@ def verify(base: str, head: str, head_branch: str) -> dict:
             if p in IMMUTABLE_FEATURE_PATHS or p in RELEASE_CRITICAL_ROOT_PATHS
         )
         if root_changes:
-            if not (head_branch.startswith("chore/governance-") or head_branch.startswith("gov/")):
+            bootstrap = head_branch == BOOTSTRAP_ROOT_BRANCH
+            if not (bootstrap or head_branch.startswith("chore/governance-") or head_branch.startswith("gov/")):
                 fail("REPOSITORY_ROOT_CHANGE_BRANCH_FORBIDDEN:" + head_branch)
             return {
                 "contract": CONTRACT,
                 "ready": True,
-                "mode": "repository_governance_change",
+                "mode": "repository_governance_bootstrap" if bootstrap else "repository_governance_change",
                 "base_sha": base,
                 "head_sha": head,
                 "head_branch": head_branch,
@@ -159,6 +162,8 @@ def verify(base: str, head: str, head_branch: str) -> dict:
                 "repository_root_changes": root_changes,
                 "owner_attestation_required": True,
                 "owner_attestation_scope": "exact_head",
+                "bootstrap_exception": bootstrap,
+                "bootstrap_branch": BOOTSTRAP_ROOT_BRANCH if bootstrap else "",
                 "trusted_verifier_source": "base",
                 "pull_request_code_executed": False,
             }
