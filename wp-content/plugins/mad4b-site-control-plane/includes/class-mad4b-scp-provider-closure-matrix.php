@@ -102,11 +102,14 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 		$ability_filter = isset( $input['ability'] ) ? trim( (string) $input['ability'] ) : '';
 		$provider_filter = isset( $input['provider'] ) ? sanitize_key( (string) $input['provider'] ) : '';
 
-		$projection = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'consent_grant_projection' )
-			? MAD4B_SCP_Local_OAuth_Server::consent_grant_projection()
+		$blocked = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'blocked_write_tools' )
+			? array_values( (array) MAD4B_SCP_Servers::blocked_write_tools() )
 			: array();
-		$blocked = isset( $projection['provider_gated_catalog_abilities'] ) && is_array( $projection['provider_gated_catalog_abilities'] )
-			? array_values( $projection['provider_gated_catalog_abilities'] )
+		$authority_status = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'status' )
+			? (array) MAD4B_SCP_Staging_Write_Authority::status()
+			: array();
+		$binding_status = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			? (array) MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
 			: array();
 
 		$inventory = class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' )
@@ -132,14 +135,31 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			}
 
 			$candidates = isset( $ability_index[ $ability ] ) ? $ability_index[ $ability ] : array();
-			$selected = self::select_candidate( $surface_provider, $candidates );
-			$closure = self::closure_for( $ability, $surface_reason, $selected, $providers );
+			$selection = self::select_candidate( $surface_provider, $candidates );
+			$selected = isset( $selection['selected'] ) && is_array( $selection['selected'] ) ? $selection['selected'] : array();
+			$ambiguous = ! empty( $selection['ambiguous'] );
+			$closure = $ambiguous
+				? array(
+					'closure_class' => 'ambiguous_provider_capability_mapping',
+					'next_action' => 'resolve_provider_capability_mapping',
+					'evidence_required' => array( 'surface_provider', 'candidate_provider_ids', 'candidate_capability_ids', 'provider_capability_contract' ),
+					'owner_review_required' => false,
+				)
+				: self::closure_for( $ability, $surface_reason, $selected, $providers );
 
 			$items[] = array(
 				'ability' => $ability,
 				'surface_provider' => $surface_provider,
 				'surface_reason' => $surface_reason,
 				'catalog_provider_id' => isset( $selected['provider_id'] ) ? (string) $selected['provider_id'] : '',
+				'ambiguous_mapping' => $ambiguous,
+				'candidate_count' => count( $candidates ),
+				'candidates' => array_values( array_map( static function ( $candidate ) {
+					return array(
+						'provider_id' => isset( $candidate['provider_id'] ) ? (string) $candidate['provider_id'] : '',
+						'capability_id' => isset( $candidate['capability_id'] ) ? (string) $candidate['capability_id'] : '',
+					);
+				}, $candidates ) ),
 				'capability_id' => isset( $selected['capability_id'] ) ? (string) $selected['capability_id'] : '',
 				'risk' => isset( $selected['status']['risk'] ) ? (string) $selected['status']['risk'] : 'unknown',
 				'certification_level' => isset( $selected['status']['certification_level'] ) ? (string) $selected['status']['certification_level'] : 'UNKNOWN',
@@ -176,8 +196,8 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'provider_gated_count' => count( $items ),
 			'closure_class_counts' => $counts,
 			'items' => $items,
-			'candidate_binding_match' => isset( $projection['candidate_binding_match'] ) ? (bool) $projection['candidate_binding_match'] : false,
-			'write_authority_ready' => isset( $projection['ready'] ) ? (bool) $projection['ready'] : false,
+			'candidate_binding_match' => isset( $binding_status['match'] ) ? (bool) $binding_status['match'] : ( isset( $authority_status['candidate_binding_match'] ) ? (bool) $authority_status['candidate_binding_match'] : false ),
+			'write_authority_ready' => isset( $authority_status['ready'] ) ? (bool) $authority_status['ready'] : false,
 			'principle' => 'observe_live_gate_then_correlate_capability_truth_then_require_exact_evidence_before_activation',
 		);
 	}
@@ -202,17 +222,16 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 	}
 
 	private static function select_candidate( $surface_provider, array $candidates ) {
-		if ( empty( $candidates ) ) return array( 'provider_id' => '', 'capability_id' => '', 'status' => array() );
+		if ( empty( $candidates ) ) return array( 'selected' => array(), 'ambiguous' => false );
 		$surface_provider = sanitize_key( (string) $surface_provider );
-		foreach ( $candidates as $candidate ) {
-			if ( $surface_provider === sanitize_key( (string) ( isset( $candidate['provider_id'] ) ? $candidate['provider_id'] : '' ) ) ) return $candidate;
-		}
-		if ( 1 === count( $candidates ) ) return $candidates[0];
-		foreach ( $candidates as $candidate ) {
-			$status = isset( $candidate['status'] ) && is_array( $candidate['status'] ) ? $candidate['status'] : array();
-			if ( ! empty( $status['surface_exposed'] ) ) return $candidate;
-		}
-		return $candidates[0];
+		$exact = array_values( array_filter( $candidates, static function ( $candidate ) use ( $surface_provider ) {
+			return '' !== $surface_provider
+				&& $surface_provider === sanitize_key( (string) ( isset( $candidate['provider_id'] ) ? $candidate['provider_id'] : '' ) );
+		} ) );
+		if ( 1 === count( $exact ) ) return array( 'selected' => $exact[0], 'ambiguous' => false );
+		if ( count( $exact ) > 1 ) return array( 'selected' => array(), 'ambiguous' => true );
+		if ( 1 === count( $candidates ) ) return array( 'selected' => $candidates[0], 'ambiguous' => false );
+		return array( 'selected' => array(), 'ambiguous' => true );
 	}
 
 	private static function closure_for( $ability, $surface_reason, array $selected, array $providers ) {
