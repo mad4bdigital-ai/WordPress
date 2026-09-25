@@ -735,7 +735,7 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3648 P0 Prove protected backup integrity/capacity/exact-runtime binding and interrupted/corrupt restore behavior.
 - [ ] T3649 P0 Prove one semantic operation across two executor adapters with normalized-result and authority parity.
 - [ ] T3650 P0 Prove submission/execution/commit location truthfulness and reapproval on material executor-location change.
-- [ ] T3651 P0 Extend gate-liveness proof so every blocking gate has a path to a terminal state, not only terminal reachability.
+- [x] T3651 P0 Extend gate-liveness proof so every blocking gate has a path to a terminal state, not only terminal reachability. Evidence: `validate_spec.py` reverse-DAG `reaches_terminal()` check for every KERNEL_BLOCKER/LIVE_PRECONDITION; Feature 007 Spec Quality CI PASS.
 - [ ] T3652 P0 Prove Doctor/DLQ/reconciliation behavior for stuck lease, orphan job, uncertain mutation and recovery-required states.
 - [ ] T3653 P0 Recertify exact installed Bit Flows 1.29.0 against permanent behavioral/security probes before execution eligibility.
 - [ ] T3654 P0 Run the complete request→plan→approval→execution→readback→durable receipt→rollback vertical slice and link all evidence to the terminal gate.
