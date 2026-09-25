@@ -40,7 +40,7 @@ $PythonCommand = if (Get-Command python -ErrorAction SilentlyContinue) { "python
 if (-not $PythonCommand) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: Python is required for governed readback."
 }
-foreach ($RequiredPath in @($TemplatePath, $PolicyPath, "tools/verify_repository_governance.py", "tools/verify_repository_ruleset_template.py", "tools/verify_repository_ruleset_restore.py")) {
+foreach ($RequiredPath in @($TemplatePath, $PolicyPath, "tools/verify_repository_governance.py", "tools/verify_repository_ruleset_template.py", "tools/verify_repository_ruleset_restore.py", "tools/build_repository_ruleset_attestation.py")) {
     if (-not (Test-Path -LiteralPath $RequiredPath -PathType Leaf)) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: required file not found: $RequiredPath"
     }
@@ -142,7 +142,8 @@ $BeforeReadbackPath = Join-Path $env:TEMP "mad4b-ruleset-before-readback.json"
 $ReadbackPath = Join-Path $env:TEMP "mad4b-ruleset-readback.json"
 $RollbackReadbackPath = Join-Path $env:TEMP "mad4b-ruleset-rollback-readback.json"
 $RollbackVerificationPath = Join-Path $env:TEMP "mad4b-ruleset-rollback-verification.json"
-Remove-Item -LiteralPath $RollbackPayloadPath,$BeforeReadbackPath,$ReadbackPath,$RollbackReadbackPath,$RollbackVerificationPath -Force -ErrorAction SilentlyContinue
+$RulesetAttestationPath = Join-Path $env:TEMP "mad4b-ruleset-attestation.json"
+Remove-Item -LiteralPath $RollbackPayloadPath,$BeforeReadbackPath,$ReadbackPath,$RollbackReadbackPath,$RollbackVerificationPath,$RulesetAttestationPath -Force -ErrorAction SilentlyContinue
 if ($named.Count -gt 1) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: duplicate MAD4B governance rulesets detected."
 } elseif ($named.Count -eq 1) {
@@ -275,7 +276,7 @@ Write-Host "canonical_readback_match=true"
 
 $GovernanceStatusPath = Join-Path $env:TEMP "mad4b-repository-governance-status.json"
 Remove-Item -LiteralPath $GovernanceStatusPath -Force -ErrorAction SilentlyContinue
-& $PythonCommand "tools/verify_repository_governance.py" --repository $Repository --policy $PolicyPath --output $GovernanceStatusPath
+& $PythonCommand "tools/verify_repository_governance.py" --repository $Repository --policy $PolicyPath --template $TemplatePath --output $GovernanceStatusPath
 if ($LASTEXITCODE -ne 0) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: canonical ruleset readback matched, but aggregate repository-governance verification failed. The exact canonical mutation is retained; inspect diagnostics before any further governance change."
 }
@@ -285,6 +286,60 @@ if ($status.ready -ne $true) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: readback did not reach ready=true."
 }
 
+Write-Host "=== BUILD RULESET ATTESTATION ==="
+& $PythonCommand "tools/build_repository_ruleset_attestation.py" --readback $ReadbackPath --policy $PolicyPath --template $TemplatePath --repository $Repository --output $RulesetAttestationPath
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $RulesetAttestationPath -PathType Leaf)) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: privileged ruleset attestation build failed."
+}
+$policyObject = Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json
+$variableName = [string]$policyObject.ruleset_attestation.variable_name
+if ($variableName -ne "MAD4B_RULESET_ATTESTATION") {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: unexpected ruleset attestation variable name."
+}
+$attestationObject = Get-Content -LiteralPath $RulesetAttestationPath -Raw | ConvertFrom-Json
+$attestationValue = $attestationObject | ConvertTo-Json -Depth 100 -Compress
+if ([string]::IsNullOrWhiteSpace($attestationValue)) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: ruleset attestation JSON is empty."
+}
+
+Write-Host "=== UPSERT RULESET ATTESTATION VARIABLE ==="
+$variableEndpoint = "repos/$Repository/actions/variables/$variableName"
+$existingVariableRaw = & gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" $variableEndpoint 2>$null
+$variableExists = $LASTEXITCODE -eq 0
+if ($variableExists) {
+    $variableArgs = @(
+        "api","--method","PATCH",
+        "-H","Accept: application/vnd.github+json",
+        "-H","X-GitHub-Api-Version: 2026-03-10",
+        $variableEndpoint,
+        "--raw-field","name=$variableName",
+        "--raw-field","value=$attestationValue"
+    )
+} else {
+    $variableArgs = @(
+        "api","--method","POST",
+        "-H","Accept: application/vnd.github+json",
+        "-H","X-GitHub-Api-Version: 2026-03-10",
+        "repos/$Repository/actions/variables",
+        "--raw-field","name=$variableName",
+        "--raw-field","value=$attestationValue"
+    )
+}
+& gh @variableArgs | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: repository ruleset attestation variable upsert failed."
+}
+$variableReadbackRaw = & gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" $variableEndpoint
+if ($LASTEXITCODE -ne 0) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: repository ruleset attestation variable readback failed."
+}
+$variableReadback = $variableReadbackRaw | ConvertFrom-Json
+if ([string]$variableReadback.name -ne $variableName -or [string]$variableReadback.value -ne [string]$attestationValue) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: repository ruleset attestation variable readback mismatch."
+}
+Write-Host "ruleset_attestation_variable=$variableName"
+Write-Host "ruleset_attestation_readback=verified"
+
 Write-Host ""
 Write-Host "APPLY_MAD4B_MASTER_RULESET:$rulesetId:ready"
 Write-Host "mutation_performed=$($mutationPerformed.ToString().ToLowerInvariant())"
@@ -292,4 +347,5 @@ Write-Host "required_check=Repository release verdict"
 Write-Host "required_check=Repository feature boundary"
 Write-Host "required_check_integration_id=15368"
 Write-Host "target_ref=refs/heads/master"
+Write-Host "ruleset_attestation_variable=$variableName"
 Write-Host "reviewed_head=$currentHead"
