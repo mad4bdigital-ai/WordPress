@@ -58,6 +58,7 @@ IMMUTABLE_FEATURE_PATHS = {
 GOVERNANCE_SUPPORT_PATHS = {
     "tools/test_verify_feature_boundary.py",
     "tools/test_verify_repository_owner_attestation.py",
+    "tools/test_verify_repository_governance_attestation.py",
     "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-retirement-contract.py",
     "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py",
 }
