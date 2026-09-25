@@ -39,7 +39,7 @@ $PythonCommand = if (Get-Command python -ErrorAction SilentlyContinue) { "python
 if (-not $PythonCommand) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: Python is required for governed readback."
 }
-foreach ($RequiredPath in @($TemplatePath, $PolicyPath, "tools/verify_repository_governance.py")) {
+foreach ($RequiredPath in @($TemplatePath, $PolicyPath, "tools/verify_repository_governance.py", "tools/verify_repository_ruleset_template.py")) {
     if (-not (Test-Path -LiteralPath $RequiredPath -PathType Leaf)) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: required file not found: $RequiredPath"
     }
@@ -58,6 +58,17 @@ if (@($template.bypass_actors).Count -ne 0) {
 $includedRefs = @($template.conditions.ref_name.include)
 if ($includedRefs.Count -ne 1 -or $includedRefs[0] -ne "refs/heads/master") {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: template must target only refs/heads/master."
+}
+
+$TemplateVerificationPath = Join-Path $env:TEMP "mad4b-ruleset-template-verification.json"
+Remove-Item -LiteralPath $TemplateVerificationPath -Force -ErrorAction SilentlyContinue
+& $PythonCommand "tools/verify_repository_ruleset_template.py" --template $TemplatePath --policy $PolicyPath --output $TemplateVerificationPath
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $TemplateVerificationPath -PathType Leaf)) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: canonical ruleset template does not exactly implement repository governance policy."
+}
+$templateVerification = Get-Content -LiteralPath $TemplateVerificationPath -Raw | ConvertFrom-Json
+if ($templateVerification.ready -ne $true -or $templateVerification.readback_verified -ne $false) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: canonical template preflight did not reach ready=true."
 }
 
 Write-Host "=== EXACT SOURCE ==="
@@ -124,10 +135,30 @@ if ($unexpected.Count -gt 0) {
 
 $rulesetId = $null
 $mutationPerformed = $false
+$rollbackMode = "none"
+$RollbackPayloadPath = Join-Path $env:TEMP "mad4b-ruleset-pre-apply-backup.json"
+$ReadbackPath = Join-Path $env:TEMP "mad4b-ruleset-readback.json"
+Remove-Item -LiteralPath $RollbackPayloadPath,$ReadbackPath -Force -ErrorAction SilentlyContinue
 if ($named.Count -gt 1) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: duplicate MAD4B governance rulesets detected."
 } elseif ($named.Count -eq 1) {
     $rulesetId = [string]$named[0].id
+    $beforeRaw = & gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" "repos/$Repository/rulesets/${rulesetId}?includes_parents=true"
+    if ($LASTEXITCODE -ne 0) {
+        throw "GOVERNANCE_APPLY_FAIL_CLOSED: unable to capture exact pre-apply ruleset for rollback."
+    }
+    $before = $beforeRaw | ConvertFrom-Json
+    $rollbackPayload = [ordered]@{
+        name = $before.name
+        target = $before.target
+        enforcement = $before.enforcement
+        bypass_actors = @($before.bypass_actors)
+        conditions = $before.conditions
+        rules = @($before.rules)
+    }
+    $rollbackPayload | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $RollbackPayloadPath -Encoding utf8
+    $rollbackMode = "restore"
+    Write-Host "pre_apply_ruleset_snapshot=ready"
     Write-Host "=== RECONCILE EXISTING RULESET ==="
     Write-Host "Existing named ruleset detected; applying the exact reviewed template. id=$rulesetId"
     $updateArgs = @(
@@ -161,6 +192,7 @@ if ($named.Count -gt 1) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: created ruleset response did not contain an id."
     }
     $mutationPerformed = $true
+    $rollbackMode = "delete"
     Write-Host "Created ruleset id=$rulesetId"
 }
 
@@ -172,13 +204,39 @@ if ($LASTEXITCODE -ne 0) {
 }
 $detail = $detailRaw | ConvertFrom-Json
 $detail | ConvertTo-Json -Depth 100
+$detailRaw | Set-Content -LiteralPath $ReadbackPath -Encoding utf8
 
-& $PythonCommand "tools/verify_repository_governance.py" --repository $Repository --policy $PolicyPath --output "mad4b-repository-governance-status.json"
+& $PythonCommand "tools/verify_repository_ruleset_template.py" --template $TemplatePath --policy $PolicyPath --readback $ReadbackPath --output $TemplateVerificationPath
+$readbackTemplateRc = $LASTEXITCODE
+if ($readbackTemplateRc -ne 0) {
+    Write-Host "canonical_readback_match=false"
+    if ($mutationPerformed -and $rollbackMode -eq "restore" -and (Test-Path -LiteralPath $RollbackPayloadPath -PathType Leaf)) {
+        Write-Host "=== ROLLBACK RULESET ==="
+        & gh api --method PUT -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" "repos/$Repository/rulesets/$rulesetId" --input $RollbackPayloadPath | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "GOVERNANCE_APPLY_RECOVERY_REQUIRED: canonical readback mismatched and previous ruleset restoration failed. ruleset_id=$rulesetId"
+        }
+        Write-Host "ruleset_rollback=restored_previous"
+    } elseif ($mutationPerformed -and $rollbackMode -eq "delete") {
+        Write-Host "=== ROLLBACK CREATED RULESET ==="
+        & gh api --method DELETE -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10" "repos/$Repository/rulesets/$rulesetId"
+        if ($LASTEXITCODE -ne 0) {
+            throw "GOVERNANCE_APPLY_RECOVERY_REQUIRED: canonical readback mismatched and newly-created ruleset deletion failed. ruleset_id=$rulesetId"
+        }
+        Write-Host "ruleset_rollback=deleted_new_ruleset"
+    }
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: live ruleset did not exactly match the canonical template after mutation; automatic rollback completed."
+}
+Write-Host "canonical_readback_match=true"
+
+$GovernanceStatusPath = Join-Path $env:TEMP "mad4b-repository-governance-status.json"
+Remove-Item -LiteralPath $GovernanceStatusPath -Force -ErrorAction SilentlyContinue
+& $PythonCommand "tools/verify_repository_governance.py" --repository $Repository --policy $PolicyPath --output $GovernanceStatusPath
 if ($LASTEXITCODE -ne 0) {
-    throw "GOVERNANCE_APPLY_FAIL_CLOSED: post-apply governed readback failed. Do not merge PR #60."
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: canonical ruleset readback matched, but aggregate repository-governance verification failed. The exact canonical mutation is retained; inspect diagnostics before any further governance change."
 }
 
-$status = Get-Content -LiteralPath "mad4b-repository-governance-status.json" -Raw | ConvertFrom-Json
+$status = Get-Content -LiteralPath $GovernanceStatusPath -Raw | ConvertFrom-Json
 if ($status.ready -ne $true) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: readback did not reach ready=true."
 }
