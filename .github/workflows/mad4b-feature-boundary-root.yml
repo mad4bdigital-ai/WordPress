@@ -6,22 +6,29 @@ on:
       - '.github/mad4b-feature-boundary-root-policy.json'
       - '.github/workflows/mad4b-feature-boundary-root.yml'
       - 'tools/verify_feature_boundary.py'
+      - 'tools/verify_repository_owner_attestation.py'
+  pull_request_target:
+    branches:
+      - master
   workflow_dispatch:
 
 permissions:
   contents: read
+  issues: read
+  pull-requests: read
 
 concurrency:
-  group: mad4b-feature-boundary-root-${{ github.event.pull_request.number || github.ref }}
+  group: mad4b-feature-boundary-root-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  root-contract:
-    name: Repository-owned feature boundary root
+  root-self-test:
+    if: github.event_name != 'pull_request_target'
+    name: Repository feature boundary root self-test
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout exact head
+      - name: Checkout exact source
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -33,11 +40,12 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
 
-      - name: Compile trusted verifier
+      - name: Compile trusted root tools
         shell: bash
         run: |
           set -euo pipefail
           python3 -m py_compile tools/verify_feature_boundary.py
+          python3 -m py_compile tools/verify_repository_owner_attestation.py
 
       - name: Execute root policy self-test
         shell: bash
@@ -47,11 +55,39 @@ jobs:
           python3 - <<'PY'
           import json
           p=json.load(open('/tmp/MAD4B-FEATURE-BOUNDARY-SELFTEST.json',encoding='utf-8'))
-          assert p['contract']=='mad4b.feature-boundary-verdict.v1'
+          assert p['contract']=='mad4b.feature-boundary-verdict.v2'
           assert p['self_test'] is True
           assert p['ready'] is True
-          assert p['case_count'] >= 7
+          assert p['governance_mode_supported'] is True
+          assert p['owner_attestation_for_governance'] is True
+          assert p['case_count'] >= 8
           print('MAD4B_FEATURE_BOUNDARY_ROOT_SELFTEST: PASS')
+          PY
+
+      - name: Verify future baseline-owned execution shape
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('.github/workflows/mad4b-feature-boundary-root.yml').read_text(encoding='utf-8')
+          required=[
+              '  pull_request_target:',
+              "if: github.event_name == 'pull_request_target'",
+              'ref: ${{ github.event.pull_request.base.sha }}',
+              'persist-credentials: false',
+              'pull/$PR_NUMBER/head',
+              'python3 tools/verify_feature_boundary.py',
+              'python3 tools/verify_repository_owner_attestation.py',
+              'owner_attestation_required',
+          ]
+          missing=[x for x in required if x not in text]
+          if missing:
+              raise SystemExit('future trusted root execution shape missing: '+','.join(missing))
+          enforcement=text.split('  boundary-enforcement:',1)[1]
+          if 'ref: ${{ github.event.pull_request.head.sha }}' in enforcement:
+              raise SystemExit('trusted boundary enforcement may not checkout untrusted PR head')
+          print('MAD4B_FEATURE_BOUNDARY_FUTURE_ROOT_SHAPE: PASS')
           PY
 
       - name: Verify policy is repository-root scoped
@@ -66,7 +102,87 @@ jobs:
           assert p['source_of_truth']=='repository_owned_exact_base'
           assert p['metadata_cannot_widen_policy'] is True
           assert p['repository_owned_changes_require_separate_governance_pr'] is True
+          assert p['single_owner_safety']['authorized_owner_logins']==['mad4bdigital-ai']
+          assert p['single_owner_safety']['attestation_command']=='OWNER_ATTEST_SINGLE_OWNER'
+          assert p['single_owner_safety']['owner_attestation_remains_exact_sha_scoped'] is True
           assert '.github/workflows/mad4b-release-verdict.yml' in p['repository_owned_exact_paths']
+          assert 'tools/verify_repository_owner_attestation.py' in p['repository_owned_exact_paths']
           assert '007' in p['features']
           print('MAD4B_FEATURE_BOUNDARY_ROOT_POLICY: PASS')
           PY
+
+  boundary-enforcement:
+    if: github.event_name == 'pull_request_target'
+    name: Repository feature boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout trusted exact base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify trusted root is baseline-owned
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$BASE_SHA"
+          test -f .github/mad4b-feature-boundary-root-policy.json
+          test -f tools/verify_feature_boundary.py
+          test -f tools/verify_repository_owner_attestation.py
+
+      - name: Fetch untrusted head as Git data only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "pull/$PR_NUMBER/head"
+          test "$(git rev-parse FETCH_HEAD)" = "$HEAD_SHA"
+          git cat-file -e "$HEAD_SHA^{commit}"
+
+      - name: Enforce baseline-owned boundary
+        id: boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/verify_feature_boundary.py \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --head-branch "$HEAD_BRANCH" \
+            --output /tmp/MAD4B-FEATURE-BOUNDARY.json
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          p=json.load(open('/tmp/MAD4B-FEATURE-BOUNDARY.json',encoding='utf-8'))
+          print('owner_attestation_required=' + ('true' if p.get('owner_attestation_required') else 'false'))
+          print('boundary_state=' + str(p.get('state') or ''))
+          PY
+
+      - name: Verify exact-head owner attestation for governance changes
+        if: steps.boundary.outputs.owner_attestation_required == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/verify_repository_owner_attestation.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --pr-number "$PR_NUMBER" \
+            --expected-head "$HEAD_SHA" \
+            --policy .github/mad4b-feature-boundary-root-policy.json \
+            --output /tmp/MAD4B-ROOT-OWNER-ATTESTATION.json
+
+      - name: Upload exact boundary evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-feature-boundary-${{ env.HEAD_SHA }}
+          path: |
+            /tmp/MAD4B-FEATURE-BOUNDARY.json
+            /tmp/MAD4B-ROOT-OWNER-ATTESTATION.json
+          if-no-files-found: ignore
+          retention-days: 30
