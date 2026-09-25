@@ -74,6 +74,8 @@ final class MAD4B_SCP_Admin_Query_Performance {
 			'indexes' => $indexes,
 			'last_apply' => is_array( $stored ) ? $stored : array(),
 			'maintenance_job' => self::maintenance_job_status(),
+			'wp_cron_disabled' => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON,
+			'maintenance_executor_ready' => function_exists( 'wp_schedule_single_event' ) && ! ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ),
 			'query_signatures' => array(
 				array(
 					'id' => 'attachment_meta_key_discovery',
@@ -95,8 +97,8 @@ final class MAD4B_SCP_Admin_Query_Performance {
 	public static function handle_explicit_apply() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required to apply MAD4B performance indexes.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		check_admin_referer( 'mad4b_apply_admin_query_indexes', 'mad4b_admin_query_performance_nonce' );
-		$result = self::apply_explicit();
-		$state = is_array( $result ) && isset( $result['state'] ) ? sanitize_key( (string) $result['state'] ) : ( ! empty( $result['ready'] ) ? 'ready' : 'unknown' );
+		$result = self::enqueue_explicit();
+		$state = is_wp_error( $result ) ? sanitize_key( (string) $result->get_error_code() ) : ( is_array( $result ) && isset( $result['state'] ) ? sanitize_key( (string) $result['state'] ) : 'unknown' );
 		$url = add_query_arg( array( 'page' => 'mad4b-control-plane', 'mad4b_performance_apply' => $state ), admin_url( 'admin.php' ) );
 		wp_safe_redirect( $url );
 		exit;
@@ -109,6 +111,8 @@ final class MAD4B_SCP_Admin_Query_Performance {
 
 	public static function enqueue_explicit( array $expected_identity = array() ) {
 		if ( 'staging' !== self::environment() ) return new WP_Error( 'mad4b_admin_query_performance_staging_only', 'Performance-index maintenance is Staging-only.' );
+		if ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ) return new WP_Error( 'mad4b_admin_query_performance_cron_disabled', 'WP-Cron is disabled; the maintenance executor is unavailable.' );
+		if ( ! function_exists( 'wp_schedule_single_event' ) ) return new WP_Error( 'mad4b_admin_query_performance_cron_unavailable', 'WP-Cron scheduling API is unavailable.' );
 		$current = self::maintenance_job_status();
 		if ( is_array( $current ) && in_array( isset( $current['status'] ) ? (string) $current['status'] : '', array( 'pending', 'running' ), true ) ) {
 			return array( 'contract' => 'mad4b.admin-query-performance-job.v1', 'state' => 'already_queued', 'job' => $current, 'production_changed' => false );
@@ -135,7 +139,18 @@ final class MAD4B_SCP_Admin_Query_Performance {
 			$stored = self::maintenance_job_status();
 			if ( empty( $stored ) || ! hash_equals( (string) $job['job_id'], (string) ( isset( $stored['job_id'] ) ? $stored['job_id'] : '' ) ) ) return new WP_Error( 'mad4b_admin_query_performance_job_persist_failed', 'Unable to persist performance maintenance job.' );
 		}
-		if ( ! wp_next_scheduled( self::CRON_HOOK, array( $job['job_id'] ) ) ) wp_schedule_single_event( time() + 5, self::CRON_HOOK, array( $job['job_id'] ) );
+		if ( ! wp_next_scheduled( self::CRON_HOOK, array( $job['job_id'] ) ) ) {
+			$scheduled = wp_schedule_single_event( time() + 5, self::CRON_HOOK, array( $job['job_id'] ), true );
+			if ( is_wp_error( $scheduled ) || false === $scheduled ) {
+				$job['status'] = 'blocked';
+				$job['completed_at'] = gmdate( 'c' );
+				$job['result'] = array( 'state' => 'schedule_failed', 'error_code' => is_wp_error( $scheduled ) ? $scheduled->get_error_code() : 'wp_schedule_single_event_failed' );
+				update_option( self::JOB_OPTION, $job, false );
+				self::audit_job( $job, 'blocked' );
+				return new WP_Error( 'mad4b_admin_query_performance_schedule_failed', 'Unable to schedule the performance maintenance worker.', array( 'job' => $job ) );
+			}
+		}
+		self::audit_job( $job, 'queued' );
 		return array( 'contract' => 'mad4b.admin-query-performance-job.v1', 'state' => 'queued', 'job' => $job, 'production_changed' => false );
 	}
 
@@ -147,6 +162,7 @@ final class MAD4B_SCP_Admin_Query_Performance {
 			$job['completed_at'] = gmdate( 'c' );
 			$job['result'] = array( 'state' => 'environment_changed' );
 			update_option( self::JOB_OPTION, $job, false );
+			self::audit_job( $job, 'blocked' );
 			return;
 		}
 		$identity = self::current_build_identity();
@@ -156,6 +172,7 @@ final class MAD4B_SCP_Admin_Query_Performance {
 			$job['completed_at'] = gmdate( 'c' );
 			$job['result'] = array( 'state' => 'build_identity_changed' );
 			update_option( self::JOB_OPTION, $job, false );
+			self::audit_job( $job, 'blocked' );
 			return;
 		}
 		$job['status'] = 'running';
@@ -166,6 +183,23 @@ final class MAD4B_SCP_Admin_Query_Performance {
 		$job['completed_at'] = gmdate( 'c' );
 		$job['result'] = is_array( $result ) ? $result : array( 'state' => 'invalid_result' );
 		update_option( self::JOB_OPTION, $job, false );
+		self::audit_job( $job, (string) $job['status'] );
+	}
+
+	private static function audit_job( array $job, $event_state ) {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return;
+		MAD4B_SCP_Audit::record(
+			'mad4b/admin-query-performance-job',
+			array(
+				'contract' => 'mad4b.admin-query-performance-job.v1',
+				'job_id' => isset( $job['job_id'] ) ? (string) $job['job_id'] : '',
+				'status' => isset( $job['status'] ) ? (string) $job['status'] : '',
+				'event_state' => sanitize_key( (string) $event_state ),
+				'expected_identity' => isset( $job['expected_identity'] ) && is_array( $job['expected_identity'] ) ? $job['expected_identity'] : array(),
+				'production_mutation' => false,
+			),
+			'ok'
+		);
 	}
 
 	private static function current_build_identity() {
