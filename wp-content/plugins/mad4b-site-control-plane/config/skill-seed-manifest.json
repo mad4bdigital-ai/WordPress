@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.skill-seed-manifest.v1",
-  "seed_version": 7,
+  "seed_version": 8,
   "skills": [
     {
       "level": "site",
@@ -54,6 +54,12 @@
       "level": "workflow",
       "target": "browser-acceptance",
       "name": "wordpress-browser-acceptance",
+      "enabled": true
+    },
+    {
+      "level": "workflow",
+      "target": "brand-context",
+      "name": "wordpress-brand-context-builder",
       "enabled": true
     },
     {
