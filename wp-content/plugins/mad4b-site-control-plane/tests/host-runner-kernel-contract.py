@@ -303,7 +303,7 @@ with tempfile.TemporaryDirectory() as td:
     unknown_path = tmp / "unknown.json"
     unknown_path.write_text(json.dumps(unknown), encoding="utf-8")
     try:
-        runner.run_job(profile_path, unknown_path)
+        runner.run_job_with_failure_evidence(profile_path, unknown_path)
         raise SystemExit("Host Runner accepted unknown/generic shell operation")
     except ValueError as exc:
         if "operation is not allowed" not in str(exc):
@@ -410,7 +410,7 @@ with tempfile.TemporaryDirectory() as td:
 
     # The original successful write receipt is historical evidence, not proof of current postcondition.
     try:
-        runner.run_job(profile_path, write_path)
+        runner.run_job_with_failure_evidence(profile_path, write_path)
         raise SystemExit("Host Runner replay returned stale success after explicit rollback")
     except RuntimeError as exc:
         if "HOST_RUNNER_REPLAY_RECONCILIATION_REQUIRED" not in str(exc):
@@ -702,5 +702,22 @@ with tempfile.TemporaryDirectory() as td:
     doctor_after_faults = runner.doctor(profile_path)
     assert doctor_after_faults["reconciliation_required_count"] >= 1
     assert doctor_after_faults["mutation_performed"] is False
+
+
+    # Operator Doctor surfaces permanent failures and reconciliation-required incidents durably.
+    doctor_after_incidents = runner.doctor(profile_path)
+    assert doctor_after_incidents["dead_letter_count"] >= 1
+    assert doctor_after_incidents["recovery_required_incident_count"] >= 1
+    assert doctor_after_incidents["operator_review_required"] is True
+    dead_letter_root = wp / "wp-content" / "mad4b-runner" / "dead-letter"
+    recovery_required_root = wp / "wp-content" / "mad4b-runner" / "recovery-required"
+    incident_rows = []
+    for incident_path in list(dead_letter_root.glob("*.json")) + list(recovery_required_root.glob("*.json")):
+        incident_rows.append(json.loads(incident_path.read_text(encoding="utf-8")))
+    assert incident_rows
+    assert all(row["blind_retry_allowed"] is False for row in incident_rows)
+    assert all(row["payload_persisted"] is False for row in incident_rows)
+    assert any(row["state"] == "DEAD_LETTERED" for row in incident_rows)
+    assert any(row["state"] == "RECOVERY_REQUIRED" for row in incident_rows)
 
 print("mad4b.host-runner.bounded-kernel.v2: PASS")
