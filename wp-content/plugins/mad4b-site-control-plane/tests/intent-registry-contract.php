@@ -124,6 +124,7 @@ foreach ( array(
 }
 $check( false === strpos( $schema, 'UNIQUE KEY current_owner_scope' ), 'Intent schema reintroduced false single-owner exclusivity' );
 $check( false !== strpos( $main, 'class-mad4b-scp-intent-registry.php' ), 'Intent Registry runtime is not loaded' );
+$check( false !== strpos( $source, 'The v11 intent_relations table is the authoritative registry' ), 'Intent Registry authority drifted back to artifacts' );
 $check( false !== strpos( $servers, "'mad4b/intent-registry-current'" ), 'Intent Registry current read is not mounted' );
 $check( false !== strpos( $servers, "'mad4b/intent-conflicts-analyze'" ), 'Intent conflict analysis read is not mounted' );
 $check( false !== strpos( $servers, "'mad4b/intent-registry-reconcile'" ), 'Intent Registry reconcile is not governed write candidate' );
@@ -140,4 +141,4 @@ foreach ( array(
 	$check( false === strpos( $source, $forbidden ), 'Intent Registry contains forbidden side effect primitive: ' . $forbidden );
 }
 
-echo "mad4b.intent-ownership.v1: PASS\n";
+echo "mad4b.intent-ownership.v11: PASS\n";
