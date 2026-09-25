@@ -201,6 +201,7 @@ for protected_root in [
     ".github/mad4b-master-ruleset-template.json",
     "tools/Apply-Mad4bMasterRuleset.ps1",
     "tools/verify_feature_boundary_bootstrap_transition.py",
+    "tools/verify_repository_ruleset_template.py",
 ]:
     run_case(
         [protected_root],
