@@ -23,6 +23,7 @@ import hmac
 import json
 import os
 import re
+import shutil
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -37,6 +38,8 @@ SUPPORTED_ENVIRONMENTS = {"staging"}
 MAX_JOB_BYTES = 65536
 MAX_RECEIPT_BYTES = 262144
 MAX_WRITE_BYTES = 32768
+MIN_FREE_SPACE_RESERVE_BYTES = 8 * 1024 * 1024
+RESOURCE_BUDGET_CONTRACT = "mad4b.host-runner-resource-budget.v1"
 WORKSPACE_PLAN_CONTRACT = "mad4b.host-runner-workspace-replace-plan.v1"
 WORKSPACE_ROLLBACK_PLAN_CONTRACT = "mad4b.host-runner-workspace-rollback-plan.v1"
 
@@ -74,6 +77,63 @@ OPERATIONS: dict[str, dict[str, Any]] = {
 }
 
 
+class HostRunnerResourceError(ValueError):
+    def __init__(self, code: str, message: str):
+        self.code = code
+        super().__init__(f"{code}: {message}")
+
+
+def resource_budget_status() -> dict[str, Any]:
+    return {
+        "contract": RESOURCE_BUDGET_CONTRACT,
+        "job_input_bytes": MAX_JOB_BYTES,
+        "receipt_output_bytes": MAX_RECEIPT_BYTES,
+        "workspace_write_bytes": MAX_WRITE_BYTES,
+        "minimum_free_space_reserve_bytes": MIN_FREE_SPACE_RESERVE_BYTES,
+        "process": {
+            "available": False,
+            "timeout_seconds": 0,
+            "output_bytes": 0,
+            "denial_code": "HOST_RESOURCE_PROCESS_DISABLED",
+        },
+        "network": {
+            "available": False,
+            "request_count": 0,
+            "denial_code": "HOST_RESOURCE_NETWORK_DISABLED",
+        },
+        "database": {
+            "available": False,
+            "operation_count": 0,
+            "denial_code": "HOST_RESOURCE_DATABASE_DISABLED",
+        },
+    }
+
+
+def assert_resource_capability(resource: str) -> None:
+    resource = str(resource or "").strip().lower()
+    codes = {
+        "process": "HOST_RESOURCE_PROCESS_DISABLED",
+        "network": "HOST_RESOURCE_NETWORK_DISABLED",
+        "database": "HOST_RESOURCE_DATABASE_DISABLED",
+    }
+    if resource in codes:
+        raise HostRunnerResourceError(codes[resource], f"{resource} capability is unavailable to this runner contract")
+    raise HostRunnerResourceError("HOST_RESOURCE_UNKNOWN", "unknown resource capability")
+
+
+def _ensure_storage_budget(path: Path, payload_bytes: int) -> None:
+    if payload_bytes < 0:
+        raise HostRunnerResourceError("HOST_RESOURCE_PAYLOAD_INVALID", "negative payload size")
+    parent = path.parent
+    usage = shutil.disk_usage(parent)
+    required = MIN_FREE_SPACE_RESERVE_BYTES + payload_bytes
+    if usage.free < required:
+        raise HostRunnerResourceError(
+            "HOST_RESOURCE_DISK_BUDGET_EXCEEDED",
+            f"free={usage.free} required={required}",
+        )
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -102,7 +162,8 @@ def atomic_json_write(path: Path, value: dict[str, Any]) -> None:
     payload = json.dumps(value, sort_keys=True, indent=2) + "\n"
     raw = payload.encode()
     if len(raw) > MAX_RECEIPT_BYTES:
-        raise ValueError("receipt exceeds bounded output budget")
+        raise HostRunnerResourceError("HOST_RESOURCE_OUTPUT_BYTES_EXCEEDED", "receipt exceeds bounded output budget")
+    _ensure_storage_budget(path, len(raw))
     tmp = path.with_name(path.name + f".tmp-{uuid.uuid4().hex}")
     with tmp.open("wb") as handle:
         handle.write(raw)
@@ -146,7 +207,7 @@ def load_json_bounded(path: Path, max_bytes: int = MAX_JOB_BYTES) -> dict[str, A
         raise ValueError(f"JSON source is not a regular file: {path}")
     raw = path.read_bytes()
     if len(raw) > max_bytes:
-        raise ValueError("JSON source exceeds bounded input budget")
+        raise HostRunnerResourceError("HOST_RESOURCE_INPUT_BYTES_EXCEEDED", "JSON source exceeds bounded input budget")
     value = json.loads(raw.decode("utf-8"))
     if not isinstance(value, dict):
         raise ValueError("JSON source must contain an object")
@@ -446,7 +507,7 @@ def plan_digest(plan: dict[str, Any]) -> str:
 
 def atomic_bytes_write(path: Path, raw: bytes) -> None:
     if len(raw) > MAX_WRITE_BYTES:
-        raise ValueError("Host Runner write exceeds bounded byte budget")
+        raise HostRunnerResourceError("HOST_RESOURCE_WRITE_BYTES_EXCEEDED", "Host Runner write exceeds bounded byte budget")
     if _is_link_like(path.parent) or not path.parent.is_dir():
         raise ValueError("Host Runner target parent is invalid")
     if path.exists() and _is_link_like(path):
@@ -481,8 +542,10 @@ def build_workspace_replace_plan(
     if "workspace.file.replace" not in profile["allowed_operations"]:
         raise ValueError("Host Runner workspace write operation is not enabled")
     relative_path = _workspace_relative(relative_path)
-    if not isinstance(new_content, (bytes, bytearray)) or len(new_content) > MAX_WRITE_BYTES:
-        raise ValueError("Host Runner replacement content is invalid or too large")
+    if not isinstance(new_content, (bytes, bytearray)):
+        raise ValueError("Host Runner replacement content is invalid")
+    if len(new_content) > MAX_WRITE_BYTES:
+        raise HostRunnerResourceError("HOST_RESOURCE_WRITE_BYTES_EXCEEDED", "Host Runner replacement content exceeds bounded byte budget")
     reason = str(reason or "").strip()
     if len(reason) < 3 or len(reason) > 500:
         raise ValueError("Host Runner workspace write reason is invalid")
@@ -1742,6 +1805,7 @@ def doctor(profile_path: Path) -> dict[str, Any]:
             OPERATIONS[op].get("risk") != "read_only" for op in profile["allowed_operations"]
         ),
         "network_available_to_runner_contract": False,
+        "resource_budgets": resource_budget_status(),
         "reconciliation_required_count": reconciliation["reconciliation_required_count"],
         "reconciliation_counts": reconciliation["counts"],
         "dead_letter_count": dead_letter["count"],
