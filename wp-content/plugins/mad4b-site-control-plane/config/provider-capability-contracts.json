@@ -178,7 +178,24 @@
                 "\\Model\\Flow"
               ]
             }
-          ]
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "idempotency_model": "read_repeatable",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "retry_semantics": "same_observation",
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "callback_model": "none",
+            "execution_history_retention": "provider_defined",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "local_or_remote": "local_wordpress",
+            "evidence_strength": "structural_runtime_read"
+          }
         },
         "flow.execute": {
           "risk": "high_risk_write",
@@ -202,7 +219,24 @@
                 "\\FlowExecutor"
               ]
             }
-          ]
+          ],
+          "traits": {
+            "traits_scope": "mad4b_adapter_semantics",
+            "idempotency_model": "mad4b_guarded",
+            "cancellation": "none",
+            "resume": "none",
+            "durable_wait": false,
+            "retry_semantics": "reconciliation_required_on_uncertain",
+            "ordering_guarantees": "provider_defined",
+            "max_runtime_seconds": "unknown",
+            "max_payload_bytes": "unknown",
+            "callback_model": "flow_history_readback",
+            "execution_history_retention": "provider_defined",
+            "concurrency_model": "provider_defined",
+            "compensation_support": false,
+            "local_or_remote": "local_wordpress",
+            "evidence_strength": "behavioral_readback_required"
+          }
         }
       }
     },
