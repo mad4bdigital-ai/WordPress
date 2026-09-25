@@ -21,6 +21,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php'
@@ -102,6 +103,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/governed-draft-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php'
@@ -337,7 +339,7 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py
 
-      - name: Verify Schema v10 migration runtime lifecycle
+      - name: Verify Schema v11 migration runtime lifecycle
         shell: bash
         run: |
           set -euo pipefail
@@ -455,7 +457,7 @@ jobs:
 
 
   schema-mariadb-v6-v10:
-    name: Schema v6 v7 v8 v9 to v10 real MariaDB upgrade
+    name: Schema v6 v7 v8 v9 to v11 real MariaDB upgrade
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -519,7 +521,7 @@ jobs:
           '
           wp core install             --allow-root             --url=http://mad4b-schema.test             --title='MAD4B Schema Migration'             --admin_user=admin             --admin_password='mad4b-schema-ci-only'             --admin_email=ci@example.invalid             --skip-email
 
-      - name: Prove real MariaDB schema v6 v7 v8 v9 to v10 migration
+      - name: Prove real MariaDB schema v6 v7 v8 v9 to v11 migration
         shell: bash
         run: |
           set -euo pipefail
@@ -548,6 +550,12 @@ jobs:
         run: |
           set -euo pipefail
           wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file             wp-content/plugins/mad4b-site-control-plane/tests/artifact-registry-runtime.php
+
+      - name: Prove Intent Registry v11 runtime reconciliation
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file             wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-runtime.php
 
       - name: Prove governed ContextPack runtime
         shell: bash
