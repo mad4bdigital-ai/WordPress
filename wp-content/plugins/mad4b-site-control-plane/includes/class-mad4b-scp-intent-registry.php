@@ -44,6 +44,7 @@ final class MAD4B_SCP_Intent_Registry {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 		self::register( 'mad4b/intent-registry-current', 'Get Intent Registry State', 'current', true );
 		self::register( 'mad4b/intent-conflicts-analyze', 'Analyze Intent Ownership Conflicts', 'analyze', true );
+		self::register( 'mad4b/intent-bootstrap-plan', 'Plan Bootstrap Intent Reconciliation', 'bootstrap_plan', true );
 		self::register( 'mad4b/intent-registry-reconcile', 'Reconcile Intent Registry Scope', 'reconcile', false );
 	}
 
@@ -123,6 +124,136 @@ final class MAD4B_SCP_Intent_Registry {
 			'overlap_alone_is_conflict' => false,
 			'mutation_performed' => false,
 		);
+	}
+
+	public static function bootstrap_plan( $input ) {
+		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_intent_schema_unavailable', 'Intent Registry schema is not ready.' );
+		$site_uuid = self::site_uuid();
+		if ( '' === $site_uuid ) return new WP_Error( 'mad4b_intent_site_identity_unavailable', 'Site Profile identity is unavailable.' );
+		$snapshot = isset( $input['snapshot'] ) && is_array( $input['snapshot'] ) ? $input['snapshot'] : array();
+		if ( ! isset( $snapshot['site_uuid'] ) || ! hash_equals( $site_uuid, (string) $snapshot['site_uuid'] ) ) {
+			return new WP_Error( 'mad4b_intent_bootstrap_site_mismatch', 'Bootstrap snapshot belongs to a different site identity.' );
+		}
+		$plan = self::bootstrap_plan_from_snapshot(
+			$snapshot,
+			isset( $input['classifications'] ) && is_array( $input['classifications'] ) ? $input['classifications'] : array()
+		);
+		if ( is_wp_error( $plan ) ) return $plan;
+		$reason = trim( sanitize_text_field( (string) ( $input['reason'] ?? 'reconcile explicitly classified bootstrap inventory' ) ) );
+		if ( strlen( $reason ) < 3 || strlen( $reason ) > 500 ) return new WP_Error( 'mad4b_intent_bootstrap_reason_invalid', 'Bootstrap reconciliation plan reason is invalid.' );
+		foreach ( $plan['scopes'] as &$scope ) {
+			$current = self::current( array(
+				'intent_id' => $scope['intent_id'],
+				'locale' => $scope['locale'],
+				'market' => $scope['market'],
+				'limit' => self::MAX_RELATIONS_PER_SCOPE + 1,
+			) );
+			if ( is_wp_error( $current ) ) return $current;
+			if ( empty( $current['complete_for_query'] ) ) return new WP_Error( 'mad4b_intent_bootstrap_scope_incomplete', 'Current Intent scope exceeds bounded planner readback.' );
+			$expected = empty( $current['relations'] ) ? 'ABSENT' : (string) $current['scope_sha256'];
+			$scope['expected_scope_sha256'] = $expected;
+			$scope['reconcile_input'] = array(
+				'intent_id' => $scope['intent_id'],
+				'locale' => $scope['locale'],
+				'market' => $scope['market'],
+				'expected_scope_sha256' => $expected,
+				'relations' => $scope['relations'],
+				'reason' => $reason,
+			);
+		}
+		unset( $scope );
+		$plan['current_state_hydrated'] = true;
+		$plan['apply_ready_scope_count'] = count( $plan['scopes'] );
+		$material = $plan;
+		unset( $material['plan_sha256'] );
+		$plan['plan_sha256'] = hash( 'sha256', self::stable_json( $material ) );
+		return $plan;
+	}
+
+	public static function bootstrap_plan_from_snapshot( array $snapshot, array $classifications ) {
+		if ( 'mad4b.site-content-bootstrap.v1' !== (string) ( $snapshot['contract'] ?? '' ) ) return new WP_Error( 'mad4b_intent_bootstrap_contract_invalid', 'Bootstrap snapshot contract is invalid.' );
+		if ( empty( $snapshot['complete'] ) || ! empty( $snapshot['blocking_reasons'] ) ) return new WP_Error( 'mad4b_intent_bootstrap_incomplete', 'Incomplete bootstrap inventory cannot feed Intent reconciliation.' );
+		if ( ! empty( $snapshot['mutation_performed'] ) || ! empty( $snapshot['intent_claims_created'] ) || ! empty( $snapshot['artifacts_created'] ) ) {
+			return new WP_Error( 'mad4b_intent_bootstrap_authority_invalid', 'Bootstrap snapshot must remain observational and non-authorizing.' );
+		}
+		$snapshot_sha = strtolower( trim( (string) ( $snapshot['snapshot_sha256'] ?? '' ) ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $snapshot_sha ) ) return new WP_Error( 'mad4b_intent_bootstrap_snapshot_sha_invalid', 'Bootstrap snapshot SHA is invalid.' );
+		$items = isset( $snapshot['items'] ) && is_array( $snapshot['items'] ) ? $snapshot['items'] : array();
+		if ( count( $items ) > 1000 || count( $classifications ) > 1000 ) return new WP_Error( 'mad4b_intent_bootstrap_limit', 'Bootstrap planner exceeds bounded item/classification limit.' );
+		$item_by_id = array();
+		foreach ( $items as $item ) {
+			if ( ! is_array( $item ) || 'mad4b.content-inventory-item.v1' !== (string) ( $item['contract'] ?? '' ) ) return new WP_Error( 'mad4b_intent_bootstrap_item_invalid', 'Bootstrap inventory item contract is invalid.' );
+			$content_id = self::bounded_key( $item['content_id'] ?? '', 191 );
+			$locale = self::bounded_key( $item['locale'] ?? '', 32 );
+			$fingerprint = strtolower( trim( (string) ( $item['content_fingerprint'] ?? '' ) ) );
+			if ( '' === $content_id || '' === $locale || 1 !== preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return new WP_Error( 'mad4b_intent_bootstrap_item_identity_invalid', 'Bootstrap item identity/fingerprint is incomplete.' );
+			if ( isset( $item_by_id[ $content_id ] ) ) return new WP_Error( 'mad4b_intent_bootstrap_item_duplicate', 'Bootstrap content item is duplicated.' );
+			$item_by_id[ $content_id ] = $item;
+		}
+
+		$relations = array();
+		$classified_content = array();
+		foreach ( $classifications as $row ) {
+			if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_intent_bootstrap_classification_invalid', 'Bootstrap classification must be an object.' );
+			$content_id = self::bounded_key( $row['content_id'] ?? '', 191 );
+			if ( '' === $content_id || ! isset( $item_by_id[ $content_id ] ) ) return new WP_Error( 'mad4b_intent_bootstrap_content_unknown', 'Bootstrap classification references content outside the exact snapshot.' );
+			$item = $item_by_id[ $content_id ];
+			$item_locale = self::bounded_key( $item['locale'] ?? '', 32 );
+			$declared_locale = self::bounded_key( $row['locale'] ?? $item_locale, 32 );
+			if ( ! hash_equals( $item_locale, $declared_locale ) ) return new WP_Error( 'mad4b_intent_bootstrap_locale_mismatch', 'Bootstrap classification locale differs from observed inventory.' );
+			$evidence = isset( $row['evidence_refs'] ) && is_array( $row['evidence_refs'] ) ? $row['evidence_refs'] : array();
+			$evidence[] = 'bootstrap:' . $snapshot_sha;
+			$evidence[] = 'content-sha256:' . strtolower( (string) $item['content_fingerprint'] );
+			$relations[] = array(
+				'intent_id' => $row['intent_id'] ?? '',
+				'content_id' => $content_id,
+				'locale' => $item_locale,
+				'market' => $row['market'] ?? '',
+				'role' => $row['role'] ?? '',
+				'confidence' => $row['confidence'] ?? -1,
+				'evidence_refs' => $evidence,
+				'valid_from' => '',
+				'valid_to' => '',
+				'source' => 'operator',
+				'analysis_signals' => isset( $row['analysis_signals'] ) && is_array( $row['analysis_signals'] ) ? $row['analysis_signals'] : array(),
+			);
+			$classified_content[ $content_id ] = true;
+		}
+		$normalized = self::normalize_analysis_relations( $relations );
+		if ( is_wp_error( $normalized ) ) return $normalized;
+		$groups = array();
+		foreach ( $normalized as $relation ) {
+			$key = $relation['intent_id'] . "\0" . $relation['locale'] . "\0" . $relation['market'];
+			if ( ! isset( $groups[ $key ] ) ) $groups[ $key ] = array(
+				'intent_id' => $relation['intent_id'],
+				'locale' => $relation['locale'],
+				'market' => $relation['market'],
+				'relations' => array(),
+				'expected_scope_sha256' => '',
+				'reconcile_input' => null,
+			);
+			$groups[ $key ]['relations'][] = $relation;
+		}
+		ksort( $groups, SORT_STRING );
+		$unresolved = array_values( array_diff( array_keys( $item_by_id ), array_keys( $classified_content ) ) );
+		sort( $unresolved, SORT_STRING );
+		$plan = array(
+			'contract' => 'mad4b.intent-bootstrap-reconciliation-plan.v1',
+			'snapshot_sha256' => $snapshot_sha,
+			'snapshot_item_count' => count( $item_by_id ),
+			'classified_item_count' => count( $classified_content ),
+			'unresolved_content_ids' => $unresolved,
+			'classification_complete' => empty( $unresolved ),
+			'scopes' => array_values( $groups ),
+			'current_state_hydrated' => false,
+			'apply_ready_scope_count' => 0,
+			'intent_claims_created' => false,
+			'artifacts_created' => false,
+			'mutation_performed' => false,
+			'authorizing' => false,
+		);
+		$plan['plan_sha256'] = hash( 'sha256', self::stable_json( $plan ) );
+		return $plan;
 	}
 
 	public static function analyze( $input ) {
