@@ -738,7 +738,7 @@ if _artifact_identity_valid('mad4b-site-control-plane-0.4.0-rc.59-' + ('0' * 40)
 if _artifact_identity_valid('../mad4b-site-control-plane-0.4.0-rc.59-' + _exact_sha, _exact_sha):
     raise SystemExit('unsafe artifact identity characters/prefix must be rejected')
 
-print('mad4b.staging-write-authority.tenant-profile.v14: PASS'))
+print('mad4b.staging-write-authority.tenant-profile.v14: PASS')
 def _artifact_identity_valid(value, sha):
     return (
         bool(_re.fullmatch(r'[a-f0-9]{40}', sha))
