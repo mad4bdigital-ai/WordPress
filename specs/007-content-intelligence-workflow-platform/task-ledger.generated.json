@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
   "source_tasks_git_blob_sha": "e990bab0ffcd938396cac29a6823d939eca9aed3",
-  "override_git_blob_sha": "8ae0a8a8cfd7451043419915a2f412e191c026fe",
+  "override_git_blob_sha": "db4188d7995a1e0928c97873c0c9bc6361bf6f32",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -11,21 +11,21 @@
   "counts": {
     "DEFERRED": 1,
     "DONE": 13,
-    "OPEN": 637,
-    "PARTIAL": 7
+    "OPEN": 614,
+    "PARTIAL": 30
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
       "DONE": 13,
-      "OPEN": 502,
-      "PARTIAL": 7
+      "OPEN": 492,
+      "PARTIAL": 17
     },
     "P1": {
       "DEFERRED": 0,
       "DONE": 0,
-      "OPEN": 111,
-      "PARTIAL": 0
+      "OPEN": 98,
+      "PARTIAL": 13
     },
     "P2": {
       "DEFERRED": 1,
@@ -3051,30 +3051,39 @@
       "phase": 17,
       "priority": "P0",
       "summary": "Implement ProviderResolutionDecision.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php"
+      ],
+      "reason": "Provider resolution now produces deterministic non-authorizing candidate decisions with profile/certification fingerprints; full multi-provider preference and live plan binding remain open."
     },
     {
       "task_id": "T1704",
       "phase": 17,
       "priority": "P0",
       "summary": "Consider certification/environment/risk/cost/locality/performance.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json"
+      ],
+      "reason": "Resolver consumes semantic traits plus certification/ring evidence; cost/performance/environment scoring and live policy binding remain incomplete."
     },
     {
       "task_id": "T1705",
       "phase": 17,
       "priority": "P0",
       "summary": "Ensure Resolver is non-authorizing.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php"
+      ],
+      "reason": "Resolver is explicitly non-authorizing and mutation-free in implementation/tests; end-to-end governed execution binding remains open."
     },
     {
       "task_id": "T1706",
@@ -3151,10 +3160,13 @@
       "phase": 18,
       "priority": "P1",
       "summary": "Implement R1 canary Staging.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php"
+      ],
+      "reason": "Canary release-ring eligibility is implemented and fail-closed in repository tests; live Staging promotion is not yet certified."
     },
     {
       "task_id": "T1803",
@@ -3191,10 +3203,13 @@
       "phase": 18,
       "priority": "P1",
       "summary": "Define per-ring evidence requirements.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php"
+      ],
+      "reason": "Certification/ring evidence is evaluated and fingerprinted; complete per-ring evidence policy and live promotion lifecycle remain open."
     },
     {
       "task_id": "T1807",
@@ -4471,10 +4486,13 @@
       "phase": 26,
       "priority": "P0",
       "summary": "Research-vs-republication rights policy.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php"
+      ],
+      "reason": "Research-vs-republication rights decisions are implemented fail-closed; durable RightsRecord registry and live artifact binding remain open."
     },
     {
       "task_id": "T2613",
@@ -4521,30 +4539,39 @@
       "phase": 26,
       "priority": "P0",
       "summary": "Classification→provider processing decision.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php"
+      ],
+      "reason": "Classification-to-destination processing decisions are implemented; durable provider processing profiles/live provider binding remain open."
     },
     {
       "task_id": "T2618",
       "phase": 26,
       "priority": "P0",
       "summary": "Redaction/minimization path.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php"
+      ],
+      "reason": "REDACT_THEN_ALLOW decision semantics exist; the actual governed redaction/minimization transformer remains open."
     },
     {
       "task_id": "T2619",
       "phase": 26,
       "priority": "P0",
       "summary": "Data residency/local-only policy.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php"
+      ],
+      "reason": "Residency and LOCAL_ONLY decision semantics are implemented; live regional/provider enforcement remains open."
     },
     {
       "task_id": "T2620",
@@ -4741,10 +4768,13 @@
       "phase": 28,
       "priority": "P1",
       "summary": "Tenant/site/provider scheduling classes.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "Scheduling admission model accepts tenant/site/provider/job classes; durable scheduler implementation remains open."
     },
     {
       "task_id": "T2802",
@@ -4761,30 +4791,39 @@
       "phase": 28,
       "priority": "P1",
       "summary": "Per-scope quotas/concurrency.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "Queued/concurrent quota admission is implemented; durable queue/accounting and load proof remain open."
     },
     {
       "task_id": "T2804",
       "phase": 28,
       "priority": "P1",
       "summary": "Reserved incident/recovery capacity.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "Reserved recovery/incident lane admission is implemented; actual worker capacity reservation remains open."
     },
     {
       "task_id": "T2805",
       "phase": 28,
       "priority": "P0",
       "summary": "Define central dependency outage matrix.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "Central-unavailability admission semantics are implemented; complete dependency-specific TTL/outage matrix remains open."
     },
     {
       "task_id": "T2806",
@@ -4801,10 +4840,13 @@
       "phase": 28,
       "priority": "P0",
       "summary": "Deny new privilege during central outage by default.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "High-risk work fails closed when central governance evidence is unavailable; full new-privilege surface proof remains open."
     },
     {
       "task_id": "T2808",
@@ -5121,20 +5163,26 @@
       "phase": 30,
       "priority": "P1",
       "summary": "Define decommission scopes.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Decommission scope taxonomy is executable in preflight; governed quiesce/removal actions remain open."
     },
     {
       "task_id": "T3002",
       "phase": 30,
       "priority": "P1",
       "summary": "Inventory active jobs/DLQ/artifacts/providers/credentials/cron/webhooks.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Preflight inventories active jobs, writes, credentials, webhooks, schedules, leases and DLQ; live inventory adapters remain open."
     },
     {
       "task_id": "T3003",
@@ -5151,10 +5199,13 @@
       "phase": 30,
       "priority": "P1",
       "summary": "ExportBundle manifest.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Portable export manifest requirements are emitted; actual export bundle generation/import validation remain open."
     },
     {
       "task_id": "T3005",
@@ -5171,10 +5222,13 @@
       "phase": 30,
       "priority": "P1",
       "summary": "Exclude secrets/private keys by default.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Preflight/export contract explicitly excludes secrets/private keys; live export proof remains open."
     },
     {
       "task_id": "T3007",
@@ -5221,10 +5275,13 @@
       "phase": 30,
       "priority": "P1",
       "summary": "Prove import does not recreate grants/Production authorization.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Import contract explicitly forbids recreating grants/Production authority; importer implementation remains open."
     },
     {
       "task_id": "T3012",
@@ -5741,10 +5798,13 @@
       "phase": 34,
       "priority": "P0",
       "summary": "Provider Resolver trait constraint matching.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php"
+      ],
+      "reason": "Provider Resolver trait matching is implemented with fail-closed unknown traits and certification-aware release rings; plan binding remains open."
     },
     {
       "task_id": "T3405",
@@ -6356,20 +6416,27 @@
       "phase": 36,
       "priority": "P1",
       "summary": "Complete Provider Resolver, signed workflow bridge, dynamic certification lifecycle and release-ring maturity.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php"
+      ],
+      "reason": "Provider resolver and dynamic release-ring foundation is implemented; signed bridge, live promotion and complete maturity remain open."
     },
     {
       "task_id": "T3627",
       "phase": 36,
       "priority": "P1",
       "summary": "Complete rights/AI-data processing, cron/provider backlog and schedule/public-publish maturity without widening kernel authority.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php"
+      ],
+      "reason": "Rights/data and scheduler admission foundations are implemented; cron mutations, durable redaction/profiles and public-publish maturity remain open."
     },
     {
       "task_id": "T3628",
@@ -6388,10 +6455,13 @@
       "phase": 36,
       "priority": "P1",
       "summary": "Complete decommission/portability quiesce/export/import/remap/revoke/final-authority proof.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php"
+      ],
+      "reason": "Decommission preflight/export invariants are implemented; governed quiesce/export/import/revoke and final live proof remain open."
     },
     {
       "task_id": "T3631",
