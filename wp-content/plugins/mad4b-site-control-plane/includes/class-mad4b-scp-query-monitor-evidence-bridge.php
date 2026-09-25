@@ -187,6 +187,36 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		);
 	}
 
+	private static function record_frontend_probe_evidence( array $performance, array $sample ) {
+		$hash = isset( $sample['frontend_probe_hash'] ) ? strtolower( trim( (string) $sample['frontend_probe_hash'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $hash ) ) return $performance;
+		if ( ! isset( $performance['frontend_probe_evidence'] ) || ! is_array( $performance['frontend_probe_evidence'] ) ) $performance['frontend_probe_evidence'] = array();
+		$row = isset( $performance['frontend_probe_evidence'][ $hash ] ) && is_array( $performance['frontend_probe_evidence'][ $hash ] )
+			? $performance['frontend_probe_evidence'][ $hash ]
+			: array( 'count' => 0, 'first_observed_at' => '', 'last_observed_at' => '', 'observations' => array() );
+		$observed_at = isset( $sample['observed_at'] ) ? (string) $sample['observed_at'] : gmdate( 'Y-m-d H:i:s' );
+		$row['count'] = max( 0, (int) ( isset( $row['count'] ) ? $row['count'] : 0 ) ) + 1;
+		if ( empty( $row['first_observed_at'] ) ) $row['first_observed_at'] = $observed_at;
+		$row['last_observed_at'] = $observed_at;
+		if ( ! isset( $row['observations'] ) || ! is_array( $row['observations'] ) ) $row['observations'] = array();
+		$row['observations'][] = array(
+			'sample_id' => isset( $sample['sample_id'] ) ? (string) $sample['sample_id'] : '',
+			'observed_at' => $observed_at,
+		);
+		$row['observations'] = array_slice( $row['observations'], -8 );
+		$performance['frontend_probe_evidence'][ $hash ] = $row;
+		uasort( $performance['frontend_probe_evidence'], static function ( $a, $b ) {
+			return strcmp(
+				isset( $a['last_observed_at'] ) ? (string) $a['last_observed_at'] : '',
+				isset( $b['last_observed_at'] ) ? (string) $b['last_observed_at'] : ''
+			);
+		} );
+		if ( count( $performance['frontend_probe_evidence'] ) > 16 ) {
+			$performance['frontend_probe_evidence'] = array_slice( $performance['frontend_probe_evidence'], -16, null, true );
+		}
+		return $performance;
+	}
+
 	public static function capture_and_flush() {
 		if ( self::$captured ) return;
 		self::$captured = true;
@@ -206,6 +236,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		if ( ! isset( $telemetry['performance']['samples'] ) || ! is_array( $telemetry['performance']['samples'] ) ) $telemetry['performance']['samples'] = array();
 		$telemetry['performance']['samples'][] = $sample;
 		$telemetry['performance']['samples'] = array_slice( $telemetry['performance']['samples'], -32 );
+		if ( 'frontend' === $class ) $telemetry['performance'] = self::record_frontend_probe_evidence( $telemetry['performance'], $sample );
 		$telemetry['performance']['last_by_class'][ $class ] = $sample;
 		if ( 'frontend' === $class ) $telemetry['performance']['frontend_observed'] = true;
 		if ( 'rest' === $class ) $telemetry['performance']['rest_observed'] = true;
@@ -395,6 +426,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			'rest_observed' => false,
 			'samples' => array(),
 			'last_by_class' => array(),
+			'frontend_probe_evidence' => array(),
 		);
 	}
 
