@@ -6,6 +6,7 @@ script = Path("tools/Apply-Mad4bMasterRuleset.ps1").read_text(encoding="utf-8")
 
 required = [
     '"--jq",".[] | @json"',
+    '"repos/$Repository/rulesets?includes_parents=false"',
     '$currentLines = @(& gh @currentArgs)',
     'if ($current.Count -eq 0)',
     'Write-Host "[]"',
@@ -38,6 +39,11 @@ required = [
     '$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)',
     '[System.IO.File]::WriteAllText($RollbackPayloadPath, $rollbackPayloadJson, $Utf8NoBom)',
     '[System.IO.File]::WriteAllText($ReadbackPath, [string]$detailRaw, $Utf8NoBom)',
+    '[string]$before.source_type -ne "Repository"',
+    '[string]$before.source -ne $Repository',
+    '$rollbackRules = @()',
+    'PSObject.Properties["require_extra_approval_for_unattributed_changes"]',
+    'PSObject.Properties.Remove("require_extra_approval_for_unattributed_changes")',
 ]
 
 missing = [needle for needle in required if needle not in script]
@@ -103,3 +109,5 @@ if canonical_template_proc.returncode != 0:
 
 print("canonical_template_executable_preflight=pass")
 print("windows_json_encoding=utf8_no_bom")
+print("repository_ruleset_discovery=local_only")
+print("rollback_payload=response_only_fields_stripped")
