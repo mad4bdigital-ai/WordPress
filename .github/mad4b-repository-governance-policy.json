@@ -30,12 +30,6 @@
   "single_owner_safety": {
     "external_review_count_required": 0,
     "last_pusher_may_complete_owner_attestation_outside_github_review": true,
-    "owner_attestation_remains_exact_sha_scoped": true,
-    "authorized_owner_logins": [
-      "mad4bdigital-ai"
-    ],
-    "attestation_command": "OWNER_ATTEST_SINGLE_OWNER",
-    "attestation_stale_on_descendant": true,
-    "required_by_repository_release_verdict": true
+    "owner_attestation_remains_exact_sha_scoped": true
   }
 }
