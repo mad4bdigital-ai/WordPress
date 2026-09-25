@@ -173,6 +173,10 @@ def verify(template: dict, policy: dict, readback: dict | None = None) -> dict:
 
     readback_verified = False
     if readback is not None:
+        if "bypass_actors" not in readback:
+            raise ValueError("live ruleset bypass-actor evidence is missing")
+        if readback.get("bypass_actors") != []:
+            raise ValueError("live ruleset contains bypass actors")
         readback_pull = next(
             (
                 row for row in (readback.get("rules") or [])
