@@ -192,6 +192,23 @@ assert governance_result["owner_attestation_required"] is True
 assert governance_result["pull_request_code_executed"] is False
 
 run_case(
+    [
+        ".github/workflows/mad4b-release-verdict.yml",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+    ],
+    branch="chore/governance-release-root-hardening",
+    expect_error="REPOSITORY_GOVERNANCE_SCOPE_MIXED",
+)
+
+with patch.object(mod.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout="", stderr="")), \
+     patch.object(mod, "run", return_value=""), \
+     patch.object(mod, "changed_paths", return_value=["tools/test_verify_feature_boundary.py"]), \
+     patch.object(mod, "load_json_at", side_effect=fake_load):
+    governance_test_only = mod.verify(BASE, HEAD, "chore/governance-test-hardening")
+assert governance_test_only["mode"] == "repository_governance_change"
+assert governance_test_only["owner_attestation_required"] is True
+
+run_case(
     [".github/workflows/mad4b-release-verdict.yml"],
     branch="chore/ordinary-maintenance",
     expect_error="REPOSITORY_ROOT_CHANGE_BRANCH_FORBIDDEN",
