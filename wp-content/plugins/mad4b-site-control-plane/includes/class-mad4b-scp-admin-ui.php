@@ -155,6 +155,25 @@ final class MAD4B_SCP_Admin_UI {
 		);
 		self::render_blockers( isset( $authority['blockers'] ) ? $authority['blockers'] : array() );
 
+		if ( class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) ) {
+			$perf = MAD4B_SCP_Admin_Query_Performance::status();
+			echo '<h2>' . esc_html__( 'Admin query performance', 'mad4b-site-control-plane' ) . '</h2>';
+			self::key_value_table( array(
+				'Ready' => ! empty( $perf['ready'] ),
+				'Automatic apply' => ! empty( $perf['automatic_apply'] ),
+				'Environment' => isset( $perf['environment'] ) ? $perf['environment'] : '',
+				'Index version' => isset( $perf['index_version'] ) ? $perf['index_version'] : '',
+			) );
+			if ( empty( $perf['ready'] ) && 'staging' === ( isset( $perf['environment'] ) ? (string) $perf['environment'] : '' ) ) {
+				echo '<p>' . esc_html__( 'Performance indexes are never created during plugin upload/update requests. Apply them explicitly here during a maintenance window.', 'mad4b-site-control-plane' ) . '</p>';
+				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+				echo '<input type="hidden" name="action" value="mad4b_apply_admin_query_indexes">';
+				wp_nonce_field( 'mad4b_apply_admin_query_indexes', 'mad4b_admin_query_performance_nonce' );
+				submit_button( __( 'Apply performance indexes', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+				echo '</form>';
+			}
+		}
+
 		echo '<h2>' . esc_html__( 'MCP peer governance', 'mad4b-site-control-plane' ) . '</h2>';
 		$peer = $snapshot['mcp_peer_governance'];
 		self::key_value_table(
