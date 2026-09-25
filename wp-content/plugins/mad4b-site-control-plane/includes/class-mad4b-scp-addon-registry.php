@@ -92,7 +92,7 @@ final class MAD4B_SCP_Addon_Registry {
 
 	private static function required_manifest_fields() {
 		return array(
-			'addon_id', 'plugin_file', 'base_provider', 'compatible_versions', 'extension_points', 'capabilities',
+			'addon_id', 'plugin_file', 'source_root', 'base_provider', 'compatible_versions', 'extension_points', 'capabilities',
 			'data_ownership', 'authority_impact', 'rollback', 'certification', 'tests', 'portability',
 			'supply_chain', 'network_access', 'multisite', 'performance_budget', 'observability', 'failure_policy',
 			'release_ring', 'certified_pairs',
@@ -104,6 +104,8 @@ final class MAD4B_SCP_Addon_Registry {
 		$addon_id = sanitize_key( (string) $manifest['addon_id'] );
 		if ( '' === $addon_id || $addon_id !== (string) $manifest['addon_id'] ) return new WP_Error( 'mad4b_addon_manifest_id_invalid', 'MAD4B add-on manifest addon_id is invalid.' );
 		if ( empty( $manifest['base_provider']['provider_id'] ) ) return new WP_Error( 'mad4b_addon_manifest_provider_invalid', 'MAD4B add-on manifest base provider identity is missing.' );
+		$source_root = trim( (string) $manifest['source_root'] );
+		if ( '' === $source_root || 0 === strpos( $source_root, '/' ) || false !== strpos( $source_root, '..' ) ) return new WP_Error( 'mad4b_addon_manifest_source_root_invalid', 'MAD4B add-on source_root must be an explicit repository-relative path.' );
 		if ( empty( $manifest['extension_points'] ) || ! is_array( $manifest['extension_points'] ) ) return new WP_Error( 'mad4b_addon_manifest_extension_points_invalid', 'MAD4B add-on manifest must declare extension points.' );
 		if ( ! empty( $manifest['authority_impact']['inherits_production_authority'] ) || ! empty( $manifest['authority_impact']['adds_generic_shell'] ) || ! empty( $manifest['authority_impact']['adds_raw_sql'] ) ) return new WP_Error( 'mad4b_addon_manifest_authority_invalid', 'MAD4B add-on manifest may not inherit Production authority, generic shell, or raw SQL.' );
 		if ( ! isset( $manifest['portability']['vendor_files_modified'] ) || false !== $manifest['portability']['vendor_files_modified'] ) return new WP_Error( 'mad4b_addon_manifest_vendor_patch_denied', 'MAD4B add-ons may not modify vendor files.' );
@@ -189,6 +191,60 @@ final class MAD4B_SCP_Addon_Registry {
 			'revalidation_required_after_plugin_lifecycle_change' => true,
 			'production_authorized' => false,
 		);
+	}
+
+	private static function manifest_by_id( $addon_id ) {
+		$addon_id = sanitize_key( (string) $addon_id );
+		if ( '' === $addon_id ) return new WP_Error( 'mad4b_addon_id_required', 'MAD4B add-on id is required.' );
+		$catalog = self::catalog();
+		if ( is_wp_error( $catalog ) ) return $catalog;
+		foreach ( $catalog['addons'] as $manifest ) {
+			if ( is_array( $manifest ) && isset( $manifest['addon_id'] ) && hash_equals( $addon_id, sanitize_key( (string) $manifest['addon_id'] ) ) ) return $manifest;
+		}
+		return new WP_Error( 'mad4b_addon_not_cataloged', 'MAD4B add-on is not present in the governed add-on catalog.' );
+	}
+
+	public static function execution_binding( $addon_id ) {
+		$manifest = self::manifest_by_id( $addon_id );
+		if ( is_wp_error( $manifest ) ) return $manifest;
+		$status = self::pair_status( $manifest );
+		if ( empty( $status['certified'] ) ) return new WP_Error(
+			'mad4b_addon_pair_not_certified',
+			'MAD4B add-on execution binding is unavailable until the exact provider/add-on runtime pair is certified.',
+			array( 'addon_id' => (string) $addon_id, 'runtime_status' => $status )
+		);
+		return array(
+			'contract' => 'mad4b.wordpress-addon-execution-binding.v1',
+			'addon_id' => (string) $addon_id,
+			'pair_fingerprint' => (string) $status['pair_fingerprint'],
+			'certification_fingerprint' => (string) $status['certification_fingerprint'],
+			'provider_id' => isset( $status['pair']['provider_id'] ) ? (string) $status['pair']['provider_id'] : '',
+			'provider_version' => isset( $status['pair']['provider_version'] ) ? (string) $status['pair']['provider_version'] : '',
+			'addon_version' => isset( $status['pair']['addon_version'] ) ? (string) $status['pair']['addon_version'] : '',
+			'release_ring' => isset( $status['pair']['release_ring'] ) ? (string) $status['pair']['release_ring'] : '',
+			'production_authorized' => false,
+		);
+	}
+
+	public static function mutation_guard( $addon_id, $expected_pair_fingerprint, $expected_certification_fingerprint ) {
+		$expected_pair_fingerprint = strtolower( trim( (string) $expected_pair_fingerprint ) );
+		$expected_certification_fingerprint = strtolower( trim( (string) $expected_certification_fingerprint ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_pair_fingerprint ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_certification_fingerprint ) ) {
+			return new WP_Error( 'mad4b_addon_expected_fingerprint_invalid', 'MAD4B add-on mutation guard requires exact planned pair and certification fingerprints.' );
+		}
+		$binding = self::execution_binding( $addon_id );
+		if ( is_wp_error( $binding ) ) return $binding;
+		if ( ! hash_equals( $expected_pair_fingerprint, strtolower( (string) $binding['pair_fingerprint'] ) ) ) return new WP_Error(
+			'mad4b_addon_pair_fingerprint_drift',
+			'MAD4B add-on provider/add-on pair changed after planning; re-plan and re-approve.',
+			array( 'addon_id' => (string) $addon_id, 'current_pair_fingerprint' => (string) $binding['pair_fingerprint'] )
+		);
+		if ( ! hash_equals( $expected_certification_fingerprint, strtolower( (string) $binding['certification_fingerprint'] ) ) ) return new WP_Error(
+			'mad4b_addon_certification_fingerprint_drift',
+			'MAD4B add-on certification changed after planning; re-plan and re-approve.',
+			array( 'addon_id' => (string) $addon_id, 'current_certification_fingerprint' => (string) $binding['certification_fingerprint'] )
+		);
+		return true;
 	}
 
 	public static function status( $input = null ) {
