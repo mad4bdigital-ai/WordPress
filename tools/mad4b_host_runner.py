@@ -497,6 +497,40 @@ def build_workspace_rollback_plan(
     source_job_id = str(prior_receipt.get("job_id") or "")
     if not re.fullmatch(r"[a-f0-9-]{36}", source_job_id):
         raise ValueError("Host Runner rollback source job id is invalid")
+
+    receipt_path = Path(profile["receipt_root"]) / f"{source_job_id}.json"
+    if receipt_path.is_symlink() or not receipt_path.is_file():
+        raise ValueError("Host Runner rollback source durable receipt is unavailable")
+    persisted_receipt = load_json_bounded(receipt_path, MAX_RECEIPT_BYTES)
+    required_receipt_fields = (
+        "contract", "job_id", "profile_id", "site_uuid", "environment",
+        "target_fingerprint", "operation_id", "operation_fingerprint",
+        "executor_fingerprint", "plan_sha256", "approval_ref",
+        "mutation_performed", "readback_verdict",
+    )
+    for key in required_receipt_fields:
+        if persisted_receipt.get(key) != prior_receipt.get(key):
+            raise ValueError(f"Host Runner rollback source durable receipt mismatch: {key}")
+    if canonical_json(persisted_receipt.get("result")) != canonical_json(prior_receipt.get("result")):
+        raise ValueError("Host Runner rollback source durable receipt result mismatch")
+
+    source_journal_path = Path(profile["journal_root"]) / f"{source_job_id}.json"
+    if source_journal_path.is_symlink() or not source_journal_path.is_file():
+        raise ValueError("Host Runner rollback source durable journal is unavailable")
+    source_journal = load_json_bounded(source_journal_path, MAX_RECEIPT_BYTES)
+    if source_journal.get("contract") != "mad4b.host-runner-mutation-journal.v1":
+        raise ValueError("Host Runner rollback source journal contract mismatch")
+    if source_journal.get("terminal") is not True or source_journal.get("state") != "DURABLE_VERIFIED_RECEIPT":
+        raise ValueError("Host Runner rollback source journal is not durably verified")
+    if not hmac.compare_digest(
+        str(source_journal.get("plan_sha256") or ""),
+        str(prior_receipt.get("plan_sha256") or "")
+    ):
+        raise ValueError("Host Runner rollback source journal plan mismatch")
+    journal_receipt_path = str(source_journal.get("receipt_path") or "")
+    if not journal_receipt_path or Path(journal_receipt_path).resolve() != receipt_path.resolve():
+        raise ValueError("Host Runner rollback source journal receipt lineage mismatch")
+
     result = prior_receipt.get("result")
     if not isinstance(result, dict):
         raise ValueError("Host Runner rollback source result missing")
