@@ -28,10 +28,12 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/artifact-registry-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-pack-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/research-intelligence-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-pack.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy-resolution.php'
@@ -100,10 +102,12 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/artifact-registry-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-pack-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/research-intelligence-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-pack.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-research-intelligence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy-resolution.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php'
@@ -516,3 +520,9 @@ jobs:
         run: |
           set -euo pipefail
           wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file             wp-content/plugins/mad4b-site-control-plane/tests/context-pack-runtime.php
+
+      - name: Prove normalized Research Intelligence runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path="$GITHUB_WORKSPACE" --allow-root --skip-plugins --skip-themes eval-file             wp-content/plugins/mad4b-site-control-plane/tests/research-intelligence-runtime.php
