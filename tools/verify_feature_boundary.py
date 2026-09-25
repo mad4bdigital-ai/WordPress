@@ -20,8 +20,9 @@ WORKFLOW_PREFIX_TEMPLATES = ("feature-{feature_id}-", "mad4b-")
 TOOL_PREFIXES = ("mad4b_", "verify_")
 EXACT_TOOL_NAMES = {"capture-functional-gap-contract-evidence.py"}
 SKILL_INVENTORY_SOURCE = "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json"
-CROSS_FEATURE_DEPENDENCY_ROOTS = ("specs/", ".github/workflows/")
 REPOSITORY_POLICY_PATH = ".github/mad4b-repository-governance-policy.json"
+GRANT_CATALOG_PATH = ".github/mad4b-feature-boundary-grants.json"
+GRANT_CATALOG_CONTRACT = "mad4b.repository-feature-boundary-grants.v1"
 OBSOLETE_SELF_POLICY = ".github/mad4b-feature-boundary-policy.json"
 IMMUTABLE_FEATURE_PATHS = {
     ".specify/feature.json",
@@ -34,6 +35,7 @@ IMMUTABLE_FEATURE_PATHS = {
     "tools/verify_repository_governance.py",
     "tools/verify_repository_owner_attestation.py",
     "tools/verify_feature_boundary.py",
+    GRANT_CATALOG_PATH,
     OBSOLETE_SELF_POLICY,
 }
 
@@ -85,6 +87,23 @@ def validate_repository_policy(base: str) -> dict:
     return policy
 
 
+def feature_grant(base: str, feature_id: str) -> dict:
+    catalog = load_json_at(base, GRANT_CATALOG_PATH)
+    if catalog.get("contract") != GRANT_CATALOG_CONTRACT:
+        fail("FEATURE_BOUNDARY_GRANT_CATALOG_CONTRACT_INVALID")
+    if catalog.get("default_policy") != "deny":
+        fail("FEATURE_BOUNDARY_GRANT_DEFAULT_MUST_DENY")
+    grants = catalog.get("grants") or {}
+    grant = grants.get(feature_id)
+    if not isinstance(grant, dict):
+        fail(f"FEATURE_BOUNDARY_GRANT_MISSING:{feature_id}")
+    if grant.get("repository_governance_mutation_allowed") is not False:
+        fail("FEATURE_BOUNDARY_GRANT_GOVERNANCE_MUTATION_MUST_DENY")
+    if grant.get("metadata_cannot_widen_grant") is not True:
+        fail("FEATURE_BOUNDARY_GRANT_METADATA_WIDENING_MUST_DENY")
+    return grant
+
+
 def find_feature_json(head: str, feature_id: str) -> str:
     names = run("git", "ls-tree", "-r", "--name-only", head, "--", "specs/").splitlines()
     matches = [
@@ -123,11 +142,18 @@ def verify(base: str, head: str, head_branch: str) -> dict:
     feature = load_json_at(head, feature_json_path)
     feature_dir = str(feature.get("feature_directory") or "").strip().rstrip("/")
     status = str(feature.get("status") or "").strip()
+    grant = feature_grant(base, feature_id)
+    granted_feature_dir = str(grant.get("feature_directory") or "").strip().rstrip("/")
+    if not granted_feature_dir or feature_dir != granted_feature_dir:
+        fail(f"FEATURE_DIRECTORY_NOT_GRANTED:metadata={feature_dir!r}:grant={granted_feature_dir!r}")
     expected_prefix = f"{FEATURE_DIRECTORY_ROOT}{feature_id}-"
     if not feature_dir.startswith(expected_prefix):
         fail(f"FEATURE_DIRECTORY_OUTSIDE_ID_NAMESPACE:{feature_dir!r}")
     if feature_json_path != feature_dir + "/feature.json":
         fail("FEATURE_DIRECTORY_METADATA_PATH_MISMATCH")
+    allowed_branch_kinds = set(str(x) for x in (grant.get("allowed_branch_kinds") or []))
+    if branch_kind not in allowed_branch_kinds:
+        fail(f"FEATURE_BRANCH_KIND_NOT_GRANTED:{branch_kind}")
 
     binding = feature.get("implementation_boundary_policy") or {}
     expected_binding = {
@@ -135,6 +161,7 @@ def verify(base: str, head: str, head_branch: str) -> dict:
         "policy_contract": REPOSITORY_POLICY_CONTRACT,
         "policy_path": REPOSITORY_POLICY_PATH,
         "skill_inventory_source": SKILL_INVENTORY_SOURCE,
+        "grant_catalog_path": GRANT_CATALOG_PATH,
         "cross_feature_dependencies_are_exact": True,
         "mutable_metadata_cannot_widen_policy": True,
         "repository_governance_files_are_immutable": True,
@@ -164,51 +191,30 @@ def verify(base: str, head: str, head_branch: str) -> dict:
     cross = list(feature.get("cross_feature_contract_dependencies") or [])
     if len(cross) != len(set(cross)):
         fail("DUPLICATE_CROSS_FEATURE_DEPENDENCY")
-    for path in cross:
-        if not isinstance(path, str) or not starts_with_any(path, CROSS_FEATURE_DEPENDENCY_ROOTS):
-            fail(f"CROSS_FEATURE_DEPENDENCY_ROOT_FORBIDDEN:{path}")
-        if path.startswith(feature_dir + "/"):
-            fail(f"CROSS_FEATURE_DEPENDENCY_POINTS_TO_SELF:{path}")
+    granted_cross = sorted(str(x) for x in (grant.get("cross_feature_exact_paths") or []))
+    if sorted(cross) != granted_cross:
+        fail("CROSS_FEATURE_DEPENDENCY_GRANT_DRIFT")
 
     immutable = sorted(p for p in changed if p in IMMUTABLE_FEATURE_PATHS)
     if immutable:
         fail("REPOSITORY_ROOT_OF_TRUST_CHANGED_FROM_FEATURE:" + ",".join(immutable))
 
-    workflow_prefixes = tuple(t.format(feature_id=feature_id) for t in WORKFLOW_PREFIX_TEMPLATES)
+    allowed_prefixes = tuple(str(x) for x in (grant.get("allowed_path_prefixes") or []))
+    allowed_exact = set(str(x) for x in (grant.get("allowed_exact_paths") or []))
+    granted_cross_set = set(granted_cross)
 
     def feature_owned(path: str) -> bool:
-        if path.startswith(feature_dir + "/"):
-            return True
-        if starts_with_any(path, RUNTIME_ROOTS):
-            return True
-        if path.startswith(".github/workflows/"):
-            name = path.rsplit("/", 1)[-1]
-            return starts_with_any(name, workflow_prefixes)
-        if path.startswith("tools/"):
-            name = path.rsplit("/", 1)[-1]
-            return starts_with_any(name, TOOL_PREFIXES) or name in EXACT_TOOL_NAMES
-        for name in skill_names:
-            if path.startswith(f"plugins/mad4b-wordpress/skills/{name}/"):
-                return True
-            if path.startswith(f"wp-content/plugins/mad4b-site-control-plane/skill-seeds/{name}/"):
-                return True
-        return False
+        return path in allowed_exact or starts_with_any(path, allowed_prefixes)
 
     def spec_owned(path: str) -> bool:
         if path.startswith(feature_dir + "/"):
             return True
-        if path in {
-            f".github/workflows/feature-{feature_id}-spec-ci.yml",
-            f".github/workflows/feature-{feature_id}-pre-staging-hybrid-audit.yml",
-            "tools/mad4b_pre_staging_hybrid_audit.py",
-        }:
-            return True
-        for name in skill_names:
-            if path.startswith(f"plugins/mad4b-wordpress/skills/{name}/"):
-                return True
-            if path.startswith(f"wp-content/plugins/mad4b-site-control-plane/skill-seeds/{name}/"):
-                return True
-        return False
+        return path in allowed_exact and (
+            path == f".github/workflows/feature-{feature_id}-spec-ci.yml"
+            or path == f".github/workflows/feature-{feature_id}-pre-staging-hybrid-audit.yml"
+            or path == "tools/mad4b_pre_staging_hybrid_audit.py"
+            or "/skills/" in path
+        )
 
     if status == "specification":
         if branch_kind != "spec":
@@ -217,12 +223,12 @@ def verify(base: str, head: str, head_branch: str) -> dict:
         mode = "specification"
     elif status == "implementation":
         if branch_kind in {"feat", "fix"}:
-            forbidden = [p for p in changed if not feature_owned(p) and p not in cross]
+            forbidden = [p for p in changed if not feature_owned(p) and p not in granted_cross_set]
             undeclared = [
                 p for p in changed
                 if p.startswith("specs/")
                 and not p.startswith(feature_dir + "/")
-                and p not in cross
+                and p not in granted_cross_set
             ]
             if undeclared:
                 fail("UNDECLARED_CROSS_FEATURE_CHANGE:" + ",".join(sorted(undeclared)))
@@ -250,6 +256,10 @@ def verify(base: str, head: str, head_branch: str) -> dict:
         "changed_file_count": len(changed),
         "skill_inventory_count": len(skill_names),
         "cross_feature_dependency_count": len(cross),
+        "grant_catalog_path": GRANT_CATALOG_PATH,
+        "grant_source": "base",
+        "allowed_path_prefix_count": len(allowed_prefixes),
+        "allowed_exact_path_count": len(allowed_exact),
         "forbidden": [],
         "immutable_changed": [],
         "trusted_verifier_source": "base",
