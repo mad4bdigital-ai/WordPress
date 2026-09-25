@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import json
 import subprocess
+import tempfile
 
 script = Path("tools/Apply-Mad4bMasterRuleset.ps1").read_text(encoding="utf-8")
 
@@ -27,6 +29,7 @@ required = [
     'post_merge_master_verified=true',
     '$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository:$($ExpectedHead.ToLowerInvariant())"',
     '"tools/verify_repository_ruleset_template.py"',
+    '"tools/verify_repository_ruleset_restore.py"',
     'canonical ruleset template does not exactly implement repository governance policy',
     '$rollbackMode = "restore"',
     '$rollbackMode = "delete"',
@@ -47,6 +50,13 @@ required = [
     '$before.PSObject.Properties["bypass_actors"]',
     'bypass-actor state is not observable',
     'existing canonical ruleset contains bypass actors',
+    '$BeforeReadbackPath = Join-Path $env:TEMP "mad4b-ruleset-before-readback.json"',
+    '$RollbackReadbackPath = Join-Path $env:TEMP "mad4b-ruleset-rollback-readback.json"',
+    '--before $BeforeReadbackPath --after $RollbackReadbackPath --repository $Repository',
+    'ruleset_rollback_readback=verified',
+    'ruleset_rollback_deletion_readback=verified',
+    'previous ruleset restore did not verify against the exact pre-apply state',
+    'newly-created ruleset still exists after automatic rollback',
 ]
 
 missing = [needle for needle in required if needle not in script]
@@ -115,3 +125,120 @@ print("windows_json_encoding=utf8_no_bom")
 print("repository_ruleset_discovery=local_only")
 print("rollback_payload=response_only_fields_stripped")
 print("bypass_evidence=explicit")
+
+
+restore_verifier = Path("tools/verify_repository_ruleset_restore.py")
+if not restore_verifier.is_file():
+    raise SystemExit("repository ruleset restore verifier is missing")
+restore_text = restore_verifier.read_text(encoding="utf-8")
+for needle in [
+    "mad4b.repository-ruleset-restore-readback.v1",
+    "restored ruleset does not match the exact pre-apply mutable state",
+    "ruleset id changed across automatic restore",
+    "bypass-actor evidence is missing",
+]:
+    if needle not in restore_text:
+        raise SystemExit(f"repository ruleset restore verifier contract missing: {needle}")
+
+fixture = {
+    "id": 23968498,
+    "name": "MAD4B master release governance",
+    "target": "branch",
+    "source_type": "Repository",
+    "source": "mad4bdigital-ai/WordPress",
+    "enforcement": "active",
+    "bypass_actors": [],
+    "conditions": {
+        "ref_name": {
+            "include": ["refs/heads/master"],
+            "exclude": [],
+        }
+    },
+    "rules": [
+        {"type": "deletion"},
+        {"type": "non_fast_forward"},
+        {
+            "type": "pull_request",
+            "parameters": {
+                "allowed_merge_methods": ["merge"],
+                "dismiss_stale_reviews_on_push": False,
+                "require_code_owner_review": False,
+                "require_last_push_approval": False,
+                "required_approving_review_count": 0,
+                "required_review_thread_resolution": True,
+                "required_reviewers": [],
+                "require_extra_approval_for_unattributed_changes": True,
+            },
+        },
+        {
+            "type": "required_status_checks",
+            "parameters": {
+                "do_not_enforce_on_create": False,
+                "required_status_checks": [
+                    {
+                        "context": "Repository release verdict",
+                        "integration_id": 15368,
+                    }
+                ],
+                "strict_required_status_checks_policy": True,
+            },
+        },
+    ],
+}
+
+with tempfile.TemporaryDirectory() as td:
+    root = Path(td)
+    before = root / "before.json"
+    after = root / "after.json"
+    output = root / "result.json"
+    before.write_text(json.dumps(fixture), encoding="utf-8")
+    after.write_text(json.dumps(fixture), encoding="utf-8")
+    restore_ok = subprocess.run(
+        [
+            "python3",
+            "tools/verify_repository_ruleset_restore.py",
+            "--before",
+            str(before),
+            "--after",
+            str(after),
+            "--repository",
+            "mad4bdigital-ai/WordPress",
+            "--output",
+            str(output),
+        ],
+        text=True,
+        capture_output=True,
+    )
+    if restore_ok.returncode != 0:
+        raise SystemExit(
+            "repository ruleset restore executable PASS fixture failed: "
+            + (restore_ok.stderr or restore_ok.stdout)
+        )
+    restored = json.loads(output.read_text(encoding="utf-8"))
+    if restored.get("ready") is not True or restored.get("restored_exactly") is not True:
+        raise SystemExit("repository ruleset restore PASS fixture did not certify exact restore")
+
+    drifted = json.loads(json.dumps(fixture))
+    drifted["rules"][-1]["parameters"]["required_status_checks"].append(
+        {"context": "unexpected", "integration_id": 15368}
+    )
+    after.write_text(json.dumps(drifted), encoding="utf-8")
+    restore_bad = subprocess.run(
+        [
+            "python3",
+            "tools/verify_repository_ruleset_restore.py",
+            "--before",
+            str(before),
+            "--after",
+            str(after),
+            "--repository",
+            "mad4bdigital-ai/WordPress",
+        ],
+        text=True,
+        capture_output=True,
+    )
+    if restore_bad.returncode == 0:
+        raise SystemExit("repository ruleset restore verifier accepted a drifted restore")
+
+print("rollback_readback_verifier=executable")
+print("rollback_drift_rejection=pass")
