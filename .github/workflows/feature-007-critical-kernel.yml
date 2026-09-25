@@ -18,6 +18,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/formal-critical-state-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
@@ -73,6 +74,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/formal-critical-state-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
@@ -208,6 +210,12 @@ jobs:
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py
+
+      - name: Verify formal Critical Kernel state proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/formal-critical-state-contract.py
 
       - name: Verify Ability category and schema diagnostic contract
         shell: bash
