@@ -72,6 +72,15 @@ if generic.get("strategy") != "reuse-maintained-tools" or generic.get("runtime_d
 expected_tools = {"php-lint","WordPressCS","PHPCompatibilityWP","PHPStan","WordPress Plugin Check"}
 if not expected_tools.issubset(set(generic.get("recommended", []))):
     raise SystemExit("generic quality tooling baseline is incomplete")
+coverage = generic.get("coverage", {})
+if coverage.get("WordPress Plugin Check", {}).get("mode") != "blocking_observational":
+    raise SystemExit("Plugin Check must remain blocking evidence without becoming release authority")
+if coverage.get("PHPStan", {}).get("mode") != "advisory_pending_lock":
+    raise SystemExit("PHPStan must not become authoritative before reproducible WordPress stubs/analyzer locking")
+if generic.get("unknown_external_tool_state") != "UNKNOWN_NOT_PASS":
+    raise SystemExit("unknown external tool state may not be promoted to PASS")
+if generic.get("production_authorized") is not False:
+    raise SystemExit("generic quality tooling may not authorize Production")
 
 expected_guards = {
     "ability_surface_consistency",
