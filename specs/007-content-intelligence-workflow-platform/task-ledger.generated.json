@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
   "source_tasks_git_blob_sha": "e990bab0ffcd938396cac29a6823d939eca9aed3",
-  "override_git_blob_sha": "c419f0e2b884085319e2980a8aad66fe3d939883",
+  "override_git_blob_sha": "45872dee9a0018cdd1ab43d8b3ea483bec81765f",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -11,8 +11,8 @@
   "counts": {
     "DEFERRED": 1,
     "DONE": 13,
-    "OPEN": 614,
-    "PARTIAL": 30
+    "OPEN": 613,
+    "PARTIAL": 31
   },
   "counts_by_priority": {
     "P0": {
@@ -24,8 +24,8 @@
     "P1": {
       "DEFERRED": 0,
       "DONE": 0,
-      "OPEN": 98,
-      "PARTIAL": 13
+      "OPEN": 97,
+      "PARTIAL": 14
     },
     "P2": {
       "DEFERRED": 1,
@@ -4781,10 +4781,13 @@
       "phase": 28,
       "priority": "P1",
       "summary": "Weighted fair scheduling and anti-starvation.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "Deterministic weighted-aging queue ranking and anti-starvation semantics are implemented without authority/quota bypass; durable multi-worker fair scheduling and load proof remain open."
     },
     {
       "task_id": "T2803",
