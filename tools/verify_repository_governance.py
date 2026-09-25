@@ -141,6 +141,7 @@ def main() -> int:
     parser.add_argument("--policy", type=Path, required=True)
     parser.add_argument("--template", type=Path)
     parser.add_argument("--allow-bootstrap-hidden-bypass-evidence", action="store_true")
+    parser.add_argument("--require-ruleset-attestation", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
@@ -288,6 +289,29 @@ def main() -> int:
         raise SystemExit(
             "canonical MAD4B ruleset source does not match repository: "
             + repr(governed_ruleset.get("source"))
+        )
+
+    if args.require_ruleset_attestation:
+        if args.allow_bootstrap_hidden_bypass_evidence:
+            raise SystemExit(
+                "ruleset attestation cannot be required while the bootstrap hidden-bypass exception is active"
+            )
+        config = policy.get("ruleset_attestation") or {}
+        variable_name = str(config.get("variable_name") or "")
+        if variable_name != "MAD4B_RULESET_ATTESTATION":
+            raise SystemExit("repository ruleset attestation variable name drifted")
+        ruleset_attestation = validate_ruleset_attestation(
+            os.environ.get(variable_name, ""),
+            args.repository,
+            governed_ruleset,
+            policy,
+            args.policy,
+            args.template,
+        )
+        ruleset_attestation_verified = True
+        bypass_evidence_sources.setdefault(
+            str(int(governed_ruleset.get("id") or 0)),
+            "direct_ruleset_detail+repository_variable:" + variable_name,
         )
 
     governed_rules = [
@@ -487,6 +511,7 @@ def main() -> int:
         "bypass_actor_count": 0,
         "bypass_evidence_sources": bypass_evidence_sources,
         "ruleset_attestation_verified": ruleset_attestation_verified,
+        "ruleset_attestation_required": bool(args.require_ruleset_attestation),
         "response_only_approval_evidence_source": response_only_approval_evidence_source,
         "bootstrap_hidden_bypass_exception": bool(
             args.allow_bootstrap_hidden_bypass_evidence
