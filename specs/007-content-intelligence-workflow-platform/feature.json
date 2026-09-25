@@ -142,7 +142,7 @@
   "baseline_sync_policy": "PR base must be an ancestor of Feature HEAD; last_reviewed_master_parent_sha must equal the exact reviewed PR base; deployable runtime release identity is tracked independently and recaptured only after runtime-affecting changes",
   "architecture_freeze": true,
   "critical_kernel_document": "critical-kernel.md",
-  "implementation_change_policy": "dynamic-feature-owned-roots-with-explicit-cross-feature-contract-dependencies",
+  "implementation_change_policy": "repository-governed-dynamic-feature-boundary",
   "implementation_allowed_paths": [
     ".github/workflows/feature-007-critical-kernel.yml",
     ".github/workflows/feature-007-spec-ci.yml",
@@ -205,7 +205,7 @@
     "tools/capture-functional-gap-contract-evidence.py"
   ],
   "implementation_branch_policy": {
-    "contract": "mad4b.feature007-implementation-branch-policy.v1",
+    "contract": "mad4b.feature-implementation-branch-policy.v2",
     "implementation_prefixes": [
       "feat/007-",
       "fix/007-"
@@ -221,19 +221,11 @@
   "mutation_uncertainty_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN",
   "remote_operation_parity_contract": "mad4b.remote-operation-parity.v1",
   "future_discoverability_policy": "all automation-eligible operations require governed remote parity and discoverable metadata",
-  "implementation_allowed_paths_semantics": "descriptive-non-authoritative-legacy-evidence",
-  "implementation_boundary_contract": {
-    "contract": "mad4b.feature007-dynamic-boundary.v2",
-    "feature_directory": "specs/007-content-intelligence-workflow-platform",
-    "runtime_root": "wp-content/plugins/mad4b-site-control-plane/",
-    "workflow_prefixes": [
-      "feature-007-",
-      "mad4b-"
-    ],
-    "tool_prefixes": [
-      "mad4b_",
-      "verify_"
-    ],
+  "implementation_allowed_paths_semantics": "legacy-descriptive-evidence-only",
+  "implementation_boundary_policy": {
+    "contract": "mad4b.feature-boundary-binding.v1",
+    "policy_contract": "mad4b.feature-boundary-policy.v1",
+    "policy_path": ".github/mad4b-feature-boundary-policy.json",
     "skill_inventory_source": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
     "cross_feature_dependencies_are_exact": true,
     "mutable_metadata_cannot_widen_policy": true
