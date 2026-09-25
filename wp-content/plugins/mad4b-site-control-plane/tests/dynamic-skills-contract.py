@@ -30,6 +30,41 @@ plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encodin
 readme = (portable / 'README.md').read_text(encoding='utf-8')
 
 for marker in [
+    "public static function reconcile()",
+    "self::$ran = false;",
+    "self::$runtime_status = null;",
+    "return self::bootstrap();",
+]:
+    if marker not in provider_discovery:
+        raise SystemExit(f'missing explicit provider Skill reconciliation invariant: {marker}')
+
+for marker in [
+    "'reconcile_managed' === $action",
+    "private static function render_reconcile_managed",
+    "wp_nonce_field( 'mad4b_skill_reconcile_managed', 'mad4b_skill_reconcile_nonce' )",
+    "private static function handle_reconcile_managed",
+    "check_admin_referer( 'mad4b_skill_reconcile_managed', 'mad4b_skill_reconcile_nonce' )",
+    "current_user_can( 'manage_options' )",
+    "MAD4B_SCP_Skill_Seeder::bootstrap()",
+    "MAD4B_SCP_Skill_Provider_Discovery::reconcile()",
+    "MAD4B_SCP_Skill_Runtime_Certification::observe()",
+]:
+    if marker not in admin:
+        raise SystemExit(f'missing explicit managed Skill admin reconciliation invariant: {marker}')
+
+if admin.index("MAD4B_SCP_Skill_Seeder::bootstrap()") > admin.index("MAD4B_SCP_Skill_Provider_Discovery::reconcile()"):
+    raise SystemExit('managed Skill reconciliation must seed canonical Skills before provider reconciliation')
+
+for source in (seeder, main, plugin_boot):
+    if "array( 'MAD4B_SCP_Skill_Seeder', 'bootstrap' )" in source:
+        raise SystemExit('canonical Skill seeding must remain explicit and must not become an automatic request lifecycle mutation')
+
+for source in (admin, provider_discovery):
+    if "wp_register_ability(" in source:
+        raise SystemExit('managed Skill reconciliation must not add a remote MCP mutation ability')
+
+
+for marker in [
     "const CONTRACT = 'mad4b.skill-autoconfig.v2'",
     "! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true )",
     "MAD4B_SCP_Site_Profile::configured()",
