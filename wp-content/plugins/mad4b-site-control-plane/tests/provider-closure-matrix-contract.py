@@ -27,9 +27,6 @@ required = [
     "'candidates'",
     "'ambiguous_provider_capability_mapping'",
     "'resolve_provider_capability_mapping'",
-    "'registrar_id' => 'mad4b-core-provider-certification'",
-    "'source_plugin' => 'mad4b-site-control-plane'",
-    "'trust_class' => 'core'",
 ]
 for marker in required:
     if marker not in matrix:
@@ -58,18 +55,23 @@ if servers.count("'mad4b/provider-closure-matrix'") < 2:
 if "class-mad4b-scp-provider-closure-matrix.php" not in main:
     raise SystemExit('provider closure matrix runtime is not loaded by the plugin')
 
+if "mad4b_scp_remote_operation_catalog" in matrix:
+    raise SystemExit("Provider Closure Matrix must not self-register core operations through the external catalog filter")
+
 for marker in [
-    "$rows['provider_behavioral_recertification'] = array(",
+    "'provider_closure_matrix' => array(",
+    "'remote_ability' => 'mad4b/provider-closure-matrix'",
+    "'provider_behavioral_recertification' => array(",
     "'remote_ability' => 'mad4b/provider-behavioral-recertify'",
     "'remote_mode' => 'exact_reversible_probe'",
-    "$rows['provider_canary_execution'] = array(",
+    "'provider_canary_execution' => array(",
     "'remote_ability' => 'mad4b/provider-canary-execute'",
     "'remote_mode' => 'owner_governed_canary'",
     "'production_policy' => 'deny'",
     "'human_decision_required' => true",
 ]:
-    if marker not in matrix:
-        raise SystemExit(f'provider closure operation is not remotely discoverable/fail-closed: {marker}')
+    if marker not in parity:
+        raise SystemExit(f'provider closure core operation is not remotely discoverable/fail-closed: {marker}')
 
 for marker in [
     "'staging_candidate_binding' => array(",
