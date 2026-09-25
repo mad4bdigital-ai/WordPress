@@ -97,6 +97,18 @@ jobs:
           if '    paths:\n' in governance_workflow or '    paths-ignore:\n' in governance_workflow:
               raise SystemExit('repository governance workflow must cover every master change')
 
+          boundary_workflow = Path('.github/workflows/mad4b-feature-boundary-root.yml').read_text(encoding='utf-8')
+          if '  pull_request_target:\n' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must use pull_request_target')
+          if 'permissions:\n  contents: read\n' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must remain read-only')
+          if 'ref: ${{ github.event.pull_request.base.sha }}' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must checkout the trusted PR base')
+          if 'python3 tools/verify_feature_boundary.py' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must execute the baseline-owned verifier')
+          if 'ref: ${{ github.event.pull_request.head.sha }}' in boundary_workflow:
+              raise SystemExit('repository feature-boundary root may not checkout PR head as executable workflow source')
+
           full = [
               'Control-plane contract guard',
               'Dynamic Skills contract',
@@ -112,15 +124,18 @@ jobs:
               'Schema v6 v7 v8 v9 to v11 real MariaDB upgrade',
               'Repository governance policy',
           ]
+              'Repository feature boundary',
           release_evidence = [
               'Root trust and Recovery Plane',
               'Build reviewed General Distribution installation kit',
               'Live evidence contracts + exact artifact',
               'Repository governance policy',
           ]
+              'Repository feature boundary',
           non_runtime = [
               'Repository governance policy',
           ]
+              'Repository feature boundary',
           release_evidence_paths = {
               '.github/workflows/mad4b-control-plane-package.yml',
               '.github/workflows/mad4b-live-acceptance-evidence.yml',
