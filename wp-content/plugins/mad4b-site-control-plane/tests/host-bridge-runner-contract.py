@@ -145,6 +145,37 @@ def deploy_plan(profile, current, candidate):
     return plan
 
 
+def plugin_rollback_plan(profile, deploy_receipt, bridge_receipt_path):
+    result = deploy_receipt["result"]
+    plan = {
+        "contract": runner.PLUGIN_ROLLBACK_PLAN_CONTRACT,
+        "operation_id": "wordpress_plugin_rollback",
+        "operation_version": runner.OPERATIONS["wordpress_plugin_rollback"]["version"],
+        "runner_profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "plugin_slug": runner.PLUGIN_SLUG,
+        "source_job_id": deploy_receipt["job_id"],
+        "source_bridge_receipt_sha256": runner.sha256_file(bridge_receipt_path),
+        "expected_current": {
+            "source_commit_sha": result["source_commit_sha"],
+            "build_fingerprint": result["build_fingerprint"],
+            "package_manifest_digest": result["package_manifest_digest"],
+        },
+        "restore": dict(result["previous_identity"]),
+        "expected_current_sha256": result["after_sha256"],
+        "restore_sha256": result["before_sha256"],
+        "caller_supplied_path_allowed": False,
+        "caller_supplied_url_allowed": False,
+        "caller_supplied_credentials_allowed": False,
+        "production_authorized": False,
+        "reason": "Host Bridge fresh acceptance rollback parity fixture",
+    }
+    plan["plan_sha256"] = runner.plan_digest(plan)
+    return plan
+
+
 with tempfile.TemporaryDirectory() as td:
     tmp = Path(td)
     wp = tmp / "wordpress"
@@ -169,7 +200,7 @@ with tempfile.TemporaryDirectory() as td:
         "integrity_key_file": str(key),
         "expected_runner_sha256": runner.sha256_file(Path(runner.__file__).resolve()),
         "receipt_root": str(wp / "wp-content" / "mad4b-runner" / "receipts"),
-        "allowed_operations": ["runtime.status.read", "workspace.file.replace", "wordpress_plugin_deploy"],
+        "allowed_operations": ["runtime.status.read", "workspace.file.replace", "wordpress_plugin_deploy", "wordpress_plugin_rollback"],
     }), encoding="utf-8")
     profile = runner.load_profile(profile_path)
     bridge = Path(profile["bridge_root"])
@@ -409,6 +440,82 @@ with tempfile.TemporaryDirectory() as td:
     )
     assert deploy_replay["replayed"] is True
     assert deploy_replay["replay_readback_verdict"] == "PASS"
+
+    # Fresh-request acceptance rollback traverses the same governed bridge.
+    deploy_bridge_receipt_path = bridge / "receipts" / f"{deploy_id}.json"
+    rollback_execution_plan = plugin_rollback_plan(
+        profile,
+        deploy_receipt,
+        deploy_bridge_receipt_path,
+    )
+    rollback_outer = {
+        "contract": "mad4b.host-operation-plan.v1",
+        "operation_id": "wordpress_plugin_rollback",
+        "operation_version": runner.OPERATIONS["wordpress_plugin_rollback"]["version"],
+        "risk": runner.OPERATIONS["wordpress_plugin_rollback"]["risk"],
+        "approval_required": True,
+        "runner_profile_id": profile["profile_id"],
+        "target": {
+            "site_uuid": site_uuid,
+            "environment": "staging",
+            "wordpress_root": str(wp.resolve()),
+            "target_fingerprint": profile["target_fingerprint"],
+        },
+        "arguments": {"plan": rollback_execution_plan},
+        "submission_location": "wordpress_request",
+        "execution_location": "host_runner",
+        "commit_location": "host_runner",
+        "production_authorized": False,
+        "created_at": "2026-09-25T00:00:50+00:00",
+        "authorizing": False,
+        "mutation_performed": False,
+    }
+    rollback_outer["plan_sha256"] = runner._bridge_digest(rollback_outer)
+    rollback_id = str(uuid.uuid4())
+    rollback_submission = {
+        "contract": "mad4b.host-bridge-submission.v1",
+        "job_id": rollback_id,
+        "idempotency_key": "bridge-ci-plugin-rollback-1",
+        "plan": rollback_outer,
+        "plan_sha256": rollback_outer["plan_sha256"],
+        "approval_ref": "approval:bridge-ci-plugin-rollback",
+        "authority": {
+            "policy_decision_sha256": "d" * 64,
+            "agent_public_id": "agent:bridge-ci-plugin-rollback",
+            "approval_ticket_id": "ticket:bridge-ci-plugin-rollback",
+        },
+        "submission_location": "wordpress_request",
+        "execution_location": "host_runner",
+        "commit_location": "host_runner",
+        "created_at": rollback_outer["created_at"],
+        "production_authorized": False,
+    }
+    rollback_submission["submission_sha256"] = runner._bridge_digest(rollback_submission)
+    (bridge / "queued" / f"{rollback_id}.json").write_text(
+        json.dumps(rollback_submission, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    result = runner.consume_bridge_spool(profile_path, 10)
+    assert result["processed_count"] == 1, result
+    assert result["processed"][0]["state"] == "SUCCEEDED", result
+    rollback_receipt = json.loads(
+        (bridge / "receipts" / f"{rollback_id}.json").read_text(encoding="utf-8")
+    )
+    assert rollback_receipt["operation_id"] == "wordpress_plugin_rollback"
+    assert rollback_receipt["approval_ref"] == "approval:bridge-ci-plugin-rollback"
+    assert rollback_receipt["authority_ref"] == "d" * 64
+    assert rollback_receipt["result"]["source_job_id"] == deploy_id
+    assert rollback_receipt["mutation_performed"] is True
+    assert rollback_receipt["readback_verdict"] == "PASS"
+    restored_identity = runner._installed_control_plane_identity(plugin)
+    assert restored_identity["source_commit_sha"] == current_source
+    assert restored_identity["build_fingerprint"] == current_build
+    assert restored_identity["package_manifest_digest"] == current_manifest
+    reconciliation = runner.reconcile(profile_path)
+    reconciliation_by_job = {row["job_id"]: row for row in reconciliation["entries"]}
+    assert reconciliation_by_job[deploy_id]["reconciliation_status"] == "SUPERSEDED_BY_VERIFIED_ROLLBACK"
+    assert reconciliation_by_job[deploy_id]["superseded_by_verified_rollback_job_id"] == rollback_id
+    assert reconciliation_by_job[rollback_id]["reconciliation_status"] == "DURABLE_RECEIPT_PRESENT"
 
     # Commit/executor location is plan identity. A material location change
     # changes the approved plan digest and is rejected until a new admitted
