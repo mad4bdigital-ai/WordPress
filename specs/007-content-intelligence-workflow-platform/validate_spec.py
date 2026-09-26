@@ -94,7 +94,7 @@ if feature_path.exists():
             errors.append("runtime_release_identity_invalid_state")
     branch_policy=data.get("implementation_branch_policy")
     expected_branch_policy={
-        "contract":"mad4b.feature007-implementation-branch-policy.v1",
+        "contract":"mad4b.feature-implementation-branch-policy.v2",
         "implementation_prefixes":["feat/007-","fix/007-"],
         "specification_maintenance_prefixes":["spec/007-"],
         "requires_exact_pr_base_ancestry":True,
