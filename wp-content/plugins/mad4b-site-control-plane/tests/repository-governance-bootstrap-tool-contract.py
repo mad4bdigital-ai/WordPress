@@ -17,8 +17,10 @@ repair_bootstrap_required = [
     "8a0c12ef16023f042def7d42b760cdd847343e8a",
     "rulesets/23968498?includes_parents=true",
     "mad4b-governance-repair-public-ruleset.json",
-    "public_ruleset_detail_bound_to_authenticated_identity",
-    "public bypass-actor evidence unavailable",
+    "hidden_in_ci_exact_head_owner_attestation",
+    "pr69_exact_head_owner_attested",
+    "bypass_actor_visibility",
+    "hidden_bypass_exception",
     "public/authenticated ruleset identity drift",
     "2026-09-25T02:13:24.911+03:00",
     "mad4b.governance-apply-repair-bootstrap.v1",
@@ -42,7 +44,10 @@ governance_repair_bootstrap_required = [
     "8a0c12ef16023f042def7d42b760cdd847343e8a",
     "rulesets/23968498?includes_parents=true",
     "mad4b-governance-repair-public-ruleset.json",
-    "public_ruleset_detail_bound_to_authenticated_identity",
+    "hidden_in_ci_exact_head_owner_attestation",
+    "pr69_exact_head_owner_attested",
+    "bypass_actor_visibility",
+    "hidden_bypass_exception",
     "git show \"$BASE_SHA:tools/verify_feature_boundary.py\"",
     "exact_head_owner_attestation_verified",
     "governance_apply_repair_bootstrap_ready",
@@ -77,7 +82,7 @@ for forbidden in [
 print("governance_apply_repair_bootstrap=bounded")
 print("governance_apply_repair_governance_workflow=bounded")
 print("governance_apply_repair_live_snapshot=exact")
-print("governance_apply_repair_bypass_evidence=public+identity_bound")
+print("governance_apply_repair_bypass_evidence=visible_or_exact_head_hidden_ci")
 print("governance_apply_repair_target_governance_claim=false_until_remote_apply")
 
 if "required = ['Repository feature boundary']" in release_verdict:
@@ -88,6 +93,25 @@ if 'git show "$BASE_SHA:tools/verify_feature_boundary.py"' not in release_verdic
     raise SystemExit("governance repair bootstrap must execute the verifier sourced from BASE")
 if "baseline_feature_boundary_verified" not in release_verdict:
     raise SystemExit("governance repair bootstrap must bind base-owned feature-boundary evidence")
+for required_hidden in [
+    "hidden_in_ci_exact_head_owner_attestation",
+    "pr69_exact_head_owner_attested",
+    "hidden_bypass_exception",
+    "bypass_actor_visibility",
+    "exact_head_owner_attestation_verified",
+]:
+    if required_hidden not in release_verdict:
+        raise SystemExit(
+            "governance repair release bootstrap missing bounded hidden-bypass evidence: "
+            + required_hidden
+        )
+    if required_hidden not in repository_governance_workflow:
+        raise SystemExit(
+            "governance repair policy bootstrap missing bounded hidden-bypass evidence: "
+            + required_hidden
+        )
+if "live_target_governance_ready': False" not in repository_governance_workflow:
+    raise SystemExit("governance repair bootstrap may not claim live target governance ready")
 
 if 'git fetch --no-tags origin "$HEAD_SHA"' not in feature_boundary_root:
     raise SystemExit("feature-boundary trusted fetch must preserve full ancestry")
