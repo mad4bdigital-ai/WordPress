@@ -22,6 +22,7 @@ final class MAD4B_SCP_Host_Bridge {
 		'package.integrity.verify' => array( 'version' => 1, 'risk' => 'read_only', 'approval_required' => false ),
 		'workspace.file.replace' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
 		'workspace.file.rollback' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
+		'wordpress_plugin_deploy' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
 	);
 
 	public static function boot() {
@@ -102,6 +103,8 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( '' === $profile_id ) return new WP_Error( 'mad4b_host_runner_profile_required', 'Exact Host Runner profile is required.' );
 		$target = self::target_identity();
 		if ( is_wp_error( $target ) ) return $target;
+		$args_check = self::validate_operation_arguments( $operation_id, $args, $profile_id, $target );
+		if ( is_wp_error( $args_check ) ) return $args_check;
 		$plan = array(
 			'contract' => self::PLAN_CONTRACT,
 			'operation_id' => $operation_id,
@@ -360,6 +363,57 @@ final class MAD4B_SCP_Host_Bridge {
 			'production_authorized' => false,
 			'mutation_performed' => false,
 		);
+	}
+
+	private static function validate_operation_arguments( $operation_id, array $args, $profile_id, array $target ) {
+		if ( 'wordpress_plugin_deploy' !== (string) $operation_id ) return true;
+		if ( array_keys( $args ) !== array( 'plan' ) || ! isset( $args['plan'] ) || ! is_array( $args['plan'] ) ) {
+			return new WP_Error( 'mad4b_host_plugin_deploy_arguments_invalid', 'WordPress plugin deployment accepts only one exact nested deployment plan.' );
+		}
+		$deploy = $args['plan'];
+		$allowed = array(
+			'archive_sha256',
+			'build_fingerprint',
+			'contract',
+			'environment',
+			'expected_current_tree_sha256',
+			'operation_fingerprint',
+			'operation_id',
+			'operation_version',
+			'package_manifest_digest',
+			'plan_sha256',
+			'plugin_slug',
+			'production_authorized',
+			'profile_id',
+			'reason',
+			'site_uuid',
+			'source_commit_sha',
+			'target_fingerprint',
+		);
+		$keys = array_keys( $deploy );
+		sort( $keys, SORT_STRING );
+		$expected = $allowed;
+		sort( $expected, SORT_STRING );
+		if ( $keys !== $expected ) {
+			return new WP_Error( 'mad4b_host_plugin_deploy_schema_invalid', 'WordPress plugin deployment plan fields do not match the bounded contract.' );
+		}
+		if ( 'mad4b.host-runner-wordpress-plugin-deploy-plan.v1' !== (string) $deploy['contract'] ) return new WP_Error( 'mad4b_host_plugin_deploy_contract_invalid', 'WordPress plugin deployment plan contract mismatch.' );
+		if ( 'wordpress_plugin_deploy' !== (string) $deploy['operation_id'] || 1 !== (int) $deploy['operation_version'] ) return new WP_Error( 'mad4b_host_plugin_deploy_operation_invalid', 'WordPress plugin deployment operation identity mismatch.' );
+		if ( 'mad4b-site-control-plane' !== (string) $deploy['plugin_slug'] ) return new WP_Error( 'mad4b_host_plugin_deploy_slug_invalid', 'Only the MAD4B Site Control Plane plugin is eligible for this deployment operation.' );
+		if ( 'staging' !== (string) $deploy['environment'] || ! empty( $deploy['production_authorized'] ) ) return new WP_Error( 'mad4b_host_plugin_deploy_environment_invalid', 'WordPress plugin deployment is Staging-only and non-Production.' );
+		if ( ! hash_equals( (string) $profile_id, (string) $deploy['profile_id'] ) ) return new WP_Error( 'mad4b_host_plugin_deploy_profile_invalid', 'WordPress plugin deployment runner profile mismatch.' );
+		if ( ! hash_equals( (string) $target['site_uuid'], (string) $deploy['site_uuid'] ) ) return new WP_Error( 'mad4b_host_plugin_deploy_site_invalid', 'WordPress plugin deployment site identity mismatch.' );
+		if ( ! hash_equals( (string) $target['target_fingerprint'], (string) $deploy['target_fingerprint'] ) ) return new WP_Error( 'mad4b_host_plugin_deploy_target_invalid', 'WordPress plugin deployment target fingerprint mismatch.' );
+		foreach ( array( 'archive_sha256', 'build_fingerprint', 'package_manifest_digest', 'expected_current_tree_sha256', 'operation_fingerprint', 'plan_sha256' ) as $field ) {
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', strtolower( (string) $deploy[ $field ] ) ) ) return new WP_Error( 'mad4b_host_plugin_deploy_digest_invalid', 'WordPress plugin deployment digest field is invalid: ' . $field );
+		}
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', strtolower( (string) $deploy['source_commit_sha'] ) ) ) return new WP_Error( 'mad4b_host_plugin_deploy_source_invalid', 'WordPress plugin deployment source commit is invalid.' );
+		$reason = trim( (string) $deploy['reason'] );
+		if ( strlen( $reason ) < 3 || strlen( $reason ) > 500 ) return new WP_Error( 'mad4b_host_plugin_deploy_reason_invalid', 'WordPress plugin deployment reason must contain 3..500 bytes.' );
+		$expected_operation_fingerprint = self::digest( self::$operations['wordpress_plugin_deploy'] );
+		if ( ! hash_equals( $expected_operation_fingerprint, strtolower( (string) $deploy['operation_fingerprint'] ) ) ) return new WP_Error( 'mad4b_host_plugin_deploy_operation_fingerprint_invalid', 'WordPress plugin deployment operation fingerprint mismatch.' );
+		if ( ! hash_equals( strtolower( (string) $deploy['plan_sha256'] ), self::digest( $deploy ) ) ) return new WP_Error( 'mad4b_host_plugin_deploy_plan_digest_invalid', 'WordPress plugin deployment nested plan digest mismatch.' );
+		return true;
 	}
 
 	private static function validate_plan( array $plan ) {
