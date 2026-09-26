@@ -225,6 +225,187 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		);
 	}
 
+	private static function current_agent() {
+		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_agent_registry_unavailable', 'Enrollment grant bootstrap requires the governed identity and agent registry.' );
+		}
+		$identity = MAD4B_SCP_Identity_Context::current();
+		if ( is_wp_error( $identity ) ) return $identity;
+		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+		if ( is_wp_error( $agent ) ) return $agent;
+		if ( empty( $agent['id'] ) || empty( $agent['public_id'] ) || 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_agent_invalid', 'Enrollment grant bootstrap requires the enabled agent bound to the live OAuth subject.' );
+		}
+		return $agent;
+	}
+
+	private static function enrollment_grant_state( array $row ) {
+		if ( 'core' !== ( isset( $row['trust_class'] ) ? (string) $row['trust_class'] : '' )
+			|| 'mad4b-core' !== ( isset( $row['registrar_id'] ) ? (string) $row['registrar_id'] : '' )
+			|| 'mad4b-site-control-plane' !== ( isset( $row['source_plugin'] ) ? (string) $row['source_plugin'] : '' ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_grant_bootstrap_trust_denied', 'Automatic Enrollment grant bootstrap is limited to built-in MAD4B core operations.' );
+		}
+		$ability_name = isset( $row['remote_ability'] ) ? trim( (string) $row['remote_ability'] ) : '';
+		if ( '' === $ability_name ) return new WP_Error( 'mad4b_enrollment_dispatch_grant_ability_missing', 'Enrollment operation lacks an exact target ability.' );
+		$provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-enrollment', $ability_name ) : null;
+		if ( 'core' !== $provider ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_grant_provider_denied', 'Automatic Enrollment grant bootstrap is limited to exact core-provider operations.' );
+		}
+		$agent = self::current_agent();
+		if ( is_wp_error( $agent ) ) return $agent;
+		$counts = MAD4B_SCP_Agent_Registry::counts();
+		if ( ! empty( $counts['wildcard_grants'] ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_wildcard_grant_detected', 'Wildcard grants must remain absent before bounded Enrollment grant bootstrap.' );
+		}
+		$matching = array();
+		foreach ( MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $agent['id'], 'mad4b-enrollment' ) as $grant ) {
+			if ( ! is_array( $grant )
+				|| $ability_name !== ( isset( $grant['ability_name'] ) ? (string) $grant['ability_name'] : '' )
+				|| 'core' !== sanitize_key( isset( $grant['provider'] ) ? (string) $grant['provider'] : '' ) ) continue;
+			$matching[] = $grant;
+		}
+		foreach ( $matching as $grant ) {
+			if ( 'deny' === ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) ) {
+				return new WP_Error( 'mad4b_enrollment_dispatch_grant_explicitly_denied', 'An exact deny grant blocks this Enrollment operation.' );
+			}
+		}
+		$allows = array_values( array_filter( $matching, static function ( $grant ) {
+			return is_array( $grant ) && 'allow' === ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' );
+		} ) );
+		if ( count( $allows ) > 1 ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_duplicate_grants', 'Duplicate exact Enrollment allow grants must be reconciled before execution.' );
+		}
+		if ( 1 === count( $allows ) ) {
+			$grant = $allows[0];
+			if ( 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) {
+				return new WP_Error( 'mad4b_enrollment_dispatch_grant_environment_invalid', 'Enrollment grant must be exact Staging-only authority.' );
+			}
+			return array(
+				'state' => 'existing',
+				'created' => false,
+				'grant_id' => (int) $grant['id'],
+				'agent' => $agent,
+				'ability' => $ability_name,
+				'provider' => 'core',
+				'environment' => 'staging',
+			);
+		}
+		return array(
+			'state' => 'missing',
+			'created' => false,
+			'grant_id' => 0,
+			'agent' => $agent,
+			'ability' => $ability_name,
+			'provider' => 'core',
+			'environment' => 'staging',
+		);
+	}
+
+	private static function audit( $event, array $data, $status = 'ok' ) {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || ! method_exists( 'MAD4B_SCP_Audit', 'record' ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_audit_unavailable', 'Append-only audit is required for Enrollment grant bootstrap.' );
+		}
+		return MAD4B_SCP_Audit::record( $event, $data, $status );
+	}
+
+	private static function ensure_exact_enrollment_grant( array $row ) {
+		$state = self::enrollment_grant_state( $row );
+		if ( is_wp_error( $state ) || 'existing' === $state['state'] ) return $state;
+		$intent = self::audit( 'mad4b/enrollment-grant-bootstrap-authorized', array(
+			'contract' => self::CONTRACT,
+			'operation_id' => isset( $row['operation_id'] ) ? (string) $row['operation_id'] : '',
+			'agent_public_id' => (string) $state['agent']['public_id'],
+			'source_plugin' => (string) $row['source_plugin'],
+			'registrar_id' => (string) $row['registrar_id'],
+			'trust_class' => (string) $row['trust_class'],
+			'server_id' => 'mad4b-enrollment',
+			'ability' => (string) $state['ability'],
+			'provider' => 'core',
+			'environment' => 'staging',
+			'registration_digest' => (string) $row['registration_digest'],
+			'dispatch_policy_digest' => (string) $row['dispatch_policy_digest'],
+			'input_schema_sha256' => (string) $row['input_schema_sha256'],
+			'production_mutation' => false,
+			'breakglass_included' => false,
+		), 'ok' );
+		if ( is_wp_error( $intent ) ) return $intent;
+		$before_ids = array();
+		foreach ( MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $state['agent']['id'], 'mad4b-enrollment' ) as $before_grant ) {
+			if ( is_array( $before_grant ) && isset( $before_grant['id'] ) ) $before_ids[] = (int) $before_grant['id'];
+		}
+		$created = MAD4B_SCP_Agent_Registry::grant_ability(
+			(string) $state['agent']['public_id'],
+			'mad4b-enrollment',
+			(string) $state['ability'],
+			'core',
+			array(),
+			'allow',
+			'staging'
+		);
+		if ( is_wp_error( $created ) ) return $created;
+		$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $state['agent']['id'], 'mad4b-enrollment', (string) $state['ability'], 'core' );
+		if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) {
+			$rollback_errors = array();
+			foreach ( MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $state['agent']['id'], 'mad4b-enrollment' ) as $after_grant ) {
+				if ( ! is_array( $after_grant ) || empty( $after_grant['id'] ) || in_array( (int) $after_grant['id'], $before_ids, true ) ) continue;
+				if ( 'allow' !== ( isset( $after_grant['effect'] ) ? (string) $after_grant['effect'] : '' )
+					|| (string) $state['ability'] !== ( isset( $after_grant['ability_name'] ) ? (string) $after_grant['ability_name'] : '' )
+					|| 'core' !== sanitize_key( isset( $after_grant['provider'] ) ? (string) $after_grant['provider'] : '' )
+					|| 'staging' !== ( isset( $after_grant['environment'] ) ? (string) $after_grant['environment'] : '' ) ) continue;
+				$rolled = MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id( (string) $state['agent']['public_id'], (int) $after_grant['id'], 'mad4b-enrollment' );
+				if ( is_wp_error( $rolled ) ) $rollback_errors[] = $rolled->get_error_code();
+			}
+			return new WP_Error(
+				'mad4b_enrollment_dispatch_grant_postcondition_failed',
+				'Created Enrollment grant failed exact Staging postcondition verification.',
+				array( 'rollback_errors' => $rollback_errors )
+			);
+		}
+		$state['state'] = 'created';
+		$state['created'] = true;
+		$state['grant_id'] = (int) $grant['id'];
+		$complete = self::audit( 'mad4b/enrollment-grant-bootstrap-complete', array(
+			'contract' => self::CONTRACT,
+			'operation_id' => isset( $row['operation_id'] ) ? (string) $row['operation_id'] : '',
+			'agent_public_id' => (string) $state['agent']['public_id'],
+			'server_id' => 'mad4b-enrollment',
+			'ability' => (string) $state['ability'],
+			'provider' => 'core',
+			'environment' => 'staging',
+			'grant_id' => (int) $state['grant_id'],
+			'production_mutation' => false,
+			'breakglass_included' => false,
+		), 'ok' );
+		if ( is_wp_error( $complete ) ) {
+			$rolled = MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id( (string) $state['agent']['public_id'], (int) $state['grant_id'], 'mad4b-enrollment' );
+			return is_wp_error( $rolled ) ? new WP_Error( 'mad4b_enrollment_dispatch_grant_audit_and_rollback_failed', 'Enrollment grant audit failed and its rollback also failed.' ) : $complete;
+		}
+		return $state;
+	}
+
+	private static function rollback_created_enrollment_grant( array $state, $reason ) {
+		if ( empty( $state['created'] ) || empty( $state['grant_id'] ) || empty( $state['agent']['public_id'] ) ) return true;
+		$rolled = MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id(
+			(string) $state['agent']['public_id'],
+			(int) $state['grant_id'],
+			'mad4b-enrollment'
+		);
+		if ( is_wp_error( $rolled ) ) return $rolled;
+		$audit = self::audit( 'mad4b/enrollment-grant-bootstrap-rolled-back', array(
+			'contract' => self::CONTRACT,
+			'agent_public_id' => (string) $state['agent']['public_id'],
+			'server_id' => 'mad4b-enrollment',
+			'ability' => (string) $state['ability'],
+			'provider' => 'core',
+			'environment' => 'staging',
+			'grant_id' => (int) $state['grant_id'],
+			'reason' => sanitize_key( (string) $reason ),
+			'production_mutation' => false,
+			'breakglass_included' => false,
+		), 'ok' );
+		return is_wp_error( $audit ) ? $audit : true;
+	}
+
 	public static function execute( $input ) {
 		$operation_id = isset( $input['operation_id'] ) ? (string) $input['operation_id'] : '';
 		$current = self::operation( $operation_id );
@@ -250,8 +431,21 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		$target_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
 		if ( ( null === $target_schema || empty( $target_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 
+		$grant_state = self::ensure_exact_enrollment_grant( $row );
+		if ( is_wp_error( $grant_state ) ) return $grant_state;
+
 		$result = $ability->execute( $params );
-		if ( is_wp_error( $result ) ) return $result;
+		if ( is_wp_error( $result ) ) {
+			$rollback = self::rollback_created_enrollment_grant( $grant_state, $result->get_error_code() );
+			if ( is_wp_error( $rollback ) ) {
+				return new WP_Error(
+					'mad4b_enrollment_dispatch_target_failed_grant_rollback_failed',
+					'Enrollment target failed and the newly-created exact Enrollment grant could not be safely rolled back.',
+					array( 'target_error' => $result->get_error_code(), 'rollback_error' => $rollback->get_error_code() )
+				);
+			}
+			return $result;
+		}
 
 		$target_reported_mutation = is_array( $result ) && array_key_exists( 'mutation_performed', $result );
 		return array(
@@ -268,6 +462,15 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'operation_invoked' => true,
 			'mutation_performed' => $target_reported_mutation ? (bool) $result['mutation_performed'] : null,
 			'mutation_evidence_source' => $target_reported_mutation ? 'target_result' : 'not_reported',
+			'enrollment_grant' => array(
+				'state' => (string) $grant_state['state'],
+				'created' => ! empty( $grant_state['created'] ),
+				'grant_id' => (int) $grant_state['grant_id'],
+				'server_id' => 'mad4b-enrollment',
+				'ability' => (string) $grant_state['ability'],
+				'provider' => 'core',
+				'environment' => 'staging',
+			),
 		);
 	}
 }
