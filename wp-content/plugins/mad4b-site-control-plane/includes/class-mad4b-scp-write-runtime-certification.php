@@ -196,8 +196,20 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$checks['breakglass_not_included'] = empty( $authority['breakglass_included'] );
 		$checks['normal_remote_approval_required'] = ! empty( $authority['normal_remote_writes_require_exact_approval'] );
 		$approval_exceptions = isset( $authority['remote_write_approval_exceptions'] ) && is_array( $authority['remote_write_approval_exceptions'] ) ? array_values( $authority['remote_write_approval_exceptions'] ) : array();
-		$checks['candidate_bootstrap_exception_bounded'] = empty( $approval_exceptions ) || ( 1 === count( $approval_exceptions ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY === (string) $approval_exceptions[0] );
 		$bootstrap_closure = isset( $authority['candidate_bootstrap_closure'] ) && is_array( $authority['candidate_bootstrap_closure'] ) ? $authority['candidate_bootstrap_closure'] : array();
+		$allowed_exceptions = array();
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && ! empty( $authority['candidate_bootstrap_exception_active'] ) ) {
+			$allowed_exceptions[] = MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY;
+		}
+		if ( ! empty( $authority['ai_review_standing_delegation_configured'] ) ) {
+			$allowed_exceptions[] = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY : 'mad4b/context-ai-review';
+		}
+		$unexpected_exceptions = array_values( array_diff( $approval_exceptions, $allowed_exceptions ) );
+		$duplicate_exceptions = count( $approval_exceptions ) !== count( array_unique( $approval_exceptions ) );
+		$closed_bootstrap_exception = ! empty( $bootstrap_closure['closed'] )
+			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			&& in_array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY, $approval_exceptions, true );
+		$checks['candidate_bootstrap_exception_bounded'] = empty( $unexpected_exceptions ) && ! $duplicate_exceptions && ! $closed_bootstrap_exception;
 		$checks['candidate_bootstrap_closure_complete'] = empty( $bootstrap_closure['required'] ) || ! empty( $bootstrap_closure['closed'] );
 		foreach ( $checks as $key => $ok ) if ( ! $ok ) $blockers[] = $key;
 

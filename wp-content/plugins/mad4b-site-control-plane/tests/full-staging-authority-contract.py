@@ -121,11 +121,17 @@ assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" i
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_tools
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_tools
 assert "$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_tools
+assert "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in chatgpt_map
+assert "$candidates = array_merge( $core, $bootstrap )" in chatgpt_tools
 assert "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_tools
+assert "$direct_mutation_transport[] = 'mad4b/enrollment-execute';" in chatgpt_tools
+assert "$direct_mutation_transport = array_values( array_unique( $direct_mutation_transport ) );" in chatgpt_tools
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
+    "'mad4b/full-staging-authority-apply'",
 ]:
     assert low_level not in chatgpt_tools
 full_catalog = servers.split("public static function chatgpt_full_catalog_candidates()", 1)[1].split("public static function is_chatgpt_full_catalog_candidate", 1)[0]

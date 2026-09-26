@@ -259,20 +259,74 @@ final class MAD4B_SCP_Staging_Certification {
 		if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) ) return array( 'ready' => false, 'blockers' => array( 'browser_acceptance_core_unavailable' ) );
 		$plan = MAD4B_SCP_Browser_Acceptance_Core::plan( array( 'provider_id' => 'etg-dfsb', 'profile_id' => 'tours', 'suite' => 'browser_runtime' ) );
 		$result = array();
+		$durable_job_id = '';
+		$durable_receipt_used = false;
+		$durable_receipt_source = 'none';
 		if ( is_array( $plan ) && 'ready' === ( isset( $plan['state'] ) ? (string) $plan['state'] : '' ) && ! empty( $plan['plan_digest'] ) && ! empty( $plan['plan_signature'] ) ) {
-			$result = MAD4B_SCP_Browser_Acceptance_Core::result( array(
-				'provider_id' => 'etg-dfsb',
-				'profile_id' => 'tours',
-				'suite' => 'browser_runtime',
-				'plan_digest' => (string) $plan['plan_digest'],
-				'plan_signature' => (string) $plan['plan_signature'],
-			) );
+			$receipt_status = class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'browser_acceptance_receipt_status' )
+				? MAD4B_SCP_Remote_Operation_Parity::browser_acceptance_receipt_status( $plan )
+				: array();
+			if ( is_array( $receipt_status ) && ! empty( $receipt_status['ready'] ) ) {
+				$receipt = isset( $receipt_status['receipt'] ) && is_array( $receipt_status['receipt'] ) ? $receipt_status['receipt'] : array();
+				$result = isset( $receipt['browser_result'] ) && is_array( $receipt['browser_result'] ) ? $receipt['browser_result'] : array();
+				$durable_job_id = isset( $receipt['job_id'] ) ? (string) $receipt['job_id'] : '';
+				$durable_receipt_used = true;
+				$durable_receipt_source = 'dedicated_receipt';
+			}
+
+			// Compatibility fallback for candidates completed before the dedicated
+			// browser receipt option existed. Queue retention is bounded, so new
+			// completions always persist the dedicated exact-build receipt above.
+			if ( ! $durable_receipt_used ) {
+				$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
+				$jobs = class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ? MAD4B_SCP_Remote_Work_Queue::list_jobs( 'browser_acceptance_execution' ) : array();
+				foreach ( (array) ( isset( $jobs['items'] ) ? $jobs['items'] : array() ) as $job ) {
+					if ( ! is_array( $job ) || 'completed' !== ( isset( $job['status'] ) ? (string) $job['status'] : '' ) ) continue;
+					$payload = isset( $job['payload'] ) && is_array( $job['payload'] ) ? $job['payload'] : array();
+					$expected = isset( $job['expected_identity'] ) && is_array( $job['expected_identity'] ) ? $job['expected_identity'] : array();
+					$verified_result = isset( $job['result']['browser_result'] ) && is_array( $job['result']['browser_result'] ) ? $job['result']['browser_result'] : array();
+					$identity_match = ! empty( $provenance['runtime_manifest_match'] )
+						&& empty( $provenance['stale'] )
+						&& isset( $expected['source_commit_sha'], $expected['build_fingerprint'], $expected['package_manifest_digest'] )
+						&& hash_equals( strtolower( (string) $provenance['source_commit_sha'] ), strtolower( (string) $expected['source_commit_sha'] ) )
+						&& hash_equals( strtolower( (string) $provenance['build_fingerprint'] ), strtolower( (string) $expected['build_fingerprint'] ) )
+						&& hash_equals( strtolower( (string) $provenance['package_manifest_digest'] ), strtolower( (string) $expected['package_manifest_digest'] ) );
+					$plan_match = 'etg-dfsb' === ( isset( $payload['provider_id'] ) ? (string) $payload['provider_id'] : '' )
+						&& 'tours' === ( isset( $payload['profile_id'] ) ? (string) $payload['profile_id'] : '' )
+						&& hash_equals( strtolower( (string) $plan['plan_digest'] ), strtolower( (string) ( isset( $payload['plan_digest'] ) ? $payload['plan_digest'] : '' ) ) )
+						&& hash_equals( strtolower( (string) $plan['plan_signature'] ), strtolower( (string) ( isset( $payload['plan_signature'] ) ? $payload['plan_signature'] : '' ) ) );
+					$receipt_valid = 'PASS' === ( isset( $verified_result['verdict'] ) ? (string) $verified_result['verdict'] : '' )
+						&& ! empty( $verified_result['verification']['browser_runtime_parity_verified'] )
+						&& isset( $verified_result['plan_digest'] )
+						&& hash_equals( strtolower( (string) $plan['plan_digest'] ), strtolower( (string) $verified_result['plan_digest'] ) );
+					if ( $identity_match && $plan_match && $receipt_valid ) {
+						$result = $verified_result;
+						$durable_job_id = isset( $job['job_id'] ) ? (string) $job['job_id'] : '';
+						$durable_receipt_used = true;
+						$durable_receipt_source = 'queue_fallback';
+						break;
+					}
+				}
+			}
+
+			if ( ! $durable_receipt_used ) {
+				$result = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+					'provider_id' => 'etg-dfsb',
+					'profile_id' => 'tours',
+					'suite' => 'browser_runtime',
+					'plan_digest' => (string) $plan['plan_digest'],
+					'plan_signature' => (string) $plan['plan_signature'],
+				) );
+			}
 		}
 		$verified = is_array( $result ) && ! empty( $result['verification']['browser_runtime_parity_verified'] );
 		return array(
-			'contract' => 'mad4b.staging-browser-certification-view.v1',
+			'contract' => 'mad4b.staging-browser-certification-view.v3',
 			'plan' => $plan,
 			'result' => $result,
+			'durable_receipt_used' => $durable_receipt_used,
+			'durable_receipt_source' => $durable_receipt_source,
+			'durable_job_id' => $durable_job_id,
 			'browser_runtime_parity_verified' => $verified,
 			'blockers' => $verified ? array() : array( 'browser_runtime_not_observed' ),
 		);
