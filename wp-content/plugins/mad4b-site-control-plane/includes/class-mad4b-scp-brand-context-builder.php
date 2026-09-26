@@ -401,7 +401,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			if ( '' !== $lang ) $sampled[ $lang ] = isset( $sampled[ $lang ] ) ? $sampled[ $lang ] + 1 : 1;
 			if ( '' !== $text ) ++$nonempty;
 			if ( '' !== $text && strlen( $text ) >= 120 && self::live_record_rank( $row ) < 20 ) ++$primary;
-			if ( '' !== $text && preg_match( '/(^|_)(page|post|product|tour|tours|activity|activities|package|packages)(_|$)/', $post_type ) && 'tour-rates' !== $post_type ) ++$core;
+			if ( '' !== $text && preg_match( '/(page|post|product|tour|activity|package)/', $post_type ) && 'tour-rates' !== $post_type ) ++$core;
 			if ( ! empty( $row['seo'] ) ) ++$seo;
 		}
 		ksort( $sampled, SORT_STRING );
@@ -820,6 +820,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		foreach ( self::generatable_categories() as $category ) {
 			if ( ! in_array( $category, $missing, true ) ) continue;
 			$draft_blockers = $hard_blockers;
+			if ( 'editorial_guidelines' === $category && empty( $approved['tone_of_voice'] ) ) $draft_blockers[] = 'approved_tone_of_voice_required_for_editorial_generation';
 			if ( 'editorial_guidelines' === $category && (int) $evidence_quality['seo_sample_count'] < self::MIN_EDITORIAL_SEO_SAMPLES ) $draft_blockers[] = 'evidence_quality:editorial_seo_samples_below_minimum';
 			$drafts[] = array(
 				'category' => $category,
@@ -962,7 +963,8 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		if ( ! in_array( $category, self::generatable_categories(), true ) ) return new WP_Error( 'mad4b_brand_draft_category_invalid', 'Brand draft category is not generatable.' );
 		$content = isset( $input['content'] ) ? trim( (string) $input['content'] ) : '';
 		if ( '' === $content || strlen( $content ) > self::MAX_DRAFT_BYTES ) return new WP_Error( 'mad4b_brand_draft_content_invalid', 'Brand draft content is missing or exceeds the certified limit.' );
-		$plan = self::gap_plan();
+		$include_rendered_frontend = ! empty( $input['include_rendered_frontend'] );
+		$plan = self::gap_plan( array( 'include_authoritative_content' => true, 'include_rendered_frontend' => $include_rendered_frontend ) );
 		if ( is_wp_error( $plan ) ) return $plan;
 		$expected_plan = strtolower( trim( (string) ( isset( $input['expected_plan_sha256'] ) ? $input['expected_plan_sha256'] : '' ) ) );
 		$expected_evidence = strtolower( trim( (string) ( isset( $input['evidence_digest'] ) ? $input['evidence_digest'] : '' ) ) );
@@ -974,7 +976,6 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		foreach ( isset( $plan['drafts'] ) ? $plan['drafts'] : array() as $row ) if ( is_array( $row ) && $category === ( isset( $row['category'] ) ? (string) $row['category'] : '' ) ) { $draft_plan = $row; break; }
 		if ( ! is_array( $draft_plan ) || empty( $draft_plan['ready_to_generate'] ) ) return new WP_Error( 'mad4b_brand_draft_blocked', 'Brand draft generation is blocked by current evidence quality or authority.', array( 'blockers' => is_array( $draft_plan ) && isset( $draft_plan['blockers'] ) ? $draft_plan['blockers'] : $plan['hard_blockers'] ) );
 		if ( ! in_array( $category, $plan['missing_categories'], true ) ) return new WP_Error( 'mad4b_brand_draft_category_not_missing', 'Requested Brand Core category is no longer missing.' );
-		$include_rendered_frontend = ! empty( $input['include_rendered_frontend'] );
 		$preflight = self::draft_preflight( array(
 			'category' => $category,
 			'content' => $content,
