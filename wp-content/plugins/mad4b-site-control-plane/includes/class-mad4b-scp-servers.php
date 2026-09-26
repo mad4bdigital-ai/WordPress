@@ -464,6 +464,9 @@ final class MAD4B_SCP_Servers {
 		$full_step_up = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
 			? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()
 			: array();
+		$enrollment_dispatch = class_exists( 'MAD4B_SCP_Enrollment_Dispatch' )
+			? MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools()
+			: array();
 		$bootstrap = array_merge(
 			array(
 				'mad4b/build-provenance-status',
@@ -472,11 +475,15 @@ final class MAD4B_SCP_Servers {
 			$narrow_read,
 			$narrow_step_up,
 			$full_read,
-			$full_step_up
+			$full_step_up,
+			$enrollment_dispatch
 		);
 		$candidates = array_merge( $core, $bootstrap );
 		$step_up = array_merge( $narrow_step_up, $full_step_up );
-		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up );
+		$enrollment_step_up = class_exists( 'MAD4B_SCP_Enrollment_Dispatch' )
+			? array( MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY )
+			: array();
+		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $enrollment_step_up );
 
 		$tools = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
@@ -525,6 +532,7 @@ final class MAD4B_SCP_Servers {
 			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools() : array(),
 			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools() : array(),
 			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools() : array(),
+			class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) ? MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools() : array(),
 			self::chatgpt_enrollment_candidates(),
 			self::core_tools( 'mad4b-content' ),
 			self::core_tools( 'mad4b-admin' ),
@@ -562,6 +570,24 @@ final class MAD4B_SCP_Servers {
 		return isset( $candidates[ $ability_name ] ) ? $candidates[ $ability_name ] : null;
 	}
 
+	private static function provider_for_enrollment_catalog_ability( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		if ( '' === $ability_name || ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) ) return null;
+		foreach ( MAD4B_SCP_Remote_Operation_Parity::catalog() as $row ) {
+			if ( ! is_array( $row )
+				|| $ability_name !== ( isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '' )
+				|| 'mad4b-enrollment' !== ( isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '' )
+				|| empty( $row['remote_registered'] )
+				|| empty( $row['execution_eligible'] ) ) continue;
+			$trust = isset( $row['trust_class'] ) ? (string) $row['trust_class'] : '';
+			if ( 'core' === $trust ) return 'core';
+			if ( 'certified_addon' !== $trust ) return null;
+			$provider = isset( $row['provider'] ) ? sanitize_key( (string) $row['provider'] ) : '';
+			return '' !== $provider ? $provider : null;
+		}
+		return null;
+	}
+
 	public static function provider_for_ability( $server_id, $ability_name ) {
 		$server_id = sanitize_key( (string) $server_id );
 		$ability_name = (string) $ability_name;
@@ -580,6 +606,11 @@ final class MAD4B_SCP_Servers {
 		};
 
 		if ( ! in_array( $server_id, self::expected_server_ids(), true ) ) return $remember( null );
+		if ( 'mad4b-enrollment' === $server_id ) {
+			if ( ! in_array( $ability_name, self::core_tools( 'mad4b-enrollment' ), true ) ) return $remember( null );
+			$catalog_provider = self::provider_for_enrollment_catalog_ability( $ability_name );
+			return $remember( null !== $catalog_provider ? $catalog_provider : 'core' );
+		}
 		if ( 'mad4b-write' === $server_id ) {
 			if ( ! in_array( $ability_name, self::write_tools(), true ) ) return $remember( null );
 			if ( in_array( $ability_name, self::core_write_candidates(), true ) ) return $remember( 'core' );
@@ -596,6 +627,8 @@ final class MAD4B_SCP_Servers {
 			foreach ( array( 'mad4b-read', 'mad4b-enrollment', 'mad4b-content', 'mad4b-admin' ) as $core_server ) {
 				if ( in_array( $ability_name, self::core_tools( $core_server ), true ) ) return $remember( 'core' );
 			}
+			if ( class_exists( 'MAD4B_SCP_Enrollment_Dispatch' )
+				&& in_array( $ability_name, MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools(), true ) ) return $remember( 'core' );
 			if ( self::is_external_write_candidate( $ability_name ) ) {
 				$runtime_provider = self::provider_for_ability( 'mad4b-write', $ability_name );
 				return $remember( null !== $runtime_provider ? $runtime_provider : self::provider_for_external_write_candidate( $ability_name ) );

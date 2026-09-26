@@ -12,6 +12,7 @@ if ( ! function_exists( 'sanitize_key' ) ) {
 		return preg_replace( '/[^a-z0-9_\-]/', '', $key );
 	}
 }
+
 require_once $root . '/includes/class-mad4b-scp-brand-context-builder.php';
 
 $fail = static function ( $message ) {
@@ -26,6 +27,12 @@ $invoke = static function ( $name, array $args = array() ) {
 	$method->setAccessible( true );
 	return $method->invokeArgs( null, $args );
 };
+
+$wpml_query = $invoke( 'language_query_args', array( array( 'tours-and-activities' ), 'fr', 3, true ) );
+$check( is_array( $wpml_query ) && isset( $wpml_query['lang'] ) && 'fr' === $wpml_query['lang'], 'WPML evidence query did not bind the requested language explicitly' );
+$check( isset( $wpml_query['suppress_filters'] ) && false === $wpml_query['suppress_filters'], 'WPML evidence query unexpectedly suppressed language filters' );
+$plain_query = $invoke( 'language_query_args', array( array( 'tours-and-activities' ), 'fr', 3, false ) );
+$check( ! isset( $plain_query['lang'] ), 'non-multilingual evidence query unexpectedly forced a language filter' );
 
 $good = array();
 for ( $i = 0; $i < 16; ++$i ) {

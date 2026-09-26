@@ -20,7 +20,8 @@ The platform MUST preserve human agency for decisions and approvals while removi
 
 3. **Authority remains separate from transport**
    - A remote transport does not grant mutation authority.
-   - Each remote operation declares its authority surface, environment policy, exact-build binding, provider/executor, and Production policy.
+   - Each remote operation declares its authority surface, environment policy, exact-build binding, provider/executor, caller role, and Production policy.
+   - `remote_caller_role` MUST be one of `operator`, `external_executor`, `owner`, or `system`; transport exposure must not silently change that role.
    - Bootstrap/convergence operations that must work before normal write authority MAY live on the bounded enrollment surface.
 
 4. **Exact-build and environment binding**
@@ -40,11 +41,12 @@ The platform MUST preserve human agency for decisions and approvals while removi
      - executor
      - provider
      - remote_mode
+     - remote_caller_role
      - production_policy
      - human_decision_required
      - remote parity readiness
    - Discovery MUST support search without prior knowledge of an ability name.
-   - Extension registrations MUST declare `registrar_id`, `source_plugin`, and `trust_class`; the catalog computes a stable registration digest.
+   - Extension registrations MUST declare `registrar_id`, `source_plugin`, `trust_class`, and `remote_caller_role`; the catalog computes a stable registration digest that binds caller role as policy identity.
    - Rejected or incomplete registrations MUST be surfaced as findings rather than silently disappearing.
    - `remote_parity_ready` requires both a registered semantic ability and an available executor.
 
@@ -78,5 +80,6 @@ The platform MUST preserve human agency for decisions and approvals while removi
 - Managed Skills reconciliation
 - Frontend performance sample collection
 - Admin-query performance index maintenance
+- External browser work claim/completion with executor-scoped caller roles
 
 These are reference implementations, not an exhaustive allowlist.
