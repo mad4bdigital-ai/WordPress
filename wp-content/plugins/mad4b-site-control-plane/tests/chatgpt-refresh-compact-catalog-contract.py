@@ -141,6 +141,9 @@ for marker in [
     "'mad4b/write-discover'",
     "'mad4b/write-info'",
     "'mad4b/write-execute'",
+    "'mad4b/enrollment-discover'",
+    "'mad4b/enrollment-info'",
+    "'mad4b/enrollment-execute'",
     "'mad4b/plugin-package-plan'",
 ]:
     require(marker in core_chatgpt, f"required minimal direct ChatGPT tool missing: {marker}")
@@ -163,7 +166,7 @@ for forbidden in [
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
 require("$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_body, "bounded and full authority step-ups must be composed explicitly")
-require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_body, "normal governed writes plus the composed guarded authority step-ups must be the only direct mutations")
+require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute', 'mad4b/enrollment-execute' ), $step_up )" in chatgpt_body, "normal governed writes, the bounded enrollment dispatcher, and composed guarded authority step-ups must be the only direct mutations")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_body, "unified enrolled Staging tools/list must include read-only full authority diagnostics")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_body, "unified enrolled Staging tools/list must project the composite apply only through the guarded step-up method")
 for low_level in [
@@ -204,4 +207,4 @@ for low_level in [
 enrollment_projection = SERVERS.split("private static function chatgpt_enrollment_candidates()", 1)[1].split("public static function chatgpt_full_catalog_candidates()", 1)[0]
 require("self::chatgpt_internal_enrollment_mutations()" in enrollment_projection, "logical ChatGPT discovery must remove low-level enrollment mutations")
 
-print("mad4b.chatgpt-refresh-minimal-catalog.v6: PASS")
+print("mad4b.chatgpt-refresh-minimal-catalog.v7: PASS")
