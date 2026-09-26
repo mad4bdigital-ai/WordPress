@@ -177,7 +177,8 @@ for marker in [
     "MAD4B_SCP_Context_Authority::brand_core_coverage()",
     "required_context_set_missing:",
     "required_context_set_conflicting:",
-    "'canonical_coverage_source' => 'MAD4B_SCP_Context_Authority::brand_core_coverage'",
+    "'canonical_coverage_source'",
+    "MAD4B_SCP_Context_Authority::brand_core_coverage",
 ]:
     require(brand_core, marker, "canonical Brand Core coverage invariant")
 for forbidden in [
