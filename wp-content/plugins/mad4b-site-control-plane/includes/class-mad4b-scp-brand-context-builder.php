@@ -481,6 +481,18 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		ksort( $rank_distribution, SORT_NUMERIC );
 		$unavailable = array_values( array_diff( $configured_languages, array_keys( $sampled ) ) );
 		$empty_ratio = $sample_count > 0 ? ( $sample_count - $nonempty ) / $sample_count : 1.0;
+		$seo_configuration_samples = array();
+		foreach ( isset( $structure['seo_configuration'] ) && is_array( $structure['seo_configuration'] ) ? $structure['seo_configuration'] : array() as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$provider = sanitize_key( isset( $row['provider'] ) ? (string) $row['provider'] : '' );
+			$scope = sanitize_key( isset( $row['scope'] ) ? (string) $row['scope'] : '' );
+			$post_type = sanitize_key( isset( $row['post_type'] ) ? (string) $row['post_type'] : '' );
+			if ( '' === $provider || '' === $post_type ) continue;
+			$seo_configuration_samples[ $provider . '|' . $scope . '|' . $post_type ] = true;
+		}
+		$post_seo_sample_count = $seo;
+		$seo_configuration_sample_count = count( $seo_configuration_samples );
+		$seo += $seo_configuration_sample_count;
 		$menu_observed_count = isset( $structure['menu_observed_count'] ) ? max( 0, (int) $structure['menu_observed_count'] ) : count( isset( $structure['menus'] ) && is_array( $structure['menus'] ) ? $structure['menus'] : array() );
 		$menu_unique_count = isset( $structure['menu_unique_count'] ) ? max( 0, (int) $structure['menu_unique_count'] ) : count( isset( $structure['menus'] ) && is_array( $structure['menus'] ) ? $structure['menus'] : array() );
 		$duplicate_structure_ratio = $menu_observed_count > 0 ? max( 0.0, min( 1.0, ( $menu_observed_count - $menu_unique_count ) / $menu_observed_count ) ) : 0.0;
@@ -499,6 +511,8 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'core_content_sample_count' => $core,
 			'empty_ratio' => round( $empty_ratio, 6 ),
 			'seo_sample_count' => $seo,
+			'post_seo_sample_count' => $post_seo_sample_count,
+			'seo_configuration_sample_count' => $seo_configuration_sample_count,
 			'rank_distribution' => $rank_distribution,
 			'post_type_distribution' => $post_type_distribution,
 			'duplicate_structure_ratio' => round( $duplicate_structure_ratio, 6 ),
@@ -791,6 +805,46 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		return self::stratify_live_records( $records );
 	}
 
+	private static function seo_configuration_evidence( array $post_types ) {
+		$rows = array();
+		if ( ! function_exists( 'get_option' ) ) return $rows;
+		$providers = array(
+			'rank_math' => array(
+				'option' => 'rank-math-options-titles',
+				'title_key' => static function ( $post_type ) { return 'pt_' . $post_type . '_title'; },
+				'description_key' => static function ( $post_type ) { return 'pt_' . $post_type . '_description'; },
+			),
+			'yoast' => array(
+				'option' => 'wpseo_titles',
+				'title_key' => static function ( $post_type ) { return 'title-' . $post_type; },
+				'description_key' => static function ( $post_type ) { return 'metadesc-' . $post_type; },
+			),
+		);
+		foreach ( $providers as $provider => $config ) {
+			$options = get_option( $config['option'], array() );
+			if ( ! is_array( $options ) ) continue;
+			foreach ( $post_types as $post_type ) {
+				$post_type = sanitize_key( (string) $post_type );
+				if ( '' === $post_type || in_array( $post_type, self::utility_post_types(), true ) ) continue;
+				foreach ( array( 'title', 'description' ) as $field ) {
+					$key_callback = $config[ $field . '_key' ];
+					$key = $key_callback( $post_type );
+					$value = isset( $options[ $key ] ) && is_scalar( $options[ $key ] ) ? trim( (string) $options[ $key ] ) : '';
+					if ( '' === $value ) continue;
+					$rows[] = array(
+						'provider' => $provider,
+						'scope' => 'post_type',
+						'post_type' => $post_type,
+						'field' => $field,
+						'value' => self::bounded_text( $value, 500 ),
+					);
+				}
+			}
+		}
+		$rows = self::sort_rows( $rows, array( 'provider', 'post_type', 'field' ) );
+		return array_slice( $rows, 0, 32 );
+	}
+
 	private static function structure_evidence() {
 		$menus = array();
 		if ( function_exists( 'wp_get_nav_menus' ) ) {
@@ -814,6 +868,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				if ( count( $taxonomies ) >= 12 ) break;
 			}
 		}
+		$seo_configuration = self::seo_configuration_evidence( self::live_post_types() );
 		$menu_observed_count = count( $menus );
 		$deduped_menus = array();
 		foreach ( $menus as $menu ) {
@@ -833,6 +888,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'menu_observed_count' => $menu_observed_count,
 			'menu_unique_count' => $menu_unique_count,
 			'duplicate_structure_ratio' => round( $menu_duplicate_ratio, 6 ),
+			'seo_configuration' => $seo_configuration,
 			'taxonomies' => $taxonomies,
 			'locale' => function_exists( 'get_locale' ) ? (string) get_locale() : '',
 			'observed_at' => gmdate( 'c' ),
@@ -926,6 +982,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'menu_observed_count' => isset( $structure['menu_observed_count'] ) ? (int) $structure['menu_observed_count'] : 0,
 			'menu_unique_count' => isset( $structure['menu_unique_count'] ) ? (int) $structure['menu_unique_count'] : 0,
 			'duplicate_structure_ratio' => isset( $structure['duplicate_structure_ratio'] ) ? (float) $structure['duplicate_structure_ratio'] : 0.0,
+			'seo_configuration' => isset( $structure['seo_configuration'] ) ? $structure['seo_configuration'] : array(),
 			'taxonomies' => isset( $structure['taxonomies'] ) ? $structure['taxonomies'] : array(),
 			'locale' => isset( $structure['locale'] ) ? (string) $structure['locale'] : '',
 		);
