@@ -3,6 +3,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+abilities = (root / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 perf = (root / 'includes' / 'class-mad4b-scp-admin-query-performance.php').read_text(encoding='utf-8')
 generalization = (root.parents[2] / 'specs' / '007-content-intelligence-workflow-platform' / 'contracts' / 'generalization-rules.md').read_text(encoding='utf-8')
@@ -97,6 +98,27 @@ for ability in [
 ]:
     if servers.count(ability) < 2:
         raise SystemExit(f'{ability} must be discoverable from read and ChatGPT surfaces')
+
+for dispatcher_marker in [
+    "'mad4b/enrollment-execute'",
+    "private function governed_enrollment_target",
+    "public function can_enrollment_dispatch",
+    "public function enrollment_execute",
+    "'mad4b.chatgpt-enrollment-execute.v1'",
+    "'mad4b_enrollment_dispatch_target_not_cataloged'",
+    "'mad4b_enrollment_dispatch_target_not_mounted'",
+    "'mad4b_enrollment_dispatch_surface_mismatch'",
+    "'mad4b_enrollment_dispatch_generic_admin_denied'",
+    "'mad4b_enrollment_dispatch_production_denied'",
+    "'mad4b_enrollment_dispatch_schema_drift'",
+]:
+    if dispatcher_marker not in abilities:
+        raise SystemExit(f'missing bounded enrollment dispatcher invariant: {dispatcher_marker}')
+
+if "'mad4b/enrollment-execute'" not in servers:
+    raise SystemExit('bounded enrollment dispatcher is not projected on ChatGPT')
+if "array( 'mad4b/write-execute', 'mad4b/enrollment-execute' )" not in servers:
+    raise SystemExit('bounded enrollment dispatcher is not explicitly guarded as direct mutation transport')
 
 for ability in [
     'mad4b/reconcile-managed-skills',
