@@ -1,0 +1,581 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import json
+import subprocess
+import tempfile
+
+script = Path("tools/Apply-Mad4bMasterRuleset.ps1").read_text(encoding="utf-8")
+release_verdict = Path(".github/workflows/mad4b-release-verdict.yml").read_text(encoding="utf-8")
+repository_governance_workflow = Path(".github/workflows/mad4b-repository-governance.yml").read_text(encoding="utf-8")
+feature_boundary_root = Path(".github/workflows/mad4b-feature-boundary-root.yml").read_text(encoding="utf-8")
+
+repair_bootstrap_required = [
+    "Verify bounded governance-apply repair bootstrap",
+    ".github/workflows/mad4b-feature-boundary-root.yml",
+    "github.event.pull_request.number == 69",
+    "chore/governance-apply-powershell-parse-20260926",
+    "8a0c12ef16023f042def7d42b760cdd847343e8a",
+    "rulesets/23968498?includes_parents=true",
+    "MAD4B_GOVERNANCE_REPAIR_RULESET_SNAPSHOT",
+    "mad4b.governance-repair-ruleset-snapshot.v1",
+    "owner_issue_comment_admin_readback_bound_to_authenticated_identity",
+    "owner_admin_snapshot",
+    "ruleset_snapshot_comment_id",
+    "owner snapshot/authenticated ruleset identity drift",
+    "2026-09-25T02:13:24.911+03:00",
+    "mad4b.governance-apply-repair-bootstrap.v1",
+    "governance_apply_repair_bootstrap",
+    "governance_apply_repair_bootstrap_ready",
+    "required = ['Control-plane contract guard']",
+    "git show \"$BASE_SHA:tools/verify_feature_boundary.py\"",
+    "/tmp/mad4b-governance-repair-boundary.json",
+    "baseline_feature_boundary_verified",
+    "baseline_feature_boundary_mode",
+    "(governance_ready or governance_apply_repair_bootstrap_ready)",
+    "target_governance_activation_still_required_post_merge",
+    "zero_bypass_actors_verified",
+    "powershell_parser_contract_verified",
+    "legacy_ruleset_snapshot_verified",
+]
+governance_repair_bootstrap_required = [
+    "Verify bounded governance-apply repair bootstrap",
+    "github.event.pull_request.number == 69",
+    "chore/governance-apply-powershell-parse-20260926",
+    "8a0c12ef16023f042def7d42b760cdd847343e8a",
+    "rulesets/23968498?includes_parents=true",
+    "MAD4B_GOVERNANCE_REPAIR_RULESET_SNAPSHOT",
+    "mad4b.governance-repair-ruleset-snapshot.v1",
+    "owner_issue_comment_admin_readback_bound_to_authenticated_identity",
+    "owner_admin_snapshot",
+    "ruleset_snapshot_comment_id",
+    "git show \"$BASE_SHA:tools/verify_feature_boundary.py\"",
+    "exact_head_owner_attestation_verified",
+    "governance_apply_repair_bootstrap_ready",
+    "target_governance_activation_still_required_post_merge",
+]
+missing_governance_repair_bootstrap = [
+    needle for needle in governance_repair_bootstrap_required if needle not in repository_governance_workflow
+]
+if missing_governance_repair_bootstrap:
+    raise SystemExit(
+        "governance workflow repair bootstrap contract missing: "
+        + ", ".join(missing_governance_repair_bootstrap)
+    )
+
+missing_repair_bootstrap = [
+    needle for needle in repair_bootstrap_required if needle not in release_verdict
+]
+if missing_repair_bootstrap:
+    raise SystemExit(
+        "governance-apply repair bootstrap contract missing: "
+        + ", ".join(missing_repair_bootstrap)
+    )
+
+# Fail closed if the bounded repair exception ever becomes generic or infers bypass safety from hidden fields.
+for forbidden in [
+    "governance_apply_repair_bootstrap = True",
+    "required = []\n              mode = 'governance_apply_repair_bootstrap'",
+    "hidden_in_ci_exact_head_owner_attestation",
+    "pr69_exact_head_owner_attested",
+]:
+    if forbidden in release_verdict or forbidden in repository_governance_workflow:
+        raise SystemExit("governance-apply repair bootstrap widened or inferred hidden bypass safety: " + forbidden)
+
+print("governance_apply_repair_bootstrap=bounded")
+print("governance_apply_repair_governance_workflow=bounded")
+print("governance_apply_repair_live_snapshot=exact")
+print("governance_apply_repair_bypass_evidence=owner-comment-admin-readback")
+for workflow_name, workflow_text in [
+    ("release_verdict", release_verdict),
+    ("repository_governance", repository_governance_workflow),
+]:
+    for required_timestamp_semantic in [
+        "normalize_ruleset_timestamp",
+        'replace("Z", "+00:00")',
+        "astimezone(timezone.utc)",
+    ]:
+        if required_timestamp_semantic not in workflow_text:
+            raise SystemExit(
+                "governance repair timestamp normalization missing from "
+                + workflow_name
+                + ": "
+                + required_timestamp_semantic
+            )
+    if 'live.get("updated_at") != "2026-09-25T02:13:24.911+03:00"' in workflow_text:
+        raise SystemExit(
+            "governance repair timestamp comparison regressed to raw string equality: "
+            + workflow_name
+        )
+print("governance_apply_repair_timestamp_binding=utc_instant_equivalence")
+print("governance_apply_repair_target_governance_claim=false_until_remote_apply")
+
+if "required = ['Repository feature boundary']" in release_verdict:
+    raise SystemExit("governance repair bootstrap still depends on the known-broken base check")
+if "required = ['Control-plane contract guard']" not in release_verdict:
+    raise SystemExit("governance repair bootstrap must retain an independent exact-head CI terminal gate")
+if 'git show "$BASE_SHA:tools/verify_feature_boundary.py"' not in release_verdict:
+    raise SystemExit("governance repair bootstrap must execute the verifier sourced from BASE")
+if "baseline_feature_boundary_verified" not in release_verdict:
+    raise SystemExit("governance repair bootstrap must bind base-owned feature-boundary evidence")
+for required_snapshot in [
+    "MAD4B_GOVERNANCE_REPAIR_RULESET_SNAPSHOT",
+    "mad4b.governance-repair-ruleset-snapshot.v1",
+    "owner_issue_comment_admin_readback_bound_to_authenticated_identity",
+    "owner_admin_snapshot",
+    "ruleset_snapshot_comment_id",
+    "exact_head_owner_attestation_verified",
+]:
+    if required_snapshot not in release_verdict:
+        raise SystemExit(
+            "governance repair release bootstrap missing owner-admin snapshot evidence: "
+            + required_snapshot
+        )
+    if required_snapshot not in repository_governance_workflow:
+        raise SystemExit(
+            "governance repair policy bootstrap missing owner-admin snapshot evidence: "
+            + required_snapshot
+        )
+if "live_target_governance_ready': False" not in repository_governance_workflow:
+    raise SystemExit("governance repair bootstrap may not claim live target governance ready")
+
+if 'git fetch --no-tags origin "$HEAD_SHA"' not in feature_boundary_root:
+    raise SystemExit("feature-boundary trusted fetch must preserve full ancestry")
+if 'git fetch --no-tags --depth=1 origin "$HEAD_SHA"' in feature_boundary_root:
+    raise SystemExit("feature-boundary trusted fetch regressed to shallow ancestry")
+if 'fetch-depth: 0' not in feature_boundary_root:
+    raise SystemExit("feature-boundary trusted base checkout must remain full-history")
+print("feature_boundary_head_fetch=ancestry_preserving")
+print("feature_boundary_shallow_regression=blocked")
+
+required = [
+    '"--jq",".[] | @json"',
+    '"repos/$Repository/rulesets?includes_parents=false"',
+    '$currentLines = @(& gh @currentArgs)',
+    'if ($current.Count -eq 0)',
+    'Write-Host "[]"',
+    '$requiredProperties = @("id","name","enforcement")',
+    '$item.PSObject.Properties[$propertyName]',
+    'malformed ruleset list entry missing',
+    '"repos/$Repository/rulesets/${rulesetId}?includes_parents=true"',
+    '"--method","PUT"',
+    '"repos/$Repository/rulesets/$rulesetId"',
+    '"--input",$TemplatePath',
+    'repository ruleset reconciliation failed',
+    'Reconciled existing ruleset id=$rulesetId',
+    '$currentBranch = (& git branch --show-current).Trim()',
+    '$currentBranch -ne "master"',
+    'ruleset activation is post-merge only',
+    '"repos/$Repository/commits/master"',
+    '$remoteMaster -ne $currentHead',
+    'post_merge_master_verified=true',
+    '$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:${Repository}:$($ExpectedHead.ToLowerInvariant())"',
+    '"tools/verify_repository_ruleset_template.py"',
+    '"tools/verify_repository_ruleset_restore.py"',
+    'canonical ruleset template does not exactly implement repository governance policy',
+    '$rollbackMode = "restore"',
+    '$rollbackMode = "delete"',
+    'pre_apply_ruleset_snapshot=ready',
+    '--readback $ReadbackPath',
+    'canonical_readback_match=true',
+    'ruleset_rollback=restored_previous',
+    'ruleset_rollback=deleted_new_ruleset',
+    'GOVERNANCE_APPLY_RECOVERY_REQUIRED',
+    '$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)',
+    '[System.IO.File]::WriteAllText($RollbackPayloadPath, $rollbackPayloadJson, $Utf8NoBom)',
+    '[System.IO.File]::WriteAllText($ReadbackPath, [string]$detailRaw, $Utf8NoBom)',
+    '[string]$before.source_type -ne "Repository"',
+    '[string]$before.source -ne $Repository',
+    '$rollbackRules = @()',
+    'PSObject.Properties["require_extra_approval_for_unattributed_changes"]',
+    'PSObject.Properties.Remove("require_extra_approval_for_unattributed_changes")',
+    '$before.PSObject.Properties["bypass_actors"]',
+    'bypass-actor state is not observable',
+    'existing canonical ruleset contains bypass actors',
+    '$BeforeReadbackPath = Join-Path $env:TEMP "mad4b-ruleset-before-readback.json"',
+    '$RollbackReadbackPath = Join-Path $env:TEMP "mad4b-ruleset-rollback-readback.json"',
+    '--before $BeforeReadbackPath --after $RollbackReadbackPath --repository $Repository',
+    'ruleset_rollback_readback=verified',
+    'ruleset_rollback_deletion_readback=verified',
+    'previous ruleset restore did not verify against the exact pre-apply state',
+    'newly-created ruleset still exists after automatic rollback',
+    '"tools/build_repository_ruleset_attestation.py"',
+    '"tools/publish_repository_ruleset_attestation.py"',
+    '$RulesetAttestationPath = Join-Path $env:TEMP "mad4b-ruleset-attestation.json"',
+    '$RulesetAttestationPublicationPath = Join-Path $env:TEMP "mad4b-ruleset-attestation-publication.json"',
+    '--readback $ReadbackPath --policy $PolicyPath --template $TemplatePath --repository $Repository --output $RulesetAttestationPath',
+    '--repository $Repository --policy $PolicyPath --template $TemplatePath --attestation $RulesetAttestationPath --output $RulesetAttestationPublicationPath',
+    'Write-Host "=== PUBLISH OWNER RULESET ATTESTATION ==="',
+    '$publication.published -ne $true',
+    '$publication.readback_verified -ne $true',
+    '[string]$publication.authenticated_owner_login -ne "mad4bdigital-ai"',
+    '[string]$publication.comment_author_login -ne "mad4bdigital-ai"',
+    'ruleset_attestation_scope=owner_issue_comment',
+    'ruleset_attestation_publish_readback=verified',
+    'Write-Host "=== VERIFY AGGREGATE GOVERNANCE WITH PUBLISHED ATTESTATION ==="',
+    '$status.ruleset_attestation_verified -ne $true',
+    'published owner attestation did not satisfy aggregate repository governance',
+    '--require-ruleset-attestation',
+    'Write-Host "APPLY_MAD4B_MASTER_RULESET:${rulesetId}:ready"',
+]
+
+missing = [needle for needle in required if needle not in script]
+if missing:
+    raise SystemExit("repository governance bootstrap parser contract missing: " + ", ".join(missing))
+
+for forbidden in [
+    '$current = @($currentRaw | ConvertFrom-Json)',
+    '"repos/$Repository/rulesets/$rulesetId?includes_parents=true"',
+    '[Environment]::SetEnvironmentVariable',
+    '/environments/$environmentName/variables',
+    'UPSERT ENVIRONMENT RULESET ATTESTATION VARIABLE',
+    'ruleset_attestation_scope=environment',
+    '$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository:$($ExpectedHead.ToLowerInvariant())"',
+    'Write-Host "APPLY_MAD4B_MASTER_RULESET:$rulesetId:ready"',
+]:
+    if forbidden in script:
+        raise SystemExit("legacy Windows PowerShell empty-array parser returned: " + forbidden)
+
+powershell_parser = r"""
+$tokens = $null
+$errors = $null
+$resolved = (Resolve-Path 'tools/Apply-Mad4bMasterRuleset.ps1').Path
+[void][System.Management.Automation.Language.Parser]::ParseFile(
+    $resolved,
+    [ref]$tokens,
+    [ref]$errors
+)
+if ($errors.Count -ne 0) {
+    $errors | ForEach-Object { [Console]::Error.WriteLine($_.Message) }
+    exit 1
+}
+"""
+parse_proc = subprocess.run(
+    ["pwsh", "-NoLogo", "-NoProfile", "-Command", powershell_parser],
+    text=True,
+    capture_output=True,
+)
+if parse_proc.returncode != 0:
+    raise SystemExit(
+        "Apply-Mad4bMasterRuleset.ps1 failed PowerShell parser validation: "
+        + (parse_proc.stderr or parse_proc.stdout)
+    )
+
+print("powershell_parser=pass")
+
+print("REPOSITORY_GOVERNANCE_BOOTSTRAP_TOOL_CONTRACT: PASS")
+print("empty_ruleset_list=zero_items")
+template = Path(".github/mad4b-master-ruleset-template.json").read_text(encoding="utf-8")
+for required_check in ["Repository release verdict", "Repository feature boundary", '"integration_id": 15368']:
+    if required_check not in template:
+        raise SystemExit(f"canonical master ruleset template missing trusted check: {required_check}")
+
+print("ruleset_shape_guard=id,name,enforcement")
+print("existing_named_ruleset=reconciled_to_exact_template")
+print("activation_timing=post_merge_master_only")
+print("confirmation_scope=repository_plus_exact_head")
+
+
+ruleset_verifier = Path("tools/verify_repository_ruleset_template.py")
+if not ruleset_verifier.is_file():
+    raise SystemExit("canonical ruleset verifier is missing")
+ruleset_text = ruleset_verifier.read_text(encoding="utf-8")
+for needle in [
+    "mad4b.repository-ruleset-template.v1",
+    "live ruleset mutable fields do not exactly match canonical template",
+    "required status checks differ from policy",
+    "pull_request rule differs from policy",
+    "ruleset template contains ungoverned conditions",
+]:
+    if needle not in ruleset_text:
+        raise SystemExit(f"canonical ruleset verifier contract missing: {needle}")
+
+print("template_policy_preflight=exact")
+print("post_mutation_readback=canonical")
+print("readback_mismatch_rollback=bounded")
+
+
+canonical_template_proc = subprocess.run(
+    [
+        "python3",
+        "tools/verify_repository_ruleset_template.py",
+        "--template",
+        ".github/mad4b-master-ruleset-template.json",
+        "--policy",
+        ".github/mad4b-repository-governance-policy.json",
+    ],
+    text=True,
+    capture_output=True,
+)
+if canonical_template_proc.returncode != 0:
+    raise SystemExit(
+        "canonical ruleset template executable preflight failed: "
+        + (canonical_template_proc.stderr or canonical_template_proc.stdout)
+    )
+
+print("canonical_template_executable_preflight=pass")
+print("windows_json_encoding=utf8_no_bom")
+print("repository_ruleset_discovery=local_only")
+print("rollback_payload=response_only_fields_stripped")
+print("bypass_evidence=explicit")
+
+
+restore_verifier = Path("tools/verify_repository_ruleset_restore.py")
+if not restore_verifier.is_file():
+    raise SystemExit("repository ruleset restore verifier is missing")
+restore_text = restore_verifier.read_text(encoding="utf-8")
+for needle in [
+    "mad4b.repository-ruleset-restore-readback.v1",
+    "restored ruleset does not match the exact pre-apply mutable state",
+    "ruleset id changed across automatic restore",
+    "bypass-actor evidence is missing",
+]:
+    if needle not in restore_text:
+        raise SystemExit(f"repository ruleset restore verifier contract missing: {needle}")
+
+fixture = {
+    "id": 23968498,
+    "name": "MAD4B master release governance",
+    "target": "branch",
+    "source_type": "Repository",
+    "source": "mad4bdigital-ai/WordPress",
+    "enforcement": "active",
+    "bypass_actors": [],
+    "conditions": {
+        "ref_name": {
+            "include": ["refs/heads/master"],
+            "exclude": [],
+        }
+    },
+    "rules": [
+        {"type": "deletion"},
+        {"type": "non_fast_forward"},
+        {
+            "type": "pull_request",
+            "parameters": {
+                "allowed_merge_methods": ["merge"],
+                "dismiss_stale_reviews_on_push": False,
+                "require_code_owner_review": False,
+                "require_last_push_approval": False,
+                "required_approving_review_count": 0,
+                "required_review_thread_resolution": True,
+                "required_reviewers": [],
+                "require_extra_approval_for_unattributed_changes": True,
+            },
+        },
+        {
+            "type": "required_status_checks",
+            "parameters": {
+                "do_not_enforce_on_create": False,
+                "required_status_checks": [
+                    {
+                        "context": "Repository release verdict",
+                        "integration_id": 15368,
+                    }
+                ],
+                "strict_required_status_checks_policy": True,
+            },
+        },
+    ],
+}
+
+with tempfile.TemporaryDirectory() as td:
+    root = Path(td)
+    before = root / "before.json"
+    after = root / "after.json"
+    output = root / "result.json"
+    before.write_text(json.dumps(fixture), encoding="utf-8")
+    after.write_text(json.dumps(fixture), encoding="utf-8")
+    restore_ok = subprocess.run(
+        [
+            "python3",
+            "tools/verify_repository_ruleset_restore.py",
+            "--before",
+            str(before),
+            "--after",
+            str(after),
+            "--repository",
+            "mad4bdigital-ai/WordPress",
+            "--output",
+            str(output),
+        ],
+        text=True,
+        capture_output=True,
+    )
+    if restore_ok.returncode != 0:
+        raise SystemExit(
+            "repository ruleset restore executable PASS fixture failed: "
+            + (restore_ok.stderr or restore_ok.stdout)
+        )
+    restored = json.loads(output.read_text(encoding="utf-8"))
+    if restored.get("ready") is not True or restored.get("restored_exactly") is not True:
+        raise SystemExit("repository ruleset restore PASS fixture did not certify exact restore")
+
+    drifted = json.loads(json.dumps(fixture))
+    drifted["rules"][-1]["parameters"]["required_status_checks"].append(
+        {"context": "unexpected", "integration_id": 15368}
+    )
+    after.write_text(json.dumps(drifted), encoding="utf-8")
+    restore_bad = subprocess.run(
+        [
+            "python3",
+            "tools/verify_repository_ruleset_restore.py",
+            "--before",
+            str(before),
+            "--after",
+            str(after),
+            "--repository",
+            "mad4bdigital-ai/WordPress",
+        ],
+        text=True,
+        capture_output=True,
+    )
+    if restore_bad.returncode == 0:
+        raise SystemExit("repository ruleset restore verifier accepted a drifted restore")
+
+print("rollback_readback_verifier=executable")
+print("rollback_drift_rejection=pass")
+
+
+attestation_builder = Path("tools/build_repository_ruleset_attestation.py")
+if not attestation_builder.is_file():
+    raise SystemExit("repository ruleset attestation builder is missing")
+builder_text = attestation_builder.read_text(encoding="utf-8")
+for needle in [
+    "mad4b.repository-ruleset-attestation.v1",
+    "privileged ruleset readback does not expose bypass actors",
+    "ruleset_updated_at",
+    "policy_sha256",
+    "template_sha256",
+    "bypass_actor_count",
+    "require_extra_approval_for_unattributed_changes",
+]:
+    if needle not in builder_text:
+        raise SystemExit(f"ruleset attestation builder contract missing: {needle}")
+
+target_template = json.loads(Path(".github/mad4b-master-ruleset-template.json").read_text(encoding="utf-8"))
+attestation_fixture = {
+    "id": 23968498,
+    "name": target_template["name"],
+    "target": target_template["target"],
+    "source_type": "Repository",
+    "source": "mad4bdigital-ai/WordPress",
+    "enforcement": target_template["enforcement"],
+    "bypass_actors": [],
+    "conditions": target_template["conditions"],
+    "rules": json.loads(json.dumps(target_template["rules"])),
+    "updated_at": "2026-09-26T00:00:00Z",
+}
+fixture_pull_request = next(
+    row for row in attestation_fixture["rules"] if row.get("type") == "pull_request"
+)
+fixture_pull_request.setdefault("parameters", {})[
+    "require_extra_approval_for_unattributed_changes"
+] = True
+with tempfile.TemporaryDirectory() as td:
+    root = Path(td)
+    readback = root / "readback.json"
+    output = root / "attestation.json"
+    readback.write_text(json.dumps(attestation_fixture), encoding="utf-8")
+    build_ok = subprocess.run(
+        [
+            "python3",
+            "tools/build_repository_ruleset_attestation.py",
+            "--readback",
+            str(readback),
+            "--policy",
+            ".github/mad4b-repository-governance-policy.json",
+            "--template",
+            ".github/mad4b-master-ruleset-template.json",
+            "--repository",
+            "mad4bdigital-ai/WordPress",
+            "--output",
+            str(output),
+        ],
+        text=True,
+        capture_output=True,
+    )
+    if build_ok.returncode != 0:
+        raise SystemExit(
+            "ruleset attestation executable PASS fixture failed: "
+            + (build_ok.stderr or build_ok.stdout)
+        )
+    attestation = json.loads(output.read_text(encoding="utf-8"))
+    if (
+        attestation.get("contract") != "mad4b.repository-ruleset-attestation.v1"
+        or attestation.get("bypass_actor_count") != 0
+        or attestation.get("ruleset_updated_at") != "2026-09-26T00:00:00Z"
+        or attestation.get("verified_readback") is not True
+    ):
+        raise SystemExit("ruleset attestation PASS fixture did not bind exact privileged readback")
+
+    unsafe = json.loads(json.dumps(attestation_fixture))
+    unsafe["bypass_actors"] = [
+        {"actor_id": 1, "actor_type": "RepositoryRole", "bypass_mode": "always"}
+    ]
+    readback.write_text(json.dumps(unsafe), encoding="utf-8")
+    build_bad = subprocess.run(
+        [
+            "python3",
+            "tools/build_repository_ruleset_attestation.py",
+            "--readback",
+            str(readback),
+            "--policy",
+            ".github/mad4b-repository-governance-policy.json",
+            "--template",
+            ".github/mad4b-master-ruleset-template.json",
+            "--repository",
+            "mad4bdigital-ai/WordPress",
+            "--output",
+            str(output),
+        ],
+        text=True,
+        capture_output=True,
+    )
+    if build_bad.returncode == 0:
+        raise SystemExit("ruleset attestation builder accepted non-empty bypass actors")
+
+print("ruleset_attestation_builder=executable")
+print("ruleset_attestation_nonzero_bypass_rejection=pass")
+print("ruleset_attestation_scope=owner_issue_comment")
+print("ruleset_attestation_ledger=owner_authored_append_only_issue")
+
+publisher = Path("tools/publish_repository_ruleset_attestation.py")
+if not publisher.is_file():
+    raise SystemExit("repository ruleset attestation publisher is missing")
+publisher_text = publisher.read_text(encoding="utf-8")
+for needle in [
+    "mad4b.repository-ruleset-attestation-publication.v1",
+    "owner_issue_comment",
+    "MAD4B Repository Governance Attestations",
+    "MAD4B_RULESET_ATTESTATION",
+    "multiple owner-authored governance attestation ledgers exist",
+    "published ruleset attestation comment body mismatch",
+    "ruleset attestation comment readback body mismatch",
+    "policy_sha256",
+    "template_sha256",
+    "required-status-check binding mismatch",
+    "rule-type binding mismatch",
+]:
+    if needle not in publisher_text:
+        raise SystemExit(f"ruleset attestation publisher contract missing: {needle}")
+
+for forbidden in [
+    "/environments/",
+    "SetEnvironmentVariable",
+    "MAD4B_RULESET_ATTESTATION =",
+]:
+    if forbidden in publisher_text:
+        raise SystemExit(f"ruleset attestation publisher regressed to environment storage: {forbidden}")
+
+attestation_build_pos = script.index('Write-Host "=== BUILD RULESET ATTESTATION ==="')
+owner_publish_pos = script.index('Write-Host "=== PUBLISH OWNER RULESET ATTESTATION ==="')
+aggregate_verify_pos = script.index(
+    'Write-Host "=== VERIFY AGGREGATE GOVERNANCE WITH PUBLISHED ATTESTATION ==="',
+    owner_publish_pos,
+)
+if not (attestation_build_pos < owner_publish_pos < aggregate_verify_pos):
+    raise SystemExit(
+        "ruleset attestation must be built, owner-published with exact readback, then aggregate-verified"
+    )
+
+print("ruleset_attestation_publish_order=build+owner_publish+readback+aggregate_verify")

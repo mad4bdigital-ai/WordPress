@@ -1,0 +1,50 @@
+name: MAD4B Spec Consistency
+
+on:
+  pull_request:
+    paths:
+      - 'specs/006-agent-governed-reversible-control-plane/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/**'
+  push:
+    branches:
+      - master
+    paths:
+      - 'specs/006-agent-governed-reversible-control-plane/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-spec-consistency-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Spec Kit consistency contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify normative docs match security implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/spec-consistency-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/workflow-exact-head-hygiene.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php

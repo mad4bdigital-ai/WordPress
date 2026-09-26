@@ -1,0 +1,81 @@
+name: MAD4B ChatGPT Refresh Hotpath
+
+on:
+  pull_request:
+    paths:
+      # Release Verdict requires this check for every full Control Plane runtime release.
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-snapshot-identity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-finalizer.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-handshake-evidence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-autoconfig.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-refresh-hotpath-contract.py'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - '.github/workflows/mad4b-chatgpt-refresh-hotpath.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-chatgpt-refresh-hotpath-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  contract:
+    name: ChatGPT refresh request hotpath contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-snapshot-identity.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+
+      - name: Hotpath architecture contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-refresh-hotpath-contract.py

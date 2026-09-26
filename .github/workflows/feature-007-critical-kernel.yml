@@ -1,0 +1,383 @@
+name: Feature 007 Critical Kernel
+
+on:
+  pull_request:
+    paths:
+      - 'tools/verify_release_root_trust.py'
+      - 'tools/mad4b_recovery_plane.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
+      - 'wp-content/plugins/bit-pi.zip'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v9-integration.sh'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py'
+      - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-provider-failure-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-concurrency-runtime.sh'
+      - 'plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md'
+      - 'wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-brand-context-builder/SKILL.md'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-multi-authority-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-live-acceptance-evidence.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
+      - '.github/workflows/feature-007-critical-kernel.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'tools/verify_release_root_trust.py'
+      - 'tools/mad4b_recovery_plane.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
+      - 'wp-content/plugins/bit-pi.zip'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v9-integration.sh'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py'
+      - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-provider-failure-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-concurrency-runtime.sh'
+      - 'plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md'
+      - 'wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-brand-context-builder/SKILL.md'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-multi-authority-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-live-acceptance-evidence.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
+      - '.github/workflows/feature-007-critical-kernel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: feature-007-critical-kernel-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  root-trust-recovery:
+    name: Root trust and Recovery Plane
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact implementation head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Compile Critical Kernel recovery tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile             tools/verify_release_root_trust.py             tools/mad4b_recovery_plane.py
+
+      - name: Verify external release root-trust contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py
+
+      - name: Verify out-of-band Recovery Plane contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py
+
+      - name: Verify execution Commit Guard contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py
+
+      - name: Verify Multi-Authority registry contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py
+
+      - name: Verify durable execution contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py
+
+      - name: Verify Ability category and schema diagnostic contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php
+
+      - name: Verify durable schema dbDelta contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py
+
+      - name: Verify Schema v9 migration runtime lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php
+
+      - name: Verify upgrade continuity migration diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php
+
+      - name: Verify WPML external diagnostic contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py
+
+      - name: Verify deterministic Control Plane package builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py
+
+      - name: Lint Bit Flows governed adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php
+
+      - name: Verify Bit Flows durable correlation contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py
+
+      - name: Inspect exact Bit Flows package semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py --output /tmp/mad4b-bitflows-exact-package-diagnostic.json
+
+      - name: Verify Bit Flows certified MCP role classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('/tmp/mad4b-bitflows-exact-package-diagnostic.json').read_text())
+          mcp = p['native_mcp']
+          assert p['diagnostic_mode'] == 'certified'
+          assert p['archive_sha256_matches_catalog'] is True
+          assert mcp['catalog_role'] == 'client'
+          assert isinstance(mcp['client_surface_detected'], bool)
+          assert mcp['client_detection_method'] == 'observational_identifier_markers_v1'
+          assert mcp['catalog_role_binding_source'] == 'exact_archive_sha256_certification'
+          assert mcp['server_surface_detected'] is False
+          assert mcp['server_rest_routes_detected'] is False
+          assert mcp['route_marker_files'] == []
+          assert isinstance(mcp['client_route_details'], list) and mcp['client_route_details']
+          assert any(
+              row.get('kind') == 'router'
+              and "mcp-client/tools" in row.get('snippet', '')
+              and "McpClientController::class" in row.get('snippet', '')
+              for row in mcp['client_route_details']
+          )
+          assert mcp['catalog_role_match'] is True
+          assert mcp['catalog_role_artifact_bound'] is True
+          assert mcp['catalog_server_route_expectation_match'] is True
+          assert isinstance(mcp['server_reference_files'], list)
+          assert mcp['server_surface_absence_proven'] is False
+          assert mcp['no_privileged_side_channel_proven'] is False
+          assert p['candidate_summary']['no_privileged_mcp_side_channel_proven'] is False
+          PY
+
+      - name: Verify Bit Flows candidate diagnostic stays evidence-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py \
+            --mode candidate \
+            --archive wp-content/plugins/bit-pi.zip \
+            --output /tmp/mad4b-bitflows-candidate-diagnostic-smoke.json >/tmp/mad4b-bitflows-candidate-diagnostic-smoke.stdout
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('/tmp/mad4b-bitflows-candidate-diagnostic-smoke.json').read_text())
+          assert p['diagnostic_mode'] == 'candidate'
+          assert p['authorizing'] is False
+          assert p['mutation_performed'] is False
+          assert p['candidate_attestation_eligible'] is False
+          assert isinstance(p['package_manifest_digest'], str) and len(p['package_manifest_digest']) == 64
+          assert p['package_file_count'] > 0
+          assert p['candidate_summary']['normalized_package_identity_present'] is True
+          assert p['candidate_summary']['archive_structure_safe'] is True
+          assert p['candidate_summary']['candidate_version_claim_match'] is True
+          assert p['native_mcp']['catalog_role'] == 'client'
+          assert p['native_mcp']['server_surface_detected'] is False
+          assert p['native_mcp']['server_rest_routes_detected'] is False
+          assert p['candidate_summary']['native_mcp_catalog_role_match'] is True
+          assert p['candidate_summary']['native_mcp_catalog_role_artifact_bound'] is True
+          assert p['candidate_summary']['native_mcp_server_route_expectation_match'] is True
+          assert p['candidate_summary']['no_privileged_mcp_side_channel_proven'] is False
+          assert p['candidate_summary']['write_authority_granted'] is False
+          assert p['candidate_summary']['normal_mount_eligible'] is False
+          PY
+
+      - name: Upload exact Bit Flows semantic diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-bitflows-exact-package-diagnostic-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/mad4b-bitflows-exact-package-diagnostic.json
+          if-no-files-found: error
+          retention-days: 14
+
+
+  schema-mariadb-v6-v9:
+    name: Schema v6 v7 v8 to v9 real MariaDB upgrade
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: wordpress
+          MARIADB_USER: wordpress
+          MARIADB_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - name: Checkout exact implementation head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Setup PHP 8.3 with MariaDB client extension
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli
+          coverage: none
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+          sudo install -m 0755 /tmp/wp-cli.phar /usr/local/bin/wp
+
+      - name: Configure disposable WordPress database
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp wp-config-sample.php wp-config.php
+          php -r '
+          $p="wp-config.php";
+          $s=file_get_contents($p);
+          $s=str_replace("database_name_here","wordpress",$s);
+          $s=str_replace("username_here","wordpress",$s);
+          $s=str_replace("password_here","wordpress",$s);
+          $s=str_replace("localhost","127.0.0.1",$s);
+          file_put_contents($p,$s);
+          '
+          wp core install             --allow-root             --url=http://mad4b-schema.test             --title='MAD4B Schema Migration'             --admin_user=admin             --admin_password='mad4b-schema-ci-only'             --admin_email=ci@example.invalid             --skip-email
+
+      - name: Prove real MariaDB schema v6 to v9 migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v9-integration.sh
+
+      - name: Prove durable execution runtime fault semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_path='wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
+          if [ ! -f "$test_path" ]; then
+            echo "DURABLE_EXECUTION_RUNTIME_FAULTS_NOT_APPLICABLE"
+            exit 0
+          fi
+          wp eval-file "$test_path" --allow-root

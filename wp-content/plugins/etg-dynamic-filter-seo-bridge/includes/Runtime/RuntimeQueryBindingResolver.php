@@ -1,0 +1,151 @@
+<?php
+namespace ETG\DynamicFilterSEOBridge\Runtime;
+
+require_once dirname( __DIR__ ) . '/JetEngine/QueryIdentityResolver.php';
+require_once dirname( __DIR__ ) . '/Identifiers/QueryId.php';
+require_once __DIR__ . '/RuntimeTopologyDiscoverer.php';
+
+use ETG\DynamicFilterSEOBridge\Identifiers\QueryId;
+use ETG\DynamicFilterSEOBridge\JetEngine\QueryIdentityResolver;
+
+final class RuntimeQueryBindingResolver {
+    private $topology;
+    private $identity;
+
+    public function __construct( RuntimeTopologyDiscoverer $topology = null, QueryIdentityResolver $identity = null ) {
+        $this->topology = $topology ?: new RuntimeTopologyDiscoverer();
+        $this->identity = $identity ?: new QueryIdentityResolver();
+    }
+
+    public function capable(): bool { return $this->identity->capable(); }
+
+    public function resolve( string $provider, string $providerQueryId, array $profile = array() ): array {
+        $provider = sanitize_key( $provider );
+        $providerQueryId = QueryId::normalize( $providerQueryId );
+        if ( '' === $providerQueryId ) { return $this->failure( 'missing_or_invalid_provider_query_id', $provider, $providerQueryId ); }
+        if ( 'jet-engine' !== $provider ) { return $this->failure( 'unsupported_provider', $provider, $providerQueryId ); }
+
+        // An exact matching Profile route may explicitly bridge the JetSmartFilters
+        // provider namespace to a distinct Query Builder custom ID. When present,
+        // that mapping is authoritative for this route and must fail closed rather
+        // than silently falling back to a coincidentally equal provider/query ID.
+        $explicit = $this->explicitProfileBinding( $provider, $providerQueryId, $profile );
+        if ( ! empty( $explicit['matched'] ) ) {
+            $evidence = (array) ( $explicit['evidence'] ?? array() );
+            $customIds = (array) ( $explicit['query_builder_custom_query_ids'] ?? array() );
+            if ( 1 !== count( $customIds ) ) {
+                return $this->failure( 'profile_explicit_query_binding_ambiguous', $provider, $providerQueryId, count( $customIds ), array(), $evidence );
+            }
+            $customId = (string) reset( $customIds );
+            $identity = $this->identity->resolve( $customId );
+            if ( empty( $identity['resolved'] ) ) {
+                $reason = sanitize_key( (string) ( $identity['reason'] ?? 'query_identity_inventory_unavailable' ) );
+                return $this->failure( 'profile_explicit_' . ( $reason ?: 'query_identity_inventory_unavailable' ), $provider, $providerQueryId, (int) ( $identity['match_count'] ?? 0 ), array(), $evidence );
+            }
+            return $this->success( $provider, $providerQueryId, $identity, 'profile_explicit_query_builder_query_id', $evidence );
+        }
+
+        // Backward-compatible fast path: some sites use the same identifier in
+        // JetSmartFilters and Query Builder. Exact custom-ID resolution remains
+        // the only authority; an internal numeric ID is never a fallback.
+        $direct = $this->identity->resolve( $providerQueryId );
+        if ( ! empty( $direct['resolved'] ) ) {
+            return $this->success( $provider, $providerQueryId, $direct, 'provider_query_id_equals_query_builder_custom_id', array() );
+        }
+
+        $topology = $this->topology->discover();
+        $matches = array();
+        $blocked = array();
+        foreach ( (array) ( $topology['bindings'] ?? array() ) as $binding ) {
+            if ( ! is_array( $binding ) ) { continue; }
+            if ( $provider !== sanitize_key( (string) ( $binding['provider'] ?? '' ) ) ) { continue; }
+            if ( $providerQueryId !== QueryId::normalize( (string) ( $binding['provider_query_id'] ?? '' ) ) ) { continue; }
+            if ( 'verified' === (string) ( $binding['status'] ?? '' ) ) { $matches[] = $binding; }
+            else { $blocked[] = $binding; }
+        }
+
+        $unique = array();
+        foreach ( $matches as $binding ) {
+            $custom = QueryId::normalize( (string) ( $binding['query_builder_custom_query_id'] ?? '' ) );
+            if ( '' === $custom ) { continue; }
+            if ( ! isset( $unique[$custom] ) ) { $unique[$custom] = array(); }
+            $unique[$custom][] = $binding;
+        }
+        if ( 1 !== count( $unique ) ) {
+            if ( count( $unique ) > 1 ) { return $this->failure( 'topology_binding_ambiguous', $provider, $providerQueryId, count( $unique ), $topology, $matches ); }
+            if ( $blocked ) {
+                $reason = sanitize_key( (string) ( $blocked[0]['reason'] ?? 'topology_binding_blocked' ) );
+                return $this->failure( $reason ?: 'topology_binding_blocked', $provider, $providerQueryId, 0, $topology, $blocked );
+            }
+            return $this->failure( ! empty( $topology['available'] ) ? 'topology_binding_not_found' : 'runtime_topology_unavailable', $provider, $providerQueryId, 0, $topology );
+        }
+
+        $customId = (string) array_key_first( $unique );
+        $identity = $this->identity->resolve( $customId );
+        if ( empty( $identity['resolved'] ) ) {
+            return $this->failure( (string) ( $identity['reason'] ?? 'query_identity_inventory_unavailable' ), $provider, $providerQueryId, (int) ( $identity['match_count'] ?? 0 ), $topology, reset( $unique ) );
+        }
+        return $this->success( $provider, $providerQueryId, $identity, 'elementor_runtime_topology', reset( $unique ) );
+    }
+
+    private function explicitProfileBinding( string $provider, string $providerQueryId, array $profile ): array {
+        $customIds = array();
+        $evidence = array();
+        foreach ( array_slice( (array) ( $profile['routes'] ?? array() ), 0, 50 ) as $route ) {
+            if ( ! is_array( $route ) ) { continue; }
+            if ( $provider !== sanitize_key( (string) ( $route['provider'] ?? '' ) ) ) { continue; }
+            $routeProviderQueryId = QueryId::normalize( ( $route['provider_query_id'] ?? '' ) ?: ( $route['query_id'] ?? '' ) );
+            if ( $providerQueryId !== $routeProviderQueryId ) { continue; }
+            $customId = QueryId::normalize( $route['query_builder_query_id'] ?? '' );
+            if ( '' === $customId ) { continue; }
+            $customIds[$customId] = true;
+            if ( count( $evidence ) < 20 ) {
+                $evidence[] = array(
+                    'profile_id' => sanitize_key( (string) ( $profile['id'] ?? '' ) ),
+                    'provider' => $provider,
+                    'provider_query_id' => $providerQueryId,
+                    'query_builder_custom_query_id' => $customId,
+                    'authorizing' => false,
+                );
+            }
+        }
+        return array(
+            'matched' => ! empty( $customIds ),
+            'query_builder_custom_query_ids' => array_keys( $customIds ),
+            'evidence' => $evidence,
+        );
+    }
+
+    private function success( string $provider, string $providerQueryId, array $identity, string $source, array $evidence ): array {
+        return array(
+            'resolved' => true,
+            'reason' => 'resolved',
+            'provider' => $provider,
+            'provider_query_id' => $providerQueryId,
+            'query_builder_custom_query_id' => (string) ( $identity['custom_query_id'] ?? '' ),
+            'query_builder_internal_id' => (string) ( $identity['internal_query_id'] ?? '' ),
+            'query' => $identity['query'] ?? null,
+            'source' => $source,
+            'identity_source' => (string) ( $identity['source'] ?? 'unavailable' ),
+            'match_count' => 1,
+            'evidence' => array_slice( $evidence, 0, 20 ),
+        );
+    }
+
+    private function failure( string $reason, string $provider, string $providerQueryId, int $matchCount = 0, array $topology = array(), array $evidence = array() ): array {
+        return array(
+            'resolved' => false,
+            'reason' => sanitize_key( $reason ) ?: 'unavailable',
+            'provider' => $provider,
+            'provider_query_id' => $providerQueryId,
+            'query_builder_custom_query_id' => '',
+            'query_builder_internal_id' => '',
+            'query' => null,
+            'source' => 'unavailable',
+            'identity_source' => 'unavailable',
+            'match_count' => $matchCount,
+            'topology_available' => ! empty( $topology['available'] ),
+            'evidence' => array_slice( $evidence, 0, 20 ),
+        );
+    }
+}

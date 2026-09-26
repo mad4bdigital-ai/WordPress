@@ -1,0 +1,309 @@
+name: MAD4B Admin Performance
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-admin-performance.yml'
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-admin-performance.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-admin-performance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  admin-performance-contract:
+    name: Admin performance contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Lint scoped runtime files
+        shell: bash
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php
+          php -l wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance-ui.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
+
+      - name: Prove expensive governance work is scoped
+        shell: python
+        run: |
+          import re
+          from pathlib import Path
+
+          root = Path('wp-content/plugins/mad4b-site-control-plane')
+          plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+          skill_cert = (root / 'includes/class-mad4b-scp-skill-runtime-certification.php').read_text(encoding='utf-8')
+          skill_abilities = (root / 'includes/class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
+          request_scope = (root / 'includes/class-mad4b-scp-mcp-request-scope.php').read_text(encoding='utf-8')
+          metadata_bridge = (root / 'includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php').read_text(encoding='utf-8')
+          functional_gap = (root / 'includes/class-mad4b-scp-functional-gap-evidence.php').read_text(encoding='utf-8')
+          mu_bootstrap = (root / 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php').read_text(encoding='utf-8')
+          main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
+          query_perf = (root / 'includes/class-mad4b-scp-admin-query-performance.php').read_text(encoding='utf-8')
+          query_perf_ui = (root / 'includes/class-mad4b-scp-admin-query-performance-ui.php').read_text(encoding='utf-8')
+          marker = (root / 'MAD4B-RUNTIME-BUILD.txt').read_text(encoding='utf-8')
+
+          for marker_text in [
+              "const CONTRACT = 'mad4b.admin-query-performance.v1'",
+              "mad4b_post_id_meta_key",
+              "mad4b_term_id_meta_key",
+              "ADD INDEX",
+              "'staging' !== self::environment()",
+              "'production_changed' => false",
+              "postmeta(post_id,meta_key)",
+              "termmeta(term_id,meta_key)",
+              "const JOB_RUNNING_TTL = 1800;",
+              "public static function reconcile_stale_job(",
+              "mad4b_admin_query_performance_reconciliation_required",
+              "'blind_retry_allowed' => false",
+              "stale_running_postconditions_verified_ready",
+              "stale_running_postconditions_verified_incomplete",
+          ]:
+              if marker_text not in query_perf:
+                  raise SystemExit('Missing bounded admin-query performance invariant: ' + marker_text)
+          for marker_text in [
+              "add_action( 'admin_post_mad4b_apply_admin_query_indexes', array( __CLASS__, 'handle_explicit_apply' ) );",
+              "'automatic_apply' => false",
+              "'explicit_admin_action' => 'mad4b_apply_admin_query_indexes'",
+              "private static function is_forbidden_automatic_lifecycle_request()",
+              "array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' )",
+              "array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' )",
+              "'lifecycle_protected'",
+          ]:
+              if marker_text not in query_perf:
+                  raise SystemExit('Missing plugin lifecycle performance protection: ' + marker_text)
+          if "add_action( 'admin_init', array( __CLASS__, 'maybe_ensure_staging_indexes' )" in query_perf:
+              raise SystemExit('Performance DDL must never auto-run from admin_init')
+
+          reconcile_body = query_perf.split("public static function reconcile_stale_job(", 1)[1].split("public static function enqueue_explicit(", 1)[0]
+          if "apply_indexes()" in reconcile_body or "ALTER TABLE" in reconcile_body:
+              raise SystemExit('Stale performance reconciliation must never execute or retry DDL')
+
+
+          for marker_text in [
+              "final class MAD4B_SCP_Admin_Query_Performance_UI",
+              "add_submenu_page(",
+              "'mad4b-control-plane-performance'",
+              "wp_nonce_field( 'mad4b_apply_admin_query_indexes', 'mad4b_admin_query_performance_nonce' )",
+              "value=\"mad4b_apply_admin_query_indexes\"",
+              "Performance indexes are never created during plugin upload, update, activation, or ordinary admin requests.",
+          ]:
+              if marker_text not in query_perf_ui:
+                  raise SystemExit('Missing isolated performance maintenance UI invariant: ' + marker_text)
+          if "class-mad4b-scp-admin-query-performance-ui.php" not in main:
+              raise SystemExit('Isolated performance maintenance UI is not loaded by the Control Plane')
+
+          for forbidden in ["DROP INDEX", "DROP KEY", "DROP TABLE", "DELETE FROM", "UPDATE wp_"]:
+              if forbidden in query_perf:
+                  raise SystemExit('Admin-query performance hardening contains forbidden destructive SQL: ' + forbidden)
+          if "class-mad4b-scp-admin-query-performance.php" not in main or "MAD4B_SCP_Admin_Query_Performance::boot();" not in main:
+              raise SystemExit('Admin-query performance hardening is not wired into the Control Plane')
+
+          required = [
+              "remove_action( 'admin_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 20 );",
+              "remove_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 95 );",
+              "public static function reconcile_authority_if_needed()",
+              "Compatibility entry point retained for older callers. Inspection only.",
+              "MAD4B_SCP_Live_Truth::current_authority_status()",
+              "add_action( 'admin_init', array( __CLASS__, 'observe_write_certification_on_certification_page' ), 110 );",
+              "add_filter( 'wp_register_ability_args', array( __CLASS__, 'make_write_certification_explicit' ), 90, 2 );",
+              "'mad4b/write-runtime-certification' !== (string) $name",
+              "array( 'MAD4B_SCP_Live_Truth', 'current_write_certification' )",
+              "'mad4b-control-plane-connection' !== $page || 'certification' !== $tab",
+              "MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );",
+          ]
+          missing = [item for item in required if item not in plugin]
+          if missing:
+              raise SystemExit('Missing admin-performance contract: ' + ' | '.join(missing))
+
+          forbidden_authority_hooks = [
+              "add_action( 'wp_abilities_api_init', array( __CLASS__, 'reconcile_authority_if_needed' ), 95 );",
+              "add_action( 'admin_init', array( __CLASS__, 'reconcile_authority_on_mad4b_admin' ), 20 );",
+              "MAD4B_SCP_Staging_Write_Authority::reconcile();",
+          ]
+          leaked = [item for item in forbidden_authority_hooks if item in plugin]
+          if leaked:
+              raise SystemExit('Admin/runtime read path retained destructive authority reconciliation: ' + ' | '.join(leaked))
+
+          for marker_text in [
+              "const CONTRACT = 'mad4b.mcp-request-scope.v1'",
+              "'/mcp/mad4b-chatgpt'",
+              "remove_action( 'rest_api_init', array( $adapter, 'init' )",
+              "'production_changed' => false",
+              "'wordpress_rest_routes_changed' => false",
+          ]:
+              if marker_text not in request_scope:
+                  raise SystemExit('Missing REST request-scope invariant: ' + marker_text)
+
+          for marker_text in [
+              "const CONTRACT = 'mad4b.mcp-adapter-metadata-bridge.v1'",
+              "MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' )",
+              "const SLUG = 'mcp-adapter'",
+              "const VERSION = '0.6.1'",
+              "false !== $result",
+              "'plugin_information' !== (string) $action",
+              "'production_changed' => false",
+              "'other_plugin_api_requests_changed' => false",
+              "'outbound_http_changed' => false",
+              "'credentials_changed' => false",
+              "'installation_or_update_state_changed' => false",
+          ]:
+              if marker_text not in metadata_bridge:
+                  raise SystemExit('Missing MCP Adapter metadata invariant: ' + marker_text)
+
+          for forbidden in [
+              "add_filter( 'pre_http_request'",
+              "add_filter( 'plugins_api_args'",
+              "add_filter( 'plugins_api_result'",
+              "set_site_transient( 'update_plugins'",
+          ]:
+              if forbidden in metadata_bridge:
+                  raise SystemExit('Metadata bridge broadens dependency handling: ' + forbidden)
+
+          for marker_text in [
+              "const MAX_TREE_FILES = 12000;",
+              "const MAX_TREE_BYTES = 805306368;",
+              "const MAX_SNAPSHOT_TREE_FILES = 30000;",
+              "const MAX_SNAPSHOT_TREE_BYTES = 1610612736;",
+              "const MAX_SNAPSHOT_SCAN_SECONDS = 20.0;",
+              "const MAX_PROVENANCE_VERIFY_FILES = 2500;",
+              "const MAX_PROVENANCE_VERIFY_BYTES = 268435456;",
+              "const MAX_PROVENANCE_VERIFY_SECONDS = 8.0;",
+              "const MAX_CENSUS_FILES = 30000;",
+              "const MAX_CENSUS_BYTES = 1610612736;",
+              "const MAX_CENSUS_SCAN_SECONDS = 5.0;",
+              "public static function current_runtime_census_status()",
+              "'metadata_only' => true",
+              "'content_rehashed' => false",
+              "runtime_census_time_budget_exceeded",
+              "runtime_census_snapshot_budget_exceeded",
+              "private static $snapshot = null;",
+              "private static $snapshot_key = '';",
+              "private static $fixed_point_retry_depth = 0;",
+              "if ( null !== self::$snapshot && '' !== self::$snapshot_key && hash_equals( self::$snapshot_key, $key ) ) {",
+              "$current_dynamic = strtolower( (string) self::current_dynamic_surface_fingerprint() );",
+              "$census_required = ! empty( self::$snapshot['snapshot_census_required'] );",
+              "$current_census = self::current_runtime_census_status();",
+              "hash_equals( $cached_census, $current_census_sha )",
+              "if ( $dynamic_match && $census_match ) return self::$snapshot;",
+              "self::$snapshot = null;",
+              "snapshot_runtime_identity_changed_during_evaluation",
+              "snapshot_runtime_census_changed_during_evaluation",
+              "self::$fixed_point_retry_depth < 1",
+              "'snapshot_fixed_point_stable' => $fixed_point_stable",
+              "'snapshot_census_required' => $census_required",
+              "'inactive_not_scanned'",
+              "single_pass_exact_match",
+              "single_pass_non_authorizing_identity",
+              "double_pass_drift_confirmation",
+              "metadata_only_runtime_identity",
+              "private static function runtime_only_metadata_identity",
+              "'content_rehashed' => false",
+              "snapshot_scan_budget_exceeded",
+              "snapshot_scan_time_budget_exceeded",
+              "build_provenance_verification_budget_exceeded",
+          ]:
+              if marker_text not in functional_gap:
+                  raise SystemExit('Missing zero-touch performance invariant: ' + marker_text)
+
+          runtime_evidence_body = functional_gap.split("private static function runtime_evidence", 1)[1].split("private static function route_methods", 1)[0]
+          if runtime_evidence_body.count("$runtime_only_metadata_budget = array(") != 1:
+              raise SystemExit('Runtime-only metadata budget is not snapshot-global')
+          if "runtime_only_metadata_identity( $plugin_file, $runtime_only_metadata_budget )" not in runtime_evidence_body:
+              raise SystemExit('Runtime-only metadata identity is not using the shared snapshot budget')
+
+          runtime_only_body = functional_gap.split("private static function runtime_only_metadata_identity", 1)[1].split("private static function runtime_census_from_runtime", 1)[0]
+          if "hash_file(" in runtime_only_body:
+              raise SystemExit('Runtime-only evidence unexpectedly performs content hashing')
+          for marker_text in ["plugin_census_once(", "'metadata_only' => true", "'content_rehashed' => false"]:
+              if marker_text not in runtime_only_body:
+                  raise SystemExit('Runtime-only metadata-only performance invariant missing: ' + marker_text)
+
+          census_body = functional_gap.split("private static function plugin_census_once", 1)[1].split("private static function runtime_only_metadata_identity", 1)[0]
+          if "hash_file(" in census_body:
+              raise SystemExit('Metadata-only fixed-point census unexpectedly re-hashes provider file content')
+          for marker_text in ["filesize(", "filemtime(", "census_sha256"]:
+              if marker_text not in census_body:
+                  raise SystemExit('Metadata census implementation missing: ' + marker_text)
+
+          identity_body = functional_gap.split("private static function runtime_identity_key()", 1)[1].split("private static function plugin_tree_once", 1)[0]
+          provider_identity_body = identity_body.split("foreach ( array(", 1)[0]
+          if "hash_file(" in provider_identity_body:
+              raise SystemExit('Request-local provider identity performs unbudgeted content hashing')
+          for marker_text in ["@lstat( $main )", "$main_stat['size']", "$main_stat['mtime']", "$main_stat['ctime']", "$main_stat['ino']"]:
+              if marker_text not in provider_identity_body:
+                  raise SystemExit('Provider cache identity is not metadata-only: ' + marker_text)
+
+          for forbidden in [
+              "add_action( 'admin_init'",
+              "add_action( 'init'",
+              "add_action( 'wp_loaded'",
+              "set_transient(",
+              "set_site_transient(",
+              "update_option(",
+              "add_option(",
+          ]:
+              if forbidden in functional_gap:
+                  raise SystemExit('Zero-touch evidence escaped on-demand/request-local performance boundary: ' + forbidden)
+
+          for marker_text in [
+              "'request_requires_mcp_runtime' => false",
+              "'request_scope_bypassed' => false",
+              "'non_mad4b_request_bypassed'",
+              "'/mcp/mad4b-chatgpt'",
+              "$mad4b_mcp_mu_status['eligible'] && ! $mad4b_mcp_mu_status['request_scope_bypassed']",
+          ]:
+              if marker_text not in mu_bootstrap:
+                  raise SystemExit('Missing MU request-scope invariant: ' + marker_text)
+
+          forbidden_skill_hooks = [
+              "add_action( 'mcp_adapter_init', array( __CLASS__, 'observe' ), 99 );",
+              "add_action( 'admin_init', array( __CLASS__, 'observe' ), 99 );",
+          ]
+          found = [item for item in forbidden_skill_hooks if item in skill_cert]
+          if found:
+              raise SystemExit('Skill certification still has broad observers: ' + ' | '.join(found))
+          if "add_action( 'wp_abilities_api_init', array( __CLASS__, 'observe' ), 99 );" not in skill_cert:
+              raise SystemExit('Canonical zero-touch Skill certification hook is missing')
+          if 'MAD4B_SCP_Skill_Runtime_Certification::observe()' not in skill_abilities:
+              raise SystemExit('Explicit Skill certification must refresh evidence on demand')
+
+          prime = plugin.index('rest_get_server();', plugin.index('public static function prime_admin_mcp_runtime'))
+          rescue = plugin.index("MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );", prime)
+          if rescue <= prime:
+              raise SystemExit('Readiness rescue must run after REST priming and before page rendering')
+
+          if "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php';" not in main:
+              raise SystemExit('Metadata bridge is not loaded by the Control Plane')
+          if 'MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();' not in main:
+              raise SystemExit('Metadata bridge is not bootstrapped')
+
+          header = re.search(r'(?mi)^\s*\*\s*Version:\s*([^\r\n]+)', main)
+          runtime = re.search(r"define\(\s*'MAD4B_SCP_VERSION'\s*,\s*'([^']+)'\s*\);", main)
+          build = re.search(r'(?mi)^release=([^\r\n]+)$', marker)
+          if not header or not runtime or not build:
+              raise SystemExit('Control Plane release evidence is incomplete')
+          versions = [header.group(1).strip(), runtime.group(1).strip(), build.group(1).strip()]
+          if len(set(versions)) != 1:
+              raise SystemExit('Control Plane version evidence mismatch: ' + ' | '.join(versions))
+          if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', versions[0]):
+              raise SystemExit('Control Plane version format invalid: ' + versions[0])
+
+          print('mad4b-admin-performance.v9: PASS')

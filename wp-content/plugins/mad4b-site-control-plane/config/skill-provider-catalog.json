@@ -1,0 +1,131 @@
+{
+  "contract": "mad4b.skill-provider-catalog.v1",
+  "packs": {
+    "elementor": [
+      {
+        "level": "provider",
+        "target": "elementor",
+        "name": "elementor-dynamic-content",
+        "description": "Inspect Elementor templates, widgets, Dynamic Tags, conditions, and provider-backed dynamic-content bindings through MAD4B.",
+        "body": "1. Identify the exact Elementor document or template in scope.\n2. Inspect widget structure, Dynamic Tags, provider-backed fields, and display conditions.\n3. Prefer native Dynamic Tags over shortcode fallbacks when a provider source exists.\n4. Separate template assignment, query context, and provider data issues.\n5. Return broken bindings, available dynamic sources, evidence, and safe remediation.\n6. Do not perform mutation from this workflow."
+      }
+    ],
+    "jetengine": [
+      {
+        "level": "provider",
+        "target": "jet-engine",
+        "name": "jetengine-content-modeling",
+        "description": "Analyze JetEngine CPTs, meta fields, relations, listings, queries, and Dynamic Tags through MAD4B.",
+        "body": "1. Map CPT, taxonomy, meta-field, relation, listing, and query ownership.\n2. Inspect exact field keys and provider dependencies.\n3. Prefer JetEngine Dynamic Tags and provider-native relations over hard-coded shortcodes.\n4. Detect model drift, missing relations, stale query bindings, and rendering gaps.\n5. Return the canonical content model, evidence, and required changes without applying mutation."
+      }
+    ],
+    "jetsmartfilters": [
+      {
+        "level": "provider",
+        "target": "jet-smart-filters",
+        "name": "jetsmartfilters-query-audit",
+        "description": "Audit JetSmartFilters providers, filter-to-query bindings, AJAX context, indexer behavior, and listing integration through MAD4B.",
+        "body": "1. Identify the filter provider and target listing or query.\n2. Inspect filter type, query variable, provider ID, AJAX behavior, and indexer state.\n3. Verify the filter is bound to the intended archive, listing, or query context.\n4. Separate UI configuration from data-source and provider-runtime failures.\n5. Return mismatches, evidence, and provider-native remediation."
+      }
+    ],
+    "woocommerce": [
+      {
+        "level": "provider",
+        "target": "woocommerce",
+        "name": "woocommerce-catalog-diagnostics",
+        "description": "Inspect WooCommerce product catalog structure, product metadata, taxonomy, visibility, and MAD4B product read coverage without touching orders or payments.",
+        "body": "1. Identify the product, archive, taxonomy, or catalog surface in scope.\n2. Inspect product status, type, taxonomy, visibility, price/meta sources, and template dependencies using read tools.\n3. Keep orders, payments, refunds, and customer-sensitive operations outside this workflow.\n4. Separate WooCommerce data issues from Elementor or JetEngine rendering issues.\n5. Return current state, root cause, evidence, and safe remediation."
+      }
+    ],
+    "polylang": [
+      {
+        "level": "provider",
+        "target": "polylang",
+        "name": "polylang-content-audit",
+        "description": "Audit Polylang language assignments, translation relationships, language-aware content routing, and multilingual rendering through MAD4B.",
+        "body": "1. Identify the content object and expected language.\n2. Inspect language assignment and translation relationships.\n3. Verify template, taxonomy, archive, and dynamic-content context remain language-aware.\n4. Separate missing translations from routing or provider-rendering defects.\n5. Return evidence, missing bindings, and safe remediation."
+      }
+    ],
+    "rank-math": [
+      {
+        "level": "provider",
+        "target": "rank-math",
+        "name": "rankmath-seo-audit",
+        "description": "Audit Rank Math SEO metadata, indexability signals, canonical context, and provider-owned SEO fields through MAD4B.",
+        "body": "1. Identify the exact post, term, archive, or template context.\n2. Inspect provider-owned SEO metadata and indexability signals exposed by MAD4B.\n3. Check canonical and dynamic-template context before attributing an SEO defect to content.\n4. Separate missing metadata, stale metadata, and rendering/context problems.\n5. Return evidence and bounded remediation without applying mutation."
+      }
+    ],
+    "litespeed": [
+      {
+        "level": "adapter",
+        "target": "litespeed",
+        "name": "litespeed-cache-diagnostics",
+        "description": "Diagnose LiteSpeed Cache state, cache-related rendering drift, and safe cache verification paths through the MAD4B LiteSpeed adapter.",
+        "body": "1. Inspect LiteSpeed status and relevant cache state.\n2. Determine whether the observed symptom is compatible with cache drift or originates upstream.\n3. Avoid treating cache purge as a root-cause fix without evidence.\n4. Return cache evidence, likely layer, and the minimum safe verification step."
+      }
+    ],
+    "media-optimization": [
+      {
+        "level": "adapter",
+        "target": "media",
+        "name": "wordpress-media-delivery-audit",
+        "description": "Audit WordPress media attachment health, optimized-file availability, metadata, and delivery consistency through MAD4B media tooling.",
+        "body": "1. Identify the attachment IDs and rendered media surfaces in scope.\n2. Verify WordPress records against actual usable media evidence exposed by MAD4B.\n3. Distinguish orphaned records, missing files, stale derivatives, and template-level rendering defects.\n4. Return healthy replacements or remediation guidance without emitting broken URLs."
+      }
+    ],
+    "etg-dfsb": [
+      {
+        "level": "adapter",
+        "target": "etg-dfsb",
+        "name": "etg-dynamic-filter-seo-audit",
+        "description": "Audit ETG Dynamic Filter SEO Bridge profiles, runtime inventory, dynamic-content catalog, and read-only SEO/filter integration through MAD4B.",
+        "body": "1. Read ETG DFSB status, profile inventory, and dynamic-content catalog.\n2. Verify profile intent against archive/filter/runtime context.\n3. Treat profile blueprint and inventory operations as plan-only unless separately authorized.\n4. Return gaps, evidence, and the minimum safe remediation."
+      }
+    ],
+    "bitflows": [
+      {
+        "level": "provider",
+        "target": "bitflows",
+        "name": "bitflows-automation-diagnostics",
+        "description": "Inspect BitFlows automation definitions, flow state, trigger/action coverage, and governed execution readiness through MAD4B.",
+        "body": "1. Identify the flow and expected trigger/action path.\n2. Inspect flow configuration and runtime-read evidence exposed by MAD4B.\n3. Separate configuration defects from execution-authority or provider-runtime blockers.\n4. Do not execute a flow unless separately authorized.\n5. Return current state, blocker, evidence, and next safe action."
+      }
+    ],
+    "fluentforms": [
+      {
+        "level": "provider",
+        "target": "fluentforms",
+        "name": "fluentforms-workflow-diagnostics",
+        "description": "Inspect Fluent Forms definitions and integration context through governed form inventory without exposing submissions.",
+        "body": "1. Identify the Fluent Form in scope using governed form inventory.\\n2. Read bounded form metadata and definition fingerprint only.\\n3. Keep entries, submissions, payments, and user-entered values outside this workflow.\\n4. Separate form-definition issues from submission-routing or integration issues.\\n5. Return evidence and safe remediation without submitting forms or changing provider state."
+      }
+    ],
+    "wpml": [
+      {
+        "level": "provider",
+        "target": "wpml",
+        "name": "wpml-translation-audit",
+        "description": "Inspect WPML translation plugin state, language inventory, and multilingual content dependencies through MAD4B read surfaces.",
+        "body": "1. Identify the content and language context.\n2. Inspect WPML plugin family status and available language inventory.\n3. Separate translation availability from template, taxonomy, and routing issues.\n4. Return confirmed gaps and safe remediation without changing translation state."
+      }
+    ],
+    "wp-import-export": [
+      {
+        "level": "provider",
+        "target": "wp-import-export",
+        "name": "wp-import-export-governed-operations",
+        "description": "Govern WP All Import / Export as exact bulk operations with layered execution evidence: exact package identity, server-local transport proof, behavioral success, dry-run, rollback/artifact proof, receipt and reconciliation.",
+        "body": "1. Resolve the exact import/export job and inspect its governed exact-contract surface before planning.\\n2. Bind imports to configuration_sha256, source artifact sha256, exact provider package identity, identity strategy, deletion policy, target content schema and candidate hash; never approve by job ID alone.\\n3. Treat execution evidence as a ladder: exact package -> transport surface -> negative transport canary -> behavioral execution -> rollback/artifact proof -> receipt/reconciliation. Lower evidence never implies higher certification.\\n4. WP All Import Pro 5.0.8 uses the server-local all-import WP-CLI transport candidate. WP All Export Pro 1.9.15 uses the server-local PMXE_Export_Record::execute candidate; no WP All Export CLI is assumed.\\n5. Require identity cardinality semantics 0=create, 1=update, >1=fail closed; title-only matching is not an implicit safe identity strategy.\\n6. Treat delete/trash of records missing from the source as disabled by default. If the provider template is destructive, require a separate high-risk approval scope.\\n7. Require an exact dry-run diff with create/update/unchanged/invalid/delete/taxonomy/media counts before import execution can become approvable. Provider preview is not equivalent to this diff.\\n8. Import execution must remain composite and reversible under mad4b.rollback.wp-all-import-run.v1 with operation receipt, reconciliation, and dependency-aware restore evidence.\\n9. Export planning must require PUBLIC/INTERNAL/SENSITIVE/RESTRICTED classification, bounded retention, exact field/filter/configuration fingerprints, and MAD4B Artifact Registry destination.\\n10. Never request, echo, or accept WP All Import/Export cron secrets or caller-selected provider credentials. Server-local provider invocation is mandatory.\\n11. Do not expose provider trigger/process cron primitives as public abilities. The public execution candidates are composite run-import and run-export only.\\n12. If behavioral execution, dry-run, rollback, artifact ingest, receipt, schema binding, or reconciliation is uncertified, keep execution unmounted and return blockers plus the next governed action."
+      }
+    ],
+    "jetformbuilder": [
+      {
+        "level": "provider",
+        "target": "jetformbuilder",
+        "name": "jetformbuilder-form-diagnostics",
+        "description": "Inspect JetFormBuilder form inventory and structural metadata without exposing form submissions or mutating form definitions.",
+        "body": "1. List the exact JetFormBuilder forms in scope.\\n2. Read form metadata and block-type structure for the selected form.\\n3. Use the content fingerprint to detect definition drift without returning raw form content.\\n4. Never expose form submissions or user-entered values.\\n5. Return structural findings and the next safe remediation; do not mutate forms from this workflow."
+      }
+    ]
+  }
+}

@@ -1,0 +1,82 @@
+name: MAD4B Rollback Retention Receipt
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/MAD4B-ROLLBACK-CANDIDATE.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/MAD4B-ROLLBACK-RETENTION-RECEIPT.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-certification.php'
+      - '.github/workflows/mad4b-rollback-retention-receipt.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: mad4b-rollback-retention-receipt-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify-retention:
+    name: Verify parent artifact retention
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify packaged receipt against GitHub Actions Artifact API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          candidate="$root/MAD4B-ROLLBACK-CANDIDATE.json"
+          receipt="$root/MAD4B-ROLLBACK-RETENTION-RECEIPT.json"
+
+          jq -e '.contract == "mad4b.rollback-candidate.v1"' "$candidate" >/dev/null
+          jq -e '.contract == "mad4b.rollback-retention-receipt.v1"' "$receipt" >/dev/null
+          jq -e '.verification_source == "github_actions_artifact_api"' "$receipt" >/dev/null
+          jq -e '.expired == false' "$receipt" >/dev/null
+
+          rollback_sha="$(jq -r '.source_commit_sha' "$candidate")"
+          rollback_version="$(jq -r '.control_plane_version' "$candidate")"
+          plugin_name="$(jq -r '.artifact_name' "$candidate")"
+          plugin_sha="$(jq -r '.artifact_sha256' "$candidate")"
+          dist_id="$(jq -r '.distribution_artifact_id' "$candidate")"
+          dist_name="$(jq -r '.distribution_artifact_name' "$candidate")"
+          dist_sha="$(jq -r '.distribution_artifact_sha256' "$candidate")"
+          build_run="$(jq -r '.build_run_id' "$candidate")"
+
+          test "$rollback_sha" = "$(jq -r '.rollback_source_commit_sha' "$receipt")"
+          test "$rollback_version" = "$(jq -r '.rollback_control_plane_version' "$receipt")"
+          test "$plugin_name" = "$(jq -r '.plugin_artifact_name' "$receipt")"
+          test "$plugin_sha" = "$(jq -r '.plugin_artifact_sha256' "$receipt")"
+          test "$dist_id" = "$(jq -r '.distribution_artifact_id' "$receipt")"
+          test "$dist_name" = "$(jq -r '.distribution_artifact_name' "$receipt")"
+          test "$dist_sha" = "$(jq -r '.distribution_artifact_sha256' "$receipt")"
+
+          api="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$dist_id")"
+          test "$(jq -r '.expired' <<<"$api")" = "false"
+          test "$(jq -r '.name' <<<"$api")" = "$dist_name"
+          test "$(jq -r '.workflow_run.head_sha' <<<"$api")" = "$rollback_sha"
+          test "$(jq -r '.workflow_run.id' <<<"$api")" = "$build_run"
+          test "$(jq -r '.digest' <<<"$api")" = "sha256:$dist_sha"
+
+          api_created="$(jq -r '.created_at' <<<"$api")"
+          api_expires="$(jq -r '.expires_at' <<<"$api")"
+          test "$api_created" = "$(jq -r '.artifact_created_at' "$receipt")"
+          test "$api_expires" = "$(jq -r '.artifact_expires_at' "$receipt")"
+
+          now="$(date -u +%s)"
+          expires="$(date -u -d "$api_expires" +%s)"
+          remaining="$(( expires - now ))"
+          if [ "$remaining" -le 86400 ]; then
+            echo "Rollback artifact has <=24h retention remaining: $remaining seconds" >&2
+            exit 1
+          fi
+
+          echo "Rollback artifact retention verified: $dist_id $dist_name"
+          echo "Remaining retention seconds: $remaining"

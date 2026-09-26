@@ -1,0 +1,107 @@
+name: Feature 007 Pre-Staging Hybrid Audit
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/mad4b-wordpress/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'tools/mad4b_pre_staging_hybrid_audit.py'
+      - '.github/workflows/feature-007-pre-staging-hybrid-audit.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'plugins/mad4b-wordpress/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'tools/mad4b_pre_staging_hybrid_audit.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: feature-007-pre-staging-hybrid-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hybrid-audit:
+    name: Pre-Staging repository closure audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup PHP 7.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          coverage: none
+
+      - name: Generic PHP syntax baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 \
+            | sort -z \
+            | xargs -0 -n1 php -l
+
+      - name: Dynamic Skill distribution contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py
+
+      - name: Extension strategy contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/wordpress-extension-strategy-contract.py
+
+      - name: Add-on registry contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-registry-contract.py
+
+      - name: Add-on exact-pair execution guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php
+
+      - name: WordPress Plugin Check (pinned official distribution gate)
+        uses: WordPress/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e
+        with:
+          repo-token: ''
+          build-dir: './wp-content/plugins/mad4b-site-control-plane'
+          checks: |
+            code_obfuscation
+            file_type
+            localhost
+            no_unfiltered_uploads
+            plugin_header_fields
+            plugin_updater
+          exclude-directories: |
+            tests
+          include-experimental: 'false'
+          ignore-errors: 'false'
+          ignore-warnings: 'false'
+          strict: 'false'
+          slug: 'mad4b-site-control-plane'
+
+      - name: MAD4B-specific pre-Staging audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/mad4b_pre_staging_hybrid_audit.py
+
+      - name: Upload audit evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: feature-007-pre-staging-hybrid-audit-${{ github.event.pull_request.head.sha || github.sha }}
+          path: dist/pre-staging-hybrid-audit.json
+          if-no-files-found: error
+          retention-days: 14

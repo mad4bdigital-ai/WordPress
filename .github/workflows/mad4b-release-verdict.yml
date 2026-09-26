@@ -1,0 +1,1109 @@
+name: MAD4B Release Verdict
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  pull-requests: read
+  issues: read
+
+concurrency:
+  group: mad4b-release-verdict-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+  HEAD_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+  PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
+
+jobs:
+  verdict:
+    name: Repository release verdict
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact-head owner attestation
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/verify_repository_owner_attestation.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --pr-number "$PR_NUMBER" \
+            --expected-head "$SOURCE_SHA" \
+            --policy .github/mad4b-repository-governance-policy.json \
+            --output /tmp/mad4b-owner-attestation.json
+
+      - name: Verify bounded governance-apply repair bootstrap
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.number == 69 &&
+          github.event.pull_request.head.ref == 'chore/governance-apply-powershell-parse-20260926'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$BASE_SHA" = "8a0c12ef16023f042def7d42b760cdd847343e8a"
+
+          # The repair branch may contain only the parser repair, the trusted
+          # feature-boundary ancestry repair, its executable regression contract,
+          # and this bounded release-verdict bootstrap.
+          gh api -H "Accept: application/vnd.github+json" \
+            "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files?per_page=100" \
+            > /tmp/mad4b-governance-repair-files.json
+
+          gh api -H "Accept: application/vnd.github+json" \
+            "repos/$GITHUB_REPOSITORY/rulesets/23968498?includes_parents=true" \
+            > /tmp/mad4b-governance-repair-live-ruleset.json
+
+          # GITHUB_TOKEN may omit bypass_actors because Actions tokens do not expose
+          # repository Administration read permission. Resolve that one field from
+          # the public repository-ruleset detail, then bind it back to the exact
+          # authenticated ruleset identity and updated_at before trusting it.
+          python3 - <<'PY'
+          import json, os, urllib.request
+          from pathlib import Path
+
+          url = (
+              "https://api.github.com/repos/"
+              + os.environ["GITHUB_REPOSITORY"]
+              + "/rulesets/23968498?includes_parents=true"
+          )
+          req = urllib.request.Request(
+              url,
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "User-Agent": "mad4b-governance-repair-bootstrap",
+                  "X-GitHub-Api-Version": "2026-03-10",
+              },
+          )
+          with urllib.request.urlopen(req, timeout=20) as response:
+              public_live = json.loads(response.read().decode("utf-8"))
+          Path("/tmp/mad4b-governance-repair-public-ruleset.json").write_text(
+              json.dumps(public_live, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          # Re-run the executable parser/tool contract in this merge-gate path.
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py
+
+          # pull_request_target executes the workflow from BASE/master. The current
+          # master copy still shallow-fetches HEAD and therefore cannot prove
+          # ancestry for this repair PR. Execute the BASE-owned verifier directly
+          # from BASE against the full-history checkout instead of trusting a
+          # verifier implementation from the pull-request head.
+          git show "$BASE_SHA:tools/verify_feature_boundary.py" > /tmp/verify_feature_boundary.base.py
+          python3 /tmp/verify_feature_boundary.base.py \
+            --base "$BASE_SHA" \
+            --head "$SOURCE_SHA" \
+            --head-branch "$HEAD_BRANCH" \
+            --pr-number "$PR_NUMBER" \
+            --output /tmp/mad4b-governance-repair-boundary.json
+
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          expected_files = sorted([
+              ".github/workflows/mad4b-feature-boundary-root.yml",
+              ".github/workflows/mad4b-release-verdict.yml",
+              ".github/workflows/mad4b-repository-governance.yml",
+              "tools/Apply-Mad4bMasterRuleset.ps1",
+              "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py",
+          ])
+          rows = json.loads(Path("/tmp/mad4b-governance-repair-files.json").read_text(encoding="utf-8"))
+          observed_files = sorted(
+              str(row.get("filename") or "")
+              for row in rows
+              if isinstance(row, dict) and row.get("filename")
+          )
+          if observed_files != expected_files:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: changed-file set drift "
+                  f"expected={expected_files} observed={observed_files}"
+              )
+
+          boundary = json.loads(
+              Path("/tmp/mad4b-governance-repair-boundary.json").read_text(encoding="utf-8")
+          )
+          if boundary.get("ready") is not True:
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: base-owned feature boundary is not ready")
+          if boundary.get("mode") != "repository_governance_change":
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: unexpected feature-boundary mode "
+                  f"{boundary.get('mode')!r}"
+              )
+          if boundary.get("trusted_verifier_source") != "base":
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: verifier source is not base")
+          if boundary.get("pull_request_code_executed") is not False:
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: PR code executed by boundary verifier")
+          if boundary.get("owner_attestation_required") is not True:
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: root owner attestation not required")
+          if int(boundary.get("changed_file_count") or 0) != len(expected_files):
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: boundary changed-file count drift")
+          if sorted(boundary.get("repository_root_changes") or []) != expected_files:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: base-owned root-change set drift "
+                  f"observed={boundary.get('repository_root_changes')}"
+              )
+
+          live = json.loads(
+              Path("/tmp/mad4b-governance-repair-live-ruleset.json").read_text(encoding="utf-8")
+          )
+          public_live = json.loads(
+              Path("/tmp/mad4b-governance-repair-public-ruleset.json").read_text(encoding="utf-8")
+          )
+          if int(live.get("id") or 0) != 23968498:
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset id drift")
+          if live.get("name") != "MAD4B master release governance":
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset name drift")
+          if live.get("target") != "branch" or live.get("enforcement") != "active":
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset state drift")
+          if live.get("source_type") != "Repository" or live.get("source") != os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset ownership drift")
+
+          for field in ("id", "name", "target", "source_type", "source", "enforcement", "updated_at"):
+              if public_live.get(field) != live.get(field):
+                  raise SystemExit(
+                      "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: public/authenticated ruleset identity drift "
+                      f"field={field} authenticated={live.get(field)!r} public={public_live.get(field)!r}"
+                  )
+
+          owner_attestation = json.loads(
+              Path("/tmp/mad4b-owner-attestation.json").read_text(encoding="utf-8")
+          )
+          if (
+              owner_attestation.get("verified") is not True
+              or owner_attestation.get("pull_request") != 69
+              or owner_attestation.get("expected_head_sha") != os.environ["SOURCE_SHA"]
+              or owner_attestation.get("live_head_sha") != os.environ["SOURCE_SHA"]
+          ):
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: exact-head owner attestation evidence drift"
+              )
+
+          import subprocess
+          marker = "MAD4B_GOVERNANCE_REPAIR_RULESET_SNAPSHOT\n"
+          owner_login = "mad4bdigital-ai"
+          comments = []
+          for page in range(1, 51):
+              raw = subprocess.check_output(
+                  [
+                      "gh", "api",
+                      "-H", "Accept: application/vnd.github+json",
+                      f"repos/{os.environ['GITHUB_REPOSITORY']}/issues/{os.environ['PR_NUMBER']}/comments?per_page=100&page={page}",
+                  ],
+                  text=True,
+              )
+              page_rows = json.loads(raw)
+              if not isinstance(page_rows, list):
+                  raise SystemExit(
+                      "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: repair snapshot comment page is not a list"
+                  )
+              comments.extend(page_rows)
+              if len(page_rows) < 100:
+                  break
+          else:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: repair snapshot pagination exceeded safety bound"
+              )
+
+          expected_snapshot = {
+              "contract": "mad4b.governance-repair-ruleset-snapshot.v1",
+              "repository": "mad4bdigital-ai/WordPress",
+              "repair_pr_number": 69,
+              "repair_branch": "chore/governance-apply-powershell-parse-20260926",
+              "repair_base_sha": "8a0c12ef16023f042def7d42b760cdd847343e8a",
+              "ruleset_id": 23968498,
+              "ruleset_name": "MAD4B master release governance",
+              "ruleset_source_type": "Repository",
+              "ruleset_source": "mad4bdigital-ai/WordPress",
+              "ruleset_target": "branch",
+              "ruleset_enforcement": "active",
+              "ruleset_updated_at": "2026-09-25T02:13:24.911+03:00",
+              "target_ref": "refs/heads/master",
+              "bypass_actor_count": 0,
+              "required_status_checks": [
+                  {"context": "Repository release verdict", "integration_id": 15368}
+              ],
+              "strict_required_status_checks_policy": True,
+              "verified_readback": True,
+              "valid_while_ruleset_updated_at_unchanged": True,
+          }
+          snapshot_matches = []
+          for row in comments:
+              if not isinstance(row, dict):
+                  continue
+              login = str(((row.get("user") or {}).get("login") or "")).lower()
+              if login != owner_login:
+                  continue
+              body = str(row.get("body") or "").strip()
+              if not body.startswith(marker):
+                  continue
+              try:
+                  candidate = json.loads(body[len(marker):].strip())
+              except json.JSONDecodeError:
+                  continue
+              if candidate == expected_snapshot:
+                  snapshot_matches.append((int(row.get("id") or 0), candidate))
+          if not snapshot_matches:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: owner-authored admin ruleset snapshot is missing or stale"
+              )
+          snapshot_matches.sort(key=lambda item: item[0])
+          snapshot_comment_id, ruleset_snapshot = snapshot_matches[-1]
+          if snapshot_comment_id < 1:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: owner ruleset snapshot comment id invalid"
+              )
+
+          from datetime import datetime, timezone
+
+          def normalize_ruleset_timestamp(value):
+              return datetime.fromisoformat(
+                  str(value).replace("Z", "+00:00")
+              ).astimezone(timezone.utc)
+
+          identity_expectations = {
+              "id": ruleset_snapshot["ruleset_id"],
+              "name": ruleset_snapshot["ruleset_name"],
+              "target": ruleset_snapshot["ruleset_target"],
+              "source_type": ruleset_snapshot["ruleset_source_type"],
+              "source": ruleset_snapshot["ruleset_source"],
+              "enforcement": ruleset_snapshot["ruleset_enforcement"],
+              "updated_at": ruleset_snapshot["ruleset_updated_at"],
+          }
+          for field, expected_value in identity_expectations.items():
+              actual_value = live.get(field)
+              if field == "updated_at":
+                  identity_matches = (
+                      normalize_ruleset_timestamp(actual_value)
+                      == normalize_ruleset_timestamp(expected_value)
+                  )
+              else:
+                  identity_matches = actual_value == expected_value
+              if not identity_matches:
+                  raise SystemExit(
+                      "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: owner snapshot/authenticated ruleset identity drift "
+                      f"field={field} authenticated={actual_value!r} snapshot={expected_value!r}"
+                  )
+          if ruleset_snapshot.get("bypass_actor_count") != 0:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: owner admin snapshot reports bypass actors"
+              )
+          Path("/tmp/mad4b-governance-repair-ruleset-snapshot.json").write_text(
+              json.dumps(
+                  {
+                      "comment_id": snapshot_comment_id,
+                      "comment_author_login": owner_login,
+                      "snapshot": ruleset_snapshot,
+                  },
+                  indent=2,
+                  sort_keys=True,
+              ) + "\n",
+              encoding="utf-8",
+          )
+          bypass_actor_visibility = "owner_admin_snapshot"
+          hidden_bypass_exception = False
+
+          conditions = live.get("conditions") or {}
+          ref_name = conditions.get("ref_name") or {}
+          if ref_name.get("include") != ["refs/heads/master"] or ref_name.get("exclude") != []:
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset target ref drift")
+          if (
+              normalize_ruleset_timestamp(live.get("updated_at"))
+              != normalize_ruleset_timestamp("2026-09-25T02:13:24.911+03:00")
+          ):
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: legacy ruleset changed since reviewed snapshot"
+              )
+
+          required_rule = next(
+              (row for row in (live.get("rules") or []) if row.get("type") == "required_status_checks"),
+              None,
+          )
+          params = (required_rule or {}).get("parameters") or {}
+          required_checks = params.get("required_status_checks") or []
+          if required_checks != [
+              {"context": "Repository release verdict", "integration_id": 15368}
+          ]:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: legacy required-check state drift "
+                  f"observed={required_checks}"
+              )
+          if params.get("strict_required_status_checks_policy") is not True:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: strict status-check policy is not active"
+              )
+
+          evidence = {
+              "contract": "mad4b.governance-apply-repair-bootstrap.v1",
+              "ready": True,
+              "pull_request": 69,
+              "branch": "chore/governance-apply-powershell-parse-20260926",
+              "base_sha": os.environ["BASE_SHA"],
+              "head_sha": os.environ["SOURCE_SHA"],
+              "ruleset_id": 23968498,
+              "ruleset_updated_at": live.get("updated_at"),
+              "exact_changed_files": observed_files,
+              "powershell_parser_contract_verified": True,
+              "baseline_feature_boundary_verified": True,
+              "baseline_feature_boundary_mode": boundary.get("mode"),
+              "baseline_feature_boundary_root_changes": boundary.get("repository_root_changes"),
+              "zero_bypass_actors_verified": True,
+              "bypass_actor_visibility": bypass_actor_visibility,
+              "bypass_evidence_source": "owner_issue_comment_admin_readback_bound_to_authenticated_identity",
+              "ruleset_snapshot_comment_id": snapshot_comment_id,
+              "hidden_bypass_exception": False,
+              "hidden_bypass_exception_scope": "",
+              "exact_head_owner_attestation_verified": True,
+              "legacy_ruleset_snapshot_verified": True,
+              "target_governance_activation_still_required_post_merge": True,
+              "production_authorized": False,
+          }
+          Path("/tmp/mad4b-governance-apply-repair-bootstrap.json").write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(evidence, indent=2, sort_keys=True))
+          PY
+
+      - name: Wait for exact-head critical checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import fnmatch, json, os, re, subprocess
+          from pathlib import Path
+
+          critical_trigger_workflows = [
+              '.github/workflows/mad4b-site-control-plane.yml',
+              '.github/workflows/mad4b-dynamic-skills.yml',
+              '.github/workflows/mad4b-control-plane-package.yml',
+              '.github/workflows/mad4b-chatgpt-refresh-hotpath.yml',
+              '.github/workflows/mad4b-chatgpt-catalog-performance.yml',
+              '.github/workflows/mad4b-full-staging-authority.yml',
+              '.github/workflows/mad4b-governed-execution-fence.yml',
+              '.github/workflows/mad4b-approval-decision-contract.yml',
+              '.github/workflows/mad4b-oauth-resource-bridge.yml',
+          ]
+          full_runtime_trigger_paths = [
+              'wp-content/plugins/mad4b-site-control-plane/**',
+              'wp-content/plugins/mcp-adapter.zip',
+              'wp-content/plugins/*.zip',
+              'plugins/mad4b-wordpress/**',
+              'tools/capture-functional-gap-contract-evidence.py',
+          ]
+          context_authority_trigger_patterns = [
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-*.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php',
+              'wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json',
+              'wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-brand-context-builder/SKILL.md',
+              'plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md',
+              'wp-content/plugins/mad4b-site-control-plane/tests/context-*',
+              'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py',
+          ]
+          context_authority_workflow = Path(
+              '.github/workflows/mad4b-context-authority.yml'
+          ).read_text(encoding='utf-8')
+          if '  push:\n' not in context_authority_workflow:
+              raise SystemExit('Context Authority workflow lacks master push trigger')
+          if '    branches:\n      - master\n' not in context_authority_workflow:
+              raise SystemExit('Context Authority workflow push trigger is not bound to master')
+          context_authority_required_trigger_paths = [
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php',
+              'wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json',
+              'wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-brand-context-builder/SKILL.md',
+              'plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md',
+              'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py',
+              'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py',
+          ]
+          for trigger_path in context_authority_required_trigger_paths:
+              if context_authority_workflow.count(trigger_path) < 2:
+                  raise SystemExit(
+                      'Context Authority workflow trigger parity drift: '
+                      f'missing PR+master coverage for {trigger_path}'
+                  )
+
+          for workflow in critical_trigger_workflows:
+              workflow_text = Path(workflow).read_text(encoding='utf-8')
+              if '  pull_request:\n' not in workflow_text:
+                  raise SystemExit(f'critical workflow lacks pull_request trigger: {workflow}')
+              if '  push:\n' not in workflow_text or '      - master' not in workflow_text:
+                  raise SystemExit(f'critical workflow lacks master push trigger: {workflow}')
+              for trigger_path in full_runtime_trigger_paths:
+                  if trigger_path not in workflow_text:
+                      raise SystemExit(f'critical workflow trigger drift: {workflow} missing {trigger_path}')
+
+          governance_workflow = Path('.github/workflows/mad4b-repository-governance.yml').read_text(encoding='utf-8')
+          if '  pull_request:\n' not in governance_workflow:
+              raise SystemExit('repository governance workflow lacks pull_request trigger')
+          if '  push:\n' not in governance_workflow or '      - master' not in governance_workflow:
+              raise SystemExit('repository governance workflow lacks master push trigger')
+          if '    paths:\n' in governance_workflow or '    paths-ignore:\n' in governance_workflow:
+              raise SystemExit('repository governance workflow must cover every master change')
+
+          boundary_workflow = Path('.github/workflows/mad4b-feature-boundary-root.yml').read_text(encoding='utf-8')
+          expression_open = chr(36) + chr(123) + chr(123)
+          expression_close = chr(125) + chr(125)
+          base_ref_expression = (
+              'ref: ' + expression_open
+              + ' github.event.pull_request.base.sha '
+              + expression_close
+          )
+          head_ref_expression = (
+              'ref: ' + expression_open
+              + ' github.event.pull_request.head.sha '
+              + expression_close
+          )
+          if '  pull_request_target:\n' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must use pull_request_target')
+          if 'permissions:\n  contents: read\n' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must remain read-only')
+          if base_ref_expression not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must checkout the trusted PR base')
+          if 'python3 tools/verify_feature_boundary.py' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must execute the baseline-owned verifier')
+          if 'python3 tools/verify_repository_owner_attestation.py' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must verify exact-head owner attestation for root changes')
+          if 'owner_attestation_required' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must condition root-change attestation on baseline verifier evidence')
+          if 'issues: read' not in boundary_workflow or 'pull-requests: read' not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root lacks read-only PR/comment permissions required for owner attestation')
+          if head_ref_expression in boundary_workflow:
+              raise SystemExit('repository feature-boundary root may not checkout PR head as executable workflow source')
+
+          critical_kernel_text = Path(
+              '.github/workflows/feature-007-critical-kernel.yml'
+          ).read_text(encoding='utf-8')
+          schema_checks = []
+          for raw_line in critical_kernel_text.splitlines():
+              stripped = raw_line.strip()
+              if (
+                  stripped.startswith('name: Schema ')
+                  and stripped.endswith(' real MariaDB upgrade')
+              ):
+                  schema_checks.append(stripped[len('name: '):])
+          if len(schema_checks) != 1:
+              raise SystemExit(
+                  'critical kernel must expose exactly one real MariaDB schema check; '
+                  f'observed={schema_checks!r}'
+              )
+          schema_check = schema_checks[0]
+
+          full = [
+              'Control-plane contract guard',
+              'Dynamic Skills contract',
+              'Dynamic Skills + governed write generic Staging runtime',
+              'Dynamic Skills + write authority Production fail-closed runtime',
+              'Build reviewed General Distribution installation kit',
+              'ChatGPT refresh request hotpath contract',
+              'ChatGPT tools/list catalog performance contract',
+              'Full Staging authority contract',
+              'Governed execution fence (latest)',
+              'Human approval decision (8.3)',
+              'OAuth bridge runtime (latest)',
+              schema_check,
+              'Repository governance policy',
+              'Repository feature boundary',
+          ]
+          release_evidence = [
+              'Root trust and Recovery Plane',
+              'Build reviewed General Distribution installation kit',
+              'Live evidence contracts + exact artifact',
+              'Repository governance policy',
+              'Repository feature boundary',
+          ]
+          non_runtime = [
+              'Repository governance policy',
+              'Repository feature boundary',
+          ]
+          release_evidence_paths = {
+              '.github/workflows/mad4b-control-plane-package.yml',
+              '.github/workflows/mad4b-live-acceptance-evidence.yml',
+              '.github/workflows/mad4b-release-verdict.yml',
+              '.github/workflows/mad4b-context-authority.yml',
+              '.github/workflows/feature-007-critical-kernel.yml',
+          }
+          runtime_patterns = set(full_runtime_trigger_paths) | set(critical_trigger_workflows) | {
+              '.github/workflows/feature-007-critical-kernel.yml',
+              '.github/workflows/mad4b-live-acceptance-evidence.yml',
+              '.github/workflows/mad4b-release-verdict.yml',
+          }
+
+          changed = []
+          pr_number = os.environ.get('PR_NUMBER', '').strip()
+          if pr_number:
+              page = 1
+              while True:
+                  raw = subprocess.check_output([
+                      'gh', 'api',
+                      '-H', 'Accept: application/vnd.github+json',
+                      f"repos/{os.environ['GITHUB_REPOSITORY']}/pulls/{pr_number}/files?per_page=100&page={page}",
+                  ], text=True)
+                  rows = json.loads(raw)
+                  changed.extend(
+                      str(row.get('filename', ''))
+                      for row in rows
+                      if isinstance(row, dict) and row.get('filename')
+                  )
+                  if len(rows) < 100:
+                      break
+                  page += 1
+                  if page > 50:
+                      raise SystemExit('pull request changed-file pagination exceeded safety bound')
+          elif os.environ.get('GITHUB_EVENT_NAME') == 'push':
+              event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text(encoding='utf-8'))
+              before = str(event.get('before', '')).strip().lower()
+              if len(before) == 40 and set(before) != {'0'}:
+                  raw = subprocess.check_output(
+                      ['git', 'diff', '--name-only', f"{before}..{os.environ['SOURCE_SHA']}"],
+                      text=True,
+                  )
+              else:
+                  raw = subprocess.check_output(
+                      ['git', 'ls-tree', '-r', '--name-only', os.environ['SOURCE_SHA']],
+                      text=True,
+                  )
+              changed.extend(line.strip() for line in raw.splitlines() if line.strip())
+
+          changed = sorted(set(changed))
+          bootstrap_root_branch = 'chore/bootstrap-feature-boundary-policy-20260925'
+          bootstrap_exception = (
+              os.environ.get('GITHUB_EVENT_NAME') == 'pull_request'
+              and os.environ.get('HEAD_BRANCH', '').strip() == bootstrap_root_branch
+              and os.environ.get('PR_NUMBER', '').strip() == '66'
+          )
+          governance_apply_repair_branch = 'chore/governance-apply-powershell-parse-20260926'
+          governance_apply_repair_expected_base = '8a0c12ef16023f042def7d42b760cdd847343e8a'
+          governance_apply_repair_expected_paths = {
+              '.github/workflows/mad4b-feature-boundary-root.yml',
+              '.github/workflows/mad4b-release-verdict.yml',
+              '.github/workflows/mad4b-repository-governance.yml',
+              'tools/Apply-Mad4bMasterRuleset.ps1',
+              'wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py',
+          }
+          governance_apply_repair_bootstrap = (
+              os.environ.get('GITHUB_EVENT_NAME') == 'pull_request'
+              and os.environ.get('HEAD_BRANCH', '').strip() == governance_apply_repair_branch
+              and os.environ.get('PR_NUMBER', '').strip() == '69'
+              and os.environ.get('BASE_SHA', '').strip() == governance_apply_repair_expected_base
+          )
+          if governance_apply_repair_bootstrap and set(changed) != governance_apply_repair_expected_paths:
+              raise SystemExit(
+                  'governance-apply repair bootstrap changed-file set drift: '
+                  f'expected={sorted(governance_apply_repair_expected_paths)} actual={changed}'
+              )
+          context_authority_affecting = any(
+              fnmatch.fnmatch(path, pattern)
+              for path in changed
+              for pattern in context_authority_trigger_patterns
+          )
+          narrow = bool(changed) and set(changed).issubset(release_evidence_paths)
+          runtime_affecting = any(
+              fnmatch.fnmatch(path, pattern)
+              for path in changed
+              for pattern in runtime_patterns
+          )
+
+          if narrow:
+              required = release_evidence
+              mode = 'release_evidence_workflows_only'
+              artifact_required = True
+          elif runtime_affecting:
+              required = full
+              mode = 'full_runtime_release'
+              artifact_required = True
+          else:
+              required = non_runtime
+              mode = 'repository_non_runtime'
+              artifact_required = False
+
+          if governance_apply_repair_bootstrap:
+              # Break only the parser-repair deadlock. A BASE-owned feature-boundary
+              # verifier is executed explicitly in the bounded bootstrap above because the
+              # current pull_request_target workflow on master has a shallow-fetch defect.
+              # Keep one independent exact-head CI contract as an additional terminal gate.
+              required = ['Control-plane contract guard']
+              mode = 'governance_apply_repair_bootstrap'
+              artifact_required = False
+          elif bootstrap_exception:
+              required = [name for name in required if name != 'Repository feature boundary']
+              mode = 'repository_governance_bootstrap'
+              artifact_required = False
+          elif os.environ.get('GITHUB_EVENT_NAME') == 'push':
+              required = [name for name in required if name != 'Repository feature boundary']
+          if context_authority_affecting:
+              required = list(required) + [
+                  'Context Authority (7.4)',
+                  'Context Authority (8.3)',
+              ]
+          required = list(dict.fromkeys(required))
+
+          Path('/tmp/mad4b-critical-checks.txt').write_text('\n'.join(required) + '\n', encoding='utf-8')
+          Path('/tmp/mad4b-release-verdict-scope.json').write_text(
+              json.dumps({
+                  'contract': 'mad4b.release-verdict-scope.v2',
+                  'mode': mode,
+                  'artifact_required': artifact_required,
+                  'changed_files': changed,
+                  'required_checks': required,
+                  'bootstrap_exception': bootstrap_exception,
+                  'bootstrap_root_branch': bootstrap_root_branch if bootstrap_exception else '',
+                  'governance_apply_repair_bootstrap': governance_apply_repair_bootstrap,
+                  'governance_apply_repair_branch': governance_apply_repair_branch if governance_apply_repair_bootstrap else '',
+                  'governance_apply_repair_expected_base': governance_apply_repair_expected_base if governance_apply_repair_bootstrap else '',
+                  'governance_apply_repair_expected_paths': sorted(governance_apply_repair_expected_paths) if governance_apply_repair_bootstrap else [],
+                  'context_authority_affecting': context_authority_affecting,
+                  'narrow_release_evidence_paths': sorted(release_evidence_paths),
+                  'runtime_patterns': sorted(runtime_patterns),
+                  'critical_job_evidence_source': 'github_actions_runs_jobs_api',
+              }, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          print(json.dumps({
+              'mode': mode,
+              'artifact_required': artifact_required,
+              'changed_files': changed,
+              'required_checks': required,
+          }, indent=2))
+          PY
+          for attempt in $(seq 1 120); do
+            python3 tools/capture_exact_head_action_jobs.py \
+              --repository "$GITHUB_REPOSITORY" \
+              --head-sha "$SOURCE_SHA" \
+              --output /tmp/checks-1.json
+            printf '{"check_runs":[]}' > /tmp/checks-2.json
+            set +e
+            python3 - /tmp/mad4b-critical-checks.txt /tmp/checks-1.json /tmp/checks-2.json <<'PY'
+          import json,sys
+          required=[x.strip() for x in open(sys.argv[1],encoding='utf-8') if x.strip()]
+          runs=[]
+          for path in sys.argv[2:]: runs.extend(json.load(open(path,encoding='utf-8')).get('check_runs',[]))
+          latest={}
+          for row in sorted(runs,key=lambda x:int(x.get('id',0))): latest[row.get('name','')]=row
+          failed=[]; pending=[]
+          for name in required:
+              row=latest.get(name)
+              if not row or row.get('status')!='completed':
+                  pending.append(name)
+                  continue
+              if row.get('conclusion')!='success':
+                  failed.append((name,row.get('conclusion')))
+          if pending:
+              print('critical pending:',len(pending),pending[:5])
+              if failed:
+                  print('critical failures already terminal:',failed)
+              raise SystemExit(2)
+          if failed:
+              print('critical failures:',failed)
+              raise SystemExit(1)
+          print('all critical exact-head checks passed:',len(required))
+          PY
+            rc=$?
+            set -e
+            if [ "$rc" -eq 0 ] || [ "$rc" -eq 1 ]; then
+              break
+            fi
+            if [ "$attempt" -eq 120 ]; then
+              echo 'Timed out waiting for exact-head critical checks; emitting a negative machine-readable verdict.' >&2
+              break
+            fi
+            sleep 10
+          done
+
+      - name: Emit machine-readable release verdict
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/capture_exact_head_action_jobs.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --head-sha "$SOURCE_SHA" \
+            --output /tmp/checks-1.json
+          printf '{"check_runs":[]}' > /tmp/checks-2.json
+          artifact_name="mad4b-site-control-plane-general-distribution-kit-$SOURCE_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$artifact_name&per_page=100" > /tmp/artifacts.json
+
+          python3 - /tmp/mad4b-critical-checks.txt /tmp/mad4b-release-verdict-scope.json /tmp/checks-1.json /tmp/checks-2.json /tmp/artifacts.json <<'PY'
+          import hashlib, json, os, shutil, subprocess, sys, zipfile
+          from pathlib import Path
+
+          required=[x.strip() for x in open(sys.argv[1],encoding='utf-8') if x.strip()]
+          scope=json.load(open(sys.argv[2],encoding='utf-8'))
+          artifact_required=bool(scope.get('artifact_required'))
+
+          governance_apply_repair_bootstrap=bool(scope.get('governance_apply_repair_bootstrap'))
+          governance_apply_repair_status={}
+          governance_apply_repair_bootstrap_ready=False
+          if governance_apply_repair_bootstrap:
+              repair_path=Path('/tmp/mad4b-governance-apply-repair-bootstrap.json')
+              if repair_path.is_file():
+                  try:
+                      governance_apply_repair_status=json.loads(repair_path.read_text(encoding='utf-8'))
+                  except Exception:
+                      governance_apply_repair_status={}
+              governance_apply_repair_bootstrap_ready=bool(
+                  governance_apply_repair_status.get('ready') is True
+                  and governance_apply_repair_status.get('contract')=='mad4b.governance-apply-repair-bootstrap.v1'
+                  and governance_apply_repair_status.get('pull_request')==69
+                  and governance_apply_repair_status.get('branch')=='chore/governance-apply-powershell-parse-20260926'
+                  and governance_apply_repair_status.get('base_sha')==os.environ.get('BASE_SHA','')
+                  and governance_apply_repair_status.get('head_sha')==os.environ.get('SOURCE_SHA','')
+                  and governance_apply_repair_status.get('ruleset_id')==23968498
+                  and governance_apply_repair_status.get('zero_bypass_actors_verified') is True
+                  and governance_apply_repair_status.get('bypass_actor_visibility')=='owner_admin_snapshot'
+                  and governance_apply_repair_status.get('bypass_evidence_source')=='owner_issue_comment_admin_readback_bound_to_authenticated_identity'
+                  and int(governance_apply_repair_status.get('ruleset_snapshot_comment_id') or 0) > 0
+                  and governance_apply_repair_status.get('hidden_bypass_exception') is False
+                  and governance_apply_repair_status.get('powershell_parser_contract_verified') is True
+                  and governance_apply_repair_status.get('baseline_feature_boundary_verified') is True
+                  and governance_apply_repair_status.get('baseline_feature_boundary_mode')=='repository_governance_change'
+                  and governance_apply_repair_status.get('legacy_ruleset_snapshot_verified') is True
+                  and governance_apply_repair_status.get('target_governance_activation_still_required_post_merge') is True
+              )
+
+          governance_output=Path('/tmp/mad4b-release-verdict-governance.json')
+          bootstrap_exception=bool(scope.get('bootstrap_exception'))
+          governance_policy=Path('.github/mad4b-repository-governance-policy.json')
+          transition_status={}
+          transition_error=''
+          if bootstrap_exception:
+              base_sha=os.environ.get('BASE_SHA','').strip()
+              if len(base_sha)!=40:
+                  transition_error='bootstrap base SHA is missing or invalid'
+              else:
+                  try:
+                      base_policy_raw=subprocess.check_output(
+                          ['git','show',f"{base_sha}:.github/mad4b-repository-governance-policy.json"],
+                          text=True,
+                      )
+                      base_policy_path=Path('/tmp/mad4b-release-verdict-bootstrap-base-policy.json')
+                      base_policy_path.write_text(base_policy_raw,encoding='utf-8')
+                      transition_path=Path('/tmp/mad4b-release-verdict-bootstrap-transition.json')
+                      transition_proc=subprocess.run([
+                          'python3','tools/verify_feature_boundary_bootstrap_transition.py',
+                          '--base-policy',str(base_policy_path),
+                          '--target-policy','.github/mad4b-repository-governance-policy.json',
+                          '--target-template','.github/mad4b-master-ruleset-template.json',
+                          '--head-branch',os.environ.get('HEAD_BRANCH',''),
+                          '--pr-number',os.environ.get('PR_NUMBER',''),
+                          '--output',str(transition_path),
+                      ],text=True,capture_output=True)
+                      if transition_proc.returncode != 0:
+                          transition_error=(transition_proc.stderr or transition_proc.stdout or '').strip()
+                      elif transition_path.is_file():
+                          transition_status=json.loads(transition_path.read_text(encoding='utf-8'))
+                          governance_policy=base_policy_path
+                  except Exception as exc:
+                      transition_error=str(exc)
+
+          governance_cmd=[
+              'python3','tools/verify_repository_governance.py',
+              '--repository',os.environ['GITHUB_REPOSITORY'],
+              '--policy',str(governance_policy),
+              '--template','.github/mad4b-master-ruleset-template.json',
+              '--output',str(governance_output),
+          ]
+          if bootstrap_exception:
+              governance_cmd.append('--allow-bootstrap-hidden-bypass-evidence')
+          governance_proc=subprocess.run(governance_cmd,text=True,capture_output=True)
+          governance_ready=governance_proc.returncode == 0 and not transition_error
+          governance_reason='; '.join(
+              part for part in [
+                  transition_error,
+                  (governance_proc.stderr or governance_proc.stdout or '').strip() if governance_proc.returncode != 0 else '',
+              ] if part
+          )
+          governance_status={}
+          if governance_output.is_file():
+              try:
+                  governance_status=json.loads(governance_output.read_text(encoding='utf-8'))
+              except Exception:
+                  governance_status={}
+          if bootstrap_exception and governance_ready:
+              governance_status.update({
+                  'state':'feature_boundary_bootstrap_transition_ready',
+                  'bootstrap_exception':True,
+                  'bootstrap_branch':scope.get('bootstrap_root_branch',''),
+                  'bootstrap_pr_number':66,
+                  'live_policy_source':'pull_request_base',
+                  'target_policy_source':'pull_request_head',
+                  'target_policy_ready':transition_status.get('ready') is True,
+                  'target_required_status_checks':transition_status.get('target_required_status_checks',[]),
+                  'added_required_status_checks':transition_status.get('added_required_status_checks',[]),
+                  'post_merge_ruleset_apply_required':True,
+                  'target_policy_sha256':transition_status.get('target_policy_sha256',''),
+                  'target_template_sha256':transition_status.get('target_template_sha256',''),
+              })
+          runs=[]
+          for path in sys.argv[3:5]:
+              runs.extend(json.load(open(path,encoding='utf-8')).get('check_runs',[]))
+          latest={}
+          for row in sorted(runs,key=lambda x:int(x.get('id',0))):
+              latest[row.get('name','')]=row
+          critical={}
+          for name in required:
+              row=latest.get(name) or {}
+              critical[name]={
+                  'status':row.get('status','missing'),
+                  'conclusion':row.get('conclusion'),
+                  'details_url':row.get('details_url',''),
+              }
+          critical_checks_ready=all(
+              value['status']=='completed' and value['conclusion']=='success'
+              for value in critical.values()
+          )
+          owner_attestation_required=os.environ.get('GITHUB_EVENT_NAME')=='pull_request'
+          owner_attestation=None
+          owner_attestation_ready=not owner_attestation_required
+          owner_path=Path('/tmp/mad4b-owner-attestation.json')
+          if owner_path.is_file():
+              try:
+                  owner_attestation=json.loads(owner_path.read_text(encoding='utf-8'))
+                  owner_attestation_ready=owner_attestation.get('verified') is True
+              except Exception:
+                  owner_attestation_ready=False
+          merge_gate_ready=bool(
+              critical_checks_ready
+              and (governance_ready or governance_apply_repair_bootstrap_ready)
+              and owner_attestation_ready
+          )
+
+          live=latest.get('Live ETG managed browser acceptance')
+          if live and live.get('conclusion')=='success':
+              live_state='accepted'
+          elif live and live.get('conclusion') in ('failure','cancelled','timed_out','action_required'):
+              live_state='failed'
+          else:
+              live_state='external_pending'
+
+          artifact=None
+          canonical_package=None
+          artifact_verification_error=None
+          if artifact_required:
+              try:
+                  artifacts=json.load(open(sys.argv[5],encoding='utf-8')).get('artifacts',[])
+                  exact=[
+                      a for a in artifacts
+                      if not a.get('expired')
+                      and (a.get('workflow_run') or {}).get('head_sha')==os.environ['SOURCE_SHA']
+                  ]
+                  exact=sorted(exact,key=lambda a:int(a.get('id',0)),reverse=True)
+                  artifact_row=exact[0] if exact else None
+                  if not artifact_row:
+                      raise RuntimeError('exact-head distribution artifact not found')
+
+                  digest=str(artifact_row.get('digest','')).removeprefix('sha256:')
+                  if len(digest)!=64:
+                      raise RuntimeError('distribution artifact digest missing/invalid')
+
+                  download_root=Path('/tmp/mad4b-release-verdict-artifact')
+                  shutil.rmtree(download_root,ignore_errors=True)
+                  download_root.mkdir(parents=True,exist_ok=True)
+                  run_id=int((artifact_row.get('workflow_run') or {}).get('id') or 0)
+                  if run_id < 1:
+                      raise RuntimeError('distribution artifact workflow run id missing')
+                  subprocess.run([
+                      'gh','run','download',str(run_id),
+                      '-n',str(artifact_row.get('name') or ''),
+                      '-D',str(download_root),
+                  ],check=True)
+
+                  receipt_path=download_root/'CANONICAL-PACKAGE-RECEIPT.json'
+                  provenance_path=download_root/'MAD4B-BUILD-PROVENANCE.json'
+                  fingerprint_path=download_root/'BUILD-FINGERPRINT.txt'
+                  manifest_path=download_root/'PACKAGE-MANIFEST-DIGEST.txt'
+                  for required_path in (receipt_path,provenance_path,fingerprint_path,manifest_path):
+                      if not required_path.is_file():
+                          raise RuntimeError(f'distribution artifact identity file missing: {required_path.name}')
+
+                  receipt=json.loads(receipt_path.read_text(encoding='utf-8'))
+                  provenance=json.loads(provenance_path.read_text(encoding='utf-8'))
+                  fingerprint=fingerprint_path.read_text(encoding='utf-8').strip()
+                  manifest_digest=manifest_path.read_text(encoding='utf-8').strip()
+
+                  if receipt.get('contract')!='mad4b.deterministic-control-plane-package.v1':
+                      raise RuntimeError('canonical package receipt contract mismatch')
+                  if receipt.get('source_commit_sha')!=os.environ['SOURCE_SHA']:
+                      raise RuntimeError('canonical package receipt source mismatch')
+                  if provenance.get('source_commit_sha')!=os.environ['SOURCE_SHA']:
+                      raise RuntimeError('canonical package provenance source mismatch')
+                  if receipt.get('build_fingerprint')!=fingerprint or provenance.get('build_fingerprint')!=fingerprint:
+                      raise RuntimeError('canonical build fingerprint mismatch')
+                  if receipt.get('package_manifest_digest')!=manifest_digest or provenance.get('package_manifest_digest')!=manifest_digest:
+                      raise RuntimeError('canonical package manifest digest mismatch')
+
+                  manifest_count=len(provenance.get('package_files',[]))
+                  expected_archive_count=manifest_count+1
+                  expected_excluded=['MAD4B-BUILD-PROVENANCE.json']
+                  if provenance.get('manifest_file_count')!=manifest_count:
+                      raise RuntimeError('provenance manifest_file_count mismatch')
+                  if provenance.get('archive_file_count')!=expected_archive_count:
+                      raise RuntimeError('provenance archive_file_count mismatch')
+                  if provenance.get('manifest_excluded_files')!=expected_excluded or provenance.get('manifest_excludes_self') is not True:
+                      raise RuntimeError('provenance self-exclusion semantics mismatch')
+                  if receipt.get('manifest_file_count')!=manifest_count:
+                      raise RuntimeError('receipt manifest_file_count mismatch')
+                  if receipt.get('archive_file_count')!=expected_archive_count:
+                      raise RuntimeError('receipt archive_file_count mismatch')
+                  if receipt.get('package_file_count')!=expected_archive_count:
+                      raise RuntimeError('legacy package_file_count alias mismatch')
+                  if receipt.get('package_file_count_semantics')!='archive_file_count_including_provenance':
+                      raise RuntimeError('receipt package_file_count semantics mismatch')
+                  if receipt.get('manifest_excluded_files')!=expected_excluded:
+                      raise RuntimeError('receipt manifest exclusion set mismatch')
+
+                  version=str(receipt.get('control_plane_version') or '').strip()
+                  control_zip=download_root/f'mad4b-site-control-plane-{version}.zip'
+                  if not version or not control_zip.is_file():
+                      raise RuntimeError('canonical Control Plane archive missing')
+                  control_sha=hashlib.sha256(control_zip.read_bytes()).hexdigest()
+                  if control_sha!=receipt.get('archive_sha256'):
+                      raise RuntimeError('canonical Control Plane archive SHA mismatch')
+                  with zipfile.ZipFile(control_zip) as archive:
+                      actual_archive_count=len(archive.infolist())
+                  if actual_archive_count!=expected_archive_count:
+                      raise RuntimeError('actual canonical ZIP entry count mismatch')
+
+                  artifact={
+                      'id':artifact_row.get('id'),
+                      'name':artifact_row.get('name'),
+                      'sha256':digest,
+                      'workflow_run_id':run_id,
+                      'expired':artifact_row.get('expired',False),
+                  }
+                  canonical_package={
+                      'verified':True,
+                      'contract':receipt.get('contract'),
+                      'control_plane_version':version,
+                      'archive_sha256':control_sha,
+                      'build_fingerprint':fingerprint,
+                      'package_manifest_digest':manifest_digest,
+                      'manifest_file_count':manifest_count,
+                      'archive_file_count':actual_archive_count,
+                      'manifest_excluded_files':expected_excluded,
+                      'package_file_count_semantics':'archive_file_count_including_provenance',
+                  }
+              except Exception as exc:
+                  artifact_verification_error=str(exc)
+                  canonical_package={
+                      'verified':False,
+                      'verification_error':artifact_verification_error,
+                  }
+
+          verdict={
+              'contract':'mad4b.repository-release-verdict.v1',
+              'scope_contract':scope.get('contract'),
+              'source_commit_sha':os.environ['SOURCE_SHA'],
+              'critical_checks':critical,
+              'critical_check_count':len(critical),
+              'critical_check_mode':scope.get('mode','full_runtime_release'),
+              'artifact_required':artifact_required,
+              'changed_files':scope.get('changed_files',[]),
+              'bootstrap_exception':bool(scope.get('bootstrap_exception')),
+              'bootstrap_root_branch':scope.get('bootstrap_root_branch',''),
+              'governance_apply_repair_bootstrap':governance_apply_repair_bootstrap,
+              'governance_apply_repair_bootstrap_ready':governance_apply_repair_bootstrap_ready,
+              'governance_apply_repair_bootstrap_status':governance_apply_repair_status,
+              'context_authority_affecting':bool(scope.get('context_authority_affecting')),
+              'repository_merge_gate_ready':merge_gate_ready,
+              'repository_release_ready':bool(
+                  merge_gate_ready
+                  and governance_ready
+                  and artifact_required
+                  and canonical_package
+                  and canonical_package.get('verified')
+              ),
+              'repository_governance_ready':governance_ready,
+              'repository_governance_status':governance_status,
+              'repository_governance_verification_error':None if governance_ready else governance_reason,
+              'distribution_artifact':artifact,
+              'canonical_package_identity':canonical_package,
+              'artifact_verification_error':artifact_verification_error,
+              'live_etg_managed_browser_acceptance':live_state,
+              'live_performance_acceptance':'external_pending',
+              'live_rollback_drill':'external_pending',
+              'ready_for_review_authorized':False,
+              'merge_authorized':False,
+              'production_authorized':False,
+              'owner_attestation_required_for_exact_head':owner_attestation_required,
+              'owner_attestation_verified':owner_attestation_ready,
+              'owner_attestation':owner_attestation,
+              'attestation_stale_on_descendant':True,
+              'notes':[
+                  'Release Verdict now runs for every master-bound change so GitHub rulesets can require one stable merge-gate check.',
+                  'Runtime-affecting and release-evidence changes require an exact-head General Distribution artifact and verify its internal canonical identity before repository_release_ready can become true.',
+                  'Repository-non-runtime changes may satisfy repository_merge_gate_ready without claiming repository_release_ready.',
+                  'The only feature-boundary bootstrap exception is bound to PR #66 on branch chore/bootstrap-feature-boundary-policy-20260925, verifies the live ruleset against the PR-base policy plus a monotonic target transition, still requires exact-head Owner Attestation, and disappears once the root workflow is on master.',
+                  'Outside that one-time feature-boundary bootstrap, repository governance must verify ready for every merge-gate PASS, except the exact PR #69 parser-repair bootstrap bound to the reviewed legacy ruleset snapshot.',
+                  'The PR #69 governance-apply repair bootstrap does not claim target governance is active; it only allows the parser repair to merge so the separately authorized post-merge Remote Apply can reconcile and attest the canonical ruleset.',
+                  'Every master-bound pull request requires an authorized OWNER_ATTEST_SINGLE_OWNER comment bound to the exact current head SHA.',
+                  'Repository success does not substitute for live ETG Staging acceptance.',
+                  'Live performance and rollback drill remain external deployment gates.',
+                  'Production and Breakglass/raw-SQL authority are not granted by this verdict.',
+              ],
+          }
+          open('MAD4B-RELEASE-VERDICT.json','w',encoding='utf-8').write(
+              json.dumps(verdict,indent=2,sort_keys=True)+'\n'
+          )
+          print(json.dumps(verdict,indent=2,sort_keys=True))
+          PY
+
+      - name: Upload exact-head release verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-release-verdict-${{ env.SOURCE_SHA }}
+          path: |
+            MAD4B-RELEASE-VERDICT.json
+            /tmp/mad4b-governance-apply-repair-bootstrap.json
+            /tmp/mad4b-governance-repair-boundary.json
+            /tmp/mad4b-governance-repair-public-ruleset.json
+            /tmp/mad4b-governance-repair-ruleset-snapshot.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce release verdict
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          verdict=json.load(open('MAD4B-RELEASE-VERDICT.json',encoding='utf-8'))
+          if verdict.get('repository_merge_gate_ready') is not True:
+              raise SystemExit('repository merge gate is not ready')
+          if verdict.get('artifact_required') and verdict.get('repository_release_ready') is not True:
+              raise SystemExit('repository release artifact identity or repository governance is not ready')
+          print('repository release verdict enforcement: PASS')
+          PY

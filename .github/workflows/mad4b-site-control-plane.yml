@@ -1,0 +1,429 @@
+name: MAD4B Site Control Plane
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/elementor.zip'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'wp-content/plugins/bit-pi.zip'
+      - '.github/workflows/mad4b-site-control-plane.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/elementor.zip'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'wp-content/plugins/bit-pi.zip'
+      - '.github/workflows/mad4b-site-control-plane.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-site-control-plane-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php-lint:
+    name: PHP lint (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.1', '8.3']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint plugin PHP
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+
+  packaged-provider-contracts:
+    name: Packaged provider contract scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify provider archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          plugins='wp-content/plugins'
+          for archive in mcp-adapter.zip elementor.zip jet-engine.zip jet-smart-filters.zip bit-pi.zip; do
+            test -s "$plugins/$archive"
+            unzip -tqq "$plugins/$archive"
+          done
+
+      - name: Inspect and certify exact packaged provider contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/composite-packaged-provider-scan-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/scan-packaged-providers.py \
+            --plugins-dir wp-content/plugins \
+            --baseline wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json \
+            --output /tmp/mad4b-provider-contracts.json
+
+      - name: Upload provider contract evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-provider-contracts-${{ github.sha }}
+          path: /tmp/mad4b-provider-contracts.json
+          if-no-files-found: error
+          retention-days: 30
+
+  contract-guard:
+    name: Control-plane contract guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify staging post-deployment certification contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-certification-contract.py
+
+      - name: Verify admin settings persistence contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-contract.py
+
+      - name: Verify required modules and core safety gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          policy="$root/includes/class-mad4b-scp-policy.php"
+          abilities="$root/includes/class-mad4b-scp-abilities.php"
+          audit="$root/includes/class-mad4b-scp-audit.php"
+          registry="$root/includes/class-mad4b-scp-adapter-registry.php"
+          provider_contracts="$root/includes/class-mad4b-scp-provider-contracts.php"
+          provider_baseline="$root/config/certified-providers.json"
+          scanner="$root/tests/scan-packaged-providers.py"
+          servers="$root/includes/class-mad4b-scp-servers.php"
+          transport_context="$root/includes/class-mad4b-scp-transport-context.php"
+          authorization="$root/includes/class-mad4b-scp-authorization.php"
+          site_profile="$root/includes/class-mad4b-scp-site-profile.php"
+          write_authority="$root/includes/class-mad4b-scp-staging-write-authority.php"
+          candidate_binding="$root/includes/class-mad4b-scp-staging-write-candidate-binding.php"
+          write_cert="$root/includes/class-mad4b-scp-write-runtime-certification.php"
+          rest_compat="$root/includes/class-mad4b-scp-rest-compatibility.php"
+          for file in \
+            mad4b-site-control-plane.php \
+            config/certified-providers.json \
+            includes/class-mad4b-scp-site-profile.php \
+            includes/class-mad4b-scp-abilities.php \
+            includes/class-mad4b-scp-policy.php \
+            includes/class-mad4b-scp-servers.php \
+            includes/class-mad4b-scp-transport-context.php \
+            includes/class-mad4b-scp-authorization.php \
+            includes/class-mad4b-scp-audit.php \
+            includes/class-mad4b-scp-provider-contracts.php \
+            includes/class-mad4b-scp-adapter-registry.php \
+            includes/class-mad4b-scp-staging-write-authority.php \
+            includes/class-mad4b-scp-staging-write-candidate-binding.php \
+            includes/class-mad4b-scp-staging-certification.php \
+            includes/class-mad4b-scp-admin-query-performance.php \
+            includes/class-mad4b-scp-query-monitor-evidence-bridge.php \
+            includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php \
+            includes/class-mad4b-scp-plugin-package.php \
+            includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php \
+            tests/staging-write-candidate-binding-runtime.php \
+            MAD4B-ROLLBACK-CANDIDATE.json \
+            MAD4B-ROLLBACK-RETENTION-RECEIPT.json \
+            includes/class-mad4b-scp-write-runtime-certification.php \
+            includes/class-mad4b-scp-rest-compatibility.php \
+            includes/adapters/class-mad4b-scp-adapter-base.php \
+            includes/adapters/class-mad4b-scp-elementor-adapter.php \
+            includes/adapters/class-mad4b-scp-jetengine-adapter.php \
+            includes/adapters/class-mad4b-scp-jetsmartfilters-adapter.php \
+            includes/adapters/class-mad4b-scp-bitflows-adapter.php \
+            includes/adapters/class-mad4b-scp-media-adapter.php \
+            includes/adapters/class-mad4b-scp-seo-adapter.php \
+            includes/adapters/class-mad4b-scp-woocommerce-adapter.php \
+            includes/adapters/class-mad4b-scp-polylang-adapter.php \
+            includes/adapters/class-mad4b-scp-litespeed-adapter.php \
+            tests/scan-packaged-providers.py; do
+            test -f "$root/$file"
+          done
+
+          plugin_file="$root/mad4b-site-control-plane.php"
+          header_version="$(sed -nE 's/^ \* Version: ([^[:space:]]+).*/\1/p' "$plugin_file" | head -n1)"
+          constant_version="$(sed -nE "s/^define\( 'MAD4B_SCP_VERSION', '([^']+)' \);/\1/p" "$plugin_file" | head -n1)"
+          test -n "$header_version"
+          test -n "$constant_version"
+          test "$header_version" = "$constant_version"
+          [[ "$header_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+          grep -Fq "mad4b.site-control-plane.packaged-provider-contracts.v1" "$scanner"
+          grep -Fq "static_zip_inspection_only" "$scanner"
+          grep -Fq "Unsafe ZIP entry" "$scanner"
+          grep -Fq -- "--baseline" "$scanner"
+          grep -Fq "baseline_status" "$scanner"
+          grep -Fq "archive_sha256" "$scanner"
+          grep -Fq "mad4b.site-control-plane.certified-providers.v1" "$provider_baseline"
+          grep -Fq '"certification_mode": "exact_packaged_version"' "$provider_baseline"
+          grep -Fq "version_drift" "$provider_contracts"
+          grep -Fq "provider_version_drift" "$registry"
+          grep -Fq "mcp_adapter_certification" "$registry"
+          grep -Fq "provider_certification_ok" "$registry"
+
+          grep -Fq "MAD4B_MCP_BREAKGLASS_ENABLED" "$policy"
+          grep -Fq "MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED" "$abilities"
+          grep -Fq "MAD4B_MCP_BREAKGLASS_DDL_ENABLED" "$abilities"
+          grep -Fq "LOAD_FILE" "$abilities"
+          grep -Fq "CREATE\\s+(?:USER|ROLE)" "$abilities"
+          grep -Fq "expected_modified_gmt" "$abilities"
+          grep -Fq "max_affected" "$abilities"
+          grep -Fq "can_structured_database_read" "$abilities"
+          grep -Fq "can_structured_database_write" "$abilities"
+          grep -Fq "is_sensitive_database_column" "$abilities"
+          grep -Fq "START TRANSACTION" "$abilities"
+          grep -Fq "FOR UPDATE" "$abilities"
+          grep -Fq "mad4b_control_plane_dependency_protected" "$abilities"
+
+          grep -Fq "realpath" "$policy"
+          grep -Fq "mad4b_scp_read_capability" "$policy"
+          grep -Fq "'manage_options'" "$policy"
+          grep -Fq "mad4b_sensitive_path_denied" "$policy"
+          grep -Fq "wp-config" "$policy"
+          grep -Fq "mad4b_scp_allow_sensitive_file_access" "$policy"
+          grep -Fq "prepare_backup_root" "$policy"
+          grep -Fq "mad4b_backup_root_web_exposed" "$policy"
+          grep -Fq "mad4b_scp_allow_sensitive_database_read" "$policy"
+          grep -Fq "mad4b_scp_allow_sensitive_database_write" "$policy"
+
+          grep -Fq "prepare_backup_root" "$abilities"
+          grep -Fq "chmod( \$backup_path, 0600" "$abilities"
+          grep -Fq "fileperms( \$path ) & 0777" "$abilities"
+          if grep -Fq ".mad4b-backup-" "$abilities"; then
+            echo 'Adjacent webroot backup naming must not return.' >&2
+            exit 1
+          fi
+
+          grep -Fq "request_id" "$audit"
+          grep -Fq "previous_hash" "$audit"
+          grep -Fq "entry_hash" "$audit"
+          grep -Fq "verify_chain" "$audit"
+
+          grep -Fq "mad4b.mcp-transport-context.v3" "$transport_context"
+          grep -Fq "resolve_server_for_ability" "$transport_context"
+          grep -Fq "mad4b_transport_route_mismatch" "$transport_context"
+          grep -Fq "mad4b_write_authority_mount_missing" "$transport_context"
+          grep -Fq "MAD4B_SCP_Transport_Context::resolve_server_for_ability" "$authorization"
+          grep -Fq "const EXECUTION_BOUNDARY_CONTRACT" "$authorization"
+          grep -Fq "MAD4B_SCP_Approval_Tickets::authorize_exact" "$authorization"
+          grep -Fq "public static function claim_mutation" "$authorization"
+          grep -Fq "MAD4B_SCP_Approval_Tickets::claim_exact" "$authorization"
+          grep -Fq "MAD4B_SCP_Approval_Tickets::finalize_claim" "$authorization"
+          grep -Fq "public static function wrap_execution_boundary" "$authorization"
+          if sed -n '/public static function authorize_mutation/,/public static function claim_mutation/p' "$authorization" | grep -Fq "MAD4B_SCP_Approval_Tickets::consume_exact"; then
+            echo 'Permission preflight must never consume approval tickets.' >&2
+            exit 1
+          fi
+          grep -Fq "'transport_bound'" "$authorization"
+          grep -Fq "'mad4b-write'" "$servers"
+          grep -Fq "public static function write_tools" "$servers"
+          grep -Fq "'MAD4B Write MCP'" "$servers"
+          # Normal governed write schemas must stay out of ChatGPT tools/list.
+          # The full logical inventory remains on mad4b-write and is transported
+          # through the exact-target write dispatcher.
+          grep -Fq "public static function external_write_tools()" "$servers"
+          grep -Fq "public static function chatgpt_full_catalog_candidates()" "$servers"
+          grep -Fq "\$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), \$step_up )" "$servers"
+          grep -Fq "write_dispatch_transport_available" "$write_cert"
+          grep -Fq "direct_write_schemas_hidden_from_chatgpt" "$write_cert"
+
+          grep -Fq "mad4b.site-profile.v1" "$site_profile"
+          grep -Fq "MAD4B_SCP_Site_Profile::origin_enrolled" "$write_authority"
+          grep -Fq "MAD4B_SCP_Site_Profile::write_enabled" "$write_authority"
+          grep -Fq "mad4b.staging-write-candidate-binding.v2" "$candidate_binding"
+          grep -Fq "mad4b/staging-write-candidate-bind" "$candidate_binding"
+          grep -Fq "'surface' => 'enrollment'" "$candidate_binding"
+          grep -Fq "'binding_only' => true" "$candidate_binding"
+          grep -Fq "'grant_mutation_allowed' => false" "$candidate_binding"
+          grep -Fq "'subject_mutation_allowed' => false" "$candidate_binding"
+          grep -Fq "'agent_mutation_allowed' => false" "$candidate_binding"
+          grep -Fq "expected_grant_rows_fingerprint" "$candidate_binding"
+          grep -Fq "expected_package_manifest_digest" "$candidate_binding"
+          grep -Fq "expected_artifact_identity" "$candidate_binding"
+          grep -Fq "MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity" "$candidate_binding"
+          if grep -Fq "MAD4B_SCP_Staging_Write_Authority::reconcile(" "$candidate_binding"; then
+            echo 'Binding-only enrollment surface must never call full authority reconcile().' >&2
+            exit 1
+          fi
+          grep -Fq "mad4b/staging-write-candidate-bind" "$servers"
+          grep -Fq "mad4b/staging-write-candidate-binding-audit" "$servers"
+          grep -Fq "mad4b/staging-write-candidate-binding-noop" "$write_authority"
+          grep -Fq "mad4b/staging-write-candidate-binding-rollback" "$write_authority"
+          grep -Fq "stored_package_manifest_digest" "$write_authority"
+          grep -Fq "stored_artifact_identity" "$write_authority"
+          php "$root/tests/staging-write-candidate-binding-runtime.php"
+          python3 "$root/tests/staging-write-candidate-binding-audit-contract.py"
+          python3 "$root/tests/plugin-package-mcp-governance-contract.py"
+          python3 "$root/tests/chatgpt-refresh-compact-catalog-contract.py"
+          grep -Fq "all_remote_writes_require_exact_approval" "$write_authority"
+          grep -Fq "production_auto_enable" "$write_authority"
+          grep -Fq "breakglass_auto_enable" "$write_authority"
+          if grep -Fq "staging.egypttourgates.com" "$write_authority"; then
+            echo 'Governed write authority must be tenant-neutral; ETG origin literal detected.' >&2
+            exit 1
+          fi
+          grep -Fq "mad4b.write-runtime-certification.v3" "$write_cert"
+          grep -Fq "all_write_tools_exposed_on_same_plugin_transport" "$write_cert"
+          grep -Fq "mad4b.rest-compatibility.v2" "$rest_compat"
+          grep -Fq "'/wpml/v1/rest/status'" "$rest_compat"
+          grep -Fq "rest_do_request" "$rest_compat"
+          if grep -Fq "add_filter( 'rest_enabled'" "$rest_compat" || grep -Fq "add_filter( 'rest_authentication_errors'" "$rest_compat"; then
+            echo 'REST compatibility component must not globally change WordPress REST behavior.' >&2
+            exit 1
+          fi
+
+      - name: Verify default-server isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          registry="$root/includes/class-mad4b-scp-adapter-registry.php"
+          base="$root/includes/adapters/class-mad4b-scp-adapter-base.php"
+          grep -Fq "'mcp' => array( 'public' => false" "$base"
+          grep -Fq "'mcp' => array( 'public' => false" "$registry"
+          grep -Fq "default_server_exposure_leaks" "$registry"
+          grep -Fq "custom_server_isolation" "$registry"
+          if grep -RInF --include='*.php' "'mcp' => array( 'public' => true" "$root/includes" "$root/mad4b-site-control-plane.php"; then
+            echo 'MAD4B abilities must remain custom-server-only; default MCP exposure detected.' >&2
+            exit 1
+          fi
+
+      - name: Verify adapter mutation contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          base="$root/includes/adapters/class-mad4b-scp-adapter-base.php"
+          elementor="$root/includes/adapters/class-mad4b-scp-elementor-adapter.php"
+          jetengine="$root/includes/adapters/class-mad4b-scp-jetengine-adapter.php"
+          jetsmart="$root/includes/adapters/class-mad4b-scp-jetsmartfilters-adapter.php"
+          bitflows="$root/includes/adapters/class-mad4b-scp-bitflows-adapter.php"
+          media="$root/includes/adapters/class-mad4b-scp-media-adapter.php"
+          seo="$root/includes/adapters/class-mad4b-scp-seo-adapter.php"
+          woo="$root/includes/adapters/class-mad4b-scp-woocommerce-adapter.php"
+          polylang="$root/includes/adapters/class-mad4b-scp-polylang-adapter.php"
+
+          grep -Fq "anyOf" "$base"
+          grep -Fq "provider_certification" "$base"
+          grep -Fq "mutation_permission_callback" "$base"
+          grep -Fq "MAD4B_SCP_Authorization::authorize_mutation" "$base"
+
+          grep -Fq "elementor/manage-elements" "$elementor"
+          grep -Fq "expected_sha256" "$elementor"
+          grep -Fq "mad4b.rollback.elementor-widget-settings.v1" "$elementor"
+          grep -Fq "remove_settings" "$elementor"
+          grep -Fq "mad4b_elementor_widget_not_unique" "$elementor"
+          grep -Fq "mad4b_elementor_setting_policy_denied" "$elementor"
+          grep -Fq "mad4b_elementor_readback_mismatch" "$elementor"
+          grep -Fq "replace_widget_settings" "$elementor"
+
+          grep -Fq "mad4b_scp_allow_protected_meta_write" "$jetengine"
+          grep -Fq "mad4b_scp_allow_protected_meta_read" "$jetengine"
+          grep -Fq "mad4b_scp_allow_jetengine_meta_create" "$jetengine"
+          grep -Fq "mad4b_jetengine_create_policy_denied" "$jetengine"
+
+          grep -Fq "current_user_can( 'manage_options' )" "$jetsmart"
+          grep -Fq "does not create arbitrary filter internals" "$jetsmart"
+
+          grep -Fq "certified_provider_key" "$bitflows"
+          grep -Fq "return 'bit_pi'" "$bitflows"
+          grep -Fq "FlowExecutor" "$bitflows"
+          grep -Fq "FlowNode" "$bitflows"
+          grep -Fq "MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED" "$bitflows"
+          grep -Fq "expected_flow_sha256" "$bitflows"
+          grep -Fq "mad4b_bitflows_stale_flow" "$bitflows"
+          grep -Fq "Inactive flows cannot be run" "$bitflows"
+
+          grep -Fq "expected_sha256" "$media"
+          grep -Fq "expected_thumbnail_id" "$media"
+          grep -Fq "expected_sha256" "$seo"
+          grep -Fq "mad4b_seo_stale_meta" "$seo"
+          grep -Fq "wc_format_decimal" "$woo"
+          grep -Fq "expected_sha256" "$woo"
+          grep -Fq "mad4b_wc_stale_product" "$woo"
+          grep -Fq "expected_language" "$polylang"
+
+          grep -Fq "rank_math_title" "$seo"
+          grep -Fq "wc_get_product" "$woo"
+          grep -Fq "pll_set_post_language" "$polylang"
+          grep -Fq "Only this WordPress site can be purged" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
+
+      - name: Deny arbitrary command and PHP execution primitives
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          developer="$root/includes/class-mad4b-scp-developer-runtime.php"
+
+          # The default/control/content/admin runtime planes remain command-execution free.
+          # Contract tests intentionally contain forbidden primitive names as
+          # negative fixtures, so scan distributable/runtime PHP only.
+          if find "$root" -type f -name '*.php' \
+            ! -path "$root/tests/*" \
+            ! -path "$developer" -print0 \
+            | xargs -0 -r grep -nEH '\b(eval|assert|exec|shell_exec|system|passthru|popen|proc_open)\s*\('; then
+            echo 'Forbidden arbitrary execution primitive detected outside the isolated Developer Plane.' >&2
+            exit 1
+          fi
+
+          # The tests subtree is the only excluded PHP subtree and is packaging-excluded.
+          test -d "$root/tests"
+
+          # The Developer Plane gets one process primitive only. PHP eval() and
+          # shell helper primitives remain forbidden; wp eval is invoked as argv.
+          test -f "$developer"
+          grep -Fq "proc_open(" "$developer"
+          if grep -nE '\b(eval|assert|exec|shell_exec|system|passthru|popen)\s*\(' "$developer"; then
+            echo 'Developer Plane must use only proc_open with bounded argv execution.' >&2
+            exit 1
+          fi
+
+      - name: Verify isolated MCP surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          servers='wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+          for surface in mad4b-read mad4b-chatgpt mad4b-enrollment mad4b-content mad4b-write mad4b-admin mad4b-developer mad4b-developer-breakglass mad4b-breakglass; do
+            grep -Fq "'$surface'" "$servers"
+          done
+          grep -Fq "ability_names( 'read' )" "$servers"
+          grep -Fq "ability_names( 'content' )" "$servers"
+          grep -Fq "ability_names( 'admin' )" "$servers"
+          grep -Fq "array_key_exists( 'readonly', \$annotations )" "$servers"
+          grep -Fq "false !== \$annotations['readonly']" "$servers"
+          grep -Fq "'mad4b/database-raw-query' === \$ability_name" "$servers"

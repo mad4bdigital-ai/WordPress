@@ -1,0 +1,81 @@
+{
+  "contract": "mad4b.repository-runtime-components.v1",
+  "wordpress_core": {
+    "adapter_id": "wordpress-core",
+    "support_mode": "runtime_read",
+    "mutation_scope": "none",
+    "required_markers": [
+      "wp-admin/admin.php",
+      "wp-includes/version.php",
+      "wp-settings.php"
+    ]
+  },
+  "mu_plugins": {
+    "adapter_id": "mu-plugins",
+    "support_mode": "runtime_read",
+    "mutation_scope": "none_bootstrap_critical",
+    "repository_artifacts": [
+      "wp-content/mu-plugins.zip"
+    ]
+  },
+  "drop_ins": {
+    "adapter_id": "drop-ins",
+    "support_mode": "runtime_read",
+    "mutation_scope": "none_bootstrap_critical",
+    "recognized_files": [
+      "advanced-cache.php",
+      "db.php",
+      "db-error.php",
+      "install.php",
+      "maintenance.php",
+      "object-cache.php",
+      "php-error.php",
+      "fatal-error-handler.php",
+      "sunrise.php"
+    ],
+    "repository_artifacts": []
+  },
+  "themes": {
+    "adapter_id": "themes",
+    "support_mode": "runtime_read",
+    "mutation_scope": "none",
+    "repository_themes": [
+      "twentyten",
+      "twentyeleven",
+      "twentytwelve",
+      "twentythirteen",
+      "twentyfourteen",
+      "twentyfifteen",
+      "twentysixteen",
+      "twentyseventeen",
+      "twentynineteen",
+      "twentytwenty",
+      "twentytwentyone",
+      "twentytwentytwo",
+      "twentytwentythree",
+      "twentytwentyfour",
+      "twentytwentyfive"
+    ]
+  },
+  "specialized_themes": {
+    "astra": {
+      "adapter_id": "astra-theme",
+      "stylesheet": "astra",
+      "runtime_discovery": true,
+      "repository_presence_required": false,
+      "mutation_scope": "none"
+    },
+    "astra_child": {
+      "adapter_id": "astra-child-theme",
+      "parent_template": "astra",
+      "runtime_discovery": true,
+      "repository_presence_required": false,
+      "mutation_scope": "none"
+    }
+  },
+  "aggregate": {
+    "adapter_id": "runtime-components",
+    "support_mode": "runtime_read",
+    "mutation_scope": "none"
+  }
+}

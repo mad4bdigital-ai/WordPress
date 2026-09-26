@@ -1,0 +1,52 @@
+{
+  "contract": "mad4b.mcp-client-profile-catalog.v1",
+  "default_profile": "generic-mcp",
+  "authorization_model": "vendor-neutral-oauth-resource-server",
+  "profiles": [
+    {
+      "id": "openai-chatgpt",
+      "display_name": "OpenAI / ChatGPT",
+      "match_any": ["chatgpt", "openai"],
+      "transports": ["streamable_http"],
+      "authentication": ["oauth_discovery", "bearer_header"],
+      "registration_hint": "separate_oauth_client_recommended",
+      "authority_effect": "none"
+    },
+    {
+      "id": "anthropic-claude",
+      "display_name": "Anthropic / Claude",
+      "match_any": ["claude", "anthropic"],
+      "transports": ["streamable_http"],
+      "authentication": ["oauth_discovery", "bearer_header"],
+      "registration_hint": "separate_oauth_client_recommended",
+      "authority_effect": "none"
+    },
+    {
+      "id": "google-gemini",
+      "display_name": "Google / Gemini",
+      "match_any": ["gemini", "google"],
+      "transports": ["streamable_http"],
+      "authentication": ["oauth_discovery", "bearer_header"],
+      "registration_hint": "separate_oauth_client_recommended",
+      "authority_effect": "none"
+    },
+    {
+      "id": "manus",
+      "display_name": "Manus",
+      "match_any": ["manus"],
+      "transports": ["streamable_http"],
+      "authentication": ["oauth_discovery", "bearer_header"],
+      "registration_hint": "separate_oauth_client_recommended",
+      "authority_effect": "none"
+    },
+    {
+      "id": "generic-mcp",
+      "display_name": "Generic standards-compliant MCP client",
+      "match_any": [],
+      "transports": ["streamable_http"],
+      "authentication": ["oauth_discovery", "bearer_header"],
+      "registration_hint": "authorization_server_policy",
+      "authority_effect": "none"
+    }
+  ]
+}

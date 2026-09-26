@@ -1,0 +1,61 @@
+{
+  "contract": "mad4b.operating-model-contracts.v1",
+  "site_neutral": true,
+  "semantic_identity": {"contract": "mad4b.semantic-identity.v1", "role_pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "physical_identity_usage": "optimistic_locking_only"},
+  "ownership_model": {
+    "contract": "mad4b.ownership-model.v1",
+    "owners": ["canonical", "language", "locale", "design_system", "application_contract", "provider_runtime", "site_profile"],
+    "properties": {"structure":"canonical","dynamic_binding":"canonical","provider_binding":"canonical","static_text":"language","translated_content":"language","translated_media":"language","locale_alignment":"locale","design_tokens":"design_system","result_source":"application_contract","seo_canonical":"provider_runtime"}
+  },
+  "state_model": {"contract":"mad4b.desired-observed-state.v1","stages":["DESIRED_STATE","OBSERVED_STATE","SEMANTIC_DIFF","OPERATION_PLAN","AUTHORITY","EXECUTION","VERIFIED_STATE"]},
+  "operation_plan": {"contract":"mad4b.operation-plan.v1","approval_binding":"exact_plan_sha256_and_target_fingerprints","immutable_after_approval":true,"max_operations":100},
+  "evidence_graph": {
+    "contract":"mad4b.evidence-dependency-graph.v1",
+    "nodes":{
+      "runtime_identity":[],
+      "semantic_acceptance":["runtime_identity"],
+      "template_parity":["runtime_identity"],
+      "translation_readiness":["runtime_identity"],
+      "seo_provider_readiness":["runtime_identity"],
+      "content_readiness":["semantic_acceptance"],
+      "result_count_parity":["semantic_acceptance"],
+      "browser_acceptance":["runtime_identity","semantic_acceptance","template_parity"],
+      "performance":["browser_acceptance"],
+      "rate_limit":["runtime_identity"],
+      "rollback_readiness":["runtime_identity"],
+      "seo_publication":["browser_acceptance","translation_readiness","seo_provider_readiness","result_count_parity","content_readiness"],
+      "production_activation":["seo_publication","performance","rate_limit","rollback_readiness"]
+    }
+  },
+  "candidate_state_machine": {
+    "contract":"mad4b.candidate-state-machine.v1",
+    "states":["UNBOUND","CANDIDATE_VERIFIED","BINDING_BOOTSTRAP_ALLOWED","BOUND","WRITE_RUNTIME_READY"],
+    "transitions":[
+      {"from":"UNBOUND","to":"CANDIDATE_VERIFIED","requires":["candidate_verified"]},
+      {"from":"CANDIDATE_VERIFIED","to":"BINDING_BOOTSTRAP_ALLOWED","requires":["bootstrap_preconditions_met"]},
+      {"from":"BINDING_BOOTSTRAP_ALLOWED","to":"BOUND","requires":["candidate_bound"]},
+      {"from":"BOUND","to":"WRITE_RUNTIME_READY","requires":["write_runtime_ready"]}
+    ]
+  },
+  "invariants":[
+    {"id":"production_write_requires_exact_candidate_binding","when_all":{"production_write_authority":true},"require_all":{"production_candidate_exact_bound":true}},
+    {"id":"translation_publish_requires_structural_roles","when_all":{"translation_publish_requested":true},"require_all":{"required_structural_roles_present":true}},
+    {"id":"workflow_provider_cannot_bypass_mad4b_authority","when_all":{"workflow_provider_mutation_requested":true},"require_all":{"mad4b_capability_authorized":true}},
+    {"id":"unknown_capability_is_unavailable","when_all":{"provider_capability_requested":true},"require_all":{"provider_capability_known":true}},
+    {"id":"skills_cannot_be_mutation_authority","when_all":{"skill_direct_mutation_requested":true},"require_all":{"skill_direct_mutation_requested":false}}
+  ],
+  "workflow_compiler":{"contract":"mad4b.workflow-compiler.v1","source_of_truth":"mad4b.operation-plan.v1","mutation_executor":"mad4b_capability","workflow_provider_role":"mechanics_only","provider_mechanics":["delay","route","retry","wait","schedule","notify","integration","webhook"]},
+  "site_feature_bundle":{"contract":"mad4b.site-feature-bundle.v1","configuration_only":true,"allowed_sections":["site","features","templates","translation","seo","browser","workflow","semantic_bindings","contracts"]},
+  "workflow_provider_bridge":{
+    "contract":"mad4b.workflow-provider-bridge.v1","provider":"bitflows","state":"blocked_pending_public_provider_contract","source_of_truth":"mad4b.operation-plan.v1",
+    "preferred_public_surfaces":["webhook","http_api","wordpress_hooks","custom_app"],"direct_provider_database_writes":"forbidden","caller_supplied_credentials":"forbidden","production_authority":"forbidden",
+    "planned_triggers":["candidate_ready","evidence_changed","approval_granted"],"planned_actions":["request_plan","run_capability","verify_evidence","wait_for_gate","publish_workflow_receipt"]
+  },
+  "coverage_boundaries":{
+    "generic_browser_assertion_expression_dsl":{"state":"partial","reason":"generic browser plan/result schemas exist but no provider-neutral assertion-expression DSL is execution authority"},
+    "persistent_universal_evidence_graph_store_query_api":{"state":"partial","reason":"dependency and invalidation planning exist but evidence remains distributed across governed receipts and stores"},
+    "universal_ownership_driven_reconciliation_engine":{"state":"partial","reason":"ownership and semantic identity contracts exist but not every provider reconciler consumes them automatically"},
+    "bitflows_addon_bridge_activation":{"state":"contracted_not_activated","reason":"activation requires a provider-public contract and exact-runtime behavioral certification; internal classes or database schema are not substitutes"}
+  }
+
+}

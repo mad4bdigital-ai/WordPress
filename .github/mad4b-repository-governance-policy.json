@@ -1,0 +1,61 @@
+{
+  "contract": "mad4b.repository-governance-policy.v1",
+  "target_branch": "master",
+  "target_ref": "refs/heads/master",
+  "required_repository_ruleset_name": "MAD4B master release governance",
+  "required_ruleset_enforcement": "active",
+  "require_no_bypass_actors": true,
+  "required_rule_types": [
+    "deletion",
+    "non_fast_forward",
+    "pull_request",
+    "required_status_checks"
+  ],
+  "pull_request": {
+    "required_approving_review_count": 0,
+    "dismiss_stale_reviews_on_push": false,
+    "require_code_owner_review": false,
+    "require_last_push_approval": false,
+    "required_review_thread_resolution": true,
+    "required_reviewers": [],
+    "allowed_merge_methods": [
+      "merge"
+    ],
+    "require_extra_approval_for_unattributed_changes_readback": true
+  },
+  "required_status_checks": {
+    "contexts": [
+      {
+        "context": "Repository release verdict",
+        "integration_id": 15368
+      },
+      {
+        "context": "Repository feature boundary",
+        "integration_id": 15368
+      }
+    ],
+    "strict_required_status_checks_policy": true
+  },
+  "ruleset_attestation": {
+    "scope": "owner_issue_comment",
+    "issue_title": "MAD4B Repository Governance Attestations",
+    "authorized_author_login": "mad4bdigital-ai",
+    "comment_marker": "MAD4B_RULESET_ATTESTATION",
+    "contract": "mad4b.repository-ruleset-attestation.v1",
+    "require_zero_bypass_actors": true,
+    "bind_ruleset_updated_at": true,
+    "bind_policy_sha256": true,
+    "bind_template_sha256": true
+  },
+  "single_owner_safety": {
+    "external_review_count_required": 0,
+    "last_pusher_may_complete_owner_attestation_outside_github_review": true,
+    "owner_attestation_remains_exact_sha_scoped": true,
+    "authorized_owner_logins": [
+      "mad4bdigital-ai"
+    ],
+    "attestation_command": "OWNER_ATTEST_SINGLE_OWNER",
+    "attestation_stale_on_descendant": true,
+    "required_by_repository_release_verdict": true
+  }
+}

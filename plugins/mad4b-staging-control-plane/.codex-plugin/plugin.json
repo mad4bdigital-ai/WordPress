@@ -1,0 +1,26 @@
+{
+  "name": "mad4b-staging-control-plane",
+  "version": "0.1.0",
+  "description": "Read-first governed MCP access to the MAD4B WordPress Staging control plane.",
+  "author": {
+    "name": "MAD4B",
+    "url": "https://github.com/mad4bdigital-ai/WordPress"
+  },
+  "repository": "https://github.com/mad4bdigital-ai/WordPress",
+  "license": "GPL-2.0-or-later",
+  "keywords": ["wordpress", "mcp", "staging", "governance"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "MAD4B Staging Control Plane",
+    "shortDescription": "Governed read-first WordPress Staging MCP",
+    "longDescription": "Connect ChatGPT or Codex to the isolated MAD4B WordPress Staging MCP surface. The packaged workflow verifies Staging identity before use and keeps write, admin, and breakglass authority outside the initial connection.",
+    "developerName": "MAD4B",
+    "category": "Productivity",
+    "capabilities": ["Read"],
+    "websiteURL": "https://github.com/mad4bdigital-ai/WordPress",
+    "defaultPrompt": [
+      "Verify the MAD4B Staging environment and summarize its read-only runtime readiness.",
+      "Inspect the MAD4B Staging MCP connection without enabling mutation."
+    ]
+  }
+}
