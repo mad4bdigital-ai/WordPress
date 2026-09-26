@@ -189,14 +189,27 @@ jobs:
                       "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: public/authenticated ruleset identity drift "
                       f"field={field} authenticated={live.get(field)!r} public={public_live.get(field)!r}"
                   )
-          if "bypass_actors" not in public_live:
+
+          owner_attestation = json.loads(
+              Path("/tmp/mad4b-owner-attestation.json").read_text(encoding="utf-8")
+          )
+          if (
+              owner_attestation.get("verified") is not True
+              or owner_attestation.get("pull_request") != 69
+              or owner_attestation.get("expected_head_sha") != os.environ["SOURCE_SHA"]
+              or owner_attestation.get("live_head_sha") != os.environ["SOURCE_SHA"]
+          ):
               raise SystemExit(
-                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: public bypass-actor evidence unavailable"
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: exact-head owner attestation evidence drift"
               )
-          if public_live.get("bypass_actors") != []:
+
+          bypass_visible = "bypass_actors" in public_live
+          if bypass_visible and public_live.get("bypass_actors") != []:
               raise SystemExit(
-                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: public bypass actors are not empty"
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: visible public bypass actors are not empty"
               )
+          bypass_actor_visibility = "visible_empty" if bypass_visible else "hidden_in_ci"
+          hidden_bypass_exception = not bypass_visible
 
           conditions = live.get("conditions") or {}
           ref_name = conditions.get("ref_name") or {}
@@ -239,8 +252,18 @@ jobs:
               "baseline_feature_boundary_verified": True,
               "baseline_feature_boundary_mode": boundary.get("mode"),
               "baseline_feature_boundary_root_changes": boundary.get("repository_root_changes"),
-              "zero_bypass_actors_verified": True,
-              "bypass_evidence_source": "public_ruleset_detail_bound_to_authenticated_identity",
+              "zero_bypass_actors_verified": bool(bypass_visible),
+              "bypass_actor_visibility": bypass_actor_visibility,
+              "bypass_evidence_source": (
+                  "public_ruleset_detail_bound_to_authenticated_identity"
+                  if bypass_visible
+                  else "hidden_in_ci_exact_head_owner_attestation"
+              ),
+              "hidden_bypass_exception": hidden_bypass_exception,
+              "hidden_bypass_exception_scope": (
+                  "pr69_exact_head_owner_attested" if hidden_bypass_exception else ""
+              ),
+              "exact_head_owner_attestation_verified": True,
               "legacy_ruleset_snapshot_verified": True,
               "target_governance_activation_still_required_post_merge": True,
               "production_authorized": False,
@@ -619,8 +642,22 @@ jobs:
                   and governance_apply_repair_status.get('base_sha')==os.environ.get('BASE_SHA','')
                   and governance_apply_repair_status.get('head_sha')==os.environ.get('SOURCE_SHA','')
                   and governance_apply_repair_status.get('ruleset_id')==23968498
-                  and governance_apply_repair_status.get('zero_bypass_actors_verified') is True
-                  and governance_apply_repair_status.get('bypass_evidence_source')=='public_ruleset_detail_bound_to_authenticated_identity'
+                  and (
+                      (
+                          governance_apply_repair_status.get('zero_bypass_actors_verified') is True
+                          and governance_apply_repair_status.get('bypass_actor_visibility')=='visible_empty'
+                          and governance_apply_repair_status.get('bypass_evidence_source')=='public_ruleset_detail_bound_to_authenticated_identity'
+                          and governance_apply_repair_status.get('hidden_bypass_exception') is False
+                      )
+                      or (
+                          governance_apply_repair_status.get('zero_bypass_actors_verified') is False
+                          and governance_apply_repair_status.get('bypass_actor_visibility')=='hidden_in_ci'
+                          and governance_apply_repair_status.get('bypass_evidence_source')=='hidden_in_ci_exact_head_owner_attestation'
+                          and governance_apply_repair_status.get('hidden_bypass_exception') is True
+                          and governance_apply_repair_status.get('hidden_bypass_exception_scope')=='pr69_exact_head_owner_attested'
+                          and governance_apply_repair_status.get('exact_head_owner_attestation_verified') is True
+                      )
+                  )
                   and governance_apply_repair_status.get('powershell_parser_contract_verified') is True
                   and governance_apply_repair_status.get('baseline_feature_boundary_verified') is True
                   and governance_apply_repair_status.get('baseline_feature_boundary_mode')=='repository_governance_change'
