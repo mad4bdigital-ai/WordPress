@@ -116,6 +116,16 @@ def main() -> int:
         if prov.get("archive_format_contract") != "mad4b.deterministic-zip.v1":
             raise AssertionError("deterministic archive format contract missing")
 
+        expected_artifact_identity = f"mad4b-site-control-plane-{VERSION}-{SOURCE}"
+        if prov.get("artifact_identity") != expected_artifact_identity:
+            raise AssertionError(
+                "canonical artifact identity must bind version and exact source SHA"
+            )
+        if prov.get("canonical_archive_identity") != expected_artifact_identity:
+            raise AssertionError(
+                "canonical archive identity must match the package artifact identity"
+            )
+
         if prov.get("archive_compression") != "stored":
             raise AssertionError("canonical archive must avoid compressor-version drift")
         if data_a["receipt"].get("archive_compression") != "stored":
