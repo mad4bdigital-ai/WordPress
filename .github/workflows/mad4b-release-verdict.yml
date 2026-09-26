@@ -76,6 +76,35 @@ jobs:
             "repos/$GITHUB_REPOSITORY/rulesets/23968498?includes_parents=true" \
             > /tmp/mad4b-governance-repair-live-ruleset.json
 
+          # GITHUB_TOKEN may omit bypass_actors because Actions tokens do not expose
+          # repository Administration read permission. Resolve that one field from
+          # the public repository-ruleset detail, then bind it back to the exact
+          # authenticated ruleset identity and updated_at before trusting it.
+          python3 - <<'PY'
+          import json, os, urllib.request
+          from pathlib import Path
+
+          url = (
+              "https://api.github.com/repos/"
+              + os.environ["GITHUB_REPOSITORY"]
+              + "/rulesets/23968498?includes_parents=true"
+          )
+          req = urllib.request.Request(
+              url,
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "User-Agent": "mad4b-governance-repair-bootstrap",
+                  "X-GitHub-Api-Version": "2026-03-10",
+              },
+          )
+          with urllib.request.urlopen(req, timeout=20) as response:
+              public_live = json.loads(response.read().decode("utf-8"))
+          Path("/tmp/mad4b-governance-repair-public-ruleset.json").write_text(
+              json.dumps(public_live, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
           # Re-run the executable parser/tool contract in this merge-gate path.
           python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py
 
@@ -141,6 +170,9 @@ jobs:
           live = json.loads(
               Path("/tmp/mad4b-governance-repair-live-ruleset.json").read_text(encoding="utf-8")
           )
+          public_live = json.loads(
+              Path("/tmp/mad4b-governance-repair-public-ruleset.json").read_text(encoding="utf-8")
+          )
           if int(live.get("id") or 0) != 23968498:
               raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset id drift")
           if live.get("name") != "MAD4B master release governance":
@@ -149,8 +181,22 @@ jobs:
               raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset state drift")
           if live.get("source_type") != "Repository" or live.get("source") != os.environ["GITHUB_REPOSITORY"]:
               raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset ownership drift")
-          if live.get("bypass_actors") != []:
-              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: bypass actors are not empty")
+
+          for field in ("id", "name", "target", "source_type", "source", "enforcement", "updated_at"):
+              if public_live.get(field) != live.get(field):
+                  raise SystemExit(
+                      "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: public/authenticated ruleset identity drift "
+                      f"field={field} authenticated={live.get(field)!r} public={public_live.get(field)!r}"
+                  )
+          if "bypass_actors" not in public_live:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: public bypass-actor evidence unavailable"
+              )
+          if public_live.get("bypass_actors") != []:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: public bypass actors are not empty"
+              )
+
           conditions = live.get("conditions") or {}
           ref_name = conditions.get("ref_name") or {}
           if ref_name.get("include") != ["refs/heads/master"] or ref_name.get("exclude") != []:
@@ -193,6 +239,7 @@ jobs:
               "baseline_feature_boundary_mode": boundary.get("mode"),
               "baseline_feature_boundary_root_changes": boundary.get("repository_root_changes"),
               "zero_bypass_actors_verified": True,
+              "bypass_evidence_source": "public_ruleset_detail_bound_to_authenticated_identity",
               "legacy_ruleset_snapshot_verified": True,
               "target_governance_activation_still_required_post_merge": True,
               "production_authorized": False,
@@ -571,6 +618,7 @@ jobs:
                   and governance_apply_repair_status.get('head_sha')==os.environ.get('SOURCE_SHA','')
                   and governance_apply_repair_status.get('ruleset_id')==23968498
                   and governance_apply_repair_status.get('zero_bypass_actors_verified') is True
+                  and governance_apply_repair_status.get('bypass_evidence_source')=='public_ruleset_detail_bound_to_authenticated_identity'
                   and governance_apply_repair_status.get('powershell_parser_contract_verified') is True
                   and governance_apply_repair_status.get('baseline_feature_boundary_verified') is True
                   and governance_apply_repair_status.get('baseline_feature_boundary_mode')=='repository_governance_change'
@@ -873,6 +921,7 @@ jobs:
             MAD4B-RELEASE-VERDICT.json
             /tmp/mad4b-governance-apply-repair-bootstrap.json
             /tmp/mad4b-governance-repair-boundary.json
+            /tmp/mad4b-governance-repair-public-ruleset.json
           if-no-files-found: error
           retention-days: 30
 
