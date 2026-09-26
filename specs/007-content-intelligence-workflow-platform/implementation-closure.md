@@ -9,7 +9,7 @@ It does not redefine the existing contracts. It orders them into one executable 
 ## Baseline
 
 - target branch: `master`
-- reviewed repository parent: `d9ea10b6be8c35aaf4dba6f0c4f3c576164c9291`
+- reviewed repository parent: `07d7f3953a8786a5f13d8131b4643ad9347c3e61`
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false
@@ -189,3 +189,10 @@ The bulk lane closes the remaining review findings without widening the architec
 - one complete live request-to-rollback vertical slice.
 
 Repository CI proves contracts and denial behavior only. Live ETG gates still require fresh exact-runtime evidence; documentation cannot close them. Production authorization remains false.
+
+
+## Host deployment closure update
+
+Repository implementation now includes the bounded `wordpress_plugin_deploy` Host Bridge → Host Runner semantic operation. It accepts exact package identity only, consumes a pre-staged General Distribution bundle from the fixed runner zone, verifies manifest/receipt/provenance/archive inventory, backs up the current Control Plane, performs an atomic plugin-directory swap, verifies the installed exact package in the same cycle, and rolls back on failed readback.
+
+This closes the repository-side alternative to manual hosting-terminal deployment. Live ETG remains **PARTIAL** until the one-time first bootstrap installs a runtime containing this Host Bridge/Runner capability through an already-authorized external deployment connector; after that bootstrap, subsequent Control Plane deployments can use the governed semantic path directly.

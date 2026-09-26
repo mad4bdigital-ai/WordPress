@@ -165,12 +165,25 @@
         "cross_executor_read_authority_parity": true,
         "cross_executor_authority_class": "read_only_non_authorizing",
         "host_bridge_reversible_write_repository_proven": true,
-        "host_bridge_write_requires_exact_authorization": true
+        "host_bridge_write_requires_exact_authorization": true,
+        "wordpress_plugin_deploy_operation": "wordpress_plugin_deploy",
+        "wordpress_plugin_deploy_plan_contract": "mad4b.host-runner-wordpress-plugin-deploy-plan.v1",
+        "wordpress_plugin_deploy_repository_implementation_present": true,
+        "wordpress_plugin_deploy_exact_bundle_verification": true,
+        "wordpress_plugin_deploy_atomic_replace": true,
+        "wordpress_plugin_deploy_same_cycle_readback": true,
+        "wordpress_plugin_deploy_rollback_on_failure": true,
+        "wordpress_plugin_deploy_generic_shell": false,
+        "wordpress_plugin_deploy_caller_path_or_url": false,
+        "wordpress_plugin_deploy_production_authorized": false,
+        "wordpress_plugin_deploy_kernel_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "wordpress_plugin_deploy_bridge_contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py"
       },
       "remainder": [
         "certify bounded Host Runner bootstrap/enrollment on an actual supported ETG Staging hosting channel",
         "prove live MCP/WP-CLI/Host Runner authority parity on the exact deployed candidate, including one governed reversible write",
-        "prove live ETG Host Runner canary, protected storage, and repair/requeue behavior"
+        "prove live ETG Host Runner canary, protected storage, and repair/requeue behavior",
+        "execute the one-time first bootstrap of the Host Bridge/Runner-capable candidate through an already-authorized external deployment connector on ETG Staging"
       ]
     },
     {
@@ -1054,7 +1067,7 @@
   "repository_baseline": {
     "contract": "mad4b.reviewed-repository-parent.v1",
     "branch": "master",
-    "last_reviewed_parent_sha": "d9ea10b6be8c35aaf4dba6f0c4f3c576164c9291",
+    "last_reviewed_parent_sha": "07d7f3953a8786a5f13d8131b4643ad9347c3e61",
     "current_head_is_external_evidence": true,
     "self_referential_current_head_forbidden": true
   },

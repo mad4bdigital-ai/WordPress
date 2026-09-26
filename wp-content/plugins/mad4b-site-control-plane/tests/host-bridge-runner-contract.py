@@ -8,6 +8,7 @@ import importlib.util
 import json
 import tempfile
 import uuid
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -23,13 +24,168 @@ def load(name: str, path: Path):
 
 runner = load("mad4b_host_runner", ROOT / "tools/mad4b_host_runner.py")
 
+def seed_plugin(root, source, build, manifest, version, marker):
+    (root / "includes").mkdir(parents=True, exist_ok=True)
+    files = {
+        "mad4b-site-control-plane.php": f"<?php // {marker}\n".encode(),
+        "includes/health.php": f"<?php return '{marker}';\n".encode(),
+    }
+    for rel, raw in files.items():
+        target = root / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(raw)
+    package_files = [
+        {"path": rel, "bytes": len(raw), "sha256": runner.sha256_bytes(raw)}
+        for rel, raw in sorted(files.items())
+    ]
+    provenance = {
+        "contract": "mad4b.build-provenance.v1",
+        "source_commit_sha": source,
+        "build_fingerprint": build,
+        "package_manifest_digest": manifest,
+        "control_plane_version": version,
+        "package_files": package_files,
+    }
+    (root / "MAD4B-BUILD-PROVENANCE.json").write_text(
+        json.dumps(provenance, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return provenance, files
+
+
+def stage_bundle(profile, source, build, manifest, version, marker):
+    staging = Path(profile["package_staging_root"])
+    staging.mkdir(parents=True, exist_ok=True)
+    bundle = staging / source
+    bundle.mkdir()
+    plugin_tmp = bundle / "_fixture"
+    plugin_tmp.mkdir()
+    provenance, files = seed_plugin(plugin_tmp, source, build, manifest, version, marker)
+    archive_name = f"mad4b-site-control-plane-{version}.zip"
+    archive = bundle / archive_name
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as zf:
+        for rel, raw in sorted(files.items()):
+            zf.writestr(f"{runner.PLUGIN_SLUG}/{rel}", raw)
+        zf.writestr(
+            f"{runner.PLUGIN_SLUG}/MAD4B-BUILD-PROVENANCE.json",
+            (json.dumps(provenance, sort_keys=True, indent=2) + "\n").encode(),
+        )
+    import shutil
+    shutil.rmtree(plugin_tmp)
+    archive_sha = runner.sha256_file(archive)
+    receipt = {
+        "contract": "mad4b.deterministic-control-plane-package.v1",
+        "source_commit_sha": source,
+        "build_fingerprint": build,
+        "package_manifest_digest": manifest,
+        "archive_sha256": archive_sha,
+        "control_plane_version": version,
+    }
+    receipt_path = bundle / "CANONICAL-PACKAGE-RECEIPT.json"
+    receipt_path.write_text(json.dumps(receipt, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    install = {
+        "contract": "mad4b.site-control-plane.general-distribution-kit.v1",
+        "repository": "mad4bdigital-ai/WordPress",
+        "commit": source,
+        "build_fingerprint": build,
+        "package_manifest_digest": manifest,
+        "control_plane": {
+            "version": version,
+            "archive": archive_name,
+            "sha256": archive_sha,
+            "provenance_contract": "mad4b.build-provenance.v1",
+        },
+        "canonical_package": {
+            "contract": "mad4b.deterministic-control-plane-package.v1",
+            "archive_sha256": archive_sha,
+            "receipt_sha256": runner.sha256_file(receipt_path),
+        },
+    }
+    (bundle / "install-manifest.json").write_text(
+        json.dumps(install, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (bundle / "BUILD-FINGERPRINT.txt").write_text(build + "\n", encoding="utf-8")
+    (bundle / "PACKAGE-MANIFEST-DIGEST.txt").write_text(manifest + "\n", encoding="utf-8")
+    return {
+        "source_commit_sha": source,
+        "build_fingerprint": build,
+        "package_manifest_digest": manifest,
+        "archive_sha256": archive_sha,
+        "control_plane_version": version,
+        "artifact_identity": f"mad4b-site-control-plane-general-distribution-kit-{source}",
+    }
+
+
+def deploy_plan(profile, current, candidate):
+    plan = {
+        "contract": runner.PLUGIN_DEPLOY_PLAN_CONTRACT,
+        "operation_id": "wordpress_plugin_deploy",
+        "operation_version": 1,
+        "runner_profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "plugin_slug": runner.PLUGIN_SLUG,
+        "bundle_key": candidate["source_commit_sha"],
+        "current": runner._control_plane_identity(current),
+        "candidate": candidate,
+        "active_runtime_observed": True,
+        "backup_before_replace": True,
+        "atomic_replace_required": True,
+        "same_cycle_file_readback_required": True,
+        "rollback_on_failed_readback": True,
+        "caller_supplied_path_allowed": False,
+        "caller_supplied_url_allowed": False,
+        "caller_supplied_credentials_allowed": False,
+        "production_authorized": False,
+        "reason": "Host Bridge exact plugin deploy parity fixture",
+    }
+    plan["plan_sha256"] = runner.plan_digest(plan)
+    return plan
+
+
+def plugin_rollback_plan(profile, deploy_receipt, bridge_receipt_path):
+    result = deploy_receipt["result"]
+    plan = {
+        "contract": runner.PLUGIN_ROLLBACK_PLAN_CONTRACT,
+        "operation_id": "wordpress_plugin_rollback",
+        "operation_version": runner.OPERATIONS["wordpress_plugin_rollback"]["version"],
+        "runner_profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "plugin_slug": runner.PLUGIN_SLUG,
+        "source_job_id": deploy_receipt["job_id"],
+        "source_bridge_receipt_sha256": runner.sha256_file(bridge_receipt_path),
+        "expected_current": {
+            "source_commit_sha": result["source_commit_sha"],
+            "build_fingerprint": result["build_fingerprint"],
+            "package_manifest_digest": result["package_manifest_digest"],
+        },
+        "restore": dict(result["previous_identity"]),
+        "expected_current_sha256": result["after_sha256"],
+        "restore_sha256": result["before_sha256"],
+        "caller_supplied_path_allowed": False,
+        "caller_supplied_url_allowed": False,
+        "caller_supplied_credentials_allowed": False,
+        "production_authorized": False,
+        "reason": "Host Bridge fresh acceptance rollback parity fixture",
+    }
+    plan["plan_sha256"] = runner.plan_digest(plan)
+    return plan
+
+
 with tempfile.TemporaryDirectory() as td:
     tmp = Path(td)
     wp = tmp / "wordpress"
     plugin = wp / "wp-content" / "plugins" / "mad4b-site-control-plane"
     plugin.mkdir(parents=True)
     (wp / "wp-config.php").write_text("<?php // bridge-runner fixture\n", encoding="utf-8")
-    (plugin / "mad4b-site-control-plane.php").write_text("<?php // fixture\n", encoding="utf-8")
+    current_source = "a" * 40
+    current_build = "b" * 64
+    current_manifest = "c" * 64
+    seed_plugin(plugin, current_source, current_build, current_manifest, "0.4.0-rc.58", "bridge-current")
 
     key = tmp / "runner.key"
     key.write_bytes(b"k" * 64)
@@ -44,7 +200,7 @@ with tempfile.TemporaryDirectory() as td:
         "integrity_key_file": str(key),
         "expected_runner_sha256": runner.sha256_file(Path(runner.__file__).resolve()),
         "receipt_root": str(wp / "wp-content" / "mad4b-runner" / "receipts"),
-        "allowed_operations": ["runtime.status.read", "workspace.file.replace"],
+        "allowed_operations": ["runtime.status.read", "workspace.file.replace", "wordpress_plugin_deploy", "wordpress_plugin_rollback"],
     }), encoding="utf-8")
     profile = runner.load_profile(profile_path)
     bridge = Path(profile["bridge_root"])
@@ -195,6 +351,171 @@ with tempfile.TemporaryDirectory() as td:
     assert write_receipt["execution_location"] == "host_runner"
     assert write_receipt["commit_location"] == "host_runner"
     assert (Path(profile["runner_workspace"]) / "bridge-write.txt").read_bytes() == workspace_payload
+
+    # Exact Control Plane package deployment traverses the same WordPress
+    # Host Bridge envelope, approval evidence, signed local job, Host Runner
+    # package verifier, atomic swap and durable bridge receipt.
+    candidate = stage_bundle(
+        profile,
+        "d" * 40,
+        "e" * 64,
+        "f" * 64,
+        "0.4.0-rc.59",
+        "bridge-candidate",
+    )
+    execution_plan = deploy_plan(
+        profile,
+        {
+            "source_commit_sha": current_source,
+            "build_fingerprint": current_build,
+            "package_manifest_digest": current_manifest,
+        },
+        candidate,
+    )
+    deploy_outer = {
+        "contract": "mad4b.host-operation-plan.v1",
+        "operation_id": "wordpress_plugin_deploy",
+        "operation_version": runner.OPERATIONS["wordpress_plugin_deploy"]["version"],
+        "risk": runner.OPERATIONS["wordpress_plugin_deploy"]["risk"],
+        "approval_required": True,
+        "runner_profile_id": profile["profile_id"],
+        "target": {
+            "site_uuid": site_uuid,
+            "environment": "staging",
+            "wordpress_root": str(wp.resolve()),
+            "target_fingerprint": profile["target_fingerprint"],
+        },
+        "arguments": {"plan": execution_plan},
+        "submission_location": "wordpress_request",
+        "execution_location": "host_runner",
+        "commit_location": "host_runner",
+        "production_authorized": False,
+        "created_at": "2026-09-25T00:00:45+00:00",
+        "authorizing": False,
+        "mutation_performed": False,
+    }
+    deploy_outer["plan_sha256"] = runner._bridge_digest(deploy_outer)
+    deploy_id = str(uuid.uuid4())
+    deploy_submission = {
+        "contract": "mad4b.host-bridge-submission.v1",
+        "job_id": deploy_id,
+        "idempotency_key": "bridge-ci-plugin-deploy-1",
+        "plan": deploy_outer,
+        "plan_sha256": deploy_outer["plan_sha256"],
+        "approval_ref": "approval:bridge-ci-plugin-deploy",
+        "authority": {
+            "policy_decision_sha256": "c" * 64,
+            "agent_public_id": "agent:bridge-ci-plugin-deploy",
+            "approval_ticket_id": "ticket:bridge-ci-plugin-deploy",
+        },
+        "submission_location": "wordpress_request",
+        "execution_location": "host_runner",
+        "commit_location": "host_runner",
+        "created_at": deploy_outer["created_at"],
+        "production_authorized": False,
+    }
+    deploy_submission["submission_sha256"] = runner._bridge_digest(deploy_submission)
+    (bridge / "queued" / f"{deploy_id}.json").write_text(
+        json.dumps(deploy_submission, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    result = runner.consume_bridge_spool(profile_path, 10)
+    assert result["processed_count"] == 1, result
+    assert result["processed"][0]["state"] == "SUCCEEDED", result
+    deploy_receipt = json.loads(
+        (bridge / "receipts" / f"{deploy_id}.json").read_text(encoding="utf-8")
+    )
+    assert deploy_receipt["operation_id"] == "wordpress_plugin_deploy"
+    assert deploy_receipt["bridge_submission_sha256"] == deploy_submission["submission_sha256"]
+    assert deploy_receipt["approval_ref"] == "approval:bridge-ci-plugin-deploy"
+    assert deploy_receipt["authority_ref"] == "c" * 64
+    assert deploy_receipt["mutation_performed"] is True
+    assert deploy_receipt["readback_verdict"] == "PASS"
+    assert deploy_receipt["result"]["source_commit_sha"] == candidate["source_commit_sha"]
+    live_identity = runner._installed_control_plane_identity(plugin)
+    assert live_identity["source_commit_sha"] == candidate["source_commit_sha"]
+    deploy_replay = runner.run_job(
+        profile_path,
+        Path(profile["bridge_job_root"]) / f"{deploy_id}.json",
+    )
+    assert deploy_replay["replayed"] is True
+    assert deploy_replay["replay_readback_verdict"] == "PASS"
+
+    # Fresh-request acceptance rollback traverses the same governed bridge.
+    deploy_bridge_receipt_path = bridge / "receipts" / f"{deploy_id}.json"
+    rollback_execution_plan = plugin_rollback_plan(
+        profile,
+        deploy_receipt,
+        deploy_bridge_receipt_path,
+    )
+    rollback_outer = {
+        "contract": "mad4b.host-operation-plan.v1",
+        "operation_id": "wordpress_plugin_rollback",
+        "operation_version": runner.OPERATIONS["wordpress_plugin_rollback"]["version"],
+        "risk": runner.OPERATIONS["wordpress_plugin_rollback"]["risk"],
+        "approval_required": True,
+        "runner_profile_id": profile["profile_id"],
+        "target": {
+            "site_uuid": site_uuid,
+            "environment": "staging",
+            "wordpress_root": str(wp.resolve()),
+            "target_fingerprint": profile["target_fingerprint"],
+        },
+        "arguments": {"plan": rollback_execution_plan},
+        "submission_location": "wordpress_request",
+        "execution_location": "host_runner",
+        "commit_location": "host_runner",
+        "production_authorized": False,
+        "created_at": "2026-09-25T00:00:50+00:00",
+        "authorizing": False,
+        "mutation_performed": False,
+    }
+    rollback_outer["plan_sha256"] = runner._bridge_digest(rollback_outer)
+    rollback_id = str(uuid.uuid4())
+    rollback_submission = {
+        "contract": "mad4b.host-bridge-submission.v1",
+        "job_id": rollback_id,
+        "idempotency_key": "bridge-ci-plugin-rollback-1",
+        "plan": rollback_outer,
+        "plan_sha256": rollback_outer["plan_sha256"],
+        "approval_ref": "approval:bridge-ci-plugin-rollback",
+        "authority": {
+            "policy_decision_sha256": "d" * 64,
+            "agent_public_id": "agent:bridge-ci-plugin-rollback",
+            "approval_ticket_id": "ticket:bridge-ci-plugin-rollback",
+        },
+        "submission_location": "wordpress_request",
+        "execution_location": "host_runner",
+        "commit_location": "host_runner",
+        "created_at": rollback_outer["created_at"],
+        "production_authorized": False,
+    }
+    rollback_submission["submission_sha256"] = runner._bridge_digest(rollback_submission)
+    (bridge / "queued" / f"{rollback_id}.json").write_text(
+        json.dumps(rollback_submission, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    result = runner.consume_bridge_spool(profile_path, 10)
+    assert result["processed_count"] == 1, result
+    assert result["processed"][0]["state"] == "SUCCEEDED", result
+    rollback_receipt = json.loads(
+        (bridge / "receipts" / f"{rollback_id}.json").read_text(encoding="utf-8")
+    )
+    assert rollback_receipt["operation_id"] == "wordpress_plugin_rollback"
+    assert rollback_receipt["approval_ref"] == "approval:bridge-ci-plugin-rollback"
+    assert rollback_receipt["authority_ref"] == "d" * 64
+    assert rollback_receipt["result"]["source_job_id"] == deploy_id
+    assert rollback_receipt["mutation_performed"] is True
+    assert rollback_receipt["readback_verdict"] == "PASS"
+    restored_identity = runner._installed_control_plane_identity(plugin)
+    assert restored_identity["source_commit_sha"] == current_source
+    assert restored_identity["build_fingerprint"] == current_build
+    assert restored_identity["package_manifest_digest"] == current_manifest
+    reconciliation = runner.reconcile(profile_path)
+    reconciliation_by_job = {row["job_id"]: row for row in reconciliation["entries"]}
+    assert reconciliation_by_job[deploy_id]["reconciliation_status"] == "SUPERSEDED_BY_VERIFIED_ROLLBACK"
+    assert reconciliation_by_job[deploy_id]["superseded_by_verified_rollback_job_id"] == rollback_id
+    assert reconciliation_by_job[rollback_id]["reconciliation_status"] == "DURABLE_RECEIPT_PRESENT"
 
     # Commit/executor location is plan identity. A material location change
     # changes the approved plan digest and is rejected until a new admitted

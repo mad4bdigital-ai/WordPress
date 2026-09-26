@@ -503,3 +503,16 @@ Bootstrap/enrollment evidence proves:
 - unapproved runner package is rejected;
 - bootstrap does not create standing Host Write/Execution authority;
 - uninstall/decommission removes scheduling/enrollment material without erasing audit evidence.
+
+
+### Control Plane deployment operation
+
+`wordpress_plugin_deploy` is a fixed Host Runner semantic operation implementing the WordPress deployment handoff without interactive Hostinger Terminal or caller-supplied shell.
+
+The Host Runner itself remains network-disabled. A separately governed deployment connector stages the exact General Distribution bundle into the runner's fixed `package_staging/{source_commit_sha}` location. The signed job contains only the server-generated deployment plan; it never contains a caller path or URL.
+
+The runner validates the staged bundle and installed current package before crossing the mutation boundary. It preserves the existing active plugin state by replacing only the exact plugin directory, retains a rollback directory, performs same-cycle package/provenance readback, and emits the normal Host Runner mutation journal and durable receipt.
+
+Exact replay is permitted only while the installed package still matches the verified postcondition. Drift after a successful receipt returns reconciliation-required rather than re-executing the deployment.
+
+The first deployment of a Control Plane version that introduces this operation still requires an already-authorized external deployment connector, because an older runtime cannot self-bootstrap a Host capability it does not yet contain. After that one-time bootstrap, ordinary subsequent Control Plane deployments may use the same governed Host Bridge → Host Runner path.

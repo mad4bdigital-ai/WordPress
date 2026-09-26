@@ -634,7 +634,7 @@ if target.get('mcp_adapter') != {
     raise SystemExit('deployment handoff MCP Adapter dependency contract drift')
 
 executor = deployment.get('executor', {})
-expected_executor = {
+required_executor = {
     'authority': 'deployment_connector_selected_by_site_owner',
     'operation': 'wordpress_plugin_deploy',
     'dry_run_default': True,
@@ -642,9 +642,19 @@ expected_executor = {
     'exact_capability_envelope_required': True,
     'exact_target_allowlist_required': True,
     'caller_supplied_credentials_allowed': False,
+    'semantic_contract': 'mad4b.host-runner-wordpress-plugin-deploy-plan.v1',
+    'bridge_ability': 'mad4b/host-operation-apply',
+    'execution_location': 'host_runner',
+    'generic_shell_required': False,
+    'caller_supplied_path_allowed': False,
+    'caller_supplied_url_allowed': False,
 }
-if executor != expected_executor:
-    raise SystemExit(f'deployment executor contract drift: {executor!r}')
+for key, expected in required_executor.items():
+    if executor.get(key) != expected:
+        raise SystemExit(f'deployment executor contract drift: {key}={executor.get(key)!r} expected={expected!r}')
+for forbidden in ('command', 'shell', 'url', 'path', 'credentials', 'token', 'secret'):
+    if forbidden in executor:
+        raise SystemExit(f'deployment executor unexpectedly exposes caller-controlled field: {forbidden}')
 
 preflight = deployment.get('preflight', {})
 if preflight.get('must_precede_first_write') is not True:
