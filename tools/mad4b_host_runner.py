@@ -1263,6 +1263,18 @@ def _validate_plugin_deploy_plan(profile: dict[str, Any], verified: dict[str, An
     plan = inputs.get("plan")
     if not isinstance(plan, dict) or plan.get("contract") != PLUGIN_DEPLOY_PLAN_CONTRACT:
         raise ValueError("Plugin deployment plan contract mismatch")
+    allowed_plan_fields = {
+        "contract", "operation_id", "operation_version", "runner_profile_id",
+        "site_uuid", "environment", "target_fingerprint", "plugin_slug",
+        "bundle_key", "current", "candidate", "active_runtime_observed",
+        "backup_before_replace", "atomic_replace_required",
+        "same_cycle_file_readback_required", "rollback_on_failed_readback",
+        "caller_supplied_path_allowed", "caller_supplied_url_allowed",
+        "caller_supplied_credentials_allowed", "production_authorized",
+        "reason", "plan_sha256",
+    }
+    if set(plan) != allowed_plan_fields:
+        raise ValueError("Plugin deployment plan contains unsupported fields")
     supplied_plan_sha = str(plan.get("plan_sha256") or "").lower()
     if not re.fullmatch(r"[a-f0-9]{64}", supplied_plan_sha) or plan_digest(plan) != supplied_plan_sha:
         raise ValueError("Plugin deployment plan digest mismatch")
@@ -1295,6 +1307,14 @@ def _validate_plugin_deploy_plan(profile: dict[str, Any], verified: dict[str, An
     current = plan.get("current")
     if not isinstance(current, dict):
         raise ValueError("Plugin deployment current identity is missing")
+    if set(current) != {"source_commit_sha", "build_fingerprint", "package_manifest_digest"}:
+        raise ValueError("Plugin deployment current identity contains unsupported fields")
+    candidate = plan.get("candidate")
+    if not isinstance(candidate, dict) or set(candidate) != {
+        "source_commit_sha", "build_fingerprint", "package_manifest_digest",
+        "archive_sha256", "control_plane_version", "artifact_identity",
+    }:
+        raise ValueError("Plugin deployment candidate identity contains unsupported fields")
     current_identity = _control_plane_identity(current)
     plugin_root = Path(profile["wordpress_root"]) / "wp-content" / "plugins" / PLUGIN_SLUG
     observed = _installed_control_plane_identity(plugin_root)
