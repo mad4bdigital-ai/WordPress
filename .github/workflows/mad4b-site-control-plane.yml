@@ -258,7 +258,7 @@ jobs:
           # through the exact-target write dispatcher.
           grep -Fq "public static function external_write_tools()" "$servers"
           grep -Fq "public static function chatgpt_full_catalog_candidates()" "$servers"
-          grep -Fq "\$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), \$narrow_step_up, \$full_step_up )" "$servers"
+          grep -Fq "\$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), \$step_up )" "$servers"
           grep -Fq "write_dispatch_transport_available" "$write_cert"
           grep -Fq "direct_write_schemas_hidden_from_chatgpt" "$write_cert"
 
