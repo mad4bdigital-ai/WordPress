@@ -51,6 +51,22 @@ $check( 16 === (int) $quality['nonempty_count'], 'nonempty count drifted' );
 $check( (int) $quality['primary_expression_count'] >= 8, 'primary expression threshold not met' );
 $check( (int) $quality['core_content_sample_count'] >= 6, 'core content threshold not met' );
 $check( 4 === (int) $quality['seo_sample_count'], 'SEO sample count drifted' );
+$check( 4 === (int) $quality['post_seo_sample_count'], 'post-level SEO sample count drifted' );
+$check( 0 === (int) $quality['seo_configuration_sample_count'], 'unexpected SEO configuration samples in post-only fixture' );
+
+$config_only = $good;
+foreach ( $config_only as $index => $row ) $config_only[ $index ]['seo'] = array();
+$config_structure = $structure;
+$config_structure['seo_configuration'] = array(
+	array( 'provider' => 'rank_math', 'scope' => 'post_type', 'post_type' => 'page', 'field' => 'title', 'value' => '%title%' ),
+	array( 'provider' => 'rank_math', 'scope' => 'post_type', 'post_type' => 'page', 'field' => 'description', 'value' => '%excerpt%' ),
+	array( 'provider' => 'rank_math', 'scope' => 'post_type', 'post_type' => 'post', 'field' => 'title', 'value' => '%title%' ),
+	array( 'provider' => 'rank_math', 'scope' => 'post_type', 'post_type' => 'tours-and-activities', 'field' => 'title', 'value' => '%title%' ),
+);
+$config_quality = $invoke( 'evidence_quality', array( $config_only, array( 'ar', 'en' ), 1, $config_structure ) );
+$check( 0 === (int) $config_quality['post_seo_sample_count'], 'config-only SEO fixture unexpectedly counted post overrides' );
+$check( 3 === (int) $config_quality['seo_configuration_sample_count'], 'SEO configuration evidence did not count distinct provider/post-type samples' );
+$check( 3 === (int) $config_quality['seo_sample_count'], 'SEO configuration evidence did not contribute to editorial SEO readiness' );
 $check( empty( $quality['language_coverage']['unavailable'] ), 'configured locale unexpectedly unavailable' );
 
 $bad = array();
