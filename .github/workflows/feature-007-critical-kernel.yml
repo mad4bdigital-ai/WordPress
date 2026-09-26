@@ -3,6 +3,11 @@ name: Feature 007 Critical Kernel
 on:
   pull_request:
     paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
       - 'tools/verify_release_root_trust.py'
       - 'tools/mad4b_recovery_plane.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
@@ -57,6 +62,11 @@ on:
     branches:
       - master
     paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
       - 'tools/verify_release_root_trust.py'
       - 'tools/mad4b_recovery_plane.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
