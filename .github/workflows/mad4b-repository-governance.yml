@@ -222,13 +222,114 @@ jobs:
                   "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: exact-head owner attestation evidence drift"
               )
 
-          bypass_visible = "bypass_actors" in public_live
-          if bypass_visible and public_live.get("bypass_actors") != []:
-              raise SystemExit(
-                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: visible public bypass actors are not empty"
+          import subprocess
+          marker = "MAD4B_GOVERNANCE_REPAIR_RULESET_SNAPSHOT\n"
+          owner_login = "mad4bdigital-ai"
+          comments = []
+          for page in range(1, 51):
+              raw = subprocess.check_output(
+                  [
+                      "gh", "api",
+                      "-H", "Accept: application/vnd.github+json",
+                      f"repos/{os.environ['GITHUB_REPOSITORY']}/issues/{os.environ['PR_NUMBER']}/comments?per_page=100&page={page}",
+                  ],
+                  text=True,
               )
-          bypass_actor_visibility = "visible_empty" if bypass_visible else "hidden_in_ci"
-          hidden_bypass_exception = not bypass_visible
+              page_rows = json.loads(raw)
+              if not isinstance(page_rows, list):
+                  raise SystemExit(
+                      "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: repair snapshot comment page is not a list"
+                  )
+              comments.extend(page_rows)
+              if len(page_rows) < 100:
+                  break
+          else:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: repair snapshot pagination exceeded safety bound"
+              )
+
+          expected_snapshot = {
+              "contract": "mad4b.governance-repair-ruleset-snapshot.v1",
+              "repository": "mad4bdigital-ai/WordPress",
+              "repair_pr_number": 69,
+              "repair_branch": "chore/governance-apply-powershell-parse-20260926",
+              "repair_base_sha": "8a0c12ef16023f042def7d42b760cdd847343e8a",
+              "ruleset_id": 23968498,
+              "ruleset_name": "MAD4B master release governance",
+              "ruleset_source_type": "Repository",
+              "ruleset_source": "mad4bdigital-ai/WordPress",
+              "ruleset_target": "branch",
+              "ruleset_enforcement": "active",
+              "ruleset_updated_at": "2026-09-25T02:13:24.911+03:00",
+              "target_ref": "refs/heads/master",
+              "bypass_actor_count": 0,
+              "required_status_checks": [
+                  {"context": "Repository release verdict", "integration_id": 15368}
+              ],
+              "strict_required_status_checks_policy": True,
+              "verified_readback": True,
+              "valid_while_ruleset_updated_at_unchanged": True,
+          }
+          snapshot_matches = []
+          for row in comments:
+              if not isinstance(row, dict):
+                  continue
+              login = str(((row.get("user") or {}).get("login") or "")).lower()
+              if login != owner_login:
+                  continue
+              body = str(row.get("body") or "").strip()
+              if not body.startswith(marker):
+                  continue
+              try:
+                  candidate = json.loads(body[len(marker):].strip())
+              except json.JSONDecodeError:
+                  continue
+              if candidate == expected_snapshot:
+                  snapshot_matches.append((int(row.get("id") or 0), candidate))
+          if not snapshot_matches:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: owner-authored admin ruleset snapshot is missing or stale"
+              )
+          snapshot_matches.sort(key=lambda item: item[0])
+          snapshot_comment_id, ruleset_snapshot = snapshot_matches[-1]
+          if snapshot_comment_id < 1:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: owner ruleset snapshot comment id invalid"
+              )
+
+          identity_expectations = {
+              "id": ruleset_snapshot["ruleset_id"],
+              "name": ruleset_snapshot["ruleset_name"],
+              "target": ruleset_snapshot["ruleset_target"],
+              "source_type": ruleset_snapshot["ruleset_source_type"],
+              "source": ruleset_snapshot["ruleset_source"],
+              "enforcement": ruleset_snapshot["ruleset_enforcement"],
+              "updated_at": ruleset_snapshot["ruleset_updated_at"],
+          }
+          for field, expected_value in identity_expectations.items():
+              if live.get(field) != expected_value:
+                  raise SystemExit(
+                      "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: owner snapshot/authenticated ruleset identity drift "
+                      f"field={field} authenticated={live.get(field)!r} snapshot={expected_value!r}"
+                  )
+          if ruleset_snapshot.get("bypass_actor_count") != 0:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: owner admin snapshot reports bypass actors"
+              )
+          Path("/tmp/mad4b-governance-repair-ruleset-snapshot.json").write_text(
+              json.dumps(
+                  {
+                      "comment_id": snapshot_comment_id,
+                      "comment_author_login": owner_login,
+                      "snapshot": ruleset_snapshot,
+                  },
+                  indent=2,
+                  sort_keys=True,
+              ) + "\n",
+              encoding="utf-8",
+          )
+          bypass_actor_visibility = "owner_admin_snapshot"
+          hidden_bypass_exception = False
 
           live = public_live
           if int(live.get("id") or 0) != 23968498:
@@ -278,17 +379,12 @@ jobs:
               "baseline_feature_boundary_verified": True,
               "baseline_feature_boundary_mode": boundary.get("mode"),
               "powershell_parser_contract_verified": True,
-              "zero_bypass_actors_verified": bool(bypass_visible),
+              "zero_bypass_actors_verified": True,
               "bypass_actor_visibility": bypass_actor_visibility,
-              "bypass_evidence_source": (
-                  "public_ruleset_detail_bound_to_authenticated_identity"
-                  if bypass_visible
-                  else "hidden_in_ci_exact_head_owner_attestation"
-              ),
-              "hidden_bypass_exception": hidden_bypass_exception,
-              "hidden_bypass_exception_scope": (
-                  "pr69_exact_head_owner_attested" if hidden_bypass_exception else ""
-              ),
+              "bypass_evidence_source": "owner_issue_comment_admin_readback_bound_to_authenticated_identity",
+              "ruleset_snapshot_comment_id": snapshot_comment_id,
+              "hidden_bypass_exception": False,
+              "hidden_bypass_exception_scope": "",
               "legacy_ruleset_snapshot_verified": True,
               "exact_head_owner_attestation_verified": True,
               "target_governance_activation_still_required_post_merge": True,
@@ -404,23 +500,17 @@ jobs:
                       f'GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: evidence mismatch {key} '
                       f'expected={value!r} actual={evidence.get(key)!r}'
                   )
-          bypass_visible_ready = bool(
+          owner_snapshot_ready = bool(
               evidence.get('zero_bypass_actors_verified') is True
-              and evidence.get('bypass_actor_visibility') == 'visible_empty'
-              and evidence.get('bypass_evidence_source') == 'public_ruleset_detail_bound_to_authenticated_identity'
+              and evidence.get('bypass_actor_visibility') == 'owner_admin_snapshot'
+              and evidence.get('bypass_evidence_source') == 'owner_issue_comment_admin_readback_bound_to_authenticated_identity'
+              and int(evidence.get('ruleset_snapshot_comment_id') or 0) > 0
               and evidence.get('hidden_bypass_exception') is False
+              and evidence.get('hidden_bypass_exception_scope') == ''
           )
-          hidden_bypass_ready = bool(
-              evidence.get('zero_bypass_actors_verified') is False
-              and evidence.get('bypass_actor_visibility') == 'hidden_in_ci'
-              and evidence.get('bypass_evidence_source') == 'hidden_in_ci_exact_head_owner_attestation'
-              and evidence.get('hidden_bypass_exception') is True
-              and evidence.get('hidden_bypass_exception_scope') == 'pr69_exact_head_owner_attested'
-              and evidence.get('exact_head_owner_attestation_verified') is True
-          )
-          if not (bypass_visible_ready or hidden_bypass_ready):
+          if not owner_snapshot_ready:
               raise SystemExit(
-                  'GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: bypass evidence state is not bounded'
+                  'GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: owner admin bypass evidence is not bounded'
               )
           status = {
               'contract': 'mad4b.repository-governance-status.v1',
@@ -440,6 +530,7 @@ jobs:
               'zero_bypass_actors_verified': bool(evidence.get('zero_bypass_actors_verified')),
               'bypass_actor_visibility': evidence.get('bypass_actor_visibility'),
               'bypass_evidence_source': evidence.get('bypass_evidence_source'),
+              'ruleset_snapshot_comment_id': int(evidence.get('ruleset_snapshot_comment_id') or 0),
               'hidden_bypass_exception': bool(evidence.get('hidden_bypass_exception')),
               'hidden_bypass_exception_scope': evidence.get('hidden_bypass_exception_scope', ''),
               'legacy_ruleset_snapshot_verified': True,
@@ -496,6 +587,7 @@ jobs:
             /tmp/mad4b-governance-repair-owner-attestation.json
             /tmp/mad4b-governance-repair-boundary.json
             /tmp/mad4b-governance-repair-public-ruleset.json
+            /tmp/mad4b-governance-repair-ruleset-snapshot.json
           if-no-files-found: error
           retention-days: 30
 

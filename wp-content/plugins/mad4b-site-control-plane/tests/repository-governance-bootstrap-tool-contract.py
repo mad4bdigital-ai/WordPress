@@ -16,12 +16,12 @@ repair_bootstrap_required = [
     "chore/governance-apply-powershell-parse-20260926",
     "8a0c12ef16023f042def7d42b760cdd847343e8a",
     "rulesets/23968498?includes_parents=true",
-    "mad4b-governance-repair-public-ruleset.json",
-    "hidden_in_ci_exact_head_owner_attestation",
-    "pr69_exact_head_owner_attested",
-    "bypass_actor_visibility",
-    "hidden_bypass_exception",
-    "public/authenticated ruleset identity drift",
+    "MAD4B_GOVERNANCE_REPAIR_RULESET_SNAPSHOT",
+    "mad4b.governance-repair-ruleset-snapshot.v1",
+    "owner_issue_comment_admin_readback_bound_to_authenticated_identity",
+    "owner_admin_snapshot",
+    "ruleset_snapshot_comment_id",
+    "owner snapshot/authenticated ruleset identity drift",
     "2026-09-25T02:13:24.911+03:00",
     "mad4b.governance-apply-repair-bootstrap.v1",
     "governance_apply_repair_bootstrap",
@@ -43,11 +43,11 @@ governance_repair_bootstrap_required = [
     "chore/governance-apply-powershell-parse-20260926",
     "8a0c12ef16023f042def7d42b760cdd847343e8a",
     "rulesets/23968498?includes_parents=true",
-    "mad4b-governance-repair-public-ruleset.json",
-    "hidden_in_ci_exact_head_owner_attestation",
-    "pr69_exact_head_owner_attested",
-    "bypass_actor_visibility",
-    "hidden_bypass_exception",
+    "MAD4B_GOVERNANCE_REPAIR_RULESET_SNAPSHOT",
+    "mad4b.governance-repair-ruleset-snapshot.v1",
+    "owner_issue_comment_admin_readback_bound_to_authenticated_identity",
+    "owner_admin_snapshot",
+    "ruleset_snapshot_comment_id",
     "git show \"$BASE_SHA:tools/verify_feature_boundary.py\"",
     "exact_head_owner_attestation_verified",
     "governance_apply_repair_bootstrap_ready",
@@ -71,18 +71,20 @@ if missing_repair_bootstrap:
         + ", ".join(missing_repair_bootstrap)
     )
 
-# Fail closed if the bounded repair exception ever becomes generic.
+# Fail closed if the bounded repair exception ever becomes generic or infers bypass safety from hidden fields.
 for forbidden in [
     "governance_apply_repair_bootstrap = True",
     "required = []\n              mode = 'governance_apply_repair_bootstrap'",
+    "hidden_in_ci_exact_head_owner_attestation",
+    "pr69_exact_head_owner_attested",
 ]:
-    if forbidden in release_verdict:
-        raise SystemExit("governance-apply repair bootstrap widened: " + forbidden)
+    if forbidden in release_verdict or forbidden in repository_governance_workflow:
+        raise SystemExit("governance-apply repair bootstrap widened or inferred hidden bypass safety: " + forbidden)
 
 print("governance_apply_repair_bootstrap=bounded")
 print("governance_apply_repair_governance_workflow=bounded")
 print("governance_apply_repair_live_snapshot=exact")
-print("governance_apply_repair_bypass_evidence=visible_or_exact_head_hidden_ci")
+print("governance_apply_repair_bypass_evidence=owner-comment-admin-readback")
 print("governance_apply_repair_target_governance_claim=false_until_remote_apply")
 
 if "required = ['Repository feature boundary']" in release_verdict:
@@ -93,22 +95,23 @@ if 'git show "$BASE_SHA:tools/verify_feature_boundary.py"' not in release_verdic
     raise SystemExit("governance repair bootstrap must execute the verifier sourced from BASE")
 if "baseline_feature_boundary_verified" not in release_verdict:
     raise SystemExit("governance repair bootstrap must bind base-owned feature-boundary evidence")
-for required_hidden in [
-    "hidden_in_ci_exact_head_owner_attestation",
-    "pr69_exact_head_owner_attested",
-    "hidden_bypass_exception",
-    "bypass_actor_visibility",
+for required_snapshot in [
+    "MAD4B_GOVERNANCE_REPAIR_RULESET_SNAPSHOT",
+    "mad4b.governance-repair-ruleset-snapshot.v1",
+    "owner_issue_comment_admin_readback_bound_to_authenticated_identity",
+    "owner_admin_snapshot",
+    "ruleset_snapshot_comment_id",
     "exact_head_owner_attestation_verified",
 ]:
-    if required_hidden not in release_verdict:
+    if required_snapshot not in release_verdict:
         raise SystemExit(
-            "governance repair release bootstrap missing bounded hidden-bypass evidence: "
-            + required_hidden
+            "governance repair release bootstrap missing owner-admin snapshot evidence: "
+            + required_snapshot
         )
-    if required_hidden not in repository_governance_workflow:
+    if required_snapshot not in repository_governance_workflow:
         raise SystemExit(
-            "governance repair policy bootstrap missing bounded hidden-bypass evidence: "
-            + required_hidden
+            "governance repair policy bootstrap missing owner-admin snapshot evidence: "
+            + required_snapshot
         )
 if "live_target_governance_ready': False" not in repository_governance_workflow:
     raise SystemExit("governance repair bootstrap may not claim live target governance ready")
