@@ -31,7 +31,9 @@ for marker in [
 ]:
     assert marker in binding, f'missing binding attribution marker: {marker}'
 
-assert "mad4b.staging-write-grant-reconciliation.v1" not in binding, 'candidate binding must not hard-code the retired grant-reconciliation v1 contract'\n\nfor marker in [
+assert "mad4b.staging-write-grant-reconciliation.v1" not in binding, 'candidate binding must not hard-code the retired grant-reconciliation v1 contract'
+
+for marker in [
     "mad4b.governed-write-authority-candidate-binding.v2",
     "stored_package_manifest_digest",
     "stored_artifact_identity",
