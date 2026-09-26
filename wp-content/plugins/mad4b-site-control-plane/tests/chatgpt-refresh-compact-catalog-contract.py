@@ -4,12 +4,30 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ABILITIES = (ROOT / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 SERVERS = (ROOT / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+GRANT_RECONCILE = (ROOT / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
+MAIN = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
 
 def require(condition, message):
     if not condition:
         raise SystemExit(message)
 
+
+for ability in [
+    "context/brand-draft-append",
+    "context/materialize-brand-draft",
+    "context/reconcile-brand-materialization",
+    "context/rollback-materialized-brand-draft",
+    "context/source-scan-apply",
+]:
+    require(f"'{ability}' => 'google_drive_context'" in GRANT_RECONCILE, f"reviewed Google Drive staging grant missing from bounded reconciliation allowlist: {ability}")
+for marker in [
+    "class-mad4b-scp-staging-write-grant-reconciliation-plan.php",
+    "class-mad4b-scp-staging-write-grant-reconciliation.php",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::boot();",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::boot();",
+]:
+    require(marker in MAIN, f"narrow staging write reconciliation runtime bootstrap missing: {marker}")
 
 # Read transport remains compact, readonly and non-authorizing.
 for marker in [
@@ -58,6 +76,29 @@ for marker in [
 write_target = ABILITIES.split("private function governed_write_target", 1)[1].split("private function ability_input_schema_sha256", 1)[0]
 require("false !== $annotations['readonly']" in write_target, "write dispatcher must reject any target not explicitly readonly=false")
 require("MAD4B_SCP_Servers::write_tools()" in write_target, "write dispatcher must require current runtime eligibility for execution")
+
+# The only pre-authority mutation target reachable through the compact dispatcher is
+# the exact Staging grant-reconciliation bootstrap. It remains absent from direct
+# tools/list and from the normal runtime write inventory.
+require("private function is_staging_write_bootstrap_target" in ABILITIES, "bounded staging write bootstrap target helper missing")
+bootstrap_helper = ABILITIES.split("private function is_staging_write_bootstrap_target", 1)[1].split("private function governed_write_target", 1)[0]
+require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::ABILITY" in bootstrap_helper, "bootstrap helper must bind to the canonical reconciliation ability constant")
+for forbidden_bootstrap in [
+    "staging-write-candidate-bind",
+    "full-staging-authority-apply",
+    "database-raw-query",
+    "developer",
+]:
+    require(forbidden_bootstrap not in bootstrap_helper, f"bootstrap dispatcher scope widened: {forbidden_bootstrap}")
+
+for marker in [
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::can_execute",
+    "$bootstrap_target",
+    "bootstrap_plan",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan()",
+]:
+    require(marker in ABILITIES, f"staging write bootstrap dispatch invariant missing: {marker}")
+require("! $bootstrap_target && ! in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true )" in ABILITIES, "normal runtime-eligibility gate must remain active outside the exact bootstrap target")
 
 write_execute = ABILITIES.split("public function write_execute", 1)[1].split("public function filesystem_list", 1)[0]
 require("$ability->execute( $params )" in write_execute, "write dispatcher must delegate through the original WP_Ability execute path")
