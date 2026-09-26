@@ -1365,6 +1365,210 @@ def _extract_verified_plugin_candidate(
         raise
 
 
+
+def _verify_deployed_plugin_root(
+    plugin_root: Path,
+    *,
+    source_commit_sha: str,
+    build_fingerprint: str,
+    package_manifest_digest: str,
+) -> dict[str, Any]:
+    if _is_link_like(plugin_root) or not plugin_root.is_dir():
+        raise ValueError("WordPress plugin deployment readback root is invalid")
+    provenance_path = plugin_root / PROVENANCE_FILE
+    if _is_link_like(provenance_path) or not provenance_path.is_file():
+        raise ValueError("WordPress plugin deployment readback provenance is missing")
+    try:
+        provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("WordPress plugin deployment readback provenance is invalid") from exc
+    if not isinstance(provenance, dict) or provenance.get("contract") != "mad4b.build-provenance.v1":
+        raise ValueError("WordPress plugin deployment readback provenance contract mismatch")
+    for key, expected in {
+        "source_commit_sha": source_commit_sha,
+        "build_fingerprint": build_fingerprint,
+        "package_manifest_digest": package_manifest_digest,
+    }.items():
+        actual = str(provenance.get(key) or "").lower()
+        if not hmac.compare_digest(actual, str(expected).lower()):
+            raise ValueError(f"WordPress plugin deployment readback {key} mismatch")
+    tree_sha, file_count = plugin_tree_digest(plugin_root)
+    return {
+        "tree_sha256": tree_sha,
+        "file_count": file_count,
+        "source_commit_sha": str(provenance["source_commit_sha"]).lower(),
+        "build_fingerprint": str(provenance["build_fingerprint"]).lower(),
+        "package_manifest_digest": str(provenance["package_manifest_digest"]).lower(),
+        "control_plane_version": str(provenance.get("control_plane_version") or ""),
+        "artifact_identity": str(provenance.get("artifact_identity") or ""),
+    }
+
+
+def _rollback_wordpress_plugin_deploy(result: dict[str, Any]) -> bool:
+    try:
+        target = Path(str(result.get("_target_path") or ""))
+        backup = Path(str(result.get("_backup_path") or ""))
+        failed = Path(str(result.get("_failed_candidate_path") or ""))
+        before = str(result.get("before_sha256") or "")
+        if not target.parent.is_dir() or _is_link_like(target.parent):
+            return False
+        if not backup.is_dir() or _is_link_like(backup):
+            return False
+        if target.exists():
+            if failed.exists():
+                return False
+            os.replace(target, failed)
+        os.replace(backup, target)
+        restored, _ = plugin_tree_digest(target)
+        return bool(before) and hmac.compare_digest(restored, before)
+    except (OSError, ValueError):
+        return False
+
+
+def _rollback_write_result(operation_id: str, result: dict[str, Any]) -> bool:
+    if operation_id == "wordpress_plugin_deploy":
+        return _rollback_wordpress_plugin_deploy(result)
+    return _rollback_workspace_replace(result)
+
+
+def _verify_write_replay(
+    profile: dict[str, Any],
+    operation_id: str,
+    result: dict[str, Any],
+) -> bool:
+    expected_after = str(result.get("after_sha256") or "")
+    if not re.fullmatch(r"[a-f0-9]{64}", expected_after):
+        return False
+    if operation_id == "wordpress_plugin_deploy":
+        target = Path(profile["wordpress_root"]) / "wp-content" / "plugins" / "mad4b-site-control-plane"
+        try:
+            current, _ = plugin_tree_digest(target)
+        except (OSError, ValueError):
+            return False
+        return hmac.compare_digest(current, expected_after)
+    relative = _workspace_relative(str(result.get("relative_path") or ""))
+    target = Path(profile["runner_workspace"]) / relative
+    current = workspace_file_identity(target) if Path(profile["runner_workspace"]).exists() else "ABSENT"
+    return hmac.compare_digest(current, expected_after)
+
+
+def execute_wordpress_plugin_deploy(
+    profile: dict[str, Any],
+    verified: dict[str, Any],
+) -> dict[str, Any]:
+    plan, archive_info, plugin_root = _validate_wordpress_plugin_deploy_plan(profile, verified)
+    before_sha, before_count = plugin_tree_digest(plugin_root)
+    candidate_root = _extract_verified_plugin_candidate(profile, archive_info, verified["job_id"])
+    candidate_readback = _verify_deployed_plugin_root(
+        candidate_root,
+        source_commit_sha=str(plan["source_commit_sha"]),
+        build_fingerprint=str(plan["build_fingerprint"]),
+        package_manifest_digest=str(plan["package_manifest_digest"]),
+    )
+    after_sha = str(candidate_readback["tree_sha256"])
+    if hmac.compare_digest(after_sha, before_sha):
+        shutil.rmtree(candidate_root.parent, ignore_errors=True)
+        raise ValueError("WordPress plugin deployment candidate is identical to current plugin tree")
+
+    journal_root = Path(profile["journal_root"])
+    backup_root = Path(profile["plugin_backup_root"])
+    staging_root = Path(profile["package_staging_root"])
+    plugin_parent = plugin_root.parent
+    for root in (journal_root, backup_root, staging_root):
+        root.mkdir(parents=True, exist_ok=True)
+        if _is_link_like(root) or not root.is_dir():
+            raise ValueError("WordPress plugin deployment evidence/staging root is invalid")
+    if len({os.stat(plugin_parent).st_dev, os.stat(backup_root).st_dev, os.stat(staging_root).st_dev}) != 1:
+        raise ValueError("WordPress plugin deployment requires same-filesystem atomic rename boundaries")
+
+    job_id = verified["job_id"]
+    backup_path = backup_root / job_id
+    failed_candidate_path = staging_root / f"failed-{job_id}"
+    journal_path = journal_root / f"{job_id}.json"
+    if backup_path.exists() or failed_candidate_path.exists() or journal_path.exists():
+        raise ValueError("WordPress plugin deployment evidence target already exists")
+    _ensure_storage_budget(backup_root / ".budget", 0)
+
+    journal = {
+        "contract": "mad4b.host-runner-mutation-journal.v1",
+        "job_id": job_id,
+        "plan_sha256": verified["plan_sha256"],
+        "approval_ref": verified["approval_ref"],
+        "operation_id": verified["operation_id"],
+        "relative_path": "mad4b-site-control-plane",
+        "before_sha256": before_sha,
+        "expected_after_sha256": after_sha,
+        "state": "MUTATION_STARTED",
+        "terminal": False,
+        "blind_retry_allowed": False,
+        "source_commit_sha": str(plan["source_commit_sha"]),
+        "build_fingerprint": str(plan["build_fingerprint"]),
+        "package_manifest_digest": str(plan["package_manifest_digest"]),
+        "archive_sha256": str(plan["archive_sha256"]),
+        "created_at": utc_now(),
+    }
+    atomic_json_write(journal_path, journal)
+
+    result = {
+        "relative_path": "mad4b-site-control-plane",
+        "before_sha256": before_sha,
+        "before_file_count": before_count,
+        "after_sha256": after_sha,
+        "after_file_count": int(candidate_readback["file_count"]),
+        "source_commit_sha": str(plan["source_commit_sha"]),
+        "build_fingerprint": str(plan["build_fingerprint"]),
+        "package_manifest_digest": str(plan["package_manifest_digest"]),
+        "archive_sha256": str(plan["archive_sha256"]),
+        "artifact_identity": str(candidate_readback["artifact_identity"]),
+        "control_plane_version": str(candidate_readback["control_plane_version"]),
+        "activation_state_preserved_by_same_plugin_path": True,
+        "same_cycle_filesystem_readback": False,
+        "rollback_available": True,
+        "mutation_performed": True,
+        "readback_verdict": "PENDING",
+        "_target_path": str(plugin_root),
+        "_backup_path": str(backup_path),
+        "_failed_candidate_path": str(failed_candidate_path),
+        "_journal_path": str(journal_path),
+        "_extract_root": str(candidate_root.parent),
+    }
+    try:
+        current_sha, _ = plugin_tree_digest(plugin_root)
+        if not hmac.compare_digest(current_sha, before_sha):
+            raise ValueError("WordPress plugin deployment target changed at commit boundary")
+        os.replace(plugin_root, backup_path)
+        os.replace(candidate_root, plugin_root)
+        deployed = _verify_deployed_plugin_root(
+            plugin_root,
+            source_commit_sha=str(plan["source_commit_sha"]),
+            build_fingerprint=str(plan["build_fingerprint"]),
+            package_manifest_digest=str(plan["package_manifest_digest"]),
+        )
+        if not hmac.compare_digest(str(deployed["tree_sha256"]), after_sha):
+            raise RuntimeError("WordPress plugin deployment postcondition tree readback failed")
+        result["same_cycle_filesystem_readback"] = True
+        result["readback_verdict"] = "PASS"
+        try:
+            candidate_root.parent.rmdir()
+        except OSError:
+            pass
+        return result
+    except Exception:
+        rolled_back = _rollback_wordpress_plugin_deploy(result)
+        failure = dict(journal)
+        failure.update({
+            "terminal": True,
+            "completed_at": utc_now(),
+            "state": "ROLLED_BACK_AFTER_FAILURE" if rolled_back else "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+            "rollback_verified": rolled_back,
+        })
+        try:
+            atomic_json_write(journal_path, failure)
+        except Exception:
+            pass
+        raise
+
+
 def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict[str, Any]:
     operation_id = verified["operation_id"]
     inputs = verified["input"]
@@ -1422,6 +1626,9 @@ def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict
 
     if operation_id == "workspace.file.rollback":
         return execute_workspace_rollback(profile, verified)
+
+    if operation_id == "wordpress_plugin_deploy":
+        return execute_wordpress_plugin_deploy(profile, verified)
 
     raise ValueError("Host Runner operation has no implementation")
 
