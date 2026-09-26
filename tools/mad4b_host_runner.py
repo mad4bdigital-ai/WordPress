@@ -2117,7 +2117,7 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
                 raise ValueError("Host Runner receipt job id is invalid during reconciliation")
             receipts[job_id] = receipt
             if (
-                receipt.get("operation_id") == "workspace.file.rollback"
+                receipt.get("operation_id") in {"workspace.file.rollback", "wordpress_plugin_rollback"}
                 and receipt.get("mutation_performed") is True
                 and receipt.get("readback_verdict") == "PASS"
                 and isinstance(receipt.get("result"), dict)
@@ -2158,7 +2158,7 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
                     current_identity = workspace_file_identity(target)
                 else:
                     current_identity = "ABSENT"
-            elif operation_id == "wordpress_plugin_deploy":
+            elif operation_id in {"wordpress_plugin_deploy", "wordpress_plugin_rollback"}:
                 plugin_root = Path(profile["wordpress_root"]) / "wp-content" / "plugins" / PLUGIN_SLUG
                 try:
                     current_identity = _control_plane_identity_digest(_installed_control_plane_identity(plugin_root))
