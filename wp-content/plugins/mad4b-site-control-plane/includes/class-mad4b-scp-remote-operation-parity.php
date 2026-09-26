@@ -1406,6 +1406,26 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		);
 		$ttl = 900;
 		if ( isset( $plan['challenge']['expires_at'] ) ) $ttl = max( 300, min( 900, (int) $plan['challenge']['expires_at'] - time() ) );
+		$existing_jobs = MAD4B_SCP_Remote_Work_Queue::list_jobs( 'browser_acceptance_execution' );
+		foreach ( (array) ( isset( $existing_jobs['items'] ) ? $existing_jobs['items'] : array() ) as $existing_job ) {
+			if ( ! is_array( $existing_job ) || ! in_array( (string) ( isset( $existing_job['effective_status'] ) ? $existing_job['effective_status'] : '' ), array( 'pending', 'claimed' ), true ) ) continue;
+			$existing_payload = isset( $existing_job['payload'] ) && is_array( $existing_job['payload'] ) ? $existing_job['payload'] : array();
+			$existing_identity = isset( $existing_job['expected_identity'] ) && is_array( $existing_job['expected_identity'] ) ? $existing_job['expected_identity'] : array();
+			if ( $provider_id === ( isset( $existing_payload['provider_id'] ) ? (string) $existing_payload['provider_id'] : '' )
+				&& $profile_id === ( isset( $existing_payload['profile_id'] ) ? (string) $existing_payload['profile_id'] : '' )
+				&& isset( $existing_payload['plan_digest'] )
+				&& hash_equals( $plan_digest, strtolower( (string) $existing_payload['plan_digest'] ) )
+				&& MAD4B_SCP_Remote_Work_Queue::identity_matches( $identity, $existing_identity ) ) {
+				return array(
+					'contract' => 'mad4b.remote-browser-acceptance-request.v1',
+					'state' => 'already_queued',
+					'job' => $existing_job,
+					'plan' => isset( $existing_payload['plan'] ) && is_array( $existing_payload['plan'] ) ? $existing_payload['plan'] : $plan,
+					'manual_interaction_required' => false,
+					'production_mutation' => false,
+				);
+			}
+		}
 		$work = MAD4B_SCP_Remote_Work_Queue::enqueue(
 			'browser_acceptance_execution',
 			array(
