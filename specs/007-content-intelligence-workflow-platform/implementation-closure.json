@@ -1054,7 +1054,7 @@
   "repository_baseline": {
     "contract": "mad4b.reviewed-repository-parent.v1",
     "branch": "master",
-    "last_reviewed_parent_sha": "38524934ccfa5815da64d78e554050cde1199761",
+    "last_reviewed_parent_sha": "959a7a71101ef821468e3a736beceb31f903fe1a",
     "current_head_is_external_evidence": true,
     "self_referential_current_head_forbidden": true
   },
@@ -1069,7 +1069,7 @@
     "package_workflow_run_id": 36072550999,
     "general_distribution_artifact_id": 10838403565,
     "repository_runtime_delta_verified_empty_through": "b1f7e837efc69aa220385d84761e46f64c2442b1",
-    "recapture_reason": "runtime-affecting bulk closure changes require a trusted post-merge package before live deployment"
+    "recapture_reason": "Feature 007 runtime changed after the last trusted runtime release; an exact post-merge package must be recaptured before any live deployment."
   },
   "baseline_sha": "b1f7e837efc69aa220385d84761e46f64c2442b1",
   "hardening": {
