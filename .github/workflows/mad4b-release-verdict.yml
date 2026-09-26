@@ -410,6 +410,7 @@ jobs:
               '.github/workflows/mad4b-governed-execution-fence.yml',
               '.github/workflows/mad4b-approval-decision-contract.yml',
               '.github/workflows/mad4b-oauth-resource-bridge.yml',
+              '.github/workflows/feature-007-critical-kernel.yml',
           ]
           full_runtime_trigger_paths = [
               'wp-content/plugins/mad4b-site-control-plane/**',
