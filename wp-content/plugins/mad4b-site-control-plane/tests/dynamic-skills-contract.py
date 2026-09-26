@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import re
+import subprocess
 from pathlib import Path
 
 repo = Path(__file__).resolve().parents[4]
@@ -27,6 +28,7 @@ resource_writer = (wp / 'includes' / 'class-mad4b-scp-skill-resource-writer.php'
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+enrollment_dispatch = (wp / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_text(encoding='utf-8')
 
 for marker in [
     "private static function request_is_wordpress_plugin_lifecycle()",
@@ -41,6 +43,23 @@ for marker in [
         raise SystemExit(f'missing plugin upload lifecycle protection invariant: {marker}')
 
 readme = (portable / 'README.md').read_text(encoding='utf-8')
+
+for marker in [
+    "const EXECUTE_ABILITY = 'mad4b/enrollment-execute'",
+    "'operator' !==",
+    "MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-enrollment'",
+    "'mad4b_enrollment_dispatch_target_surface_mismatch'",
+    "'mad4b_enrollment_dispatch_generic_admin_denied'",
+    "'mad4b_enrollment_dispatch_target_production_denied'",
+    "'mutation_evidence_source'",
+]:
+    if marker not in enrollment_dispatch:
+        raise SystemExit(f'missing bounded enrollment dispatcher invariant: {marker}')
+
+runtime_test = wp / 'tests' / 'enrollment-dispatch-runtime.php'
+if not runtime_test.is_file():
+    raise SystemExit('bounded enrollment dispatcher runtime test is missing')
+subprocess.run(['php', str(runtime_test)], check=True)
 
 for marker in [
     "public static function reconcile()",
