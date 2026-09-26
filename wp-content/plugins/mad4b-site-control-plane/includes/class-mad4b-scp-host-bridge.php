@@ -22,6 +22,7 @@ final class MAD4B_SCP_Host_Bridge {
 		'package.integrity.verify' => array( 'version' => 1, 'risk' => 'read_only', 'approval_required' => false ),
 		'workspace.file.replace' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
 		'workspace.file.rollback' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
+		'wordpress_plugin_deploy' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
 	);
 
 	public static function boot() {
@@ -102,6 +103,10 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( '' === $profile_id ) return new WP_Error( 'mad4b_host_runner_profile_required', 'Exact Host Runner profile is required.' );
 		$target = self::target_identity();
 		if ( is_wp_error( $target ) ) return $target;
+		if ( 'wordpress_plugin_deploy' === $operation_id ) {
+			$args = self::wordpress_plugin_deploy_arguments( $args, $profile_id, $target );
+			if ( is_wp_error( $args ) ) return $args;
+		}
 		$plan = array(
 			'contract' => self::PLAN_CONTRACT,
 			'operation_id' => $operation_id,
@@ -360,6 +365,92 @@ final class MAD4B_SCP_Host_Bridge {
 			'production_authorized' => false,
 			'mutation_performed' => false,
 		);
+	}
+
+	private static function wordpress_plugin_deploy_arguments( array $input, $profile_id, array $target ) {
+		$allowed = array(
+			'source_commit_sha',
+			'build_fingerprint',
+			'package_manifest_digest',
+			'archive_sha256',
+			'control_plane_version',
+			'artifact_identity',
+			'reason',
+		);
+		if ( array_diff( array_keys( $input ), $allowed ) ) {
+			return new WP_Error( 'mad4b_host_plugin_deploy_input_invalid', 'Plugin deployment accepts exact package identity only; caller paths, URLs, credentials and commands are forbidden.' );
+		}
+		$source = strtolower( trim( (string) ( $input['source_commit_sha'] ?? '' ) ) );
+		$build = strtolower( trim( (string) ( $input['build_fingerprint'] ?? '' ) ) );
+		$manifest = strtolower( trim( (string) ( $input['package_manifest_digest'] ?? '' ) ) );
+		$archive = strtolower( trim( (string) ( $input['archive_sha256'] ?? '' ) ) );
+		$version = trim( (string) ( $input['control_plane_version'] ?? '' ) );
+		$artifact = trim( (string) ( $input['artifact_identity'] ?? '' ) );
+		$reason = trim( (string) ( $input['reason'] ?? '' ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $source ) ) return new WP_Error( 'mad4b_host_plugin_deploy_source_invalid', 'Exact candidate source commit SHA is required.' );
+		foreach ( array( 'build_fingerprint' => $build, 'package_manifest_digest' => $manifest, 'archive_sha256' => $archive ) as $label => $value ) {
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $value ) ) return new WP_Error( 'mad4b_host_plugin_deploy_digest_invalid', 'Exact candidate ' . $label . ' is required.' );
+		}
+		if ( 1 !== preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/', $version ) ) return new WP_Error( 'mad4b_host_plugin_deploy_version_invalid', 'Control Plane version is invalid.' );
+		$expected_artifact = 'mad4b-site-control-plane-general-distribution-kit-' . $source;
+		if ( ! hash_equals( $expected_artifact, $artifact ) ) return new WP_Error( 'mad4b_host_plugin_deploy_artifact_invalid', 'Distribution artifact identity must be derived from the exact source commit.' );
+		if ( strlen( $reason ) < 3 || strlen( $reason ) > 500 ) return new WP_Error( 'mad4b_host_plugin_deploy_reason_invalid', 'Deployment reason must contain 3..500 characters.' );
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) {
+			return new WP_Error( 'mad4b_host_plugin_deploy_provenance_unavailable', 'Current exact build provenance is unavailable.' );
+		}
+		$current = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( ! is_array( $current ) || empty( $current['runtime_manifest_match'] ) || ! empty( $current['stale'] ) ) {
+			return new WP_Error( 'mad4b_host_plugin_deploy_current_build_untrusted', 'Current plugin build is not an exact trusted runtime candidate.' );
+		}
+		$current_identity = array(
+			'source_commit_sha' => strtolower( trim( (string) ( $current['source_commit_sha'] ?? '' ) ) ),
+			'build_fingerprint' => strtolower( trim( (string) ( $current['build_fingerprint'] ?? '' ) ) ),
+			'package_manifest_digest' => strtolower( trim( (string) ( $current['package_manifest_digest'] ?? '' ) ) ),
+		);
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $current_identity['source_commit_sha'] )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $current_identity['build_fingerprint'] )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $current_identity['package_manifest_digest'] ) ) {
+			return new WP_Error( 'mad4b_host_plugin_deploy_current_identity_invalid', 'Current plugin package identity is incomplete.' );
+		}
+		$candidate = array(
+			'source_commit_sha' => $source,
+			'build_fingerprint' => $build,
+			'package_manifest_digest' => $manifest,
+			'archive_sha256' => $archive,
+			'control_plane_version' => $version,
+			'artifact_identity' => $artifact,
+		);
+		if ( hash_equals( $current_identity['source_commit_sha'], $source )
+			&& hash_equals( $current_identity['build_fingerprint'], $build )
+			&& hash_equals( $current_identity['package_manifest_digest'], $manifest ) ) {
+			return new WP_Error( 'mad4b_host_plugin_deploy_already_current', 'The exact Control Plane candidate is already installed.' );
+		}
+		$deploy = array(
+			'contract' => 'mad4b.host-runner-wordpress-plugin-deploy-plan.v1',
+			'operation_id' => 'wordpress_plugin_deploy',
+			'operation_version' => 1,
+			'runner_profile_id' => (string) $profile_id,
+			'site_uuid' => (string) $target['site_uuid'],
+			'environment' => (string) $target['environment'],
+			'target_fingerprint' => (string) $target['target_fingerprint'],
+			'plugin_slug' => 'mad4b-site-control-plane',
+			'bundle_key' => $source,
+			'current' => $current_identity,
+			'candidate' => $candidate,
+			'active_runtime_observed' => true,
+			'backup_before_replace' => true,
+			'atomic_replace_required' => true,
+			'same_cycle_file_readback_required' => true,
+			'rollback_on_failed_readback' => true,
+			'caller_supplied_path_allowed' => false,
+			'caller_supplied_url_allowed' => false,
+			'caller_supplied_credentials_allowed' => false,
+			'production_authorized' => false,
+			'reason' => $reason,
+		);
+		$deploy['plan_sha256'] = self::digest( $deploy );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $deploy['plan_sha256'] ) ) return new WP_Error( 'mad4b_host_plugin_deploy_plan_invalid', 'Unable to bind the exact plugin deployment plan.' );
+		return array( 'plan' => $deploy );
 	}
 
 	private static function validate_plan( array $plan ) {
