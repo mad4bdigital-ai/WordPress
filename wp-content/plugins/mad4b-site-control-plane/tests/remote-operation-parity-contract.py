@@ -17,6 +17,7 @@ required_parity_markers = [
     "const DISCOVER_ABILITY = 'mad4b/operation-discover';",
     "const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';",
     "const FRONTEND_SAMPLE_ABILITY = 'mad4b/frontend-performance-sample-run';",
+    "const BROWSER_ACCEPTANCE_ABILITY = 'mad4b/browser-acceptance-run';",
     "const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';",
     "const PERFORMANCE_RECONCILE_ABILITY = 'mad4b/admin-query-performance-reconcile';",
     "const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';",
@@ -71,6 +72,7 @@ required_parity_markers = [
     "'wordpress_cron_maintenance_worker'",
     "'checkpointed_convergence'",
     "'durable_external_executor_request'",
+    "'durable_signed_browser_acceptance'",
     "'durable_scheduled_operation'",
     "'synchronous_ddl' => false",
     "'pending_external_executor'",
@@ -116,6 +118,8 @@ for ability in [
 for ability in [
     'mad4b/reconcile-managed-skills',
     'mad4b/frontend-performance-sample-run',
+    'mad4b/browser-acceptance-run',
+    'mad4b/browser-acceptance-run',
     'mad4b/admin-query-performance-apply',
     'mad4b/admin-query-performance-reconcile',
     'mad4b/remote-operation-work-claim',
@@ -231,11 +235,23 @@ if "'remote_caller_role' => 'external_executor'" not in claim_catalog:
 if "'remote_caller_role' => 'external_executor'" not in complete_catalog:
     raise SystemExit('external work completion must remain external-executor scoped')
 skills_catalog = parity.split("'managed_skills_reconciliation' => array(", 1)[1].split("'frontend_performance_sampling' => array(", 1)[0]
-frontend_catalog = parity.split("'frontend_performance_sampling' => array(", 1)[1].split("'external_executor_work_claim' => array(", 1)[0]
+frontend_catalog = parity.split("'frontend_performance_sampling' => array(", 1)[1].split("'browser_acceptance_execution' => array(", 1)[0]
+browser_catalog = parity.split("'browser_acceptance_execution' => array(", 1)[1].split("'external_executor_work_claim' => array(", 1)[0]
 if "'remote_caller_role' => 'operator'" not in skills_catalog:
     raise SystemExit('managed Skills reconciliation must remain operator scoped')
 if "'remote_caller_role' => 'operator'" not in frontend_catalog:
     raise SystemExit('Frontend sample request must remain operator scoped')
+if "'remote_caller_role' => 'operator'" not in browser_catalog:
+    raise SystemExit('Browser Acceptance request must remain operator scoped')
+for marker in (
+    "'authority_surface' => 'mad4b-enrollment'",
+    "'executor' => 'external_browser_agent'",
+    "'production_policy' => 'deny'",
+    "'human_decision_required' => false",
+    "self::BROWSER_ACCEPTANCE_ABILITY",
+):
+    if marker not in browser_catalog:
+        raise SystemExit('Browser Acceptance catalog lost bounded remote parity invariant: ' + marker)
 
 for marker in [
     'public static function enqueue_explicit(',
@@ -283,6 +299,7 @@ for marker in [
     'Discoverability',
     'Future feature onboarding',
     'Human decisions remain human',
+    'External browser work claim/completion',
 ]:
     if marker not in contract:
         raise SystemExit(f'remote parity contract missing policy section: {marker}')
