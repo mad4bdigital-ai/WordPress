@@ -9,6 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * already admitted by Remote Operation Parity may be selected, and only when
  * the current catalog says they are:
  * - mounted on mad4b-enrollment,
+ * - addressed to the operator caller role,
  * - remote-parity ready and execution eligible,
  * - Staging/production-denied,
  * - not human-decision operations.
@@ -219,6 +220,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'registration_digest' => isset( $row['registration_digest'] ) ? (string) $row['registration_digest'] : '',
 			'remote_ability' => isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '',
 			'authority_surface' => isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '',
+			'remote_caller_role' => isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '',
 			'remote_mode' => isset( $row['remote_mode'] ) ? (string) $row['remote_mode'] : '',
 			'production_policy' => isset( $row['production_policy'] ) ? (string) $row['production_policy'] : '',
 			'human_decision_required' => ! empty( $row['human_decision_required'] ),
@@ -245,6 +247,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		$ability_name = isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '';
 		$enrollment_abilities = MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities();
 		if ( 'mad4b-enrollment' !== ( isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '' )
+			|| 'operator' !== ( isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '' )
 			|| ! in_array( $ability_name, $enrollment_abilities, true )
 			|| ! empty( $row['human_decision_required'] )
 			|| 'deny' !== ( isset( $row['production_policy'] ) ? (string) $row['production_policy'] : '' )
