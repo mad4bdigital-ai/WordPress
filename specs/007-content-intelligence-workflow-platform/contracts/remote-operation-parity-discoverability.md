@@ -1,6 +1,7 @@
 # Contract — Remote Operation Parity and Future Discoverability
 
 Contract: mad4b.remote-operation-parity.v1
+Catalog metadata version: 3
 
 ## Purpose
 Any operation that can reasonably be automated must not require a human to click a WordPress admin button, open a browser page manually, run a local command, or repeat an operator-only maintenance step merely because no remote execution path exists.
