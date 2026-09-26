@@ -87,7 +87,9 @@
       "zip_traversal_and_symlink_denied",
       "same_cycle_installed_package_identity_readback"
     ],
-    "first_bootstrap_note": "A runtime predating wordpress_plugin_deploy requires one already-authorized external deployment connector to install the first Host Bridge/Runner-capable candidate; subsequent deployments use the governed semantic path."
+    "first_bootstrap_note": "A runtime predating wordpress_plugin_deploy requires one already-authorized external deployment connector to install the first Host Bridge/Runner-capable candidate; subsequent deployments use the governed semantic path.",
+    "activation_mode": "preserve_existing_active_plugin_state_during_exact_directory_replace_then_verify_on_fresh_request",
+    "active_runtime_required_before_host_runner_replace": true
   },
   "post_deploy": {
     "required_live_acceptance": [
