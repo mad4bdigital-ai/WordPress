@@ -76,6 +76,11 @@ required_parity_markers = [
     "refresh_skills_lock",
     "mad4b_remote_skill_lock_reclaim_raced",
     "mad4b_remote_skill_lock_heartbeat_raced",
+    "did_action( 'wp_abilities_api_init' ) > 0",
+    "foreach ( self::catalog() as $row )",
+    "'mad4b-enrollment' !==",
+    "empty( $row['remote_registered'] )",
+    "empty( $row['execution_eligible'] )",
 ]
 for marker in required_parity_markers:
     if marker not in parity:
@@ -117,6 +122,12 @@ for ability in [
 
 if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in servers:
     raise SystemExit('bounded enrollment server is not sourced from Remote Operation Parity enrollment inventory')
+
+enrollment_method = parity.split('public static function enrollment_abilities()', 1)[1].split('public static function register_abilities()', 1)[0]
+if "self::catalog()" not in enrollment_method:
+    raise SystemExit('enrollment mount does not derive future registered operations from the validated catalog')
+if "did_action( 'wp_abilities_api_init' ) > 0" not in enrollment_method:
+    raise SystemExit('dynamic enrollment mount must wait until the Ability registry is materialized')
 
 write_start = servers.find("'mad4b-write' => array(")
 admin_start = servers.find("'mad4b-admin' => array(", write_start + 1)
