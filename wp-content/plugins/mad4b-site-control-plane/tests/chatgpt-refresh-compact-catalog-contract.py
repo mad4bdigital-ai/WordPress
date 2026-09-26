@@ -79,9 +79,20 @@ write_target = ABILITIES.split("private function governed_write_target", 1)[1].s
 require("false !== $annotations['readonly']" in write_target, "write dispatcher must reject any target not explicitly readonly=false")
 require("MAD4B_SCP_Servers::write_tools()" in write_target, "write dispatcher must require current runtime eligibility for execution")
 
-# Pre-authority convergence must never bypass the generic write dispatcher.
-# The narrow composite is a separate guarded direct step-up tool.
-require("private function is_staging_write_bootstrap_target" not in ABILITIES, "generic write dispatcher must not carry a pre-authority bootstrap exception")
+# Pre-authority convergence must never add another direct mutation tool.
+# Managed Skills is the sole bounded Enrollment bootstrap target admitted behind
+# the existing write-execute dispatcher; normal writes still require Write Authority.
+require("private function is_staging_write_bootstrap_target" not in ABILITIES, "legacy generic staging bootstrap exception must remain absent")
+for marker in [
+    "private function bounded_enrollment_dispatch_abilities()",
+    "private function is_bounded_enrollment_dispatch_target",
+    "private function governed_enrollment_dispatch_target",
+    "private function resolve_write_dispatch_target",
+    "MAD4B_SCP_Remote_Operation_Parity::write_dispatch_bootstrap_abilities()",
+    "'dispatch_class' => 'bounded_enrollment_bootstrap'",
+    "mad4b_write_dispatch_bootstrap_metadata_invalid",
+]:
+    require(marker in ABILITIES, f"bounded Enrollment write-dispatch invariant missing: {marker}")
 for marker in [
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
@@ -129,8 +140,11 @@ for forbidden in [
 # The transport permission itself must not substitute for target authorization.
 permission_section = ABILITIES.split("public function can_write_dispatch", 1)[1].split("public function write_discover", 1)[0]
 require("MAD4B_SCP_Policy::can_admin()" in permission_section, "write dispatcher must require admin identity")
-require("MAD4B_SCP_Policy::can_mutate()" in permission_section, "write dispatcher must require the global governed mutation gate")
-require("governed_write_target" in permission_section, "write dispatcher permission must validate the exact target")
+require("is_bounded_enrollment_dispatch_target" in permission_section, "write dispatcher must recognize only the bounded Enrollment bootstrap class")
+require("governed_enrollment_dispatch_target" in permission_section, "bounded Enrollment bootstrap must validate the exact target contract")
+require("MAD4B_SCP_Policy::can_mutate()" in permission_section, "normal write dispatcher must require the global governed mutation gate")
+require(permission_section.find("is_bounded_enrollment_dispatch_target") < permission_section.find("MAD4B_SCP_Policy::can_mutate()"), "bounded Enrollment classification must occur before normal Write Authority gating")
+require("governed_write_target" in permission_section, "normal write dispatcher permission must validate the exact target")
 require("authorize_mutation" not in permission_section, "dispatcher must not mint or replace target authorization")
 
 core_chatgpt = SERVERS.split("'mad4b-chatgpt' => array_merge( array(", 1)[1].split("), $governed_status", 1)[0]
