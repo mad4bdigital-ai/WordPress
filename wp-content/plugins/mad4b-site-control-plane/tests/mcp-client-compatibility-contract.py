@@ -144,7 +144,7 @@ assert 'self::chatgpt_internal_enrollment_mutations()' in logical_enrollment
 # The non-unified fallback is also a minimal transport and must never
 # restore heavy filesystem/database schemas or Breakglass to tools/list.
 assert 'if ( ! self::chatgpt_unified_catalog_enabled() )' in servers
-fallback = servers.split('if ( ! self::chatgpt_unified_catalog_enabled() )', 1)[1].split('$bootstrap = array(', 1)[0]
+fallback = servers.split('if ( ! self::chatgpt_unified_catalog_enabled() )', 1)[1].split("$narrow_read = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )", 1)[0]
 for marker in [
     "$tools = array_values( array_diff( $core, $breakglass, array( 'mad4b/database-raw-query' ) ) )",
     "array_unique( array_map( 'strval', $tools ) )",
