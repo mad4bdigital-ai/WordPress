@@ -480,7 +480,8 @@ final class MAD4B_SCP_Servers {
 		);
 		$candidates = array_merge( $core, $bootstrap );
 		$step_up = array_merge( $narrow_step_up, $full_step_up );
-		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $direct_remote_operations );
+		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up );
+		$direct_mutation_transport = array_merge( $direct_mutation_transport, $direct_remote_operations );
 
 		$tools = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
