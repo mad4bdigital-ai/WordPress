@@ -80,6 +80,7 @@ The platform MUST preserve human agency for decisions and approvals while removi
 ## Initial registered parity operations
 - Managed Skills reconciliation
 - Frontend performance sample collection
+- Governed Browser Acceptance execution
 - Admin-query performance index maintenance
 - External browser work claim/completion with executor-scoped caller roles
 
