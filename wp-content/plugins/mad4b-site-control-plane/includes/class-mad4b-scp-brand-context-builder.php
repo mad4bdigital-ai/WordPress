@@ -15,7 +15,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	const SCAN_PLAN_CONTRACT = 'mad4b.context-source-scan-plan.v1';
 	const MATERIALIZE_CONTRACT = 'mad4b.brand-context-materialization.v1';
 	const ROLLBACK_CONTRACT = 'mad4b.rollback.google-drive-brand-context-create.v1';
-	const BUILDER_SPEC_VERSION = '4';
+	const BUILDER_SPEC_VERSION = '5';
 	const DRAFT_PREFLIGHT_CONTRACT = 'mad4b.brand-draft-preflight.v1';
 	const MIN_NONEMPTY_SAMPLES = 12;
 	const MIN_PRIMARY_EXPRESSION_SAMPLES = 8;
