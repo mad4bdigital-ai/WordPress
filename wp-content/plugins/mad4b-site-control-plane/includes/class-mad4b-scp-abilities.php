@@ -181,7 +181,23 @@ final class MAD4B_SCP_Abilities {
 			),
 		);
 		if ( is_array( $input ) ) $args['input_schema'] = $input;
-		wp_register_ability( $name, $args );
+
+		// The bounded enrollment dispatcher is a step-up transport, not a normal
+		// governed write target. Its selected target remains constrained by the
+		// Remote Operation Parity catalog and its own exact policy/schema digests.
+		// Do not let generic write augmentation turn the dispatcher transport itself
+		// into a mad4b-write NHI target requiring an unrelated exact transport grant.
+		$write_augment = array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' );
+		$write_augment_priority = false;
+		if ( 'enrollment_dispatch' === $permission && function_exists( 'has_filter' ) ) {
+			$write_augment_priority = has_filter( 'wp_register_ability_args', $write_augment );
+			if ( false !== $write_augment_priority ) remove_filter( 'wp_register_ability_args', $write_augment, (int) $write_augment_priority );
+		}
+		try {
+			wp_register_ability( $name, $args );
+		} finally {
+			if ( false !== $write_augment_priority ) add_filter( 'wp_register_ability_args', $write_augment, (int) $write_augment_priority, 2 );
+		}
 	}
 
 	private function mutation_permission_callback( $permission, $readonly, $ability_name, $server_id ) {
