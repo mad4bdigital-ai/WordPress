@@ -121,7 +121,8 @@ assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" i
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_tools
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_tools
 assert "$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_tools
-assert "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in chatgpt_tools
+assert "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in chatgpt_map
+assert "$candidates = array_merge( $core, $bootstrap )" in chatgpt_tools
 assert "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_tools
 assert "$direct_mutation_transport[] = 'mad4b/enrollment-execute';" in chatgpt_tools
 assert "$direct_mutation_transport = array_values( array_unique( $direct_mutation_transport ) );" in chatgpt_tools
