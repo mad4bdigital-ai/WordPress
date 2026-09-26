@@ -60,6 +60,9 @@ foreach ( array(
 	'private static function complete_browser_acceptance_work(',
 	'MAD4B_SCP_Browser_Acceptance_Core::result(',
 	'mad4b_remote_browser_acceptance_not_verified',
+	"const BROWSER_ACCEPTANCE_RECEIPT_OPTION = 'mad4b_scp_browser_acceptance_receipt_v1';",
+	'public static function browser_acceptance_receipt_status(',
+	'mad4b.remote-browser-acceptance-receipt.v1',
 ) as $marker ) {
 	if ( false === strpos( $remote_parity_source, $marker ) ) {
 		fwrite( STDERR, "FAIL: Browser Acceptance remote parity invariant missing: {$marker}\n" );
@@ -71,10 +74,13 @@ if ( false === strpos( $remote_queue_source, "'browser_acceptance_execution' => 
 	exit( 1 );
 }
 foreach ( array(
-	"mad4b.staging-browser-certification-view.v2",
+	"mad4b.staging-browser-certification-view.v3",
 	"MAD4B_SCP_Remote_Work_Queue::list_jobs( 'browser_acceptance_execution' )",
 	"browser_runtime_parity_verified",
 	"durable_receipt_used",
+	"durable_receipt_source",
+	"dedicated_receipt",
+	"queue_fallback",
 	"durable_job_id",
 ) as $marker ) {
 	if ( false === strpos( $staging_cert_source, $marker ) ) {
