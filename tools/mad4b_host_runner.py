@@ -46,6 +46,7 @@ WORKSPACE_ROLLBACK_PLAN_CONTRACT = "mad4b.host-runner-workspace-rollback-plan.v1
 PLUGIN_DEPLOY_PLAN_CONTRACT = "mad4b.host-runner-wordpress-plugin-deploy-plan.v1"
 PLUGIN_SLUG = "mad4b-site-control-plane"
 MAX_PLUGIN_ARCHIVE_BYTES = 32 * 1024 * 1024
+MAX_PLUGIN_EXTRACT_BYTES = 64 * 1024 * 1024
 
 # Fixed semantic operation registry. There is intentionally no generic command or shell surface.
 OPERATIONS: dict[str, dict[str, Any]] = {
@@ -101,6 +102,7 @@ def resource_budget_status() -> dict[str, Any]:
         "receipt_output_bytes": MAX_RECEIPT_BYTES,
         "workspace_write_bytes": MAX_WRITE_BYTES,
         "plugin_deploy_archive_bytes": MAX_PLUGIN_ARCHIVE_BYTES,
+        "plugin_deploy_extract_bytes": MAX_PLUGIN_EXTRACT_BYTES,
         "minimum_free_space_reserve_bytes": MIN_FREE_SPACE_RESERVE_BYTES,
         "process": {
             "available": False,
@@ -1165,10 +1167,14 @@ def _verify_staged_control_plane_bundle(profile: dict[str, Any], plan: dict[str,
     if not isinstance(control, dict):
         raise ValueError("Plugin deployment control-plane manifest section is missing")
     archive_name = str(control.get("archive") or "")
+    if str(control.get("version") or "") != version:
+        raise ValueError("Plugin deployment Control Plane version mismatch in install manifest")
     if archive_name != f"mad4b-site-control-plane-{version}.zip":
         raise ValueError("Plugin deployment archive filename/version mismatch")
     if str(control.get("sha256") or "").lower() != archive_sha256:
         raise ValueError("Plugin deployment archive hash mismatch in install manifest")
+    if str(control.get("provenance_contract") or "") != "mad4b.build-provenance.v1":
+        raise ValueError("Plugin deployment provenance contract mismatch in install manifest")
 
     if receipt.get("contract") != "mad4b.deterministic-control-plane-package.v1":
         raise ValueError("Plugin deployment canonical receipt contract mismatch")
@@ -1185,6 +1191,10 @@ def _verify_staged_control_plane_bundle(profile: dict[str, Any], plan: dict[str,
     canonical = install.get("canonical_package")
     if not isinstance(canonical, dict):
         raise ValueError("Plugin deployment canonical package metadata is missing")
+    if canonical.get("contract") != "mad4b.deterministic-control-plane-package.v1":
+        raise ValueError("Plugin deployment canonical package contract mismatch")
+    if str(canonical.get("archive_sha256") or "").lower() != archive_sha256:
+        raise ValueError("Plugin deployment canonical package archive identity mismatch")
     if str(canonical.get("receipt_sha256") or "").lower() != sha256_file(receipt_path):
         raise ValueError("Plugin deployment canonical receipt hash mismatch")
 
@@ -1202,13 +1212,28 @@ def _verify_staged_control_plane_bundle(profile: dict[str, Any], plan: dict[str,
         raise ValueError("Plugin deployment staged archive SHA-256 mismatch")
 
     with zipfile.ZipFile(archive_path, "r") as zf:
-        files = [info for info in zf.infolist() if not info.is_dir()]
-        if not files or len(files) > 5000:
-            raise ValueError("Plugin deployment archive file inventory is invalid")
-        for info in files:
-            _safe_package_relative(info.filename)
+        entries = zf.infolist()
+        if not entries or len(entries) > 5000:
+            raise ValueError("Plugin deployment archive inventory is invalid")
+        seen_names: set[str] = set()
+        extracted_bytes = 0
+        for info in entries:
+            _safe_package_relative(info.filename.rstrip("/") if info.is_dir() else info.filename)
             if _zip_member_is_symlink(info):
                 raise ValueError("Plugin deployment archive contains a symlink")
+            if info.filename in seen_names:
+                raise ValueError("Plugin deployment archive contains duplicate members")
+            seen_names.add(info.filename)
+            if not info.is_dir():
+                extracted_bytes += int(info.file_size)
+                if extracted_bytes > MAX_PLUGIN_EXTRACT_BYTES:
+                    raise HostRunnerResourceError(
+                        "HOST_RESOURCE_PLUGIN_EXTRACT_BYTES_EXCEEDED",
+                        "Plugin deployment extracted byte budget exceeded",
+                    )
+        files = [info for info in entries if not info.is_dir()]
+        if not files:
+            raise ValueError("Plugin deployment archive file inventory is invalid")
         provenance_name = f"{PLUGIN_SLUG}/MAD4B-BUILD-PROVENANCE.json"
         try:
             provenance = json.loads(zf.read(provenance_name).decode("utf-8"))
@@ -1384,12 +1409,23 @@ def execute_wordpress_plugin_deploy(profile: dict[str, Any], verified: dict[str,
     stage_root.mkdir(mode=0o700)
     try:
         with zipfile.ZipFile(bundle["archive_path"], "r") as zf:
+            seen_names: set[str] = set()
+            extracted_bytes = 0
             for info in zf.infolist():
-                if info.is_dir():
-                    continue
-                rel = _safe_package_relative(info.filename)
+                rel = _safe_package_relative(info.filename.rstrip("/") if info.is_dir() else info.filename)
                 if _zip_member_is_symlink(info):
                     raise ValueError("Plugin deployment archive contains a symlink")
+                if info.filename in seen_names:
+                    raise ValueError("Plugin deployment archive contains duplicate members")
+                seen_names.add(info.filename)
+                if info.is_dir():
+                    continue
+                extracted_bytes += int(info.file_size)
+                if extracted_bytes > MAX_PLUGIN_EXTRACT_BYTES:
+                    raise HostRunnerResourceError(
+                        "HOST_RESOURCE_PLUGIN_EXTRACT_BYTES_EXCEEDED",
+                        "Plugin deployment extracted byte budget exceeded",
+                    )
                 relative_inside_plugin = Path(*rel.parts[1:])
                 target = stage_root / PLUGIN_SLUG / relative_inside_plugin
                 target.parent.mkdir(parents=True, exist_ok=True)
