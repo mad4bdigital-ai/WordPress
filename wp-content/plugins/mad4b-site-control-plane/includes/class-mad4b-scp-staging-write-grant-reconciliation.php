@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 	const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v2';
 	const ABILITY = 'mad4b/staging-write-grant-reconcile';
-	const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE GRANTS';
+	const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE AUTHORITY';
 
 	private static $booted = false;
 	private static $running = false;
@@ -510,8 +510,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'authority_ready' => true,
 				'effective' => true,
 				'commit_point' => 'candidate_binding_transaction',
-				'completion_audit_recorded' => true,
-				'completion_audit_source' => 'candidate_binding_transaction',
+				'candidate_binding_audit_recorded' => true,
+				'candidate_binding_audit_source' => 'candidate_binding_transaction',
 				'post_commit_governance_mutation' => false,
 				'developer_authority_mutation' => false,
 				'breakglass_included' => false,
