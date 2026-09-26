@@ -32,7 +32,13 @@
     "human_approval_required_for_apply": true,
     "exact_capability_envelope_required": true,
     "exact_target_allowlist_required": true,
-    "caller_supplied_credentials_allowed": false
+    "caller_supplied_credentials_allowed": false,
+    "semantic_contract": "mad4b.host-runner-wordpress-plugin-deploy-plan.v1",
+    "bridge_ability": "mad4b/host-operation-apply",
+    "execution_location": "host_runner",
+    "generic_shell_required": false,
+    "caller_supplied_path_allowed": false,
+    "caller_supplied_url_allowed": false
   },
   "preflight": {
     "must_precede_first_write": true,
@@ -57,7 +63,31 @@
     "same_cycle_readback_required": true,
     "rollback_on_failed_readback": true,
     "rollback_restores_previous_plugin_files": true,
-    "production_requires_separate_explicit_authority": true
+    "production_requires_separate_explicit_authority": true,
+    "staging_ingress": {
+      "zone": "package_staging",
+      "bundle_key": "exact_source_commit_sha",
+      "network_fetch_by_runner": false,
+      "external_deployment_connector_stages_verified_bundle": true,
+      "required_bundle_members": [
+        "install-manifest.json",
+        "CANONICAL-PACKAGE-RECEIPT.json",
+        "BUILD-FINGERPRINT.txt",
+        "PACKAGE-MANIFEST-DIGEST.txt",
+        "exact_control_plane_archive"
+      ]
+    },
+    "host_runner_verification": [
+      "exact_current_installed_package_identity_before_commit",
+      "install_manifest_repository_and_source_match",
+      "canonical_package_receipt_match",
+      "archive_sha256_match",
+      "embedded_build_provenance_match",
+      "package_file_inventory_exact",
+      "zip_traversal_and_symlink_denied",
+      "same_cycle_installed_package_identity_readback"
+    ],
+    "first_bootstrap_note": "A runtime predating wordpress_plugin_deploy requires one already-authorized external deployment connector to install the first Host Bridge/Runner-capable candidate; subsequent deployments use the governed semantic path."
   },
   "post_deploy": {
     "required_live_acceptance": [
