@@ -176,9 +176,17 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	}
 
 	public static function authority_step_up_scope_available() {
-		if ( ! class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) || ! method_exists( 'MAD4B_SCP_Full_Staging_Authority', 'chatgpt_step_up_tools' ) ) return false;
-		$tools = MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools();
-		return is_array( $tools ) && in_array( MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY, $tools, true );
+		$full_authority = false;
+		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) && method_exists( 'MAD4B_SCP_Full_Staging_Authority', 'chatgpt_step_up_tools' ) ) {
+			$tools = MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools();
+			$full_authority = is_array( $tools ) && in_array( MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY, $tools, true );
+		}
+		$enrollment_dispatch = false;
+		if ( class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) && method_exists( 'MAD4B_SCP_Enrollment_Dispatch', 'chatgpt_tools' ) ) {
+			$tools = MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools();
+			$enrollment_dispatch = is_array( $tools ) && in_array( MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY, $tools, true );
+		}
+		return $full_authority || $enrollment_dispatch;
 	}
 
 	public static function resource_identifier( $server_id = 'mad4b-chatgpt' ) {
