@@ -3,19 +3,20 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Exact Staging-only bootstrap for reconciling newly eligible governed write
- * abilities into the canonical profile-owned NHI.
+ * Exact Staging-only bounded Write Authority convergence.
  *
  * This is deliberately NOT a normal mad4b-write ability. It can create exact
- * Staging allow grants only for the reviewed provider/ability pairs below.
- * It cannot create wildcard grants, cannot touch Production, cannot grant
- * import/export, cannot create/replace agents or subjects, and cannot revoke
- * pre-existing grants except grants created by the same failed invocation.
+ * Staging allow grants only for the reviewed provider/ability pairs below,
+ * prove the clean runtime-eligible grant snapshot, then bind the exact current
+ * four-part package candidate as the final commit point. It cannot create
+ * wildcard grants, touch Production, enable Developer/Developer Breakglass,
+ * grant import/export, create/replace agents or subjects, or revoke pre-existing
+ * grants except grants created by the same failed invocation before commit.
  */
 final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 	const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v2';
 	const ABILITY = 'mad4b/staging-write-grant-reconcile';
-	const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE GRANTS';
+	const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE AUTHORITY';
 
 	private static $booted = false;
 	private static $running = false;
@@ -39,11 +40,31 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			'elementor/set-etg-dynamic-tag' => 'elementor',
 			'context/update-drive-asset' => 'google_drive_context',
 			'context/recreate-drive-asset' => 'google_drive_context',
+			'context/brand-draft-append' => 'google_drive_context',
+			'context/materialize-brand-draft' => 'google_drive_context',
+			'context/reconcile-brand-materialization' => 'google_drive_context',
+			'context/rollback-materialized-brand-draft' => 'google_drive_context',
+			'context/source-scan-apply' => 'google_drive_context',
 		);
 	}
 
 	public static function allowed_abilities() {
 		return array_keys( self::allowed_ability_providers() );
+	}
+
+	public static function chatgpt_read_tools() {
+		return class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan' )
+			? array( MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::ABILITY )
+			: array();
+	}
+
+	public static function chatgpt_step_up_tools() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return array();
+		if ( 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) return array();
+		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) return array();
+		return array( self::ABILITY );
 	}
 
 	public static function boot() {
@@ -63,8 +84,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 
 		try {
 			wp_register_ability( self::ABILITY, array(
-				'label' => 'Reconcile Exact Staging Write Grants',
-				'description' => 'Create only the exact missing Staging grants for reviewed provider write expansions on the canonical profile-owned governed-write agent.',
+				'label' => 'Converge Exact Staging Write Authority',
+				'description' => 'Create only reviewed exact missing Staging grants, prove the clean governed-write snapshot, and bind the exact current package candidate without enabling Developer, Breakglass, or Production authority.',
 				'category' => 'mad4b-governance',
 				'execute_callback' => array( __CLASS__, 'reconcile' ),
 				'permission_callback' => array( __CLASS__, 'can_execute' ),
@@ -76,6 +97,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 						'expected_profile_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 						'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
 						'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+						'expected_package_manifest_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+						'expected_artifact_identity' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191, 'pattern' => '^[A-Za-z0-9._-]+$' ),
 						'expected_agent_public_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' ),
 						'expected_write_tool_count' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 200 ),
 						'expected_write_inventory_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
@@ -94,6 +117,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 						'expected_profile_digest',
 						'expected_source_commit_sha',
 						'expected_build_fingerprint',
+						'expected_package_manifest_digest',
+						'expected_artifact_identity',
 						'expected_agent_public_id',
 						'expected_write_tool_count',
 						'expected_write_inventory_fingerprint',
@@ -112,6 +137,10 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 						'surface' => 'enrollment',
 						'mad4b_grant_reconciliation_authority' => self::CONTRACT,
 						'creates_exact_staging_grants_only' => true,
+						'binds_exact_package_candidate' => true,
+						'candidate_binding_is_commit_point' => true,
+						'enables_developer_authority' => false,
+						'production_allowed' => false,
 						'auto_approves' => false,
 					),
 					'annotations' => array( 'readonly' => false, 'destructive' => false, 'idempotent' => false ),
@@ -129,6 +158,17 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		if ( 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_grant_reconcile_staging_only', 'Exact grant reconciliation is Staging-only.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_grant_reconcile_profile_not_exact', 'Current origin and URLs must exactly match the enrolled Site Profile.' );
 		if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_grant_reconcile_write_disabled', 'Governed write must already be enabled.' );
+		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) || true !== constant( 'MAD4B_MCP_MUTATION_ENABLED' ) ) return new WP_Error( 'mad4b_grant_reconcile_mutation_gate_disabled', 'The governed mutation master gate must already be enabled.' );
+		if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) return new WP_Error( 'mad4b_grant_reconcile_breakglass_enabled', 'Bounded Write Authority convergence is denied while Breakglass authority is enabled.' );
+		if ( 'https' !== strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_grant_reconcile_https_required', 'Remote Write Authority convergence requires HTTPS.' );
+		if ( ! defined( 'MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE' )
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
+			return new WP_Error( 'mad4b_grant_reconcile_step_up_scope_required', 'The OAuth bearer does not grant the dedicated authority step-up scope.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ) {
+			return new WP_Error( 'mad4b_grant_reconcile_chatgpt_client_required', 'Bounded Write Authority convergence requires OAuth attribution to the exact ChatGPT CIMD client.' );
+		}
 		if ( 'chatgpt-governed-write' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) ) return new WP_Error( 'mad4b_grant_reconcile_canonical_agent_required', 'Grant reconciliation is limited to the canonical profile-owned governed-write agent.' );
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_grant_reconcile_subject_not_enrolled', 'The authenticated administrator is not enrolled in this Site Profile.' );
@@ -246,11 +286,17 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 			$current_sha = is_array( $provenance ) && isset( $provenance['source_commit_sha'] ) ? strtolower( (string) $provenance['source_commit_sha'] ) : '';
 			$current_fingerprint = is_array( $provenance ) && isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
+			$current_manifest = is_array( $provenance ) && isset( $provenance['package_manifest_digest'] ) ? strtolower( (string) $provenance['package_manifest_digest'] ) : '';
+			$current_artifact = is_array( $provenance ) && isset( $provenance['artifact_identity'] ) ? trim( (string) $provenance['artifact_identity'] ) : '';
 			$expected_sha = isset( $input['expected_source_commit_sha'] ) ? strtolower( trim( (string) $input['expected_source_commit_sha'] ) ) : '';
 			$expected_fingerprint = isset( $input['expected_build_fingerprint'] ) ? strtolower( trim( (string) $input['expected_build_fingerprint'] ) ) : '';
+			$expected_manifest = isset( $input['expected_package_manifest_digest'] ) ? strtolower( trim( (string) $input['expected_package_manifest_digest'] ) ) : '';
+			$expected_artifact = isset( $input['expected_artifact_identity'] ) ? trim( (string) $input['expected_artifact_identity'] ) : '';
 			if ( ! is_array( $provenance ) || empty( $provenance['manifest_present'] ) || empty( $provenance['manifest_valid'] ) || empty( $provenance['runtime_manifest_match'] ) || ! empty( $provenance['stale'] ) || ! empty( $provenance['provenance_mismatch'] ) ) return new WP_Error( 'mad4b_grant_reconcile_provenance_not_ready', 'Exact current build provenance is not ready.' );
 			if ( ! preg_match( '/^[a-f0-9]{40}$/', $expected_sha ) || ! hash_equals( $expected_sha, $current_sha ) ) return new WP_Error( 'mad4b_grant_reconcile_candidate_mismatch', 'Source commit does not match the exact requested candidate.' );
 			if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_fingerprint ) || ! hash_equals( $expected_fingerprint, $current_fingerprint ) ) return new WP_Error( 'mad4b_grant_reconcile_fingerprint_mismatch', 'Build fingerprint does not match the exact requested candidate.' );
+			if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_manifest ) || ! hash_equals( $expected_manifest, $current_manifest ) ) return new WP_Error( 'mad4b_grant_reconcile_manifest_mismatch', 'Package manifest digest does not match the exact requested candidate.' );
+			if ( '' === $expected_artifact || strlen( $expected_artifact ) > 191 || ! hash_equals( $expected_artifact, $current_artifact ) ) return new WP_Error( 'mad4b_grant_reconcile_artifact_mismatch', 'Artifact identity does not match the exact requested candidate.' );
 
 			$agent = self::current_agent();
 			if ( is_wp_error( $agent ) ) return $agent;
@@ -311,6 +357,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'site_profile_digest' => $current_digest,
 				'source_commit_sha' => $current_sha,
 				'build_fingerprint' => $current_fingerprint,
+				'package_manifest_digest' => $current_manifest,
+				'artifact_identity' => $current_artifact,
 				'write_tool_count' => (int) $inventory['count'],
 				'write_inventory_fingerprint' => (string) $inventory['fingerprint'],
 				'exact_missing_abilities' => $missing,
@@ -378,7 +426,25 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				return new WP_Error( 'mad4b_grant_reconcile_binding_context_unavailable', 'Audited candidate-binding context factory is unavailable; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
 			}
 			$binding_plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+			if ( ! is_array( $binding_plan ) ) {
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				return new WP_Error( 'mad4b_grant_reconcile_binding_plan_unavailable', 'Exact binding plan is unavailable after grant convergence; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
+			}
 			$binding_snapshot = isset( $binding_plan['candidate_binding'] ) && is_array( $binding_plan['candidate_binding'] ) ? $binding_plan['candidate_binding'] : array();
+			$binding_identity_matches = isset(
+				$binding_snapshot['current_source_commit_sha'],
+				$binding_snapshot['current_build_fingerprint'],
+				$binding_snapshot['current_package_manifest_digest'],
+				$binding_snapshot['current_artifact_identity']
+			)
+				&& hash_equals( $expected_sha, strtolower( (string) $binding_snapshot['current_source_commit_sha'] ) )
+				&& hash_equals( $expected_fingerprint, strtolower( (string) $binding_snapshot['current_build_fingerprint'] ) )
+				&& hash_equals( $expected_manifest, strtolower( (string) $binding_snapshot['current_package_manifest_digest'] ) )
+				&& hash_equals( $expected_artifact, (string) $binding_snapshot['current_artifact_identity'] );
+			if ( ! $binding_identity_matches ) {
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				return new WP_Error( 'mad4b_grant_reconcile_binding_identity_drift', 'Exact four-part package identity changed before the candidate-binding commit point; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
+			}
 			$binding_context = MAD4B_SCP_Staging_Write_Candidate_Binding::operation_context(
 				$binding_plan,
 				$binding_snapshot,
@@ -392,36 +458,40 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
 				return new WP_Error( 'mad4b_grant_reconcile_binding_context_failed', 'Audited candidate-binding context could not be created after grant reconciliation; newly-created grants and persisted authority state were rolled back.', array( 'code' => $binding_context->get_error_code(), 'rollback_errors' => $rollback ) );
 			}
+			$prepared = MAD4B_SCP_Audit::record( 'mad4b/staging-write-authority-prepared', array(
+				'contract' => self::CONTRACT,
+				'operation_id' => isset( $binding_context['operation_id'] ) ? (string) $binding_context['operation_id'] : '',
+				'plan_sha256' => $current_plan_sha,
+				'agent_public_id' => (string) $agent['public_id'],
+				'source_commit_sha' => $current_sha,
+				'build_fingerprint' => $current_fingerprint,
+				'package_manifest_digest' => $current_manifest,
+				'artifact_identity' => $current_artifact,
+				'write_tool_count' => (int) $binding_plan['write_tool_count'],
+				'exact_grants_existing' => (int) $binding_plan['exact_grants_existing'],
+				'write_inventory_fingerprint' => (string) $binding_plan['write_inventory_fingerprint'],
+				'grant_rows_fingerprint' => (string) $binding_plan['grant_rows_fingerprint'],
+				'candidate_binding_is_commit_point' => true,
+				'production_mutation' => false,
+				'developer_authority_mutation' => false,
+				'breakglass_included' => false,
+			), 'ok' );
+			if ( is_wp_error( $prepared ) ) {
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				return new WP_Error( 'mad4b_grant_reconcile_prepared_audit_failed', 'Prepared authority evidence could not be committed before the candidate-binding commit point; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
+			}
+			// Final commit point: candidate binding commits the exact four-part package
+			// identity and its authorization/completion audit atomically.
+			// No fallible governance mutation is permitted after successful return.
 			$bound = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $current_sha, $current_fingerprint, $binding_context );
 			if ( is_wp_error( $bound ) ) {
 				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
 				return new WP_Error( 'mad4b_grant_reconcile_candidate_binding_failed', 'Exact package candidate could not be bound after grant reconciliation; newly-created grants and persisted authority state were rolled back.', array( 'code' => $bound->get_error_code(), 'rollback_errors' => $rollback ) );
 			}
 			$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
-			if ( empty( $binding['required'] ) || empty( $binding['match'] ) ) {
-				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
-				return new WP_Error( 'mad4b_grant_reconcile_candidate_not_effective', 'Exact package candidate binding is not effective after reconciliation; newly-created grants and persisted authority state were rolled back.', array( 'binding' => $binding, 'rollback_errors' => $rollback ) );
-			}
 			$authority = $bound;
-
-			$completion = MAD4B_SCP_Audit::record( 'mad4b/staging-write-grant-reconciliation-complete', array(
-				'contract' => self::CONTRACT,
-				'agent_public_id' => (string) $agent['public_id'],
-				'created_count' => count( $created_abilities ),
-				'created_abilities' => $created_abilities,
-				'write_tool_count' => (int) $authority['write_tool_count'],
-				'write_inventory_fingerprint' => (string) $authority['write_inventory_fingerprint'],
-				'exact_grants_existing' => isset( $authority['exact_grants_existing'] ) ? (int) $authority['exact_grants_existing'] : 0,
-				'source_commit_sha' => $current_sha,
-				'build_fingerprint' => $current_fingerprint,
-				'plan_sha256' => $current_plan_sha,
-				'candidate_rebound_without_grant_changes' => empty( $created_abilities ),
-				'authority_ready' => true,
-				'production_mutation' => false,
-			), 'ok' );
-			if ( is_wp_error( $completion ) ) {
-				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
-				return new WP_Error( 'mad4b_grant_reconcile_completion_audit_failed', 'Completion audit failed; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
+			if ( empty( $authority['effective'] ) ) {
+				return new WP_Error( 'mad4b_grant_reconcile_post_commit_invariant_failed', 'Candidate-binding transaction committed without the effective=true invariant reported by the binding primitive; no post-commit rollback was attempted.' );
 			}
 
 			return array(
@@ -433,15 +503,22 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'write_tool_count' => (int) $authority['write_tool_count'],
 				'write_inventory_fingerprint' => (string) $authority['write_inventory_fingerprint'],
 				'exact_grants_existing' => isset( $authority['exact_grants_existing'] ) ? (int) $authority['exact_grants_existing'] : 0,
-				'exact_grants_created_by_authority_reconcile' => isset( $authority['exact_grants_created'] ) ? (int) $authority['exact_grants_created'] : 0,
+				'exact_grants_created_by_authority_reconcile' => count( $created_abilities ),
 				'source_commit_sha' => $current_sha,
 				'build_fingerprint' => $current_fingerprint,
+				'package_manifest_digest' => $current_manifest,
+				'artifact_identity' => $current_artifact,
 				'plan_sha256' => $current_plan_sha,
 				'candidate_binding_match' => ! empty( $binding['match'] ),
 				'candidate_rebound_without_grant_changes' => empty( $created_abilities ),
 				'runtime_reconciled' => true,
 				'authority_ready' => true,
-				'completion_audit_recorded' => true,
+				'effective' => true,
+				'commit_point' => 'candidate_binding_transaction',
+				'candidate_binding_audit_recorded' => true,
+				'candidate_binding_audit_source' => 'candidate_binding_transaction',
+				'post_commit_governance_mutation' => false,
+				'developer_authority_mutation' => false,
 				'breakglass_included' => false,
 				'production_mutation' => false,
 			);

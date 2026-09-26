@@ -104,6 +104,8 @@ for marker in [
 ]:
     assert marker in apply_body, marker
 assert "MAD4B_SCP_Full_Staging_Authority::enrollment_tools()" in servers
+assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in servers
+assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in servers
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in servers
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in servers
 assert "private static function chatgpt_internal_enrollment_mutations()" in servers
@@ -114,17 +116,21 @@ assert "array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools()
 chatgpt_map = servers.split("'mad4b-chatgpt' => array_merge(", 1)[1].split("'mad4b-enrollment' =>", 1)[0]
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" not in chatgpt_map
 chatgpt_tools = servers.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_internal_enrollment_mutations()", 1)[0]
+assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in chatgpt_tools
+assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in chatgpt_tools
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_tools
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_tools
+assert "$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_tools
 assert "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_tools
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
-    "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
 ]:
     assert low_level not in chatgpt_tools
 full_catalog = servers.split("public static function chatgpt_full_catalog_candidates()", 1)[1].split("public static function is_chatgpt_full_catalog_candidate", 1)[0]
+assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in full_catalog
+assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in full_catalog
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in full_catalog
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in full_catalog
 assert full.count("self::meta( true, 'read' )") >= 2
