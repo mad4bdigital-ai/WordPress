@@ -208,14 +208,27 @@ jobs:
                       "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: public/authenticated ruleset identity drift "
                       f"{key} authenticated={authenticated.get(key)!r} public={public_live.get(key)!r}"
                   )
-          if "bypass_actors" not in public_live:
+
+          owner_attestation = json.loads(
+              Path("/tmp/mad4b-governance-repair-owner-attestation.json").read_text(encoding="utf-8")
+          )
+          if (
+              owner_attestation.get("verified") is not True
+              or owner_attestation.get("pull_request") != 69
+              or owner_attestation.get("expected_head_sha") != os.environ["SOURCE_SHA"]
+              or owner_attestation.get("live_head_sha") != os.environ["SOURCE_SHA"]
+          ):
               raise SystemExit(
-                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: public bypass-actor evidence unavailable"
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: exact-head owner attestation evidence drift"
               )
-          if public_live.get("bypass_actors") != []:
+
+          bypass_visible = "bypass_actors" in public_live
+          if bypass_visible and public_live.get("bypass_actors") != []:
               raise SystemExit(
-                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: public bypass actors are not empty"
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: visible public bypass actors are not empty"
               )
+          bypass_actor_visibility = "visible_empty" if bypass_visible else "hidden_in_ci"
+          hidden_bypass_exception = not bypass_visible
 
           live = public_live
           if int(live.get("id") or 0) != 23968498:
@@ -265,8 +278,17 @@ jobs:
               "baseline_feature_boundary_verified": True,
               "baseline_feature_boundary_mode": boundary.get("mode"),
               "powershell_parser_contract_verified": True,
-              "zero_bypass_actors_verified": True,
-              "bypass_evidence_source": "public_ruleset_detail_bound_to_authenticated_identity",
+              "zero_bypass_actors_verified": bool(bypass_visible),
+              "bypass_actor_visibility": bypass_actor_visibility,
+              "bypass_evidence_source": (
+                  "public_ruleset_detail_bound_to_authenticated_identity"
+                  if bypass_visible
+                  else "hidden_in_ci_exact_head_owner_attestation"
+              ),
+              "hidden_bypass_exception": hidden_bypass_exception,
+              "hidden_bypass_exception_scope": (
+                  "pr69_exact_head_owner_attested" if hidden_bypass_exception else ""
+              ),
               "legacy_ruleset_snapshot_verified": True,
               "exact_head_owner_attestation_verified": True,
               "target_governance_activation_still_required_post_merge": True,
@@ -371,8 +393,6 @@ jobs:
               'baseline_feature_boundary_verified': True,
               'baseline_feature_boundary_mode': 'repository_governance_change',
               'powershell_parser_contract_verified': True,
-              'zero_bypass_actors_verified': True,
-              'bypass_evidence_source': 'public_ruleset_detail_bound_to_authenticated_identity',
               'legacy_ruleset_snapshot_verified': True,
               'exact_head_owner_attestation_verified': True,
               'target_governance_activation_still_required_post_merge': True,
@@ -384,6 +404,24 @@ jobs:
                       f'GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: evidence mismatch {key} '
                       f'expected={value!r} actual={evidence.get(key)!r}'
                   )
+          bypass_visible_ready = bool(
+              evidence.get('zero_bypass_actors_verified') is True
+              and evidence.get('bypass_actor_visibility') == 'visible_empty'
+              and evidence.get('bypass_evidence_source') == 'public_ruleset_detail_bound_to_authenticated_identity'
+              and evidence.get('hidden_bypass_exception') is False
+          )
+          hidden_bypass_ready = bool(
+              evidence.get('zero_bypass_actors_verified') is False
+              and evidence.get('bypass_actor_visibility') == 'hidden_in_ci'
+              and evidence.get('bypass_evidence_source') == 'hidden_in_ci_exact_head_owner_attestation'
+              and evidence.get('hidden_bypass_exception') is True
+              and evidence.get('hidden_bypass_exception_scope') == 'pr69_exact_head_owner_attested'
+              and evidence.get('exact_head_owner_attestation_verified') is True
+          )
+          if not (bypass_visible_ready or hidden_bypass_ready):
+              raise SystemExit(
+                  'GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: bypass evidence state is not bounded'
+              )
           status = {
               'contract': 'mad4b.repository-governance-status.v1',
               'repository': 'mad4bdigital-ai/WordPress',
@@ -399,8 +437,11 @@ jobs:
               'live_target_governance_ready': False,
               'strict_target_governance_failure': strict_failure,
               'baseline_feature_boundary_verified': True,
-              'zero_bypass_actors_verified': True,
+              'zero_bypass_actors_verified': bool(evidence.get('zero_bypass_actors_verified')),
+              'bypass_actor_visibility': evidence.get('bypass_actor_visibility'),
               'bypass_evidence_source': evidence.get('bypass_evidence_source'),
+              'hidden_bypass_exception': bool(evidence.get('hidden_bypass_exception')),
+              'hidden_bypass_exception_scope': evidence.get('hidden_bypass_exception_scope', ''),
               'legacy_ruleset_snapshot_verified': True,
               'powershell_parser_contract_verified': True,
               'exact_head_owner_attestation_verified': True,
