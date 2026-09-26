@@ -742,7 +742,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$languages = self::configured_languages();
 		if ( empty( $languages ) ) $languages = array( '' );
 		$per_language = max( 8, (int) ceil( self::MAX_LIVE_CANDIDATES / max( 1, count( $languages ) ) ) );
-		$core_budget = max( 6, min( $per_language, (int) ceil( $per_language * 0.75 ) ) );
+		$core_budget = $per_language;
 		$seen = array();
 		foreach ( $languages as $language ) {
 			$language_posts = array();
