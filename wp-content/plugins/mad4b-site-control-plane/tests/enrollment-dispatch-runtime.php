@@ -89,6 +89,91 @@ final class MAD4B_SCP_Servers {
     public static function ability_is_mounted( $server_id, $ability_name ) {
         return 'mad4b-enrollment' === (string) $server_id && in_array( (string) $ability_name, self::$mounted, true );
     }
+    public static function provider_for_ability( $server_id, $ability_name ) {
+        return self::ability_is_mounted( $server_id, $ability_name ) ? 'core' : null;
+    }
+}
+
+final class MAD4B_SCP_Identity_Context {
+    public static function current() {
+        return array(
+            'authenticated' => true,
+            'subject_type' => 'oauth',
+            'subject_fingerprint' => str_repeat( 'a', 64 ),
+        );
+    }
+}
+
+final class MAD4B_SCP_Agent_Registry {
+    public static $grants = array();
+    public static $next_id = 100;
+    public static $wildcard_grants = 0;
+
+    public static function resolve_agent( array $identity ) {
+        return array(
+            'id' => 9,
+            'public_id' => '00000000-0000-4000-8000-000000000009',
+            'slug' => 'chatgpt-governed-write',
+            'status' => 'enabled',
+            'environment' => 'staging',
+        );
+    }
+
+    public static function counts() {
+        return array( 'wildcard_grants' => (int) self::$wildcard_grants );
+    }
+
+    public static function grants_for_agent( $agent_id, $server_id = '' ) {
+        return array_values( array_filter( self::$grants, static function ( $grant ) use ( $agent_id, $server_id ) {
+            if ( (int) $grant['agent_id'] !== (int) $agent_id ) return false;
+            return '' === (string) $server_id || (string) $grant['server_id'] === (string) $server_id;
+        } ) );
+    }
+
+    public static function grant_ability( $agent_public_id, $server_id, $ability_name, $provider = 'core', array $constraints = array(), $effect = 'allow', $environment = 'all' ) {
+        self::$grants[] = array(
+            'id' => self::$next_id++,
+            'agent_id' => 9,
+            'effect' => (string) $effect,
+            'server_id' => (string) $server_id,
+            'ability_name' => (string) $ability_name,
+            'provider' => (string) $provider,
+            'environment' => (string) $environment,
+        );
+        return true;
+    }
+
+    public static function exact_grant( $agent_id, $server_id, $ability_name, $provider = 'core' ) {
+        $matches = array_values( array_filter( self::$grants, static function ( $grant ) use ( $agent_id, $server_id, $ability_name, $provider ) {
+            return (int) $grant['agent_id'] === (int) $agent_id
+                && (string) $grant['server_id'] === (string) $server_id
+                && (string) $grant['ability_name'] === (string) $ability_name
+                && (string) $grant['provider'] === (string) $provider
+                && in_array( (string) $grant['environment'], array( 'all', 'staging' ), true );
+        } ) );
+        foreach ( $matches as $grant ) if ( 'deny' === $grant['effect'] ) return new WP_Error( 'mad4b_nhi_grant_denied', 'Agent grant explicitly denies this ability.' );
+        foreach ( $matches as $grant ) if ( 'allow' === $grant['effect'] ) return $grant;
+        return new WP_Error( 'mad4b_nhi_grant_missing', 'Agent does not have an exact grant for this ability.' );
+    }
+
+    public static function revoke_allow_grant_by_id( $agent_public_id, $grant_id, $server_id = '' ) {
+        foreach ( self::$grants as $index => $grant ) {
+            if ( (int) $grant['id'] !== (int) $grant_id || 'allow' !== (string) $grant['effect'] ) continue;
+            if ( '' !== (string) $server_id && (string) $grant['server_id'] !== (string) $server_id ) continue;
+            unset( self::$grants[ $index ] );
+            self::$grants = array_values( self::$grants );
+            return true;
+        }
+        return new WP_Error( 'mad4b_test_grant_revoke_failed', 'Grant not found.' );
+    }
+}
+
+final class MAD4B_SCP_Audit {
+    public static $events = array();
+    public static function record( $event, array $data, $status = 'ok' ) {
+        self::$events[] = array( 'event' => (string) $event, 'data' => $data, 'status' => (string) $status );
+        return true;
+    }
 }
 
 final class MAD4B_SCP_Remote_Operation_Parity {
@@ -96,6 +181,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
     const CLAIM = 'mad4b/remote-operation-work-claim';
     const HUMAN = 'mad4b/human-decision-test';
     const SYSTEM = 'mad4b/system-test';
+    public static $skills_overrides = array();
 
     public static function enrollment_abilities() {
         return array( self::SKILLS, self::CLAIM, self::HUMAN, self::SYSTEM );
@@ -103,7 +189,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 
     public static function catalog() {
         return array(
-            'managed_skills_reconciliation' => self::row( self::SKILLS, 'operator', false, 'deny', '1' ),
+            'managed_skills_reconciliation' => array_merge( self::row( self::SKILLS, 'operator', false, 'deny', '1' ), self::$skills_overrides ),
             'external_executor_work_claim' => self::row( self::CLAIM, 'external_executor', false, 'deny', '2' ),
             'human_decision_test' => self::row( self::HUMAN, 'operator', true, 'deny', '3' ),
             'system_test' => self::row( self::SYSTEM, 'system', false, 'deny', '4' ),
@@ -134,6 +220,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
             'executor_state' => 'wordpress_runtime_available',
             'execution_eligible' => true,
             'remote_parity_ready' => true,
+            'registrar_id' => 'mad4b-core',
+            'source_plugin' => 'mad4b-site-control-plane',
+            'trust_class' => 'core',
         );
     }
 }
@@ -233,25 +322,37 @@ mad4b_assert( is_array( $result ), 'eligible enrollment operation did not execut
 mad4b_assert( true === $result['operation_invoked'], 'dispatcher did not report operation invocation' );
 mad4b_assert( false === $result['mutation_performed'], 'dispatcher overwrote explicit target no-op mutation evidence' );
 mad4b_assert( 'target_result' === $result['mutation_evidence_source'], 'dispatcher did not identify target mutation evidence source' );
-mad4b_assert( 1 === $skills->calls, 'eligible target did not execute exactly once' );
+mad4b_assert( 2 === $skills->calls, 'eligible target did not execute exactly once' );
+mad4b_assert( 'created' === $result['enrollment_grant']['state'], 'missing exact Enrollment grant was not bootstrapped' );
+mad4b_assert( true === $result['enrollment_grant']['created'], 'created Enrollment grant was not reported as created' );
+mad4b_assert( 'mad4b-enrollment' === $result['enrollment_grant']['server_id'], 'Enrollment grant escaped its bounded server' );
+mad4b_assert( 'staging' === $result['enrollment_grant']['environment'], 'Enrollment grant was not Staging-only' );
+mad4b_assert( 1 === count( MAD4B_SCP_Agent_Registry::$grants ), 'Enrollment grant bootstrap created an unexpected grant count' );
+
+$result_existing = MAD4B_SCP_Enrollment_Dispatch::execute( $execute_input );
+mad4b_assert( is_array( $result_existing ), 'existing exact Enrollment grant did not permit replay-safe execution' );
+mad4b_assert( 'existing' === $result_existing['enrollment_grant']['state'], 'existing exact Enrollment grant was not reused' );
+mad4b_assert( false === $result_existing['enrollment_grant']['created'], 'existing Enrollment grant was incorrectly recreated' );
+mad4b_assert( 1 === count( MAD4B_SCP_Agent_Registry::$grants ), 'existing Enrollment execution duplicated the exact grant' );
+mad4b_assert( 2 === $skills->calls, 'existing-grant target execution count drifted' );
 
 $bad = $execute_input;
 $bad['expected_registration_digest'] = str_repeat( 'f', 64 );
 $denied = MAD4B_SCP_Enrollment_Dispatch::execute( $bad );
 mad4b_assert( 'mad4b_enrollment_dispatch_registration_drift' === mad4b_error_code( $denied ), 'registration drift did not fail closed' );
-mad4b_assert( 1 === $skills->calls, 'registration drift executed the target unexpectedly' );
+mad4b_assert( 2 === $skills->calls, 'registration drift executed the target unexpectedly' );
 
 $bad = $execute_input;
 $bad['expected_dispatch_policy_digest'] = str_repeat( 'f', 64 );
 $denied = MAD4B_SCP_Enrollment_Dispatch::execute( $bad );
 mad4b_assert( 'mad4b_enrollment_dispatch_policy_drift' === mad4b_error_code( $denied ), 'dispatch-policy drift did not fail closed' );
-mad4b_assert( 1 === $skills->calls, 'policy drift executed the target unexpectedly' );
+mad4b_assert( 2 === $skills->calls, 'policy drift executed the target unexpectedly' );
 
 $bad = $execute_input;
 $bad['expected_input_schema_sha256'] = str_repeat( 'f', 64 );
 $denied = MAD4B_SCP_Enrollment_Dispatch::execute( $bad );
 mad4b_assert( 'mad4b_enrollment_dispatch_schema_drift' === mad4b_error_code( $denied ), 'schema drift did not fail closed' );
-mad4b_assert( 1 === $skills->calls, 'schema drift executed the target unexpectedly' );
+mad4b_assert( 2 === $skills->calls, 'schema drift executed the target unexpectedly' );
 
 MAD4B_SCP_Servers::$mounted = array();
 $denied = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'managed_skills_reconciliation' ) );
@@ -274,6 +375,57 @@ $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = 
 $denied = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'managed_skills_reconciliation' ) );
 mad4b_assert( 'mad4b_enrollment_dispatch_read_target_denied' === mad4b_error_code( $denied ), 'readonly target entered mutation dispatcher' );
 
+MAD4B_SCP_Agent_Registry::$grants = array();
+$failing = new MAD4B_Test_Ability( mad4b_test_meta(), $schema, new WP_Error( 'mad4b_test_target_failure', 'Target failed.' ) );
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = $failing;
+$info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'managed_skills_reconciliation' ) );
+$execute_input['expected_registration_digest'] = $info['registration_digest'];
+$execute_input['expected_dispatch_policy_digest'] = $info['dispatch_policy_digest'];
+$execute_input['expected_input_schema_sha256'] = $info['input_schema_sha256'];
+$denied = MAD4B_SCP_Enrollment_Dispatch::execute( $execute_input );
+mad4b_assert( 'mad4b_test_target_failure' === mad4b_error_code( $denied ), 'target failure was not preserved after temporary Enrollment grant bootstrap' );
+mad4b_assert( 0 === count( MAD4B_SCP_Agent_Registry::$grants ), 'new Enrollment grant was not rolled back after target failure' );
+
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = new MAD4B_Test_Ability( mad4b_test_meta(), $schema, array( 'state' => 'ready', 'mutation_performed' => false ) );
+MAD4B_SCP_Agent_Registry::$grants = array(
+    array( 'id' => 501, 'agent_id' => 9, 'effect' => 'deny', 'server_id' => 'mad4b-enrollment', 'ability_name' => MAD4B_SCP_Remote_Operation_Parity::SKILLS, 'provider' => 'core', 'environment' => 'staging' ),
+);
+$denied = MAD4B_SCP_Enrollment_Dispatch::execute( $execute_input );
+mad4b_assert( 'mad4b_enrollment_dispatch_grant_explicitly_denied' === mad4b_error_code( $denied ), 'exact deny grant did not fail closed' );
+
+MAD4B_SCP_Agent_Registry::$grants = array(
+    array( 'id' => 502, 'agent_id' => 9, 'effect' => 'allow', 'server_id' => 'mad4b-enrollment', 'ability_name' => MAD4B_SCP_Remote_Operation_Parity::SKILLS, 'provider' => 'core', 'environment' => 'all' ),
+);
+$denied = MAD4B_SCP_Enrollment_Dispatch::execute( $execute_input );
+mad4b_assert( 'mad4b_enrollment_dispatch_grant_environment_invalid' === mad4b_error_code( $denied ), 'all-environment Enrollment grant did not fail closed' );
+
+MAD4B_SCP_Agent_Registry::$grants = array(
+    array( 'id' => 503, 'agent_id' => 9, 'effect' => 'allow', 'server_id' => 'mad4b-enrollment', 'ability_name' => MAD4B_SCP_Remote_Operation_Parity::SKILLS, 'provider' => 'core', 'environment' => 'staging' ),
+    array( 'id' => 504, 'agent_id' => 9, 'effect' => 'allow', 'server_id' => 'mad4b-enrollment', 'ability_name' => MAD4B_SCP_Remote_Operation_Parity::SKILLS, 'provider' => 'core', 'environment' => 'staging' ),
+);
+$denied = MAD4B_SCP_Enrollment_Dispatch::execute( $execute_input );
+mad4b_assert( 'mad4b_enrollment_dispatch_duplicate_grants' === mad4b_error_code( $denied ), 'duplicate Enrollment grants did not fail closed' );
+
+MAD4B_SCP_Agent_Registry::$grants = array();
+MAD4B_SCP_Agent_Registry::$wildcard_grants = 1;
+$denied = MAD4B_SCP_Enrollment_Dispatch::execute( $execute_input );
+mad4b_assert( 'mad4b_enrollment_dispatch_wildcard_grant_detected' === mad4b_error_code( $denied ), 'wildcard grant registry did not fail closed' );
+MAD4B_SCP_Agent_Registry::$wildcard_grants = 0;
+
+MAD4B_SCP_Remote_Operation_Parity::$skills_overrides = array(
+    'trust_class' => 'certified_addon',
+    'registrar_id' => 'addon-test',
+    'source_plugin' => 'addon-test',
+);
+$info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'managed_skills_reconciliation' ) );
+$execute_input['expected_registration_digest'] = $info['registration_digest'];
+$execute_input['expected_dispatch_policy_digest'] = $info['dispatch_policy_digest'];
+$execute_input['expected_input_schema_sha256'] = $info['input_schema_sha256'];
+$denied = MAD4B_SCP_Enrollment_Dispatch::execute( $execute_input );
+mad4b_assert( 'mad4b_enrollment_dispatch_grant_bootstrap_trust_denied' === mad4b_error_code( $denied ), 'non-core operation received automatic Enrollment grant bootstrap' );
+MAD4B_SCP_Remote_Operation_Parity::$skills_overrides = array();
+
+MAD4B_SCP_Agent_Registry::$grants = array();
 $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = new MAD4B_Test_Ability( mad4b_test_meta(), $schema, array( 'state' => 'ready' ) );
 $info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'managed_skills_reconciliation' ) );
 $execute_input['expected_registration_digest'] = $info['registration_digest'];
