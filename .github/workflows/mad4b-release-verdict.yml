@@ -65,8 +65,9 @@ jobs:
           set -euo pipefail
           test "$BASE_SHA" = "8a0c12ef16023f042def7d42b760cdd847343e8a"
 
-          # The repair branch may contain only the parser repair, its executable
-          # regression contract, and this bounded release-verdict bootstrap.
+          # The repair branch may contain only the parser repair, the trusted
+          # feature-boundary ancestry repair, its executable regression contract,
+          # and this bounded release-verdict bootstrap.
           gh api -H "Accept: application/vnd.github+json" \
             "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files?per_page=100" \
             > /tmp/mad4b-governance-repair-files.json
@@ -83,6 +84,7 @@ jobs:
           from pathlib import Path
 
           expected_files = sorted([
+              ".github/workflows/mad4b-feature-boundary-root.yml",
               ".github/workflows/mad4b-release-verdict.yml",
               "tools/Apply-Mad4bMasterRuleset.ps1",
               "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py",
@@ -354,6 +356,7 @@ jobs:
           governance_apply_repair_branch = 'chore/governance-apply-powershell-parse-20260926'
           governance_apply_repair_expected_base = '8a0c12ef16023f042def7d42b760cdd847343e8a'
           governance_apply_repair_expected_paths = {
+              '.github/workflows/mad4b-feature-boundary-root.yml',
               '.github/workflows/mad4b-release-verdict.yml',
               'tools/Apply-Mad4bMasterRuleset.ps1',
               'wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py',
