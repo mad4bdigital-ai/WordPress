@@ -8,7 +8,7 @@ repo = (root / 'includes/class-mad4b-scp-approval-repository.php').read_text(enc
 admin = (root / 'includes/class-mad4b-scp-approval-decision-admin.php').read_text(encoding='utf-8')
 
 required_schema = [
-    'const VERSION = 9;',
+    'const VERSION = 11;',
     'candidate_binding_contract varchar(64)',
     'candidate_sha char(40)',
     'build_fingerprint char(64)',

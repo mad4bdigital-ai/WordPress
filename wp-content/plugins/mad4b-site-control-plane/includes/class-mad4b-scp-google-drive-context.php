@@ -1000,6 +1000,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 					'modifiedTime' => isset( $child['modifiedTime'] ) ? (string) $child['modifiedTime'] : '',
 					'size' => isset( $child['size'] ) ? (string) $child['size'] : '',
 					'webViewLink' => isset( $child['webViewLink'] ) ? esc_url_raw( (string) $child['webViewLink'] ) : '',
+					'appProperties' => isset( $child['appProperties'] ) && is_array( $child['appProperties'] ) ? $child['appProperties'] : array(),
 					'normalized_text' => $text,
 					'content_complete' => $content_complete,
 					'content_bytes' => isset( $content_record['bytes'] ) ? (int) $content_record['bytes'] : strlen( $text ),
@@ -1028,6 +1029,181 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'truncated' => ! $complete,
 			'truncation_reasons' => $truncation_reasons,
 			'assets' => $assets,
+		);
+	}
+
+	private static function brand_materialization_properties( array $identity ) {
+		$properties = array(
+			'mad4b_kind' => 'brand_context',
+			'mad4b_artifact' => isset( $identity['artifact_id'] ) ? strtolower( trim( (string) $identity['artifact_id'] ) ) : '',
+			'mad4b_source' => isset( $identity['source_id'] ) ? strtolower( trim( (string) $identity['source_id'] ) ) : '',
+			'mad4b_idempotency' => isset( $identity['idempotency_key'] ) ? strtolower( trim( (string) $identity['idempotency_key'] ) ) : '',
+			'mad4b_request' => isset( $identity['request_sha256'] ) ? strtolower( trim( (string) $identity['request_sha256'] ) ) : '',
+		);
+		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $properties['mad4b_artifact'] ) ) return new WP_Error( 'mad4b_brand_provider_artifact_identity_invalid', 'Brand materialization requires the exact Artifact UUID.' );
+		foreach ( array( 'mad4b_source', 'mad4b_idempotency', 'mad4b_request' ) as $key ) {
+			if ( ! preg_match( '/^[a-f0-9]{64}$/', $properties[ $key ] ) ) return new WP_Error( 'mad4b_brand_provider_identity_invalid', 'Brand materialization provider identity is incomplete.', array( 'field' => $key ) );
+		}
+		return $properties;
+	}
+
+	public static function create_brand_asset( $source_id, $name, $content, $format, array $identity ) {
+		$source = self::write_source( $source_id, 'create' );
+		if ( is_wp_error( $source ) ) return $source;
+		$properties = self::brand_materialization_properties( $identity );
+		if ( is_wp_error( $properties ) ) return $properties;
+		if ( ! hash_equals( (string) $source['source_id'], (string) $properties['mad4b_source'] ) ) return new WP_Error( 'mad4b_brand_provider_source_identity_mismatch', 'Brand materialization provider identity is not bound to the selected source.' );
+		$name = trim( sanitize_text_field( (string) $name ) );
+		$content = (string) $content;
+		$format = sanitize_key( (string) $format );
+		if ( '' === $name || strlen( $name ) > 180 ) return new WP_Error( 'mad4b_google_drive_asset_name_invalid', 'Drive asset name is required and must be 180 characters or fewer.' );
+		$content_guard = self::validate_write_content( $content );
+		if ( is_wp_error( $content_guard ) ) return $content_guard;
+		$target_folder_id = self::bounded_drive_id( isset( $source['external_root_id'] ) ? $source['external_root_id'] : '' );
+		if ( '' === $target_folder_id || 'root' === $target_folder_id ) return new WP_Error( 'mad4b_google_drive_write_folder_invalid', 'A specific selected Drive folder is required for creates.' );
+		$file = self::create_provider_file( $target_folder_id, $name, $content, $format, $properties );
+		if ( is_wp_error( $file ) ) return $file;
+		$observed_properties = isset( $file['appProperties'] ) && is_array( $file['appProperties'] ) ? $file['appProperties'] : array();
+		foreach ( $properties as $key => $value ) {
+			if ( ! isset( $observed_properties[ $key ] ) || ! hash_equals( (string) $value, (string) $observed_properties[ $key ] ) ) {
+				return self::compensate_created_file_failure(
+					new WP_Error( 'mad4b_brand_provider_identity_readback_mismatch', 'Created Brand Context file did not read back with its exact provider identity.', array( 'field' => $key ) ),
+					$file,
+					$source,
+					'create'
+				);
+			}
+		}
+		$parent_verified = self::verify_created_file_parent( $file, $target_folder_id );
+		if ( is_wp_error( $parent_verified ) ) return self::compensate_created_file_failure( $parent_verified, $file, $source, 'create' );
+		$observed = self::provider_observed_text( $file, $content );
+		if ( is_wp_error( $observed ) ) return self::compensate_created_file_failure( $observed, $file, $source, 'create' );
+		$asset = self::provider_asset_payload( $source, $file, $observed );
+		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $asset );
+		if ( is_wp_error( $registered ) ) return self::compensate_created_file_failure( $registered, $file, $source, 'create' );
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record(
+				'context/materialize-brand-draft',
+				array(
+					'source_id' => (string) $source['source_id'],
+					'asset_id' => (string) $registered['asset_id'],
+					'file_id' => (string) $registered['file_id'],
+					'target_folder_id' => $target_folder_id,
+					'content_sha256' => (string) $registered['content_hash'],
+					'artifact_id' => (string) $properties['mad4b_artifact'],
+					'idempotency_key' => (string) $properties['mad4b_idempotency'],
+					'request_sha256' => (string) $properties['mad4b_request'],
+				),
+				'ok'
+			);
+		}
+		return array(
+			'contract' => 'mad4b.google-drive-brand-context-materialization.v1',
+			'operation' => 'brand_context_create',
+			'source_id' => (string) $source['source_id'],
+			'asset_id' => (string) $registered['asset_id'],
+			'file_id' => (string) $registered['file_id'],
+			'target_folder_id' => $target_folder_id,
+			'content_sha256' => (string) $registered['content_hash'],
+			'mime_type' => (string) $registered['mime_type'],
+			'app_properties' => $properties,
+			'status' => 'created',
+		);
+	}
+
+	private static function drive_query_literal( $value ) {
+		$value = (string) $value;
+		return str_replace( array( '\\', "'" ), array( '\\\\', "\\'" ), $value );
+	}
+
+	public static function find_brand_materialization_candidates( $source_id, array $identity ) {
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return new WP_Error( 'mad4b_context_authority_unavailable', 'Context Authority is unavailable.' );
+		$source = MAD4B_SCP_Context_Authority::source( $source_id );
+		if ( empty( $source ) || 'google_drive' !== ( isset( $source['provider'] ) ? (string) $source['provider'] : '' ) ) return new WP_Error( 'mad4b_google_drive_source_not_found', 'Selected Context source is not a Google Drive source.' );
+		$properties = self::brand_materialization_properties( $identity );
+		if ( is_wp_error( $properties ) ) return $properties;
+		$root_id = self::bounded_drive_id( isset( $source['external_root_id'] ) ? $source['external_root_id'] : '' );
+		if ( '' === $root_id || 'root' === $root_id ) return new WP_Error( 'mad4b_google_drive_write_folder_invalid', 'Brand materialization reconciliation requires a specific governed source folder.' );
+		$folder = self::get_folder( $root_id );
+		if ( is_wp_error( $folder ) ) return $folder;
+
+		$q = "'" . self::drive_query_literal( $root_id ) . "' in parents and trashed = false";
+		foreach ( $properties as $key => $value ) {
+			$q .= " and appProperties has { key='" . self::drive_query_literal( $key ) . "' and value='" . self::drive_query_literal( $value ) . "' }";
+		}
+		$params = array(
+			'q' => $q,
+			'pageSize' => 10,
+			'fields' => 'nextPageToken,files(id,name,mimeType,modifiedTime,size,md5Checksum,parents,driveId,webViewLink,appProperties,capabilities(canDownload))',
+			'spaces' => 'drive',
+			'supportsAllDrives' => 'true',
+			'includeItemsFromAllDrives' => 'true',
+		);
+		$url = self::DRIVE_API . '/files?' . http_build_query( $params, '', '&', PHP_QUERY_RFC3986 );
+		$data = self::api_get( $url );
+		if ( is_wp_error( $data ) ) return $data;
+		$next = isset( $data['nextPageToken'] ) ? sanitize_text_field( (string) $data['nextPageToken'] ) : '';
+		$assets = array();
+		foreach ( isset( $data['files'] ) && is_array( $data['files'] ) ? $data['files'] : array() as $child ) {
+			if ( ! is_array( $child ) ) continue;
+			$observed_properties = isset( $child['appProperties'] ) && is_array( $child['appProperties'] ) ? $child['appProperties'] : array();
+			$identity_match = true;
+			foreach ( $properties as $key => $value ) {
+				if ( ! isset( $observed_properties[ $key ] ) || ! hash_equals( (string) $value, (string) $observed_properties[ $key ] ) ) { $identity_match = false; break; }
+			}
+			if ( ! $identity_match ) continue;
+			$content_record = self::fetch_text_content_record( $child );
+			if ( is_wp_error( $content_record ) ) {
+				$content_record = array(
+					'content' => '',
+					'complete' => false,
+					'bytes' => 0,
+					'normalization_status' => 'error',
+					'normalization_reason' => $content_record->get_error_code(),
+				);
+			}
+			$content_complete = ! empty( $content_record['complete'] );
+			$text = $content_complete && isset( $content_record['content'] ) ? (string) $content_record['content'] : '';
+			$basis = '' !== $text
+				? $text
+				: ( isset( $child['md5Checksum'] ) && $child['md5Checksum'] ? (string) $child['md5Checksum'] : (string) ( isset( $child['id'] ) ? $child['id'] : '' ) . '|' . ( isset( $child['modifiedTime'] ) ? $child['modifiedTime'] : '' ) );
+			$assets[] = array(
+				'file_id' => isset( $child['id'] ) ? (string) $child['id'] : '',
+				'parent_folder_id' => ! empty( $child['parents'] ) && is_array( $child['parents'] ) ? (string) reset( $child['parents'] ) : '',
+				'title' => isset( $child['name'] ) ? (string) $child['name'] : 'Untitled',
+				'path' => isset( $child['name'] ) ? (string) $child['name'] : '',
+				'mimeType' => isset( $child['mimeType'] ) ? (string) $child['mimeType'] : '',
+				'modifiedTime' => isset( $child['modifiedTime'] ) ? (string) $child['modifiedTime'] : '',
+				'size' => isset( $child['size'] ) ? (string) $child['size'] : '',
+				'webViewLink' => isset( $child['webViewLink'] ) ? esc_url_raw( (string) $child['webViewLink'] ) : '',
+				'appProperties' => $observed_properties,
+				'normalized_text' => $text,
+				'content_complete' => $content_complete,
+				'content_bytes' => isset( $content_record['bytes'] ) ? (int) $content_record['bytes'] : strlen( $text ),
+				'normalization_status' => isset( $content_record['normalization_status'] ) ? sanitize_key( (string) $content_record['normalization_status'] ) : ( $content_complete ? 'ready' : 'incomplete' ),
+				'normalization_reason' => isset( $content_record['normalization_reason'] ) ? sanitize_key( (string) $content_record['normalization_reason'] ) : '',
+				'content_hash' => hash( 'sha256', $basis ),
+			);
+		}
+		$observed_at = gmdate( 'c' );
+		$scan_generation = hash(
+			'sha256',
+			(string) $source['source_id'] . '|' . (string) $properties['mad4b_idempotency'] . '|' . (string) $properties['mad4b_request'] . '|' . $observed_at . '|' . ( function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : uniqid( 'mad4b-', true ) )
+		);
+		return array(
+			'contract' => 'mad4b.google-drive-brand-materialization-lookup.v1',
+			'scan_generation' => $scan_generation,
+			'started_at' => $observed_at,
+			'completed_at' => gmdate( 'c' ),
+			'folder' => $folder,
+			'recursive' => false,
+			'asset_count' => count( $assets ),
+			'folder_count' => 1,
+			'complete' => '' === $next,
+			'truncated' => '' !== $next,
+			'truncation_reasons' => '' === $next ? array() : array( 'identity_lookup_continuation' ),
+			'assets' => $assets,
+			'provider_identity' => $properties,
 		);
 	}
 
@@ -1245,6 +1421,43 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$state['replacement_file_id'] = (string) $replacement['file_id'];
 		$state['replacement_content_sha256'] = hash( 'sha256', (string) $content );
 		return $state;
+	}
+
+	public static function rollback_created_brand_asset( array $receipt, $allow_unmarked = false ) {
+		foreach ( array( 'artifact_id', 'source_id', 'asset_id', 'file_id', 'target_folder_id', 'after_sha256', 'mime_type', 'receipt_sha256', 'provider_identity' ) as $field ) {
+			if ( empty( $receipt[ $field ] ) ) return new WP_Error( 'mad4b_brand_create_rollback_receipt_incomplete', 'Brand Context create rollback receipt is incomplete.', array( 'field' => $field ) );
+		}
+		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( (string) $receipt['asset_id'] ) : array();
+		if ( empty( $asset ) ) return new WP_Error( 'mad4b_brand_create_rollback_asset_missing', 'Generated Brand Context asset is missing.' );
+		if ( ! $allow_unmarked && ( empty( $asset['generated_artifact_id'] ) || ! hash_equals( strtolower( (string) $asset['generated_artifact_id'] ), strtolower( (string) $receipt['artifact_id'] ) ) ) ) return new WP_Error( 'mad4b_brand_create_rollback_artifact_mismatch', 'Only the exact Brand Context Artifact created by this materialization may be rolled back.' );
+		if ( ! $allow_unmarked && ( empty( $asset['materialization_receipt_sha256'] ) || ! hash_equals( strtolower( (string) $asset['materialization_receipt_sha256'] ), strtolower( (string) $receipt['receipt_sha256'] ) ) ) ) return new WP_Error( 'mad4b_brand_create_rollback_receipt_mismatch', 'Brand Context materialization receipt binding changed; rollback denied.' );
+		foreach ( array( 'source_id', 'file_id' ) as $field ) {
+			if ( empty( $asset[ $field ] ) || ! hash_equals( (string) $asset[ $field ], (string) $receipt[ $field ] ) ) return new WP_Error( 'mad4b_brand_create_rollback_binding_drift', 'Generated Brand Context binding changed after creation.', array( 'field' => $field ) );
+		}
+		$source = self::write_source( (string) $receipt['source_id'], 'create' );
+		if ( is_wp_error( $source ) ) return $source;
+		$membership = self::assert_file_within_source( (string) $receipt['file_id'], $source );
+		if ( is_wp_error( $membership ) ) return $membership;
+		$metadata = self::get_file_metadata( (string) $receipt['file_id'] );
+		if ( is_wp_error( $metadata ) ) return $metadata;
+		$expected_properties = is_array( $receipt['provider_identity'] ) ? $receipt['provider_identity'] : array();
+		$observed_properties = isset( $metadata['appProperties'] ) && is_array( $metadata['appProperties'] ) ? $metadata['appProperties'] : array();
+		foreach ( array( 'mad4b_kind', 'mad4b_artifact', 'mad4b_source', 'mad4b_idempotency', 'mad4b_request' ) as $key ) {
+			if ( empty( $expected_properties[ $key ] ) || empty( $observed_properties[ $key ] ) || ! hash_equals( (string) $expected_properties[ $key ], (string) $observed_properties[ $key ] ) ) {
+				return new WP_Error( 'mad4b_brand_create_rollback_provider_identity_drift', 'Generated Brand Context provider identity changed; rollback denied.', array( 'field' => $key ) );
+			}
+		}
+		$parents = isset( $metadata['parents'] ) && is_array( $metadata['parents'] ) ? array_values( array_filter( array_map( 'strval', $metadata['parents'] ) ) ) : array();
+		if ( 1 !== count( $parents ) || ! hash_equals( (string) $receipt['target_folder_id'], (string) reset( $parents ) ) ) return new WP_Error( 'mad4b_brand_create_rollback_parent_drift', 'Generated Brand Context parent folder changed; rollback denied.' );
+		$mime = isset( $metadata['mimeType'] ) ? (string) $metadata['mimeType'] : '';
+		if ( ! hash_equals( (string) $receipt['mime_type'], $mime ) ) return new WP_Error( 'mad4b_brand_create_rollback_mime_drift', 'Generated Brand Context MIME type changed; rollback denied.' );
+		$content = self::fetch_text_content( $metadata );
+		if ( is_wp_error( $content ) ) return $content;
+		$current_sha = hash( 'sha256', (string) $content );
+		if ( ! hash_equals( strtolower( (string) $receipt['after_sha256'] ), strtolower( $current_sha ) ) ) return new WP_Error( 'mad4b_brand_create_rollback_content_drift', 'Generated Brand Context file changed after creation; rollback denied.', array( 'current_sha256' => $current_sha ) );
+		$deleted = self::delete_provider_file_for_rollback( (string) $receipt['file_id'], $source );
+		if ( is_wp_error( $deleted ) ) return $deleted;
+		return array( 'contract' => 'mad4b.rollback.google-drive-brand-context-create.v1', 'provider_deleted' => true, 'file_id' => (string) $receipt['file_id'], 'content_sha256' => $current_sha );
 	}
 
 	public static function restore_update_state( array $target, array $before_state ) {
@@ -1583,7 +1796,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return $parent_folder_id;
 	}
 
-	private static function create_provider_file( $folder_id, $name, $content, $format ) {
+	private static function create_provider_file( $folder_id, $name, $content, $format, array $app_properties = array() ) {
 		$folder_id = self::bounded_drive_id( $folder_id );
 		if ( '' === $folder_id || 'root' === $folder_id ) return new WP_Error( 'mad4b_google_drive_write_folder_invalid', 'A specific selected Drive folder is required for writes.' );
 		$format = sanitize_key( (string) $format );
@@ -1594,10 +1807,20 @@ final class MAD4B_SCP_Google_Drive_Context {
 		elseif ( 'text' === $format ) { $target_mime = 'text/plain'; if ( ! preg_match( '/\.txt$/i', $name ) ) $name .= '.txt'; }
 		else return new WP_Error( 'mad4b_google_drive_write_format_invalid', 'Drive write format must be google_doc, markdown, or text.' );
 		$metadata = array( 'name' => $name, 'parents' => array( $folder_id ), 'mimeType' => $target_mime );
+		if ( ! empty( $app_properties ) ) {
+			$bounded = array();
+			foreach ( $app_properties as $key => $value ) {
+				$key = (string) $key;
+				$value = (string) $value;
+				if ( ! preg_match( '/^[A-Za-z0-9_-]{1,64}$/', $key ) || '' === $value || strlen( $value ) > 124 ) return new WP_Error( 'mad4b_google_drive_app_property_invalid', 'Drive appProperties must use bounded MAD4B keys and values.' );
+				$bounded[ $key ] = $value;
+			}
+			$metadata['appProperties'] = $bounded;
+		}
 		$boundary = 'mad4b_' . wp_generate_password( 24, false, false );
 		$body = '--' . $boundary . "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" . wp_json_encode( $metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
 			. "\r\n--" . $boundary . "\r\nContent-Type: " . $media_mime . "\r\n\r\n" . (string) $content . "\r\n--" . $boundary . "--";
-		$url = self::DRIVE_UPLOAD_API . '/files?uploadType=multipart&supportsAllDrives=true&fields=' . rawurlencode( 'id,name,mimeType,parents,modifiedTime,webViewLink' );
+		$url = self::DRIVE_UPLOAD_API . '/files?uploadType=multipart&supportsAllDrives=true&fields=' . rawurlencode( 'id,name,mimeType,parents,modifiedTime,webViewLink,appProperties' );
 		return self::authorized_json_request( 'POST', $url, $body, 'multipart/related; boundary=' . $boundary, 'mad4b_google_drive_create_failed' );
 	}
 
@@ -1609,7 +1832,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( 0 !== strpos( $mime, 'text/' ) && ! in_array( $mime, array( 'application/json', 'application/xml', 'application/csv' ), true ) ) {
 			return new WP_Error( 'mad4b_google_drive_asset_update_unsupported', 'This Drive file type cannot be safely updated as governed text. Use recreate instead.', array( 'mime_type' => $mime ) );
 		}
-		$url = self::DRIVE_UPLOAD_API . '/files/' . rawurlencode( $file_id ) . '?uploadType=media&supportsAllDrives=true&fields=' . rawurlencode( 'id,name,mimeType,parents,modifiedTime,webViewLink' );
+		$url = self::DRIVE_UPLOAD_API . '/files/' . rawurlencode( $file_id ) . '?uploadType=media&supportsAllDrives=true&fields=' . rawurlencode( 'id,name,mimeType,parents,modifiedTime,webViewLink,appProperties' );
 		return self::authorized_json_request( 'PATCH', $url, (string) $content, ( $mime ? $mime : 'text/plain' ) . '; charset=UTF-8', 'mad4b_google_drive_update_failed' );
 	}
 
@@ -1691,7 +1914,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$file_id = self::bounded_drive_id( $file_id );
 		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive file ID is invalid.' );
 		$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '?' . http_build_query(
-			array( 'fields' => 'id,name,mimeType,parents,modifiedTime,size,md5Checksum,driveId,webViewLink,shortcutDetails(targetId,targetMimeType),capabilities(canDownload)', 'supportsAllDrives' => 'true' ),
+			array( 'fields' => 'id,name,mimeType,parents,modifiedTime,size,md5Checksum,driveId,webViewLink,appProperties,shortcutDetails(targetId,targetMimeType),capabilities(canDownload)', 'supportsAllDrives' => 'true' ),
 			'', '&', PHP_QUERY_RFC3986
 		);
 		return self::api_get( $url );
@@ -1777,7 +2000,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$params = array(
 				'q' => $q,
 				'pageSize' => 100,
-				'fields' => 'nextPageToken,files(id,name,mimeType,modifiedTime,size,md5Checksum,parents,driveId,webViewLink,description,shortcutDetails(targetId,targetMimeType),capabilities(canDownload))',
+				'fields' => 'nextPageToken,files(id,name,mimeType,modifiedTime,size,md5Checksum,parents,driveId,webViewLink,description,appProperties,shortcutDetails(targetId,targetMimeType),capabilities(canDownload))',
 				'spaces' => 'drive',
 				'supportsAllDrives' => 'true',
 				'includeItemsFromAllDrives' => 'true',

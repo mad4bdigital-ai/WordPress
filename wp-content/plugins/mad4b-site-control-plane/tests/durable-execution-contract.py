@@ -2,6 +2,7 @@
 """Contract guard for Feature 007 durable execution primitives."""
 
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 DURABLE = (ROOT / "includes/class-mad4b-scp-durable-execution.php").read_text(encoding="utf-8")
@@ -16,6 +17,15 @@ for marker in (
     "mad4b.execution-inbox.v1",
     "public static function begin_idempotency",
     "public static function reclaim_idempotency",
+    "public static function record_idempotency_reconciliation_observation",
+    "mad4b.idempotency-reconciliation-observations.v1",
+    "NO_EFFECT_MIN_OBSERVATION_SECONDS",
+    "MAX_RECONCILIATION_OBSERVATIONS",
+    "idempotency_observation",
+    "public static function release_idempotency_after_verified_no_effect",
+    "released_verified_no_effect",
+    "reclaimed_after_verified_no_effect",
+    "idempotency_no_effect",
     "mad4b_idempotency_reconciliation_required",
     "mad4b_idempotency_hash_conflict",
     "claim_epoch",
@@ -55,9 +65,14 @@ if load_marker not in MAIN:
 if MAIN.index(load_marker) > MAIN.index("includes/class-mad4b-scp-authorization.php"):
     raise SystemExit("durable execution must be loaded before governed execution is authorized")
 
+version_match = re.search(r"const VERSION = (\d+);", SCHEMA)
+if not version_match or int(version_match.group(1)) < 9:
+    raise SystemExit("durable schema version must remain >= 9")
+schema_version = int(version_match.group(1))
+if f"mad4b_scp_schema_integrity_v{schema_version}" not in SCHEMA:
+    raise SystemExit("durable schema integrity option does not match current schema version")
+
 for marker in (
-    "const VERSION = 9;",
-    "mad4b_scp_schema_integrity_v9",
     "'work_leases' => $wpdb->prefix . 'mad4b_work_leases'",
     "'idempotency' => $wpdb->prefix . 'mad4b_idempotency'",
     "'outbox' => $wpdb->prefix . 'mad4b_execution_outbox'",
@@ -77,6 +92,13 @@ for marker in (
     if marker not in SCHEMA:
         raise SystemExit(f"durable schema contract missing: {marker}")
 
+# Idempotency status literals must fit the physical varchar(32) contract.
+idempotency_surface = DURABLE[DURABLE.index("public static function begin_idempotency"):DURABLE.index("public static function scope_key")]
+status_literals = sorted(set(re.findall(r"status='([^']+)'", idempotency_surface)))
+oversized_statuses = [value for value in status_literals if len(value) > 32]
+if oversized_statuses:
+    raise SystemExit(f"idempotency status literal exceeds varchar(32): {oversized_statuses}")
+
 # Expired work cannot become reusable merely because a clock elapsed.
 idempotency_reclaim = DURABLE[DURABLE.index("public static function reclaim_idempotency"):]
 idempotency_reclaim = idempotency_reclaim[: idempotency_reclaim.index("public static function scope_key")]
@@ -92,6 +114,58 @@ for marker in (
 ):
     if marker not in idempotency_reclaim:
         raise SystemExit(f"idempotency reclaim is not fail-closed: {marker}")
+
+no_effect_release = DURABLE[DURABLE.index("public static function release_idempotency_after_verified_no_effect"):]
+no_effect_release = no_effect_release[: no_effect_release.index("public static function reclaim_idempotency")]
+for marker in (
+    "START TRANSACTION",
+    "FOR UPDATE",
+    "RECONCILIATION_OBSERVATIONS_CONTRACT",
+    "count( $observations ) < 2",
+    "count( array_unique( $generations ) ) < 2",
+    "NO_EFFECT_MIN_OBSERVATION_SECONDS",
+    "mad4b_idempotency_no_effect_observation_window_pending",
+    "mad4b_idempotency_no_effect_observation_identity_drift",
+    "mad4b_idempotency_no_effect_proof_identity_drift",
+    "reconciliation_verified( 'idempotency_no_effect'",
+    "status='released_verified_no_effect'",
+    "claim_epoch=%d",
+    "status='pending'",
+    "COMMIT",
+    "ROLLBACK",
+):
+    if marker not in no_effect_release:
+        raise SystemExit(f"verified no-effect idempotency release is not fail-closed: {marker}")
+
+observation = DURABLE[DURABLE.index("public static function record_idempotency_reconciliation_observation"):]
+observation = observation[: observation.index("public static function release_idempotency_after_verified_no_effect")]
+for marker in (
+    "START TRANSACTION",
+    "FOR UPDATE",
+    "reconciliation_verified( 'idempotency_observation'",
+    "provider_scan_generation",
+    "observation_sha256",
+    "observed_at_epoch",
+    "MAX_RECONCILIATION_OBSERVATIONS",
+    "status='pending'",
+    "claim_epoch=%d",
+    "COMMIT",
+    "ROLLBACK",
+):
+    if marker not in observation:
+        raise SystemExit(f"idempotency reconciliation observation ledger is incomplete: {marker}")
+
+begin = DURABLE[DURABLE.index("public static function begin_idempotency"):]
+begin = begin[: begin.index("public static function complete_idempotency")]
+for marker in (
+    "'released_verified_no_effect' === (string) $row['status']",
+    "claim_epoch=%d",
+    "status='pending'",
+    "reconciliation_ref=''",
+    "reclaimed_after_verified_no_effect",
+):
+    if marker not in begin:
+        raise SystemExit(f"verified no-effect retry CAS is incomplete: {marker}")
 
 lease_reclaim = DURABLE[DURABLE.index("public static function reclaim_lease"):]
 lease_reclaim = lease_reclaim[: lease_reclaim.index("public static function heartbeat")]
@@ -120,6 +194,12 @@ completion = completion[: completion.index("public static function reclaim_idemp
 for marker in ("claim_epoch=%d", "expires_at>%s"):
     if marker not in completion:
         raise SystemExit(f"stale idempotency worker is not fenced at completion: {marker}")
+
+lease_completion = DURABLE[DURABLE.index("public static function complete_lease"):]
+lease_completion = lease_completion[: lease_completion.index("public static function enqueue_outbox")]
+for marker in ("lease_epoch=%d", "status='active'", "expires_at>%s"):
+    if marker not in lease_completion:
+        raise SystemExit(f"expired lease can terminalize work: missing {marker}")
 
 outbox = DURABLE[DURABLE.index("public static function enqueue_outbox"):]
 outbox = outbox[: outbox.index("public static function accept_inbox")]

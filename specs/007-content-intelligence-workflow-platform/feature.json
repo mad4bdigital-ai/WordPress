@@ -129,32 +129,31 @@
     "unified_implementation_closure",
     "critical_kernel_vertical_slice_verified",
     "repository_governance_bootstrap_retirement",
-    "etg_exact_master_deployment",
-    "runtime_root_trust_readback"
+    "etg_exact_runtime_release_deployment",
+    "runtime_root_trust_readback",
+    "remote_operation_parity",
+    "future_capability_discoverability"
   ],
-  "coverage_audit_version": "2026-09-25.v8-live-residual-closure",
-  "coverage_status": "all-known-remaining-work-classified-with-live-etg-deployment-trust-readback-and-governance-retirement-gates",
+  "coverage_audit_version": "2026-09-25.v10-root-trust-brand-context-hardening",
+  "coverage_status": "architecture-frozen-root-trust-separated-brand-context-v2-with-durable-idempotency-provider-gateway-and-crash-safe-rollback",
   "quality_model": "mad4b.feature007.quality.v1",
   "operating_model": "long-lived-multi-site-governed-platform",
   "required_phase_count": 37,
-  "current_baseline_head": "540d5db4be521297de673c8a4d14974c23b67a6a",
-  "baseline_sync_commit": "540d5db4be521297de673c8a4d14974c23b67a6a",
-  "baseline_sync_policy": "current PR base must be an ancestor of Feature HEAD and current_baseline_head must equal the exact PR base SHA",
+  "baseline_sync_policy": "PR base must be an ancestor of Feature HEAD; last_reviewed_master_parent_sha must equal the exact reviewed PR base; deployable runtime release identity is tracked independently and recaptured only after runtime-affecting changes",
   "architecture_freeze": true,
   "critical_kernel_document": "critical-kernel.md",
-  "implementation_branch": "feat/007-critical-kernel-root-trust-20260924",
-  "implementation_change_policy": "feature-scoped-allowlist-with-explicit-cross-feature-contract-dependencies",
+  "implementation_change_policy": "repository-governed-dynamic-feature-boundary",
   "implementation_allowed_paths": [
-    ".github/workflows/feature-007-critical-kernel.yml",
+    ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
     ".github/workflows/feature-007-spec-ci.yml",
-    ".github/workflows/mad4b-control-plane-package.yml",
-    ".github/workflows/mad4b-live-acceptance-evidence.yml",
-    ".github/workflows/mad4b-wpml-external-diagnostic.yml",
-    ".github/workflows/mad4b-oauth-resource-bridge.yml",
-    ".github/workflows/mad4b-provider-compatibility-engine.yml",
+    ".github/workflows/mad4b-admin-performance.yml",
+    "plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md",
+    "plugins/mad4b-wordpress/skills/wordpress-extension-strategy/SKILL.md",
     "specs/007-content-intelligence-workflow-platform/",
+    "tools/mad4b_host_runner.py",
+    "tools/mad4b_host_runner_bootstrap.py",
+    "tools/mad4b_pre_staging_hybrid_audit.py",
     "tools/mad4b_recovery_plane.py",
-    "tools/verify_release_root_trust.py",
     "wp-content/plugins/mad4b-site-control-plane/"
   ],
   "cross_feature_contract_dependencies": [
@@ -164,8 +163,78 @@
   "tool_execution_contract": "mad4b.governed-tool-execution.v1",
   "cli_host_runner_contract": "mad4b.cli-host-runner.v1",
   "host_provider_validation_profile": "mad4b.host-provider-validation-profile.v1",
-  "baseline_checked_at": "2026-09-25",
+  "baseline_checked_at": "2026-09-26",
   "implementation_closure_document": "implementation-closure.md",
   "implementation_closure_ledger": "implementation-closure.json",
-  "implementation_closure_contract": "mad4b.feature007-implementation-closure.v1"
+  "implementation_closure_contract": "mad4b.feature007-implementation-closure.v2",
+  "baseline_model": "mad4b.feature007-reviewed-parent-and-runtime-release.v1",
+  "last_reviewed_master_parent_sha": "38524934ccfa5815da64d78e554050cde1199761",
+  "repository_baseline_semantics": "committed metadata records the exact master parent reviewed by the PR; current master HEAD is external evidence and is intentionally not self-referential",
+  "runtime_release_identity": {
+    "contract": "mad4b.runtime-release-identity.v1",
+    "state": "RECAPTURE_REQUIRED",
+    "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+    "control_plane_version": "0.4.0-rc.59",
+    "build_fingerprint": "f16cb7ecccff30bd1d54aa3088de404f5315823222f4e26b73fb340b4195a8c6",
+    "package_manifest_digest": "3d2870fd75ad5b6822a76fa00e1b7b90489ad6b121d6d0dd8e31ea6f07541950",
+    "control_plane_archive_sha256": "c8885bdfc42e6aa1a6ce44896f6a9b6b54742a1d7d56269605402ffe11c33b06",
+    "package_workflow_run_id": 36072550999,
+    "general_distribution_artifact_id": 10838403565,
+    "runtime_affecting_changes_since_release": true,
+    "repository_changes_since_release_are_non_runtime": false,
+    "recapture_reason": "bulk closure PR adds ContentJob runtime and strengthens out-of-band Recovery Plane; a trusted post-merge package must be recaptured before deployment"
+  },
+  "runtime_identity_paths": [
+    "wp-content/plugins/mad4b-site-control-plane/",
+    "wp-content/plugins/mcp-adapter.zip",
+    "plugins/mad4b-wordpress/",
+    "tools/capture-functional-gap-contract-evidence.py"
+  ],
+  "implementation_branch_policy": {
+    "contract": "mad4b.feature-implementation-branch-policy.v2",
+    "implementation_prefixes": [
+      "feat/007-",
+      "fix/007-"
+    ],
+    "specification_maintenance_prefixes": [
+      "spec/007-"
+    ],
+    "requires_exact_pr_base_ancestry": true,
+    "mutable_metadata_cannot_widen_policy": true
+  },
+  "bulk_closure_hardening_contract": "mad4b.feature007-bulk-closure-hardening.v1",
+  "bulk_closure_hardening_ledger": "bulk-closure-hardening.json",
+  "mutation_uncertainty_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+  "remote_operation_parity_contract": "mad4b.remote-operation-parity.v1",
+  "future_discoverability_policy": "all automation-eligible operations require governed remote parity and discoverable metadata",
+  "implementation_allowed_paths_semantics": "legacy-descriptive-mirror-of-baseline-owned-grant-non-authorizing",
+  "implementation_boundary_policy": {
+    "contract": "mad4b.feature-boundary-binding.v2",
+    "policy_contract": "mad4b.repository-governance-policy.v1",
+    "policy_path": ".github/mad4b-repository-governance-policy.json",
+    "skill_inventory_source": "wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json",
+    "cross_feature_dependencies_are_exact": true,
+    "mutable_metadata_cannot_widen_policy": true,
+    "repository_governance_files_are_immutable": true,
+    "grant_catalog_path": ".github/mad4b-feature-boundary-grants.json"
+  },
+  "repository_root_trust_dependency": {
+    "contract": "mad4b.repository-feature-boundary.v1",
+    "bootstrap_pr": 66,
+    "trusted_verifier_path": "tools/verify_feature_boundary.py",
+    "trusted_workflow_path": ".github/workflows/mad4b-feature-boundary-root.yml",
+    "verifier_source": "pull_request_base",
+    "pull_request_code_executed_by_root_check": false,
+    "repository_governance_changes_forbidden_from_feature": true,
+    "grant_catalog_path": ".github/mad4b-feature-boundary-grants.json",
+    "grant_source": "pull_request_base",
+    "feature_metadata_can_widen_grant": false,
+    "self_certifying_paths_forbidden": [
+      ".github/workflows/feature-007-critical-kernel.yml",
+      ".github/workflows/mad4b-context-authority.yml",
+      ".github/workflows/mad4b-control-plane-package.yml",
+      ".github/workflows/mad4b-site-control-plane.yml"
+    ],
+    "release_critical_workflows_must_be_baseline_owned": true
+  }
 }

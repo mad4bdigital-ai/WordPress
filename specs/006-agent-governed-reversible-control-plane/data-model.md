@@ -2,11 +2,11 @@
 
 Status: Normative schema contract aligned with current implementation
 Storage scope: site-local WordPress database tables
-Schema version: `9`
+Schema version: `11`
 Encoding: UTF-8 / JSON text only where structured extension fields are required
 Secret policy: no plaintext bearer/OAuth credential persistence
 
-Schema v9 contains fifteen normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically. It preserves the v6 exact Site Profile/candidate approval binding, so clone, origin/environment, profile-policy or deployed-build drift cannot inherit existing governed-write authority, and adds Feature 007 durable Content Job, event, lease, idempotency, outbox and inbox storage. Durable recovery remains fail-closed: expired pending work is not silently reused without explicit reconciliation evidence.
+Schema v11 contains eighteen normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically. It preserves the v6 exact Site Profile/candidate approval binding and all v9 durable execution semantics, while retaining immutable Feature 007 Artifact Registry/lineage tables and adding the site-level versioned Intent Authority relation registry. Clone, origin/environment, profile-policy or deployed-build drift cannot inherit existing governed-write authority. Durable recovery remains fail-closed: expired pending work is not silently reused without explicit reconciliation evidence.
 
 ## Table 1 — `{prefix}mad4b_scp_agents`
 
@@ -106,7 +106,7 @@ Invariants:
 - the hash covers the canonical approval envelope, not raw request text;
 - a normal governed remote mutation approval uses `mad4b.approval-candidate-binding.v2` and is bound durably to the exact Site Profile UUID, revision and digest together with candidate SHA, build fingerprint, environment and exact enrolled origin/host;
 - the Site Profile binding is independent from operation payload, NHI/grant authority and deployed-build identity; all four axes must remain exact at decision and execution time;
-- cloning the database to another domain, moving between environments, editing the Site Profile policy, changing the Site Profile revision/digest, or deploying a different build invalidates the existing approval instead of carrying authority forward;
+- a database clone to another domain, moving between environments, editing the Site Profile policy, changing the Site Profile revision/digest, or deploying a different build invalidates the existing approval instead of carrying authority forward;
 - successful execution claims atomically transition `approved -> executing`; successful completion finalizes `executing -> used`, while an execution failure finalizes `executing -> failed`;
 - replay of `executing`, `used` or `failed` tickets is denied;
 - expiry is enforced against `expires_at` at decision and execution boundaries;
@@ -264,7 +264,67 @@ Invariants:
 - event ordering is explicit per job;
 - state/event transitions must not expose half-committed logical transitions.
 
-## Table 12 — `{prefix}mad4b_work_leases`
+## Table 12 — `{prefix}mad4b_artifacts`
+
+Purpose: immutable typed Feature 007 artifacts bound to one Content Job.
+
+Key columns:
+- `artifact_id CHAR(36) UNIQUE`
+- `job_id`
+- `artifact_type`
+- `status`
+- producer stage/reference
+- payload JSON/hash and metadata JSON
+- supersession identity and timestamps
+
+Invariants:
+- artifact identity is immutable after append;
+- payload hash is part of durable evidence;
+- stale/superseded artifacts cannot silently satisfy current-stage gates;
+- artifact creation does not itself authorize publication or external side effects.
+
+## Table 13 — `{prefix}mad4b_artifact_edges`
+
+Purpose: immutable lineage relations between Feature 007 artifacts.
+
+Key columns:
+- source/from artifact identity
+- target/to artifact identity
+- relation type
+- created timestamp
+
+Invariants:
+- lineage is explicit and append-only;
+- both endpoints must resolve to durable artifacts;
+- cross-job or invalid relation semantics fail closed;
+- lineage does not rewrite artifact payload identity.
+
+## Table 14 — `{prefix}mad4b_intent_relations`
+
+Entity: `IntentRelation`.
+
+Purpose: site-level, versioned many-to-many intent ownership authority with authoritative current/version history.
+
+Key columns:
+- `relation_id` logical relation identity;
+- `site_uuid`, `locale`, `market`, `intent_id`, `content_id`;
+- `role`, `confidence`, `source`;
+- bounded `evidence_json` and `analysis_signals_json`;
+- monotonic `revision`;
+- `valid_from`, `valid_to`;
+- `current_relation_key` for one active version of the same intent↔content relation;
+- `owner_scope_key` as a non-unique lookup key only;
+- `relation_sha256` and `created_at`.
+
+Invariants:
+- intent ownership remains many-to-many;
+- `current_relation_key` prevents two active revisions of the same logical intent↔content relation;
+- `owner_scope_key` MUST NOT impose one-owner exclusivity;
+- changing a relation closes the prior revision and appends a new revision;
+- cannibalization is derived from explicit evidence/signals and is never inferred from overlap alone;
+- stale expected-scope fingerprints fail before mutation.
+
+## Table 15 — `{prefix}mad4b_work_leases`
 
 Purpose: fenced ownership of long-running work.
 
@@ -284,7 +344,7 @@ Invariants:
 - terminal leases are never resurrected;
 - stale worker/epoch/revision tokens fail closed.
 
-## Table 13 — `{prefix}mad4b_idempotency`
+## Table 16 — `{prefix}mad4b_idempotency`
 
 Purpose: effect-once protection for externally retryable writes.
 
@@ -307,7 +367,7 @@ Invariants:
 - every reclaim increments `claim_epoch`, and stale claim epochs cannot complete or reuse the record;
 - retention exceeds the supported retry/replay horizon.
 
-## Table 14 — `{prefix}mad4b_execution_outbox`
+## Table 17 — `{prefix}mad4b_execution_outbox`
 
 Purpose: durable provider execution intent before asynchronous delivery.
 
@@ -327,7 +387,7 @@ Invariants:
 - duplicate provider/idempotency identity with a different request hash is denied;
 - no claim of exactly-once network delivery is made.
 
-## Table 15 — `{prefix}mad4b_execution_inbox`
+## Table 18 — `{prefix}mad4b_execution_inbox`
 
 Purpose: deduplicate provider callbacks/events.
 
@@ -412,28 +472,28 @@ Joined audit sink dispatch occurs only after explicit transaction commit. Explic
 
 ## Migration strategy
 
-Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `9`. Schema v9 is governed by migration contract `mad4b.schema-migration.v1` with migration ID `20260924-feature007-durable-execution-v9`.
+Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `11`. Schema v11 is governed by migration contract `mad4b.schema-migration.v1` with migration ID `20260925-feature007-intent-authority-v11`.
 
 Migration declaration:
-- prerequisite schema identities: fresh install `0`, and supported prior/current versions `6|7|8|9`; a future or otherwise unsupported version fails closed instead of being downgraded;
+- prerequisite schema identities: fresh install `0`, and supported prior/current versions `6|7|8|9|10|11`; a future or otherwise unsupported version fails closed instead of being downgraded;
 - forward operation: additive `dbDelta()` creation/update of MAD4B-prefixed tables, columns and indexes only;
-- rollback/forward-fix strategy: forward-fix only; additive v9 objects are preserved so older code can ignore the new surfaces rather than requiring destructive rollback;
+- rollback/forward-fix strategy: forward-fix only; additive v11 objects are preserved so older code can ignore the new surfaces rather than requiring destructive rollback;
 - expected locks/downtime: bounded metadata DDL; no maintenance mode is assumed;
-- data-volume assumption: the six Feature 007 durable tables are new or sparse while existing governance rows are preserved;
+- data-volume assumption: the nine Feature 007 durable/artifact/intent tables are new or sparse while existing governance rows are preserved;
 - preflight: supported prerequisite version, usable WordPress DB handle, non-empty site prefix and no future-schema downgrade;
 - post-verification: deep physical integrity, approval-binding columns, durable columns and required unique indexes;
 - evidence: deterministic migration-contract SHA-256, target integrity token, physical-integrity SHA-256 and durable `mad4b.schema-migration-receipt.v1`;
 - partial failure: target version/readiness is not accepted until deep verification, exact option readback and a finalized receipt succeed; retry remains idempotent;
 - retry provenance: if an earlier attempt reached a contract-valid physical-verification receipt before readiness finalization, later idempotent retries preserve that receipt's original `from_version`/run type instead of rewriting an upgrade as a repair;
-- mixed-version window: v9 is additive and previous v6 code does not consume the new durable surfaces;
+- mixed-version window: v11 is additive; v10 code ignores the new Intent Authority surface;
 - authority widening: forbidden; migration does not create/enable NHI subjects, grants, approvals, provider promotion or Production authority.
 
 Activation/boot rules:
-1. A healthy already-finalized v9 schema short-circuits without repeated DDL.
+1. A healthy already-finalized v11 schema short-circuits without repeated DDL.
 2. Otherwise migration preflight runs before `dbDelta()`; unsupported/future schema identity fails closed.
 3. `dbDelta()` creates/updates only MAD4B-prefixed tables and the operation is idempotent.
 4. Migration never auto-creates enabled NHI authority, and existing global mutation enablement never implies NHI authority.
-5. Schema v9 preserves the v6 Site Profile approval bindings and adds six durable Feature 007 tables: Content Jobs, Job Events, Work Leases, Idempotency, Execution Outbox and Execution Inbox.
+5. Schema v11 preserves v10 Artifact Registry and all earlier governance/durable execution tables, and adds the versioned Intent Relations authority table without widening runtime authority.
 6. The idempotency table includes `claim_epoch` and `reconciliation_ref`; reclaim increments the epoch after verified reconciliation, stale claims are fenced, expired active leases require reconciliation, and terminal leases cannot be resurrected.
 7. Legacy option-based or v1 candidate bindings may be migrated only as compatibility evidence; incomplete tenant/profile/build binding remains stale and requires a new v2 exact plan.
 8. New governed remote approval bindings are persisted on the approval row using `mad4b.approval-candidate-binding.v2`.

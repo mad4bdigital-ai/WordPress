@@ -1,9 +1,9 @@
 {
-  "contract": "mad4b.feature007-critical-gate-graph.v3",
-  "description": "Expanded Critical Kernel hard-gate DAG including repository-governance bootstrap retirement, exact ETG master deployment, runtime root-trust readback, protected recovery and full content vertical-slice closure.",
+  "contract": "mad4b.feature007-critical-gate-graph.v4",
+  "description": "Critical Kernel DAG with reviewed repository-parent identity separated from deployable runtime-release identity.",
   "roots": [
     "repository_governance_enforced",
-    "baseline_current",
+    "repository_baseline_reviewed",
     "execution_ledger_reconciled"
   ],
   "terminal_states": [
@@ -15,7 +15,7 @@
       "depends_on": []
     },
     {
-      "id": "baseline_current",
+      "id": "repository_baseline_reviewed",
       "depends_on": []
     },
     {
@@ -23,9 +23,15 @@
       "depends_on": []
     },
     {
+      "id": "runtime_release_identity_bound",
+      "depends_on": [
+        "repository_baseline_reviewed"
+      ]
+    },
+    {
       "id": "release_provenance_root",
       "depends_on": [
-        "baseline_current"
+        "runtime_release_identity_bound"
       ]
     },
     {
@@ -56,7 +62,7 @@
     {
       "id": "multi_authority_live",
       "depends_on": [
-        "baseline_current",
+        "runtime_release_identity_bound",
         "release_provenance_root",
         "runtime_root_trust_readback"
       ]
@@ -76,7 +82,7 @@
     {
       "id": "provider_exact_certified",
       "depends_on": [
-        "baseline_current",
+        "runtime_release_identity_bound",
         "policy_engine_ready",
         "runtime_root_trust_readback"
       ]
@@ -117,7 +123,7 @@
     {
       "id": "site_bootstrap_reconciled",
       "depends_on": [
-        "baseline_current",
+        "runtime_release_identity_bound",
         "execution_ledger_reconciled",
         "runtime_root_trust_readback"
       ]
@@ -218,17 +224,46 @@
       ]
     },
     {
-      "id": "etg_exact_master_deployed",
+      "id": "etg_exact_runtime_release_deployed",
       "depends_on": [
         "repository_governance_bootstrap_retired",
         "protected_backup_recovery_ready",
-        "release_provenance_root"
+        "release_provenance_root",
+        "runtime_release_identity_bound"
       ]
     },
     {
       "id": "runtime_root_trust_readback",
       "depends_on": [
-        "etg_exact_master_deployed"
+        "etg_exact_runtime_release_deployed"
+      ]
+    },
+    {
+      "id": "provider_resolver_dynamic_cert_ready",
+      "depends_on": [
+        "capability_traits_ready",
+        "provider_exact_certified"
+      ]
+    },
+    {
+      "id": "rights_ai_data_ready",
+      "depends_on": [
+        "artifact_lineage_ready",
+        "policy_engine_ready"
+      ]
+    },
+    {
+      "id": "scheduler_backlog_semantics_ready",
+      "depends_on": [
+        "durable_execution_ready",
+        "provider_exact_certified"
+      ]
+    },
+    {
+      "id": "decommission_portability_ready",
+      "depends_on": [
+        "operator_recovery_review_ready",
+        "durable_execution_ready"
       ]
     }
   ],
@@ -282,10 +317,10 @@
       "requires_postcondition": "repository_governance_bootstrap_retired"
     },
     {
-      "id": "etg_exact_master_deployment_transition",
-      "from": "trusted_master_not_deployed",
-      "to": "etg_exact_master_deployed",
-      "exact_operation": "after protected backup readiness, deploy the exact trusted master artifact and read back source/build/manifest/archive identity",
+      "id": "etg_exact_runtime_release_deployment_transition",
+      "from": "selected_runtime_release_not_deployed",
+      "to": "etg_exact_runtime_release_deployed",
+      "exact_operation": "after protected backup readiness, deploy the exact selected runtime release artifact and read back source/build/manifest/archive identity",
       "one_shot": false,
       "requires_postcondition": "runtime_root_trust_readback"
     }

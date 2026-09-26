@@ -95,6 +95,10 @@ final class MAD4B_SCP_Workflow_Providers {
 			$provider_certification = isset( $adapter_status['provider_certification'] ) && is_array( $adapter_status['provider_certification'] ) ? $adapter_status['provider_certification'] : array();
 			$provider_runtime_certified = ! empty( $provider_certification['runtime_contract_ok'] );
 			$capability_certification = isset( $adapter_status['capability_certification'] ) && is_array( $adapter_status['capability_certification'] ) ? $adapter_status['capability_certification'] : array();
+			$provider_key = isset( $definition['provider_key'] ) ? sanitize_key( (string) $definition['provider_key'] ) : '';
+			$operation_profile_fingerprints = array();
+			$operation_certification_fingerprints = array();
+			$operation_release_rings = array();
 
 			foreach ( $definition['operations'] as $operation => $operation_definition ) {
 				$ability = isset( $operation_definition['ability'] ) && is_string( $operation_definition['ability'] )
@@ -107,6 +111,20 @@ final class MAD4B_SCP_Workflow_Providers {
 					? $capability_certification['capabilities'][ $capability_id ]
 					: array();
 				$capability_certified = 'read' === $risk ? ! empty( $capability_status['read_eligible'] ) : ! empty( $capability_status['write_eligible'] );
+				$capability_profile = ( '' !== $provider_key && '' !== $capability_id && class_exists( 'MAD4B_SCP_Capability_Traits' ) )
+					? MAD4B_SCP_Capability_Traits::profile( $provider_key, $capability_id )
+					: array();
+				$profile_fingerprint = isset( $capability_profile['profile_fingerprint'] ) ? strtolower( trim( (string) $capability_profile['profile_fingerprint'] ) ) : '';
+				$certification_json = empty( $capability_status ) ? '' : wp_json_encode( self::canonicalize( $capability_status ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+				$certification_fingerprint = is_string( $certification_json ) && '' !== $certification_json ? hash( 'sha256', $certification_json ) : '';
+				$release_ring = isset( $capability_status['activation_stage'] ) ? sanitize_key( (string) $capability_status['activation_stage'] ) : 'shadow';
+				if ( '' !== $capability_id && ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $profile_fingerprint ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $certification_fingerprint ) ) ) {
+					$capability_certified = false;
+				}
+				$operation_key = sanitize_key( (string) $operation );
+				$operation_profile_fingerprints[ $operation_key ] = $profile_fingerprint;
+				$operation_certification_fingerprints[ $operation_key ] = $certification_fingerprint;
+				$operation_release_rings[ $operation_key ] = $release_ring;
 				$requires = isset( $operation_definition['requires'] ) && is_array( $operation_definition['requires'] ) ? array_values( $operation_definition['requires'] ) : array();
 				$requires_provider_certification = in_array( 'provider_capability_certified', $requires, true );
 				$config_blocker = isset( $operation_definition['blocker'] ) ? sanitize_key( (string) $operation_definition['blocker'] ) : '';
@@ -123,15 +141,26 @@ final class MAD4B_SCP_Workflow_Providers {
 					'capability_id' => $capability_id,
 					'capability_certified' => $capability_certified,
 					'capability_status' => $capability_status,
+					'provider_profile_fingerprint' => $profile_fingerprint,
+					'capability_certification_fingerprint' => $certification_fingerprint,
+					'provider_release_ring' => $release_ring,
 					'state' => '' === $blocker ? 'available' : ( 'unavailable' === ( isset( $operation_definition['state'] ) ? sanitize_key( (string) $operation_definition['state'] ) : '' ) ? 'unavailable' : 'blocked' ),
 					'blocker' => $blocker,
 					'requires' => $requires,
 				);
 			}
 
+			$profile_map_json = wp_json_encode( self::canonicalize( $operation_profile_fingerprints ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$certification_map_json = wp_json_encode( self::canonicalize( $operation_certification_fingerprints ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$release_ring_values = array_values( array_unique( array_filter( $operation_release_rings, 'strlen' ) ) );
+			sort( $release_ring_values, SORT_STRING );
 			$providers[ $provider_id ] = array(
 				'adapter_id' => isset( $definition['adapter_id'] ) ? sanitize_key( (string) $definition['adapter_id'] ) : '',
-				'provider_key' => isset( $definition['provider_key'] ) ? sanitize_key( (string) $definition['provider_key'] ) : '',
+				'provider_key' => $provider_key,
+				'provider_profile_fingerprint' => is_string( $profile_map_json ) ? hash( 'sha256', $profile_map_json ) : '',
+				'capability_certification_fingerprint' => is_string( $certification_map_json ) ? hash( 'sha256', $certification_map_json ) : '',
+				'provider_release_ring' => 1 === count( $release_ring_values ) ? $release_ring_values[0] : ( empty( $release_ring_values ) ? 'shadow' : 'mixed' ),
+				'provider_fingerprint_scope' => 'aggregate_of_operation_profiles',
 				'role' => isset( $definition['role'] ) ? sanitize_key( (string) $definition['role'] ) : 'execution_provider',
 				'adapter_available' => $adapter_available,
 				'provider_certification' => $provider_certification,
@@ -187,6 +216,17 @@ final class MAD4B_SCP_Workflow_Providers {
 			? $capability_certification['capabilities'][ $capability_id ]
 			: array();
 		$capability_certified = 'read' === $risk ? ! empty( $capability_status['read_eligible'] ) : ! empty( $capability_status['write_eligible'] );
+		$provider_key = isset( $definition['provider_key'] ) ? sanitize_key( (string) $definition['provider_key'] ) : '';
+		$capability_profile = ( '' !== $provider_key && '' !== $capability_id && class_exists( 'MAD4B_SCP_Capability_Traits' ) )
+			? MAD4B_SCP_Capability_Traits::profile( $provider_key, $capability_id )
+			: array();
+		$profile_fingerprint = isset( $capability_profile['profile_fingerprint'] ) ? strtolower( trim( (string) $capability_profile['profile_fingerprint'] ) ) : '';
+		$certification_json = empty( $capability_status ) ? '' : wp_json_encode( self::canonicalize( $capability_status ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$certification_fingerprint = is_string( $certification_json ) && '' !== $certification_json ? hash( 'sha256', $certification_json ) : '';
+		$release_ring = isset( $capability_status['activation_stage'] ) ? sanitize_key( (string) $capability_status['activation_stage'] ) : 'shadow';
+		if ( '' !== $capability_id && ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $profile_fingerprint ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $certification_fingerprint ) ) ) {
+			$capability_certified = false;
+		}
 		$requires = isset( $operation_definition['requires'] ) && is_array( $operation_definition['requires'] ) ? array_values( $operation_definition['requires'] ) : array();
 		$requires_provider_certification = in_array( 'provider_capability_certified', $requires, true );
 		$blocker = isset( $operation_definition['blocker'] ) ? sanitize_key( (string) $operation_definition['blocker'] ) : '';
@@ -222,6 +262,9 @@ final class MAD4B_SCP_Workflow_Providers {
 			'capability_id' => $capability_id,
 			'capability_certified' => $capability_certified,
 			'capability_status' => $capability_status,
+			'provider_profile_fingerprint' => $profile_fingerprint,
+			'capability_certification_fingerprint' => $certification_fingerprint,
+			'provider_release_ring' => $release_ring,
 			'execution_ready' => '' === $blocker,
 			'blocker' => $blocker,
 			'requires' => $requires,
@@ -235,7 +278,12 @@ final class MAD4B_SCP_Workflow_Providers {
 		$encoded = wp_json_encode( self::canonicalize( $plan ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( false === $encoded ) return new WP_Error( 'mad4b_workflow_plan_encoding_failed', 'Unable to encode deterministic workflow plan.' );
 		$plan['plan_sha256'] = hash( 'sha256', $encoded );
-		$plan['execution_binding'] = array( 'expected_plan_sha256' => $plan['plan_sha256'] );
+		$plan['execution_binding'] = array(
+			'expected_plan_sha256' => $plan['plan_sha256'],
+			'provider_profile_fingerprint' => $profile_fingerprint,
+			'capability_certification_fingerprint' => $certification_fingerprint,
+			'provider_release_ring' => $release_ring,
+		);
 		if ( 'execute' === $operation && is_array( $plan['provider_input_template'] ) ) $plan['provider_input_template']['expected_plan_sha256'] = $plan['plan_sha256'];
 
 		return $plan;

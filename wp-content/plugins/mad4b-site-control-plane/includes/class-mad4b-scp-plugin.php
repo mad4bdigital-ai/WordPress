@@ -38,12 +38,13 @@ final class MAD4B_SCP_Plugin {
 		add_action( 'init', array( __CLASS__, 'boot_oauth_transport_if_effective' ), 3 );
 		MAD4B_SCP_MCP_Client_Compatibility::boot();
 
-		if ( ! MAD4B_SCP_Schema::is_ready() || (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION ) {
+		$plugin_lifecycle = self::request_is_wordpress_plugin_lifecycle();
+		if ( ! $plugin_lifecycle && ( ! MAD4B_SCP_Schema::is_ready() || (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION ) ) {
 			$schema = MAD4B_SCP_Schema::install_or_upgrade();
 			if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
 		}
-		if ( false === get_option( MAD4B_SCP_Audit::LEGACY_OPTION, false ) ) add_option( MAD4B_SCP_Audit::LEGACY_OPTION, array(), '', false );
-		if ( ! is_wp_error( self::$schema_error )
+		if ( ! $plugin_lifecycle && false === get_option( MAD4B_SCP_Audit::LEGACY_OPTION, false ) ) add_option( MAD4B_SCP_Audit::LEGACY_OPTION, array(), '', false );
+		if ( ! $plugin_lifecycle && ! is_wp_error( self::$schema_error )
 			&& ( ! class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) || ! MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) ) {
 			// Audit::record() performs the same fail-closed head initialization before
 			// every mutation audit. MCP/OAuth discovery therefore does not need table/
@@ -51,7 +52,7 @@ final class MAD4B_SCP_Plugin {
 			$audit = MAD4B_SCP_Audit::ensure_head_initialized();
 			if ( is_wp_error( $audit ) ) self::$schema_error = $audit;
 		}
-		if ( ! is_wp_error( self::$schema_error ) && self::request_requires_skill_reconciliation() ) {
+		if ( ! $plugin_lifecycle && ! is_wp_error( self::$schema_error ) && self::request_requires_skill_reconciliation() ) {
 			// Provider discovery derives adapter readiness from the in-memory adapter
 			// registry. Register the deterministic defaults before the first provider
 			// reconciliation so the result cannot depend on a later MCP/server call.
@@ -131,6 +132,14 @@ final class MAD4B_SCP_Plugin {
 
 	private static function oauth_transport_enabled() {
 		return defined( 'MAD4B_MCP_OAUTH_ENABLED' ) && true === constant( 'MAD4B_MCP_OAUTH_ENABLED' );
+	}
+
+	private static function request_is_wordpress_plugin_lifecycle() {
+		if ( ! is_admin() ) return false;
+		$pagenow = isset( $GLOBALS['pagenow'] ) ? sanitize_key( (string) $GLOBALS['pagenow'] ) : '';
+		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle observation only.
+		if ( in_array( $pagenow, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return true;
+		return in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
 	}
 
 	private static function request_requires_skill_reconciliation() {

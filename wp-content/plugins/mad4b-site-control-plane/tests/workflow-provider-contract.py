@@ -73,6 +73,9 @@ for marker in (
     "authority_created",
     "execution_binding",
     "expected_plan_sha256",
+    "provider_profile_fingerprint",
+    "capability_certification_fingerprint",
+    "provider_release_ring",
 ):
     if marker not in impl:
         raise SystemExit(f"workflow provider implementation missing marker: {marker}")

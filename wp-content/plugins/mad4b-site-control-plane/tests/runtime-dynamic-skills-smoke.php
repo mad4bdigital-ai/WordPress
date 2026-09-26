@@ -32,7 +32,12 @@ if ( empty( $registry['portable_app_id_configured'] ) ) $fail( 'Portable App map
 
 $seed = MAD4B_SCP_Skill_Seeder::status();
 if ( ! isset( $seed['state'] ) || 'ready' !== $seed['state'] ) $fail( 'Seed pack is not ready.' );
-if ( ! isset( $seed['seed_version'] ) || 6 !== (int) $seed['seed_version'] ) $fail( 'Canonical seed version is not v6.' );
+$seed_manifest_path = MAD4B_SCP_DIR . 'config/skill-seed-manifest.json';
+$seed_manifest_raw = is_file( $seed_manifest_path ) ? file_get_contents( $seed_manifest_path ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+$seed_manifest = is_string( $seed_manifest_raw ) ? json_decode( $seed_manifest_raw, true ) : null;
+if ( ! is_array( $seed_manifest ) || 'mad4b.skill-seed-manifest.v1' !== ( isset( $seed_manifest['contract'] ) ? (string) $seed_manifest['contract'] : '' ) ) $fail( 'Canonical seed manifest is unavailable or invalid.' );
+$expected_seed_version = isset( $seed_manifest['seed_version'] ) ? (int) $seed_manifest['seed_version'] : 0;
+if ( $expected_seed_version < 1 || ! isset( $seed['seed_version'] ) || $expected_seed_version !== (int) $seed['seed_version'] ) $fail( 'Runtime seed version drifted from canonical seed manifest.' );
 if ( ! empty( $seed['overwrites_user_owned'] ) ) $fail( 'Seeder must never overwrite user-owned Skills.' );
 if ( empty( $seed['refreshes_only_digest_clean_managed'] ) ) $fail( 'Managed seed refresh must remain digest-clean only.' );
 
@@ -41,17 +46,18 @@ if ( ! isset( $provider['state'] ) || 'ready' !== $provider['state'] ) $fail( 'P
 if ( ! empty( $provider['provider_plugin_mutation'] ) ) $fail( 'Provider discovery reported plugin mutation.' );
 if ( ! empty( $provider['deletes_skills'] ) ) $fail( 'Provider discovery reported Skill deletion.' );
 
-$seed_identities = array(
-	array( 'site', '_site', 'wordpress-site-diagnostics', true ),
-	array( 'connection', 'mad4b-chatgpt', 'wordpress-connection-diagnostics', true ),
-	array( 'provider', 'elementor', 'elementor-dynamic-content', false ),
-	array( 'provider', 'jet-engine', 'jetengine-content-modeling', false ),
-	array( 'workflow', 'archive-audit', 'wordpress-archive-audit', true ),
-	array( 'workflow', 'change-safety', 'wordpress-change-safety', true ),
-	array( 'workflow', 'release-orchestration', 'wordpress-release-orchestration', true ),
-	array( 'workflow', 'browser-acceptance', 'wordpress-browser-acceptance', true ),
-	array( 'workflow', 'content-authoring', 'wordpress-content-authoring', true ),
-);
+$seed_identities = array();
+foreach ( isset( $seed_manifest['skills'] ) && is_array( $seed_manifest['skills'] ) ? $seed_manifest['skills'] : array() as $row ) {
+	if ( ! is_array( $row ) ) $fail( 'Canonical seed manifest contains an invalid row.' );
+	$seed_identities[] = array(
+		isset( $row['level'] ) ? (string) $row['level'] : '',
+		isset( $row['target'] ) ? (string) $row['target'] : '',
+		isset( $row['name'] ) ? (string) $row['name'] : '',
+		! array_key_exists( 'enabled', $row ) || (bool) $row['enabled'],
+	);
+}
+if ( empty( $seed_identities ) ) $fail( 'Canonical seed manifest contains no runtime identities.' );
+
 $workspace = getenv( 'GITHUB_WORKSPACE' );
 if ( ! is_string( $workspace ) || '' === $workspace ) $fail( 'GITHUB_WORKSPACE is unavailable for canonical seed parity proof.' );
 
@@ -324,4 +330,4 @@ $plugin = json_decode( (string) $plugin_json, true );
 $capabilities = is_array( $plugin ) && isset( $plugin['extensions']['com.openai']['interface']['capabilities'] ) && is_array( $plugin['extensions']['com.openai']['interface']['capabilities'] ) ? $plugin['extensions']['com.openai']['interface']['capabilities'] : array();
 if ( ! in_array( 'Read', $capabilities, true ) || ! in_array( 'Write', $capabilities, true ) ) $fail( 'Runtime portable plugin.json does not declare Read + Write on certified governed Staging.' );
 
-echo 'mad4b.runtime-dynamic-skills.v6: PASS' . PHP_EOL;
+echo 'mad4b.runtime-dynamic-skills.v8: PASS' . PHP_EOL;

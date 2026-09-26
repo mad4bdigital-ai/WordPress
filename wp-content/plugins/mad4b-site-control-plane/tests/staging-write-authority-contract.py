@@ -698,4 +698,63 @@ if set(forbidden_contract) != expected_forbidden or not all(forbidden_contract.g
 if deployment.get('secrets_included') is not False:
     raise SystemExit('deployment handoff must never contain secrets')
 
+# Candidate artifact identity must be canonical-prefix safe and exact-source bound,
+# without hard-coding one producer wrapper naming scheme. This keeps historical
+# general-distribution identities compatible while accepting the canonical
+# versioned plugin artifact identity emitted by current build provenance.
+for required in [
+    "private static function artifact_identity_matches_source( $artifact_identity, $source_commit_sha )",
+    "0 !== strpos( $artifact_identity, 'mad4b-site-control-plane-' )",
+    "preg_match( '/^[A-Za-z0-9._-]+$/', $artifact_identity )",
+    "preg_quote( $source_commit_sha, '/' )",
+    "self::artifact_identity_matches_source( $stored_artifact, $stored_sha )",
+    "self::artifact_identity_matches_source( $artifact, $sha )",
+]:
+    if required not in write:
+        raise SystemExit(f'candidate artifact identity validation missing invariant: {required}')
+
+legacy_rigid = "/^mad4b-site-control-plane-general-distribution-kit-[a-f0-9]{40}$/"
+if legacy_rigid in write:
+    raise SystemExit('candidate artifact identity validation remains hard-coded to the distribution wrapper name')
+
+import re as _re
+_exact_sha = '6efd5a0f266fbc84c2e49221694340209ee189af'
+_safe = _re.compile(r'[A-Za-z0-9._-]+')
+def _artifact_identity_valid(value, sha):
+    return (
+        bool(_re.fullmatch(r'[a-f0-9]{40}', sha))
+        and 0 < len(value) <= 191
+        and value.startswith('mad4b-site-control-plane-')
+        and bool(_safe.fullmatch(value))
+        and value.endswith('-' + sha)
+    )
+
+if not _artifact_identity_valid('mad4b-site-control-plane-0.4.0-rc.59-' + _exact_sha, _exact_sha):
+    raise SystemExit('canonical versioned plugin artifact identity must be accepted')
+if not _artifact_identity_valid('mad4b-site-control-plane-general-distribution-kit-' + _exact_sha, _exact_sha):
+    raise SystemExit('historical general-distribution artifact identity must remain accepted')
+if _artifact_identity_valid('mad4b-site-control-plane-0.4.0-rc.59-' + ('0' * 40), _exact_sha):
+    raise SystemExit('artifact identity with a different source SHA must be rejected')
+if _artifact_identity_valid('../mad4b-site-control-plane-0.4.0-rc.59-' + _exact_sha, _exact_sha):
+    raise SystemExit('unsafe artifact identity characters/prefix must be rejected')
+
+print('mad4b.staging-write-authority.tenant-profile.v14: PASS')
+def _artifact_identity_valid(value, sha):
+    return (
+        bool(_re.fullmatch(r'[a-f0-9]{40}', sha))
+        and 0 < len(value) <= 191
+        and value.startswith('mad4b-site-control-plane-')
+        and bool(_safe.fullmatch(value))
+        and value.endswith('-' + sha)
+    )
+
+if not _artifact_identity_valid('mad4b-site-control-plane-0.4.0-rc.59-' + _exact_sha, _exact_sha):
+    raise SystemExit('canonical versioned plugin artifact identity must be accepted')
+if not _artifact_identity_valid('mad4b-site-control-plane-general-distribution-kit-' + _exact_sha, _exact_sha):
+    raise SystemExit('historical general-distribution artifact identity must remain accepted')
+if _artifact_identity_valid('mad4b-site-control-plane-0.4.0-rc.59-' + ('0' * 40), _exact_sha):
+    raise SystemExit('artifact identity with a different source SHA must be rejected')
+if _artifact_identity_valid('../mad4b-site-control-plane-0.4.0-rc.59-' + _exact_sha, _exact_sha):
+    raise SystemExit('unsafe artifact identity characters/prefix must be rejected')
+
 print('mad4b.staging-write-authority.tenant-profile.v14: PASS')

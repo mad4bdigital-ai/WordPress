@@ -630,17 +630,25 @@ final class MAD4B_SCP_Context_Authority {
 						continue;
 					}
 					$prior = isset( $previous[ $normalized['asset_id'] ] ) ? $previous[ $normalized['asset_id'] ] : array();
-					$human_classification = 'human' === ( isset( $prior['classification_source'] ) ? (string) $prior['classification_source'] : '' );
-					if ( $human_classification ) {
-						// Human classification/authority is governance metadata and survives
-						// content refresh. Approval evidence is bound to the exact content
-						// hash and must never be recreated by a later provider rescan.
+					$prior_classification_source = isset( $prior['classification_source'] ) ? (string) $prior['classification_source'] : '';
+					$human_classification = 'human' === $prior_classification_source;
+					$generated_classification = 'brand_context_builder' === $prior_classification_source;
+					if ( $human_classification || $generated_classification ) {
+						// Explicit human or governed generated classification/authority survives
+						// provider rescans. Approval evidence remains exact-content-hash bound.
 						$normalized['category'] = isset( $prior['category'] ) ? (string) $prior['category'] : $normalized['category'];
-						$normalized['classification_confidence'] = 1.0;
-						$normalized['classification_source'] = 'human';
+						$normalized['classification_confidence'] = $human_classification ? 1.0 : ( isset( $prior['classification_confidence'] ) ? (float) $prior['classification_confidence'] : 1.0 );
+						$normalized['classification_source'] = $human_classification ? 'human' : 'brand_context_builder';
 						$normalized['authority_class'] = isset( $prior['authority_class'] ) ? (string) $prior['authority_class'] : $normalized['authority_class'];
 						$normalized['required'] = ! empty( $prior['required'] );
 						$normalized['priority'] = isset( $prior['priority'] ) ? (int) $prior['priority'] : $normalized['priority'];
+
+						if ( $generated_classification ) {
+							foreach ( array( 'generated_artifact_id', 'generation_evidence_digest', 'materialization_receipt_sha256' ) as $generated_field ) {
+								if ( array_key_exists( $generated_field, $prior ) ) $normalized[ $generated_field ] = $prior[ $generated_field ];
+							}
+						}
+
 						$same_content = ! empty( $prior['content_hash'] ) && hash_equals( (string) $prior['content_hash'], (string) $normalized['content_hash'] );
 						$prior_review_status = isset( $prior['review_status'] ) ? (string) $prior['review_status'] : '';
 						$prior_reviewed_hash = isset( $prior['reviewed_content_hash'] ) ? strtolower( trim( (string) $prior['reviewed_content_hash'] ) ) : '';
@@ -649,6 +657,7 @@ final class MAD4B_SCP_Context_Authority {
 							&& ! empty( $prior['reviewed_at'] )
 							&& preg_match( '/^[a-f0-9]{64}$/', $prior_reviewed_hash )
 							&& hash_equals( $prior_reviewed_hash, (string) $normalized['content_hash'] );
+
 						if ( $prior_review_bound ) {
 							$normalized['reviewed_by'] = isset( $prior['reviewed_by'] ) ? absint( $prior['reviewed_by'] ) : 0;
 							$normalized['reviewed_at'] = (string) $prior['reviewed_at'];
@@ -660,6 +669,16 @@ final class MAD4B_SCP_Context_Authority {
 								$normalized['quality_score'] = isset( $prior['quality_score'] ) ? (int) $prior['quality_score'] : $normalized['quality_score'];
 								$normalized['quality'] = $prior['quality'];
 							}
+						} elseif ( $generated_classification && $same_content && in_array( $prior_review_status, array( '', 'unreviewed' ), true ) ) {
+							$normalized['reviewed_by'] = 0;
+							$normalized['reviewed_at'] = '';
+							$normalized['review_status'] = 'unreviewed';
+							$normalized['reviewed_content_hash'] = '';
+							$normalized['review_decision'] = '';
+							$normalized['review_note'] = '';
+							$normalized['review_actor_type'] = '';
+							$normalized['review_agent_public_id'] = '';
+							if ( isset( $normalized['quality'] ) && is_array( $normalized['quality'] ) ) $normalized['quality']['provisional'] = true;
 						} else {
 							$normalized['reviewed_by'] = 0;
 							$normalized['reviewed_at'] = '';
@@ -929,6 +948,142 @@ final class MAD4B_SCP_Context_Authority {
 					),
 					'ok'
 				);
+			}
+		);
+	}
+
+	public static function mark_generated_brand_draft( $asset_id, $category, $artifact_id, $evidence_digest, $receipt_sha256 ) {
+		return self::with_registry_lock(
+			'mark_generated_brand_draft',
+			static function () use ( $asset_id, $category, $artifact_id, $evidence_digest, $receipt_sha256 ) {
+				$asset_id = strtolower( trim( sanitize_text_field( (string) $asset_id ) ) );
+				$category = sanitize_key( (string) $category );
+				if ( ! in_array( $category, array( 'tone_of_voice', 'editorial_guidelines' ), true ) ) return new WP_Error( 'mad4b_brand_generated_category_invalid', 'Generated Brand Context category is invalid.' );
+				$records = self::raw_assets();
+				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_generated_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				$records[ $asset_id ]['category'] = $category;
+				$records[ $asset_id ]['authority_class'] = 'brand_authority';
+				$records[ $asset_id ]['required'] = true;
+				$records[ $asset_id ]['classification_source'] = 'brand_context_builder';
+				$records[ $asset_id ]['review_status'] = 'unreviewed';
+				$records[ $asset_id ]['reviewed_content_hash'] = '';
+				$records[ $asset_id ]['review_decision'] = '';
+				$records[ $asset_id ]['generated_artifact_id'] = strtolower( trim( (string) $artifact_id ) );
+				$records[ $asset_id ]['generation_evidence_digest'] = strtolower( trim( (string) $evidence_digest ) );
+				$records[ $asset_id ]['materialization_receipt_sha256'] = strtolower( trim( (string) $receipt_sha256 ) );
+				if ( isset( $records[ $asset_id ]['quality'] ) && is_array( $records[ $asset_id ]['quality'] ) ) $records[ $asset_id ]['quality']['provisional'] = true;
+				$sources = self::raw_sources();
+				$profile = self::refreshed_profile_record( $records, $sources, true );
+				$changes = array( self::ASSETS_OPTION => $records );
+				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+				$commit = self::commit_option_changes( $changes, 'mad4b_brand_generated_registry_write_failed', 'Generated Brand Context registry state could not be committed.' );
+				return is_wp_error( $commit ) ? $commit : $records[ $asset_id ];
+			}
+		);
+	}
+
+	public static function begin_generated_brand_rollback( $asset_id, $artifact_id, $receipt_sha256 ) {
+		return self::with_registry_lock(
+			'begin_generated_brand_rollback',
+			static function () use ( $asset_id, $artifact_id, $receipt_sha256 ) {
+				$asset_id = strtolower( trim( sanitize_text_field( (string) $asset_id ) ) );
+				$artifact_id = strtolower( trim( sanitize_text_field( (string) $artifact_id ) ) );
+				$receipt_sha256 = strtolower( trim( (string) $receipt_sha256 ) );
+				$records = self::raw_assets();
+				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_rollback_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				$current = $records[ $asset_id ];
+				if ( empty( $current['generated_artifact_id'] ) || ! hash_equals( strtolower( (string) $current['generated_artifact_id'] ), $artifact_id ) ) return new WP_Error( 'mad4b_brand_rollback_artifact_binding_drift', 'Generated Brand Context Artifact binding changed; rollback denied.' );
+				if ( empty( $current['materialization_receipt_sha256'] ) || ! hash_equals( strtolower( (string) $current['materialization_receipt_sha256'] ), $receipt_sha256 ) ) return new WP_Error( 'mad4b_brand_rollback_receipt_binding_drift', 'Generated Brand Context receipt binding changed; rollback denied.' );
+				$status = isset( $current['status'] ) ? (string) $current['status'] : '';
+				if ( 'rollback_pending' === $status ) {
+					return array(
+						'contract' => 'mad4b.brand-context-rollback-intent.v1',
+						'asset_id' => $asset_id,
+						'artifact_id' => $artifact_id,
+						'receipt_sha256' => $receipt_sha256,
+						'started_at' => isset( $current['rollback_started_at'] ) ? (string) $current['rollback_started_at'] : '',
+						'idempotent' => true,
+					);
+				}
+				if ( 'ready' !== $status ) return new WP_Error( 'mad4b_brand_rollback_status_drift', 'Generated Brand Context asset is not in a rollback-eligible ready state.', array( 'status' => $status ) );
+				$started_at = gmdate( 'c' );
+				$records[ $asset_id ]['status'] = 'rollback_pending';
+				$records[ $asset_id ]['rollback_started_at'] = $started_at;
+				$records[ $asset_id ]['rollback_artifact_id'] = $artifact_id;
+				$records[ $asset_id ]['rollback_receipt_sha256'] = $receipt_sha256;
+				$sources = self::raw_sources();
+				$profile = self::refreshed_profile_record( $records, $sources, true );
+				$changes = array( self::ASSETS_OPTION => $records );
+				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+				$commit = self::commit_option_changes( $changes, 'mad4b_brand_rollback_intent_write_failed', 'Brand Context rollback intent could not be committed atomically.' );
+				if ( is_wp_error( $commit ) ) return $commit;
+				return array(
+					'contract' => 'mad4b.brand-context-rollback-intent.v1',
+					'asset_id' => $asset_id,
+					'artifact_id' => $artifact_id,
+					'receipt_sha256' => $receipt_sha256,
+					'started_at' => $started_at,
+					'idempotent' => false,
+				);
+			}
+		);
+	}
+
+	public static function cancel_generated_brand_rollback( $asset_id, $artifact_id, $receipt_sha256, $reason = '' ) {
+		return self::with_registry_lock(
+			'cancel_generated_brand_rollback',
+			static function () use ( $asset_id, $artifact_id, $receipt_sha256, $reason ) {
+				$asset_id = strtolower( trim( sanitize_text_field( (string) $asset_id ) ) );
+				$artifact_id = strtolower( trim( sanitize_text_field( (string) $artifact_id ) ) );
+				$receipt_sha256 = strtolower( trim( (string) $receipt_sha256 ) );
+				$records = self::raw_assets();
+				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_rollback_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				$current = $records[ $asset_id ];
+				if ( 'rollback_pending' !== ( isset( $current['status'] ) ? (string) $current['status'] : '' ) ) return new WP_Error( 'mad4b_brand_rollback_cancel_state_drift', 'Generated Brand Context asset is not in rollback_pending state.' );
+				if ( empty( $current['rollback_artifact_id'] ) || ! hash_equals( strtolower( (string) $current['rollback_artifact_id'] ), $artifact_id ) ) return new WP_Error( 'mad4b_brand_rollback_cancel_artifact_drift', 'Rollback intent Artifact binding changed.' );
+				if ( empty( $current['rollback_receipt_sha256'] ) || ! hash_equals( strtolower( (string) $current['rollback_receipt_sha256'] ), $receipt_sha256 ) ) return new WP_Error( 'mad4b_brand_rollback_cancel_receipt_drift', 'Rollback intent receipt binding changed.' );
+				$records[ $asset_id ]['status'] = 'ready';
+				$records[ $asset_id ]['availability_reason'] = '';
+				$records[ $asset_id ]['rollback_cancel_reason'] = sanitize_key( (string) $reason );
+				$records[ $asset_id ]['rollback_cancelled_at'] = gmdate( 'c' );
+				unset( $records[ $asset_id ]['rollback_started_at'], $records[ $asset_id ]['rollback_artifact_id'], $records[ $asset_id ]['rollback_receipt_sha256'] );
+				$sources = self::raw_sources();
+				$profile = self::refreshed_profile_record( $records, $sources, true );
+				$changes = array( self::ASSETS_OPTION => $records );
+				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+				$commit = self::commit_option_changes( $changes, 'mad4b_brand_rollback_cancel_write_failed', 'Brand Context rollback cancellation could not be committed atomically.' );
+				return is_wp_error( $commit ) ? $commit : $records[ $asset_id ];
+			}
+		);
+	}
+
+	public static function mark_generated_brand_draft_rolled_back( $asset_id, $file_id, $content_sha256, $artifact_id, $receipt_sha256, $allow_unmarked = false ) {
+		return self::with_registry_lock(
+			'mark_generated_brand_draft_rolled_back',
+			static function () use ( $asset_id, $file_id, $content_sha256, $artifact_id, $receipt_sha256, $allow_unmarked ) {
+				$asset_id = strtolower( trim( (string) $asset_id ) );
+				$records = self::raw_assets();
+				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_rollback_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				$current = $records[ $asset_id ];
+				if ( ! $allow_unmarked ) {
+					if ( empty( $current['generated_artifact_id'] ) || ! hash_equals( strtolower( (string) $current['generated_artifact_id'] ), strtolower( (string) $artifact_id ) ) ) return new WP_Error( 'mad4b_brand_rollback_artifact_binding_drift', 'Generated Brand Context Artifact binding changed; rollback denied.' );
+					if ( empty( $current['materialization_receipt_sha256'] ) || ! hash_equals( strtolower( (string) $current['materialization_receipt_sha256'] ), strtolower( (string) $receipt_sha256 ) ) ) return new WP_Error( 'mad4b_brand_rollback_receipt_binding_drift', 'Generated Brand Context receipt binding changed; rollback denied.' );
+					if ( 'rollback_pending' !== ( isset( $current['status'] ) ? (string) $current['status'] : '' ) ) return new WP_Error( 'mad4b_brand_rollback_intent_missing', 'Generated Brand Context rollback requires a persisted rollback_pending intent.' );
+				}
+				if ( empty( $current['file_id'] ) || ! hash_equals( (string) $current['file_id'], (string) $file_id ) ) return new WP_Error( 'mad4b_brand_rollback_file_binding_drift', 'Generated Brand Context file binding changed before rollback finalization.' );
+				if ( empty( $current['content_hash'] ) || ! hash_equals( strtolower( (string) $current['content_hash'] ), strtolower( (string) $content_sha256 ) ) ) return new WP_Error( 'mad4b_brand_rollback_content_drift', 'Generated Brand Context content changed before rollback finalization.' );
+				$records[ $asset_id ]['status'] = 'unavailable';
+				$records[ $asset_id ]['availability_reason'] = 'generated_file_rolled_back';
+				$records[ $asset_id ]['review_status'] = 'unreviewed';
+				$records[ $asset_id ]['reviewed_content_hash'] = '';
+				$records[ $asset_id ]['rolled_back_at'] = gmdate( 'c' );
+				unset( $records[ $asset_id ]['rollback_started_at'], $records[ $asset_id ]['rollback_artifact_id'], $records[ $asset_id ]['rollback_receipt_sha256'] );
+				$sources = self::raw_sources();
+				$profile = self::refreshed_profile_record( $records, $sources, true );
+				$changes = array( self::ASSETS_OPTION => $records );
+				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+				$commit = self::commit_option_changes( $changes, 'mad4b_brand_rollback_registry_write_failed', 'Brand Context rollback registry state could not be committed.' );
+				return is_wp_error( $commit ) ? $commit : $records[ $asset_id ];
 			}
 		);
 	}
@@ -1920,6 +2075,22 @@ final class MAD4B_SCP_Context_Authority {
 			$content_hash = hash( 'sha256', $basis );
 		}
 		$asset_id = hash( 'sha256', (string) $source['source_id'] . '|' . $file_id );
+		$provider_identity = array();
+		$app_properties = isset( $asset['appProperties'] ) && is_array( $asset['appProperties'] ) ? $asset['appProperties'] : array();
+		if ( isset( $app_properties['mad4b_kind'] ) && 'brand_context' === (string) $app_properties['mad4b_kind'] ) {
+			$candidate_identity = array(
+				'mad4b_kind' => 'brand_context',
+				'mad4b_artifact' => isset( $app_properties['mad4b_artifact'] ) ? strtolower( trim( (string) $app_properties['mad4b_artifact'] ) ) : '',
+				'mad4b_source' => isset( $app_properties['mad4b_source'] ) ? strtolower( trim( (string) $app_properties['mad4b_source'] ) ) : '',
+				'mad4b_idempotency' => isset( $app_properties['mad4b_idempotency'] ) ? strtolower( trim( (string) $app_properties['mad4b_idempotency'] ) ) : '',
+				'mad4b_request' => isset( $app_properties['mad4b_request'] ) ? strtolower( trim( (string) $app_properties['mad4b_request'] ) ) : '',
+			);
+			$valid_identity = 1 === preg_match( '/^[a-f0-9-]{36}$/', $candidate_identity['mad4b_artifact'] );
+			foreach ( array( 'mad4b_source', 'mad4b_idempotency', 'mad4b_request' ) as $identity_field ) {
+				$valid_identity = $valid_identity && 1 === preg_match( '/^[a-f0-9]{64}$/', $candidate_identity[ $identity_field ] );
+			}
+			if ( $valid_identity ) $provider_identity = $candidate_identity;
+		}
 		return array(
 			'contract' => self::ASSET_CONTRACT,
 			'asset_id' => $asset_id,
@@ -1929,6 +2100,7 @@ final class MAD4B_SCP_Context_Authority {
 			'source_mode' => (string) $source['mode'],
 			'task_scope' => isset( $source['task_scope'] ) ? (string) $source['task_scope'] : '',
 			'provider' => (string) $source['provider'],
+			'provider_identity' => $provider_identity,
 			'file_id' => $file_id,
 			'parent_folder_id' => $parent_folder_id,
 			'title' => $title,

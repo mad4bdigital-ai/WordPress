@@ -1,0 +1,13 @@
+{
+  "contract": "mad4b.wordpress-addon-catalog.v1",
+  "addons": [],
+  "defaults": {
+    "multisite_support": "unsupported_unless_manifest_explicit",
+    "production_authorized": false,
+    "unknown_provider_version_behavior": "FAIL_CLOSED",
+    "missing_extension_point_behavior": "FAIL_CLOSED",
+    "provider_update_invalidation": true,
+    "addon_update_invalidation": true,
+    "exact_pair_certification_required": true
+  }
+}

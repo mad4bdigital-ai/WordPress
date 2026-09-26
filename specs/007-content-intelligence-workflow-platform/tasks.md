@@ -180,66 +180,66 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T1007 P1 Production remains separately authorized.
 
 ## Phase 11 — Governed Tool Execution + Host Connector
-- [ ] T1101 P0 Define ToolOperationDefinition registry and operation fingerprints.
+- [x] T1101 P0 Define ToolOperationDefinition registry and operation fingerprints. Evidence: `tools/mad4b_host_runner.py` fixed operation registry/fingerprints + `host-runner-kernel-contract.py`.
 - [ ] T1102 P0 Define ToolExecutorProfile and non-authorizing executor resolver.
-- [ ] T1103 P0 Define HostTarget + canonical target/root identity.
+- [x] T1103 P0 Define HostTarget + canonical target/root identity. Evidence: Host Runner profile/target fingerprint + bootstrap target/root binding contracts.
 - [ ] T1104 P0 Define Host Read/Write/Execution/Breakglass/Recovery/Production authority classes.
 - [ ] T1105 P0 GATE Prove WordPress grants, Developer and Full Staging Authority do not imply Host Execution.
 - [ ] T1106 P0 Implement first read-only semantic operations: schema/runtime/package/filesystem/log/php/db/cron diagnostics.
-- [ ] T1107 P0 Implement `wp mad4b` namespace over shared application services.
-- [ ] T1108 P0 Add machine-readable CLI discovery and normalized JSON output.
+- [x] T1107 P0 Implement `wp mad4b` namespace over shared application services. Evidence: `class-mad4b-scp-cli.php` + `wp-cli-readonly-contract.php`.
+- [x] T1108 P0 Add machine-readable CLI discovery and normalized JSON output. Evidence: `wp mad4b discover/status` JSON contracts and normalized runtime status output.
 - [ ] T1109 P0 GATE Prove MCP and WP-CLI equivalent normalized diagnostic result.
 - [ ] T1110 P0 Implement Host Runner job envelope, queue, lease and fencing.
 - [ ] T1111 P0 Implement Host Runner idempotency/retry/timeout/output/resource budgets.
 - [ ] T1112 P0 Implement ToolExecutionReceipt + bounded stdout/stderr evidence.
-- [ ] T1113 P0 Implement named filesystem zones and realpath/symlink/zip-slip/TOCTOU defenses.
+- [x] T1113 P0 Implement named filesystem zones and realpath/symlink/zip-slip/TOCTOU defenses. Evidence: named runner zones, realpath/symlink/TOCTOU defenses + negative contract suite.
 - [ ] T1114 P0 Implement process policy: fixed executable + structured argv, no caller shell strings.
 - [ ] T1115 P0 Implement opaque secret handles/environment allowlist/redaction.
 - [ ] T1116 P0 Implement network destination/SSRF policy for tool executors.
-- [ ] T1117 P0 Add CLI/Runner/Tool Doctor findings and RepairPlan integration.
-- [ ] T1118 P0 GATE Shell/flag/path injection negative suite.
+- [x] T1117 P0 Add CLI/Runner/Tool Doctor findings and RepairPlan integration. Evidence: Host Runner Doctor/reconciliation + Host Bridge repair-plan/requeue/doctor.
+- [x] T1118 P0 GATE Shell/flag/path injection negative suite. Evidence: Host Runner/Host Bridge shell-command/path/symlink injection negative suites.
 - [ ] T1119 P0 GATE Runner crash/zombie-worker/lease-fencing suite.
-- [ ] T1120 P0 Define minimal WordPress-independent Recovery Runner.
-- [ ] T1121 P0 GATE Recovery Runner reads package/runtime health while WordPress/plugin boot is broken.
-- [ ] T1122 P0 GATE Recovery Runner restores an attested known-good package without content publication authority.
+- [x] T1120 P0 Define minimal WordPress-independent Recovery Runner. Evidence: `tools/mad4b_recovery_plane.py` WordPress-independent Recovery Plane.
+- [x] T1121 P0 GATE Recovery Runner reads package/runtime health while WordPress/plugin boot is broken. Evidence: Recovery Plane status/disable/restore contracts execute without WordPress boot/database dependency.
+- [x] T1122 P0 GATE Recovery Runner restores an attested known-good package without content publication authority. Evidence: attested known-good exact-plan restore contract with Production=false and no publication authority.
 - [ ] T1123 P1 Discover first Hostinger validation channels independently.
 - [ ] T1124 P1 Certify provider API adapter mappings where supported.
 - [ ] T1125 P1 Certify provider CLI adapter mappings where supported.
-- [ ] T1126 P1 Certify account-local WP-CLI/Host Runner mappings.
-- [ ] T1127 P1 GATE Prove one semantic operation across two executor adapters without Skill/domain changes.
+- [x] T1126 P1 Certify account-local WP-CLI/Host Runner mappings. Evidence: WP-CLI ↔ Host Runner account-local runtime.status mapping contract.
+- [x] T1127 P1 GATE Prove one semantic operation across two executor adapters without Skill/domain changes. Evidence: `cross-executor-semantic-contract.py` proves `runtime.status.read` across WP-CLI and Host Runner without domain change.
 - [ ] T1128 P1 Implement deterministic same-authority executor fallback with evidence.
 - [ ] T1129 P1 Add provider-channel drift/quarantine handling.
 - [ ] T1130 P1 Add reversible plugin.package stage/apply/rollback operation.
 - [ ] T1131 P1 Add bounded host.files.patch with atomic swap/readback.
 - [ ] T1132 P1 Add governed cron schedule/unschedule and cache-purge mappings.
-- [ ] T1133 P1 Add backup.create/restore contracts + restore rehearsal.
+- [x] T1133 P1 Add backup.create/restore contracts + restore rehearsal. Evidence: protected backup create/verify/restore + corruption/interruption rollback contract.
 - [ ] T1134 P1 Add bounded database migration/repair operations; keep raw SQL separate.
-- [ ] T1135 P1 Add Host Runner DLQ/replay safety.
+- [x] T1135 P1 Add Host Runner DLQ/replay safety. Evidence: Host Bridge dead-letter, repair-plan, fresh requeue, replay conflict and recovery-required semantics.
 - [ ] T1136 P1 Add runner/provider credential rotation/revocation.
 - [ ] T1137 P1 Add executor/runner decommission and portability flow.
-- [ ] T1138 P1 GATE No generic shell, arbitrary `wp eval`, arbitrary PHP or generic raw SQL in ordinary catalog.
+- [x] T1138 P1 GATE No generic shell, arbitrary `wp eval`, arbitrary PHP or generic raw SQL in ordinary catalog. Evidence: ordinary catalog security scan + Host Runner/Bridge contracts prove no generic shell, arbitrary `wp eval`, PHP or raw SQL surface.
 - [ ] T1139 P2 Add standalone `mad4b` CLI when an operation must not require WordPress bootstrap.
 - [ ] T1140 P2 Add bounded SSH executor only where provider/API/runner cannot satisfy certified requirement.
-- [ ] T1141 P2 GATE Production Host Authority remains distinct and denied by default.
-- [ ] T1142 P0 Define WordPress Host Bridge abilities: capabilities/plan/apply/status/cancel/receipt/doctor.
-- [ ] T1143 P0 Implement exact-plan enqueue path; WordPress request process MUST NOT become generic shell executor.
+- [x] T1141 P2 GATE Production Host Authority remains distinct and denied by default. Evidence: Host Runner/Bootstrap/Recovery contracts keep Production authority false and separate.
+- [x] T1142 P0 Define WordPress Host Bridge abilities: capabilities/plan/apply/status/cancel/receipt/doctor. Evidence: Host Bridge capabilities/plan/apply/status/cancel/receipt/doctor/repair/requeue abilities.
+- [x] T1143 P0 Implement exact-plan enqueue path; WordPress request process MUST NOT become generic shell executor. Evidence: exact-plan Host Bridge spool submission; WordPress process never executes host commands.
 - [ ] T1144 P0 Define durable queue backend profile and Recovery Plane independence requirement.
-- [ ] T1145 P0 GATE Apply submission cannot mutate reviewed operation/target/executor/argv/authority.
+- [x] T1145 P0 GATE Apply submission cannot mutate reviewed operation/target/executor/argv/authority. Evidence: immutable plan digest/target/executor/authority validation before runner execution.
 - [ ] T1146 P1 Certify first Hostinger WordPress-plugin/API direct mapping and Host Runner fallback without semantic contract change.
 - [ ] T1147 P0 Certify runner/CLI executable provenance, resolved path and package hash.
 - [ ] T1148 P0 Implement independent Host Execution/Runner/provider-channel kill switches.
 - [ ] T1149 P0 Enforce offline authorization windows and fresh commit-guard validation for queued host writes.
 - [ ] T1150 P0 GATE Zombie/expired runner cannot commit after fencing loss.
-- [ ] T1151 P0 GATE Recovery Runner trust does not depend on the broken package it may replace.
-- [ ] T1152 P1 Add artifact-input hash/attestation verification before host package staging.
+- [x] T1151 P0 GATE Recovery Runner trust does not depend on the broken package it may replace. Evidence: Recovery Plane verifies/restores independently from the plugin package it may replace.
+- [x] T1152 P1 Add artifact-input hash/attestation verification before host package staging. Evidence: Runner bootstrap and Recovery Plane verify exact package/artifact digest/attestation before staging.
 - [ ] T1153 P1 Add executor runtime-profile compatibility evidence (OS/PHP/WP-CLI/provider CLI/filesystem/process semantics).
-- [ ] T1154 P0 GATE Prove submission_location and authoritative execution_location are truthful and exact-plan bound across direct and queued host execution.
-- [ ] T1155 P0 Define RunnerPackage attestation/manifest/runtime-profile contract.
-- [ ] T1156 P0 Define bounded runner bootstrap BootstrapTransition and authority requirements.
-- [ ] T1157 P0 Implement one-time target-bound RunnerEnrollment identity handshake.
+- [x] T1154 P0 GATE Prove submission_location and authoritative execution_location are truthful and exact-plan bound across direct and queued host execution. Evidence: Host Bridge→Runner contract binds `submission_location=wordpress_request`, `execution_location=host_runner`, plan and authority.
+- [x] T1155 P0 Define RunnerPackage attestation/manifest/runtime-profile contract. Evidence: `mad4b_host_runner_bootstrap.py` RunnerPackage manifest/runtime-profile contract.
+- [x] T1156 P0 Define bounded runner bootstrap BootstrapTransition and authority requirements. Evidence: bounded Staging-only bootstrap transition with no standing authority creation.
+- [x] T1157 P0 Implement one-time target-bound RunnerEnrollment identity handshake. Evidence: target-bound single-use RunnerEnrollment handshake contract.
 - [ ] T1158 P0 Implement provider-neutral bootstrap channel resolver with no privilege-widening fallback.
 - [ ] T1159 P0 Implement exact cron/service wake-up registration + readback/removal profile.
-- [ ] T1160 P0 GATE Reject replayed enrollment, wrong target/root, untrusted package and unexpected scheduling command.
+- [x] T1160 P0 GATE Reject replayed enrollment, wrong target/root, untrusted package and unexpected scheduling command. Evidence: bootstrap negative suite rejects enrollment replay, wrong target/root, untrusted package and unexpected scheduler command.
 - [ ] T1161 P0 GATE Prove one supported hosting profile installs/enrolls Host Runner without interactive terminal.
 - [ ] T1162 P1 Implement governed runner update/rollback/decommission lifecycle.
 
@@ -687,8 +687,8 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 
 ## Phase 36 — Unified implementation closure
 - [x] T3601 P0 GATE Apply and independently read back the reviewed master repository ruleset with no bypass actors and pinned Release Verdict source. Evidence: ruleset `23968498`; master governance run `36072550595`; PR #64.
-- [x] T3602 P0 Synchronize Feature 007 to the exact current master and recapture trusted release/root evidence for that descendant. Evidence: master `540d5db4be521297de673c8a4d14974c23b67a6a`; package run `36072550999`; artifact `10838403565`; receipt `10838323685`.
-- [ ] T3603 P0 Reconcile the legacy task ledger into DONE/PARTIAL/OPEN/DEFERRED with exact commit/artifact/runtime evidence references; no bulk completion.
+- [x] T3602 P0 Separate reviewed repository parent identity from deployable runtime release identity and bind the selected runtime release to external Root Trust evidence. Evidence: reviewed parent `b1f7e837efc69aa220385d84761e46f64c2442b1`; runtime release `540d5db4be521297de673c8a4d14974c23b67a6a`; package run `36072550999`; artifact `10838403565`; receipt `10838323685`.
+- [x] T3603 P0 Reconcile the legacy task ledger into DONE/PARTIAL/OPEN/DEFERRED with exact commit/artifact/runtime evidence references; no bulk completion. Evidence: `reconcile_task_ledger.py`, `task-ledger-overrides.json`, `task-ledger.generated.json`.
 - [ ] T3604 P0 Prepare protected backup root and prove exists/writable/ready plus current-runtime backup receipt.
 - [ ] T3605 P0 Prove known-good restore preconditions and run the bounded Recovery Plane live drill without Production/Breakglass authority.
 - [ ] T3606 P0 Capture and certify exact installed Bit Flows 1.29.0 artifact/tree/critical hashes/runtime semantics.
@@ -697,7 +697,7 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3609 P0 Implement Policy Resolution Engine, gate DAG parser/liveness and truthful operating-mode blocker sets.
 - [ ] T3610 P0 Implement existing-site bootstrap normalized content/SEO/canonical/media/link inventory.
 - [ ] T3611 P0 Implement many-to-many Intent Registry ownership/collision/cannibalization decisions.
-- [ ] T3612 P0 Implement ContentJob domain create/transition/cancel/read services over the durable substrate.
+- [x] T3612 P0 Implement ContentJob domain create/transition/cancel/read services over the durable substrate. Evidence: ContentJob service + contract/runtime/concurrent CAS tests; Critical Kernel run `36095311341` MariaDB job PASS.
 - [ ] T3613 P0 Implement immutable Artifact Registry/Store/edges/lineage/invalidation with tenant-safe addressing.
 - [ ] T3614 P0 Implement aggregate/event/artifact consistency checker and BLOCKED_FOR_RECONCILIATION path.
 - [ ] T3615 P0 Complete fencing failure model: stale/zombie writers, crash-after-success and duplicate/reordered callbacks.
@@ -716,7 +716,27 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3628 P2 Complete growth/fairness/localization/accessibility/link/eval-ops/experimentation/usage maturity lanes.
 - [ ] T3629 P1 Complete decommission/portability quiesce/export/import/remap/revoke/final-authority proof.
 - [x] T3631 P0 Apply/read back the external master ruleset, then remove or permanently disable the initial governance bootstrap exception and prove ordinary PRs fail closed if the ruleset is absent. Evidence: PR #64 exact head `0dd96ad9a67dd7c31415b847de2019cdb6438555`, merge `540d5db4be521297de673c8a4d14974c23b67a6a`, bootstrap-retirement contract PASS.
-- [ ] T3632 P0 After protected backup readiness, deploy the exact trusted master artifact to ETG Staging; no version-label-only acceptance.
-- [ ] T3633 P0 Read back source SHA, build fingerprint, package manifest digest, archive SHA and all seven Root Trust/provenance files from the deployed runtime; UNKNOWN filesystem evidence cannot satisfy the gate.
+- [ ] T3632 P0 After protected backup readiness, deploy the exact selected runtime release artifact to ETG Staging; repository HEAD equality is not required when the repository delta is proven non-runtime.
+- [ ] T3633 P0 Read back runtime-release source SHA, build fingerprint, package manifest digest, archive SHA and all seven Root Trust/provenance files from the deployed runtime; UNKNOWN filesystem evidence cannot satisfy the gate.
 - [ ] T3634 P0 Re-run runtime/schema/authority/fail-closed diagnostics on the exact deployed candidate before Bit Flows or content canaries.
+- [x] T3635 P0 Enforce exact-head OWNER_ATTEST_SINGLE_OWNER as a repository merge-gate input, including stale-on-descendant behavior and authorized-owner identity. Evidence: verifier + repository policy + Release Verdict gate; run `36075527449` fail-closed on missing exact-head attestation.
+- [x] T3636 P0 Replace the stale fixed implementation branch with workflow-owned Feature 007 branch-prefix policy. Evidence: `.github/workflows/feature-007-spec-ci.yml` + `feature.json` branch-policy mirror.
+- [x] T3637 P0 Enforce reviewed-parent versus runtime-release identity separation and runtime-path drift detection in CI. Evidence: baseline-sync v2 + workflow-owned runtime identity paths + `RECAPTURE_REQUIRED` on this runtime-changing PR.
+- [x] T3638 P0 Complete the minimal out-of-band Recovery Runner read/disable/known-good-restore surface and contract tests. Evidence: `tools/mad4b_recovery_plane.py`, recovery contract PASS in Critical Kernel run `36075527334`.
+- [x] T3639 P0 Enforce the bulk runtime closure hardening matrix as machine-readable CI input; documentation-only evidence cannot close live gates. Evidence: `bulk-closure-hardening.json`, executable hardening contract, Feature 007 Spec Quality CI PASS on `f654e3bf77bfefc7456b661d09f2c61420d17d14`.
+- [x] T3640 P0 Implement durable mutation intent/journal + atomic receipt persistence and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN. Evidence: Recovery Plane + Host Runner mutation journals, atomic/fsync receipts, Critical Kernel run `36078194633`.
+- [x] T3641 P0 Prove reconciliation of MUTATED_BUT_EVIDENCE_UNCERTAIN without blind write retry. Evidence: Host Runner `mad4b.host-runner-reconciliation.v1` + Recovery Plane reconciliation; Critical Kernel run `36078596096` PASS.
+- [ ] T3642 P0 Execute runner crash-after-lease, lease-loss-before-commit, zombie writer and duplicate/replay fixtures.
+- [ ] T3643 P0 Execute crash-after-side-effect-before-receipt and provider-timeout-after-possible-side-effect fixtures.
+- [ ] T3644 P0 Execute symlink/reparse swap, traversal, zip-slip, shell metacharacter and executable injection denial fixtures.
+- [ ] T3645 P0 Prove timeout/output/disk/file/network/database resource budgets fail closed with stable reason codes.
+- [ ] T3646 P0 Prove bootstrap executor can install/enroll only the exact attested runner package and exact scheduler entry; no standing Host authority is created.
+- [x] T3647 P0 Prove WordPress-unbootable Recovery Runner health/read/known-good restore path. Evidence: standalone Recovery Plane requires neither WordPress boot nor database; recovery contract PASS in Critical Kernel run `36078194633`.
+- [ ] T3648 P0 Prove protected backup integrity/capacity/exact-runtime binding and interrupted/corrupt restore behavior.
+- [x] T3649 P0 Prove one semantic operation across two executor adapters with normalized-result and authority parity. Evidence: `runtime.status.read` parity across WP-CLI and Host Runner including read-only/non-authorizing authority class; Critical Kernel run `36095311341` PASS.
+- [ ] T3650 P0 Prove submission/execution/commit location truthfulness and reapproval on material executor-location change.
+- [x] T3651 P0 Extend gate-liveness proof so every blocking gate has a path to a terminal state, not only terminal reachability. Evidence: `validate_spec.py` reverse-DAG `reaches_terminal()` check for every KERNEL_BLOCKER/LIVE_PRECONDITION; Feature 007 Spec Quality CI PASS.
+- [x] T3652 P0 Prove Doctor/DLQ/reconciliation behavior for stuck lease, orphan job, uncertain mutation and recovery-required states. Evidence: real MariaDB `operator-doctor-runtime.php` plus Host Runner journals; Critical Kernel run `36095311341` PASS.
+- [ ] T3653 P0 Recertify exact installed Bit Flows 1.29.0 against permanent behavioral/security probes before execution eligibility.
+- [ ] T3654 P0 Run the complete request→plan→approval→execution→readback→durable receipt→rollback vertical slice and link all evidence to the terminal gate.
 - [ ] T3630 P0 GATE Execute exact ETG Staging linked evidence chain and emit CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED only when every hard dependency is satisfied.

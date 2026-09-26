@@ -39,7 +39,7 @@ bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
 
 # Schema authority must be normalized and migration must not seed authority.
-require(schema, 'const VERSION = 9;', 'schema-version')
+require(schema, 'const VERSION = 11;', 'schema-version')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
@@ -83,6 +83,10 @@ require(registry, 'mad4b_grant_server_ability_mismatch', 'grant-server-ability-d
 require(registry, 'mad4b_grant_provider_mismatch', 'grant-provider-denial')
 require(registry, 'mad4b_scp_allow_breakglass_grant_creation', 'breakglass-exception-hook')
 require(registry, 'mad4b_breakglass_grant_creation_denied', 'breakglass-default-denial')
+require(registry, 'private static $agent_by_public_id = array();', 'agent-request-cache')
+require(registry, 'array_key_exists( $public_id, self::$agent_by_public_id )', 'agent-request-cache-hit')
+require(registry, 'self::$agent_by_public_id[ $public_id ] = $row ? $row : null;', 'agent-request-negative-cache')
+require(registry, 'self::invalidate_agent_cache( $public_id );', 'agent-cache-update-invalidation')
 
 # Server membership has a single provider-aware source of truth.
 require(servers, 'public static function provider_for_ability', 'server-provider-resolver')
@@ -303,4 +307,4 @@ pos = [bootstrap.index(x) for x in order]
 if pos != sorted(pos):
     raise SystemExit('FAIL bootstrap-order: governance dependencies are loaded out of order')
 
-print('mad4b.site-control-plane.agent-governance-contract.v9: PASS')
+print('mad4b.site-control-plane.agent-governance-contract.v11: PASS')

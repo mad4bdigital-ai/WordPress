@@ -34,6 +34,16 @@ final class MAD4B_SCP_Servers {
 				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/schema-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/context-authority-status',
 				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
+				'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve', 'mad4b/addon-registry-status',
+				'mad4b/data-processing-evaluate',
+				'mad4b/research-provider-plan',
+				'mad4b/decommission-preflight',
+				'mad4b/export-bundle-build', 'mad4b/import-bundle-validate',
+				'mad4b/scheduler-admission-evaluate',
+				'mad4b/scheduler-fair-rank',
+				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status',
+				'mad4b/site-bootstrap-snapshot',
+				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue',
 			), $governed_status ),
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status',
@@ -41,13 +51,32 @@ final class MAD4B_SCP_Servers {
 				'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute',
 				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status',
 				'mad4b/plugin-package-plan',
+				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix',
 			), $governed_status ),
-			'mad4b-enrollment' => array_merge(
-				array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/multi-authority-registry-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' ),
+			'mad4b-enrollment' => array_values( array_unique( array_merge(
+				array(
+					'mad4b/site-info',
+					'mad4b/site-profile-status',
+					'mad4b/build-provenance-status',
+					'mad4b/multi-authority-registry-status',
+					'mad4b/site-profile-feature-reenroll',
+					'mad4b/site-profile-write-enable',
+					'mad4b/staging-write-grant-reconcile',
+					'mad4b/staging-write-candidate-bind',
+					'mad4b/staging-write-candidate-binding-audit',
+				),
+				class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'enrollment_abilities' )
+					? MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()
+					: array(),
 				class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::enrollment_tools() : array()
+			) ) ),
+			'mad4b-content' => array(
+				'mad4b/content-get-post', 'mad4b/content-update-post',
+				'mad4b/content-job-list', 'mad4b/content-job-get', 'mad4b/content-job-events',
+				'mad4b/intent-registry-current', 'mad4b/intent-conflicts-analyze', 'mad4b/intent-bootstrap-plan',
+				'mad4b/draft-plan', 'mad4b/draft-verify', 'mad4b/publication-verification-evaluate',
 			),
-			'mad4b-content' => array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
 			'mad4b-admin' => array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
@@ -69,7 +98,11 @@ final class MAD4B_SCP_Servers {
 
 	private static function core_write_candidates() {
 		$candidates = array_merge(
-			array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
+			array(
+				'mad4b/content-get-post', 'mad4b/content-update-post',
+				'mad4b/content-job-create', 'mad4b/content-job-transition', 'mad4b/content-job-cancel',
+				'mad4b/intent-registry-reconcile', 'mad4b/draft-apply', 'mad4b/data-processing-record-decision',
+			),
 			array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',

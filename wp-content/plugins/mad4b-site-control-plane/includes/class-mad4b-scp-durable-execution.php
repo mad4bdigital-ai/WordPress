@@ -14,6 +14,9 @@ final class MAD4B_SCP_Durable_Execution {
 	const IDEMPOTENCY_CONTRACT = 'mad4b.idempotency-record.v1';
 	const OUTBOX_CONTRACT = 'mad4b.execution-outbox.v1';
 	const INBOX_CONTRACT = 'mad4b.execution-inbox.v1';
+	const RECONCILIATION_OBSERVATIONS_CONTRACT = 'mad4b.idempotency-reconciliation-observations.v1';
+	const NO_EFFECT_MIN_OBSERVATION_SECONDS = 60;
+	const MAX_RECONCILIATION_OBSERVATIONS = 4;
 
 	public static function begin_idempotency( $scope_key, $idempotency_key, $request_sha256, $ttl_seconds = 86400 ) {
 		global $wpdb;
@@ -50,6 +53,29 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_idempotency_claim_failed', 'Unable to claim or read idempotency record.' );
 		if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
 			return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
+		}
+		if ( 'released_verified_no_effect' === (string) $row['status'] ) {
+			$current_epoch = isset( $row['claim_epoch'] ) ? max( 1, (int) $row['claim_epoch'] ) : 1;
+			$next_epoch = $current_epoch + 1;
+			$reclaimed = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$t['idempotency']} SET status='pending',claim_epoch=%d,result_json=NULL,result_sha256='',reconciliation_ref='',expires_at=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='released_verified_no_effect'",
+				$next_epoch, $expires, $now, (int) $row['id'], $request_sha256, $current_epoch
+			) );
+			if ( 1 === (int) $reclaimed ) {
+				return array(
+					'contract' => self::IDEMPOTENCY_CONTRACT,
+					'claimed' => true,
+					'reclaimed_after_verified_no_effect' => true,
+					'replayed' => false,
+					'scope_key' => $scope_key,
+					'idempotency_key' => $idempotency_key,
+					'request_sha256' => $request_sha256,
+					'claim_epoch' => $next_epoch,
+					'expires_at' => $expires,
+					'previous_reconciliation_ref' => isset( $row['reconciliation_ref'] ) ? (string) $row['reconciliation_ref'] : '',
+				);
+			}
+			return new WP_Error( 'mad4b_idempotency_in_progress', 'The same idempotent operation was reclaimed concurrently after verified no-effect reconciliation.' );
 		}
 		$expired = empty( $row['expires_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) <= time();
 		if ( 'pending' === (string) $row['status'] && $expired ) {
@@ -191,6 +217,262 @@ final class MAD4B_SCP_Durable_Execution {
 			return new WP_Error( 'mad4b_idempotency_reconcile_failed', 'Unable to complete idempotency from verified provider readback.', array( 'cause' => $e->getMessage() ) );
 		}
 	}
+
+
+	public static function record_idempotency_reconciliation_observation( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $observation ) {
+		global $wpdb;
+		$scope_key = strtolower( trim( (string) $scope_key ) );
+		$idempotency_key = trim( (string) $idempotency_key );
+		$request_sha256 = strtolower( trim( (string) $request_sha256 ) );
+		$reconciliation_ref = trim( (string) $reconciliation_ref );
+		$observation = is_array( $observation ) ? $observation : array();
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $scope_key ) || ! preg_match( '/^[a-f0-9]{64}$/', $request_sha256 ) ) return new WP_Error( 'mad4b_idempotency_observation_identity_invalid', 'Reconciliation observation identity is invalid.' );
+		if ( '' === $idempotency_key || strlen( $idempotency_key ) > 191 ) return new WP_Error( 'mad4b_idempotency_key_invalid', 'Idempotency key is missing or too long.' );
+		if ( '' === $reconciliation_ref || strlen( $reconciliation_ref ) > 191 ) return new WP_Error( 'mad4b_idempotency_reconciliation_evidence_required', 'Reconciliation observation requires bounded provider evidence.' );
+		$scan_generation = isset( $observation['provider_scan_generation'] ) ? trim( (string) $observation['provider_scan_generation'] ) : '';
+		if ( '' === $scan_generation || strlen( $scan_generation ) > 191 ) return new WP_Error( 'mad4b_idempotency_observation_scan_invalid', 'Reconciliation observation requires a bounded provider scan generation.' );
+		$observation_json = wp_json_encode( $observation, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $observation_json ) || strlen( $observation_json ) > 65536 ) return new WP_Error( 'mad4b_idempotency_observation_invalid', 'Reconciliation observation is not serializable within the certified bound.' );
+		$observation_sha256 = hash( 'sha256', $observation_json );
+		$t = MAD4B_SCP_Schema::tables();
+		$now_epoch = time();
+		$now = gmdate( 'Y-m-d H:i:s', $now_epoch );
+		$wpdb->query( 'START TRANSACTION' );
+		try {
+			$row = $wpdb->get_row( $wpdb->prepare(
+				"SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s FOR UPDATE",
+				$scope_key, $idempotency_key
+			), ARRAY_A );
+			if ( ! is_array( $row ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_missing', 'Cannot record reconciliation evidence for an unknown idempotency record.' );
+			}
+			if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
+			}
+			if ( 'pending' !== (string) $row['status'] ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_observation_state_denied', 'Reconciliation observations may be recorded only while the idempotency record is pending.' );
+			}
+			$context = array(
+				'scope_key' => $scope_key,
+				'idempotency_key' => $idempotency_key,
+				'request_sha256' => $request_sha256,
+				'claim_epoch' => isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0,
+				'reconciliation_ref' => $reconciliation_ref,
+				'result_sha256' => $observation_sha256,
+				'result' => $observation,
+			);
+			$verified = self::reconciliation_verified( 'idempotency_observation', $context );
+			if ( is_wp_error( $verified ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return $verified;
+			}
+
+			$ledger = array(
+				'contract' => self::RECONCILIATION_OBSERVATIONS_CONTRACT,
+				'scope_key' => $scope_key,
+				'idempotency_key' => $idempotency_key,
+				'request_sha256' => $request_sha256,
+				'claim_epoch' => isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0,
+				'observations' => array(),
+			);
+			if ( ! empty( $row['result_json'] ) ) {
+				$existing = json_decode( (string) $row['result_json'], true );
+				if ( is_array( $existing ) && self::RECONCILIATION_OBSERVATIONS_CONTRACT === ( isset( $existing['contract'] ) ? (string) $existing['contract'] : '' ) ) {
+					$ledger = $existing;
+				}
+			}
+			$observations = isset( $ledger['observations'] ) && is_array( $ledger['observations'] ) ? $ledger['observations'] : array();
+			foreach ( $observations as $existing_observation ) {
+				if ( is_array( $existing_observation )
+					&& isset( $existing_observation['provider_scan_generation'] )
+					&& hash_equals( $scan_generation, (string) $existing_observation['provider_scan_generation'] ) ) {
+					$wpdb->query( 'COMMIT' );
+					return array(
+						'contract' => self::RECONCILIATION_OBSERVATIONS_CONTRACT,
+						'recorded' => false,
+						'idempotent' => true,
+						'observation_count' => count( $observations ),
+						'observations' => $observations,
+						'minimum_interval_seconds' => self::NO_EFFECT_MIN_OBSERVATION_SECONDS,
+					);
+				}
+			}
+			$observations[] = array(
+				'provider_scan_generation' => $scan_generation,
+				'reconciliation_ref' => $reconciliation_ref,
+				'observation_sha256' => $observation_sha256,
+				'observed_at' => gmdate( 'c', $now_epoch ),
+				'observed_at_epoch' => $now_epoch,
+				'claim_epoch' => isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0,
+				'provider_identity' => isset( $observation['provider_identity'] ) && is_array( $observation['provider_identity'] ) ? $observation['provider_identity'] : array(),
+			);
+			if ( count( $observations ) > self::MAX_RECONCILIATION_OBSERVATIONS ) $observations = array_slice( $observations, -self::MAX_RECONCILIATION_OBSERVATIONS );
+			$ledger['observations'] = $observations;
+			$ledger['updated_at'] = gmdate( 'c', $now_epoch );
+			$json = wp_json_encode( $ledger, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			if ( ! is_string( $json ) || strlen( $json ) > 262144 ) throw new RuntimeException( 'idempotency_observation_ledger_invalid' );
+			$sha = hash( 'sha256', $json );
+			$updated = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$t['idempotency']} SET result_json=%s,result_sha256=%s,reconciliation_ref=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='pending'",
+				$json, $sha, $reconciliation_ref, $now, (int) $row['id'], $request_sha256, isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0
+			) );
+			if ( 1 !== (int) $updated ) throw new RuntimeException( 'idempotency_observation_cas_failed' );
+			$wpdb->query( 'COMMIT' );
+			$first_epoch = ! empty( $observations[0]['observed_at_epoch'] ) ? (int) $observations[0]['observed_at_epoch'] : $now_epoch;
+			return array(
+				'contract' => self::RECONCILIATION_OBSERVATIONS_CONTRACT,
+				'recorded' => true,
+				'idempotent' => false,
+				'observation_count' => count( $observations ),
+				'observations' => $observations,
+				'elapsed_seconds' => max( 0, $now_epoch - $first_epoch ),
+				'minimum_interval_seconds' => self::NO_EFFECT_MIN_OBSERVATION_SECONDS,
+			);
+		} catch ( Throwable $e ) {
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'mad4b_idempotency_observation_failed', 'Unable to persist verified reconciliation observation.', array( 'cause' => $e->getMessage() ) );
+		}
+	}
+
+
+	public static function release_idempotency_after_verified_no_effect( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $proof ) {
+		global $wpdb;
+		$scope_key = strtolower( trim( (string) $scope_key ) );
+		$idempotency_key = trim( (string) $idempotency_key );
+		$request_sha256 = strtolower( trim( (string) $request_sha256 ) );
+		$reconciliation_ref = trim( (string) $reconciliation_ref );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $scope_key ) || ! preg_match( '/^[a-f0-9]{64}$/', $request_sha256 ) ) return new WP_Error( 'mad4b_idempotency_no_effect_identity_invalid', 'No-effect reconciliation identity is invalid.' );
+		if ( '' === $idempotency_key || strlen( $idempotency_key ) > 191 ) return new WP_Error( 'mad4b_idempotency_key_invalid', 'Idempotency key is missing or too long.' );
+		if ( '' === $reconciliation_ref || strlen( $reconciliation_ref ) > 191 ) return new WP_Error( 'mad4b_idempotency_reconciliation_evidence_required', 'No-effect reconciliation requires bounded provider evidence.' );
+		$json = wp_json_encode( $proof, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $json ) ) return new WP_Error( 'mad4b_idempotency_no_effect_proof_invalid', 'No-effect reconciliation proof is not serializable.' );
+		if ( strlen( $json ) > 262144 ) return new WP_Error( 'mad4b_idempotency_result_too_large', 'No-effect reconciliation proof exceeds bounded storage.' );
+		$result_sha256 = hash( 'sha256', $json );
+		$t = MAD4B_SCP_Schema::tables();
+		$now = gmdate( 'Y-m-d H:i:s' );
+		$wpdb->query( 'START TRANSACTION' );
+		try {
+			$row = $wpdb->get_row( $wpdb->prepare(
+				"SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s FOR UPDATE",
+				$scope_key, $idempotency_key
+			), ARRAY_A );
+			if ( ! is_array( $row ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_missing', 'Cannot release an unknown idempotency record.' );
+			}
+			if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
+			}
+			if ( 'released_verified_no_effect' === (string) $row['status'] ) {
+				$wpdb->query( 'COMMIT' );
+				return array(
+					'contract' => self::IDEMPOTENCY_CONTRACT,
+					'released' => true,
+					'idempotent' => true,
+					'scope_key' => $scope_key,
+					'idempotency_key' => $idempotency_key,
+					'claim_epoch' => isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0,
+					'reconciliation_ref' => isset( $row['reconciliation_ref'] ) ? (string) $row['reconciliation_ref'] : '',
+				);
+			}
+			if ( 'pending' !== (string) $row['status'] ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_no_effect_state_denied', 'Only a pending idempotency record can be released after verified no-effect reconciliation.' );
+			}
+			$ledger = ! empty( $row['result_json'] ) ? json_decode( (string) $row['result_json'], true ) : null;
+			if ( ! is_array( $ledger ) || self::RECONCILIATION_OBSERVATIONS_CONTRACT !== ( isset( $ledger['contract'] ) ? (string) $ledger['contract'] : '' ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_no_effect_observations_required', 'Verified no-effect release requires durable provider observations.' );
+			}
+			$observations = isset( $ledger['observations'] ) && is_array( $ledger['observations'] ) ? $ledger['observations'] : array();
+			if ( count( $observations ) < 2 ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_no_effect_observations_insufficient', 'At least two distinct complete provider observations are required before retry can be released.', array( 'observation_count' => count( $observations ), 'minimum' => 2 ) );
+			}
+			$generations = array();
+			$epochs = array();
+			$provider_identity_json = '';
+			foreach ( $observations as $observation ) {
+				if ( ! is_array( $observation ) || empty( $observation['provider_scan_generation'] ) || empty( $observation['observed_at_epoch'] ) ) {
+					$wpdb->query( 'ROLLBACK' );
+					return new WP_Error( 'mad4b_idempotency_no_effect_observation_corrupt', 'Stored no-effect observation is incomplete.' );
+				}
+				$generations[] = (string) $observation['provider_scan_generation'];
+				$epochs[] = (int) $observation['observed_at_epoch'];
+				$current_identity_json = wp_json_encode( isset( $observation['provider_identity'] ) ? $observation['provider_identity'] : array(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+				if ( ! is_string( $current_identity_json ) || '' === $current_identity_json ) {
+					$wpdb->query( 'ROLLBACK' );
+					return new WP_Error( 'mad4b_idempotency_no_effect_observation_identity_invalid', 'Stored no-effect observation lacks provider identity.' );
+				}
+				if ( '' === $provider_identity_json ) $provider_identity_json = $current_identity_json;
+				elseif ( ! hash_equals( $provider_identity_json, $current_identity_json ) ) {
+					$wpdb->query( 'ROLLBACK' );
+					return new WP_Error( 'mad4b_idempotency_no_effect_observation_identity_drift', 'Provider identity changed between no-effect observations.' );
+				}
+			}
+			if ( count( array_unique( $generations ) ) < 2 ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_no_effect_distinct_scans_required', 'No-effect release requires at least two distinct provider scan generations.' );
+			}
+			$elapsed = max( $epochs ) - min( $epochs );
+			if ( $elapsed < self::NO_EFFECT_MIN_OBSERVATION_SECONDS ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_no_effect_observation_window_pending', 'Provider no-effect observations are too close together to release a retry safely.', array( 'elapsed_seconds' => $elapsed, 'minimum_interval_seconds' => self::NO_EFFECT_MIN_OBSERVATION_SECONDS ) );
+			}
+			$proof_identity_json = wp_json_encode( isset( $proof['provider_identity'] ) ? $proof['provider_identity'] : array(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			if ( ! is_string( $proof_identity_json ) || ! hash_equals( $provider_identity_json, $proof_identity_json ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_no_effect_proof_identity_drift', 'Final no-effect proof is not bound to the durable provider observations.' );
+			}
+			$proof['durable_observation_count'] = count( $observations );
+			$proof['durable_observation_elapsed_seconds'] = $elapsed;
+			$proof['durable_scan_generations'] = array_values( array_unique( $generations ) );
+			$json = wp_json_encode( $proof, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			if ( ! is_string( $json ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_no_effect_proof_invalid', 'No-effect reconciliation proof is not serializable after durable observation binding.' );
+			}
+			$result_sha256 = hash( 'sha256', $json );
+			$context = array(
+				'scope_key' => $scope_key,
+				'idempotency_key' => $idempotency_key,
+				'request_sha256' => $request_sha256,
+				'claim_epoch' => isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0,
+				'reconciliation_ref' => $reconciliation_ref,
+				'result_sha256' => $result_sha256,
+				'result' => $proof,
+			);
+			$verified = self::reconciliation_verified( 'idempotency_no_effect', $context );
+			if ( is_wp_error( $verified ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return $verified;
+			}
+			$updated = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$t['idempotency']} SET status='released_verified_no_effect',result_json=%s,result_sha256=%s,reconciliation_ref=%s,expires_at=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='pending'",
+				$json, $result_sha256, $reconciliation_ref, $now, $now, (int) $row['id'], $request_sha256, isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0
+			) );
+			if ( 1 !== (int) $updated ) throw new RuntimeException( 'idempotency_no_effect_release_cas_failed' );
+			$wpdb->query( 'COMMIT' );
+			return array(
+				'contract' => self::IDEMPOTENCY_CONTRACT,
+				'released' => true,
+				'idempotent' => false,
+				'scope_key' => $scope_key,
+				'idempotency_key' => $idempotency_key,
+				'claim_epoch' => isset( $row['claim_epoch'] ) ? (int) $row['claim_epoch'] : 0,
+				'reconciliation_ref' => $reconciliation_ref,
+				'result_sha256' => $result_sha256,
+			);
+		} catch ( Throwable $e ) {
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'mad4b_idempotency_no_effect_release_failed', 'Unable to release idempotency after verified provider no-effect reconciliation.', array( 'cause' => $e->getMessage() ) );
+		}
+	}
+
 
 	public static function reclaim_idempotency( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $ttl_seconds = 86400 ) {
 		global $wpdb;
@@ -437,11 +719,12 @@ final class MAD4B_SCP_Durable_Execution {
 		$status = sanitize_key( (string) $status );
 		if ( ! in_array( $status, array( 'completed', 'blocked', 'failed', 'cancelled' ), true ) ) return new WP_Error( 'mad4b_lease_terminal_status_invalid', 'Lease terminal status is invalid.' );
 		$t = MAD4B_SCP_Schema::tables();
+		$now = gmdate( 'Y-m-d H:i:s' );
 		$updated = $wpdb->query( $wpdb->prepare(
-			"UPDATE {$t['work_leases']} SET status=%s,updated_at=%s WHERE work_id=%s AND worker_id=%s AND lease_epoch=%d AND status='active'",
-			$status, gmdate( 'Y-m-d H:i:s' ), strtolower( trim( (string) $work_id ) ), trim( (string) $worker_id ), absint( $lease_epoch )
+			"UPDATE {$t['work_leases']} SET status=%s,updated_at=%s WHERE work_id=%s AND worker_id=%s AND lease_epoch=%d AND status='active' AND expires_at>%s",
+			$status, $now, strtolower( trim( (string) $work_id ) ), trim( (string) $worker_id ), absint( $lease_epoch ), $now
 		) );
-		return 1 === (int) $updated ? true : new WP_Error( 'mad4b_lease_complete_fenced', 'Lease completion was rejected by current ownership/fencing state.' );
+		return 1 === (int) $updated ? true : new WP_Error( 'mad4b_lease_complete_fenced', 'Lease completion was rejected because ownership, epoch, status or expiry is no longer authoritative.' );
 	}
 
 	public static function enqueue_outbox( array $record ) {

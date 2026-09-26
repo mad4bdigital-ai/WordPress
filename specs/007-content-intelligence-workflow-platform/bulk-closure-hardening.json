@@ -1,0 +1,377 @@
+{
+  "contract": "mad4b.feature007-bulk-closure-hardening.v1",
+  "production_authorized": false,
+  "architecture_freeze": true,
+  "terminal_gate": "critical_kernel_vertical_slice_verified",
+  "required_domains": [
+    "runtime_vertical_slice",
+    "fault_injection",
+    "evidence_durability",
+    "protected_backup_restore",
+    "bootstrap_minimization",
+    "filesystem_process_confinement",
+    "execution_location_truthfulness",
+    "recovery_wordpress_independence",
+    "gate_liveness",
+    "cross_executor_conformance",
+    "bitflows_exact_recertification",
+    "operator_doctor_dlq",
+    "complexity_guardrail"
+  ],
+  "required_fault_fixtures": [
+    "runner_crash_after_lease",
+    "runner_crash_after_side_effect_before_receipt",
+    "lease_loss_before_commit",
+    "duplicate_delivery_replay",
+    "stale_plan_after_approval",
+    "executor_change_after_approval",
+    "symlink_swap_before_commit",
+    "zip_slip_path_traversal",
+    "shell_executable_injection",
+    "output_timeout_exhaustion",
+    "provider_timeout_after_possible_side_effect",
+    "readback_failure_after_mutation",
+    "rollback_failure",
+    "evidence_persistence_failure",
+    "wordpress_boot_unavailable_recovery",
+    "backup_corruption_restore_interruption"
+  ],
+  "mutation_uncertainty_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+  "closure_rules": {
+    "backup_exists_is_not_ready": true,
+    "runtime_evidence_required_for_live_gate": true,
+    "docs_only_cannot_close_runtime_gate": true,
+    "ordinary_generic_shell_prohibited": true,
+    "raw_sql_breakglass_separate": true,
+    "production_authority_not_implied": true
+  },
+  "evidence_model": {
+    "contract": "mad4b.feature007-bulk-fixture-evidence.v1",
+    "repository_status_vocabulary": [
+      "PROVEN",
+      "PARTIAL",
+      "PENDING"
+    ],
+    "live_status_vocabulary": [
+      "NOT_REQUIRED",
+      "PENDING",
+      "PROVEN"
+    ],
+    "rule": "repository evidence never implies live ETG or Host Runner evidence"
+  },
+  "fixture_evidence": {
+    "runner_crash_after_lease": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php"
+      ],
+      "remaining": [
+        "execute an actual Host Runner process crash after lease acquisition and prove reconciliation/reclaim"
+      ]
+    },
+    "runner_crash_after_side_effect_before_receipt": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "remaining": [
+        "repeat the uncertainty proof through the actual Host Runner executor after a host-side side effect"
+      ]
+    },
+    "lease_loss_before_commit": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php"
+      ],
+      "remaining": [
+        "prove the same fencing invariant through the enrolled live Host Runner"
+      ]
+    },
+    "duplicate_delivery_replay": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence-reconciler.php",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "remaining": [
+        "prove provider/Host Runner duplicate delivery under live staging execution"
+      ]
+    },
+    "stale_plan_after_approval": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py"
+      ],
+      "remaining": [
+        "live exact-candidate stale-plan canary"
+      ]
+    },
+    "executor_change_after_approval": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "specs/007-content-intelligence-workflow-platform/contracts/governed-tool-execution.md"
+      ],
+      "remaining": [
+        "prove the same exact-executor binding on the enrolled ETG Staging runner and any approved fallback set"
+      ]
+    },
+    "symlink_swap_before_commit": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_recovery_plane.py",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "remaining": [
+        "repeat the exact pre-commit symlink/reparse swap denial on the enrolled ETG Staging Host Runner"
+      ]
+    },
+    "zip_slip_path_traversal": {
+      "repository_status": "PROVEN",
+      "live_status": "NOT_REQUIRED",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "remaining": []
+    },
+    "shell_executable_injection": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/governed-tool-execution.md",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "remaining": [
+        "the current kernel has no subprocess/shell executor and rejects unknown shell operations plus injected command fields",
+        "when a concrete fixed-process semantic adapter is admitted, prove executable identity, argv schema, timeout and output-budget negatives before eligibility"
+      ]
+    },
+    "output_timeout_exhaustion": {
+      "repository_status": "PENDING",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/governed-tool-execution.md"
+      ],
+      "remaining": [
+        "implement bounded process/output budgets in the concrete executor and prove timeout/output denial"
+      ]
+    },
+    "provider_timeout_after_possible_side_effect": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "remaining": [
+        "inject provider timeout after possible remote side effect and reconcile through provider readback"
+      ]
+    },
+    "readback_failure_after_mutation": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_recovery_plane.py",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078596096"
+      ],
+      "remaining": [
+        "repeat post-mutation readback failure handling on the enrolled ETG Staging Host Runner"
+      ]
+    },
+    "rollback_failure": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/bulk-runtime-closure-hardening.md",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "remaining": [
+        "repeat rollback-failure uncertainty behavior on the enrolled ETG Staging Host Runner storage"
+      ]
+    },
+    "evidence_persistence_failure": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "remaining": [
+        "repeat against live enrolled Recovery/Host Runner storage"
+      ]
+    },
+    "wordpress_boot_unavailable_recovery": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "remaining": [
+        "execute live Staging drill with normal WordPress/Control Plane route intentionally unavailable"
+      ]
+    },
+    "backup_corruption_restore_interruption": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/bulk-runtime-closure-hardening.md",
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "remaining": [
+        "repeat corruption/interruption restore drill against the protected ETG Staging backup path"
+      ]
+    }
+  },
+  "domain_evidence": {
+    "protected_backup_restore": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        ".github/workflows/feature-007-critical-kernel.yml",
+        "workflow_run:36078194633",
+        "workflow_run:36095311341",
+        "head:220077c06566cd6876ca3f57683a7de4e3cfb53e"
+      ],
+      "proven": [
+        "bounded Staging-only exact-plan Control Plane snapshot",
+        "exact target tree and wp-config hash binding without copying wp-config bytes",
+        "atomic backup directory commit with manifest and receipt readback",
+        "symlink source and stale-plan denial",
+        "backup readiness requires at least one verified snapshot, not directory existence",
+        "per-file manifest, manifest digest, exact plugin-tree digest and wp-config target binding verification",
+        "exact-plan restore from protected snapshot with owner-plan binding",
+        "post-restore exact tree readback and durable receipt",
+        "receipt interruption rolls back to the exact pre-restore candidate",
+        "corrupted snapshot invalidates readiness and cannot produce a restore plan"
+      ],
+      "remaining": [
+        "create and verify protected backup on ETG Staging for the exact currently deployed runtime",
+        "prove live protected-root isolation/capacity and bind the live backup receipt to rollout evidence",
+        "repeat corrupt/interrupted restore drill using the live protected backup path"
+      ]
+    },
+    "host_runner_kernel": {
+      "repository_status": "PARTIAL",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        ".github/workflows/feature-007-critical-kernel.yml",
+        "workflow_run:36078194633",
+        "workflow_run:36078596096",
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py",
+        "workflow_run:36095311341",
+        "head:220077c06566cd6876ca3f57683a7de4e3cfb53e"
+      ],
+      "proven": [
+        "Staging-only read-only standalone runner process",
+        "fixed semantic operation registry with no generic shell/network executor",
+        "HMAC-authenticated expiring exact-profile job envelope",
+        "target fingerprint and operation fingerprint binding",
+        "named-zone path traversal and symlink confinement",
+        "durable idempotent receipt replay with conflict detection",
+        "execution_location=host_runner truthfulness",
+        "exact runner executable SHA-256 and executor fingerprint binding",
+        "job replay binding includes site, target, executor, actor, authority and idempotency identity",
+        "one exact-plan reversible write confined to wp-content/mad4b-runner/workspace only",
+        "write job requires exact plan SHA and approval reference",
+        "immediate pre-commit expected-state and symlink revalidation",
+        "atomic write plus postcondition readback and durable receipt",
+        "receipt persistence failure performs verified rollback when possible",
+        "rollback failure records MUTATED_BUT_EVIDENCE_UNCERTAIN with blind retry disabled",
+        "WordPress-root and receipt-root symlink denial before canonicalization",
+        "bounded reversible payload sized below signed job-envelope budget",
+        "post-mutation readback failure cannot become success and rolls back exact prior workspace state",
+        "read-only reconciliation classifies durable receipt, rolled-back, effect-without-receipt and divergent target states",
+        "uncertain effects require reconciliation and keep blind retry disabled",
+        "Doctor exposes reconciliation-required counts without mutation",
+        "explicit rollback of a previously successful workspace write requires a new exact plan and approval",
+        "write receipt replay revalidates the current postcondition and fails to reconciliation after state divergence",
+        "rollback itself has durable receipt semantics and exact replay readback",
+        "exact attested runner package bootstrap is confined to the dedicated runner zone",
+        "single-use expiring target-bound enrollment is repository-proven",
+        "bootstrap/enrollment create no standing Host Write/Execution or Production authority",
+        "WordPress Host Bridge queues semantic read and reversible-write submissions without executing host commands",
+        "Host Bridge reversible write requires exact authorization/approval and executes through the same Host Runner semantic operation",
+        "bridge repair/requeue denies blind retry and requires fresh job/idempotency/authorization",
+        "cross-executor runtime.status.read result and authority class parity is repository-proven"
+      ],
+      "remaining": [
+        "integrate/certify a supported hosting-profile scheduler channel for the fixed runner descriptor",
+        "bind queue pickup to durable lease/fencing semantics for actual scheduled Host Runner workers",
+        "run ETG Staging Host Runner canary against protected live storage",
+        "prove live MCP/WordPress/Host Runner write authority parity on the exact deployed candidate"
+      ]
+    },
+    "wp_mad4b_cli": {
+      "repository_status": "PROVEN",
+      "live_status": "PENDING",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php",
+        ".github/workflows/feature-007-critical-kernel.yml",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py",
+        "workflow_run:36078194633",
+        "workflow_run:36095311341",
+        "head:220077c06566cd6876ca3f57683a7de4e3cfb53e"
+      ],
+      "proven": [
+        "canonical wp mad4b read-only command namespace",
+        "delegation to existing Schema, Site Profile and runtime provenance services",
+        "machine-readable non-authorizing JSON responses",
+        "no shell, eval, raw SQL or mutation command surface",
+        "runtime.status.read emits normalized mad4b.runtime-status-read.v1 semantics",
+        "WP-CLI and Host Runner return equivalent normalized runtime.status.read results on the same target",
+        "WP-CLI and Host Runner expose the same read_only_non_authorizing authority class for runtime.status.read",
+        "cross-executor runtime.status.read remains production_authorized=false and mutation_performed=false"
+      ],
+      "remaining": [
+        "prove canonical wp mad4b reads on ETG Staging with the exact selected runtime release",
+        "keep write commands unavailable until a shared governed semantic plan/apply service is explicitly certified",
+        "prove live MCP/WP-CLI/Host Runner authority parity on the deployed candidate"
+      ]
+    }
+  },
+  "last_repository_evidence": {
+    "exact_head_sha": "74627ac13c371cc247df35561713682884793367",
+    "critical_kernel_run_id": 36078596096,
+    "root_trust_recovery_job": "SUCCESS",
+    "schema_mariadb_job": "SUCCESS",
+    "live_claim": false
+  }
+}

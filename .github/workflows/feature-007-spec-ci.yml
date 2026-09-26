@@ -5,6 +5,11 @@ on:
     paths:
       - 'specs/007-content-intelligence-workflow-platform/**'
       - '.github/workflows/feature-007-spec-ci.yml'
+      - 'tools/mad4b_recovery_plane.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php'
 
 permissions:
   contents: read
@@ -41,11 +46,62 @@ jobs:
             git rev-list --left-right --count "$BASE"...HEAD || true
             exit 1
           fi
-          META_BASE="$(python -c 'import json; print(json.load(open("specs/007-content-intelligence-workflow-platform/feature.json"))["current_baseline_head"])')"
+          META_BASE="$(python -c 'import json; print(json.load(open("specs/007-content-intelligence-workflow-platform/feature.json"))["last_reviewed_master_parent_sha"])')"
           if [ "$META_BASE" != "$BASE" ]; then
-            echo "BASELINE_METADATA_STALE expected=$BASE recorded=$META_BASE"
+            echo "BASELINE_METADATA_STALE expected_reviewed_parent=$BASE recorded=$META_BASE"
             exit 1
           fi
+
+          python - "$BASE" <<'PY'
+          import json, subprocess, sys
+          from pathlib import Path
+
+          base=sys.argv[1]
+          feature=json.load(open("specs/007-content-intelligence-workflow-platform/feature.json",encoding="utf-8"))
+          release=feature.get("runtime_release_identity") or {}
+          source=str(release.get("source_commit_sha") or "")
+          state=str(release.get("state") or "")
+          expected_runtime_paths=[
+              "wp-content/plugins/mad4b-site-control-plane/",
+              "wp-content/plugins/mcp-adapter.zip",
+              "plugins/mad4b-wordpress/",
+              "tools/capture-functional-gap-contract-evidence.py",
+          ]
+          if feature.get("runtime_identity_paths") != expected_runtime_paths:
+              raise SystemExit("RUNTIME_IDENTITY_PATH_POLICY_DRIFT")
+          paths=expected_runtime_paths
+          if len(source)!=40:
+              raise SystemExit("RUNTIME_RELEASE_IDENTITY_INVALID_SOURCE")
+          try:
+              subprocess.check_call(["git","merge-base","--is-ancestor",source,base])
+          except subprocess.CalledProcessError:
+              raise SystemExit(f"RUNTIME_RELEASE_NOT_ANCESTOR release={source} base={base}")
+
+          def is_runtime(path):
+              return any(path==p or (p.endswith("/") and path.startswith(p)) for p in paths)
+
+          base_delta=subprocess.check_output(["git","diff","--name-only",f"{source}..{base}"],text=True).splitlines()
+          pr_delta=subprocess.check_output(["git","diff","--name-only",f"{base}...HEAD"],text=True).splitlines()
+          runtime_base=sorted(p for p in base_delta if is_runtime(p))
+          runtime_pr=sorted(p for p in pr_delta if is_runtime(p))
+
+          if state=="CURRENT_FOR_DEPLOYMENT":
+              if runtime_base or runtime_pr:
+                  raise SystemExit(
+                      "RUNTIME_RELEASE_IDENTITY_STALE state=CURRENT_FOR_DEPLOYMENT "
+                      f"base_delta={runtime_base} pr_delta={runtime_pr}"
+                  )
+          elif state=="RECAPTURE_REQUIRED":
+              if not runtime_base and not runtime_pr:
+                  raise SystemExit("RUNTIME_RELEASE_RECAPTURE_REQUIRED_WITHOUT_RUNTIME_DELTA")
+          else:
+              raise SystemExit(f"RUNTIME_RELEASE_STATE_INVALID:{state!r}")
+
+          print(
+              "RUNTIME_RELEASE_IDENTITY_OK "
+              f"state={state} release={source} runtime_base_delta={len(runtime_base)} runtime_pr_delta={len(runtime_pr)}"
+          )
+          PY
 
       - name: Preserve cross-feature global metadata
         shell: bash
@@ -54,101 +110,36 @@ jobs:
           BASE="${{ github.event.pull_request.base.sha }}"
           git diff --exit-code "$BASE"...HEAD -- .specify/feature.json .specify/memory/constitution.md
 
-      - name: Enforce phase-aware Feature 007 change boundary
+      - name: Enforce baseline-owned repository feature boundary
         shell: bash
         env:
           HEAD_BRANCH: ${{ github.head_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           BASE="${{ github.event.pull_request.base.sha }}"
-          python - "$BASE" "$HEAD_BRANCH" <<'PY'
-          import json
-          import subprocess
-          import sys
+          if ! git cat-file -e "$BASE:tools/verify_feature_boundary.py" 2>/dev/null; then
+            echo "ROOT_OF_TRUST_BOOTSTRAP_REQUIRED base=$BASE expected=tools/verify_feature_boundary.py"
+            echo "Merge the separately governed repository root-of-trust prerequisite before Feature 007 can pass this gate."
+            exit 1
+          fi
+          git show "$BASE:tools/verify_feature_boundary.py" > /tmp/verify_feature_boundary.py
+          python3 /tmp/verify_feature_boundary.py \
+            --base "$BASE" \
+            --head "$HEAD_SHA" \
+            --head-branch "$HEAD_BRANCH" \
+            --output /tmp/MAD4B-FEATURE-BOUNDARY.json
 
-          base, head_branch = sys.argv[1], sys.argv[2]
-          feature = json.load(open("specs/007-content-intelligence-workflow-platform/feature.json", encoding="utf-8"))
-          status = feature.get("status")
-
-          changed = subprocess.check_output(
-              ["git", "diff", "--name-only", f"{base}...HEAD"],
-              text=True,
-          ).splitlines()
-
-          spec_allowed = [
-              "specs/007-content-intelligence-workflow-platform/",
-              ".github/workflows/feature-007-spec-ci.yml",
-          ]
-          implementation_allowed = [
-              ".github/workflows/feature-007-critical-kernel.yml",
-              ".github/workflows/feature-007-spec-ci.yml",
-              ".github/workflows/mad4b-control-plane-package.yml",
-              ".github/workflows/mad4b-live-acceptance-evidence.yml",
-              ".github/workflows/mad4b-wpml-external-diagnostic.yml",
-              ".github/workflows/mad4b-oauth-resource-bridge.yml",
-              ".github/workflows/mad4b-provider-compatibility-engine.yml",
-              "specs/007-content-intelligence-workflow-platform/",
-              "tools/mad4b_recovery_plane.py",
-              "tools/verify_release_root_trust.py",
-              "wp-content/plugins/mad4b-site-control-plane/",
-          ]
-          cross_feature_dependencies = [
-              ".github/workflows/wpl-client-contract.yml",
-              "specs/006-agent-governed-reversible-control-plane/data-model.md",
-          ]
-          implementation_branch = "feat/007-critical-kernel-root-trust-20260924"
-
-          # The mutable feature metadata is descriptive evidence, not authority.
-          # It must mirror this workflow-owned policy exactly and cannot widen it.
-          if feature.get("implementation_branch") != implementation_branch:
-              raise SystemExit(
-                  f"IMPLEMENTATION_METADATA_BRANCH_DRIFT expected={implementation_branch} "
-                  f"recorded={feature.get('implementation_branch')}"
-              )
-          if feature.get("implementation_allowed_paths") != implementation_allowed:
-              raise SystemExit("IMPLEMENTATION_METADATA_ALLOWLIST_DRIFT")
-          if feature.get("cross_feature_contract_dependencies") != cross_feature_dependencies:
-              raise SystemExit("CROSS_FEATURE_METADATA_DEPENDENCY_DRIFT")
-
-          def permitted(path, entries):
-              return any(path == entry or (entry.endswith("/") and path.startswith(entry)) for entry in entries)
-
-          if status == "specification":
-              forbidden = [p for p in changed if not permitted(p, spec_allowed)]
-              boundary_mode = "specification"
-          elif status == "implementation":
-              if head_branch == implementation_branch:
-                  permitted_entries = implementation_allowed + cross_feature_dependencies
-                  forbidden = [p for p in changed if not permitted(p, permitted_entries)]
-                  touched_cross_feature = [
-                      p for p in changed
-                      if p.startswith("specs/")
-                      and not p.startswith("specs/007-content-intelligence-workflow-platform/")
-                  ]
-                  undeclared = [p for p in touched_cross_feature if p not in cross_feature_dependencies]
-                  if undeclared:
-                      raise SystemExit("UNDECLARED_CROSS_FEATURE_CHANGE: " + ",".join(sorted(undeclared)))
-                  boundary_mode = "implementation"
-              elif head_branch.startswith("spec/007-"):
-                  # Feature implementation has started, but specification maintenance must
-                  # remain possible on isolated spec branches. This path is intentionally
-                  # narrower than the implementation branch: only the immutable workflow-
-                  # owned spec allowlist is accepted, so feature.json cannot self-widen it.
-                  forbidden = [p for p in changed if not permitted(p, spec_allowed)]
-                  boundary_mode = "implementation_spec_maintenance"
-              else:
-                  raise SystemExit(
-                      f"IMPLEMENTATION_BRANCH_MISMATCH expected={implementation_branch} "
-                      f"or isolated spec/007-* maintenance branch; actual={head_branch}"
-                  )
-          else:
-              raise SystemExit(f"UNKNOWN_FEATURE_STATUS: {status!r}")
-
-          if forbidden:
-              raise SystemExit("FORBIDDEN_CHANGE: " + ",".join(sorted(forbidden)))
-
-          print(f"FEATURE_007_BOUNDARY_OK status={status} mode={boundary_mode} changed={len(changed)}")
-          PY
+      - name: Verify reconciled task ledger
+        run: python specs/007-content-intelligence-workflow-platform/reconcile_task_ledger.py --check
 
       - name: Validate Feature 007 contracts and gate liveness
         run: python specs/007-content-intelligence-workflow-platform/validate_spec.py
+
+      - name: Enforce bulk closure hardening contract
+        run: python wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py
+
+      - name: Enforce fenced remote work queue contract
+        run: |
+          python wp-content/plugins/mad4b-site-control-plane/tests/remote-work-queue-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-work-queue.php

@@ -135,3 +135,26 @@ Latest trusted-master package evidence for this baseline:
 - attestation verification: PASS
 
 ETG Staging remains a separate live gate and is not claimed to be on this baseline yet.
+
+
+## Reviewed-parent / runtime-release split — 2026-09-25
+
+After PR #63 merged, repository `master` advanced to:
+
+- repository HEAD: `b1f7e837efc69aa220385d84761e46f64c2442b1`
+- change class: Feature 007 specification/contract merge
+
+The latest externally trusted runtime package at that point remained:
+
+- runtime release source: `540d5db4be521297de673c8a4d14974c23b67a6a`
+- package run: `36072550999`
+- General Distribution artifact: `10838403565`
+- build fingerprint: `f16cb7ecccff30bd1d54aa3088de404f5315823222f4e26b73fb340b4195a8c6`
+- package manifest digest: `3d2870fd75ad5b6822a76fa00e1b7b90489ad6b121d6d0dd8e31ea6f07541950`
+- Control Plane archive SHA-256: `c8885bdfc42e6aa1a6ce44896f6a9b6b54742a1d7d56269605402ffe11c33b06`
+
+This distinction is now normative. Repository HEAD and deployable runtime-release SHA are different identities.
+
+The bulk closure branch is reviewed against parent `b1f7e837efc69aa220385d84761e46f64c2442b1` and contains runtime-affecting changes (ContentJob runtime plus Recovery Plane hardening). Therefore the older runtime release is retained only as historical/known-good evidence and its state for future deployment is `RECAPTURE_REQUIRED`.
+
+A new trusted runtime-release identity may be selected only after these runtime changes merge and the protected master package/root-trust workflow emits exact post-merge evidence. No old artifact may be relabeled to the new repository commit.

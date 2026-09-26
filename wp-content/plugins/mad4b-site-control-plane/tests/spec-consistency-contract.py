@@ -108,16 +108,18 @@ for marker in (
     'T103 real Staging remains a separate mandatory boundary',
 ): require(adapter_contract, marker, 'adapter-coverage-contract-invariant')
 
-# Normative documentation must move with the physical schema. Schema v9 preserves
+# Normative documentation must move with the physical schema. Schema v11 preserves
 # the v6 exact approval authority model and adds Feature 007 durable execution
 # storage without weakening NHI/approval/audit invariants.
-require(data_model, 'Schema version: `9`', 'data-model-schema-v9')
+require(data_model, 'Schema version: `11`', 'data-model-schema-v11')
+require(data_model, 'IntentRelation', 'data-model-intent-relation-v11')
+require(data_model, 'authoritative current/version history', 'data-model-intent-authority-v11')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
     'mad4b_scp_agent_budget_windows', 'mad4b_scp_audit_events', 'mad4b_scp_audit_heads',
-    'mad4b_content_jobs', 'mad4b_content_job_events', 'mad4b_work_leases',
-    'mad4b_idempotency', 'mad4b_execution_outbox', 'mad4b_execution_inbox',
+    'mad4b_content_jobs', 'mad4b_content_job_events', 'mad4b_artifacts', 'mad4b_artifact_edges',
+    'mad4b_work_leases', 'mad4b_idempotency', 'mad4b_execution_outbox', 'mad4b_execution_inbox',
 ): require(data_model, table, 'data-model-table')
 for marker in (
     'candidate_binding_contract', 'candidate_sha CHAR(40)', 'build_fingerprint CHAR(64)',
@@ -128,8 +130,8 @@ for marker in (
     'site_profile_inbox (site_uuid, site_profile_revision, status, expires_at)',
     'mad4b.approval-candidate-binding.v2', 'site_profile_binding',
     'derived read-model states', 'approved -> executing',
-    'clone', 'Site Profile drift', 'current expected version is `9`',
-): require(data_model, marker, 'data-model-approval-v9')
+    'clone', 'Site Profile drift', 'current expected version is `11`',
+): require(data_model, marker, 'data-model-approval-v11')
 for stale in (
     'Schema version: `5`',
     'Schema version: `6`',
@@ -179,12 +181,12 @@ for label, path in implementation_files.items():
     if not path.is_file(): raise SystemExit(f'FAIL implementation-file-{label}: missing {path.relative_to(REPO)}')
 impl = {name: read(path) for name, path in implementation_files.items()}
 
-require(impl['schema'], 'const VERSION = 9;', 'implementation-schema-v9')
+require(impl['schema'], 'const VERSION = 11;', 'implementation-schema-v11')
 require(impl['schema'], "'budget_windows'", 'implementation-budget-windows')
 require(impl['schema'], "'audit_events'", 'implementation-audit-events')
 require(impl['schema'], "'audit_heads'", 'implementation-audit-heads')
-for marker in ("'content_jobs'", "'content_job_events'", "'work_leases'", "'idempotency'", "'outbox'", "'inbox'", "private static function required_durable_columns()", "'missing_durable_columns'"):
-    require(impl['schema'], marker, 'implementation-durable-schema-v8')
+for marker in ("'content_jobs'", "'content_job_events'", "'artifacts'", "'artifact_edges'", "'work_leases'", "'idempotency'", "'outbox'", "'inbox'", "private static function required_durable_columns()", "'missing_durable_columns'"):
+    require(impl['schema'], marker, 'implementation-durable-schema-v11')
 for marker in (
     'candidate_binding_contract', 'candidate_sha char(40)', 'build_fingerprint char(64)',
     'binding_environment', 'binding_host', 'site_uuid char(36)',
@@ -196,7 +198,7 @@ for marker in (
     'public static function physical_integrity_status()',
     'claim_epoch bigint(20) unsigned', 'reconciliation_ref varchar(191)',
     'private static function required_durable_indexes()', "'missing_durable_indexes'",
-): require(impl['schema'], marker, 'implementation-schema-v9-approval-guard')
+): require(impl['schema'], marker, 'implementation-schema-v11-approval-guard')
 for marker in (
     'const CONTRACT = \'mad4b.site-profile.v2\'',
     'public static function origin_enrolled()', 'public static function site_uuid()',
@@ -428,4 +430,4 @@ for relative in pr_concurrency_workflows:
     require(concurrency, 'cancel-in-progress: true', f'pr-workflow-cancel-superseded-{relative}')
     forbid(concurrency, 'github.event.pull_request.head.sha', f'pr-workflow-no-sha-concurrency-{relative}')
 
-print('mad4b.site-control-plane.spec-consistency.v10: PASS')
+print('mad4b.site-control-plane.spec-consistency.v11: PASS')

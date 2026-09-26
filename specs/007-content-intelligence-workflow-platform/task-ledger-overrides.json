@@ -1,0 +1,921 @@
+{
+  "contract": "mad4b.feature007-task-ledger-overrides.v1",
+  "statuses": [
+    "DONE",
+    "PARTIAL",
+    "OPEN",
+    "DEFERRED"
+  ],
+  "overrides": {
+    "T3601": {
+      "status": "DONE",
+      "evidence_refs": [
+        "ruleset:23968498",
+        "workflow_run:36072550595",
+        "PR:#64"
+      ],
+      "reason": "External master repository governance is active and independently read back."
+    },
+    "T3602": {
+      "status": "DONE",
+      "evidence_refs": [
+        "runtime_release_sha:540d5db4be521297de673c8a4d14974c23b67a6a",
+        "workflow_run:36072550999",
+        "artifact:10838403565",
+        "receipt:10838323685"
+      ],
+      "reason": "Reviewed parent and deployable runtime release identities were captured; v2 model separates them."
+    },
+    "T3603": {
+      "status": "DONE",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/reconcile_task_ledger.py",
+        "specs/007-content-intelligence-workflow-platform/task-ledger.generated.json",
+        "specs/007-content-intelligence-workflow-platform/task-ledger-overrides.json"
+      ],
+      "reason": "Every task is deterministically classified and non-OPEN states require explicit evidence overrides."
+    },
+    "T3608": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-multi-authority-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py"
+      ],
+      "reason": "Repository implementation exists; exact live subject/resource certification remains open."
+    },
+    "T3615": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        ".github/workflows/mad4b-governed-execution-fence.yml"
+      ],
+      "reason": "Fencing/commit-guard substrate exists; stale/zombie/crash callback fault proof remains open."
+    },
+    "T3628": {
+      "status": "DEFERRED",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.json#growth_fairness_localization_evalops"
+      ],
+      "reason": "Explicit DEFERRED_MATURITY lane; not a Critical Kernel blocker."
+    },
+    "T3631": {
+      "status": "DONE",
+      "evidence_refs": [
+        "PR:#64",
+        "merge:540d5db4be521297de673c8a4d14974c23b67a6a",
+        "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-retirement-contract.py"
+      ],
+      "reason": "One-time repository-governance bootstrap exception is retired."
+    },
+    "T3612": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-concurrency-runtime.sh",
+        "workflow_run:36095311341"
+      ],
+      "reason": "ContentJob create/read/transition/cancel, lifecycle invariants, site isolation, hash-chained events and true concurrent revision CAS are implemented and proven on disposable WordPress/MariaDB v11."
+    },
+    "T3635": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/verify_repository_owner_attestation.py",
+        ".github/workflows/mad4b-release-verdict.yml",
+        ".github/mad4b-repository-governance-policy.json",
+        "workflow_run:36075527449"
+      ],
+      "reason": "Repository Release Verdict now fails closed when exact-head authorized owner attestation is absent; stale-on-descendant policy is machine enforced."
+    },
+    "T3636": {
+      "status": "DONE",
+      "evidence_refs": [
+        ".github/workflows/feature-007-spec-ci.yml",
+        "specs/007-content-intelligence-workflow-platform/feature.json"
+      ],
+      "reason": "Fixed historical implementation branch was replaced by workflow-owned feat/007-* and fix/007-* policy mirrored by mutable metadata."
+    },
+    "T3637": {
+      "status": "DONE",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/baseline-synchronization.md",
+        ".github/workflows/feature-007-spec-ci.yml",
+        "specs/007-content-intelligence-workflow-platform/feature.json"
+      ],
+      "reason": "Reviewed repository parent and deployable runtime release are separate identities; workflow-owned runtime paths force RECAPTURE_REQUIRED on runtime deltas."
+    },
+    "T3638": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36075527334"
+      ],
+      "reason": "Minimal out-of-band Recovery Plane can inspect provenance, exact-plan disable/quarantine and restore known-good bytes without WordPress boot or database dependency."
+    },
+    "T3639": {
+      "status": "DONE",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/bulk-closure-hardening.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py",
+        "workflow_run:36078194548"
+      ],
+      "reason": "Bulk hardening matrix is machine validated in Feature 007 Spec Quality CI; documentation-only evidence cannot self-close live gates."
+    },
+    "T3640": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Recovery Plane and Host Runner persist pre-mutation journals plus atomic durable receipts and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN."
+    },
+    "T3641": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36078596096"
+      ],
+      "reason": "Host Runner and Recovery Plane reconcile uncertain mutation evidence read-only against durable receipts and observed target state, with blind retry explicitly disabled."
+    },
+    "T3644": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Traversal, zip-slip, symlink swap, unknown shell operation and injected command fields are denied. A future admitted fixed-process adapter still requires executable/argv-specific negatives."
+    },
+    "T3647": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Standalone Recovery Plane status/disable/known-good restore contracts execute without WordPress boot or database dependency and remain Staging-only."
+    },
+    "T3648": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py",
+        "workflow_run:36095311341"
+      ],
+      "reason": "Protected backup exact-tree integrity, restore, corruption rejection and interrupted-restore rollback are repository-proven; ETG protected-root capacity/exact-live-runtime receipt remains a live precondition."
+    },
+    "T3649": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py",
+        "workflow_run:36095311341"
+      ],
+      "reason": "WP-CLI and Host Runner execute runtime.status.read on the same target with identical normalized result and identical read-only/non-authorizing authority class."
+    },
+    "T3650": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "workflow_run:36078194633"
+      ],
+      "reason": "Host Runner receipts report execution_location=host_runner and executor fingerprint drift invalidates exact jobs; submission/commit-location parity through WordPress Host Bridge remains open."
+    },
+    "T3651": {
+      "status": "DONE",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/validate_spec.py",
+        "specs/007-content-intelligence-workflow-platform/gate-graph.json",
+        "workflow_run:36078194548"
+      ],
+      "reason": "Feature validator proves acyclicity, valid dependencies, root-to-terminal reachability and forward terminal closure for every KERNEL_BLOCKER/LIVE_PRECONDITION workstream."
+    },
+    "T1703": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php"
+      ],
+      "reason": "Provider resolution now produces deterministic non-authorizing candidate decisions with profile/certification fingerprints; full multi-provider preference and live plan binding remain open."
+    },
+    "T1704": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json"
+      ],
+      "reason": "Resolver consumes semantic traits plus certification/ring evidence; cost/performance/environment scoring and live policy binding remain incomplete."
+    },
+    "T1705": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php"
+      ],
+      "reason": "Resolver is explicitly non-authorizing and mutation-free in implementation/tests; end-to-end governed execution binding remains open."
+    },
+    "T1802": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php"
+      ],
+      "reason": "Canary release-ring eligibility is implemented and fail-closed in repository tests; live Staging promotion is not yet certified."
+    },
+    "T1806": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php"
+      ],
+      "reason": "Certification/ring evidence is evaluated and fingerprinted; complete per-ring evidence policy and live promotion lifecycle remain open."
+    },
+    "T2612": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php"
+      ],
+      "reason": "Research-vs-republication rights decisions are implemented fail-closed; durable RightsRecord registry and live artifact binding remain open."
+    },
+    "T2617": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php"
+      ],
+      "reason": "Classification-to-destination processing decisions are implemented; durable provider processing profiles/live provider binding remain open."
+    },
+    "T2618": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php"
+      ],
+      "reason": "REDACT_THEN_ALLOW decision semantics exist; the actual governed redaction/minimization transformer remains open."
+    },
+    "T2619": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/data-governance-contract.php"
+      ],
+      "reason": "Residency and LOCAL_ONLY decision semantics are implemented; live regional/provider enforcement remains open."
+    },
+    "T2801": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "Scheduling admission model accepts tenant/site/provider/job classes; durable scheduler implementation remains open."
+    },
+    "T2803": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "Queued/concurrent quota admission is implemented; durable queue/accounting and load proof remain open."
+    },
+    "T2804": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "Reserved recovery/incident lane admission is implemented; actual worker capacity reservation remains open."
+    },
+    "T2805": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "Central-unavailability admission semantics are implemented; complete dependency-specific TTL/outage matrix remains open."
+    },
+    "T2807": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "High-risk work fails closed when central governance evidence is unavailable; full new-privilege surface proof remains open."
+    },
+    "T3001": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Decommission scope taxonomy is executable in preflight; governed quiesce/removal actions remain open."
+    },
+    "T3002": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Preflight inventories active jobs, writes, credentials, webhooks, schedules, leases and DLQ; live inventory adapters remain open."
+    },
+    "T3004": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Portable export manifest requirements are emitted; actual export bundle generation/import validation remain open."
+    },
+    "T3006": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Preflight/export contract explicitly excludes secrets/private keys; live export proof remains open."
+    },
+    "T3011": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Import contract explicitly forbids recreating grants/Production authority; importer implementation remains open."
+    },
+    "T3404": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/capability-traits-contract.php"
+      ],
+      "reason": "Provider Resolver trait matching is implemented with fail-closed unknown traits and certification-aware release rings; plan binding remains open."
+    },
+    "T3626": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-traits.php"
+      ],
+      "reason": "Provider resolver and dynamic release-ring foundation is implemented; signed bridge, live promotion and complete maturity remain open."
+    },
+    "T3627": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php"
+      ],
+      "reason": "Rights/data and scheduler admission foundations are implemented; cron mutations, durable redaction/profiles and public-publish maturity remain open."
+    },
+    "T3629": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php"
+      ],
+      "reason": "Decommission preflight/export invariants are implemented; governed quiesce/export/import/revoke and final live proof remain open."
+    },
+    "T2802": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-admission.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scheduler-admission-contract.php"
+      ],
+      "reason": "Deterministic weighted-aging queue ranking and anti-starvation semantics are implemented without authority/quota bypass; durable multi-worker fair scheduling and load proof remain open."
+    },
+    "T3403": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workflow-providers.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/workflow-provider-plan-fingerprint-contract.php"
+      ],
+      "reason": "Workflow provider plans now bind CapabilityProfile and certification fingerprints into plan_sha256/execution_binding; remaining non-workflow provider plan families and live exact-candidate proof remain open."
+    },
+    "T0606": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-pack.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php"
+      ],
+      "reason": "WriterProfile identity/version is now sourced from ContentJob and bound immutably through ContextPack, Draft and QA fingerprints; live WriterProfile asset resolution remains open."
+    },
+    "T0806": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php"
+      ],
+      "reason": "ArticleDraft now carries immutable ContentJob WriterProfile id/version/fingerprint and QA fails closed on drift; live writer/provider execution remains open."
+    },
+    "T3005": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Portable bundle generation now computes deterministic per-section and whole-bundle checksums; live blob export and external storage transfer remain open."
+    },
+    "T3010": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-portability.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/decommission-portability-contract.php"
+      ],
+      "reason": "Read-only import validation now verifies bundle/section integrity, site remapping, collisions and missing external refs while forbidding authority material; actual governed import remains open."
+    },
+    "T2401": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php"
+      ],
+      "reason": "Read-only SiteBootstrapSnapshot is implemented with bounded completeness and deterministic fingerprinting; exact ETG live inventory proof remains open."
+    },
+    "T2402": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php"
+      ],
+      "reason": "Bootstrap normalizes governed public post types, taxonomies and active languages; exact ETG plugin/language inventory proof remains open."
+    },
+    "T2403": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php"
+      ],
+      "reason": "Bootstrap observes canonical URLs, SEO metadata and indexability without mutation; exact ETG provider-specific observations remain live-bound."
+    },
+    "T2404": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-bootstrap-contract.php"
+      ],
+      "reason": "Bootstrap records bounded media and internal/outbound link observations; exact ETG inventory completeness remains live-bound."
+    },
+    "T2407": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php"
+      ],
+      "reason": "Authoritative v11 Intent Registry plus explicit read-only Bootstrap→Intent reconciliation planning are implemented; exact live reconciliation remains open."
+    },
+    "T2413": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-intent-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php"
+      ],
+      "reason": "Bootstrap snapshot and Bootstrap→Intent planning explicitly report no mutation, no IntentClaim creation and no Artifact creation; exact-head/live proof remains open."
+    },
+    "T1101": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "reason": "Fixed semantic operation registry and operation fingerprints are implemented and contract guarded."
+    },
+    "T1103": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "Canonical WordPress root, site/target identity and target fingerprint are exact-profile bound."
+    },
+    "T1107": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-readonly-contract.php"
+      ],
+      "reason": "Canonical wp mad4b namespace is implemented over existing application services."
+    },
+    "T1108": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php"
+      ],
+      "reason": "CLI discovery/status emit normalized machine-readable JSON."
+    },
+    "T1113": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "reason": "Named filesystem zones, traversal/symlink confinement and immediate pre-commit target revalidation are implemented."
+    },
+    "T1117": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php"
+      ],
+      "reason": "Doctor, reconciliation, RepairPlan and governed requeue are implemented."
+    },
+    "T1118": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php",
+        ".github/workflows/mad4b-site-control-plane.yml"
+      ],
+      "reason": "Shell/command/path/symlink injection is denied by runtime contracts and ordinary-catalog security scan."
+    },
+    "T1120": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py"
+      ],
+      "reason": "Minimal WordPress-independent Recovery Plane is implemented."
+    },
+    "T1121": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py"
+      ],
+      "reason": "Recovery status/disable/restore operate without WordPress boot or database dependency."
+    },
+    "T1122": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py"
+      ],
+      "reason": "Externally attested known-good package restore is exact-plan bound and does not create content/Production authority."
+    },
+    "T1126": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-cli-semantic-runtime.php",
+        "tools/mad4b_host_runner.py"
+      ],
+      "reason": "Account-local WP-CLI and Host Runner mappings share normalized runtime.status semantics."
+    },
+    "T1127": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py"
+      ],
+      "reason": "runtime.status.read is proven across WP-CLI and Host Runner without Skill/domain semantic change."
+    },
+    "T1133": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py"
+      ],
+      "reason": "Protected backup create/verify/restore plus corruption and interrupted-restore rollback are implemented."
+    },
+    "T1135": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py"
+      ],
+      "reason": "Dead-letter, replay conflict, repair-plan, recovery-required and fresh governed requeue semantics are implemented."
+    },
+    "T1138": {
+      "status": "DONE",
+      "evidence_refs": [
+        ".github/workflows/mad4b-site-control-plane.yml",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "reason": "Ordinary catalog exposes no generic shell, arbitrary wp eval/PHP, or generic raw SQL."
+    },
+    "T1141": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "tools/mad4b_host_runner_bootstrap.py",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "reason": "Production Host Authority remains separate and false by default across runner/bootstrap/recovery surfaces."
+    },
+    "T1142": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php"
+      ],
+      "reason": "Host Bridge exposes bounded capabilities/plan/apply/status/cancel/receipt/doctor/repair/requeue abilities."
+    },
+    "T1143": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py"
+      ],
+      "reason": "WordPress process performs exact-plan queue submission only; authoritative host execution remains in Host Runner."
+    },
+    "T1145": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py"
+      ],
+      "reason": "Apply/consume validates immutable plan, target, executor and authority evidence before execution."
+    },
+    "T1151": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py"
+      ],
+      "reason": "Recovery trust and package verification do not depend on loading the package being replaced."
+    },
+    "T1152": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "tools/mad4b_recovery_plane.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "Artifact/package hashes and trust evidence are verified before runner/package staging."
+    },
+    "T1154": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "reason": "submission_location and execution_location remain truthful and exact-plan bound across queued execution."
+    },
+    "T1155": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "RunnerPackage manifest, attestation and runtime-profile contract are implemented."
+    },
+    "T1156": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "Bounded Staging-only bootstrap transition is exact-package/target bound and non-authorizing."
+    },
+    "T1157": {
+      "status": "DONE",
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "One-time target-bound RunnerEnrollment handshake is implemented."
+    },
+    "T1160": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "Negative suite rejects enrollment replay, wrong target/root, untrusted package and unexpected scheduler command."
+    },
+    "T1102": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "reason": "Exact runner profiles exist, but a general non-authorizing resolver across all executor/provider families is not complete."
+    },
+    "T1104": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/cli-host-runner.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "reason": "Host write/execution/recovery/Production separation is implemented in current surfaces; complete authority-class registry coverage remains open."
+    },
+    "T1105": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "tools/mad4b_host_runner_bootstrap.py"
+      ],
+      "reason": "Host execution requires separate profile/queue/runner evidence and is not implied by WordPress grants, but exact live Full-Staging/Developer negative certification remains open."
+    },
+    "T1106": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cli.php"
+      ],
+      "reason": "runtime/package/filesystem diagnostics exist; schema/log/php/db/cron semantic operation coverage remains incomplete."
+    },
+    "T1109": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-executor-semantic-contract.py"
+      ],
+      "reason": "WP-CLI↔Host Runner normalized parity is proven; MCP↔WP-CLI parity is still open."
+    },
+    "T1110": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "reason": "Signed job envelope and durable queue/receipts exist; integrated lease/fencing for the actual Host Runner worker remains incomplete."
+    },
+    "T1111": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "reason": "Idempotency/replay/reconciliation and bounded envelope/payload exist; concrete fixed-process timeout/output/resource budgets remain open."
+    },
+    "T1112": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "reason": "Tool execution receipts are durable; bounded stdout/stderr evidence remains pending until a fixed-process semantic adapter exists."
+    },
+    "T1114": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/governed-tool-execution.md",
+        "tools/mad4b_host_runner.py"
+      ],
+      "reason": "Caller shell/command execution is denied; no fixed-process executor has been admitted yet, so structured argv runtime proof remains open."
+    },
+    "T1116": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-isolation.php"
+      ],
+      "reason": "Host Runner currently has no network primitive and provider isolation fails closed; explicit executor destination/SSRF policy remains incomplete."
+    },
+    "T1119": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "reason": "Durable lease/zombie fencing and Host Runner uncertainty are tested separately; actual runner-process crash-after-lease proof remains open."
+    },
+    "T1129": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-isolation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-provider-isolation-contract.py"
+      ],
+      "reason": "Provider-channel drift/isolation fail-closed controls exist; complete Host Runner/provider channel quarantine lifecycle is open."
+    },
+    "T1130": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "reason": "Plugin package stage/restore exists through Recovery Plane; ordinary governed Host Runner plugin.package semantic operation is not yet admitted."
+    },
+    "T1131": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
+      ],
+      "reason": "Atomic exact-plan file replacement is proven only inside the dedicated runner workspace; general bounded host.files.patch is not admitted."
+    },
+    "T1134": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/schema-live-migration-mariadb-runtime.py"
+      ],
+      "reason": "Bounded schema migration/repair exists inside Control Plane; a Host Runner database repair semantic operation remains open and raw SQL stays separate."
+    },
+    "T1139": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_recovery_plane.py",
+        "tools/mad4b_host_runner.py"
+      ],
+      "reason": "Standalone recovery and runner CLIs exist for WordPress-independent operations; a unified standalone `mad4b` CLI is not complete."
+    },
+    "T1140": {
+      "status": "DEFERRED",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/cli-host-runner.md"
+      ],
+      "reason": "SSH executor is intentionally deferred until provider/API/Host Runner cannot satisfy a certified requirement; adding it now would widen attack surface without need."
+    },
+    "T1144": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php",
+        "tools/mad4b_recovery_plane.py"
+      ],
+      "reason": "Dedicated durable filesystem spool and Recovery Plane independence exist; lease-backed durable queue profile is not complete."
+    },
+    "T1147": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "tools/mad4b_host_runner_bootstrap.py"
+      ],
+      "reason": "Runner executable/package provenance is exact-SHA bound; complete CLI/provider executable provenance inventory remains open."
+    },
+    "T1149": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-bridge.php"
+      ],
+      "reason": "Expiring job/profile/target evidence and precommit revalidation exist; full offline authorization-window + fresh central commit-guard integration remains open."
+    },
+    "T1150": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php",
+        "tools/mad4b_host_runner.py"
+      ],
+      "reason": "Durable execution fencing blocks stale workers and Host Runner revalidates target/evidence; actual runner lease-loss commit denial is not yet proven end-to-end."
+    },
+    "T1153": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "tools/mad4b_host_runner.py"
+      ],
+      "reason": "Runner runtime profile/target identity exists; full OS/PHP/WP-CLI/provider CLI/process compatibility evidence is incomplete."
+    },
+    "T1158": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py"
+      ],
+      "reason": "Bootstrap descriptors are provider-neutral and non-widening; multi-channel resolver certification is incomplete."
+    },
+    "T1159": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "Wake-up/scheduler descriptor is exact and validated; actual cron/service registration, readback and removal on a supported host remains open."
+    },
+    "T1161": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py"
+      ],
+      "reason": "Non-interactive install/enrollment is proven in repository fixture; certification on a supported real hosting profile remains open."
+    },
+    "T3646": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "tools/mad4b_host_runner_bootstrap.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-bootstrap-contract.py",
+        "workflow_run:36095311341"
+      ],
+      "reason": "Exact attested runner package install and single-use enrollment are repository-proven with no standing Host/Production authority; actual supported hosting scheduler registration remains unproven."
+    },
+    "T3652": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-runtime.php",
+        "workflow_run:36095311341"
+      ],
+      "reason": "Real MariaDB runtime proof detects stuck/orphan jobs, expired leases, stale inbox, provider DLQ and Host Runner uncertain/recovery-required/dead-letter states while remaining site-scoped, read-only and non-authorizing."
+    }
+  }
+}

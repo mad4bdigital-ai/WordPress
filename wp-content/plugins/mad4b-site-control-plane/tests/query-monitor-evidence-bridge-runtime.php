@@ -8,6 +8,15 @@ define( 'PHP_INT_MAX_TEST', PHP_INT_MAX );
 $GLOBALS['actions'] = array();
 $GLOBALS['option'] = array();
 $GLOBALS['current_build_fingerprint'] = str_repeat('a',64);
+$GLOBALS['browser_request'] = array(
+    'request_id' => 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+    'probe_hash' => hash('sha256', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'),
+    'status' => 'pending_external_executor',
+    'expires_at_epoch' => time() + 3600,
+);
+class MAD4B_SCP_Remote_Operation_Parity {
+    const BROWSER_REQUEST_OPTION = 'mad4b_scp_remote_browser_sample_request_v1';
+}
 function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) { $GLOBALS['actions'][$hook][$priority][] = $callback; }
 function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) { $GLOBALS['mad4b_qm_filters'][$hook][$priority][] = $callback; return true; }
 function remove_action( $hook, $callback, $priority = 10 ) {
@@ -19,11 +28,12 @@ function remove_action( $hook, $callback, $priority = 10 ) {
 }
 function sanitize_key( $v ) { return strtolower( preg_replace('/[^a-z0-9_\-]/i','',(string)$v) ); }
 function sanitize_text_field( $v ) { return trim( (string) $v ); }
-function get_option( $k, $d = false ) { return $GLOBALS['option'] ?: $d; }
+function get_option( $k, $d = false ) { if ( MAD4B_SCP_Remote_Operation_Parity::BROWSER_REQUEST_OPTION === $k ) return $GLOBALS['browser_request']; return $GLOBALS['option'] ?: $d; }
 function update_option( $k, $v, $autoload = null ) { $GLOBALS['option'] = $v; return true; }
 function is_admin() { return false; }
 function get_num_queries() { return 37; }
 $_SERVER['REQUEST_TIME_FLOAT'] = microtime(true) - 0.125;
+$_GET['mad4b_frontend_probe'] = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 
 final class MAD4B_SCP_Live_Acceptance_Observer {
     const TELEMETRY_OPTION = 'mad4b_scp_live_acceptance_observation_v1';
@@ -97,6 +107,12 @@ if ( empty($GLOBALS['actions']['shutdown'][8]) ) { fwrite(STDERR,"FAIL: bridge s
 
 $check = function($c,$m){ if(!$c){fwrite(STDERR,"FAIL: $m\n");exit(1);} };
 $check(str_repeat('a',64) === MAD4B_SCP_Query_Monitor_Evidence_Bridge::request_build_fingerprint_for_test(), 'request build fingerprint must pin at request bootstrap');
+$probe_method = new ReflectionMethod('MAD4B_SCP_Query_Monitor_Evidence_Bridge', 'request_frontend_probe_hash');
+$probe_method->setAccessible(true);
+$_GET['mad4b_frontend_probe'] = '11111111-2222-4333-8444-555555555555';
+$check('' === $probe_method->invoke(null), 'unrelated UUID-shaped probe must not enter telemetry evidence');
+$_GET['mad4b_frontend_probe'] = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+$check(hash('sha256', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee') === $probe_method->invoke(null), 'active governed browser probe must be accepted');
 $GLOBALS['current_build_fingerprint'] = str_repeat('b',64);
 $check(str_repeat('a',64) === MAD4B_SCP_Query_Monitor_Evidence_Bridge::request_build_fingerprint_for_test(), 'mid-request provenance replacement must not change pinned build identity');
 
@@ -136,6 +152,14 @@ $check(37 === $perf['db_queries'], 'frontend DB query count captured');
 $check($perf['peak_memory_bytes'] > 0, 'frontend peak memory captured');
 $check($perf['server_elapsed_ms'] >= 100, 'frontend server elapsed captured');
 $check(isset($perf['db_profile']) && !empty($perf['db_profile']['available']), 'DB performance profile available');
+$check(hash('sha256', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee') === $perf['frontend_probe_hash'], 'frontend probe hash must correlate the exact browser job');
+$check(false === strpos(json_encode($perf), 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'), 'raw frontend probe token must never persist in telemetry');
+$probe_hash = hash('sha256', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+$check(isset($t['performance']['frontend_probe_evidence'][$probe_hash]), 'bounded frontend probe ledger must retain exact probe evidence');
+$probe_row = $t['performance']['frontend_probe_evidence'][$probe_hash];
+$check(1 === $probe_row['count'], 'frontend probe ledger count must match exact observations');
+$check(1 === count($probe_row['observations']), 'frontend probe ledger must retain bounded observation receipts');
+$check(false === strpos(json_encode($t), 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'), 'raw frontend probe token must never persist anywhere in telemetry');
 $check(4 === $perf['db_profile']['query_rows_observed'], 'DB performance profile query rows');
 $check(1 === $perf['db_profile']['duplicate_query_count'], 'duplicate query count derived');
 $check(1 === $perf['db_profile']['duplicate_group_count'], 'duplicate query group derived');

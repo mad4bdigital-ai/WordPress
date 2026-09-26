@@ -782,12 +782,12 @@ Objective: convert all known remaining work into one governed closure program an
 Execution order:
 1. Apply and independently read back the reviewed `master` repository ruleset.
 2. Reconcile the legacy task ledger into DONE/PARTIAL/OPEN/DEFERRED with exact evidence references.
-3. Recapture trusted release/root evidence for the current master descendant.
-4. Prepare and verify the protected backup root, current-runtime backup receipt and known-good restore preconditions.
+3. Separate the reviewed repository parent from the deployable runtime release; recapture trusted runtime/root evidence only after runtime-affecting changes.
+4. Prepare and verify the protected backup root, current-runtime backup receipt, independent disable/restore path and known-good restore preconditions.
 5. Certify the exact installed Bit Flows 1.29.0 artifact, capability traits and privileged-side-channel policy.
 6. Close live Multi-Authority, Policy Resolution Engine, gate-liveness and operating-mode blockers.
 7. Implement existing-site bootstrap + Intent Registry.
-8. Implement ContentJob domain + Artifact Registry/Store/lineage and authoritative consistency checks.
+8. Complete the now-started ContentJob domain runtime proof, then implement Artifact Registry/Store/lineage and authoritative consistency checks.
 9. Implement Knowledge Dispatcher, ContextPack and immutable WriterProfile binding.
 10. Implement normalized research + competitive-intelligence evidence.
 11. Implement Blueprint → ArticleDraft → FactLedger → Editorial/SEO/Final QA.
@@ -814,3 +814,18 @@ Exit gates:
 - `critical_kernel_vertical_slice_verified`
 
 No Phase 36 action grants Production authorization.
+
+
+Bulk closure hardening lane:
+- enforce `mad4b.feature007-bulk-closure-hardening.v1` as machine-readable CI policy;
+- treat mutation-without-durable-evidence as `MUTATED_BUT_EVIDENCE_UNCERTAIN`, never as success or a blind retry;
+- execute permanent fault fixtures for lease loss, zombie workers, duplicate/replay, crash-after-side-effect, provider uncertainty, readback and rollback failure;
+- centralize filesystem/process confinement and execute path/symlink/archive/shell/executable injection negatives;
+- minimize runner bootstrap/enrollment to one exact attested package, one exact scheduler/service entry and one single-use target-bound enrollment;
+- prove protected backup integrity plus corrupt/interrupted restore behavior;
+- prove out-of-band recovery with WordPress/plugin/control-plane unavailable;
+- prove cross-executor semantic parity and execution-location truthfulness;
+- strengthen gate liveness so every blocker has a terminal closure path;
+- close the lane only through one full request→plan→approval→execution→readback→durable receipt→rollback evidence chain.
+
+Architecture Freeze remains active: this lane closes implementation/safety gaps and MUST NOT become a vehicle for new documentation-only abstractions.

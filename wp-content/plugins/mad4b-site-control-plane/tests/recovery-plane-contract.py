@@ -174,9 +174,426 @@ with tempfile.TemporaryDirectory() as td:
         raise SystemExit("previous plugin was not quarantined for rollback")
     if not Path(result["receipt_path"]).is_file():
         raise SystemExit("recovery receipt was not persisted")
+    if not Path(result["journal_path"]).is_file():
+        raise SystemExit("recovery mutation journal was not persisted")
+    journal = json.loads(Path(result["journal_path"]).read_text(encoding="utf-8"))
+    if journal.get("evidence_state") != "DURABLE_VERIFIED_RECEIPT" or journal.get("terminal") is not True:
+        raise SystemExit("recovery journal did not reach durable terminal evidence")
 
     # The old broken plugin must remain available only as quarantine evidence.
     if "broken old runtime" not in (quarantine / "mad4b-site-control-plane.php").read_text(encoding="utf-8"):
         raise SystemExit("quarantined rollback evidence is not the previous plugin")
+
+    # Read-only status must verify installed provenance without loading WordPress.
+    status = recovery.recovery_status(wp, "staging")
+    if status["mutation_performed"] is not False or status["read_only"] is not True:
+        raise SystemExit("Recovery status must remain observational")
+    if status["installed_provenance"]["valid"] is not True:
+        raise SystemExit("Recovery status did not verify installed known-good provenance")
+    if status["installed_provenance"]["identity"]["source_commit_sha"] != source_sha:
+        raise SystemExit("Recovery status source identity mismatch")
+
+    # Exact-plan disable/quarantine provides an out-of-band stop path for a bad plugin.
+    disable_plan = recovery.build_disable_plan(
+        wp,
+        "staging",
+        "INC-DISABLE-001",
+        "Disable exact installed Control Plane without loading WordPress.",
+    )
+    try:
+        recovery.apply_disable(disable_plan, "0" * 64)
+        raise SystemExit("Recovery disable accepted the wrong owner plan attestation")
+    except ValueError as exc:
+        if "OWNER_ATTEST_SINGLE_OWNER" not in str(exc):
+            raise
+
+    disabled = recovery.apply_disable(disable_plan, disable_plan["plan_sha256"])
+    if live.exists():
+        raise SystemExit("Recovery disable left the plugin active at the canonical path")
+    disabled_quarantine = wp / disabled["previous"]["quarantine_path"]
+    if not disabled_quarantine.is_dir():
+        raise SystemExit("Recovery disable did not quarantine exact prior plugin bytes")
+    if disabled["post_disable"]["production_authorized"] is not False:
+        raise SystemExit("Recovery disable widened Production authority")
+    if not Path(disabled["receipt_path"]).is_file() or not Path(disabled["journal_path"]).is_file():
+        raise SystemExit("Recovery disable did not persist receipt and journal")
+    disabled_journal = json.loads(Path(disabled["journal_path"]).read_text(encoding="utf-8"))
+    if disabled_journal.get("evidence_state") != "DURABLE_VERIFIED_RECEIPT":
+        raise SystemExit("Recovery disable journal did not reach durable evidence")
+
+    absent_status = recovery.recovery_status(wp, "staging")
+    if absent_status["target"]["plugin_present"] is not False:
+        raise SystemExit("Recovery status did not observe disabled plugin")
+
+    # Restore after disable proves the Recovery Plane can hand control back without plugin boot.
+    restore_after_disable = recovery.build_restore_plan(
+        wp,
+        "staging",
+        "INC-RESTORE-AFTER-DISABLE",
+        "Restore externally attested package after exact-plan disable.",
+        receipt,
+    )
+    restored_again = recovery.apply_restore(
+        restore_after_disable,
+        artifact,
+        receipt,
+        restore_after_disable["plan_sha256"],
+    )
+    if restored_again["post_recovery"]["source_commit_sha"] != source_sha:
+        raise SystemExit("Recovery restore after disable did not restore exact source identity")
+    if not live.is_dir():
+        raise SystemExit("Recovery restore after disable did not reactivate canonical plugin path")
+
+
+# Evidence persistence failure after a real side effect must never trigger a blind retry.
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    wp = tmp / "wordpress"
+    plugins = wp / "wp-content" / "plugins"
+    old = plugins / recovery.PLUGIN_SLUG
+    old.mkdir(parents=True)
+    (wp / "wp-config.php").write_text("<?php // uncertainty fixture\n", encoding="utf-8")
+    (old / "mad4b-site-control-plane.php").write_text(
+        "<?php // old runtime before uncertain restore\n", encoding="utf-8"
+    )
+    source_sha = "e" * 40
+    artifact, install, receipt = known_good_fixture(tmp, source_sha)
+    plan = recovery.build_restore_plan(
+        wp,
+        "staging",
+        "INC-EVIDENCE-UNCERTAIN",
+        "Inject final receipt persistence failure after verified restore side effect.",
+        receipt,
+    )
+
+    original_atomic = recovery.atomic_json_write
+
+    def fail_receipt_only(path, data):
+        if path.parent.name == "receipts":
+            raise OSError("simulated receipt persistence failure")
+        return original_atomic(path, data)
+
+    recovery.atomic_json_write = fail_receipt_only
+    try:
+        recovery.apply_restore(plan, artifact, receipt, plan["plan_sha256"])
+        raise SystemExit("recovery apply unexpectedly succeeded without durable receipt")
+    except RuntimeError as exc:
+        if "MUTATED_BUT_EVIDENCE_UNCERTAIN" not in str(exc):
+            raise
+    finally:
+        recovery.atomic_json_write = original_atomic
+
+    live = plugins / recovery.PLUGIN_SLUG
+    if "known good" not in (live / "mad4b-site-control-plane.php").read_text(encoding="utf-8"):
+        raise SystemExit("uncertain-evidence fixture did not leave the verified side effect in place")
+
+    summary = recovery.recovery_journal_summary(wp)
+    if summary["uncertain"] != 1 or summary["reconciliation_required"] is not True:
+        raise SystemExit("uncertain mutation was not surfaced by recovery journal summary")
+
+    reconciliation = recovery.reconcile_recovery_evidence(wp, "staging")
+    if reconciliation["blind_retry_allowed"] is not False:
+        raise SystemExit("recovery reconciliation allowed a blind retry")
+    matches = [
+        row for row in reconciliation["reconciliations"]
+        if row.get("plan_sha256") == plan["plan_sha256"]
+    ]
+    if len(matches) != 1:
+        raise SystemExit("uncertain mutation reconciliation row missing")
+    row = matches[0]
+    if row["reconciliation_status"] != "RUNTIME_EFFECT_OBSERVED_NO_RECEIPT":
+        raise SystemExit("reconciliation did not detect side effect without receipt")
+    if row["safe_to_blind_retry"] is not False:
+        raise SystemExit("uncertain mutation was marked safe for blind retry")
+
+
+# Disable receipt failure rolls back the mutation and records rollback truthfully.
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    wp = tmp / "wordpress"
+    plugins = wp / "wp-content" / "plugins"
+    live = plugins / recovery.PLUGIN_SLUG
+    live.mkdir(parents=True)
+    (wp / "wp-config.php").write_text("<?php // disable rollback fixture\n", encoding="utf-8")
+    (live / "mad4b-site-control-plane.php").write_text(
+        "<?php // runtime to preserve on evidence failure\n", encoding="utf-8"
+    )
+    plan = recovery.build_disable_plan(
+        wp,
+        "staging",
+        "INC-DISABLE-EVIDENCE-FAIL",
+        "Inject disable receipt failure and require rollback to original runtime.",
+    )
+    original_atomic = recovery.atomic_json_write
+
+    def fail_disable_receipt(path, data):
+        if path.parent.name == "receipts":
+            raise OSError("simulated disable receipt failure")
+        return original_atomic(path, data)
+
+    recovery.atomic_json_write = fail_disable_receipt
+    try:
+        recovery.apply_disable(plan, plan["plan_sha256"])
+        raise SystemExit("disable unexpectedly succeeded without durable receipt")
+    except RuntimeError as exc:
+        if "MUTATED_BUT_EVIDENCE_UNCERTAIN" not in str(exc):
+            raise
+    finally:
+        recovery.atomic_json_write = original_atomic
+
+    if not live.is_dir():
+        raise SystemExit("disable evidence failure did not roll back the plugin path")
+    summary = recovery.recovery_journal_summary(wp)
+    rows = [row for row in summary["entries"] if row.get("plan_sha256") == plan["plan_sha256"]]
+    if len(rows) != 1 or rows[0]["evidence_state"] != "ROLLED_BACK_AFTER_FAILURE":
+        raise SystemExit("disable rollback journal does not truthfully report rollback")
+
+
+# Archive/path confinement: zip-slip and symlink entries must fail before mutation.
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    stage = tmp / "stage"
+    malicious = tmp / "zip-slip.zip"
+    with zipfile.ZipFile(malicious, "w") as z:
+        z.writestr("mad4b-site-control-plane/../../escaped.php", b"<?php // escape")
+    try:
+        recovery.safe_extract_control_plane(malicious, stage)
+        raise SystemExit("Recovery extractor accepted zip-slip path")
+    except ValueError as exc:
+        if "unsafe archive path" not in str(exc):
+            raise
+    if (tmp / "escaped.php").exists():
+        raise SystemExit("zip-slip fixture escaped extraction root")
+
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    stage = tmp / "stage"
+    malicious = tmp / "symlink.zip"
+    info = zipfile.ZipInfo("mad4b-site-control-plane/link.php")
+    info.create_system = 3
+    info.external_attr = (0o120777 << 16)
+    with zipfile.ZipFile(malicious, "w") as z:
+        z.writestr(info, "../../outside.php")
+    try:
+        recovery.safe_extract_control_plane(malicious, stage)
+        raise SystemExit("Recovery extractor accepted symlink archive entry")
+    except ValueError as exc:
+        if "symlink forbidden" not in str(exc):
+            raise
+
+# Recovery workspace itself cannot be redirected through a symlink.
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    wp = tmp / "wordpress"
+    plugins = wp / "wp-content" / "plugins"
+    old = plugins / recovery.PLUGIN_SLUG
+    old.mkdir(parents=True)
+    (wp / "wp-config.php").write_text("<?php // recovery-root-symlink fixture\n", encoding="utf-8")
+    (old / "mad4b-site-control-plane.php").write_text("<?php // old runtime\n", encoding="utf-8")
+    external = tmp / "external-recovery"
+    external.mkdir()
+    (wp / "wp-content" / "mad4b-recovery").symlink_to(external, target_is_directory=True)
+    source_sha = "f" * 40
+    artifact, install, receipt = known_good_fixture(tmp, source_sha)
+    plan = recovery.build_restore_plan(
+        wp,
+        "staging",
+        "INC-PATH-CONFINEMENT",
+        "Reject symlinked Recovery Plane workspace before mutation.",
+        receipt,
+    )
+    try:
+        recovery.apply_restore(plan, artifact, receipt, plan["plan_sha256"])
+        raise SystemExit("Recovery Plane accepted symlinked recovery workspace")
+    except ValueError as exc:
+        if "recovery root symlink is forbidden" not in str(exc):
+            raise
+    if "old runtime" not in (old / "mad4b-site-control-plane.php").read_text(encoding="utf-8"):
+        raise SystemExit("symlinked recovery workspace fixture mutated live plugin")
+
+
+# Protected backup is a bounded exact-plan snapshot of current Control Plane bytes.
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    wp = tmp / "wordpress"
+    plugins = wp / "wp-content" / "plugins"
+    live = plugins / recovery.PLUGIN_SLUG
+    live.mkdir(parents=True)
+    config_secret = "<?php // secret-do-not-copy\ndefine('DB_PASSWORD','never-copy-this');\n"
+    (wp / "wp-config.php").write_text(config_secret, encoding="utf-8")
+    (live / "mad4b-site-control-plane.php").write_text("<?php // current runtime\n", encoding="utf-8")
+    (live / "includes").mkdir()
+    (live / "includes" / "runtime.php").write_text("<?php return 'current';\n", encoding="utf-8")
+
+    before = recovery.protected_backup_status(wp)
+    if before["ready"] is not False or before["requires_preparation"] is not True:
+        raise SystemExit("protected backup status incorrectly reported absent root as ready")
+
+    plan = recovery.build_backup_plan(
+        wp,
+        "staging",
+        "INC-PROTECTED-BACKUP",
+        "Create exact current Control Plane backup before governed deployment.",
+    )
+    if plan["scope"]["copies_wp_config_bytes"] is not False or plan["scope"]["copies_database"] is not False:
+        raise SystemExit("protected backup plan widened scope")
+    try:
+        recovery.apply_backup(plan, "0" * 64)
+        raise SystemExit("protected backup accepted wrong owner plan attestation")
+    except ValueError as exc:
+        if "OWNER_ATTEST_SINGLE_OWNER" not in str(exc):
+            raise
+
+    # Exact target drift after planning invalidates the backup plan.
+    original = (live / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
+    (live / "mad4b-site-control-plane.php").write_text(original + "// drift\n", encoding="utf-8")
+    try:
+        recovery.apply_backup(plan, plan["plan_sha256"])
+        raise SystemExit("protected backup accepted stale target plan")
+    except ValueError as exc:
+        if "target changed since plan" not in str(exc):
+            raise
+    (live / "mad4b-site-control-plane.php").write_text(original, encoding="utf-8")
+
+    plan = recovery.build_backup_plan(
+        wp,
+        "staging",
+        "INC-PROTECTED-BACKUP-2",
+        "Create exact current Control Plane backup after target re-read.",
+    )
+    receipt = recovery.apply_backup(plan, plan["plan_sha256"])
+    backup = Path(receipt["backup_path"])
+    if receipt["readback_verified"] is not True or receipt["production_authorized"] is not False:
+        raise SystemExit("protected backup receipt is not verified or widened Production")
+    if recovery.tree_digest(backup / recovery.PLUGIN_SLUG) != plan["target"]["plugin_tree_sha256"]:
+        raise SystemExit("protected backup bytes do not match planned runtime")
+    manifest = json.loads((backup / "BACKUP-MANIFEST.json").read_text(encoding="utf-8"))
+    persisted = json.loads((backup / "BACKUP-RECEIPT.json").read_text(encoding="utf-8"))
+    if manifest["source_plugin_tree_sha256"] != plan["target"]["plugin_tree_sha256"]:
+        raise SystemExit("protected backup manifest lost exact runtime identity")
+    if persisted["wp_config_bytes_copied"] is not False or persisted["database_copied"] is not False:
+        raise SystemExit("protected backup receipt widened backup scope")
+    for path in backup.rglob("*"):
+        if path.is_file() and "never-copy-this" in path.read_text(encoding="utf-8", errors="ignore"):
+            raise SystemExit("protected backup leaked wp-config bytes")
+
+    status = recovery.protected_backup_status(wp)
+    if status["ready"] is not True or status["backup_count"] != 1 or status["verified_backup_count"] != 1:
+        raise SystemExit("protected backup root did not become ready with one verified backup")
+
+    verified_backup = recovery.verify_protected_backup(wp, receipt["backup_id"])
+    if verified_backup["verified"] is not True:
+        raise SystemExit("protected backup verification did not pass exact snapshot")
+
+    # Simulate a later candidate deployment, then restore the protected pre-deployment snapshot.
+    candidate = live / "mad4b-site-control-plane.php"
+    candidate.write_text("<?php // later candidate runtime\n", encoding="utf-8")
+    restore_plan = recovery.build_backup_restore_plan(
+        wp,
+        "staging",
+        receipt["backup_id"],
+        "INC-PROTECTED-BACKUP-RESTORE",
+        "Restore exact pre-deployment protected backup after candidate regression.",
+    )
+    try:
+        recovery.apply_backup_restore(restore_plan, "0" * 64)
+        raise SystemExit("protected backup restore accepted wrong owner plan attestation")
+    except ValueError as exc:
+        if "OWNER_ATTEST_SINGLE_OWNER" not in str(exc):
+            raise
+    restored = recovery.apply_backup_restore(
+        restore_plan,
+        restore_plan["plan_sha256"],
+    )
+    if restored["readback_verified"] is not True or restored["production_authorized"] is not False:
+        raise SystemExit("protected backup restore receipt is not verified or widened Production")
+    if recovery.tree_digest(live) != plan["target"]["plugin_tree_sha256"]:
+        raise SystemExit("protected backup restore did not recover exact snapshot tree")
+
+    # Receipt interruption after a successful file switch must roll back to the exact pre-restore candidate.
+    candidate.write_text("<?php // second candidate before interrupted rollback\n", encoding="utf-8")
+    candidate_before = recovery.tree_digest(live)
+    interrupted_plan = recovery.build_backup_restore_plan(
+        wp,
+        "staging",
+        receipt["backup_id"],
+        "INC-PROTECTED-BACKUP-INTERRUPT",
+        "Inject receipt interruption after protected backup switch.",
+    )
+    original_atomic_json = recovery.atomic_json_write
+    def fail_backup_restore_receipt(path, data):
+        if data.get("contract") == recovery.BACKUP_RESTORE_RECEIPT_CONTRACT:
+            raise OSError("simulated protected backup restore receipt interruption")
+        return original_atomic_json(path, data)
+    recovery.atomic_json_write = fail_backup_restore_receipt
+    try:
+        recovery.apply_backup_restore(
+            interrupted_plan,
+            interrupted_plan["plan_sha256"],
+        )
+        raise SystemExit("protected backup restore unexpectedly survived receipt interruption")
+    except OSError as exc:
+        if "receipt interruption" not in str(exc):
+            raise
+    finally:
+        recovery.atomic_json_write = original_atomic_json
+    if recovery.tree_digest(live) != candidate_before:
+        raise SystemExit("interrupted protected backup restore did not roll back exact prior candidate")
+    journals = recovery.recovery_journal_summary(wp)
+    interrupted_rows = [
+        row for row in journals["entries"]
+        if row.get("plan_sha256") == interrupted_plan["plan_sha256"]
+    ]
+    if len(interrupted_rows) != 1 or interrupted_rows[0].get("evidence_state") != "ROLLED_BACK_AFTER_FAILURE":
+        raise SystemExit("interrupted protected backup restore did not persist rollback evidence")
+
+    # Backup corruption must invalidate readiness and block every new restore plan.
+    snapshot_file = backup / recovery.PLUGIN_SLUG / "mad4b-site-control-plane.php"
+    snapshot_file.write_text("<?php // corrupted protected backup\n", encoding="utf-8")
+    try:
+        recovery.verify_protected_backup(wp, receipt["backup_id"])
+        raise SystemExit("protected backup corruption was not detected")
+    except ValueError as exc:
+        if "mismatch" not in str(exc):
+            raise
+    corrupted_status = recovery.protected_backup_status(wp)
+    if corrupted_status["ready"] is not False or corrupted_status["verified_backup_count"] != 0:
+        raise SystemExit("corrupted protected backup still satisfied readiness")
+    try:
+        recovery.build_backup_restore_plan(
+            wp,
+            "staging",
+            receipt["backup_id"],
+            "INC-CORRUPT-BACKUP-RESTORE",
+            "Corrupt backup must never produce a restore plan.",
+        )
+        raise SystemExit("corrupted protected backup produced a restore plan")
+    except ValueError as exc:
+        if "mismatch" not in str(exc):
+            raise
+
+# Backup source symlinks fail closed instead of following content outside plugin root.
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    wp = tmp / "wordpress"
+    plugins = wp / "wp-content" / "plugins"
+    live = plugins / recovery.PLUGIN_SLUG
+    live.mkdir(parents=True)
+    (wp / "wp-config.php").write_text("<?php // backup symlink fixture\n", encoding="utf-8")
+    (live / "mad4b-site-control-plane.php").write_text("<?php // runtime\n", encoding="utf-8")
+    outside = tmp / "outside-secret.txt"
+    outside.write_text("outside", encoding="utf-8")
+    (live / "linked-secret.txt").symlink_to(outside)
+    try:
+        recovery.build_backup_plan(
+            wp,
+            "staging",
+            "INC-PROTECTED-BACKUP-SYMLINK",
+            "Reject plugin tree containing symlink.",
+        )
+        raise SystemExit("protected backup plan accepted symlinked plugin source")
+    except ValueError as exc:
+        if "symlink forbidden" not in str(exc):
+            raise
 
 print("out-of-band recovery plane contract: PASS")

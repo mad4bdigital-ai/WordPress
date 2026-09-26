@@ -23,6 +23,12 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 	private static $catalog = null;
 	private static $runtime_status = null;
 
+	public static function reconcile() {
+		self::$ran = false;
+		self::$runtime_status = null;
+		return self::bootstrap();
+	}
+
 	public static function bootstrap() {
 		if ( self::$ran ) return self::status();
 		self::$ran = true;

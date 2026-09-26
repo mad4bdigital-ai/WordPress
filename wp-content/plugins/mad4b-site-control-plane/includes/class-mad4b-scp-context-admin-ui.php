@@ -385,6 +385,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			array( 'label' => 'Average Quality', 'value' => $quality, 'help' => $status['quality_scored_asset_count'] . ' asset(s) scored.', 'state' => null === $status['average_quality_score'] ? 'pending' : 'complete' ),
 		);
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::cards( $cards );
+		self::render_brand_core_gaps();
 
 		echo '<div id="mad4b-context-brand-profile" class="mad4b-scp-panel"><h2>' . esc_html__( 'Brand Context Profile', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Use a short brand name. This profile is bound to the current Site Profile UUID, not to a global WordPress setting.', 'mad4b-site-control-plane' ) . '</p>';
@@ -404,6 +405,49 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '</ul></div>';
 		}
 		echo '<div class="mad4b-context-fingerprint"><strong>Context fingerprint:</strong> <code>' . esc_html( $status['context_fingerprint'] ) . '</code></div>';
+	}
+
+	private static function render_brand_core_gaps() {
+		echo '<div id="mad4b-brand-core-gaps" class="mad4b-scp-panel"><h2>' . esc_html__( 'Brand Core Gaps', 'mad4b-site-control-plane' ) . '</h2>';
+		if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) ) {
+			echo '<div class="notice notice-error inline"><p><code>brand_context_builder_unavailable</code></p></div></div>';
+			return;
+		}
+		$plan = MAD4B_SCP_Brand_Context_Builder::gap_plan( array( 'include_authoritative_content' => false ) );
+		if ( is_wp_error( $plan ) ) {
+			echo '<div class="notice notice-error inline"><p><code>' . esc_html( $plan->get_error_code() ) . '</code> · ' . esc_html( $plan->get_error_message() ) . '</p></div></div>';
+			return;
+		}
+		$missing = isset( $plan['missing_categories'] ) && is_array( $plan['missing_categories'] ) ? $plan['missing_categories'] : array();
+		$labels = MAD4B_SCP_Brand_Context_Builder::expected_categories();
+		echo '<div class="mad4b-context-governance-grid">';
+		foreach ( $labels as $category => $label ) {
+			$is_missing = in_array( $category, $missing, true );
+			echo '<div class="mad4b-context-governance-cell"><span>' . esc_html( $label ) . '</span><strong>' . esc_html( $is_missing ? '✕ Missing' : '✓ Ready' ) . '</strong></div>';
+		}
+		echo '</div>';
+		$sample_count = isset( $plan['live_evidence']['sample_count'] ) ? (int) $plan['live_evidence']['sample_count'] : 0;
+		echo '<p class="description">' . esc_html( sprintf( __( 'Evidence plan: %1$d live content sample(s). Draft generation is evidence-bound and never grants Brand Authority.', 'mad4b-site-control-plane' ), $sample_count ) ) . '</p>';
+		if ( ! empty( $plan['hard_blockers'] ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Generation blocked:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( implode( ' · ', $plan['hard_blockers'] ) ) . '</code></p></div>';
+		}
+		if ( ! empty( $plan['conflicts'] ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Conflicts require review before generation.', 'mad4b-site-control-plane' ) . '</strong></p></div>';
+		}
+		if ( ! empty( $plan['drafts'] ) ) {
+			echo '<ul>';
+			foreach ( $plan['drafts'] as $draft ) {
+				echo '<li><code>' . esc_html( isset( $draft['category'] ) ? $draft['category'] : '' ) . '</code> → ' . esc_html( isset( $draft['suggested_name'] ) ? $draft['suggested_name'] : '' ) . '</li>';
+			}
+			echo '</ul>';
+		}
+		echo '<p><strong>' . esc_html__( 'Evidence digest:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $plan['evidence_digest'] ) ? substr( (string) $plan['evidence_digest'], 0, 16 ) . '…' : '' ) . '</code></p>';
+		echo '<form method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '" style="display:inline-block;margin-right:8px"><input type="hidden" name="page" value="' . esc_attr( self::PAGE_SLUG ) . '"><input type="hidden" name="tab" value="intelligence"><input type="hidden" name="intel_action" value="brand_gap"><input type="hidden" name="_wpnonce" value="' . esc_attr( wp_create_nonce( 'mad4b_context_intelligence' ) ) . '">';
+		submit_button( __( 'Generate missing files from live data', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
+		echo '</form>';
+		echo '<a class="button" href="' . esc_url( self::tab_url( 'sources' ) ) . '">' . esc_html__( 'Upload existing files', 'mad4b-site-control-plane' ) . '</a>';
+		echo '<p class="description">' . esc_html__( 'Generate first opens an exact Evidence Preview. The connected wordpress-brand-context-builder Skill performs synthesis; WordPress does not hard-code AI writing. Upload existing MD/TXT/DOCX/PDF/Google Docs into the managed Drive source, then scan and review.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '</div>';
 	}
 
 	private static function render_google_drive() {
@@ -1068,6 +1112,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 			$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			if ( ! wp_verify_nonce( $nonce, 'mad4b_context_intelligence' ) ) {
 				$result = new WP_Error( 'mad4b_context_intelligence_nonce_invalid', 'Context Intelligence request expired. Run the analysis again.' );
+			} elseif ( 'brand_gap' === $action ) {
+				$result = class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) ? MAD4B_SCP_Brand_Context_Builder::gap_plan( array( 'include_authoritative_content' => true ) ) : new WP_Error( 'mad4b_brand_builder_unavailable', 'Brand Context Builder is unavailable.' );
 			} elseif ( 'conflicts' === $action ) {
 				$result = MAD4B_SCP_Context_Intelligence::conflict_report(
 					array(
@@ -1095,6 +1141,12 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 		$nonce = wp_create_nonce( 'mad4b_context_intelligence' );
 		echo '<div class="mad4b-context-intelligence-grid">';
+
+		echo '<section class="mad4b-context-intelligence-card"><h3>' . esc_html__( 'Brand Context Builder', 'mad4b-site-control-plane' ) . '</h3>';
+		echo '<p>' . esc_html__( 'Build an exact Evidence Pack for missing Brand Core categories. The plan is read-only; generation is performed by the managed Skill and remains review-gated.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<form method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '"><input type="hidden" name="page" value="' . esc_attr( self::PAGE_SLUG ) . '"><input type="hidden" name="tab" value="intelligence"><input type="hidden" name="intel_action" value="brand_gap"><input type="hidden" name="_wpnonce" value="' . esc_attr( $nonce ) . '">';
+		submit_button( __( 'Preview Brand Evidence', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+		echo '</form></section>';
 
 		echo '<section class="mad4b-context-intelligence-card"><h3>' . esc_html__( 'Conflict Review', 'mad4b-site-control-plane' ) . '</h3>';
 		echo '<p>' . esc_html__( 'Looks only for explicit keyed directives in approved Brand/Policy assets. Different values become review candidates; the system never chooses a winner.', 'mad4b-site-control-plane' ) . '</p>';
@@ -1149,7 +1201,25 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<div class="notice notice-error inline"><p><code>' . esc_html( $result->get_error_code() ) . '</code> · ' . esc_html( $result->get_error_message() ) . '</p></div></div>';
 			return;
 		}
-		if ( 'conflicts' === $action ) {
+		if ( 'brand_gap' === $action ) {
+			echo '<p><strong>' . esc_html__( 'Plan:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $result['plan_sha256'] ) ? (string) $result['plan_sha256'] : '' ) . '</code></p>';
+			echo '<p><strong>' . esc_html__( 'Evidence digest:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $result['evidence_digest'] ) ? (string) $result['evidence_digest'] : '' ) . '</code></p>';
+			echo '<p><strong>' . esc_html__( 'Missing:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( ! empty( $result['missing_categories'] ) ? implode( ' · ', $result['missing_categories'] ) : 'none' ) . '</code></p>';
+			if ( ! empty( $result['hard_blockers'] ) ) echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Hard blockers:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( implode( ' · ', $result['hard_blockers'] ) ) . '</code></p></div>';
+			if ( ! empty( $result['conflicts'] ) ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Conflicting Brand Authority evidence must be reviewed; generation remains blocked.', 'mad4b-site-control-plane' ) . '</p></div>';
+			echo '<h3>' . esc_html__( 'Authoritative evidence', 'mad4b-site-control-plane' ) . '</h3><ul>';
+			foreach ( isset( $result['authoritative_assets'] ) && is_array( $result['authoritative_assets'] ) ? $result['authoritative_assets'] : array() as $row ) {
+				echo '<li><strong>' . esc_html( isset( $row['title'] ) ? $row['title'] : '' ) . '</strong> · <code>' . esc_html( isset( $row['category'] ) ? $row['category'] : '' ) . '</code> · <code>' . esc_html( isset( $row['content_hash'] ) ? substr( (string) $row['content_hash'], 0, 12 ) . '…' : '' ) . '</code></li>';
+			}
+			echo '</ul><h3>' . esc_html__( 'Live content evidence', 'mad4b-site-control-plane' ) . '</h3><ul>';
+			foreach ( isset( $result['live_evidence']['pages_posts_products'] ) && is_array( $result['live_evidence']['pages_posts_products'] ) ? $result['live_evidence']['pages_posts_products'] : array() as $row ) {
+				echo '<li><strong>' . esc_html( isset( $row['title'] ) ? $row['title'] : '' ) . '</strong> · <code>' . esc_html( isset( $row['post_type'] ) ? $row['post_type'] : '' ) . '</code> · <code>' . esc_html( isset( $row['content_hash'] ) ? substr( (string) $row['content_hash'], 0, 12 ) . '…' : '' ) . '</code></li>';
+			}
+			echo '</ul>';
+			echo '<h3>' . esc_html__( 'Expected drafts', 'mad4b-site-control-plane' ) . '</h3><ul>';
+			foreach ( isset( $result['drafts'] ) && is_array( $result['drafts'] ) ? $result['drafts'] : array() as $draft ) echo '<li><code>' . esc_html( isset( $draft['category'] ) ? $draft['category'] : '' ) . '</code> → ' . esc_html( isset( $draft['suggested_name'] ) ? $draft['suggested_name'] : '' ) . '</li>';
+			echo '</ul><p><strong>' . esc_html__( 'Generation workflow:', 'mad4b-site-control-plane' ) . '</strong> <code>wordpress-brand-context-builder</code> → <code>context/brand-draft-append</code> → <code>context/materialize-brand-draft</code> → <code>context/source-scan-plan</code> → <code>context/source-scan-apply</code> → review.</p>';
+		} elseif ( 'conflicts' === $action ) {
 			echo '<p><strong>' . esc_html__( 'State:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( isset( $result['state'] ) ? $result['state'] : '' ) . ' · <strong>' . esc_html__( 'Conflicts:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( isset( $result['conflict_count'] ) ? (string) $result['conflict_count'] : '0' ) . '</p>';
 			if ( ! empty( $result['blockers'] ) ) echo '<div class="notice notice-error inline"><p><strong>' . esc_html__( 'Coverage incomplete:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( implode( ' · ', $result['blockers'] ) ) . '</code></p></div>';
 			if ( ! empty( $result['warnings'] ) ) echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'Warnings:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( implode( ' · ', $result['warnings'] ) ) . '</code></p>';

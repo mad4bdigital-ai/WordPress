@@ -19,6 +19,7 @@ for label, source in [('skill-registry', registry), ('skill-seeder', seeder)]:
 
 provider_discovery = (wp / 'includes' / 'class-mad4b-scp-skill-provider-discovery.php').read_text(encoding='utf-8')
 provider_catalog = json.loads((wp / 'config' / 'skill-provider-catalog.json').read_text(encoding='utf-8'))
+seed_manifest = json.loads((wp / 'config' / 'skill-seed-manifest.json').read_text(encoding='utf-8'))
 abilities = (wp / 'includes' / 'class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
 adapter = (wp / 'includes' / 'adapters' / 'class-mad4b-scp-skills-adapter.php').read_text(encoding='utf-8')
 admin = (wp / 'includes' / 'class-mad4b-scp-skills-admin-ui.php').read_text(encoding='utf-8')
@@ -26,7 +27,55 @@ resource_writer = (wp / 'includes' / 'class-mad4b-scp-skill-resource-writer.php'
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+
+for marker in [
+    "private static function request_is_wordpress_plugin_lifecycle()",
+    "array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' )",
+    "array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' )",
+    "$plugin_lifecycle = self::request_is_wordpress_plugin_lifecycle();",
+    "if ( ! $plugin_lifecycle && ( ! MAD4B_SCP_Schema::is_ready()",
+    "if ( ! $plugin_lifecycle && false === get_option( MAD4B_SCP_Audit::LEGACY_OPTION, false ) )",
+    "if ( ! $plugin_lifecycle && ! is_wp_error( self::$schema_error ) && self::request_requires_skill_reconciliation() )",
+]:
+    if marker not in plugin_boot:
+        raise SystemExit(f'missing plugin upload lifecycle protection invariant: {marker}')
+
 readme = (portable / 'README.md').read_text(encoding='utf-8')
+
+for marker in [
+    "public static function reconcile()",
+    "self::$ran = false;",
+    "self::$runtime_status = null;",
+    "return self::bootstrap();",
+]:
+    if marker not in provider_discovery:
+        raise SystemExit(f'missing explicit provider Skill reconciliation invariant: {marker}')
+
+for marker in [
+    "'reconcile_managed' === $action",
+    "private static function render_reconcile_managed",
+    "wp_nonce_field( 'mad4b_skill_reconcile_managed', 'mad4b_skill_reconcile_nonce' )",
+    "private static function handle_reconcile_managed",
+    "check_admin_referer( 'mad4b_skill_reconcile_managed', 'mad4b_skill_reconcile_nonce' )",
+    "current_user_can( 'manage_options' )",
+    "MAD4B_SCP_Skill_Seeder::bootstrap()",
+    "MAD4B_SCP_Skill_Provider_Discovery::reconcile()",
+    "MAD4B_SCP_Skill_Runtime_Certification::observe()",
+]:
+    if marker not in admin:
+        raise SystemExit(f'missing explicit managed Skill admin reconciliation invariant: {marker}')
+
+if admin.index("MAD4B_SCP_Skill_Seeder::bootstrap()") > admin.index("MAD4B_SCP_Skill_Provider_Discovery::reconcile()"):
+    raise SystemExit('managed Skill reconciliation must seed canonical Skills before provider reconciliation')
+
+for source in (seeder, main, plugin_boot):
+    if "array( 'MAD4B_SCP_Skill_Seeder', 'bootstrap' )" in source:
+        raise SystemExit('canonical Skill seeding must remain explicit and must not become an automatic request lifecycle mutation')
+
+for source in (admin, provider_discovery):
+    if "wp_register_ability(" in source:
+        raise SystemExit('managed Skill reconciliation must not add a remote MCP mutation ability')
+
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-autoconfig.v2'",
@@ -78,8 +127,12 @@ for marker in [
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-seeder.v1'",
-    "const SEED_VERSION = 6",
     "const SEED_DIR = 'skill-seeds'",
+    "const SEED_MANIFEST_CONTRACT = 'mad4b.skill-seed-manifest.v1'",
+    "const SEED_MANIFEST_FILE = 'config/skill-seed-manifest.json'",
+    "private static function seeds()",
+    "self::SEED_MANIFEST_CONTRACT",
+    "self::SEED_VERSION !== (int) $data['seed_version']",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Skill_Registry::editor_enabled()",
     "MAD4B_SCP_Audit::storage_status()",
@@ -93,18 +146,8 @@ for marker in [
     "recorded_sha",
     "hash_equals( $recorded_sha, $current_sha )",
     "mad4b_skill_seed_refresh_rollback_failed",
-    "wordpress-site-diagnostics",
-    "wordpress-connection-diagnostics",
-    "elementor-dynamic-content",
-    "jetengine-content-modeling",
-    "wordpress-archive-audit",
-    "wordpress-change-safety",
-    "wordpress-release-orchestration",
-    "wordpress-browser-acceptance",
-    "wordpress-content-authoring",
     "context_policy_sha256",
     "allowed_mutation_abilities",
-    "'enabled' => false",
     "class-mad4b-scp-skill-provider-discovery.php",
     "MAD4B_SCP_Skill_Provider_Discovery",
     "plugins_loaded",
@@ -291,17 +334,26 @@ app_id = app.get('apps', {}).get('mad4b-wordpress', {}).get('id', '')
 if not re.fullmatch(r'plugin_asdk_app_[A-Za-z0-9]+', app_id):
     raise SystemExit('portable app mapping must use a real plugin_asdk_app technical ID')
 
-expected_skills = {
-    'wordpress-site-diagnostics',
-    'wordpress-connection-diagnostics',
-    'elementor-dynamic-content',
-    'jetengine-content-modeling',
-    'wordpress-archive-audit',
-    'wordpress-change-safety',
-    'wordpress-release-orchestration',
-    'wordpress-browser-acceptance',
-    'wordpress-content-authoring',
-}
+if seed_manifest.get('contract') != 'mad4b.skill-seed-manifest.v1':
+    raise SystemExit('canonical Skill seed manifest contract is invalid')
+seed_version = seed_manifest.get('seed_version')
+if not isinstance(seed_version, int) or seed_version < 1:
+    raise SystemExit('canonical Skill seed manifest version is invalid')
+match = re.search(r"const SEED_VERSION = ([0-9]+);", seeder)
+if not match or int(match.group(1)) != seed_version:
+    raise SystemExit('canonical Skill seed manifest/runtime version mismatch')
+manifest_rows = seed_manifest.get('skills', [])
+if not isinstance(manifest_rows, list) or not manifest_rows:
+    raise SystemExit('canonical Skill seed manifest must contain Skills')
+expected_skills = {row.get('name') for row in manifest_rows if isinstance(row, dict)}
+if None in expected_skills or len(expected_skills) != len(manifest_rows):
+    raise SystemExit('canonical Skill seed manifest contains duplicate or invalid names')
+provider_seed_rows = [row for row in manifest_rows if isinstance(row, dict) and row.get('level') == 'provider']
+if not provider_seed_rows:
+    raise SystemExit('canonical Skill seed manifest must retain provider seed coverage')
+if any(row.get('enabled') is not False for row in provider_seed_rows):
+    raise SystemExit('provider-level canonical Skill seeds must fail closed disabled by default')
+
 found = set()
 seed_root = wp / 'skill-seeds'
 for skill_dir in (portable / 'skills').iterdir():
@@ -318,6 +370,10 @@ for skill_dir in (portable / 'skills').iterdir():
         raise SystemExit(f'{skill_dir.name} frontmatter name must match folder')
     if 'description:' not in text.split('---', 2)[1]:
         raise SystemExit(f'{skill_dir.name} missing frontmatter description')
+    if skill_dir.name == 'wordpress-brand-context-builder':
+        for marker in ('context/brand-gap-plan', 'context/brand-draft-append', 'context/materialize-brand-draft', 'context/source-scan-plan', 'context/source-scan-apply', 'Generation is not approval'):
+            if marker not in text:
+                raise SystemExit(f'wordpress-brand-context-builder missing governed workflow instruction: {marker}')
     if skill_dir.name == 'wordpress-release-orchestration':
         for marker in ('plan_sha256', 'expected_plan_sha256', 'expected_state_sha256', 're-planning and re-approval'):
             if marker not in text:
@@ -334,7 +390,7 @@ for skill_dir in (portable / 'skills').iterdir():
 if not expected_skills.issubset(found):
     raise SystemExit(f'missing portable seed skills: {sorted(expected_skills - found)}')
 if {p.parent.name for p in seed_root.glob('*/SKILL.md')} != expected_skills:
-    raise SystemExit('canonical Control Plane seed set must exactly match the nine portable baseline Skills')
+    raise SystemExit('canonical Control Plane seed set must exactly match the canonical Skill seed manifest')
 
 entry = next((x for x in marketplace.get('plugins', []) if x.get('name') == 'mad4b-wordpress'), None)
 if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpress':

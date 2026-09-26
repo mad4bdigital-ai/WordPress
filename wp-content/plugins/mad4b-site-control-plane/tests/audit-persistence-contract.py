@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 schema = (ROOT / 'includes/class-mad4b-scp-schema.php').read_text('utf-8')
@@ -21,7 +22,11 @@ def forbid(text, needle, label):
         raise SystemExit(f'FAIL {label}: forbidden {needle!r}')
 
 
-require(schema, 'const VERSION = 9;', 'schema-v9')
+version_match = re.search(r"const VERSION = (\d+);", schema)
+if not version_match or int(version_match.group(1)) < 9:
+    raise SystemExit('FAIL schema-durable-baseline: schema version must be >= 9')
+schema_version = int(version_match.group(1))
+require(schema, f"mad4b_scp_schema_integrity_v{schema_version}", 'schema-integrity-version-match')
 for table in ('mad4b_scp_audit_events', 'mad4b_scp_audit_heads'):
     require(schema, table, 'audit-schema-table')
 require(schema, 'UNIQUE KEY chain_sequence (chain_name,sequence)', 'audit-sequence-unique')

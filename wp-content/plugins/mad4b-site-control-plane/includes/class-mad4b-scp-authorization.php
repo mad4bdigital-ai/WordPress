@@ -140,6 +140,58 @@ final class MAD4B_SCP_Authorization {
 		$costs = MAD4B_SCP_Budgets::costs_for( $ability_name, $provider, $authorization_input );
 		if ( is_wp_error( $costs ) ) return $costs;
 
+		if ( ! class_exists( 'MAD4B_SCP_Policy_Resolution' ) ) {
+			return self::error( 'mad4b_policy_resolution_unavailable', 'Deterministic policy resolution is unavailable.' );
+		}
+		$operating_mode = MAD4B_SCP_Policy_Resolution::current_operating_mode();
+		if ( is_wp_error( $operating_mode ) ) return $operating_mode;
+		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$base_policy_facts = array(
+			'hard_deny' => false,
+			'kill_switch_active' => false,
+			'environment_allowed' => MAD4B_SCP_Policy_Resolution::environment_allowed( $environment ),
+			'authority_allowed' => true,
+			'certification_allowed' => true,
+			'quality_release_allowed' => true,
+			'approval_required' => (bool) $approval_required,
+			'approval_satisfied' => ! $approval_required || '' !== $approval_ticket_id,
+			'grant_allowed' => true,
+			'feature_enabled' => true,
+			'environment' => $environment,
+			'capability' => (string) $ability_name,
+			'target_fingerprint' => $target_fingerprint,
+			'operating_mode' => $operating_mode,
+			'policy_versions' => array(
+				'policy_resolution_config' => MAD4B_SCP_Policy_Resolution::config_digest(),
+				'site_profile_revision' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? (string) MAD4B_SCP_Site_Profile::revision() : '0',
+				'site_profile_digest' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? (string) MAD4B_SCP_Site_Profile::profile_digest() : '',
+				'grant_id' => isset( $grant['id'] ) ? (string) (int) $grant['id'] : '0',
+			),
+			'required_approvals' => $approval_required ? array( 'exact_short_lived_' . $ticket_class . '_ticket' ) : array(),
+		);
+		$tightening = apply_filters(
+			'mad4b_scp_policy_resolution_tightening',
+			array(),
+			$base_policy_facts,
+			$ability_name,
+			$provider,
+			$authorization_input,
+			$agent,
+			$identity
+		);
+		if ( ! is_array( $tightening ) ) return self::error( 'mad4b_policy_resolution_tightening_invalid', 'Policy tightening extension returned an invalid value.' );
+		$policy_facts = MAD4B_SCP_Policy_Resolution::tighten( $base_policy_facts, $tightening );
+		$policy_resolution = MAD4B_SCP_Policy_Resolution::resolve( $policy_facts );
+		if ( is_wp_error( $policy_resolution ) ) return $policy_resolution;
+		if ( 'ALLOW' !== (string) $policy_resolution['decision'] ) {
+			$decision = (string) $policy_resolution['decision'];
+			$code = 'mad4b_policy_resolution_denied';
+			if ( 'BLOCKED' === $decision ) $code = 'mad4b_policy_resolution_blocked';
+			elseif ( 'REQUIRE_APPROVAL' === $decision ) $code = 'mad4b_policy_resolution_approval_required';
+			elseif ( 'DEFER' === $decision ) $code = 'mad4b_policy_resolution_deferred';
+			return self::error( $code, 'Deterministic policy resolution did not allow this mutation: ' . (string) $policy_resolution['reason_code'] );
+		}
+
 		return array(
 			'allowed' => true,
 			'reason_code' => 'preflight_allowed',
@@ -163,6 +215,9 @@ final class MAD4B_SCP_Authorization {
 			'ticket_class' => $ticket_class,
 			'target_fingerprint' => $target_fingerprint,
 			'budget_costs' => $costs,
+			'policy_resolution' => $policy_resolution,
+			'policy_decision_sha256' => isset( $policy_resolution['decision_sha256'] ) ? (string) $policy_resolution['decision_sha256'] : '',
+			'operating_mode' => $operating_mode,
 			'context_receipt_sha256' => is_array( $authorization_input ) && isset( $authorization_input['_mad4b_context_receipt']['receipt_sha256'] ) ? (string) $authorization_input['_mad4b_context_receipt']['receipt_sha256'] : '',
 			'execution_side_effects' => false,
 		);
