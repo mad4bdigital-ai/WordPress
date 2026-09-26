@@ -13,35 +13,6 @@ if ( ! function_exists( 'sanitize_key' ) ) {
 	}
 }
 
-$GLOBALS['mad4b_brand_test_get_posts_args'] = array();
-$GLOBALS['mad4b_brand_test_wpml_switches'] = array();
-if ( ! function_exists( 'has_action' ) ) {
-	function has_action( $hook ) {
-		return 'wpml_switch_language' === $hook;
-	}
-}
-if ( ! function_exists( 'has_filter' ) ) {
-	function has_filter( $hook ) {
-		return in_array( $hook, array( 'wpml_active_languages', 'wpml_current_language' ), true );
-	}
-}
-if ( ! function_exists( 'apply_filters' ) ) {
-	function apply_filters( $hook, $value ) {
-		if ( 'wpml_current_language' === $hook ) return 'en';
-		return $value;
-	}
-}
-if ( ! function_exists( 'do_action' ) ) {
-	function do_action( $hook, $value = null ) {
-		if ( 'wpml_switch_language' === $hook ) $GLOBALS['mad4b_brand_test_wpml_switches'][] = (string) $value;
-	}
-}
-if ( ! function_exists( 'get_posts' ) ) {
-	function get_posts( $args ) {
-		$GLOBALS['mad4b_brand_test_get_posts_args'][] = $args;
-		return array();
-	}
-}
 require_once $root . '/includes/class-mad4b-scp-brand-context-builder.php';
 
 $fail = static function ( $message ) {
@@ -57,11 +28,11 @@ $invoke = static function ( $name, array $args = array() ) {
 	return $method->invokeArgs( null, $args );
 };
 
-$invoke( 'query_posts_for_language', array( array( 'tours-and-activities' ), 'fr', 3 ) );
-$wpml_query = end( $GLOBALS['mad4b_brand_test_get_posts_args'] );
+$wpml_query = $invoke( 'language_query_args', array( array( 'tours-and-activities' ), 'fr', 3, true ) );
 $check( is_array( $wpml_query ) && isset( $wpml_query['lang'] ) && 'fr' === $wpml_query['lang'], 'WPML evidence query did not bind the requested language explicitly' );
 $check( isset( $wpml_query['suppress_filters'] ) && false === $wpml_query['suppress_filters'], 'WPML evidence query unexpectedly suppressed language filters' );
-$check( array( 'fr', 'en' ) === $GLOBALS['mad4b_brand_test_wpml_switches'], 'WPML language context was not restored after evidence query' );
+$plain_query = $invoke( 'language_query_args', array( array( 'tours-and-activities' ), 'fr', 3, false ) );
+$check( ! isset( $plain_query['lang'] ), 'non-multilingual evidence query unexpectedly forced a language filter' );
 
 $good = array();
 for ( $i = 0; $i < 16; ++$i ) {
