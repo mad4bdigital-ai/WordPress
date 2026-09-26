@@ -12,6 +12,15 @@ required_parity_markers = [
     "const CONTRACT = 'mad4b.remote-operation-parity.v1';",
     "const STATUS_ABILITY = 'mad4b/remote-operation-parity-status';",
     "const DISCOVER_ABILITY = 'mad4b/operation-discover';",
+    "const ENROLLMENT_DISPATCH_ABILITY = 'mad4b/enrollment-execute';",
+    "const ENROLLMENT_DISPATCH_CONTRACT = 'mad4b.enrollment-dispatch.v1';",
+    "public static function dispatch_enrollment_ability( $input )",
+    "self::enrollment_abilities()",
+    "mad4b_enrollment_dispatch_target_not_allowed",
+    "mad4b_enrollment_dispatch_write_surface_leak",
+    "mad4b_enrollment_dispatch_privileged_surface_leak",
+    "mad4b_enrollment_dispatch_target_metadata_invalid",
+    "'surface' => 'enrollment-dispatch'",
     "const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';",
     "const FRONTEND_SAMPLE_ABILITY = 'mad4b/frontend-performance-sample-run';",
     "const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';",
@@ -109,6 +118,11 @@ for ability in [
 
 if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in servers:
     raise SystemExit('bounded enrollment server is not sourced from Remote Operation Parity enrollment inventory')
+
+if "'mad4b/enrollment-execute'" not in servers:
+    raise SystemExit('bounded enrollment dispatcher is not mounted on compact ChatGPT transport')
+if "array( 'mad4b/write-execute', 'mad4b/enrollment-execute' )" not in servers:
+    raise SystemExit('bounded enrollment dispatcher is not constrained to the compact direct mutation transport')
 
 write_start = servers.find("'mad4b-write' => array(")
 admin_start = servers.find("'mad4b-admin' => array(", write_start + 1)
