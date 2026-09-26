@@ -29,6 +29,7 @@ exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(en
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 enrollment_dispatch = (wp / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_text(encoding='utf-8')
+core_abilities = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 
 for marker in [
     "private static function request_is_wordpress_plugin_lifecycle()",
@@ -60,6 +61,22 @@ runtime_test = wp / 'tests' / 'enrollment-dispatch-runtime.php'
 if not runtime_test.is_file():
     raise SystemExit('bounded enrollment dispatcher runtime test is missing')
 subprocess.run(['php', str(runtime_test)], check=True)
+
+registration_runtime_test = wp / 'tests' / 'enrollment-dispatch-registration-runtime.php'
+if not registration_runtime_test.is_file():
+    raise SystemExit('bounded enrollment dispatcher registration-boundary runtime test is missing')
+subprocess.run(['php', str(registration_runtime_test)], check=True)
+
+for marker in [
+    "'enrollment_dispatch' === $permission",
+    "array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' )",
+    "has_filter( 'wp_register_ability_args', $write_augment )",
+    "remove_filter( 'wp_register_ability_args', $write_augment",
+    "finally",
+    "add_filter( 'wp_register_ability_args', $write_augment",
+]:
+    if marker not in core_abilities:
+        raise SystemExit(f'missing enrollment dispatcher write-augmentation isolation invariant: {marker}')
 
 for marker in [
     "public static function reconcile()",
