@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -70,4 +72,25 @@ assert "Prove durable execution runtime fault semantics" in critical_ci
 
 ids = {x["id"] for x in gate["gates"]}
 assert matrix["terminal_gate"] in ids
+
+# The Host Bridge/Runner is the durable remote alternative to hosting-terminal
+# work. Keep its executable contracts inside the Feature 007 baseline-owned CI
+# without widening a release-critical workflow.
+subprocess.check_call([
+    sys.executable,
+    str(ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"),
+])
+subprocess.check_call([
+    sys.executable,
+    str(ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-path-security-contract.py"),
+])
+subprocess.check_call([
+    sys.executable,
+    str(ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-runner-contract.py"),
+])
+subprocess.check_call([
+    "php",
+    str(ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/host-bridge-contract.php"),
+])
+
 print("FEATURE_007_BULK_CLOSURE_HARDENING: PASS")
