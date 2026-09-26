@@ -91,6 +91,9 @@ $direct_required = array(
 	'mad4b-write-discover',
 	'mad4b-write-info',
 	'mad4b-write-execute',
+	'mad4b-enrollment-discover',
+	'mad4b-enrollment-info',
+	'mad4b-enrollment-execute',
 	'mad4b-diagnostics-health',
 	'mad4b-runtime-authority-status',
 	'mad4b-connection-status',
@@ -111,8 +114,8 @@ foreach ( $direct_required as $tool_name ) {
 	}
 }
 
-// Enrollment implementation details remain registered internally, but the
-// single user-facing ChatGPT app must expose only the composite step-up.
+// Low-level enrollment implementation details remain internal. The compact
+// app may expose only bounded dispatch plus guarded composite step-up tools.
 $internal_only_direct_forbidden = array(
 	'mad4b-site-profile-feature-reenroll',
 	'mad4b-site-profile-write-enable',
