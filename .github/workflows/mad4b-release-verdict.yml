@@ -53,6 +53,115 @@ jobs:
             --policy .github/mad4b-repository-governance-policy.json \
             --output /tmp/mad4b-owner-attestation.json
 
+      - name: Verify bounded governance-apply repair bootstrap
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.number == 69 &&
+          github.event.pull_request.head.ref == 'chore/governance-apply-powershell-parse-20260926'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$BASE_SHA" = "8a0c12ef16023f042def7d42b760cdd847343e8a"
+
+          # The repair branch may contain only the parser repair, its executable
+          # regression contract, and this bounded release-verdict bootstrap.
+          gh api -H "Accept: application/vnd.github+json" \
+            "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files?per_page=100" \
+            > /tmp/mad4b-governance-repair-files.json
+
+          gh api -H "Accept: application/vnd.github+json" \
+            "repos/$GITHUB_REPOSITORY/rulesets/23968498?includes_parents=true" \
+            > /tmp/mad4b-governance-repair-live-ruleset.json
+
+          # Re-run the executable parser/tool contract in this merge-gate path.
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py
+
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          expected_files = sorted([
+              ".github/workflows/mad4b-release-verdict.yml",
+              "tools/Apply-Mad4bMasterRuleset.ps1",
+              "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py",
+          ])
+          rows = json.loads(Path("/tmp/mad4b-governance-repair-files.json").read_text(encoding="utf-8"))
+          observed_files = sorted(
+              str(row.get("filename") or "")
+              for row in rows
+              if isinstance(row, dict) and row.get("filename")
+          )
+          if observed_files != expected_files:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: changed-file set drift "
+                  f"expected={expected_files} observed={observed_files}"
+              )
+
+          live = json.loads(
+              Path("/tmp/mad4b-governance-repair-live-ruleset.json").read_text(encoding="utf-8")
+          )
+          if int(live.get("id") or 0) != 23968498:
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset id drift")
+          if live.get("name") != "MAD4B master release governance":
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset name drift")
+          if live.get("target") != "branch" or live.get("enforcement") != "active":
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset state drift")
+          if live.get("source_type") != "Repository" or live.get("source") != os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset ownership drift")
+          if live.get("bypass_actors") != []:
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: bypass actors are not empty")
+          conditions = live.get("conditions") or {}
+          ref_name = conditions.get("ref_name") or {}
+          if ref_name.get("include") != ["refs/heads/master"] or ref_name.get("exclude") != []:
+              raise SystemExit("GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: ruleset target ref drift")
+          if live.get("updated_at") != "2026-09-25T02:13:24.911+03:00":
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: legacy ruleset changed since reviewed snapshot"
+              )
+
+          required_rule = next(
+              (row for row in (live.get("rules") or []) if row.get("type") == "required_status_checks"),
+              None,
+          )
+          params = (required_rule or {}).get("parameters") or {}
+          required_checks = params.get("required_status_checks") or []
+          if required_checks != [
+              {"context": "Repository release verdict", "integration_id": 15368}
+          ]:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: legacy required-check state drift "
+                  f"observed={required_checks}"
+              )
+          if params.get("strict_required_status_checks_policy") is not True:
+              raise SystemExit(
+                  "GOVERNANCE_REPAIR_BOOTSTRAP_FAIL_CLOSED: strict status-check policy is not active"
+              )
+
+          evidence = {
+              "contract": "mad4b.governance-apply-repair-bootstrap.v1",
+              "ready": True,
+              "pull_request": 69,
+              "branch": "chore/governance-apply-powershell-parse-20260926",
+              "base_sha": os.environ["BASE_SHA"],
+              "head_sha": os.environ["SOURCE_SHA"],
+              "ruleset_id": 23968498,
+              "ruleset_updated_at": live.get("updated_at"),
+              "exact_changed_files": observed_files,
+              "powershell_parser_contract_verified": True,
+              "zero_bypass_actors_verified": True,
+              "legacy_ruleset_snapshot_verified": True,
+              "target_governance_activation_still_required_post_merge": True,
+              "production_authorized": False,
+          }
+          Path("/tmp/mad4b-governance-apply-repair-bootstrap.json").write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(evidence, indent=2, sort_keys=True))
+          PY
+
       - name: Wait for exact-head critical checks
         env:
           GH_TOKEN: ${{ github.token }}
@@ -242,6 +351,24 @@ jobs:
               and os.environ.get('HEAD_BRANCH', '').strip() == bootstrap_root_branch
               and os.environ.get('PR_NUMBER', '').strip() == '66'
           )
+          governance_apply_repair_branch = 'chore/governance-apply-powershell-parse-20260926'
+          governance_apply_repair_expected_base = '8a0c12ef16023f042def7d42b760cdd847343e8a'
+          governance_apply_repair_expected_paths = {
+              '.github/workflows/mad4b-release-verdict.yml',
+              'tools/Apply-Mad4bMasterRuleset.ps1',
+              'wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py',
+          }
+          governance_apply_repair_bootstrap = (
+              os.environ.get('GITHUB_EVENT_NAME') == 'pull_request'
+              and os.environ.get('HEAD_BRANCH', '').strip() == governance_apply_repair_branch
+              and os.environ.get('PR_NUMBER', '').strip() == '69'
+              and os.environ.get('BASE_SHA', '').strip() == governance_apply_repair_expected_base
+          )
+          if governance_apply_repair_bootstrap and set(changed) != governance_apply_repair_expected_paths:
+              raise SystemExit(
+                  'governance-apply repair bootstrap changed-file set drift: '
+                  f'expected={sorted(governance_apply_repair_expected_paths)} actual={changed}'
+              )
           context_authority_affecting = any(
               fnmatch.fnmatch(path, pattern)
               for path in changed
@@ -267,7 +394,13 @@ jobs:
               mode = 'repository_non_runtime'
               artifact_required = False
 
-          if bootstrap_exception:
+          if governance_apply_repair_bootstrap:
+              # Break only the parser-repair deadlock. The trusted base-owned
+              # feature-boundary check and exact-head owner attestation still gate merge.
+              required = ['Repository feature boundary']
+              mode = 'governance_apply_repair_bootstrap'
+              artifact_required = False
+          elif bootstrap_exception:
               required = [name for name in required if name != 'Repository feature boundary']
               mode = 'repository_governance_bootstrap'
               artifact_required = False
@@ -290,6 +423,10 @@ jobs:
                   'required_checks': required,
                   'bootstrap_exception': bootstrap_exception,
                   'bootstrap_root_branch': bootstrap_root_branch if bootstrap_exception else '',
+                  'governance_apply_repair_bootstrap': governance_apply_repair_bootstrap,
+                  'governance_apply_repair_branch': governance_apply_repair_branch if governance_apply_repair_bootstrap else '',
+                  'governance_apply_repair_expected_base': governance_apply_repair_expected_base if governance_apply_repair_bootstrap else '',
+                  'governance_apply_repair_expected_paths': sorted(governance_apply_repair_expected_paths) if governance_apply_repair_bootstrap else [],
                   'context_authority_affecting': context_authority_affecting,
                   'narrow_release_evidence_paths': sorted(release_evidence_paths),
                   'runtime_patterns': sorted(runtime_patterns),
@@ -369,6 +506,30 @@ jobs:
           required=[x.strip() for x in open(sys.argv[1],encoding='utf-8') if x.strip()]
           scope=json.load(open(sys.argv[2],encoding='utf-8'))
           artifact_required=bool(scope.get('artifact_required'))
+
+          governance_apply_repair_bootstrap=bool(scope.get('governance_apply_repair_bootstrap'))
+          governance_apply_repair_status={}
+          governance_apply_repair_bootstrap_ready=False
+          if governance_apply_repair_bootstrap:
+              repair_path=Path('/tmp/mad4b-governance-apply-repair-bootstrap.json')
+              if repair_path.is_file():
+                  try:
+                      governance_apply_repair_status=json.loads(repair_path.read_text(encoding='utf-8'))
+                  except Exception:
+                      governance_apply_repair_status={}
+              governance_apply_repair_bootstrap_ready=bool(
+                  governance_apply_repair_status.get('ready') is True
+                  and governance_apply_repair_status.get('contract')=='mad4b.governance-apply-repair-bootstrap.v1'
+                  and governance_apply_repair_status.get('pull_request')==69
+                  and governance_apply_repair_status.get('branch')=='chore/governance-apply-powershell-parse-20260926'
+                  and governance_apply_repair_status.get('base_sha')==os.environ.get('BASE_SHA','')
+                  and governance_apply_repair_status.get('head_sha')==os.environ.get('SOURCE_SHA','')
+                  and governance_apply_repair_status.get('ruleset_id')==23968498
+                  and governance_apply_repair_status.get('zero_bypass_actors_verified') is True
+                  and governance_apply_repair_status.get('powershell_parser_contract_verified') is True
+                  and governance_apply_repair_status.get('legacy_ruleset_snapshot_verified') is True
+                  and governance_apply_repair_status.get('target_governance_activation_still_required_post_merge') is True
+              )
 
           governance_output=Path('/tmp/mad4b-release-verdict-governance.json')
           bootstrap_exception=bool(scope.get('bootstrap_exception'))
@@ -473,7 +634,7 @@ jobs:
                   owner_attestation_ready=False
           merge_gate_ready=bool(
               critical_checks_ready
-              and governance_ready
+              and (governance_ready or governance_apply_repair_bootstrap_ready)
               and owner_attestation_ready
           )
 
@@ -610,6 +771,9 @@ jobs:
               'changed_files':scope.get('changed_files',[]),
               'bootstrap_exception':bool(scope.get('bootstrap_exception')),
               'bootstrap_root_branch':scope.get('bootstrap_root_branch',''),
+              'governance_apply_repair_bootstrap':governance_apply_repair_bootstrap,
+              'governance_apply_repair_bootstrap_ready':governance_apply_repair_bootstrap_ready,
+              'governance_apply_repair_bootstrap_status':governance_apply_repair_status,
               'context_authority_affecting':bool(scope.get('context_authority_affecting')),
               'repository_merge_gate_ready':merge_gate_ready,
               'repository_release_ready':bool(
@@ -640,7 +804,8 @@ jobs:
                   'Runtime-affecting and release-evidence changes require an exact-head General Distribution artifact and verify its internal canonical identity before repository_release_ready can become true.',
                   'Repository-non-runtime changes may satisfy repository_merge_gate_ready without claiming repository_release_ready.',
                   'The only feature-boundary bootstrap exception is bound to PR #66 on branch chore/bootstrap-feature-boundary-policy-20260925, verifies the live ruleset against the PR-base policy plus a monotonic target transition, still requires exact-head Owner Attestation, and disappears once the root workflow is on master.',
-                  'Outside that one-time feature-boundary bootstrap, repository governance must verify ready for every merge-gate PASS.',
+                  'Outside that one-time feature-boundary bootstrap, repository governance must verify ready for every merge-gate PASS, except the exact PR #69 parser-repair bootstrap bound to the reviewed legacy ruleset snapshot.',
+                  'The PR #69 governance-apply repair bootstrap does not claim target governance is active; it only allows the parser repair to merge so the separately authorized post-merge Remote Apply can reconcile and attest the canonical ruleset.',
                   'Every master-bound pull request requires an authorized OWNER_ATTEST_SINGLE_OWNER comment bound to the exact current head SHA.',
                   'Repository success does not substitute for live ETG Staging acceptance.',
                   'Live performance and rollback drill remain external deployment gates.',
@@ -657,7 +822,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mad4b-release-verdict-${{ env.SOURCE_SHA }}
-          path: MAD4B-RELEASE-VERDICT.json
+          path: |
+            MAD4B-RELEASE-VERDICT.json
+            /tmp/mad4b-governance-apply-repair-bootstrap.json
           if-no-files-found: error
           retention-days: 30
 
