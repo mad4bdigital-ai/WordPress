@@ -12,6 +12,10 @@ required_parity_markers = [
     "const CONTRACT = 'mad4b.remote-operation-parity.v1';",
     "const STATUS_ABILITY = 'mad4b/remote-operation-parity-status';",
     "const DISCOVER_ABILITY = 'mad4b/operation-discover';",
+    "const ENROLLMENT_DISCOVER_ABILITY = 'mad4b/enrollment-discover';",
+    "const ENROLLMENT_INFO_ABILITY = 'mad4b/enrollment-info';",
+    "const ENROLLMENT_EXECUTE_ABILITY = 'mad4b/enrollment-execute';",
+    "const ENROLLMENT_DISPATCH_CONTRACT = 'mad4b.enrollment-dispatch.v1';",
     "const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';",
     "const FRONTEND_SAMPLE_ABILITY = 'mad4b/frontend-performance-sample-run';",
     "const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';",
@@ -70,6 +74,17 @@ required_parity_markers = [
     "refresh_skills_lock",
     "mad4b_remote_skill_lock_reclaim_raced",
     "mad4b_remote_skill_lock_heartbeat_raced",
+    "public static function chatgpt_enrollment_dispatch_abilities()",
+    "public static function enrollment_discover(",
+    "public static function enrollment_info(",
+    "public static function enrollment_execute(",
+    "mad4b_enrollment_dispatch_target_denied",
+    "mad4b_enrollment_dispatch_target_contract_mismatch",
+    "$result = $ability->execute( $target_input );",
+    "'generic_remote_admin_exposed' => false",
+    "'candidate_binding_exposed' => false",
+    "'grant_reconciliation_exposed' => false",
+    "'full_staging_authority_exposed' => false",
 ]
 for marker in required_parity_markers:
     if marker not in parity:
@@ -110,6 +125,29 @@ for ability in [
 if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in servers:
     raise SystemExit('bounded enrollment server is not sourced from Remote Operation Parity enrollment inventory')
 
+for ability in [
+    'mad4b/enrollment-discover',
+    'mad4b/enrollment-info',
+    'mad4b/enrollment-execute',
+]:
+    if servers.count(ability) < 1:
+        raise SystemExit(f'{ability} missing from compact ChatGPT transport')
+
+if "array( 'mad4b/write-execute', 'mad4b/enrollment-execute' )" not in servers:
+    raise SystemExit('bounded enrollment execute dispatcher is not explicitly classified as a direct compact mutation transport')
+
+dispatch_section = parity.split('public static function chatgpt_enrollment_dispatch_abilities()', 1)[1].split('public static function register_abilities()', 1)[0]
+for forbidden in [
+    'mad4b/staging-write-candidate-bind',
+    'mad4b/staging-write-grant-reconcile',
+    'mad4b/full-staging-authority-apply',
+    'mad4b/database-raw-query',
+    'WORK_CLAIM_ABILITY',
+    'WORK_COMPLETE_ABILITY',
+]:
+    if forbidden in dispatch_section:
+        raise SystemExit(f'forbidden high-authority target leaked into compact enrollment dispatcher: {forbidden}')
+
 write_start = servers.find("'mad4b-write' => array(")
 admin_start = servers.find("'mad4b-admin' => array(", write_start + 1)
 write_section = servers[write_start:admin_start] if write_start >= 0 and admin_start > write_start else ''
@@ -118,6 +156,7 @@ for ability in [
     'mad4b/frontend-performance-sample-run',
     'mad4b/admin-query-performance-apply',
     'mad4b/admin-query-performance-reconcile',
+    'mad4b/enrollment-execute',
 ]:
     if ability in write_section:
         raise SystemExit(f'{ability} unexpectedly entered normal governed-write inventory')
