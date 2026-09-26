@@ -58,10 +58,9 @@ function mad4b_assert( $condition, $message ) {
 $core = 'mad4b/content-update-post';
 $provider = 'jetsmartfilters/update-filter-meta';
 $read = 'mad4b/site-info';
-$enrollment = 'mad4b/reconcile-managed-skills';
 $raw = 'mad4b/database-raw-query';
 MAD4B_SCP_Servers::$external = array( $core, $provider );
-MAD4B_SCP_Servers::$chatgpt = array( $core, $provider, $read, $enrollment );
+MAD4B_SCP_Servers::$chatgpt = array( $core, $provider, $read );
 MAD4B_SCP_Servers::$write = array( $core );
 MAD4B_SCP_Staging_Write_Authority::$eligible = array( $core );
 
@@ -76,13 +75,6 @@ MAD4B_SCP_Staging_Write_Authority::$effective = false;
 $result = MAD4B_SCP_Transport_Context::resolve_server_for_ability( 'mad4b-chatgpt', $core );
 mad4b_assert( is_wp_error( $result ), 'Visible write must fail closed while Staging write authority is unavailable.' );
 mad4b_assert( 'mad4b_write_authority_not_ready' === $result->get_error_code(), 'Unavailable write authority returned the wrong error.' );
-// Bounded Enrollment maintenance is mounted directly on the compact ChatGPT
-// transport and is deliberately not a normal external write candidate. It must
-// remain executable through its own native permission/exact-build contract even
-// before normal governed Write Authority is reconciled.
-$result = MAD4B_SCP_Transport_Context::resolve_server_for_ability( 'mad4b-chatgpt', $enrollment );
-mad4b_assert( 'mad4b-chatgpt' === $result, 'Bounded Managed Skills Enrollment operation must remain on ChatGPT transport.' );
-
 MAD4B_SCP_Staging_Write_Authority::$effective = true;
 
 // A registered provider write may be externally discoverable while gated, but
