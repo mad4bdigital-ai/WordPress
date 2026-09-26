@@ -1571,10 +1571,14 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
             result = existing.get("result")
             if not isinstance(result, dict):
                 raise ValueError("Host Runner write receipt result is missing")
-            relative = _workspace_relative(str(result.get("relative_path") or ""))
             expected_after = str(result.get("after_sha256") or "")
-            target = Path(profile["runner_workspace"]) / relative
-            current = workspace_file_identity(target) if Path(profile["runner_workspace"]).exists() else "ABSENT"
+            if verified["operation_id"] == "wordpress_plugin_deploy":
+                plugin_root = Path(profile["wordpress_root"]) / "wp-content" / "plugins" / PLUGIN_SLUG
+                current = _control_plane_identity_digest(_installed_control_plane_identity(plugin_root))
+            else:
+                relative = _workspace_relative(str(result.get("relative_path") or ""))
+                target = Path(profile["runner_workspace"]) / relative
+                current = workspace_file_identity(target) if Path(profile["runner_workspace"]).exists() else "ABSENT"
             if not hmac.compare_digest(current, expected_after):
                 raise RuntimeError("HOST_RUNNER_REPLAY_RECONCILIATION_REQUIRED")
             existing["replay_readback_verdict"] = "PASS"
@@ -1623,7 +1627,7 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
             raise RuntimeError("Host Runner durable receipt readback failed")
     except Exception:
         if is_write:
-            rolled_back = _rollback_workspace_replace(result)
+            rolled_back = _rollback_write_result(verified["operation_id"], result)
             journal_path = Path(str(result.get("_journal_path") or ""))
             if journal_path:
                 state = {
@@ -1841,6 +1845,12 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
                     current_identity = workspace_file_identity(target)
                 else:
                     current_identity = "ABSENT"
+            elif operation_id == "wordpress_plugin_deploy":
+                plugin_root = Path(profile["wordpress_root"]) / "wp-content" / "plugins" / PLUGIN_SLUG
+                try:
+                    current_identity = _control_plane_identity_digest(_installed_control_plane_identity(plugin_root))
+                except (OSError, ValueError):
+                    current_identity = "INVALID"
 
             superseded_by = verified_rollbacks.get(job_id, "")
             if receipt_present and current_identity and hmac.compare_digest(current_identity, expected_after):
