@@ -2,7 +2,9 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
+dispatch = (root / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_text(encoding='utf-8')
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+oauth = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 perf = (root / 'includes' / 'class-mad4b-scp-admin-query-performance.php').read_text(encoding='utf-8')
 generalization = (root.parents[2] / 'specs' / '007-content-intelligence-workflow-platform' / 'contracts' / 'generalization-rules.md').read_text(encoding='utf-8')
@@ -16,6 +18,10 @@ required_parity_markers = [
     "const FRONTEND_SAMPLE_ABILITY = 'mad4b/frontend-performance-sample-run';",
     "const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';",
     "const PERFORMANCE_RECONCILE_ABILITY = 'mad4b/admin-query-performance-reconcile';",
+    "const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';",
+    "'external_executor_work_completion' => array(",
+    "'remote_ability' => self::WORK_COMPLETE_ABILITY",
+    "'remote_mode' => 'leased_semantic_work_completion'",
     "const PERFORMANCE_RECONCILE_CONFIRMATION = 'RECONCILE STALE STAGING PERFORMANCE INDEXES';",
     "'generic_remote_admin' => false",
     "'production_mutation_allowed' => false",
@@ -103,6 +109,8 @@ for ability in [
     'mad4b/frontend-performance-sample-run',
     'mad4b/admin-query-performance-apply',
     'mad4b/admin-query-performance-reconcile',
+    'mad4b/remote-operation-work-claim',
+    'mad4b/remote-operation-work-complete',
 ]:
     if ability not in parity:
         raise SystemExit(f'{ability} missing from Remote Operation Parity enrollment inventory')
@@ -118,12 +126,68 @@ for ability in [
     'mad4b/frontend-performance-sample-run',
     'mad4b/admin-query-performance-apply',
     'mad4b/admin-query-performance-reconcile',
+    'mad4b/remote-operation-work-claim',
+    'mad4b/remote-operation-work-complete',
 ]:
     if ability in write_section:
         raise SystemExit(f'{ability} unexpectedly entered normal governed-write inventory')
 
 if "class-mad4b-scp-remote-operation-parity.php" not in main:
     raise SystemExit('remote operation parity runtime is not loaded by the plugin')
+if "class-mad4b-scp-enrollment-dispatch.php" not in main:
+    raise SystemExit('bounded enrollment dispatcher is not loaded by the plugin')
+
+required_dispatch_markers = [
+    "const CONTRACT = 'mad4b.chatgpt-enrollment-dispatch.v1'",
+    "const DISCOVER_ABILITY = 'mad4b/enrollment-discover'",
+    "const INFO_ABILITY = 'mad4b/enrollment-info'",
+    "const EXECUTE_ABILITY = 'mad4b/enrollment-execute'",
+    "MAD4B_SCP_Remote_Operation_Parity::catalog()",
+    "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()",
+    "'mad4b-enrollment' !==",
+    "human_decision_required",
+    "'deny' !==",
+    "remote_parity_ready",
+    "execution_eligible",
+    "remote_registered",
+    "expected_registration_digest",
+    "expected_dispatch_policy_digest",
+    "expected_input_schema_sha256",
+    "dispatch_policy_digest",
+    "MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE",
+    "verified_bearer_has_scope",
+    "verified_bearer_client_is",
+    "MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID",
+    "generic_raw_sql_breakglass_enabled",
+    "production_mutation_allowed' => false",
+    "breakglass_included' => false",
+    "human_decision_operations_excluded' => true",
+]
+for marker in required_dispatch_markers:
+    if marker not in dispatch:
+        raise SystemExit(f'missing bounded enrollment dispatcher invariant: {marker}')
+
+for forbidden in [
+    'shell_exec(',
+    'exec(',
+    'system(',
+    'passthru(',
+    'proc_open(',
+    'eval(',
+    'mad4b/database-raw-query',
+]:
+    if forbidden in dispatch:
+        raise SystemExit(f'forbidden generic execution primitive in enrollment dispatcher: {forbidden}')
+
+for marker in [
+    "MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools()",
+    "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY",
+]:
+    if marker not in servers:
+        raise SystemExit(f'ChatGPT server catalog missing enrollment dispatcher projection: {marker}')
+
+if "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY" not in oauth:
+    raise SystemExit('OAuth resource bridge does not advertise authority step-up when enrollment dispatch is available')
 
 for marker in [
     'public static function enqueue_explicit(',
