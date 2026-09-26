@@ -126,7 +126,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
             'human_decision_required' => $human,
             'operation_id' => '',
             'catalog_contract' => 'mad4b.remote-operation-parity.v1',
-            'catalog_version' => 2,
+            'catalog_version' => 3,
             'registration_digest' => str_repeat( $digit, 64 ),
             'remote_registered' => true,
             'manual_only' => false,
