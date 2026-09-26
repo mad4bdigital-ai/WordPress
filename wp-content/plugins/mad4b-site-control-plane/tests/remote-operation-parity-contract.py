@@ -12,6 +12,7 @@ contract = (root.parents[2] / 'specs' / '007-content-intelligence-workflow-platf
 
 required_parity_markers = [
     "const CONTRACT = 'mad4b.remote-operation-parity.v1';",
+    "const CATALOG_VERSION = 3;",
     "const STATUS_ABILITY = 'mad4b/remote-operation-parity-status';",
     "const DISCOVER_ABILITY = 'mad4b/operation-discover';",
     "const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';",
@@ -46,9 +47,11 @@ required_parity_markers = [
     "'production_policy'",
     "'human_decision_required'",
     "'remote_caller_role'",
+    "registration_remote_caller_role_invalid",
+    "array( 'operator', 'external_executor', 'owner', 'system' )",
     "apply_filters( 'mad4b_scp_remote_operation_catalog', $rows )",
     "$row['catalog_contract'] = self::CONTRACT;",
-    "$row['catalog_version'] = 2;",
+    "$row['catalog_version'] = self::CATALOG_VERSION;",
     "'registration_digest'",
     "'registrar_id'",
     "'source_plugin'",
