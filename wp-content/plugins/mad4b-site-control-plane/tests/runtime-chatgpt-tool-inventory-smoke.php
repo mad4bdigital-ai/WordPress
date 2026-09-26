@@ -125,6 +125,10 @@ foreach ( $internal_only_direct_forbidden as $tool_name ) {
 	}
 }
 
+if ( in_array( 'mad4b-reconcile-managed-skills', $actual_names, true ) ) {
+	$fail( 'Managed Skills reconciliation must remain behind write-execute instead of becoming a direct compact mutation tool.' );
+}
+
 // Heavy/read-only inventory stays out of tools/list so client Refresh remains
 // bounded. These abilities remain in the governed capability universe and are
 // reachable only through the read-only discovery/info/execute surface.
@@ -267,6 +271,19 @@ if ( is_wp_error( $package_write_info ) || empty( $package_write_info['input_sch
 }
 if ( ! array_key_exists( 'runtime_eligible', $package_write_info ) ) {
 	$fail( 'Write info omitted runtime eligibility.', $package_write_info );
+}
+
+$skills_write_info = $write_info->execute( array( 'ability_name' => 'mad4b/reconcile-managed-skills' ) );
+if ( is_wp_error( $skills_write_info )
+	|| 'bounded_enrollment_bootstrap' !== (string) ( $skills_write_info['dispatch_class'] ?? '' )
+	|| empty( $skills_write_info['runtime_eligible'] )
+	|| empty( $skills_write_info['input_schema_sha256'] )
+	|| 64 !== strlen( (string) $skills_write_info['input_schema_sha256'] ) ) {
+	$fail( 'Write info did not expose the bounded Managed Skills bootstrap contract.', $skills_write_info );
+}
+if ( in_array( 'mad4b/reconcile-managed-skills', MAD4B_SCP_Servers::external_write_tools(), true )
+	|| in_array( 'mad4b/reconcile-managed-skills', MAD4B_SCP_Servers::write_tools(), true ) ) {
+	$fail( 'Managed Skills bootstrap leaked into the normal governed write inventory.' );
 }
 $write_attempt = $write_execute->execute(
 	array(
