@@ -24,6 +24,11 @@ final class MAD4B_SCP_Remote_Work_Queue {
 				'authority_surface' => 'mad4b-enrollment',
 				'production_policy' => 'deny',
 			),
+			'browser_acceptance_execution' => array(
+				'executor' => 'external_browser_agent',
+				'authority_surface' => 'mad4b-enrollment',
+				'production_policy' => 'deny',
+			),
 		);
 	}
 
