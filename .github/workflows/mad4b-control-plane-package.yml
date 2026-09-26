@@ -163,55 +163,81 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import json
+          import re
           from pathlib import Path
 
           root = Path('wp-content/plugins/mad4b-site-control-plane')
-          seed = root / 'skill-seeds'
-          portable = Path('plugins/mad4b-wordpress/skills')
-          manifest_path = root / 'config/skill-seed-manifest.json'
-          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+          manifest_path = root / 'config' / 'skill-seed-manifest.json'
+          seed_root = root / 'skill-seeds'
+          portable_root = Path('plugins/mad4b-wordpress/skills')
 
-          if manifest.get('contract') != 'mad4b.skill-seed-manifest.v1':
-              raise SystemExit('canonical Skill manifest contract mismatch')
+          if not seed_root.is_dir() or not portable_root.is_dir():
+              raise SystemExit('canonical or portable Skill root missing')
 
-          rows = manifest.get('skills')
-          if not isinstance(rows, list):
-              raise SystemExit('canonical Skill manifest rows missing')
+          seed_names = {
+              p.parent.name
+              for p in seed_root.glob('*/SKILL.md')
+              if p.is_file()
+          }
+          portable_names = {
+              p.parent.name
+              for p in portable_root.glob('*/SKILL.md')
+              if p.is_file()
+          }
+          if not seed_names:
+              raise SystemExit('canonical Skill seed inventory is empty')
+          for name in sorted(seed_names | portable_names):
+              if not re.fullmatch(r'[a-z0-9][a-z0-9-]{1,95}', name):
+                  raise SystemExit(f'unsafe Skill name: {name!r}')
+          if seed_names != portable_names:
+              raise SystemExit(
+                  'canonical/portable Skill inventory drift '
+                  f'canonical_only={sorted(seed_names-portable_names)} '
+                  f'portable_only={sorted(portable_names-seed_names)}'
+              )
 
-          manifest_names = []
-          enabled_names = []
-          for row in rows:
-              if not isinstance(row, dict):
-                  raise SystemExit('canonical Skill manifest contains a non-object row')
-              name = str(row.get('name') or '').strip()
-              if not name:
-                  raise SystemExit('canonical Skill manifest contains a row without a name')
-              manifest_names.append(name)
-              if row.get('enabled') is True:
-                  enabled_names.append(name)
+          seed_version = None
+          inventory_source = 'seed_tree'
+          if manifest_path.is_file():
+              manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+              if manifest.get('contract') != 'mad4b.skill-seed-manifest.v1':
+                  raise SystemExit('canonical Skill manifest contract invalid')
+              seed_version = manifest.get('seed_version')
+              if not isinstance(seed_version, int) or seed_version < 1:
+                  raise SystemExit('canonical Skill manifest seed_version invalid')
+              rows = manifest.get('skills')
+              if not isinstance(rows, list) or not rows:
+                  raise SystemExit('canonical Skill manifest inventory missing')
 
-          if len(manifest_names) != len(set(manifest_names)):
-              raise SystemExit('canonical Skill manifest contains duplicate package names')
+              names = []
+              for row in rows:
+                  if not isinstance(row, dict):
+                      raise SystemExit('canonical Skill manifest row must be an object')
+                  name = str(row.get('name') or '')
+                  if not re.fullmatch(r'[a-z0-9][a-z0-9-]{1,95}', name):
+                      raise SystemExit(f'unsafe canonical Skill name: {name!r}')
+                  names.append(name)
+              if len(names) != len(set(names)):
+                  raise SystemExit('duplicate canonical Skill name in manifest')
+              manifest_names = set(names)
+              if manifest_names != seed_names:
+                  raise SystemExit(
+                      'canonical Skill manifest/tree drift '
+                      f'manifest_only={sorted(manifest_names-seed_names)} '
+                      f'tree_only={sorted(seed_names-manifest_names)}'
+                  )
+              inventory_source = 'manifest'
 
-          expected = sorted(manifest_names)
-          seeded = sorted(p.parent.name for p in seed.glob('*/SKILL.md'))
-          if seeded != expected:
-              raise SystemExit(f'canonical Skill seed inventory mismatch expected={expected} actual={seeded}')
-
-          for name in expected:
-              seed_file = seed / name / 'SKILL.md'
-              portable_file = portable / name / 'SKILL.md'
-              if not seed_file.is_file():
-                  raise SystemExit(f'canonical packaged Skill missing: {name}')
-              if not portable_file.is_file():
-                  raise SystemExit(f'portable Skill missing: {name}')
-              if seed_file.read_bytes() != portable_file.read_bytes():
+          for name in sorted(seed_names):
+              seed = seed_root / name / 'SKILL.md'
+              portable = portable_root / name / 'SKILL.md'
+              if seed.read_bytes() != portable.read_bytes():
                   raise SystemExit(f'portable/canonical Skill bytes drifted: {name}')
 
+          version_text = f' seed_version={seed_version}' if seed_version is not None else ''
           print(
               'canonical Skill seed package: PASS '
-              f'packaged_count={len(expected)} enabled_count={len(enabled_names)} '
-              f'seed_version={manifest.get("seed_version")}'
+              f'inventory_source={inventory_source}{version_text} count={len(seed_names)}'
           )
           PY
 
@@ -663,7 +689,79 @@ jobs:
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
-          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/skill-seeds/wordpress-site-diagnostics/SKILL.md'
+          python3 - "$control_zip" "$plugin" <<'PY'
+          import json, re, sys, zipfile
+          from pathlib import Path
+
+          archive = Path(sys.argv[1])
+          source_plugin = Path(sys.argv[2])
+          manifest_path = source_plugin / 'config' / 'skill-seed-manifest.json'
+          seed_root = source_plugin / 'skill-seeds'
+          prefix = 'mad4b-site-control-plane/skill-seeds/'
+          suffix = '/SKILL.md'
+
+          if manifest_path.is_file():
+              manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+              if manifest.get('contract') != 'mad4b.skill-seed-manifest.v1':
+                  raise SystemExit('package Skill manifest contract invalid')
+              rows = manifest.get('skills')
+              if not isinstance(rows, list) or not rows:
+                  raise SystemExit('package Skill manifest inventory missing')
+              expected = {
+                  str(row.get('name') or '')
+                  for row in rows
+                  if isinstance(row, dict) and row.get('name')
+              }
+              if len(expected) != len(rows):
+                  raise SystemExit('package Skill manifest contains duplicate/invalid rows')
+              inventory_source = 'manifest'
+          else:
+              expected = {
+                  p.parent.name
+                  for p in seed_root.glob('*/SKILL.md')
+                  if p.is_file()
+              }
+              inventory_source = 'seed_tree'
+
+          if not expected:
+              raise SystemExit('package Skill inventory is empty')
+          if any(not re.fullmatch(r'[a-z0-9][a-z0-9-]{1,95}', name) for name in expected):
+              raise SystemExit('package Skill inventory contains an unsafe name')
+
+          with zipfile.ZipFile(archive) as zf:
+              names = set(zf.namelist())
+              actual = {
+                  name[len(prefix):-len(suffix)]
+                  for name in names
+                  if name.startswith(prefix)
+                  and name.endswith(suffix)
+                  and '/' not in name[len(prefix):-len(suffix)]
+              }
+              if actual != expected:
+                  raise SystemExit(
+                      'ZIP Skill inventory mismatch '
+                      f'missing={sorted(expected-actual)} extra={sorted(actual-expected)}'
+                  )
+              for name in sorted(expected):
+                  source_skill = seed_root / name / 'SKILL.md'
+                  archived_skill = prefix + name + suffix
+                  if not source_skill.is_file():
+                      raise SystemExit(f'source Skill missing during ZIP verification: {name}')
+                  if zf.read(archived_skill) != source_skill.read_bytes():
+                      raise SystemExit(f'ZIP/source Skill byte drift: {name}')
+
+              if manifest_path.is_file():
+                  archived_manifest = 'mad4b-site-control-plane/config/skill-seed-manifest.json'
+                  if archived_manifest not in names:
+                      raise SystemExit('ZIP Skill manifest missing')
+                  if zf.read(archived_manifest) != manifest_path.read_bytes():
+                      raise SystemExit('ZIP/source Skill manifest byte drift')
+
+          print(
+              'ZIP Skill inventory: PASS '
+              f'inventory_source={inventory_source} count={len(expected)}'
+          )
+          PY
           if unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/tests/'; then
             echo 'Development tests must not ship in the staging plugin ZIP.' >&2
             exit 1
