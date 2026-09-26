@@ -19,7 +19,11 @@ repair_bootstrap_required = [
     "mad4b.governance-apply-repair-bootstrap.v1",
     "governance_apply_repair_bootstrap",
     "governance_apply_repair_bootstrap_ready",
-    "required = ['Repository feature boundary']",
+    "required = ['Control-plane contract guard']",
+    "git show \"$BASE_SHA:tools/verify_feature_boundary.py\"",
+    "/tmp/mad4b-governance-repair-boundary.json",
+    "baseline_feature_boundary_verified",
+    "baseline_feature_boundary_mode",
     "(governance_ready or governance_apply_repair_bootstrap_ready)",
     "target_governance_activation_still_required_post_merge",
     "zero_bypass_actors_verified",
@@ -46,6 +50,15 @@ for forbidden in [
 print("governance_apply_repair_bootstrap=bounded")
 print("governance_apply_repair_live_snapshot=exact")
 print("governance_apply_repair_target_governance_claim=false_until_remote_apply")
+
+if "required = ['Repository feature boundary']" in release_verdict:
+    raise SystemExit("governance repair bootstrap still depends on the known-broken base check")
+if "required = ['Control-plane contract guard']" not in release_verdict:
+    raise SystemExit("governance repair bootstrap must retain an independent exact-head CI terminal gate")
+if 'git show "$BASE_SHA:tools/verify_feature_boundary.py"' not in release_verdict:
+    raise SystemExit("governance repair bootstrap must execute the verifier sourced from BASE")
+if "baseline_feature_boundary_verified" not in release_verdict:
+    raise SystemExit("governance repair bootstrap must bind base-owned feature-boundary evidence")
 
 if 'git fetch --no-tags origin "$HEAD_SHA"' not in feature_boundary_root:
     raise SystemExit("feature-boundary trusted fetch must preserve full ancestry")
