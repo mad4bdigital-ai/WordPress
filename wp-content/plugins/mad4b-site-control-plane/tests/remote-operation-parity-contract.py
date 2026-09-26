@@ -12,9 +12,17 @@ required_parity_markers = [
     "const CONTRACT = 'mad4b.remote-operation-parity.v1';",
     "const STATUS_ABILITY = 'mad4b/remote-operation-parity-status';",
     "const DISCOVER_ABILITY = 'mad4b/operation-discover';",
+    "const ENROLLMENT_INFO_ABILITY = 'mad4b/enrollment-info';",
     "const ENROLLMENT_DISPATCH_ABILITY = 'mad4b/enrollment-execute';",
-    "const ENROLLMENT_DISPATCH_CONTRACT = 'mad4b.enrollment-dispatch.v1';",
+    "const ENROLLMENT_INFO_CONTRACT = 'mad4b.enrollment-dispatch-info.v1';",
+    "const ENROLLMENT_DISPATCH_CONTRACT = 'mad4b.enrollment-dispatch.v2';",
+    "public static function enrollment_info( $input )",
     "public static function dispatch_enrollment_ability( $input )",
+    "private static function enrollment_target( $ability_name )",
+    "private static function input_schema_sha256( $ability )",
+    "expected_input_schema_sha256",
+    "mad4b_enrollment_dispatch_schema_drift",
+    "'permission_callback' => array( __CLASS__, 'can_execute' )",
     "self::enrollment_abilities()",
     "mad4b_enrollment_dispatch_target_not_allowed",
     "mad4b_enrollment_dispatch_write_surface_leak",
@@ -119,6 +127,8 @@ for ability in [
 if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in servers:
     raise SystemExit('bounded enrollment server is not sourced from Remote Operation Parity enrollment inventory')
 
+if "'mad4b/enrollment-info'" not in servers:
+    raise SystemExit('bounded enrollment info is not mounted on compact ChatGPT transport')
 if "'mad4b/enrollment-execute'" not in servers:
     raise SystemExit('bounded enrollment dispatcher is not mounted on compact ChatGPT transport')
 if "array( 'mad4b/write-execute', 'mad4b/enrollment-execute' )" not in servers:
