@@ -194,14 +194,27 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) {
 			return new WP_Error( 'mad4b_enrollment_dispatch_target_unavailable', 'Enrollment target ability is not registered in the current runtime.' );
 		}
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-enrollment', $ability_name ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_target_not_mounted', 'Enrollment target is not mounted on the bounded enrollment surface.' );
+		}
 		$ability = wp_get_ability( $ability_name );
 		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) {
 			return new WP_Error( 'mad4b_enrollment_dispatch_target_contract_unavailable', 'Enrollment target does not expose the required Ability contract.' );
 		}
 		$meta = $ability->get_meta();
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 		if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) {
 			return new WP_Error( 'mad4b_enrollment_dispatch_read_target_denied', 'Only explicitly mutating enrollment abilities may be dispatched.' );
+		}
+		if ( 'enrollment' !== ( isset( $mcp['surface'] ) ? (string) $mcp['surface'] : '' ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_target_surface_mismatch', 'Enrollment target metadata does not bind the ability to the enrollment surface.' );
+		}
+		if ( ! array_key_exists( 'generic_remote_admin', $mcp ) || false !== $mcp['generic_remote_admin'] ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_generic_admin_denied', 'Generic remote-admin enrollment targets are not dispatchable.' );
+		}
+		if ( ! array_key_exists( 'production_mutation_allowed', $mcp ) || false !== $mcp['production_mutation_allowed'] ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_target_production_denied', 'Production-capable enrollment targets are not dispatchable.' );
 		}
 		return $ability;
 	}
@@ -360,6 +373,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		$result = $ability->execute( $params );
 		if ( is_wp_error( $result ) ) return $result;
 
+		$target_reported_mutation = is_array( $result ) && array_key_exists( 'mutation_performed', $result );
 		return array(
 			'contract' => self::CONTRACT,
 			'operation_id' => $row['operation_id'],
@@ -372,7 +386,8 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'production_mutation' => false,
 			'breakglass_included' => false,
 			'operation_invoked' => true,
-			'mutation_performed' => true,
+			'mutation_performed' => $target_reported_mutation ? (bool) $result['mutation_performed'] : null,
+			'mutation_evidence_source' => $target_reported_mutation ? 'target_result' : 'not_reported',
 		);
 	}
 }
