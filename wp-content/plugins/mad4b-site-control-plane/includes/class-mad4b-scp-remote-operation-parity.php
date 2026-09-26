@@ -41,7 +41,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	}
 
 	public static function enrollment_abilities() {
-		return array(
+		$abilities = array(
 			self::SKILLS_ABILITY,
 			self::FRONTEND_SAMPLE_ABILITY,
 			self::PERFORMANCE_INDEX_ABILITY,
@@ -49,6 +49,27 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			self::WORK_CLAIM_ABILITY,
 			self::WORK_COMPLETE_ABILITY,
 		);
+
+		// During Ability registration keep the deterministic built-in seed only.
+		// Once the registry is materialized, extend the enrollment mount from the
+		// validated operation catalog so future certified add-ons gain remote parity
+		// without hand-editing the server allowlist.
+		$registry_ready = function_exists( 'did_action' )
+			&& did_action( 'wp_abilities_api_init' ) > 0
+			&& ( ! function_exists( 'doing_action' ) || ! doing_action( 'wp_abilities_api_init' ) );
+		if ( $registry_ready ) {
+			foreach ( self::catalog() as $row ) {
+				if ( ! is_array( $row )
+					|| 'mad4b-enrollment' !== ( isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '' )
+					|| empty( $row['remote_ability'] )
+					|| empty( $row['remote_registered'] )
+					|| empty( $row['execution_eligible'] ) ) continue;
+				$abilities[] = (string) $row['remote_ability'];
+			}
+		}
+		$abilities = array_values( array_unique( array_filter( array_map( 'strval', $abilities ) ) ) );
+		sort( $abilities, SORT_STRING );
+		return $abilities;
 	}
 
 	public static function register_abilities() {
