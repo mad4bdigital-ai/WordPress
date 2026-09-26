@@ -251,7 +251,10 @@ for marker in [
 # reduced by Browser Acceptance Core and remains bound to the exact current build
 # and the currently regenerated signed plan.
 for browser_marker in [
-    "mad4b.staging-browser-certification-view.v2",
+    "mad4b.staging-browser-certification-view.v3",
+    "MAD4B_SCP_Remote_Operation_Parity::browser_acceptance_receipt_status( $plan )",
+    "dedicated_receipt",
+    "queue_fallback",
     "MAD4B_SCP_Remote_Work_Queue::list_jobs( 'browser_acceptance_execution' )",
     "'completed' !==",
     "runtime_manifest_match",
