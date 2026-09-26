@@ -3,7 +3,9 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Compact ChatGPT dispatcher for bounded Staging enrollment operations.
+ * Hardened policy/execution helper for bounded Staging enrollment operations.
+ *
+ * Registration of mad4b/enrollment-* is owned exclusively by MAD4B_SCP_Abilities.
  *
  * This is deliberately not a generic remote-admin surface. Only operations
  * already admitted by Remote Operation Parity may be selected, and only when
@@ -23,128 +25,6 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 	const DISCOVER_ABILITY = 'mad4b/enrollment-discover';
 	const INFO_ABILITY = 'mad4b/enrollment-info';
 	const EXECUTE_ABILITY = 'mad4b/enrollment-execute';
-
-	private static $booted = false;
-
-	public static function boot() {
-		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
-		self::$booted = true;
-		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_category' ), 14 );
-		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 14 );
-	}
-
-	public static function chatgpt_tools() {
-		if ( ! self::staging_profile_exact() ) return array();
-		if ( self::generic_raw_sql_breakglass_enabled() ) return array();
-		return array( self::DISCOVER_ABILITY, self::INFO_ABILITY, self::EXECUTE_ABILITY );
-	}
-
-	public static function register_category() {
-		if ( ! function_exists( 'wp_register_ability_category' ) ) return;
-		wp_register_ability_category( 'mad4b-enrollment-dispatch', array(
-			'label' => 'MAD4B Enrollment Dispatch',
-			'description' => 'Exact-policy dispatcher for bounded non-human-decision Staging enrollment operations.',
-		) );
-	}
-
-	public static function register_abilities() {
-		if ( ! function_exists( 'wp_register_ability' ) ) return;
-
-		// Enrollment dispatch is not normal governed-write authority. Prevent the
-		// generic write augmenter from widening or remounting these transport tools.
-		$augment = array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' );
-		$priority = function_exists( 'has_filter' ) ? has_filter( 'wp_register_ability_args', $augment ) : false;
-		if ( false !== $priority ) remove_filter( 'wp_register_ability_args', $augment, (int) $priority );
-
-		try {
-			if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::DISCOVER_ABILITY ) ) {
-				wp_register_ability( self::DISCOVER_ABILITY, array(
-					'label' => 'Discover Governed Enrollment Operations',
-					'description' => 'List only bounded remote-parity Staging enrollment operations eligible for compact ChatGPT dispatch.',
-					'category' => 'mad4b-enrollment-dispatch',
-					'execute_callback' => array( __CLASS__, 'discover' ),
-					'permission_callback' => array( __CLASS__, 'can_inspect' ),
-					'input_schema' => self::schema( array(
-						'query' => array( 'type' => 'string', 'maxLength' => 160, 'default' => '' ),
-						'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 50 ),
-					) ),
-					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-					'meta' => self::meta( true ),
-				) );
-			}
-
-			if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::INFO_ABILITY ) ) {
-				wp_register_ability( self::INFO_ABILITY, array(
-					'label' => 'Get Governed Enrollment Operation Info',
-					'description' => 'Return the exact current policy identity and target schema for one dispatchable enrollment operation.',
-					'category' => 'mad4b-enrollment-dispatch',
-					'execute_callback' => array( __CLASS__, 'info' ),
-					'permission_callback' => array( __CLASS__, 'can_inspect' ),
-					'input_schema' => self::schema(
-						array( 'operation_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 128, 'pattern' => '^[a-z0-9_\\-]+$' ) ),
-						array( 'operation_id' )
-					),
-					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-					'meta' => self::meta( true ),
-				) );
-			}
-
-			if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::EXECUTE_ABILITY ) ) {
-				wp_register_ability( self::EXECUTE_ABILITY, array(
-					'label' => 'Execute Governed Enrollment Operation',
-					'description' => 'Execute one exact-policy non-human-decision Staging enrollment operation through OAuth authority step-up.',
-					'category' => 'mad4b-enrollment-dispatch',
-					'execute_callback' => array( __CLASS__, 'execute' ),
-					'permission_callback' => array( __CLASS__, 'can_execute' ),
-					'input_schema' => self::schema(
-						array(
-							'operation_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 128, 'pattern' => '^[a-z0-9_\\-]+$' ),
-							'expected_registration_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
-							'expected_dispatch_policy_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
-							'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
-							'input' => array( 'type' => 'object', 'default' => array() ),
-						),
-						array( 'operation_id', 'expected_registration_digest', 'expected_dispatch_policy_digest', 'expected_input_schema_sha256' )
-					),
-					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-					'meta' => self::meta( false ),
-				) );
-			}
-		} finally {
-			if ( false !== $priority ) add_filter( 'wp_register_ability_args', $augment, (int) $priority, 2 );
-		}
-	}
-
-	private static function schema( array $properties, array $required = array() ) {
-		$schema = array( 'type' => 'object', 'properties' => $properties, 'additionalProperties' => false );
-		if ( ! empty( $required ) ) $schema['required'] = $required;
-		return $schema;
-	}
-
-	private static function meta( $readonly ) {
-		return array(
-			'public' => false,
-			'show_in_rest' => false,
-			'mcp' => array(
-				'public' => false,
-				'type' => 'tool',
-				'surface' => $readonly ? 'read' : 'enrollment-step-up',
-				'mad4b_enrollment_dispatch' => self::CONTRACT,
-				'generic_remote_admin' => false,
-				'production_mutation_allowed' => false,
-				'breakglass_included' => false,
-			),
-			'annotations' => array(
-				'readonly' => (bool) $readonly,
-				'destructive' => ! $readonly,
-				'idempotent' => $readonly,
-			),
-		);
-	}
-
-	public static function can_inspect( $input = null ) {
-		return class_exists( 'MAD4B_SCP_Policy' ) ? MAD4B_SCP_Policy::can_read() : false;
-	}
 
 	public static function can_execute( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_admin_required', 'Administrator capability is required.' );
