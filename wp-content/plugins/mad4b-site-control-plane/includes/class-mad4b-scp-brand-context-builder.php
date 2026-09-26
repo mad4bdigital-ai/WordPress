@@ -406,7 +406,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		return $groups;
 	}
 
-	private static function query_posts_for_language( array $post_types, $language, $limit ) {
+	private static function language_query_args( array $post_types, $language, $limit, $multilingual_active ) {
 		$language = sanitize_key( strtolower( (string) $language ) );
 		$args = array(
 			'post_type' => $post_types,
@@ -416,14 +416,21 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'order' => 'DESC',
 			'suppress_filters' => false,
 		);
+		if ( $multilingual_active && '' !== $language ) $args['lang'] = $language;
+		return $args;
+	}
+
+	private static function query_posts_for_language( array $post_types, $language, $limit ) {
+		$language = sanitize_key( strtolower( (string) $language ) );
 		$wpml_switch = function_exists( 'has_action' ) && has_action( 'wpml_switch_language' );
 		$wpml_language_filter = function_exists( 'has_filter' ) && has_filter( 'wpml_active_languages' );
+		$multilingual_active = function_exists( 'pll_languages_list' ) || $wpml_switch || $wpml_language_filter;
 		// Bind the requested locale into WP_Query explicitly. The WPML global
 		// language switch is useful context, but some MCP/REST lifecycles do not
 		// propagate that global state into a later get_posts() filter reliably.
 		// Keeping both signals is read-only and makes multilingual sampling
 		// deterministic across wp-admin, WP-CLI and MCP requests.
-		if ( function_exists( 'pll_languages_list' ) || $wpml_switch || $wpml_language_filter ) $args['lang'] = $language;
+		$args = self::language_query_args( $post_types, $language, $limit, $multilingual_active );
 		$previous = '';
 		if ( $wpml_switch && function_exists( 'apply_filters' ) ) $previous = sanitize_key( strtolower( (string) apply_filters( 'wpml_current_language', null ) ) );
 		if ( $wpml_switch && function_exists( 'do_action' ) ) do_action( 'wpml_switch_language', $language );
