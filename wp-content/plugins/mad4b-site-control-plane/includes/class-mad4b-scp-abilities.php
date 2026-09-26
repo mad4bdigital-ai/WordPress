@@ -54,6 +54,22 @@ final class MAD4B_SCP_Abilities {
 				'input' => array( 'type' => 'object', 'default' => array() ),
 			), array( 'ability_name', 'expected_input_schema_sha256' )
 		), false, false, true, false );
+		$this->add( 'mad4b/enrollment-discover', 'Discover Bounded Enrollment Operations', 'mad4b-read', 'enrollment_discover', 'read', $this->schema(
+			array(
+				'query' => array( 'type' => 'string', 'default' => '', 'maxLength' => 160 ),
+				'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 25 ),
+			), array()
+		), false, true, false, true );
+		$this->add( 'mad4b/enrollment-info', 'Get Bounded Enrollment Operation Info', 'mad4b-read', 'enrollment_info', 'read', $this->schema(
+			array( 'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ) ), array( 'ability_name' )
+		), false, true, false, true );
+		$this->add( 'mad4b/enrollment-execute', 'Execute Bounded Enrollment Operation', 'mad4b-admin', 'enrollment_execute', 'enrollment_dispatch', $this->schema(
+			array(
+				'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
+				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'input' => array( 'type' => 'object', 'default' => array() ),
+			), array( 'ability_name', 'expected_input_schema_sha256' )
+		), false, false, false, false );
 		$this->add( 'mad4b/filesystem-list', 'List Files', 'mad4b-read', 'filesystem_list', 'read', $this->schema(
 			array(
 				'root' => array( 'type' => 'string', 'enum' => $this->roots() ),
@@ -167,6 +183,7 @@ final class MAD4B_SCP_Abilities {
 
 	private function mutation_permission_callback( $permission, $readonly, $ability_name, $server_id ) {
 		if ( 'write_dispatch' === $permission ) return array( $this, 'can_write_dispatch' );
+		if ( 'enrollment_dispatch' === $permission ) return array( $this, 'can_enrollment_dispatch' );
 		$callback = $this->permission_callback( $permission );
 		if ( $readonly ) return $callback;
 
@@ -422,6 +439,121 @@ final class MAD4B_SCP_Abilities {
 			'ability_name' => $ability_name,
 			'input_schema_sha256' => $actual_schema_sha256,
 			'result' => $result,
+			'mutation_performed' => true,
+		);
+	}
+
+	private function governed_enrollment_target( $ability_name ) {
+		$ability_name = trim( (string) $ability_name );
+		if ( '' === $ability_name ) return new WP_Error( 'mad4b_enrollment_dispatch_target_required', 'A bounded enrollment ability_name is required.' );
+		if ( in_array( $ability_name, array( 'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute' ), true ) ) return new WP_Error( 'mad4b_enrollment_dispatch_recursion_denied', 'Nested enrollment-dispatch execution is not allowed.' );
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) || ! method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'enrollment_abilities' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_catalog_unavailable', 'Bounded enrollment operation catalog is unavailable.' );
+		$allowed = array_values( array_unique( array_map( 'strval', MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities() ) ) );
+		if ( ! in_array( $ability_name, $allowed, true ) ) return new WP_Error( 'mad4b_enrollment_dispatch_target_not_allowlisted', 'Requested ability is not a bounded Remote Operation Parity enrollment operation.' );
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_enrollment_dispatch_target_unavailable', 'Requested enrollment ability is not registered in the current runtime.' );
+		$ability = wp_get_ability( $ability_name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_contract_unavailable', 'Requested enrollment ability does not expose the required WordPress Ability contract.' );
+		$meta = $ability->get_meta();
+		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+		if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) return new WP_Error( 'mad4b_enrollment_dispatch_read_target_denied', 'Only explicitly mutating enrollment operations may be selected through mad4b/enrollment-execute.' );
+		if ( 'enrollment' !== ( isset( $mcp['surface'] ) ? (string) $mcp['surface'] : '' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_surface_mismatch', 'Requested ability is not registered on the bounded enrollment surface.' );
+		if ( empty( $mcp['mad4b_remote_operation_parity'] ) || ! hash_equals( (string) MAD4B_SCP_Remote_Operation_Parity::CONTRACT, (string) $mcp['mad4b_remote_operation_parity'] ) ) return new WP_Error( 'mad4b_enrollment_dispatch_contract_mismatch', 'Requested ability is not covered by the Remote Operation Parity contract.' );
+		if ( ! empty( $mcp['generic_remote_admin'] ) ) return new WP_Error( 'mad4b_enrollment_dispatch_generic_admin_denied', 'Generic remote administration is not permitted through the enrollment dispatcher.' );
+		if ( ! empty( $mcp['production_mutation_allowed'] ) ) return new WP_Error( 'mad4b_enrollment_dispatch_production_denied', 'Production mutation is not permitted through the enrollment dispatcher.' );
+		return $ability;
+	}
+
+	public function can_enrollment_dispatch( $input = null ) {
+		if ( ! is_array( $input ) || empty( $input['ability_name'] ) ) return new WP_Error( 'mad4b_enrollment_dispatch_target_required', 'A bounded enrollment ability_name is required.' );
+		$ability = $this->governed_enrollment_target( $input['ability_name'] );
+		if ( is_wp_error( $ability ) ) return $ability;
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) || ! method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'can_execute' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_authority_unavailable', 'Remote Operation Parity authority check is unavailable.' );
+		$params = array_key_exists( 'input', $input ) ? $input['input'] : null;
+		$allowed = MAD4B_SCP_Remote_Operation_Parity::can_execute( $params );
+		if ( is_wp_error( $allowed ) || ! $allowed ) return $allowed;
+		return true;
+	}
+
+	public function enrollment_discover( $input ) {
+		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
+		$limit = isset( $input['limit'] ) ? max( 1, min( 50, absint( $input['limit'] ) ) ) : 25;
+		$items = array();
+		$candidates = class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'enrollment_abilities' )
+			? MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()
+			: array();
+		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
+			$ability = $this->governed_enrollment_target( $ability_name );
+			if ( is_wp_error( $ability ) ) continue;
+			$label = method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '';
+			$description = method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '';
+			$category = method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
+			$haystack = strtolower( $ability_name . ' ' . $label . ' ' . $description . ' ' . $category );
+			if ( '' !== $query && false === strpos( $haystack, $query ) ) continue;
+			$items[] = array(
+				'ability_name' => $ability_name,
+				'label' => $label,
+				'description' => $description,
+				'category' => $category,
+				'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
+				'authority_surface' => 'mad4b-enrollment',
+				'production_mutation_allowed' => false,
+			);
+			if ( count( $items ) >= $limit ) break;
+		}
+		return array(
+			'contract' => 'mad4b.chatgpt-enrollment-discovery.v1',
+			'query' => $query,
+			'items' => $items,
+			'count' => count( $items ),
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	public function enrollment_info( $input ) {
+		$ability_name = (string) $input['ability_name'];
+		$ability = $this->governed_enrollment_target( $ability_name );
+		if ( is_wp_error( $ability ) ) return $ability;
+		$schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		$meta = $ability->get_meta();
+		return array(
+			'contract' => 'mad4b.chatgpt-enrollment-ability-info.v1',
+			'ability_name' => $ability_name,
+			'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '',
+			'description' => method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '',
+			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
+			'input_schema' => $schema,
+			'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
+			'annotations' => isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array(),
+			'authority_surface' => 'mad4b-enrollment',
+			'production_mutation_allowed' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	public function enrollment_execute( $input ) {
+		$ability_name = (string) $input['ability_name'];
+		$ability = $this->governed_enrollment_target( $ability_name );
+		if ( is_wp_error( $ability ) ) return $ability;
+		$allowed = $this->can_enrollment_dispatch( $input );
+		if ( is_wp_error( $allowed ) || ! $allowed ) return $allowed;
+		$actual_schema_sha256 = $this->ability_input_schema_sha256( $ability );
+		$expected_schema_sha256 = strtolower( (string) $input['expected_input_schema_sha256'] );
+		if ( ! hash_equals( strtolower( $actual_schema_sha256 ), $expected_schema_sha256 ) ) return new WP_Error( 'mad4b_enrollment_dispatch_schema_drift', 'Requested enrollment ability input schema changed after planning.', array( 'ability_name' => $ability_name, 'current_input_schema_sha256' => $actual_schema_sha256 ) );
+		$params = array_key_exists( 'input', $input ) ? $input['input'] : null;
+		$target_input_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
+		$result = $ability->execute( $params );
+		if ( is_wp_error( $result ) ) return $result;
+		return array(
+			'contract' => 'mad4b.chatgpt-enrollment-execute.v1',
+			'ability_name' => $ability_name,
+			'input_schema_sha256' => $actual_schema_sha256,
+			'result' => $result,
+			'authority_surface' => 'mad4b-enrollment',
+			'production_mutation' => false,
 			'mutation_performed' => true,
 		);
 	}
