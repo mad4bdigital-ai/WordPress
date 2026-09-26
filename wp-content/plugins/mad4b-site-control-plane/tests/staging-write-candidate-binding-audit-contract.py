@@ -51,6 +51,8 @@ assert "mad4b.staging-write-grant-reconciliation.v1" not in binding, 'candidate 
     "transaction_committed",
     "transaction_rolled_back",
     "transactional_table",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONTRACT",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONFIRMATION",
 ]:
     assert marker in authority, f'missing primitive audit invariant: {marker}'
 
