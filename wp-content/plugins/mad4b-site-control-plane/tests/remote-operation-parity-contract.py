@@ -176,6 +176,13 @@ required_dispatch_markers = [
     "production_mutation_allowed' => false",
     "breakglass_included' => false",
     "human_decision_operations_excluded' => true",
+    "MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-enrollment'",
+    "'mad4b_enrollment_dispatch_target_surface_mismatch'",
+    "'mad4b_enrollment_dispatch_generic_admin_denied'",
+    "'mad4b_enrollment_dispatch_target_production_denied'",
+    "'mutation_evidence_source'",
+    "'target_result'",
+    "'not_reported'",
 ]
 for marker in required_dispatch_markers:
     if marker not in dispatch:
