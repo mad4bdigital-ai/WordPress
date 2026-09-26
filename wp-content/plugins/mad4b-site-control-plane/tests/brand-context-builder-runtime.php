@@ -6,6 +6,12 @@
  * and no provider/network mutation.
  */
 $root = dirname( __DIR__ );
+if ( ! function_exists( 'sanitize_key' ) ) {
+	function sanitize_key( $key ) {
+		$key = strtolower( (string) $key );
+		return preg_replace( '/[^a-z0-9_\-]/', '', $key );
+	}
+}
 require_once $root . '/includes/class-mad4b-scp-brand-context-builder.php';
 
 $fail = static function ( $message ) {
