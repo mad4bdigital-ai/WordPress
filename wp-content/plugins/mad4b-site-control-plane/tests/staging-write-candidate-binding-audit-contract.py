@@ -20,7 +20,8 @@ for marker in [
     "mcp_request_context_fingerprint",
     "operation_basis",
     "grant_reconciliation",
-    "mad4b.staging-write-grant-reconciliation.v1",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONTRACT",
+    "grant_reconciliation_confirmation",
     "previous_binding",
     "reviewed_previous_binding",
     "pre_bind_persisted_binding",
@@ -30,7 +31,7 @@ for marker in [
 ]:
     assert marker in binding, f'missing binding attribution marker: {marker}'
 
-for marker in [
+assert "mad4b.staging-write-grant-reconciliation.v1" not in binding, 'candidate binding must not hard-code the retired grant-reconciliation v1 contract'\n\nfor marker in [
     "mad4b.governed-write-authority-candidate-binding.v2",
     "stored_package_manifest_digest",
     "stored_artifact_identity",
