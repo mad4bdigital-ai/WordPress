@@ -22,7 +22,7 @@ seed_skill = cp / "skill-seeds" / "wordpress-brand-context-builder" / "SKILL.md"
 
 for marker in [
     "const CONTRACT = 'mad4b.brand-context-builder.v1'",
-    "const BUILDER_SPEC_VERSION = '4'",
+    "const BUILDER_SPEC_VERSION = '5'",
     "const DRAFT_PREFLIGHT_CONTRACT = 'mad4b.brand-draft-preflight.v1'",
     "MIN_NONEMPTY_SAMPLES",
     "MIN_PRIMARY_EXPRESSION_SAMPLES",
@@ -49,6 +49,10 @@ for marker in [
     "utility_post_types",
     "core_post_type",
     "seo_evidence_for_post",
+    "seo_configuration_evidence",
+    "'seo_configuration' => $seo_configuration",
+    "'seo_configuration_sample_count' => $seo_configuration_sample_count",
+    "'post_seo_sample_count' => $post_seo_sample_count",
     "rank_distribution",
     "post_type_distribution",
     "'transport' => 'wp_http_loopback'",
