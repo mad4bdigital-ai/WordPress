@@ -80,13 +80,23 @@ for marker in (
     if marker not in completion:
         raise SystemExit("remote browser completion lacks exact probe correlation: " + marker)
 
-for ability in [
-    "mad4b/remote-operation-work-queue",
-    "mad4b/remote-operation-work-claim",
-    "mad4b/remote-operation-work-complete",
-]:
-    if ability not in servers:
-        raise SystemExit(f"remote work ability is not exposed on its governed server surface: {ability}")
+if "mad4b/remote-operation-work-queue" not in servers:
+    raise SystemExit("remote work queue read ability is not exposed on a governed read server surface")
+
+enrollment_start = parity.index("public static function enrollment_abilities()")
+enrollment_end = parity.index("public static function register_abilities()", enrollment_start)
+enrollment = parity[enrollment_start:enrollment_end]
+for marker in (
+    "self::WORK_CLAIM_ABILITY",
+    "self::WORK_COMPLETE_ABILITY",
+):
+    if marker not in enrollment:
+        raise SystemExit("remote external-executor mutation ability is not projected through enrollment_abilities(): " + marker)
+
+if "'mad4b-enrollment' => array_values( array_unique( array_merge(" not in servers:
+    raise SystemExit("mad4b-enrollment governed server surface is missing")
+if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in servers:
+    raise SystemExit("mad4b-enrollment server does not consume Remote Operation Parity enrollment abilities")
 
 queue_load = main.find("class-mad4b-scp-remote-work-queue.php")
 parity_load = main.find("class-mad4b-scp-remote-operation-parity.php")
