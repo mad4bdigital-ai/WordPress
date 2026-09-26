@@ -15,6 +15,10 @@ repair_bootstrap_required = [
     "chore/governance-apply-powershell-parse-20260926",
     "8a0c12ef16023f042def7d42b760cdd847343e8a",
     "rulesets/23968498?includes_parents=true",
+    "mad4b-governance-repair-public-ruleset.json",
+    "public_ruleset_detail_bound_to_authenticated_identity",
+    "public bypass-actor evidence unavailable",
+    "public/authenticated ruleset identity drift",
     "2026-09-25T02:13:24.911+03:00",
     "mad4b.governance-apply-repair-bootstrap.v1",
     "governance_apply_repair_bootstrap",
@@ -49,6 +53,7 @@ for forbidden in [
 
 print("governance_apply_repair_bootstrap=bounded")
 print("governance_apply_repair_live_snapshot=exact")
+print("governance_apply_repair_bypass_evidence=public+identity_bound")
 print("governance_apply_repair_target_governance_claim=false_until_remote_apply")
 
 if "required = ['Repository feature boundary']" in release_verdict:
