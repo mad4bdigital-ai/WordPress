@@ -195,8 +195,15 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$checks['breakglass_auto_enable_absent'] = empty( $authority['breakglass_auto_enable'] );
 		$checks['breakglass_not_included'] = empty( $authority['breakglass_included'] );
 		$checks['normal_remote_approval_required'] = ! empty( $authority['normal_remote_writes_require_exact_approval'] );
-		$approval_exceptions = isset( $authority['remote_write_approval_exceptions'] ) && is_array( $authority['remote_write_approval_exceptions'] ) ? array_values( $authority['remote_write_approval_exceptions'] ) : array();
-		$checks['candidate_bootstrap_exception_bounded'] = empty( $approval_exceptions ) || ( 1 === count( $approval_exceptions ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY === (string) $approval_exceptions[0] );
+		$approval_exceptions = isset( $authority['remote_write_approval_exceptions'] ) && is_array( $authority['remote_write_approval_exceptions'] ) ? array_values( array_unique( array_map( 'strval', $authority['remote_write_approval_exceptions'] ) ) ) : array();
+		$bounded_exceptions = array();
+		if ( ! empty( $authority['candidate_bootstrap_exception_active'] ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
+			$bounded_exceptions[] = MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY;
+		}
+		if ( class_exists( 'MAD4B_SCP_Context_Authority' ) && MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ) {
+			$bounded_exceptions[] = MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY;
+		}
+		$checks['candidate_bootstrap_exception_bounded'] = empty( array_diff( $approval_exceptions, $bounded_exceptions ) );
 		$bootstrap_closure = isset( $authority['candidate_bootstrap_closure'] ) && is_array( $authority['candidate_bootstrap_closure'] ) ? $authority['candidate_bootstrap_closure'] : array();
 		$checks['candidate_bootstrap_closure_complete'] = empty( $bootstrap_closure['required'] ) || ! empty( $bootstrap_closure['closed'] );
 		foreach ( $checks as $key => $ok ) if ( ! $ok ) $blockers[] = $key;
