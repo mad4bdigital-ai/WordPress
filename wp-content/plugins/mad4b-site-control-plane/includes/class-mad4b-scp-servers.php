@@ -49,6 +49,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/site-info', 'mad4b/site-profile-status',
 				'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute',
 				'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute',
+				'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute',
 				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status',
 				'mad4b/plugin-package-plan',
 				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix',
@@ -464,9 +465,6 @@ final class MAD4B_SCP_Servers {
 		$full_step_up = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
 			? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()
 			: array();
-		$enrollment_dispatch = class_exists( 'MAD4B_SCP_Enrollment_Dispatch' )
-			? MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools()
-			: array();
 		$bootstrap = array_merge(
 			array(
 				'mad4b/build-provenance-status',
@@ -475,16 +473,13 @@ final class MAD4B_SCP_Servers {
 			$narrow_read,
 			$narrow_step_up,
 			$full_read,
-			$full_step_up,
-			$enrollment_dispatch
+			$full_step_up
 		);
 		$candidates = array_merge( $core, $bootstrap );
 		$step_up = array_merge( $narrow_step_up, $full_step_up );
-		$enrollment_step_up = class_exists( 'MAD4B_SCP_Enrollment_Dispatch' )
-			? array( MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY )
-			: array();
 		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up );
-		$direct_mutation_transport = array_merge( $direct_mutation_transport, $enrollment_step_up );
+		$direct_mutation_transport[] = 'mad4b/enrollment-execute';
+		$direct_mutation_transport = array_values( array_unique( $direct_mutation_transport ) );
 
 		$tools = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
@@ -533,7 +528,6 @@ final class MAD4B_SCP_Servers {
 			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools() : array(),
 			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools() : array(),
 			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools() : array(),
-			class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) ? MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools() : array(),
 			self::chatgpt_enrollment_candidates(),
 			self::core_tools( 'mad4b-content' ),
 			self::core_tools( 'mad4b-admin' ),
@@ -628,8 +622,6 @@ final class MAD4B_SCP_Servers {
 			foreach ( array( 'mad4b-read', 'mad4b-enrollment', 'mad4b-content', 'mad4b-admin' ) as $core_server ) {
 				if ( in_array( $ability_name, self::core_tools( $core_server ), true ) ) return $remember( 'core' );
 			}
-			if ( class_exists( 'MAD4B_SCP_Enrollment_Dispatch' )
-				&& in_array( $ability_name, MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools(), true ) ) return $remember( 'core' );
 			if ( self::is_external_write_candidate( $ability_name ) ) {
 				$runtime_provider = self::provider_for_ability( 'mad4b-write', $ability_name );
 				return $remember( null !== $runtime_provider ? $runtime_provider : self::provider_for_external_write_candidate( $ability_name ) );
@@ -757,7 +749,7 @@ final class MAD4B_SCP_Servers {
 
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
 		if ( self::chatgpt_unified_catalog_enabled() ) {
-			$chatgpt_description = 'Exact enrolled Staging governed gateway with one compact app catalog. Read/write universes remain available through governed discovery/info/dispatch. Low-level enrollment mutations stay internal; bounded Write Authority convergence and Full Staging Authority apply are projected only as guarded plan-bound step-up tools. Breakglass and Raw SQL remain excluded.';
+			$chatgpt_description = 'Exact enrolled Staging governed gateway with one compact app catalog. Read/write universes remain available through governed discovery/info/dispatch. Bounded Remote Operation Parity enrollment operations are available only through a dedicated allowlisted enrollment dispatcher; low-level enrollment mutations stay internal. Write Authority convergence and Full Staging Authority apply remain guarded plan-bound step-up tools. Breakglass and Raw SQL remain excluded.';
 		} else {
 			$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT governed gateway with compact read/write discovery transports. Provider writes remain fail-closed until runtime eligible, exactly granted and approved. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
 		}
