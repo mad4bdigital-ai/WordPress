@@ -119,7 +119,6 @@ for ability in [
     'mad4b/reconcile-managed-skills',
     'mad4b/frontend-performance-sample-run',
     'mad4b/browser-acceptance-run',
-    'mad4b/browser-acceptance-run',
     'mad4b/admin-query-performance-apply',
     'mad4b/admin-query-performance-reconcile',
     'mad4b/remote-operation-work-claim',
@@ -154,6 +153,7 @@ write_section = servers[write_start:admin_start] if write_start >= 0 and admin_s
 for ability in [
     'mad4b/reconcile-managed-skills',
     'mad4b/frontend-performance-sample-run',
+    'mad4b/browser-acceptance-run',
     'mad4b/admin-query-performance-apply',
     'mad4b/admin-query-performance-reconcile',
     'mad4b/remote-operation-work-claim',
