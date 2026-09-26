@@ -10,6 +10,7 @@ final class MAD4B_SCP_Abilities {
 				'mad4b-read'       => array( 'label' => 'MAD4B Read', 'description' => 'Read-only discovery and diagnostics.' ),
 				'mad4b-content'    => array( 'label' => 'MAD4B Content', 'description' => 'Governed content editing.' ),
 				'mad4b-write'      => array( 'label' => 'MAD4B Write', 'description' => 'Unified governed write authority abilities.' ),
+				'mad4b-enrollment' => array( 'label' => 'MAD4B Enrollment', 'description' => 'Bounded Staging enrollment and bootstrap operations separate from normal governed write authority.' ),
 				'mad4b-admin'      => array( 'label' => 'MAD4B Admin', 'description' => 'Administrative repair abilities.' ),
 				'mad4b-breakglass' => array( 'label' => 'MAD4B Breakglass', 'description' => 'Exceptional recovery abilities.' ),
 			) as $slug => $args
@@ -54,6 +55,11 @@ final class MAD4B_SCP_Abilities {
 				'input' => array( 'type' => 'object', 'default' => array() ),
 			), array( 'ability_name', 'expected_input_schema_sha256' )
 		), false, false, true, false );
+
+		$this->add( 'mad4b/enrollment-info', 'Get Bounded Enrollment Ability Info', 'mad4b-read', 'enrollment_info', 'read', $this->schema(
+			array( 'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ) ), array( 'ability_name' )
+		), false, true, false, true );
+		$this->register_enrollment_dispatcher();
 		$this->add( 'mad4b/filesystem-list', 'List Files', 'mad4b-read', 'filesystem_list', 'read', $this->schema(
 			array(
 				'root' => array( 'type' => 'string', 'enum' => $this->roots() ),
