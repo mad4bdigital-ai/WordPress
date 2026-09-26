@@ -1087,6 +1087,19 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			$lineage = MAD4B_SCP_Artifacts::supersede_brand_context_subject( $artifact_id, self::brand_context_subject_key( $category ) );
 			if ( is_wp_error( $lineage ) ) return self::complete_idempotent_error( $claim, $lineage );
 			$artifact['cross_job_lineage'] = $lineage;
+			if ( array_key_exists( 'current_artifact_is_active_generation', $lineage ) && empty( $lineage['current_artifact_is_active_generation'] ) ) {
+				self::advance_generation_job( $job_id, 'failed', (string) $plan['plan_sha256'], $artifact_id );
+				$error = new WP_Error(
+					'mad4b_brand_draft_superseded_concurrent_generation',
+					'A newer Brand Context generation already won the cross-job subject lineage. This draft remains immutable history but is not active.',
+					array(
+						'artifact_id' => $artifact_id,
+						'active_artifact_id' => isset( $lineage['active_artifact_id'] ) ? (string) $lineage['active_artifact_id'] : '',
+						'brand_context_subject_key' => self::brand_context_subject_key( $category ),
+					)
+				);
+				return self::complete_idempotent_error( $claim, $error );
+			}
 		}
 		$job_transition = self::advance_generation_job( $job_id, 'draft_ready', (string) $plan['plan_sha256'], $artifact_id );
 		if ( is_wp_error( $job_transition ) ) return self::complete_idempotent_error( $claim, $job_transition );
