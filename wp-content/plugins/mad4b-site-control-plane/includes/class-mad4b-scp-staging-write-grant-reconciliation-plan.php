@@ -116,7 +116,15 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 
 		$source_sha = isset( $provenance['source_commit_sha'] ) ? strtolower( (string) $provenance['source_commit_sha'] ) : '';
 		$build_fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
-		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $source_sha ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $build_fingerprint ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_candidate_invalid', 'Exact source/build provenance identity is invalid.' );
+		$package_manifest_digest = isset( $provenance['package_manifest_digest'] ) ? strtolower( (string) $provenance['package_manifest_digest'] ) : '';
+		$artifact_identity = isset( $provenance['artifact_identity'] ) ? trim( (string) $provenance['artifact_identity'] ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $source_sha )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $build_fingerprint )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $package_manifest_digest )
+			|| '' === $artifact_identity
+			|| strlen( $artifact_identity ) > 191 ) {
+			return new WP_Error( 'mad4b_grant_reconcile_plan_candidate_invalid', 'Exact four-part package provenance identity is invalid.' );
+		}
 
 		$agent = self::current_agent();
 		if ( is_wp_error( $agent ) ) return $agent;
@@ -179,6 +187,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			'expected_profile_digest' => strtolower( (string) MAD4B_SCP_Site_Profile::profile_digest() ),
 			'expected_source_commit_sha' => $source_sha,
 			'expected_build_fingerprint' => $build_fingerprint,
+			'expected_package_manifest_digest' => $package_manifest_digest,
+			'expected_artifact_identity' => $artifact_identity,
 			'expected_agent_public_id' => strtolower( (string) $agent['public_id'] ),
 			'expected_write_tool_count' => (int) $inventory['count'],
 			'expected_write_inventory_fingerprint' => (string) $inventory['fingerprint'],
@@ -195,6 +205,16 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 		$payload['plan_sha256'] = hash( 'sha256', $encoded );
 		$payload['write_binding'] = array(
 			'expected_plan_sha256' => $payload['plan_sha256'],
+			'expected_revision' => $payload['expected_revision'],
+			'expected_profile_digest' => $payload['expected_profile_digest'],
+			'expected_source_commit_sha' => $payload['expected_source_commit_sha'],
+			'expected_build_fingerprint' => $payload['expected_build_fingerprint'],
+			'expected_package_manifest_digest' => $payload['expected_package_manifest_digest'],
+			'expected_artifact_identity' => $payload['expected_artifact_identity'],
+			'expected_agent_public_id' => $payload['expected_agent_public_id'],
+			'expected_write_tool_count' => $payload['expected_write_tool_count'],
+			'expected_write_inventory_fingerprint' => $payload['expected_write_inventory_fingerprint'],
+			'expected_missing_abilities' => $payload['expected_missing_abilities'],
 			'confirmation' => MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONFIRMATION,
 		);
 		return $payload;
