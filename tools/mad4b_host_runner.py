@@ -24,8 +24,10 @@ import json
 import os
 import re
 import shutil
+import stat
 import sys
 import uuid
+import zipfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -42,6 +44,11 @@ MIN_FREE_SPACE_RESERVE_BYTES = 8 * 1024 * 1024
 RESOURCE_BUDGET_CONTRACT = "mad4b.host-runner-resource-budget.v1"
 WORKSPACE_PLAN_CONTRACT = "mad4b.host-runner-workspace-replace-plan.v1"
 WORKSPACE_ROLLBACK_PLAN_CONTRACT = "mad4b.host-runner-workspace-rollback-plan.v1"
+PLUGIN_DEPLOY_PLAN_CONTRACT = "mad4b.host-runner-wordpress-plugin-deploy-plan.v1"
+MAX_PLUGIN_ARCHIVE_BYTES = 64 * 1024 * 1024
+MAX_PLUGIN_ARCHIVE_FILES = 4096
+MAX_PLUGIN_UNCOMPRESSED_BYTES = 128 * 1024 * 1024
+PROVENANCE_FILE = "MAD4B-BUILD-PROVENANCE.json"
 
 # Fixed semantic operation registry. There is intentionally no generic command or shell surface.
 OPERATIONS: dict[str, dict[str, Any]] = {
@@ -71,6 +78,13 @@ OPERATIONS: dict[str, dict[str, Any]] = {
         "version": 1,
         "risk": "reversible_write",
         "zones": ["runner_workspace"],
+        "requires_plan": True,
+        "requires_approval": True,
+    },
+    "wordpress_plugin_deploy": {
+        "version": 1,
+        "risk": "reversible_write",
+        "zones": ["package_staging", "plugin_root"],
         "requires_plan": True,
         "requires_approval": True,
     },
@@ -360,11 +374,13 @@ def load_profile(path: Path) -> dict[str, Any]:
         "recovery_required_root": str((expected_workspace / "recovery-required").resolve()),
         "bridge_root": str((expected_workspace / "bridge").resolve()),
         "bridge_job_root": str((expected_workspace / "bridge-jobs").resolve()),
+        "package_staging_root": str((expected_workspace / "package-staging").resolve()),
+        "plugin_backup_root": str((expected_workspace / "plugin-backups").resolve()),
     }
     receipt_root = Path(normalized["receipt_root"])
     if not _is_within(receipt_root, expected_workspace):
         raise ValueError("Host Runner receipt_root escaped dedicated runner workspace")
-    for evidence_root_key in ("journal_root", "rollback_root", "dead_letter_root", "recovery_required_root", "bridge_root", "bridge_job_root"):
+    for evidence_root_key in ("journal_root", "rollback_root", "dead_letter_root", "recovery_required_root", "bridge_root", "bridge_job_root", "package_staging_root", "plugin_backup_root"):
         candidate = Path(normalized[evidence_root_key])
         if not _is_within(candidate, expected_workspace):
             raise ValueError(f"Host Runner {evidence_root_key} escaped dedicated runner workspace")
@@ -483,6 +499,7 @@ def zone_root(profile: dict[str, Any], zone: str) -> Path:
         "wordpress_root": root,
         "plugin_root": root / "wp-content" / "plugins" / "mad4b-site-control-plane",
         "runner_workspace": Path(profile["runner_workspace"]),
+        "package_staging": Path(profile["package_staging_root"]),
     }
     if zone not in zones:
         raise ValueError("unknown Host Runner filesystem zone")
