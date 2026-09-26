@@ -503,7 +503,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'write_tool_count' => (int) $authority['write_tool_count'],
 				'write_inventory_fingerprint' => (string) $authority['write_inventory_fingerprint'],
 				'exact_grants_existing' => isset( $authority['exact_grants_existing'] ) ? (int) $authority['exact_grants_existing'] : 0,
-				'exact_grants_created_by_authority_reconcile' => isset( $authority['exact_grants_created'] ) ? (int) $authority['exact_grants_created'] : 0,
+				'exact_grants_created_by_authority_reconcile' => count( $created_abilities ),
 				'source_commit_sha' => $current_sha,
 				'build_fingerprint' => $current_fingerprint,
 				'package_manifest_digest' => $current_manifest,
