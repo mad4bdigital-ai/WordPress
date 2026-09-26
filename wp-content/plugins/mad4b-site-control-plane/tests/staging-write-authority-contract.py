@@ -782,4 +782,36 @@ for required in [
     if required not in live_truth:
         raise SystemExit('Live Truth lost AI-review approval-policy projection: ' + required)
 
+
+# Write runtime certification must consume the canonical candidate-binding
+# completeness projection instead of hard-coding one package producer name.
+for required in [
+    "'complete' === (string) $candidate_binding['identity_completeness']",
+    "Reuse that projection here",
+]:
+    if required not in live_truth:
+        raise SystemExit(f'write runtime package identity projection drift: {required}')
+if "/^mad4b-site-control-plane-general-distribution-kit-[a-f0-9]{40}$/" in live_truth:
+    raise SystemExit('live write certification must not hard-code one artifact producer identity')
+
+# Effective prior-approval exceptions are bounded by runtime policy state:
+# bootstrap only while active, AI review only while configured, no duplicates,
+# and no bootstrap exception after closure.
+for text_value, label in [
+    (live_truth, 'live truth'),
+    (cert, 'write certification fallback'),
+]:
+    for required in [
+        "$allowed_exceptions = array();",
+        "candidate_bootstrap_exception_active",
+        "ai_review_standing_delegation_configured",
+        "$unexpected_exceptions = array_values( array_diff(",
+        "$duplicate_exceptions = count(",
+        "$closed_bootstrap_exception = ! empty( $bootstrap_closure['closed'] )",
+        "in_array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY",
+        "empty( $unexpected_exceptions ) && ! $duplicate_exceptions && ! $closed_bootstrap_exception",
+    ]:
+        if required not in text_value:
+            raise SystemExit(f'{label} bounded exception semantics missing: {required}')
+
 print('mad4b.staging-write-authority.tenant-profile.v14: PASS')
