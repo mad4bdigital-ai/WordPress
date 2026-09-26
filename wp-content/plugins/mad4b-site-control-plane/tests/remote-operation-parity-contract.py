@@ -4,6 +4,7 @@ root = Path(__file__).resolve().parents[1]
 parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
 dispatch = (root / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_text(encoding='utf-8')
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+abilities = (root / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 oauth = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 perf = (root / 'includes' / 'class-mad4b-scp-admin-query-performance.php').read_text(encoding='utf-8')
@@ -224,14 +225,50 @@ for forbidden in [
         raise SystemExit(f'forbidden generic execution primitive in enrollment dispatcher: {forbidden}')
 
 for marker in [
-    "MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools()",
-    "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY",
+    "'mad4b/enrollment-discover'",
+    "'mad4b/enrollment-info'",
+    "'mad4b/enrollment-execute'",
+    "MAD4B_SCP_Enrollment_Dispatch::can_execute",
+    "MAD4B_SCP_Enrollment_Dispatch::discover",
+    "MAD4B_SCP_Enrollment_Dispatch::info",
+    "MAD4B_SCP_Enrollment_Dispatch::execute",
+    "'expected_registration_digest'",
+    "'expected_dispatch_policy_digest'",
+    "'expected_input_schema_sha256'",
+]:
+    if marker not in abilities:
+        raise SystemExit(f'canonical core Enrollment dispatcher invariant missing: {marker}')
+if "MAD4B_SCP_Enrollment_Dispatch::boot();" in dispatch:
+    raise SystemExit('Enrollment policy helper must not self-register abilities after core dispatcher adoption')
+for marker in [
+    "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'",
+    "$direct_mutation_transport[] = 'mad4b/enrollment-execute';",
+    "$direct_mutation_transport = array_values( array_unique( $direct_mutation_transport ) );",
 ]:
     if marker not in servers:
-        raise SystemExit(f'ChatGPT server catalog missing enrollment dispatcher projection: {marker}')
+        raise SystemExit(f'compact ChatGPT Enrollment projection invariant missing: {marker}')
 
 if "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY" not in oauth:
     raise SystemExit('OAuth resource bridge does not advertise authority step-up when enrollment dispatch is available')
+
+enrollment_target = abilities.split("private function governed_enrollment_target(", 1)[1].split("public function can_enrollment_dispatch(", 1)[0]
+if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in enrollment_target:
+    raise SystemExit("Core Enrollment target allowlist is not sourced from Remote Operation Parity")
+for forbidden in [
+    "MAD4B_SCP_Servers::core_tools( 'mad4b-enrollment' )",
+    "MAD4B_SCP_Servers::external_write_tools()",
+    "MAD4B_SCP_Full_Staging_Authority",
+    "MAD4B_SCP_Developer_Authority",
+]:
+    if forbidden in enrollment_target:
+        raise SystemExit(f'Core Enrollment target widened beyond bounded parity inventory: {forbidden}')
+enrollment_permission = abilities.split("public function can_enrollment_dispatch(", 1)[1].split("public function enrollment_discover(", 1)[0]
+if "MAD4B_SCP_Policy::can_mutate()" in enrollment_permission:
+    raise SystemExit("Enrollment dispatcher must not depend on normal governed-write mutation readiness")
+if "MAD4B_SCP_Enrollment_Dispatch::can_execute" not in enrollment_permission:
+    raise SystemExit("Core Enrollment permission path must delegate to hardened Enrollment policy helper")
+if "MAD4B_SCP_Remote_Operation_Parity::can_execute(" not in enrollment_permission:
+    raise SystemExit("Core Enrollment permission path must retain Remote Operation Parity authority checks")
 
 claim_catalog = parity.split("'external_executor_work_claim' => array(", 1)[1].split("'external_executor_work_completion' => array(", 1)[0]
 complete_catalog = parity.split("'external_executor_work_completion' => array(", 1)[1].split("'brand_context_materialization_reconciliation' => array(", 1)[0]
