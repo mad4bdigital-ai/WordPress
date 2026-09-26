@@ -91,6 +91,7 @@ $direct_required = array(
 	'mad4b-write-discover',
 	'mad4b-write-info',
 	'mad4b-write-execute',
+	'mad4b-enrollment-execute',
 	'mad4b-diagnostics-health',
 	'mad4b-runtime-authority-status',
 	'mad4b-connection-status',
@@ -118,11 +119,52 @@ $internal_only_direct_forbidden = array(
 	'mad4b-site-profile-write-enable',
 	'mad4b-staging-write-grant-reconcile',
 	'mad4b-staging-write-candidate-bind',
+	'mad4b-reconcile-managed-skills',
+	'mad4b-frontend-performance-sample-run',
+	'mad4b-admin-query-performance-apply',
+	'mad4b-admin-query-performance-reconcile',
+	'mad4b-remote-operation-work-claim',
+	'mad4b-remote-operation-work-complete',
 );
 foreach ( $internal_only_direct_forbidden as $tool_name ) {
 	if ( in_array( $tool_name, $actual_names, true ) ) {
 		$fail( 'Low-level enrollment mutation leaked into the single-app direct catalog.', $tool_name );
 	}
+}
+
+if ( ! wp_has_ability( 'mad4b/enrollment-execute' ) ) {
+	$fail( 'Bounded enrollment dispatcher ability was not registered.' );
+}
+$enrollment_dispatcher = wp_get_ability( 'mad4b/enrollment-execute' );
+if ( ! is_object( $enrollment_dispatcher ) || ! method_exists( $enrollment_dispatcher, 'get_meta' ) ) {
+	$fail( 'Bounded enrollment dispatcher metadata is unavailable.' );
+}
+$enrollment_meta = $enrollment_dispatcher->get_meta();
+$enrollment_annotations = isset( $enrollment_meta['annotations'] ) && is_array( $enrollment_meta['annotations'] ) ? $enrollment_meta['annotations'] : array();
+$enrollment_mcp = isset( $enrollment_meta['mcp'] ) && is_array( $enrollment_meta['mcp'] ) ? $enrollment_meta['mcp'] : array();
+if ( true === ( isset( $enrollment_annotations['readonly'] ) ? $enrollment_annotations['readonly'] : null )
+	|| ! empty( $enrollment_annotations['destructive'] )
+	|| 'enrollment-dispatch' !== ( isset( $enrollment_mcp['surface'] ) ? (string) $enrollment_mcp['surface'] : '' )
+	|| ! empty( $enrollment_mcp['generic_remote_admin'] )
+	|| ! array_key_exists( 'production_mutation_allowed', $enrollment_mcp )
+	|| false !== $enrollment_mcp['production_mutation_allowed'] ) {
+	$fail( 'Bounded enrollment dispatcher metadata widened its authority contract.', $enrollment_meta );
+}
+if ( in_array( 'mad4b/enrollment-execute', MAD4B_SCP_Servers::write_tools(), true )
+	|| in_array( 'mad4b/enrollment-execute', MAD4B_SCP_Servers::external_write_tools(), true ) ) {
+	$fail( 'Bounded enrollment dispatcher leaked into the normal write catalog.' );
+}
+$dispatch_denied = MAD4B_SCP_Remote_Operation_Parity::dispatch_enrollment_ability(
+	array( 'ability_name' => 'mad4b/plugin-activate', 'input' => array() )
+);
+if ( ! is_wp_error( $dispatch_denied ) || 'mad4b_enrollment_dispatch_target_not_allowed' !== $dispatch_denied->get_error_code() ) {
+	$fail( 'Enrollment dispatcher did not fail closed for a non-enrollment target.', $dispatch_denied );
+}
+$dispatch_validation = MAD4B_SCP_Remote_Operation_Parity::dispatch_enrollment_ability(
+	array( 'ability_name' => MAD4B_SCP_Remote_Operation_Parity::SKILLS_ABILITY, 'input' => array() )
+);
+if ( ! is_wp_error( $dispatch_validation ) || 'ability_invalid_input' !== $dispatch_validation->get_error_code() ) {
+	$fail( 'Enrollment dispatcher did not preserve target Ability input validation.', $dispatch_validation );
 }
 
 // Heavy/read-only inventory stays out of tools/list so client Refresh remains
