@@ -1019,6 +1019,458 @@ def plugin_tree_digest(root: Path) -> tuple[str, int]:
     return sha256_bytes(b"".join(rows)), count
 
 
+
+def _control_plane_identity(identity: dict[str, Any]) -> dict[str, str]:
+    source = str(identity.get("source_commit_sha") or "").lower()
+    build = str(identity.get("build_fingerprint") or "").lower()
+    manifest = str(identity.get("package_manifest_digest") or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{40}", source):
+        raise ValueError("Control Plane source identity is invalid")
+    if not re.fullmatch(r"[a-f0-9]{64}", build):
+        raise ValueError("Control Plane build fingerprint is invalid")
+    if not re.fullmatch(r"[a-f0-9]{64}", manifest):
+        raise ValueError("Control Plane package manifest digest is invalid")
+    return {
+        "source_commit_sha": source,
+        "build_fingerprint": build,
+        "package_manifest_digest": manifest,
+    }
+
+
+def _control_plane_identity_digest(identity: dict[str, Any]) -> str:
+    return sha256_bytes(canonical_json(_control_plane_identity(identity)))
+
+
+def _safe_package_relative(value: str) -> Path:
+    if not isinstance(value, str) or not value or "\x00" in value or "\\" in value:
+        raise ValueError("Package member path is invalid")
+    rel = Path(value)
+    if rel.is_absolute() or ".." in rel.parts or rel.parts[0] != PLUGIN_SLUG:
+        raise ValueError("Package member escaped the fixed plugin root")
+    return rel
+
+
+def _verify_plugin_tree(root: Path, provenance: dict[str, Any]) -> tuple[str, int]:
+    if _is_link_like(root) or not root.is_dir():
+        raise ValueError("Control Plane plugin root is unavailable")
+    rows = provenance.get("package_files")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("Control Plane provenance package manifest is missing")
+    expected: dict[str, tuple[int, str]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("Control Plane provenance package row is invalid")
+        rel = str(row.get("path") or "")
+        rel_path = Path(rel)
+        if not rel or rel_path.is_absolute() or ".." in rel_path.parts or "\\" in rel:
+            raise ValueError("Control Plane provenance package path is invalid")
+        digest = str(row.get("sha256") or "").lower()
+        size = int(row.get("bytes") or -1)
+        if not re.fullmatch(r"[a-f0-9]{64}", digest) or size < 0:
+            raise ValueError("Control Plane provenance package identity is invalid")
+        expected[rel] = (size, digest)
+
+    actual: dict[str, tuple[int, str]] = {}
+    for target in sorted(root.rglob("*")):
+        if _is_link_like(target):
+            raise ValueError("Control Plane plugin tree contains a symlink/reparse object")
+        if not target.is_file():
+            continue
+        rel = target.relative_to(root).as_posix()
+        if rel == "MAD4B-BUILD-PROVENANCE.json":
+            continue
+        actual[rel] = (target.stat().st_size, sha256_file(target))
+    if set(actual) != set(expected):
+        raise ValueError("Control Plane installed package file inventory drifted from provenance")
+    for rel, identity in expected.items():
+        if actual[rel] != identity:
+            raise ValueError(f"Control Plane installed package file identity drifted: {rel}")
+    digest = sha256_bytes(canonical_json({
+        "source_commit_sha": provenance.get("source_commit_sha"),
+        "build_fingerprint": provenance.get("build_fingerprint"),
+        "package_manifest_digest": provenance.get("package_manifest_digest"),
+        "files": [{"path": rel, "bytes": expected[rel][0], "sha256": expected[rel][1]} for rel in sorted(expected)],
+    }))
+    return digest, len(expected)
+
+
+def _installed_control_plane_identity(root: Path) -> dict[str, Any]:
+    provenance_path = root / "MAD4B-BUILD-PROVENANCE.json"
+    if _is_link_like(provenance_path) or not provenance_path.is_file():
+        raise ValueError("Installed Control Plane provenance is unavailable")
+    provenance = load_json_bounded(provenance_path, MAX_RECEIPT_BYTES)
+    if provenance.get("contract") != "mad4b.build-provenance.v1":
+        raise ValueError("Installed Control Plane provenance contract mismatch")
+    identity = _control_plane_identity(provenance)
+    tree_sha256, file_count = _verify_plugin_tree(root, provenance)
+    return {
+        **identity,
+        "control_plane_version": str(provenance.get("control_plane_version") or ""),
+        "tree_sha256": tree_sha256,
+        "file_count": file_count,
+    }
+
+
+def _zip_member_is_symlink(info: zipfile.ZipInfo) -> bool:
+    mode = (info.external_attr >> 16) & 0o170000
+    return mode == 0o120000
+
+
+def _verify_staged_control_plane_bundle(profile: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
+    candidate = plan.get("candidate")
+    if not isinstance(candidate, dict):
+        raise ValueError("Plugin deployment candidate identity is missing")
+    candidate_identity = _control_plane_identity(candidate)
+    source = candidate_identity["source_commit_sha"]
+    version = str(candidate.get("control_plane_version") or "")
+    artifact_identity = str(candidate.get("artifact_identity") or "")
+    archive_sha256 = str(candidate.get("archive_sha256") or "").lower()
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", version):
+        raise ValueError("Plugin deployment candidate version is invalid")
+    if artifact_identity != f"mad4b-site-control-plane-general-distribution-kit-{source}":
+        raise ValueError("Plugin deployment artifact identity mismatch")
+    if not re.fullmatch(r"[a-f0-9]{64}", archive_sha256):
+        raise ValueError("Plugin deployment archive identity is invalid")
+
+    staging_root = Path(profile["package_staging_root"])
+    if _is_link_like(staging_root) or not staging_root.is_dir():
+        raise ValueError("Host Runner package staging root is unavailable")
+    bundle = staging_root / source
+    _reject_symlink_chain(bundle, staging_root)
+    if _is_link_like(bundle) or not bundle.is_dir() or bundle.parent.resolve() != staging_root.resolve():
+        raise ValueError("Plugin deployment staged bundle is unavailable")
+
+    install_path = bundle / "install-manifest.json"
+    receipt_path = bundle / "CANONICAL-PACKAGE-RECEIPT.json"
+    build_path = bundle / "BUILD-FINGERPRINT.txt"
+    manifest_path = bundle / "PACKAGE-MANIFEST-DIGEST.txt"
+    for required in (install_path, receipt_path, build_path, manifest_path):
+        if _is_link_like(required) or not required.is_file():
+            raise ValueError("Plugin deployment staged bundle is incomplete")
+
+    install = load_json_bounded(install_path, MAX_RECEIPT_BYTES)
+    receipt = load_json_bounded(receipt_path, MAX_RECEIPT_BYTES)
+    if install.get("contract") != "mad4b.site-control-plane.general-distribution-kit.v1":
+        raise ValueError("Plugin deployment install manifest contract mismatch")
+    if install.get("repository") != "mad4bdigital-ai/WordPress":
+        raise ValueError("Plugin deployment repository identity mismatch")
+    if str(install.get("commit") or "").lower() != source:
+        raise ValueError("Plugin deployment install manifest source mismatch")
+    if str(install.get("build_fingerprint") or "").lower() != candidate_identity["build_fingerprint"]:
+        raise ValueError("Plugin deployment install manifest build mismatch")
+    if str(install.get("package_manifest_digest") or "").lower() != candidate_identity["package_manifest_digest"]:
+        raise ValueError("Plugin deployment install manifest package mismatch")
+
+    control = install.get("control_plane")
+    if not isinstance(control, dict):
+        raise ValueError("Plugin deployment control-plane manifest section is missing")
+    archive_name = str(control.get("archive") or "")
+    if archive_name != f"mad4b-site-control-plane-{version}.zip":
+        raise ValueError("Plugin deployment archive filename/version mismatch")
+    if str(control.get("sha256") or "").lower() != archive_sha256:
+        raise ValueError("Plugin deployment archive hash mismatch in install manifest")
+
+    if receipt.get("contract") != "mad4b.deterministic-control-plane-package.v1":
+        raise ValueError("Plugin deployment canonical receipt contract mismatch")
+    receipt_expect = {
+        "source_commit_sha": source,
+        "build_fingerprint": candidate_identity["build_fingerprint"],
+        "package_manifest_digest": candidate_identity["package_manifest_digest"],
+        "archive_sha256": archive_sha256,
+        "control_plane_version": version,
+    }
+    for key, expected in receipt_expect.items():
+        if str(receipt.get(key) or "").lower() != expected.lower():
+            raise ValueError(f"Plugin deployment canonical receipt mismatch: {key}")
+    canonical = install.get("canonical_package")
+    if not isinstance(canonical, dict):
+        raise ValueError("Plugin deployment canonical package metadata is missing")
+    if str(canonical.get("receipt_sha256") or "").lower() != sha256_file(receipt_path):
+        raise ValueError("Plugin deployment canonical receipt hash mismatch")
+
+    if build_path.read_text(encoding="utf-8").strip().lower() != candidate_identity["build_fingerprint"]:
+        raise ValueError("Plugin deployment BUILD-FINGERPRINT.txt mismatch")
+    if manifest_path.read_text(encoding="utf-8").strip().lower() != candidate_identity["package_manifest_digest"]:
+        raise ValueError("Plugin deployment PACKAGE-MANIFEST-DIGEST.txt mismatch")
+
+    archive_path = bundle / archive_name
+    if _is_link_like(archive_path) or not archive_path.is_file():
+        raise ValueError("Plugin deployment control-plane archive is unavailable")
+    if archive_path.stat().st_size < 1 or archive_path.stat().st_size > MAX_PLUGIN_ARCHIVE_BYTES:
+        raise HostRunnerResourceError("HOST_RESOURCE_PLUGIN_ARCHIVE_BYTES_EXCEEDED", "Plugin deployment archive exceeds bounded byte budget")
+    if not hmac.compare_digest(sha256_file(archive_path), archive_sha256):
+        raise ValueError("Plugin deployment staged archive SHA-256 mismatch")
+
+    with zipfile.ZipFile(archive_path, "r") as zf:
+        files = [info for info in zf.infolist() if not info.is_dir()]
+        if not files or len(files) > 5000:
+            raise ValueError("Plugin deployment archive file inventory is invalid")
+        for info in files:
+            _safe_package_relative(info.filename)
+            if _zip_member_is_symlink(info):
+                raise ValueError("Plugin deployment archive contains a symlink")
+        provenance_name = f"{PLUGIN_SLUG}/MAD4B-BUILD-PROVENANCE.json"
+        try:
+            provenance = json.loads(zf.read(provenance_name).decode("utf-8"))
+        except Exception as exc:
+            raise ValueError("Plugin deployment embedded provenance is unreadable") from exc
+        if not isinstance(provenance, dict) or provenance.get("contract") != "mad4b.build-provenance.v1":
+            raise ValueError("Plugin deployment embedded provenance contract mismatch")
+        embedded_identity = _control_plane_identity(provenance)
+        if embedded_identity != candidate_identity:
+            raise ValueError("Plugin deployment embedded provenance identity mismatch")
+        if str(provenance.get("control_plane_version") or "") != version:
+            raise ValueError("Plugin deployment embedded version mismatch")
+
+        package_rows = provenance.get("package_files")
+        if not isinstance(package_rows, list) or not package_rows:
+            raise ValueError("Plugin deployment embedded package manifest is missing")
+        expected_members = {provenance_name}
+        info_by_name = {info.filename: info for info in files}
+        for row in package_rows:
+            if not isinstance(row, dict):
+                raise ValueError("Plugin deployment embedded package row is invalid")
+            rel = str(row.get("path") or "")
+            member = f"{PLUGIN_SLUG}/{rel}"
+            _safe_package_relative(member)
+            digest = str(row.get("sha256") or "").lower()
+            size = int(row.get("bytes") or -1)
+            if member not in info_by_name or not re.fullmatch(r"[a-f0-9]{64}", digest) or size < 0:
+                raise ValueError("Plugin deployment embedded package row identity is invalid")
+            info = info_by_name[member]
+            if info.file_size != size:
+                raise ValueError(f"Plugin deployment archive size mismatch: {rel}")
+            if not hmac.compare_digest(sha256_bytes(zf.read(member)), digest):
+                raise ValueError(f"Plugin deployment archive digest mismatch: {rel}")
+            expected_members.add(member)
+        if set(info_by_name) != expected_members:
+            raise ValueError("Plugin deployment archive contains unexpected files")
+
+    return {
+        "bundle_root": bundle,
+        "archive_path": archive_path,
+        "archive_name": archive_name,
+        "candidate_identity": candidate_identity,
+        "candidate_version": version,
+        "archive_sha256": archive_sha256,
+    }
+
+
+def _validate_plugin_deploy_plan(profile: dict[str, Any], verified: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    inputs = verified["input"]
+    if set(inputs) != {"plan"}:
+        raise ValueError("wordpress_plugin_deploy input fields are invalid")
+    plan = inputs.get("plan")
+    if not isinstance(plan, dict) or plan.get("contract") != PLUGIN_DEPLOY_PLAN_CONTRACT:
+        raise ValueError("Plugin deployment plan contract mismatch")
+    supplied_plan_sha = str(plan.get("plan_sha256") or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{64}", supplied_plan_sha) or plan_digest(plan) != supplied_plan_sha:
+        raise ValueError("Plugin deployment plan digest mismatch")
+    if not hmac.compare_digest(supplied_plan_sha, verified["plan_sha256"]):
+        raise ValueError("Host Runner job is not bound to exact plugin deployment plan")
+    expected = {
+        "operation_id": "wordpress_plugin_deploy",
+        "operation_version": OPERATIONS["wordpress_plugin_deploy"]["version"],
+        "runner_profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "plugin_slug": PLUGIN_SLUG,
+        "active_runtime_observed": True,
+        "backup_before_replace": True,
+        "atomic_replace_required": True,
+        "same_cycle_file_readback_required": True,
+        "rollback_on_failed_readback": True,
+        "caller_supplied_path_allowed": False,
+        "caller_supplied_url_allowed": False,
+        "caller_supplied_credentials_allowed": False,
+        "production_authorized": False,
+    }
+    for key, value in expected.items():
+        if plan.get(key) != value:
+            raise ValueError(f"Plugin deployment plan invariant drift: {key}")
+    source = str((plan.get("candidate") or {}).get("source_commit_sha") or "").lower()
+    if str(plan.get("bundle_key") or "").lower() != source:
+        raise ValueError("Plugin deployment bundle key must equal exact source SHA")
+    current = plan.get("current")
+    if not isinstance(current, dict):
+        raise ValueError("Plugin deployment current identity is missing")
+    current_identity = _control_plane_identity(current)
+    plugin_root = Path(profile["wordpress_root"]) / "wp-content" / "plugins" / PLUGIN_SLUG
+    observed = _installed_control_plane_identity(plugin_root)
+    if _control_plane_identity(observed) != current_identity:
+        raise ValueError("Installed Control Plane identity changed since deployment plan")
+    bundle = _verify_staged_control_plane_bundle(profile, plan)
+    if bundle["candidate_identity"] == current_identity:
+        raise ValueError("Plugin deployment candidate is already installed")
+    return plan, bundle
+
+
+def _rollback_plugin_deploy(result: dict[str, Any]) -> bool:
+    plugin_root = Path(str(result.get("_plugin_root") or ""))
+    rollback_path = Path(str(result.get("_rollback_path") or ""))
+    failed_path = Path(str(result.get("_failed_path") or ""))
+    expected_before = str(result.get("before_sha256") or "")
+    try:
+        if not rollback_path.is_dir() or _is_link_like(rollback_path):
+            return False
+        if plugin_root.exists():
+            if _is_link_like(plugin_root) or not plugin_root.is_dir():
+                return False
+            if failed_path.exists():
+                return False
+            os.replace(plugin_root, failed_path)
+        os.replace(rollback_path, plugin_root)
+        if failed_path.exists():
+            shutil.rmtree(failed_path)
+        restored = _installed_control_plane_identity(plugin_root)
+        return hmac.compare_digest(_control_plane_identity_digest(restored), expected_before)
+    except (OSError, ValueError):
+        return False
+
+
+def execute_wordpress_plugin_deploy(profile: dict[str, Any], verified: dict[str, Any]) -> dict[str, Any]:
+    plan, bundle = _validate_plugin_deploy_plan(profile, verified)
+    root = Path(profile["wordpress_root"])
+    plugins_root = root / "wp-content" / "plugins"
+    plugin_root = plugins_root / PLUGIN_SLUG
+    if _is_link_like(plugins_root) or not plugins_root.is_dir():
+        raise ValueError("WordPress plugins root is invalid")
+    if _is_link_like(plugin_root) or not plugin_root.is_dir():
+        raise ValueError("Control Plane plugin root is invalid")
+
+    current = _installed_control_plane_identity(plugin_root)
+    before_sha = _control_plane_identity_digest(current)
+    candidate_identity = bundle["candidate_identity"]
+    after_sha = _control_plane_identity_digest(candidate_identity)
+
+    token = verified["job_id"]
+    stage_root = plugins_root / f".{PLUGIN_SLUG}.stage-{token}"
+    rollback_path = plugins_root / f".{PLUGIN_SLUG}.rollback-{token}"
+    failed_path = plugins_root / f".{PLUGIN_SLUG}.failed-{token}"
+    for path in (stage_root, rollback_path, failed_path):
+        if path.exists() or _is_link_like(path):
+            raise ValueError("Plugin deployment temporary target already exists")
+
+    journal_root = Path(profile["journal_root"])
+    journal_root.mkdir(parents=True, exist_ok=True)
+    if _is_link_like(journal_root):
+        raise ValueError("Host Runner journal root symlink is forbidden")
+    journal_path = journal_root / f"{token}.json"
+    if journal_path.exists():
+        raise ValueError("Plugin deployment mutation journal already exists")
+
+    _ensure_storage_budget(plugins_root, bundle["archive_path"].stat().st_size * 3)
+    stage_root.mkdir(mode=0o700)
+    try:
+        with zipfile.ZipFile(bundle["archive_path"], "r") as zf:
+            for info in zf.infolist():
+                if info.is_dir():
+                    continue
+                rel = _safe_package_relative(info.filename)
+                if _zip_member_is_symlink(info):
+                    raise ValueError("Plugin deployment archive contains a symlink")
+                relative_inside_plugin = Path(*rel.parts[1:])
+                target = stage_root / PLUGIN_SLUG / relative_inside_plugin
+                target.parent.mkdir(parents=True, exist_ok=True)
+                _reject_symlink_chain(target.parent, stage_root)
+                raw = zf.read(info.filename)
+                with target.open("wb") as handle:
+                    handle.write(raw)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+        staged_plugin = stage_root / PLUGIN_SLUG
+        staged = _installed_control_plane_identity(staged_plugin)
+        if _control_plane_identity(staged) != candidate_identity:
+            raise RuntimeError("Plugin deployment extracted candidate identity mismatch")
+        if not hmac.compare_digest(_control_plane_identity_digest(staged), after_sha):
+            raise RuntimeError("Plugin deployment extracted candidate readback mismatch")
+
+        journal = {
+            "contract": "mad4b.host-runner-mutation-journal.v1",
+            "job_id": token,
+            "plan_sha256": verified["plan_sha256"],
+            "approval_ref": verified["approval_ref"],
+            "operation_id": "wordpress_plugin_deploy",
+            "relative_path": f"wp-content/plugins/{PLUGIN_SLUG}",
+            "before_sha256": before_sha,
+            "expected_after_sha256": after_sha,
+            "state": "MUTATION_STARTED",
+            "terminal": False,
+            "blind_retry_allowed": False,
+            "created_at": utc_now(),
+        }
+        atomic_json_write(journal_path, journal)
+
+        result = {
+            "relative_path": f"wp-content/plugins/{PLUGIN_SLUG}",
+            "before_sha256": before_sha,
+            "after_sha256": after_sha,
+            "source_commit_sha": candidate_identity["source_commit_sha"],
+            "build_fingerprint": candidate_identity["build_fingerprint"],
+            "package_manifest_digest": candidate_identity["package_manifest_digest"],
+            "archive_sha256": bundle["archive_sha256"],
+            "control_plane_version": bundle["candidate_version"],
+            "artifact_identity": str(plan["candidate"]["artifact_identity"]),
+            "plan_sha256": verified["plan_sha256"],
+            "approval_ref": verified["approval_ref"],
+            "backup_created": False,
+            "rollback_available": False,
+            "activation_state_preserved": True,
+            "mutation_performed": True,
+            "readback_verdict": "PENDING",
+            "_plugin_root": str(plugin_root),
+            "_rollback_path": str(rollback_path),
+            "_failed_path": str(failed_path),
+            "_journal_path": str(journal_path),
+        }
+
+        os.replace(plugin_root, rollback_path)
+        result["backup_created"] = True
+        result["rollback_available"] = True
+        os.replace(staged_plugin, plugin_root)
+        observed = _installed_control_plane_identity(plugin_root)
+        if _control_plane_identity(observed) != candidate_identity:
+            raise RuntimeError("Plugin deployment postcondition identity mismatch")
+        if not hmac.compare_digest(_control_plane_identity_digest(observed), after_sha):
+            raise RuntimeError("Plugin deployment postcondition readback mismatch")
+        result["readback_verdict"] = "PASS"
+        shutil.rmtree(stage_root, ignore_errors=True)
+        return result
+    except Exception:
+        provisional = locals().get("result")
+        rolled_back = _rollback_plugin_deploy(provisional) if isinstance(provisional, dict) and provisional.get("backup_created") else True
+        failure = {
+            "contract": "mad4b.host-runner-mutation-journal.v1",
+            "job_id": token,
+            "plan_sha256": verified["plan_sha256"],
+            "approval_ref": verified["approval_ref"],
+            "operation_id": "wordpress_plugin_deploy",
+            "relative_path": f"wp-content/plugins/{PLUGIN_SLUG}",
+            "before_sha256": before_sha,
+            "expected_after_sha256": after_sha,
+            "state": "ROLLED_BACK_AFTER_FAILURE" if rolled_back else "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+            "terminal": True,
+            "rollback_verified": rolled_back,
+            "blind_retry_allowed": False,
+            "completed_at": utc_now(),
+        }
+        try:
+            atomic_json_write(journal_path, failure)
+        except Exception:
+            pass
+        shutil.rmtree(stage_root, ignore_errors=True)
+        raise
+
+
+def _rollback_write_result(operation_id: str, result: dict[str, Any]) -> bool:
+    if operation_id in {"workspace.file.replace", "workspace.file.rollback"}:
+        return _rollback_workspace_replace(result)
+    if operation_id == "wordpress_plugin_deploy":
+        return _rollback_plugin_deploy(result)
+    return False
+
+
 def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict[str, Any]:
     operation_id = verified["operation_id"]
     inputs = verified["input"]
@@ -1076,6 +1528,9 @@ def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict
 
     if operation_id == "workspace.file.rollback":
         return execute_workspace_rollback(profile, verified)
+
+    if operation_id == "wordpress_plugin_deploy":
+        return execute_wordpress_plugin_deploy(profile, verified)
 
     raise ValueError("Host Runner operation has no implementation")
 
