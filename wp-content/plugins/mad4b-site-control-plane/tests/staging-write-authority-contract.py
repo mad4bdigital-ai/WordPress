@@ -200,7 +200,14 @@ if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_tr
 if "$step_up = array_merge( $narrow_step_up, $full_step_up )" not in chatgpt_transport:
     raise SystemExit('bounded and full authority step-ups must be composed explicitly')
 if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" not in chatgpt_transport:
-    raise SystemExit('direct ChatGPT mutation transport must be limited to write-execute plus the composed guarded authority step-ups')
+    raise SystemExit('direct ChatGPT mutation transport must preserve write-execute plus composed guarded authority step-ups')
+if "$direct_mutation_transport[] = 'mad4b/enrollment-execute';" not in chatgpt_transport:
+    raise SystemExit('bounded Enrollment dispatcher must extend the baseline direct mutation transport explicitly')
+core_chatgpt = servers.split("'mad4b-chatgpt' => array_merge( array(", 1)[1].split("), $governed_status", 1)[0]
+if "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" not in core_chatgpt:
+    raise SystemExit('bounded Enrollment discover/info/execute projection is missing from the canonical compact ChatGPT core catalog')
+if "$candidates = array_merge( $core, $bootstrap )" not in chatgpt_transport:
+    raise SystemExit('runtime ChatGPT transport no longer starts from the canonical compact core catalog')
 for bootstrap_ability in (
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
@@ -222,6 +229,11 @@ if "'mad4b/staging-write-grant-reconcile'" in core_write:
     raise SystemExit('grant reconciliation must not become a normal mad4b-write candidate')
 if "'mad4b/staging-write-candidate-bind'" in core_write:
     raise SystemExit('candidate binding bootstrap must not become a normal mad4b-write candidate')
+
+if "'mad4b/enrollment-execute'" in core_write:
+    raise SystemExit('bounded enrollment dispatcher must not become a normal mad4b-write candidate')
+if "'mad4b/reconcile-managed-skills'" in core_write:
+    raise SystemExit('managed Skills reconciliation must remain outside normal mad4b-write authority')
 
 
 # A package transition may expose one bootstrap write before the persisted candidate
@@ -330,6 +342,8 @@ for marker in [
     "public static function chatgpt_full_catalog_candidates()",
     "$step_up = array_merge( $narrow_step_up, $full_step_up )",
     "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )",
+    "$direct_mutation_transport[] = 'mad4b/enrollment-execute';",
+    "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
     "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
@@ -757,5 +771,50 @@ if _artifact_identity_valid('mad4b-site-control-plane-0.4.0-rc.59-' + ('0' * 40)
     raise SystemExit('artifact identity with a different source SHA must be rejected')
 if _artifact_identity_valid('../mad4b-site-control-plane-0.4.0-rc.59-' + _exact_sha, _exact_sha):
     raise SystemExit('unsafe artifact identity characters/prefix must be rejected')
+
+
+# Live Truth must project the bounded AI-review standing delegation metadata
+# consumed by current_write_certification(); otherwise a legitimate configured
+# exception is misclassified as an unexpected prior-approval bypass.
+for required in [
+    "'ai_review_standing_delegation_defined' => ! empty( $approval_policy['ai_review_standing_delegation_defined'] )",
+    "'ai_review_standing_delegation_contract' => isset( $approval_policy['ai_review_standing_delegation_contract'] )",
+    "'ai_review_standing_delegation_configured' => ! empty( $approval_policy['ai_review_standing_delegation_configured'] )",
+    "'remote_write_prior_approval_exceptions' => isset( $approval_policy['remote_write_prior_approval_exceptions'] )",
+]:
+    if required not in live_truth:
+        raise SystemExit('Live Truth lost AI-review approval-policy projection: ' + required)
+
+
+# Write runtime certification must consume the canonical candidate-binding
+# completeness projection instead of hard-coding one package producer name.
+for required in [
+    "'complete' === (string) $candidate_binding['identity_completeness']",
+    "Reuse that projection here",
+]:
+    if required not in live_truth:
+        raise SystemExit(f'write runtime package identity projection drift: {required}')
+if "/^mad4b-site-control-plane-general-distribution-kit-[a-f0-9]{40}$/" in live_truth:
+    raise SystemExit('live write certification must not hard-code one artifact producer identity')
+
+# Effective prior-approval exceptions are bounded by runtime policy state:
+# bootstrap only while active, AI review only while configured, no duplicates,
+# and no bootstrap exception after closure.
+for text_value, label in [
+    (live_truth, 'live truth'),
+    (cert, 'write certification fallback'),
+]:
+    for required in [
+        "$allowed_exceptions = array();",
+        "candidate_bootstrap_exception_active",
+        "ai_review_standing_delegation_configured",
+        "$unexpected_exceptions = array_values( array_diff(",
+        "$duplicate_exceptions = count(",
+        "$closed_bootstrap_exception = ! empty( $bootstrap_closure['closed'] )",
+        "in_array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY",
+        "empty( $unexpected_exceptions ) && ! $duplicate_exceptions && ! $closed_bootstrap_exception",
+    ]:
+        if required not in text_value:
+            raise SystemExit(f'{label} bounded exception semantics missing: {required}')
 
 print('mad4b.staging-write-authority.tenant-profile.v14: PASS')

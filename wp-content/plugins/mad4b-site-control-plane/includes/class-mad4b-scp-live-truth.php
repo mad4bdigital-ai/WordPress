@@ -258,6 +258,10 @@ final class MAD4B_SCP_Live_Truth {
 			'normal_remote_writes_require_exact_approval' => ! empty( $approval_policy['normal_remote_writes_require_exact_approval'] ),
 			'remote_write_approval_policy' => isset( $approval_policy['remote_write_approval_policy'] ) ? (string) $approval_policy['remote_write_approval_policy'] : '',
 			'remote_write_approval_exceptions' => isset( $approval_policy['remote_write_approval_exceptions'] ) ? (array) $approval_policy['remote_write_approval_exceptions'] : array(),
+			'ai_review_standing_delegation_defined' => ! empty( $approval_policy['ai_review_standing_delegation_defined'] ),
+			'ai_review_standing_delegation_contract' => isset( $approval_policy['ai_review_standing_delegation_contract'] ) ? (string) $approval_policy['ai_review_standing_delegation_contract'] : '',
+			'ai_review_standing_delegation_configured' => ! empty( $approval_policy['ai_review_standing_delegation_configured'] ),
+			'remote_write_prior_approval_exceptions' => isset( $approval_policy['remote_write_prior_approval_exceptions'] ) && is_array( $approval_policy['remote_write_prior_approval_exceptions'] ) ? array_values( $approval_policy['remote_write_prior_approval_exceptions'] ) : array(),
 			'candidate_bootstrap_exception_defined' => ! empty( $approval_policy['candidate_bootstrap_exception_defined'] ),
 			'candidate_bootstrap_exception_active' => $candidate_bootstrap_exception_active,
 			'candidate_bootstrap_contract' => isset( $candidate_bootstrap['contract'] ) ? (string) $candidate_bootstrap['contract'] : '',
@@ -308,13 +312,12 @@ final class MAD4B_SCP_Live_Truth {
 			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
 			: array( 'required' => false, 'match' => true );
 		$binding_fingerprint = self::candidate_binding_fingerprint( $candidate_binding );
-		$package_identity_complete = empty( $candidate_binding['required'] ) || (
-			isset( $candidate_binding['current_source_commit_sha'], $candidate_binding['current_build_fingerprint'], $candidate_binding['current_package_manifest_digest'], $candidate_binding['current_artifact_identity'] )
-			&& 1 === preg_match( '/^[a-f0-9]{40}$/', (string) $candidate_binding['current_source_commit_sha'] )
-			&& 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $candidate_binding['current_build_fingerprint'] )
-			&& 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $candidate_binding['current_package_manifest_digest'] )
-			&& 1 === preg_match( '/^mad4b-site-control-plane-general-distribution-kit-[a-f0-9]{40}$/', (string) $candidate_binding['current_artifact_identity'] )
-		);
+		// Candidate binding is the canonical package-identity validator. It already
+		// binds source SHA, build fingerprint, manifest digest and a safe artifact
+		// identity suffix to the exact current package. Reuse that projection here
+		// instead of maintaining a second producer-name regex that can drift.
+		$package_identity_complete = empty( $candidate_binding['required'] )
+			|| ( isset( $candidate_binding['identity_completeness'] ) && 'complete' === (string) $candidate_binding['identity_completeness'] );
 		$tools = isset( $inventory['write_tools'] ) ? $inventory['write_tools'] : array();
 		$provider_blocked = isset( $inventory['provider_blocked_write_tools'] ) ? $inventory['provider_blocked_write_tools'] : array();
 		$checks = array();
@@ -334,7 +337,20 @@ final class MAD4B_SCP_Live_Truth {
 		$checks['package_identity_complete'] = $package_identity_complete;
 		$checks['candidate_binding_current'] = empty( $candidate_binding['required'] ) || ! empty( $candidate_binding['match'] );
 		$exceptions = isset( $authority['remote_write_approval_exceptions'] ) && is_array( $authority['remote_write_approval_exceptions'] ) ? array_values( $authority['remote_write_approval_exceptions'] ) : array();
-		$checks['candidate_bootstrap_exception_bounded'] = empty( $exceptions ) || ( 1 === count( $exceptions ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY === (string) $exceptions[0] );
+		$bootstrap_closure = isset( $authority['candidate_bootstrap_closure'] ) && is_array( $authority['candidate_bootstrap_closure'] ) ? $authority['candidate_bootstrap_closure'] : array();
+		$allowed_exceptions = array();
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && ! empty( $authority['candidate_bootstrap_exception_active'] ) ) {
+			$allowed_exceptions[] = MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY;
+		}
+		if ( ! empty( $authority['ai_review_standing_delegation_configured'] ) ) {
+			$allowed_exceptions[] = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY : 'mad4b/context-ai-review';
+		}
+		$unexpected_exceptions = array_values( array_diff( $exceptions, $allowed_exceptions ) );
+		$duplicate_exceptions = count( $exceptions ) !== count( array_unique( $exceptions ) );
+		$closed_bootstrap_exception = ! empty( $bootstrap_closure['closed'] )
+			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			&& in_array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY, $exceptions, true );
+		$checks['candidate_bootstrap_exception_bounded'] = empty( $unexpected_exceptions ) && ! $duplicate_exceptions && ! $closed_bootstrap_exception;
 		foreach ( array( 'site_profile_bound', 'write_feature_enabled', 'write_authority_eligible', 'authority_ready', 'mutation_gate_enabled', 'production_auto_enable_absent', 'breakglass_auto_enable_absent', 'breakglass_not_included', 'normal_remote_approval_required', 'package_identity_complete', 'candidate_binding_current', 'candidate_bootstrap_exception_bounded' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();

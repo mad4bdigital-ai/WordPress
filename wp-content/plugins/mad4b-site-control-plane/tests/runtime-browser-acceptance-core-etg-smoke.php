@@ -50,7 +50,27 @@ foreach ( $ability_names as $name ) {
 		$check( ! MAD4B_SCP_Servers::ability_is_mounted( $server, $name ), 'Browser Acceptance read ability leaked to ' . $server . ': ' . $name );
 	}
 }
-$check( ! wp_has_ability( 'mad4b/browser-acceptance-run' ), 'WordPress must not expose browser execution as a server-side ability.' );
+$check( wp_has_ability( 'mad4b/browser-acceptance-run' ), 'Governed Browser Acceptance orchestration ability is missing.' );
+$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-enrollment', 'mad4b/browser-acceptance-run' ), 'Browser Acceptance orchestration must be mounted only through the bounded enrollment authority.' );
+$check( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/browser-acceptance-run' ), 'Browser Acceptance orchestration leaked to read authority.' );
+$check( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', 'mad4b/browser-acceptance-run' ), 'Browser Acceptance orchestration leaked to normal governed write authority.' );
+$check( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-admin', 'mad4b/browser-acceptance-run' ), 'Browser Acceptance orchestration leaked to admin mutation authority.' );
+$check( ! in_array( 'mad4b/browser-acceptance-run', $write_tools, true ), 'Browser Acceptance orchestration entered write_tools().' );
+
+$parity_status = $dispatch_read( 'mad4b/remote-operation-parity-status' );
+$check( ! is_wp_error( $parity_status ), 'Remote Operation Parity status is unavailable to Browser Acceptance runtime smoke.' );
+$browser_operation = null;
+foreach ( (array) ( $parity_status['operations'] ?? array() ) as $row ) {
+	if ( 'browser_acceptance_execution' === (string) ( $row['operation_id'] ?? '' ) ) { $browser_operation = $row; break; }
+}
+$check( is_array( $browser_operation ), 'Browser Acceptance execution is missing from the governed remote operation catalog.' );
+$check( 'mad4b/browser-acceptance-run' === (string) ( $browser_operation['remote_ability'] ?? '' ), 'Browser Acceptance remote ability drifted.' );
+$check( 'operator' === (string) ( $browser_operation['remote_caller_role'] ?? '' ), 'Browser Acceptance request must remain operator-scoped.' );
+$check( 'external_browser_agent' === (string) ( $browser_operation['executor'] ?? '' ), 'Browser Acceptance executor identity drifted.' );
+$check( 'mad4b-enrollment' === (string) ( $browser_operation['authority_surface'] ?? '' ), 'Browser Acceptance authority surface drifted.' );
+$check( 'deny' === (string) ( $browser_operation['production_policy'] ?? '' ), 'Browser Acceptance Production policy must remain deny.' );
+$check( empty( $browser_operation['human_decision_required'] ), 'Browser Acceptance transport must not invent a human decision gate.' );
+$check( ! empty( $browser_operation['remote_parity_ready'] ), 'Browser Acceptance remote parity is not ready.' );
 
 $capabilities = $dispatch_read( 'mad4b/browser-acceptance-capabilities' );
 $check( ! is_wp_error( $capabilities ), 'Browser Acceptance capabilities execution failed.' );
@@ -132,6 +152,17 @@ $check( 'mad4b.browser-acceptance-plan.v1' === (string) $plan['contract'], 'Unex
 $check( 'etg-dfsb' === (string) $plan['provider_id'], 'Browser Acceptance plan provider identity drifted.' );
 $check( empty( $plan['authorizing'] ) && ! empty( $plan['read_only'] ), 'Browser Acceptance plan authority boundary drifted.' );
 $check( in_array( (string) $plan['state'], array( 'ready', 'blocked' ), true ), 'Browser Acceptance plan returned an invalid state.' );
+
+$check( class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'browser_acceptance_receipt_status' ), 'Browser Acceptance durable receipt status helper is unavailable.' );
+$receipt_status = MAD4B_SCP_Remote_Operation_Parity::browser_acceptance_receipt_status( is_array( $plan ) ? $plan : array() );
+$check( is_array( $receipt_status ) && 'mad4b.remote-browser-acceptance-receipt-status.v1' === (string) ( $receipt_status['contract'] ?? '' ), 'Browser Acceptance receipt status contract drifted.' );
+if ( ! empty( $receipt_status['ready'] ) ) {
+	$receipt_result = (array) ( $receipt_status['receipt']['browser_result'] ?? array() );
+	$check( 'PASS' === (string) ( $receipt_result['verdict'] ?? '' ), 'Ready Browser Acceptance receipt does not contain PASS result.' );
+	$check( ! empty( $receipt_result['verification']['browser_runtime_parity_verified'] ), 'Ready Browser Acceptance receipt does not verify browser runtime parity.' );
+} else {
+	$check( ! empty( $receipt_status['blockers'] ), 'Non-ready Browser Acceptance receipt status must fail closed with blockers.' );
+}
 
 if ( 'ready' === (string) $plan['state'] ) {
 	$check( preg_match( '/^[a-f0-9]{64}$/', (string) $plan['plan_digest'] ), 'Ready Browser Acceptance plan lacks exact digest.' );

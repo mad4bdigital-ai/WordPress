@@ -32,6 +32,64 @@ class MAD4B_SCP_Policy {
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-browser-acceptance-provider-registry.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-browser-acceptance-core.php';
 
+$remote_parity_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-remote-operation-parity.php' );
+$remote_queue_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-remote-work-queue.php' );
+$staging_cert_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-staging-certification.php' );
+if ( ! is_string( $remote_parity_source ) || ! is_string( $remote_queue_source ) || ! is_string( $staging_cert_source ) ) {
+	fwrite( STDERR, "FAIL: browser durable remote-work source files are unreadable\n" );
+	exit( 1 );
+}
+foreach ( array(
+	'final class MAD4B_SCP_Remote_Operation_Parity',
+	'private static function work_queue_schema()',
+	'public static function remote_work_queue(',
+	'public static function claim_remote_work(',
+	'public static function complete_remote_work(',
+	'MAD4B_SCP_Remote_Operation_Parity::boot();',
+) as $singleton ) {
+	if ( 1 !== substr_count( $remote_parity_source, $singleton ) ) {
+		fwrite( STDERR, "FAIL: Remote Operation Parity implementation is duplicated or missing: {$singleton}\n" );
+		exit( 1 );
+	}
+}
+foreach ( array(
+	"const BROWSER_ACCEPTANCE_ABILITY = 'mad4b/browser-acceptance-run';",
+	"'browser_acceptance_execution' => array(",
+	'private static function browser_acceptance_schema()',
+	'public static function queue_browser_acceptance(',
+	'private static function complete_browser_acceptance_work(',
+	'MAD4B_SCP_Browser_Acceptance_Core::result(',
+	'mad4b_remote_browser_acceptance_not_verified',
+	"const BROWSER_ACCEPTANCE_RECEIPT_OPTION = 'mad4b_scp_browser_acceptance_receipt_v1';",
+	'public static function browser_acceptance_receipt_status(',
+	'mad4b.remote-browser-acceptance-receipt.v1',
+) as $marker ) {
+	if ( false === strpos( $remote_parity_source, $marker ) ) {
+		fwrite( STDERR, "FAIL: Browser Acceptance remote parity invariant missing: {$marker}\n" );
+		exit( 1 );
+	}
+}
+if ( false === strpos( $remote_queue_source, "'browser_acceptance_execution' => array(" ) ) {
+	fwrite( STDERR, "FAIL: Remote Work Queue does not admit Browser Acceptance semantic work\n" );
+	exit( 1 );
+}
+foreach ( array(
+	"mad4b.staging-browser-certification-view.v3",
+	"MAD4B_SCP_Remote_Work_Queue::list_jobs( 'browser_acceptance_execution' )",
+	"browser_runtime_parity_verified",
+	"durable_receipt_used",
+	"durable_receipt_source",
+	"dedicated_receipt",
+	"queue_fallback",
+	"durable_job_id",
+) as $marker ) {
+	if ( false === strpos( $staging_cert_source, $marker ) ) {
+		fwrite( STDERR, "FAIL: durable Browser Acceptance certification invariant missing: {$marker}\n" );
+		exit( 1 );
+	}
+}
+
+
 function browser_expect( $condition, $message ) {
 	if ( ! $condition ) {
 		fwrite( STDERR, "FAIL: {$message}\n" );
@@ -160,7 +218,7 @@ foreach ( $expected_abilities as $name ) {
 	browser_expect( false === ( $args['meta']['annotations']['destructive'] ?? null ), 'browser ability must be non-destructive: ' . $name );
 	browser_expect( empty( $args['meta']['public'] ) && empty( $args['meta']['mcp']['public'] ), 'browser ability must not leak to default/public MCP: ' . $name );
 }
-browser_expect( ! isset( $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4b/browser-acceptance-run'] ), 'WordPress must not expose a browser execution ability' );
+browser_expect( ! isset( $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4b/browser-acceptance-run'] ), 'Browser Acceptance Core must not itself register the external execution orchestration ability' );
 
 $result_schema = $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4b/browser-acceptance-result']['input_schema'];
 $evidence_schema = $result_schema['properties']['evidence'];

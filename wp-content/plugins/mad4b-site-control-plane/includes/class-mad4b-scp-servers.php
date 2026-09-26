@@ -565,6 +565,24 @@ final class MAD4B_SCP_Servers {
 		return isset( $candidates[ $ability_name ] ) ? $candidates[ $ability_name ] : null;
 	}
 
+	private static function provider_for_enrollment_catalog_ability( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		if ( '' === $ability_name || ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) ) return null;
+		foreach ( MAD4B_SCP_Remote_Operation_Parity::catalog() as $row ) {
+			if ( ! is_array( $row )
+				|| $ability_name !== ( isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '' )
+				|| 'mad4b-enrollment' !== ( isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '' )
+				|| empty( $row['remote_registered'] )
+				|| empty( $row['execution_eligible'] ) ) continue;
+			$trust = isset( $row['trust_class'] ) ? (string) $row['trust_class'] : '';
+			if ( 'core' === $trust ) return 'core';
+			if ( 'certified_addon' !== $trust ) return null;
+			$provider = isset( $row['provider'] ) ? sanitize_key( (string) $row['provider'] ) : '';
+			return '' !== $provider ? $provider : null;
+		}
+		return null;
+	}
+
 	public static function provider_for_ability( $server_id, $ability_name ) {
 		$server_id = sanitize_key( (string) $server_id );
 		$ability_name = (string) $ability_name;
@@ -583,6 +601,11 @@ final class MAD4B_SCP_Servers {
 		};
 
 		if ( ! in_array( $server_id, self::expected_server_ids(), true ) ) return $remember( null );
+		if ( 'mad4b-enrollment' === $server_id ) {
+			if ( ! in_array( $ability_name, self::core_tools( 'mad4b-enrollment' ), true ) ) return $remember( null );
+			$catalog_provider = self::provider_for_enrollment_catalog_ability( $ability_name );
+			return $remember( null !== $catalog_provider ? $catalog_provider : 'core' );
+		}
 		if ( 'mad4b-write' === $server_id ) {
 			if ( ! in_array( $ability_name, self::write_tools(), true ) ) return $remember( null );
 			if ( in_array( $ability_name, self::core_write_candidates(), true ) ) return $remember( 'core' );
