@@ -164,7 +164,8 @@ for forbidden in [
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
 require("$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_body, "bounded and full authority step-ups must be composed explicitly")
 require("MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_tools()" in chatgpt_body, "bounded remote operations must be explicitly projected into compact ChatGPT tools/list")
-require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $direct_remote_operations )" in chatgpt_body, "direct mutations must be limited to governed write dispatch, guarded authority step-ups and explicitly bounded remote operations")
+require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_body, "base direct mutation transport must remain governed write dispatch plus guarded authority step-ups")
+require("$direct_mutation_transport = array_merge( $direct_mutation_transport, $direct_remote_operations )" in chatgpt_body, "bounded remote operations must be appended explicitly to the base direct transport")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_body, "unified enrolled Staging tools/list must include read-only full authority diagnostics")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_body, "unified enrolled Staging tools/list must project the composite apply only through the guarded step-up method")
 for low_level in [
