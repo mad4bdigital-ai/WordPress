@@ -952,10 +952,10 @@ final class MAD4B_SCP_Context_Authority {
 		);
 	}
 
-	public static function mark_generated_brand_draft( $asset_id, $category, $artifact_id, $evidence_digest, $receipt_sha256 ) {
+	public static function mark_generated_brand_draft( $asset_id, $category, $artifact_id, $evidence_digest, $receipt_sha256, array $generation = array() ) {
 		return self::with_registry_lock(
 			'mark_generated_brand_draft',
-			static function () use ( $asset_id, $category, $artifact_id, $evidence_digest, $receipt_sha256 ) {
+			static function () use ( $asset_id, $category, $artifact_id, $evidence_digest, $receipt_sha256, $generation ) {
 				$asset_id = strtolower( trim( sanitize_text_field( (string) $asset_id ) ) );
 				$category = sanitize_key( (string) $category );
 				if ( ! in_array( $category, array( 'tone_of_voice', 'editorial_guidelines' ), true ) ) return new WP_Error( 'mad4b_brand_generated_category_invalid', 'Generated Brand Context category is invalid.' );
@@ -970,6 +970,12 @@ final class MAD4B_SCP_Context_Authority {
 				$records[ $asset_id ]['review_decision'] = '';
 				$records[ $asset_id ]['generated_artifact_id'] = strtolower( trim( (string) $artifact_id ) );
 				$records[ $asset_id ]['generation_evidence_digest'] = strtolower( trim( (string) $evidence_digest ) );
+				$records[ $asset_id ]['generation_plan_sha256'] = strtolower( trim( (string) ( isset( $generation['plan_sha256'] ) ? $generation['plan_sha256'] : '' ) ) );
+				$records[ $asset_id ]['generation_job_id'] = strtolower( trim( (string) ( isset( $generation['job_id'] ) ? $generation['job_id'] : '' ) ) );
+				$records[ $asset_id ]['generation_draft_preflight_sha256'] = strtolower( trim( (string) ( isset( $generation['draft_preflight_sha256'] ) ? $generation['draft_preflight_sha256'] : '' ) ) );
+				$records[ $asset_id ]['generation_include_rendered_frontend'] = ! empty( $generation['include_rendered_frontend'] );
+				$records[ $asset_id ]['generation_builder_spec_version'] = isset( $generation['builder_spec_version'] ) ? (string) $generation['builder_spec_version'] : '';
+				$records[ $asset_id ]['generation_evidence_stale_override'] = false;
 				$records[ $asset_id ]['materialization_receipt_sha256'] = strtolower( trim( (string) $receipt_sha256 ) );
 				if ( isset( $records[ $asset_id ]['quality'] ) && is_array( $records[ $asset_id ]['quality'] ) ) $records[ $asset_id ]['quality']['provisional'] = true;
 				$sources = self::raw_sources();
@@ -1459,10 +1465,31 @@ final class MAD4B_SCP_Context_Authority {
 			$authority = sanitize_key( isset( $input['authority_class'] ) ? $input['authority_class'] : '' );
 			$previous_category = isset( $asset['category'] ) ? (string) $asset['category'] : '';
 			$previous_authority = isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '';
+			$previous_classification_source = isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '';
 			$previous_required = ! empty( $asset['required'] );
 			$previous_review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
 			$decision = sanitize_key( isset( $input['decision'] ) ? (string) $input['decision'] : 'approve' );
 			if ( ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) ) return new WP_Error( 'mad4b_context_review_decision_invalid', 'Context review decision must be approve, needs_changes, or reject.' );
+			$generated_brand_asset = ! empty( $asset['generated_artifact_id'] ) || 'brand_context_builder' === $previous_classification_source;
+			$generation_freshness = null;
+			$stale_override = false;
+			if ( $generated_brand_asset && 'approve' === $decision ) {
+				if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) ) return new WP_Error( 'mad4b_brand_generation_freshness_runtime_unavailable', 'Generated Brand Context review requires the Brand Context Builder freshness verifier.' );
+				$generation_freshness = MAD4B_SCP_Brand_Context_Builder::generation_evidence_status(
+					$category,
+					isset( $asset['generation_evidence_digest'] ) ? (string) $asset['generation_evidence_digest'] : '',
+					! empty( $asset['generation_include_rendered_frontend'] )
+				);
+				if ( is_wp_error( $generation_freshness ) ) return $generation_freshness;
+				if ( empty( $generation_freshness['fresh'] ) ) {
+					$stale_override = 'wp_admin' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) && ! empty( $input['approve_stale_generation_evidence'] );
+					if ( ! $stale_override ) return new WP_Error(
+						'mad4b_brand_generation_evidence_stale',
+						'Generated Brand Context evidence changed after generation. Regenerate before approval, or use the explicit human-only stale-evidence override.',
+						array( 'asset_id' => $asset_id, 'generation_evidence' => $generation_freshness, 'ai_override_allowed' => false )
+					);
+				}
+			}
 			$review_note = substr( trim( sanitize_text_field( isset( $input['review_note'] ) ? (string) $input['review_note'] : '' ) ), 0, 1000 );
 			if ( ! isset( $categories[ $category ] ) ) return new WP_Error( 'mad4b_context_category_invalid', 'Context category is invalid.' );
 			if ( ! isset( $authorities[ $authority ] ) ) return new WP_Error( 'mad4b_context_authority_class_invalid', 'Context authority class is invalid.' );
@@ -1489,7 +1516,8 @@ final class MAD4B_SCP_Context_Authority {
 			$asset['category'] = $category;
 			if ( 'wp_admin' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ) {
 				$asset['classification_confidence'] = 1.0;
-				$asset['classification_source'] = 'human';
+				if ( ! $generated_brand_asset ) $asset['classification_source'] = 'human';
+				$asset['review_classification_source'] = 'human';
 			}
 			$asset['authority_class'] = $authority;
 			$asset['required'] = $requested_required;
@@ -1552,6 +1580,11 @@ final class MAD4B_SCP_Context_Authority {
 			$asset['review_note'] = $review_note;
 			$asset['review_status'] = 'approve' === $decision ? 'approved' : ( 'needs_changes' === $decision ? 'needs_changes' : 'rejected' );
 			$asset['reviewed_content_hash'] = $current_content_hash;
+			if ( $generated_brand_asset ) {
+				$asset['generation_evidence_fresh_at_review'] = is_array( $generation_freshness ) ? ! empty( $generation_freshness['fresh'] ) : false;
+				$asset['generation_evidence_stale_override'] = $stale_override;
+				$asset['generation_evidence_reviewed_current_digest'] = is_array( $generation_freshness ) && isset( $generation_freshness['current_evidence_digest'] ) ? (string) $generation_freshness['current_evidence_digest'] : '';
+			}
 			$records[ $asset_id ] = $asset;
 			$sources = self::raw_sources();
 			$profile = self::refreshed_profile_record( $records, $sources, true );
@@ -1567,7 +1600,7 @@ final class MAD4B_SCP_Context_Authority {
 			$context_fingerprint_after = self::context_fingerprint( $records, $sources );
 			$review_event = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ? 'mad4b/context-asset-ai-review' : 'mad4b/context-asset-review';
 			$review_contract = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ? self::AI_REVIEW_CONTRACT : self::HUMAN_REVIEW_CONTRACT;
-			return self::audited_registry_result(
+			$result = self::audited_registry_result(
 				$asset,
 				$review_event,
 				array(
@@ -1612,9 +1645,19 @@ final class MAD4B_SCP_Context_Authority {
 					'quality_mode' => $quality_mode,
 					'reviewed_content_hash' => $current_content_hash,
 					'mutation_performed' => true,
+					'generation_evidence_fresh' => is_array( $generation_freshness ) ? ! empty( $generation_freshness['fresh'] ) : null,
+					'generation_evidence_stale_override' => $stale_override,
 				),
 				'ok'
 			);
+			if ( is_wp_error( $result ) ) return $result;
+			if ( $generated_brand_asset && 'approve' === $decision && class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) ) {
+				$job_transition = MAD4B_SCP_Brand_Context_Builder::complete_generation_job_for_asset( $asset );
+				$result['generation_job_transition'] = is_wp_error( $job_transition )
+					? array( 'ready' => false, 'error_code' => $job_transition->get_error_code() )
+					: array( 'ready' => true, 'job' => isset( $job_transition['job'] ) ? $job_transition['job'] : array() );
+			}
+			return $result;
 
 			}
 		);
@@ -1665,9 +1708,9 @@ final class MAD4B_SCP_Context_Authority {
 
 	public static function brand_core_coverage() {
 		$required_sets = array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' );
-		$coverage = array(); $missing = array();
+		$coverage = array(); $missing = array(); $conflicting = array(); $freshness_cache = array();
 		foreach ( $required_sets as $category ) {
-			$eligible = array(); $observed = array();
+			$eligible = array(); $observed = array(); $hashes = array();
 			foreach ( self::assets() as $asset ) {
 				if ( ! is_array( $asset ) || $category !== ( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) ) continue;
 				$review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
@@ -1680,13 +1723,65 @@ final class MAD4B_SCP_Context_Authority {
 				if ( array_key_exists( 'content_complete', $asset ) && empty( $asset['content_complete'] ) ) $reasons[] = 'content_incomplete';
 				if ( 'brand_authority' !== ( isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '' ) ) $reasons[] = 'wrong_authority_class';
 				if ( 'approved' !== $review_status ) $reasons[] = 'review_not_approved'; elseif ( ! $review_exact ) $reasons[] = 'review_not_exactly_bound';
-				$row = array( 'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '', 'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '', 'review_status' => $review_status, 'review_binding_exact' => $review_exact, 'reasons' => $reasons );
-				$observed[] = $row; if ( empty( $reasons ) ) $eligible[] = $row;
+				$generation_fresh = null; $stale_override = ! empty( $asset['generation_evidence_stale_override'] );
+				$generated = ! empty( $asset['generated_artifact_id'] ) || 'brand_context_builder' === ( isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '' );
+				if ( $generated && in_array( $category, array( 'tone_of_voice', 'editorial_guidelines' ), true ) ) {
+					$digest = isset( $asset['generation_evidence_digest'] ) ? strtolower( trim( (string) $asset['generation_evidence_digest'] ) ) : '';
+					$key = $category . '|' . $digest . '|' . ( ! empty( $asset['generation_include_rendered_frontend'] ) ? '1' : '0' );
+					if ( ! array_key_exists( $key, $freshness_cache ) ) {
+						$freshness_cache[ $key ] = class_exists( 'MAD4B_SCP_Brand_Context_Builder' )
+							? MAD4B_SCP_Brand_Context_Builder::generation_evidence_status( $category, $digest, ! empty( $asset['generation_include_rendered_frontend'] ) )
+							: new WP_Error( 'mad4b_brand_generation_freshness_runtime_unavailable', 'Brand generation freshness runtime unavailable.' );
+					}
+					$freshness = $freshness_cache[ $key ];
+					$generation_fresh = is_array( $freshness ) && ! empty( $freshness['fresh'] );
+					if ( ! $generation_fresh && ! $stale_override ) $reasons[] = 'generation_evidence_stale';
+				}
+				$row = array(
+					'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
+					'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
+					'content_hash' => $current_hash,
+					'review_status' => $review_status,
+					'review_binding_exact' => $review_exact,
+					'generation_evidence_fresh' => $generation_fresh,
+					'generation_evidence_stale_override' => $stale_override,
+					'reasons' => $reasons,
+				);
+				$observed[] = $row;
+				if ( empty( $reasons ) ) {
+					$eligible[] = $row;
+					if ( '' !== $current_hash ) $hashes[ $current_hash ] = true;
+				}
 			}
-			$ready = ! empty( $eligible ); if ( ! $ready ) $missing[] = $category;
-			$coverage[ $category ] = array( 'ready' => $ready, 'eligible_asset_count' => count( $eligible ), 'eligible_assets' => $eligible, 'observed_assets' => $observed );
+			$distinct_hashes = array_keys( $hashes );
+			sort( $distinct_hashes, SORT_STRING );
+			$conflict = count( $distinct_hashes ) > 1;
+			$ready = ! empty( $eligible ) && ! $conflict;
+			if ( empty( $eligible ) ) $missing[] = $category;
+			if ( $conflict ) $conflicting[] = $category;
+			$coverage[ $category ] = array(
+				'ready' => $ready,
+				'conflict' => $conflict,
+				'distinct_approved_content_hash_count' => count( $distinct_hashes ),
+				'distinct_approved_content_hashes' => $distinct_hashes,
+				'eligible_asset_count' => count( $eligible ),
+				'eligible_assets' => $eligible,
+				'observed_assets' => $observed,
+			);
 		}
-		return array( 'contract' => 'mad4b.brand-core-context-coverage.v1', 'read_only' => true, 'mutation_performed' => false, 'required_context_sets' => $required_sets, 'coverage' => $coverage, 'missing_required_context_sets' => $missing, 'ready' => empty( $missing ), 'registry_revision' => self::registry_revision(), 'context_fingerprint' => self::context_fingerprint(), 'authority_manifest_fingerprint' => self::authority_manifest_fingerprint() );
+		return array(
+			'contract' => 'mad4b.brand-core-context-coverage.v1',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'required_context_sets' => $required_sets,
+			'coverage' => $coverage,
+			'missing_required_context_sets' => $missing,
+			'conflicting_required_context_sets' => $conflicting,
+			'ready' => empty( $missing ) && empty( $conflicting ),
+			'registry_revision' => self::registry_revision(),
+			'context_fingerprint' => self::context_fingerprint(),
+			'authority_manifest_fingerprint' => self::authority_manifest_fingerprint(),
+		);
 	}
 
 	public static function status() {
