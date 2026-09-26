@@ -1943,6 +1943,13 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
                     current_identity = workspace_file_identity(target)
                 else:
                     current_identity = "ABSENT"
+            elif operation_id == "wordpress_plugin_deploy":
+                relative_path = "mad4b-site-control-plane"
+                target = Path(profile["wordpress_root"]) / "wp-content" / "plugins" / relative_path
+                if target.is_dir() and not _is_link_like(target):
+                    current_identity, _ = plugin_tree_digest(target)
+                else:
+                    current_identity = "ABSENT"
 
             superseded_by = verified_rollbacks.get(job_id, "")
             if receipt_present and current_identity and hmac.compare_digest(current_identity, expected_after):
@@ -1976,6 +1983,10 @@ def reconcile(profile_path: Path) -> dict[str, Any]:
                 "current_identity": current_identity,
                 "before_sha256": before,
                 "expected_after_sha256": expected_after,
+                "source_commit_sha": str(journal.get("source_commit_sha") or ""),
+                "build_fingerprint": str(journal.get("build_fingerprint") or ""),
+                "package_manifest_digest": str(journal.get("package_manifest_digest") or ""),
+                "archive_sha256": str(journal.get("archive_sha256") or ""),
                 "reconciliation_status": status,
                 "reconciliation_required": reconciliation_required,
                 "blind_retry_allowed": False,
