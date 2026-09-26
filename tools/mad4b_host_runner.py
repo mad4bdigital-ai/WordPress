@@ -1669,11 +1669,7 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
             result = existing.get("result")
             if not isinstance(result, dict):
                 raise ValueError("Host Runner write receipt result is missing")
-            relative = _workspace_relative(str(result.get("relative_path") or ""))
-            expected_after = str(result.get("after_sha256") or "")
-            target = Path(profile["runner_workspace"]) / relative
-            current = workspace_file_identity(target) if Path(profile["runner_workspace"]).exists() else "ABSENT"
-            if not hmac.compare_digest(current, expected_after):
+            if not _verify_write_replay(profile, verified["operation_id"], result):
                 raise RuntimeError("HOST_RUNNER_REPLAY_RECONCILIATION_REQUIRED")
             existing["replay_readback_verdict"] = "PASS"
         existing["replayed"] = True
@@ -1721,7 +1717,7 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
             raise RuntimeError("Host Runner durable receipt readback failed")
     except Exception:
         if is_write:
-            rolled_back = _rollback_workspace_replace(result)
+            rolled_back = _rollback_write_result(verified["operation_id"], result)
             journal_path = Path(str(result.get("_journal_path") or ""))
             if journal_path:
                 state = {
@@ -1733,6 +1729,10 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
                     "relative_path": result.get("relative_path"),
                     "before_sha256": result.get("before_sha256"),
                     "expected_after_sha256": result.get("after_sha256"),
+                    "source_commit_sha": result.get("source_commit_sha", ""),
+                    "build_fingerprint": result.get("build_fingerprint", ""),
+                    "package_manifest_digest": result.get("package_manifest_digest", ""),
+                    "archive_sha256": result.get("archive_sha256", ""),
                     "state": "ROLLED_BACK_AFTER_FAILURE" if rolled_back else "MUTATED_BUT_EVIDENCE_UNCERTAIN",
                     "terminal": True,
                     "rollback_verified": rolled_back,
@@ -1755,6 +1755,10 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
             "relative_path": result.get("relative_path"),
             "before_sha256": result.get("before_sha256"),
             "expected_after_sha256": result.get("after_sha256"),
+            "source_commit_sha": result.get("source_commit_sha", ""),
+            "build_fingerprint": result.get("build_fingerprint", ""),
+            "package_manifest_digest": result.get("package_manifest_digest", ""),
+            "archive_sha256": result.get("archive_sha256", ""),
             "state": "DURABLE_VERIFIED_RECEIPT",
             "terminal": True,
             "rollback_verified": False,
