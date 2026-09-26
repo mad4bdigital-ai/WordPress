@@ -430,6 +430,31 @@ jobs:
               'wp-content/plugins/mad4b-site-control-plane/tests/context-*',
               'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py',
           ]
+          context_authority_workflow = Path(
+              '.github/workflows/mad4b-context-authority.yml'
+          ).read_text(encoding='utf-8')
+          if '  push:\n' not in context_authority_workflow:
+              raise SystemExit('Context Authority workflow lacks master push trigger')
+          if '    branches:\n      - master\n' not in context_authority_workflow:
+              raise SystemExit('Context Authority workflow push trigger is not bound to master')
+          context_authority_required_trigger_paths = [
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php',
+              'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php',
+              'wp-content/plugins/mad4b-site-control-plane/config/skill-seed-manifest.json',
+              'wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-brand-context-builder/SKILL.md',
+              'plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md',
+              'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py',
+              'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py',
+          ]
+          for trigger_path in context_authority_required_trigger_paths:
+              if context_authority_workflow.count(trigger_path) < 2:
+                  raise SystemExit(
+                      'Context Authority workflow trigger parity drift: '
+                      f'missing PR+master coverage for {trigger_path}'
+                  )
+
           for workflow in critical_trigger_workflows:
               workflow_text = Path(workflow).read_text(encoding='utf-8')
               if '  pull_request:\n' not in workflow_text:
