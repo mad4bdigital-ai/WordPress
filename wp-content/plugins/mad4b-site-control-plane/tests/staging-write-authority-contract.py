@@ -6,6 +6,7 @@ repo = Path(__file__).resolve().parents[4]
 wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 
 write = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
+abilities = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 grant_reconcile = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation.php').read_text(encoding='utf-8')
 planning = (wp / 'includes' / 'class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
 cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
@@ -41,6 +42,19 @@ for marker_text in ["$seen_current_exact_allow", "$duplicate_grants_revoked", ":
 
 if not write.rstrip().endswith('}'):
     raise SystemExit('write authority file must end at the canonical class closing brace')
+
+augment_body = write.split('public static function augment_write_ability', 1)[1].split('public static function reconciliation_plan', 1)[0]
+if "if ( 'enrollment' === $mcp_surface ) return $args;" not in augment_body:
+    raise SystemExit('bounded Enrollment dispatcher must remain outside governed-write augmentation')
+if augment_body.find("if ( 'enrollment' === $mcp_surface ) return $args;") > augment_body.find("self::APPROVAL_INPUT_KEY"):
+    raise SystemExit('Enrollment exclusion must run before normal write approval input augmentation')
+for marker in [
+    "$mcp_meta['surface'] = 'enrollment';",
+    "$mcp_meta['generic_remote_admin'] = false;",
+    "$mcp_meta['production_mutation_allowed'] = false;",
+]:
+    if marker not in abilities:
+        raise SystemExit('core Enrollment registration lost isolated authority metadata: ' + marker)
 
 # Runtime write authority is tenant-neutral. ETG binding belongs to the reviewed
 # deployment Site Profile/handoff, never to a host constant inside the authority.

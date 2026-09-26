@@ -5,6 +5,7 @@ parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').rea
 dispatch = (root / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_text(encoding='utf-8')
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
 abilities = (root / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+write_authority = (root / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
 oauth = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 perf = (root / 'includes' / 'class-mad4b-scp-admin-query-performance.php').read_text(encoding='utf-8')
@@ -248,6 +249,29 @@ for marker in [
         raise SystemExit(f'canonical core Enrollment dispatcher invariant missing: {marker}')
 if "MAD4B_SCP_Enrollment_Dispatch::boot();" in dispatch:
     raise SystemExit('Enrollment policy helper must not self-register abilities after core dispatcher adoption')
+
+for marker in [
+    "$mcp_meta = array( 'public' => false, 'type' => 'tool' );",
+    "$mcp_meta['surface'] = 'enrollment';",
+    "$mcp_meta['generic_remote_admin'] = false;",
+    "$mcp_meta['production_mutation_allowed'] = false;",
+    "'mcp' => $mcp_meta",
+]:
+    if marker not in abilities:
+        raise SystemExit(f'core Enrollment dispatcher lost explicit enrollment authority metadata: {marker}')
+
+augment = write_authority.split('public static function augment_write_ability', 1)[1].split('public static function reconciliation_plan', 1)[0]
+for marker in [
+    "$mcp_surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';",
+    "if ( 'enrollment' === $mcp_surface ) return $args;",
+]:
+    if marker not in augment:
+        raise SystemExit(f'Enrollment dispatcher is no longer isolated from governed-write augmentation: {marker}')
+guard_index = augment.find("if ( 'enrollment' === $mcp_surface ) return $args;")
+approval_index = augment.find("self::APPROVAL_INPUT_KEY")
+authority_index = augment.find("mad4b_governed_write_authority")
+if min(guard_index, approval_index, authority_index) < 0 or guard_index > approval_index or guard_index > authority_index:
+    raise SystemExit('Enrollment authority isolation must execute before governed-write approval/NHI metadata is added')
 for marker in [
     "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'",
     "$direct_mutation_transport[] = 'mad4b/enrollment-execute';",
