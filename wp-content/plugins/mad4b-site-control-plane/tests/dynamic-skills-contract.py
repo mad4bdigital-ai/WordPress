@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import re
+import subprocess
 from pathlib import Path
 
 repo = Path(__file__).resolve().parents[4]
@@ -27,6 +28,9 @@ resource_writer = (wp / 'includes' / 'class-mad4b-scp-skill-resource-writer.php'
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+core_abilities = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+remote_parity = (wp / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
 
 for marker in [
     "private static function request_is_wordpress_plugin_lifecycle()",
@@ -41,6 +45,39 @@ for marker in [
         raise SystemExit(f'missing plugin upload lifecycle protection invariant: {marker}')
 
 readme = (portable / 'README.md').read_text(encoding='utf-8')
+
+for marker in [
+    "'mad4b/enrollment-execute'",
+    "private function governed_enrollment_target",
+    "public function can_enrollment_dispatch",
+    "public function enrollment_execute",
+    "'mad4b.chatgpt-enrollment-execute.v1'",
+    "'mad4b_enrollment_dispatch_target_not_cataloged'",
+    "'mad4b_enrollment_dispatch_target_not_mounted'",
+    "'mad4b_enrollment_dispatch_surface_mismatch'",
+    "'mad4b_enrollment_dispatch_generic_admin_denied'",
+    "'mad4b_enrollment_dispatch_production_denied'",
+    "'mad4b_enrollment_dispatch_schema_drift'",
+]:
+    if marker not in core_abilities:
+        raise SystemExit(f'missing bounded enrollment-dispatch invariant: {marker}')
+
+if "'mad4b/enrollment-execute'" not in servers:
+    raise SystemExit('bounded enrollment dispatcher is not mounted on the compact ChatGPT transport')
+if "array( 'mad4b/write-execute', 'mad4b/enrollment-execute' )" not in servers:
+    raise SystemExit('bounded enrollment dispatcher is not explicitly classified as a direct mutation transport')
+if "self::SKILLS_ABILITY" not in remote_parity or "'authority_surface' => 'mad4b-enrollment'" not in remote_parity:
+    raise SystemExit('managed Skills reconciliation lost bounded enrollment ownership')
+write_start = servers.find("'mad4b-write' => array(")
+admin_start = servers.find("'mad4b-admin' => array(", write_start + 1)
+write_section = servers[write_start:admin_start] if write_start >= 0 and admin_start > write_start else ''
+if 'mad4b/reconcile-managed-skills' in write_section:
+    raise SystemExit('managed Skills reconciliation unexpectedly entered normal governed-write inventory')
+
+runtime_test = wp / 'tests' / 'bounded-enrollment-dispatch-runtime.php'
+if not runtime_test.is_file():
+    raise SystemExit('bounded enrollment dispatcher runtime test is missing')
+subprocess.run(['php', str(runtime_test)], check=True)
 
 for marker in [
     "public static function reconcile()",
