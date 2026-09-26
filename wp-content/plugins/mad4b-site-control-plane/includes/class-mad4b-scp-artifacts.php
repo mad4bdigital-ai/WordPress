@@ -208,6 +208,94 @@ final class MAD4B_SCP_Artifacts {
 		return self::get_artifact( array( 'artifact_id' => $artifact_id ) );
 	}
 
+	public static function supersede_brand_context_subject( $artifact_id, $subject_key ) {
+		global $wpdb;
+		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_artifact_schema_unavailable', 'Artifact schema is not ready.' );
+		$site_uuid = self::site_uuid();
+		$artifact_id = strtolower( trim( (string) $artifact_id ) );
+		$subject_key = strtolower( trim( (string) $subject_key ) );
+		if ( ! self::valid_uuid( $artifact_id ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $subject_key ) ) {
+			return new WP_Error( 'mad4b_brand_context_lineage_binding_invalid', 'Brand Context cross-job lineage binding is invalid.' );
+		}
+		$t = MAD4B_SCP_Schema::tables();
+		$needle = '%"brand_context_subject_key":"' . $wpdb->esc_like( $subject_key ) . '"%';
+		$wpdb->query( 'START TRANSACTION' );
+		try {
+			$current = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT id,artifact_id,job_id,artifact_type,status FROM {$t['artifacts']} WHERE artifact_id=%s AND site_uuid=%s LIMIT 1 FOR UPDATE",
+					$artifact_id,
+					$site_uuid
+				),
+				ARRAY_A
+			);
+			if ( ! is_array( $current ) || 'brand_context_draft' !== (string) $current['artifact_type'] ) {
+				throw new RuntimeException( 'brand_context_current_artifact_invalid' );
+			}
+			$candidates = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT id,artifact_id,job_id,status FROM {$t['artifacts']} WHERE site_uuid=%s AND artifact_type=%s AND metadata_json LIKE %s AND status IN ('active','superseded') ORDER BY created_at DESC,id DESC FOR UPDATE",
+					$site_uuid,
+					'brand_context_draft',
+					$needle
+				),
+				ARRAY_A
+			);
+			$winner = null;
+			foreach ( is_array( $candidates ) ? $candidates : array() as $row ) {
+				if ( 'active' === (string) $row['status'] ) { $winner = $row; break; }
+			}
+			if ( ! is_array( $winner ) ) {
+				// A later reconciliation may already have superseded the current caller.
+				// Select the newest subject generation as the immutable lineage winner.
+				$winner = ! empty( $candidates ) ? $candidates[0] : null;
+			}
+			if ( ! is_array( $winner ) ) throw new RuntimeException( 'brand_context_lineage_winner_missing' );
+			$winner_id = (string) $winner['artifact_id'];
+			// If the newest row is superseded but no active row remains, reactivate only
+			// that deterministic winner. This repairs interrupted lineage CAS safely.
+			if ( 'active' !== (string) $winner['status'] ) {
+				$reactivated = $wpdb->update(
+					$t['artifacts'],
+					array( 'status' => 'active' ),
+					array( 'artifact_id' => $winner_id, 'site_uuid' => $site_uuid, 'status' => 'superseded' ),
+					array( '%s' ),
+					array( '%s', '%s', '%s' )
+				);
+				if ( 1 !== (int) $reactivated ) throw new RuntimeException( 'brand_context_lineage_reactivation_cas_failed' );
+			}
+			$superseded = array();
+			foreach ( is_array( $candidates ) ? $candidates : array() as $row ) {
+				$previous_id = isset( $row['artifact_id'] ) ? (string) $row['artifact_id'] : '';
+				if ( '' === $previous_id || $winner_id === $previous_id || 'active' !== (string) $row['status'] ) continue;
+				$changed = $wpdb->update(
+					$t['artifacts'],
+					array( 'status' => 'superseded' ),
+					array( 'artifact_id' => $previous_id, 'site_uuid' => $site_uuid, 'status' => 'active' ),
+					array( '%s' ),
+					array( '%s', '%s', '%s' )
+				);
+				if ( 1 !== (int) $changed ) throw new RuntimeException( 'brand_context_lineage_cas_failed' );
+				self::invalidate_descendants_locked( $previous_id, $site_uuid, (string) $row['job_id'], 'source_superseded_cross_job' );
+				$superseded[] = $previous_id;
+			}
+			if ( false === $wpdb->query( 'COMMIT' ) ) throw new RuntimeException( 'brand_context_lineage_commit_failed' );
+		} catch ( Throwable $e ) {
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'mad4b_brand_context_lineage_failed', 'Unable to reconcile Brand Context cross-job lineage.', array( 'cause' => $e->getMessage() ) );
+		}
+		return array(
+			'contract' => 'mad4b.brand-context-cross-job-lineage.v1',
+			'artifact_id' => $artifact_id,
+			'active_artifact_id' => $winner_id,
+			'current_artifact_is_active_generation' => hash_equals( $artifact_id, $winner_id ),
+			'brand_context_subject_key' => $subject_key,
+			'superseded_artifact_ids' => $superseded,
+			'superseded_count' => count( $superseded ),
+			'mutation_performed' => ! empty( $superseded ),
+		);
+	}
+
 	public static function link_artifacts( $input ) {
 		global $wpdb;
 		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_artifact_schema_unavailable', 'Artifact schema is not ready.' );

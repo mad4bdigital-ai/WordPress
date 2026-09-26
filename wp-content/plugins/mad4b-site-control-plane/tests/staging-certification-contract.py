@@ -168,18 +168,28 @@ if wp_import["archive"] != "wp-all-import-pro.zip":
 if wp_import["archive_sha256"] != "eca6af2f5ecaa4119d051a0108045f61543d966e4765cfd219e49a60a7a50de3":
     raise SystemExit("WP All Import certified archive SHA-256 drifted")
 
-# Brand Core coverage must be explicit and based on approved governed assets.
+# Brand Core coverage must reuse the canonical Context Authority implementation.
+# Staging Certification may project blockers/pending review, but must not maintain
+# a second eligibility definition that can drift from review-hash/freshness/conflict semantics.
+brand_core = cert.split("private static function brand_core_context_coverage", 1)[1].split("private static function", 1)[0]
 for marker in [
     "mad4b.brand-core-context-coverage.v1",
-    "'brand_strategy'",
-    "'tone_of_voice'",
-    "'editorial_guidelines'",
-    "'approved' === $summary['review_status']",
-    "'brand_authority' === $summary['authority_class']",
-    "'governed' === $summary['source_mode']",
+    "MAD4B_SCP_Context_Authority::brand_core_coverage()",
     "required_context_set_missing:",
+    "required_context_set_conflicting:",
+    "'canonical_coverage_source'",
+    "MAD4B_SCP_Context_Authority::brand_core_coverage",
 ]:
-    require(cert, marker, "Brand Core coverage invariant")
+    require(brand_core, marker, "canonical Brand Core coverage invariant")
+for forbidden in [
+    "'approved' ===",
+    "'brand_authority' ===",
+    "'governed' ===",
+    "reviewed_content_hash",
+    "content_complete",
+]:
+    if forbidden in brand_core:
+        raise SystemExit(f"Staging Certification reimplemented Brand Core eligibility: {forbidden}")
 
 require(cert, "'client_snapshot_token'", "external evidence boundary")
 

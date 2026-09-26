@@ -41,6 +41,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/retrieve',
 				'context/compliance-check',
 				'context/brand-gap-plan',
+				'context/brand-draft-preflight',
 				'context/source-scan-plan',
 				'context/provider-capabilities',
 			),
@@ -194,7 +195,28 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'Build Brand Context Gap Plan',
 			'brand_gap_plan',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
-			$this->schema( array( 'include_authoritative_content' => array( 'type' => 'boolean', 'default' => true ) ) )
+			$this->schema(
+				array(
+					'include_authoritative_content' => array( 'type' => 'boolean', 'default' => true ),
+					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
+				)
+			)
+		);
+		$this->add_ability(
+			'context/brand-draft-preflight',
+			'Preflight Evidence-Bound Brand Context Draft',
+			'brand_draft_preflight',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema(
+				array(
+					'category' => array( 'type' => 'string', 'enum' => array( 'tone_of_voice', 'editorial_guidelines' ) ),
+					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Brand_Context_Builder::MAX_DRAFT_BYTES ),
+					'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+					'evidence_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
+				),
+				array( 'category', 'content', 'expected_plan_sha256', 'evidence_digest' )
+			)
 		);
 		$this->add_ability(
 			'context/source-scan-plan',
@@ -276,8 +298,10 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Brand_Context_Builder::MAX_DRAFT_BYTES ),
 					'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 					'evidence_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+					'draft_preflight_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
 				),
-				array( 'category', 'content', 'expected_plan_sha256', 'evidence_digest' )
+				array( 'category', 'content', 'expected_plan_sha256', 'evidence_digest', 'draft_preflight_sha256' )
 			),
 			'write',
 			false,
@@ -798,6 +822,10 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function brand_gap_plan( $input = array() ) {
 		return MAD4B_SCP_Brand_Context_Builder::gap_plan( is_array( $input ) ? $input : array() );
+	}
+
+	public function brand_draft_preflight( $input = array() ) {
+		return MAD4B_SCP_Brand_Context_Builder::draft_preflight( is_array( $input ) ? $input : array() );
 	}
 
 	public function source_scan_plan( $input ) {

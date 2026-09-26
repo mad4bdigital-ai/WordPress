@@ -226,53 +226,33 @@ final class MAD4B_SCP_Staging_Certification {
 	}
 
 	private static function brand_core_context_coverage() {
-		$required = array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' );
-		if ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
-			$presets = MAD4B_SCP_Context_Preflight::presets();
-			if ( isset( $presets['brand_core']['required_context_sets'] ) && is_array( $presets['brand_core']['required_context_sets'] ) ) {
-				$required = array_values( array_map( 'sanitize_key', $presets['brand_core']['required_context_sets'] ) );
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) || ! method_exists( 'MAD4B_SCP_Context_Authority', 'brand_core_coverage' ) ) {
+			return array(
+				'contract' => 'mad4b.brand-core-context-coverage.v1',
+				'read_only' => true,
+				'mutation_performed' => false,
+				'ready' => false,
+				'state' => 'blocked',
+				'blockers' => array( 'canonical_brand_core_coverage_unavailable' ),
+			);
+		}
+		$canonical = MAD4B_SCP_Context_Authority::brand_core_coverage();
+		$missing = isset( $canonical['missing_required_context_sets'] ) && is_array( $canonical['missing_required_context_sets'] ) ? $canonical['missing_required_context_sets'] : array();
+		$conflicting = isset( $canonical['conflicting_required_context_sets'] ) && is_array( $canonical['conflicting_required_context_sets'] ) ? $canonical['conflicting_required_context_sets'] : array();
+		$blockers = array();
+		foreach ( $missing as $set ) $blockers[] = 'required_context_set_missing:' . sanitize_key( (string) $set );
+		foreach ( $conflicting as $set ) $blockers[] = 'required_context_set_conflicting:' . sanitize_key( (string) $set );
+		$pending_review = array();
+		foreach ( isset( $canonical['coverage'] ) && is_array( $canonical['coverage'] ) ? $canonical['coverage'] : array() as $category => $row ) {
+			foreach ( isset( $row['observed_assets'] ) && is_array( $row['observed_assets'] ) ? $row['observed_assets'] : array() as $asset ) {
+				if ( is_array( $asset ) && 'approved' !== ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed' ) ) $pending_review[] = array_merge( array( 'category' => (string) $category ), $asset );
 			}
 		}
-		$assets = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::assets() : array();
-		$coverage = array();
-		$pending_review = array();
-		foreach ( $required as $set ) $coverage[ $set ] = array();
-
-		foreach ( $assets as $asset ) {
-			if ( ! is_array( $asset ) ) continue;
-			$category = isset( $asset['category'] ) ? sanitize_key( (string) $asset['category'] ) : '';
-			if ( ! in_array( $category, $required, true ) ) continue;
-			$summary = array(
-				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
-				'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
-				'status' => isset( $asset['status'] ) ? (string) $asset['status'] : '',
-				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed',
-				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
-				'source_mode' => isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '',
-				'content_complete' => ! empty( $asset['content_complete'] ),
-			);
-			$eligible = 'governed' === $summary['source_mode']
-				&& 'ready' === $summary['status']
-				&& 'approved' === $summary['review_status']
-				&& 'brand_authority' === $summary['authority_class']
-				&& $summary['content_complete'];
-			if ( $eligible ) $coverage[ $category ][] = $summary;
-			elseif ( 'ready' === $summary['status'] && 'approved' !== $summary['review_status'] ) $pending_review[] = $summary;
-		}
-
-		$missing = array();
-		foreach ( $required as $set ) if ( empty( $coverage[ $set ] ) ) $missing[] = $set;
-		return array(
-			'contract' => 'mad4b.brand-core-context-coverage.v1',
-			'read_only' => true,
-			'required_context_sets' => $required,
-			'coverage' => $coverage,
-			'missing_required_context_sets' => $missing,
-			'pending_review_assets' => $pending_review,
-			'ready' => empty( $missing ),
-			'state' => empty( $missing ) ? 'ready' : 'blocked',
-			'blockers' => array_map( static function ( $set ) { return 'required_context_set_missing:' . $set; }, $missing ),
-		);
+		$canonical['state'] = ! empty( $canonical['ready'] ) ? 'ready' : 'blocked';
+		$canonical['blockers'] = array_values( array_unique( $blockers ) );
+		$canonical['pending_review_assets'] = $pending_review;
+		$canonical['canonical_coverage_source'] = 'MAD4B_SCP_Context_Authority::brand_core_coverage';
+		return $canonical;
 	}
 
 	private static function browser_status() {

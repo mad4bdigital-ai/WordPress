@@ -15,7 +15,13 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	const SCAN_PLAN_CONTRACT = 'mad4b.context-source-scan-plan.v1';
 	const MATERIALIZE_CONTRACT = 'mad4b.brand-context-materialization.v1';
 	const ROLLBACK_CONTRACT = 'mad4b.rollback.google-drive-brand-context-create.v1';
-	const BUILDER_SPEC_VERSION = '2';
+	const BUILDER_SPEC_VERSION = '3';
+	const DRAFT_PREFLIGHT_CONTRACT = 'mad4b.brand-draft-preflight.v1';
+	const MIN_NONEMPTY_SAMPLES = 12;
+	const MIN_PRIMARY_EXPRESSION_SAMPLES = 8;
+	const MAX_EMPTY_RATIO = 0.20;
+	const MIN_CORE_CONTENT_SAMPLES = 6;
+	const MIN_EDITORIAL_SEO_SAMPLES = 3;
 	const MAX_LIVE_SAMPLES = 24;
 	const MAX_LIVE_CANDIDATES = 96;
 	const MAX_SAMPLE_BYTES = 1800;
@@ -70,13 +76,10 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	public static function run_scheduled_materialization_reconciliation( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 		$attempt = isset( $input['_automatic_reconcile_attempt'] ) ? max( 1, (int) $input['_automatic_reconcile_attempt'] ) : 1;
+		// Scheduled workers are reconciliation-only. A verified no-effect result may
+		// release the durable claim, but any new provider mutation must re-enter the
+		// normal governed write surface with fresh authority/policy/approval.
 		$result = self::reconcile_materialization( $input );
-		if ( is_array( $result )
-			&& 'verified_no_effect' === ( isset( $result['status'] ) ? (string) $result['status'] : '' )
-			&& ! empty( $result['safe_to_retry'] )
-			&& ! empty( $result['idempotency_released'] ) ) {
-			$result = self::materialize_draft( $input );
-		}
 		if ( is_wp_error( $result ) ) {
 			$retryable = in_array(
 				$result->get_error_code(),
@@ -289,54 +292,380 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		return $selected;
 	}
 
-	private static function live_content_evidence() {
-		$records = array();
-		if ( ! function_exists( 'get_post_types' ) || ! function_exists( 'get_posts' ) ) return $records;
-		$post_types = get_post_types( array( 'public' => true ), 'names' );
+	private static function configured_languages() {
+		$languages = array();
+		if ( function_exists( 'pll_languages_list' ) ) {
+			$pll = pll_languages_list( array( 'fields' => 'slug' ) );
+			foreach ( is_array( $pll ) ? $pll : array() as $code ) {
+				$code = sanitize_key( strtolower( (string) $code ) );
+				if ( '' !== $code ) $languages[ $code ] = true;
+			}
+		}
+		if ( function_exists( 'has_filter' ) && function_exists( 'apply_filters' ) && has_filter( 'wpml_active_languages' ) ) {
+			$wpml = apply_filters( 'wpml_active_languages', null, array( 'skip_missing' => 0, 'orderby' => 'code' ) );
+			foreach ( is_array( $wpml ) ? $wpml : array() as $key => $row ) {
+				$code = is_array( $row ) && ! empty( $row['code'] ) ? (string) $row['code'] : (string) $key;
+				$code = sanitize_key( strtolower( $code ) );
+				if ( '' !== $code ) $languages[ $code ] = true;
+			}
+		}
+		if ( empty( $languages ) && function_exists( 'get_locale' ) ) {
+			$locale = strtolower( str_replace( '-', '_', (string) get_locale() ) );
+			$code = sanitize_key( false !== strpos( $locale, '_' ) ? substr( $locale, 0, strpos( $locale, '_' ) ) : $locale );
+			if ( '' !== $code ) $languages[ $code ] = true;
+		}
+		$codes = array_keys( $languages );
+		sort( $codes, SORT_STRING );
+		return $codes;
+	}
+
+	private static function primary_brand_language( array $configured ) {
+		$current = '';
+		if ( function_exists( 'has_filter' ) && function_exists( 'apply_filters' ) && has_filter( 'wpml_current_language' ) ) {
+			$current = sanitize_key( strtolower( (string) apply_filters( 'wpml_current_language', null ) ) );
+		}
+		if ( '' === $current && function_exists( 'get_locale' ) ) {
+			$locale = strtolower( str_replace( '-', '_', (string) get_locale() ) );
+			$current = sanitize_key( false !== strpos( $locale, '_' ) ? substr( $locale, 0, strpos( $locale, '_' ) ) : $locale );
+		}
+		return in_array( $current, $configured, true ) ? $current : ( ! empty( $configured ) ? (string) $configured[0] : 'en' );
+	}
+
+	private static function live_post_types() {
+		$post_types = function_exists( 'get_post_types' ) ? get_post_types( array( 'public' => true ), 'names' ) : array();
 		$post_types = array_values( array_diff( is_array( $post_types ) ? $post_types : array(), array( 'attachment' ) ) );
 		sort( $post_types, SORT_STRING );
-		if ( empty( $post_types ) ) return $records;
-		$posts = get_posts(
-			array(
-				'post_type' => $post_types,
-				'post_status' => 'publish',
-				'posts_per_page' => self::MAX_LIVE_CANDIDATES,
-				'orderby' => 'modified',
-				'order' => 'DESC',
-				'suppress_filters' => false,
-			)
+		return $post_types;
+	}
+
+	private static function query_posts_for_language( array $post_types, $language, $limit ) {
+		$language = sanitize_key( strtolower( (string) $language ) );
+		$args = array(
+			'post_type' => $post_types,
+			'post_status' => 'publish',
+			'posts_per_page' => max( 1, (int) $limit ),
+			'orderby' => 'modified',
+			'order' => 'DESC',
+			'suppress_filters' => false,
 		);
-		foreach ( is_array( $posts ) ? $posts : array() as $post ) {
-			if ( ! is_object( $post ) || empty( $post->ID ) ) continue;
-			$title = get_the_title( $post );
-			$body = self::bounded_text( (string) $post->post_excerpt . "\n" . (string) $post->post_content );
-			$seo = array();
-			foreach ( array( 'rank_math_title', 'rank_math_description', '_yoast_wpseo_title', '_yoast_wpseo_metadesc' ) as $meta_key ) {
-				$value = get_post_meta( (int) $post->ID, $meta_key, true );
-				if ( is_scalar( $value ) && '' !== trim( (string) $value ) ) $seo[ $meta_key ] = self::bounded_text( (string) $value, 500 );
-			}
-			ksort( $seo, SORT_STRING );
-			$language = self::content_language( $post );
-			$semantic_identity = array(
-				'content_id' => 'post:' . (int) $post->ID,
-				'post_type' => (string) $post->post_type,
-				'title' => self::bounded_text( $title, 300 ),
-				'text' => $body,
-				'seo' => $seo,
-				'language' => $language,
-			);
-			$record = array_merge(
-				array( 'source' => 'wordpress_live_content' ),
-				$semantic_identity,
-				array(
-					'modified_gmt' => isset( $post->post_modified_gmt ) ? (string) $post->post_modified_gmt : '',
-					'observed_at' => gmdate( 'c' ),
-					'reason' => 'published_live_brand_expression',
-				)
-			);
-			$record['content_hash'] = hash( 'sha256', self::stable_json( $semantic_identity ) );
-			$records[] = $record;
+		if ( function_exists( 'pll_languages_list' ) ) $args['lang'] = $language;
+		$wpml_switch = function_exists( 'has_action' ) && has_action( 'wpml_switch_language' );
+		$previous = '';
+		if ( $wpml_switch && function_exists( 'apply_filters' ) ) $previous = sanitize_key( strtolower( (string) apply_filters( 'wpml_current_language', null ) ) );
+		if ( $wpml_switch && function_exists( 'do_action' ) ) do_action( 'wpml_switch_language', $language );
+		try {
+			$posts = get_posts( $args );
+		} finally {
+			if ( $wpml_switch && '' !== $previous && function_exists( 'do_action' ) ) do_action( 'wpml_switch_language', $previous );
 		}
+		return is_array( $posts ) ? $posts : array();
+	}
+
+	private static function live_record_rank( array $record ) {
+		$post_type = isset( $record['post_type'] ) ? sanitize_key( (string) $record['post_type'] ) : '';
+		$text = isset( $record['text'] ) ? trim( (string) $record['text'] ) : '';
+		$utility = in_array( $post_type, array( 'tour-rates', 'elementor_library', 'elementskit_content', 'elementskit_template', 'nav_menu_item' ), true );
+		if ( '' === $text ) return 30;
+		if ( $utility ) return 20;
+		if ( strlen( $text ) < 120 ) return 10;
+		return 0;
+	}
+
+	private static function rank_live_records( array $records ) {
+		usort(
+			$records,
+			static function ( $a, $b ) {
+				$ra = self::live_record_rank( is_array( $a ) ? $a : array() );
+				$rb = self::live_record_rank( is_array( $b ) ? $b : array() );
+				if ( $ra !== $rb ) return $ra <=> $rb;
+				$la = isset( $a['language'] ) ? (string) $a['language'] : '';
+				$lb = isset( $b['language'] ) ? (string) $b['language'] : '';
+				if ( $la !== $lb ) return strcmp( $la, $lb );
+				$pa = isset( $a['post_type'] ) ? (string) $a['post_type'] : '';
+				$pb = isset( $b['post_type'] ) ? (string) $b['post_type'] : '';
+				if ( $pa !== $pb ) return strcmp( $pa, $pb );
+				return strcmp( isset( $a['content_id'] ) ? (string) $a['content_id'] : '', isset( $b['content_id'] ) ? (string) $b['content_id'] : '' );
+			}
+		);
+		return $records;
+	}
+
+	private static function evidence_quality( array $records, array $configured_languages, $approved_authority_count, array $structure = array() ) {
+		$sample_count = count( $records );
+		$nonempty = 0; $primary = 0; $core = 0; $seo = 0; $sampled = array();
+		foreach ( $records as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$text = trim( isset( $row['text'] ) ? (string) $row['text'] : '' );
+			$post_type = sanitize_key( isset( $row['post_type'] ) ? (string) $row['post_type'] : '' );
+			$lang = sanitize_key( isset( $row['language'] ) ? (string) $row['language'] : '' );
+			if ( '' !== $lang ) $sampled[ $lang ] = isset( $sampled[ $lang ] ) ? $sampled[ $lang ] + 1 : 1;
+			if ( '' !== $text ) ++$nonempty;
+			if ( '' !== $text && strlen( $text ) >= 120 && self::live_record_rank( $row ) < 20 ) ++$primary;
+			if ( '' !== $text && preg_match( '/(page|post|product|tour|activity|package)/', $post_type ) && 'tour-rates' !== $post_type ) ++$core;
+			if ( ! empty( $row['seo'] ) ) ++$seo;
+		}
+		ksort( $sampled, SORT_STRING );
+		$unavailable = array_values( array_diff( $configured_languages, array_keys( $sampled ) ) );
+		$empty_ratio = $sample_count > 0 ? ( $sample_count - $nonempty ) / $sample_count : 1.0;
+		$menu_observed_count = isset( $structure['menu_observed_count'] ) ? max( 0, (int) $structure['menu_observed_count'] ) : count( isset( $structure['menus'] ) && is_array( $structure['menus'] ) ? $structure['menus'] : array() );
+		$menu_unique_count = isset( $structure['menu_unique_count'] ) ? max( 0, (int) $structure['menu_unique_count'] ) : count( isset( $structure['menus'] ) && is_array( $structure['menus'] ) ? $structure['menus'] : array() );
+		$duplicate_structure_ratio = $menu_observed_count > 0 ? max( 0.0, min( 1.0, ( $menu_observed_count - $menu_unique_count ) / $menu_observed_count ) ) : 0.0;
+		$blockers = array();
+		if ( $nonempty < self::MIN_NONEMPTY_SAMPLES ) $blockers[] = 'nonempty_samples_below_minimum';
+		if ( $primary < self::MIN_PRIMARY_EXPRESSION_SAMPLES ) $blockers[] = 'primary_brand_expression_samples_below_minimum';
+		if ( $empty_ratio > self::MAX_EMPTY_RATIO ) $blockers[] = 'empty_sample_ratio_above_maximum';
+		if ( $core < self::MIN_CORE_CONTENT_SAMPLES ) $blockers[] = 'core_content_samples_below_minimum';
+		if ( (int) $approved_authority_count < 1 ) $blockers[] = 'approved_authority_required';
+		if ( count( $configured_languages ) > 1 && ! empty( $unavailable ) ) $blockers[] = 'configured_language_coverage_incomplete';
+		return array(
+			'contract' => 'mad4b.brand-evidence-quality.v1',
+			'sample_count' => $sample_count,
+			'nonempty_count' => $nonempty,
+			'primary_expression_count' => $primary,
+			'core_content_sample_count' => $core,
+			'empty_ratio' => round( $empty_ratio, 6 ),
+			'seo_sample_count' => $seo,
+			'duplicate_structure_ratio' => round( $duplicate_structure_ratio, 6 ),
+			'menu_observed_count' => $menu_observed_count,
+			'menu_unique_count' => $menu_unique_count,
+			'approved_authority_count' => (int) $approved_authority_count,
+			'language_coverage' => array(
+				'configured' => array_values( $configured_languages ),
+				'sampled' => $sampled,
+				'unavailable' => $unavailable,
+				'primary_brand_language' => self::primary_brand_language( $configured_languages ),
+				'supporting_locales' => array_values( array_diff( $configured_languages, array( self::primary_brand_language( $configured_languages ) ) ) ),
+			),
+			'quality_gate_pass' => empty( $blockers ),
+			'blockers' => $blockers,
+		);
+	}
+
+	private static function rendered_frontend_evidence( $enabled ) {
+		if ( ! $enabled ) return array( 'enabled' => false, 'available' => false, 'semantic_hash' => '' );
+		if ( ! function_exists( 'home_url' ) || ! function_exists( 'wp_remote_get' ) ) return array( 'enabled' => true, 'available' => false, 'semantic_hash' => '', 'reason' => 'wordpress_http_unavailable' );
+		$url = home_url( '/' );
+		$response = wp_remote_get( $url, array( 'timeout' => 5, 'redirection' => 2, 'limit_response_size' => self::MAX_SAMPLE_BYTES * 4 ) );
+		if ( is_wp_error( $response ) ) return array( 'enabled' => true, 'available' => false, 'semantic_hash' => '', 'reason' => $response->get_error_code() );
+		$code = function_exists( 'wp_remote_retrieve_response_code' ) ? (int) wp_remote_retrieve_response_code( $response ) : 0;
+		$body = function_exists( 'wp_remote_retrieve_body' ) ? (string) wp_remote_retrieve_body( $response ) : '';
+		$text = self::bounded_text( $body, self::MAX_SAMPLE_BYTES );
+		$semantic = array( 'url' => $url, 'status' => $code, 'text' => $text );
+		return array(
+			'enabled' => true,
+			'available' => 200 <= $code && $code < 400 && '' !== $text,
+			'url' => $url,
+			'status' => $code,
+			'text' => $text,
+			'semantic_hash' => hash( 'sha256', self::stable_json( $semantic ) ),
+			'observed_at' => gmdate( 'c' ),
+		);
+	}
+
+	private static function generation_evidence_digest( $category, array $authoritative_identity, array $live_identity, array $structure_identity, array $rendered_identity ) {
+		$dependencies = 'editorial_guidelines' === $category ? array( 'brand_strategy', 'tone_of_voice' ) : array( 'brand_strategy' );
+		$authority = array_values( array_filter(
+			$authoritative_identity,
+			static function ( $row ) use ( $dependencies ) {
+				return is_array( $row ) && in_array( isset( $row['category'] ) ? (string) $row['category'] : '', $dependencies, true );
+			}
+		) );
+		$basis = array(
+			'category' => $category,
+			'authority_dependencies' => $authority,
+			'live_content' => $live_identity,
+			'live_structure' => $structure_identity,
+			'rendered_frontend' => $rendered_identity,
+			'builder_spec_version' => self::BUILDER_SPEC_VERSION,
+		);
+		return hash( 'sha256', self::stable_json( $basis ) );
+	}
+
+	private static function brand_context_subject_key( $category ) {
+		return hash( 'sha256', self::site_uuid() . '|' . sanitize_key( (string) $category ) . '|' . self::CONTRACT );
+	}
+
+	private static function draft_required_sections( $category ) {
+		return 'tone_of_voice' === $category
+			? array( 'brand voice summary', 'voice dimensions', 'language & localization', 'vocabulary', 'sentence and paragraph style', 'cta style', 'do / don', 'examples', 'exceptions', 'evidence & confidence' )
+			: array( 'scope', 'audience', 'content types', 'titles and headings', 'tour/package descriptions', 'facts, prices, dates and claims', 'destination naming', 'seo rules', 'internal linking', 'localization', 'images/media language', 'qa checklist', 'evidence & confidence' );
+	}
+
+	public static function draft_preflight( $input ) {
+		$input = is_array( $input ) ? $input : array();
+		$category = sanitize_key( isset( $input['category'] ) ? (string) $input['category'] : '' );
+		$content = isset( $input['content'] ) ? trim( (string) $input['content'] ) : '';
+		if ( ! in_array( $category, self::generatable_categories(), true ) || '' === $content ) return new WP_Error( 'mad4b_brand_draft_preflight_input_invalid', 'Brand draft preflight requires a generatable category and non-empty content.' );
+		$include_rendered = ! empty( $input['include_rendered_frontend'] );
+		$plan = self::gap_plan( array( 'include_authoritative_content' => true, 'include_rendered_frontend' => $include_rendered ) );
+		if ( is_wp_error( $plan ) ) return $plan;
+		$expected_plan = strtolower( trim( (string) ( isset( $input['expected_plan_sha256'] ) ? $input['expected_plan_sha256'] : '' ) ) );
+		$expected_evidence = strtolower( trim( (string) ( isset( $input['evidence_digest'] ) ? $input['evidence_digest'] : '' ) ) );
+		$current_evidence = isset( $plan['generation_evidence_digests'][ $category ] ) ? (string) $plan['generation_evidence_digests'][ $category ] : '';
+		if ( ! hash_equals( (string) $plan['plan_sha256'], $expected_plan ) || ! hash_equals( $current_evidence, $expected_evidence ) ) return new WP_Error( 'mad4b_brand_draft_plan_stale', 'Brand evidence changed before draft preflight.' );
+		$normalized = strtolower( preg_replace( '/\s+/u', ' ', wp_strip_all_tags( $content ) ) );
+		$sections = array(); $present = 0;
+		foreach ( self::draft_required_sections( $category ) as $label ) {
+			$found = false !== strpos( $normalized, strtolower( $label ) );
+			$sections[] = array( 'section' => $label, 'present' => $found );
+			if ( $found ) ++$present;
+		}
+		$claim_classes = array(
+			'approved_brand_rule' => substr_count( strtolower( $content ), 'approved brand rule' ),
+			'observed_live_pattern' => substr_count( strtolower( $content ), 'observed live pattern' ),
+			'recommended_normalization' => substr_count( strtolower( $content ), 'recommended normalization' ),
+		);
+		$unresolved = array();
+		foreach ( array( 'unresolved conflict', 'conflict unresolved', 'todo: conflict' ) as $marker ) if ( false !== strpos( strtolower( $content ), $marker ) ) $unresolved[] = $marker;
+		$quality_gate_pass = $present === count( $sections )
+			&& $claim_classes['approved_brand_rule'] > 0
+			&& $claim_classes['observed_live_pattern'] > 0
+			&& $claim_classes['recommended_normalization'] > 0
+			&& empty( $unresolved );
+		$basis = array(
+			'contract' => self::DRAFT_PREFLIGHT_CONTRACT,
+			'template_version' => 1,
+			'category' => $category,
+			'content_sha256' => hash( 'sha256', $content ),
+			'plan_sha256' => (string) $plan['plan_sha256'],
+			'evidence_digest' => $current_evidence,
+			'required_sections' => $sections,
+			'claim_classes' => $claim_classes,
+			'unresolved_conflicts' => $unresolved,
+			'quality_gate_pass' => $quality_gate_pass,
+		);
+		return array_merge( $basis, array(
+			'draft_preflight_sha256' => hash( 'sha256', self::stable_json( $basis ) ),
+			'required_section_count' => count( $sections ),
+			'present_section_count' => $present,
+			'evidence_refs' => array(
+				'authority_assets' => array_values( array_filter( array_map( static function ( $row ) { return isset( $row['asset_id'] ) ? (string) $row['asset_id'] : ''; }, $plan['authoritative_assets'] ) ) ),
+				'live_content' => array_values( array_filter( array_map( static function ( $row ) { return isset( $row['content_id'] ) ? (string) $row['content_id'] : ''; }, $plan['live_evidence']['pages_posts_products'] ) ) ),
+			),
+			'languages' => array_keys( isset( $plan['evidence_quality']['language_coverage']['sampled'] ) ? $plan['evidence_quality']['language_coverage']['sampled'] : array() ),
+			'mutation_performed' => false,
+		) );
+	}
+
+	public static function generation_evidence_status( $category, $expected_digest, $include_rendered_frontend = false ) {
+		$category = sanitize_key( (string) $category );
+		$expected_digest = strtolower( trim( (string) $expected_digest ) );
+		if ( ! in_array( $category, self::generatable_categories(), true ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_digest ) ) return new WP_Error( 'mad4b_brand_generation_evidence_binding_invalid', 'Generated Brand Context evidence binding is invalid.' );
+		$plan = self::gap_plan( array( 'include_authoritative_content' => true, 'include_rendered_frontend' => ! empty( $include_rendered_frontend ) ) );
+		if ( is_wp_error( $plan ) ) return $plan;
+		$current = isset( $plan['generation_evidence_digests'][ $category ] ) ? (string) $plan['generation_evidence_digests'][ $category ] : '';
+		return array(
+			'contract' => 'mad4b.brand-generation-evidence-status.v1',
+			'category' => $category,
+			'expected_evidence_digest' => $expected_digest,
+			'current_evidence_digest' => $current,
+			'fresh' => '' !== $current && hash_equals( $current, $expected_digest ),
+			'current_plan_sha256' => isset( $plan['plan_sha256'] ) ? (string) $plan['plan_sha256'] : '',
+			'evidence_quality' => isset( $plan['evidence_quality'] ) ? $plan['evidence_quality'] : array(),
+			'mutation_performed' => false,
+		);
+	}
+
+	public static function advance_generation_job( $job_id, $phase, $plan_sha256 = '', $artifact_id = '' ) {
+		if ( ! class_exists( 'MAD4B_SCP_Content_Jobs' ) ) return new WP_Error( 'mad4b_brand_generation_job_runtime_unavailable', 'ContentJob runtime is unavailable.' );
+		$current = MAD4B_SCP_Content_Jobs::get_job( array( 'job_id' => $job_id ) );
+		if ( is_wp_error( $current ) ) return $current;
+		$job = $current['job'];
+		$phase = sanitize_key( (string) $phase );
+		$steps = array();
+		if ( 'draft_ready' === $phase ) {
+			if ( 'NEW' === $job['state'] ) $steps[] = array( 'QUEUED', 'DRAFT', 'queue evidence-bound brand draft' );
+			$steps[] = array( 'RUNNING', 'DRAFT', 'brand draft artifact is active' );
+		} elseif ( 'materialized' === $phase ) {
+			if ( 'NEW' === $job['state'] ) $steps[] = array( 'QUEUED', 'DRAFT', 'queue evidence-bound brand draft' );
+			if ( in_array( $job['state'], array( 'NEW', 'QUEUED' ), true ) ) $steps[] = array( 'RUNNING', 'DRAFT', 'brand draft artifact is active' );
+			$steps[] = array( 'WAITING_REVIEW', 'FINAL_QA', 'materialized brand draft awaits exact review' );
+		} elseif ( 'completed' === $phase ) {
+			if ( 'WAITING_REVIEW' !== $job['state'] ) return new WP_Error( 'mad4b_brand_generation_job_not_waiting_review', 'Generated Brand Context ContentJob is not waiting for review.' );
+			$steps[] = array( 'COMPLETED', 'FINAL_QA', 'generated Brand Context approved with exact review binding' );
+		} elseif ( 'failed' === $phase ) {
+			$steps[] = array( 'FAILED', isset( $job['stage'] ) ? (string) $job['stage'] : 'INTAKE', 'brand generation failed before lifecycle completion' );
+		} else {
+			return new WP_Error( 'mad4b_brand_generation_job_phase_invalid', 'Brand generation ContentJob phase is invalid.' );
+		}
+		foreach ( $steps as $step ) {
+			$current = MAD4B_SCP_Content_Jobs::get_job( array( 'job_id' => $job_id ) );
+			if ( is_wp_error( $current ) ) return $current;
+			$job = $current['job'];
+			if ( $step[0] === $job['state'] && $step[1] === $job['stage'] ) continue;
+			$result = MAD4B_SCP_Content_Jobs::transition_job( array(
+				'job_id' => $job_id,
+				'expected_revision' => (int) $job['job_revision'],
+				'state' => $step[0],
+				'stage' => $step[1],
+				'reason' => $step[2],
+				'plan_sha256' => $plan_sha256,
+				'artifact_id' => $artifact_id,
+			) );
+			if ( is_wp_error( $result ) ) return $result;
+		}
+		return MAD4B_SCP_Content_Jobs::get_job( array( 'job_id' => $job_id ) );
+	}
+
+	public static function complete_generation_job_for_asset( array $asset ) {
+		$job_id = isset( $asset['generation_job_id'] ) ? strtolower( trim( (string) $asset['generation_job_id'] ) ) : '';
+		if ( '' === $job_id ) return array( 'mutation_performed' => false, 'not_applicable' => true );
+		return self::advance_generation_job(
+			$job_id,
+			'completed',
+			isset( $asset['generation_plan_sha256'] ) ? (string) $asset['generation_plan_sha256'] : '',
+			isset( $asset['generated_artifact_id'] ) ? (string) $asset['generated_artifact_id'] : ''
+		);
+	}
+
+	private static function live_content_evidence() {
+		$records = array();
+		if ( ! function_exists( 'get_posts' ) ) return $records;
+		$post_types = self::live_post_types();
+		if ( empty( $post_types ) ) return $records;
+		$languages = self::configured_languages();
+		if ( empty( $languages ) ) $languages = array( '' );
+		$per_language = max( 8, (int) ceil( self::MAX_LIVE_CANDIDATES / max( 1, count( $languages ) ) ) );
+		$seen = array();
+		foreach ( $languages as $language ) {
+			foreach ( self::query_posts_for_language( $post_types, $language, $per_language ) as $post ) {
+				if ( ! is_object( $post ) || empty( $post->ID ) ) continue;
+				$observed_language = self::content_language( $post );
+				if ( '' === $observed_language ) $observed_language = sanitize_key( (string) $language );
+				$key = (int) $post->ID . '|' . $observed_language;
+				if ( isset( $seen[ $key ] ) ) continue;
+				$seen[ $key ] = true;
+				$title = get_the_title( $post );
+				$body = self::bounded_text( (string) $post->post_excerpt . "\n" . (string) $post->post_content );
+				$seo = array();
+				foreach ( array( 'rank_math_title', 'rank_math_description', '_yoast_wpseo_title', '_yoast_wpseo_metadesc' ) as $meta_key ) {
+					$value = get_post_meta( (int) $post->ID, $meta_key, true );
+					if ( is_scalar( $value ) && '' !== trim( (string) $value ) ) $seo[ $meta_key ] = self::bounded_text( (string) $value, 500 );
+				}
+				ksort( $seo, SORT_STRING );
+				$semantic_identity = array(
+					'content_id' => 'post:' . (int) $post->ID,
+					'post_type' => (string) $post->post_type,
+					'title' => self::bounded_text( $title, 300 ),
+					'text' => $body,
+					'seo' => $seo,
+					'language' => $observed_language,
+				);
+				$record = array_merge(
+					array( 'source' => 'wordpress_live_content' ),
+					$semantic_identity,
+					array(
+						'modified_gmt' => isset( $post->post_modified_gmt ) ? (string) $post->post_modified_gmt : '',
+						'observed_at' => gmdate( 'c' ),
+						'reason' => 'published_live_brand_expression',
+					)
+				);
+				$record['content_hash'] = hash( 'sha256', self::stable_json( $semantic_identity ) );
+				$record['evidence_rank'] = self::live_record_rank( $record );
+				$records[] = $record;
+			}
+		}
+		$records = self::rank_live_records( $records );
 		return self::stratify_live_records( $records );
 	}
 
@@ -363,7 +692,15 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				if ( count( $taxonomies ) >= 12 ) break;
 			}
 		}
-		$menus = self::sort_rows( $menus, array( 'slug', 'name' ) );
+		$menu_observed_count = count( $menus );
+		$deduped_menus = array();
+		foreach ( $menus as $menu ) {
+			$key = strtolower( trim( (string) ( isset( $menu['slug'] ) ? $menu['slug'] : '' ) ) ) . '|' . strtolower( trim( (string) ( isset( $menu['name'] ) ? $menu['name'] : '' ) ) );
+			$deduped_menus[ $key ] = $menu;
+		}
+		$menus = self::sort_rows( array_values( $deduped_menus ), array( 'slug', 'name' ) );
+		$menu_unique_count = count( $menus );
+		$menu_duplicate_ratio = $menu_observed_count > 0 ? max( 0.0, min( 1.0, ( $menu_observed_count - $menu_unique_count ) / $menu_observed_count ) ) : 0.0;
 		foreach ( $taxonomies as $index => $taxonomy ) {
 			if ( isset( $taxonomy['terms'] ) && is_array( $taxonomy['terms'] ) ) sort( $taxonomies[ $index ]['terms'], SORT_STRING );
 		}
@@ -371,6 +708,9 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		return array(
 			'source' => 'wordpress_live_structure',
 			'menus' => $menus,
+			'menu_observed_count' => $menu_observed_count,
+			'menu_unique_count' => $menu_unique_count,
+			'duplicate_structure_ratio' => round( $menu_duplicate_ratio, 6 ),
 			'taxonomies' => $taxonomies,
 			'locale' => function_exists( 'get_locale' ) ? (string) get_locale() : '',
 			'observed_at' => gmdate( 'c' ),
@@ -381,6 +721,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	public static function gap_plan( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 		$include_authoritative_content = ! array_key_exists( 'include_authoritative_content', $input ) || ! empty( $input['include_authoritative_content'] );
+		$include_rendered_frontend = ! empty( $input['include_rendered_frontend'] );
 		$site_uuid = self::site_uuid();
 		if ( '' === $site_uuid ) return new WP_Error( 'mad4b_brand_builder_site_identity_unavailable', 'Site Profile identity is unavailable.' );
 		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return new WP_Error( 'mad4b_brand_builder_context_unavailable', 'Context Authority is unavailable.' );
@@ -427,6 +768,10 @@ final class MAD4B_SCP_Brand_Context_Builder {
 
 		$live_content = self::live_content_evidence();
 		$structure = self::structure_evidence();
+		$rendered = self::rendered_frontend_evidence( $include_rendered_frontend );
+		$configured_languages = self::configured_languages();
+		$approved_authority_count = count( isset( $approved['brand_strategy'] ) ? $approved['brand_strategy'] : array() );
+		$evidence_quality = self::evidence_quality( $live_content, $configured_languages, $approved_authority_count, $structure );
 		$registry_revision = (int) MAD4B_SCP_Context_Authority::registry_revision();
 		$context_fingerprint = (string) MAD4B_SCP_Context_Authority::context_fingerprint();
 		$authority_manifest_fingerprint = (string) MAD4B_SCP_Context_Authority::authority_manifest_fingerprint();
@@ -454,30 +799,50 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			$live_content
 		);
 		$live_identity = self::sort_rows( $live_identity, array( 'content_id', 'language', 'post_type' ) );
+		$structure_identity = array(
+			'menus' => isset( $structure['menus'] ) ? $structure['menus'] : array(),
+			'menu_observed_count' => isset( $structure['menu_observed_count'] ) ? (int) $structure['menu_observed_count'] : 0,
+			'menu_unique_count' => isset( $structure['menu_unique_count'] ) ? (int) $structure['menu_unique_count'] : 0,
+			'duplicate_structure_ratio' => isset( $structure['duplicate_structure_ratio'] ) ? (float) $structure['duplicate_structure_ratio'] : 0.0,
+			'taxonomies' => isset( $structure['taxonomies'] ) ? $structure['taxonomies'] : array(),
+			'locale' => isset( $structure['locale'] ) ? (string) $structure['locale'] : '',
+		);
+		$rendered_identity = array(
+			'enabled' => ! empty( $rendered['enabled'] ),
+			'available' => ! empty( $rendered['available'] ),
+			'semantic_hash' => isset( $rendered['semantic_hash'] ) ? (string) $rendered['semantic_hash'] : '',
+		);
 		$evidence_identity = array(
 			'authoritative_assets' => $authoritative_identity,
 			'live_content' => $live_identity,
-			'live_structure' => array(
-				'menus' => isset( $structure['menus'] ) ? $structure['menus'] : array(),
-				'taxonomies' => isset( $structure['taxonomies'] ) ? $structure['taxonomies'] : array(),
-				'locale' => isset( $structure['locale'] ) ? (string) $structure['locale'] : '',
-			),
+			'live_structure' => $structure_identity,
+			'rendered_frontend' => $rendered_identity,
 		);
 		$evidence_digest = hash( 'sha256', self::stable_json( $evidence_identity ) );
+		$generation_evidence_digests = array();
+		foreach ( self::generatable_categories() as $category ) {
+			$generation_evidence_digests[ $category ] = self::generation_evidence_digest( $category, $authoritative_identity, $live_identity, $structure_identity, $rendered_identity );
+		}
 		$hard_blockers = array();
 		if ( empty( $approved['brand_strategy'] ) ) $hard_blockers[] = 'approved_brand_strategy_required';
 		if ( empty( $live_content ) ) $hard_blockers[] = 'live_content_evidence_required';
 		if ( ! empty( $conflicts ) ) $hard_blockers[] = 'brand_authority_conflict_requires_review';
 		if ( ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) $hard_blockers[] = 'context_provider_gateway_unavailable';
 		foreach ( $authority_read_blockers as $blocker ) $hard_blockers[] = $blocker;
+		foreach ( isset( $evidence_quality['blockers'] ) ? $evidence_quality['blockers'] : array() as $blocker ) $hard_blockers[] = 'evidence_quality:' . $blocker;
 		$hard_blockers = array_values( array_unique( $hard_blockers ) );
 		$drafts = array();
 		foreach ( self::generatable_categories() as $category ) {
 			if ( ! in_array( $category, $missing, true ) ) continue;
+			$draft_blockers = $hard_blockers;
+			if ( 'editorial_guidelines' === $category && empty( $approved['tone_of_voice'] ) ) $draft_blockers[] = 'approved_tone_of_voice_required_for_editorial_generation';
+			if ( 'editorial_guidelines' === $category && (int) $evidence_quality['seo_sample_count'] < self::MIN_EDITORIAL_SEO_SAMPLES ) $draft_blockers[] = 'evidence_quality:editorial_seo_samples_below_minimum';
 			$drafts[] = array(
 				'category' => $category,
 				'suggested_name' => self::suggested_name( $category ),
-				'ready_to_generate' => empty( $hard_blockers ),
+				'generation_evidence_digest' => (string) $generation_evidence_digests[ $category ],
+				'ready_to_generate' => empty( $draft_blockers ),
+				'blockers' => array_values( array_unique( $draft_blockers ) ),
 			);
 		}
 
@@ -490,6 +855,9 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'authority_manifest_fingerprint' => $authority_manifest_fingerprint,
 			'missing_categories' => $missing,
 			'evidence_digest' => $evidence_digest,
+			'generation_evidence_digests' => $generation_evidence_digests,
+			'evidence_quality' => $evidence_quality,
+			'include_rendered_frontend' => $include_rendered_frontend,
 			'conflicts' => $conflicts,
 			'hard_blockers' => $hard_blockers,
 		);
@@ -502,9 +870,9 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				'live_evidence' => array(
 					'pages_posts_products' => $live_content,
 					'structure' => $structure,
+					'rendered_frontend' => $rendered,
 					'sample_count' => count( $live_content ),
 				),
-				'evidence_digest' => $evidence_digest,
 				'drafts' => $drafts,
 				'generation_is_authority' => false,
 				'approval_required_before_brand_core_ready' => true,
@@ -610,27 +978,41 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		if ( ! in_array( $category, self::generatable_categories(), true ) ) return new WP_Error( 'mad4b_brand_draft_category_invalid', 'Brand draft category is not generatable.' );
 		$content = isset( $input['content'] ) ? trim( (string) $input['content'] ) : '';
 		if ( '' === $content || strlen( $content ) > self::MAX_DRAFT_BYTES ) return new WP_Error( 'mad4b_brand_draft_content_invalid', 'Brand draft content is missing or exceeds the certified limit.' );
-		$plan = self::gap_plan();
+		$include_rendered_frontend = ! empty( $input['include_rendered_frontend'] );
+		$plan = self::gap_plan( array( 'include_authoritative_content' => true, 'include_rendered_frontend' => $include_rendered_frontend ) );
 		if ( is_wp_error( $plan ) ) return $plan;
 		$expected_plan = strtolower( trim( (string) ( isset( $input['expected_plan_sha256'] ) ? $input['expected_plan_sha256'] : '' ) ) );
 		$expected_evidence = strtolower( trim( (string) ( isset( $input['evidence_digest'] ) ? $input['evidence_digest'] : '' ) ) );
-		if ( ! hash_equals( (string) $plan['plan_sha256'], $expected_plan ) || ! hash_equals( (string) $plan['evidence_digest'], $expected_evidence ) ) {
+		$current_generation_evidence = isset( $plan['generation_evidence_digests'][ $category ] ) ? (string) $plan['generation_evidence_digests'][ $category ] : '';
+		if ( ! hash_equals( (string) $plan['plan_sha256'], $expected_plan ) || ! hash_equals( $current_generation_evidence, $expected_evidence ) ) {
 			return new WP_Error( 'mad4b_brand_draft_plan_stale', 'Brand evidence changed after generation planning; regenerate against a fresh plan.' );
 		}
-		if ( ! empty( $plan['hard_blockers'] ) ) return new WP_Error( 'mad4b_brand_draft_blocked', 'Brand draft generation is blocked by current evidence.', array( 'blockers' => $plan['hard_blockers'] ) );
+		$draft_plan = null;
+		foreach ( isset( $plan['drafts'] ) ? $plan['drafts'] : array() as $row ) if ( is_array( $row ) && $category === ( isset( $row['category'] ) ? (string) $row['category'] : '' ) ) { $draft_plan = $row; break; }
+		if ( ! is_array( $draft_plan ) || empty( $draft_plan['ready_to_generate'] ) ) return new WP_Error( 'mad4b_brand_draft_blocked', 'Brand draft generation is blocked by current evidence quality or authority.', array( 'blockers' => is_array( $draft_plan ) && isset( $draft_plan['blockers'] ) ? $draft_plan['blockers'] : $plan['hard_blockers'] ) );
 		if ( ! in_array( $category, $plan['missing_categories'], true ) ) return new WP_Error( 'mad4b_brand_draft_category_not_missing', 'Requested Brand Core category is no longer missing.' );
+		$preflight = self::draft_preflight( array(
+			'category' => $category,
+			'content' => $content,
+			'expected_plan_sha256' => $expected_plan,
+			'evidence_digest' => $expected_evidence,
+			'include_rendered_frontend' => $include_rendered_frontend,
+		) );
+		if ( is_wp_error( $preflight ) ) return $preflight;
+		$expected_preflight = strtolower( trim( (string) ( isset( $input['draft_preflight_sha256'] ) ? $input['draft_preflight_sha256'] : '' ) ) );
+		if ( empty( $preflight['quality_gate_pass'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_preflight ) || ! hash_equals( (string) $preflight['draft_preflight_sha256'], $expected_preflight ) ) return new WP_Error( 'mad4b_brand_draft_preflight_required', 'Brand draft structural preflight is missing, stale, or did not pass.' );
 		if ( ! class_exists( 'MAD4B_SCP_Durable_Execution' ) || ! class_exists( 'MAD4B_SCP_Content_Jobs' ) || ! class_exists( 'MAD4B_SCP_Artifacts' ) ) {
 			return new WP_Error( 'mad4b_brand_draft_artifact_runtime_unavailable', 'Durable execution, ContentJob and Artifact runtime are required.' );
 		}
 
 		$draft_content_sha256 = hash( 'sha256', $content );
-		$idempotency_key = hash( 'sha256', self::site_uuid() . '|' . $category . '|' . $plan['evidence_digest'] . '|' . self::BUILDER_SPEC_VERSION );
-		$scope_key = MAD4B_SCP_Durable_Execution::scope_key( self::site_uuid(), self::CONTRACT, 'append_draft', $category . '|' . $plan['evidence_digest'] );
+		$idempotency_key = hash( 'sha256', self::site_uuid() . '|' . $category . '|' . $current_generation_evidence . '|' . self::BUILDER_SPEC_VERSION );
+		$scope_key = MAD4B_SCP_Durable_Execution::scope_key( self::site_uuid(), self::CONTRACT, 'append_draft', $category . '|' . $current_generation_evidence );
 		$request_sha256 = hash( 'sha256', self::stable_json( array(
 			'category' => $category,
 			'content_sha256' => $draft_content_sha256,
 			'plan_sha256' => (string) $plan['plan_sha256'],
-			'evidence_digest' => (string) $plan['evidence_digest'],
+			'evidence_digest' => $current_generation_evidence,
 			'builder_spec_version' => self::BUILDER_SPEC_VERSION,
 		) ) );
 		$claim = MAD4B_SCP_Durable_Execution::begin_idempotency( $scope_key, $idempotency_key, $request_sha256, 2592000 );
@@ -675,7 +1057,11 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'category' => $category,
 			'content' => $content,
 			'content_sha256' => $draft_content_sha256,
-			'evidence_digest' => (string) $plan['evidence_digest'],
+			'evidence_digest' => $current_generation_evidence,
+			'plan_sha256' => (string) $plan['plan_sha256'],
+			'draft_preflight_sha256' => (string) $preflight['draft_preflight_sha256'],
+			'include_rendered_frontend' => $include_rendered_frontend,
+			'brand_context_subject_key' => self::brand_context_subject_key( $category ),
 			'source_asset_ids' => $source_asset_ids,
 			'source_content_ids' => $source_content_ids,
 			'generator_contract' => self::CONTRACT,
@@ -693,7 +1079,11 @@ final class MAD4B_SCP_Brand_Context_Builder {
 					'idempotency_scope_key' => $scope_key,
 					'idempotency_request_sha256' => $request_sha256,
 					'plan_sha256' => (string) $plan['plan_sha256'],
-					'evidence_digest' => (string) $plan['evidence_digest'],
+					'evidence_digest' => $current_generation_evidence,
+					'global_plan_evidence_digest' => (string) $plan['evidence_digest'],
+					'draft_preflight_sha256' => (string) $preflight['draft_preflight_sha256'],
+					'include_rendered_frontend' => $include_rendered_frontend,
+					'brand_context_subject_key' => self::brand_context_subject_key( $category ),
 					'builder_spec_version' => self::BUILDER_SPEC_VERSION,
 					'draft_content_sha256' => $draft_content_sha256,
 					'suggested_name' => self::suggested_name( $category ),
@@ -703,7 +1093,32 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				'reason' => 'Persist exact-evidence Brand Context draft before materialization or review.',
 			)
 		);
-		if ( is_wp_error( $artifact ) ) return self::complete_idempotent_error( $claim, $artifact );
+		if ( is_wp_error( $artifact ) ) {
+			self::advance_generation_job( $job_id, 'failed', (string) $plan['plan_sha256'], '' );
+			return self::complete_idempotent_error( $claim, $artifact );
+		}
+		$artifact_id = isset( $artifact['artifact']['artifact_id'] ) ? (string) $artifact['artifact']['artifact_id'] : '';
+		if ( class_exists( 'MAD4B_SCP_Artifacts' ) && method_exists( 'MAD4B_SCP_Artifacts', 'supersede_brand_context_subject' ) ) {
+			$lineage = MAD4B_SCP_Artifacts::supersede_brand_context_subject( $artifact_id, self::brand_context_subject_key( $category ) );
+			if ( is_wp_error( $lineage ) ) return self::complete_idempotent_error( $claim, $lineage );
+			$artifact['cross_job_lineage'] = $lineage;
+			if ( array_key_exists( 'current_artifact_is_active_generation', $lineage ) && empty( $lineage['current_artifact_is_active_generation'] ) ) {
+				self::advance_generation_job( $job_id, 'failed', (string) $plan['plan_sha256'], $artifact_id );
+				$error = new WP_Error(
+					'mad4b_brand_draft_superseded_concurrent_generation',
+					'A newer Brand Context generation already won the cross-job subject lineage. This draft remains immutable history but is not active.',
+					array(
+						'artifact_id' => $artifact_id,
+						'active_artifact_id' => isset( $lineage['active_artifact_id'] ) ? (string) $lineage['active_artifact_id'] : '',
+						'brand_context_subject_key' => self::brand_context_subject_key( $category ),
+					)
+				);
+				return self::complete_idempotent_error( $claim, $error );
+			}
+		}
+		$job_transition = self::advance_generation_job( $job_id, 'draft_ready', (string) $plan['plan_sha256'], $artifact_id );
+		if ( is_wp_error( $job_transition ) ) return self::complete_idempotent_error( $claim, $job_transition );
+		$artifact['generation_job'] = $job_transition;
 		$artifact['idempotent'] = false;
 		$artifact['idempotency_key'] = $idempotency_key;
 		$artifact['idempotency_scope_key'] = $scope_key;
@@ -797,7 +1212,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		);
 	}
 
-	private static function materialization_identity( $input ) {
+	private static function materialization_identity( $input, $require_fresh_evidence = true ) {
 		$input = is_array( $input ) ? $input : array();
 		$artifact_id = strtolower( trim( (string) ( isset( $input['artifact_id'] ) ? $input['artifact_id'] : '' ) ) );
 		$source_id = strtolower( trim( (string) ( isset( $input['source_id'] ) ? $input['source_id'] : '' ) ) );
@@ -815,6 +1230,18 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$draft_content_sha256 = hash( 'sha256', $content );
 		$expected_sha = strtolower( trim( (string) ( isset( $input['expected_draft_content_sha256'] ) ? $input['expected_draft_content_sha256'] : '' ) ) );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_sha ) || ! hash_equals( $draft_content_sha256, $expected_sha ) ) return new WP_Error( 'mad4b_brand_materialize_artifact_stale', 'Brand draft text changed before materialization.' );
+		$metadata = isset( $artifact['metadata'] ) && is_array( $artifact['metadata'] ) ? $artifact['metadata'] : array();
+		$generation_digest = isset( $payload['evidence_digest'] ) ? strtolower( (string) $payload['evidence_digest'] ) : ( isset( $metadata['evidence_digest'] ) ? strtolower( (string) $metadata['evidence_digest'] ) : '' );
+		$generation_plan_sha256 = isset( $payload['plan_sha256'] ) ? strtolower( (string) $payload['plan_sha256'] ) : ( isset( $metadata['plan_sha256'] ) ? strtolower( (string) $metadata['plan_sha256'] ) : '' );
+		$include_rendered_frontend = ! empty( $payload['include_rendered_frontend'] ) || ! empty( $metadata['include_rendered_frontend'] );
+		if ( $require_fresh_evidence ) {
+			$freshness = self::generation_evidence_status( $category, $generation_digest, $include_rendered_frontend );
+			if ( is_wp_error( $freshness ) ) return $freshness;
+			$current_plan_sha256 = isset( $freshness['current_plan_sha256'] ) ? (string) $freshness['current_plan_sha256'] : '';
+			if ( empty( $freshness['fresh'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $generation_plan_sha256 ) || ! hash_equals( $generation_plan_sha256, $current_plan_sha256 ) ) {
+				return new WP_Error( 'mad4b_brand_draft_evidence_stale', 'Brand draft generation evidence changed before materialization; regenerate against the current Brand Gap plan.', array( 'generation_evidence' => $freshness, 'generation_plan_sha256' => $generation_plan_sha256 ) );
+			}
+		}
 		$source = MAD4B_SCP_Context_Authority::source( $source_id );
 		if ( empty( $source ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
 		$target_folder_id = isset( $source['external_root_id'] ) ? (string) $source['external_root_id'] : '';
@@ -843,6 +1270,11 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'idempotency_key' => $idempotency_key,
 			'scope_key' => $scope_key,
 			'request_sha256' => $request_sha256,
+			'generation_evidence_digest' => $generation_digest,
+			'generation_plan_sha256' => $generation_plan_sha256,
+			'draft_preflight_sha256' => isset( $payload['draft_preflight_sha256'] ) ? (string) $payload['draft_preflight_sha256'] : ( isset( $metadata['draft_preflight_sha256'] ) ? (string) $metadata['draft_preflight_sha256'] : '' ),
+			'include_rendered_frontend' => $include_rendered_frontend,
+			'generation_job_id' => isset( $artifact['job_id'] ) ? (string) $artifact['job_id'] : '',
 			'provider_identity' => array(
 				'artifact_id' => $artifact_id,
 				'source_id' => $source_id,
@@ -907,7 +1339,14 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			$category,
 			$artifact_id,
 			isset( $payload['evidence_digest'] ) ? (string) $payload['evidence_digest'] : '',
-			$receipt_sha256
+			$receipt_sha256,
+			array(
+				'plan_sha256' => (string) $identity['generation_plan_sha256'],
+				'job_id' => (string) $identity['generation_job_id'],
+				'draft_preflight_sha256' => (string) $identity['draft_preflight_sha256'],
+				'include_rendered_frontend' => ! empty( $identity['include_rendered_frontend'] ),
+				'builder_spec_version' => self::BUILDER_SPEC_VERSION,
+			)
 		);
 		if ( is_wp_error( $marked ) ) {
 			$compensation = MAD4B_SCP_Context_Provider_Gateway::rollback_created_brand_asset( array_merge( $receipt, array( 'receipt_sha256' => $receipt_sha256 ) ), true );
@@ -928,6 +1367,8 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			),
 			$receipt
 		);
+		$job_transition = self::advance_generation_job( (string) $identity['generation_job_id'], 'materialized', (string) $identity['generation_plan_sha256'], $artifact_id );
+		if ( is_wp_error( $job_transition ) ) $result['generation_job_transition_error'] = $job_transition->get_error_code(); else $result['generation_job'] = $job_transition;
 		$completed = MAD4B_SCP_Durable_Execution::complete_idempotency( $claim, $result );
 		if ( is_wp_error( $completed ) ) {
 			return new WP_Error(
@@ -940,7 +1381,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	}
 
 	public static function reconcile_materialization( $input ) {
-		$identity = self::materialization_identity( $input );
+		$identity = self::materialization_identity( $input, false );
 		if ( is_wp_error( $identity ) ) return $identity;
 		if ( ! class_exists( 'MAD4B_SCP_Durable_Execution' ) || ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) return new WP_Error( 'mad4b_brand_materialize_runtime_unavailable', 'Durable execution and Context Provider Gateway are required.' );
 		$scan = MAD4B_SCP_Context_Provider_Gateway::find_brand_materialization_candidates(
@@ -1132,7 +1573,14 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			(string) $identity['category'],
 			(string) $identity['artifact_id'],
 			isset( $identity['payload']['evidence_digest'] ) ? (string) $identity['payload']['evidence_digest'] : '',
-			$receipt_sha256
+			$receipt_sha256,
+			array(
+				'plan_sha256' => (string) $identity['generation_plan_sha256'],
+				'job_id' => (string) $identity['generation_job_id'],
+				'draft_preflight_sha256' => (string) $identity['draft_preflight_sha256'],
+				'include_rendered_frontend' => ! empty( $identity['include_rendered_frontend'] ),
+				'builder_spec_version' => self::BUILDER_SPEC_VERSION,
+			)
 		);
 		if ( is_wp_error( $marked ) ) return $marked;
 
@@ -1165,6 +1613,8 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		);
 		if ( is_wp_error( $completed ) ) return $completed;
 		$result['reconciliation_ref'] = (string) $reconciliation_ref;
+		$job_transition = self::advance_generation_job( (string) $identity['generation_job_id'], 'materialized', (string) $identity['generation_plan_sha256'], (string) $identity['artifact_id'] );
+		if ( is_wp_error( $job_transition ) ) $result['generation_job_transition_error'] = $job_transition->get_error_code(); else $result['generation_job'] = $job_transition;
 		return $result;
 	}
 

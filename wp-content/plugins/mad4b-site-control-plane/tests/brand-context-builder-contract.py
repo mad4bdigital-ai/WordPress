@@ -13,6 +13,8 @@ durable = (cp / "includes" / "class-mad4b-scp-durable-execution.php").read_text(
 adapter = (cp / "includes" / "adapters" / "class-mad4b-scp-context-adapter.php").read_text(encoding="utf-8")
 remote_parity = (cp / "includes" / "class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8")
 artifacts = (cp / "includes" / "class-mad4b-scp-artifacts.php").read_text(encoding="utf-8")
+content_jobs = (cp / "includes" / "class-mad4b-scp-content-jobs.php").read_text(encoding="utf-8")
+staging = (cp / "includes" / "class-mad4b-scp-staging-certification.php").read_text(encoding="utf-8")
 main = (cp / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 manifest = json.loads((cp / "config" / "skill-seed-manifest.json").read_text(encoding="utf-8"))
 portable_skill = repo / "plugins" / "mad4b-wordpress" / "skills" / "wordpress-brand-context-builder" / "SKILL.md"
@@ -20,7 +22,13 @@ seed_skill = cp / "skill-seeds" / "wordpress-brand-context-builder" / "SKILL.md"
 
 for marker in [
     "const CONTRACT = 'mad4b.brand-context-builder.v1'",
-    "const BUILDER_SPEC_VERSION = '2'",
+    "const BUILDER_SPEC_VERSION = '3'",
+    "const DRAFT_PREFLIGHT_CONTRACT = 'mad4b.brand-draft-preflight.v1'",
+    "MIN_NONEMPTY_SAMPLES",
+    "MIN_PRIMARY_EXPRESSION_SAMPLES",
+    "MAX_EMPTY_RATIO",
+    "MIN_CORE_CONTENT_SAMPLES",
+    "MIN_EDITORIAL_SEO_SAMPLES",
     "const PLAN_CONTRACT = 'mad4b.brand-gap-plan.v1'",
     "const DRAFT_CONTRACT = 'mad4b.brand-context-draft.v1'",
     "const SCAN_PLAN_CONTRACT = 'mad4b.context-source-scan-plan.v1'",
@@ -54,6 +62,8 @@ for marker in [
     "expected_plan_sha256",
     "expected_provider_inventory_digest",
     "expected_draft_content_sha256",
+    "draft_preflight_sha256",
+    "include_rendered_frontend",
     "receipt_sha256",
     "provider_identity",
     "mad4b_kind",
@@ -81,7 +91,6 @@ for marker in [
     "run_scheduled_materialization_reconciliation",
     "remote_reconciliation_ability",
     "materialization_no_effect_ref",
-    "released_verified_no_effect",
     "'safe_to_retry' => true",
     "reconcile_materialization",
     "mad4b_brand_materialization_reconcile_scan_incomplete",
@@ -97,6 +106,22 @@ for marker in [
     "mad4b_context_source_scan_incomplete",
     "array( 'markdown', 'text' )",
     "'brand_core_ready' => false",
+    "evidence_quality",
+    "language_coverage",
+    "configured_languages",
+    "wpml_active_languages",
+    "pll_languages_list",
+    "query_posts_for_language",
+    "rendered_frontend_evidence",
+    "generation_evidence_digests",
+    "generation_evidence_status",
+    "mad4b_brand_draft_evidence_stale",
+    "draft_preflight",
+    "draft_preflight_sha256",
+    "brand_context_subject_key",
+    "supersede_brand_context_subject",
+    "advance_generation_job",
+    "approved_tone_of_voice_required_for_editorial_generation",
 ]:
     if marker not in builder:
         raise SystemExit(f"missing Brand Context Builder invariant: {marker}")
@@ -117,6 +142,12 @@ if materialize_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") >
     raise SystemExit("Brand materialization provider-bound create occurs before durable idempotency claim")
 if "MAD4B_SCP_Context_Provider_Gateway::create_asset" in materialize_section:
     raise SystemExit("Brand materialization must not use generic provider create")
+
+cron_section = builder[builder.index("public static function run_scheduled_materialization_reconciliation"):builder.index("private static function replay_idempotency_result")]
+if "self::materialize_draft(" in cron_section:
+    raise SystemExit("Scheduled Brand materialization worker must reconcile only and never automatically re-execute provider mutation")
+if "self::reconcile_materialization(" not in cron_section:
+    raise SystemExit("Scheduled Brand materialization worker must preserve reconciliation")
 
 reconcile_section = builder[builder.index("public static function reconcile_materialization"):builder.index("public static function rollback_materialized_draft")]
 for earlier, later in [
@@ -169,6 +200,39 @@ for forbidden in [
 ]:
     if forbidden in builder:
         raise SystemExit(f"Brand Context Builder violates authority/provider/generalization boundary: {forbidden}")
+
+for marker in [
+    "generation_plan_sha256",
+    "generation_job_id",
+    "generation_draft_preflight_sha256",
+    "generation_evidence_stale_override",
+    "mad4b_brand_generation_evidence_stale",
+    "generation_evidence_status",
+    "conflicting_required_context_sets",
+    "distinct_approved_content_hash_count",
+    "complete_generation_job_for_asset",
+]:
+    if marker not in authority:
+        raise SystemExit(f"Context Authority missing Brand semantic hardening invariant: {marker}")
+
+for marker in [
+    "supersede_brand_context_subject",
+    "mad4b.brand-context-cross-job-lineage.v1",
+    "brand_context_subject_key",
+    "source_superseded_cross_job",
+]:
+    if marker not in artifacts:
+        raise SystemExit(f"Artifact registry missing cross-job Brand lineage invariant: {marker}")
+
+if "'NEW' => array( 'QUEUED', 'FAILED', 'CANCELLED' )" not in content_jobs:
+    raise SystemExit("ContentJob lifecycle cannot record Brand generation failure directly from NEW")
+
+if "MAD4B_SCP_Context_Authority::brand_core_coverage()" not in staging:
+    raise SystemExit("Staging Certification must reuse canonical Brand Core coverage")
+staging_coverage = staging[staging.index("private static function brand_core_context_coverage"):staging.index("private static function", staging.index("private static function brand_core_context_coverage") + 20)]
+for forbidden_staging_logic in ["reviewed_content_hash", "authority_class", "content_complete"]:
+    if forbidden_staging_logic in staging_coverage:
+        raise SystemExit("Staging Certification reimplemented canonical Brand Core eligibility: " + forbidden_staging_logic)
 
 for marker in [
     "const CONTRACT = 'mad4b.context-provider-gateway.v1'",
@@ -262,6 +326,7 @@ if "require_once dirname( __DIR__ ) . '/class-mad4b-scp-brand-context-builder.ph
 
 for marker in [
     "'context/brand-gap-plan'",
+    "'context/brand-draft-preflight'",
     "'context/source-scan-plan'",
     "'context/provider-capabilities'",
     "'context/brand-draft-append'",
@@ -329,7 +394,15 @@ for marker in [
     "Zero candidates do **not** release the claim after one lookup",
     "at least two distinct complete identity lookups",
     "automatic scheduled reconciliation",
-    "provider-native MAD4B identity",\n    "does not depend on enumerating the whole Context source",
+    "reconciliation-only",
+    "fresh governed materialization request",
+    "context/brand-draft-preflight",
+    "Evidence quality gate",
+    "Configured language coverage",
+    "generation evidence freshness",
+    "single effective Brand Authority",
+    "provider-native MAD4B identity",
+    "does not depend on enumerating the whole Context source",
 ]:
     if marker not in skill_text:
         raise SystemExit(f"Brand Context Builder Skill missing instruction: {marker}")
@@ -344,4 +417,4 @@ if row.get("level") != "workflow" or row.get("target") != "brand-context" or row
 if manifest.get("seed_version") != 13:
     raise SystemExit("Brand Context Builder requires canonical seed version 13")
 
-print("mad4b.brand-context-builder.v4: PASS")
+print("mad4b.brand-context-builder.v5: PASS")

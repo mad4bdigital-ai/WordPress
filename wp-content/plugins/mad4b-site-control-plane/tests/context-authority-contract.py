@@ -1,4 +1,6 @@
 from pathlib import Path
+import subprocess
+import sys
 
 root = Path(__file__).resolve().parents[1]
 main = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
@@ -687,5 +689,8 @@ require(adapter, "review_note", "Context asset reviewer rationale observability"
 require(authority, "legacy_unbound", "legacy approval binding backlog observability")
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
+
+brand_contract = root / "tests/brand-context-builder-contract.py"
+subprocess.run([sys.executable, str(brand_contract)], check=True)
 
 print("mad4b.site-control-plane.context-authority-contract.v73: PASS")
