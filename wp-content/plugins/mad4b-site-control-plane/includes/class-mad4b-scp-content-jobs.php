@@ -36,7 +36,7 @@ final class MAD4B_SCP_Content_Jobs {
 
 	private static function transition_map() {
 		return array(
-			'NEW' => array( 'QUEUED', 'CANCELLED' ),
+			'NEW' => array( 'QUEUED', 'FAILED', 'CANCELLED' ),
 			'QUEUED' => array( 'RUNNING', 'BLOCKED', 'FAILED', 'CANCELLED' ),
 			'RUNNING' => array( 'WAITING_REVIEW', 'BLOCKED', 'FAILED', 'COMPLETED', 'CANCELLED' ),
 			'WAITING_REVIEW' => array( 'RUNNING', 'BLOCKED', 'FAILED', 'COMPLETED', 'CANCELLED' ),
