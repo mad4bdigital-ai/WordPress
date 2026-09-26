@@ -5,6 +5,8 @@ ROOT = Path(__file__).resolve().parents[1]
 ABILITIES = (ROOT / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 SERVERS = (ROOT / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 GRANT_RECONCILE = (ROOT / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
+GRANT_PLAN = (ROOT / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation-plan.php").read_text(encoding="utf-8")
+CANDIDATE_BINDING = (ROOT / "includes" / "class-mad4b-scp-staging-write-candidate-binding.php").read_text(encoding="utf-8")
 MAIN = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
 
@@ -77,28 +79,38 @@ write_target = ABILITIES.split("private function governed_write_target", 1)[1].s
 require("false !== $annotations['readonly']" in write_target, "write dispatcher must reject any target not explicitly readonly=false")
 require("MAD4B_SCP_Servers::write_tools()" in write_target, "write dispatcher must require current runtime eligibility for execution")
 
-# The only pre-authority mutation target reachable through the compact dispatcher is
-# the exact Staging grant-reconciliation bootstrap. It remains absent from direct
-# tools/list and from the normal runtime write inventory.
-require("private function is_staging_write_bootstrap_target" in ABILITIES, "bounded staging write bootstrap target helper missing")
-bootstrap_helper = ABILITIES.split("private function is_staging_write_bootstrap_target", 1)[1].split("private function governed_write_target", 1)[0]
-require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::ABILITY" in bootstrap_helper, "bootstrap helper must bind to the canonical reconciliation ability constant")
-for forbidden_bootstrap in [
-    "staging-write-candidate-bind",
-    "full-staging-authority-apply",
-    "database-raw-query",
-    "developer",
+# Pre-authority convergence must never bypass the generic write dispatcher.
+# The narrow composite is a separate guarded direct step-up tool.
+require("private function is_staging_write_bootstrap_target" not in ABILITIES, "generic write dispatcher must not carry a pre-authority bootstrap exception")
+for marker in [
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
 ]:
-    require(forbidden_bootstrap not in bootstrap_helper, f"bootstrap dispatcher scope widened: {forbidden_bootstrap}")
+    require(marker in SERVERS, f"bounded Write Authority projection missing: {marker}")
 
 for marker in [
-    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::can_execute",
-    "$bootstrap_target",
-    "bootstrap_plan",
-    "MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan()",
+    "expected_package_manifest_digest",
+    "expected_artifact_identity",
+    "AUTHORITY_STEP_UP_SCOPE",
+    "CHATGPT_CIMD_CLIENT_ID",
+    "mad4b_grant_reconcile_https_required",
+    "candidate_binding_is_commit_point",
+    "post_commit_governance_mutation",
+    "mad4b/staging-write-authority-prepared",
 ]:
-    require(marker in ABILITIES, f"staging write bootstrap dispatch invariant missing: {marker}")
-require("! $bootstrap_target && ! in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true )" in ABILITIES, "normal runtime-eligibility gate must remain active outside the exact bootstrap target")
+    require(marker in GRANT_RECONCILE, f"bounded Write Authority invariant missing: {marker}")
+
+for marker in [
+    "expected_package_manifest_digest",
+    "expected_artifact_identity",
+    "expected_missing_abilities",
+    "plan_sha256",
+]:
+    require(marker in GRANT_PLAN, f"four-part exact reconciliation plan binding missing: {marker}")
+
+require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONTRACT" in CANDIDATE_BINDING, "candidate binding must authorize the live reconciliation contract constant")
+require("mad4b.staging-write-grant-reconciliation.v1" not in CANDIDATE_BINDING, "candidate binding must not hard-code the obsolete reconciliation v1 contract")
+require("mad4b/staging-write-grant-reconciliation-complete" not in GRANT_RECONCILE, "no fallible composite completion audit may execute after the candidate-binding commit point")
 
 write_execute = ABILITIES.split("public function write_execute", 1)[1].split("public function filesystem_list", 1)[0]
 require("$ability->execute( $params )" in write_execute, "write dispatcher must delegate through the original WP_Ability execute path")
@@ -131,6 +143,8 @@ for marker in [
 ]:
     require(marker in core_chatgpt, f"required minimal direct ChatGPT tool missing: {marker}")
 
+require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in SERVERS, "bounded Write Authority plan must be projectable on enrolled Staging")
+require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in SERVERS, "bounded Write Authority apply must be conditionally projectable as a single-app step-up tool")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in SERVERS, "full staging read diagnostics must be projectable on enrolled Staging")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in SERVERS, "full staging apply must be conditionally projectable as a single-app step-up tool")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" not in core_chatgpt, "non-Staging core ChatGPT catalog must not expose Staging authority diagnostics")
@@ -146,7 +160,7 @@ for forbidden in [
     "self::core_tools( 'mad4b-admin' )",
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
-require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_body, "normal governed writes plus the conditional full-authority step-up must be the only direct mutations")
+require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $narrow_step_up, $full_step_up )" in chatgpt_body, "normal governed writes plus the two guarded authority composites must be the only direct mutations")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_body, "unified enrolled Staging tools/list must include read-only full authority diagnostics")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_body, "unified enrolled Staging tools/list must project the composite apply only through the guarded step-up method")
 for low_level in [
@@ -171,7 +185,9 @@ for marker in [
 ]:
     require(marker in full, f"full governed capability universe lost coverage: {marker}")
 require("'mad4b/database-raw-query'" in full and "array_diff" in full, "Raw SQL must remain explicitly excluded")
-require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in full, "logical discovery must include the guarded composite step-up when it is eligible")
+require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in full, "logical discovery must include the bounded Write Authority plan")
+require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in full, "logical discovery must include the bounded Write Authority step-up when eligible")
+require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in full, "logical discovery must include the guarded full-authority composite step-up when it is eligible")
 
 internal_enrollment = SERVERS.split("private static function chatgpt_internal_enrollment_mutations()", 1)[1].split("private static function chatgpt_enrollment_candidates()", 1)[0]
 for low_level in [
@@ -185,4 +201,4 @@ for low_level in [
 enrollment_projection = SERVERS.split("private static function chatgpt_enrollment_candidates()", 1)[1].split("public static function chatgpt_full_catalog_candidates()", 1)[0]
 require("self::chatgpt_internal_enrollment_mutations()" in enrollment_projection, "logical ChatGPT discovery must remove low-level enrollment mutations")
 
-print("mad4b.chatgpt-refresh-minimal-catalog.v5: PASS")
+print("mad4b.chatgpt-refresh-minimal-catalog.v6: PASS")
