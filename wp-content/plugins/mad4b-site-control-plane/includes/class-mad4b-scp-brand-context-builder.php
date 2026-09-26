@@ -390,7 +390,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		return $records;
 	}
 
-	private static function evidence_quality( array $records, array $configured_languages, $approved_authority_count ) {
+	private static function evidence_quality( array $records, array $configured_languages, $approved_authority_count, array $structure = array() ) {
 		$sample_count = count( $records );
 		$nonempty = 0; $primary = 0; $core = 0; $seo = 0; $sampled = array();
 		foreach ( $records as $row ) {
@@ -407,6 +407,9 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		ksort( $sampled, SORT_STRING );
 		$unavailable = array_values( array_diff( $configured_languages, array_keys( $sampled ) ) );
 		$empty_ratio = $sample_count > 0 ? ( $sample_count - $nonempty ) / $sample_count : 1.0;
+		$menu_observed_count = isset( $structure['menu_observed_count'] ) ? max( 0, (int) $structure['menu_observed_count'] ) : count( isset( $structure['menus'] ) && is_array( $structure['menus'] ) ? $structure['menus'] : array() );
+		$menu_unique_count = isset( $structure['menu_unique_count'] ) ? max( 0, (int) $structure['menu_unique_count'] ) : count( isset( $structure['menus'] ) && is_array( $structure['menus'] ) ? $structure['menus'] : array() );
+		$duplicate_structure_ratio = $menu_observed_count > 0 ? max( 0.0, min( 1.0, ( $menu_observed_count - $menu_unique_count ) / $menu_observed_count ) ) : 0.0;
 		$blockers = array();
 		if ( $nonempty < self::MIN_NONEMPTY_SAMPLES ) $blockers[] = 'nonempty_samples_below_minimum';
 		if ( $primary < self::MIN_PRIMARY_EXPRESSION_SAMPLES ) $blockers[] = 'primary_brand_expression_samples_below_minimum';
@@ -422,6 +425,9 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'core_content_sample_count' => $core,
 			'empty_ratio' => round( $empty_ratio, 6 ),
 			'seo_sample_count' => $seo,
+			'duplicate_structure_ratio' => round( $duplicate_structure_ratio, 6 ),
+			'menu_observed_count' => $menu_observed_count,
+			'menu_unique_count' => $menu_unique_count,
 			'approved_authority_count' => (int) $approved_authority_count,
 			'language_coverage' => array(
 				'configured' => array_values( $configured_languages ),
@@ -686,12 +692,15 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				if ( count( $taxonomies ) >= 12 ) break;
 			}
 		}
+		$menu_observed_count = count( $menus );
 		$deduped_menus = array();
 		foreach ( $menus as $menu ) {
 			$key = strtolower( trim( (string) ( isset( $menu['slug'] ) ? $menu['slug'] : '' ) ) ) . '|' . strtolower( trim( (string) ( isset( $menu['name'] ) ? $menu['name'] : '' ) ) );
 			$deduped_menus[ $key ] = $menu;
 		}
 		$menus = self::sort_rows( array_values( $deduped_menus ), array( 'slug', 'name' ) );
+		$menu_unique_count = count( $menus );
+		$menu_duplicate_ratio = $menu_observed_count > 0 ? max( 0.0, min( 1.0, ( $menu_observed_count - $menu_unique_count ) / $menu_observed_count ) ) : 0.0;
 		foreach ( $taxonomies as $index => $taxonomy ) {
 			if ( isset( $taxonomy['terms'] ) && is_array( $taxonomy['terms'] ) ) sort( $taxonomies[ $index ]['terms'], SORT_STRING );
 		}
@@ -699,6 +708,9 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		return array(
 			'source' => 'wordpress_live_structure',
 			'menus' => $menus,
+			'menu_observed_count' => $menu_observed_count,
+			'menu_unique_count' => $menu_unique_count,
+			'duplicate_structure_ratio' => round( $menu_duplicate_ratio, 6 ),
 			'taxonomies' => $taxonomies,
 			'locale' => function_exists( 'get_locale' ) ? (string) get_locale() : '',
 			'observed_at' => gmdate( 'c' ),
@@ -759,7 +771,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$rendered = self::rendered_frontend_evidence( $include_rendered_frontend );
 		$configured_languages = self::configured_languages();
 		$approved_authority_count = count( isset( $approved['brand_strategy'] ) ? $approved['brand_strategy'] : array() );
-		$evidence_quality = self::evidence_quality( $live_content, $configured_languages, $approved_authority_count );
+		$evidence_quality = self::evidence_quality( $live_content, $configured_languages, $approved_authority_count, $structure );
 		$registry_revision = (int) MAD4B_SCP_Context_Authority::registry_revision();
 		$context_fingerprint = (string) MAD4B_SCP_Context_Authority::context_fingerprint();
 		$authority_manifest_fingerprint = (string) MAD4B_SCP_Context_Authority::authority_manifest_fingerprint();
@@ -789,6 +801,9 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$live_identity = self::sort_rows( $live_identity, array( 'content_id', 'language', 'post_type' ) );
 		$structure_identity = array(
 			'menus' => isset( $structure['menus'] ) ? $structure['menus'] : array(),
+			'menu_observed_count' => isset( $structure['menu_observed_count'] ) ? (int) $structure['menu_observed_count'] : 0,
+			'menu_unique_count' => isset( $structure['menu_unique_count'] ) ? (int) $structure['menu_unique_count'] : 0,
+			'duplicate_structure_ratio' => isset( $structure['duplicate_structure_ratio'] ) ? (float) $structure['duplicate_structure_ratio'] : 0.0,
 			'taxonomies' => isset( $structure['taxonomies'] ) ? $structure['taxonomies'] : array(),
 			'locale' => isset( $structure['locale'] ) ? (string) $structure['locale'] : '',
 		);
