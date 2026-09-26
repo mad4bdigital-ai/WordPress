@@ -308,12 +308,13 @@ final class MAD4B_SCP_Live_Truth {
 			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
 			: array( 'required' => false, 'match' => true );
 		$binding_fingerprint = self::candidate_binding_fingerprint( $candidate_binding );
+		// Candidate binding status owns package-identity syntax and exact source
+		// binding. Runtime certification must consume that canonical truth rather
+		// than re-imposing an outer GitHub artifact naming convention on the
+		// installed plugin candidate identity.
 		$package_identity_complete = empty( $candidate_binding['required'] ) || (
-			isset( $candidate_binding['current_source_commit_sha'], $candidate_binding['current_build_fingerprint'], $candidate_binding['current_package_manifest_digest'], $candidate_binding['current_artifact_identity'] )
-			&& 1 === preg_match( '/^[a-f0-9]{40}$/', (string) $candidate_binding['current_source_commit_sha'] )
-			&& 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $candidate_binding['current_build_fingerprint'] )
-			&& 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $candidate_binding['current_package_manifest_digest'] )
-			&& 1 === preg_match( '/^mad4b-site-control-plane-general-distribution-kit-[a-f0-9]{40}$/', (string) $candidate_binding['current_artifact_identity'] )
+			'complete' === ( isset( $candidate_binding['identity_completeness'] ) ? (string) $candidate_binding['identity_completeness'] : '' )
+			&& ! empty( $candidate_binding['match'] )
 		);
 		$tools = isset( $inventory['write_tools'] ) ? $inventory['write_tools'] : array();
 		$provider_blocked = isset( $inventory['provider_blocked_write_tools'] ) ? $inventory['provider_blocked_write_tools'] : array();
@@ -333,8 +334,15 @@ final class MAD4B_SCP_Live_Truth {
 		$checks['normal_remote_approval_required'] = ! empty( $authority['normal_remote_writes_require_exact_approval'] );
 		$checks['package_identity_complete'] = $package_identity_complete;
 		$checks['candidate_binding_current'] = empty( $candidate_binding['required'] ) || ! empty( $candidate_binding['match'] );
-		$exceptions = isset( $authority['remote_write_approval_exceptions'] ) && is_array( $authority['remote_write_approval_exceptions'] ) ? array_values( $authority['remote_write_approval_exceptions'] ) : array();
-		$checks['candidate_bootstrap_exception_bounded'] = empty( $exceptions ) || ( 1 === count( $exceptions ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY === (string) $exceptions[0] );
+		$exceptions = isset( $authority['remote_write_approval_exceptions'] ) && is_array( $authority['remote_write_approval_exceptions'] ) ? array_values( array_unique( array_map( 'strval', $authority['remote_write_approval_exceptions'] ) ) ) : array();
+		$bounded_exceptions = array();
+		if ( ! empty( $authority['candidate_bootstrap_exception_active'] ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
+			$bounded_exceptions[] = MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY;
+		}
+		if ( class_exists( 'MAD4B_SCP_Context_Authority' ) && MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ) {
+			$bounded_exceptions[] = MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY;
+		}
+		$checks['candidate_bootstrap_exception_bounded'] = empty( array_diff( $exceptions, $bounded_exceptions ) );
 		foreach ( array( 'site_profile_bound', 'write_feature_enabled', 'write_authority_eligible', 'authority_ready', 'mutation_gate_enabled', 'production_auto_enable_absent', 'breakglass_auto_enable_absent', 'breakglass_not_included', 'normal_remote_approval_required', 'package_identity_complete', 'candidate_binding_current', 'candidate_bootstrap_exception_bounded' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
