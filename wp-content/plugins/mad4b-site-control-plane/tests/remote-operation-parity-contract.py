@@ -3,6 +3,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+abilities = (root / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 perf = (root / 'includes' / 'class-mad4b-scp-admin-query-performance.php').read_text(encoding='utf-8')
 generalization = (root.parents[2] / 'specs' / '007-content-intelligence-workflow-platform' / 'contracts' / 'generalization-rules.md').read_text(encoding='utf-8')
@@ -109,6 +110,30 @@ for ability in [
 
 if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in servers:
     raise SystemExit('bounded enrollment server is not sourced from Remote Operation Parity enrollment inventory')
+
+for marker in [
+    "'mad4b/enrollment-info'",
+    "'mad4b/enrollment-execute'",
+    "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()",
+    "MAD4B_SCP_Site_Profile_Enrollment::can_access_transport",
+    "MAD4B_SCP_Remote_Operation_Parity::can_execute",
+    "mad4b_enrollment_dispatch_target_not_allowed",
+    "mad4b_enrollment_dispatch_schema_drift",
+]:
+    if marker not in abilities and marker not in servers:
+        raise SystemExit(f'bounded enrollment dispatcher invariant missing: {marker}')
+
+dispatcher = abilities.split("private function governed_enrollment_target", 1)[1].split("private function schema(", 1)[0]
+for forbidden in [
+    "MAD4B_SCP_Authorization::authorize_mutation",
+    "MAD4B_SCP_Servers::write_tools",
+    "MAD4B_SCP_Servers::external_write_tools",
+    "grant_ability(",
+    "Plugin_Upgrader",
+    "database-raw-query",
+]:
+    if forbidden in dispatcher:
+        raise SystemExit(f'bounded enrollment dispatcher widened authority: {forbidden}')
 
 write_start = servers.find("'mad4b-write' => array(")
 admin_start = servers.find("'mad4b-admin' => array(", write_start + 1)
