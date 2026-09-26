@@ -51,6 +51,21 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		);
 	}
 
+	/**
+	 * Narrow enrollment mutations that are safe to project directly on the
+	 * compact ChatGPT gateway before normal governed Write authority is ready.
+	 *
+	 * The target abilities retain their own exact-build, staging, enrolled-admin
+	 * and confirmation checks. DDL maintenance and external-worker lease tools
+	 * deliberately remain available only on the dedicated enrollment surface.
+	 */
+	public static function chatgpt_direct_tools() {
+		return array(
+			self::SKILLS_ABILITY,
+			self::FRONTEND_SAMPLE_ABILITY,
+		);
+	}
+
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 
