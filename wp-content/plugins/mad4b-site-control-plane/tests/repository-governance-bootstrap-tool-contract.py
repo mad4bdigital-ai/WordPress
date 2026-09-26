@@ -85,6 +85,28 @@ print("governance_apply_repair_bootstrap=bounded")
 print("governance_apply_repair_governance_workflow=bounded")
 print("governance_apply_repair_live_snapshot=exact")
 print("governance_apply_repair_bypass_evidence=owner-comment-admin-readback")
+for workflow_name, workflow_text in [
+    ("release_verdict", release_verdict),
+    ("repository_governance", repository_governance_workflow),
+]:
+    for required_timestamp_semantic in [
+        "normalize_ruleset_timestamp",
+        'replace("Z", "+00:00")',
+        "astimezone(timezone.utc)",
+    ]:
+        if required_timestamp_semantic not in workflow_text:
+            raise SystemExit(
+                "governance repair timestamp normalization missing from "
+                + workflow_name
+                + ": "
+                + required_timestamp_semantic
+            )
+    if 'live.get("updated_at") != "2026-09-25T02:13:24.911+03:00"' in workflow_text:
+        raise SystemExit(
+            "governance repair timestamp comparison regressed to raw string equality: "
+            + workflow_name
+        )
+print("governance_apply_repair_timestamp_binding=utc_instant_equivalence")
 print("governance_apply_repair_target_governance_claim=false_until_remote_apply")
 
 if "required = ['Repository feature boundary']" in release_verdict:
