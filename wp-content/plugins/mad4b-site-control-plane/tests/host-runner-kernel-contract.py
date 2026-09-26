@@ -440,6 +440,7 @@ with tempfile.TemporaryDirectory() as td:
             and "link/reparse path component forbidden" not in message
         ):
             raise
+    (plugin / "linked.txt").unlink()
 
     # Executor identity is approval material: a different runner fingerprint fails even with a valid MAC.
     executor_drift = make_job(profile, "runtime.status.read", {})
