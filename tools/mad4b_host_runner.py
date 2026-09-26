@@ -1533,10 +1533,250 @@ def execute_wordpress_plugin_deploy(profile: dict[str, Any], verified: dict[str,
         raise
 
 
+
+def _validate_plugin_rollback_plan(
+    profile: dict[str, Any],
+    verified: dict[str, Any],
+) -> tuple[dict[str, Any], Path, Path]:
+    inputs = verified["input"]
+    if set(inputs) != {"plan"}:
+        raise ValueError("wordpress_plugin_rollback input fields are invalid")
+    plan = inputs.get("plan")
+    if not isinstance(plan, dict) or plan.get("contract") != PLUGIN_ROLLBACK_PLAN_CONTRACT:
+        raise ValueError("Plugin rollback plan contract mismatch")
+    allowed_plan_fields = {
+        "contract", "operation_id", "operation_version", "runner_profile_id",
+        "site_uuid", "environment", "target_fingerprint", "plugin_slug",
+        "source_job_id", "source_bridge_receipt_sha256", "expected_current",
+        "restore", "expected_current_sha256", "restore_sha256",
+        "caller_supplied_path_allowed", "caller_supplied_url_allowed",
+        "caller_supplied_credentials_allowed", "production_authorized",
+        "reason", "plan_sha256",
+    }
+    if set(plan) != allowed_plan_fields:
+        raise ValueError("Plugin rollback plan contains unsupported fields")
+    supplied_plan_sha = str(plan.get("plan_sha256") or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{64}", supplied_plan_sha) or plan_digest(plan) != supplied_plan_sha:
+        raise ValueError("Plugin rollback plan digest mismatch")
+    if not hmac.compare_digest(supplied_plan_sha, verified["plan_sha256"]):
+        raise ValueError("Host Runner job is not bound to exact plugin rollback plan")
+    expected = {
+        "operation_id": "wordpress_plugin_rollback",
+        "operation_version": OPERATIONS["wordpress_plugin_rollback"]["version"],
+        "runner_profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "plugin_slug": PLUGIN_SLUG,
+        "caller_supplied_path_allowed": False,
+        "caller_supplied_url_allowed": False,
+        "caller_supplied_credentials_allowed": False,
+        "production_authorized": False,
+    }
+    for key, value in expected.items():
+        if plan.get(key) != value:
+            raise ValueError(f"Plugin rollback plan invariant drift: {key}")
+
+    source_job_id = str(plan.get("source_job_id") or "").lower()
+    if not re.fullmatch(r"[a-f0-9-]{36}", source_job_id):
+        raise ValueError("Plugin rollback source job id is invalid")
+    bridge_receipt_sha = str(plan.get("source_bridge_receipt_sha256") or "").lower()
+    expected_current_sha = str(plan.get("expected_current_sha256") or "").lower()
+    restore_sha = str(plan.get("restore_sha256") or "").lower()
+    for label, value in (
+        ("bridge receipt", bridge_receipt_sha),
+        ("expected current", expected_current_sha),
+        ("restore", restore_sha),
+    ):
+        if not re.fullmatch(r"[a-f0-9]{64}", value):
+            raise ValueError(f"Plugin rollback {label} identity is invalid")
+
+    expected_current = plan.get("expected_current")
+    restore = plan.get("restore")
+    if not isinstance(expected_current, dict) or set(expected_current) != {
+        "source_commit_sha", "build_fingerprint", "package_manifest_digest",
+    }:
+        raise ValueError("Plugin rollback expected-current identity is invalid")
+    if not isinstance(restore, dict) or set(restore) != {
+        "source_commit_sha", "build_fingerprint", "package_manifest_digest",
+        "control_plane_version",
+    }:
+        raise ValueError("Plugin rollback restore identity is invalid")
+    expected_current_identity = _control_plane_identity(expected_current)
+    restore_identity = _control_plane_identity(restore)
+    restore_version = str(restore.get("control_plane_version") or "")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", restore_version):
+        raise ValueError("Plugin rollback restore version is invalid")
+
+    bridge_receipt_path = Path(profile["bridge_root"]) / "receipts" / f"{source_job_id}.json"
+    if _is_link_like(bridge_receipt_path) or not bridge_receipt_path.is_file():
+        raise ValueError("Plugin rollback source bridge receipt is unavailable")
+    if not hmac.compare_digest(sha256_file(bridge_receipt_path), bridge_receipt_sha):
+        raise ValueError("Plugin rollback source bridge receipt identity changed")
+    bridge_receipt = load_json_bounded(bridge_receipt_path, MAX_RECEIPT_BYTES)
+    if (
+        bridge_receipt.get("operation_id") != "wordpress_plugin_deploy"
+        or bridge_receipt.get("mutation_performed") is not True
+        or bridge_receipt.get("readback_verdict") != "PASS"
+    ):
+        raise ValueError("Plugin rollback source bridge receipt is not a verified deployment")
+    bridge_result = bridge_receipt.get("result")
+    if not isinstance(bridge_result, dict):
+        raise ValueError("Plugin rollback source bridge receipt result is missing")
+
+    local_receipt_path = Path(profile["receipt_root"]) / f"{source_job_id}.json"
+    if _is_link_like(local_receipt_path) or not local_receipt_path.is_file():
+        raise ValueError("Plugin rollback source local receipt is unavailable")
+    local_receipt = load_json_bounded(local_receipt_path, MAX_RECEIPT_BYTES)
+    if (
+        local_receipt.get("contract") != RECEIPT_CONTRACT
+        or local_receipt.get("operation_id") != "wordpress_plugin_deploy"
+        or local_receipt.get("mutation_performed") is not True
+        or local_receipt.get("readback_verdict") != "PASS"
+    ):
+        raise ValueError("Plugin rollback source local receipt is invalid")
+    if str(local_receipt.get("bridge_submission_sha256") or "") != str(
+        bridge_receipt.get("bridge_submission_sha256") or ""
+    ):
+        raise ValueError("Plugin rollback source bridge/local receipt lineage mismatch")
+    local_result = local_receipt.get("result")
+    if not isinstance(local_result, dict):
+        raise ValueError("Plugin rollback source local receipt result is missing")
+
+    for result in (bridge_result, local_result):
+        current_from_receipt = _control_plane_identity({
+            "source_commit_sha": result.get("source_commit_sha"),
+            "build_fingerprint": result.get("build_fingerprint"),
+            "package_manifest_digest": result.get("package_manifest_digest"),
+        })
+        previous = result.get("previous_identity")
+        if not isinstance(previous, dict):
+            raise ValueError("Plugin rollback source receipt prior identity is missing")
+        restore_from_receipt = _control_plane_identity(previous)
+        if current_from_receipt != expected_current_identity:
+            raise ValueError("Plugin rollback expected-current identity drifted from source receipt")
+        if restore_from_receipt != restore_identity:
+            raise ValueError("Plugin rollback restore identity drifted from source receipt")
+        if str(previous.get("control_plane_version") or "") != restore_version:
+            raise ValueError("Plugin rollback restore version drifted from source receipt")
+        if not hmac.compare_digest(str(result.get("after_sha256") or ""), expected_current_sha):
+            raise ValueError("Plugin rollback expected-current digest drifted from source receipt")
+        if not hmac.compare_digest(str(result.get("before_sha256") or ""), restore_sha):
+            raise ValueError("Plugin rollback restore digest drifted from source receipt")
+
+    plugins_root = Path(profile["wordpress_root"]) / "wp-content" / "plugins"
+    plugin_root = plugins_root / PLUGIN_SLUG
+    current = _installed_control_plane_identity(plugin_root)
+    if _control_plane_identity(current) != expected_current_identity:
+        raise ValueError("Installed Control Plane identity changed since rollback plan")
+    if not hmac.compare_digest(_control_plane_identity_digest(current), expected_current_sha):
+        raise ValueError("Installed Control Plane digest changed since rollback plan")
+
+    source_backup = plugins_root / f".{PLUGIN_SLUG}.rollback-{source_job_id}"
+    if _is_link_like(source_backup) or not source_backup.is_dir():
+        raise ValueError("Plugin rollback source backup is unavailable")
+    backup_identity = _installed_control_plane_identity(source_backup)
+    if _control_plane_identity(backup_identity) != restore_identity:
+        raise ValueError("Plugin rollback source backup exact identity mismatch")
+    if str(backup_identity.get("control_plane_version") or "") != restore_version:
+        raise ValueError("Plugin rollback source backup version mismatch")
+    if not hmac.compare_digest(_control_plane_identity_digest(backup_identity), restore_sha):
+        raise ValueError("Plugin rollback source backup digest mismatch")
+    return plan, plugin_root, source_backup
+
+
+def execute_wordpress_plugin_rollback(profile: dict[str, Any], verified: dict[str, Any]) -> dict[str, Any]:
+    plan, plugin_root, source_backup = _validate_plugin_rollback_plan(profile, verified)
+    plugins_root = plugin_root.parent
+    token = verified["job_id"]
+    current_snapshot = plugins_root / f".{PLUGIN_SLUG}.rollback-{token}"
+    failed_path = plugins_root / f".{PLUGIN_SLUG}.failed-rollback-{token}"
+    for path in (current_snapshot, failed_path):
+        if path.exists() or _is_link_like(path):
+            raise ValueError("Plugin rollback temporary target already exists")
+
+    before_sha = str(plan["expected_current_sha256"])
+    after_sha = str(plan["restore_sha256"])
+    restore = plan["restore"]
+    journal_root = Path(profile["journal_root"])
+    journal_root.mkdir(parents=True, exist_ok=True)
+    if _is_link_like(journal_root):
+        raise ValueError("Host Runner journal root symlink is forbidden")
+    journal_path = journal_root / f"{token}.json"
+    if journal_path.exists():
+        raise ValueError("Plugin rollback mutation journal already exists")
+
+    journal = {
+        "contract": "mad4b.host-runner-mutation-journal.v1",
+        "job_id": token,
+        "plan_sha256": verified["plan_sha256"],
+        "approval_ref": verified["approval_ref"],
+        "operation_id": "wordpress_plugin_rollback",
+        "relative_path": f"wp-content/plugins/{PLUGIN_SLUG}",
+        "before_sha256": before_sha,
+        "expected_after_sha256": after_sha,
+        "source_job_id": str(plan["source_job_id"]),
+        "state": "MUTATION_STARTED",
+        "terminal": False,
+        "blind_retry_allowed": False,
+        "created_at": utc_now(),
+    }
+    atomic_json_write(journal_path, journal)
+
+    result = {
+        "relative_path": f"wp-content/plugins/{PLUGIN_SLUG}",
+        "source_job_id": str(plan["source_job_id"]),
+        "before_sha256": before_sha,
+        "after_sha256": after_sha,
+        "source_commit_sha": str(restore["source_commit_sha"]),
+        "build_fingerprint": str(restore["build_fingerprint"]),
+        "package_manifest_digest": str(restore["package_manifest_digest"]),
+        "control_plane_version": str(restore["control_plane_version"]),
+        "plan_sha256": verified["plan_sha256"],
+        "approval_ref": verified["approval_ref"],
+        "backup_created": False,
+        "rollback_available": False,
+        "activation_state_preserved": True,
+        "mutation_performed": True,
+        "readback_verdict": "PENDING",
+        "_plugin_root": str(plugin_root),
+        "_rollback_path": str(current_snapshot),
+        "_failed_path": str(failed_path),
+        "_journal_path": str(journal_path),
+    }
+    try:
+        os.replace(plugin_root, current_snapshot)
+        result["backup_created"] = True
+        result["rollback_available"] = True
+        os.replace(source_backup, plugin_root)
+        restored = _installed_control_plane_identity(plugin_root)
+        if _control_plane_identity(restored) != _control_plane_identity(restore):
+            raise RuntimeError("Plugin rollback postcondition identity mismatch")
+        if str(restored.get("control_plane_version") or "") != str(restore["control_plane_version"]):
+            raise RuntimeError("Plugin rollback postcondition version mismatch")
+        if not hmac.compare_digest(_control_plane_identity_digest(restored), after_sha):
+            raise RuntimeError("Plugin rollback postcondition readback mismatch")
+        result["readback_verdict"] = "PASS"
+        return result
+    except Exception:
+        rolled_back = _rollback_plugin_deploy(result) if result.get("backup_created") else True
+        failure = dict(journal)
+        failure.update({
+            "terminal": True,
+            "completed_at": utc_now(),
+            "state": "ROLLED_BACK_AFTER_FAILURE" if rolled_back else "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+            "rollback_verified": rolled_back,
+        })
+        try:
+            atomic_json_write(journal_path, failure)
+        except Exception:
+            pass
+        raise
+
 def _rollback_write_result(operation_id: str, result: dict[str, Any]) -> bool:
     if operation_id in {"workspace.file.replace", "workspace.file.rollback"}:
         return _rollback_workspace_replace(result)
-    if operation_id == "wordpress_plugin_deploy":
+    if operation_id in {"wordpress_plugin_deploy", "wordpress_plugin_rollback"}:
         return _rollback_plugin_deploy(result)
     return False
 
@@ -1602,6 +1842,9 @@ def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict
     if operation_id == "wordpress_plugin_deploy":
         return execute_wordpress_plugin_deploy(profile, verified)
 
+    if operation_id == "wordpress_plugin_rollback":
+        return execute_wordpress_plugin_rollback(profile, verified)
+
     raise ValueError("Host Runner operation has no implementation")
 
 
@@ -1642,7 +1885,7 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
             if not isinstance(result, dict):
                 raise ValueError("Host Runner write receipt result is missing")
             expected_after = str(result.get("after_sha256") or "")
-            if verified["operation_id"] == "wordpress_plugin_deploy":
+            if verified["operation_id"] in {"wordpress_plugin_deploy", "wordpress_plugin_rollback"}:
                 plugin_root = Path(profile["wordpress_root"]) / "wp-content" / "plugins" / PLUGIN_SLUG
                 current = _control_plane_identity_digest(_installed_control_plane_identity(plugin_root))
             else:
