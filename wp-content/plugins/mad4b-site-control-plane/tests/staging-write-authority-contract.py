@@ -199,8 +199,8 @@ if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_tr
     raise SystemExit('single-app Full Staging Authority step-up projection is missing')
 if "$step_up = array_merge( $narrow_step_up, $full_step_up )" not in chatgpt_transport:
     raise SystemExit('bounded and full authority step-ups must be composed explicitly')
-if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" not in chatgpt_transport:
-    raise SystemExit('direct ChatGPT mutation transport must be limited to write-execute plus the composed guarded authority step-ups')
+if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute', 'mad4b/enrollment-execute' ), $step_up )" not in chatgpt_transport:
+    raise SystemExit('direct ChatGPT mutation transport must be limited to write-execute, bounded enrollment-execute, and the composed guarded authority step-ups')
 for bootstrap_ability in (
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
@@ -222,6 +222,11 @@ if "'mad4b/staging-write-grant-reconcile'" in core_write:
     raise SystemExit('grant reconciliation must not become a normal mad4b-write candidate')
 if "'mad4b/staging-write-candidate-bind'" in core_write:
     raise SystemExit('candidate binding bootstrap must not become a normal mad4b-write candidate')
+
+if "'mad4b/enrollment-execute'" in core_write:
+    raise SystemExit('bounded enrollment dispatcher must not become a normal mad4b-write candidate')
+if "'mad4b/reconcile-managed-skills'" in core_write:
+    raise SystemExit('managed Skills reconciliation must remain outside normal mad4b-write authority')
 
 
 # A package transition may expose one bootstrap write before the persisted candidate
@@ -329,7 +334,7 @@ for marker in [
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
     "$step_up = array_merge( $narrow_step_up, $full_step_up )",
-    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )",
+    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute', 'mad4b/enrollment-execute' ), $step_up )",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
     "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
