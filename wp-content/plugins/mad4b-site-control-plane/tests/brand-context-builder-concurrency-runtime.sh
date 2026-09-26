@@ -63,7 +63,16 @@ $second = MAD4B_SCP_Artifacts::get_artifact(array('artifact_id'=>$artifacts[1]))
 if (is_wp_error($first) || is_wp_error($second)) $fail('artifact readback failed');
 if ('superseded' !== $first['artifact']['status']) $fail('older cross-job draft remained active');
 if ('active' !== $second['artifact']['status']) $fail('newest cross-job draft did not remain active');
-echo "mad4b.brand-context-builder.cross-job-lineage.v1: PASS\n";
+
+$late_old = MAD4B_SCP_Artifacts::supersede_brand_context_subject($artifacts[0], $subject_key);
+if (is_wp_error($late_old)) $fail($late_old->get_error_code());
+if (!empty($late_old['current_artifact_is_active_generation'])) $fail('older generation was resurrected by out-of-order lineage reconciliation');
+if ($artifacts[1] !== $late_old['active_artifact_id']) $fail('out-of-order lineage did not preserve newest active generation');
+$first = MAD4B_SCP_Artifacts::get_artifact(array('artifact_id'=>$artifacts[0]));
+$second = MAD4B_SCP_Artifacts::get_artifact(array('artifact_id'=>$artifacts[1]));
+if ('superseded' !== $first['artifact']['status']) $fail('older generation became active after reversed lineage call');
+if ('active' !== $second['artifact']['status']) $fail('newest generation lost active status after reversed lineage call');
+echo "mad4b.brand-context-builder.cross-job-lineage.v2: PASS\n";
 PHP
 
 export MAD4B_REPO_ROOT="$ROOT"
