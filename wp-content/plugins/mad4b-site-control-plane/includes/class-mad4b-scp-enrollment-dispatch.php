@@ -392,4 +392,3 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 	}
 }
 
-MAD4B_SCP_Enrollment_Dispatch::boot();
