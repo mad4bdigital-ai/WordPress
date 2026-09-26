@@ -416,8 +416,14 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'order' => 'DESC',
 			'suppress_filters' => false,
 		);
-		if ( function_exists( 'pll_languages_list' ) ) $args['lang'] = $language;
 		$wpml_switch = function_exists( 'has_action' ) && has_action( 'wpml_switch_language' );
+		$wpml_language_filter = function_exists( 'has_filter' ) && has_filter( 'wpml_active_languages' );
+		// Bind the requested locale into WP_Query explicitly. The WPML global
+		// language switch is useful context, but some MCP/REST lifecycles do not
+		// propagate that global state into a later get_posts() filter reliably.
+		// Keeping both signals is read-only and makes multilingual sampling
+		// deterministic across wp-admin, WP-CLI and MCP requests.
+		if ( function_exists( 'pll_languages_list' ) || $wpml_switch || $wpml_language_filter ) $args['lang'] = $language;
 		$previous = '';
 		if ( $wpml_switch && function_exists( 'apply_filters' ) ) $previous = sanitize_key( strtolower( (string) apply_filters( 'wpml_current_language', null ) ) );
 		if ( $wpml_switch && function_exists( 'do_action' ) ) do_action( 'wpml_switch_language', $language );
