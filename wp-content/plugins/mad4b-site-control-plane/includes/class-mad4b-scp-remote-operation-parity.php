@@ -51,6 +51,15 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		);
 	}
 
+	public static function chatgpt_enrollment_dispatch_abilities() {
+		return array(
+			self::SKILLS_ABILITY,
+			self::FRONTEND_SAMPLE_ABILITY,
+			self::PERFORMANCE_INDEX_ABILITY,
+			self::PERFORMANCE_RECONCILE_ABILITY,
+		);
+	}
+
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 
