@@ -483,7 +483,8 @@ final class MAD4B_SCP_Servers {
 		$enrollment_step_up = class_exists( 'MAD4B_SCP_Enrollment_Dispatch' )
 			? array( MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY )
 			: array();
-		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $enrollment_step_up );
+		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up );
+		$direct_mutation_transport = array_merge( $direct_mutation_transport, $enrollment_step_up );
 
 		$tools = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
