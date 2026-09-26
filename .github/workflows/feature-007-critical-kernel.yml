@@ -28,6 +28,28 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-provider-failure-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-concurrency-runtime.sh'
+      - 'plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md'
+      - 'wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-brand-context-builder/SKILL.md'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-provider-failure-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-concurrency-runtime.sh'
+      - 'plugins/mad4b-wordpress/skills/wordpress-brand-context-builder/SKILL.md'
+      - 'wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-brand-context-builder/SKILL.md'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php'
@@ -148,6 +170,21 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py
+
+      - name: Verify Brand Context semantic hardening contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-certification.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-provider-failure-runtime.php
+          bash -n wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-concurrency-runtime.sh
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-contract.py
 
       - name: Verify Ability category and schema diagnostic contract
         shell: bash
@@ -359,3 +396,21 @@ jobs:
             exit 0
           fi
           wp eval-file "$test_path" --allow-root
+
+      - name: Prove Brand Context semantic runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp eval-file wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-runtime.php --allow-root
+
+      - name: Prove Brand Context provider uncertainty and stale-evidence fences
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp eval-file wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-provider-failure-runtime.php --allow-root
+
+      - name: Prove Brand Context cross-job lineage on MariaDB
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-concurrency-runtime.sh
