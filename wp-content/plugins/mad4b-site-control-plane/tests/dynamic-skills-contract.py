@@ -68,6 +68,15 @@ if "array( 'mad4b/write-execute', 'mad4b/enrollment-execute' )" not in servers:
     raise SystemExit('bounded enrollment dispatcher is not explicitly classified as a direct mutation transport')
 if "self::SKILLS_ABILITY" not in remote_parity or "'authority_surface' => 'mad4b-enrollment'" not in remote_parity:
     raise SystemExit('managed Skills reconciliation lost bounded enrollment ownership')
+if "public static function chatgpt_enrollment_dispatch_abilities()" not in remote_parity:
+    raise SystemExit('bounded ChatGPT enrollment dispatch catalog is missing')
+dispatch_section = remote_parity.split("public static function chatgpt_enrollment_dispatch_abilities()", 1)[1].split("public static function register_abilities()", 1)[0]
+for required in ("self::SKILLS_ABILITY", "self::FRONTEND_SAMPLE_ABILITY", "self::PERFORMANCE_INDEX_ABILITY", "self::PERFORMANCE_RECONCILE_ABILITY"):
+    if required not in dispatch_section:
+        raise SystemExit(f'bounded ChatGPT enrollment dispatch lost safe initiator: {required}')
+for forbidden in ("self::WORK_CLAIM_ABILITY", "self::WORK_COMPLETE_ABILITY"):
+    if forbidden in dispatch_section:
+        raise SystemExit(f'external executor lease ability leaked into ChatGPT enrollment dispatch: {forbidden}')
 write_start = servers.find("'mad4b-write' => array(")
 admin_start = servers.find("'mad4b-admin' => array(", write_start + 1)
 write_section = servers[write_start:admin_start] if write_start >= 0 and admin_start > write_start else ''
