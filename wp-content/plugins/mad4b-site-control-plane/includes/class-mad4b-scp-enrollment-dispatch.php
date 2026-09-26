@@ -329,6 +329,10 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'breakglass_included' => false,
 		), 'ok' );
 		if ( is_wp_error( $intent ) ) return $intent;
+		$before_ids = array();
+		foreach ( MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $state['agent']['id'], 'mad4b-enrollment' ) as $before_grant ) {
+			if ( is_array( $before_grant ) && isset( $before_grant['id'] ) ) $before_ids[] = (int) $before_grant['id'];
+		}
 		$created = MAD4B_SCP_Agent_Registry::grant_ability(
 			(string) $state['agent']['public_id'],
 			'mad4b-enrollment',
@@ -341,7 +345,21 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		if ( is_wp_error( $created ) ) return $created;
 		$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $state['agent']['id'], 'mad4b-enrollment', (string) $state['ability'], 'core' );
 		if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) {
-			return new WP_Error( 'mad4b_enrollment_dispatch_grant_postcondition_failed', 'Created Enrollment grant failed exact Staging postcondition verification.' );
+			$rollback_errors = array();
+			foreach ( MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $state['agent']['id'], 'mad4b-enrollment' ) as $after_grant ) {
+				if ( ! is_array( $after_grant ) || empty( $after_grant['id'] ) || in_array( (int) $after_grant['id'], $before_ids, true ) ) continue;
+				if ( 'allow' !== ( isset( $after_grant['effect'] ) ? (string) $after_grant['effect'] : '' )
+					|| (string) $state['ability'] !== ( isset( $after_grant['ability_name'] ) ? (string) $after_grant['ability_name'] : '' )
+					|| 'core' !== sanitize_key( isset( $after_grant['provider'] ) ? (string) $after_grant['provider'] : '' )
+					|| 'staging' !== ( isset( $after_grant['environment'] ) ? (string) $after_grant['environment'] : '' ) ) continue;
+				$rolled = MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id( (string) $state['agent']['public_id'], (int) $after_grant['id'], 'mad4b-enrollment' );
+				if ( is_wp_error( $rolled ) ) $rollback_errors[] = $rolled->get_error_code();
+			}
+			return new WP_Error(
+				'mad4b_enrollment_dispatch_grant_postcondition_failed',
+				'Created Enrollment grant failed exact Staging postcondition verification.',
+				array( 'rollback_errors' => $rollback_errors )
+			);
 		}
 		$state['state'] = 'created';
 		$state['created'] = true;
