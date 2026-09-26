@@ -95,7 +95,11 @@ def stage_bundle(profile, source, build, manifest, version, marker):
             "sha256": archive_sha,
             "provenance_contract": "mad4b.build-provenance.v1",
         },
-        "canonical_package": {"receipt_sha256": runner.sha256_file(receipt_path)},
+        "canonical_package": {
+            "contract": "mad4b.deterministic-control-plane-package.v1",
+            "archive_sha256": archive_sha,
+            "receipt_sha256": runner.sha256_file(receipt_path),
+        },
     }
     (bundle / "install-manifest.json").write_text(
         json.dumps(install, sort_keys=True, indent=2) + "\n",
