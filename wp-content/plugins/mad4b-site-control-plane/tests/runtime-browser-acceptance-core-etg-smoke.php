@@ -153,6 +153,17 @@ $check( 'etg-dfsb' === (string) $plan['provider_id'], 'Browser Acceptance plan p
 $check( empty( $plan['authorizing'] ) && ! empty( $plan['read_only'] ), 'Browser Acceptance plan authority boundary drifted.' );
 $check( in_array( (string) $plan['state'], array( 'ready', 'blocked' ), true ), 'Browser Acceptance plan returned an invalid state.' );
 
+$check( class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'browser_acceptance_receipt_status' ), 'Browser Acceptance durable receipt status helper is unavailable.' );
+$receipt_status = MAD4B_SCP_Remote_Operation_Parity::browser_acceptance_receipt_status( is_array( $plan ) ? $plan : array() );
+$check( is_array( $receipt_status ) && 'mad4b.remote-browser-acceptance-receipt-status.v1' === (string) ( $receipt_status['contract'] ?? '' ), 'Browser Acceptance receipt status contract drifted.' );
+if ( ! empty( $receipt_status['ready'] ) ) {
+	$receipt_result = (array) ( $receipt_status['receipt']['browser_result'] ?? array() );
+	$check( 'PASS' === (string) ( $receipt_result['verdict'] ?? '' ), 'Ready Browser Acceptance receipt does not contain PASS result.' );
+	$check( ! empty( $receipt_result['verification']['browser_runtime_parity_verified'] ), 'Ready Browser Acceptance receipt does not verify browser runtime parity.' );
+} else {
+	$check( ! empty( $receipt_status['blockers'] ), 'Non-ready Browser Acceptance receipt status must fail closed with blockers.' );
+}
+
 if ( 'ready' === (string) $plan['state'] ) {
 	$check( preg_match( '/^[a-f0-9]{64}$/', (string) $plan['plan_digest'] ), 'Ready Browser Acceptance plan lacks exact digest.' );
 	$check( preg_match( '/^[a-f0-9]{64}$/', (string) $plan['plan_signature'] ), 'Ready Browser Acceptance plan lacks server signature.' );
