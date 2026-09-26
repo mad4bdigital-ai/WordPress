@@ -53,7 +53,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch --no-tags --depth=1 origin "$HEAD_SHA"
+          # Preserve commit ancestry: --depth=1 would mark the untrusted
+          # head shallow and make the baseline-owned ancestry proof fail even
+          # when BASE_SHA is a real ancestor of HEAD_SHA.
+          git fetch --no-tags origin "$HEAD_SHA"
           test "$(git rev-parse FETCH_HEAD)" = "$HEAD_SHA"
           git cat-file -e "$HEAD_SHA^{commit}"
 

@@ -5,6 +5,147 @@ import subprocess
 import tempfile
 
 script = Path("tools/Apply-Mad4bMasterRuleset.ps1").read_text(encoding="utf-8")
+release_verdict = Path(".github/workflows/mad4b-release-verdict.yml").read_text(encoding="utf-8")
+repository_governance_workflow = Path(".github/workflows/mad4b-repository-governance.yml").read_text(encoding="utf-8")
+feature_boundary_root = Path(".github/workflows/mad4b-feature-boundary-root.yml").read_text(encoding="utf-8")
+
+repair_bootstrap_required = [
+    "Verify bounded governance-apply repair bootstrap",
+    ".github/workflows/mad4b-feature-boundary-root.yml",
+    "github.event.pull_request.number == 69",
+    "chore/governance-apply-powershell-parse-20260926",
+    "8a0c12ef16023f042def7d42b760cdd847343e8a",
+    "rulesets/23968498?includes_parents=true",
+    "MAD4B_GOVERNANCE_REPAIR_RULESET_SNAPSHOT",
+    "mad4b.governance-repair-ruleset-snapshot.v1",
+    "owner_issue_comment_admin_readback_bound_to_authenticated_identity",
+    "owner_admin_snapshot",
+    "ruleset_snapshot_comment_id",
+    "owner snapshot/authenticated ruleset identity drift",
+    "2026-09-25T02:13:24.911+03:00",
+    "mad4b.governance-apply-repair-bootstrap.v1",
+    "governance_apply_repair_bootstrap",
+    "governance_apply_repair_bootstrap_ready",
+    "required = ['Control-plane contract guard']",
+    "git show \"$BASE_SHA:tools/verify_feature_boundary.py\"",
+    "/tmp/mad4b-governance-repair-boundary.json",
+    "baseline_feature_boundary_verified",
+    "baseline_feature_boundary_mode",
+    "(governance_ready or governance_apply_repair_bootstrap_ready)",
+    "target_governance_activation_still_required_post_merge",
+    "zero_bypass_actors_verified",
+    "powershell_parser_contract_verified",
+    "legacy_ruleset_snapshot_verified",
+]
+governance_repair_bootstrap_required = [
+    "Verify bounded governance-apply repair bootstrap",
+    "github.event.pull_request.number == 69",
+    "chore/governance-apply-powershell-parse-20260926",
+    "8a0c12ef16023f042def7d42b760cdd847343e8a",
+    "rulesets/23968498?includes_parents=true",
+    "MAD4B_GOVERNANCE_REPAIR_RULESET_SNAPSHOT",
+    "mad4b.governance-repair-ruleset-snapshot.v1",
+    "owner_issue_comment_admin_readback_bound_to_authenticated_identity",
+    "owner_admin_snapshot",
+    "ruleset_snapshot_comment_id",
+    "git show \"$BASE_SHA:tools/verify_feature_boundary.py\"",
+    "exact_head_owner_attestation_verified",
+    "governance_apply_repair_bootstrap_ready",
+    "target_governance_activation_still_required_post_merge",
+]
+missing_governance_repair_bootstrap = [
+    needle for needle in governance_repair_bootstrap_required if needle not in repository_governance_workflow
+]
+if missing_governance_repair_bootstrap:
+    raise SystemExit(
+        "governance workflow repair bootstrap contract missing: "
+        + ", ".join(missing_governance_repair_bootstrap)
+    )
+
+missing_repair_bootstrap = [
+    needle for needle in repair_bootstrap_required if needle not in release_verdict
+]
+if missing_repair_bootstrap:
+    raise SystemExit(
+        "governance-apply repair bootstrap contract missing: "
+        + ", ".join(missing_repair_bootstrap)
+    )
+
+# Fail closed if the bounded repair exception ever becomes generic or infers bypass safety from hidden fields.
+for forbidden in [
+    "governance_apply_repair_bootstrap = True",
+    "required = []\n              mode = 'governance_apply_repair_bootstrap'",
+    "hidden_in_ci_exact_head_owner_attestation",
+    "pr69_exact_head_owner_attested",
+]:
+    if forbidden in release_verdict or forbidden in repository_governance_workflow:
+        raise SystemExit("governance-apply repair bootstrap widened or inferred hidden bypass safety: " + forbidden)
+
+print("governance_apply_repair_bootstrap=bounded")
+print("governance_apply_repair_governance_workflow=bounded")
+print("governance_apply_repair_live_snapshot=exact")
+print("governance_apply_repair_bypass_evidence=owner-comment-admin-readback")
+for workflow_name, workflow_text in [
+    ("release_verdict", release_verdict),
+    ("repository_governance", repository_governance_workflow),
+]:
+    for required_timestamp_semantic in [
+        "normalize_ruleset_timestamp",
+        'replace("Z", "+00:00")',
+        "astimezone(timezone.utc)",
+    ]:
+        if required_timestamp_semantic not in workflow_text:
+            raise SystemExit(
+                "governance repair timestamp normalization missing from "
+                + workflow_name
+                + ": "
+                + required_timestamp_semantic
+            )
+    if 'live.get("updated_at") != "2026-09-25T02:13:24.911+03:00"' in workflow_text:
+        raise SystemExit(
+            "governance repair timestamp comparison regressed to raw string equality: "
+            + workflow_name
+        )
+print("governance_apply_repair_timestamp_binding=utc_instant_equivalence")
+print("governance_apply_repair_target_governance_claim=false_until_remote_apply")
+
+if "required = ['Repository feature boundary']" in release_verdict:
+    raise SystemExit("governance repair bootstrap still depends on the known-broken base check")
+if "required = ['Control-plane contract guard']" not in release_verdict:
+    raise SystemExit("governance repair bootstrap must retain an independent exact-head CI terminal gate")
+if 'git show "$BASE_SHA:tools/verify_feature_boundary.py"' not in release_verdict:
+    raise SystemExit("governance repair bootstrap must execute the verifier sourced from BASE")
+if "baseline_feature_boundary_verified" not in release_verdict:
+    raise SystemExit("governance repair bootstrap must bind base-owned feature-boundary evidence")
+for required_snapshot in [
+    "MAD4B_GOVERNANCE_REPAIR_RULESET_SNAPSHOT",
+    "mad4b.governance-repair-ruleset-snapshot.v1",
+    "owner_issue_comment_admin_readback_bound_to_authenticated_identity",
+    "owner_admin_snapshot",
+    "ruleset_snapshot_comment_id",
+    "exact_head_owner_attestation_verified",
+]:
+    if required_snapshot not in release_verdict:
+        raise SystemExit(
+            "governance repair release bootstrap missing owner-admin snapshot evidence: "
+            + required_snapshot
+        )
+    if required_snapshot not in repository_governance_workflow:
+        raise SystemExit(
+            "governance repair policy bootstrap missing owner-admin snapshot evidence: "
+            + required_snapshot
+        )
+if "live_target_governance_ready': False" not in repository_governance_workflow:
+    raise SystemExit("governance repair bootstrap may not claim live target governance ready")
+
+if 'git fetch --no-tags origin "$HEAD_SHA"' not in feature_boundary_root:
+    raise SystemExit("feature-boundary trusted fetch must preserve full ancestry")
+if 'git fetch --no-tags --depth=1 origin "$HEAD_SHA"' in feature_boundary_root:
+    raise SystemExit("feature-boundary trusted fetch regressed to shallow ancestry")
+if 'fetch-depth: 0' not in feature_boundary_root:
+    raise SystemExit("feature-boundary trusted base checkout must remain full-history")
+print("feature_boundary_head_fetch=ancestry_preserving")
+print("feature_boundary_shallow_regression=blocked")
 
 required = [
     '"--jq",".[] | @json"',
@@ -27,7 +168,7 @@ required = [
     '"repos/$Repository/commits/master"',
     '$remoteMaster -ne $currentHead',
     'post_merge_master_verified=true',
-    '$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository:$($ExpectedHead.ToLowerInvariant())"',
+    '$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:${Repository}:$($ExpectedHead.ToLowerInvariant())"',
     '"tools/verify_repository_ruleset_template.py"',
     '"tools/verify_repository_ruleset_restore.py"',
     'canonical ruleset template does not exactly implement repository governance policy',
@@ -74,6 +215,7 @@ required = [
     '$status.ruleset_attestation_verified -ne $true',
     'published owner attestation did not satisfy aggregate repository governance',
     '--require-ruleset-attestation',
+    'Write-Host "APPLY_MAD4B_MASTER_RULESET:${rulesetId}:ready"',
 ]
 
 missing = [needle for needle in required if needle not in script]
@@ -87,9 +229,38 @@ for forbidden in [
     '/environments/$environmentName/variables',
     'UPSERT ENVIRONMENT RULESET ATTESTATION VARIABLE',
     'ruleset_attestation_scope=environment',
+    '$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository:$($ExpectedHead.ToLowerInvariant())"',
+    'Write-Host "APPLY_MAD4B_MASTER_RULESET:$rulesetId:ready"',
 ]:
     if forbidden in script:
         raise SystemExit("legacy Windows PowerShell empty-array parser returned: " + forbidden)
+
+powershell_parser = r"""
+$tokens = $null
+$errors = $null
+$resolved = (Resolve-Path 'tools/Apply-Mad4bMasterRuleset.ps1').Path
+[void][System.Management.Automation.Language.Parser]::ParseFile(
+    $resolved,
+    [ref]$tokens,
+    [ref]$errors
+)
+if ($errors.Count -ne 0) {
+    $errors | ForEach-Object { [Console]::Error.WriteLine($_.Message) }
+    exit 1
+}
+"""
+parse_proc = subprocess.run(
+    ["pwsh", "-NoLogo", "-NoProfile", "-Command", powershell_parser],
+    text=True,
+    capture_output=True,
+)
+if parse_proc.returncode != 0:
+    raise SystemExit(
+        "Apply-Mad4bMasterRuleset.ps1 failed PowerShell parser validation: "
+        + (parse_proc.stderr or parse_proc.stdout)
+    )
+
+print("powershell_parser=pass")
 
 print("REPOSITORY_GOVERNANCE_BOOTSTRAP_TOOL_CONTRACT: PASS")
 print("empty_ruleset_list=zero_items")

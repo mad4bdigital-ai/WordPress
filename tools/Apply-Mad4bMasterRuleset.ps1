@@ -12,7 +12,7 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
-$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository:$($ExpectedHead.ToLowerInvariant())"
+$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:${Repository}:$($ExpectedHead.ToLowerInvariant())"
 if ($Confirmation -ne $ExpectedConfirmation) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: confirmation mismatch. Expected '$ExpectedConfirmation'."
 }
@@ -314,7 +314,7 @@ if ($status.ready -ne $true -or $status.ruleset_attestation_verified -ne $true) 
 }
 
 Write-Host ""
-Write-Host "APPLY_MAD4B_MASTER_RULESET:$rulesetId:ready"
+Write-Host "APPLY_MAD4B_MASTER_RULESET:${rulesetId}:ready"
 Write-Host "mutation_performed=$($mutationPerformed.ToString().ToLowerInvariant())"
 Write-Host "required_check=Repository release verdict"
 Write-Host "required_check=Repository feature boundary"
