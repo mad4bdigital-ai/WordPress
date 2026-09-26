@@ -6,9 +6,11 @@ import tempfile
 
 script = Path("tools/Apply-Mad4bMasterRuleset.ps1").read_text(encoding="utf-8")
 release_verdict = Path(".github/workflows/mad4b-release-verdict.yml").read_text(encoding="utf-8")
+feature_boundary_root = Path(".github/workflows/mad4b-feature-boundary-root.yml").read_text(encoding="utf-8")
 
 repair_bootstrap_required = [
     "Verify bounded governance-apply repair bootstrap",
+    ".github/workflows/mad4b-feature-boundary-root.yml",
     "github.event.pull_request.number == 69",
     "chore/governance-apply-powershell-parse-20260926",
     "8a0c12ef16023f042def7d42b760cdd847343e8a",
@@ -44,6 +46,15 @@ for forbidden in [
 print("governance_apply_repair_bootstrap=bounded")
 print("governance_apply_repair_live_snapshot=exact")
 print("governance_apply_repair_target_governance_claim=false_until_remote_apply")
+
+if 'git fetch --no-tags origin "$HEAD_SHA"' not in feature_boundary_root:
+    raise SystemExit("feature-boundary trusted fetch must preserve full ancestry")
+if 'git fetch --no-tags --depth=1 origin "$HEAD_SHA"' in feature_boundary_root:
+    raise SystemExit("feature-boundary trusted fetch regressed to shallow ancestry")
+if 'fetch-depth: 0' not in feature_boundary_root:
+    raise SystemExit("feature-boundary trusted base checkout must remain full-history")
+print("feature_boundary_head_fetch=ancestry_preserving")
+print("feature_boundary_shallow_regression=blocked")
 
 required = [
     '"--jq",".[] | @json"',
