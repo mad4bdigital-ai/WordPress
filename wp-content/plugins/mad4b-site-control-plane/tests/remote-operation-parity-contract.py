@@ -124,6 +124,17 @@ for ability in [
 if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in servers:
     raise SystemExit('bounded enrollment server is not sourced from Remote Operation Parity enrollment inventory')
 
+for marker in [
+    "private static function provider_for_enrollment_catalog_ability",
+    "MAD4B_SCP_Remote_Operation_Parity::catalog()",
+    "'certified_addon' !== $trust",
+    "sanitize_key( (string) $row['provider'] )",
+    "if ( 'mad4b-enrollment' === $server_id )",
+    "self::provider_for_enrollment_catalog_ability( $ability_name )",
+]:
+    if marker not in servers:
+        raise SystemExit(f'enrollment provider attribution invariant missing: {marker}')
+
 enrollment_method = parity.split('public static function enrollment_abilities()', 1)[1].split('public static function register_abilities()', 1)[0]
 if "self::catalog()" not in enrollment_method:
     raise SystemExit('enrollment mount does not derive future registered operations from the validated catalog')
