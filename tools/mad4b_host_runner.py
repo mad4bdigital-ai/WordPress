@@ -1022,6 +1022,349 @@ def plugin_tree_digest(root: Path) -> tuple[str, int]:
     return sha256_bytes(b"".join(rows)), count
 
 
+
+def _plugin_archive_path(profile: dict[str, Any], archive_sha256: str) -> Path:
+    archive_sha256 = str(archive_sha256 or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{64}", archive_sha256):
+        raise ValueError("WordPress plugin deployment archive SHA-256 is invalid")
+    root = Path(profile["package_staging_root"])
+    if root.exists() and (_is_link_like(root) or not root.is_dir()):
+        raise ValueError("Host Runner package staging root is invalid")
+    candidate = root / f"{archive_sha256}.zip"
+    _reject_link_ancestors(candidate)
+    if _is_link_like(candidate) or not candidate.is_file():
+        raise ValueError("WordPress plugin deployment staged archive is unavailable")
+    if candidate.stat().st_size < 1 or candidate.stat().st_size > MAX_PLUGIN_ARCHIVE_BYTES:
+        raise HostRunnerResourceError(
+            "HOST_RESOURCE_PLUGIN_ARCHIVE_BYTES_EXCEEDED",
+            "WordPress plugin deployment archive exceeds bounded byte budget",
+        )
+    if not hmac.compare_digest(sha256_file(candidate), archive_sha256):
+        raise ValueError("WordPress plugin deployment staged archive SHA-256 mismatch")
+    return candidate
+
+
+def _plugin_zip_inventory(archive: Path) -> tuple[list[zipfile.ZipInfo], dict[str, Any]]:
+    try:
+        zf = zipfile.ZipFile(archive, "r")
+    except zipfile.BadZipFile as exc:
+        raise ValueError("WordPress plugin deployment archive is not a valid ZIP") from exc
+    with zf:
+        infos = zf.infolist()
+        if not infos or len(infos) > MAX_PLUGIN_ARCHIVE_FILES:
+            raise ValueError("WordPress plugin deployment archive file count is invalid")
+        names: set[str] = set()
+        files: list[zipfile.ZipInfo] = []
+        total_uncompressed = 0
+        root_prefix = "mad4b-site-control-plane/"
+        for info in infos:
+            name = str(info.filename or "")
+            if not name or "\\" in name or name.startswith("/") or "\x00" in name:
+                raise ValueError("WordPress plugin deployment archive contains an unsafe path")
+            parts = Path(name).parts
+            if ".." in parts or not name.startswith(root_prefix):
+                raise ValueError("WordPress plugin deployment archive escaped the fixed plugin root")
+            if name in names:
+                raise ValueError("WordPress plugin deployment archive contains duplicate paths")
+            names.add(name)
+            mode = (int(info.external_attr) >> 16) & 0o170000
+            if stat.S_ISLNK(mode):
+                raise ValueError("WordPress plugin deployment archive contains a symlink")
+            if mode and not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
+                raise ValueError("WordPress plugin deployment archive contains a special filesystem entry")
+            if info.is_dir():
+                continue
+            total_uncompressed += int(info.file_size)
+            if total_uncompressed > MAX_PLUGIN_UNCOMPRESSED_BYTES:
+                raise HostRunnerResourceError(
+                    "HOST_RESOURCE_PLUGIN_UNCOMPRESSED_BYTES_EXCEEDED",
+                    "WordPress plugin deployment archive expands beyond bounded byte budget",
+                )
+            files.append(info)
+        provenance_name = root_prefix + PROVENANCE_FILE
+        if provenance_name not in names:
+            raise ValueError("WordPress plugin deployment archive lacks build provenance")
+        try:
+            provenance_raw = zf.read(provenance_name)
+            provenance = json.loads(provenance_raw.decode("utf-8"))
+        except (KeyError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError("WordPress plugin deployment provenance is invalid") from exc
+        if not isinstance(provenance, dict):
+            raise ValueError("WordPress plugin deployment provenance is not an object")
+        return files, provenance
+
+
+def _verify_plugin_archive(
+    profile: dict[str, Any],
+    plan: dict[str, Any],
+) -> dict[str, Any]:
+    archive = _plugin_archive_path(profile, str(plan.get("archive_sha256") or ""))
+    files, provenance = _plugin_zip_inventory(archive)
+    if provenance.get("contract") != "mad4b.build-provenance.v1":
+        raise ValueError("WordPress plugin deployment provenance contract mismatch")
+    bindings = {
+        "source_commit_sha": str(plan.get("source_commit_sha") or "").lower(),
+        "build_fingerprint": str(plan.get("build_fingerprint") or "").lower(),
+        "package_manifest_digest": str(plan.get("package_manifest_digest") or "").lower(),
+    }
+    for key, expected in bindings.items():
+        actual = str(provenance.get(key) or "").lower()
+        if not expected or not hmac.compare_digest(actual, expected):
+            raise ValueError(f"WordPress plugin deployment provenance {key} mismatch")
+    if str(provenance.get("artifact_identity") or "") != (
+        f"mad4b-site-control-plane-{provenance.get('control_plane_version')}-{bindings['source_commit_sha']}"
+    ):
+        raise ValueError("WordPress plugin deployment artifact identity mismatch")
+
+    expected_entries = provenance.get("package_files")
+    if not isinstance(expected_entries, list) or not expected_entries:
+        raise ValueError("WordPress plugin deployment provenance package inventory is missing")
+    expected_by_path: dict[str, dict[str, Any]] = {}
+    for row in expected_entries:
+        if not isinstance(row, dict):
+            raise ValueError("WordPress plugin deployment provenance inventory row is invalid")
+        rel = str(row.get("path") or "")
+        if not rel or rel == PROVENANCE_FILE or rel.startswith("/") or "\\" in rel or ".." in Path(rel).parts:
+            raise ValueError("WordPress plugin deployment provenance inventory path is invalid")
+        if rel in expected_by_path:
+            raise ValueError("WordPress plugin deployment provenance inventory contains duplicates")
+        digest = str(row.get("sha256") or "").lower()
+        size = row.get("bytes")
+        if not re.fullmatch(r"[a-f0-9]{64}", digest) or not isinstance(size, int) or size < 0:
+            raise ValueError("WordPress plugin deployment provenance inventory identity is invalid")
+        expected_by_path[rel] = {"bytes": size, "sha256": digest}
+
+    archive_files = {
+        info.filename[len("mad4b-site-control-plane/"):]: info
+        for info in files
+        if info.filename != "mad4b-site-control-plane/" + PROVENANCE_FILE
+    }
+    if set(archive_files) != set(expected_by_path):
+        raise ValueError("WordPress plugin deployment archive file set differs from provenance")
+
+    canonical_rows: list[bytes] = []
+    with zipfile.ZipFile(archive, "r") as zf:
+        for rel in sorted(expected_by_path):
+            info = archive_files[rel]
+            expected = expected_by_path[rel]
+            if int(info.file_size) != int(expected["bytes"]):
+                raise ValueError("WordPress plugin deployment archive file size mismatch")
+            digest = hashlib.sha256()
+            with zf.open(info, "r") as source:
+                while True:
+                    chunk = source.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    digest.update(chunk)
+            actual_sha = digest.hexdigest()
+            if not hmac.compare_digest(actual_sha, str(expected["sha256"])):
+                raise ValueError("WordPress plugin deployment archive file digest mismatch")
+            canonical_rows.append(
+                f"{rel}\0{int(info.file_size)}\0{actual_sha}\n".encode("utf-8")
+            )
+    manifest_digest = sha256_bytes(b"".join(canonical_rows))
+    if not hmac.compare_digest(manifest_digest, bindings["package_manifest_digest"]):
+        raise ValueError("WordPress plugin deployment package manifest digest mismatch")
+
+    version = str(provenance.get("control_plane_version") or "")
+    adapter_version = str(provenance.get("mcp_adapter_version") or "")
+    adapter_sha = str(provenance.get("mcp_adapter_sha256") or "").lower()
+    if not version or not adapter_version or not re.fullmatch(r"[a-f0-9]{64}", adapter_sha):
+        raise ValueError("WordPress plugin deployment build identity is incomplete")
+    fp_payload = (
+        "mad4b.build-fingerprint.v1\n"
+        + version + "\n"
+        + bindings["source_commit_sha"] + "\n"
+        + manifest_digest + "\n"
+        + adapter_version + "\n"
+        + adapter_sha + "\n"
+    ).encode("utf-8")
+    calculated_fp = sha256_bytes(fp_payload)
+    if not hmac.compare_digest(calculated_fp, bindings["build_fingerprint"]):
+        raise ValueError("WordPress plugin deployment build fingerprint mismatch")
+    return {
+        "archive_path": str(archive),
+        "archive_sha256": str(plan["archive_sha256"]).lower(),
+        "source_commit_sha": bindings["source_commit_sha"],
+        "build_fingerprint": bindings["build_fingerprint"],
+        "package_manifest_digest": manifest_digest,
+        "control_plane_version": version,
+        "mcp_adapter_version": adapter_version,
+        "mcp_adapter_sha256": adapter_sha,
+        "manifest_file_count": len(expected_by_path),
+    }
+
+
+def build_wordpress_plugin_deploy_plan(
+    profile: dict[str, Any],
+    *,
+    archive_sha256: str,
+    source_commit_sha: str,
+    build_fingerprint: str,
+    package_manifest_digest: str,
+    expected_current_tree_sha256: str,
+    reason: str,
+) -> dict[str, Any]:
+    if "wordpress_plugin_deploy" not in profile["allowed_operations"]:
+        raise ValueError("Host Runner WordPress plugin deployment operation is not enabled")
+    if profile["environment"] != "staging":
+        raise ValueError("WordPress plugin deployment is Staging-only")
+    source_commit_sha = str(source_commit_sha or "").lower()
+    build_fingerprint = str(build_fingerprint or "").lower()
+    package_manifest_digest = str(package_manifest_digest or "").lower()
+    expected_current_tree_sha256 = str(expected_current_tree_sha256 or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{40}", source_commit_sha):
+        raise ValueError("WordPress plugin deployment source commit is invalid")
+    for label, value in {
+        "build_fingerprint": build_fingerprint,
+        "package_manifest_digest": package_manifest_digest,
+        "expected_current_tree_sha256": expected_current_tree_sha256,
+    }.items():
+        if not re.fullmatch(r"[a-f0-9]{64}", value):
+            raise ValueError(f"WordPress plugin deployment {label} is invalid")
+    reason = str(reason or "").strip()
+    if len(reason) < 3 or len(reason) > 500:
+        raise ValueError("WordPress plugin deployment reason must contain 3..500 bytes")
+    plan = {
+        "contract": PLUGIN_DEPLOY_PLAN_CONTRACT,
+        "operation_id": "wordpress_plugin_deploy",
+        "operation_version": OPERATIONS["wordpress_plugin_deploy"]["version"],
+        "operation_fingerprint": operation_fingerprint("wordpress_plugin_deploy"),
+        "profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "plugin_slug": "mad4b-site-control-plane",
+        "archive_sha256": str(archive_sha256 or "").lower(),
+        "source_commit_sha": source_commit_sha,
+        "build_fingerprint": build_fingerprint,
+        "package_manifest_digest": package_manifest_digest,
+        "expected_current_tree_sha256": expected_current_tree_sha256,
+        "reason": reason,
+        "production_authorized": False,
+    }
+    _verify_plugin_archive(profile, plan)
+    plan["plan_sha256"] = plan_digest(plan)
+    return plan
+
+
+def _validate_wordpress_plugin_deploy_plan(
+    profile: dict[str, Any],
+    verified: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], Path]:
+    inputs = verified["input"]
+    if set(inputs) != {"plan"} or not isinstance(inputs.get("plan"), dict):
+        raise ValueError("wordpress_plugin_deploy input fields are invalid")
+    plan = inputs["plan"]
+    required = {
+        "archive_sha256",
+        "build_fingerprint",
+        "contract",
+        "environment",
+        "expected_current_tree_sha256",
+        "operation_fingerprint",
+        "operation_id",
+        "operation_version",
+        "package_manifest_digest",
+        "plan_sha256",
+        "plugin_slug",
+        "production_authorized",
+        "profile_id",
+        "reason",
+        "site_uuid",
+        "source_commit_sha",
+        "target_fingerprint",
+    }
+    if set(plan) != required:
+        raise ValueError("WordPress plugin deployment plan fields are invalid")
+    if plan.get("contract") != PLUGIN_DEPLOY_PLAN_CONTRACT:
+        raise ValueError("WordPress plugin deployment plan contract mismatch")
+    if plan.get("operation_id") != "wordpress_plugin_deploy":
+        raise ValueError("WordPress plugin deployment operation mismatch")
+    if plan.get("operation_version") != OPERATIONS["wordpress_plugin_deploy"]["version"]:
+        raise ValueError("WordPress plugin deployment operation version mismatch")
+    if not hmac.compare_digest(
+        str(plan.get("operation_fingerprint") or ""),
+        operation_fingerprint("wordpress_plugin_deploy"),
+    ):
+        raise ValueError("WordPress plugin deployment operation fingerprint mismatch")
+    supplied_plan_sha = str(plan.get("plan_sha256") or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{64}", supplied_plan_sha) or not hmac.compare_digest(
+        supplied_plan_sha, plan_digest(plan)
+    ):
+        raise ValueError("WordPress plugin deployment plan digest mismatch")
+    if not hmac.compare_digest(supplied_plan_sha, verified["plan_sha256"]):
+        raise ValueError("WordPress plugin deployment job is not bound to exact plan")
+    if plan.get("profile_id") != profile["profile_id"]:
+        raise ValueError("WordPress plugin deployment profile mismatch")
+    if plan.get("site_uuid") != profile["site_uuid"]:
+        raise ValueError("WordPress plugin deployment site identity mismatch")
+    if plan.get("environment") != "staging" or plan.get("production_authorized") is not False:
+        raise ValueError("WordPress plugin deployment environment policy mismatch")
+    if plan.get("target_fingerprint") != profile["target_fingerprint"]:
+        raise ValueError("WordPress plugin deployment target fingerprint mismatch")
+    if plan.get("plugin_slug") != "mad4b-site-control-plane":
+        raise ValueError("WordPress plugin deployment slug is not allowed")
+    plugin_root = Path(profile["wordpress_root"]) / "wp-content" / "plugins" / "mad4b-site-control-plane"
+    if _is_link_like(plugin_root) or not plugin_root.is_dir():
+        raise ValueError("WordPress plugin deployment current plugin root is unavailable")
+    current_tree, _ = plugin_tree_digest(plugin_root)
+    expected_current = str(plan.get("expected_current_tree_sha256") or "").lower()
+    if not re.fullmatch(r"[a-f0-9]{64}", expected_current) or not hmac.compare_digest(
+        current_tree, expected_current
+    ):
+        raise ValueError("WordPress plugin deployment current tree changed since plan")
+    archive_info = _verify_plugin_archive(profile, plan)
+    return plan, archive_info, plugin_root
+
+
+def _extract_verified_plugin_candidate(
+    profile: dict[str, Any],
+    archive_info: dict[str, Any],
+    job_id: str,
+) -> Path:
+    staging_root = Path(profile["package_staging_root"])
+    staging_root.mkdir(parents=True, exist_ok=True)
+    if _is_link_like(staging_root) or not staging_root.is_dir():
+        raise ValueError("Host Runner package staging root is invalid")
+    extract_root = staging_root / f"extract-{job_id}"
+    if extract_root.exists():
+        raise ValueError("WordPress plugin deployment extraction target already exists")
+    extract_root.mkdir()
+    archive = Path(archive_info["archive_path"])
+    try:
+        with zipfile.ZipFile(archive, "r") as zf:
+            for info in zf.infolist():
+                name = str(info.filename or "")
+                if info.is_dir():
+                    continue
+                if not name.startswith("mad4b-site-control-plane/"):
+                    raise ValueError("WordPress plugin deployment archive escaped fixed root")
+                rel = name[len("mad4b-site-control-plane/"):]
+                if not rel:
+                    continue
+                target = extract_root / "mad4b-site-control-plane" / Path(rel)
+                target_parent = target.parent
+                target_parent.mkdir(parents=True, exist_ok=True)
+                if not _is_within(target.resolve(strict=False), extract_root.resolve()):
+                    raise ValueError("WordPress plugin deployment extraction escaped staging root")
+                with zf.open(info, "r") as source, target.open("wb") as sink:
+                    shutil.copyfileobj(source, sink, length=1024 * 1024)
+        candidate_root = extract_root / "mad4b-site-control-plane"
+        if _is_link_like(candidate_root) or not candidate_root.is_dir():
+            raise ValueError("WordPress plugin deployment extracted candidate root is invalid")
+        provenance_path = candidate_root / PROVENANCE_FILE
+        if not provenance_path.is_file() or _is_link_like(provenance_path):
+            raise ValueError("WordPress plugin deployment extracted provenance is unavailable")
+        provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+        if str(provenance.get("source_commit_sha") or "").lower() != archive_info["source_commit_sha"]:
+            raise ValueError("WordPress plugin deployment extracted source identity mismatch")
+        return candidate_root
+    except Exception:
+        shutil.rmtree(extract_root, ignore_errors=True)
+        raise
+
+
 def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict[str, Any]:
     operation_id = verified["operation_id"]
     inputs = verified["input"]
