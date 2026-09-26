@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Remote_Operation_Parity {
 	const CONTRACT = 'mad4b.remote-operation-parity.v1';
+	const CATALOG_VERSION = 3;
 	const STATUS_ABILITY = 'mad4b/remote-operation-parity-status';
 	const DISCOVER_ABILITY = 'mad4b/operation-discover';
 	const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';
@@ -40,7 +41,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 13 );
 	}
 
-	public static function enrollment_abilities() {
+	private static function builtin_enrollment_abilities() {
 		return array(
 			self::SKILLS_ABILITY,
 			self::FRONTEND_SAMPLE_ABILITY,
@@ -49,6 +50,72 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			self::WORK_CLAIM_ABILITY,
 			self::WORK_COMPLETE_ABILITY,
 		);
+	}
+
+	public static function enrollment_abilities() {
+		$abilities = self::builtin_enrollment_abilities();
+
+		// During Ability registration keep the deterministic built-in seed only.
+		// Once the registry is materialized, extend the enrollment mount from the
+		// validated operation catalog so future certified add-ons gain remote parity
+		// without hand-editing the server allowlist.
+		$registry_ready = function_exists( 'did_action' )
+			&& did_action( 'wp_abilities_api_init' ) > 0
+			&& ( ! function_exists( 'doing_action' ) || ! doing_action( 'wp_abilities_api_init' ) );
+		if ( $registry_ready ) {
+			foreach ( self::catalog() as $row ) {
+				if ( ! is_array( $row )
+					|| 'mad4b-enrollment' !== ( isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '' )
+					|| empty( $row['remote_ability'] )
+					|| empty( $row['remote_registered'] )
+					|| empty( $row['execution_eligible'] ) ) continue;
+				$abilities[] = (string) $row['remote_ability'];
+			}
+		}
+		$abilities = array_values( array_unique( array_filter( array_map( 'strval', $abilities ) ) ) );
+		sort( $abilities, SORT_STRING );
+		return $abilities;
+	}
+
+	public static function operator_enrollment_abilities() {
+		$abilities = array(
+			self::SKILLS_ABILITY,
+			self::FRONTEND_SAMPLE_ABILITY,
+			self::PERFORMANCE_INDEX_ABILITY,
+			self::PERFORMANCE_RECONCILE_ABILITY,
+		);
+		$registry_ready = function_exists( 'did_action' )
+			&& did_action( 'wp_abilities_api_init' ) > 0
+			&& ( ! function_exists( 'doing_action' ) || ! doing_action( 'wp_abilities_api_init' ) );
+		if ( $registry_ready ) {
+			$abilities = array();
+			foreach ( self::catalog() as $row ) {
+				if ( ! is_array( $row )
+					|| 'mad4b-enrollment' !== ( isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '' )
+					|| 'operator' !== ( isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '' )
+					|| ! empty( $row['human_decision_required'] )
+					|| 'deny' !== ( isset( $row['production_policy'] ) ? (string) $row['production_policy'] : '' )
+					|| empty( $row['remote_ability'] )
+					|| empty( $row['remote_registered'] )
+					|| empty( $row['execution_eligible'] )
+					|| empty( $row['remote_parity_ready'] ) ) continue;
+				$abilities[] = (string) $row['remote_ability'];
+			}
+		}
+		$abilities = array_values( array_unique( array_filter( array_map( 'strval', $abilities ) ) ) );
+		sort( $abilities, SORT_STRING );
+		return $abilities;
+	}
+
+	public static function operation_for_ability( $ability_name ) {
+		$ability_name = trim( (string) $ability_name );
+		if ( '' === $ability_name ) return array();
+		foreach ( self::catalog() as $operation_id => $row ) {
+			if ( ! is_array( $row ) || $ability_name !== ( isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '' ) ) continue;
+			$row['operation_id'] = (string) $operation_id;
+			return $row;
+		}
+		return array();
 	}
 
 	public static function register_abilities() {
@@ -224,6 +291,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'mad4b-enrollment',
 				'executor' => 'wordpress_native',
 				'remote_mode' => 'checkpointed_convergence',
+				'remote_caller_role' => 'operator',
 				'production_policy' => 'deny',
 				'human_decision_required' => false,
 			),
@@ -237,6 +305,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'mad4b-enrollment',
 				'executor' => 'external_browser_agent',
 				'remote_mode' => 'durable_external_executor_request',
+				'remote_caller_role' => 'operator',
 				'production_policy' => 'deny',
 				'human_decision_required' => false,
 			),
@@ -250,6 +319,21 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'mad4b-enrollment',
 				'executor' => 'external_browser_agent',
 				'remote_mode' => 'leased_semantic_work_queue',
+				'remote_caller_role' => 'external_executor',
+				'production_policy' => 'deny',
+				'human_decision_required' => false,
+			),
+			'external_executor_work_completion' => array(
+				'feature_id' => 'remote-operation-parity',
+				'capability_tags' => array( 'external-executor', 'queue', 'lease', 'fencing', 'completion', 'browser', 'acceptance' ),
+				'provider' => 'remote-work-queue',
+				'status_ability' => self::WORK_QUEUE_ABILITY,
+				'local_surface' => '',
+				'remote_ability' => self::WORK_COMPLETE_ABILITY,
+				'authority_surface' => 'mad4b-enrollment',
+				'executor' => 'external_browser_agent',
+				'remote_mode' => 'leased_semantic_work_completion',
+				'remote_caller_role' => 'external_executor',
 				'production_policy' => 'deny',
 				'human_decision_required' => false,
 			),
@@ -263,6 +347,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'context',
 				'executor' => 'wordpress_native',
 				'remote_mode' => 'durable_multi_observation_reconciliation',
+				'remote_caller_role' => 'system',
 				'production_policy' => 'governed_source_policy',
 				'human_decision_required' => false,
 			),
@@ -276,6 +361,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'mad4b-enrollment',
 				'executor' => 'wordpress_cron_maintenance_worker',
 				'remote_mode' => 'durable_scheduled_operation',
+				'remote_caller_role' => 'operator',
 				'production_policy' => 'deny',
 				'human_decision_required' => false,
 			),
@@ -289,6 +375,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'mad4b-enrollment',
 				'executor' => 'wordpress_native',
 				'remote_mode' => 'postcondition_only_reconciliation',
+				'remote_caller_role' => 'operator',
 				'production_policy' => 'deny',
 				'human_decision_required' => false,
 			),
@@ -302,6 +389,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'mad4b-enrollment',
 				'executor' => 'wordpress_native',
 				'remote_mode' => 'exact_candidate_binding',
+				'remote_caller_role' => 'owner',
 				'production_policy' => 'deny',
 				'human_decision_required' => true,
 			),
@@ -315,6 +403,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'mad4b-enrollment',
 				'executor' => 'wordpress_native',
 				'remote_mode' => 'exact_plan_composite_convergence',
+				'remote_caller_role' => 'owner',
 				'production_policy' => 'deny',
 				'human_decision_required' => true,
 			),
@@ -328,6 +417,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'mad4b-read',
 				'executor' => 'wordpress_native',
 				'remote_mode' => 'read_only_diagnostic',
+				'remote_caller_role' => 'operator',
 				'production_policy' => 'read_only',
 				'human_decision_required' => false,
 			),
@@ -341,6 +431,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'mad4b-write',
 				'executor' => 'wordpress_native',
 				'remote_mode' => 'exact_reversible_probe',
+				'remote_caller_role' => 'owner',
 				'production_policy' => 'deny',
 				'human_decision_required' => true,
 			),
@@ -354,6 +445,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'authority_surface' => 'mad4b-write',
 				'executor' => 'wordpress_native',
 				'remote_mode' => 'owner_governed_canary',
+				'remote_caller_role' => 'owner',
 				'production_policy' => 'deny',
 				'human_decision_required' => true,
 			),
@@ -367,7 +459,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$builtin_operation_ids = array_fill_keys( array_map( 'sanitize_key', array_keys( $rows ) ), true );
 		$filtered = apply_filters( 'mad4b_scp_remote_operation_catalog', $rows );
 		if ( is_array( $filtered ) ) $rows = array_slice( $filtered, 0, 500, true );
-		$required = array( 'feature_id', 'capability_tags', 'provider', 'remote_ability', 'authority_surface', 'executor', 'remote_mode', 'production_policy', 'human_decision_required', 'registrar_id', 'source_plugin', 'trust_class' );
+		$required = array( 'feature_id', 'capability_tags', 'provider', 'remote_ability', 'authority_surface', 'executor', 'remote_mode', 'remote_caller_role', 'production_policy', 'human_decision_required', 'registrar_id', 'source_plugin', 'trust_class' );
 		$normalized = array();
 		self::$catalog_rejections = array();
 		foreach ( $rows as $key => $row ) {
@@ -385,6 +477,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			}
 			if ( ! in_array( (string) $row['trust_class'], array( 'core', 'certified_addon', 'informational' ), true ) ) {
 				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_trust_class_invalid', 'trust_class' => (string) $row['trust_class'] );
+				continue;
+			}
+			if ( ! in_array( (string) $row['remote_caller_role'], array( 'operator', 'external_executor', 'owner', 'system' ), true ) ) {
+				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_remote_caller_role_invalid', 'remote_caller_role' => (string) $row['remote_caller_role'] );
 				continue;
 			}
 			$is_builtin = isset( $builtin_operation_ids[ $key ] );
@@ -423,7 +519,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			}
 			$row['operation_id'] = $key;
 			$row['catalog_contract'] = self::CONTRACT;
-			$row['catalog_version'] = 2;
+			$row['catalog_version'] = self::CATALOG_VERSION;
 			$row['registration_digest'] = self::operation_registration_digest( $key, $row );
 			$row['remote_registered'] = function_exists( 'wp_has_ability' ) && wp_has_ability( (string) $row['remote_ability'] );
 			$row['manual_only'] = empty( $row['remote_ability'] );
@@ -461,6 +557,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'feature_id' => isset( $row['feature_id'] ) ? (string) $row['feature_id'] : '',
 			'remote_ability' => isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '',
 			'authority_surface' => isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '',
+			'remote_caller_role' => isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '',
 			'executor' => isset( $row['executor'] ) ? (string) $row['executor'] : '',
 			'provider' => isset( $row['provider'] ) ? (string) $row['provider'] : '',
 			'registrar_id' => isset( $row['registrar_id'] ) ? (string) $row['registrar_id'] : '',
