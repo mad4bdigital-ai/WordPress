@@ -213,6 +213,18 @@ $direct_chatgpt_tools = MAD4B_SCP_Servers::chatgpt_tools();
 foreach ( array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ) as $transport_ability ) {
 	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $transport_ability ) ) $fail( 'Governed write transport is not mounted on ChatGPT: ' . $transport_ability );
 }
+
+foreach ( array( MAD4B_SCP_Remote_Operation_Parity::SKILLS_ABILITY, MAD4B_SCP_Remote_Operation_Parity::FRONTEND_SAMPLE_ABILITY ) as $remote_ability ) {
+	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $remote_ability ) || ! in_array( $remote_ability, $direct_chatgpt_tools, true ) ) $fail( 'Bounded remote operation is not directly mounted on ChatGPT: ' . $remote_ability );
+}
+foreach ( array(
+	MAD4B_SCP_Remote_Operation_Parity::PERFORMANCE_INDEX_ABILITY,
+	MAD4B_SCP_Remote_Operation_Parity::PERFORMANCE_RECONCILE_ABILITY,
+	MAD4B_SCP_Remote_Operation_Parity::WORK_CLAIM_ABILITY,
+	MAD4B_SCP_Remote_Operation_Parity::WORK_COMPLETE_ABILITY,
+) as $remote_ability ) {
+	if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $remote_ability ) || in_array( $remote_ability, $direct_chatgpt_tools, true ) ) $fail( 'Non-direct enrollment operation leaked into ChatGPT tools/list: ' . $remote_ability );
+}
 foreach ( $write_tools as $ability ) {
 	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability ) ) $fail( 'Write action is not mounted on mad4b-write: ' . $ability );
 	if ( ! in_array( $ability, $stable_external_writes, true ) ) $fail( 'Runtime-eligible write is missing from the stable logical write catalog: ' . $ability );
