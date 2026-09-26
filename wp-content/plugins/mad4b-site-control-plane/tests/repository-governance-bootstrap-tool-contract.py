@@ -27,7 +27,7 @@ required = [
     '"repos/$Repository/commits/master"',
     '$remoteMaster -ne $currentHead',
     'post_merge_master_verified=true',
-    '$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository:$($ExpectedHead.ToLowerInvariant())"',
+    '$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:${Repository}:$($ExpectedHead.ToLowerInvariant())"',
     '"tools/verify_repository_ruleset_template.py"',
     '"tools/verify_repository_ruleset_restore.py"',
     'canonical ruleset template does not exactly implement repository governance policy',
@@ -74,6 +74,7 @@ required = [
     '$status.ruleset_attestation_verified -ne $true',
     'published owner attestation did not satisfy aggregate repository governance',
     '--require-ruleset-attestation',
+    'Write-Host "APPLY_MAD4B_MASTER_RULESET:${rulesetId}:ready"',
 ]
 
 missing = [needle for needle in required if needle not in script]
@@ -87,9 +88,38 @@ for forbidden in [
     '/environments/$environmentName/variables',
     'UPSERT ENVIRONMENT RULESET ATTESTATION VARIABLE',
     'ruleset_attestation_scope=environment',
+    '$ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository:$($ExpectedHead.ToLowerInvariant())"',
+    'Write-Host "APPLY_MAD4B_MASTER_RULESET:$rulesetId:ready"',
 ]:
     if forbidden in script:
         raise SystemExit("legacy Windows PowerShell empty-array parser returned: " + forbidden)
+
+powershell_parser = r"""
+$tokens = $null
+$errors = $null
+$resolved = (Resolve-Path 'tools/Apply-Mad4bMasterRuleset.ps1').Path
+[void][System.Management.Automation.Language.Parser]::ParseFile(
+    $resolved,
+    [ref]$tokens,
+    [ref]$errors
+)
+if ($errors.Count -ne 0) {
+    $errors | ForEach-Object { [Console]::Error.WriteLine($_.Message) }
+    exit 1
+}
+"""
+parse_proc = subprocess.run(
+    ["pwsh", "-NoLogo", "-NoProfile", "-Command", powershell_parser],
+    text=True,
+    capture_output=True,
+)
+if parse_proc.returncode != 0:
+    raise SystemExit(
+        "Apply-Mad4bMasterRuleset.ps1 failed PowerShell parser validation: "
+        + (parse_proc.stderr or parse_proc.stdout)
+    )
+
+print("powershell_parser=pass")
 
 print("REPOSITORY_GOVERNANCE_BOOTSTRAP_TOOL_CONTRACT: PASS")
 print("empty_ruleset_list=zero_items")
