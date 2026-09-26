@@ -59,8 +59,9 @@ $core = 'mad4b/content-update-post';
 $provider = 'jetsmartfilters/update-filter-meta';
 $read = 'mad4b/site-info';
 $raw = 'mad4b/database-raw-query';
+$enrollment_dispatch = 'mad4b/enrollment-execute';
 MAD4B_SCP_Servers::$external = array( $core, $provider );
-MAD4B_SCP_Servers::$chatgpt = array( $core, $provider, $read );
+MAD4B_SCP_Servers::$chatgpt = array( $core, $provider, $read, $enrollment_dispatch );
 MAD4B_SCP_Servers::$write = array( $core );
 MAD4B_SCP_Staging_Write_Authority::$eligible = array( $core );
 
@@ -96,6 +97,9 @@ mad4b_assert( 'mad4b-write' === $result, 'Core governed write must delegate to m
 
 $result = MAD4B_SCP_Transport_Context::resolve_server_for_ability( 'mad4b-chatgpt', $read );
 mad4b_assert( 'mad4b-chatgpt' === $result, 'Read ability must remain on ChatGPT transport.' );
+
+$result = MAD4B_SCP_Transport_Context::resolve_server_for_ability( 'mad4b-chatgpt', $enrollment_dispatch );
+mad4b_assert( 'mad4b-chatgpt' === $result, 'Bounded enrollment dispatcher must remain on compact ChatGPT transport instead of delegating to mad4b-write.' );
 
 $result = MAD4B_SCP_Transport_Context::resolve_server_for_ability( 'mad4b-chatgpt', $raw );
 mad4b_assert( is_wp_error( $result ), 'Raw SQL must remain unavailable on ChatGPT transport.' );
