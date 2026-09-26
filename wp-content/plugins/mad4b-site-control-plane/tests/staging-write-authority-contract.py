@@ -769,4 +769,17 @@ if _artifact_identity_valid('mad4b-site-control-plane-0.4.0-rc.59-' + ('0' * 40)
 if _artifact_identity_valid('../mad4b-site-control-plane-0.4.0-rc.59-' + _exact_sha, _exact_sha):
     raise SystemExit('unsafe artifact identity characters/prefix must be rejected')
 
+
+# Live Truth must project the bounded AI-review standing delegation metadata
+# consumed by current_write_certification(); otherwise a legitimate configured
+# exception is misclassified as an unexpected prior-approval bypass.
+for required in [
+    "'ai_review_standing_delegation_defined' => ! empty( $approval_policy['ai_review_standing_delegation_defined'] )",
+    "'ai_review_standing_delegation_contract' => isset( $approval_policy['ai_review_standing_delegation_contract'] )",
+    "'ai_review_standing_delegation_configured' => ! empty( $approval_policy['ai_review_standing_delegation_configured'] )",
+    "'remote_write_prior_approval_exceptions' => isset( $approval_policy['remote_write_prior_approval_exceptions'] )",
+]:
+    if required not in live_truth:
+        raise SystemExit('Live Truth lost AI-review approval-policy projection: ' + required)
+
 print('mad4b.staging-write-authority.tenant-profile.v14: PASS')
