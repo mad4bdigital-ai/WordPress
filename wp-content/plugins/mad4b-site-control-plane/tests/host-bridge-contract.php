@@ -34,16 +34,22 @@ final class MAD4B_SCP_Policy {
 	public static function can_mutate(){ return true; }
 }
 final class MAD4B_SCP_Live_Acceptance_Observer {
+	public static $source_commit_sha='';
+	public static $build_fingerprint='';
+	public static $package_manifest_digest='';
 	public static function build_provenance_status(){
 		return array(
 			'runtime_manifest_match'=>true,
 			'stale'=>false,
-			'source_commit_sha'=>str_repeat('1',40),
-			'build_fingerprint'=>str_repeat('2',64),
-			'package_manifest_digest'=>str_repeat('3',64),
+			'source_commit_sha'=>self::$source_commit_sha,
+			'build_fingerprint'=>self::$build_fingerprint,
+			'package_manifest_digest'=>self::$package_manifest_digest,
 		);
 	}
 }
+MAD4B_SCP_Live_Acceptance_Observer::$source_commit_sha=str_repeat('1',40);
+MAD4B_SCP_Live_Acceptance_Observer::$build_fingerprint=str_repeat('2',64);
+MAD4B_SCP_Live_Acceptance_Observer::$package_manifest_digest=str_repeat('3',64);
 final class MAD4B_SCP_Authorization {
 	public static $calls = array();
 	public static function claim_mutation($ability,$server,$provider,$input){
@@ -73,6 +79,7 @@ $check(false === $cap['caller_command_strings_allowed'], 'command strings expose
 $check(false === $cap['production_authorized'], 'Production authority widened');
 $op_ids=array_column($cap['operations'],'operation_id');
 $check(in_array('wordpress_plugin_deploy',$op_ids,true), 'wordpress_plugin_deploy capability missing');
+$check(in_array('wordpress_plugin_rollback',$op_ids,true), 'wordpress_plugin_rollback capability missing');
 
 $plan = MAD4B_SCP_Host_Bridge::plan(array(
 	'operation_id'=>'runtime.status.read',
@@ -171,6 +178,67 @@ $check(false===($runner_deploy['caller_supplied_credentials_allowed'] ?? true), 
 $check(str_repeat('1',40)===$runner_deploy['current']['source_commit_sha'], 'runner deployment plan lost current exact source');
 $check(str_repeat('4',40)===$runner_deploy['candidate']['source_commit_sha'], 'runner deployment plan lost candidate exact source');
 $check(64===strlen($runner_deploy['plan_sha256']), 'runner deployment plan digest missing');
+
+// A successful deploy receipt can produce a bounded explicit rollback plan for
+// fresh-request acceptance failures, without accepting package/path/URL input.
+$source_deploy_job='abababab-1111-4222-8333-cdcdcdcdcdcd';
+$receipt_dir=WP_CONTENT_DIR . '/mad4b-runner/bridge/receipts';
+wp_mkdir_p($receipt_dir);
+$source_receipt=array(
+	'contract'=>'mad4b.tool-execution-receipt.v1',
+	'job_id'=>$source_deploy_job,
+	'operation_id'=>'wordpress_plugin_deploy',
+	'mutation_performed'=>true,
+	'readback_verdict'=>'PASS',
+	'bridge_submission_sha256'=>str_repeat('a',64),
+	'result'=>array(
+		'before_sha256'=>str_repeat('8',64),
+		'after_sha256'=>str_repeat('9',64),
+		'source_commit_sha'=>str_repeat('4',40),
+		'build_fingerprint'=>str_repeat('5',64),
+		'package_manifest_digest'=>str_repeat('6',64),
+		'previous_identity'=>array(
+			'source_commit_sha'=>str_repeat('1',40),
+			'build_fingerprint'=>str_repeat('2',64),
+			'package_manifest_digest'=>str_repeat('3',64),
+			'control_plane_version'=>'0.4.0-rc.58',
+		),
+	),
+);
+file_put_contents($receipt_dir . '/' . $source_deploy_job . '.json', json_encode($source_receipt));
+MAD4B_SCP_Live_Acceptance_Observer::$source_commit_sha=str_repeat('4',40);
+MAD4B_SCP_Live_Acceptance_Observer::$build_fingerprint=str_repeat('5',64);
+MAD4B_SCP_Live_Acceptance_Observer::$package_manifest_digest=str_repeat('6',64);
+
+$rollback_bad=MAD4B_SCP_Host_Bridge::plan(array(
+	'operation_id'=>'wordpress_plugin_rollback',
+	'runner_profile_id'=>'ci-runner',
+	'arguments'=>array(
+		'source_job_id'=>$source_deploy_job,
+		'reason'=>'ci fresh acceptance rollback',
+		'url'=>'https://example.invalid/rollback',
+	),
+));
+$check(is_wp_error($rollback_bad) && 'mad4b_host_plugin_rollback_input_invalid'===$rollback_bad->get_error_code(), 'plugin rollback accepted caller URL/path surface');
+
+$rollback_plan=MAD4B_SCP_Host_Bridge::plan(array(
+	'operation_id'=>'wordpress_plugin_rollback',
+	'runner_profile_id'=>'ci-runner',
+	'arguments'=>array(
+		'source_job_id'=>$source_deploy_job,
+		'reason'=>'ci fresh acceptance rollback',
+	),
+));
+$check(is_array($rollback_plan), 'exact plugin rollback plan failed');
+$runner_rollback=$rollback_plan['arguments']['plan'] ?? array();
+$check('mad4b.host-runner-wordpress-plugin-rollback-plan.v1'===($runner_rollback['contract'] ?? ''), 'runner rollback plan contract missing');
+$check($source_deploy_job===($runner_rollback['source_job_id'] ?? ''), 'runner rollback lost source deployment job');
+$check(str_repeat('4',40)===($runner_rollback['expected_current']['source_commit_sha'] ?? ''), 'runner rollback expected-current identity drifted');
+$check(str_repeat('1',40)===($runner_rollback['restore']['source_commit_sha'] ?? ''), 'runner rollback restore identity drifted');
+$check(str_repeat('8',64)===($runner_rollback['restore_sha256'] ?? ''), 'runner rollback restore digest drifted');
+$check(64===strlen($runner_rollback['source_bridge_receipt_sha256'] ?? ''), 'runner rollback source receipt hash missing');
+$check(false===($runner_rollback['caller_supplied_path_allowed'] ?? true), 'runner rollback plan allowed caller path');
+$check(false===($runner_rollback['caller_supplied_url_allowed'] ?? true), 'runner rollback plan allowed caller URL');
 
 // Write submissions require approval + normal Authorization claim.
 $nested = array(
