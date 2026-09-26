@@ -326,24 +326,18 @@ final class MAD4B_SCP_Abilities {
 		return array( 'contract' => 'mad4b.chatgpt-read-execute.v1', 'ability_name' => $ability_name, 'result' => $result, 'read_only' => true, 'mutation_performed' => false );
 	}
 
-	private function is_staging_write_bootstrap_target( $ability_name ) {
-		return class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
-			&& MAD4B_SCP_Staging_Write_Grant_Reconciliation::ABILITY === trim( (string) $ability_name );
-	}
-
 	private function governed_write_target( $ability_name, $require_runtime_eligible = false ) {
 		$ability_name = trim( (string) $ability_name );
 		if ( '' === $ability_name ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write ability_name is required.' );
 		if ( in_array( $ability_name, array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ), true ) ) return new WP_Error( 'mad4b_write_dispatch_recursion_denied', 'Nested write-dispatch execution is not allowed.' );
-		$bootstrap_target = $this->is_staging_write_bootstrap_target( $ability_name );
-		if ( ! $bootstrap_target && ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::is_external_write_candidate( $ability_name ) ) ) return new WP_Error( 'mad4b_write_dispatch_target_not_cataloged', 'Requested ability is not in the stable governed write catalog.' );
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::is_external_write_candidate( $ability_name ) ) return new WP_Error( 'mad4b_write_dispatch_target_not_cataloged', 'Requested ability is not in the stable governed write catalog.' );
 		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_write_dispatch_target_unavailable', 'Requested write ability is not registered in the current runtime.' );
 		$ability = wp_get_ability( $ability_name );
 		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) return new WP_Error( 'mad4b_write_dispatch_contract_unavailable', 'Requested write ability does not expose the required WordPress Ability contract.' );
 		$meta = $ability->get_meta();
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 		if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) return new WP_Error( 'mad4b_write_dispatch_read_target_denied', 'Only abilities explicitly annotated readonly=false may be selected through mad4b/write-execute.' );
-		if ( $require_runtime_eligible && ! $bootstrap_target && ! in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true ) ) return new WP_Error( 'mad4b_write_dispatch_target_not_runtime_eligible', 'Requested write ability is not runtime-eligible on the dedicated governed write surface.' );
+		if ( $require_runtime_eligible && ! in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true ) ) return new WP_Error( 'mad4b_write_dispatch_target_not_runtime_eligible', 'Requested write ability is not runtime-eligible on the dedicated governed write surface.' );
 		return $ability;
 	}
 
@@ -356,15 +350,8 @@ final class MAD4B_SCP_Abilities {
 
 	public function can_write_dispatch( $input = null ) {
 		if ( ! MAD4B_SCP_Policy::can_admin() ) return false;
+		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_write_dispatch_mutation_disabled', 'Governed mutation authority is not currently ready.' );
 		if ( ! is_array( $input ) || empty( $input['ability_name'] ) ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write ability_name is required.' );
-		$bootstrap_target = $this->is_staging_write_bootstrap_target( $input['ability_name'] );
-		if ( $bootstrap_target ) {
-			$params = array_key_exists( 'input', $input ) ? $input['input'] : null;
-			$permission = MAD4B_SCP_Staging_Write_Grant_Reconciliation::can_execute( $params );
-			if ( is_wp_error( $permission ) || ! $permission ) return $permission;
-		} elseif ( ! MAD4B_SCP_Policy::can_mutate() ) {
-			return new WP_Error( 'mad4b_write_dispatch_mutation_disabled', 'Governed mutation authority is not currently ready.' );
-		}
 		$ability = $this->governed_write_target( $input['ability_name'], true );
 		if ( is_wp_error( $ability ) ) return $ability;
 		return true;
@@ -403,12 +390,6 @@ final class MAD4B_SCP_Abilities {
 		if ( is_wp_error( $ability ) ) return $ability;
 		$schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
 		$meta = $ability->get_meta();
-		$bootstrap_plan = null;
-		if ( $this->is_staging_write_bootstrap_target( $ability_name ) ) {
-			if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan' ) ) return new WP_Error( 'mad4b_write_bootstrap_plan_unavailable', 'Staging write bootstrap plan is unavailable.' );
-			$bootstrap_plan = MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan();
-			if ( is_wp_error( $bootstrap_plan ) ) return $bootstrap_plan;
-		}
 		return array(
 			'contract' => 'mad4b.chatgpt-write-ability-info.v1',
 			'ability_name' => $ability_name,
@@ -419,8 +400,6 @@ final class MAD4B_SCP_Abilities {
 			'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
 			'annotations' => isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array(),
 			'runtime_eligible' => in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true ),
-			'bootstrap_target' => $this->is_staging_write_bootstrap_target( $ability_name ),
-			'bootstrap_plan' => $bootstrap_plan,
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
