@@ -13,6 +13,9 @@ required_parity_markers = [
     "const STATUS_ABILITY = 'mad4b/remote-operation-parity-status';",
     "const DISCOVER_ABILITY = 'mad4b/operation-discover';",
     "const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';",
+    "public static function chatgpt_direct_tools()",
+    "self::SKILLS_ABILITY,",
+    "self::FRONTEND_SAMPLE_ABILITY,",
     "const FRONTEND_SAMPLE_ABILITY = 'mad4b/frontend-performance-sample-run';",
     "const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';",
     "const PERFORMANCE_RECONCILE_ABILITY = 'mad4b/admin-query-performance-reconcile';",
@@ -109,6 +112,9 @@ for ability in [
 
 if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in servers:
     raise SystemExit('bounded enrollment server is not sourced from Remote Operation Parity enrollment inventory')
+
+if "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_tools()" not in servers:
+    raise SystemExit('compact ChatGPT gateway is missing the bounded direct Remote Operation projection')
 
 write_start = servers.find("'mad4b-write' => array(")
 admin_start = servers.find("'mad4b-admin' => array(", write_start + 1)
