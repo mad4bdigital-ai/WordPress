@@ -23,6 +23,7 @@ final class MAD4B_SCP_Host_Bridge {
 		'workspace.file.replace' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
 		'workspace.file.rollback' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
 		'wordpress_plugin_deploy' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
+		'wordpress_plugin_rollback' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
 	);
 
 	public static function boot() {
@@ -105,6 +106,10 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( is_wp_error( $target ) ) return $target;
 		if ( 'wordpress_plugin_deploy' === $operation_id ) {
 			$args = self::wordpress_plugin_deploy_arguments( $args, $profile_id, $target );
+			if ( is_wp_error( $args ) ) return $args;
+		}
+		if ( 'wordpress_plugin_rollback' === $operation_id ) {
+			$args = self::wordpress_plugin_rollback_arguments( $args, $profile_id, $target );
 			if ( is_wp_error( $args ) ) return $args;
 		}
 		$plan = array(
@@ -451,6 +456,102 @@ final class MAD4B_SCP_Host_Bridge {
 		$deploy['plan_sha256'] = self::digest( $deploy );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $deploy['plan_sha256'] ) ) return new WP_Error( 'mad4b_host_plugin_deploy_plan_invalid', 'Unable to bind the exact plugin deployment plan.' );
 		return array( 'plan' => $deploy );
+	}
+
+	private static function wordpress_plugin_rollback_arguments( array $input, $profile_id, array $target ) {
+		$allowed = array( 'source_job_id', 'reason' );
+		if ( array_diff( array_keys( $input ), $allowed ) ) {
+			return new WP_Error( 'mad4b_host_plugin_rollback_input_invalid', 'Plugin rollback accepts only source_job_id and reason; caller paths, URLs, credentials and package identities are forbidden.' );
+		}
+		$source_job_id = strtolower( trim( (string) ( $input['source_job_id'] ?? '' ) ) );
+		$reason = trim( (string) ( $input['reason'] ?? '' ) );
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $source_job_id ) ) return new WP_Error( 'mad4b_host_plugin_rollback_source_invalid', 'Exact successful deployment job id is required.' );
+		if ( strlen( $reason ) < 3 || strlen( $reason ) > 500 ) return new WP_Error( 'mad4b_host_plugin_rollback_reason_invalid', 'Rollback reason must contain 3..500 characters.' );
+
+		$spool = self::spool_root();
+		if ( is_wp_error( $spool ) ) return $spool;
+		$receipt_path = $spool . '/receipts/' . $source_job_id . '.json';
+		if ( is_link( $receipt_path ) || ! is_file( $receipt_path ) ) return new WP_Error( 'mad4b_host_plugin_rollback_receipt_missing', 'Exact deployment receipt is unavailable.' );
+		$receipt = self::read_json( $receipt_path );
+		if ( is_wp_error( $receipt ) ) return $receipt;
+		if ( 'wordpress_plugin_deploy' !== (string) ( $receipt['operation_id'] ?? '' )
+			|| true !== (bool) ( $receipt['mutation_performed'] ?? false )
+			|| 'PASS' !== (string) ( $receipt['readback_verdict'] ?? '' ) ) {
+			return new WP_Error( 'mad4b_host_plugin_rollback_receipt_invalid', 'Source receipt is not a verified successful Control Plane deployment.' );
+		}
+		$result = isset( $receipt['result'] ) && is_array( $receipt['result'] ) ? $receipt['result'] : array();
+		$previous = isset( $result['previous_identity'] ) && is_array( $result['previous_identity'] ) ? $result['previous_identity'] : array();
+		$current_identity = array(
+			'source_commit_sha' => strtolower( trim( (string) ( $result['source_commit_sha'] ?? '' ) ) ),
+			'build_fingerprint' => strtolower( trim( (string) ( $result['build_fingerprint'] ?? '' ) ) ),
+			'package_manifest_digest' => strtolower( trim( (string) ( $result['package_manifest_digest'] ?? '' ) ) ),
+		);
+		$restore_identity = array(
+			'source_commit_sha' => strtolower( trim( (string) ( $previous['source_commit_sha'] ?? '' ) ) ),
+			'build_fingerprint' => strtolower( trim( (string) ( $previous['build_fingerprint'] ?? '' ) ) ),
+			'package_manifest_digest' => strtolower( trim( (string) ( $previous['package_manifest_digest'] ?? '' ) ) ),
+			'control_plane_version' => trim( (string) ( $previous['control_plane_version'] ?? '' ) ),
+		);
+		foreach ( array( $current_identity, $restore_identity ) as $identity ) {
+			if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', (string) $identity['source_commit_sha'] )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $identity['build_fingerprint'] )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $identity['package_manifest_digest'] ) ) {
+				return new WP_Error( 'mad4b_host_plugin_rollback_identity_invalid', 'Rollback receipt package identity is incomplete.' );
+			}
+		}
+		if ( 1 !== preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/', $restore_identity['control_plane_version'] ) ) {
+			return new WP_Error( 'mad4b_host_plugin_rollback_version_invalid', 'Rollback restore version is invalid.' );
+		}
+		$before_sha = strtolower( trim( (string) ( $result['before_sha256'] ?? '' ) ) );
+		$after_sha = strtolower( trim( (string) ( $result['after_sha256'] ?? '' ) ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $before_sha ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $after_sha ) ) {
+			return new WP_Error( 'mad4b_host_plugin_rollback_state_invalid', 'Rollback receipt state identity is invalid.' );
+		}
+
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) {
+			return new WP_Error( 'mad4b_host_plugin_rollback_provenance_unavailable', 'Current exact build provenance is unavailable.' );
+		}
+		$live = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( ! is_array( $live ) || empty( $live['runtime_manifest_match'] ) || ! empty( $live['stale'] ) ) {
+			return new WP_Error( 'mad4b_host_plugin_rollback_current_build_untrusted', 'Current plugin build is not an exact trusted runtime candidate.' );
+		}
+		$live_identity = array(
+			'source_commit_sha' => strtolower( trim( (string) ( $live['source_commit_sha'] ?? '' ) ) ),
+			'build_fingerprint' => strtolower( trim( (string) ( $live['build_fingerprint'] ?? '' ) ) ),
+			'package_manifest_digest' => strtolower( trim( (string) ( $live['package_manifest_digest'] ?? '' ) ) ),
+		);
+		foreach ( $current_identity as $key => $expected ) {
+			if ( ! isset( $live_identity[ $key ] ) || ! hash_equals( (string) $expected, (string) $live_identity[ $key ] ) ) {
+				return new WP_Error( 'mad4b_host_plugin_rollback_current_state_changed', 'Current plugin identity no longer matches the successful deployment receipt.' );
+			}
+		}
+		$receipt_sha = hash_file( 'sha256', $receipt_path );
+		if ( ! is_string( $receipt_sha ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $receipt_sha ) ) return new WP_Error( 'mad4b_host_plugin_rollback_receipt_hash_invalid', 'Rollback source receipt could not be bound.' );
+
+		$rollback = array(
+			'contract' => 'mad4b.host-runner-wordpress-plugin-rollback-plan.v1',
+			'operation_id' => 'wordpress_plugin_rollback',
+			'operation_version' => 1,
+			'runner_profile_id' => (string) $profile_id,
+			'site_uuid' => (string) $target['site_uuid'],
+			'environment' => (string) $target['environment'],
+			'target_fingerprint' => (string) $target['target_fingerprint'],
+			'plugin_slug' => 'mad4b-site-control-plane',
+			'source_job_id' => $source_job_id,
+			'source_bridge_receipt_sha256' => $receipt_sha,
+			'expected_current' => $current_identity,
+			'restore' => $restore_identity,
+			'expected_current_sha256' => $after_sha,
+			'restore_sha256' => $before_sha,
+			'caller_supplied_path_allowed' => false,
+			'caller_supplied_url_allowed' => false,
+			'caller_supplied_credentials_allowed' => false,
+			'production_authorized' => false,
+			'reason' => $reason,
+		);
+		$rollback['plan_sha256'] = self::digest( $rollback );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $rollback['plan_sha256'] ) ) return new WP_Error( 'mad4b_host_plugin_rollback_plan_invalid', 'Unable to bind the exact plugin rollback plan.' );
+		return array( 'plan' => $rollback );
 	}
 
 	private static function validate_plan( array $plan ) {
