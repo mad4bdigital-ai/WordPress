@@ -421,7 +421,25 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				return new WP_Error( 'mad4b_grant_reconcile_binding_context_unavailable', 'Audited candidate-binding context factory is unavailable; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
 			}
 			$binding_plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+			if ( ! is_array( $binding_plan ) ) {
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				return new WP_Error( 'mad4b_grant_reconcile_binding_plan_unavailable', 'Exact binding plan is unavailable after grant convergence; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
+			}
 			$binding_snapshot = isset( $binding_plan['candidate_binding'] ) && is_array( $binding_plan['candidate_binding'] ) ? $binding_plan['candidate_binding'] : array();
+			$binding_identity_matches = isset(
+				$binding_snapshot['current_source_commit_sha'],
+				$binding_snapshot['current_build_fingerprint'],
+				$binding_snapshot['current_package_manifest_digest'],
+				$binding_snapshot['current_artifact_identity']
+			)
+				&& hash_equals( $expected_sha, strtolower( (string) $binding_snapshot['current_source_commit_sha'] ) )
+				&& hash_equals( $expected_fingerprint, strtolower( (string) $binding_snapshot['current_build_fingerprint'] ) )
+				&& hash_equals( $expected_manifest, strtolower( (string) $binding_snapshot['current_package_manifest_digest'] ) )
+				&& hash_equals( $expected_artifact, (string) $binding_snapshot['current_artifact_identity'] );
+			if ( ! $binding_identity_matches ) {
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				return new WP_Error( 'mad4b_grant_reconcile_binding_identity_drift', 'Exact four-part package identity changed before the candidate-binding commit point; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
+			}
 			$binding_context = MAD4B_SCP_Staging_Write_Candidate_Binding::operation_context(
 				$binding_plan,
 				$binding_snapshot,
@@ -435,36 +453,40 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
 				return new WP_Error( 'mad4b_grant_reconcile_binding_context_failed', 'Audited candidate-binding context could not be created after grant reconciliation; newly-created grants and persisted authority state were rolled back.', array( 'code' => $binding_context->get_error_code(), 'rollback_errors' => $rollback ) );
 			}
+			$prepared = MAD4B_SCP_Audit::record( 'mad4b/staging-write-authority-prepared', array(
+				'contract' => self::CONTRACT,
+				'operation_id' => isset( $binding_context['operation_id'] ) ? (string) $binding_context['operation_id'] : '',
+				'plan_sha256' => $current_plan_sha,
+				'agent_public_id' => (string) $agent['public_id'],
+				'source_commit_sha' => $current_sha,
+				'build_fingerprint' => $current_fingerprint,
+				'package_manifest_digest' => $current_manifest,
+				'artifact_identity' => $current_artifact,
+				'write_tool_count' => (int) $binding_plan['write_tool_count'],
+				'exact_grants_existing' => (int) $binding_plan['exact_grants_existing'],
+				'write_inventory_fingerprint' => (string) $binding_plan['write_inventory_fingerprint'],
+				'grant_rows_fingerprint' => (string) $binding_plan['grant_rows_fingerprint'],
+				'candidate_binding_is_commit_point' => true,
+				'production_mutation' => false,
+				'developer_authority_mutation' => false,
+				'breakglass_included' => false,
+			), 'ok' );
+			if ( is_wp_error( $prepared ) ) {
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				return new WP_Error( 'mad4b_grant_reconcile_prepared_audit_failed', 'Prepared authority evidence could not be committed before the candidate-binding commit point; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
+			}
+			// Final commit point: candidate binding commits the exact four-part package
+			// identity and its authorization/completion audit atomically.
+			// No fallible governance mutation is permitted after successful return.
 			$bound = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $current_sha, $current_fingerprint, $binding_context );
 			if ( is_wp_error( $bound ) ) {
 				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
 				return new WP_Error( 'mad4b_grant_reconcile_candidate_binding_failed', 'Exact package candidate could not be bound after grant reconciliation; newly-created grants and persisted authority state were rolled back.', array( 'code' => $bound->get_error_code(), 'rollback_errors' => $rollback ) );
 			}
 			$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
-			if ( empty( $binding['required'] ) || empty( $binding['match'] ) ) {
-				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
-				return new WP_Error( 'mad4b_grant_reconcile_candidate_not_effective', 'Exact package candidate binding is not effective after reconciliation; newly-created grants and persisted authority state were rolled back.', array( 'binding' => $binding, 'rollback_errors' => $rollback ) );
-			}
 			$authority = $bound;
-
-			$completion = MAD4B_SCP_Audit::record( 'mad4b/staging-write-grant-reconciliation-complete', array(
-				'contract' => self::CONTRACT,
-				'agent_public_id' => (string) $agent['public_id'],
-				'created_count' => count( $created_abilities ),
-				'created_abilities' => $created_abilities,
-				'write_tool_count' => (int) $authority['write_tool_count'],
-				'write_inventory_fingerprint' => (string) $authority['write_inventory_fingerprint'],
-				'exact_grants_existing' => isset( $authority['exact_grants_existing'] ) ? (int) $authority['exact_grants_existing'] : 0,
-				'source_commit_sha' => $current_sha,
-				'build_fingerprint' => $current_fingerprint,
-				'plan_sha256' => $current_plan_sha,
-				'candidate_rebound_without_grant_changes' => empty( $created_abilities ),
-				'authority_ready' => true,
-				'production_mutation' => false,
-			), 'ok' );
-			if ( is_wp_error( $completion ) ) {
-				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
-				return new WP_Error( 'mad4b_grant_reconcile_completion_audit_failed', 'Completion audit failed; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
+			if ( empty( $authority['effective'] ) ) {
+				return new WP_Error( 'mad4b_grant_reconcile_post_commit_invariant_failed', 'Candidate-binding transaction committed without the effective=true invariant reported by the binding primitive; no post-commit rollback was attempted.' );
 			}
 
 			return array(
@@ -479,12 +501,19 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'exact_grants_created_by_authority_reconcile' => isset( $authority['exact_grants_created'] ) ? (int) $authority['exact_grants_created'] : 0,
 				'source_commit_sha' => $current_sha,
 				'build_fingerprint' => $current_fingerprint,
+				'package_manifest_digest' => $current_manifest,
+				'artifact_identity' => $current_artifact,
 				'plan_sha256' => $current_plan_sha,
 				'candidate_binding_match' => ! empty( $binding['match'] ),
 				'candidate_rebound_without_grant_changes' => empty( $created_abilities ),
 				'runtime_reconciled' => true,
 				'authority_ready' => true,
+				'effective' => true,
+				'commit_point' => 'candidate_binding_transaction',
 				'completion_audit_recorded' => true,
+				'completion_audit_source' => 'candidate_binding_transaction',
+				'post_commit_governance_mutation' => false,
+				'developer_authority_mutation' => false,
 				'breakglass_included' => false,
 				'production_mutation' => false,
 			);
