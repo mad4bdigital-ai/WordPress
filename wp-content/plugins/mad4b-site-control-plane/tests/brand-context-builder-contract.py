@@ -91,7 +91,6 @@ for marker in [
     "run_scheduled_materialization_reconciliation",
     "remote_reconciliation_ability",
     "materialization_no_effect_ref",
-    "released_verified_no_effect",
     "'safe_to_retry' => true",
     "reconcile_materialization",
     "mad4b_brand_materialization_reconcile_scan_incomplete",
