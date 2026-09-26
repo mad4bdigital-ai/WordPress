@@ -66,6 +66,7 @@ required_parity_markers = [
     "'synchronous_ddl' => false",
     "'pending_external_executor'",
     "'manual_interaction_required' => false",
+    "public static function chatgpt_enrollment_dispatch_abilities()",
     "const SKILLS_LOCK_TTL = 900;",
     "compare_and_swap_option",
     "refresh_skills_lock",
@@ -119,6 +120,22 @@ if "'mad4b/enrollment-execute'" not in servers:
     raise SystemExit('bounded enrollment dispatcher is not projected on ChatGPT')
 if "array( 'mad4b/write-execute', 'mad4b/enrollment-execute' )" not in servers:
     raise SystemExit('bounded enrollment dispatcher is not explicitly guarded as direct mutation transport')
+
+dispatch_section = parity.split("public static function chatgpt_enrollment_dispatch_abilities()", 1)[1].split("public static function register_abilities()", 1)[0]
+for required in [
+    'self::SKILLS_ABILITY',
+    'self::FRONTEND_SAMPLE_ABILITY',
+    'self::PERFORMANCE_INDEX_ABILITY',
+    'self::PERFORMANCE_RECONCILE_ABILITY',
+]:
+    if required not in dispatch_section:
+        raise SystemExit(f'ChatGPT enrollment dispatcher lost bounded initiator: {required}')
+for forbidden in [
+    'self::WORK_CLAIM_ABILITY',
+    'self::WORK_COMPLETE_ABILITY',
+]:
+    if forbidden in dispatch_section:
+        raise SystemExit(f'external executor lease ability leaked into ChatGPT enrollment dispatcher: {forbidden}')
 
 for ability in [
     'mad4b/reconcile-managed-skills',
