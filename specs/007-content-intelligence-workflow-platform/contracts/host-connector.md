@@ -151,3 +151,42 @@ The bridge must make `execution_location` explicit:
 - recovery_runner.
 
 This prevents an operator or client from mistaking “requested through WordPress” for “executed inside WordPress”.
+
+
+## WordPress package deployment
+
+The semantic operation `wordpress_plugin_deploy` is the deployment-connector implementation for the Control Plane handoff. It is a reversible Host Write, not generic filesystem or shell access.
+
+The caller supplies package identity only:
+
+- exact source commit SHA;
+- build fingerprint;
+- package-manifest digest;
+- exact Control Plane archive SHA-256;
+- Control Plane version;
+- deterministic General Distribution artifact identity;
+- bounded reason.
+
+The caller MUST NOT supply a filesystem path, download URL, credential, executable, command, archive member, plugin slug or target directory.
+
+Package bytes enter through a separately governed deployment connector and are staged under the enrolled Host Runner profile's fixed `package_staging` zone at a directory derived from the exact source commit SHA. Staging bytes grant no authority.
+
+Before mutation the Host Runner MUST verify:
+
+- the enrolled Staging target/profile and runner/executor fingerprints;
+- `install-manifest.json` contract, repository and exact source;
+- `CANONICAL-PACKAGE-RECEIPT.json`;
+- `BUILD-FINGERPRINT.txt` and `PACKAGE-MANIFEST-DIGEST.txt`;
+- the exact archive SHA-256;
+- embedded `MAD4B-BUILD-PROVENANCE.json`;
+- every package file size/hash;
+- an exact archive inventory with no traversal, absolute path, backslash escape or symlink/reparse entry;
+- the currently installed Control Plane package identity immediately before commit.
+
+Apply semantics are fixed:
+
+`verified staged bundle → verified extraction → backup current plugin → atomic directory swap → same-cycle installed-file/provenance readback → durable receipt`.
+
+Any failed postcondition triggers verified rollback to the prior exact plugin tree. If rollback cannot be proven, the job enters recovery-required state and blind retry remains forbidden.
+
+This operation remains Staging-only in the current repository slice. Production Host Authority, generic shell, caller-provided credentials, raw SQL and implicit Production activation are not granted.
