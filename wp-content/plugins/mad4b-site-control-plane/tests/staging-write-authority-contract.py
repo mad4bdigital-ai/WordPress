@@ -197,8 +197,10 @@ if "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" not i
     raise SystemExit('bounded Staging Write Authority step-up projection is missing')
 if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_transport:
     raise SystemExit('single-app Full Staging Authority step-up projection is missing')
-if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $narrow_step_up, $full_step_up )" not in chatgpt_transport:
-    raise SystemExit('direct ChatGPT mutation transport must be limited to write-execute plus the two guarded authority composites')
+if "$step_up = array_merge( $narrow_step_up, $full_step_up )" not in chatgpt_transport:
+    raise SystemExit('bounded and full authority step-ups must be composed explicitly')
+if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" not in chatgpt_transport:
+    raise SystemExit('direct ChatGPT mutation transport must be limited to write-execute plus the composed guarded authority step-ups')
 for bootstrap_ability in (
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
@@ -326,7 +328,8 @@ for marker in [
     "$registry->ability_names( 'admin' )",
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
-    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $narrow_step_up, $full_step_up )",
+    "$step_up = array_merge( $narrow_step_up, $full_step_up )",
+    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
     "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
