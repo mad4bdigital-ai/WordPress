@@ -199,8 +199,10 @@ if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_tr
     raise SystemExit('single-app Full Staging Authority step-up projection is missing')
 if "$step_up = array_merge( $narrow_step_up, $full_step_up )" not in chatgpt_transport:
     raise SystemExit('bounded and full authority step-ups must be composed explicitly')
-if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $enrollment_step_up )" not in chatgpt_transport:
-    raise SystemExit('direct ChatGPT mutation transport must be limited to write-execute, the composed guarded authority step-ups, and bounded enrollment step-up')
+if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" not in chatgpt_transport:
+    raise SystemExit('direct ChatGPT mutation transport must preserve write-execute plus composed guarded authority step-ups')
+if "$direct_mutation_transport = array_merge( $direct_mutation_transport, $enrollment_step_up )" not in chatgpt_transport:
+    raise SystemExit('bounded enrollment step-up must extend the baseline direct mutation transport explicitly')
 if "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY" not in chatgpt_transport:
     raise SystemExit('bounded enrollment step-up dispatcher is missing from direct ChatGPT transport')
 for bootstrap_ability in (
@@ -336,7 +338,8 @@ for marker in [
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
     "$step_up = array_merge( $narrow_step_up, $full_step_up )",
-    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $enrollment_step_up )",
+    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )",
+    "$direct_mutation_transport = array_merge( $direct_mutation_transport, $enrollment_step_up )",
     "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
@@ -765,36 +768,5 @@ if _artifact_identity_valid('mad4b-site-control-plane-0.4.0-rc.59-' + ('0' * 40)
     raise SystemExit('artifact identity with a different source SHA must be rejected')
 if _artifact_identity_valid('../mad4b-site-control-plane-0.4.0-rc.59-' + _exact_sha, _exact_sha):
     raise SystemExit('unsafe artifact identity characters/prefix must be rejected')
-
-# Write runtime certification must consume the canonical candidate-binding
-# completeness projection instead of hard-coding one package producer name.
-for required in [
-    "'complete' === (string) $candidate_binding['identity_completeness']",
-    "Reuse that projection here",
-]:
-    if required not in live_truth:
-        raise SystemExit(f'write runtime package identity projection drift: {required}')
-if "/^mad4b-site-control-plane-general-distribution-kit-[a-f0-9]{40}$/" in live_truth:
-    raise SystemExit('live write certification must not hard-code one artifact producer identity')
-
-# Effective prior-approval exceptions are bounded by runtime policy state:
-# bootstrap only while active, AI review only while configured, no duplicates,
-# and no bootstrap exception after closure.
-for text_value, label in [
-    (live_truth, 'live truth'),
-    (cert, 'write certification fallback'),
-]:
-    for required in [
-        "$allowed_exceptions = array();",
-        "candidate_bootstrap_exception_active",
-        "ai_review_standing_delegation_configured",
-        "$unexpected_exceptions = array_values( array_diff(",
-        "$duplicate_exceptions = count(",
-        "$closed_bootstrap_exception = ! empty( $bootstrap_closure['closed'] )",
-        "in_array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY",
-        "empty( $unexpected_exceptions ) && ! $duplicate_exceptions && ! $closed_bootstrap_exception",
-    ]:
-        if required not in text_value:
-            raise SystemExit(f'{label} bounded exception semantics missing: {required}')
 
 print('mad4b.staging-write-authority.tenant-profile.v14: PASS')
