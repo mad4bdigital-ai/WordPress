@@ -4,6 +4,7 @@ root = Path(__file__).resolve().parents[1]
 parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
 abilities = (root / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+oauth = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 perf = (root / 'includes' / 'class-mad4b-scp-admin-query-performance.php').read_text(encoding='utf-8')
 generalization = (root.parents[2] / 'specs' / '007-content-intelligence-workflow-platform' / 'contracts' / 'generalization-rules.md').read_text(encoding='utf-8')
@@ -11,6 +12,8 @@ contract = (root.parents[2] / 'specs' / '007-content-intelligence-workflow-platf
 
 required_parity_markers = [
     "const CONTRACT = 'mad4b.remote-operation-parity.v1';",
+    "const CATALOG_VERSION = 3;",
+    "const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';",
     "const STATUS_ABILITY = 'mad4b/remote-operation-parity-status';",
     "const DISCOVER_ABILITY = 'mad4b/operation-discover';",
     "const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';",
@@ -40,9 +43,12 @@ required_parity_markers = [
     "'remote_mode'",
     "'production_policy'",
     "'human_decision_required'",
+    "'remote_caller_role'",
+    "registration_remote_caller_role_invalid",
+    "array( 'operator', 'external_executor', 'owner', 'system' )",
     "apply_filters( 'mad4b_scp_remote_operation_catalog', $rows )",
     "$row['catalog_contract'] = self::CONTRACT;",
-    "$row['catalog_version'] = 2;",
+    "$row['catalog_version'] = self::CATALOG_VERSION;",
     "'registration_digest'",
     "'registrar_id'",
     "'source_plugin'",
@@ -71,6 +77,13 @@ required_parity_markers = [
     "refresh_skills_lock",
     "mad4b_remote_skill_lock_reclaim_raced",
     "mad4b_remote_skill_lock_heartbeat_raced",
+    "'external_executor_work_completion' => array(",
+    "'remote_ability' => self::WORK_COMPLETE_ABILITY",
+    "'remote_mode' => 'leased_semantic_work_completion'",
+    "did_action( 'wp_abilities_api_init' ) > 0",
+    "foreach ( self::catalog() as $row )",
+    "public static function operator_enrollment_abilities()",
+    "public static function operation_for_ability( $ability_name )",
 ]
 for marker in required_parity_markers:
     if marker not in parity:
@@ -104,6 +117,8 @@ for ability in [
     'mad4b/frontend-performance-sample-run',
     'mad4b/admin-query-performance-apply',
     'mad4b/admin-query-performance-reconcile',
+    'mad4b/remote-operation-work-claim',
+    'mad4b/remote-operation-work-complete',
 ]:
     if ability not in parity:
         raise SystemExit(f'{ability} missing from Remote Operation Parity enrollment inventory')
@@ -115,16 +130,34 @@ for marker in [
     "'mad4b/enrollment-discover'",
     "'mad4b/enrollment-info'",
     "'mad4b/enrollment-execute'",
+    "governed_enrollment_operation",
     "governed_enrollment_target",
     "can_enrollment_dispatch",
-    "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()",
+    "MAD4B_SCP_Remote_Operation_Parity::operator_enrollment_abilities()",
+    "MAD4B_SCP_Remote_Operation_Parity::operation_for_ability",
     "mad4b_enrollment_dispatch_target_not_allowlisted",
     "mad4b_enrollment_dispatch_recursion_denied",
+    "mad4b_enrollment_dispatch_target_surface_mismatch",
+    "mad4b_enrollment_dispatch_caller_role_denied",
+    "mad4b_enrollment_dispatch_human_decision_denied",
+    "mad4b_enrollment_dispatch_target_production_denied",
     "mad4b_enrollment_dispatch_surface_mismatch",
     "mad4b_enrollment_dispatch_contract_mismatch",
     "mad4b_enrollment_dispatch_generic_admin_denied",
     "mad4b_enrollment_dispatch_production_denied",
+    "mad4b_enrollment_dispatch_registration_drift",
+    "mad4b_enrollment_dispatch_policy_drift",
     "mad4b_enrollment_dispatch_schema_drift",
+    "expected_registration_digest",
+    "expected_dispatch_policy_digest",
+    "expected_input_schema_sha256",
+    "enrollment_dispatch_policy_digest",
+    "AUTHORITY_STEP_UP_SCOPE",
+    "verified_bearer_has_scope",
+    "verified_bearer_client_is",
+    "CHATGPT_CIMD_CLIENT_ID",
+    "mutation_evidence_source",
+    "target_result",
     "'authority_surface' => 'mad4b-enrollment'",
     "'production_mutation_allowed' => false",
 ]:
@@ -140,23 +173,57 @@ for marker in [
     if marker not in servers:
         raise SystemExit(f'compact ChatGPT Enrollment projection invariant missing: {marker}')
 
-enrollment_target = abilities.split("private function governed_enrollment_target(", 1)[1].split("public function can_enrollment_dispatch(", 1)[0]
-if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in enrollment_target:
-    raise SystemExit("Enrollment dispatcher target allowlist is not sourced exclusively from Remote Operation Parity")
+enrollment_operation = abilities.split("private function governed_enrollment_operation(", 1)[1].split("private function enrollment_dispatch_policy_digest(", 1)[0]
+if "MAD4B_SCP_Remote_Operation_Parity::operator_enrollment_abilities()" not in enrollment_operation:
+    raise SystemExit("ChatGPT Enrollment dispatcher must use the operator-only Remote Operation Parity inventory")
 for forbidden in [
+    "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()",
     "MAD4B_SCP_Servers::core_tools( 'mad4b-enrollment' )",
     "MAD4B_SCP_Servers::external_write_tools()",
     "MAD4B_SCP_Full_Staging_Authority",
     "MAD4B_SCP_Developer_Authority",
 ]:
-    if forbidden in enrollment_target:
-        raise SystemExit(f'Enrollment dispatcher target widened beyond bounded parity inventory: {forbidden}')
+    if forbidden in enrollment_operation:
+        raise SystemExit(f'Enrollment operator allowlist widened beyond bounded operator parity inventory: {forbidden}')
 
 enrollment_permission = abilities.split("public function can_enrollment_dispatch(", 1)[1].split("public function enrollment_discover(", 1)[0]
 if "MAD4B_SCP_Policy::can_mutate()" in enrollment_permission:
     raise SystemExit("Enrollment dispatcher must not depend on normal governed-write mutation readiness")
-if "MAD4B_SCP_Remote_Operation_Parity::can_execute(" not in enrollment_permission:
-    raise SystemExit("Enrollment dispatcher must reuse Remote Operation Parity bearer/profile/Staging authority checks")
+for required in [
+    "MAD4B_SCP_Remote_Operation_Parity::can_execute(",
+    "verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )",
+    "verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )",
+    "MAD4B_SCP_Policy::can_breakglass()",
+    "MAD4B_MCP_BREAKGLASS_ENABLED",
+]:
+    if required not in enrollment_permission:
+        raise SystemExit(f'Enrollment dispatcher authority hardening missing: {required}')
+
+claim_catalog = parity.split("'external_executor_work_claim' => array(", 1)[1].split("'external_executor_work_completion' => array(", 1)[0]
+complete_catalog = parity.split("'external_executor_work_completion' => array(", 1)[1].split("'brand_context_materialization_reconciliation' => array(", 1)[0]
+skills_catalog = parity.split("'managed_skills_reconciliation' => array(", 1)[1].split("'frontend_performance_sampling' => array(", 1)[0]
+frontend_catalog = parity.split("'frontend_performance_sampling' => array(", 1)[1].split("'external_executor_work_claim' => array(", 1)[0]
+if "'remote_caller_role' => 'external_executor'" not in claim_catalog or "'remote_caller_role' => 'external_executor'" not in complete_catalog:
+    raise SystemExit('external browser work claim/completion must remain external-executor scoped')
+if "'remote_caller_role' => 'operator'" not in skills_catalog or "'remote_caller_role' => 'operator'" not in frontend_catalog:
+    raise SystemExit('operator-requested enrollment operations lost operator caller role')
+
+for marker in [
+    "private static function provider_for_enrollment_catalog_ability",
+    "if ( 'mad4b-enrollment' === $server_id )",
+    "self::provider_for_enrollment_catalog_ability( $ability_name )",
+    "'certified_addon' !== $trust",
+]:
+    if marker not in servers:
+        raise SystemExit(f'enrollment provider attribution invariant missing: {marker}')
+
+for marker in [
+    "authority_step_up_scope_available",
+    "'mad4b/enrollment-execute'",
+    "MAD4B_SCP_Servers::core_tools( 'mad4b-chatgpt' )",
+]:
+    if marker not in oauth:
+        raise SystemExit(f'OAuth enrollment step-up advertisement invariant missing: {marker}')
 
 core_write = servers.split("private static function core_write_candidates()", 1)[1].split("private static function catalog_cacheable()", 1)[0]
 for dispatcher in [
