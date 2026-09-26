@@ -402,7 +402,8 @@ for marker in [
     "Configured language coverage",
     "generation evidence freshness",
     "single effective Brand Authority",
-    "provider-native MAD4B identity",\n    "does not depend on enumerating the whole Context source",
+    "provider-native MAD4B identity",
+    "does not depend on enumerating the whole Context source",
 ]:
     if marker not in skill_text:
         raise SystemExit(f"Brand Context Builder Skill missing instruction: {marker}")
