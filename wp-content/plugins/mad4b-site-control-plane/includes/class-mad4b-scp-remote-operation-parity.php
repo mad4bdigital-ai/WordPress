@@ -901,27 +901,60 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$job = MAD4B_SCP_Remote_Work_Queue::get_job( (string) $input['job_id'] );
 		if ( is_wp_error( $job ) ) return $job;
 		if ( 'frontend_performance_sampling' !== ( isset( $job['operation_id'] ) ? (string) $job['operation_id'] : '' ) ) return new WP_Error( 'mad4b_remote_work_completion_operation_unsupported', 'This remote work completion verifier does not support the requested semantic operation.' );
+
 		$payload = isset( $job['payload'] ) && is_array( $job['payload'] ) ? $job['payload'] : array();
 		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
 		$current_count = isset( $performance['evaluation_window']['sample_count'] ) ? (int) $performance['evaluation_window']['sample_count'] : 0;
 		$required = isset( $payload['requested_samples'] ) ? max( 1, (int) $payload['requested_samples'] ) : 1;
-		$probe_hash = isset( $payload['probe_hash'] ) ? strtolower( trim( (string) $payload['probe_hash'] ) ) : '';
+		$frontend_probe_hash = isset( $payload['probe_hash'] ) ? strtolower( trim( (string) $payload['probe_hash'] ) ) : '';
 		$claimed_at = isset( $job['claimed_at'] ) ? (string) $job['claimed_at'] : '';
-		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $probe_hash ) || '' === $claimed_at ) {
-			return new WP_Error( 'mad4b_remote_work_probe_binding_missing', 'Remote browser work lacks an exact probe identity or authoritative claim timestamp.' );
+
+		$request = get_option( self::BROWSER_REQUEST_OPTION, array() );
+		$request_job_id = is_array( $request ) && isset( $request['work_job_id'] ) ? (string) $request['work_job_id'] : '';
+		$request_probe_hash = is_array( $request ) && isset( $request['probe_hash'] ) ? strtolower( trim( (string) $request['probe_hash'] ) ) : '';
+		$probe_binding_valid = (
+			1 === preg_match( '/^[a-f0-9]{64}$/', $frontend_probe_hash )
+			&& '' !== $claimed_at
+			&& '' !== $request_job_id
+			&& hash_equals( (string) $input['job_id'], $request_job_id )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $request_probe_hash )
+			&& hash_equals( $frontend_probe_hash, $request_probe_hash )
+		);
+		if ( ! $probe_binding_valid ) {
+			return new WP_Error(
+				'mad4b_remote_work_probe_binding_missing',
+				'Remote browser work lacks an exact probe identity, authoritative claim timestamp, or matching persisted browser request.',
+				array(
+					'frontend_probe_hash' => $frontend_probe_hash,
+					'probe_hash' => $request_probe_hash,
+					'claimed_at' => $claimed_at,
+					'request_work_job_id' => $request_job_id,
+				)
+			);
 		}
-		$matched = self::matched_frontend_probe_samples( $performance, $probe_hash, $claimed_at );
+
+		$probe_hash = $frontend_probe_hash;
+		$matched = self::matched_frontend_probe_samples( $performance, $frontend_probe_hash, $claimed_at );
 		if ( $matched < $required ) return new WP_Error(
 			'mad4b_remote_work_evidence_not_observed',
 			'External executor completion is denied until current-build Frontend telemetry independently observes the exact claimed probe samples.',
-			array( 'required_probe_samples' => $required, 'observed_probe_samples' => $matched, 'telemetry_sample_count' => $current_count, 'probe_hash' => $probe_hash )
+			array(
+				'required_probe_samples' => $required,
+				'observed_probe_samples' => $matched,
+				'telemetry_sample_count' => $current_count,
+				'frontend_probe_hash' => $frontend_probe_hash,
+				'probe_hash' => $probe_hash,
+				'claimed_at' => $claimed_at,
+			)
 		);
+
 		$result = MAD4B_SCP_Remote_Work_Queue::complete(
 			(string) $input['job_id'],
 			(string) $input['executor_id'],
 			(string) $input['lease_token'],
 			array(
 				'verification' => 'query_monitor_frontend_probe_telemetry',
+				'frontend_probe_hash' => $frontend_probe_hash,
 				'probe_hash' => $probe_hash,
 				'claimed_at' => $claimed_at,
 				'required_probe_samples' => $required,
@@ -931,22 +964,30 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			)
 		);
 		if ( is_wp_error( $result ) ) return $result;
-		$request = get_option( self::BROWSER_REQUEST_OPTION, array() );
-		if ( is_array( $request ) && isset( $request['work_job_id'] ) && hash_equals( (string) $request['work_job_id'], (string) $input['job_id'] ) ) {
-			$request['status'] = 'observed';
-			$request['work_job_status'] = 'completed';
-			$request['observed_probe_samples'] = $matched;
-			$request['observed_sample_delta'] = $matched;
-			$request['evidence_ready'] = true;
-			$request['telemetry_sample_count'] = $current_count;
-			$request['completed_at'] = gmdate( 'c' );
-			self::persist_browser_request( $request );
+
+		$request['status'] = 'observed';
+		$request['work_job_status'] = 'completed';
+		$request['frontend_probe_hash'] = $frontend_probe_hash;
+		$request['probe_hash'] = $probe_hash;
+		$request['observed_probe_samples'] = $matched;
+		$request['observed_sample_delta'] = $matched;
+		$request['evidence_ready'] = true;
+		$request['telemetry_sample_count'] = $current_count;
+		$request['completed_at'] = gmdate( 'c' );
+		if ( ! self::persist_browser_request( $request ) ) {
+			return new WP_Error(
+				'mad4b_remote_work_completion_request_persist_failed',
+				'Verified remote browser completion could not be durably read back from the persisted browser request.'
+			);
 		}
+
 		$audit = self::audit( self::WORK_COMPLETE_ABILITY, array(
 			'job_id' => (string) $input['job_id'],
 			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
 			'observed_probe_samples' => $matched,
+			'frontend_probe_hash' => $frontend_probe_hash,
 			'probe_hash' => $probe_hash,
+			'claimed_at' => $claimed_at,
 		) );
 		return is_wp_error( $audit ) ? $audit : $result;
 	}
