@@ -536,6 +536,30 @@ if "candidate_binding_status()" not in effective_body:
 if "current_authority_status()" in effective_body:
     raise SystemExit('authority effective() may not recursively rebuild Live Truth/write inventory')
 
+# Live write certification must consume the canonical candidate-binding identity
+# rather than requiring the outer GitHub General Distribution artifact name.
+for marker in [
+    "'identity_completeness'",
+    "'complete' ===",
+    "! empty( $candidate_binding['match'] )",
+    "array_diff( $exceptions, $bounded_exceptions )",
+    "MAD4B_SCP_Context_Authority::ai_review_catalog_eligible()",
+    "MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY",
+]:
+    if marker not in live_truth:
+        raise SystemExit(f'live write certification missing post-reconcile truth invariant: {marker}')
+
+if "mad4b-site-control-plane-general-distribution-kit-" in live_truth:
+    raise SystemExit('live runtime package identity must not be coupled to the outer GitHub artifact name')
+
+for marker in [
+    "array_diff( $approval_exceptions, $bounded_exceptions )",
+    "MAD4B_SCP_Context_Authority::ai_review_catalog_eligible()",
+    "MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY",
+]:
+    if marker not in cert:
+        raise SystemExit(f'fallback write certification missing bounded standing-exception invariant: {marker}')
+
 for marker in [
     "runtime_authority_candidate_not_reconciled",
     "'contract' => 'mad4b.governed-write-candidate-bootstrap-closure.v1'",
