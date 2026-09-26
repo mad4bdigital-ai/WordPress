@@ -125,6 +125,8 @@ for marker in [
     "wpml_active_languages",
     "pll_languages_list",
     "query_posts_for_language",
+    "$args['lang'] = $language",
+    "$wpml_language_filter",
     "rendered_frontend_evidence",
     "generation_evidence_digests",
     "generation_evidence_status",
