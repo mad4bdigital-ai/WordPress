@@ -54,6 +54,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 		if ( 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_grant_reconcile_plan_staging_only', 'Grant reconciliation planning is Staging-only.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_grant_reconcile_plan_profile_not_exact', 'Current origin and URLs must exactly match the enrolled Site Profile.' );
 		if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_grant_reconcile_plan_write_disabled', 'Governed write must already be enabled.' );
+		if ( 'https' !== strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_https_required', 'Remote Write Authority planning requires HTTPS.' );
 		if ( 'chatgpt-governed-write' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_canonical_agent_required', 'Planning is limited to the canonical profile-owned governed-write agent.' );
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_subject_not_enrolled', 'The authenticated administrator is not enrolled in this Site Profile.' );
