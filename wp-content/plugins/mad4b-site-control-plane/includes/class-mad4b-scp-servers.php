@@ -49,7 +49,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/site-info', 'mad4b/site-profile-status',
 				'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute',
 				'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute',
-				'mad4b/enrollment-execute',
+				'mad4b/enrollment-info', 'mad4b/enrollment-execute',
 				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status',
 				'mad4b/plugin-package-plan',
 				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix',
