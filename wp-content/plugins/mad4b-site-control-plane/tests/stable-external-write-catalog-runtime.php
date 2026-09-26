@@ -106,4 +106,106 @@ mad4b_assert( 'mad4b.mcp-transport-context.v3' === $status['contract'], 'Transpo
 mad4b_assert( 'stable_unified_catalog_fail_closed_execution' === $status['chatgpt_write_discovery_model'], 'Unified fail-closed discovery model status missing.' );
 mad4b_assert( empty( $status['credential_material_stored'] ), 'Transport status must never claim credential persistence.' );
 
-echo "mad4b.stable-external-write-catalog.runtime.v2: PASS\n";
+// Bounded enrollment dispatcher: the compact ChatGPT surface may execute only
+// the explicit parity allowlist and must preserve target Ability execution.
+final class MAD4B_Test_Ability {
+    private $name;
+    private $meta;
+    private $allow;
+    public $execute_count = 0;
+    public $last_input = null;
+    public function __construct( $name, $meta, $allow = true ) { $this->name = $name; $this->meta = $meta; $this->allow = (bool) $allow; }
+    public function get_name() { return $this->name; }
+    public function get_label() { return 'Test ' . $this->name; }
+    public function get_description() { return 'Bounded test ability.'; }
+    public function get_category() { return 'mad4b-governance'; }
+    public function get_input_schema() { return array( 'type' => 'object', 'additionalProperties' => true ); }
+    public function get_output_schema() { return array( 'type' => 'object', 'additionalProperties' => true ); }
+    public function get_meta() { return $this->meta; }
+    public function execute( $input = null ) {
+        $this->execute_count++;
+        $this->last_input = $input;
+        if ( ! $this->allow ) return new WP_Error( 'target_permission_denied', 'Underlying target permission denied.' );
+        return array( 'ok' => true, 'input' => $input );
+    }
+}
+
+$mad4b_test_abilities = array();
+function wp_get_ability( $name ) {
+    global $mad4b_test_abilities;
+    return isset( $mad4b_test_abilities[ $name ] ) ? $mad4b_test_abilities[ $name ] : null;
+}
+function wp_has_ability( $name ) { return null !== wp_get_ability( $name ); }
+
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-remote-operation-parity.php';
+
+$enrollment_meta = array(
+    'mcp' => array(
+        'surface' => 'enrollment',
+        'generic_remote_admin' => false,
+        'production_mutation_allowed' => false,
+    ),
+    'annotations' => array(
+        'readonly' => false,
+        'destructive' => false,
+        'idempotent' => true,
+    ),
+);
+
+$skills_ability = new MAD4B_Test_Ability( MAD4B_SCP_Remote_Operation_Parity::SKILLS_ABILITY, $enrollment_meta, true );
+$mad4b_test_abilities[ MAD4B_SCP_Remote_Operation_Parity::SKILLS_ABILITY ] = $skills_ability;
+
+$allowed = MAD4B_SCP_Remote_Operation_Parity::chatgpt_enrollment_dispatch_abilities();
+mad4b_assert( 4 === count( $allowed ), 'Compact enrollment dispatcher allowlist size drifted.' );
+mad4b_assert( in_array( MAD4B_SCP_Remote_Operation_Parity::SKILLS_ABILITY, $allowed, true ), 'Managed Skills reconciliation missing from enrollment dispatcher.' );
+mad4b_assert( ! in_array( MAD4B_SCP_Remote_Operation_Parity::WORK_CLAIM_ABILITY, $allowed, true ), 'External work lease claim leaked into compact enrollment dispatcher.' );
+mad4b_assert( ! in_array( MAD4B_SCP_Remote_Operation_Parity::WORK_COMPLETE_ABILITY, $allowed, true ), 'External work completion leaked into compact enrollment dispatcher.' );
+
+$info = MAD4B_SCP_Remote_Operation_Parity::enrollment_info( array( 'ability_name' => MAD4B_SCP_Remote_Operation_Parity::SKILLS_ABILITY ) );
+mad4b_assert( ! is_wp_error( $info ), 'Allowlisted enrollment info unexpectedly failed.' );
+mad4b_assert( ! empty( $info['bounded_dispatch'] ), 'Enrollment info lost bounded-dispatch marker.' );
+
+$payload = array( 'confirmation' => 'RECONCILE MANAGED SKILLS', 'expected_source_commit_sha' => str_repeat( 'a', 40 ) );
+$executed = MAD4B_SCP_Remote_Operation_Parity::enrollment_execute( array(
+    'ability_name' => MAD4B_SCP_Remote_Operation_Parity::SKILLS_ABILITY,
+    'input' => $payload,
+) );
+mad4b_assert( ! is_wp_error( $executed ), 'Allowlisted enrollment execution unexpectedly failed.' );
+mad4b_assert( 1 === $skills_ability->execute_count, 'Dispatcher did not invoke WP_Ability::execute exactly once.' );
+mad4b_assert( $payload === $skills_ability->last_input, 'Dispatcher mutated the target Ability input.' );
+mad4b_assert( ! empty( $executed['bounded_dispatch'] ), 'Dispatcher success omitted bounded marker.' );
+mad4b_assert( empty( $executed['production_mutation_allowed'] ), 'Dispatcher must never claim Production mutation authority.' );
+
+$denied = MAD4B_SCP_Remote_Operation_Parity::enrollment_execute( array(
+    'ability_name' => 'mad4b/database-raw-query',
+    'input' => array(),
+) );
+mad4b_assert( is_wp_error( $denied ) && 'mad4b_enrollment_dispatch_target_denied' === $denied->get_error_code(), 'Raw SQL did not fail at the enrollment dispatcher allowlist.' );
+
+$denied = MAD4B_SCP_Remote_Operation_Parity::enrollment_execute( array(
+    'ability_name' => 'mad4b/staging-write-candidate-bind',
+    'input' => array(),
+) );
+mad4b_assert( is_wp_error( $denied ) && 'mad4b_enrollment_dispatch_target_denied' === $denied->get_error_code(), 'Candidate binding leaked into compact enrollment dispatcher.' );
+
+$bad_meta = $enrollment_meta;
+$bad_meta['mcp']['surface'] = 'write';
+$performance_ability = new MAD4B_Test_Ability( MAD4B_SCP_Remote_Operation_Parity::PERFORMANCE_INDEX_ABILITY, $bad_meta, true );
+$mad4b_test_abilities[ MAD4B_SCP_Remote_Operation_Parity::PERFORMANCE_INDEX_ABILITY ] = $performance_ability;
+$denied = MAD4B_SCP_Remote_Operation_Parity::enrollment_execute( array(
+    'ability_name' => MAD4B_SCP_Remote_Operation_Parity::PERFORMANCE_INDEX_ABILITY,
+    'input' => array(),
+) );
+mad4b_assert( is_wp_error( $denied ) && 'mad4b_enrollment_dispatch_target_contract_mismatch' === $denied->get_error_code(), 'Surface drift did not fail closed before target execution.' );
+mad4b_assert( 0 === $performance_ability->execute_count, 'Contract-mismatched target was executed.' );
+
+$permission_denied = new MAD4B_Test_Ability( MAD4B_SCP_Remote_Operation_Parity::PERFORMANCE_RECONCILE_ABILITY, $enrollment_meta, false );
+$mad4b_test_abilities[ MAD4B_SCP_Remote_Operation_Parity::PERFORMANCE_RECONCILE_ABILITY ] = $permission_denied;
+$denied = MAD4B_SCP_Remote_Operation_Parity::enrollment_execute( array(
+    'ability_name' => MAD4B_SCP_Remote_Operation_Parity::PERFORMANCE_RECONCILE_ABILITY,
+    'input' => array(),
+) );
+mad4b_assert( is_wp_error( $denied ) && 'target_permission_denied' === $denied->get_error_code(), 'Dispatcher failed to preserve underlying Ability permission failure.' );
+mad4b_assert( 1 === $permission_denied->execute_count, 'Underlying Ability permission path was not invoked exactly once.' );
+
+echo "mad4b.stable-external-write-catalog.runtime.v3: PASS\n";
