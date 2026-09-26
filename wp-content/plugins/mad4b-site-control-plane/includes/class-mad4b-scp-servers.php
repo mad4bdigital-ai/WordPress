@@ -61,6 +61,7 @@ final class MAD4B_SCP_Servers {
 					'mad4b/multi-authority-registry-status',
 					'mad4b/site-profile-feature-reenroll',
 					'mad4b/site-profile-write-enable',
+					'mad4b/staging-write-grant-reconciliation-plan',
 					'mad4b/staging-write-grant-reconcile',
 					'mad4b/staging-write-candidate-bind',
 					'mad4b/staging-write-candidate-binding-audit',
@@ -451,17 +452,30 @@ final class MAD4B_SCP_Servers {
 			return $tools;
 		}
 
-		$step_up = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
+		$narrow_read = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
+			? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()
+			: array();
+		$narrow_step_up = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
+			? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()
+			: array();
+		$full_read = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
+			? MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()
+			: array();
+		$full_step_up = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
 			? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()
 			: array();
-		$bootstrap = array(
-			'mad4b/build-provenance-status',
-			'mad4b/staging-write-candidate-binding-audit',
+		$bootstrap = array_merge(
+			array(
+				'mad4b/build-provenance-status',
+				'mad4b/staging-write-candidate-binding-audit',
+			),
+			$narrow_read,
+			$narrow_step_up,
+			$full_read,
+			$full_step_up
 		);
-		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) {
-			$bootstrap = array_merge( $bootstrap, MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools(), $step_up );
-		}
 		$candidates = array_merge( $core, $bootstrap );
+		$step_up = array_merge( $narrow_step_up, $full_step_up );
 		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up );
 
 		$tools = array();
@@ -507,6 +521,8 @@ final class MAD4B_SCP_Servers {
 		$candidates = array_merge(
 			self::core_tools( 'mad4b-read' ),
 			self::core_tools( 'mad4b-chatgpt' ),
+			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools() : array(),
+			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools() : array(),
 			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools() : array(),
 			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools() : array(),
 			self::chatgpt_enrollment_candidates(),
@@ -707,7 +723,7 @@ final class MAD4B_SCP_Servers {
 
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
 		if ( self::chatgpt_unified_catalog_enabled() ) {
-			$chatgpt_description = 'Exact enrolled Staging governed gateway with one compact app catalog. Read/write universes remain available through governed discovery/info/dispatch. Low-level enrollment mutations stay internal; the composite Full Staging Authority apply appears only as a temporary plan-bound step-up tool when the exact current plan is ready and unblocked. Breakglass and Raw SQL remain excluded.';
+			$chatgpt_description = 'Exact enrolled Staging governed gateway with one compact app catalog. Read/write universes remain available through governed discovery/info/dispatch. Low-level enrollment mutations stay internal; bounded Write Authority convergence and Full Staging Authority apply are projected only as guarded plan-bound step-up tools. Breakglass and Raw SQL remain excluded.';
 		} else {
 			$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT governed gateway with compact read/write discovery transports. Provider writes remain fail-closed until runtime eligible, exactly granted and approved. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
 		}

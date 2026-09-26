@@ -285,8 +285,17 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		$authorization_source = sanitize_key( (string) $authorization_source );
 		$authorization_contract = trim( (string) $authorization_contract );
 		$confirmation = (string) $confirmation;
+		$grant_reconciliation_contract = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
+			? (string) MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONTRACT
+			: '';
+		$grant_reconciliation_confirmation = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
+			? (string) MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONFIRMATION
+			: '';
 		$authorization_valid = ( 'binding_only_mcp' === $authorization_source && self::CONTRACT === $authorization_contract && self::CONFIRMATION === $confirmation )
-			|| ( 'grant_reconciliation' === $authorization_source && 'mad4b.staging-write-grant-reconciliation.v1' === $authorization_contract && 'RECONCILE EXACT STAGING WRITE GRANTS' === $confirmation );
+			|| ( 'grant_reconciliation' === $authorization_source
+				&& '' !== $grant_reconciliation_contract
+				&& $grant_reconciliation_contract === $authorization_contract
+				&& $grant_reconciliation_confirmation === $confirmation );
 		if ( ! $authorization_valid ) return new WP_Error( 'mad4b_candidate_bind_authorization_source_invalid', 'Candidate binding authorization source is invalid.' );
 		$pre_bind_persisted_binding = self::audit_binding_snapshot( $binding );
 		$reviewed_previous_binding = is_array( $reviewed_previous_binding )

@@ -108,7 +108,10 @@ for marker in [
     "foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface )",
     "self::core_tools( 'mad4b-enrollment' )",
     "private static function chatgpt_internal_enrollment_mutations()",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
     "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
+    "$step_up = array_merge( $narrow_step_up, $full_step_up )",
     "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )",
     'self::external_write_tools()',
     "'mad4b/database-raw-query' === $ability_name",
@@ -119,10 +122,10 @@ for marker in [
 # Low-level enrollment mutations remain present only as internal primitives and
 # must be removed from both direct ChatGPT tools/list and logical user discovery.
 chatgpt_tools_body = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
+assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in chatgpt_tools_body, 'bounded convergence step-up projection is missing from ChatGPT transport'
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
-    "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
 ]:
     assert low_level not in chatgpt_tools_body, f'low-level enrollment mutation leaked into direct ChatGPT catalog: {low_level}'
@@ -142,7 +145,7 @@ assert 'self::chatgpt_internal_enrollment_mutations()' in logical_enrollment
 # The non-unified fallback is also a minimal transport and must never
 # restore heavy filesystem/database schemas or Breakglass to tools/list.
 assert 'if ( ! self::chatgpt_unified_catalog_enabled() )' in servers
-fallback = servers.split('if ( ! self::chatgpt_unified_catalog_enabled() )', 1)[1].split('$bootstrap = array(', 1)[0]
+fallback = servers.split('if ( ! self::chatgpt_unified_catalog_enabled() )', 1)[1].split("$narrow_read = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )", 1)[0]
 for marker in [
     "$tools = array_values( array_diff( $core, $breakglass, array( 'mad4b/database-raw-query' ) ) )",
     "array_unique( array_map( 'strval', $tools ) )",
