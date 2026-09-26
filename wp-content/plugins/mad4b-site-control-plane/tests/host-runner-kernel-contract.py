@@ -7,6 +7,7 @@ import importlib.util
 import json
 import tempfile
 import uuid
+import zipfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -34,19 +35,143 @@ if set(runner.OPERATIONS) != {
     "package.integrity.verify",
     "workspace.file.replace",
     "workspace.file.rollback",
+    "wordpress_plugin_deploy",
 }:
     raise SystemExit("Host Runner kernel operation registry widened unexpectedly")
 writes = {op for op, row in runner.OPERATIONS.items() if row.get("risk") != "read_only"}
-if writes != {"workspace.file.replace", "workspace.file.rollback"}:
+if writes != {"workspace.file.replace", "workspace.file.rollback", "wordpress_plugin_deploy"}:
     raise SystemExit("Host Runner kernel widened write operations unexpectedly")
 for write_operation in sorted(writes):
-    if runner.OPERATIONS[write_operation].get("zones") != ["runner_workspace"]:
-        raise SystemExit(f"Host Runner write escaped dedicated runner workspace: {write_operation}")
+    expected_zones = (
+        ["plugin_root", "package_staging"]
+        if write_operation == "wordpress_plugin_deploy"
+        else ["runner_workspace"]
+    )
+    if runner.OPERATIONS[write_operation].get("zones") != expected_zones:
+        raise SystemExit(f"Host Runner write escaped its named zones: {write_operation}")
     if runner.OPERATIONS[write_operation].get("requires_plan") is not True:
         raise SystemExit(f"Host Runner write does not require exact plan: {write_operation}")
     if runner.OPERATIONS[write_operation].get("requires_approval") is not True:
         raise SystemExit(f"Host Runner write does not require approval: {write_operation}")
 
+
+
+def write_plugin_fixture(root: Path, source: str, build: str, manifest: str, version: str, marker: str):
+    (root / "includes").mkdir(parents=True, exist_ok=True)
+    files = {
+        "mad4b-site-control-plane.php": f"<?php // {marker}\n".encode(),
+        "includes/health.php": f"<?php return '{marker}';\n".encode(),
+    }
+    for rel, raw in files.items():
+        target = root / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(raw)
+    package_files = [
+        {"path": rel, "bytes": len(raw), "sha256": runner.sha256_bytes(raw)}
+        for rel, raw in sorted(files.items())
+    ]
+    provenance = {
+        "contract": "mad4b.build-provenance.v1",
+        "source_commit_sha": source,
+        "build_fingerprint": build,
+        "package_manifest_digest": manifest,
+        "control_plane_version": version,
+        "package_files": package_files,
+    }
+    (root / "MAD4B-BUILD-PROVENANCE.json").write_text(
+        json.dumps(provenance, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return provenance, files
+
+
+def stage_candidate_bundle(profile, source: str, build: str, manifest: str, version: str, marker: str):
+    staging = Path(profile["package_staging_root"])
+    staging.mkdir(parents=True, exist_ok=True)
+    bundle = staging / source
+    bundle.mkdir()
+    temp_plugin = bundle / "_fixture-plugin"
+    temp_plugin.mkdir()
+    provenance, files = write_plugin_fixture(temp_plugin, source, build, manifest, version, marker)
+    archive_name = f"mad4b-site-control-plane-{version}.zip"
+    archive = bundle / archive_name
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as zf:
+        for rel, raw in sorted(files.items()):
+            zf.writestr(f"{runner.PLUGIN_SLUG}/{rel}", raw)
+        zf.writestr(
+            f"{runner.PLUGIN_SLUG}/MAD4B-BUILD-PROVENANCE.json",
+            (json.dumps(provenance, sort_keys=True, indent=2) + "\n").encode(),
+        )
+    __import__("shutil").rmtree(temp_plugin)
+    archive_sha = runner.sha256_file(archive)
+    receipt = {
+        "contract": "mad4b.deterministic-control-plane-package.v1",
+        "source_commit_sha": source,
+        "build_fingerprint": build,
+        "package_manifest_digest": manifest,
+        "archive_sha256": archive_sha,
+        "control_plane_version": version,
+    }
+    receipt_path = bundle / "CANONICAL-PACKAGE-RECEIPT.json"
+    receipt_path.write_text(json.dumps(receipt, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    install = {
+        "contract": "mad4b.site-control-plane.general-distribution-kit.v1",
+        "repository": "mad4bdigital-ai/WordPress",
+        "commit": source,
+        "build_fingerprint": build,
+        "package_manifest_digest": manifest,
+        "control_plane": {
+            "version": version,
+            "archive": archive_name,
+            "sha256": archive_sha,
+            "provenance_contract": "mad4b.build-provenance.v1",
+        },
+        "canonical_package": {
+            "receipt_sha256": runner.sha256_file(receipt_path),
+        },
+    }
+    (bundle / "install-manifest.json").write_text(
+        json.dumps(install, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (bundle / "BUILD-FINGERPRINT.txt").write_text(build + "\n", encoding="utf-8")
+    (bundle / "PACKAGE-MANIFEST-DIGEST.txt").write_text(manifest + "\n", encoding="utf-8")
+    return {
+        "source_commit_sha": source,
+        "build_fingerprint": build,
+        "package_manifest_digest": manifest,
+        "archive_sha256": archive_sha,
+        "control_plane_version": version,
+        "artifact_identity": f"mad4b-site-control-plane-general-distribution-kit-{source}",
+    }
+
+
+def make_plugin_deploy_plan(profile, current, candidate, reason):
+    plan = {
+        "contract": runner.PLUGIN_DEPLOY_PLAN_CONTRACT,
+        "operation_id": "wordpress_plugin_deploy",
+        "operation_version": runner.OPERATIONS["wordpress_plugin_deploy"]["version"],
+        "runner_profile_id": profile["profile_id"],
+        "site_uuid": profile["site_uuid"],
+        "environment": profile["environment"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "plugin_slug": runner.PLUGIN_SLUG,
+        "bundle_key": candidate["source_commit_sha"],
+        "current": runner._control_plane_identity(current),
+        "candidate": candidate,
+        "active_runtime_observed": True,
+        "backup_before_replace": True,
+        "atomic_replace_required": True,
+        "same_cycle_file_readback_required": True,
+        "rollback_on_failed_readback": True,
+        "caller_supplied_path_allowed": False,
+        "caller_supplied_url_allowed": False,
+        "caller_supplied_credentials_allowed": False,
+        "production_authorized": False,
+        "reason": reason,
+    }
+    plan["plan_sha256"] = runner.plan_digest(plan)
+    return plan
 
 def iso(dt):
     return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -99,9 +224,18 @@ with tempfile.TemporaryDirectory() as td:
     plugin = wp / "wp-content" / "plugins" / "mad4b-site-control-plane"
     plugin.mkdir(parents=True)
     (wp / "wp-config.php").write_text("<?php // runner fixture\n", encoding="utf-8")
-    (plugin / "mad4b-site-control-plane.php").write_text("<?php // runner plugin\n", encoding="utf-8")
-    (plugin / "includes").mkdir()
-    (plugin / "includes" / "health.php").write_text("<?php return true;\n", encoding="utf-8")
+    current_source = "a" * 40
+    current_build = "b" * 64
+    current_manifest = "c" * 64
+    current_version = "0.4.0-rc.58"
+    write_plugin_fixture(
+        plugin,
+        current_source,
+        current_build,
+        current_manifest,
+        current_version,
+        "current-runtime",
+    )
     runner_workspace = wp / "wp-content" / "mad4b-runner" / "workspace"
     runner_workspace.mkdir(parents=True)
 
@@ -339,6 +473,127 @@ with tempfile.TemporaryDirectory() as td:
     except ValueError as exc:
         if "takes no caller-defined paths" not in str(exc):
             raise
+
+    # Exact pre-staged General Distribution bundle deploys the Control Plane with
+    # backup, atomic directory swap, file/provenance readback and durable replay.
+    candidate = stage_candidate_bundle(
+        profile,
+        "d" * 40,
+        "e" * 64,
+        "f" * 64,
+        "0.4.0-rc.59",
+        "candidate-runtime",
+    )
+    deploy_plan = make_plugin_deploy_plan(
+        profile,
+        {
+            "source_commit_sha": current_source,
+            "build_fingerprint": current_build,
+            "package_manifest_digest": current_manifest,
+        },
+        candidate,
+        "exact General Distribution candidate",
+    )
+    deploy_job = make_job(
+        profile,
+        "wordpress_plugin_deploy",
+        {"plan": deploy_plan},
+        plan_sha256=deploy_plan["plan_sha256"],
+        approval_ref="approval:ci-plugin-deploy",
+        authority_ref="ci:plugin-deploy-authority",
+    )
+    deploy_path = tmp / "plugin-deploy.json"
+    deploy_path.write_text(json.dumps(deploy_job), encoding="utf-8")
+    deploy_receipt = runner.run_job(profile_path, deploy_path)
+    assert deploy_receipt["mutation_performed"] is True
+    assert deploy_receipt["readback_verdict"] == "PASS"
+    assert deploy_receipt["result"]["source_commit_sha"] == candidate["source_commit_sha"]
+    assert deploy_receipt["result"]["build_fingerprint"] == candidate["build_fingerprint"]
+    assert deploy_receipt["result"]["package_manifest_digest"] == candidate["package_manifest_digest"]
+    assert deploy_receipt["result"]["activation_state_preserved"] is True
+    installed = runner._installed_control_plane_identity(plugin)
+    assert installed["source_commit_sha"] == candidate["source_commit_sha"]
+    assert installed["build_fingerprint"] == candidate["build_fingerprint"]
+    assert installed["package_manifest_digest"] == candidate["package_manifest_digest"]
+    rollback_dir = plugin.parent / f".{runner.PLUGIN_SLUG}.rollback-{deploy_job['job_id']}"
+    assert rollback_dir.is_dir()
+    deploy_replay = runner.run_job(profile_path, deploy_path)
+    assert deploy_replay["replayed"] is True
+    assert deploy_replay["replay_readback_verdict"] == "PASS"
+
+    # Caller-controlled staged paths/URLs are absent from the semantic input.
+    smuggled_plan = dict(deploy_plan)
+    smuggled_plan["candidate"] = dict(candidate)
+    smuggled_plan["candidate"]["url"] = "https://example.invalid/payload.zip"
+    smuggled_plan["plan_sha256"] = runner.plan_digest(smuggled_plan)
+    smuggled_job = make_job(
+        profile,
+        "wordpress_plugin_deploy",
+        {"plan": smuggled_plan},
+        plan_sha256=smuggled_plan["plan_sha256"],
+        approval_ref="approval:ci-plugin-deploy-smuggled",
+        authority_ref="ci:plugin-deploy-authority",
+    )
+    smuggled_path = tmp / "plugin-deploy-smuggled.json"
+    smuggled_path.write_text(json.dumps(smuggled_job), encoding="utf-8")
+    try:
+        runner.run_job(profile_path, smuggled_path)
+        raise SystemExit("Host Runner accepted caller-smuggled plugin deployment URL")
+    except ValueError:
+        pass
+
+    # A post-swap readback mismatch must restore the previous exact package.
+    second = stage_candidate_bundle(
+        profile,
+        "1" * 40,
+        "2" * 64,
+        "3" * 64,
+        "0.4.0-rc.60",
+        "candidate-runtime-corrupt-readback",
+    )
+    second_plan = make_plugin_deploy_plan(
+        profile,
+        candidate,
+        second,
+        "simulate failed plugin deployment readback",
+    )
+    second_job = make_job(
+        profile,
+        "wordpress_plugin_deploy",
+        {"plan": second_plan},
+        plan_sha256=second_plan["plan_sha256"],
+        approval_ref="approval:ci-plugin-deploy-rollback",
+        authority_ref="ci:plugin-deploy-authority",
+    )
+    second_path = tmp / "plugin-deploy-readback-failure.json"
+    second_path.write_text(json.dumps(second_job), encoding="utf-8")
+    original_installed_identity = runner._installed_control_plane_identity
+
+    def corrupt_live_candidate_readback(root):
+        identity = original_installed_identity(root)
+        if root == plugin and identity["source_commit_sha"] == second["source_commit_sha"]:
+            identity = dict(identity)
+            identity["build_fingerprint"] = "9" * 64
+        return identity
+
+    runner._installed_control_plane_identity = corrupt_live_candidate_readback
+    try:
+        try:
+            runner.run_job(profile_path, second_path)
+            raise SystemExit("Host Runner accepted corrupt plugin deployment readback")
+        except RuntimeError as exc:
+            if "postcondition" not in str(exc):
+                raise
+    finally:
+        runner._installed_control_plane_identity = original_installed_identity
+    restored = runner._installed_control_plane_identity(plugin)
+    assert restored["source_commit_sha"] == candidate["source_commit_sha"]
+    failed_journal = json.loads(
+        (Path(profile["journal_root"]) / f"{second_job['job_id']}.json").read_text(encoding="utf-8")
+    )
+    assert failed_journal["state"] == "ROLLED_BACK_AFTER_FAILURE"
+    assert failed_journal["rollback_verified"] is True
+    assert not (Path(profile["receipt_root"]) / f"{second_job['job_id']}.json").exists()
 
     # Reversible payload budget is lower than the signed envelope budget so base64+plan fit safely.
     try:
