@@ -45,6 +45,7 @@ required_parity_markers = [
     "'remote_mode'",
     "'production_policy'",
     "'human_decision_required'",
+    "'remote_caller_role'",
     "apply_filters( 'mad4b_scp_remote_operation_catalog', $rows )",
     "$row['catalog_contract'] = self::CONTRACT;",
     "$row['catalog_version'] = 2;",
@@ -157,6 +158,8 @@ required_dispatch_markers = [
     "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()",
     "'mad4b-enrollment' !==",
     "human_decision_required",
+    "remote_caller_role",
+    "'operator' !==",
     "'deny' !==",
     "remote_parity_ready",
     "execution_eligible",
@@ -199,6 +202,19 @@ for marker in [
 
 if "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY" not in oauth:
     raise SystemExit('OAuth resource bridge does not advertise authority step-up when enrollment dispatch is available')
+
+claim_catalog = parity.split("'external_executor_work_claim' => array(", 1)[1].split("'external_executor_work_completion' => array(", 1)[0]
+complete_catalog = parity.split("'external_executor_work_completion' => array(", 1)[1].split("'brand_context_materialization_reconciliation' => array(", 1)[0]
+if "'remote_caller_role' => 'external_executor'" not in claim_catalog:
+    raise SystemExit('external work claim must remain external-executor scoped')
+if "'remote_caller_role' => 'external_executor'" not in complete_catalog:
+    raise SystemExit('external work completion must remain external-executor scoped')
+skills_catalog = parity.split("'managed_skills_reconciliation' => array(", 1)[1].split("'frontend_performance_sampling' => array(", 1)[0]
+frontend_catalog = parity.split("'frontend_performance_sampling' => array(", 1)[1].split("'external_executor_work_claim' => array(", 1)[0]
+if "'remote_caller_role' => 'operator'" not in skills_catalog:
+    raise SystemExit('managed Skills reconciliation must remain operator scoped')
+if "'remote_caller_role' => 'operator'" not in frontend_catalog:
+    raise SystemExit('Frontend sample request must remain operator scoped')
 
 for marker in [
     'public static function enqueue_explicit(',
