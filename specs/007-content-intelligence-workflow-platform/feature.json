@@ -191,7 +191,7 @@
     "tools/capture-functional-gap-contract-evidence.py"
   ],
   "implementation_branch_policy": {
-    "contract": "mad4b.feature-implementation-branch-policy.v2",
+    "contract": "mad4b.feature007-implementation-branch-policy.v1",
     "implementation_prefixes": [
       "feat/007-",
       "fix/007-"
