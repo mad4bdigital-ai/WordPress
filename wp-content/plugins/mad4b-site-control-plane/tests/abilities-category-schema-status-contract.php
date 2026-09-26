@@ -20,6 +20,7 @@ function wp_register_ability( $name, $args ) {
 	return true;
 }
 function add_action() { return true; }
+function do_action() { return true; }
 
 final class MAD4B_SCP_Schema {
 	const VERSION = 9;
