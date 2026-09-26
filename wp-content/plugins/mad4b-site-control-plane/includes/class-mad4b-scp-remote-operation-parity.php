@@ -52,15 +52,15 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	}
 
 	/**
-	 * Bounded Enrollment mutations that may be projected directly on the compact
-	 * ChatGPT transport before normal Write Authority is reconciled.
+	 * Bounded Enrollment mutations that the existing compact write dispatcher may
+	 * target before normal Write Authority is reconciled.
 	 *
-	 * Keep this list intentionally narrow. These abilities retain their native
-	 * permission callback, exact-build fencing, confirmation token, Staging-only
-	 * policy, enrolled-subject check and audit semantics. Low-level enrollment,
-	 * performance/DDL, browser work-queue and authority mutations remain hidden.
+	 * This does not mount a new direct MCP mutation tool and does not add the
+	 * operation to mad4b-write. The target retains its native administrator,
+	 * verified-bearer, enrolled-subject, exact-origin, Staging-only, exact-build
+	 * and confirmation checks. Keep this list intentionally narrow.
 	 */
-	public static function chatgpt_direct_enrollment_abilities() {
+	public static function write_dispatch_bootstrap_abilities() {
 		return array(
 			self::SKILLS_ABILITY,
 		);
