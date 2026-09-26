@@ -163,7 +163,8 @@ for forbidden in [
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
 require("$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_body, "bounded and full authority step-ups must be composed explicitly")
-require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_body, "normal governed writes plus the composed guarded authority step-ups must be the only direct mutations")
+require("MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_tools()" in chatgpt_body, "bounded remote operations must be explicitly projected into compact ChatGPT tools/list")
+require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $direct_remote_operations )" in chatgpt_body, "direct mutations must be limited to governed write dispatch, guarded authority step-ups and explicitly bounded remote operations")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_body, "unified enrolled Staging tools/list must include read-only full authority diagnostics")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_body, "unified enrolled Staging tools/list must project the composite apply only through the guarded step-up method")
 for low_level in [
@@ -173,6 +174,15 @@ for low_level in [
     "'mad4b/staging-write-candidate-bind'",
 ]:
     require(low_level not in chatgpt_body, f"low-level enrollment mutation leaked into direct ChatGPT tools/list: {low_level}")
+
+for forbidden_remote in [
+    "self::PERFORMANCE_INDEX_ABILITY",
+    "self::PERFORMANCE_RECONCILE_ABILITY",
+    "self::WORK_CLAIM_ABILITY",
+    "self::WORK_COMPLETE_ABILITY",
+]:
+    direct_method = (ROOT / "includes" / "class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8").split("public static function chatgpt_direct_tools()", 1)[1].split("public static function register_abilities()", 1)[0]
+    require(forbidden_remote not in direct_method, f"unsafe remote operation leaked into compact ChatGPT direct tools: {forbidden_remote}")
 
 # The full logical capability universe remains intact behind discovery.
 full = SERVERS.split("public static function chatgpt_full_catalog_candidates()", 1)[1].split("public static function is_chatgpt_full_catalog_candidate", 1)[0]
