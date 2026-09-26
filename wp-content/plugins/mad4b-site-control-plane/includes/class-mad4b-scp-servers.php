@@ -477,7 +477,9 @@ final class MAD4B_SCP_Servers {
 		);
 		$candidates = array_merge( $core, $bootstrap );
 		$step_up = array_merge( $narrow_step_up, $full_step_up );
-		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute', 'mad4b/enrollment-execute' ), $step_up );
+		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up );
+		$direct_mutation_transport[] = 'mad4b/enrollment-execute';
+		$direct_mutation_transport = array_values( array_unique( $direct_mutation_transport ) );
 
 		$tools = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
