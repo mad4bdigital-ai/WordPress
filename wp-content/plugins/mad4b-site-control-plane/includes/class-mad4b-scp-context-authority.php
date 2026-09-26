@@ -1584,6 +1584,7 @@ final class MAD4B_SCP_Context_Authority {
 				$asset['generation_evidence_fresh_at_review'] = is_array( $generation_freshness ) ? ! empty( $generation_freshness['fresh'] ) : false;
 				$asset['generation_evidence_stale_override'] = $stale_override;
 				$asset['generation_evidence_reviewed_current_digest'] = is_array( $generation_freshness ) && isset( $generation_freshness['current_evidence_digest'] ) ? (string) $generation_freshness['current_evidence_digest'] : '';
+				$asset['generation_evidence_stale_override_actor'] = $stale_override ? ( isset( $actor['actor_id'] ) ? (string) $actor['actor_id'] : ( isset( $actor['actor_login'] ) ? (string) $actor['actor_login'] : 'wp_admin' ) ) : '';
 			}
 			$records[ $asset_id ] = $asset;
 			$sources = self::raw_sources();
@@ -1723,7 +1724,7 @@ final class MAD4B_SCP_Context_Authority {
 				if ( array_key_exists( 'content_complete', $asset ) && empty( $asset['content_complete'] ) ) $reasons[] = 'content_incomplete';
 				if ( 'brand_authority' !== ( isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '' ) ) $reasons[] = 'wrong_authority_class';
 				if ( 'approved' !== $review_status ) $reasons[] = 'review_not_approved'; elseif ( ! $review_exact ) $reasons[] = 'review_not_exactly_bound';
-				$generation_fresh = null; $stale_override = ! empty( $asset['generation_evidence_stale_override'] );
+				$generation_fresh = null; $stale_override = ! empty( $asset['generation_evidence_stale_override'] ); $stale_override_bound = false;
 				$generated = ! empty( $asset['generated_artifact_id'] ) || 'brand_context_builder' === ( isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '' );
 				if ( $generated && in_array( $category, array( 'tone_of_voice', 'editorial_guidelines' ), true ) ) {
 					$digest = isset( $asset['generation_evidence_digest'] ) ? strtolower( trim( (string) $asset['generation_evidence_digest'] ) ) : '';
@@ -1735,7 +1736,10 @@ final class MAD4B_SCP_Context_Authority {
 					}
 					$freshness = $freshness_cache[ $key ];
 					$generation_fresh = is_array( $freshness ) && ! empty( $freshness['fresh'] );
-					if ( ! $generation_fresh && ! $stale_override ) $reasons[] = 'generation_evidence_stale';
+					$current_generation_digest = is_array( $freshness ) && isset( $freshness['current_evidence_digest'] ) ? (string) $freshness['current_evidence_digest'] : '';
+					$override_digest = isset( $asset['generation_evidence_reviewed_current_digest'] ) ? (string) $asset['generation_evidence_reviewed_current_digest'] : '';
+					$stale_override_bound = $stale_override && '' !== $current_generation_digest && '' !== $override_digest && hash_equals( $current_generation_digest, $override_digest );
+					if ( ! $generation_fresh && ! $stale_override_bound ) $reasons[] = 'generation_evidence_stale';
 				}
 				$row = array(
 					'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
@@ -1745,6 +1749,7 @@ final class MAD4B_SCP_Context_Authority {
 					'review_binding_exact' => $review_exact,
 					'generation_evidence_fresh' => $generation_fresh,
 					'generation_evidence_stale_override' => $stale_override,
+					'generation_evidence_stale_override_bound' => $stale_override_bound,
 					'reasons' => $reasons,
 				);
 				$observed[] = $row;
