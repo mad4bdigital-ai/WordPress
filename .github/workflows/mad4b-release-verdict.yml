@@ -128,6 +128,7 @@ jobs:
           expected_files = sorted([
               ".github/workflows/mad4b-feature-boundary-root.yml",
               ".github/workflows/mad4b-release-verdict.yml",
+              ".github/workflows/mad4b-repository-governance.yml",
               "tools/Apply-Mad4bMasterRuleset.ps1",
               "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py",
           ])
@@ -445,6 +446,7 @@ jobs:
           governance_apply_repair_expected_paths = {
               '.github/workflows/mad4b-feature-boundary-root.yml',
               '.github/workflows/mad4b-release-verdict.yml',
+              '.github/workflows/mad4b-repository-governance.yml',
               'tools/Apply-Mad4bMasterRuleset.ps1',
               'wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-tool-contract.py',
           }

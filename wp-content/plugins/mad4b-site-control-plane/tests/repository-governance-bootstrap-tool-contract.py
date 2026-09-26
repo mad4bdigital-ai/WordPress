@@ -6,6 +6,7 @@ import tempfile
 
 script = Path("tools/Apply-Mad4bMasterRuleset.ps1").read_text(encoding="utf-8")
 release_verdict = Path(".github/workflows/mad4b-release-verdict.yml").read_text(encoding="utf-8")
+repository_governance_workflow = Path(".github/workflows/mad4b-repository-governance.yml").read_text(encoding="utf-8")
 feature_boundary_root = Path(".github/workflows/mad4b-feature-boundary-root.yml").read_text(encoding="utf-8")
 
 repair_bootstrap_required = [
@@ -34,6 +35,28 @@ repair_bootstrap_required = [
     "powershell_parser_contract_verified",
     "legacy_ruleset_snapshot_verified",
 ]
+governance_repair_bootstrap_required = [
+    "Verify bounded governance-apply repair bootstrap",
+    "github.event.pull_request.number == 69",
+    "chore/governance-apply-powershell-parse-20260926",
+    "8a0c12ef16023f042def7d42b760cdd847343e8a",
+    "rulesets/23968498?includes_parents=true",
+    "mad4b-governance-repair-public-ruleset.json",
+    "public_ruleset_detail_bound_to_authenticated_identity",
+    "git show \"$BASE_SHA:tools/verify_feature_boundary.py\"",
+    "exact_head_owner_attestation_verified",
+    "governance_apply_repair_bootstrap_ready",
+    "target_governance_activation_still_required_post_merge",
+]
+missing_governance_repair_bootstrap = [
+    needle for needle in governance_repair_bootstrap_required if needle not in repository_governance_workflow
+]
+if missing_governance_repair_bootstrap:
+    raise SystemExit(
+        "governance workflow repair bootstrap contract missing: "
+        + ", ".join(missing_governance_repair_bootstrap)
+    )
+
 missing_repair_bootstrap = [
     needle for needle in repair_bootstrap_required if needle not in release_verdict
 ]
@@ -52,6 +75,7 @@ for forbidden in [
         raise SystemExit("governance-apply repair bootstrap widened: " + forbidden)
 
 print("governance_apply_repair_bootstrap=bounded")
+print("governance_apply_repair_governance_workflow=bounded")
 print("governance_apply_repair_live_snapshot=exact")
 print("governance_apply_repair_bypass_evidence=public+identity_bound")
 print("governance_apply_repair_target_governance_claim=false_until_remote_apply")
