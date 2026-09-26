@@ -12,6 +12,7 @@ final class MAD4B_SCP_Host_Bridge {
 	const CONTRACT = 'mad4b.host-bridge.v1';
 	const PLAN_CONTRACT = 'mad4b.host-operation-plan.v1';
 	const SUBMISSION_CONTRACT = 'mad4b.host-bridge-submission.v1';
+	const RUNNER_CONTRACT = 'mad4b.host-runner.v1';
 	const MAX_JSON_BYTES = 131072;
 
 	private static $booted = false;
@@ -410,7 +411,7 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', strtolower( (string) $deploy['source_commit_sha'] ) ) ) return new WP_Error( 'mad4b_host_plugin_deploy_source_invalid', 'WordPress plugin deployment source commit is invalid.' );
 		$reason = trim( (string) $deploy['reason'] );
 		if ( strlen( $reason ) < 3 || strlen( $reason ) > 500 ) return new WP_Error( 'mad4b_host_plugin_deploy_reason_invalid', 'WordPress plugin deployment reason must contain 3..500 bytes.' );
-		$expected_operation_fingerprint = self::digest( self::$operations['wordpress_plugin_deploy'] );
+		$expected_operation_fingerprint = self::operation_fingerprint( 'wordpress_plugin_deploy' );
 		if ( ! hash_equals( $expected_operation_fingerprint, strtolower( (string) $deploy['operation_fingerprint'] ) ) ) return new WP_Error( 'mad4b_host_plugin_deploy_operation_fingerprint_invalid', 'WordPress plugin deployment operation fingerprint mismatch.' );
 		if ( ! hash_equals( strtolower( (string) $deploy['plan_sha256'] ), self::digest( $deploy ) ) ) return new WP_Error( 'mad4b_host_plugin_deploy_plan_digest_invalid', 'WordPress plugin deployment nested plan digest mismatch.' );
 		return true;
@@ -493,6 +494,17 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( false === $raw || strlen( $raw ) > self::MAX_JSON_BYTES ) return new WP_Error( 'mad4b_host_spool_entry_invalid', 'Host spool entry is invalid.' );
 		$row = json_decode( $raw, true );
 		return is_array( $row ) ? $row : new WP_Error( 'mad4b_host_spool_entry_invalid', 'Host spool entry is not valid JSON.' );
+	}
+
+	private static function operation_fingerprint( $operation_id ) {
+		$operation_id = (string) $operation_id;
+		if ( ! isset( self::$operations[ $operation_id ] ) ) return '';
+		$material = array_merge(
+			array( 'operation_id' => $operation_id ),
+			self::$operations[ $operation_id ],
+			array( 'runner_contract' => self::RUNNER_CONTRACT )
+		);
+		return self::digest( $material );
 	}
 
 	private static function digest( array $value ) {
