@@ -110,6 +110,28 @@ for ability in [
 if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in servers:
     raise SystemExit('bounded enrollment server is not sourced from Remote Operation Parity enrollment inventory')
 
+if "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_enrollment_abilities()" not in servers:
+    raise SystemExit('compact ChatGPT transport is not sourced from the bounded direct Enrollment allowlist')
+if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $direct_enrollment );" not in servers:
+    raise SystemExit('bounded direct Enrollment operations are not admitted through the compact mutation transport allowlist')
+
+direct_start = parity.find('public static function chatgpt_direct_enrollment_abilities()')
+if direct_start < 0:
+    raise SystemExit('bounded direct Enrollment allowlist is missing')
+direct_end = parity.find('\n\t}', direct_start)
+direct_section = parity[direct_start:direct_end] if direct_end > direct_start else ''
+if 'self::SKILLS_ABILITY' not in direct_section:
+    raise SystemExit('Managed Skills reconciliation is missing from the bounded direct Enrollment allowlist')
+for forbidden_direct in [
+    'self::FRONTEND_SAMPLE_ABILITY',
+    'self::PERFORMANCE_INDEX_ABILITY',
+    'self::PERFORMANCE_RECONCILE_ABILITY',
+    'self::WORK_CLAIM_ABILITY',
+    'self::WORK_COMPLETE_ABILITY',
+]:
+    if forbidden_direct in direct_section:
+        raise SystemExit(f'unsafe Enrollment operation leaked onto compact ChatGPT direct transport: {forbidden_direct}')
+
 write_start = servers.find("'mad4b-write' => array(")
 admin_start = servers.find("'mad4b-admin' => array(", write_start + 1)
 write_section = servers[write_start:admin_start] if write_start >= 0 and admin_start > write_start else ''
