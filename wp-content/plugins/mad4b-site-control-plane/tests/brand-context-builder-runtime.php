@@ -6,6 +6,12 @@
  * and no provider/network mutation.
  */
 $root = dirname( __DIR__ );
+if ( ! function_exists( 'sanitize_key' ) ) {
+	function sanitize_key( $key ) {
+		$key = strtolower( (string) $key );
+		return preg_replace( '/[^a-z0-9_\-]/', '', $key );
+	}
+}
 require_once $root . '/includes/class-mad4b-scp-brand-context-builder.php';
 
 $fail = static function ( $message ) {
@@ -45,6 +51,22 @@ $check( 16 === (int) $quality['nonempty_count'], 'nonempty count drifted' );
 $check( (int) $quality['primary_expression_count'] >= 8, 'primary expression threshold not met' );
 $check( (int) $quality['core_content_sample_count'] >= 6, 'core content threshold not met' );
 $check( 4 === (int) $quality['seo_sample_count'], 'SEO sample count drifted' );
+$check( 4 === (int) $quality['post_seo_sample_count'], 'post-level SEO sample count drifted' );
+$check( 0 === (int) $quality['seo_configuration_sample_count'], 'unexpected SEO configuration samples in post-only fixture' );
+
+$config_only = $good;
+foreach ( $config_only as $index => $row ) $config_only[ $index ]['seo'] = array();
+$config_structure = $structure;
+$config_structure['seo_configuration'] = array(
+	array( 'provider' => 'rank_math', 'scope' => 'post_type', 'post_type' => 'page', 'field' => 'title', 'value' => '%title%' ),
+	array( 'provider' => 'rank_math', 'scope' => 'post_type', 'post_type' => 'page', 'field' => 'description', 'value' => '%excerpt%' ),
+	array( 'provider' => 'rank_math', 'scope' => 'post_type', 'post_type' => 'post', 'field' => 'title', 'value' => '%title%' ),
+	array( 'provider' => 'rank_math', 'scope' => 'post_type', 'post_type' => 'tours-and-activities', 'field' => 'title', 'value' => '%title%' ),
+);
+$config_quality = $invoke( 'evidence_quality', array( $config_only, array( 'ar', 'en' ), 1, $config_structure ) );
+$check( 0 === (int) $config_quality['post_seo_sample_count'], 'config-only SEO fixture unexpectedly counted post overrides' );
+$check( 3 === (int) $config_quality['seo_configuration_sample_count'], 'SEO configuration evidence did not count distinct provider/post-type samples' );
+$check( 3 === (int) $config_quality['seo_sample_count'], 'SEO configuration evidence did not contribute to editorial SEO readiness' );
 $check( empty( $quality['language_coverage']['unavailable'] ), 'configured locale unexpectedly unavailable' );
 
 $bad = array();
@@ -61,6 +83,65 @@ $bad_quality = $invoke( 'evidence_quality', array( $bad, array( 'ar', 'en' ), 1 
 $check( empty( $bad_quality['quality_gate_pass'] ), 'utility-heavy/empty evidence incorrectly passed' );
 $check( in_array( 'empty_sample_ratio_above_maximum', $bad_quality['blockers'], true ), 'empty ratio blocker missing' );
 $check( in_array( 'configured_language_coverage_incomplete', $bad_quality['blockers'], true ), 'language coverage blocker missing' );
+
+$groups = $invoke( 'partition_live_post_types', array( array(
+	'page',
+	'post',
+	'tours-and-activities',
+	'tour-rates',
+	'elementor_library',
+	'custom-story',
+) ) );
+$check( in_array( 'page', $groups['core'], true ) && in_array( 'tours-and-activities', $groups['core'], true ), 'core content post types were not prioritized' );
+$check( in_array( 'tour-rates', $groups['utility'], true ) && in_array( 'elementor_library', $groups['utility'], true ), 'utility post types were not isolated' );
+$check( in_array( 'custom-story', $groups['secondary'], true ), 'unknown public content type did not remain secondary evidence' );
+
+$selection_fixture = array();
+foreach ( array( 'en' => 12, 'es' => 6, 'it' => 6 ) as $lang => $count ) {
+	for ( $i = 0; $i < $count; ++$i ) {
+		$selection_fixture[] = array(
+			'content_id' => 'core:' . $lang . ':' . $i,
+			'post_type' => 0 === $i % 2 ? 'page' : 'tours-and-activities',
+			'language' => $lang,
+			'text' => str_repeat( 'high quality brand expression ', 8 ),
+			'seo' => array(),
+		);
+	}
+}
+foreach ( array( 'ar', 'de', 'fr' ) as $lang ) {
+	$selection_fixture[] = array(
+		'content_id' => 'utility:' . $lang,
+		'post_type' => 'elementor_library',
+		'language' => $lang,
+		'text' => str_repeat( 'localized navigation expression ', 6 ),
+		'seo' => array(),
+	);
+}
+for ( $i = 0; $i < 20; ++$i ) {
+	$selection_fixture[] = array(
+		'content_id' => 'empty:' . $i,
+		'post_type' => 'tour-rates',
+		'language' => 'en',
+		'text' => '',
+		'seo' => array(),
+	);
+}
+$selection = $invoke( 'stratify_live_records', array( $selection_fixture ) );
+$check( 24 === count( $selection ), 'bounded evidence selection did not fill the expected sample window' );
+$selected_languages = array();
+$selected_empty = 0;
+$selected_utility = 0;
+$selected_core = 0;
+foreach ( $selection as $row ) {
+	$selected_languages[ $row['language'] ] = true;
+	if ( '' === trim( (string) $row['text'] ) ) ++$selected_empty;
+	if ( in_array( $row['post_type'], array( 'tour-rates', 'elementor_library', 'elementskit_content', 'elementskit_template', 'nav_menu_item' ), true ) ) ++$selected_utility;
+	if ( in_array( $row['post_type'], array( 'page', 'tours-and-activities' ), true ) ) ++$selected_core;
+}
+foreach ( array( 'ar', 'de', 'en', 'es', 'fr', 'it' ) as $lang ) $check( isset( $selected_languages[ $lang ] ), 'best-per-language evidence reservation lost locale ' . $lang );
+$check( 0 === $selected_empty, 'empty utility evidence displaced available non-empty evidence' );
+$check( $selected_utility <= 3, 'utility evidence dominated a sample with sufficient core content' );
+$check( $selected_core >= 21, 'core evidence did not dominate the bounded sample' );
 
 $authority_a = array(
 	array( 'asset_id' => 'strategy', 'category' => 'brand_strategy', 'content_hash' => hash( 'sha256', 'strategy-a' ), 'reviewed_content_hash' => hash( 'sha256', 'strategy-a' ) ),

@@ -15,7 +15,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	const SCAN_PLAN_CONTRACT = 'mad4b.context-source-scan-plan.v1';
 	const MATERIALIZE_CONTRACT = 'mad4b.brand-context-materialization.v1';
 	const ROLLBACK_CONTRACT = 'mad4b.rollback.google-drive-brand-context-create.v1';
-	const BUILDER_SPEC_VERSION = '3';
+	const BUILDER_SPEC_VERSION = '5';
 	const DRAFT_PREFLIGHT_CONTRACT = 'mad4b.brand-draft-preflight.v1';
 	const MIN_NONEMPTY_SAMPLES = 12;
 	const MIN_PRIMARY_EXPRESSION_SAMPLES = 8;
@@ -269,25 +269,66 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		return $rows;
 	}
 
+	private static function live_record_identity_key( array $record ) {
+		return ( isset( $record['content_id'] ) ? (string) $record['content_id'] : '' )
+			. '|' . ( isset( $record['language'] ) ? (string) $record['language'] : '' )
+			. '|' . ( isset( $record['post_type'] ) ? (string) $record['post_type'] : '' );
+	}
+
 	private static function stratify_live_records( array $records ) {
-		$buckets = array();
+		$records = self::rank_live_records( $records );
+		$selected = array();
+		$selected_keys = array();
+
+		// Preserve configured language visibility without allowing one sparse locale's
+		// utility records to dominate the bounded sample. The best available record
+		// for each observed language is reserved first; remaining slots are filled by
+		// evidence rank, then round-robin language/post-type buckets.
+		$best_by_language = array();
 		foreach ( $records as $record ) {
 			if ( ! is_array( $record ) ) continue;
-			$key = ( isset( $record['language'] ) ? (string) $record['language'] : '' ) . '|' . ( isset( $record['post_type'] ) ? (string) $record['post_type'] : '' );
-			if ( ! isset( $buckets[ $key ] ) ) $buckets[ $key ] = array();
-			$buckets[ $key ][] = $record;
+			$language = sanitize_key( isset( $record['language'] ) ? (string) $record['language'] : '' );
+			if ( '' === $language || isset( $best_by_language[ $language ] ) ) continue;
+			$best_by_language[ $language ] = $record;
 		}
-		ksort( $buckets, SORT_STRING );
-		$selected = array();
-		while ( count( $selected ) < self::MAX_LIVE_SAMPLES ) {
-			$progress = false;
-			foreach ( $buckets as $key => $rows ) {
-				if ( empty( $buckets[ $key ] ) ) continue;
-				$selected[] = array_shift( $buckets[ $key ] );
-				$progress = true;
-				if ( count( $selected ) >= self::MAX_LIVE_SAMPLES ) break;
+		ksort( $best_by_language, SORT_STRING );
+		foreach ( $best_by_language as $record ) {
+			$key = self::live_record_identity_key( $record );
+			if ( isset( $selected_keys[ $key ] ) ) continue;
+			$selected[] = $record;
+			$selected_keys[ $key ] = true;
+			if ( count( $selected ) >= self::MAX_LIVE_SAMPLES ) return $selected;
+		}
+
+		$tiers = array();
+		foreach ( $records as $record ) {
+			if ( ! is_array( $record ) ) continue;
+			$rank = self::live_record_rank( $record );
+			$bucket = ( isset( $record['language'] ) ? (string) $record['language'] : '' ) . '|' . ( isset( $record['post_type'] ) ? (string) $record['post_type'] : '' );
+			if ( ! isset( $tiers[ $rank ] ) ) $tiers[ $rank ] = array();
+			if ( ! isset( $tiers[ $rank ][ $bucket ] ) ) $tiers[ $rank ][ $bucket ] = array();
+			$tiers[ $rank ][ $bucket ][] = $record;
+		}
+		ksort( $tiers, SORT_NUMERIC );
+		foreach ( $tiers as $rank => $buckets ) {
+			ksort( $buckets, SORT_STRING );
+			while ( count( $selected ) < self::MAX_LIVE_SAMPLES ) {
+				$progress = false;
+				foreach ( array_keys( $buckets ) as $bucket ) {
+					while ( ! empty( $buckets[ $bucket ] ) ) {
+						$record = array_shift( $buckets[ $bucket ] );
+						$key = self::live_record_identity_key( $record );
+						if ( isset( $selected_keys[ $key ] ) ) continue;
+						$selected[] = $record;
+						$selected_keys[ $key ] = true;
+						$progress = true;
+						break;
+					}
+					if ( count( $selected ) >= self::MAX_LIVE_SAMPLES ) break;
+				}
+				if ( ! $progress ) break;
 			}
-			if ( ! $progress ) break;
+			if ( count( $selected ) >= self::MAX_LIVE_SAMPLES ) break;
 		}
 		return $selected;
 	}
@@ -338,6 +379,33 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		return $post_types;
 	}
 
+	private static function utility_post_types() {
+		return array( 'tour-rates', 'elementor_library', 'elementskit_content', 'elementskit_template', 'nav_menu_item' );
+	}
+
+	private static function core_post_type( $post_type ) {
+		$post_type = sanitize_key( (string) $post_type );
+		if ( in_array( $post_type, array( 'page', 'post', 'product' ), true ) ) return true;
+		return 1 === preg_match( '/(tour|activit|package|cruise|destination|attraction|city|blog)/', $post_type );
+	}
+
+	private static function partition_live_post_types( array $post_types ) {
+		$groups = array( 'core' => array(), 'secondary' => array(), 'utility' => array() );
+		$utility = self::utility_post_types();
+		foreach ( $post_types as $post_type ) {
+			$post_type = sanitize_key( (string) $post_type );
+			if ( '' === $post_type ) continue;
+			if ( in_array( $post_type, $utility, true ) ) $groups['utility'][] = $post_type;
+			elseif ( self::core_post_type( $post_type ) ) $groups['core'][] = $post_type;
+			else $groups['secondary'][] = $post_type;
+		}
+		foreach ( $groups as $key => $rows ) {
+			$groups[ $key ] = array_values( array_unique( $rows ) );
+			sort( $groups[ $key ], SORT_STRING );
+		}
+		return $groups;
+	}
+
 	private static function query_posts_for_language( array $post_types, $language, $limit ) {
 		$language = sanitize_key( strtolower( (string) $language ) );
 		$args = array(
@@ -364,11 +432,11 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	private static function live_record_rank( array $record ) {
 		$post_type = isset( $record['post_type'] ) ? sanitize_key( (string) $record['post_type'] ) : '';
 		$text = isset( $record['text'] ) ? trim( (string) $record['text'] ) : '';
-		$utility = in_array( $post_type, array( 'tour-rates', 'elementor_library', 'elementskit_content', 'elementskit_template', 'nav_menu_item' ), true );
+		$utility = in_array( $post_type, self::utility_post_types(), true );
 		if ( '' === $text ) return 30;
 		if ( $utility ) return 20;
 		if ( strlen( $text ) < 120 ) return 10;
-		return 0;
+		return self::core_post_type( $post_type ) ? 0 : 5;
 	}
 
 	private static function rank_live_records( array $records ) {
@@ -392,21 +460,39 @@ final class MAD4B_SCP_Brand_Context_Builder {
 
 	private static function evidence_quality( array $records, array $configured_languages, $approved_authority_count, array $structure = array() ) {
 		$sample_count = count( $records );
-		$nonempty = 0; $primary = 0; $core = 0; $seo = 0; $sampled = array();
+		$nonempty = 0; $primary = 0; $core = 0; $seo = 0; $sampled = array(); $rank_distribution = array(); $post_type_distribution = array();
 		foreach ( $records as $row ) {
 			if ( ! is_array( $row ) ) continue;
 			$text = trim( isset( $row['text'] ) ? (string) $row['text'] : '' );
 			$post_type = sanitize_key( isset( $row['post_type'] ) ? (string) $row['post_type'] : '' );
 			$lang = sanitize_key( isset( $row['language'] ) ? (string) $row['language'] : '' );
+			$rank = self::live_record_rank( $row );
 			if ( '' !== $lang ) $sampled[ $lang ] = isset( $sampled[ $lang ] ) ? $sampled[ $lang ] + 1 : 1;
+			if ( '' !== $post_type ) $post_type_distribution[ $post_type ] = isset( $post_type_distribution[ $post_type ] ) ? $post_type_distribution[ $post_type ] + 1 : 1;
+			$rank_key = (string) $rank;
+			$rank_distribution[ $rank_key ] = isset( $rank_distribution[ $rank_key ] ) ? $rank_distribution[ $rank_key ] + 1 : 1;
 			if ( '' !== $text ) ++$nonempty;
-			if ( '' !== $text && strlen( $text ) >= 120 && self::live_record_rank( $row ) < 20 ) ++$primary;
-			if ( '' !== $text && preg_match( '/(page|post|product|tour|activity|package)/', $post_type ) && 'tour-rates' !== $post_type ) ++$core;
+			if ( '' !== $text && strlen( $text ) >= 120 && $rank < 20 ) ++$primary;
+			if ( '' !== $text && self::core_post_type( $post_type ) && ! in_array( $post_type, self::utility_post_types(), true ) ) ++$core;
 			if ( ! empty( $row['seo'] ) ) ++$seo;
 		}
 		ksort( $sampled, SORT_STRING );
+		ksort( $post_type_distribution, SORT_STRING );
+		ksort( $rank_distribution, SORT_NUMERIC );
 		$unavailable = array_values( array_diff( $configured_languages, array_keys( $sampled ) ) );
 		$empty_ratio = $sample_count > 0 ? ( $sample_count - $nonempty ) / $sample_count : 1.0;
+		$seo_configuration_samples = array();
+		foreach ( isset( $structure['seo_configuration'] ) && is_array( $structure['seo_configuration'] ) ? $structure['seo_configuration'] : array() as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$provider = sanitize_key( isset( $row['provider'] ) ? (string) $row['provider'] : '' );
+			$scope = sanitize_key( isset( $row['scope'] ) ? (string) $row['scope'] : '' );
+			$post_type = sanitize_key( isset( $row['post_type'] ) ? (string) $row['post_type'] : '' );
+			if ( '' === $provider || '' === $post_type ) continue;
+			$seo_configuration_samples[ $provider . '|' . $scope . '|' . $post_type ] = true;
+		}
+		$post_seo_sample_count = $seo;
+		$seo_configuration_sample_count = count( $seo_configuration_samples );
+		$seo += $seo_configuration_sample_count;
 		$menu_observed_count = isset( $structure['menu_observed_count'] ) ? max( 0, (int) $structure['menu_observed_count'] ) : count( isset( $structure['menus'] ) && is_array( $structure['menus'] ) ? $structure['menus'] : array() );
 		$menu_unique_count = isset( $structure['menu_unique_count'] ) ? max( 0, (int) $structure['menu_unique_count'] ) : count( isset( $structure['menus'] ) && is_array( $structure['menus'] ) ? $structure['menus'] : array() );
 		$duplicate_structure_ratio = $menu_observed_count > 0 ? max( 0.0, min( 1.0, ( $menu_observed_count - $menu_unique_count ) / $menu_observed_count ) ) : 0.0;
@@ -425,6 +511,10 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'core_content_sample_count' => $core,
 			'empty_ratio' => round( $empty_ratio, 6 ),
 			'seo_sample_count' => $seo,
+			'post_seo_sample_count' => $post_seo_sample_count,
+			'seo_configuration_sample_count' => $seo_configuration_sample_count,
+			'rank_distribution' => $rank_distribution,
+			'post_type_distribution' => $post_type_distribution,
 			'duplicate_structure_ratio' => round( $duplicate_structure_ratio, 6 ),
 			'menu_observed_count' => $menu_observed_count,
 			'menu_unique_count' => $menu_unique_count,
@@ -445,19 +535,38 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		if ( ! $enabled ) return array( 'enabled' => false, 'available' => false, 'semantic_hash' => '' );
 		if ( ! function_exists( 'home_url' ) || ! function_exists( 'wp_remote_get' ) ) return array( 'enabled' => true, 'available' => false, 'semantic_hash' => '', 'reason' => 'wordpress_http_unavailable' );
 		$url = home_url( '/' );
-		$response = wp_remote_get( $url, array( 'timeout' => 5, 'redirection' => 2, 'limit_response_size' => self::MAX_SAMPLE_BYTES * 4 ) );
-		if ( is_wp_error( $response ) ) return array( 'enabled' => true, 'available' => false, 'semantic_hash' => '', 'reason' => $response->get_error_code() );
+		$timeout = 5;
+		$started = microtime( true );
+		$response = wp_remote_get( $url, array( 'timeout' => $timeout, 'redirection' => 2, 'limit_response_size' => self::MAX_SAMPLE_BYTES * 4 ) );
+		$elapsed_ms = round( ( microtime( true ) - $started ) * 1000, 3 );
+		if ( is_wp_error( $response ) ) {
+			return array(
+				'enabled' => true,
+				'available' => false,
+				'semantic_hash' => '',
+				'reason' => 'http_request_failed',
+				'error_code' => $response->get_error_code(),
+				'transport' => 'wp_http_loopback',
+				'timeout_seconds' => $timeout,
+				'elapsed_ms' => $elapsed_ms,
+			);
+		}
 		$code = function_exists( 'wp_remote_retrieve_response_code' ) ? (int) wp_remote_retrieve_response_code( $response ) : 0;
 		$body = function_exists( 'wp_remote_retrieve_body' ) ? (string) wp_remote_retrieve_body( $response ) : '';
 		$text = self::bounded_text( $body, self::MAX_SAMPLE_BYTES );
+		$available = 200 <= $code && $code < 400 && '' !== $text;
 		$semantic = array( 'url' => $url, 'status' => $code, 'text' => $text );
 		return array(
 			'enabled' => true,
-			'available' => 200 <= $code && $code < 400 && '' !== $text,
+			'available' => $available,
 			'url' => $url,
 			'status' => $code,
 			'text' => $text,
 			'semantic_hash' => hash( 'sha256', self::stable_json( $semantic ) ),
+			'reason' => $available ? '' : ( 200 <= $code && $code < 400 ? 'empty_rendered_text' : 'unexpected_http_status' ),
+			'transport' => 'wp_http_loopback',
+			'timeout_seconds' => $timeout,
+			'elapsed_ms' => $elapsed_ms,
 			'observed_at' => gmdate( 'c' ),
 		);
 	}
@@ -618,17 +727,49 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		);
 	}
 
+	private static function seo_evidence_for_post( $post_id ) {
+		$seo = array();
+		if ( ! function_exists( 'get_post_meta' ) ) return $seo;
+		foreach ( array(
+			'rank_math_title',
+			'rank_math_description',
+			'_yoast_wpseo_title',
+			'_yoast_wpseo_metadesc',
+			'_seopress_titles_title',
+			'_seopress_titles_desc',
+			'_genesis_title',
+			'_genesis_description',
+		) as $meta_key ) {
+			$value = get_post_meta( (int) $post_id, $meta_key, true );
+			if ( is_scalar( $value ) && '' !== trim( (string) $value ) ) $seo[ $meta_key ] = self::bounded_text( (string) $value, 500 );
+		}
+		ksort( $seo, SORT_STRING );
+		return $seo;
+	}
+
 	private static function live_content_evidence() {
 		$records = array();
 		if ( ! function_exists( 'get_posts' ) ) return $records;
 		$post_types = self::live_post_types();
 		if ( empty( $post_types ) ) return $records;
+		$groups = self::partition_live_post_types( $post_types );
 		$languages = self::configured_languages();
 		if ( empty( $languages ) ) $languages = array( '' );
 		$per_language = max( 8, (int) ceil( self::MAX_LIVE_CANDIDATES / max( 1, count( $languages ) ) ) );
+		$core_budget = $per_language;
 		$seen = array();
 		foreach ( $languages as $language ) {
-			foreach ( self::query_posts_for_language( $post_types, $language, $per_language ) as $post ) {
+			$language_posts = array();
+			if ( ! empty( $groups['core'] ) ) $language_posts = self::query_posts_for_language( $groups['core'], $language, $core_budget );
+			$remaining = max( 0, $per_language - count( $language_posts ) );
+			if ( $remaining > 0 && ! empty( $groups['secondary'] ) ) {
+				$language_posts = array_merge( $language_posts, self::query_posts_for_language( $groups['secondary'], $language, $remaining ) );
+			}
+			$remaining = max( 0, $per_language - count( $language_posts ) );
+			if ( $remaining > 0 && ! empty( $groups['utility'] ) ) {
+				$language_posts = array_merge( $language_posts, self::query_posts_for_language( $groups['utility'], $language, $remaining ) );
+			}
+			foreach ( $language_posts as $post ) {
 				if ( ! is_object( $post ) || empty( $post->ID ) ) continue;
 				$observed_language = self::content_language( $post );
 				if ( '' === $observed_language ) $observed_language = sanitize_key( (string) $language );
@@ -637,12 +778,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				$seen[ $key ] = true;
 				$title = get_the_title( $post );
 				$body = self::bounded_text( (string) $post->post_excerpt . "\n" . (string) $post->post_content );
-				$seo = array();
-				foreach ( array( 'rank_math_title', 'rank_math_description', '_yoast_wpseo_title', '_yoast_wpseo_metadesc' ) as $meta_key ) {
-					$value = get_post_meta( (int) $post->ID, $meta_key, true );
-					if ( is_scalar( $value ) && '' !== trim( (string) $value ) ) $seo[ $meta_key ] = self::bounded_text( (string) $value, 500 );
-				}
-				ksort( $seo, SORT_STRING );
+				$seo = self::seo_evidence_for_post( (int) $post->ID );
 				$semantic_identity = array(
 					'content_id' => 'post:' . (int) $post->ID,
 					'post_type' => (string) $post->post_type,
@@ -669,6 +805,46 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		return self::stratify_live_records( $records );
 	}
 
+	private static function seo_configuration_evidence( array $post_types ) {
+		$rows = array();
+		if ( ! function_exists( 'get_option' ) ) return $rows;
+		$providers = array(
+			'rank_math' => array(
+				'option' => 'rank-math-options-titles',
+				'title_key' => static function ( $post_type ) { return 'pt_' . $post_type . '_title'; },
+				'description_key' => static function ( $post_type ) { return 'pt_' . $post_type . '_description'; },
+			),
+			'yoast' => array(
+				'option' => 'wpseo_titles',
+				'title_key' => static function ( $post_type ) { return 'title-' . $post_type; },
+				'description_key' => static function ( $post_type ) { return 'metadesc-' . $post_type; },
+			),
+		);
+		foreach ( $providers as $provider => $config ) {
+			$options = get_option( $config['option'], array() );
+			if ( ! is_array( $options ) ) continue;
+			foreach ( $post_types as $post_type ) {
+				$post_type = sanitize_key( (string) $post_type );
+				if ( '' === $post_type || in_array( $post_type, self::utility_post_types(), true ) ) continue;
+				foreach ( array( 'title', 'description' ) as $field ) {
+					$key_callback = $config[ $field . '_key' ];
+					$key = $key_callback( $post_type );
+					$value = isset( $options[ $key ] ) && is_scalar( $options[ $key ] ) ? trim( (string) $options[ $key ] ) : '';
+					if ( '' === $value ) continue;
+					$rows[] = array(
+						'provider' => $provider,
+						'scope' => 'post_type',
+						'post_type' => $post_type,
+						'field' => $field,
+						'value' => self::bounded_text( $value, 500 ),
+					);
+				}
+			}
+		}
+		$rows = self::sort_rows( $rows, array( 'provider', 'post_type', 'field' ) );
+		return array_slice( $rows, 0, 32 );
+	}
+
 	private static function structure_evidence() {
 		$menus = array();
 		if ( function_exists( 'wp_get_nav_menus' ) ) {
@@ -692,6 +868,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				if ( count( $taxonomies ) >= 12 ) break;
 			}
 		}
+		$seo_configuration = self::seo_configuration_evidence( self::live_post_types() );
 		$menu_observed_count = count( $menus );
 		$deduped_menus = array();
 		foreach ( $menus as $menu ) {
@@ -711,6 +888,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'menu_observed_count' => $menu_observed_count,
 			'menu_unique_count' => $menu_unique_count,
 			'duplicate_structure_ratio' => round( $menu_duplicate_ratio, 6 ),
+			'seo_configuration' => $seo_configuration,
 			'taxonomies' => $taxonomies,
 			'locale' => function_exists( 'get_locale' ) ? (string) get_locale() : '',
 			'observed_at' => gmdate( 'c' ),
@@ -804,6 +982,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'menu_observed_count' => isset( $structure['menu_observed_count'] ) ? (int) $structure['menu_observed_count'] : 0,
 			'menu_unique_count' => isset( $structure['menu_unique_count'] ) ? (int) $structure['menu_unique_count'] : 0,
 			'duplicate_structure_ratio' => isset( $structure['duplicate_structure_ratio'] ) ? (float) $structure['duplicate_structure_ratio'] : 0.0,
+			'seo_configuration' => isset( $structure['seo_configuration'] ) ? $structure['seo_configuration'] : array(),
 			'taxonomies' => isset( $structure['taxonomies'] ) ? $structure['taxonomies'] : array(),
 			'locale' => isset( $structure['locale'] ) ? (string) $structure['locale'] : '',
 		);

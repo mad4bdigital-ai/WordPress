@@ -692,5 +692,7 @@ require(adapter, "automatic_classification", "automatic classification evidence 
 
 brand_contract = root / "tests/brand-context-builder-contract.py"
 subprocess.run([sys.executable, str(brand_contract)], check=True)
+brand_runtime = root / "tests/brand-context-builder-runtime.php"
+subprocess.run(["php", str(brand_runtime)], check=True)
 
 print("mad4b.site-control-plane.context-authority-contract.v73: PASS")
