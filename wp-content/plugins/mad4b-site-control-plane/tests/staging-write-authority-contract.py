@@ -203,8 +203,11 @@ if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $s
     raise SystemExit('direct ChatGPT mutation transport must preserve write-execute plus composed guarded authority step-ups')
 if "$direct_mutation_transport[] = 'mad4b/enrollment-execute';" not in chatgpt_transport:
     raise SystemExit('bounded Enrollment dispatcher must extend the baseline direct mutation transport explicitly')
-if "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" not in chatgpt_transport:
-    raise SystemExit('bounded Enrollment discover/info/execute projection is missing from the compact ChatGPT catalog')
+core_chatgpt = servers.split("'mad4b-chatgpt' => array_merge( array(", 1)[1].split("), $governed_status", 1)[0]
+if "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" not in core_chatgpt:
+    raise SystemExit('bounded Enrollment discover/info/execute projection is missing from the canonical compact ChatGPT core catalog')
+if "$candidates = array_merge( $core, $bootstrap )" not in chatgpt_transport:
+    raise SystemExit('runtime ChatGPT transport no longer starts from the canonical compact core catalog')
 for bootstrap_ability in (
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
