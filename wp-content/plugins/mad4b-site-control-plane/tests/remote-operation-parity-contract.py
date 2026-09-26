@@ -156,6 +156,14 @@ if "did_action( 'wp_abilities_api_init' ) > 0" not in enrollment_method:
 write_start = servers.find("'mad4b-write' => array(")
 admin_start = servers.find("'mad4b-admin' => array(", write_start + 1)
 write_section = servers[write_start:admin_start] if write_start >= 0 and admin_start > write_start else ''
+for dispatcher in [
+    'mad4b/enrollment-discover',
+    'mad4b/enrollment-info',
+    'mad4b/enrollment-execute',
+]:
+    if dispatcher in write_section:
+        raise SystemExit(f'{dispatcher} unexpectedly entered normal governed-write candidates')
+
 for ability in [
     'mad4b/reconcile-managed-skills',
     'mad4b/frontend-performance-sample-run',
