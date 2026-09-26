@@ -955,6 +955,13 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$meta = isset( $args['meta'] ) && is_array( $args['meta'] ) ? $args['meta'] : array();
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 		if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) return $args;
+		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+		$mcp_surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
+		// Bounded Enrollment has its own Staging-only authority plane: exact OAuth
+		// step-up scope, exact ChatGPT client, enrolled administrator, allowlisted
+		// Remote Operation Parity target, and exact registration/policy/schema
+		// digests. It must never inherit normal governed-write/NHI approval metadata.
+		if ( 'enrollment' === $mcp_surface ) return $args;
 
 		$ai_review = class_exists( 'MAD4B_SCP_Context_Authority' ) && MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY === (string) $name;
 		if ( ! $ai_review && isset( $args['input_schema'] ) && is_array( $args['input_schema'] ) ) {
