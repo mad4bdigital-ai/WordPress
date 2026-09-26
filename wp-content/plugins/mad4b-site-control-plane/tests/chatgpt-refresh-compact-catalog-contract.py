@@ -94,6 +94,7 @@ for marker in [
     "AUTHORITY_STEP_UP_SCOPE",
     "CHATGPT_CIMD_CLIENT_ID",
     "mad4b_grant_reconcile_https_required",
+    "RECONCILE EXACT STAGING WRITE AUTHORITY",
     "candidate_binding_is_commit_point",
     "post_commit_governance_mutation",
     "mad4b/staging-write-authority-prepared",
@@ -105,6 +106,7 @@ for marker in [
     "expected_artifact_identity",
     "expected_missing_abilities",
     "plan_sha256",
+    "mad4b_grant_reconcile_plan_https_required",
 ]:
     require(marker in GRANT_PLAN, f"four-part exact reconciliation plan binding missing: {marker}")
 
