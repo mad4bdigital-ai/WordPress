@@ -199,8 +199,10 @@ if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_tr
     raise SystemExit('single-app Full Staging Authority step-up projection is missing')
 if "$step_up = array_merge( $narrow_step_up, $full_step_up )" not in chatgpt_transport:
     raise SystemExit('bounded and full authority step-ups must be composed explicitly')
-if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $enrollment_step_up )" not in chatgpt_transport:
-    raise SystemExit('direct ChatGPT mutation transport must be limited to write-execute, the composed guarded authority step-ups, and bounded enrollment step-up')
+if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" not in chatgpt_transport:
+    raise SystemExit('direct ChatGPT mutation transport must preserve write-execute plus composed guarded authority step-ups')
+if "$direct_mutation_transport = array_merge( $direct_mutation_transport, $enrollment_step_up )" not in chatgpt_transport:
+    raise SystemExit('bounded enrollment step-up must extend the baseline direct mutation transport explicitly')
 if "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY" not in chatgpt_transport:
     raise SystemExit('bounded enrollment step-up dispatcher is missing from direct ChatGPT transport')
 for bootstrap_ability in (
@@ -336,7 +338,8 @@ for marker in [
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
     "$step_up = array_merge( $narrow_step_up, $full_step_up )",
-    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $enrollment_step_up )",
+    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )",
+    "$direct_mutation_transport = array_merge( $direct_mutation_transport, $enrollment_step_up )",
     "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
