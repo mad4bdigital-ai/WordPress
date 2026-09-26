@@ -160,7 +160,7 @@ foreach ( $expected_abilities as $name ) {
 	browser_expect( false === ( $args['meta']['annotations']['destructive'] ?? null ), 'browser ability must be non-destructive: ' . $name );
 	browser_expect( empty( $args['meta']['public'] ) && empty( $args['meta']['mcp']['public'] ), 'browser ability must not leak to default/public MCP: ' . $name );
 }
-browser_expect( ! isset( $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4b/browser-acceptance-run'] ), 'WordPress must not expose a browser execution ability' );
+browser_expect( ! isset( $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4b/browser-acceptance-run'] ), 'Browser Acceptance Core must not itself register the external execution orchestration ability' );
 
 $result_schema = $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4b/browser-acceptance-result']['input_schema'];
 $evidence_schema = $result_schema['properties']['evidence'];
