@@ -44,6 +44,7 @@ RESOURCE_BUDGET_CONTRACT = "mad4b.host-runner-resource-budget.v1"
 WORKSPACE_PLAN_CONTRACT = "mad4b.host-runner-workspace-replace-plan.v1"
 WORKSPACE_ROLLBACK_PLAN_CONTRACT = "mad4b.host-runner-workspace-rollback-plan.v1"
 PLUGIN_DEPLOY_PLAN_CONTRACT = "mad4b.host-runner-wordpress-plugin-deploy-plan.v1"
+PLUGIN_ROLLBACK_PLAN_CONTRACT = "mad4b.host-runner-wordpress-plugin-rollback-plan.v1"
 PLUGIN_SLUG = "mad4b-site-control-plane"
 MAX_PLUGIN_ARCHIVE_BYTES = 32 * 1024 * 1024
 MAX_PLUGIN_EXTRACT_BYTES = 64 * 1024 * 1024
@@ -83,6 +84,13 @@ OPERATIONS: dict[str, dict[str, Any]] = {
         "version": 1,
         "risk": "reversible_write",
         "zones": ["plugin_root", "package_staging"],
+        "requires_plan": True,
+        "requires_approval": True,
+    },
+    "wordpress_plugin_rollback": {
+        "version": 1,
+        "risk": "reversible_write",
+        "zones": ["plugin_root"],
         "requires_plan": True,
         "requires_approval": True,
     },
@@ -1468,6 +1476,12 @@ def execute_wordpress_plugin_deploy(profile: dict[str, Any], verified: dict[str,
             "archive_sha256": bundle["archive_sha256"],
             "control_plane_version": bundle["candidate_version"],
             "artifact_identity": str(plan["candidate"]["artifact_identity"]),
+            "previous_identity": {
+                "source_commit_sha": current["source_commit_sha"],
+                "build_fingerprint": current["build_fingerprint"],
+                "package_manifest_digest": current["package_manifest_digest"],
+                "control_plane_version": str(current.get("control_plane_version") or ""),
+            },
             "plan_sha256": verified["plan_sha256"],
             "approval_ref": verified["approval_ref"],
             "backup_created": False,
