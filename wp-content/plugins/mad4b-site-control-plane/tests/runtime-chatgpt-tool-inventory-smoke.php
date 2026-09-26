@@ -104,6 +104,8 @@ $direct_required = array(
 	'mad4b-full-staging-authority-status',
 	'mad4b-full-staging-authority-plan',
 	'mad4b-full-staging-authority-apply',
+	'mad4b-reconcile-managed-skills',
+	'mad4b-frontend-performance-sample-run',
 );
 foreach ( $direct_required as $tool_name ) {
 	if ( ! in_array( $tool_name, $actual_names, true ) ) {
