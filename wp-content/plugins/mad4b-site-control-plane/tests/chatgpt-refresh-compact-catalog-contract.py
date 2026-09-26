@@ -162,7 +162,8 @@ for forbidden in [
     "self::core_tools( 'mad4b-admin' )",
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
-require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $narrow_step_up, $full_step_up )" in chatgpt_body, "normal governed writes plus the two guarded authority composites must be the only direct mutations")
+require("$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_body, "bounded and full authority step-ups must be composed explicitly")
+require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_body, "normal governed writes plus the composed guarded authority step-ups must be the only direct mutations")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_body, "unified enrolled Staging tools/list must include read-only full authority diagnostics")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_body, "unified enrolled Staging tools/list must project the composite apply only through the guarded step-up method")
 for low_level in [
