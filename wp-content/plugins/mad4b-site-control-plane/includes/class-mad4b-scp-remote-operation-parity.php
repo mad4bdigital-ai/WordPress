@@ -978,7 +978,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
 		$job = MAD4B_SCP_Remote_Work_Queue::get_job( (string) $input['job_id'] );
 		if ( is_wp_error( $job ) ) return $job;
-		if ( 'frontend_performance_sampling' !== ( isset( $job['operation_id'] ) ? (string) $job['operation_id'] : '' ) ) return new WP_Error( 'mad4b_remote_work_completion_operation_unsupported', 'This remote work completion verifier does not support the requested semantic operation.' );
+		$operation_id = isset( $job['operation_id'] ) ? (string) $job['operation_id'] : '';
+		if ( 'browser_acceptance_execution' === $operation_id ) return self::complete_browser_acceptance_work( $input, $job );
+		if ( 'frontend_performance_sampling' !== $operation_id ) return new WP_Error( 'mad4b_remote_work_completion_operation_unsupported', 'This remote work completion verifier does not support the requested semantic operation.' );
 
 		$payload = isset( $job['payload'] ) && is_array( $job['payload'] ) ? $job['payload'] : array();
 		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
@@ -1069,6 +1071,69 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		) );
 		return is_wp_error( $audit ) ? $audit : $result;
 	}
+
+
+	private static function complete_browser_acceptance_work( $input, array $job ) {
+		if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) ) return new WP_Error( 'mad4b_browser_acceptance_core_unavailable', 'Browser Acceptance Core is unavailable.' );
+		$payload = isset( $job['payload'] ) && is_array( $job['payload'] ) ? $job['payload'] : array();
+		$provider_id = sanitize_key( isset( $payload['provider_id'] ) ? (string) $payload['provider_id'] : '' );
+		$profile_id = sanitize_key( isset( $payload['profile_id'] ) ? (string) $payload['profile_id'] : '' );
+		$plan_digest = strtolower( trim( (string) ( isset( $payload['plan_digest'] ) ? $payload['plan_digest'] : '' ) ) );
+		$plan_signature = strtolower( trim( (string) ( isset( $payload['plan_signature'] ) ? $payload['plan_signature'] : '' ) ) );
+		$evidence = isset( $input['browser_evidence'] ) && is_array( $input['browser_evidence'] ) ? $input['browser_evidence'] : array();
+		if ( '' === $provider_id || '' === $profile_id || 1 !== preg_match( '/^[a-f0-9]{64}$/', $plan_digest ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $plan_signature ) ) {
+			return new WP_Error( 'mad4b_browser_acceptance_job_binding_invalid', 'Browser Acceptance work job lost its exact provider/profile/plan binding.' );
+		}
+		if ( empty( $evidence ) ) return new WP_Error( 'mad4b_browser_acceptance_evidence_required', 'Browser Acceptance completion requires bounded external browser evidence.' );
+
+		$browser_result = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+			'provider_id' => $provider_id,
+			'profile_id' => $profile_id,
+			'suite' => 'browser_runtime',
+			'plan_digest' => $plan_digest,
+			'plan_signature' => $plan_signature,
+			'evidence' => $evidence,
+		) );
+		$verified = is_array( $browser_result )
+			&& 'PASS' === ( isset( $browser_result['verdict'] ) ? (string) $browser_result['verdict'] : '' )
+			&& ! empty( $browser_result['verification']['browser_runtime_parity_verified'] );
+		if ( ! $verified ) {
+			return new WP_Error(
+				'mad4b_remote_browser_acceptance_not_verified',
+				'External Browser Acceptance evidence did not pass the server-owned provider reducer.',
+				array( 'browser_result' => is_array( $browser_result ) ? $browser_result : array() )
+			);
+		}
+
+		$result = MAD4B_SCP_Remote_Work_Queue::complete(
+			(string) $input['job_id'],
+			(string) $input['executor_id'],
+			(string) $input['lease_token'],
+			array(
+				'verification' => 'browser_acceptance_core_result',
+				'provider_id' => $provider_id,
+				'profile_id' => $profile_id,
+				'plan_digest' => $plan_digest,
+				'evidence_digest' => isset( $browser_result['evidence_digest'] ) ? (string) $browser_result['evidence_digest'] : '',
+				'receipt_signature' => isset( $browser_result['receipt_signature'] ) ? (string) $browser_result['receipt_signature'] : '',
+				'browser_result' => $browser_result,
+				'verified_at' => gmdate( 'c' ),
+			)
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		$audit = self::audit( self::WORK_COMPLETE_ABILITY, array(
+			'job_id' => (string) $input['job_id'],
+			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
+			'operation_id' => 'browser_acceptance_execution',
+			'provider_id' => $provider_id,
+			'profile_id' => $profile_id,
+			'plan_digest' => $plan_digest,
+			'evidence_digest' => isset( $browser_result['evidence_digest'] ) ? (string) $browser_result['evidence_digest'] : '',
+			'browser_runtime_parity_verified' => true,
+		) );
+		return is_wp_error( $audit ) ? $audit : $result;
+	}
+
 
 	public static function reconcile_managed_skills( $input ) {
 		if ( self::SKILLS_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_remote_skill_confirmation_required', 'Exact managed Skill reconciliation confirmation is required.' );
