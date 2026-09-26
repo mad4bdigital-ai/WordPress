@@ -552,6 +552,7 @@ jobs:
               '.github/workflows/mad4b-control-plane-package.yml',
               '.github/workflows/mad4b-live-acceptance-evidence.yml',
               '.github/workflows/mad4b-release-verdict.yml',
+              '.github/workflows/mad4b-context-authority.yml',
               '.github/workflows/feature-007-critical-kernel.yml',
           }
           runtime_patterns = set(full_runtime_trigger_paths) | set(critical_trigger_workflows) | {
