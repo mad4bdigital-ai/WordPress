@@ -201,8 +201,10 @@ if "$step_up = array_merge( $narrow_step_up, $full_step_up )" not in chatgpt_tra
     raise SystemExit('bounded and full authority step-ups must be composed explicitly')
 if "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_tools()" not in chatgpt_transport:
     raise SystemExit('bounded direct Remote Operation projection is missing from ChatGPT transport')
-if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $direct_remote_operations )" not in chatgpt_transport:
-    raise SystemExit('direct ChatGPT mutation transport must be limited to write-execute, guarded authority step-ups, and explicit bounded remote operations')
+if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" not in chatgpt_transport:
+    raise SystemExit('base direct ChatGPT mutation transport must remain write-execute plus guarded authority step-ups')
+if "$direct_mutation_transport = array_merge( $direct_mutation_transport, $direct_remote_operations )" not in chatgpt_transport:
+    raise SystemExit('bounded remote operations must be appended explicitly to the base direct ChatGPT transport')
 for bootstrap_ability in (
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
