@@ -464,10 +464,6 @@ final class MAD4B_SCP_Servers {
 		$full_step_up = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
 			? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()
 			: array();
-		$direct_enrollment = class_exists( 'MAD4B_SCP_Remote_Operation_Parity' )
-			&& method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'chatgpt_direct_enrollment_abilities' )
-			? MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_enrollment_abilities()
-			: array();
 		$bootstrap = array_merge(
 			array(
 				'mad4b/build-provenance-status',
@@ -476,12 +472,11 @@ final class MAD4B_SCP_Servers {
 			$narrow_read,
 			$narrow_step_up,
 			$full_read,
-			$full_step_up,
-			$direct_enrollment
+			$full_step_up
 		);
 		$candidates = array_merge( $core, $bootstrap );
 		$step_up = array_merge( $narrow_step_up, $full_step_up );
-		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $direct_enrollment );
+		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up );
 
 		$tools = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
