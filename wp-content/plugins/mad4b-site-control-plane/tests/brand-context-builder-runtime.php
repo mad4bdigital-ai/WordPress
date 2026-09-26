@@ -33,8 +33,14 @@ for ( $i = 0; $i < 16; ++$i ) {
 		'seo' => $i < 4 ? array( 'title' => 'SEO' ) : array(),
 	);
 }
-$quality = $invoke( 'evidence_quality', array( $good, array( 'ar', 'en' ), 1 ) );
+$structure = array(
+	'menus' => array( array( 'slug' => 'main', 'name' => 'Main' ), array( 'slug' => 'footer', 'name' => 'Footer' ) ),
+	'menu_observed_count' => 12,
+	'menu_unique_count' => 2,
+);
+$quality = $invoke( 'evidence_quality', array( $good, array( 'ar', 'en' ), 1, $structure ) );
 $check( ! empty( $quality['quality_gate_pass'] ), 'strong multilingual evidence did not pass quality gate' );
+$check( abs( (float) $quality['duplicate_structure_ratio'] - ( 10 / 12 ) ) < 0.00001, 'duplicate structure ratio drifted' );
 $check( 16 === (int) $quality['nonempty_count'], 'nonempty count drifted' );
 $check( (int) $quality['primary_expression_count'] >= 8, 'primary expression threshold not met' );
 $check( (int) $quality['core_content_sample_count'] >= 6, 'core content threshold not met' );
