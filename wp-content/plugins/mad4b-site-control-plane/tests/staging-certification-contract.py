@@ -246,4 +246,24 @@ for marker in [
 ]:
     require(cert, marker, "rollback retention receipt invariant")
 
+
+# Browser certification may consume only a durable completion that was already
+# reduced by Browser Acceptance Core and remains bound to the exact current build
+# and the currently regenerated signed plan.
+for browser_marker in [
+    "mad4b.staging-browser-certification-view.v2",
+    "MAD4B_SCP_Remote_Work_Queue::list_jobs( 'browser_acceptance_execution' )",
+    "'completed' !==",
+    "runtime_manifest_match",
+    "source_commit_sha",
+    "build_fingerprint",
+    "package_manifest_digest",
+    "hash_equals( strtolower( (string) $plan['plan_digest']",
+    "hash_equals( strtolower( (string) $plan['plan_signature']",
+    "browser_runtime_parity_verified",
+    "durable_receipt_used",
+    "durable_job_id",
+]:
+    require(cert, browser_marker, "durable Browser Acceptance certification invariant")
+
 print("MAD4B staging post-deployment certification contract PASS")
