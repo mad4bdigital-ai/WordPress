@@ -13,6 +13,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const CONTRACT = 'mad4b.remote-operation-parity.v1';
 	const STATUS_ABILITY = 'mad4b/remote-operation-parity-status';
 	const DISCOVER_ABILITY = 'mad4b/operation-discover';
+	const ENROLLMENT_DISCOVER_ABILITY = 'mad4b/enrollment-discover';
+	const ENROLLMENT_INFO_ABILITY = 'mad4b/enrollment-info';
+	const ENROLLMENT_EXECUTE_ABILITY = 'mad4b/enrollment-execute';
+	const ENROLLMENT_DISPATCH_CONTRACT = 'mad4b.enrollment-dispatch.v1';
 	const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';
 	const FRONTEND_SAMPLE_ABILITY = 'mad4b/frontend-performance-sample-run';
 	const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';
@@ -48,6 +52,21 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			self::PERFORMANCE_RECONCILE_ABILITY,
 			self::WORK_CLAIM_ABILITY,
 			self::WORK_COMPLETE_ABILITY,
+		);
+	}
+
+	/**
+	 * Compact ChatGPT enrollment dispatcher allowlist.
+	 *
+	 * Keep lease claim/complete and all candidate/grant/full-authority mutations
+	 * off this surface. Those have dedicated executors or explicit step-up tools.
+	 */
+	public static function chatgpt_enrollment_dispatch_abilities() {
+		return array(
+			self::SKILLS_ABILITY,
+			self::FRONTEND_SAMPLE_ABILITY,
+			self::PERFORMANCE_INDEX_ABILITY,
+			self::PERFORMANCE_RECONCILE_ABILITY,
 		);
 	}
 
@@ -93,6 +112,76 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 					),
 					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 					'meta' => self::meta( true, true ),
+				)
+			);
+		}
+
+
+		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ENROLLMENT_DISCOVER_ABILITY ) ) ) {
+			wp_register_ability(
+				self::ENROLLMENT_DISCOVER_ABILITY,
+				array(
+					'label' => 'Discover Bounded Enrollment Operations',
+					'description' => 'List only the bounded Staging enrollment operations explicitly approved for the compact ChatGPT dispatcher.',
+					'category' => 'mad4b-read',
+					'execute_callback' => array( __CLASS__, 'enrollment_discover' ),
+					'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+					'input_schema' => array(
+						'type' => 'object',
+						'properties' => array(
+							'query' => array( 'type' => 'string', 'maxLength' => 160 ),
+						),
+						'additionalProperties' => false,
+					),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => self::meta( true, true ),
+				)
+			);
+		}
+
+		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ENROLLMENT_INFO_ABILITY ) ) ) {
+			wp_register_ability(
+				self::ENROLLMENT_INFO_ABILITY,
+				array(
+					'label' => 'Inspect Bounded Enrollment Operation',
+					'description' => 'Inspect schema and metadata for one explicitly allowlisted compact enrollment operation.',
+					'category' => 'mad4b-read',
+					'execute_callback' => array( __CLASS__, 'enrollment_info' ),
+					'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+					'input_schema' => array(
+						'type' => 'object',
+						'properties' => array(
+							'ability_name' => array( 'type' => 'string', 'enum' => self::chatgpt_enrollment_dispatch_abilities() ),
+						),
+						'required' => array( 'ability_name' ),
+						'additionalProperties' => false,
+					),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => self::meta( true, true ),
+				)
+			);
+		}
+
+		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ENROLLMENT_EXECUTE_ABILITY ) ) ) {
+			wp_register_ability(
+				self::ENROLLMENT_EXECUTE_ABILITY,
+				array(
+					'label' => 'Execute Bounded Enrollment Operation',
+					'description' => 'Dispatch one explicitly allowlisted Staging enrollment operation while preserving the target Ability input validation and permission callback.',
+					'category' => 'mad4b-governance',
+					'execute_callback' => array( __CLASS__, 'enrollment_execute' ),
+					'permission_callback' => array( __CLASS__, 'can_execute' ),
+					'input_schema' => array(
+						'type' => 'object',
+						'properties' => array(
+							'ability_name' => array( 'type' => 'string', 'enum' => self::chatgpt_enrollment_dispatch_abilities() ),
+							'input' => array( 'type' => 'object', 'additionalProperties' => true ),
+						),
+						'required' => array( 'ability_name', 'input' ),
+						'additionalProperties' => false,
+					),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => self::meta( false, false ),
 				)
 			);
 		}
@@ -534,6 +623,123 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			),
 			'future_feature_discovery' => true,
 			'requires_prior_ability_name' => false,
+		);
+	}
+
+	private static function enrollment_dispatch_catalog() {
+		$allowed = array_fill_keys( self::chatgpt_enrollment_dispatch_abilities(), true );
+		$rows = array();
+		foreach ( self::catalog() as $operation_id => $row ) {
+			$ability_name = isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '';
+			if ( ! isset( $allowed[ $ability_name ] ) ) continue;
+			if ( 'mad4b-enrollment' !== ( isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '' ) ) continue;
+			if ( 'core' !== ( isset( $row['trust_class'] ) ? (string) $row['trust_class'] : '' ) ) continue;
+			if ( 'deny' !== ( isset( $row['production_policy'] ) ? (string) $row['production_policy'] : '' ) ) continue;
+			$rows[ $operation_id ] = $row;
+		}
+		ksort( $rows, SORT_STRING );
+		return $rows;
+	}
+
+	private static function enrollment_ability_descriptor( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		if ( ! in_array( $ability_name, self::chatgpt_enrollment_dispatch_abilities(), true ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_target_denied', 'The requested Ability is not in the compact enrollment dispatcher allowlist.' );
+		}
+		if ( ! function_exists( 'wp_get_ability' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_registry_unavailable', 'WordPress Ability registry is unavailable.' );
+		$ability = wp_get_ability( $ability_name );
+		if ( ! is_object( $ability ) ) return new WP_Error( 'mad4b_enrollment_dispatch_target_missing', 'The requested enrollment Ability is not registered.' );
+		$meta = method_exists( $ability, 'get_meta' ) ? $ability->get_meta() : array();
+		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+		if ( 'enrollment' !== ( isset( $mcp['surface'] ) ? (string) $mcp['surface'] : '' )
+			|| ! empty( $mcp['generic_remote_admin'] )
+			|| ! empty( $mcp['production_mutation_allowed'] ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_target_contract_mismatch', 'The requested Ability no longer satisfies the bounded enrollment contract.' );
+		}
+		return array(
+			'ability' => $ability,
+			'ability_name' => $ability_name,
+			'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '',
+			'description' => method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '',
+			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
+			'input_schema' => method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : array(),
+			'output_schema' => method_exists( $ability, 'get_output_schema' ) ? $ability->get_output_schema() : array(),
+			'meta' => $meta,
+		);
+	}
+
+	public static function enrollment_discover( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$query = isset( $input['query'] ) ? strtolower( trim( sanitize_text_field( (string) $input['query'] ) ) ) : '';
+		$items = array();
+		foreach ( self::enrollment_dispatch_catalog() as $operation_id => $row ) {
+			$ability_name = (string) $row['remote_ability'];
+			$descriptor = self::enrollment_ability_descriptor( $ability_name );
+			if ( is_wp_error( $descriptor ) ) continue;
+			if ( '' !== $query ) {
+				$haystack = strtolower( implode( ' ', array(
+					$operation_id,
+					$ability_name,
+					(string) $descriptor['label'],
+					(string) $descriptor['description'],
+					(string) $row['feature_id'],
+					implode( ' ', isset( $row['capability_tags'] ) && is_array( $row['capability_tags'] ) ? array_map( 'strval', $row['capability_tags'] ) : array() ),
+				) ) );
+				if ( false === strpos( $haystack, $query ) ) continue;
+			}
+			$items[] = array(
+				'operation_id' => $operation_id,
+				'ability_name' => $ability_name,
+				'label' => $descriptor['label'],
+				'description' => $descriptor['description'],
+				'feature_id' => (string) $row['feature_id'],
+				'executor' => (string) $row['executor'],
+				'remote_mode' => (string) $row['remote_mode'],
+				'input_schema' => $descriptor['input_schema'],
+				'remote_parity_ready' => ! empty( $row['remote_parity_ready'] ),
+			);
+		}
+		return array(
+			'contract' => self::ENROLLMENT_DISPATCH_CONTRACT,
+			'count' => count( $items ),
+			'operations' => $items,
+			'allowlist_count' => count( self::chatgpt_enrollment_dispatch_abilities() ),
+			'generic_remote_admin_exposed' => false,
+			'candidate_binding_exposed' => false,
+			'grant_reconciliation_exposed' => false,
+			'full_staging_authority_exposed' => false,
+			'raw_sql_exposed' => false,
+		);
+	}
+
+	public static function enrollment_info( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$ability_name = isset( $input['ability_name'] ) ? (string) $input['ability_name'] : '';
+		$descriptor = self::enrollment_ability_descriptor( $ability_name );
+		if ( is_wp_error( $descriptor ) ) return $descriptor;
+		unset( $descriptor['ability'] );
+		$descriptor['contract'] = self::ENROLLMENT_DISPATCH_CONTRACT;
+		$descriptor['bounded_dispatch'] = true;
+		return $descriptor;
+	}
+
+	public static function enrollment_execute( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$ability_name = isset( $input['ability_name'] ) ? (string) $input['ability_name'] : '';
+		$descriptor = self::enrollment_ability_descriptor( $ability_name );
+		if ( is_wp_error( $descriptor ) ) return $descriptor;
+		$ability = $descriptor['ability'];
+		if ( ! method_exists( $ability, 'execute' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_target_unexecutable', 'The requested Ability cannot be executed through the WordPress Ability contract.' );
+		$target_input = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
+		$result = $ability->execute( $target_input );
+		if ( is_wp_error( $result ) ) return $result;
+		return array(
+			'contract' => self::ENROLLMENT_DISPATCH_CONTRACT,
+			'ability_name' => $ability_name,
+			'bounded_dispatch' => true,
+			'generic_remote_admin_exposed' => false,
+			'production_mutation_allowed' => false,
+			'result' => $result,
 		);
 	}
 
