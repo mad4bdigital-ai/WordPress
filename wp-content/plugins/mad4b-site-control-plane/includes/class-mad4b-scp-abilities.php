@@ -353,8 +353,8 @@ final class MAD4B_SCP_Abilities {
 		$ability_name = trim( (string) $ability_name );
 		if ( '' === $ability_name ) return new WP_Error( 'mad4b_enrollment_dispatch_target_required', 'A bounded enrollment ability_name is required.' );
 		if ( in_array( $ability_name, array( 'mad4b/enrollment-execute', 'mad4b/write-execute', 'mad4b/read-execute' ), true ) ) return new WP_Error( 'mad4b_enrollment_dispatch_recursion_denied', 'Nested dispatch execution is not allowed.' );
-		if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) || ! method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'enrollment_abilities' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_catalog_unavailable', 'Remote Operation Parity enrollment catalog is unavailable.' );
-		$allowed = MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities();
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) || ! method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'chatgpt_enrollment_dispatch_abilities' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_catalog_unavailable', 'Bounded ChatGPT enrollment dispatch catalog is unavailable.' );
+		$allowed = MAD4B_SCP_Remote_Operation_Parity::chatgpt_enrollment_dispatch_abilities();
 		if ( ! is_array( $allowed ) || ! in_array( $ability_name, $allowed, true ) ) return new WP_Error( 'mad4b_enrollment_dispatch_target_not_cataloged', 'Requested ability is not in the bounded Remote Operation Parity enrollment catalog.' );
 		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-enrollment', $ability_name ) ) return new WP_Error( 'mad4b_enrollment_dispatch_target_not_mounted', 'Requested ability is not mounted on the bounded enrollment surface.' );
 		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_enrollment_dispatch_target_unavailable', 'Requested enrollment ability is not registered in the current runtime.' );
