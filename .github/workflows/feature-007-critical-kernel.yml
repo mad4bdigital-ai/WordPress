@@ -9,6 +9,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
@@ -51,6 +52,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/bitflows-durable-correlation-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
@@ -346,3 +348,14 @@ jobs:
         run: |
           set -euo pipefail
           bash wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v9-integration.sh
+
+      - name: Prove durable execution runtime fault semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_path='wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php'
+          if [ ! -f "$test_path" ]; then
+            echo "DURABLE_EXECUTION_RUNTIME_FAULTS_NOT_APPLICABLE"
+            exit 0
+          fi
+          wp eval-file "$test_path" --allow-root
