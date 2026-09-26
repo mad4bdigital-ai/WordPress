@@ -53,11 +53,15 @@ final class MAD4B_SCP_Remote_Operation_Parity {
         'mad4b/frontend-performance-sample-run',
         'mad4b/admin-query-performance-apply',
         'mad4b/admin-query-performance-reconcile',
-        'mad4b/remote-operation-work-claim',
-        'mad4b/remote-operation-work-complete',
     );
     public static $grant = true;
-    public static function enrollment_abilities() { return self::$allowed; }
+    public static function enrollment_abilities() {
+        return array_merge( self::$allowed, array(
+            'mad4b/remote-operation-work-claim',
+            'mad4b/remote-operation-work-complete',
+        ) );
+    }
+    public static function chatgpt_enrollment_dispatch_abilities() { return self::$allowed; }
     public static function can_execute( $input = null ) { return self::$grant; }
 }
 
@@ -158,6 +162,12 @@ mad4b_assert( 'mad4b_enrollment_dispatch_target_not_cataloged' === mad4b_error_c
 
 $recursive = $dispatcher->can_enrollment_dispatch( array( 'ability_name' => 'mad4b/enrollment-execute', 'input' => array() ) );
 mad4b_assert( 'mad4b_enrollment_dispatch_recursion_denied' === mad4b_error_code( $recursive ), 'dispatcher recursion did not fail closed' );
+
+$executor_only = 'mad4b/remote-operation-work-claim';
+$GLOBALS['mad4b_test_abilities'][ $executor_only ] = new MAD4B_Test_Ability( mad4b_enrollment_meta(), $schema, array() );
+MAD4B_SCP_Servers::$mounted[] = $executor_only;
+$denied = $dispatcher->can_enrollment_dispatch( array( 'ability_name' => $executor_only, 'input' => array() ) );
+mad4b_assert( 'mad4b_enrollment_dispatch_target_not_cataloged' === mad4b_error_code( $denied ), 'external executor lease ability leaked into ChatGPT enrollment dispatcher' );
 
 $unmounted = 'mad4b/frontend-performance-sample-run';
 $GLOBALS['mad4b_test_abilities'][ $unmounted ] = new MAD4B_Test_Ability( mad4b_enrollment_meta(), $schema, array() );
