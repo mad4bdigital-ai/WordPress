@@ -33,6 +33,17 @@ final class MAD4B_SCP_Policy {
 	public static function can_read(){ return true; }
 	public static function can_mutate(){ return true; }
 }
+final class MAD4B_SCP_Live_Acceptance_Observer {
+	public static function build_provenance_status(){
+		return array(
+			'runtime_manifest_match'=>true,
+			'stale'=>false,
+			'source_commit_sha'=>str_repeat('1',40),
+			'build_fingerprint'=>str_repeat('2',64),
+			'package_manifest_digest'=>str_repeat('3',64),
+		);
+	}
+}
 final class MAD4B_SCP_Authorization {
 	public static $calls = array();
 	public static function claim_mutation($ability,$server,$provider,$input){
@@ -60,6 +71,8 @@ $check(false === $cap['generic_shell_available'], 'generic shell exposed');
 $check(false === $cap['raw_sql_available'], 'raw SQL exposed');
 $check(false === $cap['caller_command_strings_allowed'], 'command strings exposed');
 $check(false === $cap['production_authorized'], 'Production authority widened');
+$op_ids=array_column($cap['operations'],'operation_id');
+$check(in_array('wordpress_plugin_deploy',$op_ids,true), 'wordpress_plugin_deploy capability missing');
 
 $plan = MAD4B_SCP_Host_Bridge::plan(array(
 	'operation_id'=>'runtime.status.read',
@@ -115,6 +128,49 @@ $check(is_array($cancel) && true===$cancel['cooperative_only'], 'cancel did not 
 $check(false===$cancel['external_side_effect_stopped'], 'cancel falsely claimed external stop');
 $status = MAD4B_SCP_Host_Bridge::status(array('job_id'=>$job));
 $check('cancelled'===$status['state'], 'cancelled status unavailable');
+
+// Exact Control Plane deployment planning accepts identity only and synthesizes
+// the runner plan without caller paths, URLs, credentials or commands.
+$deploy_bad = MAD4B_SCP_Host_Bridge::plan(array(
+	'operation_id'=>'wordpress_plugin_deploy',
+	'runner_profile_id'=>'ci-runner',
+	'arguments'=>array(
+		'source_commit_sha'=>str_repeat('4',40),
+		'build_fingerprint'=>str_repeat('5',64),
+		'package_manifest_digest'=>str_repeat('6',64),
+		'archive_sha256'=>str_repeat('7',64),
+		'control_plane_version'=>'0.4.0-rc.59',
+		'artifact_identity'=>'mad4b-site-control-plane-general-distribution-kit-'.str_repeat('4',40),
+		'reason'=>'ci exact deployment',
+		'url'=>'https://example.invalid/package.zip',
+	),
+));
+$check(is_wp_error($deploy_bad) && 'mad4b_host_plugin_deploy_input_invalid'===$deploy_bad->get_error_code(), 'plugin deployment accepted caller URL/path surface');
+
+$deploy_plan = MAD4B_SCP_Host_Bridge::plan(array(
+	'operation_id'=>'wordpress_plugin_deploy',
+	'runner_profile_id'=>'ci-runner',
+	'arguments'=>array(
+		'source_commit_sha'=>str_repeat('4',40),
+		'build_fingerprint'=>str_repeat('5',64),
+		'package_manifest_digest'=>str_repeat('6',64),
+		'archive_sha256'=>str_repeat('7',64),
+		'control_plane_version'=>'0.4.0-rc.59',
+		'artifact_identity'=>'mad4b-site-control-plane-general-distribution-kit-'.str_repeat('4',40),
+		'reason'=>'ci exact deployment',
+	),
+));
+$check(is_array($deploy_plan), 'exact plugin deployment plan failed');
+$check('wordpress_plugin_deploy'===$deploy_plan['operation_id'], 'plugin deployment operation drifted');
+$check(true===$deploy_plan['approval_required'], 'plugin deployment lost approval requirement');
+$runner_deploy=$deploy_plan['arguments']['plan'] ?? array();
+$check('mad4b.host-runner-wordpress-plugin-deploy-plan.v1'===($runner_deploy['contract'] ?? ''), 'runner deployment plan contract missing');
+$check(false===($runner_deploy['caller_supplied_path_allowed'] ?? true), 'runner deployment plan allowed caller path');
+$check(false===($runner_deploy['caller_supplied_url_allowed'] ?? true), 'runner deployment plan allowed caller URL');
+$check(false===($runner_deploy['caller_supplied_credentials_allowed'] ?? true), 'runner deployment plan allowed caller credentials');
+$check(str_repeat('1',40)===$runner_deploy['current']['source_commit_sha'], 'runner deployment plan lost current exact source');
+$check(str_repeat('4',40)===$runner_deploy['candidate']['source_commit_sha'], 'runner deployment plan lost candidate exact source');
+$check(64===strlen($runner_deploy['plan_sha256']), 'runner deployment plan digest missing');
 
 // Write submissions require approval + normal Authorization claim.
 $nested = array(
