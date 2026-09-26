@@ -62,6 +62,65 @@ $check( empty( $bad_quality['quality_gate_pass'] ), 'utility-heavy/empty evidenc
 $check( in_array( 'empty_sample_ratio_above_maximum', $bad_quality['blockers'], true ), 'empty ratio blocker missing' );
 $check( in_array( 'configured_language_coverage_incomplete', $bad_quality['blockers'], true ), 'language coverage blocker missing' );
 
+$groups = $invoke( 'partition_live_post_types', array( array(
+	'page',
+	'post',
+	'tours-and-activities',
+	'tour-rates',
+	'elementor_library',
+	'custom-story',
+) ) );
+$check( in_array( 'page', $groups['core'], true ) && in_array( 'tours-and-activities', $groups['core'], true ), 'core content post types were not prioritized' );
+$check( in_array( 'tour-rates', $groups['utility'], true ) && in_array( 'elementor_library', $groups['utility'], true ), 'utility post types were not isolated' );
+$check( in_array( 'custom-story', $groups['secondary'], true ), 'unknown public content type did not remain secondary evidence' );
+
+$selection_fixture = array();
+foreach ( array( 'en' => 12, 'es' => 6, 'it' => 6 ) as $lang => $count ) {
+	for ( $i = 0; $i < $count; ++$i ) {
+		$selection_fixture[] = array(
+			'content_id' => 'core:' . $lang . ':' . $i,
+			'post_type' => 0 === $i % 2 ? 'page' : 'tours-and-activities',
+			'language' => $lang,
+			'text' => str_repeat( 'high quality brand expression ', 8 ),
+			'seo' => array(),
+		);
+	}
+}
+foreach ( array( 'ar', 'de', 'fr' ) as $lang ) {
+	$selection_fixture[] = array(
+		'content_id' => 'utility:' . $lang,
+		'post_type' => 'elementor_library',
+		'language' => $lang,
+		'text' => str_repeat( 'localized navigation expression ', 6 ),
+		'seo' => array(),
+	);
+}
+for ( $i = 0; $i < 20; ++$i ) {
+	$selection_fixture[] = array(
+		'content_id' => 'empty:' . $i,
+		'post_type' => 'tour-rates',
+		'language' => 'en',
+		'text' => '',
+		'seo' => array(),
+	);
+}
+$selection = $invoke( 'stratify_live_records', array( $selection_fixture ) );
+$check( 24 === count( $selection ), 'bounded evidence selection did not fill the expected sample window' );
+$selected_languages = array();
+$selected_empty = 0;
+$selected_utility = 0;
+$selected_core = 0;
+foreach ( $selection as $row ) {
+	$selected_languages[ $row['language'] ] = true;
+	if ( '' === trim( (string) $row['text'] ) ) ++$selected_empty;
+	if ( in_array( $row['post_type'], array( 'tour-rates', 'elementor_library', 'elementskit_content', 'elementskit_template', 'nav_menu_item' ), true ) ) ++$selected_utility;
+	if ( in_array( $row['post_type'], array( 'page', 'tours-and-activities' ), true ) ) ++$selected_core;
+}
+foreach ( array( 'ar', 'de', 'en', 'es', 'fr', 'it' ) as $lang ) $check( isset( $selected_languages[ $lang ] ), 'best-per-language evidence reservation lost locale ' . $lang );
+$check( 0 === $selected_empty, 'empty utility evidence displaced available non-empty evidence' );
+$check( $selected_utility <= 3, 'utility evidence dominated a sample with sufficient core content' );
+$check( $selected_core >= 21, 'core evidence did not dominate the bounded sample' );
+
 $authority_a = array(
 	array( 'asset_id' => 'strategy', 'category' => 'brand_strategy', 'content_hash' => hash( 'sha256', 'strategy-a' ), 'reviewed_content_hash' => hash( 'sha256', 'strategy-a' ) ),
 	array( 'asset_id' => 'voice', 'category' => 'tone_of_voice', 'content_hash' => hash( 'sha256', 'voice-a' ), 'reviewed_content_hash' => hash( 'sha256', 'voice-a' ) ),
