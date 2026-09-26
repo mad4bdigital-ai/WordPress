@@ -122,7 +122,8 @@ assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_tools
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_tools
 assert "$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_tools
 assert "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_tools()" in chatgpt_tools
-assert "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up, $direct_remote_operations )" in chatgpt_tools
+assert "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_tools
+assert "$direct_mutation_transport = array_merge( $direct_mutation_transport, $direct_remote_operations )" in chatgpt_tools
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
