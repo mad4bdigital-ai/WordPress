@@ -26,6 +26,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const SKILLS_LOCK_OPTION = 'mad4b_scp_remote_skills_reconciliation_lock_v1';
 	const SKILLS_LOCK_TTL = 900;
 	const BROWSER_REQUEST_OPTION = 'mad4b_scp_remote_browser_sample_request_v1';
+	const BROWSER_ACCEPTANCE_RECEIPT_OPTION = 'mad4b_scp_browser_acceptance_receipt_v1';
 
 	const SKILLS_CONFIRMATION = 'RECONCILE MANAGED SKILLS';
 	const FRONTEND_CONFIRMATION = 'COLLECT FRONTEND PERFORMANCE SAMPLES';
@@ -1135,6 +1136,22 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			)
 		);
 		if ( is_wp_error( $result ) ) return $result;
+		$receipt = array(
+			'contract' => 'mad4b.remote-browser-acceptance-receipt.v1',
+			'job_id' => (string) $input['job_id'],
+			'expected_identity' => isset( $job['expected_identity'] ) && is_array( $job['expected_identity'] ) ? $job['expected_identity'] : array(),
+			'provider_id' => $provider_id,
+			'profile_id' => $profile_id,
+			'plan_digest' => $plan_digest,
+			'plan_signature' => $plan_signature,
+			'evidence_digest' => isset( $browser_result['evidence_digest'] ) ? (string) $browser_result['evidence_digest'] : '',
+			'receipt_signature' => isset( $browser_result['receipt_signature'] ) ? (string) $browser_result['receipt_signature'] : '',
+			'browser_result' => $browser_result,
+			'verified_at' => gmdate( 'c' ),
+		);
+		$receipt_persisted = self::persist_browser_acceptance_receipt( $receipt );
+		$result['browser_acceptance_receipt_persisted'] = $receipt_persisted;
+		$result['browser_acceptance_receipt_contract'] = 'mad4b.remote-browser-acceptance-receipt.v1';
 		$audit = self::audit( self::WORK_COMPLETE_ABILITY, array(
 			'job_id' => (string) $input['job_id'],
 			'executor_id' => sanitize_key( (string) $input['executor_id'] ),
@@ -1399,6 +1416,63 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		);
 	}
 
+	private static function persist_browser_acceptance_receipt( array $receipt ) {
+		update_option( self::BROWSER_ACCEPTANCE_RECEIPT_OPTION, $receipt, false );
+		$stored = get_option( self::BROWSER_ACCEPTANCE_RECEIPT_OPTION, array() );
+		if ( ! is_array( $stored ) ) return false;
+		foreach ( array( 'job_id', 'plan_digest', 'evidence_digest' ) as $key ) {
+			$expected = isset( $receipt[ $key ] ) ? (string) $receipt[ $key ] : '';
+			$actual = isset( $stored[ $key ] ) ? (string) $stored[ $key ] : '';
+			if ( '' === $expected || '' === $actual || ! hash_equals( $expected, $actual ) ) return false;
+		}
+		return true;
+	}
+
+	public static function browser_acceptance_receipt_status( array $plan = array() ) {
+		$stored = get_option( self::BROWSER_ACCEPTANCE_RECEIPT_OPTION, array() );
+		$base = array(
+			'contract' => 'mad4b.remote-browser-acceptance-receipt-status.v1',
+			'ready' => false,
+			'state' => 'missing',
+			'blockers' => array( 'browser_acceptance_receipt_missing' ),
+			'receipt' => is_array( $stored ) ? $stored : array(),
+		);
+		if ( ! is_array( $stored ) || 'mad4b.remote-browser-acceptance-receipt.v1' !== ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' ) ) return $base;
+		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
+		$expected = isset( $stored['expected_identity'] ) && is_array( $stored['expected_identity'] ) ? $stored['expected_identity'] : array();
+		$identity_match = is_array( $provenance )
+			&& ! empty( $provenance['runtime_manifest_match'] )
+			&& empty( $provenance['stale'] )
+			&& isset( $expected['source_commit_sha'], $expected['build_fingerprint'], $expected['package_manifest_digest'] )
+			&& hash_equals( strtolower( (string) ( isset( $provenance['source_commit_sha'] ) ? $provenance['source_commit_sha'] : '' ) ), strtolower( (string) $expected['source_commit_sha'] ) )
+			&& hash_equals( strtolower( (string) ( isset( $provenance['build_fingerprint'] ) ? $provenance['build_fingerprint'] : '' ) ), strtolower( (string) $expected['build_fingerprint'] ) )
+			&& hash_equals( strtolower( (string) ( isset( $provenance['package_manifest_digest'] ) ? $provenance['package_manifest_digest'] : '' ) ), strtolower( (string) $expected['package_manifest_digest'] ) );
+		$plan_match = empty( $plan ) || (
+			isset( $plan['provider_id'], $plan['profile_id'], $plan['plan_digest'], $plan['plan_signature'] )
+			&& hash_equals( (string) $plan['provider_id'], (string) ( isset( $stored['provider_id'] ) ? $stored['provider_id'] : '' ) )
+			&& hash_equals( (string) $plan['profile_id'], (string) ( isset( $stored['profile_id'] ) ? $stored['profile_id'] : '' ) )
+			&& hash_equals( strtolower( (string) $plan['plan_digest'] ), strtolower( (string) ( isset( $stored['plan_digest'] ) ? $stored['plan_digest'] : '' ) ) )
+			&& hash_equals( strtolower( (string) $plan['plan_signature'] ), strtolower( (string) ( isset( $stored['plan_signature'] ) ? $stored['plan_signature'] : '' ) ) )
+		);
+		$browser_result = isset( $stored['browser_result'] ) && is_array( $stored['browser_result'] ) ? $stored['browser_result'] : array();
+		$result_valid = 'PASS' === ( isset( $browser_result['verdict'] ) ? (string) $browser_result['verdict'] : '' )
+			&& ! empty( $browser_result['verification']['browser_runtime_parity_verified'] )
+			&& isset( $browser_result['plan_digest'] )
+			&& hash_equals( strtolower( (string) ( isset( $stored['plan_digest'] ) ? $stored['plan_digest'] : '' ) ), strtolower( (string) $browser_result['plan_digest'] ) );
+		$ready = $identity_match && $plan_match && $result_valid;
+		$blockers = array();
+		if ( ! $identity_match ) $blockers[] = 'browser_acceptance_receipt_build_mismatch';
+		if ( ! $plan_match ) $blockers[] = 'browser_acceptance_receipt_plan_mismatch';
+		if ( ! $result_valid ) $blockers[] = 'browser_acceptance_receipt_result_invalid';
+		return array(
+			'contract' => 'mad4b.remote-browser-acceptance-receipt-status.v1',
+			'ready' => $ready,
+			'state' => $ready ? 'ready' : 'stale_or_invalid',
+			'blockers' => array_values( array_unique( $blockers ) ),
+			'receipt' => $stored,
+		);
+	}
+
 	public static function queue_browser_acceptance( $input ) {
 		if ( self::BROWSER_ACCEPTANCE_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_browser_acceptance_confirmation_required', 'Exact Browser Acceptance confirmation is required.' );
 		$provenance = self::assert_exact_build( $input );
@@ -1425,7 +1499,11 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			if ( ! is_array( $existing_job ) || ! in_array( (string) ( isset( $existing_job['effective_status'] ) ? $existing_job['effective_status'] : '' ), array( 'pending', 'claimed' ), true ) ) continue;
 			$existing_payload = isset( $existing_job['payload'] ) && is_array( $existing_job['payload'] ) ? $existing_job['payload'] : array();
 			$existing_identity = isset( $existing_job['expected_identity'] ) && is_array( $existing_job['expected_identity'] ) ? $existing_job['expected_identity'] : array();
-			if ( $provider_id === ( isset( $existing_payload['provider_id'] ) ? (string) $existing_payload['provider_id'] : '' )
+			$existing_plan = isset( $existing_payload['plan'] ) && is_array( $existing_payload['plan'] ) ? $existing_payload['plan'] : array();
+			$challenge_expires = isset( $existing_plan['challenge']['expires_at'] ) ? (int) $existing_plan['challenge']['expires_at'] : 0;
+			$fresh_enough = $challenge_expires < 1 || $challenge_expires > ( time() + 120 );
+			if ( $fresh_enough
+				&& $provider_id === ( isset( $existing_payload['provider_id'] ) ? (string) $existing_payload['provider_id'] : '' )
 				&& $profile_id === ( isset( $existing_payload['profile_id'] ) ? (string) $existing_payload['profile_id'] : '' )
 				&& isset( $existing_payload['plan_digest'] )
 				&& hash_equals( $plan_digest, strtolower( (string) $existing_payload['plan_digest'] ) )
