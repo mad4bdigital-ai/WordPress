@@ -3,6 +3,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
 servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+abilities = (root / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 perf = (root / 'includes' / 'class-mad4b-scp-admin-query-performance.php').read_text(encoding='utf-8')
 generalization = (root.parents[2] / 'specs' / '007-content-intelligence-workflow-platform' / 'contracts' / 'generalization-rules.md').read_text(encoding='utf-8')
@@ -109,6 +110,61 @@ for ability in [
 
 if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in servers:
     raise SystemExit('bounded enrollment server is not sourced from Remote Operation Parity enrollment inventory')
+
+for marker in [
+    "'mad4b/enrollment-discover'",
+    "'mad4b/enrollment-info'",
+    "'mad4b/enrollment-execute'",
+    "governed_enrollment_target",
+    "can_enrollment_dispatch",
+    "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()",
+    "mad4b_enrollment_dispatch_target_not_allowlisted",
+    "mad4b_enrollment_dispatch_recursion_denied",
+    "mad4b_enrollment_dispatch_surface_mismatch",
+    "mad4b_enrollment_dispatch_contract_mismatch",
+    "mad4b_enrollment_dispatch_generic_admin_denied",
+    "mad4b_enrollment_dispatch_production_denied",
+    "mad4b_enrollment_dispatch_schema_drift",
+    "'authority_surface' => 'mad4b-enrollment'",
+    "'production_mutation_allowed' => false",
+]:
+    if marker not in abilities:
+        raise SystemExit(f'bounded Enrollment dispatcher invariant missing: {marker}')
+
+for marker in [
+    "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'",
+    "array( 'mad4b/write-execute', 'mad4b/enrollment-execute' )",
+    "bounded Remote Operation Parity enrollment operations",
+]:
+    if marker not in servers:
+        raise SystemExit(f'compact ChatGPT Enrollment projection invariant missing: {marker}')
+
+enrollment_target = abilities.split("private function governed_enrollment_target(", 1)[1].split("public function can_enrollment_dispatch(", 1)[0]
+if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in enrollment_target:
+    raise SystemExit("Enrollment dispatcher target allowlist is not sourced exclusively from Remote Operation Parity")
+for forbidden in [
+    "MAD4B_SCP_Servers::core_tools( 'mad4b-enrollment' )",
+    "MAD4B_SCP_Servers::external_write_tools()",
+    "MAD4B_SCP_Full_Staging_Authority",
+    "MAD4B_SCP_Developer_Authority",
+]:
+    if forbidden in enrollment_target:
+        raise SystemExit(f'Enrollment dispatcher target widened beyond bounded parity inventory: {forbidden}')
+
+enrollment_permission = abilities.split("public function can_enrollment_dispatch(", 1)[1].split("public function enrollment_discover(", 1)[0]
+if "MAD4B_SCP_Policy::can_mutate()" in enrollment_permission:
+    raise SystemExit("Enrollment dispatcher must not depend on normal governed-write mutation readiness")
+if "MAD4B_SCP_Remote_Operation_Parity::can_execute(" not in enrollment_permission:
+    raise SystemExit("Enrollment dispatcher must reuse Remote Operation Parity bearer/profile/Staging authority checks")
+
+core_write = servers.split("private static function core_write_candidates()", 1)[1].split("private static function catalog_cacheable()", 1)[0]
+for dispatcher in [
+    "mad4b/enrollment-discover",
+    "mad4b/enrollment-info",
+    "mad4b/enrollment-execute",
+]:
+    if dispatcher in core_write:
+        raise SystemExit(f'{dispatcher} unexpectedly entered normal governed-write candidates')
 
 write_start = servers.find("'mad4b-write' => array(")
 admin_start = servers.find("'mad4b-admin' => array(", write_start + 1)
