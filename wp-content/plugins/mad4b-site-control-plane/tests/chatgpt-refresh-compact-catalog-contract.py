@@ -61,6 +61,8 @@ for marker in [
     "'mad4b/write-discover'",
     "'mad4b/write-info'",
     "'mad4b/write-execute'",
+    "'mad4b/enrollment-info'",
+    "'mad4b/enrollment-execute'",
     "'write_dispatch'",
     "mad4b.chatgpt-write-discovery.v1",
     "mad4b.chatgpt-write-ability-info.v1",
@@ -114,6 +116,51 @@ require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONTRACT" in CANDIDATE_BI
 require("mad4b.staging-write-grant-reconciliation.v1" not in CANDIDATE_BINDING, "candidate binding must not hard-code the obsolete reconciliation v1 contract")
 require("mad4b/staging-write-grant-reconciliation-complete" not in GRANT_RECONCILE, "no fallible composite completion audit may execute after the candidate-binding commit point")
 
+# Bounded enrollment dispatcher must bridge only Remote Operation Parity enrollment
+# abilities and must not become a second generic write/admin surface.
+for marker in [
+    "'mad4b/enrollment-info'",
+    "'mad4b/enrollment-execute'",
+    "private function governed_enrollment_target",
+    "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()",
+    "mad4b_enrollment_dispatch_target_not_allowed",
+    "mad4b_enrollment_dispatch_surface_mismatch",
+    "mad4b_enrollment_dispatch_schema_drift",
+    "MAD4B_SCP_Site_Profile_Enrollment::can_access_transport",
+    "MAD4B_SCP_Remote_Operation_Parity::can_execute",
+    "expected_input_schema_sha256",
+    "'authority_surface' => 'mad4b-enrollment'",
+    "$ability->execute( $params )",
+]:
+    require(marker in ABILITIES, f"bounded enrollment dispatcher invariant missing: {marker}")
+
+enrollment_target = ABILITIES.split("private function governed_enrollment_target", 1)[1].split("public function can_enrollment_dispatch", 1)[0]
+require("false !== $annotations['readonly']" in enrollment_target, "enrollment dispatcher must reject readonly targets")
+require("'enrollment' !==" in enrollment_target, "enrollment dispatcher must require explicit enrollment MCP surface")
+for forbidden in [
+    "MAD4B_SCP_Authorization::authorize_mutation",
+    "MAD4B_SCP_Servers::external_write_tools",
+    "MAD4B_SCP_Servers::write_tools",
+    "grant_ability(",
+    "update_option(",
+    "wp_insert_post(",
+    "$wpdb->",
+]:
+    require(forbidden not in enrollment_target, f"enrollment target resolution widened authority: {forbidden}")
+
+enrollment_execute = ABILITIES.split("public function enrollment_execute", 1)[1].split("private function schema(", 1)[0]
+require("$ability->execute( $params )" in enrollment_execute, "enrollment dispatcher must delegate through the original WP_Ability execute path")
+require("hash_equals" in enrollment_execute, "enrollment dispatcher must bind execution to the planned target schema")
+for forbidden in [
+    "update_option(",
+    "wp_insert_post(",
+    "wp_update_post(",
+    "$wpdb->",
+    "Plugin_Upgrader",
+    "grant_ability(",
+]:
+    require(forbidden not in enrollment_execute, f"enrollment dispatcher contains a direct mutation primitive: {forbidden}")
+
 write_execute = ABILITIES.split("public function write_execute", 1)[1].split("public function filesystem_list", 1)[0]
 require("$ability->execute( $params )" in write_execute, "write dispatcher must delegate through the original WP_Ability execute path")
 for forbidden in [
@@ -141,6 +188,8 @@ for marker in [
     "'mad4b/write-discover'",
     "'mad4b/write-info'",
     "'mad4b/write-execute'",
+    "'mad4b/enrollment-info'",
+    "'mad4b/enrollment-execute'",
     "'mad4b/plugin-package-plan'",
 ]:
     require(marker in core_chatgpt, f"required minimal direct ChatGPT tool missing: {marker}")
@@ -163,7 +212,7 @@ for forbidden in [
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
 require("$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_body, "bounded and full authority step-ups must be composed explicitly")
-require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_body, "normal governed writes plus the composed guarded authority step-ups must be the only direct mutations")
+require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute', 'mad4b/enrollment-execute' ), $step_up )" in chatgpt_body, "normal governed writes, bounded enrollment parity, and guarded authority step-ups must be the only direct mutations")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_body, "unified enrolled Staging tools/list must include read-only full authority diagnostics")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_body, "unified enrolled Staging tools/list must project the composite apply only through the guarded step-up method")
 for low_level in [
