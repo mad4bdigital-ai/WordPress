@@ -163,7 +163,8 @@ for forbidden in [
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
 require("$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_body, "bounded and full authority step-ups must be composed explicitly")
-require("'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in chatgpt_body, "bounded Enrollment dispatcher must be projected explicitly")
+require("'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in core_chatgpt, "bounded Enrollment dispatcher must remain in the canonical compact ChatGPT core catalog")
+require("$candidates = array_merge( $core, $bootstrap )" in chatgpt_body, "runtime ChatGPT tools/list must start from the canonical compact core catalog")
 require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_body, "normal governed write dispatch plus guarded authority step-ups must preserve the baseline direct mutation contract")
 require("$direct_mutation_transport[] = 'mad4b/enrollment-execute';" in chatgpt_body, "only bounded Enrollment execute may extend direct mutation transport")
 require("$direct_mutation_transport = array_values( array_unique( $direct_mutation_transport ) );" in chatgpt_body, "direct mutation transport must remain deduplicated")
