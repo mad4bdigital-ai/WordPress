@@ -9,6 +9,7 @@ main = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 for marker in [
     "const CONTRACT = 'mad4b.remote-work-queue.v1';",
     "'frontend_performance_sampling'",
+    "'browser_acceptance_execution'",
     "const LOCK_OPTION = 'mad4b_scp_remote_work_queue_lock_v1';",
     "add_option( self::LOCK_OPTION",
     "delete_option_if_unchanged",
@@ -52,6 +53,8 @@ for marker in [
     "const WORK_QUEUE_ABILITY = 'mad4b/remote-operation-work-queue';",
     "const WORK_CLAIM_ABILITY = 'mad4b/remote-operation-work-claim';",
     "const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';",
+    "const BROWSER_ACCEPTANCE_ABILITY = 'mad4b/browser-acceptance-run';",
+    "const BROWSER_ACCEPTANCE_CONFIRMATION = 'RUN BROWSER ACCEPTANCE';",
     "MAD4B_SCP_Remote_Work_Queue::enqueue(",
     "MAD4B_SCP_Remote_Work_Queue::claim(",
     "MAD4B_SCP_Remote_Work_Queue::complete(",
@@ -60,6 +63,11 @@ for marker in [
     "matched_frontend_probe_samples",
     "'probe_hash'",
     "'claimed_at'",
+    "queue_browser_acceptance",
+    "MAD4B_SCP_Browser_Acceptance_Core::plan(",
+    "MAD4B_SCP_Browser_Acceptance_Core::result(",
+    "mad4b_remote_browser_acceptance_not_verified",
+    "browser_runtime_parity_verified",
 ]:
     if marker not in parity:
         raise SystemExit(f"remote parity work-queue integration missing: {marker}")
@@ -79,6 +87,26 @@ for marker in (
 ):
     if marker not in completion:
         raise SystemExit("remote browser completion lacks exact probe correlation: " + marker)
+
+browser_branch = completion.split("if ( 'browser_acceptance_execution' === $operation_id )", 1)[1].split("if ( 'frontend_performance_sampling' !== $operation_id )", 1)[0]
+for marker in (
+    "complete_browser_acceptance_work",
+):
+    if marker not in browser_branch:
+        raise SystemExit("browser acceptance completion dispatch missing: " + marker)
+browser_helper = parity.split("private static function complete_browser_acceptance_work", 1)[1].split("public static function reconcile_managed_skills", 1)[0]
+for marker in (
+    "MAD4B_SCP_Browser_Acceptance_Core::result(",
+    "'PASS' ===",
+    "browser_runtime_parity_verified",
+    "mad4b_remote_browser_acceptance_not_verified",
+    "MAD4B_SCP_Remote_Work_Queue::complete(",
+    "'browser_result' => $browser_result",
+):
+    if marker not in browser_helper:
+        raise SystemExit("browser acceptance completion lacks server-owned verification: " + marker)
+if browser_helper.index("MAD4B_SCP_Browser_Acceptance_Core::result(") > browser_helper.index("MAD4B_SCP_Remote_Work_Queue::complete("):
+    raise SystemExit("browser acceptance evidence must be reduced before durable work completion")
 
 if "mad4b/remote-operation-work-queue" not in servers:
     raise SystemExit("remote work queue read ability is not exposed on a governed read server surface")
