@@ -133,7 +133,8 @@ for marker in [
 
 for marker in [
     "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'",
-    "array( 'mad4b/write-execute', 'mad4b/enrollment-execute' )",
+    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )",
+    "$direct_mutation_transport[] = 'mad4b/enrollment-execute'",
     "bounded Remote Operation Parity enrollment operations",
 ]:
     if marker not in servers:
