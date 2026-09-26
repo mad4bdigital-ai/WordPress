@@ -91,6 +91,7 @@ $direct_required = array(
 	'mad4b-write-discover',
 	'mad4b-write-info',
 	'mad4b-write-execute',
+	'mad4b-enrollment-info',
 	'mad4b-enrollment-execute',
 	'mad4b-diagnostics-health',
 	'mad4b-runtime-authority-status',
@@ -132,12 +133,13 @@ foreach ( $internal_only_direct_forbidden as $tool_name ) {
 	}
 }
 
-if ( ! wp_has_ability( 'mad4b/enrollment-execute' ) ) {
-	$fail( 'Bounded enrollment dispatcher ability was not registered.' );
+if ( ! wp_has_ability( 'mad4b/enrollment-info' ) || ! wp_has_ability( 'mad4b/enrollment-execute' ) ) {
+	$fail( 'Bounded enrollment inspect/execute transport was not fully registered.' );
 }
+$enrollment_info_ability = wp_get_ability( 'mad4b/enrollment-info' );
 $enrollment_dispatcher = wp_get_ability( 'mad4b/enrollment-execute' );
-if ( ! is_object( $enrollment_dispatcher ) || ! method_exists( $enrollment_dispatcher, 'get_meta' ) ) {
-	$fail( 'Bounded enrollment dispatcher metadata is unavailable.' );
+if ( ! is_object( $enrollment_info_ability ) || ! is_object( $enrollment_dispatcher ) || ! method_exists( $enrollment_dispatcher, 'get_meta' ) ) {
+	$fail( 'Bounded enrollment transport metadata is unavailable.' );
 }
 $enrollment_meta = $enrollment_dispatcher->get_meta();
 $enrollment_annotations = isset( $enrollment_meta['annotations'] ) && is_array( $enrollment_meta['annotations'] ) ? $enrollment_meta['annotations'] : array();
@@ -150,21 +152,59 @@ if ( true === ( isset( $enrollment_annotations['readonly'] ) ? $enrollment_annot
 	|| false !== $enrollment_mcp['production_mutation_allowed'] ) {
 	$fail( 'Bounded enrollment dispatcher metadata widened its authority contract.', $enrollment_meta );
 }
-if ( in_array( 'mad4b/enrollment-execute', MAD4B_SCP_Servers::write_tools(), true )
-	|| in_array( 'mad4b/enrollment-execute', MAD4B_SCP_Servers::external_write_tools(), true ) ) {
-	$fail( 'Bounded enrollment dispatcher leaked into the normal write catalog.' );
+foreach ( array( 'mad4b/enrollment-info', 'mad4b/enrollment-execute' ) as $transport_ability ) {
+	if ( in_array( $transport_ability, MAD4B_SCP_Servers::write_tools(), true )
+		|| in_array( $transport_ability, MAD4B_SCP_Servers::external_write_tools(), true ) ) {
+		$fail( 'Bounded enrollment transport leaked into the normal write catalog.', $transport_ability );
+	}
+	foreach ( array( 'mad4b-admin', 'mad4b-write', 'mad4b-breakglass', 'mad4b-developer', 'mad4b-developer-breakglass' ) as $server_id ) {
+		if ( null !== MAD4B_SCP_Servers::provider_for_ability( $server_id, $transport_ability ) ) {
+			$fail( 'Bounded enrollment transport leaked onto a privileged/non-target server.', array( 'ability' => $transport_ability, 'server_id' => $server_id ) );
+		}
+	}
+}
+$enrollment_info = MAD4B_SCP_Remote_Operation_Parity::enrollment_info(
+	array( 'ability_name' => MAD4B_SCP_Remote_Operation_Parity::SKILLS_ABILITY )
+);
+if ( is_wp_error( $enrollment_info )
+	|| empty( $enrollment_info['read_only'] )
+	|| ! empty( $enrollment_info['mutation_performed'] )
+	|| empty( $enrollment_info['input_schema_sha256'] )
+	|| 64 !== strlen( (string) $enrollment_info['input_schema_sha256'] )
+	|| 'mad4b-enrollment' !== (string) $enrollment_info['authority_surface']
+	|| false !== $enrollment_info['normal_write_authority_required']
+	|| 'deny' !== (string) $enrollment_info['production_policy'] ) {
+	$fail( 'Enrollment info did not expose a bounded exact target contract.', $enrollment_info );
 }
 $dispatch_denied = MAD4B_SCP_Remote_Operation_Parity::dispatch_enrollment_ability(
-	array( 'ability_name' => 'mad4b/plugin-activate', 'input' => array() )
+	array(
+		'ability_name' => 'mad4b/plugin-activate',
+		'expected_input_schema_sha256' => str_repeat( '0', 64 ),
+		'input' => array(),
+	)
 );
 if ( ! is_wp_error( $dispatch_denied ) || 'mad4b_enrollment_dispatch_target_not_allowed' !== $dispatch_denied->get_error_code() ) {
 	$fail( 'Enrollment dispatcher did not fail closed for a non-enrollment target.', $dispatch_denied );
 }
+$schema_drift = MAD4B_SCP_Remote_Operation_Parity::dispatch_enrollment_ability(
+	array(
+		'ability_name' => MAD4B_SCP_Remote_Operation_Parity::SKILLS_ABILITY,
+		'expected_input_schema_sha256' => str_repeat( '0', 64 ),
+		'input' => array(),
+	)
+);
+if ( ! is_wp_error( $schema_drift ) || 'mad4b_enrollment_dispatch_schema_drift' !== $schema_drift->get_error_code() ) {
+	$fail( 'Enrollment dispatcher did not fail closed on target input schema drift.', $schema_drift );
+}
 $dispatch_validation = MAD4B_SCP_Remote_Operation_Parity::dispatch_enrollment_ability(
-	array( 'ability_name' => MAD4B_SCP_Remote_Operation_Parity::SKILLS_ABILITY, 'input' => array() )
+	array(
+		'ability_name' => MAD4B_SCP_Remote_Operation_Parity::SKILLS_ABILITY,
+		'expected_input_schema_sha256' => (string) $enrollment_info['input_schema_sha256'],
+		'input' => array(),
+	)
 );
 if ( ! is_wp_error( $dispatch_validation ) || 'ability_invalid_input' !== $dispatch_validation->get_error_code() ) {
-	$fail( 'Enrollment dispatcher did not preserve target Ability input validation.', $dispatch_validation );
+	$fail( 'Enrollment dispatcher did not preserve target Ability input validation after schema fencing.', $dispatch_validation );
 }
 
 // Heavy/read-only inventory stays out of tools/list so client Refresh remains
