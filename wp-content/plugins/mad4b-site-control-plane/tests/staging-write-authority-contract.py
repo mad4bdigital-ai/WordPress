@@ -124,6 +124,11 @@ for marker in [
     "'context/reconcile-brand-materialization' => 'google_drive_context'",
     "'context/rollback-materialized-brand-draft' => 'google_drive_context'",
     "'context/source-scan-apply' => 'google_drive_context'",
+    "'context/brand-draft-append' => 'google_drive_context'",
+    "'context/materialize-brand-draft' => 'google_drive_context'",
+    "'context/reconcile-brand-materialization' => 'google_drive_context'",
+    "'context/rollback-materialized-brand-draft' => 'google_drive_context'",
+    "'context/source-scan-apply' => 'google_drive_context'",
     "'mad4b/plugin-package-apply' => 'core'",
     "'mad4b/context-ai-review' => 'core'",
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
@@ -186,14 +191,17 @@ for forbidden_grant in [
 if "'mad4b/staging-write-grant-reconcile'" not in servers:
     raise SystemExit('bounded grant reconciliation is missing from the internal enrollment server catalog')
 chatgpt_transport = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
+if "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" not in chatgpt_transport:
+    raise SystemExit('bounded Staging Write Authority plan projection is missing')
+if "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" not in chatgpt_transport:
+    raise SystemExit('bounded Staging Write Authority step-up projection is missing')
 if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_transport:
     raise SystemExit('single-app Full Staging Authority step-up projection is missing')
-if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" not in chatgpt_transport:
-    raise SystemExit('direct ChatGPT mutation transport must be limited to write-execute plus the composite step-up')
+if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $narrow_step_up, $full_step_up )" not in chatgpt_transport:
+    raise SystemExit('direct ChatGPT mutation transport must be limited to write-execute plus the two guarded authority composites')
 for bootstrap_ability in (
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
-    "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
 ):
     if bootstrap_ability in chatgpt_transport:
@@ -318,7 +326,9 @@ for marker in [
     "$registry->ability_names( 'admin' )",
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
-    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )",
+    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $narrow_step_up, $full_step_up )",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
     "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
     "self::provider_for_ability( 'mad4b-write', $ability_name )",
     "'mad4b/write-authority-status'",
@@ -727,25 +737,6 @@ if legacy_rigid in write:
 import re as _re
 _exact_sha = '6efd5a0f266fbc84c2e49221694340209ee189af'
 _safe = _re.compile(r'[A-Za-z0-9._-]+')
-def _artifact_identity_valid(value, sha):
-    return (
-        bool(_re.fullmatch(r'[a-f0-9]{40}', sha))
-        and 0 < len(value) <= 191
-        and value.startswith('mad4b-site-control-plane-')
-        and bool(_safe.fullmatch(value))
-        and value.endswith('-' + sha)
-    )
-
-if not _artifact_identity_valid('mad4b-site-control-plane-0.4.0-rc.59-' + _exact_sha, _exact_sha):
-    raise SystemExit('canonical versioned plugin artifact identity must be accepted')
-if not _artifact_identity_valid('mad4b-site-control-plane-general-distribution-kit-' + _exact_sha, _exact_sha):
-    raise SystemExit('historical general-distribution artifact identity must remain accepted')
-if _artifact_identity_valid('mad4b-site-control-plane-0.4.0-rc.59-' + ('0' * 40), _exact_sha):
-    raise SystemExit('artifact identity with a different source SHA must be rejected')
-if _artifact_identity_valid('../mad4b-site-control-plane-0.4.0-rc.59-' + _exact_sha, _exact_sha):
-    raise SystemExit('unsafe artifact identity characters/prefix must be rejected')
-
-print('mad4b.staging-write-authority.tenant-profile.v14: PASS')
 def _artifact_identity_valid(value, sha):
     return (
         bool(_re.fullmatch(r'[a-f0-9]{40}', sha))
