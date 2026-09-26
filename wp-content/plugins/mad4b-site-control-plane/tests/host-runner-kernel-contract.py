@@ -127,6 +127,8 @@ def stage_candidate_bundle(profile, source: str, build: str, manifest: str, vers
             "provenance_contract": "mad4b.build-provenance.v1",
         },
         "canonical_package": {
+            "contract": "mad4b.deterministic-control-plane-package.v1",
+            "archive_sha256": archive_sha,
             "receipt_sha256": runner.sha256_file(receipt_path),
         },
     }
