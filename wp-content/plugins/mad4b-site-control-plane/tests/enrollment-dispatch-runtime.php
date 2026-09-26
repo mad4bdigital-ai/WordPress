@@ -322,7 +322,7 @@ mad4b_assert( is_array( $result ), 'eligible enrollment operation did not execut
 mad4b_assert( true === $result['operation_invoked'], 'dispatcher did not report operation invocation' );
 mad4b_assert( false === $result['mutation_performed'], 'dispatcher overwrote explicit target no-op mutation evidence' );
 mad4b_assert( 'target_result' === $result['mutation_evidence_source'], 'dispatcher did not identify target mutation evidence source' );
-mad4b_assert( 2 === $skills->calls, 'eligible target did not execute exactly once' );
+mad4b_assert( 1 === $skills->calls, 'eligible target did not execute exactly once' );
 mad4b_assert( 'created' === $result['enrollment_grant']['state'], 'missing exact Enrollment grant was not bootstrapped' );
 mad4b_assert( true === $result['enrollment_grant']['created'], 'created Enrollment grant was not reported as created' );
 mad4b_assert( 'mad4b-enrollment' === $result['enrollment_grant']['server_id'], 'Enrollment grant escaped its bounded server' );
