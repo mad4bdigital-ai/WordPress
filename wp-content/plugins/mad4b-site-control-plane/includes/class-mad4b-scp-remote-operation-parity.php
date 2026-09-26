@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Remote_Operation_Parity {
 	const CONTRACT = 'mad4b.remote-operation-parity.v1';
+	const CATALOG_VERSION = 3;
 	const STATUS_ABILITY = 'mad4b/remote-operation-parity-status';
 	const DISCOVER_ABILITY = 'mad4b/operation-discover';
 	const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';
@@ -413,7 +414,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$builtin_operation_ids = array_fill_keys( array_map( 'sanitize_key', array_keys( $rows ) ), true );
 		$filtered = apply_filters( 'mad4b_scp_remote_operation_catalog', $rows );
 		if ( is_array( $filtered ) ) $rows = array_slice( $filtered, 0, 500, true );
-		$required = array( 'feature_id', 'capability_tags', 'provider', 'remote_ability', 'authority_surface', 'executor', 'remote_mode', 'production_policy', 'human_decision_required', 'registrar_id', 'source_plugin', 'trust_class' );
+		$required = array( 'feature_id', 'capability_tags', 'provider', 'remote_ability', 'authority_surface', 'executor', 'remote_mode', 'remote_caller_role', 'production_policy', 'human_decision_required', 'registrar_id', 'source_plugin', 'trust_class' );
 		$normalized = array();
 		self::$catalog_rejections = array();
 		foreach ( $rows as $key => $row ) {
@@ -431,6 +432,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			}
 			if ( ! in_array( (string) $row['trust_class'], array( 'core', 'certified_addon', 'informational' ), true ) ) {
 				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_trust_class_invalid', 'trust_class' => (string) $row['trust_class'] );
+				continue;
+			}
+			if ( ! in_array( (string) $row['remote_caller_role'], array( 'operator', 'external_executor', 'owner', 'system' ), true ) ) {
+				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_remote_caller_role_invalid', 'remote_caller_role' => (string) $row['remote_caller_role'] );
 				continue;
 			}
 			$is_builtin = isset( $builtin_operation_ids[ $key ] );
@@ -469,7 +474,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			}
 			$row['operation_id'] = $key;
 			$row['catalog_contract'] = self::CONTRACT;
-			$row['catalog_version'] = 2;
+			$row['catalog_version'] = self::CATALOG_VERSION;
 			$row['registration_digest'] = self::operation_registration_digest( $key, $row );
 			$row['remote_registered'] = function_exists( 'wp_has_ability' ) && wp_has_ability( (string) $row['remote_ability'] );
 			$row['manual_only'] = empty( $row['remote_ability'] );
