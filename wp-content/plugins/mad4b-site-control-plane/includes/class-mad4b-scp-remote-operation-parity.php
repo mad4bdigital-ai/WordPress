@@ -51,6 +51,21 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		);
 	}
 
+	/**
+	 * Bounded Enrollment mutations that may be projected directly on the compact
+	 * ChatGPT transport before normal Write Authority is reconciled.
+	 *
+	 * Keep this list intentionally narrow. These abilities retain their native
+	 * permission callback, exact-build fencing, confirmation token, Staging-only
+	 * policy, enrolled-subject check and audit semantics. Low-level enrollment,
+	 * performance/DDL, browser work-queue and authority mutations remain hidden.
+	 */
+	public static function chatgpt_direct_enrollment_abilities() {
+		return array(
+			self::SKILLS_ABILITY,
+		);
+	}
+
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 
