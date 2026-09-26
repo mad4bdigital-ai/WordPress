@@ -5,6 +5,45 @@ import subprocess
 import tempfile
 
 script = Path("tools/Apply-Mad4bMasterRuleset.ps1").read_text(encoding="utf-8")
+release_verdict = Path(".github/workflows/mad4b-release-verdict.yml").read_text(encoding="utf-8")
+
+repair_bootstrap_required = [
+    "Verify bounded governance-apply repair bootstrap",
+    "github.event.pull_request.number == 69",
+    "chore/governance-apply-powershell-parse-20260926",
+    "8a0c12ef16023f042def7d42b760cdd847343e8a",
+    "rulesets/23968498?includes_parents=true",
+    "2026-09-25T02:13:24.911+03:00",
+    "mad4b.governance-apply-repair-bootstrap.v1",
+    "governance_apply_repair_bootstrap",
+    "governance_apply_repair_bootstrap_ready",
+    "required = ['Repository feature boundary']",
+    "(governance_ready or governance_apply_repair_bootstrap_ready)",
+    "target_governance_activation_still_required_post_merge",
+    "zero_bypass_actors_verified",
+    "powershell_parser_contract_verified",
+    "legacy_ruleset_snapshot_verified",
+]
+missing_repair_bootstrap = [
+    needle for needle in repair_bootstrap_required if needle not in release_verdict
+]
+if missing_repair_bootstrap:
+    raise SystemExit(
+        "governance-apply repair bootstrap contract missing: "
+        + ", ".join(missing_repair_bootstrap)
+    )
+
+# Fail closed if the bounded repair exception ever becomes generic.
+for forbidden in [
+    "governance_apply_repair_bootstrap = True",
+    "required = []\n              mode = 'governance_apply_repair_bootstrap'",
+]:
+    if forbidden in release_verdict:
+        raise SystemExit("governance-apply repair bootstrap widened: " + forbidden)
+
+print("governance_apply_repair_bootstrap=bounded")
+print("governance_apply_repair_live_snapshot=exact")
+print("governance_apply_repair_target_governance_claim=false_until_remote_apply")
 
 required = [
     '"--jq",".[] | @json"',
