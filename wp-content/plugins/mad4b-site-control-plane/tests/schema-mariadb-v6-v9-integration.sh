@@ -288,3 +288,15 @@ export MAD4B_EXPECTED_FROM_VERSION="6"
 echo
 echo "mad4b.schema-mariadb-v6-v7-v8-to-current.integration.v2: PASS target_version=${CURRENT_VERSION}"
 echo "mad4b.schema-broken-v8-partial-repair-to-current.v2: PASS target_version=${CURRENT_VERSION}"
+
+echo
+echo "=== BRAND CONTEXT SEMANTIC RUNTIME ==="
+"$WP_CLI" "${common[@]}" eval-file "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-runtime.php"
+
+echo
+echo "=== BRAND CONTEXT PROVIDER UNCERTAINTY AND STALE-EVIDENCE FENCES ==="
+"$WP_CLI" "${common[@]}" eval-file "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-provider-failure-runtime.php"
+
+echo
+echo "=== BRAND CONTEXT CROSS-JOB LINEAGE ==="
+bash "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-concurrency-runtime.sh"
