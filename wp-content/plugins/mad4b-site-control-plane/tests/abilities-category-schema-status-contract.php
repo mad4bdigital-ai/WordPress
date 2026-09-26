@@ -116,6 +116,12 @@ mad4b_contract_assert( 'mad4b-admin' === $GLOBALS['mad4b_test_abilities']['mad4b
 $enrollment_meta = $GLOBALS['mad4b_test_abilities']['mad4b/enrollment-execute']['meta'];
 mad4b_contract_assert( isset( $enrollment_meta['annotations']['readonly'] ) && false === $enrollment_meta['annotations']['readonly'], 'Enrollment execute must be explicitly annotated as mutating.' );
 mad4b_contract_assert( isset( $enrollment_meta['mcp']['public'] ) && false === $enrollment_meta['mcp']['public'], 'Enrollment execute must remain non-public and only reach ChatGPT through the compact governed projection.' );
+$enrollment_execute_schema = $GLOBALS['mad4b_test_abilities']['mad4b/enrollment-execute']['input_schema'];
+foreach ( array( 'operation_id', 'expected_registration_digest', 'expected_dispatch_policy_digest', 'expected_input_schema_sha256' ) as $required_key ) {
+	mad4b_contract_assert( in_array( $required_key, (array) ( $enrollment_execute_schema['required'] ?? array() ), true ), 'Enrollment execute must require exact TOCTOU binding field: ' . $required_key );
+}
+mad4b_contract_assert( ! isset( $enrollment_execute_schema['properties']['ability_name'] ), 'Enrollment execute must select semantic operation_id, not arbitrary ability_name.' );
+
 
 $abilities_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-abilities.php' );
 mad4b_contract_assert( is_string( $abilities_source ), 'Unable to read Ability source for bounded Enrollment dispatcher invariants.' );
@@ -128,6 +134,9 @@ $permission_source = substr( $abilities_source, $permission_start, $discover_sta
 mad4b_contract_assert( false !== strpos( $target_source, 'MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()' ), 'Enrollment target allowlist must come only from Remote Operation Parity.' );
 mad4b_contract_assert( false === strpos( $target_source, "MAD4B_SCP_Servers::core_tools( 'mad4b-enrollment' )" ), 'Enrollment dispatcher must not inherit the broader low-level Enrollment server inventory.' );
 mad4b_contract_assert( false === strpos( $permission_source, 'MAD4B_SCP_Policy::can_mutate()' ), 'Enrollment dispatcher must remain usable before normal Write Authority convergence.' );
+mad4b_contract_assert( false !== strpos( $permission_source, 'MAD4B_SCP_Enrollment_Dispatch::can_execute' ), 'Core Enrollment dispatcher must delegate hardened policy checks to the bounded policy helper.' );
+mad4b_contract_assert( false !== strpos( $permission_source, 'MAD4B_SCP_Remote_Operation_Parity::can_execute' ), 'Core Enrollment dispatcher must retain Remote Operation Parity authority checks.' );
+
 mad4b_contract_assert( false !== strpos( $permission_source, 'MAD4B_SCP_Remote_Operation_Parity::can_execute(' ), 'Enrollment dispatcher must preserve Staging/OAuth/enrolled-admin authority checks.' );
 
 try {
