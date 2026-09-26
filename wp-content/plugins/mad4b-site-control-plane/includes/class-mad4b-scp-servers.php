@@ -61,6 +61,7 @@ final class MAD4B_SCP_Servers {
 					'mad4b/multi-authority-registry-status',
 					'mad4b/site-profile-feature-reenroll',
 					'mad4b/site-profile-write-enable',
+					'mad4b/staging-write-grant-reconciliation-plan',
 					'mad4b/staging-write-grant-reconcile',
 					'mad4b/staging-write-candidate-bind',
 					'mad4b/staging-write-candidate-binding-audit',
