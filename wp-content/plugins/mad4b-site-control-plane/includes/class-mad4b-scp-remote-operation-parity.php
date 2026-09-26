@@ -13,6 +13,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const CONTRACT = 'mad4b.remote-operation-parity.v1';
 	const STATUS_ABILITY = 'mad4b/remote-operation-parity-status';
 	const DISCOVER_ABILITY = 'mad4b/operation-discover';
+	const ENROLLMENT_DISPATCH_ABILITY = 'mad4b/enrollment-execute';
+	const ENROLLMENT_DISPATCH_CONTRACT = 'mad4b.enrollment-dispatch.v1';
 	const SKILLS_ABILITY = 'mad4b/reconcile-managed-skills';
 	const FRONTEND_SAMPLE_ABILITY = 'mad4b/frontend-performance-sample-run';
 	const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';
@@ -97,6 +99,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			);
 		}
 
+		self::register_enrollment_dispatcher();
+
 		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::WORK_QUEUE_ABILITY ) ) ) {
 			wp_register_ability(
 				self::WORK_QUEUE_ABILITY,
@@ -165,6 +169,119 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			self::work_complete_schema(),
 			array( __CLASS__, 'complete_remote_work' ),
 			true
+		);
+	}
+
+	private static function register_enrollment_dispatcher() {
+		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ENROLLMENT_DISPATCH_ABILITY ) ) return;
+		$augment = array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' );
+		$priority = function_exists( 'has_filter' ) ? has_filter( 'wp_register_ability_args', $augment ) : false;
+		if ( false !== $priority ) remove_filter( 'wp_register_ability_args', $augment, (int) $priority );
+		try {
+			wp_register_ability(
+				self::ENROLLMENT_DISPATCH_ABILITY,
+				array(
+					'label' => 'Execute Bounded Enrollment Operation',
+					'description' => 'Execute only an allowlisted Remote Operation Parity enrollment ability through its original WordPress Ability validation and permission contract. This is not generic remote admin.',
+					'category' => 'mad4b-governance',
+					'execute_callback' => array( __CLASS__, 'dispatch_enrollment_ability' ),
+					'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+					'input_schema' => self::enrollment_dispatch_schema(),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => self::enrollment_dispatch_meta(),
+				)
+			);
+		} finally {
+			if ( false !== $priority ) add_filter( 'wp_register_ability_args', $augment, (int) $priority, 2 );
+		}
+	}
+
+	private static function enrollment_dispatch_schema() {
+		return array(
+			'type' => 'object',
+			'properties' => array(
+				'ability_name' => array(
+					'type' => 'string',
+					'enum' => self::enrollment_abilities(),
+				),
+				'input' => array(
+					'type' => 'object',
+					'additionalProperties' => true,
+				),
+			),
+			'required' => array( 'ability_name', 'input' ),
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function enrollment_dispatch_meta() {
+		return array(
+			'public' => false,
+			'show_in_rest' => false,
+			'mcp' => array(
+				'public' => false,
+				'type' => 'tool',
+				'surface' => 'enrollment-dispatch',
+				'mad4b_remote_operation_parity' => self::CONTRACT,
+				'mad4b_enrollment_dispatch' => self::ENROLLMENT_DISPATCH_CONTRACT,
+				'generic_remote_admin' => false,
+				'production_mutation_allowed' => false,
+			),
+			'annotations' => array(
+				'readonly' => false,
+				'destructive' => false,
+				'idempotent' => false,
+			),
+		);
+	}
+
+	public static function dispatch_enrollment_ability( $input ) {
+		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_enrollment_dispatch_input_invalid', 'Enrollment dispatcher input must be an object.' );
+		$ability_name = isset( $input['ability_name'] ) ? (string) $input['ability_name'] : '';
+		$target_input = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
+		$allowed = self::enrollment_abilities();
+
+		if ( '' === $ability_name || ! in_array( $ability_name, $allowed, true ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_target_not_allowed', 'Target ability is not in the bounded Remote Operation Parity enrollment allowlist.' );
+		}
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_target_unavailable', 'Allowlisted enrollment target is not registered in the current runtime.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Servers' )
+			|| null === MAD4B_SCP_Servers::provider_for_ability( 'mad4b-enrollment', $ability_name ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_target_not_mounted', 'Allowlisted target is not mounted on the bounded enrollment server.' );
+		}
+		if ( in_array( $ability_name, MAD4B_SCP_Servers::write_tools(), true )
+			|| in_array( $ability_name, MAD4B_SCP_Servers::external_write_tools(), true ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_write_surface_leak', 'Enrollment target unexpectedly entered a normal governed-write catalog.' );
+		}
+		foreach ( array( 'mad4b-admin', 'mad4b-breakglass', 'mad4b-developer', 'mad4b-developer-breakglass' ) as $forbidden_server ) {
+			if ( null !== MAD4B_SCP_Servers::provider_for_ability( $forbidden_server, $ability_name ) ) {
+				return new WP_Error( 'mad4b_enrollment_dispatch_privileged_surface_leak', 'Enrollment target unexpectedly entered a privileged or breakglass server.' );
+			}
+		}
+
+		$ability = wp_get_ability( $ability_name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_target_contract_invalid', 'Enrollment target does not expose the required WordPress Ability contract.' );
+		}
+		$meta = $ability->get_meta();
+		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+		if ( 'enrollment' !== ( isset( $mcp['surface'] ) ? (string) $mcp['surface'] : '' )
+			|| ! empty( $mcp['generic_remote_admin'] )
+			|| ! array_key_exists( 'production_mutation_allowed', $mcp )
+			|| false !== $mcp['production_mutation_allowed'] ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_target_metadata_invalid', 'Enrollment target metadata no longer matches the bounded non-Production contract.' );
+		}
+
+		$result = $ability->execute( $target_input );
+		if ( is_wp_error( $result ) ) return $result;
+		return array(
+			'contract' => self::ENROLLMENT_DISPATCH_CONTRACT,
+			'ability_name' => $ability_name,
+			'result' => $result,
+			'production_mutation' => false,
+			'generic_remote_admin' => false,
 		);
 	}
 
