@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import ast
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -9,6 +11,7 @@ contract = (SPEC / "contracts/bulk-runtime-closure-hardening.md").read_text(enco
 recovery = (ROOT / "tools/mad4b_recovery_plane.py").read_text(encoding="utf-8")
 gate = json.loads((SPEC / "gate-graph.json").read_text(encoding="utf-8"))
 critical_ci = (ROOT / ".github/workflows/feature-007-critical-kernel.yml").read_text(encoding="utf-8")
+release_verdict_ci = (ROOT / ".github/workflows/mad4b-release-verdict.yml").read_text(encoding="utf-8")
 runtime_faults = (ROOT / "wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-runtime-faults.php").read_text(encoding="utf-8")
 
 assert matrix["contract"] == "mad4b.feature007-bulk-closure-hardening.v1"
@@ -67,6 +70,27 @@ for phrase in [
 
 assert "durable-execution-runtime-faults.php" in critical_ci
 assert "Prove durable execution runtime fault semantics" in critical_ci
+
+
+# Release Verdict may require the schema critical job only when the critical-kernel
+# workflow is guaranteed to trigger for the same runtime-affecting path universe.
+critical_match = re.search(
+    r"critical_trigger_workflows = \[(.*?)\]\s*full_runtime_trigger_paths = \[(.*?)\]",
+    release_verdict_ci,
+    re.S,
+)
+assert critical_match, "release verdict runtime trigger declarations missing"
+critical_workflows = ast.literal_eval("[" + critical_match.group(1) + "]")
+runtime_paths = ast.literal_eval("[" + critical_match.group(2) + "]")
+release_runtime_extras = [
+    ".github/workflows/feature-007-critical-kernel.yml",
+    ".github/workflows/mad4b-live-acceptance-evidence.yml",
+    ".github/workflows/mad4b-release-verdict.yml",
+]
+for trigger_path in dict.fromkeys(runtime_paths + critical_workflows + release_runtime_extras):
+    assert critical_ci.count(trigger_path) >= 2, (
+        "critical-kernel trigger parity missing PR+master coverage: " + trigger_path
+    )
 
 ids = {x["id"] for x in gate["gates"]}
 assert matrix["terminal_gate"] in ids
