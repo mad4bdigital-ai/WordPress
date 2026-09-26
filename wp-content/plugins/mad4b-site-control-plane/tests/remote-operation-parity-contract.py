@@ -101,6 +101,16 @@ for marker in required_parity_markers:
 if "delete_option( self::SKILLS_LOCK_OPTION" in parity:
     raise SystemExit("direct delete_option Skills lock reclamation is ABA-unsafe; CAS option fencing is required")
 
+if "MAD4B_SCP_Agent_Registry::grant_ability(" not in dispatch:
+    raise SystemExit("Enrollment dispatcher no longer proves bounded exact-grant bootstrap")
+bootstrap = dispatch.split("private static function ensure_exact_enrollment_grant", 1)[1].split("private static function rollback_created_enrollment_grant", 1)[0]
+if "'mad4b-write'" in bootstrap:
+    raise SystemExit("Enrollment grant bootstrap must never mutate normal governed-write grants")
+if "'all'" in bootstrap:
+    raise SystemExit("Enrollment grant bootstrap must remain exact Staging-only and must not create all-environment grants")
+if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in dispatch:
+    raise SystemExit("Enrollment dispatcher grant bootstrap lost the bounded Remote Operation Parity allowlist")
+
 for forbidden in [
     'shell_exec(',
     'exec(',
@@ -215,6 +225,21 @@ required_dispatch_markers = [
     "'mutation_evidence_source'",
     "'target_result'",
     "'not_reported'",
+    "private static function ensure_exact_enrollment_grant",
+    "private static function rollback_created_enrollment_grant",
+    "MAD4B_SCP_Agent_Registry::grant_ability(",
+    "'mad4b-enrollment'",
+    "'staging'",
+    "'trust_class'",
+    "'mad4b-core'",
+    "'mad4b-site-control-plane'",
+    "MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id(",
+    "'mad4b/enrollment-grant-bootstrap-authorized'",
+    "'mad4b/enrollment-grant-bootstrap-complete'",
+    "'mad4b/enrollment-grant-bootstrap-rolled-back'",
+    "'mad4b_enrollment_dispatch_wildcard_grant_detected'",
+    "'mad4b_enrollment_dispatch_duplicate_grants'",
+    "'mad4b_enrollment_dispatch_grant_environment_invalid'",
 ]
 for marker in required_dispatch_markers:
     if marker not in dispatch:
