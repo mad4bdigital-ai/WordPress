@@ -258,20 +258,23 @@ final class MAD4B_SCP_Governance_Abilities {
 		if ( is_wp_error( $grant ) ) return $grant;
 
 		$operation_input = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
-		$impact = MAD4B_SCP_Impact_Policy::impact_for( $ability_name, $provider, $operation_input );
-		if ( ! MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $operation_input ) ) return new WP_Error( 'mad4b_approval_not_required', 'Central impact policy does not require an approval ticket for this exact operation.' );
-		$required_class = MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $operation_input );
+		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			? MAD4B_SCP_Staging_Write_Authority::authorization_input( $operation_input, $ability_name )
+			: $operation_input;
+		$impact = MAD4B_SCP_Impact_Policy::impact_for( $ability_name, $provider, $authorization_input );
+		if ( ! MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $authorization_input ) ) return new WP_Error( 'mad4b_approval_not_required', 'Central impact policy does not require an approval ticket for this exact operation.' );
+		$required_class = MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $authorization_input );
 		$ticket_class = isset( $input['ticket_class'] ) && '' !== trim( (string) $input['ticket_class'] ) ? sanitize_key( (string) $input['ticket_class'] ) : $required_class;
 		if ( $ticket_class !== $required_class ) return new WP_Error( 'mad4b_approval_class_policy_mismatch', 'Requested ticket class does not match the central impact policy.' );
 		$provider_state = self::provider_runtime_state( $provider, $ability_name );
 		if ( 'blocked' === $provider_state['state'] ) return new WP_Error( 'mad4b_approval_provider_not_certified', 'Provider runtime is not certified for the planned mutation.', $provider_state );
 
-		$target = MAD4B_SCP_Authorization::target_fingerprint( $ability_name, $provider, $operation_input, $agent, array( 'planning' => true ) );
+		$target = MAD4B_SCP_Authorization::target_fingerprint( $ability_name, $provider, $authorization_input, $agent, array( 'planning' => true ) );
 		$asserted_target = isset( $input['target_fingerprint'] ) ? (string) $input['target_fingerprint'] : '';
 		if ( '' !== $asserted_target && $asserted_target !== $target ) return new WP_Error( 'mad4b_approval_target_mismatch', 'Caller target fingerprint assertion does not match the central target resolver.', array( 'resolved_target_fingerprint' => $target ) );
 
 		$ticket = MAD4B_SCP_Approval_Tickets::create_pending(
-			$agent['public_id'], $server_id, $ability_name, $provider, $target, $operation_input, $ticket_class,
+			$agent['public_id'], $server_id, $ability_name, $provider, $target, $authorization_input, $ticket_class,
 			(string) $input['reason'], isset( $input['ttl'] ) ? absint( $input['ttl'] ) : MAD4B_SCP_Approval_Tickets::DEFAULT_TTL
 		);
 		if ( is_wp_error( $ticket ) ) return $ticket;

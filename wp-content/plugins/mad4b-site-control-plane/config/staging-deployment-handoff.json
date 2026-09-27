@@ -143,5 +143,61 @@
     "caller_supplied_credentials": true,
     "merge_or_ready_before_required_acceptance": true
   },
-  "secrets_included": false
+  "secrets_included": false,
+  "self_update": {
+    "contract": "mad4b.control-plane-self-update.v1",
+    "purpose": "permanent_dual_channel_control_plane_updates_after_first_bootstrap",
+    "channels": {
+      "wordpress_native_update": {
+        "surface": "wp-admin/plugins_and_updates",
+        "distribution": "repository_owned_github_release_channel",
+        "manifest_asset": "mad4b-site-control-plane-update.json",
+        "package_asset_template": "mad4b-site-control-plane-{exact_source_commit_sha}.zip",
+        "publish_gate": "successful_exact_master_release_verdict",
+        "automatic_update": false,
+        "exact_archive_sha256_required": true,
+        "embedded_build_provenance_required": true,
+        "backup_before_replace": true,
+        "readback_required": true,
+        "rollback_on_failed_readback": true,
+        "production_requires_explicit_opt_in": true
+      },
+      "governed_file_upload": {
+        "ability_plan": "mad4b/control-plane-upload-plan",
+        "ability_apply": "mad4b/control-plane-upload-apply",
+        "input_transport": "bounded_base64_zip",
+        "caller_supplied_url_allowed": false,
+        "caller_supplied_path_allowed": false,
+        "staging_only": true,
+        "exact_plan_required": true,
+        "exact_one_time_approval_required": true,
+        "exact_archive_sha256_required": true,
+        "embedded_build_provenance_required": true,
+        "backup_before_replace": true,
+        "readback_required": true,
+        "rollback_on_failed_readback": true,
+        "production_allowed": false
+      }
+    },
+    "shared_verification": [
+      "archive_sha256",
+      "safe_zip_inventory",
+      "embedded_source_commit_sha",
+      "embedded_build_fingerprint",
+      "embedded_package_manifest_digest",
+      "installed_exact_identity_readback"
+    ],
+    "first_bootstrap": {
+      "required_for_runtime_predating_this_contract": true,
+      "external_deployment_connector_required_once": true,
+      "self_update_channels_available_after_first_bootstrap": true
+    },
+    "forbidden": {
+      "arbitrary_remote_url": true,
+      "arbitrary_filesystem_path": true,
+      "automatic_background_self_update": true,
+      "production_remote_file_upload": true,
+      "bypass_exact_approval": true
+    }
+  }
 }

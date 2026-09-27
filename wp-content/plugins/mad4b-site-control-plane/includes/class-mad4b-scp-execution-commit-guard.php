@@ -84,7 +84,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 		}
 
 		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
-			? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input )
+			? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input, $ability )
 			: $input;
 
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
