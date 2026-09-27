@@ -45,7 +45,7 @@ required_parity_markers = [
     "$include_ability_hints = ! empty( $input['include_ability_hints'] );",
     "$candidates = class_exists( 'MAD4B_SCP_Servers' )",
     "'truncated' => $truncated",
-    "private static function transient_exception( Throwable $e )",
+    "MAD4B_SCP_Connector_Resilience::classify_exception( $e )",
     "'error_fingerprint' => hash( 'sha256'",
     "'discovery_federation' => array(",
     "'abilities' => 'mad4b/tool-discover'",
