@@ -4,7 +4,7 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.67**.
+Current plugin version: **0.4.0-rc.68**.
 
 Provider-gap closure is zero-touch and non-authorizing. The package embeds exact-head repository evidence plus `functional-gap-policy.json`; `mad4b/functional-gap-runtime-evidence` performs bounded local runtime collection, fixed-point drift checks, and deterministic evaluation without shell, WP-CLI, raw SQL, remote requests, credential reads, or mutation. Evidence readiness never grants provider write authority or Production activation. Provider capability diagnostics also distinguish mounted from latent capabilities and read readiness from blocked write certification.
 
@@ -13,6 +13,10 @@ Provider-gap closure is zero-touch and non-authorizing. The package embeds exact
 Operator deployment, authority reconciliation, recovery, rollback and lifecycle guidance: [`docs/RELEASE-AND-OPERATOR-RUNBOOK.md`](docs/RELEASE-AND-OPERATOR-RUNBOOK.md).
 
 Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
+
+### rc.68 governed write-dispatch envelope continuity
+
+rc.68 closes the hidden-target handoff gap discovered during the first live AI-approved certified package execution. `mad4b/write-execute` now captures only the bounded request governance envelope during its permission preflight, binds an exact approval ticket through the existing request-local Identity Context, and forwards the approval ticket plus governed Context Receipt to the selected hidden target after the outer provider envelope has been stripped. Conflicting outer/inner governance metadata fails closed before target execution. The selected target still performs its own exact permission preflight, NHI/grant/scope/provider/budget/approval checks, execution-boundary claim, readback and one-time ticket finalization. No Production, Breakglass, raw-SQL, wildcard-grant or generic write authority is added.
 
 ### rc.67 deterministic approval planning + AI approval lanes
 
@@ -372,7 +376,7 @@ Repository CI currently covers:
 - read-only Admin Governance/Connection Console contract/runtime behavior;
 - disposable WordPress/MySQL runtime activation and smoke testing on WordPress 6.9 and the current `latest` release.
 
-The isolated runtime CI activates MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.4.0-rc.67 in disposable WordPress/MySQL. Repository success does **not** replace target-site certification.
+The isolated runtime CI activates MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.4.0-rc.68 in disposable WordPress/MySQL. Repository success does **not** replace target-site certification.
 
 The core mutation-gate workflow is read-only. The MCP Adapter refresh workflow is manual-only (`workflow_dispatch`) and may write certification evidence only when an operator explicitly runs it on a selected branch.
 
