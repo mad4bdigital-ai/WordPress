@@ -17,6 +17,7 @@ def forbid(text, needle, label):
 status = read('includes/class-mad4b-scp-connection-status.php')
 evidence = read('includes/class-mad4b-scp-external-handshake-evidence.php')
 ability = read('includes/class-mad4b-scp-connection-ability.php')
+abilities = read('includes/class-mad4b-scp-abilities.php')
 read_consistency = read('includes/class-mad4b-scp-read-consistency.php')
 resilience = read('includes/class-mad4b-scp-connector-resilience.php')
 ui = read('includes/class-mad4b-scp-connection-admin-ui.php')
