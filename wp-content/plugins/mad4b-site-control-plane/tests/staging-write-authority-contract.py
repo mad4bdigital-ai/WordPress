@@ -117,19 +117,24 @@ for marker in [
 
 
 dispatch_scope = write.split('public static function remote_scope_delegation_allowed', 1)[1].split('public static function force_remote_write_approval', 1)[0]
+dispatcher_scope_helper = write.split('private static function write_dispatch_scope_delegation_allowed', 1)[1].split('public static function remote_scope_delegation_allowed', 1)[0]
 for marker in [
     "if ( 'mad4b/write-execute' === (string) $ability_name )",
+    "return self::write_dispatch_scope_delegation_allowed( $server_id, $input );",
+]:
+    if marker not in dispatch_scope:
+        raise SystemExit(f'bounded ChatGPT write dispatcher routing invariant missing: {marker}')
+for marker in [
     "'mad4b-chatgpt' !== $server_id",
     "MAD4B_SCP_Transport_Context::current_server_id()",
     "$target_ability = isset( $input['ability_name'] )",
     "self::is_write_ability( $target_ability )",
-    "MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $target_ability )",
+    "MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $target_ability )",
+    "hash_equals( $actual_schema_sha256, $expected_schema_sha256 )",
 ]:
-    if marker not in dispatch_scope:
+    if marker not in dispatcher_scope_helper:
         raise SystemExit(f'bounded ChatGPT write dispatcher delegation invariant missing: {marker}')
-if "return true;" not in dispatch_scope:
-    raise SystemExit('bounded ChatGPT write dispatcher delegation must terminate only after exact target validation')
-if "'server:mad4b-write'" in dispatch_scope:
+if "'server:mad4b-write'" in dispatch_scope or "'server:mad4b-write'" in dispatcher_scope_helper:
     raise SystemExit('write dispatcher delegation must not mint or require a broad mad4b-write token scope')
 
 
