@@ -93,14 +93,18 @@ final class MAD4B_SCP_Connection_Ability {
 		$checks = array(
 			'site_profile' => static function () {
 				$status = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+				$profile_available = class_exists( 'MAD4B_SCP_Site_Profile' );
+				$exact_profile_bound = $profile_available
+					&& MAD4B_SCP_Site_Profile::origin_enrolled()
+					&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
 				return array(
 					'configured' => ! empty( $status['configured'] ),
-					'environment' => isset( $status['environment'] ) ? (string) $status['environment'] : '',
-					'revision' => isset( $status['revision'] ) ? (int) $status['revision'] : 0,
-					'profile_digest' => isset( $status['profile_digest'] ) ? (string) $status['profile_digest'] : '',
-					'exact_profile_bound' => ! empty( $status['exact_profile_bound'] ),
-					'write_enabled' => ! empty( $status['write_enabled'] ),
-					'skills_enabled' => ! empty( $status['skills_enabled'] ),
+					'environment' => $profile_available ? (string) MAD4B_SCP_Site_Profile::current_environment() : ( isset( $status['environment'] ) ? (string) $status['environment'] : '' ),
+					'revision' => $profile_available ? (int) MAD4B_SCP_Site_Profile::revision() : 0,
+					'profile_digest' => $profile_available ? (string) MAD4B_SCP_Site_Profile::profile_digest() : '',
+					'exact_profile_bound' => $exact_profile_bound,
+					'write_enabled' => $profile_available && MAD4B_SCP_Site_Profile::write_enabled(),
+					'skills_enabled' => $profile_available && MAD4B_SCP_Site_Profile::skills_enabled(),
 					'blockers' => isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? array_values( array_slice( $status['blockers'], 0, 20 ) ) : array(),
 				);
 			},
@@ -131,7 +135,7 @@ final class MAD4B_SCP_Connection_Ability {
 				);
 			},
 			'write_authority' => static function () {
-				$status = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
+				$status = class_exists( 'MAD4B_SCP_Live_Truth' ) ? MAD4B_SCP_Live_Truth::current_authority_status() : ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array() );
 				return array(
 					'ready' => ! empty( $status['ready'] ),
 					'state' => isset( $status['state'] ) ? (string) $status['state'] : '',
