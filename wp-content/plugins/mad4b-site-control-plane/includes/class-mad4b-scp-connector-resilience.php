@@ -54,7 +54,7 @@ final class MAD4B_SCP_Connector_Resilience {
 						'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'wp_error',
 						'client_action' => isset( $classification['client_action'] ) ? (string) $classification['client_action'] : 'inspect',
 						'retry_after_seconds' => self::retry_after_seconds_from_wp_error( $value ),
-						'error_code' => (string) $value->get_error_code(),
+						'error_code' => self::safe_error_code( $value ),
 						'error_fingerprint' => self::wp_error_fingerprint( $name, $value ),
 						'raw_error_message_exposed' => false,
 						'read_only' => true,
@@ -162,7 +162,7 @@ final class MAD4B_SCP_Connector_Resilience {
 						array(
 							'surface' => $surface,
 							'target' => $target,
-							'original_error_code' => (string) $result->get_error_code(),
+							'original_error_code' => self::safe_error_code( $result ),
 							'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown',
 							'client_action' => 'reconcile_then_replan',
 							'retryable' => false,
@@ -336,6 +336,11 @@ final class MAD4B_SCP_Connector_Resilience {
 			return array( 'category' => 'contract_or_validation', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'repair_request_or_contract' );
 		}
 		return array( 'category' => 'unknown', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'inspect_before_retry' );
+	}
+
+	private static function safe_error_code( WP_Error $error ) {
+		$code = sanitize_key( (string) $error->get_error_code() );
+		return substr( $code, 0, 96 );
 	}
 
 	private static function retry_after_seconds_from_wp_error( WP_Error $error ) {
