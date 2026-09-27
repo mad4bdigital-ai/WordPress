@@ -38,16 +38,20 @@ A timeout, disconnect, 429, 502, 503, 504, session termination, or other
 transient-looking exception MUST NOT trigger an automatic mutation retry because
 the remote side may already have committed state.
 
-When an exception escapes a mutation callback, or the callback returns a
-transient transport/upstream `WP_Error` after execution may have started, the
-response must report:
+Once a mutation callback has been entered, any escaping exception or returned
+`WP_Error` is treated as postcondition-uncertain unless a separate preflight
+rejected the operation before callback entry. Raw mutation error messages must
+not be returned to the remote caller. The response must report:
 
 - `mutation_state=unknown`;
 - `reconciliation_required=true`;
 - `blind_retry_allowed=false`;
 - `automatic_retry_performed=false`.
 
-The next action is postcondition reconciliation/readback, not replay.
+The next action is postcondition reconciliation/readback, not replay. This rule
+also applies to validation/contract `WP_Error` values returned after callback
+entry because the dispatcher cannot prove that no state changed before the
+error was produced.
 
 ### Partial diagnostics
 
@@ -72,6 +76,13 @@ Budget exhaustion is a retryable read condition, not evidence that the skipped
 check failed semantically. It is never immediately auto-retried. The structured
 action is `reduce_scope_then_retry_preflight`: reduce the diagnostic scope and
 rerun the compact read-only preflight.
+
+### Result preservation
+
+Successful governed reads must preserve the callback's result type and value,
+including arrays, scalars, booleans, and `null`. The resilience envelope must
+not replace a valid scalar or `null` result with type metadata or an empty
+array.
 
 ### Payload discipline
 
