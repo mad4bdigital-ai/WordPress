@@ -454,12 +454,20 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	private function capture_write_dispatch_governance_envelope( $input ) {
-		self::$write_dispatch_governance_envelope = array();
 		if ( ! is_array( $input ) ) return true;
 		$keys = array( '_mad4b_approval_ticket_id', '_mad4b_context_receipt' );
-		$nested = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
+		$present = array();
 		foreach ( $keys as $key ) {
-			if ( ! array_key_exists( $key, $input ) ) continue;
+			if ( array_key_exists( $key, $input ) ) $present[] = $key;
+		}
+		// WordPress/MCP may evaluate permission more than once. A later sanitized
+		// preflight must not erase governance metadata captured earlier in the same
+		// request. State is request-local and consumed exactly once by forward().
+		if ( empty( $present ) ) return true;
+
+		$nested = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
+		$incoming = array();
+		foreach ( $present as $key ) {
 			$value = $input[ $key ];
 			if ( '_mad4b_approval_ticket_id' === $key ) {
 				$value = strtolower( trim( (string) $value ) );
@@ -472,11 +480,23 @@ final class MAD4B_SCP_Abilities {
 				$inner_hash = $this->governance_envelope_hash( $nested[ $key ] );
 				if ( '' === $outer_hash || '' === $inner_hash || ! hash_equals( $outer_hash, $inner_hash ) ) return new WP_Error( 'mad4b_write_dispatch_governance_envelope_conflict', 'Governance metadata in the dispatcher envelope conflicts with the selected target input.' );
 			}
+			$incoming[ $key ] = $value;
+		}
+
+		foreach ( $incoming as $key => $value ) {
+			if ( array_key_exists( $key, self::$write_dispatch_governance_envelope ) ) {
+				$current_hash = $this->governance_envelope_hash( self::$write_dispatch_governance_envelope[ $key ] );
+				$incoming_hash = $this->governance_envelope_hash( $value );
+				if ( '' === $current_hash || '' === $incoming_hash || ! hash_equals( $current_hash, $incoming_hash ) ) {
+					return new WP_Error( 'mad4b_write_dispatch_governance_envelope_rebind_conflict', 'Repeated dispatcher preflight attempted to rebind governance metadata within the same request.' );
+				}
+				continue;
+			}
 			self::$write_dispatch_governance_envelope[ $key ] = $value;
 		}
-		if ( isset( self::$write_dispatch_governance_envelope['_mad4b_approval_ticket_id'] ) ) {
-			if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( self::$write_dispatch_governance_envelope['_mad4b_approval_ticket_id'] ) ) {
-				self::$write_dispatch_governance_envelope = array();
+
+		if ( isset( $incoming['_mad4b_approval_ticket_id'] ) ) {
+			if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( $incoming['_mad4b_approval_ticket_id'] ) ) {
 				return new WP_Error( 'mad4b_write_dispatch_approval_binding_conflict', 'The dispatcher approval ticket could not be bound to this request.' );
 			}
 		}
