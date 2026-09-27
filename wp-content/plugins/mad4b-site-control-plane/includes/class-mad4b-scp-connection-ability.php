@@ -98,7 +98,7 @@ final class MAD4B_SCP_Connection_Ability {
 					'environment' => isset( $status['environment'] ) ? (string) $status['environment'] : '',
 					'revision' => isset( $status['revision'] ) ? (int) $status['revision'] : 0,
 					'profile_digest' => isset( $status['profile_digest'] ) ? (string) $status['profile_digest'] : '',
-					'exact_profile_bound' => ! empty( $status['exact_profile_bound'] ),
+					'exact_profile_bound' => ! empty( $status['exact_profile_bound'] ) || ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ),
 					'write_enabled' => ! empty( $status['write_enabled'] ),
 					'skills_enabled' => ! empty( $status['skills_enabled'] ),
 					'blockers' => isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? array_values( array_slice( $status['blockers'], 0, 20 ) ) : array(),
@@ -131,7 +131,9 @@ final class MAD4B_SCP_Connection_Ability {
 				);
 			},
 			'write_authority' => static function () {
-				$status = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
+				$status = class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_authority_status' )
+					? MAD4B_SCP_Live_Truth::current_authority_status()
+					: ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array() );
 				return array(
 					'ready' => ! empty( $status['ready'] ),
 					'state' => isset( $status['state'] ) ? (string) $status['state'] : '',
