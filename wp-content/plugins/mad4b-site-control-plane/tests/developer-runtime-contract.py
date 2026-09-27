@@ -234,7 +234,7 @@ assert "'server_id' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Servers::e
 assert "MAD4B_SCP_Impact_Policy::ticket_class_for" in governance
 assert "MAD4B_SCP_Approval_Tickets::create_pending" in governance
 assert "class-mad4b-scp-developer-runtime.php" in plugin
-runtime_release_match = re.search(r"^release=(0\\.4\\.0-rc\\.\\d+)$", runtime_build, re.M)
+runtime_release_match = re.search(r"^release=(0\.4\.0-rc\.\d+)$", runtime_build, re.M)
 assert runtime_release_match, "runtime release marker missing"
 runtime_release = runtime_release_match.group(1)
 assert f"Version: {runtime_release}" in plugin
