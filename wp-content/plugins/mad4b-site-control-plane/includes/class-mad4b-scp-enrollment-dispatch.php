@@ -170,6 +170,17 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		return $eligible;
 	}
 
+	private static function query_matches( $query, $haystack ) {
+		$query = strtolower( trim( (string) $query ) );
+		if ( '' === $query ) return true;
+		$tokens = preg_split( '/[^a-z0-9]+/', $query, -1, PREG_SPLIT_NO_EMPTY );
+		if ( ! is_array( $tokens ) || empty( $tokens ) ) return true;
+		foreach ( array_values( array_unique( $tokens ) ) as $token ) {
+			if ( false === strpos( (string) $haystack, (string) $token ) ) return false;
+		}
+		return true;
+	}
+
 	public static function discover( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 		$query = isset( $input['query'] ) ? strtolower( trim( sanitize_text_field( (string) $input['query'] ) ) ) : '';
@@ -184,7 +195,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				isset( $row['executor'] ) ? (string) $row['executor'] : '',
 				isset( $row['remote_mode'] ) ? (string) $row['remote_mode'] : '',
 			) ) );
-			if ( '' !== $query && false === strpos( $haystack, $query ) ) continue;
+			if ( ! self::query_matches( $query, $haystack ) ) continue;
 			$items[ $operation_id ] = $row;
 			if ( count( $items ) >= $limit ) break;
 		}

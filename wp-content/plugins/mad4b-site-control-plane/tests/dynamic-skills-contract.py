@@ -89,14 +89,14 @@ for marker in [
     "private static function handle_reconcile_managed",
     "check_admin_referer( 'mad4b_skill_reconcile_managed', 'mad4b_skill_reconcile_nonce' )",
     "current_user_can( 'manage_options' )",
-    "MAD4B_SCP_Skill_Seeder::bootstrap()",
+    "MAD4B_SCP_Skill_Seeder::reconcile()",
     "MAD4B_SCP_Skill_Provider_Discovery::reconcile()",
     "MAD4B_SCP_Skill_Runtime_Certification::observe()",
 ]:
     if marker not in admin:
         raise SystemExit(f'missing explicit managed Skill admin reconciliation invariant: {marker}')
 
-if admin.index("MAD4B_SCP_Skill_Seeder::bootstrap()") > admin.index("MAD4B_SCP_Skill_Provider_Discovery::reconcile()"):
+if admin.index("MAD4B_SCP_Skill_Seeder::reconcile()") > admin.index("MAD4B_SCP_Skill_Provider_Discovery::reconcile()"):
     raise SystemExit('managed Skill reconciliation must seed canonical Skills before provider reconciliation')
 
 for source in (seeder, main, plugin_boot):
@@ -155,6 +155,15 @@ for marker in [
 ]:
     if marker not in registry:
         raise SystemExit(f'missing dynamic skill registry guard: {marker}')
+
+for marker in [
+    "public static function reconcile()",
+    "self::$ran = false;",
+    "self::$runtime_status = null;",
+    "return self::bootstrap();",
+]:
+    if marker not in seeder:
+        raise SystemExit(f'missing explicit full seed reconciliation invariant: {marker}')
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-seeder.v1'",

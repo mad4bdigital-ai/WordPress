@@ -200,6 +200,10 @@ mad4b_assert( ! isset( $discover['operations']['external_executor_work_claim'] )
 mad4b_assert( ! isset( $discover['operations']['human_decision_test'] ), 'human-decision operation leaked into ChatGPT dispatcher' );
 mad4b_assert( ! isset( $discover['operations']['system_test'] ), 'system caller operation leaked into ChatGPT dispatcher' );
 
+$natural_discover = MAD4B_SCP_Enrollment_Dispatch::discover( array( 'query' => 'reconcile managed skills' ) );
+mad4b_assert( 1 === (int) $natural_discover['count'], 'tokenized natural-language enrollment discovery failed' );
+mad4b_assert( isset( $natural_discover['operations']['managed_skills_reconciliation'] ), 'managed Skills operation was not found from reordered natural-language tokens' );
+
 $claim_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'external_executor_work_claim' ) );
 mad4b_assert( 'mad4b_enrollment_dispatch_operation_not_eligible' === mad4b_error_code( $claim_info ), 'external executor operation did not fail closed' );
 

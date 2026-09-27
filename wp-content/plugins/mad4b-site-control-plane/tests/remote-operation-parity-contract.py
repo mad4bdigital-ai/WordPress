@@ -112,6 +112,14 @@ required_parity_markers = [
     "const SKILLS_LOCK_TTL = 900;",
     "compare_and_swap_option",
     "refresh_skills_lock",
+    "private static function block_skills_job",
+    "public static function managed_skills_reconciliation_status()",
+    "public static function reconciliation_status( $operation_id )",
+    "'mad4b.remote-managed-skills-reconciliation-status.v1'",
+    "'lease_remaining_seconds'",
+    "'blind_retry_allowed' => false",
+    "'next_action'",
+    "'mad4b_scp_remote_operation_reconciliation_status'",
     "mad4b_remote_skill_lock_reclaim_raced",
     "mad4b_remote_skill_lock_heartbeat_raced",
     "did_action( 'wp_abilities_api_init' ) > 0",
@@ -241,6 +249,9 @@ required_dispatch_markers = [
     "'mutation_evidence_source'",
     "'target_result'",
     "'not_reported'",
+    "private static function query_matches",
+    "PREG_SPLIT_NO_EMPTY",
+    "self::query_matches( $query, $haystack )",
 ]
 for marker in required_dispatch_markers:
     if marker not in dispatch:
@@ -269,6 +280,9 @@ for marker in [
     "'expected_registration_digest'",
     "'expected_dispatch_policy_digest'",
     "'expected_input_schema_sha256'",
+    "MAD4B_SCP_Remote_Operation_Parity::reconciliation_status( $operation_id )",
+    "'mad4b.chatgpt-enrollment-mutation-reconciliation.v1'",
+    "'blind_retry_allowed' => false",
 ]:
     if marker not in abilities:
         raise SystemExit(f'canonical core Enrollment dispatcher invariant missing: {marker}')
