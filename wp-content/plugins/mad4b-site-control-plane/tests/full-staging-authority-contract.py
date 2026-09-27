@@ -124,9 +124,10 @@ assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_to
 assert "$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_tools
 assert "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in chatgpt_map
 assert "$candidates = array_merge( $core, $bootstrap )" in chatgpt_tools
-assert "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_tools
-assert "$direct_mutation_transport[] = 'mad4b/enrollment-execute';" in chatgpt_tools
-assert "$direct_mutation_transport = array_values( array_unique( $direct_mutation_transport ) );" in chatgpt_tools
+dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_tools()', 1)[0]
+assert "'mad4b/write-execute'" in dispatcher_helper
+assert "'mad4b/enrollment-execute'" in dispatcher_helper
+assert "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )" in chatgpt_tools
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
