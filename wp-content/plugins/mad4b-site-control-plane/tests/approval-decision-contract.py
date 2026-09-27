@@ -220,7 +220,7 @@ if 'approval-decision' in servers:
 required_handoff = [
     "const CONTRACT = 'mad4b.approval-decision-handoff.v1'",
     "'mad4b/approval-decision-handoff'",
-    "'read' => array( 'mad4b/approval-decision-handoff', 'mad4b/operation-classify' )",
+    "'read' => array( 'mad4b/approval-decision-handoff' )",
     "'content' => array()", "'admin' => array()",
     "'human_action_required' => true", "'decision_exposed' => false",
     "'nonce_exposed' => false", "'target_execution_exposed' => false",
@@ -293,7 +293,15 @@ for marker in [
 ]:
     if marker not in impact_policy:
         raise SystemExit('Operation classification invariant missing: ' + marker)
-if "'write' => class_exists( 'MAD4B_SCP_AI_Approval' )" not in handoff:
-    raise SystemExit('Approval governance adapter does not project the bounded AI decision ability')
+for marker in [
+    "'mad4b/operation-classify'",
+    "MAD4B_SCP_AI_Approval::ABILITY",
+    "MAD4B_SCP_AI_Approval::catalog_eligible()",
+    "'ai_approval_standing_delegation_not_eligible'",
+]:
+    if marker not in servers:
+        raise SystemExit('Core AI approval/catalog invariant missing: ' + marker)
+if "'write' =>" in handoff or "MAD4B_SCP_AI_Approval::ABILITY" in handoff:
+    raise SystemExit('Human approval handoff must remain strictly read-only and must not project AI write authority')
 
 print('mad4b.approval-decision.contract.v8: PASS')
