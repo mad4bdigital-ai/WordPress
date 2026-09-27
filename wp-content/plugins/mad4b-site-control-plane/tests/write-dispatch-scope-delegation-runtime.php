@@ -12,7 +12,11 @@ function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $fla
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function get_option( $name, $default = false ) { return $default; }
 
-class WP_Error {}
+class WP_Error {
+    private $code;
+    public function __construct( $code = '', $message = '', $data = null ) { $this->code = (string) $code; }
+    public function get_error_code() { return $this->code; }
+}
 
 final class MAD4B_Test_Write_Ability {
     private $schema;
@@ -29,6 +33,16 @@ $GLOBALS['mad4b_test_abilities'] = array();
 function wp_has_ability( $name ) { return isset( $GLOBALS['mad4b_test_abilities'][ (string) $name ] ); }
 function wp_get_ability( $name ) { return $GLOBALS['mad4b_test_abilities'][ (string) $name ] ?? null; }
 
+final class MAD4B_SCP_Identity_Context {
+    public static $ticket_id = '';
+    public static function bind_approval_ticket_for_request( $ticket_id ) {
+        $ticket_id = strtolower( trim( (string) $ticket_id ) );
+        if ( '' !== self::$ticket_id && ! hash_equals( self::$ticket_id, $ticket_id ) ) return false;
+        self::$ticket_id = $ticket_id;
+        return true;
+    }
+}
+
 final class MAD4B_SCP_Transport_Context {
     public static $server_id = 'mad4b-chatgpt';
     public static function current_server_id() { return self::$server_id; }
@@ -44,6 +58,7 @@ final class MAD4B_SCP_Servers {
 }
 
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-staging-write-authority.php';
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-abilities.php';
 
 function mad4b_assert( $condition, $message ) {
     if ( ! $condition ) {
@@ -127,4 +142,37 @@ $readonly_input = $valid;
 $readonly_input['ability_name'] = $readonly;
 mad4b_assert( false === $helper->invoke( null, 'mad4b-chatgpt', $readonly_input ), 'readonly=true target must fail closed.' );
 
-echo "mad4b.write-dispatch-scope-delegation.runtime.v1: PASS\n";
+$dispatcher = new MAD4B_SCP_Abilities();
+$capture = new ReflectionMethod( 'MAD4B_SCP_Abilities', 'capture_write_dispatch_governance_envelope' );
+$capture->setAccessible( true );
+$forward = new ReflectionMethod( 'MAD4B_SCP_Abilities', 'forward_write_dispatch_governance_envelope' );
+$forward->setAccessible( true );
+
+$ticket = '11111111-1111-4111-8111-111111111111';
+$receipt = array( 'contract' => 'mad4b.context-receipt.v1', 'sha256' => str_repeat( 'e', 64 ) );
+$outer = array(
+    'ability_name' => $target,
+    'expected_input_schema_sha256' => $schema_sha,
+    'input' => array( 'ability' => 'mad4b/plugin-package-apply' ),
+    '_mad4b_approval_ticket_id' => $ticket,
+    '_mad4b_context_receipt' => $receipt,
+);
+mad4b_assert( true === $capture->invoke( $dispatcher, $outer ), 'Dispatcher permission preflight must capture exact governance metadata.' );
+mad4b_assert( $ticket === MAD4B_SCP_Identity_Context::$ticket_id, 'Dispatcher must bind the exact approval ticket request-locally.' );
+
+$stripped = array(
+    'ability_name' => $target,
+    'expected_input_schema_sha256' => $schema_sha,
+    'input' => $outer['input'],
+);
+$target_input = $forward->invoke( $dispatcher, $stripped, $stripped['input'] );
+mad4b_assert( is_array( $target_input ), 'Forwarded target input must remain an object.' );
+mad4b_assert( $ticket === $target_input['_mad4b_approval_ticket_id'], 'Approval ticket must survive provider-envelope stripping.' );
+mad4b_assert( $receipt === $target_input['_mad4b_context_receipt'], 'Context Receipt must survive provider-envelope stripping.' );
+
+$conflicting = $outer;
+$conflicting['input']['_mad4b_approval_ticket_id'] = '22222222-2222-4222-8222-222222222222';
+$conflict = $capture->invoke( $dispatcher, $conflicting );
+mad4b_assert( is_wp_error( $conflict ) && 'mad4b_write_dispatch_governance_envelope_conflict' === $conflict->get_error_code(), 'Conflicting nested governance metadata must fail closed.' );
+
+echo "mad4b.write-dispatch-scope-delegation.runtime.v2: PASS\n";
