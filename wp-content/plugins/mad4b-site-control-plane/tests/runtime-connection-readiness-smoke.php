@@ -85,7 +85,13 @@ $check( is_array( $metadata ) && 'ready' === $metadata['state'], 'Compact operat
 $check( ! empty( $metadata['generation_match'] ) && ! empty( $metadata['valid_for_resume'] ), 'Compact metadata envelope lost generation binding.' );
 $check( 'mad4b/browser-acceptance-run' === $metadata['remote_ability'], 'Compact metadata envelope resolved the wrong remote ability.' );
 $check( isset( $metadata['registration_digest'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $metadata['registration_digest'] ), 'Operation registration digest missing from compact metadata envelope.' );
+$check( isset( $metadata['dispatch_policy_digest'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $metadata['dispatch_policy_digest'] ), 'Enrollment dispatch-policy digest missing from compact metadata envelope.' );
 $check( ! empty( $metadata['input_schema_available'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $metadata['input_schema_sha256'] ), 'Input schema digest missing from compact metadata envelope.' );
+$canonical_dispatch_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'browser_acceptance_execution' ) );
+$check( ! is_wp_error( $canonical_dispatch_info ) && is_array( $canonical_dispatch_info ), 'Canonical enrollment dispatch metadata is unavailable.' );
+$check( hash_equals( strtolower( (string) $canonical_dispatch_info['registration_digest'] ), $metadata['registration_digest'] ), 'Compact metadata registration digest diverged from enrollment dispatch.' );
+$check( hash_equals( strtolower( (string) $canonical_dispatch_info['dispatch_policy_digest'] ), $metadata['dispatch_policy_digest'] ), 'Compact metadata dispatch-policy digest diverged from enrollment dispatch.' );
+$check( hash_equals( strtolower( (string) $canonical_dispatch_info['input_schema_sha256'] ), $metadata['input_schema_sha256'] ), 'Compact metadata input schema digest diverged from enrollment dispatch.' );
 $check( isset( $metadata['execution_binding_digest'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $metadata['execution_binding_digest'] ), 'Execution binding digest missing from compact metadata envelope.' );
 $guidance = MAD4B_SCP_Connector_Resilience::client_guidance();
 $check( 1 === (int) $guidance['preferred_parallelism'] && 2 === (int) $guidance['read_parallelism_max'], 'Read parallelism contract drifted.' );
