@@ -5,6 +5,10 @@ root = Path("wp-content/plugins/mad4b-site-control-plane")
 self_update = (root / "includes" / "class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 grants = (root / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
+authority = (root / "includes" / "class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
+authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
+commit_guard = (root / "includes" / "class-mad4b-scp-execution-commit-guard.php").read_text(encoding="utf-8")
+governance = (root / "includes" / "class-mad4b-scp-governance-abilities.php").read_text(encoding="utf-8")
 bootstrap = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
 required_self_update = [
@@ -48,6 +52,30 @@ if "'release_channel_bound' => true" not in self_update:
     raise SystemExit("governed file upload is not bound to the repository release channel")
 if "target_not_current_governed_release:" not in self_update:
     raise SystemExit("governed file upload does not reject non-release package identities")
+
+# Package bytes must never enter authorization/approval canonical payloads.
+for marker in (
+    "add_filter( 'mad4b_scp_authorization_input', array( __CLASS__, 'authorization_input' ), 20, 3 )",
+    "unset( $clean['package_base64'] )",
+    "$clean['package_transport'] = 'bounded_base64_zip'",
+):
+    if marker not in self_update:
+        raise SystemExit(f"self-update authorization sanitizer invariant missing: {marker}")
+
+if "public static function authorization_input( $input, $ability_name = '' )" not in authority:
+    raise SystemExit("central governed authorization input is not ability-aware")
+if "apply_filters(" not in authority or "'mad4b_scp_authorization_input'" not in authority:
+    raise SystemExit("central governed authorization input filter missing")
+if authorization.count("authorization_input( $input, $ability_name )") < 2:
+    raise SystemExit("central authorization and execution claim do not share the ability-aware sanitized input")
+if "authorization_input( $input, $ability )" not in commit_guard:
+    raise SystemExit("execution commit guard does not use the same ability-aware sanitized input")
+if "authorization_input( $operation_input, $ability_name )" not in governance:
+    raise SystemExit("approval planning does not use the same ability-aware sanitized input")
+if "target_fingerprint( $ability_name, $provider, $authorization_input" not in governance:
+    raise SystemExit("approval target fingerprint is not computed from sanitized metadata")
+if "$agent['public_id'], $server_id, $ability_name, $provider, $target, $authorization_input, $ticket_class" not in governance:
+    raise SystemExit("approval ticket payload is not bound to sanitized metadata")
 
 # Remote upload remains bounded file input only; no caller URL/path input is accepted.
 plan_schema = self_update.split("private static function plan_schema()", 1)[1].split("private static function apply_schema()", 1)[0]
