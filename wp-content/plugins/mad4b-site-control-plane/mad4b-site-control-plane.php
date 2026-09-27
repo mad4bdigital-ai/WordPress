@@ -104,6 +104,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-code-snippets-runtime-dia
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-runtime.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-package.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-self-update.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-workflow-providers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operating-model.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-ability-overrides.php';
@@ -212,6 +213,7 @@ MAD4B_SCP_Context_Provider_Gateway::boot();
 MAD4B_SCP_Brand_Context_Builder::boot();
 MAD4B_SCP_Plugin_Lifecycle::boot();
 MAD4B_SCP_Plugin_Package::boot();
+MAD4B_SCP_Self_Update::boot();
 MAD4B_SCP_Functional_Gap_Runtime_Diagnostic::boot();
 MAD4B_SCP_Code_Snippets_Runtime_Diagnostic::boot();
 MAD4B_SCP_Workflow_Providers::boot();
