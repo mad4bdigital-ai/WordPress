@@ -1054,3 +1054,18 @@ for text_value, label in [
             raise SystemExit(f'{label} bounded exception semantics missing: {required}')
 
 print('mad4b.staging-write-authority.tenant-profile.v15: PASS')
+# Keep nested transport regression proofs baseline-workflow owned without mutating
+# repository-root workflow files from a feature branch.
+import subprocess as _mad4b_subprocess
+import sys as _mad4b_sys
+
+_mad4b_tests = Path(__file__).resolve().parent
+_mad4b_subprocess.run([
+    _mad4b_sys.executable,
+    str(_mad4b_tests / "write-dispatch-nested-transport-contract.py"),
+], check=True)
+_mad4b_subprocess.run([
+    "php",
+    str(_mad4b_tests / "write-dispatch-nested-transport-runtime.php"),
+], check=True)
+
