@@ -153,7 +153,32 @@ final class MAD4B_SCP_Connector_Resilience {
 		$started = microtime( true );
 		try {
 			$result = call_user_func( $callback );
-			if ( is_wp_error( $result ) ) return $result;
+			if ( is_wp_error( $result ) ) {
+				$classification = self::classify_wp_error( $result );
+				if ( ! empty( $classification['retryable'] ) ) {
+					return new WP_Error(
+						'mad4b_' . ( '' !== $surface ? $surface : 'mutation' ) . '_dispatch_uncertain_remote_error',
+						'Governed mutation returned a transient remote error after execution may have started. Reconcile observed postconditions before any retry.',
+						array(
+							'surface' => $surface,
+							'target' => $target,
+							'original_error_code' => (string) $result->get_error_code(),
+							'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown',
+							'client_action' => 'reconcile_then_replan',
+							'retryable' => false,
+							'attempts' => 1,
+							'elapsed_ms' => self::elapsed_ms( $started ),
+							'error_fingerprint' => self::wp_error_fingerprint( $surface . '_' . sanitize_key( $target ), $result ),
+							'mutation_state' => 'unknown',
+							'reconciliation_required' => true,
+							'blind_retry_allowed' => false,
+							'automatic_retry_performed' => false,
+							'raw_error_message_exposed' => false,
+						)
+					);
+				}
+				return $result;
+			}
 			return array(
 				'result' => $result,
 				'attempts' => 1,
@@ -169,6 +194,7 @@ final class MAD4B_SCP_Connector_Resilience {
 					'surface' => $surface,
 					'target' => $target,
 					'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown',
+					'client_action' => 'reconcile_then_replan',
 					'retryable' => false,
 					'attempts' => 1,
 					'elapsed_ms' => self::elapsed_ms( $started ),
