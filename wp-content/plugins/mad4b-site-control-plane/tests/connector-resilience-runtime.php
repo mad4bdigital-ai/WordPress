@@ -242,5 +242,14 @@ mad4b_assert_true( empty( $guidance['automatic_write_retry_allowed'] ), 'client 
 mad4b_assert_true( empty( $guidance['automatic_enrollment_retry_allowed'] ), 'client guidance must deny automatic enrollment retry' );
 mad4b_assert_true( ! empty( $guidance['reconcile_before_retry_when_mutation_state_unknown'] ), 'client guidance must require reconciliation' );
 mad4b_assert_true( empty( $guidance['persistent_circuit_breaker_used'] ), 'persistent circuit breaker must remain disabled' );
+mad4b_assert_true( 1 === (int) $guidance['preferred_parallelism'], 'preferred read parallelism must remain sequential' );
+mad4b_assert_true( 2 === (int) $guidance['read_parallelism_max'], 'read parallelism hard ceiling drifted' );
+mad4b_assert_true( 1 === (int) $guidance['reconnect_attempts'], 'client reconnect budget drifted' );
+mad4b_assert_true( ! empty( $guidance['replay_read_after_reconnect'] ), 'read replay after reconnect must remain allowed' );
+mad4b_assert_true( empty( $guidance['replay_mutation_after_reconnect'] ), 'mutation replay after reconnect must remain forbidden' );
+mad4b_assert_true( ! empty( $guidance['snapshot_identity_required'] ), 'snapshot identity must remain required' );
+mad4b_assert_true( ! empty( $guidance['discard_partial_on_generation_change'] ), 'generation drift must discard partial reads' );
+mad4b_assert_true( ! empty( $guidance['resume_completed_reads_on_generation_match'] ), 'same-generation reconnect must permit partial resume' );
+mad4b_assert_true( empty( $guidance['persistent_session_breaker_used'] ), 'session breaker must remain request/client local' );
 
 echo "mad4b.connector-resilience.runtime.v1: PASS\n";

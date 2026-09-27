@@ -8,6 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Approval_Handoff_Adapter extends MAD4B_SCP_Adapter_Base {
     const CONTRACT = 'mad4b.approval-decision-handoff.v1';
+    const RECONCILE_CONTRACT = 'mad4b.approval-plan-reconciliation.v1';
 
     public function id() { return 'approval-handoff'; }
     public function label() { return 'Human Approval Handoff'; }
@@ -17,7 +18,7 @@ final class MAD4B_SCP_Approval_Handoff_Adapter extends MAD4B_SCP_Adapter_Base {
     }
     public function ability_names() {
         return array(
-  'read' => array( 'mad4b/approval-decision-handoff' ),
+  'read' => array( 'mad4b/approval-decision-handoff', 'mad4b/approval-plan-reconcile' ),
   'content' => array(),
   'admin' => array(),
         );
@@ -45,7 +46,53 @@ final class MAD4B_SCP_Approval_Handoff_Adapter extends MAD4B_SCP_Adapter_Base {
       array( 'ticket_id' )
   )
         );
+        $this->add_ability(
+  'mad4b/approval-plan-reconcile',
+  'Reconcile Exact Approval Plan',
+  'reconcile_plan',
+  array( __CLASS__, 'can_manage' ),
+  $this->schema(
+      array(
+          'agent_public_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 64 ),
+          'ability' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 191 ),
+          'provider' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64 ),
+          'target_fingerprint' => array( 'type' => 'string', 'maxLength' => 191 ),
+          'input' => array( 'type' => 'object', 'additionalProperties' => true, 'default' => array() ),
+      ),
+      array( 'agent_public_id', 'ability', 'provider' )
+  )
+        );
     }
+    public function reconcile_plan( $input ) {
+        $input = is_array( $input ) ? $input : array();
+        $agent_public_id = isset( $input['agent_public_id'] ) ? strtolower( trim( (string) $input['agent_public_id'] ) ) : '';
+        $ability = isset( $input['ability'] ) ? trim( (string) $input['ability'] ) : '';
+        $provider = isset( $input['provider'] ) ? sanitize_key( (string) $input['provider'] ) : '';
+        $target_fingerprint = isset( $input['target_fingerprint'] ) ? (string) $input['target_fingerprint'] : '';
+        $operation_input = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
+        if ( '' === $agent_public_id || '' === $ability || '' === $provider ) return new WP_Error( 'mad4b_approval_reconcile_input_invalid', 'Exact agent, ability and provider are required.' );
+        $mounted_provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability ) : null;
+        if ( null === $mounted_provider ) return new WP_Error( 'mad4b_approval_reconcile_target_not_mounted', 'Approval reconciliation target is not mounted on the governed write surface.' );
+        if ( $provider !== sanitize_key( (string) $mounted_provider ) ) return new WP_Error( 'mad4b_approval_reconcile_provider_mismatch', 'Approval reconciliation provider does not match the mounted write target.' );
+        if ( ! class_exists( 'MAD4B_SCP_Approval_Repository' ) || ! class_exists( 'MAD4B_SCP_Approval_Decision_Admin' ) ) return new WP_Error( 'mad4b_approval_reconcile_runtime_unavailable', 'Approval reconciliation runtime is unavailable.' );
+        $result = MAD4B_SCP_Approval_Repository::reconcile_plan(
+            MAD4B_SCP_Approval_Decision_Admin::current_candidate(),
+            $agent_public_id,
+            $ability,
+            $provider,
+            $target_fingerprint,
+            $operation_input
+        );
+        if ( is_wp_error( $result ) ) return $result;
+        $result['contract'] = self::RECONCILE_CONTRACT;
+        $result['authorizing'] = false;
+        $result['read_only'] = true;
+        $result['mutation_performed'] = false;
+        $result['decision_exposed'] = false;
+        $result['target_execution_exposed'] = false;
+        return $result;
+    }
+
     public function handoff( $input ) {
         $ticket_id = isset( $input['ticket_id'] ) ? strtolower( trim( (string) $input['ticket_id'] ) ) : '';
         if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) ) return new WP_Error( 'mad4b_approval_handoff_ticket_invalid', 'A valid exact approval ticket id is required.' );
