@@ -96,6 +96,9 @@ require(staging, "'payload_profile' => 'compact'", "staging compact payload")
 require(parity, "MAD4B_SCP_Connector_Resilience::classify_exception", "operation discovery shared taxonomy")
 require(parity, "'include_ability_hints' => array( 'type' => 'boolean', 'default' => false )", "ability hints opt-in")
 require(parity, "'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 20 )", "discovery result budget")
+require(parity, "'offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 500, 'default' => 0 )", "discovery stateless pagination")
+require(parity, "'next_offset' => $next_offset", "discovery continuation metadata")
+require(parity, "'total_match_count' => $total_match_count", "discovery total match metadata")
 require(parity, "'contract' => 'mad4b.operation-discovery.v2'", "discovery v2 contract")
 
 if servers.count("'mad4b/connector-preflight'") < 2:
