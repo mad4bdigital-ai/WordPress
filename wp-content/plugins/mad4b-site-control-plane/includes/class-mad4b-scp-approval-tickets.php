@@ -195,6 +195,65 @@ final class MAD4B_SCP_Approval_Tickets {
 		return self::get( $ticket_id );
 	}
 
+	public static function decide_pending_by_ai( $ticket_id, $decision, $expected_payload_sha256, array $operation_input, $expected_classification_sha256, $review_note = '' ) {
+		global $wpdb;
+		$schema = self::require_critical_schema();
+		if ( is_wp_error( $schema ) ) return $schema;
+		if ( ! class_exists( 'MAD4B_SCP_AI_Approval' ) ) return new WP_Error( 'mad4b_ai_approval_unavailable', 'AI approval authority is unavailable.' );
+
+		$guard_input = array(
+			'ticket_id' => strtolower( trim( (string) $ticket_id ) ),
+			'decision' => sanitize_key( (string) $decision ),
+			'expected_payload_sha256' => strtolower( trim( (string) $expected_payload_sha256 ) ),
+			'expected_classification_sha256' => strtolower( trim( (string) $expected_classification_sha256 ) ),
+			'operation_input' => $operation_input,
+			'review_note' => (string) $review_note,
+		);
+		$guard = MAD4B_SCP_AI_Approval::delegation_status( MAD4B_SCP_AI_Approval::ABILITY, $guard_input );
+		if ( empty( $guard['allowed'] ) ) return new WP_Error( 'mad4b_ai_approval_denied', 'AI approval policy denied this decision.', array( 'blockers' => isset( $guard['blockers'] ) ? $guard['blockers'] : array() ) );
+
+		$ticket_id = $guard_input['ticket_id'];
+		$decision = $guard_input['decision'];
+		$expected_payload_sha256 = $guard_input['expected_payload_sha256'];
+		$ticket = self::get( $ticket_id );
+		if ( ! is_array( $ticket ) || 'pending' !== (string) $ticket['status'] ) return new WP_Error( 'mad4b_approval_not_approvable', 'Approval ticket is missing, expired, or no longer pending.' );
+		if ( 'approve' === $decision ) {
+			$fresh = self::validate_ticket_candidate_binding( $ticket, $expected_payload_sha256 );
+			if ( is_wp_error( $fresh ) ) return $fresh;
+		}
+
+		$t = MAD4B_SCP_Schema::tables();
+		$now = gmdate( 'Y-m-d H:i:s' );
+		if ( 'approve' === $decision ) {
+			$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'approved', approved_by = 0, approved_at = %s WHERE id = %d AND ticket_id = %s AND status = 'pending' AND payload_sha256 = %s AND expires_at >= %s", $now, (int) $ticket['id'], $ticket_id, $expected_payload_sha256, $now ) );
+		} else {
+			$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'revoked' WHERE id = %d AND ticket_id = %s AND status = 'pending' AND payload_sha256 = %s AND expires_at >= %s", (int) $ticket['id'], $ticket_id, $expected_payload_sha256, $now ) );
+		}
+		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_decision_conflict', 'Approval ticket changed, expired, or was decided concurrently.' );
+
+		$classification = isset( $guard['classification'] ) && is_array( $guard['classification'] ) ? $guard['classification'] : array();
+		MAD4B_SCP_Audit::record( 'mad4b/approval-ai-decision', array(
+			'ticket_id' => $ticket_id,
+			'decision' => $decision,
+			'result_status' => 'approve' === $decision ? 'approved' : 'revoked',
+			'payload_sha256' => $expected_payload_sha256,
+			'ability' => isset( $ticket['ability_name'] ) ? (string) $ticket['ability_name'] : '',
+			'provider' => isset( $ticket['provider'] ) ? (string) $ticket['provider'] : '',
+			'candidate_sha' => isset( $ticket['candidate_sha'] ) ? strtolower( (string) $ticket['candidate_sha'] ) : '',
+			'build_fingerprint' => isset( $ticket['build_fingerprint'] ) ? strtolower( (string) $ticket['build_fingerprint'] ) : '',
+			'approver_type' => 'ai_agent',
+			'approver_agent_public_id' => isset( $guard['resolved_agent_public_id'] ) ? (string) $guard['resolved_agent_public_id'] : '',
+			'operation_type' => isset( $classification['operation_type'] ) ? (string) $classification['operation_type'] : '',
+			'risk_tier' => isset( $classification['risk_tier'] ) ? (string) $classification['risk_tier'] : '',
+			'approval_lane' => isset( $classification['approval_lane'] ) ? (string) $classification['approval_lane'] : '',
+			'classification_sha256' => isset( $classification['classification_sha256'] ) ? (string) $classification['classification_sha256'] : '',
+			'review_note' => sanitize_textarea_field( (string) $review_note ),
+			'production_mutation' => false,
+			'breakglass_authorized' => false,
+		), 'ok' );
+		return self::get( $ticket_id );
+	}
+
 	public static function approve( $ticket_id ) {
 		global $wpdb;
 		$schema = self::require_critical_schema();
