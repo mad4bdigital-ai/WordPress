@@ -1,0 +1,115 @@
+<?php
+
+if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
+
+if ( ! function_exists( 'sanitize_key' ) ) {
+	function sanitize_key( $key ) {
+		$key = strtolower( (string) $key );
+		return preg_replace( '/[^a-z0-9_\-]/', '', $key );
+	}
+}
+if ( ! function_exists( 'sanitize_text_field' ) ) {
+	function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
+}
+if ( ! function_exists( 'absint' ) ) {
+	function absint( $value ) { return abs( (int) $value ); }
+}
+if ( ! class_exists( 'WP_Error' ) ) {
+	class WP_Error {
+		private $code;
+		private $message;
+		private $data;
+		public function __construct( $code = '', $message = '', $data = null ) {
+			$this->code = $code;
+			$this->message = $message;
+			$this->data = $data;
+		}
+		public function get_error_code() { return $this->code; }
+		public function get_error_message() { return $this->message; }
+		public function get_error_data() { return $this->data; }
+	}
+}
+if ( ! function_exists( 'is_wp_error' ) ) {
+	function is_wp_error( $value ) { return $value instanceof WP_Error; }
+}
+
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-connector-resilience.php';
+
+function mad4b_assert_true( $condition, $message ) {
+	if ( ! $condition ) {
+		fwrite( STDERR, "FAIL: {$message}\n" );
+		exit( 1 );
+	}
+}
+
+$read_attempts = 0;
+$read = MAD4B_SCP_Connector_Resilience::safe_read(
+	'timeout_then_success',
+	static function () use ( &$read_attempts ) {
+		$read_attempts++;
+		if ( 1 === $read_attempts ) throw new RuntimeException( 'transport timeout from upstream SECRET-MUST-NOT-LEAK' );
+		return array( 'value' => 'ok' );
+	}
+);
+mad4b_assert_true( ! empty( $read['ok'] ), 'transient read must recover' );
+mad4b_assert_true( 2 === (int) $read['attempts'], 'transient read must retry exactly once' );
+mad4b_assert_true( 2 === $read_attempts, 'read callback must execute twice only' );
+mad4b_assert_true( 'ok' === $read['data']['value'], 'read result must survive retry' );
+
+$permanent_attempts = 0;
+$permanent = MAD4B_SCP_Connector_Resilience::safe_read(
+	'permanent_contract_failure',
+	static function () use ( &$permanent_attempts ) {
+		$permanent_attempts++;
+		throw new InvalidArgumentException( 'invalid argument schema SECRET-MUST-NOT-LEAK' );
+	}
+);
+mad4b_assert_true( empty( $permanent['ok'] ), 'permanent failure must fail' );
+mad4b_assert_true( 1 === $permanent_attempts, 'permanent failure must not retry' );
+mad4b_assert_true( 'contract_or_validation' === $permanent['category'], 'permanent failure classification drifted' );
+mad4b_assert_true( empty( $permanent['retryable'] ), 'permanent failure must not be retryable' );
+mad4b_assert_true( false === strpos( json_encode( $permanent ), 'SECRET-MUST-NOT-LEAK' ), 'raw exception message leaked from read envelope' );
+
+$mutation_attempts = 0;
+$mutation = MAD4B_SCP_Connector_Resilience::execute_mutation(
+	'write',
+	'mad4b/example-write',
+	static function () use ( &$mutation_attempts ) {
+		$mutation_attempts++;
+		throw new RuntimeException( '503 upstream timeout after possible commit SECRET-MUST-NOT-LEAK' );
+	}
+);
+mad4b_assert_true( is_wp_error( $mutation ), 'mutation exception must return WP_Error' );
+mad4b_assert_true( 1 === $mutation_attempts, 'mutation callback must execute exactly once' );
+$mutation_data = $mutation->get_error_data();
+mad4b_assert_true( is_array( $mutation_data ), 'mutation error data missing' );
+mad4b_assert_true( 'unknown' === $mutation_data['mutation_state'], 'uncertain mutation state must be unknown' );
+mad4b_assert_true( ! empty( $mutation_data['reconciliation_required'] ), 'mutation exception must require reconciliation' );
+mad4b_assert_true( empty( $mutation_data['blind_retry_allowed'] ), 'blind mutation retry must be denied' );
+mad4b_assert_true( empty( $mutation_data['automatic_retry_performed'] ), 'mutation must never auto retry' );
+mad4b_assert_true( false === strpos( json_encode( $mutation_data ), 'SECRET-MUST-NOT-LEAK' ), 'raw mutation exception message leaked' );
+
+$fanout_attempts = 0;
+$fanout = MAD4B_SCP_Connector_Resilience::run_checks(
+	array(
+		'healthy' => static function () { return array( 'ready' => true ); },
+		'broken' => static function () use ( &$fanout_attempts ) {
+			$fanout_attempts++;
+			throw new RuntimeException( 'session terminated' );
+		},
+		'healthy_after_failure' => static function () { return array( 'ready' => true ); },
+	),
+	array( 'budget_ms' => 5000, 'retry_transient' => true )
+);
+mad4b_assert_true( ! empty( $fanout['partial'] ), 'fanout must report partial on independent failure' );
+mad4b_assert_true( in_array( 'broken', $fanout['failed_checks'], true ), 'failed check missing from partial result' );
+mad4b_assert_true( 2 === $fanout_attempts, 'transient failing read must retry once only' );
+mad4b_assert_true( ! empty( $fanout['checks']['healthy_after_failure']['ok'] ), 'sibling checks must continue after isolated failure' );
+
+$guidance = MAD4B_SCP_Connector_Resilience::client_guidance();
+mad4b_assert_true( empty( $guidance['automatic_write_retry_allowed'] ), 'client guidance must deny automatic write retry' );
+mad4b_assert_true( empty( $guidance['automatic_enrollment_retry_allowed'] ), 'client guidance must deny automatic enrollment retry' );
+mad4b_assert_true( ! empty( $guidance['reconcile_before_retry_when_mutation_state_unknown'] ), 'client guidance must require reconciliation' );
+mad4b_assert_true( empty( $guidance['persistent_circuit_breaker_used'] ), 'persistent circuit breaker must remain disabled' );
+
+echo "mad4b.connector-resilience.runtime.v1: PASS\n";
