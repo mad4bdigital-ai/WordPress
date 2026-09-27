@@ -169,6 +169,18 @@ final class MAD4B_SCP_Connector_Resilience {
 			$result = call_user_func( $callback );
 			if ( is_wp_error( $result ) ) {
 				$classification = self::classify_wp_error( $result );
+				$original_error_code = self::safe_error_code( $result );
+				$error_fingerprint = self::wp_error_fingerprint( $surface . '_' . sanitize_key( $target ), $result );
+				$elapsed_ms = self::elapsed_ms( $started );
+				self::audit_mutation_dispatch_failure(
+					$surface,
+					$target,
+					$classification,
+					$original_error_code,
+					$error_fingerprint,
+					$elapsed_ms,
+					'target_error'
+				);
 				$code_suffix = ! empty( $classification['retryable'] ) ? '_dispatch_uncertain_remote_error' : '_dispatch_target_error';
 				return new WP_Error(
 					'mad4b_' . ( '' !== $surface ? $surface : 'mutation' ) . $code_suffix,
@@ -176,13 +188,13 @@ final class MAD4B_SCP_Connector_Resilience {
 					array(
 						'surface' => $surface,
 						'target' => $target,
-						'original_error_code' => self::safe_error_code( $result ),
+						'original_error_code' => $original_error_code,
 						'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown',
 						'client_action' => 'reconcile_then_replan',
 						'retryable' => false,
 						'attempts' => 1,
-						'elapsed_ms' => self::elapsed_ms( $started ),
-						'error_fingerprint' => self::wp_error_fingerprint( $surface . '_' . sanitize_key( $target ), $result ),
+						'elapsed_ms' => $elapsed_ms,
+						'error_fingerprint' => $error_fingerprint,
 						'mutation_state' => 'unknown',
 						'reconciliation_required' => true,
 						'blind_retry_allowed' => false,
@@ -199,6 +211,18 @@ final class MAD4B_SCP_Connector_Resilience {
 			);
 		} catch ( Throwable $e ) {
 			$classification = self::classify_exception( $e );
+			$error_fingerprint = self::exception_fingerprint( $surface . '_' . sanitize_key( $target ), $e );
+			$elapsed_ms = self::elapsed_ms( $started );
+			self::audit_mutation_dispatch_failure(
+				$surface,
+				$target,
+				$classification,
+				'',
+				$error_fingerprint,
+				$elapsed_ms,
+				'execution_exception',
+				get_class( $e )
+			);
 			return new WP_Error(
 				'mad4b_' . ( '' !== $surface ? $surface : 'mutation' ) . '_dispatch_execution_exception',
 				'Governed mutation execution failed inside the target callback. Reconcile observed postconditions before any retry.',
@@ -209,9 +233,9 @@ final class MAD4B_SCP_Connector_Resilience {
 					'client_action' => 'reconcile_then_replan',
 					'retryable' => false,
 					'attempts' => 1,
-					'elapsed_ms' => self::elapsed_ms( $started ),
+					'elapsed_ms' => $elapsed_ms,
 					'error_class' => get_class( $e ),
-					'error_fingerprint' => self::exception_fingerprint( $surface . '_' . sanitize_key( $target ), $e ),
+					'error_fingerprint' => $error_fingerprint,
 					'mutation_state' => 'unknown',
 					'reconciliation_required' => true,
 					'blind_retry_allowed' => false,
@@ -219,6 +243,40 @@ final class MAD4B_SCP_Connector_Resilience {
 					'raw_error_message_exposed' => false,
 				)
 			);
+		}
+	}
+
+
+	private static function audit_mutation_dispatch_failure( $surface, $target, array $classification, $original_error_code, $error_fingerprint, $elapsed_ms, $failure_kind, $error_class = '' ) {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || ! method_exists( 'MAD4B_SCP_Audit', 'record' ) ) return;
+		$category = isset( $classification['category'] ) ? sanitize_key( (string) $classification['category'] ) : 'unknown';
+		if ( '' === $category ) $category = 'unknown';
+		$original_error_code = sanitize_key( (string) $original_error_code );
+		$original_error_code = substr( $original_error_code, 0, 96 );
+		$error_fingerprint = strtolower( trim( (string) $error_fingerprint ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $error_fingerprint ) ) $error_fingerprint = '';
+		$error_class = preg_replace( '/[^A-Za-z0-9_\\\\]/', '', (string) $error_class );
+		$error_class = substr( (string) $error_class, 0, 191 );
+		$summary = array(
+			'contract' => 'mad4b.mutation-dispatch-error.v1',
+			'surface' => sanitize_key( (string) $surface ),
+			'target' => sanitize_text_field( (string) $target ),
+			'failure_kind' => sanitize_key( (string) $failure_kind ),
+			'original_error_code' => $original_error_code,
+			'category' => $category,
+			'error_fingerprint' => $error_fingerprint,
+			'error_class' => $error_class,
+			'elapsed_ms' => max( 0, (int) $elapsed_ms ),
+			'mutation_state' => 'unknown',
+			'reconciliation_required' => true,
+			'blind_retry_allowed' => false,
+			'automatic_retry_performed' => false,
+			'raw_error_message_exposed' => false,
+		);
+		try {
+			MAD4B_SCP_Audit::record( 'mad4b/mutation-dispatch-error', $summary, 'failure' );
+		} catch ( Throwable $ignored ) {
+			// Diagnostic audit failure must never change target mutation semantics.
 		}
 	}
 
