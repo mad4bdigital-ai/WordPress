@@ -158,4 +158,19 @@ for marker in [
 
 
 
+
+for marker in [
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
+    "MAD4B_SCP_Live_Truth::current_authority_status()",
+]:
+    require(connection, marker, "authoritative compact preflight truth")
+
+for marker in [
+    "MAD4B_SCP_Remote_Operation_Parity::reconciliation_status( $operation_id )",
+    "mad4b.chatgpt-enrollment-mutation-reconciliation.v1",
+    "'blind_retry_allowed' => false",
+]:
+    require(abilities, marker, "durable enrollment mutation reconciliation")
+
 print("mad4b.connector-resilience.contract.v1: PASS")
