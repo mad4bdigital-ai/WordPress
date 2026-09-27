@@ -97,6 +97,7 @@ The shared classifier uses stable categories:
 - `authorization`;
 - `contract_or_validation`;
 - `request_budget`;
+- `internal`;
 - `unknown`.
 
 Remote responses expose an error fingerprint and class when available, but never
