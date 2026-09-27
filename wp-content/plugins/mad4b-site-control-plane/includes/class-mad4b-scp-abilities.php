@@ -533,7 +533,29 @@ final class MAD4B_SCP_Abilities {
 				return MAD4B_SCP_Enrollment_Dispatch::execute( is_array( $input ) ? $input : array() );
 			}
 		);
-		if ( is_wp_error( $execution ) ) return $execution;
+		if ( is_wp_error( $execution ) ) {
+			$reconciliation = class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'reconciliation_status' )
+				? MAD4B_SCP_Remote_Operation_Parity::reconciliation_status( $operation_id )
+				: array();
+			if ( is_array( $reconciliation ) && ! empty( $reconciliation['supported'] ) ) {
+				$ready = ! empty( $reconciliation['ready'] );
+				$reconciled_state = isset( $reconciliation['state'] ) ? sanitize_key( (string) $reconciliation['state'] ) : 'unknown';
+				return array(
+					'contract' => 'mad4b.chatgpt-enrollment-mutation-reconciliation.v1',
+					'operation_id' => $operation_id,
+					'state' => $ready ? 'reconciled_completed' : ( 'running' === $reconciled_state ? 'in_progress' : 'reconciliation_required' ),
+					'ready' => $ready,
+					'dispatch_error_code' => $execution->get_error_code(),
+					'reconciliation' => $reconciliation,
+					'reconciliation_required' => ! $ready,
+					'blind_retry_allowed' => false,
+					'automatic_retry_performed' => false,
+					'production_mutation' => false,
+					'mutation_performed' => null,
+				);
+			}
+			return $execution;
+		}
 		return array_key_exists( 'result', $execution ) ? $execution['result'] : null;
 	}
 
