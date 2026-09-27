@@ -77,10 +77,12 @@ Heavy diagnostics must expose compact modes or bounded projections for routine
 connector use. Large raw evidence remains available through explicit deep
 diagnostic calls.
 
-Discovery endpoints must have explicit result limits. Optional ability-hint
-expansion must be opt-in. Multi-token searches rank results by relevance before
-the result limit is applied so broad early catalog entries cannot hide a more
-specific operation.
+Discovery endpoints must have explicit result limits and deterministic bounded
+pagination. Optional ability-hint expansion must be opt-in. Multi-token searches
+rank results by relevance before pagination and the result limit are applied so
+broad early catalog entries cannot hide a more specific operation. Pagination
+must expose total-match and next-offset metadata without requiring persistent
+server-side cursor state.
 
 ### Error taxonomy
 
