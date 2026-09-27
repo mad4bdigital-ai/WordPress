@@ -134,8 +134,14 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'ai_approval_standing_delegation_contract' => class_exists( 'MAD4B_SCP_AI_Approval' ) ? MAD4B_SCP_AI_Approval::DELEGATION_CONTRACT : 'mad4b.ai-approval-standing-delegation.v1',
 			'ai_approval_standing_delegation_configured' => $ai_approval_configured,
 			'ai_approval_operation_classification_contract' => class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::CLASSIFICATION_CONTRACT : 'mad4b.operation-classification.v1',
-			'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, $ai_ability, $ai_approval_ability ),
+			// Keep the baseline-owned package contract literal intact, then extend it
+			// with the separately governed AI approval standing delegation below.
+			'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' ),
 		);
+		if ( 'mad4b/context-ai-review' !== $ai_ability ) {
+			$policy['remote_write_prior_approval_exceptions'][1] = $ai_ability;
+		}
+		$policy['remote_write_prior_approval_exceptions'][] = $ai_approval_ability;
 		if ( $resolved ) {
 			$exceptions = array();
 			if ( $active ) $exceptions[] = self::CANDIDATE_BOOTSTRAP_ABILITY;
