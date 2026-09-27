@@ -20,6 +20,9 @@ final class MAD4B_SCP_Approval_Handoff_Adapter extends MAD4B_SCP_Adapter_Base {
   'read' => array( 'mad4b/approval-decision-handoff' ),
   'content' => array(),
   'admin' => array(),
+  'write' => class_exists( 'MAD4B_SCP_AI_Approval' ) && MAD4B_SCP_AI_Approval::catalog_eligible()
+      ? array( MAD4B_SCP_AI_Approval::ABILITY )
+      : array(),
         );
     }
     protected function mutation_requires_certification() { return false; }
