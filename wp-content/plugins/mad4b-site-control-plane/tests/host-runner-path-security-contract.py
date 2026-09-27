@@ -66,6 +66,30 @@ with tempfile.TemporaryDirectory() as td:
 
         if (target / "sentinel.txt").read_text(encoding="utf-8") != "outside\n":
             raise SystemExit("FAIL host-runner-path-security: outside target was mutated")
+
+
+        # Plugin deployment package members are fixed below the exact plugin root;
+        # traversal, absolute paths and Windows-style separators are denied.
+        for unsafe in (
+            "../escape.php",
+            "/mad4b-site-control-plane/absolute.php",
+            "mad4b-site-control-plane/../escape.php",
+            "mad4b-site-control-plane\\escape.php",
+        ):
+            try:
+                runner._safe_package_relative(unsafe)
+                raise SystemExit(
+                    "FAIL host-runner-path-security: unsafe deployment archive path accepted: "
+                    + unsafe
+                )
+            except ValueError:
+                pass
+
+        import zipfile
+        info = zipfile.ZipInfo("mad4b-site-control-plane/link.php")
+        info.external_attr = (0o120777 << 16)
+        if not runner._zip_member_is_symlink(info):
+            raise SystemExit("FAIL host-runner-path-security: ZIP symlink metadata was not detected")
     finally:
         if os.name == "nt" and link.exists():
             subprocess.run(["cmd", "/c", "rmdir", str(link)], check=False)
