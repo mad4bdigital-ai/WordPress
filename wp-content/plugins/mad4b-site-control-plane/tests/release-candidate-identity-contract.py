@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -62,5 +64,13 @@ if handoff.get('producer', {}).get('artifact_name_template') != 'mad4b-site-cont
 
 if re.search(r'\b[0-9a-f]{40}\b', runtime, re.I):
     raise SystemExit('runtime build marker must not hard-code a source commit SHA')
+
+SELF_UPDATE_CONTRACT = PLUGIN / 'tests/self-update-dual-channel-contract.py'
+if SELF_UPDATE_CONTRACT.is_file():
+    subprocess.run(
+        [sys.executable, str(SELF_UPDATE_CONTRACT)],
+        cwd=ROOT,
+        check=True,
+    )
 
 print(f'release candidate identity coherence: PASS ({version})')
