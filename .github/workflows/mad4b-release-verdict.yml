@@ -411,6 +411,43 @@ jobs:
               '.github/workflows/mad4b-approval-decision-contract.yml',
               '.github/workflows/mad4b-oauth-resource-bridge.yml',
           ]
+          critical_workflow_guard_jobs = {
+              '.github/workflows/mad4b-site-control-plane.yml': [
+                  'Control-plane contract guard',
+              ],
+              '.github/workflows/mad4b-dynamic-skills.yml': [
+                  'Dynamic Skills contract',
+                  'Dynamic Skills + governed write generic Staging runtime',
+                  'Dynamic Skills + write authority Production fail-closed runtime',
+              ],
+              '.github/workflows/mad4b-control-plane-package.yml': [
+                  'Build reviewed General Distribution installation kit',
+              ],
+              '.github/workflows/mad4b-chatgpt-refresh-hotpath.yml': [
+                  'ChatGPT refresh request hotpath contract',
+              ],
+              '.github/workflows/mad4b-chatgpt-catalog-performance.yml': [
+                  'ChatGPT tools/list catalog performance contract',
+              ],
+              '.github/workflows/mad4b-full-staging-authority.yml': [
+                  'Full Staging authority contract',
+              ],
+              '.github/workflows/mad4b-governed-execution-fence.yml': [
+                  'Governed execution fence (latest)',
+              ],
+              '.github/workflows/mad4b-approval-decision-contract.yml': [
+                  'Human approval decision (8.3)',
+              ],
+              '.github/workflows/mad4b-oauth-resource-bridge.yml': [
+                  'OAuth bridge runtime (latest)',
+              ],
+          }
+          if set(critical_workflow_guard_jobs) != set(critical_trigger_workflows):
+              raise SystemExit(
+                  'critical workflow guard mapping drift: '
+                  f'workflows={sorted(critical_trigger_workflows)} '
+                  f'mapped={sorted(critical_workflow_guard_jobs)}'
+              )
           full_runtime_trigger_paths = [
               'wp-content/plugins/mad4b-site-control-plane/**',
               'wp-content/plugins/mcp-adapter.zip',
@@ -461,6 +498,11 @@ jobs:
                   raise SystemExit(f'critical workflow lacks pull_request trigger: {workflow}')
               if '  push:\n' not in workflow_text or '      - master' not in workflow_text:
                   raise SystemExit(f'critical workflow lacks master push trigger: {workflow}')
+              pull_request_block = workflow_text.split('  pull_request:\n', 1)[1].split('  push:\n', 1)[0]
+              if workflow not in pull_request_block:
+                  raise SystemExit(
+                      f'critical workflow must trigger on its own workflow file for exact-head PR certification: {workflow}'
+                  )
               for trigger_path in full_runtime_trigger_paths:
                   if trigger_path not in workflow_text:
                       raise SystemExit(f'critical workflow trigger drift: {workflow} missing {trigger_path}')
@@ -582,11 +624,7 @@ jobs:
               '.github/workflows/mad4b-feature-boundary-root.yml',
               'tools/test_verify_feature_boundary.py',
           }
-          runtime_patterns = set(full_runtime_trigger_paths) | set(critical_trigger_workflows) | {
-              '.github/workflows/feature-007-critical-kernel.yml',
-              '.github/workflows/mad4b-live-acceptance-evidence.yml',
-              '.github/workflows/mad4b-release-verdict.yml',
-          }
+          runtime_patterns = set(full_runtime_trigger_paths)
 
           changed = []
           pr_number = os.environ.get('PR_NUMBER', '').strip()
@@ -657,6 +695,14 @@ jobs:
               for pattern in context_authority_trigger_patterns
           )
           narrow = bool(changed) and set(changed).issubset(release_evidence_paths)
+          release_evidence_affecting = any(
+              path in release_evidence_paths
+              for path in changed
+          )
+          critical_workflow_changes = sorted(
+              path for path in changed
+              if path in critical_workflow_guard_jobs
+          )
           runtime_affecting = any(
               fnmatch.fnmatch(path, pattern)
               for path in changed
@@ -670,6 +716,21 @@ jobs:
           elif runtime_affecting:
               required = full
               mode = 'full_runtime_release'
+              artifact_required = True
+          elif critical_workflow_changes:
+              required = list(release_evidence if release_evidence_affecting else non_runtime)
+              if os.environ.get('GITHUB_EVENT_NAME') == 'pull_request':
+                  for workflow in critical_workflow_changes:
+                      required.extend(critical_workflow_guard_jobs[workflow])
+              mode = (
+                  'critical_workflow_governance_with_release_evidence'
+                  if release_evidence_affecting
+                  else 'critical_workflow_governance'
+              )
+              artifact_required = release_evidence_affecting
+          elif release_evidence_affecting:
+              required = release_evidence
+              mode = 'release_evidence_mixed_non_runtime'
               artifact_required = True
           else:
               required = non_runtime
@@ -712,6 +773,12 @@ jobs:
                   'governance_apply_repair_expected_base': governance_apply_repair_expected_base if governance_apply_repair_bootstrap else '',
                   'governance_apply_repair_expected_paths': sorted(governance_apply_repair_expected_paths) if governance_apply_repair_bootstrap else [],
                   'context_authority_affecting': context_authority_affecting,
+                  'release_evidence_affecting': release_evidence_affecting,
+                  'critical_workflow_changes': critical_workflow_changes,
+                  'critical_workflow_guard_jobs': {
+                      workflow: critical_workflow_guard_jobs[workflow]
+                      for workflow in critical_workflow_changes
+                  },
                   'narrow_release_evidence_paths': sorted(release_evidence_paths),
                   'runtime_patterns': sorted(runtime_patterns),
                   'critical_job_evidence_source': 'github_actions_runs_jobs_api',
