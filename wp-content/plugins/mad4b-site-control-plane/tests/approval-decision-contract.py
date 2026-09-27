@@ -220,7 +220,7 @@ if 'approval-decision' in servers:
 required_handoff = [
     "const CONTRACT = 'mad4b.approval-decision-handoff.v1'",
     "'mad4b/approval-decision-handoff'",
-    "'read' => array( 'mad4b/approval-decision-handoff' )",
+    "'read' => array( 'mad4b/approval-decision-handoff', 'mad4b/operation-classify' )",
     "'content' => array()", "'admin' => array()",
     "'human_action_required' => true", "'decision_exposed' => false",
     "'nonce_exposed' => false", "'target_execution_exposed' => false",
