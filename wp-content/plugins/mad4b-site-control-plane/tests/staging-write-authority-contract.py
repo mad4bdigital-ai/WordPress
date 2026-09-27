@@ -325,6 +325,21 @@ if "if ( $bootstrap ) return true;" not in scope_body:
 if "mad4b:read" not in scope_body or "oauth2_bearer" not in scope_body:
     raise SystemExit('candidate bootstrap scope delegation must retain verified OAuth read identity')
 
+# approval-plan is the one bounded mutation that creates a PENDING ticket. It
+# cannot require that same ticket merely to pass OAuth scope delegation.
+for marker in [
+    "MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY === (string) $ability_name",
+    "MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input( $input )",
+    "MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $canonical )",
+    "return ! is_wp_error( $guard );",
+]:
+    if marker not in scope_body:
+        raise SystemExit('remote approval-plan bootstrap scope guard missing: ' + marker)
+planner_branch = scope_body.find("MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY === (string) $ability_name")
+ticket_branch = scope_body.find("approval_ticket_from_input( $input )")
+if planner_branch < 0 or ticket_branch < 0 or planner_branch > ticket_branch:
+    raise SystemExit('approval-plan scope bootstrap must execute before the normal existing-ticket delegation path')
+
 if "if ( self::ai_review_delegation_allowed( $ability_name, $input, $identity ) ) return true;" not in scope_body:
     raise SystemExit('AI review standing delegation must have one exact request-time scope branch')
 
