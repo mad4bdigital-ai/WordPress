@@ -483,16 +483,17 @@ final class MAD4B_SCP_Abilities {
 			$incoming[ $key ] = $value;
 		}
 
+		$next = self::$write_dispatch_governance_envelope;
 		foreach ( $incoming as $key => $value ) {
-			if ( array_key_exists( $key, self::$write_dispatch_governance_envelope ) ) {
-				$current_hash = $this->governance_envelope_hash( self::$write_dispatch_governance_envelope[ $key ] );
+			if ( array_key_exists( $key, $next ) ) {
+				$current_hash = $this->governance_envelope_hash( $next[ $key ] );
 				$incoming_hash = $this->governance_envelope_hash( $value );
 				if ( '' === $current_hash || '' === $incoming_hash || ! hash_equals( $current_hash, $incoming_hash ) ) {
 					return new WP_Error( 'mad4b_write_dispatch_governance_envelope_rebind_conflict', 'Repeated dispatcher preflight attempted to rebind governance metadata within the same request.' );
 				}
 				continue;
 			}
-			self::$write_dispatch_governance_envelope[ $key ] = $value;
+			$next[ $key ] = $value;
 		}
 
 		if ( isset( $incoming['_mad4b_approval_ticket_id'] ) ) {
@@ -500,6 +501,7 @@ final class MAD4B_SCP_Abilities {
 				return new WP_Error( 'mad4b_write_dispatch_approval_binding_conflict', 'The dispatcher approval ticket could not be bound to this request.' );
 			}
 		}
+		self::$write_dispatch_governance_envelope = $next;
 		return true;
 	}
 
