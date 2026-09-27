@@ -286,8 +286,13 @@ for marker in [
         raise SystemExit('AI ticket-decision invariant missing: ' + marker)
 for marker in [
     "const CLASSIFICATION_CONTRACT = 'mad4b.operation-classification.v1'",
+    "'operation_type' => $operation_type",
+    "'mutation_kind' => $mutation_kind",
+    "'side_effect_scope' => $side_effect_scope",
     "'approval_lane' => $approval_lane",
-    "'human_approval_required' => ! $ai_eligible",
+    "'human_approval_required' => ! $readonly && ! $ai_eligible",
+    "$operation_type = $readonly ? 'observe' : 'governed_mutation'",
+    "$approval_lane = $readonly ? 'none'",
     "'production_auto_approval' => false",
     "'breakglass_auto_approval' => false",
 ]:
