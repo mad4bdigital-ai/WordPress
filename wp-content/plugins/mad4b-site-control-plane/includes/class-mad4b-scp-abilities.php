@@ -457,10 +457,23 @@ final class MAD4B_SCP_Abilities {
 		$target_input_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
 		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 
+		$execute_target = static function () use ( $ability, $params, $ability_name, $actual_schema_sha256 ) {
+			if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) || ! method_exists( 'MAD4B_SCP_Transport_Context', 'with_write_dispatch_target' ) ) {
+				return new WP_Error( 'mad4b_write_dispatch_transport_context_unavailable', 'Exact nested write-dispatch transport binding is unavailable.' );
+			}
+			return MAD4B_SCP_Transport_Context::with_write_dispatch_target(
+				$ability_name,
+				$actual_schema_sha256,
+				static function () use ( $ability, $params ) {
+					return $ability->execute( $params );
+				}
+			);
+		};
+
 		if ( 'mad4b/approval-plan' === $ability_name ) {
 			$started = microtime( true );
 			try {
-				$planner_result = $ability->execute( $params );
+				$planner_result = $execute_target();
 			} catch ( \Throwable $throwable ) {
 				return new WP_Error(
 					'mad4b_approval_plan_dispatch_exception',
@@ -496,8 +509,8 @@ final class MAD4B_SCP_Abilities {
 			$execution = MAD4B_SCP_Connector_Resilience::execute_mutation(
 				'write',
 				$ability_name,
-				static function () use ( $ability, $params ) {
-					return $ability->execute( $params );
+				static function () use ( $execute_target ) {
+					return $execute_target();
 				}
 			);
 			if ( is_wp_error( $execution ) ) return $execution;
