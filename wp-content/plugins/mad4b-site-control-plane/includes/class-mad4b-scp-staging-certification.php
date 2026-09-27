@@ -219,45 +219,40 @@ final class MAD4B_SCP_Staging_Certification {
 	}
 
 	private static function safe_read( $name, $callback ) {
-		try {
-			$value = call_user_func( $callback );
-			if ( is_wp_error( $value ) ) {
-				return array(
-					'ready' => false,
-					'state' => 'read_failed',
-					'blockers' => array( 'connector_read_failed:' . sanitize_key( (string) $name ) ),
-					'connector_error' => array(
-						'code' => (string) $value->get_error_code(),
-						'retryable' => false,
-					),
-				);
-			}
-			if ( is_array( $value ) ) return $value;
-			return array(
-				'ready' => false,
-				'state' => 'invalid_read_result',
-				'blockers' => array( 'connector_invalid_result:' . sanitize_key( (string) $name ) ),
-			);
-		} catch ( Throwable $e ) {
-			$message = strtolower( (string) $e->getMessage() );
-			$retryable = false;
-			foreach ( array( 'timeout', 'timed out', 'temporar', 'connection reset', 'session terminated', 'transport', 'upstream', '429', '502', '503', '504' ) as $needle ) {
-				if ( false !== strpos( $message, $needle ) ) {
-					$retryable = true;
-					break;
-				}
-			}
+		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) {
 			return array(
 				'ready' => false,
 				'state' => 'read_failed',
-				'blockers' => array( 'connector_read_failed:' . sanitize_key( (string) $name ) ),
+				'blockers' => array( 'connector_resilience_unavailable' ),
 				'connector_error' => array(
-					'error_class' => get_class( $e ),
-					'error_fingerprint' => hash( 'sha256', get_class( $e ) . "\n" . $e->getMessage() ),
-					'retryable' => $retryable,
+					'contract' => 'mad4b.connector-resilience.unavailable',
+					'retryable' => false,
 				),
 			);
 		}
+		$result = MAD4B_SCP_Connector_Resilience::safe_read( $name, $callback, array(
+			'retry_transient' => true,
+			'max_attempts' => MAD4B_SCP_Connector_Resilience::DEFAULT_READ_ATTEMPTS,
+		) );
+		if ( ! empty( $result['ok'] ) ) {
+			return isset( $result['data'] ) && is_array( $result['data'] ) ? $result['data'] : array();
+		}
+		return array(
+			'ready' => false,
+			'state' => 'read_failed',
+			'blockers' => array( 'connector_read_failed:' . sanitize_key( (string) $name ) ),
+			'connector_error' => array(
+				'contract' => isset( $result['contract'] ) ? (string) $result['contract'] : MAD4B_SCP_Connector_Resilience::CONTRACT,
+				'category' => isset( $result['category'] ) ? (string) $result['category'] : 'unknown',
+				'retryable' => ! empty( $result['retryable'] ),
+				'attempts' => isset( $result['attempts'] ) ? (int) $result['attempts'] : 1,
+				'elapsed_ms' => isset( $result['elapsed_ms'] ) ? (int) $result['elapsed_ms'] : 0,
+				'error_code' => isset( $result['error_code'] ) ? (string) $result['error_code'] : '',
+				'error_class' => isset( $result['error_class'] ) ? (string) $result['error_class'] : '',
+				'error_fingerprint' => isset( $result['error_fingerprint'] ) ? (string) $result['error_fingerprint'] : '',
+				'raw_error_message_exposed' => false,
+			),
+		);
 	}
 
 	private static function compact_gate( array $gate ) {
