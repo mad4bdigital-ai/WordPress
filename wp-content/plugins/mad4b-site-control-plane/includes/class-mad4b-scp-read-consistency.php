@@ -15,6 +15,7 @@ final class MAD4B_SCP_Read_Consistency {
 	const CONTRACT = 'mad4b.read-consistency.v1';
 	const SNAPSHOT_ABILITY = 'mad4b/read-snapshot-header';
 	const BUNDLE_ABILITY = 'mad4b/read-diagnostic-bundle';
+	const METADATA_ABILITY = 'mad4b/read-metadata-envelope';
 	const DEFAULT_SNAPSHOT_TTL_SECONDS = 120;
 	const DEFAULT_BUNDLE_BUDGET_MS = 8000;
 	const MAX_BUNDLE_BUDGET_MS = 12000;
@@ -43,6 +44,32 @@ final class MAD4B_SCP_Read_Consistency {
 								'pattern' => '^rtx_[A-Za-z0-9._-]{8,80}$',
 								'maxLength' => 84,
 							),
+						),
+						'additionalProperties' => false,
+					),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => self::read_meta(),
+				)
+			);
+		}
+
+		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::METADATA_ABILITY ) ) ) {
+			wp_register_ability(
+				self::METADATA_ABILITY,
+				array(
+					'label' => 'Compact Metadata Envelope',
+					'description' => 'Return one compact generation-bound metadata/schema digest envelope for a governed Ability or registered operation.',
+					'category' => 'mad4b-read',
+					'execute_callback' => array( __CLASS__, 'metadata_envelope' ),
+					'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+					'input_schema' => array(
+						'type' => 'object',
+						'required' => array( 'target_type', 'target' ),
+						'properties' => array(
+							'target_type' => array( 'type' => 'string', 'enum' => array( 'ability', 'operation' ) ),
+							'target' => array( 'type' => 'string', 'pattern' => '^[A-Za-z0-9._\\/-]{3,180}$', 'minLength' => 3, 'maxLength' => 180 ),
+							'read_transaction_id' => array( 'type' => 'string', 'pattern' => '^rtx_[A-Za-z0-9._-]{8,80}$', 'maxLength' => 84 ),
+							'expected_runtime_generation' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$', 'minLength' => 64, 'maxLength' => 64 ),
 						),
 						'additionalProperties' => false,
 					),
@@ -160,6 +187,127 @@ final class MAD4B_SCP_Read_Consistency {
 			'mutation_performed' => false,
 			'production_mutation_performed' => false,
 		);
+	}
+
+	public static function metadata_envelope( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$target_type = isset( $input['target_type'] ) ? sanitize_key( (string) $input['target_type'] ) : '';
+		$target = isset( $input['target'] ) ? trim( sanitize_text_field( (string) $input['target'] ) ) : '';
+		if ( ! in_array( $target_type, array( 'ability', 'operation' ), true ) || '' === $target ) {
+			return new WP_Error( 'mad4b_metadata_envelope_target_invalid', 'A supported metadata target type and target are required.' );
+		}
+		$transaction_id = self::transaction_id( isset( $input['read_transaction_id'] ) ? $input['read_transaction_id'] : '' );
+		$expected_generation = isset( $input['expected_runtime_generation'] ) ? strtolower( trim( (string) $input['expected_runtime_generation'] ) ) : '';
+		$before = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		if ( '' !== $expected_generation && ! self::generation_matches( $expected_generation, $before['runtime_generation'] ) ) {
+			return self::generation_changed_envelope( 'metadata', $transaction_id, 1, $expected_generation, $before, 'metadata_preflight_generation_mismatch' );
+		}
+
+		if ( 'ability' === $target_type
+			&& ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $target ) ) ) {
+			return new WP_Error( 'mad4b_metadata_ability_not_cataloged', 'Requested Ability is outside the governed ChatGPT capability universe.' );
+		}
+
+		$payload = array(
+			'target_type' => $target_type,
+			'target' => $target,
+			'found' => false,
+			'remote_ability' => '',
+			'authority_surface' => '',
+			'registration_digest' => '',
+			'dispatch_policy_digest' => '',
+			'operation_policy_digest' => '',
+			'dispatch_identity_source' => '',
+			'input_schema_available' => false,
+			'input_schema_sha256' => '',
+			'output_schema_sha256' => '',
+			'metadata_sha256' => '',
+		);
+		$ability_name = $target;
+
+		if ( 'operation' === $target_type ) {
+			$operation_id = sanitize_key( $target );
+			if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) || ! method_exists( 'MAD4B_SCP_Enrollment_Dispatch', 'info' ) ) {
+				return new WP_Error( 'mad4b_metadata_dispatch_info_unavailable', 'Canonical enrollment dispatch metadata service is unavailable.' );
+			}
+			$dispatch_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => $operation_id ) );
+			if ( is_wp_error( $dispatch_info ) ) return $dispatch_info;
+			if ( ! is_array( $dispatch_info )
+				|| empty( $dispatch_info['remote_ability'] )
+				|| ! self::is_sha( isset( $dispatch_info['registration_digest'] ) ? $dispatch_info['registration_digest'] : '', 64 )
+				|| ! self::is_sha( isset( $dispatch_info['dispatch_policy_digest'] ) ? $dispatch_info['dispatch_policy_digest'] : '', 64 )
+				|| ! self::is_sha( isset( $dispatch_info['input_schema_sha256'] ) ? $dispatch_info['input_schema_sha256'] : '', 64 ) ) {
+				return new WP_Error( 'mad4b_metadata_dispatch_identity_incomplete', 'Canonical enrollment dispatch metadata is incomplete.' );
+			}
+			$ability_name = (string) $dispatch_info['remote_ability'];
+			$operation = isset( $dispatch_info['operation'] ) && is_array( $dispatch_info['operation'] ) ? $dispatch_info['operation'] : array();
+			$payload['target'] = $operation_id;
+			$payload['found'] = true;
+			$payload['remote_ability'] = $ability_name;
+			$payload['authority_surface'] = isset( $operation['authority_surface'] ) ? (string) $operation['authority_surface'] : 'mad4b-enrollment';
+			$payload['registration_digest'] = strtolower( (string) $dispatch_info['registration_digest'] );
+			$payload['dispatch_policy_digest'] = strtolower( (string) $dispatch_info['dispatch_policy_digest'] );
+			$payload['operation_policy_digest'] = $payload['dispatch_policy_digest'];
+			$payload['dispatch_identity_source'] = 'MAD4B_SCP_Enrollment_Dispatch::info';
+			$payload['input_schema_available'] = isset( $dispatch_info['input_schema'] ) && is_array( $dispatch_info['input_schema'] ) && ! empty( $dispatch_info['input_schema'] );
+			$payload['input_schema_sha256'] = strtolower( (string) $dispatch_info['input_schema_sha256'] );
+		}
+
+		if ( '' !== $ability_name && function_exists( 'wp_has_ability' ) && function_exists( 'wp_get_ability' ) && wp_has_ability( $ability_name ) ) {
+			$ability = wp_get_ability( $ability_name );
+			$input_schema = self::ability_schema( $ability, 'input' );
+			$output_schema = self::ability_schema( $ability, 'output' );
+			$meta = self::ability_meta( $ability );
+			if ( 'operation' === $target_type ) {
+				if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) || ! method_exists( 'MAD4B_SCP_Enrollment_Dispatch', 'input_schema_sha256' ) ) {
+					return new WP_Error( 'mad4b_metadata_dispatch_schema_digest_unavailable', 'Canonical enrollment schema digest helper is unavailable.' );
+				}
+				$computed_input_schema_sha256 = MAD4B_SCP_Enrollment_Dispatch::input_schema_sha256( $ability );
+			} else {
+				$computed_input_schema_sha256 = self::digest( $input_schema );
+			}
+			if ( 'operation' === $target_type && '' !== $payload['input_schema_sha256'] && ! hash_equals( $payload['input_schema_sha256'], $computed_input_schema_sha256 ) ) {
+				return new WP_Error( 'mad4b_metadata_dispatch_schema_projection_drift', 'Canonical enrollment dispatch schema digest does not match the live Ability schema.' );
+			}
+			$payload['found'] = true;
+			$payload['remote_ability'] = $ability_name;
+			$payload['input_schema_available'] = ! empty( $input_schema );
+			$payload['input_schema_sha256'] = $computed_input_schema_sha256;
+			$payload['output_schema_sha256'] = self::digest( $output_schema );
+			$payload['metadata_sha256'] = self::digest( $meta );
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+			$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+			$payload['readonly'] = array_key_exists( 'readonly', $annotations ) ? (bool) $annotations['readonly'] : null;
+			$payload['destructive'] = array_key_exists( 'destructive', $annotations ) ? (bool) $annotations['destructive'] : null;
+			$payload['idempotent'] = array_key_exists( 'idempotent', $annotations ) ? (bool) $annotations['idempotent'] : null;
+			$payload['surface'] = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
+		}
+
+		$after = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		if ( ! self::generation_matches( $before['runtime_generation'], $after['runtime_generation'] ) ) {
+			return self::generation_changed_envelope( 'metadata', $transaction_id, 1, $before['runtime_generation'], $after, 'runtime_changed_during_metadata_read' );
+		}
+		$payload['contract'] = self::CONTRACT;
+		$payload['state'] = ! empty( $payload['found'] ) ? 'ready' : 'not_found';
+		$payload['read_transaction_id'] = $transaction_id;
+		$payload['snapshot_id'] = $after['snapshot_id'];
+		$payload['runtime_generation'] = $after['runtime_generation'];
+		$payload['generation_match'] = true;
+		$payload['valid_for_resume'] = true;
+		$payload['execution_binding_digest'] = self::digest( array(
+			'runtime_generation' => $after['runtime_generation'],
+			'target_type' => $payload['target_type'],
+			'target' => $payload['target'],
+			'remote_ability' => $payload['remote_ability'],
+			'registration_digest' => $payload['registration_digest'],
+			'dispatch_policy_digest' => $payload['dispatch_policy_digest'],
+			'input_schema_sha256' => $payload['input_schema_sha256'],
+		) );
+		$payload['observed_at'] = gmdate( 'c' );
+		$payload['read_only'] = true;
+		$payload['mutation_performed'] = false;
+		$payload['production_mutation_performed'] = false;
+		return $payload;
 	}
 
 	public static function diagnostic_bundle( $input ) {
@@ -422,6 +570,20 @@ final class MAD4B_SCP_Read_Consistency {
 			'provider_summary_digest' => self::digest( $summary ),
 			'mutation_performed' => false,
 		);
+	}
+
+	private static function ability_schema( $ability, $kind ) {
+		if ( ! is_object( $ability ) ) return array();
+		$method = 'output' === $kind ? 'get_output_schema' : 'get_input_schema';
+		if ( ! method_exists( $ability, $method ) ) return array();
+		$value = $ability->{$method}();
+		return is_array( $value ) ? $value : array();
+	}
+
+	private static function ability_meta( $ability ) {
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) return array();
+		$value = $ability->get_meta();
+		return is_array( $value ) ? $value : array();
 	}
 
 	private static function generation_changed_envelope( $bundle, $transaction_id, $sequence, $expected_generation, array $snapshot, $reason ) {
