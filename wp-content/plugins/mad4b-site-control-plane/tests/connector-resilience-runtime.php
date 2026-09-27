@@ -198,6 +198,23 @@ mad4b_assert_true( empty( $mutation_permanent_data['blind_retry_allowed'] ), 'pe
 mad4b_assert_true( 'reconcile_then_replan' === $mutation_permanent_data['client_action'], 'permanent mutation client action drifted' );
 mad4b_assert_true( false === strpos( json_encode( $mutation_permanent_data ), 'SECRET-MUST-NOT-LEAK' ), 'raw permanent mutation WP_Error message leaked' );
 
+$recovered_session_attempts = 0;
+$recovered_session = MAD4B_SCP_Connector_Resilience::run_checks(
+	array(
+		'metadata' => static function () use ( &$recovered_session_attempts ) {
+			$recovered_session_attempts++;
+			if ( 1 === $recovered_session_attempts ) throw new RuntimeException( 'session terminated' );
+			return array( 'ready' => true );
+		},
+		'sibling' => static function () { return array( 'ready' => true ); },
+	),
+	array( 'budget_ms' => 5000, 'retry_transient' => true )
+);
+mad4b_assert_true( empty( $recovered_session['partial'] ), 'one recovered session termination must not poison the read transaction' );
+mad4b_assert_true( 1 === (int) $recovered_session['session_termination_count'], 'recovered session termination must be counted exactly once' );
+mad4b_assert_true( empty( $recovered_session['session_breaker_open'] ), 'one recovered termination must remain below breaker budget' );
+mad4b_assert_true( ! empty( $recovered_session['checks']['sibling']['ok'] ), 'sibling read must continue after one recovered termination' );
+
 $fanout_attempts = 0;
 $fanout = MAD4B_SCP_Connector_Resilience::run_checks(
 	array(
@@ -210,10 +227,14 @@ $fanout = MAD4B_SCP_Connector_Resilience::run_checks(
 	),
 	array( 'budget_ms' => 5000, 'retry_transient' => true )
 );
-mad4b_assert_true( ! empty( $fanout['partial'] ), 'fanout must report partial on independent failure' );
-mad4b_assert_true( in_array( 'broken', $fanout['failed_checks'], true ), 'failed check missing from partial result' );
-mad4b_assert_true( 2 === $fanout_attempts, 'transient failing read must retry once only' );
-mad4b_assert_true( ! empty( $fanout['checks']['healthy_after_failure']['ok'] ), 'sibling checks must continue after isolated failure' );
+mad4b_assert_true( ! empty( $fanout['partial'] ), 'fanout must report partial after session breaker opens' );
+mad4b_assert_true( in_array( 'broken', $fanout['failed_checks'], true ), 'failed session check missing from partial result' );
+mad4b_assert_true( 2 === $fanout_attempts, 'session-terminated read must consume one bounded automatic retry only' );
+mad4b_assert_true( 2 === (int) $fanout['session_termination_count'], 'session termination budget must count both failed attempts' );
+mad4b_assert_true( ! empty( $fanout['session_breaker_open'] ), 'repeated session termination must open the request-local breaker' );
+mad4b_assert_true( in_array( 'healthy_after_failure', $fanout['skipped_session_breaker_checks'], true ), 'fanout must stop launching sibling reads after session termination budget is exhausted' );
+mad4b_assert_true( 'skipped_session_breaker' === $fanout['checks']['healthy_after_failure']['state'], 'post-breaker sibling must be explicitly skipped' );
+mad4b_assert_true( 'reconnect_snapshot_then_resume' === $fanout['checks']['healthy_after_failure']['client_action'], 'session breaker must direct the client to reconnect and generation-check before resume' );
 
 $budget = MAD4B_SCP_Connector_Resilience::run_checks(
 	array(
@@ -251,5 +272,10 @@ mad4b_assert_true( ! empty( $guidance['snapshot_identity_required'] ), 'snapshot
 mad4b_assert_true( ! empty( $guidance['discard_partial_on_generation_change'] ), 'generation drift must discard partial reads' );
 mad4b_assert_true( ! empty( $guidance['resume_completed_reads_on_generation_match'] ), 'same-generation reconnect must permit partial resume' );
 mad4b_assert_true( empty( $guidance['persistent_session_breaker_used'] ), 'session breaker must remain request/client local' );
+mad4b_assert_true( 'request_local' === $guidance['session_breaker_scope'], 'session breaker scope must remain request-local' );
+mad4b_assert_true( 'session_terminated' === $guidance['session_termination_category'], 'session termination must have a dedicated error category' );
+mad4b_assert_true( ! empty( $guidance['metadata_micro_read_preferred'] ), 'metadata micro-read must be preferred over multi-call metadata fanout' );
+mad4b_assert_true( 'mad4b/read-metadata-envelope' === $guidance['metadata_envelope_ability'], 'metadata envelope ability drifted' );
+mad4b_assert_true( ! empty( $guidance['resume_after_reconnect_requires_generation_match'] ), 'resume after reconnect must require runtime generation match' );
 
 echo "mad4b.connector-resilience.runtime.v1: PASS\n";
