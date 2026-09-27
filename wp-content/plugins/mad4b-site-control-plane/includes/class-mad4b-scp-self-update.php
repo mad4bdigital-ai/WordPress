@@ -33,6 +33,7 @@ final class MAD4B_SCP_Self_Update {
 		self::$booted = true;
 
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 34 );
+		add_filter( 'mad4b_scp_authorization_input', array( __CLASS__, 'authorization_input' ), 20, 3 );
 
 		// WordPress-admin update channel. This deliberately does not alter
 		// WordPress core update transients or automatic-update routines.
@@ -98,6 +99,14 @@ final class MAD4B_SCP_Self_Update {
 				),
 			)
 		);
+	}
+
+	public static function authorization_input( $clean, $ability_name, $original = null ) {
+		unset( $original );
+		if ( 'mad4b/control-plane-upload-apply' !== (string) $ability_name || ! is_array( $clean ) ) return $clean;
+		unset( $clean['package_base64'] );
+		$clean['package_transport'] = 'bounded_base64_zip';
+		return $clean;
 	}
 
 	public static function can_upload_apply( $input = null ) {
