@@ -1317,12 +1317,12 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			$state['updated_at'] = gmdate( 'c' );
 			$persisted = self::persist_skills_job( $state );
 		if ( is_wp_error( $persisted ) ) return $persisted;
-			$resume_seed = $same_identity && ! empty( $previous['seed_ready'] ) && ! empty( $seed_before['ready'] );
+			$resume_seed = ! empty( $seed_before['ready'] );
 			$heartbeat = self::refresh_skills_lock( $skills_lock );
 			if ( is_wp_error( $heartbeat ) ) return $heartbeat;
 			$seed = $resume_seed
 				? array( 'state' => 'ready', 'ready' => true, 'resumed' => true, 'inspection' => $seed_before )
-				: MAD4B_SCP_Skill_Seeder::bootstrap();
+				: MAD4B_SCP_Skill_Seeder::reconcile();
 			$heartbeat = self::refresh_skills_lock( $skills_lock );
 			if ( is_wp_error( $heartbeat ) ) return $heartbeat;
 			$state['seed_resumed'] = $resume_seed;
@@ -1345,7 +1345,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			$state['updated_at'] = gmdate( 'c' );
 			$persisted = self::persist_skills_job( $state );
 		if ( is_wp_error( $persisted ) ) return $persisted;
-			$resume_provider = $same_identity && ! empty( $previous['provider_ready'] ) && ! empty( $provider_before['ready'] );
+			$resume_provider = ! empty( $provider_before['ready'] );
 			$heartbeat = self::refresh_skills_lock( $skills_lock );
 			if ( is_wp_error( $heartbeat ) ) return $heartbeat;
 			$providers = $resume_provider
@@ -1416,6 +1416,24 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'certification' => $certification,
 				'remote_operation' => true,
 				'production_mutation' => false,
+			);
+		} catch ( Throwable $e ) {
+			$state['status'] = 'uncertain';
+			$state['stage'] = 'postcondition_reconciliation_required';
+			$state['last_error_code'] = 'mad4b_remote_skill_execution_uncertain';
+			$state['exception_fingerprint'] = hash( 'sha256', get_class( $e ) . ':' . (string) $e->getCode() );
+			$state['updated_at'] = gmdate( 'c' );
+			$persisted = self::persist_skills_job( $state );
+			if ( is_wp_error( $persisted ) ) return $persisted;
+			return new WP_Error(
+				'mad4b_remote_skill_execution_uncertain',
+				'Managed Skill reconciliation ended with an uncertain postcondition. Inspect current seed/provider state before any retry.',
+				array(
+					'checkpoint' => $state,
+					'reconciliation_required' => true,
+					'blind_retry_allowed' => false,
+					'raw_error_message_exposed' => false,
+				)
 			);
 		} finally {
 			self::release_skills_lock( $skills_lock );
