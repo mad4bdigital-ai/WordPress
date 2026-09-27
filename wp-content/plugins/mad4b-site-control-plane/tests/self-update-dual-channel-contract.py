@@ -95,6 +95,18 @@ for marker in ("backup_current()", "verify_installed_identity", "rollback(", "re
     if marker not in managed_apply:
         raise SystemExit(f"managed upload rollback/readback invariant missing: {marker}")
 
+# Read-side discovery/status must be projected to both normal read and ChatGPT catalogs.
+for marker in (
+    "'mad4b/control-plane-update-status'",
+    "'mad4b/control-plane-upload-plan'",
+):
+    if marker not in servers:
+        raise SystemExit(f"self-update read projection invariant missing: {marker}")
+if servers.count("'mad4b/control-plane-update-status'") < 2:
+    raise SystemExit("Control Plane update status is not projected to both read and ChatGPT catalogs")
+if servers.count("'mad4b/control-plane-upload-plan'") < 2:
+    raise SystemExit("Control Plane upload plan is not projected to both read and ChatGPT catalogs")
+
 # Ability must be present on the normal governed write projection.
 for marker in (
     "'mad4b/control-plane-upload-apply'",
