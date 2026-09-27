@@ -4,7 +4,7 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.69**.
+Current plugin version: **0.4.0-rc.70**.
 
 Provider-gap closure is zero-touch and non-authorizing. The package embeds exact-head repository evidence plus `functional-gap-policy.json`; `mad4b/functional-gap-runtime-evidence` performs bounded local runtime collection, fixed-point drift checks, and deterministic evaluation without shell, WP-CLI, raw SQL, remote requests, credential reads, or mutation. Evidence readiness never grants provider write authority or Production activation. Provider capability diagnostics also distinguish mounted from latent capabilities and read readiness from blocked write certification.
 
@@ -13,6 +13,10 @@ Provider-gap closure is zero-touch and non-authorizing. The package embeds exact
 Operator deployment, authority reconciliation, recovery, rollback and lifecycle guidance: [`docs/RELEASE-AND-OPERATOR-RUNBOOK.md`](docs/RELEASE-AND-OPERATOR-RUNBOOK.md).
 
 Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
+
+### rc.70 repeated-preflight governance envelope retention
+
+rc.70 closes the remaining live hidden-target gap found after rc.69: WordPress/MCP can evaluate the write-dispatch permission callback more than once in the same request, and a later sanitized preflight previously cleared the request-local governance envelope before target execution. The dispatcher capture is now idempotent within one request: metadata-free repeated preflights preserve the already captured exact Approval Ticket/Context Receipt, identical governed preflights are accepted, and any attempted rebind to different governance metadata fails closed. The envelope is still consumed once when forwarded to the hidden target. No grant, OAuth scope, Production, Breakglass, raw-SQL, or generic write authority is widened.
 
 ### rc.69 governed write-dispatch envelope continuity
 
