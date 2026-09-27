@@ -47,7 +47,7 @@ for marker in [
     "'reconciliation_required' => true",
     "'blind_retry_allowed' => false",
     "'automatic_retry_performed' => false",
-    "'dispatch_uncertain_remote_error'",
+    "'_dispatch_uncertain_remote_error'",
     "'original_error_code'",
     "'client_action' => 'reconcile_then_replan'",
     "'raw_error_message_exposed' => false",
