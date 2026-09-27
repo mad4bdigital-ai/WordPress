@@ -339,6 +339,14 @@ planner_branch = scope_body.find("MAD4B_SCP_Staging_Write_Planning_Guard::ABILIT
 ticket_branch = scope_body.find("approval_ticket_from_input( $input )")
 if planner_branch < 0 or ticket_branch < 0 or planner_branch > ticket_branch:
     raise SystemExit('approval-plan scope bootstrap must execute before the normal existing-ticket delegation path')
+admin_guard = scope_body.find("if ( 'mad4b-admin' !== $server_id || ! self::effective() ) return false;")
+write_server_guard = scope_body.find("if ( 'mad4b-write' !== $server_id ) return false;")
+if admin_guard < 0 or write_server_guard < 0:
+    raise SystemExit('remote approval-plan bootstrap must bind exactly to mad4b-admin before normal mad4b-write delegation')
+if not (planner_branch < admin_guard < write_server_guard < ticket_branch):
+    raise SystemExit('approval-plan admin bootstrap must be evaluated before the normal mad4b-write server gate and ticket delegation')
+if "if ( 'mad4b-write' !== sanitize_key( (string) $server_id ) ) return false;" in scope_body:
+    raise SystemExit('legacy early mad4b-write server gate would make the mad4b-admin approval planner unreachable')
 
 if "if ( self::ai_review_delegation_allowed( $ability_name, $input, $identity ) ) return true;" not in scope_body:
     raise SystemExit('AI review standing delegation must have one exact request-time scope branch')
