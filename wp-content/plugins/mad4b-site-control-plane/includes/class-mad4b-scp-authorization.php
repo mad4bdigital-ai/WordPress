@@ -92,7 +92,7 @@ final class MAD4B_SCP_Authorization {
 		$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $server_id, $ability_name, $provider );
 		if ( is_wp_error( $grant ) ) return $grant;
 
-		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input ) : $input;
+		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input, $ability_name ) : $input;
 		if ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
 			$context_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard( $ability_name, $authorization_input );
 			if ( is_wp_error( $context_guard ) ) return $context_guard;
@@ -231,7 +231,7 @@ final class MAD4B_SCP_Authorization {
 		}
 		$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( $decision['agent_public_id'] );
 		if ( ! $agent ) return self::deny( 'mad4b_nhi_agent_missing', 'Resolved authorization agent is no longer available.', $ability_name );
-		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input ) : $input;
+		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input, $ability_name ) : $input;
 
 		if ( ! empty( $decision['approval_required'] ) ) {
 			$ticket_id = (string) $decision['approval_ticket_id'];
