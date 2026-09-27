@@ -12,9 +12,11 @@ Operator deployment, authority reconciliation, recovery, rollback and lifecycle 
 
 Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
 
-### rc.67 deterministic approval-plan error reconciliation
+### rc.67 deterministic approval planning + AI approval lanes
 
-rc.67 keeps the rc.66 bounded ChatGPT write-dispatch authority unchanged and specializes only the `mad4b/approval-plan` dispatcher response path. Planner validation failures return a safe blocker code plus an explicit reconciliation requirement instead of being collapsed into an ambiguous generic mutation error. No automatic retry is added and all existing NHI, budget, Site Profile/build binding, human approval and audit controls remain in force.
+rc.67 keeps the rc.66 bounded ChatGPT write-dispatch authority unchanged and makes approval planning deterministic: planner validation failures return a safe blocker code plus an explicit reconciliation requirement instead of being collapsed into an ambiguous generic mutation error. No automatic retry is added.
+
+The same release adds `mad4b.operation-classification.v1` and the read-only `mad4b/operation-classify` ability. Governed changes are classified independently by operation type, risk tier and approval lane. Staging operations that remain inside the exact Site Profile/build/provider boundary may use the `ai_autonomous` lane through `mad4b/approval-ai-decide`; the AI decision is a separate step after planning and before execution, bound to the exact ticket payload and classification SHA-256. Human approval remains available as fallback. Production, Breakglass, raw SQL, Developer Breakglass and exceptional-class operations remain human-only and cannot be auto-approved.
 
 ### rc.66 bounded ChatGPT write-dispatch scope
 
