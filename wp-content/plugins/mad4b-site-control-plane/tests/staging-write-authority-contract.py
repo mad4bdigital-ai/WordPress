@@ -132,6 +132,24 @@ if "return true;" not in dispatch_scope:
 if "'server:mad4b-write'" in dispatch_scope:
     raise SystemExit('write dispatcher delegation must not mint or require a broad mad4b-write token scope')
 
+write_execute_body = abilities.split('public function write_execute', 1)[1].split('private function governed_enrollment_target', 1)[0]
+for marker in [
+    "if ( 'mad4b/approval-plan' === $ability_name )",
+    "mad4b_approval_plan_dispatch_target_error",
+    "original_error_code",
+    "reconciliation_required",
+    "blind_retry_allowed",
+    "MAD4B_SCP_Connector_Resilience::execute_mutation(",
+]:
+    if marker not in write_execute_body:
+        raise SystemExit('approval-plan deterministic dispatcher contract missing: ' + marker)
+if write_execute_body.count("if ( 'mad4b/approval-plan' === $ability_name )") != 1:
+    raise SystemExit('approval-plan dispatcher specialization must be singular')
+if "automatic_retry_performed' => false" not in write_execute_body:
+    raise SystemExit('approval-plan dispatcher must never auto-retry')
+if "return $ability->execute( $params );" not in write_execute_body:
+    raise SystemExit('normal governed writes must remain on shared connector resilience execution')
+
 
 for marker in [
     "const CONTRACT = 'mad4b.staging-write-grant-reconciliation-plan.v2'",
