@@ -165,6 +165,8 @@ $stripped = array(
     'expected_input_schema_sha256' => $schema_sha,
     'input' => $outer['input'],
 );
+mad4b_assert( true === $capture->invoke( $dispatcher, $stripped ), 'Repeated sanitized permission preflight must preserve the already captured governance envelope.' );
+mad4b_assert( true === $capture->invoke( $dispatcher, $outer ), 'Repeated identical governed permission preflight must be idempotent.' );
 $target_input = $forward->invoke( $dispatcher, $stripped, $stripped['input'] );
 mad4b_assert( is_array( $target_input ), 'Forwarded target input must remain an object.' );
 mad4b_assert( $ticket === $target_input['_mad4b_approval_ticket_id'], 'Approval ticket must survive provider-envelope stripping.' );
@@ -175,4 +177,4 @@ $conflicting['input']['_mad4b_approval_ticket_id'] = '22222222-2222-4222-8222-22
 $conflict = $capture->invoke( $dispatcher, $conflicting );
 mad4b_assert( is_wp_error( $conflict ) && 'mad4b_write_dispatch_governance_envelope_conflict' === $conflict->get_error_code(), 'Conflicting nested governance metadata must fail closed.' );
 
-echo "mad4b.write-dispatch-scope-delegation.runtime.v2: PASS\n";
+echo "mad4b.write-dispatch-scope-delegation.runtime.v3: PASS\n";
