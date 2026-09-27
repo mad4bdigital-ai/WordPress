@@ -48,6 +48,9 @@ for marker in [
     "'original_error_code'",
     "'client_action' => 'reconcile_then_replan'",
     "'raw_error_message_exposed' => false",
+    "'data' => $value",
+    "array_key_exists( 'data', $result )",
+    "'_dispatch_target_error'",
     "'persistent_circuit_breaker_used' => false",
     "'persistent_catalog_cache_used' => false",
     "'skipped_budget'",
@@ -85,6 +88,7 @@ for marker in [
     "mad4b.chatgpt-read-execute.v1",
     "MAD4B_SCP_Connector_Resilience::execute_mutation",
     "mad4b.chatgpt-write-execute.v1",
+    "array_key_exists( 'result', $execution )",
 ]:
     require(abilities, marker, "dispatcher resilience integration")
 
@@ -135,6 +139,8 @@ for marker in [
     "blind_retry_allowed=false",
     "Partial diagnostics",
     "Request budget",
+    "Result preservation",
+    "Raw mutation error messages must",
     "Payload discipline",
     "Error taxonomy",
     "- `internal`;",
