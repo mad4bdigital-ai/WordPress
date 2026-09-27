@@ -266,30 +266,51 @@ assert ordinary["mode"] == "non_feature_branch"
 assert ordinary["owner_attestation_required"] is False
 
 # Release Verdict and Critical Kernel must agree on the path universe that
-# requires the schema critical check. Otherwise Release Verdict can wait for a
-# check that GitHub never scheduled.
+# requires the schema critical check. Critical workflow files are governance
+# inputs: they must self-certify on pull requests, but they must not promote a
+# workflow-only change into full-runtime scope.
 release_verdict_text = (HERE.parent / ".github/workflows/mad4b-release-verdict.yml").read_text(encoding="utf-8")
 critical_kernel_text = (HERE.parent / ".github/workflows/feature-007-critical-kernel.yml").read_text(encoding="utf-8")
-trigger_declarations = re.search(
-    r"critical_trigger_workflows = \[(.*?)\]\s*full_runtime_trigger_paths = \[(.*?)\]",
+critical_workflows_declaration = re.search(
+    r"critical_trigger_workflows = \[(.*?)\]\s*critical_workflow_guard_jobs =",
     release_verdict_text,
     re.S,
 )
-assert trigger_declarations is not None, "release verdict runtime trigger declarations missing"
-critical_trigger_workflows = ast.literal_eval("[" + trigger_declarations.group(1) + "]")
-full_runtime_trigger_paths = ast.literal_eval("[" + trigger_declarations.group(2) + "]")
-critical_kernel_required_paths = list(dict.fromkeys(
-    full_runtime_trigger_paths
-    + critical_trigger_workflows
-    + [
-        ".github/workflows/feature-007-critical-kernel.yml",
-        ".github/workflows/mad4b-live-acceptance-evidence.yml",
-        ".github/workflows/mad4b-release-verdict.yml",
-    ]
-))
-for trigger_path in critical_kernel_required_paths:
+guard_mapping_declaration = re.search(
+    r"critical_workflow_guard_jobs = \{(.*?)\}\s*if set\(critical_workflow_guard_jobs\)",
+    release_verdict_text,
+    re.S,
+)
+runtime_paths_declaration = re.search(
+    r"full_runtime_trigger_paths = \[(.*?)\]",
+    release_verdict_text,
+    re.S,
+)
+assert critical_workflows_declaration is not None, "release verdict critical workflow declaration missing"
+assert guard_mapping_declaration is not None, "release verdict critical workflow guard mapping missing"
+assert runtime_paths_declaration is not None, "release verdict full-runtime path declaration missing"
+critical_trigger_workflows = ast.literal_eval("[" + critical_workflows_declaration.group(1) + "]")
+critical_workflow_guard_jobs = ast.literal_eval("{" + guard_mapping_declaration.group(1) + "}")
+full_runtime_trigger_paths = ast.literal_eval("[" + runtime_paths_declaration.group(1) + "]")
+assert set(critical_workflow_guard_jobs) == set(critical_trigger_workflows), (
+    "critical workflow guard mapping drift: "
+    + repr(sorted(set(critical_trigger_workflows) ^ set(critical_workflow_guard_jobs)))
+)
+assert "runtime_patterns = set(full_runtime_trigger_paths)" in release_verdict_text
+assert "critical_workflow_changes = sorted(" in release_verdict_text
+assert "if path in critical_workflow_guard_jobs" in release_verdict_text
+assert "required.extend(critical_workflow_guard_jobs[workflow])" in release_verdict_text
+assert "critical_workflow_governance_with_release_evidence" in release_verdict_text
+assert "critical_workflow_governance" in release_verdict_text
+for workflow in critical_trigger_workflows:
+    workflow_text = (HERE.parent / workflow).read_text(encoding="utf-8")
+    pull_request_block = workflow_text.split("  pull_request:\n", 1)[1].split("  push:\n", 1)[0]
+    assert workflow in pull_request_block, (
+        "critical workflow must self-trigger for exact-head PR certification: " + workflow
+    )
+for trigger_path in full_runtime_trigger_paths:
     assert critical_kernel_text.count(trigger_path) >= 2, (
-        "critical-kernel trigger parity missing PR+master coverage: " + trigger_path
+        "critical-kernel full-runtime trigger parity missing PR+master coverage: " + trigger_path
     )
 
 # Governance-only changes that repair Critical Kernel trigger parity must not
