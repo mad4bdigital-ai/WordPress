@@ -160,12 +160,23 @@ final class MAD4B_SCP_Self_Update {
 
 		$current = self::installed_identity();
 		$blockers = array();
+		$release_manifest = self::fetch_manifest( true );
 
 		if ( ! self::environment_allowed( true ) ) $blockers[] = 'staging_enrolled_write_profile_required';
 		if ( ! current_user_can( 'update_plugins' ) ) $blockers[] = 'update_plugins_capability_required';
 		if ( $identity['size_bytes'] < 1 || $identity['size_bytes'] > self::MAX_UPLOAD_BYTES ) $blockers[] = 'archive_size_out_of_bounds';
 		if ( ! empty( $current['source_commit_sha'] ) && hash_equals( $current['source_commit_sha'], $identity['source_commit_sha'] ) ) $blockers[] = 'already_on_exact_source_commit';
 		if ( ! empty( $current['version'] ) && version_compare( $current['version'], $identity['version'], '>' ) ) $blockers[] = 'target_version_older_than_runtime';
+		if ( is_wp_error( $release_manifest ) ) {
+			$blockers[] = 'governed_release_manifest_unavailable';
+		} else {
+			foreach ( array( 'version', 'source_commit_sha', 'archive_sha256', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
+				if ( ! isset( $release_manifest[ $field ] ) || ! hash_equals( (string) $release_manifest[ $field ], (string) $identity[ $field ] ) ) {
+					$blockers[] = 'target_not_current_governed_release:' . $field;
+				}
+			}
+			if ( (int) $release_manifest['size_bytes'] !== (int) $identity['size_bytes'] ) $blockers[] = 'target_not_current_governed_release:size_bytes';
+		}
 
 		$plan = array(
 			'contract' => self::PLAN_CONTRACT,
@@ -182,6 +193,8 @@ final class MAD4B_SCP_Self_Update {
 			'archive_integrity_required' => true,
 			'embedded_provenance_required' => true,
 			'rollback_on_failed_readback' => true,
+			'release_channel_bound' => true,
+			'release_channel' => is_wp_error( $release_manifest ) ? array() : self::public_manifest( $release_manifest ),
 			'production_allowed' => false,
 			'eligible' => empty( $blockers ),
 			'blockers' => array_values( array_unique( $blockers ) ),
@@ -635,7 +648,9 @@ final class MAD4B_SCP_Self_Update {
 		if ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) return true;
 		return 'production' === $environment
 			&& defined( 'MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED' )
-			&& true === MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED;
+			&& true === MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED
+			&& class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::environment_allowed( array( 'production' ), 'write' );
 	}
 
 	private static function public_manifest( array $manifest ) {
