@@ -574,15 +574,22 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		try {
 			$catalog = self::catalog();
 		} catch ( Throwable $e ) {
+			$classification = class_exists( 'MAD4B_SCP_Connector_Resilience' )
+				? MAD4B_SCP_Connector_Resilience::classify_exception( $e )
+				: array( 'category' => 'unknown', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'inspect_before_retry' );
 			return array(
 				'contract' => 'mad4b.operation-discovery.v2',
 				'state' => 'degraded',
 				'query' => $query,
 				'count' => 0,
 				'operations' => array(),
-				'retryable' => self::transient_exception( $e ),
+				'retryable' => ! empty( $classification['retryable'] ),
+				'automatic_retry_allowed' => ! empty( $classification['auto_retry'] ),
+				'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown',
+				'client_action' => isset( $classification['client_action'] ) ? (string) $classification['client_action'] : 'inspect_before_retry',
 				'error_class' => get_class( $e ),
 				'error_fingerprint' => hash( 'sha256', get_class( $e ) . "\n" . $e->getMessage() ),
+				'raw_error_message_exposed' => false,
 				'read_only' => true,
 				'mutation_performed' => false,
 			);
@@ -673,12 +680,6 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
-	}
-
-	private static function transient_exception( Throwable $e ) {
-		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) return false;
-		$classification = MAD4B_SCP_Connector_Resilience::classify_exception( $e );
-		return ! empty( $classification['retryable'] );
 	}
 
 	public static function status() {
