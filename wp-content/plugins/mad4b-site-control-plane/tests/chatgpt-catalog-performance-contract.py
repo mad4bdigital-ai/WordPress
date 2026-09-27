@@ -6,6 +6,9 @@ servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="ut
 plugin = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 readme = (root / "README.md").read_text(encoding="utf-8")
+connection_ability = (root / "includes/class-mad4b-scp-connection-ability.php").read_text(encoding="utf-8")
+abilities = (root / "includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+staging_cert = (root / "includes/class-mad4b-scp-staging-certification.php").read_text(encoding="utf-8")
 
 required_cache_properties = [
     "private static $registered_adapter_write_candidates_cache = null;",
@@ -92,6 +95,36 @@ assert "array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools()
 assert "mad4b-developer-breakglass" in servers
 assert "private static function current_request_server_id()" in servers
 assert "private static function should_materialize_server_tools" in servers
+
+# Connector resilience must keep the direct catalog small while providing one
+# compact preflight and fail-closed callback error envelopes.
+for marker in [
+    "'mad4b/connector-preflight'",
+    "'max_recommended_parallel_read_calls' => 2",
+    "'retry_transient_read_once' => true",
+    "'automatic_write_retry_allowed' => false",
+    "private static function safe_read( $name, $callback, $retry_transient )",
+    "private static function transient_exception( Throwable $e )",
+]:
+    assert marker in connection_ability or marker in servers, marker
+
+for marker in [
+    "public function read_execute( $input )",
+    "$max_attempts = 2;",
+    "$this->transient_execution_exception( $e )",
+    "'mutation_state' => 'not_applicable_read_only'",
+    "public function write_execute( $input )",
+    "'mutation_state' => 'unknown'",
+    "'reconciliation_required' => true",
+    "'blind_retry_allowed' => false",
+    "public function enrollment_execute( $input )",
+    "private function execution_exception_error( $surface, $target, Throwable $e, array $data )",
+    "'raw_exception_message_exposed' => false",
+]:
+    assert marker in abilities, marker
+
+assert "'payload_profile' => 'compact'" in staging_cert
+assert "'compact' => array( 'type' => 'boolean', 'default' => false )" in staging_cert
 
 import re
 plugin_version = re.search(r"^ \* Version: ([^\s]+)", plugin, re.M)
