@@ -56,6 +56,22 @@ mad4b_assert_true( 2 === (int) $read['attempts'], 'transient read must retry exa
 mad4b_assert_true( 2 === $read_attempts, 'read callback must execute twice only' );
 mad4b_assert_true( 'ok' === $read['data']['value'], 'read result must survive retry' );
 
+$scalar_read = MAD4B_SCP_Connector_Resilience::safe_read(
+	'scalar_read',
+	static function () { return 'scalar-ok'; }
+);
+mad4b_assert_true( ! empty( $scalar_read['ok'] ), 'scalar read must succeed' );
+mad4b_assert_true( array_key_exists( 'data', $scalar_read ), 'scalar read data key must be preserved' );
+mad4b_assert_true( 'scalar-ok' === $scalar_read['data'], 'scalar read result must not be replaced by type metadata' );
+
+$null_read = MAD4B_SCP_Connector_Resilience::safe_read(
+	'null_read',
+	static function () { return null; }
+);
+mad4b_assert_true( ! empty( $null_read['ok'] ), 'null read must succeed' );
+mad4b_assert_true( array_key_exists( 'data', $null_read ), 'null read data key must be preserved' );
+mad4b_assert_true( null === $null_read['data'], 'null read result must remain null' );
+
 $wp_timeout_attempts = 0;
 $wp_timeout = MAD4B_SCP_Connector_Resilience::safe_read(
 	'wp_timeout_then_success',
@@ -143,6 +159,26 @@ mad4b_assert_true( ! empty( $mutation_wp_data['reconciliation_required'] ), 'tra
 mad4b_assert_true( empty( $mutation_wp_data['blind_retry_allowed'] ), 'transient mutation WP_Error must deny blind retry' );
 mad4b_assert_true( 'reconcile_then_replan' === $mutation_wp_data['client_action'], 'mutation WP_Error client action drifted' );
 mad4b_assert_true( false === strpos( json_encode( $mutation_wp_data ), 'SECRET-MUST-NOT-LEAK' ), 'raw mutation WP_Error message leaked' );
+
+$mutation_permanent_attempts = 0;
+$mutation_permanent = MAD4B_SCP_Connector_Resilience::execute_mutation(
+	'write',
+	'mad4b/example-validation-write',
+	static function () use ( &$mutation_permanent_attempts ) {
+		$mutation_permanent_attempts++;
+		return new WP_Error( 'invalid_argument', 'Permanent validation detail SECRET-MUST-NOT-LEAK' );
+	}
+);
+mad4b_assert_true( is_wp_error( $mutation_permanent ), 'permanent mutation WP_Error must remain an error' );
+mad4b_assert_true( 1 === $mutation_permanent_attempts, 'permanent mutation WP_Error must execute exactly once' );
+$mutation_permanent_data = $mutation_permanent->get_error_data();
+mad4b_assert_true( is_array( $mutation_permanent_data ), 'permanent mutation error data missing' );
+mad4b_assert_true( 'contract_or_validation' === $mutation_permanent_data['category'], 'permanent mutation category drifted' );
+mad4b_assert_true( 'unknown' === $mutation_permanent_data['mutation_state'], 'permanent mutation postcondition must remain unknown after callback entry' );
+mad4b_assert_true( ! empty( $mutation_permanent_data['reconciliation_required'] ), 'permanent mutation WP_Error must require reconciliation' );
+mad4b_assert_true( empty( $mutation_permanent_data['blind_retry_allowed'] ), 'permanent mutation WP_Error must deny blind retry' );
+mad4b_assert_true( 'reconcile_then_replan' === $mutation_permanent_data['client_action'], 'permanent mutation client action drifted' );
+mad4b_assert_true( false === strpos( json_encode( $mutation_permanent_data ), 'SECRET-MUST-NOT-LEAK' ), 'raw permanent mutation WP_Error message leaked' );
 
 $fanout_attempts = 0;
 $fanout = MAD4B_SCP_Connector_Resilience::run_checks(
