@@ -93,6 +93,13 @@ $check( hash_equals( strtolower( (string) $canonical_dispatch_info['registration
 $check( hash_equals( strtolower( (string) $canonical_dispatch_info['dispatch_policy_digest'] ), $metadata['dispatch_policy_digest'] ), 'Compact metadata dispatch-policy digest diverged from enrollment dispatch.' );
 $check( hash_equals( strtolower( (string) $canonical_dispatch_info['input_schema_sha256'] ), $metadata['input_schema_sha256'] ), 'Compact metadata input schema digest diverged from enrollment dispatch.' );
 $check( isset( $metadata['execution_binding_digest'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $metadata['execution_binding_digest'] ), 'Execution binding digest missing from compact metadata envelope.' );
+$denied_metadata = MAD4B_SCP_Read_Consistency::metadata_envelope( array(
+    'target_type' => 'ability',
+    'target' => 'mad4b/database-raw-query',
+    'read_transaction_id' => $snapshot['read_transaction_id'],
+    'expected_runtime_generation' => $snapshot['runtime_generation'],
+) );
+$check( is_wp_error( $denied_metadata ) && 'mad4b_metadata_ability_not_cataloged' === $denied_metadata->get_error_code(), 'Compact metadata envelope exposed an ability outside the governed ChatGPT catalog.' );
 $guidance = MAD4B_SCP_Connector_Resilience::client_guidance();
 $check( 1 === (int) $guidance['preferred_parallelism'] && 2 === (int) $guidance['read_parallelism_max'], 'Read parallelism contract drifted.' );
 $check( 1 === (int) $guidance['reconnect_attempts'] && ! empty( $guidance['replay_read_after_reconnect'] ) && empty( $guidance['replay_mutation_after_reconnect'] ), 'Reconnect/replay contract drifted.' );
