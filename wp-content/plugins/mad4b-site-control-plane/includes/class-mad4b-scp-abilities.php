@@ -342,41 +342,28 @@ final class MAD4B_SCP_Abilities {
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_read_target( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
+		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) return new WP_Error( 'mad4b_connector_resilience_unavailable', 'Shared connector resilience service is unavailable.' );
 		$params = array_key_exists( 'input', $input ) ? $input['input'] : null;
 		$target_input_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
-		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) {
-			$params = null;
-		}
+		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 
-		$attempt = 0;
-		$max_attempts = 2;
-		do {
-			$attempt++;
-			try {
-				$result = $ability->execute( $params );
-				if ( is_wp_error( $result ) ) return $result;
-				return array(
-					'contract' => 'mad4b.chatgpt-read-execute.v2',
-					'ability_name' => $ability_name,
-					'attempts' => $attempt,
-					'result' => $result,
-					'read_only' => true,
-					'mutation_performed' => false,
-				);
-			} catch ( Throwable $e ) {
-				$transient = $this->transient_execution_exception( $e );
-				if ( $transient && $attempt < $max_attempts ) continue;
-				return $this->execution_exception_error( 'read', $ability_name, $e, array(
-					'retryable' => $transient,
-					'attempts' => $attempt,
-					'mutation_state' => 'not_applicable_read_only',
-					'reconciliation_required' => false,
-					'blind_retry_allowed' => $transient,
-				) );
+		$execution = MAD4B_SCP_Connector_Resilience::execute_read(
+			$ability_name,
+			static function () use ( $ability, $params ) {
+				return $ability->execute( $params );
 			}
-		} while ( $attempt < $max_attempts );
-
-		return new WP_Error( 'mad4b_read_dispatch_unreachable', 'Governed read dispatch reached an unreachable execution state.' );
+		);
+		if ( is_wp_error( $execution ) ) return $execution;
+		return array(
+			'contract' => 'mad4b.chatgpt-read-execute.v3',
+			'resilience_contract' => MAD4B_SCP_Connector_Resilience::CONTRACT,
+			'ability_name' => $ability_name,
+			'attempts' => isset( $execution['attempts'] ) ? (int) $execution['attempts'] : 1,
+			'elapsed_ms' => isset( $execution['elapsed_ms'] ) ? (int) $execution['elapsed_ms'] : 0,
+			'result' => isset( $execution['result'] ) ? $execution['result'] : array(),
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
 	}
 
 	private function governed_write_target( $ability_name, $require_runtime_eligible = false ) {
@@ -462,6 +449,7 @@ final class MAD4B_SCP_Abilities {
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_write_target( $ability_name, true );
 		if ( is_wp_error( $ability ) ) return $ability;
+		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) return new WP_Error( 'mad4b_connector_resilience_unavailable', 'Shared connector resilience service is unavailable.' );
 		$actual_schema_sha256 = $this->ability_input_schema_sha256( $ability );
 		$expected_schema_sha256 = strtolower( (string) $input['expected_input_schema_sha256'] );
 		if ( ! hash_equals( strtolower( $actual_schema_sha256 ), $expected_schema_sha256 ) ) return new WP_Error( 'mad4b_write_dispatch_schema_drift', 'Requested write ability input schema changed after planning.', array( 'ability_name' => $ability_name, 'current_input_schema_sha256' => $actual_schema_sha256 ) );
@@ -469,24 +457,23 @@ final class MAD4B_SCP_Abilities {
 		$target_input_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
 		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 
-		try {
-			$result = $ability->execute( $params );
-		} catch ( Throwable $e ) {
-			return $this->execution_exception_error( 'write', $ability_name, $e, array(
-				'retryable' => false,
-				'attempts' => 1,
-				'mutation_state' => 'unknown',
-				'reconciliation_required' => true,
-				'blind_retry_allowed' => false,
-			) );
-		}
-		if ( is_wp_error( $result ) ) return $result;
+		$execution = MAD4B_SCP_Connector_Resilience::execute_mutation(
+			'write',
+			$ability_name,
+			static function () use ( $ability, $params ) {
+				return $ability->execute( $params );
+			}
+		);
+		if ( is_wp_error( $execution ) ) return $execution;
 		return array(
-			'contract' => 'mad4b.chatgpt-write-execute.v2',
+			'contract' => 'mad4b.chatgpt-write-execute.v3',
+			'resilience_contract' => MAD4B_SCP_Connector_Resilience::CONTRACT,
 			'ability_name' => $ability_name,
 			'input_schema_sha256' => $actual_schema_sha256,
-			'result' => $result,
+			'result' => isset( $execution['result'] ) ? $execution['result'] : array(),
 			'mutation_performed' => true,
+			'attempts' => 1,
+			'elapsed_ms' => isset( $execution['elapsed_ms'] ) ? (int) $execution['elapsed_ms'] : 0,
 			'automatic_retry_performed' => false,
 		);
 	}
@@ -535,46 +522,21 @@ final class MAD4B_SCP_Abilities {
 
 	public function enrollment_execute( $input ) {
 		if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_policy_unavailable', 'Bounded Enrollment dispatch policy service is unavailable.' );
+		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) return new WP_Error( 'mad4b_connector_resilience_unavailable', 'Shared connector resilience service is unavailable.' );
 		$allowed = $this->can_enrollment_dispatch( $input );
 		if ( is_wp_error( $allowed ) || ! $allowed ) return $allowed;
-		try {
-			return MAD4B_SCP_Enrollment_Dispatch::execute( is_array( $input ) ? $input : array() );
-		} catch ( Throwable $e ) {
-			$operation_id = is_array( $input ) && isset( $input['operation_id'] ) ? (string) $input['operation_id'] : '';
-			return $this->execution_exception_error( 'enrollment', $operation_id, $e, array(
-				'retryable' => false,
-				'attempts' => 1,
-				'mutation_state' => 'unknown',
-				'reconciliation_required' => true,
-				'blind_retry_allowed' => false,
-			) );
-		}
-	}
-
-	private function transient_execution_exception( Throwable $e ) {
-		$message = strtolower( (string) $e->getMessage() );
-		foreach ( array( 'timeout', 'timed out', 'temporar', 'connection reset', 'session terminated', 'transport', 'upstream', '429', '502', '503', '504' ) as $needle ) {
-			if ( false !== strpos( $message, $needle ) ) return true;
-		}
-		return false;
-	}
-
-	private function execution_exception_error( $surface, $target, Throwable $e, array $data ) {
-		$surface = sanitize_key( (string) $surface );
-		$target = sanitize_text_field( (string) $target );
-		$data = array_merge( array(
-			'surface' => $surface,
-			'target' => $target,
-			'error_class' => get_class( $e ),
-			'error_fingerprint' => hash( 'sha256', get_class( $e ) . "\n" . $e->getMessage() ),
-			'raw_exception_message_exposed' => false,
-		), $data );
-		return new WP_Error(
-			'mad4b_' . $surface . '_dispatch_execution_exception',
-			'Governed ' . $surface . ' execution failed inside the target callback. Inspect the structured error metadata before deciding whether a retry is safe.',
-			$data
+		$operation_id = is_array( $input ) && isset( $input['operation_id'] ) ? (string) $input['operation_id'] : '';
+		$execution = MAD4B_SCP_Connector_Resilience::execute_mutation(
+			'enrollment',
+			$operation_id,
+			static function () use ( $input ) {
+				return MAD4B_SCP_Enrollment_Dispatch::execute( is_array( $input ) ? $input : array() );
+			}
 		);
+		if ( is_wp_error( $execution ) ) return $execution;
+		return isset( $execution['result'] ) ? $execution['result'] : array();
 	}
+
 
 	public function filesystem_list( $input ) {
 		$path = MAD4B_SCP_Policy::resolve_path( $input['root'], isset( $input['path'] ) ? $input['path'] : '', true );
