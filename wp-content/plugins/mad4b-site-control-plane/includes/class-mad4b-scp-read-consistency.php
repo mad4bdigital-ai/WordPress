@@ -258,7 +258,14 @@ final class MAD4B_SCP_Read_Consistency {
 			$input_schema = self::ability_schema( $ability, 'input' );
 			$output_schema = self::ability_schema( $ability, 'output' );
 			$meta = self::ability_meta( $ability );
-			$computed_input_schema_sha256 = self::digest( $input_schema );
+			if ( 'operation' === $target_type ) {
+				if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) || ! method_exists( 'MAD4B_SCP_Enrollment_Dispatch', 'input_schema_sha256' ) ) {
+					return new WP_Error( 'mad4b_metadata_dispatch_schema_digest_unavailable', 'Canonical enrollment schema digest helper is unavailable.' );
+				}
+				$computed_input_schema_sha256 = MAD4B_SCP_Enrollment_Dispatch::input_schema_sha256( $ability );
+			} else {
+				$computed_input_schema_sha256 = self::digest( $input_schema );
+			}
 			if ( 'operation' === $target_type && '' !== $payload['input_schema_sha256'] && ! hash_equals( $payload['input_schema_sha256'], $computed_input_schema_sha256 ) ) {
 				return new WP_Error( 'mad4b_metadata_dispatch_schema_projection_drift', 'Canonical enrollment dispatch schema digest does not match the live Ability schema.' );
 			}
