@@ -275,7 +275,7 @@ final class MAD4B_SCP_Connector_Resilience {
 			'max_recommended_parallel_read_calls' => 2,
 			'retry_transient_read_once' => true,
 			'rate_limit_requires_backoff' => true,
-			'supported_error_categories' => array( 'rate_limit', 'timeout', 'transport', 'upstream_unavailable', 'authorization', 'contract_or_validation', 'unknown' ),
+			'supported_error_categories' => array( 'rate_limit', 'timeout', 'transport', 'upstream_unavailable', 'authorization', 'contract_or_validation', 'request_budget', 'unknown' ),
 			'default_read_attempt_budget' => self::DEFAULT_READ_ATTEMPTS,
 			'default_request_budget_ms' => self::DEFAULT_REQUEST_BUDGET_MS,
 			'automatic_write_retry_allowed' => false,
@@ -320,10 +320,13 @@ final class MAD4B_SCP_Connector_Resilience {
 		if ( self::contains_any( $haystack, array( 'timeout', 'timed out' ) ) ) {
 			return array( 'category' => 'timeout', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'retry_once' );
 		}
+		if ( self::contains_any( $message, array( 'certificate', 'ssl', 'could not resolve host', 'name or service not known', 'dns' ) ) ) {
+			return array( 'category' => 'transport', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'repair_connection_configuration' );
+		}
 		if ( self::contains_any( $haystack, array( 'transport', 'connection reset', 'session terminated', 'server disconnected', 'http_request_failed' ) ) ) {
 			return array( 'category' => 'transport', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'reconnect_then_retry_once' );
 		}
-		if ( self::contains_any( $haystack, array( '502', '503', '504', 'upstream', 'temporar', 'unavailable', 'bad gateway', 'gateway timeout' ) ) ) {
+		if ( self::contains_any( $haystack, array( '502', '503', '504', 'upstream', 'temporar', 'bad gateway', 'gateway timeout' ) ) ) {
 			return array( 'category' => 'upstream_unavailable', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'retry_once' );
 		}
 		if ( self::contains_any( $haystack, array( 'forbidden', 'permission', 'scope', 'approval', 'authority', 'denied', 'unauthorized' ) ) ) {
@@ -332,7 +335,7 @@ final class MAD4B_SCP_Connector_Resilience {
 		if ( self::contains_any( $haystack, array( 'invalid', 'schema', 'contract', 'required', 'not_found', 'not found', 'unknown' ) ) ) {
 			return array( 'category' => 'contract_or_validation', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'repair_request_or_contract' );
 		}
-		return array( 'category' => 'wp_error', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'inspect_before_retry' );
+		return array( 'category' => 'unknown', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'inspect_before_retry' );
 	}
 
 	private static function retry_after_seconds_from_wp_error( WP_Error $error ) {
