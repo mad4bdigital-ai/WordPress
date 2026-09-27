@@ -813,6 +813,7 @@ if legacy_rigid in write:
 
 import re as _re
 _exact_sha = '6efd5a0f266fbc84c2e49221694340209ee189af'
+_fixture_version = '0.0.0-fixture'
 _safe = _re.compile(r'[A-Za-z0-9._-]+')
 def _artifact_identity_valid(value, sha):
     return (
@@ -823,13 +824,13 @@ def _artifact_identity_valid(value, sha):
         and value.endswith('-' + sha)
     )
 
-if not _artifact_identity_valid('mad4b-site-control-plane-0.4.0-rc.59-' + _exact_sha, _exact_sha):
+if not _artifact_identity_valid('mad4b-site-control-plane-' + _fixture_version + '-' + _exact_sha, _exact_sha):
     raise SystemExit('canonical versioned plugin artifact identity must be accepted')
 if not _artifact_identity_valid('mad4b-site-control-plane-general-distribution-kit-' + _exact_sha, _exact_sha):
     raise SystemExit('historical general-distribution artifact identity must remain accepted')
-if _artifact_identity_valid('mad4b-site-control-plane-0.4.0-rc.59-' + ('0' * 40), _exact_sha):
+if _artifact_identity_valid('mad4b-site-control-plane-' + _fixture_version + '-' + ('0' * 40), _exact_sha):
     raise SystemExit('artifact identity with a different source SHA must be rejected')
-if _artifact_identity_valid('../mad4b-site-control-plane-0.4.0-rc.59-' + _exact_sha, _exact_sha):
+if _artifact_identity_valid('../mad4b-site-control-plane-' + _fixture_version + '-' + _exact_sha, _exact_sha):
     raise SystemExit('unsafe artifact identity characters/prefix must be rejected')
 
 
