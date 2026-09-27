@@ -23,6 +23,13 @@ final class MAD4B_SCP_Skill_Seeder {
 	private static $ran = false;
 	private static $runtime_status = null;
 
+	/** Explicit operator reconciliation; resets request-local bootstrap guards only. */
+	public static function reconcile() {
+		self::$ran = false;
+		self::$runtime_status = null;
+		return self::bootstrap();
+	}
+
 	public static function bootstrap() {
 		if ( self::$ran ) return self::status();
 		self::$ran = true;
