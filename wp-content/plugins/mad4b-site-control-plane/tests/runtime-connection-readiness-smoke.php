@@ -37,10 +37,13 @@ $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/connection-s
 $check( class_exists( 'MAD4B_SCP_Read_Consistency' ), 'Read consistency class unavailable.' );
 $check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/read-snapshot-header' ), 'Read snapshot header ability is not registered.' );
 $check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/read-diagnostic-bundle' ), 'Read diagnostic bundle ability is not registered.' );
+$check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/read-metadata-envelope' ), 'Read metadata envelope ability is not registered.' );
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/read-snapshot-header' ), 'Read snapshot header is not mounted on mad4b-read.' );
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', 'mad4b/read-snapshot-header' ), 'Read snapshot header is not mounted on mad4b-chatgpt.' );
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/read-diagnostic-bundle' ), 'Read diagnostic bundle is not mounted on mad4b-read.' );
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', 'mad4b/read-diagnostic-bundle' ), 'Read diagnostic bundle is not mounted on mad4b-chatgpt.' );
+$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/read-metadata-envelope' ), 'Read metadata envelope is not mounted on mad4b-read.' );
+$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', 'mad4b/read-metadata-envelope' ), 'Read metadata envelope is not mounted on mad4b-chatgpt.' );
 $snapshot = MAD4B_SCP_Read_Consistency::snapshot_header( array() );
 $check( isset( $snapshot['contract'] ) && 'mad4b.read-consistency.v1' === $snapshot['contract'], 'Read snapshot contract drifted.' );
 $check( isset( $snapshot['runtime_generation'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $snapshot['runtime_generation'] ), 'Read snapshot runtime generation missing.' );
@@ -63,10 +66,24 @@ $mismatch = MAD4B_SCP_Read_Consistency::diagnostic_bundle( array(
 ) );
 $check( is_array( $mismatch ) && 'generation_changed' === $mismatch['state'], 'Generation mismatch did not fail closed.' );
 $check( empty( $mismatch['valid_for_merge'] ) && ! empty( $mismatch['discard_partial'] ) && empty( $mismatch['resume_permitted'] ), 'Generation mismatch did not invalidate partial evidence.' );
+$metadata = MAD4B_SCP_Read_Consistency::metadata_envelope( array(
+    'target_type' => 'operation',
+    'target' => 'browser_acceptance_execution',
+    'read_transaction_id' => $snapshot['read_transaction_id'],
+    'expected_runtime_generation' => $snapshot['runtime_generation'],
+) );
+$check( is_array( $metadata ) && 'ready' === $metadata['state'], 'Compact operation metadata envelope was not ready.' );
+$check( ! empty( $metadata['generation_match'] ) && ! empty( $metadata['valid_for_resume'] ), 'Compact metadata envelope lost generation binding.' );
+$check( 'mad4b/browser-acceptance-run' === $metadata['remote_ability'], 'Compact metadata envelope resolved the wrong remote ability.' );
+$check( isset( $metadata['registration_digest'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $metadata['registration_digest'] ), 'Operation registration digest missing from compact metadata envelope.' );
+$check( ! empty( $metadata['input_schema_available'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $metadata['input_schema_sha256'] ), 'Input schema digest missing from compact metadata envelope.' );
+$check( isset( $metadata['execution_binding_digest'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $metadata['execution_binding_digest'] ), 'Execution binding digest missing from compact metadata envelope.' );
 $guidance = MAD4B_SCP_Connector_Resilience::client_guidance();
 $check( 1 === (int) $guidance['preferred_parallelism'] && 2 === (int) $guidance['read_parallelism_max'], 'Read parallelism contract drifted.' );
 $check( 1 === (int) $guidance['reconnect_attempts'] && ! empty( $guidance['replay_read_after_reconnect'] ) && empty( $guidance['replay_mutation_after_reconnect'] ), 'Reconnect/replay contract drifted.' );
 $check( ! empty( $guidance['snapshot_identity_required'] ) && ! empty( $guidance['discard_partial_on_generation_change'] ), 'Snapshot-aware recovery contract drifted.' );
+$check( ! empty( $guidance['metadata_micro_read_preferred'] ) && 'mad4b/read-metadata-envelope' === $guidance['metadata_envelope_ability'], 'Compact metadata recovery guidance drifted.' );
+$check( ! empty( $guidance['resume_after_reconnect_requires_generation_match'] ), 'Reconnect resume must remain generation-bound.' );
 
 $check( class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ), 'MCP registration bridge class unavailable.' );
 $rest_server_present_before_bridge_status = isset( $GLOBALS['wp_rest_server'] ) && is_object( $GLOBALS['wp_rest_server'] );
