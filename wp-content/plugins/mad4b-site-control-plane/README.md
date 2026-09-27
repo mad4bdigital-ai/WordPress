@@ -18,7 +18,7 @@ Governed WP All Import / Export planning, exact identity, dry-run, classificatio
 
 rc.70 hardens connector reads against MCP session termination without weakening mutation safety. Repeated `session terminated` failures consume a bounded retry budget, open a request-local read circuit breaker, stop additional fan-out, and direct the client to reconnect, re-read the snapshot header, and resume only when the exact `runtime_generation` still matches. Mutation and enrollment execution remain non-replayable.
 
-The release also adds `mad4b/read-metadata-envelope`, a compact generation-bound micro-read for one Ability or governed operation. It returns registration identity plus schema and execution-binding digests in a single response, replacing fragile multi-call `discover → info → schema` metadata chains and reducing session lifetime, payload volume, and stale-metadata risk. No persistent session breaker, persistent authority cache, or Production authority is introduced.
+The release also adds `mad4b/read-metadata-envelope`, a compact generation-bound micro-read for one Ability or governed operation. It is mounted on `mad4b-read` and intentionally kept out of the compact direct `mad4b-chatgpt` tool list; ChatGPT reaches it through the existing governed `mad4b/read-execute` dispatcher. It returns registration identity plus schema and execution-binding digests in a single response, replacing fragile multi-call `discover → info → schema` metadata chains while avoiding a larger `tools/list`. No persistent session breaker, persistent authority cache, or Production authority is introduced.
 
 ### rc.69 governed write-dispatch envelope continuity
 
