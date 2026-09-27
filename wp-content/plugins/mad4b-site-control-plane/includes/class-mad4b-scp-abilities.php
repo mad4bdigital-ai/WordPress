@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class MAD4B_SCP_Abilities {
+	private static $write_dispatch_governance_envelope = array();
 	public function register_categories() {
 		foreach (
 			array(
@@ -394,6 +395,8 @@ final class MAD4B_SCP_Abilities {
 		if ( ! is_array( $input ) || empty( $input['ability_name'] ) ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write ability_name is required.' );
 		$ability = $this->governed_write_target( $input['ability_name'], true );
 		if ( is_wp_error( $ability ) ) return $ability;
+		$captured = $this->capture_write_dispatch_governance_envelope( $input );
+		if ( is_wp_error( $captured ) ) return $captured;
 		return true;
 	}
 
@@ -445,29 +448,60 @@ final class MAD4B_SCP_Abilities {
 		);
 	}
 
-	private function forward_write_dispatch_governance_envelope( $dispatch_input, $target_input ) {
-		if ( ! is_array( $dispatch_input ) ) return $target_input;
-		$keys = array(
-			class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::APPROVAL_INPUT_KEY : '_mad4b_approval_ticket_id',
-			class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::CONTEXT_RECEIPT_INPUT_KEY : '_mad4b_context_receipt',
-		);
-		$present = array();
+	private function governance_envelope_hash( $value ) {
+		$encoded = wp_json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return false === $encoded ? '' : hash( 'sha256', $encoded );
+	}
+
+	private function capture_write_dispatch_governance_envelope( $input ) {
+		self::$write_dispatch_governance_envelope = array();
+		if ( ! is_array( $input ) ) return true;
+		$keys = array( '_mad4b_approval_ticket_id', '_mad4b_context_receipt' );
+		$nested = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
 		foreach ( $keys as $key ) {
-			if ( array_key_exists( $key, $dispatch_input ) ) $present[] = $key;
+			if ( ! array_key_exists( $key, $input ) ) continue;
+			$value = $input[ $key ];
+			if ( '_mad4b_approval_ticket_id' === $key ) {
+				$value = strtolower( trim( (string) $value ) );
+				if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $value ) ) return new WP_Error( 'mad4b_write_dispatch_approval_ticket_invalid', 'The dispatcher approval ticket identifier is malformed.' );
+			} elseif ( ! is_array( $value ) ) {
+				return new WP_Error( 'mad4b_write_dispatch_context_receipt_invalid', 'The dispatcher Context Receipt must be an object.' );
+			}
+			if ( array_key_exists( $key, $nested ) ) {
+				$outer_hash = $this->governance_envelope_hash( $value );
+				$inner_hash = $this->governance_envelope_hash( $nested[ $key ] );
+				if ( '' === $outer_hash || '' === $inner_hash || ! hash_equals( $outer_hash, $inner_hash ) ) return new WP_Error( 'mad4b_write_dispatch_governance_envelope_conflict', 'Governance metadata in the dispatcher envelope conflicts with the selected target input.' );
+			}
+			self::$write_dispatch_governance_envelope[ $key ] = $value;
 		}
-		if ( empty( $present ) ) return $target_input;
+		if ( isset( self::$write_dispatch_governance_envelope['_mad4b_approval_ticket_id'] ) ) {
+			if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( self::$write_dispatch_governance_envelope['_mad4b_approval_ticket_id'] ) ) {
+				self::$write_dispatch_governance_envelope = array();
+				return new WP_Error( 'mad4b_write_dispatch_approval_binding_conflict', 'The dispatcher approval ticket could not be bound to this request.' );
+			}
+		}
+		return true;
+	}
+
+	private function forward_write_dispatch_governance_envelope( $dispatch_input, $target_input ) {
+		$envelope = self::$write_dispatch_governance_envelope;
+		self::$write_dispatch_governance_envelope = array();
+		if ( is_array( $dispatch_input ) ) {
+			foreach ( array( '_mad4b_approval_ticket_id', '_mad4b_context_receipt' ) as $key ) {
+				if ( array_key_exists( $key, $dispatch_input ) ) $envelope[ $key ] = $dispatch_input[ $key ];
+			}
+		}
+		if ( empty( $envelope ) ) return $target_input;
 		if ( null === $target_input ) $target_input = array();
 		if ( ! is_array( $target_input ) ) return new WP_Error( 'mad4b_write_dispatch_governance_envelope_target_invalid', 'Governed dispatcher metadata requires an object target input.' );
-		foreach ( $present as $key ) {
+		foreach ( $envelope as $key => $value ) {
 			if ( array_key_exists( $key, $target_input ) ) {
-				$outer = wp_json_encode( $dispatch_input[ $key ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-				$inner = wp_json_encode( $target_input[ $key ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-				if ( false === $outer || false === $inner || ! hash_equals( hash( 'sha256', $outer ), hash( 'sha256', $inner ) ) ) {
-					return new WP_Error( 'mad4b_write_dispatch_governance_envelope_conflict', 'Governance metadata in the dispatcher envelope conflicts with the selected target input.' );
-				}
+				$outer_hash = $this->governance_envelope_hash( $value );
+				$inner_hash = $this->governance_envelope_hash( $target_input[ $key ] );
+				if ( '' === $outer_hash || '' === $inner_hash || ! hash_equals( $outer_hash, $inner_hash ) ) return new WP_Error( 'mad4b_write_dispatch_governance_envelope_conflict', 'Governance metadata in the dispatcher envelope conflicts with the selected target input.' );
 				continue;
 			}
-			$target_input[ $key ] = $dispatch_input[ $key ];
+			$target_input[ $key ] = $value;
 		}
 		return $target_input;
 	}
