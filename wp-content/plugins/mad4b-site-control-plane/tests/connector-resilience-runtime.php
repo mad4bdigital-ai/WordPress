@@ -83,6 +83,24 @@ $wp_timeout = MAD4B_SCP_Connector_Resilience::safe_read(
 );
 mad4b_assert_true( ! empty( $wp_timeout['ok'] ), 'transient WP_Error read must recover' );
 mad4b_assert_true( 2 === $wp_timeout_attempts, 'transient WP_Error must retry exactly once' );
+mad4b_assert_true( ! empty( $wp_timeout['automatic_retry_performed'] ), 'recovered transient read must report that its automatic retry was consumed' );
+mad4b_assert_true( empty( $wp_timeout['automatic_retry_exhausted'] ), 'successful retry must not report exhausted failure state' );
+
+$exhausted_attempts = 0;
+$exhausted = MAD4B_SCP_Connector_Resilience::safe_read(
+	'exhausted_timeout',
+	static function () use ( &$exhausted_attempts ) {
+		$exhausted_attempts++;
+		throw new RuntimeException( 'transport timeout remains unavailable' );
+	}
+);
+mad4b_assert_true( empty( $exhausted['ok'] ), 'persistently transient read must remain failed' );
+mad4b_assert_true( 2 === $exhausted_attempts, 'persistently transient read must stop after exactly one retry' );
+mad4b_assert_true( ! empty( $exhausted['retryable'] ), 'exhausted transient read may remain retryable later' );
+mad4b_assert_true( ! empty( $exhausted['automatic_retry_performed'] ), 'exhausted transient read must report the consumed automatic retry' );
+mad4b_assert_true( ! empty( $exhausted['automatic_retry_exhausted'] ), 'exhausted transient read must report exhausted retry budget' );
+mad4b_assert_true( empty( $exhausted['automatic_retry_allowed'] ), 'exhausted transient read must deny another immediate automatic retry' );
+mad4b_assert_true( 'inspect_then_retry_later' === $exhausted['client_action'], 'exhausted transient read action must break immediate retry loops' );
 
 $rate_attempts = 0;
 $rate = MAD4B_SCP_Connector_Resilience::safe_read(
@@ -219,6 +237,7 @@ mad4b_assert_true( empty( $budget_skip['automatic_retry_allowed'] ), 'budget ski
 mad4b_assert_true( 'reduce_scope_then_retry_preflight' === $budget_skip['client_action'], 'budget recovery action drifted' );
 
 $guidance = MAD4B_SCP_Connector_Resilience::client_guidance();
+mad4b_assert_true( ! empty( $guidance['no_immediate_retry_after_automatic_retry_exhausted'] ), 'client guidance must break immediate retry loops after retry exhaustion' );
 mad4b_assert_true( empty( $guidance['automatic_write_retry_allowed'] ), 'client guidance must deny automatic write retry' );
 mad4b_assert_true( empty( $guidance['automatic_enrollment_retry_allowed'] ), 'client guidance must deny automatic enrollment retry' );
 mad4b_assert_true( ! empty( $guidance['reconcile_before_retry_when_mutation_state_unknown'] ), 'client guidance must require reconciliation' );
