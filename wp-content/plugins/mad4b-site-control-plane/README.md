@@ -2,7 +2,7 @@
 
 Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter owns MCP protocol/session/transport; MAD4B registers explicit WordPress Abilities and mounts them only on isolated custom MCP servers.
 
-Current plugin version: **0.4.0-rc.65**.
+Current plugin version: **0.4.0-rc.66**.
 
 Provider-gap closure is zero-touch and non-authorizing. The package embeds exact-head repository evidence plus `functional-gap-policy.json`; `mad4b/functional-gap-runtime-evidence` performs bounded local runtime collection, fixed-point drift checks, and deterministic evaluation without shell, WP-CLI, raw SQL, remote requests, credential reads, or mutation. Evidence readiness never grants provider write authority or Production activation. Provider capability diagnostics also distinguish mounted from latent capabilities and read readiness from blocked write certification.
 
@@ -11,6 +11,10 @@ Provider-gap closure is zero-touch and non-authorizing. The package embeds exact
 Operator deployment, authority reconciliation, recovery, rollback and lifecycle guidance: [`docs/RELEASE-AND-OPERATOR-RUNBOOK.md`](docs/RELEASE-AND-OPERATOR-RUNBOOK.md).
 
 Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
+
+### rc.66 bounded ChatGPT write-dispatch scope
+
+rc.66 fixes the ChatGPT `mad4b/write-execute` transport envelope so its exact `mad4b-chatgpt` transport NHI grant can satisfy the OAuth scope boundary without requiring a second mutation ticket for the dispatcher itself. Delegation is Staging-only, requires the live governed-write authority and exact ChatGPT transport context, validates the target schema digest, and accepts only an Ability already certified and mounted on `mad4b-write`. The selected target still performs its own exact provider/grant/budget/Context/one-time approval authorization; Production, Breakglass, raw SQL, wildcard grants, generic write scope and dispatcher recursion remain denied.
 
 ### rc.59 lineage consolidation
 
@@ -360,7 +364,7 @@ Repository CI currently covers:
 - read-only Admin Governance/Connection Console contract/runtime behavior;
 - disposable WordPress/MySQL runtime activation and smoke testing on WordPress 6.9 and the current `latest` release.
 
-The isolated runtime CI activates MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.4.0-rc.65 in disposable WordPress/MySQL. Repository success does **not** replace target-site certification.
+The isolated runtime CI activates MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.4.0-rc.66 in disposable WordPress/MySQL. Repository success does **not** replace target-site certification.
 
 The core mutation-gate workflow is read-only. The MCP Adapter refresh workflow is manual-only (`workflow_dispatch`) and may write certification evidence only when an operator explicitly runs it on a selected branch.
 
