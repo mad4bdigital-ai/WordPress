@@ -165,6 +165,12 @@ require(servers, "'mad4b/connection-status'", 'connection-status-mounted')
 require(servers, "'mad4b/read-snapshot-header'", 'read-snapshot-header-mounted')
 require(servers, "'mad4b/read-diagnostic-bundle'", 'read-diagnostic-bundle-mounted')
 require(servers, "'mad4b/read-metadata-envelope'", 'read-metadata-envelope-mounted')
+if servers.count("'mad4b/read-metadata-envelope'") != 2:
+    raise SystemExit("read metadata envelope must be mounted exactly once on mad4b-read and exactly once on mad4b-chatgpt")
+read_server_block = servers.split("'mad4b-read' =>", 1)[1].split("'mad4b-chatgpt' =>", 1)[0]
+chatgpt_server_block = servers.split("'mad4b-chatgpt' =>", 1)[1].split("'mad4b-enrollment' =>", 1)[0]
+require(read_server_block, "'mad4b/read-metadata-envelope'", 'read-metadata-envelope-read-mount')
+require(chatgpt_server_block, "'mad4b/read-metadata-envelope'", 'read-metadata-envelope-chatgpt-mount')
 require(servers, "'mad4b-write'", 'write-server-id')
 require(servers, "'MAD4B Write MCP'", 'write-server-registration')
 require(servers, "array( __CLASS__, 'can_write_transport' )", 'write-server-permission')
