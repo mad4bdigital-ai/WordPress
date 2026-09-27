@@ -5,7 +5,6 @@ root = Path("wp-content/plugins/mad4b-site-control-plane")
 self_update = (root / "includes" / "class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 bootstrap = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
-workflow = Path(".github/workflows/mad4b-control-plane-update-channel.yml").read_text(encoding="utf-8")
 
 required_self_update = [
     "final class MAD4B_SCP_Self_Update",
@@ -112,28 +111,15 @@ for marker in (
     if marker not in bootstrap:
         raise SystemExit(f"self-update bootstrap invariant missing: {marker}")
 
-# Publishing is fail-closed on exact successful master Release Verdict and exact package artifact.
-required_workflow = [
-    "workflow_run:",
-    "MAD4B Release Verdict",
-    "github.event.workflow_run.conclusion == 'success'",
-    "github.event.workflow_run.head_branch == 'master'",
-    'test "$current_master" = "$SOURCE_SHA"',
-    "mad4b-control-plane-package.yml",
-    "mad4b-site-control-plane-general-distribution-kit-$SOURCE_SHA",
-    "RELEASE-ROOT-TRUST-VERIFICATION.json",
-    "release_verdict_success",
-    "mad4b-site-control-plane-$SOURCE_SHA.zip",
-    "mad4b-site-control-plane-update.json",
-    "--clobber",
-]
-for marker in required_workflow:
-    if marker not in workflow:
-        raise SystemExit(f"update-channel publishing invariant missing: {marker}")
-
-# The update-channel workflow may publish release assets only; it may not deploy to a site.
-for forbidden in ("ssh ", "scp ", "rsync ", "wp plugin update", "wp plugin install", "curl -X POST"):
-    if forbidden in workflow:
-        raise SystemExit(f"update-channel workflow unexpectedly deploys or shells: {forbidden}")
+# Repository-root publishing is deliberately governed in a separate root-governance PR.
+# This plugin contract only trusts the fixed repository-owned Release manifest.
+for marker in (
+    "const RELEASE_TAG           = 'mad4b-site-control-plane-update-channel';",
+    "const MANIFEST_URL          = 'https://github.com/mad4bdigital-ai/WordPress/releases/download/mad4b-site-control-plane-update-channel/mad4b-site-control-plane-update.json';",
+    "'release_verdict_success'",
+    "'release_channel_bound' => true",
+):
+    if marker not in self_update:
+        raise SystemExit(f"fixed governed release-channel invariant missing: {marker}")
 
 print("mad4b.control-plane-self-update.v1 dual-channel contract: PASS")
