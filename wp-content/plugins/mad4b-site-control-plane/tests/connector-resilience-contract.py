@@ -33,6 +33,8 @@ for marker in [
     "'category' => 'contract_or_validation'",
     "'auto_retry' => false",
     "'client_action' => 'backoff_then_retry'",
+    "private static function safe_error_code( WP_Error $error )",
+    "substr( $code, 0, 96 )",
     "private static function retry_after_seconds_from_wp_error",
     "'automatic_retry_allowed'",
     "'mutation_state' => 'unknown'",
