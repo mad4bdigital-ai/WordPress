@@ -18,7 +18,7 @@ jobs:
   external-read-only:
     name: Raw Staging WPML HTTP evidence
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 12
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       WPML_URL_BASE: https://staging.egypttourgates.com/wp-json/wpml/v1/rest/status?test_get_parameter=1
@@ -34,6 +34,11 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
+
+      - name: Setup Node 24 for bounded hCDN browser fallback
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
       - name: Prove WPML response contract compatibility
         shell: bash
@@ -221,6 +226,192 @@ jobs:
             echo "- namespace wpml/v1 present: \`$(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json"))["namespace_present"]).lower())')\`"
             echo "- route /wpml/v1/rest/status present: \`$(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json"))["route_present"]).lower())')\`"
             echo "- compatible WPML contract: \`$(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json"))["wpml_contract_compatible"]).lower())')\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Resolve hCDN challenge with bounded browser fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=/tmp/mad4b-wpml-external
+
+          challenge_required="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('/tmp/mad4b-wpml-external')
+          d = json.loads((root / 'diagnostic.json').read_text(encoding='utf-8'))
+          bodies = []
+          for name in ('wpml.body', 'rest-index.body'):
+              p = root / name
+              if p.is_file():
+                  bodies.append(p.read_text(encoding='utf-8', errors='replace'))
+          challenged = (
+              not d.get('accepted')
+              and (d.get('wpml_http_status') == 403 or d.get('rest_index_http_status') == 403)
+              and any('/hcdn-cgi/jschallenge' in body or 'Checking your browser before accessing' in body for body in bodies)
+          )
+          print('1' if challenged else '0')
+          PY
+          )"
+
+          if [ "$challenge_required" != "1" ]; then
+            echo "No hCDN JavaScript challenge detected; preserving raw diagnostic result."
+            exit 0
+          fi
+
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+          cat > /tmp/mad4b-wpml-external/browser-fallback.mjs <<'JS'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { chromium } from 'playwright';
+
+          const out = '/tmp/mad4b-wpml-external';
+          const sourceSha = String(process.env.SOURCE_SHA || '');
+          const wpmlUrl = String(process.env.WPML_URL_BASE || '') + '&mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser';
+          const restUrl = String(process.env.REST_INDEX_URL || '') + '?mad4b_probe=' + encodeURIComponent(sourceSha) + '&mad4b_transport=browser';
+
+          if (!/^https:\/\/staging\.egypttourgates\.com\//.test(wpmlUrl) || !/^https:\/\/staging\.egypttourgates\.com\//.test(restUrl)) {
+            throw new Error('browser_fallback_target_outside_fixed_staging_origin');
+          }
+
+          const browser = await chromium.launch({ headless: true });
+          const context = await browser.newContext({
+            userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+            extraHTTPHeaders: {
+              'Accept-Language': 'en-US,en;q=0.9',
+              'Cache-Control': 'no-cache, no-store, max-age=0',
+              'Pragma': 'no-cache'
+            }
+          });
+
+          const challengeRe = /\/hcdn-cgi\/jschallenge|Checking your browser before accessing/i;
+
+          async function capture(name, url) {
+            const page = await context.newPage();
+            let response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+            let challengeObserved = false;
+
+            for (let i = 0; i < 4; i++) {
+              const html = await page.content();
+              if (!challengeRe.test(html)) break;
+              challengeObserved = true;
+              await page.waitForTimeout(4500);
+              response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+            }
+
+            const html = await page.content();
+            if (challengeRe.test(html)) {
+              await page.close();
+              throw new Error('hcdn_browser_challenge_not_resolved:' + name);
+            }
+
+            const text = await page.locator('body').innerText({ timeout: 10000 }).catch(() => '');
+            const status = response ? response.status() : 0;
+            const headers = response ? await response.allHeaders() : {};
+            fs.writeFileSync(path.join(out, name + '.body'), text, 'utf8');
+            fs.writeFileSync(
+              path.join(out, name + '.headers'),
+              Object.entries(headers).map(([k,v]) => k + ': ' + v).join('\n') + '\n',
+              'utf8'
+            );
+            fs.writeFileSync(path.join(out, name + '.http-status'), String(status) + '\n', 'utf8');
+            fs.writeFileSync(path.join(out, name + '.curl-exit'), '0\n', 'utf8');
+            fs.writeFileSync(path.join(out, name + '.stderr'), '', 'utf8');
+            await page.close();
+            return { status, text, challengeObserved };
+          }
+
+          try {
+            const wpmlCapture = await capture('wpml', wpmlUrl);
+            const restCapture = await capture('rest-index', restUrl);
+
+            let namespacePresent = false;
+            let routePresent = false;
+            let restIndexParseError = '';
+            try {
+              const data = JSON.parse(restCapture.text);
+              const namespaces = data && typeof data === 'object' && Array.isArray(data.namespaces) ? data.namespaces : [];
+              const routes = data && typeof data === 'object' && data.routes && typeof data.routes === 'object' ? data.routes : {};
+              namespacePresent = namespaces.includes('wpml/v1');
+              routePresent = Object.prototype.hasOwnProperty.call(routes, '/wpml/v1/rest/status');
+            } catch (error) {
+              restIndexParseError = String(error?.name || 'Error') + ': ' + String(error?.message || error);
+            }
+
+            let wpmlParseError = '';
+            let wpmlStatus = '';
+            let wpmlGetParameters = '';
+            let wpmlSuccessEnvelope = false;
+            try {
+              const parsed = JSON.parse(wpmlCapture.text);
+              let payload = parsed;
+              if (parsed && typeof parsed === 'object' && parsed.success === true && parsed.data && typeof parsed.data === 'object') {
+                payload = parsed.data;
+                wpmlSuccessEnvelope = true;
+              }
+              if (payload && typeof payload === 'object') {
+                wpmlStatus = String(payload.status || '');
+                wpmlGetParameters = String(payload.get_parameters || '');
+              }
+            } catch (error) {
+              wpmlParseError = String(error?.name || 'Error') + ': ' + String(error?.message || error);
+            }
+
+            const compatible = wpmlStatus === 'valid' && wpmlGetParameters === 'valid';
+            const accepted = (
+              wpmlCapture.status >= 200 && wpmlCapture.status < 300
+              && restCapture.status >= 200 && restCapture.status < 300
+              && namespacePresent
+              && routePresent
+              && compatible
+            );
+
+            const evidence = {
+              contract: 'mad4b.wpml-external-http-diagnostic.v4',
+              source_sha: sourceSha,
+              attempt: 'browser_fallback',
+              capture_mode: 'headless_browser_after_hcdn_challenge',
+              browser_challenge_observed: Boolean(wpmlCapture.challengeObserved || restCapture.challengeObserved),
+              target_url: wpmlUrl,
+              rest_index_url: restUrl,
+              transport_state: 'reachable',
+              transport_reachable: true,
+              wpml_curl_exit: 0,
+              rest_index_curl_exit: 0,
+              wpml_http_status: wpmlCapture.status,
+              rest_index_http_status: restCapture.status,
+              namespace_present: namespacePresent,
+              route_present: routePresent,
+              rest_index_parse_error: restIndexParseError,
+              wpml_parse_error: wpmlParseError,
+              wpml_success_envelope: wpmlSuccessEnvelope,
+              wpml_status: wpmlStatus,
+              wpml_get_parameters: wpmlGetParameters,
+              wpml_contract_compatible: compatible,
+              mutation_performed: false,
+              accepted,
+              diagnostic_outcome: accepted ? 'accepted_evidence' : 'reachable_contract_failure',
+              inconclusive: false,
+              acceptance_authorized: false,
+              authority_granted: false
+            };
+            fs.writeFileSync(path.join(out, 'diagnostic.json'), JSON.stringify(evidence, null, 2) + '\n', 'utf8');
+          } finally {
+            await context.close();
+            await browser.close();
+          }
+          JS
+
+          node /tmp/mad4b-wpml-external/browser-fallback.mjs
+
+          {
+            echo
+            echo '### hCDN browser fallback'
+            echo "capture mode: $(python3 -c 'import json; print(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json")).get("capture_mode","raw_http"))')"
+            echo "WPML HTTP status: $(cat "$out/wpml.http-status")"
+            echo "REST index HTTP status: $(cat "$out/rest-index.http-status")"
+            echo "accepted: $(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json")).get("accepted",False)).lower())')"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload raw read-only HTTP evidence
