@@ -56,6 +56,33 @@ mad4b_assert_true( 2 === (int) $read['attempts'], 'transient read must retry exa
 mad4b_assert_true( 2 === $read_attempts, 'read callback must execute twice only' );
 mad4b_assert_true( 'ok' === $read['data']['value'], 'read result must survive retry' );
 
+$wp_timeout_attempts = 0;
+$wp_timeout = MAD4B_SCP_Connector_Resilience::safe_read(
+	'wp_timeout_then_success',
+	static function () use ( &$wp_timeout_attempts ) {
+		$wp_timeout_attempts++;
+		if ( 1 === $wp_timeout_attempts ) return new WP_Error( 'http_request_failed', 'Operation timed out' );
+		return array( 'value' => 'wp-ok' );
+	}
+);
+mad4b_assert_true( ! empty( $wp_timeout['ok'] ), 'transient WP_Error read must recover' );
+mad4b_assert_true( 2 === $wp_timeout_attempts, 'transient WP_Error must retry exactly once' );
+
+$rate_attempts = 0;
+$rate = MAD4B_SCP_Connector_Resilience::safe_read(
+	'rate_limit',
+	static function () use ( &$rate_attempts ) {
+		$rate_attempts++;
+		return new WP_Error( 'rate_limit_429', 'Too many requests', array( 'retry_after' => 7 ) );
+	}
+);
+mad4b_assert_true( empty( $rate['ok'] ), 'rate-limited read must remain failed' );
+mad4b_assert_true( 1 === $rate_attempts, 'rate limit must not auto retry immediately' );
+mad4b_assert_true( ! empty( $rate['retryable'] ), 'rate limit must remain retryable later' );
+mad4b_assert_true( empty( $rate['automatic_retry_allowed'] ), 'rate limit must require backoff instead of immediate retry' );
+mad4b_assert_true( 'backoff_then_retry' === $rate['client_action'], 'rate-limit client action drifted' );
+mad4b_assert_true( 7 === (int) $rate['retry_after_seconds'], 'retry-after hint must be preserved safely' );
+
 $permanent_attempts = 0;
 $permanent = MAD4B_SCP_Connector_Resilience::safe_read(
 	'permanent_contract_failure',
