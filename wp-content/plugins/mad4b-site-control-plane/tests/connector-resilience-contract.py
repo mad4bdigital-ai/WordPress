@@ -65,7 +65,7 @@ require(read_body, "! empty( $classification['auto_retry'] )", "auto retry only 
 
 for marker in [
     "const PREFLIGHT_ABILITY = 'mad4b/connector-preflight'",
-    "const PREFLIGHT_CONTRACT = 'mad4b.connector-preflight.v2'",
+    "const PREFLIGHT_CONTRACT = 'mad4b.connector-preflight.v1'",
     "'budget_ms' => array( 'type' => 'integer', 'minimum' => 1000, 'maximum' => 30000, 'default' => 12000 )",
     "MAD4B_SCP_Connector_Resilience::run_checks",
     "MAD4B_SCP_Connector_Resilience::client_guidance()",
@@ -77,9 +77,9 @@ for marker in [
 
 for marker in [
     "MAD4B_SCP_Connector_Resilience::execute_read",
-    "mad4b.chatgpt-read-execute.v3",
+    "mad4b.chatgpt-read-execute.v1",
     "MAD4B_SCP_Connector_Resilience::execute_mutation",
-    "mad4b.chatgpt-write-execute.v3",
+    "mad4b.chatgpt-write-execute.v1",
 ]:
     require(abilities, marker, "dispatcher resilience integration")
 
