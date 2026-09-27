@@ -34,6 +34,26 @@ $check( isset( $wpml_query['suppress_filters'] ) && false === $wpml_query['suppr
 $plain_query = $invoke( 'language_query_args', array( array( 'tours-and-activities' ), 'fr', 3, false ) );
 $check( ! isset( $plain_query['lang'] ), 'non-multilingual evidence query unexpectedly forced a language filter' );
 
+$test_post_languages = array(
+	101 => 'en',
+	102 => 'fr',
+	103 => 'fr',
+);
+$language_resolver = static function ( $post ) use ( $test_post_languages ) {
+	$post_id = is_object( $post ) && ! empty( $post->ID ) ? (int) $post->ID : 0;
+	return isset( $test_post_languages[ $post_id ] ) ? (string) $test_post_languages[ $post_id ] : '';
+};
+$fallback_posts = array(
+	(object) array( 'ID' => 101, 'post_type' => 'tours-and-activities' ),
+	(object) array( 'ID' => 102, 'post_type' => 'elementor_library' ),
+	(object) array( 'ID' => 103, 'post_type' => 'elementskit_content' ),
+);
+$fr_posts = $invoke( 'filter_posts_for_language', array( $fallback_posts, 'fr', $language_resolver ) );
+$check( 2 === count( $fr_posts ), 'requested-language filter did not remove WPML fallback records from another locale' );
+$check( 102 === (int) $fr_posts[0]->ID && 103 === (int) $fr_posts[1]->ID, 'requested-language filter returned the wrong locale records' );
+$en_posts = $invoke( 'filter_posts_for_language', array( $fallback_posts, 'en', $language_resolver ) );
+$check( 1 === count( $en_posts ) && 101 === (int) $en_posts[0]->ID, 'requested-language filter dropped the matching primary-locale record' );
+
 $good = array();
 for ( $i = 0; $i < 16; ++$i ) {
 	$lang = 0 === $i % 2 ? 'en' : 'ar';
