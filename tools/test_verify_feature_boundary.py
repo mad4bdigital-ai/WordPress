@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import ast
 import importlib.util
+import re
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -262,5 +264,51 @@ with patch.object(mod.subprocess, "run", return_value=SimpleNamespace(returncode
     ordinary = mod.verify(BASE, HEAD, "chore/documentation")
 assert ordinary["mode"] == "non_feature_branch"
 assert ordinary["owner_attestation_required"] is False
+
+# Release Verdict and Critical Kernel must agree on the path universe that
+# requires the schema critical check. Otherwise Release Verdict can wait for a
+# check that GitHub never scheduled.
+release_verdict_text = (HERE.parent / ".github/workflows/mad4b-release-verdict.yml").read_text(encoding="utf-8")
+critical_kernel_text = (HERE.parent / ".github/workflows/feature-007-critical-kernel.yml").read_text(encoding="utf-8")
+trigger_declarations = re.search(
+    r"critical_trigger_workflows = \[(.*?)\]\s*full_runtime_trigger_paths = \[(.*?)\]",
+    release_verdict_text,
+    re.S,
+)
+assert trigger_declarations is not None, "release verdict runtime trigger declarations missing"
+critical_trigger_workflows = ast.literal_eval("[" + trigger_declarations.group(1) + "]")
+full_runtime_trigger_paths = ast.literal_eval("[" + trigger_declarations.group(2) + "]")
+critical_kernel_required_paths = list(dict.fromkeys(
+    full_runtime_trigger_paths
+    + critical_trigger_workflows
+    + [
+        ".github/workflows/feature-007-critical-kernel.yml",
+        ".github/workflows/mad4b-live-acceptance-evidence.yml",
+        ".github/workflows/mad4b-release-verdict.yml",
+    ]
+))
+for trigger_path in critical_kernel_required_paths:
+    assert critical_kernel_text.count(trigger_path) >= 2, (
+        "critical-kernel trigger parity missing PR+master coverage: " + trigger_path
+    )
+
+# Governance-only changes that repair Critical Kernel trigger parity must not
+# self-deadlock Release Verdict by being promoted to full-runtime scope.
+release_evidence_declaration = re.search(
+    r"release_evidence_paths = \{(.*?)\}\s*runtime_patterns",
+    release_verdict_text,
+    re.S,
+)
+assert release_evidence_declaration is not None, "release verdict evidence-path declaration missing"
+release_evidence_paths = ast.literal_eval("{" + release_evidence_declaration.group(1) + "}")
+governance_parity_paths = {
+    ".github/workflows/feature-007-critical-kernel.yml",
+    ".github/workflows/mad4b-release-verdict.yml",
+    "tools/test_verify_feature_boundary.py",
+}
+assert governance_parity_paths.issubset(release_evidence_paths), (
+    "release verdict governance parity paths must remain release-evidence scoped: "
+    + repr(sorted(governance_parity_paths - release_evidence_paths))
+)
 
 print("mad4b.repository-feature-boundary.v1: PASS")
