@@ -133,7 +133,56 @@ After an external session disconnect:
 - mutation callers do not replay the mutation blindly;
 - mutation callers reconcile postconditions and re-plan if state is uncertain.
 
-### Cache and circuit-breaker policy
+### Snapshot-aware reconnect and resume
+
+The companion read-consistency contract is `mad4b.read-consistency.v1`.
+
+Clients start a diagnostic transaction with `mad4b/read-snapshot-header`. The
+header binds the transaction to a `runtime_generation` derived from exact build
+identity, candidate binding, provider/tool inventory, active-plugin generation,
+and Site Profile identity. Session identity is kept separate from runtime
+generation so a reconnect can resume on the same runtime.
+
+Routine diagnostics use only fixed bundles exposed by
+`mad4b/read-diagnostic-bundle`:
+
+- `identity`;
+- `runtime`;
+- `certification`;
+- `providers`.
+
+The bundle API never accepts caller-selected tool names. Every bundle runs
+sequentially through `MAD4B_SCP_Connector_Resilience::run_checks()`.
+
+Before and after each bundle the runtime generation is re-read. A mismatch makes
+all evidence from that bundle invalid for merging and returns
+`client_action=restart_read_transaction`,
+`valid_for_merge=false`, and `discard_partial=true`.
+
+After an external MCP session termination the client policy is:
+
+1. discard the dead external session identifier;
+2. reconnect at most once for the current recovery attempt;
+3. fetch a new snapshot header;
+4. if runtime generation matches, retain completed bundles and resume only the
+   missing read-only bundles;
+5. if runtime generation changed, discard partial evidence and restart the
+   diagnostic transaction;
+6. never replay a mutation or enrollment automatically.
+
+The preferred read parallelism is one. The hard client ceiling is two independent
+lightweight reads. Large `Promise.all`-style diagnostic fan-out is outside the
+contract.
+
+Evidence returned by read-consistency bundles records a live projection
+freshness and source generation. Nested external attestations keep their own
+freshness semantics; a fresh local projection does not convert stale external
+evidence into live evidence.
+
+No persistent read transaction, session circuit breaker, authority cache, or
+resume cursor is stored in WordPress.
+
+## Cache and circuit-breaker policy
 
 The resilience layer must not add persistent authority/catalog caches or a
 persistent circuit breaker. Runtime authority and provider eligibility must be

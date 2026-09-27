@@ -34,6 +34,39 @@ $check( class_exists( 'MAD4B_SCP_Admin_Experience' ), 'Shared staged admin exper
 $check( class_exists( 'MAD4B_SCP_Transport_Context' ), 'Transport context class unavailable.' );
 $check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/connection-status' ), 'Connection status ability is not registered.' );
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/connection-status' ), 'Connection status ability is not mounted on mad4b-read.' );
+$check( class_exists( 'MAD4B_SCP_Read_Consistency' ), 'Read consistency class unavailable.' );
+$check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/read-snapshot-header' ), 'Read snapshot header ability is not registered.' );
+$check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/read-diagnostic-bundle' ), 'Read diagnostic bundle ability is not registered.' );
+$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/read-snapshot-header' ), 'Read snapshot header is not mounted on mad4b-read.' );
+$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', 'mad4b/read-snapshot-header' ), 'Read snapshot header is not mounted on mad4b-chatgpt.' );
+$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/read-diagnostic-bundle' ), 'Read diagnostic bundle is not mounted on mad4b-read.' );
+$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', 'mad4b/read-diagnostic-bundle' ), 'Read diagnostic bundle is not mounted on mad4b-chatgpt.' );
+$snapshot = MAD4B_SCP_Read_Consistency::snapshot_header( array() );
+$check( isset( $snapshot['contract'] ) && 'mad4b.read-consistency.v1' === $snapshot['contract'], 'Read snapshot contract drifted.' );
+$check( isset( $snapshot['runtime_generation'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $snapshot['runtime_generation'] ), 'Read snapshot runtime generation missing.' );
+$check( isset( $snapshot['read_transaction_id'] ) && 0 === strpos( $snapshot['read_transaction_id'], 'rtx_' ), 'Read transaction id missing.' );
+$check( ! empty( $snapshot['read_only'] ) && empty( $snapshot['mutation_performed'] ), 'Read snapshot must remain mutation-free.' );
+$bundle = MAD4B_SCP_Read_Consistency::diagnostic_bundle( array(
+    'bundle' => 'identity',
+    'read_transaction_id' => $snapshot['read_transaction_id'],
+    'expected_runtime_generation' => $snapshot['runtime_generation'],
+    'sequence' => 1,
+    'budget_ms' => 5000,
+) );
+$check( is_array( $bundle ) && ! empty( $bundle['generation_match'] ), 'Same-generation identity bundle did not remain mergeable.' );
+$check( ! empty( $bundle['valid_for_merge'] ) && empty( $bundle['discard_partial'] ), 'Same-generation identity bundle was incorrectly discarded.' );
+$mismatch = MAD4B_SCP_Read_Consistency::diagnostic_bundle( array(
+    'bundle' => 'identity',
+    'read_transaction_id' => $snapshot['read_transaction_id'],
+    'expected_runtime_generation' => str_repeat( '0', 64 ),
+    'sequence' => 2,
+) );
+$check( is_array( $mismatch ) && 'generation_changed' === $mismatch['state'], 'Generation mismatch did not fail closed.' );
+$check( empty( $mismatch['valid_for_merge'] ) && ! empty( $mismatch['discard_partial'] ) && empty( $mismatch['resume_permitted'] ), 'Generation mismatch did not invalidate partial evidence.' );
+$guidance = MAD4B_SCP_Connector_Resilience::client_guidance();
+$check( 1 === (int) $guidance['preferred_parallelism'] && 2 === (int) $guidance['read_parallelism_max'], 'Read parallelism contract drifted.' );
+$check( 1 === (int) $guidance['reconnect_attempts'] && ! empty( $guidance['replay_read_after_reconnect'] ) && empty( $guidance['replay_mutation_after_reconnect'] ), 'Reconnect/replay contract drifted.' );
+$check( ! empty( $guidance['snapshot_identity_required'] ) && ! empty( $guidance['discard_partial_on_generation_change'] ), 'Snapshot-aware recovery contract drifted.' );
 
 $check( class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ), 'MCP registration bridge class unavailable.' );
 $rest_server_present_before_bridge_status = isset( $GLOBALS['wp_rest_server'] ) && is_object( $GLOBALS['wp_rest_server'] );

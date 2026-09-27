@@ -282,8 +282,10 @@ jobs:
               raise SystemExit('Skill certification still has broad observers: ' + ' | '.join(found))
           if "add_action( 'wp_abilities_api_init', array( __CLASS__, 'observe' ), 99 );" not in skill_cert:
               raise SystemExit('Canonical zero-touch Skill certification hook is missing')
-          if 'MAD4B_SCP_Skill_Runtime_Certification::observe()' not in skill_abilities:
-              raise SystemExit('Explicit Skill certification must refresh evidence on demand')
+          if 'MAD4B_SCP_Skill_Runtime_Certification::current_status()' not in skill_abilities:
+              raise SystemExit('Explicit Skill certification must use fresh read-only live inspection')
+          if 'MAD4B_SCP_Skill_Runtime_Certification::observe( true )' in skill_abilities:
+              raise SystemExit('Readonly Skill certification must not persist or audit through forced observe')
 
           prime = plugin.index('rest_get_server();', plugin.index('public static function prime_admin_mcp_runtime'))
           rescue = plugin.index("MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );", prime)

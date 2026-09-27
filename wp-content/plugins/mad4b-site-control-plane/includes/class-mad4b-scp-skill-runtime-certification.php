@@ -23,14 +23,18 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'observe' ), 99 );
 	}
 
-	public static function observe() {
+	public static function observe( $force_explicit = false ) {
 		if ( self::$observing ) return self::persisted_status();
+		$force_explicit = true === $force_explicit;
 		// MCP initialize/tools-list/call are latency-sensitive execution paths.
 		// Certification evaluation performs registry/provider/filesystem snapshot
 		// inspection and must never run merely because the Abilities registry was
-		// initialized for a transport request. Persisted evidence remains readable;
-		// explicit admin/CLI/certification lifecycles own recomputation.
-		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+		// initialized for a transport request. Persisted evidence remains readable.
+		// A bounded reconciliation operation may explicitly force one fresh
+		// certification after it has just changed managed Skill bytes; that path is
+		// intentional work, not incidental protocol initialization.
+		if ( ! $force_explicit
+			&& class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 			&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_is_protocol_hotpath' )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) {
 			return self::persisted_status();

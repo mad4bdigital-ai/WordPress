@@ -190,8 +190,9 @@ assert "return;" in mark_request_body
 # The canonical Abilities hook fires during MCP transport construction. Skill
 # runtime certification is expensive (provider/registry/filesystem evaluation)
 # and must return persisted evidence before evaluate() on every MCP request.
-skill_observe = skill_runtime.split("public static function observe()", 1)[1].split("public static function current_status()", 1)[0]
+skill_observe = skill_runtime.split("public static function observe( $force_explicit = false )", 1)[1].split("public static function current_status()", 1)[0]
 assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in skill_observe
+assert "if ( ! $force_explicit" in skill_observe
 assert "return self::persisted_status();" in skill_observe
 assert skill_observe.index("current_request_is_protocol_hotpath()") < skill_observe.index("self::evaluate()")
 

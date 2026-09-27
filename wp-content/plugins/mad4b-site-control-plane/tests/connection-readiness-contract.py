@@ -17,6 +17,8 @@ def forbid(text, needle, label):
 status = read('includes/class-mad4b-scp-connection-status.php')
 evidence = read('includes/class-mad4b-scp-external-handshake-evidence.php')
 ability = read('includes/class-mad4b-scp-connection-ability.php')
+read_consistency = read('includes/class-mad4b-scp-read-consistency.php')
+resilience = read('includes/class-mad4b-scp-connector-resilience.php')
 ui = read('includes/class-mad4b-scp-connection-admin-ui.php')
 admin_ui = read('includes/class-mad4b-scp-admin-ui.php')
 adapter_ui = read('includes/class-mad4b-scp-adapter-coverage-admin-ui.php')
@@ -160,6 +162,8 @@ require(ability, "'readonly' => true", 'connection-ability-readonly')
 require(ability, "'public' => false", 'connection-ability-nonpublic')
 require(servers, "'mad4b/runtime-authority-status'", 'connection-runtime-authority-mounted')
 require(servers, "'mad4b/connection-status'", 'connection-status-mounted')
+require(servers, "'mad4b/read-snapshot-header'", 'read-snapshot-header-mounted')
+require(servers, "'mad4b/read-diagnostic-bundle'", 'read-diagnostic-bundle-mounted')
 require(servers, "'mad4b-write'", 'write-server-id')
 require(servers, "'MAD4B Write MCP'", 'write-server-registration')
 require(servers, "array( __CLASS__, 'can_write_transport' )", 'write-server-permission')
@@ -172,6 +176,36 @@ require(servers, "MAD4B_SCP_Adapter_Registry::instance()", 'write-adapter-projec
 require(servers, "return 'core';", 'write-core-provider-binding')
 for generic in ('execute-any', 'generic-dispatch', 'call_user_func( $input', 'ability_name_from_request'):
     forbid(servers, generic, 'write-no-generic-dispatcher')
+
+for marker in (
+    "const CONTRACT = 'mad4b.read-consistency.v1'",
+    "const SNAPSHOT_ABILITY = 'mad4b/read-snapshot-header'",
+    "const BUNDLE_ABILITY = 'mad4b/read-diagnostic-bundle'",
+    "return array( 'identity', 'runtime', 'certification', 'providers' )",
+    "'runtime_generation' => $runtime_generation",
+    "'read_transaction_id' => $transaction_id",
+    "'discard_partial_on_generation_change' => true",
+    "'valid_for_merge' => false",
+    "'client_action' => 'restart_read_transaction'",
+    "runtime_changed_during_bundle",
+    "MAD4B_SCP_Connector_Resilience::run_checks",
+):
+    require(read_consistency, marker, 'read-consistency-contract')
+for forbidden in ('mad4b/execute-many', 'update_option(', 'add_option(', 'delete_option(', 'wp_remote_post(', 'curl_exec(', '$wpdb->'):
+    forbid(read_consistency, forbidden, 'read-consistency-readonly-fixed-bundles')
+for marker in (
+    "'preferred_parallelism' => 1",
+    "'read_parallelism_max' => 2",
+    "'reconnect_attempts' => 1",
+    "'replay_read_after_reconnect' => true",
+    "'replay_mutation_after_reconnect' => false",
+    "'snapshot_identity_required' => true",
+    "'discard_partial_on_generation_change' => true",
+    "'resume_completed_reads_on_generation_match' => true",
+    "'session_termination_budget' => 2",
+    "'persistent_session_breaker_used' => false",
+):
+    require(resilience, marker, 'read-consistency-client-policy')
 
 require(transport_context, "const CONTRACT = 'mad4b.mcp-transport-context.v3'", 'transport-context-contract')
 require(transport_context, "'/mcp/' . $server_id", 'transport-exact-route')
@@ -235,7 +269,7 @@ for marker in (
 for marker in (
     'class-mad4b-scp-mcp-provider-isolation.php', 'class-mad4b-scp-external-handshake-evidence.php',
     'class-mad4b-scp-transport-context.php', 'class-mad4b-scp-connection-status.php',
-    'class-mad4b-scp-connection-ability.php', 'class-mad4b-scp-admin-experience.php',
+    'class-mad4b-scp-connection-ability.php', 'class-mad4b-scp-read-consistency.php', 'class-mad4b-scp-admin-experience.php',
     'class-mad4b-scp-connection-admin-ui.php', 'class-mad4b-scp-mcp-registration-bridge.php',
     'class-mad4b-scp-mcp-registration-diagnostics-admin.php',
 ):
@@ -246,6 +280,7 @@ require(bootstrap, 'MAD4B_SCP_MCP_Provider_Isolation::boot_early();', 'provider-
 require(bootstrap, 'MAD4B_SCP_External_Handshake_Evidence::boot();', 'external-evidence-boot')
 require(plugin, 'MAD4B_SCP_Connection_Admin_UI::boot()', 'connection-ui-boot')
 require(plugin, 'MAD4B_SCP_Connection_Ability::boot()', 'connection-ability-boot')
+require(bootstrap, 'MAD4B_SCP_Read_Consistency::boot();', 'read-consistency-boot')
 require(plugin, 'MAD4B_SCP_MCP_Provider_Isolation::boot();', 'isolation-boot')
 require(plugin, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'registration-bridge-idempotent-boot')
 forbid(plugin, "add_action( 'mcp_adapter_init', array( $servers, 'register_servers' )", 'no-late-mcp-server-binding')

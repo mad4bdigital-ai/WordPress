@@ -1497,7 +1497,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( is_wp_error( $persisted ) ) return $persisted;
 			$heartbeat = self::refresh_skills_lock( $skills_lock );
 			if ( is_wp_error( $heartbeat ) ) return self::block_skills_job( $state, $heartbeat );
-			$certification = MAD4B_SCP_Skill_Runtime_Certification::observe();
+			$certification = MAD4B_SCP_Skill_Runtime_Certification::observe( true );
 			$heartbeat = self::refresh_skills_lock( $skills_lock );
 			if ( is_wp_error( $heartbeat ) ) return self::block_skills_job( $state, $heartbeat );
 			if ( ! is_array( $certification ) || empty( $certification['ready'] ) ) {
