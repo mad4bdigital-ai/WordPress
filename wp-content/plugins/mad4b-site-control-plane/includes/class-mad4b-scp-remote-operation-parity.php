@@ -777,12 +777,26 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( ! is_array( $current ) || empty( $current['owner'] ) || ! hash_equals( (string) $current['owner'], (string) $owner ) ) {
 			return new WP_Error( 'mad4b_remote_skill_lock_fenced', 'Managed Skill reconciliation lost its durable lock ownership.' );
 		}
-		if ( time() > (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
+		$now = time();
+		if ( $now > (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
 			return new WP_Error( 'mad4b_remote_skill_lock_expired', 'Managed Skill reconciliation lock expired before heartbeat.' );
 		}
 		$next = $current;
-		$next['expires_at_epoch'] = time() + self::SKILLS_LOCK_TTL;
-		$next['heartbeat_at'] = gmdate( 'c' );
+		$next['expires_at_epoch'] = $now + self::SKILLS_LOCK_TTL;
+		$next['heartbeat_at'] = gmdate( 'c', $now );
+
+		// Multiple bounded reconciliation checkpoints can heartbeat within the same
+		// second. In that case the durable record is already exactly the desired
+		// lease state and wpdb->update() legitimately returns 0 ("no rows changed").
+		// Treat only that byte-equivalent no-op as success; any different record
+		// still goes through the fenced compare-and-swap path below.
+		$current_serialized = maybe_serialize( $current );
+		$next_serialized = maybe_serialize( $next );
+		if ( is_string( $current_serialized ) && is_string( $next_serialized )
+			&& hash_equals( hash( 'sha256', $current_serialized ), hash( 'sha256', $next_serialized ) ) ) {
+			return true;
+		}
+
 		if ( ! self::compare_and_swap_option( self::SKILLS_LOCK_OPTION, $current, $next ) ) {
 			return new WP_Error( 'mad4b_remote_skill_lock_heartbeat_raced', 'Managed Skill reconciliation lock changed during heartbeat.' );
 		}

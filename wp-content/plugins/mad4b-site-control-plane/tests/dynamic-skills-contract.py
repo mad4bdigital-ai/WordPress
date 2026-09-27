@@ -41,6 +41,7 @@ exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(en
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 enrollment_dispatch = (wp / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_text(encoding='utf-8')
+remote_parity = (wp / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
 
 for marker in [
     "private static function request_is_wordpress_plugin_lifecycle()",
@@ -72,6 +73,18 @@ runtime_test = wp / 'tests' / 'enrollment-dispatch-runtime.php'
 if not runtime_test.is_file():
     raise SystemExit('bounded enrollment dispatcher runtime test is missing')
 subprocess.run(['php', str(runtime_test)], check=True)
+
+heartbeat_runtime_test = wp / 'tests' / 'managed-skills-heartbeat-runtime.php'
+if not heartbeat_runtime_test.is_file():
+    raise SystemExit('managed Skills same-second heartbeat runtime regression is missing')
+for marker in [
+    "$current_serialized = maybe_serialize( $current );",
+    "$next_serialized = maybe_serialize( $next );",
+    "mad4b_remote_skill_lock_heartbeat_raced",
+]:
+    if marker not in remote_parity:
+        raise SystemExit(f'missing managed Skills heartbeat no-op/fencing invariant: {marker}')
+subprocess.run(['php', str(heartbeat_runtime_test)], check=True)
 
 for marker in [
     "public static function reconcile()",
