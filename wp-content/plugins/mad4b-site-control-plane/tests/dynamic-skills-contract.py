@@ -42,6 +42,7 @@ main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 enrollment_dispatch = (wp / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_text(encoding='utf-8')
 remote_parity = (wp / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
+runtime_certification = (wp / 'includes' / 'class-mad4b-scp-skill-runtime-certification.php').read_text(encoding='utf-8')
 
 for marker in [
     "private static function request_is_wordpress_plugin_lifecycle()",
@@ -85,6 +86,18 @@ for marker in [
     if marker not in remote_parity:
         raise SystemExit(f'missing managed Skills heartbeat no-op/fencing invariant: {marker}')
 subprocess.run(['php', str(heartbeat_runtime_test)], check=True)
+
+for marker in [
+    "public static function observe( $force_explicit = false )",
+    "if ( ! $force_explicit",
+    "current_request_is_protocol_hotpath()",
+]:
+    if marker not in runtime_certification:
+        raise SystemExit(f'missing explicit fresh Skills certification invariant: {marker}')
+if "MAD4B_SCP_Skill_Runtime_Certification::observe( true )" not in remote_parity:
+    raise SystemExit('managed Skills reconciliation must force fresh certification after explicit mutations')
+if "MAD4B_SCP_Skill_Runtime_Certification::observe();" in remote_parity:
+    raise SystemExit('managed Skills reconciliation may not reuse persisted MCP-hotpath certification after mutation')
 
 for marker in [
     "public static function reconcile()",
