@@ -28,6 +28,13 @@ class MAD4B_SCP_Approval_Tickets {
     public static function candidate_binding( $ticket_id ) { return self::$binding; }
 }
 
+class MAD4B_SCP_Approval_Repository {
+    public static $result = array();
+    public static function reconcile_plan( array $candidate, $agent_public_id, $ability, $provider, $target_fingerprint, $input ) {
+        return self::$result;
+    }
+}
+
 class MAD4B_SCP_Approval_Decision_Admin {
     const PAGE_SLUG = 'mad4b-approval-decisions';
     public static $candidate = array();
@@ -99,6 +106,33 @@ $exact_binding = array(
 MAD4B_SCP_Approval_Tickets::$binding = $exact_binding;
 
 $adapter = new MAD4B_SCP_Approval_Handoff_Adapter();
+$names = $adapter->ability_names();
+mad4b_handoff_assert( in_array( 'mad4b/approval-plan-reconcile', $names['read'], true ), 'Approval plan reconciliation must be exposed only as a read ability.' );
+MAD4B_SCP_Approval_Repository::$result = array(
+    'contract' => 'mad4b.approval-plan-reconciliation.v1',
+    'found' => true,
+    'ticket_id' => $ticket_id,
+    'status' => 'pending',
+    'effective_status' => 'pending',
+    'payload_sha256' => $payload,
+    'candidate_binding_exact' => true,
+    'duplicate_matches_detected' => false,
+    'retry_plan_safe' => false,
+    'next_action' => 'use_existing_ticket_or_human_handoff',
+    'read_only' => true,
+    'mutation_performed' => false,
+);
+$reconciled = $adapter->reconcile_plan( array(
+    'agent_public_id' => '33333333-3333-4333-8333-333333333333',
+    'ability' => 'elementor/update-widget-settings',
+    'provider' => 'elementor',
+    'target_fingerprint' => str_repeat( 'e', 64 ),
+    'input' => array( 'post_id' => 1 ),
+) );
+mad4b_handoff_assert( is_array( $reconciled ) && ! empty( $reconciled['found'] ), 'Exact approval reconciliation must recover the existing ticket.' );
+mad4b_handoff_assert( empty( $reconciled['retry_plan_safe'] ), 'Existing pending exact plan must prohibit blind replay.' );
+mad4b_handoff_assert( ! empty( $reconciled['read_only'] ) && empty( $reconciled['mutation_performed'] ) && empty( $reconciled['decision_exposed'] ), 'Approval reconciliation must remain read-only and non-authorizing.' );
+
 $result = $adapter->handoff( array( 'ticket_id' => $ticket_id ) );
 mad4b_handoff_assert( is_array( $result ), 'Exact v2 handoff must return a read-only result.' );
 mad4b_handoff_assert( ! empty( $result['candidate_binding_exact'] ), 'Exact v2 candidate binding must be accepted.' );

@@ -179,7 +179,13 @@ for marker in [
     "const CONTRACT = 'mad4b.approval-read-model.v3'",
     'public static function actionable',
     'public static function history',
+    'public static function reconcile_plan',
     'public static function effective_status',
+    "MAD4B_SCP_Approval_Tickets::canonical_payload_hash",
+    "LIMIT 2",
+    "'duplicate_matches_detected'",
+    "'retry_plan_safe'",
+    "'next_action'",
     "'site_uuid'", "'site_profile_revision'", "'site_profile_digest'",
     "'expired'", "'stale'",
 ]:
@@ -216,8 +222,17 @@ if 'approval-decision' in servers:
 # Handoff remains read-only and surfaces only the human action path.
 required_handoff = [
     "const CONTRACT = 'mad4b.approval-decision-handoff.v1'",
+    "const RECONCILE_CONTRACT = 'mad4b.approval-plan-reconciliation.v1'",
     "'mad4b/approval-decision-handoff'",
-    "'read' => array( 'mad4b/approval-decision-handoff' )",
+    "'mad4b/approval-plan-reconcile'",
+    "'read' => array( 'mad4b/approval-decision-handoff', 'mad4b/approval-plan-reconcile' )",
+    "public function reconcile_plan",
+    "MAD4B_SCP_Approval_Repository::reconcile_plan",
+    "$result['authorizing'] = false",
+    "$result['read_only'] = true",
+    "$result['mutation_performed'] = false",
+    "$result['decision_exposed'] = false",
+    "$result['target_execution_exposed'] = false",
     "'content' => array()", "'admin' => array()",
     "'human_action_required' => true", "'decision_exposed' => false",
     "'nonce_exposed' => false", "'target_execution_exposed' => false",
@@ -237,6 +252,7 @@ for forbidden_handoff in [
     'decide_pending(', 'wp_create_nonce(', 'wp_nonce_field(', 'admin_post_',
     'MAD4B_SCP_Mutation_Manager', 'execute_callback', 'mad4b/database-update',
     'mad4b/filesystem-write', "'decision' => 'approve'", 'update_option(', 'delete_option(',
+    '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete(',
 ]:
     if forbidden_handoff in handoff:
         raise SystemExit('Approval handoff gained decision or mutation authority: ' + forbidden_handoff)
