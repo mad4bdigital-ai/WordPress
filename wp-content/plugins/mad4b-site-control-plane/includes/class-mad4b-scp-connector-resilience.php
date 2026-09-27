@@ -37,14 +37,23 @@ final class MAD4B_SCP_Connector_Resilience {
 				$value = call_user_func( $callback );
 				$elapsed_ms = self::elapsed_ms( $started );
 				if ( is_wp_error( $value ) ) {
+					$classification = self::classify_wp_error( $value );
+					if ( $retry_transient
+						&& ! empty( $classification['auto_retry'] )
+						&& $attempt < $max_attempts ) {
+						continue;
+					}
 					return array(
 						'contract' => self::CONTRACT,
 						'ok' => false,
 						'state' => 'error',
 						'attempts' => $attempt,
 						'elapsed_ms' => $elapsed_ms,
-						'retryable' => false,
-						'category' => self::classify_wp_error( $value ),
+						'retryable' => ! empty( $classification['retryable'] ),
+						'automatic_retry_allowed' => ! empty( $classification['auto_retry'] ),
+						'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'wp_error',
+						'client_action' => isset( $classification['client_action'] ) ? (string) $classification['client_action'] : 'inspect',
+						'retry_after_seconds' => self::retry_after_seconds_from_wp_error( $value ),
 						'error_code' => (string) $value->get_error_code(),
 						'error_fingerprint' => self::wp_error_fingerprint( $name, $value ),
 						'raw_error_message_exposed' => false,
@@ -66,7 +75,11 @@ final class MAD4B_SCP_Connector_Resilience {
 				);
 			} catch ( Throwable $e ) {
 				$classification = self::classify_exception( $e );
-				if ( ! empty( $classification['retryable'] ) && $attempt < $max_attempts ) continue;
+				if ( $retry_transient
+					&& ! empty( $classification['auto_retry'] )
+					&& $attempt < $max_attempts ) {
+					continue;
+				}
 				return array(
 					'contract' => self::CONTRACT,
 					'ok' => false,
@@ -74,7 +87,9 @@ final class MAD4B_SCP_Connector_Resilience {
 					'attempts' => $attempt,
 					'elapsed_ms' => self::elapsed_ms( $started ),
 					'retryable' => ! empty( $classification['retryable'] ),
+					'automatic_retry_allowed' => ! empty( $classification['auto_retry'] ),
 					'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown',
+					'client_action' => isset( $classification['client_action'] ) ? (string) $classification['client_action'] : 'inspect',
 					'error_class' => get_class( $e ),
 					'error_fingerprint' => self::exception_fingerprint( $name, $e ),
 					'raw_error_message_exposed' => false,
@@ -117,13 +132,16 @@ final class MAD4B_SCP_Connector_Resilience {
 			array(
 				'target' => $target,
 				'retryable' => ! empty( $result['retryable'] ),
+				'automatic_retry_allowed' => ! empty( $result['automatic_retry_allowed'] ),
 				'category' => isset( $result['category'] ) ? (string) $result['category'] : 'unknown',
+				'client_action' => isset( $result['client_action'] ) ? (string) $result['client_action'] : 'inspect',
+				'retry_after_seconds' => isset( $result['retry_after_seconds'] ) ? (int) $result['retry_after_seconds'] : 0,
 				'attempts' => isset( $result['attempts'] ) ? (int) $result['attempts'] : 1,
 				'elapsed_ms' => isset( $result['elapsed_ms'] ) ? (int) $result['elapsed_ms'] : 0,
 				'error_fingerprint' => isset( $result['error_fingerprint'] ) ? (string) $result['error_fingerprint'] : '',
 				'mutation_state' => 'not_applicable_read_only',
 				'reconciliation_required' => false,
-				'blind_retry_allowed' => ! empty( $result['retryable'] ),
+				'blind_retry_allowed' => ! empty( $result['automatic_retry_allowed'] ),
 				'raw_error_message_exposed' => false,
 			)
 		);
@@ -230,6 +248,10 @@ final class MAD4B_SCP_Connector_Resilience {
 			'avoid_large_parallel_fanout' => true,
 			'max_recommended_parallel_read_calls' => 2,
 			'retry_transient_read_once' => true,
+			'rate_limit_requires_backoff' => true,
+			'supported_error_categories' => array( 'rate_limit', 'timeout', 'transport', 'upstream_unavailable', 'authorization', 'contract_or_validation', 'unknown' ),
+			'default_read_attempt_budget' => self::DEFAULT_READ_ATTEMPTS,
+			'default_request_budget_ms' => self::DEFAULT_REQUEST_BUDGET_MS,
 			'automatic_write_retry_allowed' => false,
 			'automatic_enrollment_retry_allowed' => false,
 			'reconcile_before_retry_when_mutation_state_unknown' => true,
@@ -242,32 +264,59 @@ final class MAD4B_SCP_Connector_Resilience {
 		$message = strtolower( (string) $e->getMessage() );
 		$class = strtolower( get_class( $e ) );
 		if ( self::contains_any( $message, array( '429', 'rate limit', 'too many requests' ) ) ) {
-			return array( 'category' => 'rate_limit', 'retryable' => true );
+			return array( 'category' => 'rate_limit', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'backoff_then_retry' );
 		}
 		if ( self::contains_any( $message, array( 'timeout', 'timed out' ) ) || false !== strpos( $class, 'timeout' ) ) {
-			return array( 'category' => 'timeout', 'retryable' => true );
+			return array( 'category' => 'timeout', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'retry_once' );
 		}
 		if ( self::contains_any( $message, array( 'session terminated', 'connection reset', 'server disconnected', 'transport', 'broken pipe', 'eof' ) ) ) {
-			return array( 'category' => 'transport', 'retryable' => true );
+			return array( 'category' => 'transport', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'reconnect_then_retry_once' );
 		}
 		if ( self::contains_any( $message, array( '502', '503', '504', 'upstream', 'temporar', 'service unavailable', 'bad gateway', 'gateway timeout' ) ) ) {
-			return array( 'category' => 'upstream_unavailable', 'retryable' => true );
+			return array( 'category' => 'upstream_unavailable', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'retry_once' );
 		}
 		if ( self::contains_any( $message, array( 'unauthorized', 'forbidden', 'permission', 'scope', 'approval', 'authority' ) ) ) {
-			return array( 'category' => 'authorization', 'retryable' => false );
+			return array( 'category' => 'authorization', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'repair_authority_or_scope' );
 		}
 		if ( self::contains_any( $message, array( 'invalid argument', 'validation', 'schema', 'contract', 'not found', 'unknown ability' ) ) ) {
-			return array( 'category' => 'contract_or_validation', 'retryable' => false );
+			return array( 'category' => 'contract_or_validation', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'repair_request_or_contract' );
 		}
-		return array( 'category' => 'unknown', 'retryable' => false );
+		return array( 'category' => 'unknown', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'inspect_before_retry' );
 	}
 
 	private static function classify_wp_error( WP_Error $error ) {
 		$code = strtolower( (string) $error->get_error_code() );
-		if ( self::contains_any( $code, array( 'timeout', 'temporar', 'transport', 'rate_limit', 'upstream' ) ) ) return 'transient_wp_error';
-		if ( self::contains_any( $code, array( 'forbidden', 'permission', 'scope', 'approval', 'authority', 'denied' ) ) ) return 'authorization';
-		if ( self::contains_any( $code, array( 'invalid', 'schema', 'contract', 'required', 'not_found', 'unavailable' ) ) ) return 'contract_or_validation';
-		return 'wp_error';
+		$message = strtolower( (string) $error->get_error_message() );
+		$haystack = $code . ' ' . $message;
+		if ( self::contains_any( $haystack, array( '429', 'rate_limit', 'rate limit', 'too many requests' ) ) ) {
+			return array( 'category' => 'rate_limit', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'backoff_then_retry' );
+		}
+		if ( self::contains_any( $haystack, array( 'timeout', 'timed out' ) ) ) {
+			return array( 'category' => 'timeout', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'retry_once' );
+		}
+		if ( self::contains_any( $haystack, array( 'transport', 'connection reset', 'session terminated', 'server disconnected', 'http_request_failed' ) ) ) {
+			return array( 'category' => 'transport', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'reconnect_then_retry_once' );
+		}
+		if ( self::contains_any( $haystack, array( '502', '503', '504', 'upstream', 'temporar', 'unavailable', 'bad gateway', 'gateway timeout' ) ) ) {
+			return array( 'category' => 'upstream_unavailable', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'retry_once' );
+		}
+		if ( self::contains_any( $haystack, array( 'forbidden', 'permission', 'scope', 'approval', 'authority', 'denied', 'unauthorized' ) ) ) {
+			return array( 'category' => 'authorization', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'repair_authority_or_scope' );
+		}
+		if ( self::contains_any( $haystack, array( 'invalid', 'schema', 'contract', 'required', 'not_found', 'not found', 'unknown' ) ) ) {
+			return array( 'category' => 'contract_or_validation', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'repair_request_or_contract' );
+		}
+		return array( 'category' => 'wp_error', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'inspect_before_retry' );
+	}
+
+	private static function retry_after_seconds_from_wp_error( WP_Error $error ) {
+		$data = $error->get_error_data();
+		if ( is_array( $data ) ) {
+			foreach ( array( 'retry_after', 'retry_after_seconds' ) as $key ) {
+				if ( isset( $data[ $key ] ) && is_numeric( $data[ $key ] ) ) return max( 0, min( 86400, (int) $data[ $key ] ) );
+			}
+		}
+		return 0;
 	}
 
 	private static function contains_any( $haystack, array $needles ) {
