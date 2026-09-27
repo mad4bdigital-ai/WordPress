@@ -554,6 +554,7 @@ jobs:
               '.github/workflows/mad4b-release-verdict.yml',
               '.github/workflows/mad4b-context-authority.yml',
               '.github/workflows/feature-007-critical-kernel.yml',
+              'tools/test_verify_feature_boundary.py',
           }
           runtime_patterns = set(full_runtime_trigger_paths) | set(critical_trigger_workflows) | {
               '.github/workflows/feature-007-critical-kernel.yml',
