@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
+import sys
 
 root = Path(__file__).resolve().parents[1]
 servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
@@ -124,5 +126,10 @@ assert plugin_version and runtime_version
 assert plugin_version.group(1) == runtime_version.group(1)
 assert "route-targeted" in readme.lower() or "tools/list" in readme.lower()
 assert "no persistent" in readme.lower() or "request-local" in readme.lower()
+
+connector_contract = root / "tests" / "connector-resilience-contract.py"
+connector_runtime = root / "tests" / "connector-resilience-runtime.php"
+subprocess.run([sys.executable, str(connector_contract)], check=True)
+subprocess.run(["php", str(connector_runtime)], check=True)
 
 print("mad4b.chatgpt-catalog-performance.v5: PASS")
