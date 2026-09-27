@@ -43,7 +43,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/scheduler-fair-rank',
 				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status',
 				'mad4b/site-bootstrap-snapshot',
-				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue',
+				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
 			), $governed_status ),
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status',
@@ -115,6 +115,11 @@ final class MAD4B_SCP_Servers {
 			&& wp_has_ability( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ) ) {
 			$candidates[] = MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY;
 		}
+		if ( class_exists( 'MAD4B_SCP_AI_Approval' )
+			&& function_exists( 'wp_has_ability' )
+			&& wp_has_ability( MAD4B_SCP_AI_Approval::ABILITY ) ) {
+			$candidates[] = MAD4B_SCP_AI_Approval::ABILITY;
+		}
 		return array_values( array_unique( $candidates ) );
 	}
 
@@ -170,6 +175,9 @@ final class MAD4B_SCP_Servers {
 		// runtime-write eligible only while the bounded Staging delegation is active.
 		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) || ! MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ) {
 			$candidates = array_values( array_diff( $candidates, array( 'mad4b/context-ai-review' ) ) );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_AI_Approval' ) || ! MAD4B_SCP_AI_Approval::catalog_eligible() ) {
+			$candidates = array_values( array_diff( $candidates, array( 'mad4b/approval-ai-decide' ) ) );
 		}
 		$projection = self::adapter_write_projection();
 		$candidates = array_merge( $candidates, $projection['eligible'] );
@@ -242,6 +250,17 @@ final class MAD4B_SCP_Servers {
 				'provider' => 'core',
 				'reason' => 'ai_review_standing_delegation_not_eligible',
 				'violations' => $violations,
+			);
+		}
+		if ( class_exists( 'MAD4B_SCP_AI_Approval' )
+			&& function_exists( 'wp_has_ability' )
+			&& wp_has_ability( MAD4B_SCP_AI_Approval::ABILITY )
+			&& ! MAD4B_SCP_AI_Approval::catalog_eligible() ) {
+			$gated[] = array(
+				'ability' => MAD4B_SCP_AI_Approval::ABILITY,
+				'provider' => 'core',
+				'reason' => 'ai_approval_standing_delegation_not_eligible',
+				'violations' => array( 'ai_approval_standing_delegation_not_eligible' ),
 			);
 		}
 		usort( $gated, static function ( $a, $b ) {

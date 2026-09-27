@@ -138,8 +138,15 @@ if ( ! array_key_exists( 'all_remote_writes_require_exact_approval', $write_auth
 if ( empty( $write_authority['normal_remote_writes_require_exact_approval'] ) ) $fail( 'Normal remote governed writes are not forced through exact approvals.' );
 if ( 'exact_approval_with_bounded_standing_exceptions' !== (string) $write_authority['remote_write_approval_policy'] ) $fail( 'Write authority remote approval policy is not the v2 bounded standing-exception contract.' );
 $prior_approval_exceptions = isset( $write_authority['remote_write_prior_approval_exceptions'] ) && is_array( $write_authority['remote_write_prior_approval_exceptions'] ) ? array_values( $write_authority['remote_write_prior_approval_exceptions'] ) : array();
-$expected_prior_approval_exceptions = array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY, MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY );
-if ( $expected_prior_approval_exceptions !== $prior_approval_exceptions ) $fail( 'Write authority prior-approval exception declarations are not limited to candidate bootstrap + bounded AI review delegation.' );
+$expected_prior_approval_exceptions = array(
+	MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY,
+	MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY,
+	MAD4B_SCP_AI_Approval::ABILITY,
+);
+if ( $expected_prior_approval_exceptions !== $prior_approval_exceptions ) $fail( 'Write authority prior-approval exception declarations are not limited to candidate bootstrap + bounded Context AI review + bounded AI approval delegation.' );
+if ( empty( $write_authority['ai_approval_standing_delegation_defined'] ) ) $fail( 'Write authority does not declare the bounded AI approval delegation.' );
+if ( MAD4B_SCP_AI_Approval::DELEGATION_CONTRACT !== ( isset( $write_authority['ai_approval_standing_delegation_contract'] ) ? (string) $write_authority['ai_approval_standing_delegation_contract'] : '' ) ) $fail( 'Write authority AI approval delegation contract mismatch.' );
+if ( ! empty( $write_authority['ai_approval_standing_delegation_configured'] ) ) $fail( 'Fresh generic Staging unexpectedly enabled AI approval without an explicit AI delegation policy.' );
 if ( ! empty( $write_authority['breakglass_included'] ) || ! empty( $write_authority['breakglass_auto_enable'] ) ) $fail( 'Breakglass leaked into governed write authority.' );
 if ( empty( $write_authority['write_tool_count'] ) ) $fail( 'Write authority inventory is empty.' );
 if ( empty( $write_authority['site_uuid'] ) || ! hash_equals( MAD4B_SCP_Site_Profile::site_uuid(), (string) $write_authority['site_uuid'] ) ) $fail( 'Write authority is not bound to the enrolled site UUID.' );

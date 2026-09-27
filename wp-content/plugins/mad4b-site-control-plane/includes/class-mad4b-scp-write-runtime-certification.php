@@ -204,6 +204,9 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		if ( ! empty( $authority['ai_review_standing_delegation_configured'] ) ) {
 			$allowed_exceptions[] = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY : 'mad4b/context-ai-review';
 		}
+		if ( ! empty( $authority['ai_approval_standing_delegation_configured'] ) ) {
+			$allowed_exceptions[] = class_exists( 'MAD4B_SCP_AI_Approval' ) ? MAD4B_SCP_AI_Approval::ABILITY : 'mad4b/approval-ai-decide';
+		}
 		$unexpected_exceptions = array_values( array_diff( $approval_exceptions, $allowed_exceptions ) );
 		$duplicate_exceptions = count( $approval_exceptions ) !== count( array_unique( $approval_exceptions ) );
 		$closed_bootstrap_exception = ! empty( $bootstrap_closure['closed'] )

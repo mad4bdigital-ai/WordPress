@@ -12,6 +12,7 @@ servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='ut
 rest = (root / 'includes/class-mad4b-scp-rest-compatibility.php').read_text(encoding='utf-8')
 external = (root / 'includes/class-mad4b-scp-external-handshake-evidence.php').read_text(encoding='utf-8')
 authorization = (root / 'includes/class-mad4b-scp-authorization.php').read_text(encoding='utf-8')
+impact_policy = (root / 'includes/class-mad4b-scp-impact-policy.php').read_text(encoding='utf-8')
 live_truth = (root / 'includes/class-mad4b-scp-live-truth.php').read_text(encoding='utf-8')
 write_cert = (root / 'includes/class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
 
@@ -352,10 +353,19 @@ for marker in [
     "'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v2'",
     "'remote_write_approval_policy' => 'exact_approval_with_bounded_standing_exceptions'",
     "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' )",
+    "$policy['remote_write_prior_approval_exceptions'][] = $ai_approval_ability",
+    "'ai_approval_standing_delegation_defined' => true",
+    "'ai_approval_operation_classification_contract'",
     "const CANDIDATE_BOOTSTRAP_ABILITY = 'mad4b/acceptance-target-provision'",
 ]:
     if marker not in write:
         raise SystemExit('Write authority invariant missing: ' + marker)
+for marker in [
+    "'production_auto_approval' => false",
+    "'breakglass_auto_approval' => false",
+]:
+    if marker not in impact_policy:
+        raise SystemExit('Operation classification safety invariant missing: ' + marker)
 if "'mad4b/database-raw-query' === $ability_name" not in servers:
     raise SystemExit('Raw SQL exclusion from governed write projection is missing.')
 if 'public static function blocked_write_tools' not in servers:

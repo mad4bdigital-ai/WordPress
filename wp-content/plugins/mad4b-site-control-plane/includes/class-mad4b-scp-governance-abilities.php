@@ -262,7 +262,8 @@ final class MAD4B_SCP_Governance_Abilities {
 			? MAD4B_SCP_Staging_Write_Authority::authorization_input( $operation_input, $ability_name )
 			: $operation_input;
 		$impact = MAD4B_SCP_Impact_Policy::impact_for( $ability_name, $provider, $authorization_input );
-		if ( ! MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $authorization_input ) ) return new WP_Error( 'mad4b_approval_not_required', 'Central impact policy does not require an approval ticket for this exact operation.' );
+		$classification = MAD4B_SCP_Impact_Policy::classify( $ability_name, $provider, $authorization_input );
+		if ( ! MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $authorization_input ) ) return new WP_Error( 'mad4b_approval_not_required', 'Central impact policy does not require an approval ticket for this exact operation.', array( 'classification' => $classification ) );
 		$required_class = MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $authorization_input );
 		$ticket_class = isset( $input['ticket_class'] ) && '' !== trim( (string) $input['ticket_class'] ) ? sanitize_key( (string) $input['ticket_class'] ) : $required_class;
 		if ( $ticket_class !== $required_class ) return new WP_Error( 'mad4b_approval_class_policy_mismatch', 'Requested ticket class does not match the central impact policy.' );
@@ -278,7 +279,20 @@ final class MAD4B_SCP_Governance_Abilities {
 			(string) $input['reason'], isset( $input['ttl'] ) ? absint( $input['ttl'] ) : MAD4B_SCP_Approval_Tickets::DEFAULT_TTL
 		);
 		if ( is_wp_error( $ticket ) ) return $ticket;
-		MAD4B_SCP_Audit::record( 'mad4b/approval-plan', array( 'ticket_id' => $ticket['ticket_id'], 'agent_public_id' => $agent['public_id'], 'server_id' => $server_id, 'ability' => $ability_name, 'provider' => $provider, 'impact' => $impact, 'target_fingerprint' => $target, 'status' => 'pending' ) );
+		MAD4B_SCP_Audit::record( 'mad4b/approval-plan', array(
+			'ticket_id' => $ticket['ticket_id'],
+			'agent_public_id' => $agent['public_id'],
+			'server_id' => $server_id,
+			'ability' => $ability_name,
+			'provider' => $provider,
+			'impact' => $impact,
+			'operation_type' => isset( $classification['operation_type'] ) ? $classification['operation_type'] : '',
+			'risk_tier' => isset( $classification['risk_tier'] ) ? $classification['risk_tier'] : '',
+			'approval_lane' => isset( $classification['approval_lane'] ) ? $classification['approval_lane'] : 'human_only',
+			'classification_sha256' => isset( $classification['classification_sha256'] ) ? $classification['classification_sha256'] : '',
+			'target_fingerprint' => $target,
+			'status' => 'pending',
+		) );
 		return array(
 			'ticket_id' => $ticket['ticket_id'],
 			'status' => $ticket['status'],
@@ -289,6 +303,12 @@ final class MAD4B_SCP_Governance_Abilities {
 			'target_fingerprint' => $target,
 			'provider_runtime' => $provider_state,
 			'grant_id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,
+			'classification' => $classification,
+			'operation_type' => isset( $classification['operation_type'] ) ? (string) $classification['operation_type'] : '',
+			'risk_tier' => isset( $classification['risk_tier'] ) ? (string) $classification['risk_tier'] : '',
+			'approval_lane' => isset( $classification['approval_lane'] ) ? (string) $classification['approval_lane'] : 'human_only',
+			'ai_approval_eligible' => ! empty( $classification['ai_approval_eligible'] ),
+			'next_approval_ability' => ! empty( $classification['ai_approval_eligible'] ) && class_exists( 'MAD4B_SCP_AI_Approval' ) ? MAD4B_SCP_AI_Approval::ABILITY : '',
 			'auto_approved' => false,
 		);
 	}

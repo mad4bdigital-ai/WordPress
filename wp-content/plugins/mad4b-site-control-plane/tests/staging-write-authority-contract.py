@@ -10,6 +10,8 @@ abilities = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encodi
 grant_reconcile = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation.php').read_text(encoding='utf-8')
 grant_plan = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation-plan.php').read_text(encoding='utf-8')
 planning = (wp / 'includes' / 'class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
+ai_approval = (wp / 'includes' / 'class-mad4b-scp-ai-approval.php').read_text(encoding='utf-8')
+impact_policy = (wp / 'includes' / 'class-mad4b-scp-impact-policy.php').read_text(encoding='utf-8')
 cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
 live_truth = (wp / 'includes' / 'class-mad4b-scp-live-truth.php').read_text(encoding='utf-8')
 rest = (wp / 'includes' / 'class-mad4b-scp-rest-compatibility.php').read_text(encoding='utf-8')
@@ -90,7 +92,8 @@ for marker in [
     "'all_remote_writes_require_exact_approval' => false",
     "'normal_remote_writes_require_exact_approval' => true",
     "exact_approval_with_bounded_standing_exceptions",
-    "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, $ai_ability )",
+    "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' )",
+    "$policy['remote_write_prior_approval_exceptions'][] = $ai_approval_ability",
     "public static function approval_policy_projection( $candidate_bootstrap_exception_active = null )",
     "'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v2'",
     "'approval_policy_scope' => $resolved ? 'effective_runtime' : 'capability_definition'",
@@ -137,6 +140,76 @@ for marker in [
 if "'server:mad4b-write'" in dispatch_scope or "'server:mad4b-write'" in dispatcher_scope_helper:
     raise SystemExit('write dispatcher delegation must not mint or require a broad mad4b-write token scope')
 
+write_execute_body = abilities.split('public function write_execute', 1)[1].split('private function governed_enrollment_target', 1)[0]
+for marker in [
+    "if ( 'mad4b/approval-plan' === $ability_name )",
+    "mad4b_approval_plan_dispatch_target_error",
+    "original_error_code",
+    "reconciliation_required",
+    "blind_retry_allowed",
+    "MAD4B_SCP_Connector_Resilience::execute_mutation(",
+]:
+    if marker not in write_execute_body:
+        raise SystemExit('approval-plan deterministic dispatcher contract missing: ' + marker)
+if write_execute_body.count("if ( 'mad4b/approval-plan' === $ability_name )") != 1:
+    raise SystemExit('approval-plan dispatcher specialization must be singular')
+if "automatic_retry_performed' => false" not in write_execute_body:
+    raise SystemExit('approval-plan dispatcher must never auto-retry')
+
+
+for marker in [
+    "const CONTRACT = 'mad4b.ai-approval.v1'",
+    "const DELEGATION_CONTRACT = 'mad4b.ai-approval-standing-delegation.v1'",
+    "const ABILITY = 'mad4b/approval-ai-decide'",
+    "'production_authorized' => false",
+    "'breakglass_authorized' => false",
+    "MAD4B_SCP_Approval_Tickets::decide_pending_by_ai",
+    "expected_classification_sha256",
+    "ai_approval_operation_human_only",
+]:
+    if marker not in ai_approval:
+        raise SystemExit('AI approval authority invariant missing: ' + marker)
+for marker in [
+    "const CLASSIFICATION_CONTRACT = 'mad4b.operation-classification.v1'",
+    "'operation_type' => $operation_type",
+    "'mutation_kind' => $mutation_kind",
+    "'side_effect_scope' => $side_effect_scope",
+    "'approval_lane' => $approval_lane",
+    "'ai_approval_eligible' => $ai_eligible",
+    "'human_approval_required' => ! $readonly && ! $ai_eligible",
+    "$operation_type = $readonly ? 'observe' : 'governed_mutation'",
+    "$mutation_kind = $readonly ? 'read' : 'mutate'",
+    "$approval_lane = $readonly ? 'none'",
+    "'governance_decision'",
+    "'production_auto_approval' => false",
+    "'breakglass_auto_approval' => false",
+    "'exceptional'",
+    "'certified_package'",
+    "'content_publish'",
+    "'system_admin'",
+    "'recovery'",
+]:
+    if marker not in impact_policy:
+        raise SystemExit('operation classification invariant missing: ' + marker)
+for marker in [
+    "MAD4B_SCP_AI_Approval::delegation_allowed( $ability_name, $input, $identity )",
+    "MAD4B_SCP_AI_Approval::delegation_allowed( $ability_name, $input )",
+    "mad4b_ai_approval_standing_delegation",
+    "mad4b_ai_approval_production_authorized",
+    "mad4b_ai_approval_breakglass_authorized",
+]:
+    if marker not in write:
+        raise SystemExit('AI approval standing delegation wiring missing: ' + marker)
+
+
+for marker in [
+    "MAD4B_SCP_AI_Approval::ABILITY",
+    "MAD4B_SCP_AI_Approval::catalog_eligible()",
+    "'ai_approval_standing_delegation_not_eligible'",
+    "'mad4b/operation-classify'",
+]:
+    if marker not in servers:
+        raise SystemExit('Core AI approval server projection invariant missing: ' + marker)
 
 for marker in [
     "const CONTRACT = 'mad4b.staging-write-grant-reconciliation-plan.v2'",
@@ -184,6 +257,7 @@ for marker in [
     "'mad4b/plugin-package-apply' => 'core'",
     "'mad4b/control-plane-upload-apply' => 'core'",
     "'mad4b/context-ai-review' => 'core'",
+    "'mad4b/approval-ai-decide' => 'core'",
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
     "MAD4B_SCP_Identity_Context::current()",
     "MAD4B_SCP_Agent_Registry::resolve_agent",
@@ -981,3 +1055,18 @@ for text_value, label in [
             raise SystemExit(f'{label} bounded exception semantics missing: {required}')
 
 print('mad4b.staging-write-authority.tenant-profile.v15: PASS')
+# Keep nested transport regression proofs baseline-workflow owned without mutating
+# repository-root workflow files from a feature branch.
+import subprocess as _mad4b_subprocess
+import sys as _mad4b_sys
+
+_mad4b_tests = Path(__file__).resolve().parent
+_mad4b_subprocess.run([
+    _mad4b_sys.executable,
+    str(_mad4b_tests / "write-dispatch-nested-transport-contract.py"),
+], check=True)
+_mad4b_subprocess.run([
+    "php",
+    str(_mad4b_tests / "write-dispatch-nested-transport-runtime.php"),
+], check=True)
+

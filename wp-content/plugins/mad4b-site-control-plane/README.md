@@ -14,6 +14,12 @@ Operator deployment, authority reconciliation, recovery, rollback and lifecycle 
 
 Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
 
+### rc.67 deterministic approval planning + AI approval lanes
+
+rc.67 keeps the rc.66 bounded ChatGPT write-dispatch authority unchanged and makes approval planning deterministic: planner validation failures return a safe blocker code plus an explicit reconciliation requirement instead of being collapsed into an ambiguous generic mutation error. No automatic retry is added.
+
+The same release adds `mad4b.operation-classification.v1` and the read-only `mad4b/operation-classify` ability. Operations are classified independently by operation type, mutation kind, side-effect scope, risk tier and approval lane. Read-only abilities are `observe` / `read` with `approval_lane=none`; governed mutations are then separated into content, provider configuration, certified package, system administration, recovery, governance decision and exceptional classes. Staging mutations that remain inside the exact Site Profile/build/provider boundary may use the `ai_autonomous` lane through `mad4b/approval-ai-decide`; the AI decision is a separate step after planning and before execution, bound to the exact ticket payload and classification SHA-256. Human approval remains available as fallback. Production, Breakglass, raw SQL, Developer Breakglass and exceptional-class operations remain human-only and cannot be auto-approved.
+
 ### rc.66 bounded ChatGPT write-dispatch scope
 
 rc.66 fixes the ChatGPT `mad4b/write-execute` transport envelope so its exact `mad4b-chatgpt` transport NHI grant can satisfy the OAuth scope boundary without requiring a second mutation ticket for the dispatcher itself. Delegation is Staging-only, requires the live governed-write authority and exact ChatGPT transport context, validates the target schema digest, and accepts only an Ability already certified and mounted on `mad4b-write`. The selected target still performs its own exact provider/grant/budget/Context/one-time approval authorization; Production, Breakglass, raw SQL, wildcard grants, generic write scope and dispatcher recursion remain denied.
@@ -366,7 +372,7 @@ Repository CI currently covers:
 - read-only Admin Governance/Connection Console contract/runtime behavior;
 - disposable WordPress/MySQL runtime activation and smoke testing on WordPress 6.9 and the current `latest` release.
 
-The isolated runtime CI activates MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.4.0-rc.66 in disposable WordPress/MySQL. Repository success does **not** replace target-site certification.
+The isolated runtime CI activates MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.4.0-rc.67 in disposable WordPress/MySQL. Repository success does **not** replace target-site certification.
 
 The core mutation-gate workflow is read-only. The MCP Adapter refresh workflow is manual-only (`workflow_dispatch`) and may write certification evidence only when an operator explicitly runs it on a selected branch.
 

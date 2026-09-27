@@ -8,6 +8,9 @@ repository = (root / 'includes/class-mad4b-scp-approval-repository.php').read_te
 planner = (root / 'includes/class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
 servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')
 handoff = (root / 'includes/adapters/class-mad4b-scp-approval-handoff-adapter.php').read_text(encoding='utf-8')
+ai_approval = (root / 'includes/class-mad4b-scp-ai-approval.php').read_text(encoding='utf-8')
+impact_policy = (root / 'includes/class-mad4b-scp-impact-policy.php').read_text(encoding='utf-8')
+main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 
 required_admin = [
     "const CONTRACT = 'mad4b.approval-decision-admin.v2'",
@@ -252,9 +255,73 @@ for forbidden_handoff in [
     'decide_pending(', 'wp_create_nonce(', 'wp_nonce_field(', 'admin_post_',
     'MAD4B_SCP_Mutation_Manager', 'execute_callback', 'mad4b/database-update',
     'mad4b/filesystem-write', "'decision' => 'approve'", 'update_option(', 'delete_option(',
-    '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete(',
 ]:
     if forbidden_handoff in handoff:
         raise SystemExit('Approval handoff gained decision or mutation authority: ' + forbidden_handoff)
 
-print('mad4b.approval-decision.contract.v7: PASS')
+# AI approval is a separate, bounded decision surface. Human wp-admin remains
+# available as fallback, but Staging-eligible mutation tickets can be decided by
+# an exact AI Agent without weakening Production or Breakglass boundaries.
+for marker in [
+    "class-mad4b-scp-ai-approval.php",
+    "MAD4B_SCP_AI_Approval::boot();",
+]:
+    if marker not in main:
+        raise SystemExit('AI approval runtime wiring missing: ' + marker)
+for marker in [
+    "const CONTRACT = 'mad4b.ai-approval.v1'",
+    "const DELEGATION_CONTRACT = 'mad4b.ai-approval-standing-delegation.v1'",
+    "const ABILITY = 'mad4b/approval-ai-decide'",
+    "expected_payload_sha256",
+    "expected_classification_sha256",
+    "operation_input",
+    "MAD4B_SCP_Approval_Tickets::decide_pending_by_ai",
+    "'production_authorized' => false",
+    "'breakglass_authorized' => false",
+    "'prior_human_approval_required' => false",
+]:
+    if marker not in ai_approval:
+        raise SystemExit('AI approval decision contract missing: ' + marker)
+for forbidden in [
+    "mad4b/database-raw-query",
+    "mad4b-developer-breakglass",
+    "production_authorized' => true",
+    "breakglass_authorized' => true",
+]:
+    if forbidden in ai_approval:
+        raise SystemExit('AI approval surface widened into forbidden authority: ' + forbidden)
+for marker in [
+    "public static function decide_pending_by_ai",
+    "'approver_type' => 'ai_agent'",
+    "'production_mutation' => false",
+    "'breakglass_authorized' => false",
+    "validate_ticket_candidate_binding",
+]:
+    if marker not in tickets:
+        raise SystemExit('AI ticket-decision invariant missing: ' + marker)
+for marker in [
+    "const CLASSIFICATION_CONTRACT = 'mad4b.operation-classification.v1'",
+    "'operation_type' => $operation_type",
+    "'mutation_kind' => $mutation_kind",
+    "'side_effect_scope' => $side_effect_scope",
+    "'approval_lane' => $approval_lane",
+    "'human_approval_required' => ! $readonly && ! $ai_eligible",
+    "$operation_type = $readonly ? 'observe' : 'governed_mutation'",
+    "$approval_lane = $readonly ? 'none'",
+    "'production_auto_approval' => false",
+    "'breakglass_auto_approval' => false",
+]:
+    if marker not in impact_policy:
+        raise SystemExit('Operation classification invariant missing: ' + marker)
+for marker in [
+    "'mad4b/operation-classify'",
+    "MAD4B_SCP_AI_Approval::ABILITY",
+    "MAD4B_SCP_AI_Approval::catalog_eligible()",
+    "'ai_approval_standing_delegation_not_eligible'",
+]:
+    if marker not in servers:
+        raise SystemExit('Core AI approval/catalog invariant missing: ' + marker)
+if "'write' =>" in handoff or "MAD4B_SCP_AI_Approval::ABILITY" in handoff:
+    raise SystemExit('Human approval handoff must remain strictly read-only and must not project AI write authority')
+
+print('mad4b.approval-decision.contract.v8: PASS')

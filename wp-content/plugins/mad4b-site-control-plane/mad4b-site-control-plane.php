@@ -88,6 +88,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-challenge-alignment
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-transport-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-status.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-authority.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-approval.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-drive-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-preflight.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-intelligence.php';
@@ -212,6 +213,7 @@ MAD4B_SCP_Connection_Ability::boot();
 MAD4B_SCP_Read_Consistency::boot();
 MAD4B_SCP_Multi_Authority_Registry::boot();
 MAD4B_SCP_Context_Authority::boot();
+MAD4B_SCP_AI_Approval::boot();
 MAD4B_SCP_Context_Provider_Gateway::boot();
 MAD4B_SCP_Brand_Context_Builder::boot();
 MAD4B_SCP_Plugin_Lifecycle::boot();
