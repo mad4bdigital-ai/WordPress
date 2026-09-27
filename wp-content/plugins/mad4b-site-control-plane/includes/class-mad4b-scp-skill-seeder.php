@@ -23,6 +23,20 @@ final class MAD4B_SCP_Skill_Seeder {
 	private static $ran = false;
 	private static $runtime_status = null;
 
+	/**
+	 * Explicit managed reconciliation entry point.
+	 *
+	 * bootstrap() is intentionally request-idempotent for ordinary lifecycle use.
+	 * An operator-triggered reconciliation must be able to re-run after an earlier
+	 * inspection/bootstrap attempt in the same request, so it resets only the
+	 * request-local guards before delegating to the exact same fail-closed logic.
+	 */
+	public static function reconcile() {
+		self::$ran = false;
+		self::$runtime_status = null;
+		return self::bootstrap();
+	}
+
 	public static function bootstrap() {
 		if ( self::$ran ) return self::status();
 		self::$ran = true;
