@@ -64,6 +64,7 @@ jobs:
           php -l "$root/tests/runtime-mcp-runtime-conflict-first-request.php"
           php -l "$root/tests/runtime-mcp-runtime-conflict-recovered.php"
           python3 "$root/tests/connection-readiness-contract.py"
+          python3 "$root/tests/staging-write-authority-contract.py"
           python3 "$root/tests/mcp-side-channel-governance-contract.py"
           python3 "$root/tests/mcp-provider-isolation-contract.py"
           python3 "$root/tests/mcp-registration-bridge-contract.py"
