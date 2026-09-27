@@ -162,6 +162,12 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	private function add( $name, $label, $category, $method, $permission, $input, $mcp_public, $readonly, $destructive, $idempotent ) {
+		$mcp_meta = array( 'public' => false, 'type' => 'tool' );
+		if ( in_array( (string) $name, array( 'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute' ), true ) ) {
+			$mcp_meta['surface'] = 'enrollment';
+			$mcp_meta['generic_remote_admin'] = false;
+			$mcp_meta['production_mutation_allowed'] = false;
+		}
 		$args = array(
 			'label' => $label,
 			'description' => $label . ' through the governed MAD4B Site Control Plane.',
@@ -172,7 +178,7 @@ final class MAD4B_SCP_Abilities {
 			'meta' => array(
 				'public' => false,
 				'show_in_rest' => false,
-				'mcp' => array( 'public' => false, 'type' => 'tool' ),
+				'mcp' => $mcp_meta,
 				'annotations' => array(
 					'readonly' => (bool) $readonly,
 					'destructive' => $readonly ? (bool) $destructive : true,
