@@ -114,6 +114,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 							'executor' => array( 'type' => 'string', 'maxLength' => 96 ),
 							'provider' => array( 'type' => 'string', 'maxLength' => 96 ),
 							'remote_ready_only' => array( 'type' => 'boolean' ),
+							'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 20 ),
+							'offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 500, 'default' => 0 ),
+							'include_ability_hints' => array( 'type' => 'boolean', 'default' => false ),
 						),
 						'additionalProperties' => false,
 					),
@@ -563,31 +566,108 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$executor = isset( $input['executor'] ) ? sanitize_key( (string) $input['executor'] ) : '';
 		$provider = isset( $input['provider'] ) ? sanitize_key( (string) $input['provider'] ) : '';
 		$remote_ready_only = ! empty( $input['remote_ready_only'] );
+		$limit = isset( $input['limit'] ) ? max( 1, min( 50, absint( $input['limit'] ) ) ) : 20;
+		$offset = isset( $input['offset'] ) ? max( 0, min( 500, absint( $input['offset'] ) ) ) : 0;
+		$include_ability_hints = ! empty( $input['include_ability_hints'] );
+		$query_tokens = array_values( array_filter( preg_split( '/\\s+/', $query ) ) );
 		$matches = array();
-		foreach ( self::catalog() as $operation_id => $row ) {
+		$scored_matches = array();
+		$total_match_count = 0;
+		$truncated = false;
+
+		try {
+			$catalog = self::catalog();
+		} catch ( Throwable $e ) {
+			$classification = class_exists( 'MAD4B_SCP_Connector_Resilience' )
+				? MAD4B_SCP_Connector_Resilience::classify_exception( $e )
+				: array( 'category' => 'unknown', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'inspect_before_retry' );
+			return array(
+				'contract' => 'mad4b.operation-discovery.v2',
+				'state' => 'degraded',
+				'query' => $query,
+				'count' => 0,
+				'total_match_count' => 0,
+				'offset' => $offset,
+				'next_offset' => null,
+				'operations' => array(),
+				'retryable' => ! empty( $classification['retryable'] ),
+				'automatic_retry_allowed' => ! empty( $classification['auto_retry'] ),
+				'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown',
+				'client_action' => isset( $classification['client_action'] ) ? (string) $classification['client_action'] : 'inspect_before_retry',
+				'error_class' => get_class( $e ),
+				'error_fingerprint' => hash( 'sha256', get_class( $e ) . "\n" . $e->getMessage() ),
+				'raw_error_message_exposed' => false,
+				'read_only' => true,
+				'mutation_performed' => false,
+			);
+		}
+
+		foreach ( $catalog as $operation_id => $row ) {
 			if ( '' !== $feature_id && $feature_id !== sanitize_key( (string) $row['feature_id'] ) ) continue;
 			if ( '' !== $surface && $surface !== sanitize_key( (string) $row['authority_surface'] ) ) continue;
 			if ( '' !== $executor && $executor !== sanitize_key( (string) $row['executor'] ) ) continue;
 			if ( '' !== $provider && $provider !== sanitize_key( (string) $row['provider'] ) ) continue;
 			if ( $remote_ready_only && empty( $row['remote_parity_ready'] ) ) continue;
-			if ( '' !== $query ) {
-				$haystack = strtolower( implode( ' ', array_merge(
-					array( $operation_id, (string) $row['feature_id'], (string) $row['remote_ability'], (string) $row['local_surface'], (string) $row['executor'], (string) $row['provider'], (string) $row['authority_surface'], (string) $row['remote_mode'], (string) $row['status_ability'] ),
-					isset( $row['capability_tags'] ) && is_array( $row['capability_tags'] ) ? array_map( 'strval', $row['capability_tags'] ) : array()
-				) ) );
-				if ( false === strpos( $haystack, $query ) ) continue;
+
+			$haystack = strtolower( implode( ' ', array_merge(
+				array( $operation_id, (string) $row['feature_id'], (string) $row['remote_ability'], (string) $row['local_surface'], (string) $row['executor'], (string) $row['provider'], (string) $row['authority_surface'], (string) $row['remote_mode'], (string) $row['status_ability'] ),
+				isset( $row['capability_tags'] ) && is_array( $row['capability_tags'] ) ? array_map( 'strval', $row['capability_tags'] ) : array()
+			) ) );
+
+			$score = 0;
+			if ( empty( $query_tokens ) ) {
+				$score = 1;
+			} else {
+				foreach ( $query_tokens as $token ) {
+					if ( '' !== $token && false !== strpos( $haystack, $token ) ) $score++;
+				}
+				if ( 0 === $score ) continue;
+				if ( '' !== $query && false !== strpos( $haystack, $query ) ) $score += count( $query_tokens ) + 2;
 			}
-			$matches[ $operation_id ] = $row;
+			$row['discovery_score'] = $score;
+			$scored_matches[ $operation_id ] = $row;
 		}
+
+		$total_match_count = count( $scored_matches );
+		uasort( $scored_matches, static function ( $left, $right ) {
+			$left_score = isset( $left['discovery_score'] ) ? (int) $left['discovery_score'] : 0;
+			$right_score = isset( $right['discovery_score'] ) ? (int) $right['discovery_score'] : 0;
+			if ( $left_score === $right_score ) {
+				$left_id = isset( $left['operation_id'] ) ? (string) $left['operation_id'] : '';
+				$right_id = isset( $right['operation_id'] ) ? (string) $right['operation_id'] : '';
+				return strcmp( $left_id, $right_id );
+			}
+			return $left_score > $right_score ? -1 : 1;
+		} );
+		$matches = array_slice( $scored_matches, $offset, $limit, true );
+		$returned_count = count( $matches );
+		$next_offset = ( $offset + $returned_count ) < $total_match_count ? $offset + $returned_count : null;
+		$truncated = null !== $next_offset;
+
 		$ability_hints = array();
-		if ( function_exists( 'wp_get_abilities' ) ) {
-			foreach ( wp_get_abilities() as $ability_name => $ability ) {
-				if ( count( $ability_hints ) >= 100 ) break;
-				if ( class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'is_chatgpt_full_catalog_candidate' ) && ! MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $ability_name ) ) continue;
+		if ( $include_ability_hints && function_exists( 'wp_has_ability' ) && function_exists( 'wp_get_ability' ) ) {
+			$candidates = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'chatgpt_full_catalog_candidates' )
+				? MAD4B_SCP_Servers::chatgpt_full_catalog_candidates()
+				: array();
+			$hint_limit = min( 25, $limit );
+			foreach ( $candidates as $ability_name ) {
+				if ( count( $ability_hints ) >= $hint_limit ) break;
+				if ( ! wp_has_ability( $ability_name ) ) continue;
+				$ability = wp_get_ability( $ability_name );
 				$label = is_object( $ability ) && method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '';
 				$description = is_object( $ability ) && method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '';
 				$category = is_object( $ability ) && method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
-				if ( '' !== $query && false === strpos( strtolower( (string) $ability_name . ' ' . $label . ' ' . $description . ' ' . $category ), $query ) ) continue;
+				$haystack = strtolower( (string) $ability_name . ' ' . $label . ' ' . $description . ' ' . $category );
+				if ( ! empty( $query_tokens ) ) {
+					$token_match = false;
+					foreach ( $query_tokens as $token ) {
+						if ( '' !== $token && false !== strpos( $haystack, $token ) ) {
+							$token_match = true;
+							break;
+						}
+					}
+					if ( ! $token_match ) continue;
+				}
 				$ability_hints[] = array(
 					'ability_name' => (string) $ability_name,
 					'label' => $label,
@@ -596,13 +676,22 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				);
 			}
 		}
+
 		return array(
-			'contract' => 'mad4b.operation-discovery.v1',
+			'contract' => 'mad4b.operation-discovery.v2',
+			'state' => 'ready',
 			'query' => $query,
+			'query_tokens' => $query_tokens,
+			'limit' => $limit,
+			'offset' => $offset,
 			'count' => count( $matches ),
+			'total_match_count' => $total_match_count,
+			'next_offset' => $next_offset,
+			'truncated' => $truncated,
 			'operations' => $matches,
 			'rejected_registration_count' => count( self::$catalog_rejections ),
 			'rejected_registrations' => array_values( self::$catalog_rejections ),
+			'ability_hints_included' => $include_ability_hints,
 			'ability_hint_count' => count( $ability_hints ),
 			'ability_hints' => $ability_hints,
 			'discovery_federation' => array(
@@ -613,6 +702,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			),
 			'future_feature_discovery' => true,
 			'requires_prior_ability_name' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
 		);
 	}
 

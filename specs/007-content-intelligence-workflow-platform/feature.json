@@ -168,7 +168,7 @@
   "implementation_closure_ledger": "implementation-closure.json",
   "implementation_closure_contract": "mad4b.feature007-implementation-closure.v2",
   "baseline_model": "mad4b.feature007-reviewed-parent-and-runtime-release.v1",
-  "last_reviewed_master_parent_sha": "3733fa32129e57ce7c7f1e3879834f2616879829",
+  "last_reviewed_master_parent_sha": "629f75d51598b87f08c5d3c4b929317fff5ccf2b",
   "repository_baseline_semantics": "committed metadata records the exact master parent reviewed by the PR; current master HEAD is external evidence and is intentionally not self-referential",
   "runtime_release_identity": {
     "contract": "mad4b.runtime-release-identity.v1",

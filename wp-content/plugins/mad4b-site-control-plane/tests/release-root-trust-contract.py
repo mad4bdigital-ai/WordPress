@@ -124,7 +124,8 @@ if not (persist_step < verify_step < upload_step):
 with tempfile.TemporaryDirectory() as tmp:
     tmp = Path(tmp)
     source_sha = "b" * 40
-    artifact = tmp / "mad4b-site-control-plane-0.4.0-rc.59.zip"
+    fixture_version = "0.0.0-fixture"
+    artifact = tmp / f"mad4b-site-control-plane-{fixture_version}.zip"
     install = tmp / "install-manifest.json"
 
     relative = "mad4b-site-control-plane.php"
@@ -159,7 +160,7 @@ with tempfile.TemporaryDirectory() as tmp:
         "build_fingerprint": build_fingerprint,
         "package_manifest_digest": package_digest,
         "control_plane": {
-            "version": "0.4.0-rc.59",
+            "version": fixture_version,
             "archive": artifact.name,
             "sha256": module.sha256_file(artifact),
         },

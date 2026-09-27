@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
+import sys
 
 root = Path(__file__).resolve().parents[1]
 servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 plugin = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 readme = (root / "README.md").read_text(encoding="utf-8")
+connection_ability = (root / "includes/class-mad4b-scp-connection-ability.php").read_text(encoding="utf-8")
+abilities = (root / "includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+staging_cert = (root / "includes/class-mad4b-scp-staging-certification.php").read_text(encoding="utf-8")
 
 required_cache_properties = [
     "private static $registered_adapter_write_candidates_cache = null;",
@@ -93,6 +98,27 @@ assert "mad4b-developer-breakglass" in servers
 assert "private static function current_request_server_id()" in servers
 assert "private static function should_materialize_server_tools" in servers
 
+# Connector resilience must keep the direct catalog small while providing one
+# compact preflight and routing retry policy through the shared service.
+for marker in [
+    "'mad4b/connector-preflight'",
+    "MAD4B_SCP_Connector_Resilience::run_checks",
+    "MAD4B_SCP_Connector_Resilience::client_guidance()",
+]:
+    assert marker in connection_ability or marker in servers, marker
+
+for marker in [
+    "public function read_execute( $input )",
+    "MAD4B_SCP_Connector_Resilience::execute_read",
+    "public function write_execute( $input )",
+    "MAD4B_SCP_Connector_Resilience::execute_mutation",
+    "public function enrollment_execute( $input )",
+]:
+    assert marker in abilities, marker
+
+assert "'payload_profile' => 'compact'" in staging_cert
+assert "'compact' => array( 'type' => 'boolean', 'default' => false )" in staging_cert
+
 import re
 plugin_version = re.search(r"^ \* Version: ([^\s]+)", plugin, re.M)
 runtime_version = re.search(r"^release=(.+)$", runtime_build, re.M)
@@ -100,5 +126,10 @@ assert plugin_version and runtime_version
 assert plugin_version.group(1) == runtime_version.group(1)
 assert "route-targeted" in readme.lower() or "tools/list" in readme.lower()
 assert "no persistent" in readme.lower() or "request-local" in readme.lower()
+
+connector_contract = root / "tests" / "connector-resilience-contract.py"
+connector_runtime = root / "tests" / "connector-resilience-runtime.php"
+subprocess.run([sys.executable, str(connector_contract)], check=True)
+subprocess.run(["php", str(connector_runtime)], check=True)
 
 print("mad4b.chatgpt-catalog-performance.v5: PASS")

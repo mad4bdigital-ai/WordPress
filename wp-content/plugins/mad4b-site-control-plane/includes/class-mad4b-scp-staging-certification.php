@@ -30,6 +30,7 @@ final class MAD4B_SCP_Staging_Certification {
 					'client_snapshot_token' => array( 'type' => 'string', 'maxLength' => 80 ),
 					'rollback_artifact_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[a-f0-9]{64}$' ),
 					'rollback_artifact_name' => array( 'type' => 'string', 'maxLength' => 255 ),
+					'compact' => array( 'type' => 'boolean', 'default' => false ),
 				),
 				'additionalProperties' => false,
 			),
@@ -48,31 +49,75 @@ final class MAD4B_SCP_Staging_Certification {
 		$client_snapshot_token = isset( $input['client_snapshot_token'] ) ? trim( (string) $input['client_snapshot_token'] ) : '';
 		$rollback_artifact_sha256 = isset( $input['rollback_artifact_sha256'] ) ? strtolower( trim( (string) $input['rollback_artifact_sha256'] ) ) : '';
 		$rollback_artifact_name = isset( $input['rollback_artifact_name'] ) ? sanitize_text_field( (string) $input['rollback_artifact_name'] ) : '';
-		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
-		$connection = class_exists( 'MAD4B_SCP_Connection_Status' ) ? MAD4B_SCP_Connection_Status::status() : array();
-		$context = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::status() : array();
-		$context_coverage = self::brand_core_context_coverage();
-		$google = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ? MAD4B_SCP_Google_Drive_Context::connection_status() : array();
-		$google_mode = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ? MAD4B_SCP_Google_Drive_Context::auth_mode_status() : array();
-		$managed = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ? MAD4B_SCP_Google_Drive_Context::managed_broker_status() : array();
-		$managed_gate = self::managed_google_gate_evidence( $google_mode, $managed );
-		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::status() : array();
-		$snapshot = class_exists( 'MAD4B_SCP_External_Snapshot_Finalizer' )
-			? ( '' !== $client_snapshot_token
+		$compact = ! empty( $input['compact'] );
+		$provenance = self::safe_read( 'build_provenance', static function () {
+			return class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
+		} );
+		$connection = self::safe_read( 'connection_status', static function () {
+			return class_exists( 'MAD4B_SCP_Connection_Status' ) ? MAD4B_SCP_Connection_Status::status() : array();
+		} );
+		$context = self::safe_read( 'context_authority', static function () {
+			return class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::status() : array();
+		} );
+		$context_coverage = self::safe_read( 'brand_core_context_coverage', static function () {
+			return self::brand_core_context_coverage();
+		} );
+		$google = self::safe_read( 'google_provider_connection', static function () {
+			return class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ? MAD4B_SCP_Google_Drive_Context::connection_status() : array();
+		} );
+		$google_mode = self::safe_read( 'google_auth_mode', static function () {
+			return class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ? MAD4B_SCP_Google_Drive_Context::auth_mode_status() : array();
+		} );
+		$managed = self::safe_read( 'managed_google_broker', static function () {
+			return class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ? MAD4B_SCP_Google_Drive_Context::managed_broker_status() : array();
+		} );
+		$managed_gate = self::safe_read( 'managed_google_gate', static function () use ( $google_mode, $managed ) {
+			return self::managed_google_gate_evidence( $google_mode, $managed );
+		} );
+		$skills = self::safe_read( 'skills_runtime', static function () {
+			return class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::status() : array();
+		} );
+		$snapshot = self::safe_read( 'external_skill_snapshot', static function () use ( $client_snapshot_token ) {
+			if ( ! class_exists( 'MAD4B_SCP_External_Snapshot_Finalizer' ) ) return array();
+			return '' !== $client_snapshot_token
 				? MAD4B_SCP_External_Snapshot_Finalizer::snapshot_verify( array( 'client_snapshot_token' => $client_snapshot_token ) )
-				: MAD4B_SCP_External_Snapshot_Finalizer::external_snapshot_status() )
-			: array();
-		$authority = class_exists( 'MAD4B_SCP_Live_Truth' ) ? MAD4B_SCP_Live_Truth::current_authority_status() : array();
-		$write_runtime = class_exists( 'MAD4B_SCP_Live_Truth' ) ? MAD4B_SCP_Live_Truth::current_write_certification() : array();
-		$reconciliation = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::reconciliation_plan() : array();
-		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
-		$admin_query_performance = class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) ? MAD4B_SCP_Admin_Query_Performance::status() : array();
-		$qm_db_attribution = class_exists( 'MAD4B_SCP_Query_Monitor_Evidence_Bridge' ) ? MAD4B_SCP_Query_Monitor_Evidence_Bridge::db_attribution_status() : array();
-		$oauth_authority_projection = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'consent_grant_projection' ) ? MAD4B_SCP_Local_OAuth_Server::consent_grant_projection() : array();
-		$rollback = self::rollback_status( $rollback_artifact_sha256, $rollback_artifact_name );
-		$browser = self::browser_status();
-		$provider_inventory = class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) ? MAD4B_SCP_Provider_Compatibility_Certification::inventory() : array();
-		$wp_import_export = self::wp_import_export_remediation( $provider_inventory );
+				: MAD4B_SCP_External_Snapshot_Finalizer::external_snapshot_status();
+		} );
+		$authority = self::safe_read( 'write_authority', static function () {
+			return class_exists( 'MAD4B_SCP_Live_Truth' ) ? MAD4B_SCP_Live_Truth::current_authority_status() : array();
+		} );
+		$write_runtime = self::safe_read( 'write_runtime', static function () {
+			return class_exists( 'MAD4B_SCP_Live_Truth' ) ? MAD4B_SCP_Live_Truth::current_write_certification() : array();
+		} );
+		$reconciliation = self::safe_read( 'write_authority_reconciliation', static function () {
+			return class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::reconciliation_plan() : array();
+		} );
+		$performance = self::safe_read( 'frontend_performance', static function () {
+			return class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
+		} );
+		$admin_query_performance = self::safe_read( 'admin_query_performance', static function () {
+			return class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) ? MAD4B_SCP_Admin_Query_Performance::status() : array();
+		} );
+		$qm_db_attribution = self::safe_read( 'query_monitor_db_attribution', static function () {
+			return class_exists( 'MAD4B_SCP_Query_Monitor_Evidence_Bridge' ) ? MAD4B_SCP_Query_Monitor_Evidence_Bridge::db_attribution_status() : array();
+		} );
+		$oauth_authority_projection = self::safe_read( 'oauth_authority_projection', static function () {
+			return class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'consent_grant_projection' )
+				? MAD4B_SCP_Local_OAuth_Server::consent_grant_projection()
+				: array();
+		} );
+		$rollback = self::safe_read( 'rollback_candidate', static function () use ( $rollback_artifact_sha256, $rollback_artifact_name ) {
+			return self::rollback_status( $rollback_artifact_sha256, $rollback_artifact_name );
+		} );
+		$browser = self::safe_read( 'browser_runtime', static function () {
+			return self::browser_status();
+		} );
+		$provider_inventory = self::safe_read( 'provider_certification_inventory', static function () {
+			return class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) ? MAD4B_SCP_Provider_Compatibility_Certification::inventory() : array();
+		} );
+		$wp_import_export = self::safe_read( 'wp_import_export_exact_artifact', static function () use ( $provider_inventory ) {
+			return self::wp_import_export_remediation( $provider_inventory );
+		} );
 
 		$gates = array(
 			'exact_build' => self::gate( ! empty( $provenance['runtime_manifest_match'] ), 'runtime_build_provenance', $provenance, 'package' ),
@@ -110,6 +155,46 @@ final class MAD4B_SCP_Staging_Certification {
 			if ( empty( $gate['ready'] ) ) $blocking[] = $name;
 		}
 
+		if ( $compact ) {
+			$compact_gates = array();
+			foreach ( $gates as $name => $gate ) $compact_gates[ $name ] = self::compact_gate( $gate );
+			return array(
+				'contract' => self::CONTRACT,
+				'payload_profile' => 'compact',
+				'read_only' => true,
+				'mutation_performed' => false,
+				'production_mutation_performed' => false,
+				'ready' => empty( $blocking ),
+				'state' => empty( $blocking ) ? 'ready' : 'pending_or_blocked',
+				'blocking_gates' => $blocking,
+				'gates' => $compact_gates,
+				'build' => array(
+					'version' => isset( $provenance['version'] ) ? (string) $provenance['version'] : '',
+					'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+					'build_fingerprint' => isset( $provenance['build_fingerprint'] ) ? (string) $provenance['build_fingerprint'] : '',
+					'package_manifest_digest' => isset( $provenance['package_manifest_digest'] ) ? (string) $provenance['package_manifest_digest'] : '',
+					'artifact_identity' => isset( $provenance['artifact_identity'] ) ? (string) $provenance['artifact_identity'] : '',
+					'runtime_manifest_match' => ! empty( $provenance['runtime_manifest_match'] ),
+				),
+				'connection' => array(
+					'environment' => isset( $connection['environment'] ) ? (string) $connection['environment'] : '',
+					'control_plane_version' => isset( $connection['control_plane_version'] ) ? (string) $connection['control_plane_version'] : '',
+					'mcp_adapter_version' => isset( $connection['mcp_adapter_version'] ) ? (string) $connection['mcp_adapter_version'] : '',
+					'connection_certified' => ! empty( $connection['connection_certified'] ),
+				),
+				'write_authority' => array(
+					'ready' => ! empty( $authority['ready'] ),
+					'state' => isset( $authority['state'] ) ? (string) $authority['state'] : '',
+					'candidate_binding_match' => ! empty( $authority['candidate_binding_match'] ),
+					'current_source_commit_sha' => isset( $authority['current_source_commit_sha'] ) ? (string) $authority['current_source_commit_sha'] : '',
+					'candidate_source_commit_sha' => isset( $authority['candidate_source_commit_sha'] ) ? (string) $authority['candidate_source_commit_sha'] : '',
+				),
+				'seo_publication_authorized' => false,
+				'production_activation_authorized' => false,
+				'external_facts_self_certified' => false,
+			);
+		}
+
 		return array(
 			'contract' => self::CONTRACT,
 			'read_only' => true,
@@ -130,6 +215,57 @@ final class MAD4B_SCP_Staging_Certification {
 			'seo_publication_authorized' => false,
 			'production_activation_authorized' => false,
 			'external_facts_self_certified' => false,
+		);
+	}
+
+	private static function safe_read( $name, $callback ) {
+		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) {
+			return array(
+				'ready' => false,
+				'state' => 'read_failed',
+				'blockers' => array( 'connector_resilience_unavailable' ),
+				'connector_error' => array(
+					'contract' => 'mad4b.connector-resilience.unavailable',
+					'retryable' => false,
+				),
+			);
+		}
+		$result = MAD4B_SCP_Connector_Resilience::safe_read( $name, $callback, array(
+			'retry_transient' => true,
+			'max_attempts' => MAD4B_SCP_Connector_Resilience::DEFAULT_READ_ATTEMPTS,
+		) );
+		if ( ! empty( $result['ok'] ) ) {
+			return isset( $result['data'] ) && is_array( $result['data'] ) ? $result['data'] : array();
+		}
+		return array(
+			'ready' => false,
+			'state' => 'read_failed',
+			'blockers' => array( 'connector_read_failed:' . sanitize_key( (string) $name ) ),
+			'connector_error' => array(
+				'contract' => isset( $result['contract'] ) ? (string) $result['contract'] : MAD4B_SCP_Connector_Resilience::CONTRACT,
+				'category' => isset( $result['category'] ) ? (string) $result['category'] : 'unknown',
+				'retryable' => ! empty( $result['retryable'] ),
+				'attempts' => isset( $result['attempts'] ) ? (int) $result['attempts'] : 1,
+				'elapsed_ms' => isset( $result['elapsed_ms'] ) ? (int) $result['elapsed_ms'] : 0,
+				'error_code' => isset( $result['error_code'] ) ? (string) $result['error_code'] : '',
+				'error_class' => isset( $result['error_class'] ) ? (string) $result['error_class'] : '',
+				'error_fingerprint' => isset( $result['error_fingerprint'] ) ? (string) $result['error_fingerprint'] : '',
+				'raw_error_message_exposed' => false,
+			),
+		);
+	}
+
+	private static function compact_gate( array $gate ) {
+		$evidence = isset( $gate['evidence'] ) && is_array( $gate['evidence'] ) ? $gate['evidence'] : array();
+		return array(
+			'ready' => ! empty( $gate['ready'] ),
+			'state' => isset( $gate['state'] ) ? (string) $gate['state'] : '',
+			'source' => isset( $gate['source'] ) ? (string) $gate['source'] : '',
+			'remediation_owner' => isset( $gate['remediation_owner'] ) ? (string) $gate['remediation_owner'] : '',
+			'blockers' => isset( $gate['blockers'] ) && is_array( $gate['blockers'] ) ? array_values( array_slice( $gate['blockers'], 0, 20 ) ) : array(),
+			'evidence_contract' => isset( $evidence['contract'] ) ? (string) $evidence['contract'] : '',
+			'evidence_state' => isset( $evidence['state'] ) ? (string) $evidence['state'] : '',
+			'connector_error' => isset( $evidence['connector_error'] ) && is_array( $evidence['connector_error'] ) ? $evidence['connector_error'] : array(),
 		);
 	}
 

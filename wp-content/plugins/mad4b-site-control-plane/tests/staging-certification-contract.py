@@ -104,6 +104,12 @@ for marker in [
     "'oauth_live_authority_projection'",
     "'rollback_candidate'",
     "'wp_import_export_exact_artifact'",
+    "'compact' => array( 'type' => 'boolean', 'default' => false )",
+    "'payload_profile' => 'compact'",
+    "private static function safe_read( $name, $callback )",
+    "private static function compact_gate( array $gate )",
+    "'connector_error'",
+    "'connector_read_failed:'",
 ]:
     require(cert, marker, "staging certification invariant")
 for marker in [

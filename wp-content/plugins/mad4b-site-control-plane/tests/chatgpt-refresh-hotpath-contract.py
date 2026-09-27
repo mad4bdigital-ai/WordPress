@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 from zipfile import ZipFile
+import re
 
 root = Path(__file__).resolve().parents[1]
 servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
@@ -38,7 +39,7 @@ assert "$this->component_registry->register_tools( $tools );" in server
 assert "$mcp_tool = McpTool::fromAbility( $ability );" in registry
 assert "SchemaTransformer::transform_to_object_schema" in ability_tool
 
-# rc.59 registers all governed routes but only materializes the addressed server's tool
+# The current runtime registers all governed routes but only materializes the addressed server's tool
 # DTOs on an HTTP MCP request.
 for marker in [
     "private static function current_request_server_id()",
@@ -103,9 +104,11 @@ assert "MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime() ) re
 assert "defined( 'WP_CLI' )" in reconcile
 assert "0 === strpos( $page, 'mad4b-control-plane' )" in reconcile
 
-assert "Version: 0.4.0-rc.59" in entry
-assert "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.59' );" in entry
-assert "release=0.4.0-rc.59" in runtime_build
+runtime_release_match = re.search(r"^release=(0\.4\.0-rc\.\d+)$", runtime_build, re.M)
+assert runtime_release_match, "runtime release marker missing"
+runtime_release = runtime_release_match.group(1)
+assert f"Version: {runtime_release}" in entry
+assert f"define( 'MAD4B_SCP_VERSION', '{runtime_release}' );" in entry
 
 # External evidence must not put dynamic provider certification back onto the
 # initialize/tools-list response path. Stable logical catalog identity is

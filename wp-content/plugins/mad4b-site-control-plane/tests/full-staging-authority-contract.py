@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 
 root = Path(__file__).resolve().parents[1]
 inc = root / "includes"
@@ -163,7 +164,13 @@ assert "Deny access" in ui
 assert "Generic raw-SQL Breakglass" in ui
 assert "Current Staging authority" in ui
 
-assert "0.4.0-rc.59" in plugin
-assert "release=0.4.0-rc.59" in runtime_build
+header = re.search(r"(?mi)^\s*\*\s*Version:\s*([^\r\n]+)", plugin)
+constant = re.search(r"define\(\s*'MAD4B_SCP_VERSION'\s*,\s*'([^']+)'\s*\);", plugin)
+marker = re.search(r"(?mi)^release=([^\r\n]+)$", runtime_build)
+assert header and constant and marker
+version = header.group(1).strip()
+assert re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?", version)
+assert constant.group(1).strip() == version
+assert marker.group(1).strip() == version
 
-print("mad4b.full-staging-authority-contract.v6: PASS")
+print("mad4b.full-staging-authority-contract.v7: PASS")
