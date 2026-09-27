@@ -196,6 +196,8 @@ for marker in (
     "'dispatch_identity_source' => 'MAD4B_SCP_Enrollment_Dispatch::info'",
     "MAD4B_SCP_Enrollment_Dispatch::info",
     "'mad4b_metadata_dispatch_schema_projection_drift'",
+    "'mad4b_metadata_ability_not_cataloged'",
+    "MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $target )",
     "'runtime_changed_during_metadata_read'",
     "return array( 'identity', 'runtime', 'certification', 'providers' )",
     "'runtime_generation' => $runtime_generation",
