@@ -43,6 +43,7 @@ final class MAD4B_SCP_Connector_Resilience {
 						&& $attempt < $max_attempts ) {
 						continue;
 					}
+					$retry_exhausted = ! empty( $classification['auto_retry'] ) && $attempt >= $max_attempts;
 					return array(
 						'contract' => self::CONTRACT,
 						'ok' => false,
@@ -50,9 +51,11 @@ final class MAD4B_SCP_Connector_Resilience {
 						'attempts' => $attempt,
 						'elapsed_ms' => $elapsed_ms,
 						'retryable' => ! empty( $classification['retryable'] ),
-						'automatic_retry_allowed' => ! empty( $classification['auto_retry'] ),
+						'automatic_retry_allowed' => ! empty( $classification['auto_retry'] ) && ! $retry_exhausted,
+						'automatic_retry_performed' => $attempt > 1,
+						'automatic_retry_exhausted' => $retry_exhausted,
 						'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'wp_error',
-						'client_action' => isset( $classification['client_action'] ) ? (string) $classification['client_action'] : 'inspect',
+						'client_action' => $retry_exhausted ? 'inspect_then_retry_later' : ( isset( $classification['client_action'] ) ? (string) $classification['client_action'] : 'inspect' ),
 						'retry_after_seconds' => self::retry_after_seconds_from_wp_error( $value ),
 						'error_code' => self::safe_error_code( $value ),
 						'error_fingerprint' => self::wp_error_fingerprint( $name, $value ),
@@ -68,6 +71,9 @@ final class MAD4B_SCP_Connector_Resilience {
 					'attempts' => $attempt,
 					'elapsed_ms' => $elapsed_ms,
 					'retryable' => false,
+					'automatic_retry_allowed' => false,
+					'automatic_retry_performed' => $attempt > 1,
+					'automatic_retry_exhausted' => false,
 					'category' => 'none',
 					'data' => $value,
 					'read_only' => true,
@@ -80,6 +86,7 @@ final class MAD4B_SCP_Connector_Resilience {
 					&& $attempt < $max_attempts ) {
 					continue;
 				}
+				$retry_exhausted = ! empty( $classification['auto_retry'] ) && $attempt >= $max_attempts;
 				return array(
 					'contract' => self::CONTRACT,
 					'ok' => false,
@@ -87,9 +94,11 @@ final class MAD4B_SCP_Connector_Resilience {
 					'attempts' => $attempt,
 					'elapsed_ms' => self::elapsed_ms( $started ),
 					'retryable' => ! empty( $classification['retryable'] ),
-					'automatic_retry_allowed' => ! empty( $classification['auto_retry'] ),
+					'automatic_retry_allowed' => ! empty( $classification['auto_retry'] ) && ! $retry_exhausted,
+					'automatic_retry_performed' => $attempt > 1,
+					'automatic_retry_exhausted' => $retry_exhausted,
 					'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown',
-					'client_action' => isset( $classification['client_action'] ) ? (string) $classification['client_action'] : 'inspect',
+					'client_action' => $retry_exhausted ? 'inspect_then_retry_later' : ( isset( $classification['client_action'] ) ? (string) $classification['client_action'] : 'inspect' ),
 					'error_class' => get_class( $e ),
 					'error_fingerprint' => self::exception_fingerprint( $name, $e ),
 					'raw_error_message_exposed' => false,
@@ -106,6 +115,9 @@ final class MAD4B_SCP_Connector_Resilience {
 			'attempts' => $attempt,
 			'elapsed_ms' => self::elapsed_ms( $started ),
 			'retryable' => false,
+			'automatic_retry_allowed' => false,
+			'automatic_retry_performed' => $attempt > 1,
+			'automatic_retry_exhausted' => false,
 			'category' => 'internal',
 			'raw_error_message_exposed' => false,
 			'read_only' => true,
@@ -133,6 +145,8 @@ final class MAD4B_SCP_Connector_Resilience {
 				'target' => $target,
 				'retryable' => ! empty( $result['retryable'] ),
 				'automatic_retry_allowed' => ! empty( $result['automatic_retry_allowed'] ),
+				'automatic_retry_performed' => ! empty( $result['automatic_retry_performed'] ),
+				'automatic_retry_exhausted' => ! empty( $result['automatic_retry_exhausted'] ),
 				'category' => isset( $result['category'] ) ? (string) $result['category'] : 'unknown',
 				'client_action' => isset( $result['client_action'] ) ? (string) $result['client_action'] : 'inspect',
 				'retry_after_seconds' => isset( $result['retry_after_seconds'] ) ? (int) $result['retry_after_seconds'] : 0,
@@ -274,6 +288,7 @@ final class MAD4B_SCP_Connector_Resilience {
 			'avoid_large_parallel_fanout' => true,
 			'max_recommended_parallel_read_calls' => 2,
 			'retry_transient_read_once' => true,
+			'no_immediate_retry_after_automatic_retry_exhausted' => true,
 			'rate_limit_requires_backoff' => true,
 			'supported_error_categories' => array( 'rate_limit', 'timeout', 'transport', 'upstream_unavailable', 'authorization', 'contract_or_validation', 'request_budget', 'internal', 'unknown' ),
 			'default_read_attempt_budget' => self::DEFAULT_READ_ATTEMPTS,
