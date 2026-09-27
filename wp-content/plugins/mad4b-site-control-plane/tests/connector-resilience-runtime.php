@@ -116,6 +116,24 @@ mad4b_assert_true( empty( $mutation_data['blind_retry_allowed'] ), 'blind mutati
 mad4b_assert_true( empty( $mutation_data['automatic_retry_performed'] ), 'mutation must never auto retry' );
 mad4b_assert_true( false === strpos( json_encode( $mutation_data ), 'SECRET-MUST-NOT-LEAK' ), 'raw mutation exception message leaked' );
 
+$mutation_wp_attempts = 0;
+$mutation_wp = MAD4B_SCP_Connector_Resilience::execute_mutation(
+	'write',
+	'mad4b/example-remote-write',
+	static function () use ( &$mutation_wp_attempts ) {
+		$mutation_wp_attempts++;
+		return new WP_Error( 'http_request_failed', 'Connection reset after remote request SECRET-MUST-NOT-LEAK' );
+	}
+);
+mad4b_assert_true( is_wp_error( $mutation_wp ), 'transient mutation WP_Error must remain an error' );
+mad4b_assert_true( 1 === $mutation_wp_attempts, 'transient mutation WP_Error must not replay callback' );
+$mutation_wp_data = $mutation_wp->get_error_data();
+mad4b_assert_true( 'unknown' === $mutation_wp_data['mutation_state'], 'transient mutation WP_Error must be uncertain' );
+mad4b_assert_true( ! empty( $mutation_wp_data['reconciliation_required'] ), 'transient mutation WP_Error must require reconciliation' );
+mad4b_assert_true( empty( $mutation_wp_data['blind_retry_allowed'] ), 'transient mutation WP_Error must deny blind retry' );
+mad4b_assert_true( 'reconcile_then_replan' === $mutation_wp_data['client_action'], 'mutation WP_Error client action drifted' );
+mad4b_assert_true( false === strpos( json_encode( $mutation_wp_data ), 'SECRET-MUST-NOT-LEAK' ), 'raw mutation WP_Error message leaked' );
+
 $fanout_attempts = 0;
 $fanout = MAD4B_SCP_Connector_Resilience::run_checks(
 	array(
