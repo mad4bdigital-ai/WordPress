@@ -160,6 +160,7 @@ for marker in [
     "'context/rollback-materialized-brand-draft' => 'google_drive_context'",
     "'context/source-scan-apply' => 'google_drive_context'",
     "'mad4b/plugin-package-apply' => 'core'",
+    "'mad4b/control-plane-upload-apply' => 'core'",
     "'mad4b/context-ai-review' => 'core'",
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
     "MAD4B_SCP_Identity_Context::current()",
@@ -212,6 +213,7 @@ if "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY => 'core'" not in transport_a
 if "'mad4b/enrollment-execute'" in allowlist or "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY" in allowlist:
     raise SystemExit('enrollment execute transport grant leaked into the normal governed-write allowlist')
 for required_pair in [
+    "'mad4b/control-plane-upload-apply' => 'core'",
     "'jetengine/create-cpt' => 'native-provider'",
     "'elementor/clone-subtree' => 'elementor'",
     "'elementor/move-element' => 'elementor'",
@@ -412,7 +414,7 @@ for marker in [
 
 for marker in [
     "MAD4B_SCP_Transport_Context::resolve_server_for_ability( $declared_server_id, $ability_name, $input )",
-    "MAD4B_SCP_Staging_Write_Authority::authorization_input( $input )",
+    "MAD4B_SCP_Staging_Write_Authority::authorization_input( $input, $ability_name )",
     "MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input )",
     "MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed",
     "MAD4B_SCP_Approval_Tickets::authorize_exact( $approval_ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $authorization_input, $ticket_class )",
