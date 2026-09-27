@@ -164,6 +164,7 @@ require(servers, "'mad4b/runtime-authority-status'", 'connection-runtime-authori
 require(servers, "'mad4b/connection-status'", 'connection-status-mounted')
 require(servers, "'mad4b/read-snapshot-header'", 'read-snapshot-header-mounted')
 require(servers, "'mad4b/read-diagnostic-bundle'", 'read-diagnostic-bundle-mounted')
+require(servers, "'mad4b/read-metadata-envelope'", 'read-metadata-envelope-mounted')
 require(servers, "'mad4b-write'", 'write-server-id')
 require(servers, "'MAD4B Write MCP'", 'write-server-registration')
 require(servers, "array( __CLASS__, 'can_write_transport' )", 'write-server-permission')
