@@ -939,6 +939,13 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		if ( empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return false;
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
 		if ( ! in_array( 'mad4b:read', $scopes, true ) ) return false;
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) && MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY === (string) $ability_name ) {
+			if ( ! self::effective() ) return false;
+			$canonical = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input( $input );
+			if ( is_wp_error( $canonical ) ) return false;
+			$guard = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $canonical );
+			return ! is_wp_error( $guard );
+		}
 		if ( $bootstrap ) return true;
 		if ( self::ai_review_delegation_allowed( $ability_name, $input, $identity ) ) return true;
 		if ( ! self::effective() || ! self::is_write_ability( $ability_name ) ) return false;
