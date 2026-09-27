@@ -169,6 +169,7 @@ After an external MCP session termination the client policy is:
 5. if runtime generation changed, discard partial evidence and restart the
    diagnostic transaction;
 6. never replay a mutation or enrollment automatically.
+7. when an `approval-plan` response is uncertain, call `mad4b/approval-plan-reconcile` with the exact original payload before creating another approval plan; an existing pending/approved/executing/used/failed exact payload blocks blind replay.
 
 The preferred read parallelism is one. The hard client ceiling is two independent
 lightweight reads. Large `Promise.all`-style diagnostic fan-out is outside the

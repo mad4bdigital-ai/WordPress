@@ -309,6 +309,8 @@ final class MAD4B_SCP_Connector_Resilience {
 			'automatic_write_retry_allowed' => false,
 			'automatic_enrollment_retry_allowed' => false,
 			'reconcile_before_retry_when_mutation_state_unknown' => true,
+			'uncertain_approval_plan_reconciliation_ability' => 'mad4b/approval-plan-reconcile',
+			'never_replay_approval_plan_before_reconciliation' => true,
 			'persistent_circuit_breaker_used' => false,
 			'persistent_catalog_cache_used' => false,
 		);

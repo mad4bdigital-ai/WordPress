@@ -71,6 +71,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-admin-post-lifecycle-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/approval-handoff-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/approval-plan-reconciliation-runtime.php
 
       - name: Execute fail-closed human decision matrix
         shell: bash
@@ -89,6 +90,12 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/approval-handoff-runtime.php
+
+      - name: Execute uncertain approval-plan reconciliation regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/approval-plan-reconciliation-runtime.php
 
       - name: Enforce independent approval architecture
         shell: bash

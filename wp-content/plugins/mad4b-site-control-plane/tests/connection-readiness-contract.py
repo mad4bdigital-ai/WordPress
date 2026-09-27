@@ -204,6 +204,8 @@ for marker in (
     "'resume_completed_reads_on_generation_match' => true",
     "'session_termination_budget' => 2",
     "'persistent_session_breaker_used' => false",
+    "'uncertain_approval_plan_reconciliation_ability' => 'mad4b/approval-plan-reconcile'",
+    "'never_replay_approval_plan_before_reconciliation' => true",
 ):
     require(resilience, marker, 'read-consistency-client-policy')
 
