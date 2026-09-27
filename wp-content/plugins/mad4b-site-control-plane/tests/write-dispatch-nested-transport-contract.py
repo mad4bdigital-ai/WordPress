@@ -36,6 +36,8 @@ required_dispatch = [
     "MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request",
     "mad4b_write_dispatch_governance_envelope_conflict",
     "mad4b_write_dispatch_approval_binding_conflict",
+    "if ( empty( $present ) ) return true;",
+    "mad4b_write_dispatch_governance_envelope_rebind_conflict",
     "_mad4b_approval_ticket_id",
     "_mad4b_context_receipt",
 ]
@@ -49,4 +51,4 @@ if "mad4b/approval-plan" in dispatch_catalog:
 if "array( 'mad4b/write-execute', 'mad4b/enrollment-execute' )" not in dispatch_catalog:
     raise SystemExit("compact ChatGPT mutation transport set drifted unexpectedly")
 
-print("mad4b.write-dispatch-nested-transport.contract.v1: PASS")
+print("mad4b.write-dispatch-nested-transport.contract.v2: PASS")
