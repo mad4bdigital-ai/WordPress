@@ -51,6 +51,7 @@ final class MAD4B_SCP_Connection_Ability {
 						'properties' => array(
 							'operation_query' => array( 'type' => 'string', 'maxLength' => 160, 'default' => '' ),
 							'include_operation_discovery' => array( 'type' => 'boolean', 'default' => false ),
+							'include_staging_certification' => array( 'type' => 'boolean', 'default' => false ),
 							'retry_transient_reads' => array( 'type' => 'boolean', 'default' => true ),
 							'budget_ms' => array( 'type' => 'integer', 'minimum' => 1000, 'maximum' => 30000, 'default' => 12000 ),
 						),
@@ -86,6 +87,7 @@ final class MAD4B_SCP_Connection_Ability {
 		$retry = ! array_key_exists( 'retry_transient_reads', $input ) || ! empty( $input['retry_transient_reads'] );
 		$budget_ms = isset( $input['budget_ms'] ) ? absint( $input['budget_ms'] ) : MAD4B_SCP_Connector_Resilience::DEFAULT_REQUEST_BUDGET_MS;
 		$include_discovery = ! empty( $input['include_operation_discovery'] );
+		$include_certification = ! empty( $input['include_staging_certification'] );
 		$operation_query = isset( $input['operation_query'] ) ? sanitize_text_field( (string) $input['operation_query'] ) : '';
 
 		$checks = array(
@@ -141,12 +143,15 @@ final class MAD4B_SCP_Connection_Ability {
 					'blockers' => isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? array_values( array_slice( $status['blockers'], 0, 20 ) ) : array(),
 				);
 			},
-			'staging_certification' => static function () {
+		);
+
+		if ( $include_certification ) {
+			$checks['staging_certification'] = static function () {
 				return class_exists( 'MAD4B_SCP_Staging_Certification' )
 					? MAD4B_SCP_Staging_Certification::status( array( 'compact' => true ) )
 					: array();
-			},
-		);
+			};
+		}
 
 		if ( $include_discovery ) {
 			$checks['operation_discovery'] = static function () use ( $operation_query ) {
@@ -167,6 +172,9 @@ final class MAD4B_SCP_Connection_Ability {
 		) );
 
 		$result['contract'] = self::PREFLIGHT_CONTRACT;
+		$result['payload_profile'] = 'compact';
+		$result['included_staging_certification'] = $include_certification;
+		$result['included_operation_discovery'] = $include_discovery;
 		$result['resilience_contract'] = MAD4B_SCP_Connector_Resilience::CONTRACT;
 		$result['client_guidance'] = MAD4B_SCP_Connector_Resilience::client_guidance();
 		return $result;
