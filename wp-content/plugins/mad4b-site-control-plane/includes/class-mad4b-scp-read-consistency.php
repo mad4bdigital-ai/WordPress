@@ -203,6 +203,11 @@ final class MAD4B_SCP_Read_Consistency {
 			return self::generation_changed_envelope( 'metadata', $transaction_id, 1, $expected_generation, $before, 'metadata_preflight_generation_mismatch' );
 		}
 
+		if ( 'ability' === $target_type
+			&& ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $target ) ) ) {
+			return new WP_Error( 'mad4b_metadata_ability_not_cataloged', 'Requested Ability is outside the governed ChatGPT capability universe.' );
+		}
+
 		$payload = array(
 			'target_type' => $target_type,
 			'target' => $target,
