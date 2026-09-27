@@ -194,7 +194,7 @@ for marker in (
     "public static function metadata_envelope",
     "'execution_binding_digest'",
     "'dispatch_policy_digest'",
-    "'dispatch_identity_source' => 'MAD4B_SCP_Enrollment_Dispatch::info'",
+    "$payload['dispatch_identity_source'] = 'MAD4B_SCP_Enrollment_Dispatch::info';",
     "MAD4B_SCP_Enrollment_Dispatch::info",
     "'mad4b_metadata_dispatch_schema_projection_drift'",
     "'mad4b_metadata_ability_not_cataloged'",
