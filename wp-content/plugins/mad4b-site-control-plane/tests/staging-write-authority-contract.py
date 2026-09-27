@@ -194,6 +194,15 @@ for marker in [
 
 
 for marker in [
+    "MAD4B_SCP_AI_Approval::ABILITY",
+    "MAD4B_SCP_AI_Approval::catalog_eligible()",
+    "'ai_approval_standing_delegation_not_eligible'",
+    "'mad4b/operation-classify'",
+]:
+    if marker not in servers:
+        raise SystemExit('Core AI approval server projection invariant missing: ' + marker)
+
+for marker in [
     "const CONTRACT = 'mad4b.staging-write-grant-reconciliation-plan.v2'",
     "private static function transport_inventory()",
     "MAD4B_SCP_Servers::chatgpt_dispatch_transport_tools()",
@@ -239,7 +248,7 @@ for marker in [
     "'mad4b/plugin-package-apply' => 'core'",
     "'mad4b/control-plane-upload-apply' => 'core'",
     "'mad4b/context-ai-review' => 'core'",
-    "'mad4b/approval-ai-decide' => 'approval-handoff'",
+    "'mad4b/approval-ai-decide' => 'core'",
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
     "MAD4B_SCP_Identity_Context::current()",
     "MAD4B_SCP_Agent_Registry::resolve_agent",
