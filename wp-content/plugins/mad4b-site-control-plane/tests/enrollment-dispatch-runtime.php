@@ -196,6 +196,10 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-enrollment-dispatch.php'
 $discover = MAD4B_SCP_Enrollment_Dispatch::discover( array() );
 mad4b_assert( 1 === (int) $discover['count'], 'dispatcher discovery must expose only operator-role non-human Staging operations' );
 mad4b_assert( isset( $discover['operations']['managed_skills_reconciliation'] ), 'managed Skills reconciliation was not discoverable' );
+$discover_tokens = MAD4B_SCP_Enrollment_Dispatch::discover( array( 'query' => 'reconcile managed skills' ) );
+mad4b_assert( 1 === (int) $discover_tokens['count'], 'tokenized enrollment discovery did not resolve semantic terms' );
+mad4b_assert( isset( $discover_tokens['operations']['managed_skills_reconciliation'] ), 'tokenized enrollment discovery lost managed Skills reconciliation' );
+mad4b_assert( array( 'reconcile', 'managed', 'skills' ) === $discover_tokens['query_tokens'], 'enrollment discovery query token projection drifted' );
 mad4b_assert( ! isset( $discover['operations']['external_executor_work_claim'] ), 'external executor lease claim leaked into ChatGPT dispatcher' );
 mad4b_assert( ! isset( $discover['operations']['human_decision_test'] ), 'human-decision operation leaked into ChatGPT dispatcher' );
 mad4b_assert( ! isset( $discover['operations']['system_test'] ), 'system caller operation leaked into ChatGPT dispatcher' );
