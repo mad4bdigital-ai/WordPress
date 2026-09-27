@@ -677,6 +677,15 @@ for forbidden in [
         raise SystemExit(f'REST compatibility layer may not globally modify WordPress REST behavior: {forbidden}')
 
 for marker in [
+    "'ai_approval_standing_delegation_defined' => ! empty( $approval_policy['ai_approval_standing_delegation_defined'] )",
+    "'ai_approval_standing_delegation_contract' => isset( $approval_policy['ai_approval_standing_delegation_contract'] )",
+    "'ai_approval_standing_delegation_configured' => ! empty( $approval_policy['ai_approval_standing_delegation_configured'] )",
+    "'ai_approval_operation_classification_contract' => isset( $approval_policy['ai_approval_operation_classification_contract'] )",
+]:
+    if marker not in live_truth:
+        raise SystemExit(f'live truth must preserve AI approval policy projection: {marker}')
+
+for marker in [
     "const CONTRACT = 'mad4b.write-runtime-certification.v3'",
     "add_action( 'admin_init', array( __CLASS__, 'observe' ), 110 )",
     "'execute_callback' => array( __CLASS__, 'status' )",
