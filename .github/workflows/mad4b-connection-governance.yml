@@ -57,6 +57,7 @@ jobs:
           php -l "$root/tests/runtime-connection-readiness-smoke.php"
           php -l "$root/tests/runtime-write-surface-smoke.php"
           php -l "$root/tests/write-dispatch-scope-delegation-runtime.php"
+          php -l "$root/tests/write-dispatch-nested-transport-runtime.php"
           php -l "$root/tests/runtime-foreign-mcp-transport-blocker.php"
           php -l "$root/tests/runtime-mcp-namespace-index-hijack-blocker.php"
           php -l "$root/tests/runtime-mcp-provider-isolation-legacy-flag-smoke.php"
@@ -65,6 +66,7 @@ jobs:
           php -l "$root/tests/runtime-mcp-runtime-conflict-recovered.php"
           python3 "$root/tests/connection-readiness-contract.py"
           python3 "$root/tests/staging-write-authority-contract.py"
+          python3 "$root/tests/write-dispatch-nested-transport-contract.py"
           python3 "$root/tests/mcp-side-channel-governance-contract.py"
           python3 "$root/tests/mcp-provider-isolation-contract.py"
           python3 "$root/tests/mcp-registration-bridge-contract.py"
@@ -72,6 +74,7 @@ jobs:
           php "$root/tests/upgrade-continuity-runtime.php"
           php "$root/tests/reconnect-hardening-runtime.php"
           php "$root/tests/write-dispatch-scope-delegation-runtime.php"
+          php "$root/tests/write-dispatch-nested-transport-runtime.php"
 
   runtime:
     name: Connection runtime (${{ matrix.wordpress }})
