@@ -69,7 +69,9 @@ exhausted, no new check is launched. An already-running callback is never
 force-aborted by the resilience layer.
 
 Budget exhaustion is a retryable read condition, not evidence that the skipped
-check failed semantically.
+check failed semantically. It is never immediately auto-retried. The structured
+action is `reduce_scope_then_retry_preflight`: reduce the diagnostic scope and
+rerun the compact read-only preflight.
 
 ### Payload discipline
 
