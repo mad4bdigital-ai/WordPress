@@ -12,6 +12,10 @@ Operator deployment, authority reconciliation, recovery, rollback and lifecycle 
 
 Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
 
+### rc.66 bounded ChatGPT write-dispatch scope
+
+rc.66 fixes the ChatGPT `mad4b/write-execute` transport envelope so its exact `mad4b-chatgpt` transport NHI grant can satisfy the OAuth scope boundary without requiring a second mutation ticket for the dispatcher itself. Delegation is Staging-only, requires the live governed-write authority and exact ChatGPT transport context, validates the target schema digest, and accepts only an Ability already certified and mounted on `mad4b-write`. The selected target still performs its own exact provider/grant/budget/Context/one-time approval authorization; Production, Breakglass, raw SQL, wildcard grants, generic write scope and dispatcher recursion remain denied.
+
 ### rc.59 lineage consolidation
 
 rc.59 consolidates the previously divergent provider/zero-touch, Developer + Full Staging Authority, and rc.58 ChatGPT hotpath lineages. It retains route-targeted MCP materialization and request-local non-persistent catalog caching, restores plan-bound transactional Staging grant reconciliation v2 with persistence rollback, restores zero-touch runtime-census binding, and keeps Developer/Developer Breakglass on isolated non-Production MCP resources. Generic Raw SQL Breakglass remains a separate disabled-by-default surface and is not included in Full Staging Authority.
@@ -360,7 +364,7 @@ Repository CI currently covers:
 - read-only Admin Governance/Connection Console contract/runtime behavior;
 - disposable WordPress/MySQL runtime activation and smoke testing on WordPress 6.9 and the current `latest` release.
 
-The isolated runtime CI activates MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.4.0-rc.65 in disposable WordPress/MySQL. Repository success does **not** replace target-site certification.
+The isolated runtime CI activates MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.4.0-rc.66 in disposable WordPress/MySQL. Repository success does **not** replace target-site certification.
 
 The core mutation-gate workflow is read-only. The MCP Adapter refresh workflow is manual-only (`workflow_dispatch`) and may write certification evidence only when an operator explicitly runs it on a selected branch.
 

@@ -116,6 +116,23 @@ for marker in [
         raise SystemExit(f'missing tenant-bound governed write invariant: {marker}')
 
 
+dispatch_scope = write.split('public static function remote_scope_delegation_allowed', 1)[1].split('public static function force_remote_write_approval', 1)[0]
+for marker in [
+    "if ( 'mad4b/write-execute' === (string) $ability_name )",
+    "'mad4b-chatgpt' !== $server_id",
+    "MAD4B_SCP_Transport_Context::current_server_id()",
+    "$target_ability = isset( $input['ability_name'] )",
+    "self::is_write_ability( $target_ability )",
+    "MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $target_ability )",
+]:
+    if marker not in dispatch_scope:
+        raise SystemExit(f'bounded ChatGPT write dispatcher delegation invariant missing: {marker}')
+if "return true;" not in dispatch_scope:
+    raise SystemExit('bounded ChatGPT write dispatcher delegation must terminate only after exact target validation')
+if "'server:mad4b-write'" in dispatch_scope:
+    raise SystemExit('write dispatcher delegation must not mint or require a broad mad4b-write token scope')
+
+
 for marker in [
     "const CONTRACT = 'mad4b.staging-write-grant-reconciliation-plan.v2'",
     "private static function transport_inventory()",
@@ -373,7 +390,7 @@ for marker in [
     if marker not in scope_body and marker not in write:
         raise SystemExit('bounded write-dispatch scope delegation missing: ' + marker)
 
-dispatcher_helper = write.split("private static function write_dispatch_scope_delegation_allowed", 1)[1].split("public static function remote_scope_delegation_allowed", 1)[0]
+dispatcher_scope_helper = write.split("private static function write_dispatch_scope_delegation_allowed", 1)[1].split("public static function remote_scope_delegation_allowed", 1)[0]
 for forbidden in [
     "return true;\n\t}",
     "mad4b:write",
@@ -382,9 +399,9 @@ for forbidden in [
     "reconcile()",
     "bind_candidate_identity(",
 ]:
-    if forbidden in dispatcher_helper:
+    if forbidden in dispatcher_scope_helper:
         raise SystemExit('write-dispatch scope delegation became provisioning or broad authority: ' + forbidden)
-if dispatcher_helper.count("MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $target_ability )") != 1:
+if dispatcher_scope_helper.count("MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $target_ability )") != 1:
     raise SystemExit('write-dispatch target provider must be resolved exactly once on mad4b-write')
 if scope_body.find("if ( 'mad4b/write-execute' === (string) $ability_name )") > planner_branch:
     raise SystemExit('transport dispatcher scope delegation must be evaluated before nested target planner delegation')
