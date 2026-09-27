@@ -323,7 +323,6 @@ final class MAD4B_SCP_Read_Consistency {
 			'write_tool_count' => count( $write ),
 			'provider_inventory_digest' => $digest,
 			'raw_sql_breakglass_in_write_inventory' => in_array( 'mad4b/database-raw-query', $write, true ),
-			'generic_batch_executor_exposed' => in_array( 'mad4b/execute-many', $chatgpt, true ) || in_array( 'mad4b/execute-many', $write, true ),
 		);
 	}
 
