@@ -104,7 +104,7 @@ assert "MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime() ) re
 assert "defined( 'WP_CLI' )" in reconcile
 assert "0 === strpos( $page, 'mad4b-control-plane' )" in reconcile
 
-runtime_release_match = re.search(r"^release=(0\\.4\\.0-rc\\.\\d+)$", runtime_build, re.M)
+runtime_release_match = re.search(r"^release=(0\.4\.0-rc\.\d+)$", runtime_build, re.M)
 assert runtime_release_match, "runtime release marker missing"
 runtime_release = runtime_release_match.group(1)
 assert f"Version: {runtime_release}" in entry
