@@ -12,6 +12,16 @@ perf = (root / 'includes' / 'class-mad4b-scp-admin-query-performance.php').read_
 generalization = (root.parents[2] / 'specs' / '007-content-intelligence-workflow-platform' / 'contracts' / 'generalization-rules.md').read_text(encoding='utf-8')
 contract = (root.parents[2] / 'specs' / '007-content-intelligence-workflow-platform' / 'contracts' / 'remote-operation-parity-discoverability.md').read_text(encoding='utf-8')
 
+for marker in [
+    "MAD4B_SCP_Skill_Seeder::reconcile_batch(",
+    "MAD4B_SCP_Skill_Seeder::observe_ready()",
+    "'seed_cursor'",
+    "'seed_accumulator'",
+    "'state' => 'in_progress'",
+]:
+    if marker not in parity:
+        raise SystemExit(f'missing checkpointed managed Skills convergence invariant: {marker}')
+
 required_parity_markers = [
     "const CONTRACT = 'mad4b.remote-operation-parity.v1';",
     "const CATALOG_VERSION = 3;",

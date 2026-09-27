@@ -61,6 +61,117 @@ final class MAD4B_SCP_Skill_Seeder {
 		return self::set_status( 'ready', $created, $refreshed, $skipped );
 	}
 
+
+	public static function reconcile_batch( $cursor = 0, $limit = 3, array $accumulator = array() ) {
+		$cursor = max( 0, (int) $cursor );
+		$limit = max( 1, min( 5, (int) $limit ) );
+
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::skills_enabled() || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) {
+			return new WP_Error( 'mad4b_skill_seed_batch_not_eligible', 'Canonical Skill seed batch reconciliation is not eligible in this runtime.' );
+		}
+
+		$audit_status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
+		if ( empty( $audit_status['ready'] ) ) return new WP_Error( 'mad4b_skill_seed_batch_audit_unavailable', 'Canonical Skill seed batch reconciliation requires ready audit storage.' );
+
+		$root = MAD4B_SCP_Skill_Registry::storage_root();
+		if ( '' === $root && defined( 'WP_CONTENT_DIR' ) ) $root = wp_normalize_path( WP_CONTENT_DIR . '/mad4b-skills' );
+		if ( '' === $root || ( ! is_dir( $root ) && ! wp_mkdir_p( $root ) ) ) return new WP_Error( 'mad4b_skill_seed_batch_storage_unavailable', 'Canonical Skill seed batch storage is unavailable.' );
+
+		$seeds = self::seeds();
+		if ( is_wp_error( $seeds ) ) return $seeds;
+		$total = count( $seeds );
+		if ( $cursor > $total ) return new WP_Error( 'mad4b_skill_seed_batch_cursor_invalid', 'Canonical Skill seed batch cursor is beyond the current manifest.' );
+
+		$created = isset( $accumulator['created'] ) && is_array( $accumulator['created'] ) ? array_values( array_unique( array_map( 'sanitize_key', $accumulator['created'] ) ) ) : array();
+		$refreshed = isset( $accumulator['refreshed_managed'] ) && is_array( $accumulator['refreshed_managed'] ) ? array_values( array_unique( array_map( 'sanitize_key', $accumulator['refreshed_managed'] ) ) ) : array();
+		$skipped = isset( $accumulator['skipped_existing'] ) && is_array( $accumulator['skipped_existing'] ) ? array_values( array_unique( array_map( 'sanitize_key', $accumulator['skipped_existing'] ) ) ) : array();
+
+		$end = min( $total, $cursor + $limit );
+		for ( $i = $cursor; $i < $end; ++$i ) {
+			$seed = $seeds[ $i ];
+			$result = self::seed_one( $root, $seed );
+			if ( is_wp_error( $result ) ) return $result;
+			if ( ! empty( $result['created'] ) ) $created[] = $seed['name'];
+			elseif ( ! empty( $result['refreshed'] ) ) $refreshed[] = $seed['name'];
+			else $skipped[] = $seed['name'];
+		}
+		$created = array_values( array_unique( $created ) );
+		$refreshed = array_values( array_unique( $refreshed ) );
+		$skipped = array_values( array_unique( $skipped ) );
+		$next_cursor = $end;
+		$accumulator = array(
+			'created' => $created,
+			'refreshed_managed' => $refreshed,
+			'skipped_existing' => $skipped,
+		);
+
+		if ( $next_cursor < $total ) {
+			self::$runtime_status = array(
+				'contract' => self::CONTRACT,
+				'seed_version' => self::SEED_VERSION,
+				'state' => 'in_progress',
+				'ready' => false,
+				'created' => $created,
+				'refreshed_managed' => $refreshed,
+				'skipped_existing' => $skipped,
+				'cursor' => $cursor,
+				'next_cursor' => $next_cursor,
+				'total' => $total,
+				'processed_in_batch' => $end - $cursor,
+				'accumulator' => $accumulator,
+				'previous_persisted_ready' => false,
+				'current_request_observed' => true,
+				'overwrites_user_owned' => false,
+				'refreshes_only_digest_clean_managed' => true,
+				'production_auto_seed' => false,
+			);
+			return self::$runtime_status;
+		}
+
+		$stored = array(
+			'contract' => self::CONTRACT,
+			'version' => self::SEED_VERSION,
+			'created' => $created,
+			'refreshed_managed' => $refreshed,
+			'skipped_existing' => $skipped,
+			'updated_at' => gmdate( 'c' ),
+		);
+		update_option( self::OPTION, $stored, false );
+		$status = self::set_status( 'ready', $created, $refreshed, $skipped );
+		$status['ready'] = true;
+		$status['cursor'] = $cursor;
+		$status['next_cursor'] = $next_cursor;
+		$status['total'] = $total;
+		$status['processed_in_batch'] = $end - $cursor;
+		$status['accumulator'] = $accumulator;
+		self::$runtime_status = $status;
+		return $status;
+	}
+
+	public static function observe_ready() {
+		$inspection = self::inspect();
+		$stored = get_option( self::OPTION, array() );
+		$stored_ready = is_array( $stored )
+			&& isset( $stored['version'] )
+			&& self::SEED_VERSION === (int) $stored['version']
+			&& ! empty( $stored['updated_at'] );
+		if ( empty( $inspection['ready'] ) || ! $stored_ready ) {
+			return new WP_Error( 'mad4b_skill_seed_observation_not_ready', 'Canonical Skill seed state is not ready for current-request provider reconciliation.', array( 'inspection' => $inspection ) );
+		}
+		$status = self::set_status(
+			'ready',
+			isset( $stored['created'] ) && is_array( $stored['created'] ) ? $stored['created'] : array(),
+			isset( $stored['refreshed_managed'] ) && is_array( $stored['refreshed_managed'] ) ? $stored['refreshed_managed'] : array(),
+			isset( $stored['skipped_existing'] ) && is_array( $stored['skipped_existing'] ) ? $stored['skipped_existing'] : array()
+		);
+		$status['ready'] = true;
+		$status['observed_from_persisted_state'] = true;
+		$status['inspection'] = $inspection;
+		self::$runtime_status = $status;
+		return $status;
+	}
+
+
 	/**
 	 * Current-request truth always wins. Persisted success from an earlier request
 	 * is never promoted to current readiness before bootstrap observes this runtime.
