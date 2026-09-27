@@ -17,7 +17,7 @@ final class MAD4B_SCP_Approval_Handoff_Adapter extends MAD4B_SCP_Adapter_Base {
     }
     public function ability_names() {
         return array(
-  'read' => array( 'mad4b/approval-decision-handoff' ),
+  'read' => array( 'mad4b/approval-decision-handoff', 'mad4b/operation-classify' ),
   'content' => array(),
   'admin' => array(),
   'write' => class_exists( 'MAD4B_SCP_AI_Approval' ) && MAD4B_SCP_AI_Approval::catalog_eligible()
