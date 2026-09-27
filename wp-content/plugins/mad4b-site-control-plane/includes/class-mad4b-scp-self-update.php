@@ -26,7 +26,6 @@ final class MAD4B_SCP_Self_Update {
 	const MANIFEST_TRANSIENT    = 'mad4b_scp_update_manifest_v1';
 
 	private static $booted = false;
-	private static $native_backup = array();
 	private static $managed_apply = false;
 
 	public static function boot() {
@@ -35,13 +34,13 @@ final class MAD4B_SCP_Self_Update {
 
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 34 );
 
-		// Native WordPress update channel.
-		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'inject_native_update' ), 20, 1 );
-		add_filter( 'plugins_api', array( __CLASS__, 'plugin_information' ), 20, 3 );
-		add_filter( 'auto_update_plugin', array( __CLASS__, 'disable_self_auto_update' ), 100, 2 );
-		add_filter( 'upgrader_pre_download', array( __CLASS__, 'verify_native_download' ), 20, 4 );
-		add_filter( 'upgrader_pre_install', array( __CLASS__, 'native_pre_install' ), 20, 2 );
-		add_filter( 'upgrader_post_install', array( __CLASS__, 'native_post_install' ), 20, 3 );
+		// WordPress-admin update channel. This deliberately does not alter
+		// WordPress core update transients or automatic-update routines.
+		$plugin = plugin_basename( MAD4B_SCP_FILE );
+		add_filter( 'plugin_action_links_' . $plugin, array( __CLASS__, 'plugin_action_links' ), 20, 1 );
+		add_action( 'after_plugin_row_' . $plugin, array( __CLASS__, 'render_update_row' ), 10, 3 );
+		add_action( 'admin_post_mad4b_control_plane_native_update', array( __CLASS__, 'handle_native_update' ) );
+		add_action( 'admin_notices', array( __CLASS__, 'native_update_notice' ) );
 	}
 
 	public static function register_abilities() {
@@ -129,8 +128,10 @@ final class MAD4B_SCP_Self_Update {
 			'current' => $current,
 			'native_wordpress_update' => array(
 				'ready' => (bool) $native_ready,
+				'surface' => 'wp_admin_plugins_page',
 				'manual_only' => true,
-				'auto_update_disabled' => true,
+				'modifies_core_update_transients' => false,
+				'automatic_update_enabled' => false,
 				'manifest_url' => self::MANIFEST_URL,
 				'manifest_state' => is_wp_error( $manifest ) ? 'unavailable' : 'ready',
 				'manifest_error' => $manifest_error,
@@ -239,131 +240,104 @@ final class MAD4B_SCP_Self_Update {
 		return $result;
 	}
 
-	public static function inject_native_update( $transient ) {
-		if ( ! is_object( $transient ) || ! self::environment_allowed( false ) ) return $transient;
+	public static function plugin_action_links( $links ) {
+		$links = is_array( $links ) ? $links : array();
+		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) || ! self::environment_allowed( false ) ) return $links;
 
 		$manifest = self::fetch_manifest();
-		if ( is_wp_error( $manifest ) ) return $transient;
-		$current = self::installed_identity();
-		if ( ! empty( $current['source_commit_sha'] ) && hash_equals( $current['source_commit_sha'], $manifest['source_commit_sha'] ) ) {
-			unset( $transient->response[ plugin_basename( MAD4B_SCP_FILE ) ] );
-			return $transient;
-		}
+		if ( is_wp_error( $manifest ) || ! self::update_available( $manifest ) ) return $links;
 
-		$plugin = plugin_basename( MAD4B_SCP_FILE );
-		$offer = (object) array(
-			'id' => 'mad4b-site-control-plane',
-			'slug' => 'mad4b-site-control-plane',
-			'plugin' => $plugin,
-			'new_version' => $manifest['display_version'],
-			'url' => 'https://github.com/mad4bdigital-ai/WordPress',
-			'package' => $manifest['package_url'],
-			'tested' => isset( $manifest['tested'] ) ? $manifest['tested'] : '',
-			'requires' => isset( $manifest['requires'] ) ? $manifest['requires'] : '6.9',
-			'requires_php' => isset( $manifest['requires_php'] ) ? $manifest['requires_php'] : '7.4',
-			'icons' => array(),
-			'banners' => array(),
-			'banners_rtl' => array(),
+		$url = wp_nonce_url(
+			admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
+			'mad4b_control_plane_native_update'
 		);
-		if ( ! isset( $transient->response ) || ! is_array( $transient->response ) ) $transient->response = array();
-		$transient->response[ $plugin ] = $offer;
-		return $transient;
+		$label = sprintf(
+			/* translators: %s: target version. */
+			__( 'Update MAD4B to %s', 'mad4b-site-control-plane' ),
+			$manifest['display_version']
+		);
+		$links['mad4b_update'] = '<a href="' . esc_url( $url ) . '" aria-label="' . esc_attr( $label ) . '">' . esc_html( $label ) . '</a>';
+		return $links;
 	}
 
-	public static function plugin_information( $result, $action, $args ) {
-		if ( 'plugin_information' !== $action || ! is_object( $args ) || empty( $args->slug ) || 'mad4b-site-control-plane' !== (string) $args->slug ) return $result;
+	public static function render_update_row( $plugin_file, $plugin_data, $status ) {
+		unset( $plugin_data, $status );
+		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) || ! self::environment_allowed( false ) ) return;
+		if ( plugin_basename( MAD4B_SCP_FILE ) !== (string) $plugin_file ) return;
+
 		$manifest = self::fetch_manifest();
-		if ( is_wp_error( $manifest ) ) return $result;
+		if ( is_wp_error( $manifest ) || ! self::update_available( $manifest ) ) return;
 
-		return (object) array(
-			'name' => 'MAD4B Site Control Plane',
-			'slug' => 'mad4b-site-control-plane',
-			'version' => $manifest['display_version'],
-			'author' => '<a href="https://github.com/mad4bdigital-ai">MAD4B</a>',
-			'homepage' => 'https://github.com/mad4bdigital-ai/WordPress',
-			'requires' => isset( $manifest['requires'] ) ? $manifest['requires'] : '6.9',
-			'requires_php' => isset( $manifest['requires_php'] ) ? $manifest['requires_php'] : '7.4',
-			'tested' => isset( $manifest['tested'] ) ? $manifest['tested'] : '',
-			'download_link' => $manifest['package_url'],
-			'sections' => array(
-				'description' => 'Governed MAD4B Control Plane update channel. The package is exact-source, SHA-256 and build-provenance bound.',
-				'changelog' => 'Exact build ' . esc_html( $manifest['source_commit_sha'] ) . '.',
-			),
+		$url = wp_nonce_url(
+			admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
+			'mad4b_control_plane_native_update'
 		);
+		$message = sprintf(
+			/* translators: 1: target version, 2: short source commit. */
+			__( 'A governed MAD4B update is available: %1$s (build %2$s).', 'mad4b-site-control-plane' ),
+			$manifest['version'],
+			substr( $manifest['source_commit_sha'], 0, 12 )
+		);
+		echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
+			. esc_html( $message ) . ' <a href="' . esc_url( $url ) . '">'
+			. esc_html__( 'Update now', 'mad4b-site-control-plane' ) . '</a></p></div></td></tr>';
 	}
 
-	public static function disable_self_auto_update( $update, $item ) {
-		$plugin = is_object( $item ) && isset( $item->plugin ) ? (string) $item->plugin : '';
-		if ( plugin_basename( MAD4B_SCP_FILE ) === $plugin ) return false;
-		return $update;
-	}
-
-	public static function verify_native_download( $reply, $package, $upgrader, $hook_extra ) {
-		unset( $upgrader );
-		if ( false !== $reply ) return $reply;
-		if ( ! self::is_self_upgrade_hook( $hook_extra ) ) return $reply;
+	public static function handle_native_update() {
+		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) wp_die( esc_html__( 'You are not allowed to update plugins.', 'mad4b-site-control-plane' ), 403 );
+		check_admin_referer( 'mad4b_control_plane_native_update' );
+		if ( ! self::environment_allowed( false ) ) wp_die( esc_html__( 'MAD4B self-update is not enabled for this environment.', 'mad4b-site-control-plane' ), 403 );
 
 		$manifest = self::fetch_manifest( true );
-		if ( is_wp_error( $manifest ) ) return $manifest;
-		if ( ! hash_equals( $manifest['package_url'], (string) $package ) ) return new WP_Error( 'mad4b_self_update_package_url_drift', 'Native update package URL does not match the certified update manifest.' );
+		if ( is_wp_error( $manifest ) ) self::redirect_native_result( 'manifest_error', $manifest->get_error_code() );
+		if ( ! self::update_available( $manifest ) ) self::redirect_native_result( 'current', '' );
 
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		$tmp = download_url( $manifest['package_url'], 30 );
-		if ( is_wp_error( $tmp ) ) return $tmp;
-		$sha = strtolower( (string) hash_file( 'sha256', $tmp ) );
-		if ( ! hash_equals( $manifest['archive_sha256'], $sha ) ) {
-			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-			return new WP_Error( 'mad4b_self_update_native_hash_mismatch', 'Downloaded native update package failed SHA-256 verification.' );
-		}
+		if ( is_wp_error( $tmp ) ) self::redirect_native_result( 'download_error', $tmp->get_error_code() );
+
 		$verified = self::verify_archive( $tmp, $manifest );
 		if ( is_wp_error( $verified ) ) {
 			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-			return $verified;
-		}
-		return $tmp;
-	}
-
-	public static function native_pre_install( $response, $hook_extra ) {
-		if ( self::$managed_apply || is_wp_error( $response ) || ! self::is_self_upgrade_hook( $hook_extra ) ) return $response;
-		$manifest = self::fetch_manifest( true );
-		if ( is_wp_error( $manifest ) ) return $manifest;
-
-		$backup = self::backup_current();
-		if ( is_wp_error( $backup ) ) return $backup;
-		self::$native_backup = array(
-			'backup' => $backup,
-			'before' => self::activation_state(),
-			'target' => $manifest,
-		);
-		return $response;
-	}
-
-	public static function native_post_install( $response, $hook_extra, $result ) {
-		unset( $result );
-		if ( self::$managed_apply || ! self::is_self_upgrade_hook( $hook_extra ) ) return $response;
-		if ( empty( self::$native_backup['target'] ) ) return new WP_Error( 'mad4b_self_update_native_backup_missing', 'Native self-update backup context is missing.' );
-
-		$target = self::$native_backup['target'];
-		$readback = self::verify_installed_identity( $target );
-		if ( is_wp_error( $readback ) ) {
-			$rollback = self::rollback( self::$native_backup['backup'], self::$native_backup['before'] );
-			self::audit( 'native_wordpress_update', $target, false, array(
-				'failure_code' => $readback->get_error_code(),
-				'rollback_ok' => ! is_wp_error( $rollback ),
-			) );
-			self::$native_backup = array();
-			return new WP_Error( 'mad4b_self_update_native_readback_failed', 'Native Control Plane update failed exact build readback and was rolled back when possible.', array(
-				'cause_code' => $readback->get_error_code(),
-				'rollback_ok' => ! is_wp_error( $rollback ),
-			) );
+			self::redirect_native_result( 'verify_error', $verified->get_error_code() );
 		}
 
-		self::restore_activation_state( self::$native_backup['before'] );
-		self::audit( 'native_wordpress_update', $target, true, array( 'readback' => $readback ) );
-		self::$native_backup = array();
-		delete_site_transient( 'update_plugins' );
-		delete_transient( self::MANIFEST_TRANSIENT );
-		return $response;
+		$result = self::apply_verified_archive( $tmp, $manifest, 'wordpress_admin_plugin_update', '' );
+		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( is_wp_error( $result ) ) self::redirect_native_result( 'apply_error', $result->get_error_code() );
+		self::redirect_native_result( 'success', '' );
+	}
+
+	public static function native_update_notice() {
+		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) return;
+		$state = isset( $_GET['mad4b_control_plane_update'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_control_plane_update'] ) ) : '';
+		if ( '' === $state ) return;
+		$code = isset( $_GET['mad4b_update_code'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_update_code'] ) ) : '';
+		if ( 'success' === $state ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'MAD4B Site Control Plane updated and exact-build readback passed.', 'mad4b-site-control-plane' ) . '</p></div>';
+			return;
+		}
+		if ( 'current' === $state ) {
+			echo '<div class="notice notice-info is-dismissible"><p>' . esc_html__( 'MAD4B Site Control Plane is already on the current governed build.', 'mad4b-site-control-plane' ) . '</p></div>';
+			return;
+		}
+		$message = __( 'MAD4B Site Control Plane update did not complete.', 'mad4b-site-control-plane' );
+		if ( '' !== $code ) $message .= ' ' . sprintf( __( 'Reason: %s', 'mad4b-site-control-plane' ), $code );
+		echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( $message ) . '</p></div>';
+	}
+
+	private static function redirect_native_result( $state, $code ) {
+		$args = array( 'mad4b_control_plane_update' => sanitize_key( (string) $state ) );
+		if ( '' !== (string) $code ) $args['mad4b_update_code'] = sanitize_key( (string) $code );
+		wp_safe_redirect( add_query_arg( $args, admin_url( 'plugins.php' ) ) );
+		exit;
+	}
+
+	private static function update_available( array $manifest ) {
+		$current = self::installed_identity();
+		if ( ! empty( $current['source_commit_sha'] ) && hash_equals( $current['source_commit_sha'], $manifest['source_commit_sha'] ) ) return false;
+		if ( ! empty( $current['version'] ) && version_compare( $current['version'], $manifest['version'], '>' ) ) return false;
+		return true;
 	}
 
 	private static function apply_verified_archive( $path, array $target, $channel, $plan_sha256 ) {
@@ -649,13 +623,6 @@ final class MAD4B_SCP_Self_Update {
 		if ( ! is_dir( $base ) && ! wp_mkdir_p( $base ) ) return new WP_Error( 'mad4b_self_update_temp_dir_failed', 'Unable to prepare self-update temporary directory.' );
 		@chmod( $base, 0700 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return trailingslashit( $base ) . wp_generate_uuid4() . '.zip';
-	}
-
-	private static function is_self_upgrade_hook( $hook_extra ) {
-		if ( ! is_array( $hook_extra ) ) return false;
-		$plugin = isset( $hook_extra['plugin'] ) ? (string) $hook_extra['plugin'] : '';
-		if ( '' === $plugin && ! empty( $hook_extra['plugins'] ) && is_array( $hook_extra['plugins'] ) && 1 === count( $hook_extra['plugins'] ) ) $plugin = (string) reset( $hook_extra['plugins'] );
-		return plugin_basename( MAD4B_SCP_FILE ) === $plugin;
 	}
 
 	private static function environment_allowed( $remote ) {
