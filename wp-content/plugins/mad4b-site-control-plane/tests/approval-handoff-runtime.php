@@ -11,6 +11,7 @@ class WP_Error {
 }
 
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
+function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function current_user_can( $capability ) { return 'manage_options' === $capability; }
 function admin_url( $path = '' ) { return 'https://staging.client.test/wp-admin/' . ltrim( (string) $path, '/' ); }
 function add_action( $hook, $callback = null, $priority = 10, $accepted_args = 1 ) {}
