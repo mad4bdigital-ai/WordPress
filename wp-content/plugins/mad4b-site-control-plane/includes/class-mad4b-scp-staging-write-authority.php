@@ -680,11 +680,17 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return $input[ self::CONTEXT_RECEIPT_INPUT_KEY ];
 	}
 
-	public static function authorization_input( $input ) {
+	public static function authorization_input( $input, $ability_name = '' ) {
 		if ( ! is_array( $input ) ) return $input;
 		$clean = $input;
 		unset( $clean[ self::APPROVAL_INPUT_KEY ] );
-		return $clean;
+		$filtered = apply_filters(
+			'mad4b_scp_authorization_input',
+			$clean,
+			(string) $ability_name,
+			$input
+		);
+		return is_array( $filtered ) ? $filtered : $clean;
 	}
 
 	public static function provider_input( $input ) {
