@@ -13,7 +13,6 @@ on:
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
       - '.github/workflows/mad4b-release-verdict.yml'
       - '.github/workflows/feature-007-critical-kernel.yml'
-      - '.github/workflows/mad4b-control-plane-update-channel.yml'
   push:
     branches:
       - master
@@ -28,7 +27,6 @@ on:
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
       - '.github/workflows/mad4b-release-verdict.yml'
       - '.github/workflows/feature-007-critical-kernel.yml'
-      - '.github/workflows/mad4b-control-plane-update-channel.yml'
   workflow_dispatch:
 
 permissions:
@@ -110,7 +108,6 @@ jobs:
               ".github/workflows/mad4b-live-acceptance-evidence.yml",
               ".github/workflows/mad4b-release-verdict.yml",
               ".github/workflows/feature-007-critical-kernel.yml",
-              ".github/workflows/mad4b-control-plane-update-channel.yml",
           }
 
           def paths_from(section):
