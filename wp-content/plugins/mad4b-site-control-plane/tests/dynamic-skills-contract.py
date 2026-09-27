@@ -18,6 +18,18 @@ for label, source in [('skill-registry', registry), ('skill-seeder', seeder)]:
     if re.search(r'\bseems_utf8\s*\(', source):
         raise SystemExit(f'{label} must not invoke deprecated seems_utf8()')
 
+for marker in [
+    "public static function reconcile_batch(",
+    "public static function observe_ready()",
+    "'state' => 'in_progress'",
+    "'next_cursor' => $next_cursor",
+    "'accumulator' => $accumulator",
+    "mad4b_skill_seed_batch_cursor_invalid",
+    "mad4b_skill_seed_observation_not_ready",
+]:
+    if marker not in seeder:
+        raise SystemExit(f'missing checkpointed canonical Skill seed invariant: {marker}')
+
 provider_discovery = (wp / 'includes' / 'class-mad4b-scp-skill-provider-discovery.php').read_text(encoding='utf-8')
 provider_catalog = json.loads((wp / 'config' / 'skill-provider-catalog.json').read_text(encoding='utf-8'))
 seed_manifest = json.loads((wp / 'config' / 'skill-seed-manifest.json').read_text(encoding='utf-8'))
