@@ -8,6 +8,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-enrollment.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-approval.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php'
@@ -71,6 +73,8 @@ jobs:
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-enrollment.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-approval.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php \
@@ -141,7 +145,13 @@ jobs:
           grep -Fq "'all_remote_writes_require_exact_approval' => false" "$authority"
           grep -Fq "'normal_remote_writes_require_exact_approval' => true" "$authority"
           grep -Fq "'remote_write_approval_policy' => 'exact_approval_with_bounded_standing_exceptions'" "$authority"
-          grep -Fq "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' )" "$authority"
+          grep -Fq "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review', 'mad4b/approval-ai-decide' )" "$authority"
+          grep -Fq "'ai_approval_standing_delegation_defined' => true" "$authority"
+          grep -Fq "'ai_approval_operation_classification_contract'" "$authority"
+          grep -Fq "'production_auto_approval' => false" "$root/includes/class-mad4b-scp-impact-policy.php"
+          grep -Fq "'breakglass_auto_approval' => false" "$root/includes/class-mad4b-scp-impact-policy.php"
+          grep -Fq "'production_authorized' => false" "$root/includes/class-mad4b-scp-ai-approval.php"
+          grep -Fq "'breakglass_authorized' => false" "$root/includes/class-mad4b-scp-ai-approval.php"
           grep -Fq "write_enabled" "$enrollment"
           grep -Fq "mad4b/site-profile-feature-reenrolled" "$enrollment"
           grep -Fq "site_profile_feature_reenroll_staging_only" "$enrollment"
