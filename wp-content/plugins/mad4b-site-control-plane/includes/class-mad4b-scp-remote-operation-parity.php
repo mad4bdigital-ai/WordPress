@@ -115,6 +115,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 							'provider' => array( 'type' => 'string', 'maxLength' => 96 ),
 							'remote_ready_only' => array( 'type' => 'boolean' ),
 							'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 20 ),
+							'offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 500, 'default' => 0 ),
 							'include_ability_hints' => array( 'type' => 'boolean', 'default' => false ),
 						),
 						'additionalProperties' => false,
@@ -566,6 +567,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$provider = isset( $input['provider'] ) ? sanitize_key( (string) $input['provider'] ) : '';
 		$remote_ready_only = ! empty( $input['remote_ready_only'] );
 		$limit = isset( $input['limit'] ) ? max( 1, min( 50, absint( $input['limit'] ) ) ) : 20;
+		$offset = isset( $input['offset'] ) ? max( 0, min( 500, absint( $input['offset'] ) ) ) : 0;
 		$include_ability_hints = ! empty( $input['include_ability_hints'] );
 		$query_tokens = array_values( array_filter( preg_split( '/\\s+/', $query ) ) );
 		$matches = array();
@@ -585,6 +587,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'query' => $query,
 				'count' => 0,
 				'total_match_count' => 0,
+				'offset' => $offset,
+				'next_offset' => null,
 				'operations' => array(),
 				'retryable' => ! empty( $classification['retryable'] ),
 				'automatic_retry_allowed' => ! empty( $classification['auto_retry'] ),
@@ -635,8 +639,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			}
 			return $left_score > $right_score ? -1 : 1;
 		} );
-		$truncated = $total_match_count > $limit;
-		$matches = array_slice( $scored_matches, 0, $limit, true );
+		$matches = array_slice( $scored_matches, $offset, $limit, true );
+		$returned_count = count( $matches );
+		$next_offset = ( $offset + $returned_count ) < $total_match_count ? $offset + $returned_count : null;
+		$truncated = null !== $next_offset;
 
 		$ability_hints = array();
 		if ( $include_ability_hints && function_exists( 'wp_has_ability' ) && function_exists( 'wp_get_ability' ) ) {
@@ -677,8 +683,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'query' => $query,
 			'query_tokens' => $query_tokens,
 			'limit' => $limit,
+			'offset' => $offset,
 			'count' => count( $matches ),
 			'total_match_count' => $total_match_count,
+			'next_offset' => $next_offset,
 			'truncated' => $truncated,
 			'operations' => $matches,
 			'rejected_registration_count' => count( self::$catalog_rejections ),
