@@ -30,10 +30,18 @@ required_dispatch = [
     "$planner_result = $execute_target();",
     "static function () use ( $execute_target )",
     "return $execute_target();",
+    "private static $write_dispatch_governance_envelope = array();",
+    "capture_write_dispatch_governance_envelope",
+    "forward_write_dispatch_governance_envelope",
+    "MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request",
+    "mad4b_write_dispatch_governance_envelope_conflict",
+    "mad4b_write_dispatch_approval_binding_conflict",
+    "_mad4b_approval_ticket_id",
+    "_mad4b_context_receipt",
 ]
 for marker in required_dispatch:
     if marker not in abilities:
-        raise SystemExit("write dispatcher target binding invariant missing: " + marker)
+        raise SystemExit("write dispatcher target binding/governance invariant missing: " + marker)
 
 dispatch_catalog = servers.split("public static function chatgpt_dispatch_transport_tools", 1)[1].split("public static function chatgpt_tools", 1)[0]
 if "mad4b/approval-plan" in dispatch_catalog:
