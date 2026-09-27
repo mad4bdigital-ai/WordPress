@@ -65,6 +65,18 @@ final class MAD4B_SCP_Skill_Seeder {
 	 * Current-request truth always wins. Persisted success from an earlier request
 	 * is never promoted to current readiness before bootstrap observes this runtime.
 	 */
+	/**
+	 * Explicit managed reconciliation for admin/enrollment maintenance surfaces.
+	 *
+	 * A prior bootstrap in the same request must never turn an operator-requested
+	 * reconciliation into a no-op. The normal lifecycle remains non-mutating.
+	 */
+	public static function reconcile() {
+		self::$ran = false;
+		self::$runtime_status = null;
+		return self::bootstrap();
+	}
+
 	public static function status() {
 		if ( is_array( self::$runtime_status ) ) return self::$runtime_status;
 		$stored = get_option( self::OPTION, array() );
