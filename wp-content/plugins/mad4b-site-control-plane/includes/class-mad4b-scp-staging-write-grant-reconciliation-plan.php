@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * The mutation ability must bind to that digest immediately before any write.
  */
 final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
-	const CONTRACT = 'mad4b.staging-write-grant-reconciliation-plan.v1';
+	const CONTRACT = 'mad4b.staging-write-grant-reconciliation-plan.v2';
 	const ABILITY = 'mad4b/staging-write-grant-reconciliation-plan';
 
 	private static $booted = false;
@@ -104,6 +104,29 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 		);
 	}
 
+	private static function transport_inventory() {
+		if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) || ! class_exists( 'MAD4B_SCP_Servers' ) ) {
+			return new WP_Error( 'mad4b_grant_reconcile_plan_transport_unavailable', 'Bounded ChatGPT enrollment transport components are unavailable.' );
+		}
+		$ability = MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY;
+		$provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-chatgpt', $ability );
+		if ( null === $provider ) {
+			return new WP_Error( 'mad4b_grant_reconcile_plan_transport_unmounted', 'Enrollment execute is not mounted on the canonical ChatGPT transport.' );
+		}
+		$rows = array(
+			array(
+				'server_id' => 'mad4b-chatgpt',
+				'ability' => (string) $ability,
+				'provider' => sanitize_key( (string) $provider ),
+			),
+		);
+		return array(
+			'rows' => $rows,
+			'count' => count( $rows ),
+			'fingerprint' => hash( 'sha256', wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ),
+		);
+	}
+
 	public static function plan( $input = null ) {
 		$permission = self::can_plan( $input );
 		if ( is_wp_error( $permission ) || ! $permission ) return $permission;
@@ -131,6 +154,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 		if ( is_wp_error( $agent ) ) return $agent;
 		$inventory = self::inventory();
 		if ( is_wp_error( $inventory ) ) return $inventory;
+		$transport_inventory = self::transport_inventory();
+		if ( is_wp_error( $transport_inventory ) ) return $transport_inventory;
 
 		$counts = MAD4B_SCP_Agent_Registry::counts();
 		$blockers = array();
@@ -173,6 +198,33 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			if ( sanitize_key( (string) $allowed_providers[ $ability ] ) !== sanitize_key( (string) $missing_providers[ $ability ] ) ) $blockers[] = 'provider_mismatch:' . $ability;
 		}
 
+		$transport_missing = array();
+		foreach ( $transport_inventory['rows'] as $row ) {
+			$matching_allows = array();
+			foreach ( MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], $row['server_id'] ) as $grant_row ) {
+				if ( (string) $grant_row['ability_name'] !== (string) $row['ability']
+					|| sanitize_key( (string) $grant_row['provider'] ) !== sanitize_key( (string) $row['provider'] ) ) continue;
+				if ( 'allow' === (string) $grant_row['effect'] ) $matching_allows[] = $grant_row;
+			}
+			if ( count( $matching_allows ) > 1 ) {
+				$blockers[] = 'duplicate_transport_allow:' . $row['ability'];
+				continue;
+			}
+			if ( 1 === count( $matching_allows ) && 'staging' !== (string) $matching_allows[0]['environment'] ) {
+				$blockers[] = 'non_staging_transport_allow:' . $row['ability'];
+				continue;
+			}
+			$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $row['server_id'], $row['ability'], $row['provider'] );
+			if ( is_wp_error( $grant ) ) {
+				if ( 'mad4b_nhi_grant_missing' !== $grant->get_error_code() ) {
+					$blockers[] = 'existing_transport_grant_blocked:' . $row['ability'] . ':' . $grant->get_error_code();
+					continue;
+				}
+				$transport_missing[] = $row['ability'];
+			}
+		}
+		sort( $transport_missing, SORT_STRING );
+
 		$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
 		$blockers = array_values( array_unique( $blockers ) );
 		sort( $blockers, SORT_STRING );
@@ -194,6 +246,9 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			'expected_write_tool_count' => (int) $inventory['count'],
 			'expected_write_inventory_fingerprint' => (string) $inventory['fingerprint'],
 			'expected_missing_abilities' => $missing,
+			'expected_transport_tool_count' => (int) $transport_inventory['count'],
+			'expected_transport_inventory_fingerprint' => (string) $transport_inventory['fingerprint'],
+			'expected_missing_transport_abilities' => $transport_missing,
 			'candidate_binding_match' => ! empty( $binding['match'] ),
 			'candidate_binding_required' => ! empty( $binding['required'] ),
 			'apply_ability' => MAD4B_SCP_Staging_Write_Grant_Reconciliation::ABILITY,
@@ -216,6 +271,9 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			'expected_write_tool_count' => $payload['expected_write_tool_count'],
 			'expected_write_inventory_fingerprint' => $payload['expected_write_inventory_fingerprint'],
 			'expected_missing_abilities' => $payload['expected_missing_abilities'],
+			'expected_transport_tool_count' => $payload['expected_transport_tool_count'],
+			'expected_transport_inventory_fingerprint' => $payload['expected_transport_inventory_fingerprint'],
+			'expected_missing_transport_abilities' => $payload['expected_missing_transport_abilities'],
 			'confirmation' => MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONFIRMATION,
 		);
 		return $payload;
