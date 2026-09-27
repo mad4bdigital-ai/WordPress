@@ -97,29 +97,20 @@ assert "private static function current_request_server_id()" in servers
 assert "private static function should_materialize_server_tools" in servers
 
 # Connector resilience must keep the direct catalog small while providing one
-# compact preflight and fail-closed callback error envelopes.
+# compact preflight and routing retry policy through the shared service.
 for marker in [
     "'mad4b/connector-preflight'",
-    "'max_recommended_parallel_read_calls' => 2",
-    "'retry_transient_read_once' => true",
-    "'automatic_write_retry_allowed' => false",
-    "private static function safe_read( $name, $callback, $retry_transient )",
-    "private static function transient_exception( Throwable $e )",
+    "MAD4B_SCP_Connector_Resilience::run_checks",
+    "MAD4B_SCP_Connector_Resilience::client_guidance()",
 ]:
     assert marker in connection_ability or marker in servers, marker
 
 for marker in [
     "public function read_execute( $input )",
-    "$max_attempts = 2;",
-    "$this->transient_execution_exception( $e )",
-    "'mutation_state' => 'not_applicable_read_only'",
+    "MAD4B_SCP_Connector_Resilience::execute_read",
     "public function write_execute( $input )",
-    "'mutation_state' => 'unknown'",
-    "'reconciliation_required' => true",
-    "'blind_retry_allowed' => false",
+    "MAD4B_SCP_Connector_Resilience::execute_mutation",
     "public function enrollment_execute( $input )",
-    "private function execution_exception_error( $surface, $target, Throwable $e, array $data )",
-    "'raw_exception_message_exposed' => false",
 ]:
     assert marker in abilities, marker
 
