@@ -32,6 +32,15 @@ if ( ! class_exists( 'WP_Error' ) ) {
 if ( ! function_exists( 'is_wp_error' ) ) {
 	function is_wp_error( $value ) { return $value instanceof WP_Error; }
 }
+if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) {
+	class MAD4B_SCP_Audit {
+		public static $records = array();
+		public static function record( $ability, $summary, $status = 'ok' ) {
+			self::$records[] = array( 'ability' => $ability, 'summary' => $summary, 'status' => $status );
+			return true;
+		}
+	}
+}
 
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-connector-resilience.php';
 
@@ -177,6 +186,24 @@ mad4b_assert_true( ! empty( $mutation_wp_data['reconciliation_required'] ), 'tra
 mad4b_assert_true( empty( $mutation_wp_data['blind_retry_allowed'] ), 'transient mutation WP_Error must deny blind retry' );
 mad4b_assert_true( 'reconcile_then_replan' === $mutation_wp_data['client_action'], 'mutation WP_Error client action drifted' );
 mad4b_assert_true( false === strpos( json_encode( $mutation_wp_data ), 'SECRET-MUST-NOT-LEAK' ), 'raw mutation WP_Error message leaked' );
+$remote_write_audit = null;
+foreach ( MAD4B_SCP_Audit::$records as $record ) {
+	if ( 'mad4b/mutation-dispatch-error' === $record['ability']
+		&& isset( $record['summary']['target'] )
+		&& 'mad4b/example-remote-write' === $record['summary']['target'] ) {
+		$remote_write_audit = $record;
+	}
+}
+mad4b_assert_true( is_array( $remote_write_audit ), 'mutation target WP_Error must emit sanitized dispatch audit evidence' );
+mad4b_assert_true( 'failure' === $remote_write_audit['status'], 'mutation dispatch diagnostic audit status drifted' );
+mad4b_assert_true( 'mad4b.mutation-dispatch-error.v1' === $remote_write_audit['summary']['contract'], 'mutation dispatch diagnostic contract drifted' );
+mad4b_assert_true( 'http_request_failed' === $remote_write_audit['summary']['original_error_code'], 'sanitized original target error code must be audit-observable' );
+mad4b_assert_true( 'unknown' === $remote_write_audit['summary']['mutation_state'], 'diagnostic audit must preserve unknown mutation state' );
+mad4b_assert_true( ! empty( $remote_write_audit['summary']['reconciliation_required'] ), 'diagnostic audit must require reconciliation' );
+mad4b_assert_true( empty( $remote_write_audit['summary']['blind_retry_allowed'] ), 'diagnostic audit must deny blind retry' );
+mad4b_assert_true( empty( $remote_write_audit['summary']['automatic_retry_performed'] ), 'diagnostic audit must prove no mutation retry' );
+mad4b_assert_true( empty( $remote_write_audit['summary']['raw_error_message_exposed'] ), 'diagnostic audit must declare raw message redaction' );
+mad4b_assert_true( false === strpos( json_encode( $remote_write_audit ), 'SECRET-MUST-NOT-LEAK' ), 'raw mutation message leaked into diagnostic audit' );
 
 $mutation_permanent_attempts = 0;
 $mutation_permanent = MAD4B_SCP_Connector_Resilience::execute_mutation(
