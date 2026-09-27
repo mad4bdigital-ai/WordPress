@@ -558,23 +558,41 @@ final class MAD4B_SCP_Self_Update {
 		return array( 'archive_sha256' => $sha, 'provenance' => $provenance );
 	}
 
+	private static function installed_plugin_version_from_disk() {
+		$path = defined( 'MAD4B_SCP_FILE' ) ? (string) MAD4B_SCP_FILE : '';
+		if ( '' === $path || ! is_file( $path ) || ! is_readable( $path ) ) return '';
+
+		if ( function_exists( 'get_file_data' ) ) {
+			$headers = get_file_data( $path, array( 'Version' => 'Version' ), 'plugin' );
+			$version = isset( $headers['Version'] ) ? trim( (string) $headers['Version'] ) : '';
+			if ( '' !== $version ) return $version;
+		}
+
+		$raw = file_get_contents( $path, false, null, 0, 8192 );
+		if ( ! is_string( $raw ) ) return '';
+		if ( 1 !== preg_match( '/^[ \\t\\/*#@]*Version:\\s*(.+)$/mi', $raw, $matches ) ) return '';
+		return trim( (string) $matches[1] );
+	}
+
+	private static function installed_provenance() {
+		$path = rtrim( (string) MAD4B_SCP_DIR, "/\\\\" ) . '/MAD4B-BUILD-PROVENANCE.json';
+		if ( ! is_file( $path ) || ! is_readable( $path ) ) return array();
+		$raw = file_get_contents( $path );
+		$row = is_string( $raw ) ? json_decode( $raw, true ) : null;
+		return is_array( $row ) ? $row : array();
+	}
+
 	private static function installed_identity() {
+		$disk_version = self::installed_plugin_version_from_disk();
 		$identity = array(
-			'version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '',
+			'version' => '' !== $disk_version ? $disk_version : ( defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '' ),
 			'source_commit_sha' => '',
 			'build_fingerprint' => '',
 			'package_manifest_digest' => '',
 		);
-		$path = trailingslashit( MAD4B_SCP_DIR ) . 'MAD4B-BUILD-PROVENANCE.json';
-		if ( is_file( $path ) && is_readable( $path ) ) {
-			$raw = file_get_contents( $path );
-			$row = is_string( $raw ) ? json_decode( $raw, true ) : null;
-			if ( is_array( $row ) ) {
-				foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
-					if ( isset( $row[ $field ] ) ) $identity[ $field ] = strtolower( trim( (string) $row[ $field ] ) );
-				}
-				if ( ! empty( $row['version'] ) ) $identity['version'] = trim( (string) $row['version'] );
-			}
+		$row = self::installed_provenance();
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
+			if ( isset( $row[ $field ] ) ) $identity[ $field ] = strtolower( trim( (string) $row[ $field ] ) );
 		}
 		return $identity;
 	}
@@ -584,7 +602,35 @@ final class MAD4B_SCP_Self_Update {
 		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
 			if ( empty( $current[ $field ] ) || ! hash_equals( $target[ $field ], $current[ $field ] ) ) return new WP_Error( 'mad4b_self_update_installed_identity_mismatch', 'Installed Control Plane identity does not match the target after replacement.', array( 'field' => $field, 'current' => isset( $current[ $field ] ) ? $current[ $field ] : '' ) );
 		}
-		if ( ! empty( $target['version'] ) && ! hash_equals( $target['version'], $current['version'] ) ) return new WP_Error( 'mad4b_self_update_installed_version_mismatch', 'Installed Control Plane version does not match the target after replacement.' );
+
+		$target_version = isset( $target['version'] ) ? trim( (string) $target['version'] ) : '';
+		$disk_version = isset( $current['version'] ) ? trim( (string) $current['version'] ) : '';
+		$provenance = self::installed_provenance();
+		$provenance_version = isset( $provenance['control_plane_version'] ) ? trim( (string) $provenance['control_plane_version'] ) : '';
+		$loaded_version = defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '';
+
+		if ( '' === $disk_version || ( '' !== $target_version && ! hash_equals( $target_version, $disk_version ) ) ) {
+			return new WP_Error( 'mad4b_self_update_installed_version_mismatch', 'Installed Control Plane plugin header version does not match the target after replacement.', array(
+				'target_version' => $target_version,
+				'installed_disk_version' => $disk_version,
+				'loaded_runtime_version' => $loaded_version,
+			) );
+		}
+		if ( '' === $provenance_version || ( '' !== $target_version && ! hash_equals( $target_version, $provenance_version ) ) ) {
+			return new WP_Error( 'mad4b_self_update_installed_provenance_version_mismatch', 'Installed Control Plane provenance version does not match the target after replacement.', array(
+				'target_version' => $target_version,
+				'installed_disk_version' => $disk_version,
+				'provenance_version' => $provenance_version,
+				'loaded_runtime_version' => $loaded_version,
+			) );
+		}
+		if ( ! hash_equals( $disk_version, $provenance_version ) ) {
+			return new WP_Error( 'mad4b_self_update_disk_provenance_version_mismatch', 'Installed Control Plane plugin header and provenance versions disagree after replacement.', array(
+				'installed_disk_version' => $disk_version,
+				'provenance_version' => $provenance_version,
+				'loaded_runtime_version' => $loaded_version,
+			) );
+		}
 		return $current;
 	}
 

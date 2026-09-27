@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
 
 root = Path("wp-content/plugins/mad4b-site-control-plane")
 self_update = (root / "includes" / "class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
@@ -10,6 +11,7 @@ authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_t
 commit_guard = (root / "includes" / "class-mad4b-scp-execution-commit-guard.php").read_text(encoding="utf-8")
 governance = (root / "includes" / "class-mad4b-scp-governance-abilities.php").read_text(encoding="utf-8")
 bootstrap = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
+readback_runtime = (root / "tests" / "self-update-readback-runtime.php").read_text(encoding="utf-8")
 
 required_self_update = [
     "final class MAD4B_SCP_Self_Update",
@@ -43,6 +45,11 @@ required_self_update = [
     "MAD4B_SCP_Site_Profile::environment_allowed( array( 'production' ), 'write' )",
     "caller_url_allowed",
     "caller_path_allowed",
+    "installed_plugin_version_from_disk",
+    "installed_provenance",
+    "control_plane_version",
+    "mad4b_self_update_installed_provenance_version_mismatch",
+    "mad4b_self_update_disk_provenance_version_mismatch",
 ]
 for marker in required_self_update:
     if marker not in self_update:
@@ -129,6 +136,24 @@ managed_apply = self_update.split("private static function apply_verified_archiv
 for marker in ("backup_current()", "verify_installed_identity", "rollback(", "restore_activation_state"):
     if marker not in managed_apply:
         raise SystemExit(f"managed upload rollback/readback invariant missing: {marker}")
+
+# Same-request replacement must verify the new on-disk plugin header and canonical
+# control_plane_version, never the stale MAD4B_SCP_VERSION loaded before replacement.
+if "get_file_data( $path, array( 'Version' => 'Version' ), 'plugin' )" not in self_update:
+    raise SystemExit("self-update readback does not read the installed plugin header from disk")
+if "isset( $provenance['control_plane_version'] )" not in self_update:
+    raise SystemExit("self-update readback is not bound to canonical provenance control_plane_version")
+if "if ( ! empty( $row['version'] ) ) $identity['version']" in self_update:
+    raise SystemExit("legacy provenance version override can reintroduce stale same-request readback")
+for marker in (
+    "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.63' )",
+    "* Version: 0.4.0-rc.64",
+    "'control_plane_version' => '0.4.0-rc.64'",
+    "mad4b_self_update_installed_provenance_version_mismatch",
+):
+    if marker not in readback_runtime:
+        raise SystemExit(f"same-request self-update runtime regression fixture missing: {marker}")
+subprocess.run(["php", str(root / "tests" / "self-update-readback-runtime.php")], check=True)
 
 # Read-side discovery/status must be projected to both normal read and ChatGPT catalogs.
 for marker in (
