@@ -13,12 +13,12 @@ required_self_update = [
     "mad4b/control-plane-update-status",
     "mad4b/control-plane-upload-plan",
     "mad4b/control-plane-upload-apply",
-    "pre_set_site_transient_update_plugins",
-    "plugins_api",
-    "auto_update_plugin",
-    "upgrader_pre_download",
-    "upgrader_pre_install",
-    "upgrader_post_install",
+    "plugin_action_links_",
+    "after_plugin_row_",
+    "admin_post_mad4b_control_plane_native_update",
+    "handle_native_update",
+    "download_url",
+    "wp_safe_redirect",
     "mad4b-site-control-plane-update-channel",
     "mad4b-site-control-plane-update.json",
     "release_verdict_success",
@@ -56,8 +56,18 @@ if "return 'staging' === $environment" not in self_update:
     raise SystemExit("governed upload is not explicitly Staging-bound")
 if "defined( 'MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED' )" not in self_update:
     raise SystemExit("Production native self-update opt-in gate missing")
-if "return false;" not in self_update.split("public static function disable_self_auto_update", 1)[1].split("public static function verify_native_download", 1)[0]:
-    raise SystemExit("self auto-update is not forcibly disabled")
+for forbidden_hook in (
+    "pre_set_site_transient_update_plugins",
+    "site_transient_update_plugins",
+    "auto_update_plugin",
+    "upgrader_pre_download",
+    "upgrader_pre_install",
+    "upgrader_post_install",
+):
+    if forbidden_hook in self_update:
+        raise SystemExit(f"self-update must not alter WordPress updater routine: {forbidden_hook}")
+if "'automatic_update_enabled' => false" not in self_update:
+    raise SystemExit("automatic Control Plane update policy is not fail-closed")
 
 # Exact archive verification must happen before either channel mutates installed bytes.
 verify = self_update.split("private static function verify_archive(", 1)[1].split("private static function installed_identity(", 1)[0]
