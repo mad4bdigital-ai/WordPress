@@ -114,6 +114,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 							'executor' => array( 'type' => 'string', 'maxLength' => 96 ),
 							'provider' => array( 'type' => 'string', 'maxLength' => 96 ),
 							'remote_ready_only' => array( 'type' => 'boolean' ),
+							'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 20 ),
+							'include_ability_hints' => array( 'type' => 'boolean', 'default' => false ),
 						),
 						'additionalProperties' => false,
 					),
@@ -563,31 +565,80 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$executor = isset( $input['executor'] ) ? sanitize_key( (string) $input['executor'] ) : '';
 		$provider = isset( $input['provider'] ) ? sanitize_key( (string) $input['provider'] ) : '';
 		$remote_ready_only = ! empty( $input['remote_ready_only'] );
+		$limit = isset( $input['limit'] ) ? max( 1, min( 50, absint( $input['limit'] ) ) ) : 20;
+		$include_ability_hints = ! empty( $input['include_ability_hints'] );
+		$query_tokens = array_values( array_filter( preg_split( '/\\s+/', $query ) ) );
 		$matches = array();
-		foreach ( self::catalog() as $operation_id => $row ) {
+		$truncated = false;
+
+		try {
+			$catalog = self::catalog();
+		} catch ( Throwable $e ) {
+			return array(
+				'contract' => 'mad4b.operation-discovery.v2',
+				'state' => 'degraded',
+				'query' => $query,
+				'count' => 0,
+				'operations' => array(),
+				'retryable' => self::transient_exception( $e ),
+				'error_class' => get_class( $e ),
+				'error_fingerprint' => hash( 'sha256', get_class( $e ) . "\n" . $e->getMessage() ),
+				'read_only' => true,
+				'mutation_performed' => false,
+			);
+		}
+
+		foreach ( $catalog as $operation_id => $row ) {
 			if ( '' !== $feature_id && $feature_id !== sanitize_key( (string) $row['feature_id'] ) ) continue;
 			if ( '' !== $surface && $surface !== sanitize_key( (string) $row['authority_surface'] ) ) continue;
 			if ( '' !== $executor && $executor !== sanitize_key( (string) $row['executor'] ) ) continue;
 			if ( '' !== $provider && $provider !== sanitize_key( (string) $row['provider'] ) ) continue;
 			if ( $remote_ready_only && empty( $row['remote_parity_ready'] ) ) continue;
-			if ( '' !== $query ) {
+			if ( ! empty( $query_tokens ) ) {
 				$haystack = strtolower( implode( ' ', array_merge(
 					array( $operation_id, (string) $row['feature_id'], (string) $row['remote_ability'], (string) $row['local_surface'], (string) $row['executor'], (string) $row['provider'], (string) $row['authority_surface'], (string) $row['remote_mode'], (string) $row['status_ability'] ),
 					isset( $row['capability_tags'] ) && is_array( $row['capability_tags'] ) ? array_map( 'strval', $row['capability_tags'] ) : array()
 				) ) );
-				if ( false === strpos( $haystack, $query ) ) continue;
+				$token_match = false;
+				foreach ( $query_tokens as $token ) {
+					if ( '' !== $token && false !== strpos( $haystack, $token ) ) {
+						$token_match = true;
+						break;
+					}
+				}
+				if ( ! $token_match ) continue;
+			}
+			if ( count( $matches ) >= $limit ) {
+				$truncated = true;
+				break;
 			}
 			$matches[ $operation_id ] = $row;
 		}
+
 		$ability_hints = array();
-		if ( function_exists( 'wp_get_abilities' ) ) {
-			foreach ( wp_get_abilities() as $ability_name => $ability ) {
-				if ( count( $ability_hints ) >= 100 ) break;
-				if ( class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'is_chatgpt_full_catalog_candidate' ) && ! MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $ability_name ) ) continue;
+		if ( $include_ability_hints && function_exists( 'wp_has_ability' ) && function_exists( 'wp_get_ability' ) ) {
+			$candidates = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'chatgpt_full_catalog_candidates' )
+				? MAD4B_SCP_Servers::chatgpt_full_catalog_candidates()
+				: array();
+			$hint_limit = min( 25, $limit );
+			foreach ( $candidates as $ability_name ) {
+				if ( count( $ability_hints ) >= $hint_limit ) break;
+				if ( ! wp_has_ability( $ability_name ) ) continue;
+				$ability = wp_get_ability( $ability_name );
 				$label = is_object( $ability ) && method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '';
 				$description = is_object( $ability ) && method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '';
 				$category = is_object( $ability ) && method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
-				if ( '' !== $query && false === strpos( strtolower( (string) $ability_name . ' ' . $label . ' ' . $description . ' ' . $category ), $query ) ) continue;
+				$haystack = strtolower( (string) $ability_name . ' ' . $label . ' ' . $description . ' ' . $category );
+				if ( ! empty( $query_tokens ) ) {
+					$token_match = false;
+					foreach ( $query_tokens as $token ) {
+						if ( '' !== $token && false !== strpos( $haystack, $token ) ) {
+							$token_match = true;
+							break;
+						}
+					}
+					if ( ! $token_match ) continue;
+				}
 				$ability_hints[] = array(
 					'ability_name' => (string) $ability_name,
 					'label' => $label,
@@ -596,13 +647,19 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				);
 			}
 		}
+
 		return array(
-			'contract' => 'mad4b.operation-discovery.v1',
+			'contract' => 'mad4b.operation-discovery.v2',
+			'state' => 'ready',
 			'query' => $query,
+			'query_tokens' => $query_tokens,
+			'limit' => $limit,
 			'count' => count( $matches ),
+			'truncated' => $truncated,
 			'operations' => $matches,
 			'rejected_registration_count' => count( self::$catalog_rejections ),
 			'rejected_registrations' => array_values( self::$catalog_rejections ),
+			'ability_hints_included' => $include_ability_hints,
 			'ability_hint_count' => count( $ability_hints ),
 			'ability_hints' => $ability_hints,
 			'discovery_federation' => array(
@@ -613,7 +670,17 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			),
 			'future_feature_discovery' => true,
 			'requires_prior_ability_name' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
 		);
+	}
+
+	private static function transient_exception( Throwable $e ) {
+		$message = strtolower( (string) $e->getMessage() );
+		foreach ( array( 'timeout', 'timed out', 'temporar', 'connection reset', 'session terminated', 'transport', 'upstream', '429', '502', '503', '504' ) as $needle ) {
+			if ( false !== strpos( $message, $needle ) ) return true;
+		}
+		return false;
 	}
 
 	public static function status() {
