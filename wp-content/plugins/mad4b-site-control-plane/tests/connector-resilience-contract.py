@@ -34,6 +34,9 @@ for marker in [
     "'category' => 'upstream_unavailable'",
     "'category' => 'authorization'",
     "'category' => 'contract_or_validation'",
+    "'category' => 'request_budget'",
+    "'client_action' => 'reduce_scope_then_retry_preflight'",
+    "'supported_error_categories' => array( 'rate_limit', 'timeout', 'transport', 'upstream_unavailable', 'authorization', 'contract_or_validation', 'request_budget', 'internal', 'unknown' )",
     "'auto_retry' => false",
     "'client_action' => 'backoff_then_retry'",
     "private static function safe_error_code( WP_Error $error )",
@@ -137,6 +140,8 @@ for marker in [
     "Request budget",
     "Payload discipline",
     "Error taxonomy",
+    "- `internal`;",
+    "reduce_scope_then_retry_preflight",
     "Future connector onboarding",
     "fault-injection",
 ]:
@@ -150,6 +155,9 @@ for marker in [
     "rate_limit",
     "mutation_state=unknown",
     "reconciliation_required=true",
+    "request_budget",
+    "reduce_scope_then_retry_preflight",
+    "internal",
     "Never automatically replay a write or enrollment operation",
     "resume from the compact preflight",
 ]:
