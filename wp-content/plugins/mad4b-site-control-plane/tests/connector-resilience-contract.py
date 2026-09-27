@@ -40,6 +40,10 @@ for marker in [
     "substr( $code, 0, 96 )",
     "private static function retry_after_seconds_from_wp_error",
     "'automatic_retry_allowed'",
+    "'automatic_retry_performed'",
+    "'automatic_retry_exhausted'",
+    "'client_action' => $retry_exhausted ? 'inspect_then_retry_later'",
+    "'no_immediate_retry_after_automatic_retry_exhausted' => true",
     "'mutation_state' => 'unknown'",
     "'reconciliation_required' => true",
     "'blind_retry_allowed' => false",
@@ -133,6 +137,8 @@ for forbidden in [
 
 for marker in [
     "Read-only callbacks MAY be retried automatically",
+    "automatic_retry_exhausted=true",
+    "automatic_retry_allowed=false",
     "Mutation and enrollment callbacks MUST execute at most once",
     "mutation_state=unknown",
     "reconciliation_required=true",
