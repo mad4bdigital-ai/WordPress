@@ -26,7 +26,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			'mad4b/plugin-package-apply' => 'core',
 			'mad4b/control-plane-upload-apply' => 'core',
 			'mad4b/context-ai-review' => 'core',
-			'mad4b/approval-ai-decide' => 'approval-handoff',
+			'mad4b/approval-ai-decide' => 'core',
 			'jetengine/create-cct' => 'native-provider',
 			'jetengine/create-cpt' => 'native-provider',
 			'jetengine/create-glossary' => 'native-provider',
