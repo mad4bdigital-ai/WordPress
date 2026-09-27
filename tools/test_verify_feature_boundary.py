@@ -320,7 +320,7 @@ feature_boundary_root_text = (
 ).read_text(encoding="utf-8")
 assert "BASE_REF: ${{ github.event.pull_request.base.ref }}" in feature_boundary_root_text
 assert "EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}" in feature_boundary_root_text
-assert "BASE_SHA: ${{ github.event.pull_request.base.sha }}" not in feature_boundary_root_text
+assert "\n      BASE_SHA: ${{ github.event.pull_request.base.sha }}\n" not in feature_boundary_root_text
 assert "ref: ${{ github.event.pull_request.base.ref }}" in feature_boundary_root_text
 assert 'test "$BASE_REF" = "master"' in feature_boundary_root_text
 assert '"repos/$GITHUB_REPOSITORY/git/ref/heads/$BASE_REF"' in feature_boundary_root_text
