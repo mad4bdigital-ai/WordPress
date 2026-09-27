@@ -170,8 +170,16 @@ for marker in [
         raise SystemExit('AI approval authority invariant missing: ' + marker)
 for marker in [
     "const CLASSIFICATION_CONTRACT = 'mad4b.operation-classification.v1'",
+    "'operation_type' => $operation_type",
+    "'mutation_kind' => $mutation_kind",
+    "'side_effect_scope' => $side_effect_scope",
     "'approval_lane' => $approval_lane",
     "'ai_approval_eligible' => $ai_eligible",
+    "'human_approval_required' => ! $readonly && ! $ai_eligible",
+    "$operation_type = $readonly ? 'observe' : 'governed_mutation'",
+    "$mutation_kind = $readonly ? 'read' : 'mutate'",
+    "$approval_lane = $readonly ? 'none'",
+    "'governance_decision'",
     "'production_auto_approval' => false",
     "'breakglass_auto_approval' => false",
     "'exceptional'",
