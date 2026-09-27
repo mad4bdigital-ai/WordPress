@@ -4,6 +4,7 @@ from pathlib import Path
 root = Path("wp-content/plugins/mad4b-site-control-plane")
 self_update = (root / "includes" / "class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+grants = (root / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
 bootstrap = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
 required_self_update = [
@@ -106,6 +107,10 @@ if servers.count("'mad4b/control-plane-update-status'") < 2:
     raise SystemExit("Control Plane update status is not projected to both read and ChatGPT catalogs")
 if servers.count("'mad4b/control-plane-upload-plan'") < 2:
     raise SystemExit("Control Plane upload plan is not projected to both read and ChatGPT catalogs")
+
+# Exact governed-write execution must be converged into the canonical Staging NHI inventory.
+if "'mad4b/control-plane-upload-apply' => 'core'" not in grants:
+    raise SystemExit("Control Plane upload apply is not eligible for exact Staging NHI grant reconciliation")
 
 # Ability must be present on the normal governed write projection.
 for marker in (
