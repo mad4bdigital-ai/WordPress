@@ -420,6 +420,19 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		return $args;
 	}
 
+	private static function filter_posts_for_language( array $posts, $language, $language_resolver = null ) {
+		$language = sanitize_key( strtolower( (string) $language ) );
+		if ( '' === $language ) return $posts;
+		$resolver = is_callable( $language_resolver ) ? $language_resolver : array( __CLASS__, 'content_language' );
+		$filtered = array();
+		foreach ( $posts as $post ) {
+			if ( ! is_object( $post ) || empty( $post->ID ) ) continue;
+			$observed = sanitize_key( strtolower( (string) call_user_func( $resolver, $post ) ) );
+			if ( $language === $observed ) $filtered[] = $post;
+		}
+		return $filtered;
+	}
+
 	private static function query_posts_for_language( array $post_types, $language, $limit ) {
 		$language = sanitize_key( strtolower( (string) $language ) );
 		$wpml_switch = function_exists( 'has_action' ) && has_action( 'wpml_switch_language' );
@@ -773,14 +786,19 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$seen = array();
 		foreach ( $languages as $language ) {
 			$language_posts = array();
-			if ( ! empty( $groups['core'] ) ) $language_posts = self::query_posts_for_language( $groups['core'], $language, $core_budget );
+			if ( ! empty( $groups['core'] ) ) {
+				$core_posts = self::query_posts_for_language( $groups['core'], $language, $core_budget );
+				$language_posts = self::filter_posts_for_language( $core_posts, $language );
+			}
 			$remaining = max( 0, $per_language - count( $language_posts ) );
 			if ( $remaining > 0 && ! empty( $groups['secondary'] ) ) {
-				$language_posts = array_merge( $language_posts, self::query_posts_for_language( $groups['secondary'], $language, $remaining ) );
+				$secondary_posts = self::query_posts_for_language( $groups['secondary'], $language, $remaining );
+				$language_posts = array_merge( $language_posts, self::filter_posts_for_language( $secondary_posts, $language ) );
 			}
 			$remaining = max( 0, $per_language - count( $language_posts ) );
 			if ( $remaining > 0 && ! empty( $groups['utility'] ) ) {
-				$language_posts = array_merge( $language_posts, self::query_posts_for_language( $groups['utility'], $language, $remaining ) );
+				$utility_posts = self::query_posts_for_language( $groups['utility'], $language, $remaining );
+				$language_posts = array_merge( $language_posts, self::filter_posts_for_language( $utility_posts, $language ) );
 			}
 			foreach ( $language_posts as $post ) {
 				if ( ! is_object( $post ) || empty( $post->ID ) ) continue;
