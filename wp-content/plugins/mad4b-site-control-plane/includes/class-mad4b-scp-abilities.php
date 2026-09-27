@@ -360,7 +360,7 @@ final class MAD4B_SCP_Abilities {
 			'ability_name' => $ability_name,
 			'attempts' => isset( $execution['attempts'] ) ? (int) $execution['attempts'] : 1,
 			'elapsed_ms' => isset( $execution['elapsed_ms'] ) ? (int) $execution['elapsed_ms'] : 0,
-			'result' => isset( $execution['result'] ) ? $execution['result'] : array(),
+			'result' => array_key_exists( 'result', $execution ) ? $execution['result'] : null,
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
@@ -470,7 +470,7 @@ final class MAD4B_SCP_Abilities {
 			'resilience_contract' => MAD4B_SCP_Connector_Resilience::CONTRACT,
 			'ability_name' => $ability_name,
 			'input_schema_sha256' => $actual_schema_sha256,
-			'result' => isset( $execution['result'] ) ? $execution['result'] : array(),
+			'result' => array_key_exists( 'result', $execution ) ? $execution['result'] : null,
 			'mutation_performed' => true,
 			'attempts' => 1,
 			'elapsed_ms' => isset( $execution['elapsed_ms'] ) ? (int) $execution['elapsed_ms'] : 0,
@@ -534,7 +534,7 @@ final class MAD4B_SCP_Abilities {
 			}
 		);
 		if ( is_wp_error( $execution ) ) return $execution;
-		return isset( $execution['result'] ) ? $execution['result'] : array();
+		return array_key_exists( 'result', $execution ) ? $execution['result'] : null;
 	}
 
 
