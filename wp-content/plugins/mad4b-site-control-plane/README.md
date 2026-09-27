@@ -2,9 +2,9 @@
 
 Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter owns MCP protocol/session/transport; MAD4B registers explicit WordPress Abilities and mounts them only on isolated custom MCP servers.
 
-Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Mutations are never replayed automatically after transport loss.
+Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.69**.
+Current plugin version: **0.4.0-rc.70**.
 
 Provider-gap closure is zero-touch and non-authorizing. The package embeds exact-head repository evidence plus `functional-gap-policy.json`; `mad4b/functional-gap-runtime-evidence` performs bounded local runtime collection, fixed-point drift checks, and deterministic evaluation without shell, WP-CLI, raw SQL, remote requests, credential reads, or mutation. Evidence readiness never grants provider write authority or Production activation. Provider capability diagnostics also distinguish mounted from latent capabilities and read readiness from blocked write certification.
 
@@ -13,6 +13,12 @@ Provider-gap closure is zero-touch and non-authorizing. The package embeds exact
 Operator deployment, authority reconciliation, recovery, rollback and lifecycle guidance: [`docs/RELEASE-AND-OPERATOR-RUNBOOK.md`](docs/RELEASE-AND-OPERATOR-RUNBOOK.md).
 
 Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
+
+### rc.70 session-resilient metadata reads
+
+rc.70 hardens connector reads against MCP session termination without weakening mutation safety. Repeated `session terminated` failures consume a bounded retry budget, open a request-local read circuit breaker, stop additional fan-out, and direct the client to reconnect, re-read the snapshot header, and resume only when the exact `runtime_generation` still matches. Mutation and enrollment execution remain non-replayable.
+
+The release also adds `mad4b/read-metadata-envelope`, a compact generation-bound micro-read for one Ability or governed operation. It returns registration identity plus schema and execution-binding digests in a single response, replacing fragile multi-call `discover → info → schema` metadata chains and reducing session lifetime, payload volume, and stale-metadata risk. No persistent session breaker, persistent authority cache, or Production authority is introduced.
 
 ### rc.69 governed write-dispatch envelope continuity
 
