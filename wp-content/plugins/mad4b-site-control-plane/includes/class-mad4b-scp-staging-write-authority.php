@@ -940,12 +940,14 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
 		if ( ! in_array( 'mad4b:read', $scopes, true ) ) return false;
 
-		// approval-plan is registered on mad4b-admin, but may bootstrap only a
-		// pending ticket for an exact mad4b-write target after the dedicated
-		// planning guard validates the governed-write agent, target mount,
-		// provider, Context preflight, ticket class and current candidate.
+		// approval-plan is declared on mad4b-admin but, when invoked through the
+		// compact ChatGPT write dispatcher, central authorization may resolve the
+		// exact external-write candidate onto mad4b-write before scope evaluation.
+		// Accept only those two planner identities here. The dedicated planning
+		// guard still binds the target itself to mad4b-write, the exact governed
+		// agent/provider/candidate, Context preflight and mutation-class tickets.
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) && MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY === (string) $ability_name ) {
-			if ( 'mad4b-admin' !== $server_id || ! self::effective() ) return false;
+			if ( ! in_array( $server_id, array( 'mad4b-admin', 'mad4b-write' ), true ) || ! self::effective() ) return false;
 			$canonical = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input( $input );
 			if ( is_wp_error( $canonical ) ) return false;
 			$guard = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $canonical );
