@@ -351,7 +351,11 @@ for marker in [
     "'normal_remote_writes_require_exact_approval' => true",
     "'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v2'",
     "'remote_write_approval_policy' => 'exact_approval_with_bounded_standing_exceptions'",
-    "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' )",
+    "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review', 'mad4b/approval-ai-decide' )",
+    "'ai_approval_standing_delegation_defined' => true",
+    "'ai_approval_operation_classification_contract'",
+    "'production_auto_approval' => false",
+    "'breakglass_auto_approval' => false",
     "const CANDIDATE_BOOTSTRAP_ABILITY = 'mad4b/acceptance-target-provision'",
 ]:
     if marker not in write:
