@@ -167,6 +167,12 @@ $stripped = array(
 );
 mad4b_assert( true === $capture->invoke( $dispatcher, $stripped ), 'Repeated sanitized permission preflight must preserve the already captured governance envelope.' );
 mad4b_assert( true === $capture->invoke( $dispatcher, $outer ), 'Repeated identical governed permission preflight must be idempotent.' );
+
+$rebind = $outer;
+$rebind['_mad4b_approval_ticket_id'] = '22222222-2222-4222-8222-222222222222';
+$rebind_conflict = $capture->invoke( $dispatcher, $rebind );
+mad4b_assert( is_wp_error( $rebind_conflict ) && 'mad4b_write_dispatch_governance_envelope_rebind_conflict' === $rebind_conflict->get_error_code(), 'Repeated governed preflight must reject a different approval ticket without mutating the captured envelope.' );
+
 $target_input = $forward->invoke( $dispatcher, $stripped, $stripped['input'] );
 mad4b_assert( is_array( $target_input ), 'Forwarded target input must remain an object.' );
 mad4b_assert( $ticket === $target_input['_mad4b_approval_ticket_id'], 'Approval ticket must survive provider-envelope stripping.' );
