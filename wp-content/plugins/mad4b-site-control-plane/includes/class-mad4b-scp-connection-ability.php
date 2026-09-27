@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Connection_Ability {
 	const ABILITY = 'mad4b/connection-status';
 	const PREFLIGHT_ABILITY = 'mad4b/connector-preflight';
-	const PREFLIGHT_CONTRACT = 'mad4b.connector-preflight.v2';
+	const PREFLIGHT_CONTRACT = 'mad4b.connector-preflight.v1';
 
 	public static function boot() {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register' ), 25 );
