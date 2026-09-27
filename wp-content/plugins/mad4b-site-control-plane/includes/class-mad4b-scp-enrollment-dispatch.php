@@ -173,6 +173,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 	public static function discover( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 		$query = isset( $input['query'] ) ? strtolower( trim( sanitize_text_field( (string) $input['query'] ) ) ) : '';
+		$query_tokens = array_values( array_unique( array_filter( preg_split( '/[^a-z0-9]+/', $query ) ) ) );
 		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
 		$items = array();
 		foreach ( self::eligible_operations() as $operation_id => $row ) {
@@ -184,13 +185,18 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				isset( $row['executor'] ) ? (string) $row['executor'] : '',
 				isset( $row['remote_mode'] ) ? (string) $row['remote_mode'] : '',
 			) ) );
-			if ( '' !== $query && false === strpos( $haystack, $query ) ) continue;
+			$matches = true;
+			foreach ( $query_tokens as $token ) {
+				if ( false === strpos( $haystack, $token ) ) { $matches = false; break; }
+			}
+			if ( ! $matches ) continue;
 			$items[ $operation_id ] = $row;
 			if ( count( $items ) >= $limit ) break;
 		}
 		return array(
 			'contract' => self::CONTRACT,
 			'query' => $query,
+			'query_tokens' => $query_tokens,
 			'count' => count( $items ),
 			'operations' => $items,
 			'human_decision_operations_excluded' => true,
