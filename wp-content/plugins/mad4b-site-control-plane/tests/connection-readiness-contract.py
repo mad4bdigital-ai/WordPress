@@ -164,6 +164,7 @@ require(servers, "'mad4b/runtime-authority-status'", 'connection-runtime-authori
 require(servers, "'mad4b/connection-status'", 'connection-status-mounted')
 require(servers, "'mad4b/read-snapshot-header'", 'read-snapshot-header-mounted')
 require(servers, "'mad4b/read-diagnostic-bundle'", 'read-diagnostic-bundle-mounted')
+require(servers, "'mad4b/read-metadata-envelope'", 'read-metadata-envelope-mounted')
 require(servers, "'mad4b-write'", 'write-server-id')
 require(servers, "'MAD4B Write MCP'", 'write-server-registration')
 require(servers, "array( __CLASS__, 'can_write_transport' )", 'write-server-permission')
@@ -181,6 +182,10 @@ for marker in (
     "const CONTRACT = 'mad4b.read-consistency.v1'",
     "const SNAPSHOT_ABILITY = 'mad4b/read-snapshot-header'",
     "const BUNDLE_ABILITY = 'mad4b/read-diagnostic-bundle'",
+    "const METADATA_ABILITY = 'mad4b/read-metadata-envelope'",
+    "public static function metadata_envelope",
+    "'execution_binding_digest'",
+    "'runtime_changed_during_metadata_read'",
     "return array( 'identity', 'runtime', 'certification', 'providers' )",
     "'runtime_generation' => $runtime_generation",
     "'read_transaction_id' => $transaction_id",
@@ -202,7 +207,13 @@ for marker in (
     "'snapshot_identity_required' => true",
     "'discard_partial_on_generation_change' => true",
     "'resume_completed_reads_on_generation_match' => true",
-    "'session_termination_budget' => 2",
+    "'session_termination_budget' => self::SESSION_TERMINATION_BUDGET",
+    "'stop_fanout_after_session_termination_budget' => true",
+    "'session_breaker_scope' => 'request_local'",
+    "'session_termination_category' => 'session_terminated'",
+    "'metadata_micro_read_preferred' => true",
+    "'metadata_envelope_ability' => 'mad4b/read-metadata-envelope'",
+    "'resume_after_reconnect_requires_generation_match' => true",
     "'persistent_session_breaker_used' => false",
     "'uncertain_approval_plan_reconciliation_ability' => 'mad4b/approval-plan-reconcile'",
     "'never_replay_approval_plan_before_reconciliation' => true",
