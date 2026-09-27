@@ -26,7 +26,9 @@ The default retry budget is exactly one retry:
 - no further automatic attempts.
 
 Authorization, validation, schema, contract, and unknown failures are not
-automatically retried.
+automatically retried. Rate-limit failures remain retryable later but are not
+retried immediately; clients must honor bounded backoff and any safe Retry-After
+hint exposed by the resilience envelope.
 
 ### Mutation and enrollment execution
 
@@ -118,9 +120,11 @@ New composite diagnostics should:
 
 ## Verification requirements
 
-CI must prove:
+CI must include fault-injection tests and prove:
 
 - transient reads retry no more than once;
+- transient WordPress `WP_Error` reads follow the same bounded retry policy;
+- rate-limit reads do not retry immediately and preserve safe backoff hints;
 - permanent read failures do not retry;
 - mutation callbacks execute exactly once under injected timeout;
 - uncertain mutation exceptions require reconciliation;
