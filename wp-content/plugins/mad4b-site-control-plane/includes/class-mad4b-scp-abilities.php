@@ -355,7 +355,7 @@ final class MAD4B_SCP_Abilities {
 		);
 		if ( is_wp_error( $execution ) ) return $execution;
 		return array(
-			'contract' => 'mad4b.chatgpt-read-execute.v3',
+			'contract' => 'mad4b.chatgpt-read-execute.v1',
 			'resilience_contract' => MAD4B_SCP_Connector_Resilience::CONTRACT,
 			'ability_name' => $ability_name,
 			'attempts' => isset( $execution['attempts'] ) ? (int) $execution['attempts'] : 1,
@@ -466,7 +466,7 @@ final class MAD4B_SCP_Abilities {
 		);
 		if ( is_wp_error( $execution ) ) return $execution;
 		return array(
-			'contract' => 'mad4b.chatgpt-write-execute.v3',
+			'contract' => 'mad4b.chatgpt-write-execute.v1',
 			'resilience_contract' => MAD4B_SCP_Connector_Resilience::CONTRACT,
 			'ability_name' => $ability_name,
 			'input_schema_sha256' => $actual_schema_sha256,
