@@ -34,12 +34,20 @@ required_self_update = [
     "mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json",
     "mad4b_self_update_zip_symlink_forbidden",
     "rollback_on_failed_readback",
+    "release_channel_bound",
+    "target_not_current_governed_release",
+    "MAD4B_SCP_Site_Profile::environment_allowed( array( 'production' ), 'write' )",
     "caller_url_allowed",
     "caller_path_allowed",
 ]
 for marker in required_self_update:
     if marker not in self_update:
         raise SystemExit(f"missing dual-channel self-update invariant: {marker}")
+
+if "'release_channel_bound' => true" not in self_update:
+    raise SystemExit("governed file upload is not bound to the repository release channel")
+if "target_not_current_governed_release:" not in self_update:
+    raise SystemExit("governed file upload does not reject non-release package identities")
 
 # Remote upload remains bounded file input only; no caller URL/path input is accepted.
 plan_schema = self_update.split("private static function plan_schema()", 1)[1].split("private static function apply_schema()", 1)[0]
