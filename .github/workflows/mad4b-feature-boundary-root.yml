@@ -27,17 +27,32 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      BASE_REF: ${{ github.event.pull_request.base.ref }}
+      EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
-      - name: Checkout trusted base only
+      - name: Checkout current trusted base only
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.pull_request.base.ref }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Pin current trusted base identity
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$BASE_REF" = "master"
+          checked_base_sha="$(git rev-parse HEAD)"
+          live_base_sha="$(gh api -H "Accept: application/vnd.github+json" "repos/$GITHUB_REPOSITORY/git/ref/heads/$BASE_REF" --jq '.object.sha')"
+          [[ "$checked_base_sha" =~ ^[0-9a-f]{40}$ ]]
+          test "$checked_base_sha" = "$live_base_sha"
+          echo "BASE_SHA=$checked_base_sha" >> "$GITHUB_ENV"
+          echo "trusted current base pinned: ref=$BASE_REF sha=$checked_base_sha event_base_sha=$EVENT_BASE_SHA"
 
       - name: Verify trusted verifier source
         shell: bash
