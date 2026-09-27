@@ -31,6 +31,10 @@ for marker in [
     "'category' => 'upstream_unavailable'",
     "'category' => 'authorization'",
     "'category' => 'contract_or_validation'",
+    "'auto_retry' => false",
+    "'client_action' => 'backoff_then_retry'",
+    "private static function retry_after_seconds_from_wp_error",
+    "'automatic_retry_allowed'",
     "'mutation_state' => 'unknown'",
     "'reconciliation_required' => true",
     "'blind_retry_allowed' => false",
@@ -54,7 +58,7 @@ for forbidden in ["do {", "while (", "for (", "DEFAULT_READ_ATTEMPTS"]:
 read_body = resilience.split("public static function safe_read(", 1)[1].split("public static function execute_read(", 1)[0]
 require(read_body, "$max_attempts", "bounded read retry budget")
 require(read_body, "$attempt < $max_attempts", "bounded read retry condition")
-require(read_body, "! empty( $classification['retryable'] )", "retry only classified transients")
+require(read_body, "! empty( $classification['auto_retry'] )", "auto retry only classifier-approved transients")
 
 for marker in [
     "const PREFLIGHT_ABILITY = 'mad4b/connector-preflight'",
