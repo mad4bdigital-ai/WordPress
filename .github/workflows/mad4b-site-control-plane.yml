@@ -111,13 +111,6 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-certification-contract.py
 
-      - name: Verify connector resilience contract
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-contract.py
-          php wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-runtime.php
-
       - name: Verify admin settings persistence contract
         shell: bash
         run: |
@@ -150,7 +143,6 @@ jobs:
             includes/class-mad4b-scp-site-profile.php \
             includes/class-mad4b-scp-abilities.php \
             includes/class-mad4b-scp-policy.php \
-            includes/class-mad4b-scp-connector-resilience.php \
             includes/class-mad4b-scp-servers.php \
             includes/class-mad4b-scp-transport-context.php \
             includes/class-mad4b-scp-authorization.php \
