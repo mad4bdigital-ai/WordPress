@@ -1134,3 +1134,192 @@ jobs:
               raise SystemExit('repository release artifact identity or repository governance is not ready')
           print('repository release verdict enforcement: PASS')
           PY
+
+  publish-control-plane-update-channel:
+    name: Publish governed Control Plane update channel
+    needs:
+      - verdict
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/master' &&
+      needs.verdict.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      SOURCE_SHA: ${{ github.sha }}
+      UPDATE_TAG: mad4b-site-control-plane-update-channel
+
+    steps:
+      - name: Verify exact current master
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_master="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" --jq '.object.sha')"
+          test "$current_master" = "$SOURCE_SHA"
+
+      - name: Resolve exact successful canonical package run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_run_id="$(
+            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/mad4b-control-plane-package.yml/runs?branch=master&status=success&per_page=50" \
+              --jq ".workflow_runs[] | select(.head_sha == \"$SOURCE_SHA\") | .id" | head -n1
+          )"
+          test -n "$package_run_id"
+          package_run="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$package_run_id")"
+          test "$(jq -r '.head_sha' <<<"$package_run")" = "$SOURCE_SHA"
+          test "$(jq -r '.status' <<<"$package_run")" = "completed"
+          test "$(jq -r '.conclusion' <<<"$package_run")" = "success"
+          echo "PACKAGE_RUN_ID=$package_run_id" >> "$GITHUB_ENV"
+
+      - name: Download exact General Distribution kit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/mad4b-update-kit
+          mkdir -p /tmp/mad4b-update-kit
+          gh run download "$PACKAGE_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "mad4b-site-control-plane-general-distribution-kit-$SOURCE_SHA" \
+            --dir /tmp/mad4b-update-kit
+
+          test -f /tmp/mad4b-update-kit/install-manifest.json
+          test -f /tmp/mad4b-update-kit/CANONICAL-PACKAGE-RECEIPT.json
+          test -f /tmp/mad4b-update-kit/RELEASE-ROOT-TRUST-VERIFICATION.json
+          control_zip="$(find /tmp/mad4b-update-kit -maxdepth 1 -type f -name 'mad4b-site-control-plane-*.zip' -print -quit)"
+          test -n "$control_zip"
+          echo "CONTROL_ZIP=$control_zip" >> "$GITHUB_ENV"
+
+      - name: Verify package and build immutable update assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          import shutil
+          from pathlib import Path
+
+          root = Path('/tmp/mad4b-update-kit')
+          source = os.environ['SOURCE_SHA']
+          repo = os.environ['GITHUB_REPOSITORY']
+          tag = os.environ['UPDATE_TAG']
+          package_run = int(os.environ['PACKAGE_RUN_ID'])
+          control = Path(os.environ['CONTROL_ZIP'])
+
+          install = json.loads((root / 'install-manifest.json').read_text(encoding='utf-8'))
+          canonical = json.loads((root / 'CANONICAL-PACKAGE-RECEIPT.json').read_text(encoding='utf-8'))
+          trust = json.loads((root / 'RELEASE-ROOT-TRUST-VERIFICATION.json').read_text(encoding='utf-8'))
+
+          if install.get('contract') != 'mad4b.site-control-plane.general-distribution-kit.v1':
+              raise SystemExit('install manifest contract mismatch')
+          if install.get('repository') != repo or install.get('commit') != source:
+              raise SystemExit('install manifest exact source mismatch')
+
+          control_meta = install.get('control_plane') or {}
+          version = str(control_meta.get('version') or '')
+          expected_sha = str(control_meta.get('sha256') or '').lower()
+          if not version or not re.fullmatch(r'[0-9A-Za-z._+\-]{1,64}', version):
+              raise SystemExit('Control Plane version invalid')
+          if not re.fullmatch(r'[0-9a-f]{64}', expected_sha):
+              raise SystemExit('Control Plane archive SHA invalid')
+
+          actual_sha = hashlib.sha256(control.read_bytes()).hexdigest()
+          if actual_sha != expected_sha:
+              raise SystemExit('Control Plane archive SHA mismatch')
+
+          if canonical.get('contract') != 'mad4b.deterministic-control-plane-package.v1':
+              raise SystemExit('canonical package receipt contract mismatch')
+          if canonical.get('source_commit_sha') != source or canonical.get('archive_sha256') != actual_sha:
+              raise SystemExit('canonical package receipt exact source mismatch')
+
+          if trust.get('contract') != 'mad4b.release-root-trust-verification.v1':
+              raise SystemExit('release root trust contract mismatch')
+          if trust.get('verified') is not True or trust.get('source_commit_sha') != source:
+              raise SystemExit('release root trust is not exact and verified')
+
+          build_fingerprint = str(install.get('build_fingerprint') or '').lower()
+          package_digest = str(install.get('package_manifest_digest') or '').lower()
+          if not re.fullmatch(r'[0-9a-f]{64}', build_fingerprint):
+              raise SystemExit('build fingerprint invalid')
+          if not re.fullmatch(r'[0-9a-f]{64}', package_digest):
+              raise SystemExit('package manifest digest invalid')
+
+          asset_name = f'mad4b-site-control-plane-{source}.zip'
+          asset_path = Path('/tmp') / asset_name
+          shutil.copyfile(control, asset_path)
+
+          manifest = {
+              'contract': 'mad4b.control-plane-update-channel.v1',
+              'repository': repo,
+              'release_tag': tag,
+              'version': version,
+              'source_commit_sha': source,
+              'archive_sha256': actual_sha,
+              'build_fingerprint': build_fingerprint,
+              'package_manifest_digest': package_digest,
+              'size_bytes': asset_path.stat().st_size,
+              'package_url': f'https://github.com/{repo}/releases/download/{tag}/{asset_name}',
+              'package_workflow_run_id': package_run,
+              'release_verdict_run_id': int(os.environ['GITHUB_RUN_ID']),
+              'release_verdict_success': True,
+              'release_root_trust_verified': True,
+              'published_from_master': True,
+              'requires': '6.9',
+              'requires_php': '7.4',
+              'tested': '7.1',
+              'production_auto_update_enabled': False,
+          }
+          Path('/tmp/mad4b-site-control-plane-update.json').write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Publish exact package and stable update manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view "$UPDATE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$UPDATE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$SOURCE_SHA" \
+              --title "MAD4B Site Control Plane Update Channel" \
+              --notes "Machine-managed channel. Exact packages are published only after the master Release Verdict succeeds."
+          fi
+
+          exact_asset="/tmp/mad4b-site-control-plane-$SOURCE_SHA.zip"
+          manifest="/tmp/mad4b-site-control-plane-update.json"
+          test -f "$exact_asset"
+          test -f "$manifest"
+
+          gh release upload "$UPDATE_TAG" "$exact_asset" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "$UPDATE_TAG" "$manifest" --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Read back published assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          assets="$(gh release view "$UPDATE_TAG" --repo "$GITHUB_REPOSITORY" --json assets)"
+          jq -e --arg pkg "mad4b-site-control-plane-$SOURCE_SHA.zip" '
+            [.assets[].name] | index($pkg) != null
+          ' <<<"$assets" >/dev/null
+          jq -e '
+            [.assets[].name] | index("mad4b-site-control-plane-update.json") != null
+          ' <<<"$assets" >/dev/null
+
