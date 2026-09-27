@@ -20,6 +20,7 @@ final class MAD4B_SCP_Connector_Resilience {
 	const CONTRACT = 'mad4b.connector-resilience.v1';
 	const DEFAULT_READ_ATTEMPTS = 2;
 	const DEFAULT_REQUEST_BUDGET_MS = 12000;
+	const SESSION_TERMINATION_BUDGET = 2;
 
 	public static function safe_read( $name, $callback, array $options = array() ) {
 		$name = sanitize_key( (string) $name );
@@ -30,6 +31,7 @@ final class MAD4B_SCP_Connector_Resilience {
 		if ( ! $retry_transient ) $max_attempts = 1;
 
 		$attempt = 0;
+		$session_termination_count = 0;
 		$started = microtime( true );
 		do {
 			$attempt++;
@@ -38,6 +40,7 @@ final class MAD4B_SCP_Connector_Resilience {
 				$elapsed_ms = self::elapsed_ms( $started );
 				if ( is_wp_error( $value ) ) {
 					$classification = self::classify_wp_error( $value );
+					if ( 'session_terminated' === ( isset( $classification['category'] ) ? (string) $classification['category'] : '' ) ) $session_termination_count++;
 					if ( $retry_transient
 						&& ! empty( $classification['auto_retry'] )
 						&& $attempt < $max_attempts ) {
@@ -60,6 +63,7 @@ final class MAD4B_SCP_Connector_Resilience {
 						'error_code' => self::safe_error_code( $value ),
 						'error_fingerprint' => self::wp_error_fingerprint( $name, $value ),
 						'raw_error_message_exposed' => false,
+						'session_termination_count' => $session_termination_count,
 						'read_only' => true,
 						'mutation_performed' => false,
 					);
@@ -75,12 +79,14 @@ final class MAD4B_SCP_Connector_Resilience {
 					'automatic_retry_performed' => $attempt > 1,
 					'automatic_retry_exhausted' => false,
 					'category' => 'none',
+					'session_termination_count' => $session_termination_count,
 					'data' => $value,
 					'read_only' => true,
 					'mutation_performed' => false,
 				);
 			} catch ( Throwable $e ) {
 				$classification = self::classify_exception( $e );
+				if ( 'session_terminated' === ( isset( $classification['category'] ) ? (string) $classification['category'] : '' ) ) $session_termination_count++;
 				if ( $retry_transient
 					&& ! empty( $classification['auto_retry'] )
 					&& $attempt < $max_attempts ) {
@@ -102,6 +108,7 @@ final class MAD4B_SCP_Connector_Resilience {
 					'error_class' => get_class( $e ),
 					'error_fingerprint' => self::exception_fingerprint( $name, $e ),
 					'raw_error_message_exposed' => false,
+					'session_termination_count' => $session_termination_count,
 					'read_only' => true,
 					'mutation_performed' => false,
 				);
@@ -119,6 +126,7 @@ final class MAD4B_SCP_Connector_Resilience {
 			'automatic_retry_performed' => $attempt > 1,
 			'automatic_retry_exhausted' => false,
 			'category' => 'internal',
+			'session_termination_count' => $session_termination_count,
 			'raw_error_message_exposed' => false,
 			'read_only' => true,
 			'mutation_performed' => false,
@@ -232,9 +240,35 @@ final class MAD4B_SCP_Connector_Resilience {
 		$failed = array();
 		$retryable = array();
 		$skipped = array();
+		$skipped_session_breaker = array();
+		$session_termination_count = 0;
+		$session_breaker_open = false;
 
 		foreach ( $checks as $name => $callback ) {
 			$name = sanitize_key( (string) $name );
+			if ( $session_breaker_open ) {
+				$results[ $name ] = array(
+					'contract' => self::CONTRACT,
+					'ok' => false,
+					'state' => 'skipped_session_breaker',
+					'attempts' => 0,
+					'elapsed_ms' => 0,
+					'retryable' => true,
+					'automatic_retry_allowed' => false,
+					'automatic_retry_performed' => false,
+					'automatic_retry_exhausted' => true,
+					'category' => 'session_terminated',
+					'client_action' => 'reconnect_snapshot_then_resume',
+					'session_termination_count' => $session_termination_count,
+					'raw_error_message_exposed' => false,
+					'read_only' => true,
+					'mutation_performed' => false,
+				);
+				$failed[] = $name;
+				$retryable[] = $name;
+				$skipped_session_breaker[] = $name;
+				continue;
+			}
 			if ( self::elapsed_ms( $started ) >= $budget_ms ) {
 				$results[ $name ] = array(
 					'contract' => self::CONTRACT,
@@ -259,6 +293,8 @@ final class MAD4B_SCP_Connector_Resilience {
 				'retry_transient' => $retry_transient,
 				'max_attempts' => self::DEFAULT_READ_ATTEMPTS,
 			) );
+			$session_termination_count += isset( $results[ $name ]['session_termination_count'] ) ? max( 0, (int) $results[ $name ]['session_termination_count'] ) : 0;
+			if ( $session_termination_count >= self::SESSION_TERMINATION_BUDGET ) $session_breaker_open = true;
 			if ( empty( $results[ $name ]['ok'] ) ) {
 				$failed[] = $name;
 				if ( ! empty( $results[ $name ]['retryable'] ) ) $retryable[] = $name;
@@ -272,6 +308,10 @@ final class MAD4B_SCP_Connector_Resilience {
 			'failed_checks' => array_values( array_unique( $failed ) ),
 			'retryable_checks' => array_values( array_unique( $retryable ) ),
 			'skipped_budget_checks' => array_values( array_unique( $skipped ) ),
+			'skipped_session_breaker_checks' => array_values( array_unique( $skipped_session_breaker ) ),
+			'session_termination_count' => $session_termination_count,
+			'session_breaker_open' => $session_breaker_open,
+			'session_termination_budget' => self::SESSION_TERMINATION_BUDGET,
 			'budget_ms' => $budget_ms,
 			'elapsed_ms' => self::elapsed_ms( $started ),
 			'checks' => $results,
@@ -295,8 +335,13 @@ final class MAD4B_SCP_Connector_Resilience {
 			'snapshot_identity_required' => true,
 			'discard_partial_on_generation_change' => true,
 			'resume_completed_reads_on_generation_match' => true,
-			'session_termination_budget' => 2,
+			'session_termination_budget' => self::SESSION_TERMINATION_BUDGET,
 			'stop_fanout_after_session_termination_budget' => true,
+			'session_breaker_scope' => 'request_local',
+			'session_termination_category' => 'session_terminated',
+			'metadata_micro_read_preferred' => true,
+			'metadata_envelope_ability' => 'mad4b/read-metadata-envelope',
+			'resume_after_reconnect_requires_generation_match' => true,
 			'supported_read_bundles' => array( 'identity', 'runtime', 'certification', 'providers' ),
 			'read_transaction_required_for_bundles' => true,
 			'persistent_session_breaker_used' => false,
@@ -325,7 +370,10 @@ final class MAD4B_SCP_Connector_Resilience {
 		if ( self::contains_any( $message, array( 'timeout', 'timed out' ) ) || false !== strpos( $class, 'timeout' ) ) {
 			return array( 'category' => 'timeout', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'retry_once' );
 		}
-		if ( self::contains_any( $message, array( 'session terminated', 'connection reset', 'server disconnected', 'transport', 'broken pipe', 'eof' ) ) ) {
+		if ( self::contains_any( $message, array( 'session terminated', 'server disconnected', 'broken pipe', 'unexpected eof', 'end of file' ) ) ) {
+			return array( 'category' => 'session_terminated', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'reconnect_snapshot_then_resume' );
+		}
+		if ( self::contains_any( $message, array( 'connection reset', 'transport' ) ) ) {
 			return array( 'category' => 'transport', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'reconnect_then_retry_once' );
 		}
 		if ( self::contains_any( $message, array( '502', '503', '504', 'upstream', 'temporar', 'service unavailable', 'bad gateway', 'gateway timeout' ) ) ) {
@@ -353,7 +401,10 @@ final class MAD4B_SCP_Connector_Resilience {
 		if ( self::contains_any( $message, array( 'certificate', 'ssl', 'could not resolve host', 'name or service not known', 'dns' ) ) ) {
 			return array( 'category' => 'transport', 'retryable' => false, 'auto_retry' => false, 'client_action' => 'repair_connection_configuration' );
 		}
-		if ( self::contains_any( $haystack, array( 'transport', 'connection reset', 'session terminated', 'server disconnected', 'http_request_failed' ) ) ) {
+		if ( self::contains_any( $haystack, array( 'session terminated', 'server disconnected', 'broken pipe', 'unexpected eof', 'end of file' ) ) ) {
+			return array( 'category' => 'session_terminated', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'reconnect_snapshot_then_resume' );
+		}
+		if ( self::contains_any( $haystack, array( 'transport', 'connection reset', 'http_request_failed' ) ) ) {
 			return array( 'category' => 'transport', 'retryable' => true, 'auto_retry' => true, 'client_action' => 'reconnect_then_retry_once' );
 		}
 		if ( self::contains_any( $haystack, array( '502', '503', '504', 'upstream', 'temporar', 'bad gateway', 'gateway timeout' ) ) ) {
