@@ -281,7 +281,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_skill_reconcile_forbidden', 'Administrator permission is required to reconcile managed Skills.' );
 		if ( ! class_exists( 'MAD4B_SCP_Skill_Seeder' ) || ! class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) ) return new WP_Error( 'mad4b_skill_reconcile_unavailable', 'Managed Skill reconciliation services are unavailable.' );
 
-		$seed = MAD4B_SCP_Skill_Seeder::bootstrap();
+		$seed = MAD4B_SCP_Skill_Seeder::reconcile();
 		if ( is_wp_error( $seed ) ) return $seed;
 		if ( ! is_array( $seed ) || 'ready' !== ( isset( $seed['state'] ) ? (string) $seed['state'] : '' ) ) {
 			return new WP_Error( 'mad4b_skill_seed_reconcile_failed', 'Canonical Skill seed reconciliation did not reach ready state.' );
