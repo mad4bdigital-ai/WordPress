@@ -16,6 +16,7 @@ function get_option( $name, $default = false ) {
 	return array_key_exists( $name, $GLOBALS['mad4b_test_options'] ) ? $GLOBALS['mad4b_test_options'][ $name ] : $default;
 }
 function wp_cache_delete( $key, $group = '' ) { return true; }
+function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) { return true; }
 
 final class MAD4B_Test_WPDB {
 	public $options = 'wp_options';
