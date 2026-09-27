@@ -676,11 +676,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	}
 
 	private static function transient_exception( Throwable $e ) {
-		$message = strtolower( (string) $e->getMessage() );
-		foreach ( array( 'timeout', 'timed out', 'temporar', 'connection reset', 'session terminated', 'transport', 'upstream', '429', '502', '503', '504' ) as $needle ) {
-			if ( false !== strpos( $message, $needle ) ) return true;
-		}
-		return false;
+		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) return false;
+		$classification = MAD4B_SCP_Connector_Resilience::classify_exception( $e );
+		return ! empty( $classification['retryable'] );
 	}
 
 	public static function status() {
