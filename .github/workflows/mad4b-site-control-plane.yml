@@ -150,6 +150,7 @@ jobs:
             includes/class-mad4b-scp-site-profile.php \
             includes/class-mad4b-scp-abilities.php \
             includes/class-mad4b-scp-policy.php \
+            includes/class-mad4b-scp-connector-resilience.php \
             includes/class-mad4b-scp-servers.php \
             includes/class-mad4b-scp-transport-context.php \
             includes/class-mad4b-scp-authorization.php \
