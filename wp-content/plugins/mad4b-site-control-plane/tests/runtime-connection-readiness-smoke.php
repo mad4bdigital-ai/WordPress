@@ -73,7 +73,7 @@ $metadata_dispatch = $read_dispatch->execute( array(
     'ability_name' => 'mad4b/read-metadata-envelope',
     'input' => array(
         'target_type' => 'operation',
-        'target' => 'browser_acceptance_execution',
+        'target' => 'managed_skills_reconciliation',
         'read_transaction_id' => $snapshot['read_transaction_id'],
         'expected_runtime_generation' => $snapshot['runtime_generation'],
     ),
@@ -83,11 +83,11 @@ $check( is_array( $metadata_dispatch ) && 'mad4b.chatgpt-read-execute.v1' === $m
 $metadata = isset( $metadata_dispatch['result'] ) && is_array( $metadata_dispatch['result'] ) ? $metadata_dispatch['result'] : array();
 $check( is_array( $metadata ) && 'ready' === $metadata['state'], 'Compact operation metadata envelope was not ready through governed read dispatch.' );
 $check( ! empty( $metadata['generation_match'] ) && ! empty( $metadata['valid_for_resume'] ), 'Compact metadata envelope lost generation binding.' );
-$check( 'mad4b/browser-acceptance-run' === $metadata['remote_ability'], 'Compact metadata envelope resolved the wrong remote ability.' );
+$check( 'mad4b/reconcile-managed-skills' === $metadata['remote_ability'], 'Compact metadata envelope resolved the wrong remote ability.' );
 $check( isset( $metadata['registration_digest'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $metadata['registration_digest'] ), 'Operation registration digest missing from compact metadata envelope.' );
 $check( isset( $metadata['dispatch_policy_digest'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $metadata['dispatch_policy_digest'] ), 'Enrollment dispatch-policy digest missing from compact metadata envelope.' );
 $check( ! empty( $metadata['input_schema_available'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $metadata['input_schema_sha256'] ), 'Input schema digest missing from compact metadata envelope.' );
-$canonical_dispatch_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'browser_acceptance_execution' ) );
+$canonical_dispatch_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'managed_skills_reconciliation' ) );
 $check( ! is_wp_error( $canonical_dispatch_info ) && is_array( $canonical_dispatch_info ), 'Canonical enrollment dispatch metadata is unavailable.' );
 $check( hash_equals( strtolower( (string) $canonical_dispatch_info['registration_digest'] ), $metadata['registration_digest'] ), 'Compact metadata registration digest diverged from enrollment dispatch.' );
 $check( hash_equals( strtolower( (string) $canonical_dispatch_info['dispatch_policy_digest'] ), $metadata['dispatch_policy_digest'] ), 'Compact metadata dispatch-policy digest diverged from enrollment dispatch.' );
