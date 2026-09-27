@@ -161,6 +161,27 @@ mad4b_assert_true( in_array( 'broken', $fanout['failed_checks'], true ), 'failed
 mad4b_assert_true( 2 === $fanout_attempts, 'transient failing read must retry once only' );
 mad4b_assert_true( ! empty( $fanout['checks']['healthy_after_failure']['ok'] ), 'sibling checks must continue after isolated failure' );
 
+$budget = MAD4B_SCP_Connector_Resilience::run_checks(
+	array(
+		'slow' => static function () {
+			usleep( 1100000 );
+			return array( 'ready' => true );
+		},
+		'skipped_after_budget' => static function () {
+			return array( 'ready' => true );
+		},
+	),
+	array( 'budget_ms' => 1000, 'retry_transient' => true )
+);
+mad4b_assert_true( ! empty( $budget['partial'] ), 'budget exhaustion must produce a partial read result' );
+mad4b_assert_true( in_array( 'skipped_after_budget', $budget['skipped_budget_checks'], true ), 'budget-skipped check missing' );
+$budget_skip = $budget['checks']['skipped_after_budget'];
+mad4b_assert_true( 'skipped_budget' === $budget_skip['state'], 'budget skip state drifted' );
+mad4b_assert_true( 'request_budget' === $budget_skip['category'], 'budget skip category drifted' );
+mad4b_assert_true( ! empty( $budget_skip['retryable'] ), 'budget skip must remain retryable as a read' );
+mad4b_assert_true( empty( $budget_skip['automatic_retry_allowed'] ), 'budget skip must not auto-replay the same request' );
+mad4b_assert_true( 'reduce_scope_then_retry_preflight' === $budget_skip['client_action'], 'budget recovery action drifted' );
+
 $guidance = MAD4B_SCP_Connector_Resilience::client_guidance();
 mad4b_assert_true( empty( $guidance['automatic_write_retry_allowed'] ), 'client guidance must deny automatic write retry' );
 mad4b_assert_true( empty( $guidance['automatic_enrollment_retry_allowed'] ), 'client guidance must deny automatic enrollment retry' );
