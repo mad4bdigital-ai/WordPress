@@ -352,6 +352,43 @@ if "if ( 'mad4b-write' !== $server_id ) return false;" not in scope_body:
 if scope_body.count("array( 'mad4b-admin', 'mad4b-write' )") != 1:
     raise SystemExit('planner dual-server exception must remain unique to the exact approval-plan branch')
 
+# The compact write dispatcher is itself an exact NHI-granted ChatGPT transport
+# ability. Its OAuth scope exception must be narrow: current ChatGPT transport,
+# effective candidate-bound write authority, exact runtime-eligible target,
+# mounted mad4b-write provider, mutating target metadata, and exact live schema.
+for marker in [
+    "private static function write_dispatch_scope_delegation_allowed",
+    "'mad4b-chatgpt' !== $server_id || ! self::effective()",
+    "'mad4b-chatgpt' !== MAD4B_SCP_Transport_Context::current_server_id()",
+    "array( 'mad4b/write-execute', 'mad4b/enrollment-execute', 'mad4b/database-raw-query' )",
+    "self::is_write_ability( $target_ability )",
+    "MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $target_ability )",
+    "wp_has_ability( $target_ability )",
+    "false !== $annotations['readonly']",
+    "expected_input_schema_sha256",
+    "hash_equals( $actual_schema_sha256, $expected_schema_sha256 )",
+    "if ( 'mad4b/write-execute' === (string) $ability_name )",
+    "return self::write_dispatch_scope_delegation_allowed( $server_id, $input );",
+]:
+    if marker not in scope_body and marker not in write:
+        raise SystemExit('bounded write-dispatch scope delegation missing: ' + marker)
+
+dispatcher_helper = write.split("private static function write_dispatch_scope_delegation_allowed", 1)[1].split("public static function remote_scope_delegation_allowed", 1)[0]
+for forbidden in [
+    "return true;\n\t}",
+    "mad4b:write",
+    "server:mad4b-write",
+    "grant_ability(",
+    "reconcile()",
+    "bind_candidate_identity(",
+]:
+    if forbidden in dispatcher_helper:
+        raise SystemExit('write-dispatch scope delegation became provisioning or broad authority: ' + forbidden)
+if dispatcher_helper.count("MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $target_ability )") != 1:
+    raise SystemExit('write-dispatch target provider must be resolved exactly once on mad4b-write')
+if scope_body.find("if ( 'mad4b/write-execute' === (string) $ability_name )") > planner_branch:
+    raise SystemExit('transport dispatcher scope delegation must be evaluated before nested target planner delegation')
+
 # The transport resolver intentionally collapses externally dispatched write
 # candidates onto mad4b-write. The planner scope exception must therefore remain
 # compatible with both its declared admin registration and resolved write grant.
@@ -921,4 +958,4 @@ for text_value, label in [
         if required not in text_value:
             raise SystemExit(f'{label} bounded exception semantics missing: {required}')
 
-print('mad4b.staging-write-authority.tenant-profile.v14: PASS')
+print('mad4b.staging-write-authority.tenant-profile.v15: PASS')
