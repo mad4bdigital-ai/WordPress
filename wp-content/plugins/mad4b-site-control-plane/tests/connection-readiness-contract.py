@@ -52,6 +52,9 @@ forbid(status, "'connection_certified' => false", 'connection-no-permanent-false
 
 
 require(ability, "'output_schema' => array( 'type' => 'object', 'additionalProperties' => true )", 'connection-output-schema-open')
+require(ability, "MAD4B_SCP_Site_Profile::origin_enrolled()", 'compact-preflight-authoritative-profile-origin')
+require(ability, "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()", 'compact-preflight-authoritative-profile-url-binding')
+require(ability, "MAD4B_SCP_Live_Truth::current_authority_status()", 'compact-preflight-authoritative-write-truth')
 for marker in (
     "'mcp_registration_lifecycle'",
     'MAD4B_SCP_MCP_Registration_Bridge::status()',
