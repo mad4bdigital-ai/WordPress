@@ -13,9 +13,11 @@ Use this skill only for the connection and connector-resilience layer.
    - `rate_limit`: respect `retry_after_seconds` when present; never immediately replay.
    - `authorization`: repair scope, subject, grant, approval, or authority. Do not retry unchanged.
    - `contract_or_validation`: repair the request/schema/ability contract. Do not retry unchanged.
+   - `request_budget`: reduce diagnostic scope and rerun the compact preflight. Do not auto-retry the same broad request.
+   - `internal`: inspect or escalate the internal fault. Do not retry unchanged.
    - `unknown`: inspect before retrying.
 5. Never automatically replay a write or enrollment operation. If the result reports `mutation_state=unknown`, `reconciliation_required=true`, or a transient remote error after execution may have started, read the target postconditions first, determine whether the mutation committed, then re-plan from current truth.
-6. Never treat `retryable=true` as equivalent to immediate automatic retry. `automatic_retry_allowed` and `client_action` control the next step.
+6. Never treat `retryable=true` as equivalent to immediate automatic retry. `automatic_retry_allowed` and `client_action` control the next step. For budget exhaustion, follow `reduce_scope_then_retry_preflight`.
 7. Read `mad4b/connection-status` when full endpoint, transport, subject-bridge, OAuth/preflight, or peer-certification details are required.
 8. Read `mad4b/runtime-authority-status` to confirm effective authority without treating read connectivity as write authorization.
 9. Use `mad4b/diagnostics-health` only when distinguishing connection failures from provider/runtime degradation.
