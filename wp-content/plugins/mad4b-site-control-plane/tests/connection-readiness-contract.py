@@ -17,6 +17,7 @@ def forbid(text, needle, label):
 status = read('includes/class-mad4b-scp-connection-status.php')
 evidence = read('includes/class-mad4b-scp-external-handshake-evidence.php')
 ability = read('includes/class-mad4b-scp-connection-ability.php')
+abilities = read('includes/class-mad4b-scp-abilities.php')
 read_consistency = read('includes/class-mad4b-scp-read-consistency.php')
 resilience = read('includes/class-mad4b-scp-connector-resilience.php')
 ui = read('includes/class-mad4b-scp-connection-admin-ui.php')
@@ -164,6 +165,14 @@ require(servers, "'mad4b/runtime-authority-status'", 'connection-runtime-authori
 require(servers, "'mad4b/connection-status'", 'connection-status-mounted')
 require(servers, "'mad4b/read-snapshot-header'", 'read-snapshot-header-mounted')
 require(servers, "'mad4b/read-diagnostic-bundle'", 'read-diagnostic-bundle-mounted')
+require(servers, "'mad4b/read-metadata-envelope'", 'read-metadata-envelope-mounted')
+if servers.count("'mad4b/read-metadata-envelope'") != 1:
+    raise SystemExit("read metadata envelope must be mounted exactly once on mad4b-read and remain hidden from the compact ChatGPT direct tool list")
+read_server_block = servers.split("'mad4b-read' =>", 1)[1].split("'mad4b-chatgpt' =>", 1)[0]
+chatgpt_server_block = servers.split("'mad4b-chatgpt' =>", 1)[1].split("'mad4b-enrollment' =>", 1)[0]
+require(read_server_block, "'mad4b/read-metadata-envelope'", 'read-metadata-envelope-read-mount')
+forbid(chatgpt_server_block, "'mad4b/read-metadata-envelope'", 'read-metadata-envelope-hidden-from-chatgpt-direct-tools')
+require(abilities, "MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $ability_name )", 'read-dispatch-full-catalog-gate')
 require(servers, "'mad4b-write'", 'write-server-id')
 require(servers, "'MAD4B Write MCP'", 'write-server-registration')
 require(servers, "array( __CLASS__, 'can_write_transport' )", 'write-server-permission')
@@ -181,6 +190,16 @@ for marker in (
     "const CONTRACT = 'mad4b.read-consistency.v1'",
     "const SNAPSHOT_ABILITY = 'mad4b/read-snapshot-header'",
     "const BUNDLE_ABILITY = 'mad4b/read-diagnostic-bundle'",
+    "const METADATA_ABILITY = 'mad4b/read-metadata-envelope'",
+    "public static function metadata_envelope",
+    "'execution_binding_digest'",
+    "'dispatch_policy_digest'",
+    "$payload['dispatch_identity_source'] = 'MAD4B_SCP_Enrollment_Dispatch::info';",
+    "MAD4B_SCP_Enrollment_Dispatch::info",
+    "'mad4b_metadata_dispatch_schema_projection_drift'",
+    "'mad4b_metadata_ability_not_cataloged'",
+    "MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $target )",
+    "'runtime_changed_during_metadata_read'",
     "return array( 'identity', 'runtime', 'certification', 'providers' )",
     "'runtime_generation' => $runtime_generation",
     "'read_transaction_id' => $transaction_id",
@@ -202,7 +221,13 @@ for marker in (
     "'snapshot_identity_required' => true",
     "'discard_partial_on_generation_change' => true",
     "'resume_completed_reads_on_generation_match' => true",
-    "'session_termination_budget' => 2",
+    "'session_termination_budget' => self::SESSION_TERMINATION_BUDGET",
+    "'stop_fanout_after_session_termination_budget' => true",
+    "'session_breaker_scope' => 'request_local'",
+    "'session_termination_category' => 'session_terminated'",
+    "'metadata_micro_read_preferred' => true",
+    "'metadata_envelope_ability' => 'mad4b/read-metadata-envelope'",
+    "'resume_after_reconnect_requires_generation_match' => true",
     "'persistent_session_breaker_used' => false",
     "'uncertain_approval_plan_reconciliation_ability' => 'mad4b/approval-plan-reconcile'",
     "'never_replay_approval_plan_before_reconciliation' => true",
