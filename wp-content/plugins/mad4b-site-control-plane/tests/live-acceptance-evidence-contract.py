@@ -361,6 +361,15 @@ for marker in [
     if marker not in write:
         raise SystemExit('Write authority invariant missing: ' + marker)
 for marker in [
+    "'ai_approval_standing_delegation_defined' => ! empty( $approval_policy['ai_approval_standing_delegation_defined'] )",
+    "'ai_approval_standing_delegation_contract' => isset( $approval_policy['ai_approval_standing_delegation_contract'] )",
+    "'ai_approval_standing_delegation_configured' => ! empty( $approval_policy['ai_approval_standing_delegation_configured'] )",
+    "'ai_approval_operation_classification_contract' => isset( $approval_policy['ai_approval_operation_classification_contract'] )",
+]:
+    if marker not in live_truth:
+        raise SystemExit('Live Truth dropped AI approval policy projection: ' + marker)
+
+for marker in [
     "'production_auto_approval' => false",
     "'breakglass_auto_approval' => false",
 ]:
