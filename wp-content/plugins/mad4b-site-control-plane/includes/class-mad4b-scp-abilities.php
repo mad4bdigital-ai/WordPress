@@ -457,14 +457,57 @@ final class MAD4B_SCP_Abilities {
 		$target_input_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
 		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 
-		$execution = MAD4B_SCP_Connector_Resilience::execute_mutation(
-			'write',
-			$ability_name,
-			static function () use ( $ability, $params ) {
-				return $ability->execute( $params );
+		// approval-plan is the bounded bootstrap that creates a human-reviewable
+		// pending ticket. Its target wrappers still enforce the exact NHI grant,
+		// scope delegation, budget, Site Profile/build binding and audit policy.
+		// Surface a safe deterministic blocker code instead of collapsing every
+		// planner validation failure into an ambiguous "mutation may have started"
+		// envelope. No automatic retry is introduced.
+		if ( 'mad4b/approval-plan' === $ability_name ) {
+			$started = microtime( true );
+			try {
+				$planner_result = $ability->execute( $params );
+			} catch ( \Throwable $throwable ) {
+				return new WP_Error(
+					'mad4b_approval_plan_dispatch_exception',
+					'Approval planning failed inside the governed target. Reconcile Approval Decisions before retrying.',
+					array(
+						'mutation_state' => 'unknown',
+						'reconciliation_required' => true,
+						'blind_retry_allowed' => false,
+						'error_class' => get_class( $throwable ),
+					)
+				);
 			}
-		);
-		if ( is_wp_error( $execution ) ) return $execution;
+			if ( is_wp_error( $planner_result ) ) {
+				$original_code = sanitize_key( (string) $planner_result->get_error_code() );
+				return new WP_Error(
+					'mad4b_approval_plan_dispatch_target_error',
+					'Approval planning failed with blocker: ' . ( '' !== $original_code ? $original_code : 'unknown' ) . '. Reconcile Approval Decisions before retrying.',
+					array(
+						'original_error_code' => $original_code,
+						'mutation_state' => 'unconfirmed_pending_ticket',
+						'reconciliation_required' => true,
+						'blind_retry_allowed' => false,
+					)
+				);
+			}
+			$execution = array(
+				'result' => $planner_result,
+				'attempts' => 1,
+				'elapsed_ms' => max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) ),
+				'automatic_retry_performed' => false,
+			);
+		} else {
+			$execution = MAD4B_SCP_Connector_Resilience::execute_mutation(
+				'write',
+				$ability_name,
+				static function () use ( $ability, $params ) {
+					return $ability->execute( $params );
+				}
+			);
+			if ( is_wp_error( $execution ) ) return $execution;
+		}
 		return array(
 			'contract' => 'mad4b.chatgpt-write-execute.v1',
 			'resilience_contract' => MAD4B_SCP_Connector_Resilience::CONTRACT,
