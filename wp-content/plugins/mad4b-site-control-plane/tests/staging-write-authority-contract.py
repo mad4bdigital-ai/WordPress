@@ -8,6 +8,7 @@ wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 write = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
 abilities = (wp / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 grant_reconcile = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation.php').read_text(encoding='utf-8')
+grant_plan = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation-plan.php').read_text(encoding='utf-8')
 planning = (wp / 'includes' / 'class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
 cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
 live_truth = (wp / 'includes' / 'class-mad4b-scp-live-truth.php').read_text(encoding='utf-8')
@@ -114,8 +115,23 @@ for marker in [
     if marker not in write:
         raise SystemExit(f'missing tenant-bound governed write invariant: {marker}')
 
+
 for marker in [
-    "const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v2'",
+    "const CONTRACT = 'mad4b.staging-write-grant-reconciliation-plan.v2'",
+    "private static function transport_inventory()",
+    "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY",
+    "'server_id' => 'mad4b-chatgpt'",
+    "'expected_transport_tool_count'",
+    "'expected_transport_inventory_fingerprint'",
+    "'expected_missing_transport_abilities'",
+    "duplicate_transport_allow:",
+    "non_staging_transport_allow:",
+]:
+    if marker not in grant_plan:
+        raise SystemExit(f'missing exact transport grant planning invariant: {marker}')
+
+for marker in [
+    "const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v3'",
     "const ABILITY = 'mad4b/staging-write-grant-reconcile'",
     "const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE AUTHORITY'",
     "'jetengine/create-cct'",
@@ -159,6 +175,16 @@ for marker in [
     "self::CONTRACT",
     "expected_plan_sha256",
     "expected_write_inventory_fingerprint",
+    "expected_transport_tool_count",
+    "expected_transport_inventory_fingerprint",
+    "expected_missing_transport_abilities",
+    "public static function allowed_transport_ability_providers()",
+    "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY => 'core'",
+    "grant_ability( $agent['public_id'], 'mad4b-chatgpt'",
+    "exact_grant( $agent['id'], 'mad4b-chatgpt'",
+    "mad4b/exact-staging-transport-grant-reconciled",
+    "created_transport_grant_ids",
+    "transport_grant_ready",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan()",
     "mad4b_grant_reconcile_plan_changed",
     "MAD4B_SCP_Staging_Write_Authority::persistence_checkpoint()",
@@ -179,7 +205,12 @@ for marker in [
     if marker not in grant_reconcile:
         raise SystemExit(f'missing bounded exact grant-reconciliation invariant: {marker}')
 
-allowlist = grant_reconcile.split('public static function allowed_ability_providers()', 1)[1].split('public static function boot()', 1)[0]
+allowlist = grant_reconcile.split('public static function allowed_ability_providers()', 1)[1].split('public static function allowed_transport_ability_providers()', 1)[0]
+transport_allowlist = grant_reconcile.split('public static function allowed_transport_ability_providers()', 1)[1].split('public static function chatgpt_read_tools()', 1)[0]
+if "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY => 'core'" not in transport_allowlist:
+    raise SystemExit('bounded enrollment execute transport grant is missing from the exact transport allowlist')
+if "'mad4b/enrollment-execute'" in allowlist or "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY" in allowlist:
+    raise SystemExit('enrollment execute transport grant leaked into the normal governed-write allowlist')
 for required_pair in [
     "'jetengine/create-cpt' => 'native-provider'",
     "'elementor/clone-subtree' => 'elementor'",
@@ -548,13 +579,18 @@ if "MAD4B_SCP_Staging_Write_Authority::reconcile();" in plugin:
 if "MAD4B_SCP_Live_Truth::current_authority_status()" in write.split("public static function effective()", 1)[1].split("public static function status()", 1)[0]:
     raise SystemExit('authority effective() hot path may not recursively rebuild Live Truth/write inventory')
 
-expected_missing_schema = grant_reconcile.split("'expected_missing_abilities' => array(", 1)[1].split("'confirmation' => array(", 1)[0]
+expected_missing_schema = grant_reconcile.split("'expected_missing_abilities' => array(", 1)[1].split("'expected_transport_tool_count'", 1)[0]
 if "'minItems' => 0" not in expected_missing_schema:
-    raise SystemExit('exact grant reconciliation must permit an empty missing set for same-inventory package candidate rebind')
+    raise SystemExit('exact grant reconciliation must permit an empty write missing set for same-inventory package candidate rebind')
+expected_transport_schema = grant_reconcile.split("'expected_missing_transport_abilities' => array(", 1)[1].split("'confirmation' => array(", 1)[0]
+if "'minItems' => 0" not in expected_transport_schema:
+    raise SystemExit('exact grant reconciliation must permit an empty transport missing set after transport convergence')
 if 'mad4b_grant_reconcile_nothing_to_do' in grant_reconcile:
     raise SystemExit('same-inventory package candidate rebind may not fail as nothing-to-do')
-if "'state' => empty( $created_abilities ) ? 'candidate_rebound' : 'reconciled'" not in grant_reconcile:
-    raise SystemExit('grant reconciliation must distinguish zero-grant candidate rebind from grant creation')
+if "'state' => ( empty( $created_abilities ) && empty( $created_transport_abilities ) ) ? 'candidate_rebound' : 'reconciled'" not in grant_reconcile:
+    raise SystemExit('grant reconciliation must distinguish zero-change candidate rebind from write or transport grant creation')
+if "'candidate_rebound_without_grant_changes' => empty( $created_abilities ) && empty( $created_transport_abilities )" not in grant_reconcile:
+    raise SystemExit('candidate rebound evidence must account for both write and ChatGPT transport grant mutation')
 if "'source_commit_sha' => $current_sha" not in grant_reconcile or "'build_fingerprint' => $current_fingerprint" not in grant_reconcile:
     raise SystemExit('grant reconciliation completion evidence must remain exact-build bound')
 
