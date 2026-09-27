@@ -68,6 +68,10 @@ final class MAD4B_SCP_Impact_Policy {
 		$provider = sanitize_key( (string) $provider );
 		if ( 'mad4b/database-raw-query' === $ability_name ) return 'exceptional';
 		if ( 0 === strpos( $ability_name, 'mad4b/developer-breakglass-' ) ) return 'exceptional';
+		// AI approval is a bounded governance decision, not the target mutation.
+		// Its standing delegation is evaluated separately against the exact ticket,
+		// classification, build/profile binding and AI NHI grant.
+		if ( 'mad4b/approval-ai-decide' === $ability_name ) return 'low';
 		if ( 0 === strpos( $ability_name, 'mad4b/developer-' ) && 'mad4b/developer-runtime-status' !== $ability_name ) return 'high';
 		$high_core = array(
 			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/mutation-undo',
