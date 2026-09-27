@@ -105,6 +105,12 @@ for forbidden_hook in (
 if "'automatic_update_enabled' => false" not in self_update:
     raise SystemExit("automatic Control Plane update policy is not fail-closed")
 
+# Uploaded archive staging must inherit MAD4B protected-storage policy, never generic web temp fallback.
+if "MAD4B_SCP_Policy::prepare_backup_root()" not in self_update:
+    raise SystemExit("uploaded archive staging is not rooted in protected MAD4B storage")
+if "get_temp_dir()" in self_update:
+    raise SystemExit("self-update upload staging must not fall back to generic WordPress temp storage")
+
 # Exact archive verification must happen before either channel mutates installed bytes.
 verify = self_update.split("private static function verify_archive(", 1)[1].split("private static function installed_identity(", 1)[0]
 for marker in (
