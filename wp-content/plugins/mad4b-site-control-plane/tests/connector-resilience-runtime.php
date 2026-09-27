@@ -83,6 +83,16 @@ mad4b_assert_true( empty( $rate['automatic_retry_allowed'] ), 'rate limit must r
 mad4b_assert_true( 'backoff_then_retry' === $rate['client_action'], 'rate-limit client action drifted' );
 mad4b_assert_true( 7 === (int) $rate['retry_after_seconds'], 'retry-after hint must be preserved safely' );
 
+$error_code_probe = MAD4B_SCP_Connector_Resilience::safe_read(
+	'provider_error_code_sanitization',
+	static function () {
+		return new WP_Error( 'Provider Secret / Token ABC 123', 'safe-message' );
+	}
+);
+mad4b_assert_true( empty( $error_code_probe['ok'] ), 'provider error code probe must remain an error' );
+mad4b_assert_true( 'providersecrettokenabc123' === $error_code_probe['error_code'], 'provider error code must be sanitized before exposure' );
+mad4b_assert_true( false === strpos( $error_code_probe['error_code'], ' ' ), 'provider error code must not expose raw formatting' );
+
 $permanent_attempts = 0;
 $permanent = MAD4B_SCP_Connector_Resilience::safe_read(
 	'permanent_contract_failure',
