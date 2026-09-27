@@ -935,17 +935,24 @@ final class MAD4B_SCP_Staging_Write_Authority {
 
 	public static function remote_scope_delegation_allowed( array $identity, $server_id, $ability_name, $input ) {
 		$bootstrap = self::candidate_bootstrap_allowed( $ability_name, $input );
-		if ( 'mad4b-write' !== sanitize_key( (string) $server_id ) ) return false;
+		$server_id = sanitize_key( (string) $server_id );
 		if ( empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return false;
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
 		if ( ! in_array( 'mad4b:read', $scopes, true ) ) return false;
+
+		// approval-plan is registered on mad4b-admin, but may bootstrap only a
+		// pending ticket for an exact mad4b-write target after the dedicated
+		// planning guard validates the governed-write agent, target mount,
+		// provider, Context preflight, ticket class and current candidate.
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) && MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY === (string) $ability_name ) {
-			if ( ! self::effective() ) return false;
+			if ( 'mad4b-admin' !== $server_id || ! self::effective() ) return false;
 			$canonical = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input( $input );
 			if ( is_wp_error( $canonical ) ) return false;
 			$guard = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $canonical );
 			return ! is_wp_error( $guard );
 		}
+
+		if ( 'mad4b-write' !== $server_id ) return false;
 		if ( $bootstrap ) return true;
 		if ( self::ai_review_delegation_allowed( $ability_name, $input, $identity ) ) return true;
 		if ( ! self::effective() || ! self::is_write_ability( $ability_name ) ) return false;
