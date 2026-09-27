@@ -129,9 +129,17 @@ status_section = cert[cert.index('public static function status()'):cert.index('
 if 'update_option(' in status_section or 'MAD4B_SCP_Audit::record' in status_section:
     raise SystemExit('Skill current status must remain read-only and must not persist or audit')
 
-observe_section = cert[cert.index('public static function observe()'):cert.index('public static function current_status()')]
+observe_section = cert[cert.index('public static function observe( $force_explicit = false )'):cert.index('public static function current_status()')]
 if "current_request_is_protocol_hotpath()" not in observe_section:
     raise SystemExit('Skill observe must skip expensive recomputation only on the protocol hotpath')
+if "if ( ! $force_explicit" not in observe_section:
+    raise SystemExit('Skill observe must allow only an explicit caller to force fresh hotpath certification')
+if "$force_explicit = true === $force_explicit;" not in observe_section:
+    raise SystemExit('Skill explicit certification flag must be strict-boolean normalized')
+if "MAD4B_SCP_Skill_Runtime_Certification::current_status()" not in abilities:
+    raise SystemExit('Explicit Skills certification Ability must use fresh read-only live inspection')
+if "MAD4B_SCP_Skill_Runtime_Certification::observe( true )" in abilities:
+    raise SystemExit('Readonly Skills certification Ability must not persist/audit through forced observe')
 if "current_request_requires_mcp_runtime()" in observe_section:
     raise SystemExit('Skill observe must not equate WP-CLI/admin runtime ownership with the HTTP protocol hotpath')
 
