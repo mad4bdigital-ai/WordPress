@@ -25,6 +25,12 @@ The default retry budget is exactly one retry:
 - one retry for a classified transient failure;
 - no further automatic attempts.
 
+If both attempts fail, the final envelope must report
+`automatic_retry_exhausted=true`, `automatic_retry_allowed=false`, and a
+non-immediate recovery action. The condition may remain `retryable=true` for a
+later operator/client attempt, but the current request chain must not start a
+third automatic attempt.
+
 Authorization, validation, schema, contract, and unknown failures are not
 automatically retried. Rate-limit failures remain retryable later but are not
 retried immediately; clients must honor bounded backoff and any safe Retry-After
