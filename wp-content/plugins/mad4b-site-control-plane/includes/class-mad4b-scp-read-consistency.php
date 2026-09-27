@@ -210,7 +210,9 @@ final class MAD4B_SCP_Read_Consistency {
 			'remote_ability' => '',
 			'authority_surface' => '',
 			'registration_digest' => '',
+			'dispatch_policy_digest' => '',
 			'operation_policy_digest' => '',
+			'dispatch_identity_source' => '',
 			'input_schema_available' => false,
 			'input_schema_sha256' => '',
 			'output_schema_sha256' => '',
@@ -220,25 +222,30 @@ final class MAD4B_SCP_Read_Consistency {
 
 		if ( 'operation' === $target_type ) {
 			$operation_id = sanitize_key( $target );
-			$catalog = class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'catalog' )
-				? MAD4B_SCP_Remote_Operation_Parity::catalog()
-				: array();
-			$row = isset( $catalog[ $operation_id ] ) && is_array( $catalog[ $operation_id ] ) ? $catalog[ $operation_id ] : array();
-			if ( empty( $row ) ) return new WP_Error( 'mad4b_metadata_operation_not_found', 'Requested governed operation is not registered.' );
-			$ability_name = isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '';
+			if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) || ! method_exists( 'MAD4B_SCP_Enrollment_Dispatch', 'info' ) ) {
+				return new WP_Error( 'mad4b_metadata_dispatch_info_unavailable', 'Canonical enrollment dispatch metadata service is unavailable.' );
+			}
+			$dispatch_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => $operation_id ) );
+			if ( is_wp_error( $dispatch_info ) ) return $dispatch_info;
+			if ( ! is_array( $dispatch_info )
+				|| empty( $dispatch_info['remote_ability'] )
+				|| ! self::is_sha( isset( $dispatch_info['registration_digest'] ) ? $dispatch_info['registration_digest'] : '', 64 )
+				|| ! self::is_sha( isset( $dispatch_info['dispatch_policy_digest'] ) ? $dispatch_info['dispatch_policy_digest'] : '', 64 )
+				|| ! self::is_sha( isset( $dispatch_info['input_schema_sha256'] ) ? $dispatch_info['input_schema_sha256'] : '', 64 ) ) {
+				return new WP_Error( 'mad4b_metadata_dispatch_identity_incomplete', 'Canonical enrollment dispatch metadata is incomplete.' );
+			}
+			$ability_name = (string) $dispatch_info['remote_ability'];
+			$operation = isset( $dispatch_info['operation'] ) && is_array( $dispatch_info['operation'] ) ? $dispatch_info['operation'] : array();
 			$payload['target'] = $operation_id;
 			$payload['found'] = true;
 			$payload['remote_ability'] = $ability_name;
-			$payload['authority_surface'] = isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '';
-			$payload['registration_digest'] = isset( $row['registration_digest'] ) ? strtolower( (string) $row['registration_digest'] ) : '';
-			$payload['operation_policy_digest'] = self::digest( array(
-				'authority_surface' => isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '',
-				'remote_caller_role' => isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '',
-				'production_policy' => isset( $row['production_policy'] ) ? (string) $row['production_policy'] : '',
-				'human_decision_required' => ! empty( $row['human_decision_required'] ),
-				'trust_class' => isset( $row['trust_class'] ) ? (string) $row['trust_class'] : '',
-				'remote_mode' => isset( $row['remote_mode'] ) ? (string) $row['remote_mode'] : '',
-			) );
+			$payload['authority_surface'] = isset( $operation['authority_surface'] ) ? (string) $operation['authority_surface'] : 'mad4b-enrollment';
+			$payload['registration_digest'] = strtolower( (string) $dispatch_info['registration_digest'] );
+			$payload['dispatch_policy_digest'] = strtolower( (string) $dispatch_info['dispatch_policy_digest'] );
+			$payload['operation_policy_digest'] = $payload['dispatch_policy_digest'];
+			$payload['dispatch_identity_source'] = 'MAD4B_SCP_Enrollment_Dispatch::info';
+			$payload['input_schema_available'] = isset( $dispatch_info['input_schema'] ) && is_array( $dispatch_info['input_schema'] ) && ! empty( $dispatch_info['input_schema'] );
+			$payload['input_schema_sha256'] = strtolower( (string) $dispatch_info['input_schema_sha256'] );
 		}
 
 		if ( '' !== $ability_name && function_exists( 'wp_has_ability' ) && function_exists( 'wp_get_ability' ) && wp_has_ability( $ability_name ) ) {
@@ -246,10 +253,14 @@ final class MAD4B_SCP_Read_Consistency {
 			$input_schema = self::ability_schema( $ability, 'input' );
 			$output_schema = self::ability_schema( $ability, 'output' );
 			$meta = self::ability_meta( $ability );
+			$computed_input_schema_sha256 = self::digest( $input_schema );
+			if ( 'operation' === $target_type && '' !== $payload['input_schema_sha256'] && ! hash_equals( $payload['input_schema_sha256'], $computed_input_schema_sha256 ) ) {
+				return new WP_Error( 'mad4b_metadata_dispatch_schema_projection_drift', 'Canonical enrollment dispatch schema digest does not match the live Ability schema.' );
+			}
 			$payload['found'] = true;
 			$payload['remote_ability'] = $ability_name;
 			$payload['input_schema_available'] = ! empty( $input_schema );
-			$payload['input_schema_sha256'] = self::digest( $input_schema );
+			$payload['input_schema_sha256'] = $computed_input_schema_sha256;
 			$payload['output_schema_sha256'] = self::digest( $output_schema );
 			$payload['metadata_sha256'] = self::digest( $meta );
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
@@ -277,7 +288,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'target' => $payload['target'],
 			'remote_ability' => $payload['remote_ability'],
 			'registration_digest' => $payload['registration_digest'],
-			'operation_policy_digest' => $payload['operation_policy_digest'],
+			'dispatch_policy_digest' => $payload['dispatch_policy_digest'],
 			'input_schema_sha256' => $payload['input_schema_sha256'],
 		) );
 		$payload['observed_at'] = gmdate( 'c' );
