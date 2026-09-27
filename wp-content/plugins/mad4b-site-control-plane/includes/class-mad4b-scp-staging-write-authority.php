@@ -940,6 +940,24 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
 		if ( ! in_array( 'mad4b:read', $scopes, true ) ) return false;
 
+		// mad4b/write-execute is a bounded ChatGPT transport envelope, not the
+		// mutation authority itself. Central authorization has already required the
+		// exact mad4b-chatgpt transport NHI grant before reaching this scope gate.
+		// Allow the envelope only for an exact current governed-write target; the
+		// target Ability still executes its own mad4b-write grant, provider, budget,
+		// Context and one-time approval boundary independently.
+		if ( 'mad4b/write-execute' === (string) $ability_name ) {
+			if ( 'mad4b-chatgpt' !== $server_id || ! self::effective() ) return false;
+			if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) || 'mad4b-chatgpt' !== MAD4B_SCP_Transport_Context::current_server_id() ) return false;
+			if ( ! is_array( $input ) ) return false;
+			$target_ability = isset( $input['ability_name'] ) ? trim( (string) $input['ability_name'] ) : '';
+			$expected_schema_sha256 = isset( $input['expected_input_schema_sha256'] ) ? strtolower( trim( (string) $input['expected_input_schema_sha256'] ) ) : '';
+			if ( '' === $target_ability || 'mad4b/write-execute' === $target_ability || 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_schema_sha256 ) ) return false;
+			if ( ! self::is_write_ability( $target_ability ) ) return false;
+			if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $target_ability ) ) return false;
+			return true;
+		}
+
 		// approval-plan is declared on mad4b-admin but, when invoked through the
 		// compact ChatGPT write dispatcher, central authorization may resolve the
 		// exact external-write candidate onto mad4b-write before scope evaluation.
