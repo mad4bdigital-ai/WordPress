@@ -14,6 +14,7 @@ final class MAD4B_SCP_AI_Approval {
 	const CONTRACT = 'mad4b.ai-approval.v1';
 	const DELEGATION_CONTRACT = 'mad4b.ai-approval-standing-delegation.v1';
 	const ABILITY = 'mad4b/approval-ai-decide';
+	const CLASSIFY_ABILITY = 'mad4b/operation-classify';
 
 	private static $booted = false;
 
@@ -24,7 +25,37 @@ final class MAD4B_SCP_AI_Approval {
 	}
 
 	public static function register_ability() {
-		if ( ! function_exists( 'wp_register_ability' ) || ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ABILITY ) ) ) return;
+		if ( ! function_exists( 'wp_register_ability' ) ) return;
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::CLASSIFY_ABILITY ) ) {
+			wp_register_ability(
+				self::CLASSIFY_ABILITY,
+				array(
+					'label' => 'Classify Governed Operation',
+					'description' => 'Classify one governed operation into operation type, risk tier and approval lane without creating or deciding a ticket.',
+					'category' => 'mad4b-read',
+					'execute_callback' => array( __CLASS__, 'classify_operation' ),
+					'permission_callback' => class_exists( 'MAD4B_SCP_Policy' ) ? array( 'MAD4B_SCP_Policy', 'can_read' ) : '__return_false',
+					'input_schema' => array(
+						'type' => 'object',
+						'properties' => array(
+							'ability' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 191 ),
+							'provider' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'default' => '' ),
+							'input' => array( 'type' => 'object', 'additionalProperties' => true, 'default' => array() ),
+						),
+						'required' => array( 'ability' ),
+						'additionalProperties' => false,
+					),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => array(
+						'public' => false,
+						'show_in_rest' => false,
+						'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+						'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+					),
+				)
+			);
+		}
+		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ABILITY ) ) return;
 		wp_register_ability(
 			self::ABILITY,
 			array(
@@ -60,6 +91,23 @@ final class MAD4B_SCP_AI_Approval {
 				),
 			)
 		);
+	}
+
+	public static function classify_operation( $input ) {
+		$ability = is_array( $input ) && isset( $input['ability'] ) ? trim( (string) $input['ability'] ) : '';
+		if ( '' === $ability ) return new WP_Error( 'mad4b_operation_classify_ability_required', 'A governed ability is required for operation classification.' );
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $ability ) ) return new WP_Error( 'mad4b_operation_classify_ability_unknown', 'Operation classification requires a registered runtime ability.' );
+		$provider = is_array( $input ) && isset( $input['provider'] ) ? sanitize_key( (string) $input['provider'] ) : '';
+		$mounted = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability ) : null;
+		if ( '' === $provider && null !== $mounted ) $provider = sanitize_key( (string) $mounted );
+		if ( '' === $provider ) $provider = 'core';
+		if ( null !== $mounted && $provider !== sanitize_key( (string) $mounted ) ) return new WP_Error( 'mad4b_operation_classify_provider_mismatch', 'Requested provider does not match the current governed write mount.' );
+		$operation_input = is_array( $input ) && isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
+		$classification = MAD4B_SCP_Impact_Policy::classify( $ability, $provider, $operation_input );
+		$classification['read_only'] = true;
+		$classification['mutation_performed'] = false;
+		$classification['runtime_mounted_on_mad4b_write'] = null !== $mounted;
+		return $classification;
 	}
 
 	public static function configured_agent_public_id() {
