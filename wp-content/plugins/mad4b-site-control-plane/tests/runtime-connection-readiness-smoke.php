@@ -43,7 +43,8 @@ $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', 'mad4b/read-snap
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/read-diagnostic-bundle' ), 'Read diagnostic bundle is not mounted on mad4b-read.' );
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', 'mad4b/read-diagnostic-bundle' ), 'Read diagnostic bundle is not mounted on mad4b-chatgpt.' );
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/read-metadata-envelope' ), 'Read metadata envelope is not mounted on mad4b-read.' );
-$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', 'mad4b/read-metadata-envelope' ), 'Read metadata envelope is not mounted on mad4b-chatgpt.' );
+$check( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', 'mad4b/read-metadata-envelope' ), 'Read metadata envelope must remain hidden from the compact ChatGPT direct tool list.' );
+$check( MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( 'mad4b/read-metadata-envelope' ), 'Read metadata envelope is not reachable through governed read dispatch.' );
 $snapshot = MAD4B_SCP_Read_Consistency::snapshot_header( array() );
 $check( isset( $snapshot['contract'] ) && 'mad4b.read-consistency.v1' === $snapshot['contract'], 'Read snapshot contract drifted.' );
 $check( isset( $snapshot['runtime_generation'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $snapshot['runtime_generation'] ), 'Read snapshot runtime generation missing.' );
@@ -66,13 +67,21 @@ $mismatch = MAD4B_SCP_Read_Consistency::diagnostic_bundle( array(
 ) );
 $check( is_array( $mismatch ) && 'generation_changed' === $mismatch['state'], 'Generation mismatch did not fail closed.' );
 $check( empty( $mismatch['valid_for_merge'] ) && ! empty( $mismatch['discard_partial'] ) && empty( $mismatch['resume_permitted'] ), 'Generation mismatch did not invalidate partial evidence.' );
-$metadata = MAD4B_SCP_Read_Consistency::metadata_envelope( array(
-    'target_type' => 'operation',
-    'target' => 'browser_acceptance_execution',
-    'read_transaction_id' => $snapshot['read_transaction_id'],
-    'expected_runtime_generation' => $snapshot['runtime_generation'],
+$read_dispatch = wp_get_ability( 'mad4b/read-execute' );
+$check( is_object( $read_dispatch ) && method_exists( $read_dispatch, 'execute' ), 'Governed read dispatcher is unavailable.' );
+$metadata_dispatch = $read_dispatch->execute( array(
+    'ability_name' => 'mad4b/read-metadata-envelope',
+    'input' => array(
+        'target_type' => 'operation',
+        'target' => 'browser_acceptance_execution',
+        'read_transaction_id' => $snapshot['read_transaction_id'],
+        'expected_runtime_generation' => $snapshot['runtime_generation'],
+    ),
 ) );
-$check( is_array( $metadata ) && 'ready' === $metadata['state'], 'Compact operation metadata envelope was not ready.' );
+$check( ! is_wp_error( $metadata_dispatch ), 'Compact metadata dispatch returned an error: ' . ( is_wp_error( $metadata_dispatch ) ? $metadata_dispatch->get_error_code() : '' ) );
+$check( is_array( $metadata_dispatch ) && 'mad4b.chatgpt-read-execute.v1' === $metadata_dispatch['contract'], 'Compact metadata dispatch wrapper drifted.' );
+$metadata = isset( $metadata_dispatch['result'] ) && is_array( $metadata_dispatch['result'] ) ? $metadata_dispatch['result'] : array();
+$check( is_array( $metadata ) && 'ready' === $metadata['state'], 'Compact operation metadata envelope was not ready through governed read dispatch.' );
 $check( ! empty( $metadata['generation_match'] ) && ! empty( $metadata['valid_for_resume'] ), 'Compact metadata envelope lost generation binding.' );
 $check( 'mad4b/browser-acceptance-run' === $metadata['remote_ability'], 'Compact metadata envelope resolved the wrong remote ability.' );
 $check( isset( $metadata['registration_digest'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $metadata['registration_digest'] ), 'Operation registration digest missing from compact metadata envelope.' );
