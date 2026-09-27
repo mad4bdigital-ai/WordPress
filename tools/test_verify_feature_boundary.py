@@ -304,11 +304,28 @@ release_evidence_paths = ast.literal_eval("{" + release_evidence_declaration.gro
 governance_parity_paths = {
     ".github/workflows/feature-007-critical-kernel.yml",
     ".github/workflows/mad4b-release-verdict.yml",
+    ".github/workflows/mad4b-feature-boundary-root.yml",
     "tools/test_verify_feature_boundary.py",
 }
 assert governance_parity_paths.issubset(release_evidence_paths), (
     "release verdict governance parity paths must remain release-evidence scoped: "
     + repr(sorted(governance_parity_paths - release_evidence_paths))
 )
+
+# Feature Boundary must pin the current trusted target branch, not the historical
+# pull-request event base SHA. This keeps strict "branch up to date" rules from
+# turning later master commits into false repository-governance scope mixing.
+feature_boundary_root_text = (
+    HERE.parent / ".github/workflows/mad4b-feature-boundary-root.yml"
+).read_text(encoding="utf-8")
+assert "BASE_REF: ${{ github.event.pull_request.base.ref }}" in feature_boundary_root_text
+assert "EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}" in feature_boundary_root_text
+assert "BASE_SHA: ${{ github.event.pull_request.base.sha }}" not in feature_boundary_root_text
+assert "ref: ${{ github.event.pull_request.base.ref }}" in feature_boundary_root_text
+assert 'test "$BASE_REF" = "master"' in feature_boundary_root_text
+assert '"repos/$GITHUB_REPOSITORY/git/ref/heads/$BASE_REF"' in feature_boundary_root_text
+assert 'test "$checked_base_sha" = "$live_base_sha"' in feature_boundary_root_text
+assert 'echo "BASE_SHA=$checked_base_sha" >> "$GITHUB_ENV"' in feature_boundary_root_text
+assert '--base "$BASE_SHA"' in feature_boundary_root_text
 
 print("mad4b.repository-feature-boundary.v1: PASS")
