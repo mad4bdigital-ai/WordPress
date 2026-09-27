@@ -1290,6 +1290,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'production_mutation' => false,
 			'resumed' => $same_identity,
 			'resumed_from_stage' => $same_identity && isset( $previous['stage'] ) ? (string) $previous['stage'] : '',
+			'seed_cursor' => $same_identity && isset( $previous['seed_cursor'] ) ? max( 0, (int) $previous['seed_cursor'] ) : 0,
+			'seed_accumulator' => $same_identity && isset( $previous['seed_accumulator'] ) && is_array( $previous['seed_accumulator'] ) ? $previous['seed_accumulator'] : array( 'created' => array(), 'refreshed_managed' => array(), 'skipped_existing' => array() ),
 		);
 		$persisted = self::persist_skills_job( $state );
 		if ( is_wp_error( $persisted ) ) {
@@ -1316,30 +1318,77 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			$state['stage'] = 'seed_reconciliation';
 			$state['updated_at'] = gmdate( 'c' );
 			$persisted = self::persist_skills_job( $state );
-		if ( is_wp_error( $persisted ) ) return $persisted;
+			if ( is_wp_error( $persisted ) ) return $persisted;
+
 			$resume_seed = ! empty( $seed_before['ready'] );
+			if ( $same_identity && ! empty( $previous['seed_ready'] ) && empty( $seed_before['ready'] ) ) {
+				$state['seed_cursor'] = 0;
+				$state['seed_accumulator'] = array( 'created' => array(), 'refreshed_managed' => array(), 'skipped_existing' => array() );
+				$state['seed_ready'] = false;
+			}
+
 			$heartbeat = self::refresh_skills_lock( $skills_lock );
 			if ( is_wp_error( $heartbeat ) ) return $heartbeat;
 			$seed = $resume_seed
-				? array( 'state' => 'ready', 'ready' => true, 'resumed' => true, 'inspection' => $seed_before )
-				: MAD4B_SCP_Skill_Seeder::reconcile();
+				? MAD4B_SCP_Skill_Seeder::observe_ready()
+				: MAD4B_SCP_Skill_Seeder::reconcile_batch(
+					isset( $state['seed_cursor'] ) ? (int) $state['seed_cursor'] : 0,
+					3,
+					isset( $state['seed_accumulator'] ) && is_array( $state['seed_accumulator'] ) ? $state['seed_accumulator'] : array()
+				);
 			$heartbeat = self::refresh_skills_lock( $skills_lock );
 			if ( is_wp_error( $heartbeat ) ) return $heartbeat;
-			$state['seed_resumed'] = $resume_seed;
-			if ( is_wp_error( $seed ) || ! is_array( $seed ) || 'ready' !== ( isset( $seed['state'] ) ? (string) $seed['state'] : '' ) ) {
-				$error = is_wp_error( $seed ) ? $seed : new WP_Error( 'mad4b_remote_skill_seed_failed', 'Canonical Skill seed reconciliation did not reach ready state.', array( 'seed' => $seed ) );
+			$state['seed_resumed'] = $resume_seed || ( $same_identity && ! empty( $state['seed_cursor'] ) );
+
+			if ( is_wp_error( $seed ) ) {
+				$state['status'] = 'blocked';
+				$state['last_error_code'] = $seed->get_error_code();
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+				if ( is_wp_error( $persisted ) ) return $persisted;
+				return $seed;
+			}
+
+			$seed_state = is_array( $seed ) && isset( $seed['state'] ) ? (string) $seed['state'] : '';
+			if ( 'in_progress' === $seed_state ) {
+				$state['seed_cursor'] = isset( $seed['next_cursor'] ) ? max( 0, (int) $seed['next_cursor'] ) : (int) $state['seed_cursor'];
+				$state['seed_accumulator'] = isset( $seed['accumulator'] ) && is_array( $seed['accumulator'] ) ? $seed['accumulator'] : $state['seed_accumulator'];
+				$state['status'] = 'running';
+				$state['stage'] = 'seed_reconciliation';
+				$state['last_error_code'] = '';
+				$state['updated_at'] = gmdate( 'c' );
+				$persisted = self::persist_skills_job( $state );
+				if ( is_wp_error( $persisted ) ) return $persisted;
+				return array(
+					'contract' => 'mad4b.remote-managed-skills-reconciliation.v2',
+					'state' => 'in_progress',
+					'ready' => false,
+					'checkpoint' => $state,
+					'seed' => $seed,
+					'providers' => array( 'state' => 'pending' ),
+					'certification' => array(),
+					'remote_operation' => true,
+					'production_mutation' => false,
+				);
+			}
+
+			if ( ! is_array( $seed ) || 'ready' !== $seed_state ) {
+				$error = new WP_Error( 'mad4b_remote_skill_seed_failed', 'Canonical Skill seed reconciliation did not reach ready state.', array( 'seed' => $seed ) );
 				$state['status'] = 'blocked';
 				$state['last_error_code'] = $error->get_error_code();
 				$state['updated_at'] = gmdate( 'c' );
 				$persisted = self::persist_skills_job( $state );
-		if ( is_wp_error( $persisted ) ) return $persisted;
+				if ( is_wp_error( $persisted ) ) return $persisted;
 				return $error;
 			}
+
+			if ( isset( $seed['next_cursor'] ) ) $state['seed_cursor'] = max( 0, (int) $seed['next_cursor'] );
+			if ( isset( $seed['accumulator'] ) && is_array( $seed['accumulator'] ) ) $state['seed_accumulator'] = $seed['accumulator'];
 			$state['stage'] = 'seed_ready';
 			$state['seed_ready'] = true;
 			$state['updated_at'] = gmdate( 'c' );
 			$persisted = self::persist_skills_job( $state );
-		if ( is_wp_error( $persisted ) ) return $persisted;
+			if ( is_wp_error( $persisted ) ) return $persisted;
 
 			$state['stage'] = 'provider_reconciliation';
 			$state['updated_at'] = gmdate( 'c' );
