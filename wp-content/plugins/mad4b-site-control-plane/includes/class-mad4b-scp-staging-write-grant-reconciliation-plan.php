@@ -105,21 +105,22 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 	}
 
 	private static function transport_inventory() {
-		if ( ! class_exists( 'MAD4B_SCP_Enrollment_Dispatch' ) || ! class_exists( 'MAD4B_SCP_Servers' ) ) {
-			return new WP_Error( 'mad4b_grant_reconcile_plan_transport_unavailable', 'Bounded ChatGPT enrollment transport components are unavailable.' );
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! method_exists( 'MAD4B_SCP_Servers', 'chatgpt_dispatch_transport_tools' ) ) {
+			return new WP_Error( 'mad4b_grant_reconcile_plan_transport_unavailable', 'Bounded ChatGPT mutation transport inventory is unavailable.' );
 		}
-		$ability = MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY;
-		$provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-chatgpt', $ability );
-		if ( null === $provider ) {
-			return new WP_Error( 'mad4b_grant_reconcile_plan_transport_unmounted', 'Enrollment execute is not mounted on the canonical ChatGPT transport.' );
-		}
-		$rows = array(
-			array(
+		$rows = array();
+		foreach ( MAD4B_SCP_Servers::chatgpt_dispatch_transport_tools() as $ability ) {
+			$provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-chatgpt', $ability );
+			if ( null === $provider ) {
+				return new WP_Error( 'mad4b_grant_reconcile_plan_transport_unmounted', 'A required ChatGPT mutation dispatcher is not mounted on the canonical transport.', array( 'ability' => (string) $ability ) );
+			}
+			$rows[] = array(
 				'server_id' => 'mad4b-chatgpt',
 				'ability' => (string) $ability,
 				'provider' => sanitize_key( (string) $provider ),
-			),
-		);
+			);
+		}
+		usort( $rows, static function ( $a, $b ) { return strcmp( $a['ability'] . "\0" . $a['provider'], $b['ability'] . "\0" . $b['provider'] ); } );
 		return array(
 			'rows' => $rows,
 			'count' => count( $rows ),

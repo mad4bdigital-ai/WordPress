@@ -119,7 +119,7 @@ for marker in [
 for marker in [
     "const CONTRACT = 'mad4b.staging-write-grant-reconciliation-plan.v2'",
     "private static function transport_inventory()",
-    "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY",
+    "MAD4B_SCP_Servers::chatgpt_dispatch_transport_tools()",
     "'server_id' => 'mad4b-chatgpt'",
     "'expected_transport_tool_count'",
     "'expected_transport_inventory_fingerprint'",
@@ -180,7 +180,7 @@ for marker in [
     "expected_transport_inventory_fingerprint",
     "expected_missing_transport_abilities",
     "public static function allowed_transport_ability_providers()",
-    "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY => 'core'",
+    "MAD4B_SCP_Servers::chatgpt_dispatch_transport_tools()",
     "grant_ability( $agent['public_id'], 'mad4b-chatgpt'",
     "exact_grant( $agent['id'], 'mad4b-chatgpt'",
     "mad4b/exact-staging-transport-grant-reconciled",
@@ -208,10 +208,11 @@ for marker in [
 
 allowlist = grant_reconcile.split('public static function allowed_ability_providers()', 1)[1].split('public static function allowed_transport_ability_providers()', 1)[0]
 transport_allowlist = grant_reconcile.split('public static function allowed_transport_ability_providers()', 1)[1].split('public static function chatgpt_read_tools()', 1)[0]
-if "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY => 'core'" not in transport_allowlist:
-    raise SystemExit('bounded enrollment execute transport grant is missing from the exact transport allowlist')
-if "'mad4b/enrollment-execute'" in allowlist or "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY" in allowlist:
-    raise SystemExit('enrollment execute transport grant leaked into the normal governed-write allowlist')
+if "MAD4B_SCP_Servers::chatgpt_dispatch_transport_tools()" not in transport_allowlist:
+    raise SystemExit('ChatGPT mutation transport grant allowlist must derive from the canonical dispatcher inventory')
+for dispatcher in ("'mad4b/write-execute'", "'mad4b/enrollment-execute'"):
+    if dispatcher in allowlist:
+        raise SystemExit('direct ChatGPT mutation transport grant leaked into the normal governed-write allowlist: ' + dispatcher)
 for required_pair in [
     "'mad4b/control-plane-upload-apply' => 'core'",
     "'jetengine/create-cpt' => 'native-provider'",
@@ -246,10 +247,12 @@ if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_tr
     raise SystemExit('single-app Full Staging Authority step-up projection is missing')
 if "$step_up = array_merge( $narrow_step_up, $full_step_up )" not in chatgpt_transport:
     raise SystemExit('bounded and full authority step-ups must be composed explicitly')
-if "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" not in chatgpt_transport:
-    raise SystemExit('direct ChatGPT mutation transport must preserve write-execute plus composed guarded authority step-ups')
-if "$direct_mutation_transport[] = 'mad4b/enrollment-execute';" not in chatgpt_transport:
-    raise SystemExit('bounded Enrollment dispatcher must extend the baseline direct mutation transport explicitly')
+dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_tools()', 1)[0]
+for dispatcher in ("'mad4b/write-execute'", "'mad4b/enrollment-execute'"):
+    if dispatcher not in dispatcher_helper:
+        raise SystemExit('canonical ChatGPT mutation dispatcher inventory is incomplete: ' + dispatcher)
+if "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )" not in chatgpt_transport:
+    raise SystemExit('direct ChatGPT mutation transport must derive from the canonical dispatcher inventory plus composed guarded authority step-ups')
 core_chatgpt = servers.split("'mad4b-chatgpt' => array_merge( array(", 1)[1].split("), $governed_status", 1)[0]
 if "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" not in core_chatgpt:
     raise SystemExit('bounded Enrollment discover/info/execute projection is missing from the canonical compact ChatGPT core catalog')
@@ -388,8 +391,8 @@ for marker in [
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
     "$step_up = array_merge( $narrow_step_up, $full_step_up )",
-    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )",
-    "$direct_mutation_transport[] = 'mad4b/enrollment-execute';",
+    "public static function chatgpt_dispatch_transport_tools()",
+    "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )",
     "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",

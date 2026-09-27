@@ -434,6 +434,13 @@ final class MAD4B_SCP_Servers {
 			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
 	}
 
+	public static function chatgpt_dispatch_transport_tools() {
+		$tools = array( 'mad4b/write-execute', 'mad4b/enrollment-execute' );
+		$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
+		sort( $tools, SORT_STRING );
+		return $tools;
+	}
+
 	public static function chatgpt_tools() {
 		$cacheable = self::catalog_cacheable();
 		if ( $cacheable && is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
@@ -477,9 +484,7 @@ final class MAD4B_SCP_Servers {
 		);
 		$candidates = array_merge( $core, $bootstrap );
 		$step_up = array_merge( $narrow_step_up, $full_step_up );
-		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up );
-		$direct_mutation_transport[] = 'mad4b/enrollment-execute';
-		$direct_mutation_transport = array_values( array_unique( $direct_mutation_transport ) );
+		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up ) ) );
 
 		$tools = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
