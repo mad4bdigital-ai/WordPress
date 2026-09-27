@@ -478,6 +478,16 @@ jobs:
           expression_close = chr(125) + chr(125)
           base_ref_expression = (
               'ref: ' + expression_open
+              + ' github.event.pull_request.base.ref '
+              + expression_close
+          )
+          base_ref_env_expression = (
+              'BASE_REF: ' + expression_open
+              + ' github.event.pull_request.base.ref '
+              + expression_close
+          )
+          event_base_sha_expression = (
+              'EVENT_BASE_SHA: ' + expression_open
               + ' github.event.pull_request.base.sha '
               + expression_close
           )
@@ -490,8 +500,21 @@ jobs:
               raise SystemExit('repository feature-boundary root must use pull_request_target')
           if 'permissions:\n  contents: read\n' not in boundary_workflow:
               raise SystemExit('repository feature-boundary root must remain read-only')
-          if base_ref_expression not in boundary_workflow:
-              raise SystemExit('repository feature-boundary root must checkout the trusted PR base')
+          if base_ref_expression not in boundary_workflow or base_ref_env_expression not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must checkout the current trusted PR base ref')
+          if event_base_sha_expression not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must retain historical event base as evidence only')
+          for required_marker in (
+              'test "$BASE_REF" = "master"',
+              'git/ref/heads/$BASE_REF',
+              'test "$checked_base_sha" = "$live_base_sha"',
+              'echo "BASE_SHA=$checked_base_sha" >> "$GITHUB_ENV"',
+          ):
+              if required_marker not in boundary_workflow:
+                  raise SystemExit(
+                      'repository feature-boundary root current-base pinning drift: '
+                      + required_marker
+                  )
           if 'python3 tools/verify_feature_boundary.py' not in boundary_workflow:
               raise SystemExit('repository feature-boundary root must execute the baseline-owned verifier')
           if 'python3 tools/verify_repository_owner_attestation.py' not in boundary_workflow:
