@@ -10,6 +10,9 @@ parity = (ROOT / "includes/class-mad4b-scp-remote-operation-parity.php").read_te
 servers = (ROOT / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 main = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 contract = (ROOT.parents[2] / "specs/007-content-intelligence-workflow-platform/contracts/connector-resilience.md").read_text(encoding="utf-8")
+connection_skill = (ROOT / "skill-seeds/wordpress-connection-diagnostics/SKILL.md").read_text(encoding="utf-8")
+skill_manifest = (ROOT / "config/skill-seed-manifest.json").read_text(encoding="utf-8")
+skill_seeder = (ROOT / "includes/class-mad4b-scp-skill-seeder.php").read_text(encoding="utf-8")
 
 def require(text, marker, label):
     if marker not in text:
@@ -138,5 +141,22 @@ for marker in [
     "fault-injection",
 ]:
     require(contract, marker, "normative resilience contract")
+
+
+for marker in [
+    "mad4b/connector-preflight",
+    "include_staging_certification=false",
+    "automatic_retry_allowed",
+    "rate_limit",
+    "mutation_state=unknown",
+    "reconciliation_required=true",
+    "Never automatically replay a write or enrollment operation",
+    "resume from the compact preflight",
+]:
+    require(connection_skill, marker, "managed connector diagnostics skill")
+
+require(skill_manifest, '"seed_version": 14', "connector skill seed manifest version")
+require(skill_manifest, '"name": "wordpress-connection-diagnostics"', "connector diagnostics seed registration")
+require(skill_seeder, "const SEED_VERSION = 14;", "connector diagnostics seeder version")
 
 print("mad4b.connector-resilience.contract.v1: PASS")
