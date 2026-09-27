@@ -569,6 +569,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$include_ability_hints = ! empty( $input['include_ability_hints'] );
 		$query_tokens = array_values( array_filter( preg_split( '/\\s+/', $query ) ) );
 		$matches = array();
+		$scored_matches = array();
+		$total_match_count = 0;
 		$truncated = false;
 
 		try {
@@ -582,6 +584,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'state' => 'degraded',
 				'query' => $query,
 				'count' => 0,
+				'total_match_count' => 0,
 				'operations' => array(),
 				'retryable' => ! empty( $classification['retryable'] ),
 				'automatic_retry_allowed' => ! empty( $classification['auto_retry'] ),
@@ -601,26 +604,39 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			if ( '' !== $executor && $executor !== sanitize_key( (string) $row['executor'] ) ) continue;
 			if ( '' !== $provider && $provider !== sanitize_key( (string) $row['provider'] ) ) continue;
 			if ( $remote_ready_only && empty( $row['remote_parity_ready'] ) ) continue;
-			if ( ! empty( $query_tokens ) ) {
-				$haystack = strtolower( implode( ' ', array_merge(
-					array( $operation_id, (string) $row['feature_id'], (string) $row['remote_ability'], (string) $row['local_surface'], (string) $row['executor'], (string) $row['provider'], (string) $row['authority_surface'], (string) $row['remote_mode'], (string) $row['status_ability'] ),
-					isset( $row['capability_tags'] ) && is_array( $row['capability_tags'] ) ? array_map( 'strval', $row['capability_tags'] ) : array()
-				) ) );
-				$token_match = false;
+
+			$haystack = strtolower( implode( ' ', array_merge(
+				array( $operation_id, (string) $row['feature_id'], (string) $row['remote_ability'], (string) $row['local_surface'], (string) $row['executor'], (string) $row['provider'], (string) $row['authority_surface'], (string) $row['remote_mode'], (string) $row['status_ability'] ),
+				isset( $row['capability_tags'] ) && is_array( $row['capability_tags'] ) ? array_map( 'strval', $row['capability_tags'] ) : array()
+			) ) );
+
+			$score = 0;
+			if ( empty( $query_tokens ) ) {
+				$score = 1;
+			} else {
 				foreach ( $query_tokens as $token ) {
-					if ( '' !== $token && false !== strpos( $haystack, $token ) ) {
-						$token_match = true;
-						break;
-					}
+					if ( '' !== $token && false !== strpos( $haystack, $token ) ) $score++;
 				}
-				if ( ! $token_match ) continue;
+				if ( 0 === $score ) continue;
+				if ( '' !== $query && false !== strpos( $haystack, $query ) ) $score += count( $query_tokens ) + 2;
 			}
-			if ( count( $matches ) >= $limit ) {
-				$truncated = true;
-				break;
-			}
-			$matches[ $operation_id ] = $row;
+			$row['discovery_score'] = $score;
+			$scored_matches[ $operation_id ] = $row;
 		}
+
+		$total_match_count = count( $scored_matches );
+		uasort( $scored_matches, static function ( $left, $right ) {
+			$left_score = isset( $left['discovery_score'] ) ? (int) $left['discovery_score'] : 0;
+			$right_score = isset( $right['discovery_score'] ) ? (int) $right['discovery_score'] : 0;
+			if ( $left_score === $right_score ) {
+				$left_id = isset( $left['operation_id'] ) ? (string) $left['operation_id'] : '';
+				$right_id = isset( $right['operation_id'] ) ? (string) $right['operation_id'] : '';
+				return strcmp( $left_id, $right_id );
+			}
+			return $left_score > $right_score ? -1 : 1;
+		} );
+		$truncated = $total_match_count > $limit;
+		$matches = array_slice( $scored_matches, 0, $limit, true );
 
 		$ability_hints = array();
 		if ( $include_ability_hints && function_exists( 'wp_has_ability' ) && function_exists( 'wp_get_ability' ) ) {
@@ -662,6 +678,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'query_tokens' => $query_tokens,
 			'limit' => $limit,
 			'count' => count( $matches ),
+			'total_match_count' => $total_match_count,
 			'truncated' => $truncated,
 			'operations' => $matches,
 			'rejected_registration_count' => count( self::$catalog_rejections ),
