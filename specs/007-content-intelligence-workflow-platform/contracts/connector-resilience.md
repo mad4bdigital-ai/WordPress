@@ -38,6 +38,8 @@ hint exposed by the resilience envelope.
 
 ### Mutation and enrollment execution
 
+Sanitized mutation-dispatch observability is mandatory. When a mutation callback returns a `WP_Error` or throws after callback entry, the resilience layer MUST record a bounded `mad4b.mutation-dispatch-error.v1` audit event containing only the sanitized target, original error code when available, category, opaque fingerprint, elapsed time, and reconciliation flags. Raw provider/target error messages MUST NOT be persisted or exposed, audit failure MUST NOT alter mutation semantics, and this observability MUST NOT introduce any retry.
+
 Mutation and enrollment callbacks MUST execute at most once per dispatcher call.
 
 A timeout, disconnect, 429, 502, 503, 504, session termination, or other
