@@ -38,7 +38,9 @@ A timeout, disconnect, 429, 502, 503, 504, session termination, or other
 transient-looking exception MUST NOT trigger an automatic mutation retry because
 the remote side may already have committed state.
 
-When an exception escapes a mutation callback, the response must report:
+When an exception escapes a mutation callback, or the callback returns a
+transient transport/upstream `WP_Error` after execution may have started, the
+response must report:
 
 - `mutation_state=unknown`;
 - `reconciliation_required=true`;
