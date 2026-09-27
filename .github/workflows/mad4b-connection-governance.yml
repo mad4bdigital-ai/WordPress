@@ -49,6 +49,7 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-plugin.php"
           php -l "$root/tests/upgrade-continuity-runtime.php"
           php -l "$root/tests/reconnect-hardening-runtime.php"
+          php -l "$root/tests/connector-resilience-runtime.php"
           php -l "$root/includes/class-mad4b-scp-external-handshake-evidence.php"
           php -l "$root/includes/class-mad4b-scp-connection-ability.php"
           php -l "$root/includes/class-mad4b-scp-connection-admin-ui.php"
@@ -71,6 +72,7 @@ jobs:
           python3 "$root/tests/mcp-runtime-conflict-guard-contract.py"
           php "$root/tests/upgrade-continuity-runtime.php"
           php "$root/tests/reconnect-hardening-runtime.php"
+          php "$root/tests/connector-resilience-runtime.php"
           php "$root/tests/write-dispatch-scope-delegation-runtime.php"
 
   runtime:
