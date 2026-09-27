@@ -640,10 +640,14 @@ final class MAD4B_SCP_Self_Update {
 	}
 
 	private static function temp_archive_path() {
-		$base = trailingslashit( get_temp_dir() ) . 'mad4b-control-plane-upload';
-		if ( is_link( $base ) ) return new WP_Error( 'mad4b_self_update_temp_symlink_forbidden', 'Self-update temporary directory cannot be a symlink.' );
-		if ( ! is_dir( $base ) && ! wp_mkdir_p( $base ) ) return new WP_Error( 'mad4b_self_update_temp_dir_failed', 'Unable to prepare self-update temporary directory.' );
+		if ( ! class_exists( 'MAD4B_SCP_Policy' ) ) return new WP_Error( 'mad4b_self_update_protected_storage_unavailable', 'Protected MAD4B storage policy is unavailable.' );
+		$root = MAD4B_SCP_Policy::prepare_backup_root();
+		if ( is_wp_error( $root ) ) return $root;
+		$base = trailingslashit( $root ) . 'control-plane-upload-staging';
+		if ( is_link( $base ) ) return new WP_Error( 'mad4b_self_update_temp_symlink_forbidden', 'Self-update staging directory cannot be a symlink.' );
+		if ( ! is_dir( $base ) && ! wp_mkdir_p( $base ) ) return new WP_Error( 'mad4b_self_update_temp_dir_failed', 'Unable to prepare protected self-update staging directory.' );
 		@chmod( $base, 0700 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( ! is_writable( $base ) ) return new WP_Error( 'mad4b_self_update_temp_dir_not_writable', 'Protected self-update staging directory is not writable.' );
 		return trailingslashit( $base ) . wp_generate_uuid4() . '.zip';
 	}
 
