@@ -78,7 +78,9 @@ connector use. Large raw evidence remains available through explicit deep
 diagnostic calls.
 
 Discovery endpoints must have explicit result limits. Optional ability-hint
-expansion must be opt-in.
+expansion must be opt-in. Multi-token searches rank results by relevance before
+the result limit is applied so broad early catalog entries cannot hide a more
+specific operation.
 
 ### Error taxonomy
 
@@ -90,10 +92,24 @@ The shared classifier uses stable categories:
 - `upstream_unavailable`;
 - `authorization`;
 - `contract_or_validation`;
+- `request_budget`;
 - `unknown`.
 
 Remote responses expose an error fingerprint and class when available, but never
 the raw exception message.
+
+### Transport boundary limitation
+
+The WordPress runtime cannot catch a connection failure that happens before the
+request reaches PHP or after the HTTP/MCP response has already left WordPress.
+The server-side mitigation is therefore to reduce fan-out and payload size and
+to expose deterministic recovery semantics.
+
+After an external session disconnect:
+
+- read-only callers reconnect and begin with `mad4b/connector-preflight`;
+- mutation callers do not replay the mutation blindly;
+- mutation callers reconcile postconditions and re-plan if state is uncertain.
 
 ### Cache and circuit-breaker policy
 
