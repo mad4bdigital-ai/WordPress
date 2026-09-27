@@ -500,8 +500,10 @@ jobs:
               raise SystemExit('repository feature-boundary root must use pull_request_target')
           if 'permissions:\n  contents: read\n' not in boundary_workflow:
               raise SystemExit('repository feature-boundary root must remain read-only')
-          if base_ref_expression not in boundary_workflow or base_ref_env_expression not in boundary_workflow:
+          if base_ref_expression not in boundary_workflow:
               raise SystemExit('repository feature-boundary root must checkout the current trusted PR base ref')
+          if base_ref_env_expression not in boundary_workflow:
+              raise SystemExit('repository feature-boundary root must pin the current trusted PR base ref in BASE_REF')
           if event_base_sha_expression not in boundary_workflow:
               raise SystemExit('repository feature-boundary root must retain historical event base as evidence only')
           for required_marker in (
