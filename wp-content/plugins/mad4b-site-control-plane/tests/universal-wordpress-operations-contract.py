@@ -65,6 +65,13 @@ assert "public static function read_projection" in registry
 assert "mad4b_operation_registry_alias_invalid" in registry
 assert "mad4b_operation_registry_projection_invalid" in registry
 for marker in (
+    "mad4b_operation_registry_stage_bindings_missing",
+    "mad4b_operation_registry_stage_binding_invalid",
+    "mad4b_operation_registry_stage_binding_type_invalid",
+    "mad4b_operation_registry_stage_binding_ability_invalid",
+):
+    assert marker in registry, marker
+for marker in (
     "mad4b_operation_registry_pipeline_profiles_missing",
     "mad4b_operation_registry_pipeline_profile_invalid",
     "mad4b_operation_registry_pipeline_stage_invalid",
@@ -75,6 +82,9 @@ for marker in (
 ):
     assert marker in registry, marker
 assert "public static function pipeline_profile" in registry
+assert "public static function stage_binding" in registry
+assert "operation_planner" in registry
+assert "operation_executor" in registry
 assert "registered_ability_gap" in registry
 assert "mad4b_operation_planner_unregistered" in registry
 assert "mad4b_operation_executor_unregistered" in registry
@@ -111,6 +121,13 @@ assert "mad4b/dependency-impact" in catalog_projection
 assert "mad4b/provider-candidate-matrix" in catalog_projection
 assert "mad4b/operation-pipeline-compile" in catalog_projection
 assert "mad4b/provider-transport-registry-status" in catalog_projection
+stage_bindings = operation["stage_bindings"]
+assert stage_bindings["native_plan"]["binding_type"] == "operation_planner"
+assert stage_bindings["exact_execute"]["binding_type"] == "operation_executor"
+assert stage_bindings["authorization_boundary"]["binding_type"] == "policy_boundary"
+assert stage_bindings["readback"]["binding_type"] == "executor_owned_verification"
+assert stage_bindings["provider_candidate"]["ability"] == "mad4b/provider-candidate-matrix"
+assert stage_bindings["durable_resume"]["ability"] == "mad4b/operation-resume-status"
 
 assert transport["contract"] == "mad4b.provider-transport-registry.v1"
 assert transport["default_unknown_transport"] == "visible_to_peer_governance"
@@ -176,6 +193,10 @@ assert "certified-providers.json" in dependency_impact
 assert "'provider_id_inferred' => $provider_inferred" in dependency_impact
 
 assert "mad4b.operation-pipeline-compile.v1" in pipeline
+assert "MAD4B_SCP_Operation_Registry::stage_binding" in pipeline
+assert "condition_value" in pipeline
+assert "operation_dependency_impact" not in pipeline
+assert "operation_durable_resume" not in pipeline
 for marker in (
     "planner",
     "authorization",
