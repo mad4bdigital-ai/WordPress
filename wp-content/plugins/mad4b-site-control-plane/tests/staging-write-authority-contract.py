@@ -598,6 +598,9 @@ for marker in [
     "MAD4B_SCP_Approval_Tickets::finalize_claim",
     "public static function wrap_execution_boundary",
     "'approval_ticket_source'",
+    "if ( 'mad4b/approval-plan' === (string) $name )",
+    "array( 'mad4b-chatgpt', 'mad4b-write' )",
+    "return call_user_func( $original, $input );",
 ]:
     if marker not in auth:
         raise SystemExit(f'missing central write authorization binding: {marker}')
@@ -617,6 +620,17 @@ if claim.index('MAD4B_SCP_Budgets::reserve') > claim.index('MAD4B_SCP_Approval_T
     raise SystemExit('budget reservation must precede atomic approval claim')
 if claim.index('MAD4B_SCP_Approval_Tickets::claim_exact') > claim.index('MAD4B_SCP_Budgets::commit'):
     raise SystemExit('approval claim must precede budget commit')
+
+planner_registration = planning[planning.index('public static function govern_registration'):planning.index('public static function canonicalize_remote_plan_input')]
+planner_preamble = planner_registration.split('$original_permission', 1)[0]
+if "MAD4B_SCP_Staging_Write_Authority::eligible()" in planner_preamble:
+    raise SystemExit('approval-plan governance must not depend on registration-time Staging eligibility')
+for marker in [
+    "mad4b_write_authority_not_eligible",
+    "MAD4B_SCP_Staging_Write_Authority::eligible()",
+]:
+    if marker not in planner_registration:
+        raise SystemExit('approval-plan runtime eligibility fence missing: ' + marker)
 
 for marker in [
     "const CONTRACT = 'mad4b.staging-write-planning-guard.v2'",
