@@ -126,6 +126,65 @@ final class MAD4B_SCP_Operation_Registry {
 				return self::$catalog;
 			}
 		}
+		$profiles = isset( $data['pipeline_profiles'] ) && is_array( $data['pipeline_profiles'] ) ? $data['pipeline_profiles'] : array();
+		if ( empty( $profiles ) ) {
+			self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_profiles_missing', 'MAD4B operation registry pipeline profiles are missing.' );
+			return self::$catalog;
+		}
+		$allowed_stage_types = array( 'read_check', 'planner', 'authorization', 'executor', 'verification', 'reconcile' );
+		foreach ( $profiles as $profile_id => $stages ) {
+			if ( sanitize_key( (string) $profile_id ) !== (string) $profile_id || ! is_array( $stages ) || empty( $stages ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_profile_invalid', 'MAD4B operation registry contains an invalid pipeline profile.' );
+				return self::$catalog;
+			}
+			$stage_ids = array();
+			$type_positions = array();
+			foreach ( array_values( $stages ) as $position => $stage ) {
+				if ( ! is_array( $stage ) || empty( $stage['id'] ) || empty( $stage['type'] ) ) {
+					self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_stage_invalid', 'MAD4B operation registry contains an incomplete pipeline stage.' );
+					return self::$catalog;
+				}
+				$stage_id = sanitize_key( (string) $stage['id'] );
+				$type = sanitize_key( (string) $stage['type'] );
+				if ( $stage_id !== (string) $stage['id'] || isset( $stage_ids[ $stage_id ] ) || ! in_array( $type, $allowed_stage_types, true ) ) {
+					self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_stage_invalid', 'MAD4B operation registry contains an invalid or duplicate pipeline stage.' );
+					return self::$catalog;
+				}
+				if ( isset( $stage['required'] ) && ! is_bool( $stage['required'] ) ) {
+					self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_stage_required_invalid', 'Pipeline stage required must be boolean.' );
+					return self::$catalog;
+				}
+				if ( isset( $stage['when'] ) && ! preg_match( '/^[a-z0-9_.-]+:[a-z0-9_.-]+$/', (string) $stage['when'] ) ) {
+					self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_condition_invalid', 'Pipeline stage condition syntax is invalid.' );
+					return self::$catalog;
+				}
+				$stage_ids[ $stage_id ] = true;
+				if ( ! isset( $type_positions[ $type ] ) ) $type_positions[ $type ] = array();
+				$type_positions[ $type ][] = (int) $position;
+			}
+			foreach ( array( 'planner', 'authorization', 'executor', 'verification' ) as $required_type ) {
+				if ( empty( $type_positions[ $required_type ] ) ) {
+					self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_required_stage_missing', 'Pipeline profile is missing a required governed mutation stage.' );
+					return self::$catalog;
+				}
+			}
+			$planner_pos = min( $type_positions['planner'] );
+			$auth_pos = min( $type_positions['authorization'] );
+			$executor_pos = min( $type_positions['executor'] );
+			$verification_pos = min( $type_positions['verification'] );
+			if ( ! ( $planner_pos < $auth_pos && $auth_pos < $executor_pos && $executor_pos < $verification_pos ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_order_invalid', 'Pipeline profile violates planner/authorization/executor/verification ordering.' );
+				return self::$catalog;
+			}
+		}
+		foreach ( $data['operations'] as $row ) {
+			$profile_id = isset( $row['pipeline_profile'] ) ? sanitize_key( (string) $row['pipeline_profile'] ) : '';
+			if ( '' === $profile_id || ! isset( $profiles[ $profile_id ] ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_binding_invalid', 'Operation is not bound to a valid pipeline profile.' );
+				return self::$catalog;
+			}
+		}
+
 		$projection = isset( $data['read_projection'] ) && is_array( $data['read_projection'] ) ? $data['read_projection'] : array();
 		foreach ( array( 'direct', 'catalog' ) as $surface ) {
 			if ( ! isset( $projection[ $surface ] ) || ! is_array( $projection[ $surface ] ) ) {
@@ -164,6 +223,26 @@ final class MAD4B_SCP_Operation_Registry {
 	public static function aliases() {
 		$catalog = self::catalog();
 		return is_wp_error( $catalog ) || empty( $catalog['aliases'] ) || ! is_array( $catalog['aliases'] ) ? array() : $catalog['aliases'];
+	}
+
+	public static function operation( $operation_id ) {
+		$operation_id = strtolower( trim( (string) $operation_id ) );
+		$catalog = self::catalog();
+		if ( is_wp_error( $catalog ) ) return $catalog;
+		foreach ( $catalog['operations'] as $row ) {
+			if ( isset( $row['id'] ) && $operation_id === strtolower( trim( (string) $row['id'] ) ) ) return $row;
+		}
+		return new WP_Error( 'mad4b_operation_not_registered', 'Requested operation is not present in the governed operation registry.' );
+	}
+
+	public static function pipeline_profile( $profile_id ) {
+		$profile_id = sanitize_key( (string) $profile_id );
+		$catalog = self::catalog();
+		if ( is_wp_error( $catalog ) ) return $catalog;
+		if ( '' === $profile_id || ! isset( $catalog['pipeline_profiles'][ $profile_id ] ) || ! is_array( $catalog['pipeline_profiles'][ $profile_id ] ) ) {
+			return new WP_Error( 'mad4b_operation_pipeline_profile_not_registered', 'Requested operation pipeline profile is not registered.' );
+		}
+		return array_values( $catalog['pipeline_profiles'][ $profile_id ] );
 	}
 
 	public static function status( $input = null ) {
@@ -229,6 +308,7 @@ final class MAD4B_SCP_Operation_Registry {
 				'direct' => self::read_projection( 'direct' ),
 				'catalog' => self::read_projection( 'catalog' ),
 			),
+			'pipeline_profiles' => array_keys( isset( $catalog['pipeline_profiles'] ) && is_array( $catalog['pipeline_profiles'] ) ? $catalog['pipeline_profiles'] : array() ),
 			'count' => count( $items ),
 		);
 	}
