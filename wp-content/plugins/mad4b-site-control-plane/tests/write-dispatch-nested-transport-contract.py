@@ -25,7 +25,13 @@ for marker in required_transport:
         raise SystemExit("nested write-dispatch transport invariant missing: " + marker)
 
 required_dispatch = [
-    "$execute_target = static function () use ( $ability, $params, $ability_name, $actual_schema_sha256 )",
+    "$target_entered = false;",
+    "$execute_target = static function () use ( $ability, $params, $ability_name, $actual_schema_sha256, &$target_entered )",
+    "$target_entered = true;",
+    "if ( ! $target_entered ) {",
+    "mad4b_write_dispatch_target_not_started",
+    "'mutation_state' => 'not_started'",
+    "'target_execution_entered' => false",
     "MAD4B_SCP_Transport_Context::with_write_dispatch_target(",
     "$planner_result = $execute_target();",
     "static function () use ( $execute_target )",
@@ -51,4 +57,4 @@ if "mad4b/approval-plan" in dispatch_catalog:
 if "array( 'mad4b/write-execute', 'mad4b/enrollment-execute' )" not in dispatch_catalog:
     raise SystemExit("compact ChatGPT mutation transport set drifted unexpectedly")
 
-print("mad4b.write-dispatch-nested-transport.contract.v2: PASS")
+print("mad4b.write-dispatch-nested-transport.contract.v3: PASS")
