@@ -165,12 +165,13 @@ final class MAD4B_SCP_AI_Approval {
 			} else {
 				if ( 'pending' !== ( isset( $ticket['status'] ) ? (string) $ticket['status'] : '' ) ) $blockers[] = 'ai_approval_ticket_not_pending';
 				if ( 'mutation' !== ( isset( $ticket['ticket_class'] ) ? (string) $ticket['ticket_class'] : '' ) ) $blockers[] = 'ai_approval_ticket_class_denied';
-				if ( 'mad4b-write' !== sanitize_key( isset( $ticket['server_id'] ) ? (string) $ticket['server_id'] : '' ) ) $blockers[] = 'ai_approval_server_denied';
-				if ( ! empty( $ticket['expires_at'] ) && strtotime( $ticket['expires_at'] . ' UTC' ) < time() ) $blockers[] = 'ai_approval_ticket_expired';
-				if ( empty( $ticket['payload_sha256'] ) || ! hash_equals( strtolower( (string) $ticket['payload_sha256'] ), $exact['payload_sha256'] ) ) $blockers[] = 'ai_approval_payload_mismatch';
-
 				$ability = isset( $ticket['ability_name'] ) ? (string) $ticket['ability_name'] : '';
 				$provider = isset( $ticket['provider'] ) ? sanitize_key( (string) $ticket['provider'] ) : '';
+				$ticket_server = sanitize_key( isset( $ticket['server_id'] ) ? (string) $ticket['server_id'] : '' );
+				$protected_workspace_ticket = 'mad4b-developer' === $ticket_server && 'mad4b/developer-workspace-apply' === $ability && 'core' === $provider;
+				if ( 'mad4b-write' !== $ticket_server && ! $protected_workspace_ticket ) $blockers[] = 'ai_approval_server_denied';
+				if ( ! empty( $ticket['expires_at'] ) && strtotime( $ticket['expires_at'] . ' UTC' ) < time() ) $blockers[] = 'ai_approval_ticket_expired';
+				if ( empty( $ticket['payload_sha256'] ) || ! hash_equals( strtolower( (string) $ticket['payload_sha256'] ), $exact['payload_sha256'] ) ) $blockers[] = 'ai_approval_payload_mismatch';
 				$classification = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::classify( $ability, $provider, $exact['operation_input'] ) : array();
 				if ( empty( $classification['classification_sha256'] ) || ! hash_equals( (string) $classification['classification_sha256'], $exact['classification_sha256'] ) ) $blockers[] = 'ai_approval_classification_drift';
 				if ( empty( $classification['ai_approval_eligible'] ) || 'ai_autonomous' !== ( isset( $classification['approval_lane'] ) ? (string) $classification['approval_lane'] : '' ) ) $blockers[] = 'ai_approval_operation_human_only';
