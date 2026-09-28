@@ -230,12 +230,20 @@ foreach ( $write_tools as $ability ) {
 }
 
 // The approval planner is itself a governed mutation, but cannot require a
-// ticket to create the first pending ticket. Prove its bootstrap is narrowly
-// constrained to this agent + mad4b-write + mutation class and denies breakglass.
+// ticket to create the first pending ticket. Its target universe is exactly the
+// dedicated governed-write Agent or the configured *normal* Developer Agent.
+// Developer Breakglass remains outside this bootstrap.
 $planner = MAD4B_SCP_Staging_Write_Planning_Guard::status();
 if ( empty( $planner['remote_planner_requires_nhi'] ) || empty( $planner['remote_planner_requires_exact_mad4b_write_grant'] ) || empty( $planner['remote_planner_budgeted'] ) ) $fail( 'Approval planner is missing NHI/grant/budget governance.' );
 if ( ! isset( $planner['remote_planner_requires_prior_ticket'] ) || false !== $planner['remote_planner_requires_prior_ticket'] ) $fail( 'Approval planner bootstrap incorrectly requires a prior ticket.' );
-if ( 'mad4b-write' !== $planner['target_server'] || 'mutation' !== $planner['target_ticket_class'] || ! empty( $planner['breakglass_target_allowed'] ) || empty( $planner['creates_pending_ticket_only'] ) || ! empty( $planner['auto_approves'] ) ) $fail( 'Approval planner target boundary is unsafe.' );
+if ( 'mad4b-write_or_bounded_mad4b-developer' !== $planner['target_server']
+	|| 'dedicated_governed_write_or_configured_developer_agent' !== $planner['target_agent']
+	|| empty( $planner['developer_dispatch_planning_enabled'] )
+	|| ! empty( $planner['developer_breakglass_target_allowed'] )
+	|| 'mutation' !== $planner['target_ticket_class']
+	|| ! empty( $planner['breakglass_target_allowed'] )
+	|| empty( $planner['creates_pending_ticket_only'] )
+	|| ! empty( $planner['auto_approves'] ) ) $fail( 'Approval planner target boundary is unsafe.' );
 $planner_ability = wp_get_ability( 'mad4b/approval-plan' );
 $planner_meta = is_object( $planner_ability ) && method_exists( $planner_ability, 'get_meta' ) ? $planner_ability->get_meta() : array();
 if ( empty( $planner_meta['mcp']['mad4b_approval_bootstrap_operation'] ) || empty( $planner_meta['mcp']['mad4b_creates_pending_ticket_only'] ) ) $fail( 'Approval planner registration was not wrapped by the governed bootstrap guard.' );
