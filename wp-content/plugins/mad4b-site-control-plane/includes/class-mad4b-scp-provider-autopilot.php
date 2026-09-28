@@ -35,6 +35,31 @@ final class MAD4B_SCP_Provider_Autopilot {
 				),
 			) );
 		}
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( 'mad4b/provider-autopilot-promotion-plan' ) ) {
+			wp_register_ability( 'mad4b/provider-autopilot-promotion-plan', array(
+				'label' => 'Provider Autopilot Promotion Plan',
+				'description' => 'Plan the exact evidence and governed gates required to move an installed provider from its current L0-L4 support level without performing promotion or mutation.',
+				'category' => 'mad4b-read',
+				'execute_callback' => array( __CLASS__, 'promotion_plan' ),
+				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+				'input_schema' => array(
+					'type' => 'object',
+					'properties' => array(
+						'plugin' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191 ),
+						'target_level' => array( 'type' => 'string', 'enum' => array( 'L1_lifecycle', 'L2_read', 'L3_governed_write', 'L4_certified_governed' ) ),
+					),
+					'required' => array( 'plugin' ),
+					'additionalProperties' => false,
+				),
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => array(
+					'public' => false,
+					'show_in_rest' => false,
+					'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+					'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+				),
+			) );
+		}
 		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( 'mad4b/provider-autopilot-plan' ) ) {
 			wp_register_ability( 'mad4b/provider-autopilot-plan', array(
 				'label' => 'Provider Autopilot Plan',
@@ -220,6 +245,98 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'auto_mutation_enabled' => false,
 			'next_gate' => empty( $adapter ) ? 'manual_discovery' : 'review_or_shadow_validation',
 		);
+	}
+
+	public static function promotion_plan( $input ) {
+		$input = is_array( $input ) ? $input : array();
+		$plugin = self::normalize_plugin_file( isset( $input['plugin'] ) ? $input['plugin'] : '' );
+		if ( '' === $plugin ) return new WP_Error( 'mad4b_provider_autopilot_plugin_required', 'Installed plugin file is required for promotion planning.' );
+		if ( ! class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ) return new WP_Error( 'mad4b_provider_autopilot_discovery_unavailable', 'Plugin discovery is unavailable.' );
+
+		$candidate = MAD4B_SCP_Plugin_Discovery::provider_candidate_for( $plugin );
+		if ( is_wp_error( $candidate ) ) return $candidate;
+
+		$levels = array( 'L0_inventory', 'L1_lifecycle', 'L2_read', 'L3_governed_write', 'L4_certified_governed' );
+		$current = isset( $candidate['support_level'] ) ? (string) $candidate['support_level'] : 'L0_inventory';
+		$current_index = array_search( $current, $levels, true );
+		if ( false === $current_index ) $current_index = 0;
+		$target = isset( $input['target_level'] ) && '' !== (string) $input['target_level'] ? (string) $input['target_level'] : ( isset( $levels[ $current_index + 1 ] ) ? $levels[ $current_index + 1 ] : $current );
+		$target_index = array_search( $target, $levels, true );
+		if ( false === $target_index ) return new WP_Error( 'mad4b_provider_autopilot_target_level_invalid', 'Requested support level is invalid.' );
+		if ( $target_index < $current_index ) return new WP_Error( 'mad4b_provider_autopilot_promotion_downgrade_invalid', 'Promotion planner does not plan support-level downgrades.' );
+
+		$requirements = array();
+		$blockers = array();
+		$automatic_steps = array();
+		$governed_steps = array();
+		$autopilot = isset( $candidate['autopilot'] ) && is_array( $candidate['autopilot'] ) ? $candidate['autopilot'] : self::proposal_for_candidate( $candidate );
+
+		if ( $target_index >= 1 ) {
+			$requirements[] = 'installed_plugin_identity';
+			$automatic_steps[] = 'inventory_and_lifecycle_classification';
+		}
+		if ( $target_index >= 2 ) {
+			$requirements[] = 'runtime_adapter_available';
+			$requirements[] = 'bounded_read_abilities_declared';
+			$requirements[] = 'side_channel_clear';
+			$governed_steps[] = 'materialize_and_review_generated_adapter_or_register_existing_adapter';
+			$governed_steps[] = 'runtime_read_contract_validation';
+			if ( empty( $candidate['adapter_runtime_available'] ) ) $blockers[] = 'adapter_runtime_unavailable';
+			if ( ! empty( $candidate['side_channel_blocked'] ) ) $blockers[] = 'provider_side_channel_blocked';
+		}
+		if ( $target_index >= 3 ) {
+			$requirements[] = 'provider_certification_ok';
+			$requirements[] = 'reversible_write_contracts';
+			$requirements[] = 'capability_release_ring';
+			$governed_steps[] = 'behavioral_recertification';
+			$governed_steps[] = 'reversible_contract_verification';
+			if ( empty( $candidate['provider_certification_ok'] ) ) $blockers[] = 'provider_certification_required';
+			if ( empty( $candidate['reversible_contract_count'] ) ) $blockers[] = 'reversible_contract_required';
+		}
+		if ( $target_index >= 4 ) {
+			$requirements[] = 'functional_ready';
+			$requirements[] = 'exact_operation_plan';
+			$requirements[] = 'authorization_boundary';
+			$requirements[] = 'readback_and_reconciliation';
+			$governed_steps[] = 'functional_acceptance';
+			if ( 'functional_ready' !== ( isset( $candidate['functional_state'] ) ? (string) $candidate['functional_state'] : '' ) ) $blockers[] = 'functional_acceptance_required';
+		}
+
+		$requirements = array_values( array_unique( $requirements ) );
+		$blockers = array_values( array_unique( $blockers ) );
+		$automatic_steps = array_values( array_unique( $automatic_steps ) );
+		$governed_steps = array_values( array_unique( $governed_steps ) );
+		sort( $requirements, SORT_STRING );
+		sort( $blockers, SORT_STRING );
+		sort( $automatic_steps, SORT_STRING );
+		sort( $governed_steps, SORT_STRING );
+
+		$result = array(
+			'contract' => 'mad4b.provider-autopilot-promotion-plan.v1',
+			'plugin_file' => $plugin,
+			'candidate_fingerprint' => isset( $candidate['candidate_fingerprint'] ) ? (string) $candidate['candidate_fingerprint'] : '',
+			'current_level' => $current,
+			'target_level' => $target,
+			'already_at_or_above_target' => $current_index >= $target_index,
+			'eligible_now' => empty( $blockers ),
+			'requirements' => $requirements,
+			'blockers' => $blockers,
+			'automatic_steps' => $automatic_steps,
+			'governed_steps' => $governed_steps,
+			'autopilot_candidate_sha256' => isset( $autopilot['adapter_candidate']['candidate_sha256'] ) ? (string) $autopilot['adapter_candidate']['candidate_sha256'] : '',
+			'shadow_certification_sha256' => isset( $autopilot['shadow_certification']['certification_sha256'] ) ? (string) $autopilot['shadow_certification']['certification_sha256'] : '',
+			'auto_materialize_candidate_code' => false,
+			'auto_register_generated_adapter' => false,
+			'auto_write_certification' => false,
+			'auto_create_authority' => false,
+			'auto_enable_mutation' => false,
+			'mutation_performed' => false,
+			'authority_created' => false,
+			'next_action' => empty( $blockers ) ? 'enter_governed_promotion_lane' : 'satisfy_blockers_then_recompile',
+		);
+		$encoded = wp_json_encode( $result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$result['promotion_plan_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		return $result;
 	}
 
 	public static function plan( $input = null ) {
