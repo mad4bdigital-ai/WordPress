@@ -4,7 +4,13 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.79**.
+Current plugin version: **0.4.0-rc.80**.
+
+### rc.80 runtime identity + updater observability hardening
+
+rc.80 fixes three fail-open/hidden-state classes found during post-rc.79 review. Portable read-only OAuth now boots only after Upgrade Continuity has finished and the final Site Profile has been re-read. A stored invalid Site Profile or blocked continuity recovery can no longer be silently masked by falling back to portable OAuth. The portable path remains zero-write and non-authorizing.
+
+The WordPress Plugins update UI also stops failing silently. Administrators now receive an explicit retry action when the governed release manifest cannot be verified, an explicit policy-blocked state when the environment disallows native self-update, and a normal update action only when the fixed release manifest is valid and newer/different. The update coordinator still does not inject WordPress core update transients or enable automatic updates; package provenance, SHA-256 verification, backup, readback and rollback remain mandatory.
 
 ### rc.79 resilient native update UI
 
