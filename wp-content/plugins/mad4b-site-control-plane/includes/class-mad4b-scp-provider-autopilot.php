@@ -143,7 +143,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 			. "final class " . $class_name . " extends MAD4B_SCP_Adapter_Base {\n"
 			. "\tpublic function id() { return '" . $adapter_id . "'; }\n"
 			. "\tpublic function label() { return " . var_export( $plugin_name . ' Candidate', true ) . "; }\n"
-			. "\tpublic function is_available() { return is_plugin_active( " . var_export( $plugin_file, true ) . " ); }\n"
+			. "\tpublic function is_available() { if ( ! function_exists( 'is_plugin_active' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php'; return is_plugin_active( " . var_export( $plugin_file, true ) . " ); }\n"
 			. "\tpublic function ability_names() { return array( 'read' => array(), 'content' => array(), 'admin' => array() ); }\n"
 			. "\tpublic function register_abilities() { /* Candidate only: no abilities are registered automatically. */ }\n"
 			. "}\n";
