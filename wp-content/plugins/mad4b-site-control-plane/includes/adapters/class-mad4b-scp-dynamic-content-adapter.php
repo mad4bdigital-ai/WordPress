@@ -182,6 +182,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 								'term_id'=>array('type'=>'integer','minimum'=>1),
 								'slug'=>array('type'=>'string','minLength'=>1,'maxLength'=>200),
 								'name'=>array('type'=>'string','minLength'=>1,'maxLength'=>200),
+								'create_slug'=>array('type'=>'string','minLength'=>1,'maxLength'=>200),
 								'description'=>array('type'=>'string','maxLength'=>65535),
 								'parent'=>array('type'=>'integer','minimum'=>0)
 							)
@@ -214,6 +215,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 					'term_id'=>array('type'=>'integer','minimum'=>1),
 					'slug'=>array('type'=>'string','minLength'=>1,'maxLength'=>200),
 					'name'=>array('type'=>'string','minLength'=>1,'maxLength'=>200),
+					'create_slug'=>array('type'=>'string','minLength'=>1,'maxLength'=>200),
 					'description'=>array('type'=>'string','maxLength'=>65535),
 					'parent'=>array('type'=>'integer','minimum'=>0)
 				)
@@ -421,7 +423,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 					'description'=>isset($ref['description'])?(string)$ref['description']:'',
 					'parent'=>$parent,
 				);
-				if(!empty($ref['slug']))$create_input['slug']=sanitize_title((string)$ref['slug']);
+				if(!empty($ref['create_slug']))$create_input['slug']=sanitize_title((string)$ref['create_slug']);
 				$missing_entry=array('taxonomy'=>$taxonomy,'identity'=>$identity,'creatable'=>$creatable,'create_input'=>$create_input);
 				$missing[]=$missing_entry;
 				if($creatable)$steps[]=array(
@@ -1191,16 +1193,25 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 	private function acceptance_receipt_hash(array $receipt){ return $this->state_sha256($receipt); }
 
 	private function persist_acceptance_receipt($id,array $final,array $input,array $pipeline,$bundle_sha){
+		$scope=isset($final['scope'])&&is_array($final['scope'])?$final['scope']:array();
+		$scope=apply_filters('mad4b_scp_dynamic_content_acceptance_scope',$scope,absint($id),$input,$final,$pipeline);
+		if(!is_array($scope)) return new WP_Error('mad4b_dynamic_acceptance_scope_invalid','Dynamic acceptance scope filter must return a bounded scope object.');
+		$scope=array(
+			'meta_keys'=>isset($scope['meta_keys'])&&is_array($scope['meta_keys'])?array_values(array_unique(array_filter(array_map('strval',array_slice($scope['meta_keys'],0,200))))):array(),
+			'taxonomies'=>isset($scope['taxonomies'])&&is_array($scope['taxonomies'])?array_values(array_unique(array_filter(array_map('sanitize_key',array_slice($scope['taxonomies'],0,50))))):array(),
+		);
+		sort($scope['meta_keys'],SORT_STRING);sort($scope['taxonomies'],SORT_STRING);
+		$accepted_state=$this->snapshot(absint($id),$this->input_from_state_scope($scope));
 		$receipt=array(
 			'contract'=>self::ACCEPTANCE_CONTRACT,
 			'post_id'=>absint($id),
 			'post_type'=>isset($final['post']['post_type'])?(string)$final['post']['post_type']:'',
 			'post_status'=>isset($final['post']['post_status'])?(string)$final['post']['post_status']:'',
-			'state_sha256'=>$this->state_sha256($final),
+			'state_sha256'=>$this->state_sha256($accepted_state),
 			'bundle_sha256'=>(string)$bundle_sha,
 			'pipeline_settings_sha256'=>isset($pipeline['settings_sha256'])?(string)$pipeline['settings_sha256']:'',
 			'environment'=>function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown',
-			'scope'=>isset($final['scope'])&&is_array($final['scope'])?$final['scope']:array(),
+			'scope'=>$scope,
 			'accepted_at'=>gmdate('c'),
 		);
 		$written=update_post_meta(absint($id),self::ACCEPTANCE_META,$receipt);
