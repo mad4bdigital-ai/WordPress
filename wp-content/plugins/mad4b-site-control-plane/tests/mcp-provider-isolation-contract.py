@@ -68,6 +68,7 @@ require(isolation, "MAD4B_SCP_Portable_Readonly_Connection::effective()", 'porta
 require(isolation, "'portable_readonly_bootstrap'", 'portable-readonly-isolation-source')
 require(isolation, "'site_profile_not_enrolled_and_portable_readonly_unavailable'", 'portable-readonly-fail-closed-without-bootstrap')
 require(isolation, "'portable_readonly_isolation_nonproduction_only'", 'portable-readonly-no-production-auto-isolation')
+require(isolation, "'explicit_isolation_intent_requires_runtime_suppression_approval'", 'portable-readonly-preserves-legacy-second-gate')
 require(isolation, "'staging_zero_touch_autoconfig_source' => self::$staging_autoconfig_source", 'portable-readonly-status-source')
 
 require(isolation, "retain_internal_provider_route", 'jetengine-internal-route-retention')
