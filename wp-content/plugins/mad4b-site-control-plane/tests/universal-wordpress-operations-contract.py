@@ -328,3 +328,7 @@ assert promotion_hash_pos < promotion_observed_pos, "promotion freshness metadat
 cert_hash_pos = provider_autopilot.index("$cert['certification_sha256']")
 cert_observed_pos = provider_autopilot.index("$cert['observed_at_unix']")
 assert cert_hash_pos < cert_observed_pos, "shadow freshness metadata must stay outside the deterministic certification hash"
+
+candidate_hash_pos = provider_autopilot.index("$descriptor['candidate_sha256']")
+candidate_source_pos = provider_autopilot.index("if ( $include_source ) $descriptor['generated_php']")
+assert candidate_hash_pos < candidate_source_pos, "candidate identity must not depend on whether generated PHP source is projected"
