@@ -345,3 +345,13 @@ if "class-mad4b-scp-portable-readonly-connection.php" not in main:
     raise SystemExit('main plugin does not load portable read-only connection')
 if "MAD4B_SCP_Portable_Readonly_Connection::bootstrap();" not in main:
     raise SystemExit('portable read-only connection is not bootstrapped')
+
+if main.index("MAD4B_SCP_Upgrade_Continuity::pre_boot();") > main.index("MAD4B_SCP_Portable_Readonly_Connection::bootstrap();"):
+    raise SystemExit('portable read-only connection boots before upgrade continuity recovery')
+for marker in (
+    "site_profile_invalid_fail_closed",
+    "upgrade_continuity_blocked",
+    "MAD4B_SCP_Upgrade_Continuity::recovery_status()",
+):
+    if marker not in portable:
+        raise SystemExit(f'portable continuity fail-closed marker missing: {marker}')

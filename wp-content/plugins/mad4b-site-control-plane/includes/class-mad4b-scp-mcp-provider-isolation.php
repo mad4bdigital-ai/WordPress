@@ -92,6 +92,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 	private static $staging_autoconfig_evaluated = false;
 	private static $staging_autoconfig_applied = false;
 	private static $staging_autoconfig_blocker = '';
+	private static $staging_autoconfig_source = 'none';
 
 	/** Register provider-owned kill switches before plugins_loaded callbacks run. */
 	public static function boot_early() {
@@ -123,15 +124,48 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		if ( self::$staging_autoconfig_evaluated ) return;
 		self::$staging_autoconfig_evaluated = true;
 
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() ) {
-			self::$staging_autoconfig_blocker = 'site_profile_not_enrolled';
-			return;
-		}
-		if ( ! MAD4B_SCP_Site_Profile::provider_isolation_enabled() ) {
+		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$enable_flag_preexisting = defined( self::ENABLE_FLAG );
+		$runtime_flag_preexisting = defined( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG );
+		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
+		$profile_allows = $profile_enrolled && MAD4B_SCP_Site_Profile::provider_isolation_enabled();
+		$portable_readonly = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' )
+			&& MAD4B_SCP_Portable_Readonly_Connection::effective();
+
+		if ( $profile_enrolled && ! $profile_allows ) {
 			self::$staging_autoconfig_blocker = 'site_profile_provider_isolation_disabled';
 			return;
 		}
-		$environment = MAD4B_SCP_Site_Profile::current_environment();
+
+		if ( ! $profile_allows ) {
+			// A fresh HTTPS installation may expose the tenant-neutral portable
+			// read-only OAuth resource before a Site Profile exists. Provider
+			// isolation is deny-only and creates no authority, so on non-Production
+			// environments it may safely protect that bootstrap transport from
+			// reviewed provider-native MCP side channels. Unknown routes still
+			// remain visible and fail closed.
+			if ( ! $portable_readonly ) {
+				self::$staging_autoconfig_blocker = 'site_profile_not_enrolled_and_portable_readonly_unavailable';
+				return;
+			}
+			if ( ! in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) {
+				self::$staging_autoconfig_blocker = 'portable_readonly_isolation_nonproduction_only';
+				return;
+			}
+			// Do not reinterpret a pre-existing legacy isolation intent flag as
+			// runtime suppression approval. Portable zero-touch isolation is only
+			// synthesized when neither isolation gate was operator-defined before
+			// bootstrap. This preserves the two-gate legacy safety contract.
+			if ( $enable_flag_preexisting && ! $runtime_flag_preexisting ) {
+				self::$staging_autoconfig_blocker = 'explicit_isolation_intent_requires_runtime_suppression_approval';
+				return;
+			}
+			self::$staging_autoconfig_source = 'portable_readonly_bootstrap';
+		} else {
+			self::$staging_autoconfig_source = 'site_profile';
+			if ( class_exists( 'MAD4B_SCP_Site_Profile' ) ) $environment = MAD4B_SCP_Site_Profile::current_environment();
+		}
+
 		if ( 'production' === $environment && ! self::production_approved() ) {
 			self::$staging_autoconfig_blocker = 'production_isolation_approval_required';
 			return;
@@ -374,6 +408,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 			'staging_zero_touch_autoconfig_evaluated' => self::$staging_autoconfig_evaluated,
 			'staging_zero_touch_autoconfig_applied' => self::$staging_autoconfig_applied,
 			'staging_zero_touch_autoconfig_blocker' => self::$staging_autoconfig_blocker,
+			'staging_zero_touch_autoconfig_source' => self::$staging_autoconfig_source,
 			'governed_profile_origin' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_origin() : '',
 			'production_auto_configured' => false,
 			'runtime_suppression_requires_second_gate' => true,
