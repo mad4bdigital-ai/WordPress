@@ -250,7 +250,7 @@ The handshake:
 - fails closed if the generation changes during preparation;
 - returns only the bounded blockers/readiness summary and the exact fields
   required by `full-staging-authority-apply`;
-- exposes the candidate-binding current/bound source SHA pair without returning
+- exposes the candidate-binding current/stored source SHA pair without returning
   the full write/developer plan trees;
 - has an 8 KiB response budget;
 - performs no mutation and grants no authority.
