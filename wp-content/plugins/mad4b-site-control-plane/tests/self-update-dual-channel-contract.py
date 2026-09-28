@@ -19,6 +19,17 @@ required_self_update = [
     "mad4b/control-plane-update-status",
     "mad4b/control-plane-upload-plan",
     "mad4b/control-plane-upload-apply",
+    "mad4b/control-plane-native-plan",
+    "mad4b/control-plane-native-apply",
+    "mad4b.control-plane-native-plan.v1",
+    "mad4b.control-plane-native-apply.v1",
+    "governed_native_release_pull",
+    "caller_package_bytes_allowed",
+    "target_derived_from_release_manifest",
+    "mad4b_self_update_native_release_drift",
+    "mad4b_self_update_native_download_failed",
+    "published_from_master",
+    "release_root_trust_verified",
     "plugin_action_links_",
     "after_plugin_row_",
     "admin_post_mad4b_control_plane_native_update",
@@ -83,6 +94,22 @@ if "target_fingerprint( $ability_name, $provider, $authorization_input" not in g
     raise SystemExit("approval target fingerprint is not computed from sanitized metadata")
 if "$agent['public_id'], $server_id, $ability_name, $provider, $target, $authorization_input, $ticket_class" not in governance:
     raise SystemExit("approval ticket payload is not bound to sanitized metadata")
+
+# Governed native release pull is manifest-derived only. The caller may supply
+# neither target identity, URL/path, nor package bytes.
+native_plan_schema = self_update.split("private static function native_plan_schema()", 1)[1].split("private static function native_apply_schema()", 1)[0]
+native_apply_schema = self_update.split("private static function native_apply_schema()", 1)[1].split("private static function plan_schema()", 1)[0]
+for forbidden in ("url", "path", "package_url", "package_path", "package_base64", "version", "source_commit_sha", "archive_sha256", "build_fingerprint", "package_manifest_digest", "size_bytes"):
+    if f"'{forbidden}' =>" in native_plan_schema or f"'{forbidden}' =>" in native_apply_schema:
+        raise SystemExit(f"caller-controlled native release field leaked into schema: {forbidden}")
+for marker in (
+    "self::fetch_manifest( true )",
+    "download_url( $manifest['package_url'], 30 )",
+    "self::verify_archive( $tmp, $manifest )",
+    "self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected )",
+):
+    if marker not in self_update:
+        raise SystemExit(f"governed native release pull invariant missing: {marker}")
 
 # Remote upload remains bounded file input only; no caller URL/path input is accepted.
 plan_schema = self_update.split("private static function plan_schema()", 1)[1].split("private static function apply_schema()", 1)[0]
@@ -166,14 +193,19 @@ if servers.count("'mad4b/control-plane-update-status'") < 2:
     raise SystemExit("Control Plane update status is not projected to both read and ChatGPT catalogs")
 if servers.count("'mad4b/control-plane-upload-plan'") < 2:
     raise SystemExit("Control Plane upload plan is not projected to both read and ChatGPT catalogs")
+if servers.count("'mad4b/control-plane-native-plan'") < 2:
+    raise SystemExit("Control Plane native plan is not projected to both read and ChatGPT catalogs")
 
 # Exact governed-write execution must be converged into the canonical Staging NHI inventory.
 if "'mad4b/control-plane-upload-apply' => 'core'" not in grants:
     raise SystemExit("Control Plane upload apply is not eligible for exact Staging NHI grant reconciliation")
+if "'mad4b/control-plane-native-apply' => 'core'" not in grants:
+    raise SystemExit("Control Plane native apply is not eligible for exact Staging NHI grant reconciliation")
 
 # Ability must be present on the normal governed write projection.
 for marker in (
     "'mad4b/control-plane-upload-apply'",
+    "'mad4b/control-plane-native-apply'",
     "'mad4b/plugin-package-apply'",
 ):
     if marker not in servers:
@@ -198,4 +230,4 @@ for marker in (
     if marker not in self_update:
         raise SystemExit(f"fixed governed release-channel invariant missing: {marker}")
 
-print("mad4b.control-plane-self-update.v1 dual-channel contract: PASS")
+print("mad4b.control-plane-self-update.v1 multi-channel contract: PASS")
