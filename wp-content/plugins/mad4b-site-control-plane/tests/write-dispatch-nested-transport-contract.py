@@ -25,7 +25,11 @@ for marker in required_transport:
         raise SystemExit("nested write-dispatch transport invariant missing: " + marker)
 
 required_dispatch = [
-    "$execute_target = static function () use ( $ability, $params, $ability_name, $actual_schema_sha256 )",
+    "$target_entered = false;",
+    "$execute_target = static function () use ( $ability, $params, $ability_name, $actual_schema_sha256, &$target_entered )",
+    "$target_entered = true;",
+    "mad4b_write_dispatch_target_not_started",
+    "'target_execution_entered' => false",
     "MAD4B_SCP_Transport_Context::with_write_dispatch_target(",
     "$planner_result = $execute_target();",
     "static function () use ( $execute_target )",
