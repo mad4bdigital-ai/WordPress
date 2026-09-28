@@ -53,14 +53,23 @@ for row in operation["operations"]:
     else:
         assert row["executor"] in all_php, f"executor not represented in runtime source: {row['executor']}"
 
-assert "mad4b/wordpress-operation-discover" in registry
-assert "mad4b/operation-discover', array(" not in registry
+assert "wp_register_ability( 'mad4b/wordpress-operation-discover', array(" in registry
+assert "wp_register_ability( 'mad4b/universal-operation-discover', array(" not in registry
+assert "wp_register_ability( 'mad4b/operation-discover', array(" not in registry
 assert "'update' => 'wordpress.plugin.transaction'" in registry
 assert "'activate' => 'wordpress.plugin.transaction'" in registry
 assert "registered_ability_gap" in registry
 assert "mad4b_operation_planner_unregistered" in registry
 assert "mad4b_operation_executor_unregistered" in registry
 assert "optional_unavailable_operations" in registry
+for marker in (
+    "mad4b_operation_registry_policy_invalid",
+    "mad4b_operation_registry_id_invalid",
+    "mad4b_operation_registry_planner_invalid",
+    "mad4b_operation_registry_executor_invalid",
+    "mad4b_operation_registry_required_runtime_invalid",
+):
+    assert marker in registry, marker
 for expected in (
     "mad4b/operation-registry-status",
     "mad4b/wordpress-operation-discover",
