@@ -117,8 +117,53 @@ final class MAD4B_SCP_Operation_Registry {
 			}
 			$ids[ $id ] = true;
 		}
+		$aliases = isset( $data['aliases'] ) && is_array( $data['aliases'] ) ? $data['aliases'] : array();
+		foreach ( $aliases as $alias => $target_id ) {
+			$alias = (string) $alias;
+			$target_id = (string) $target_id;
+			if ( ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/', $alias ) || ! isset( $ids[ $target_id ] ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_alias_invalid', 'MAD4B operation registry contains an invalid alias or target.' );
+				return self::$catalog;
+			}
+		}
+		$projection = isset( $data['read_projection'] ) && is_array( $data['read_projection'] ) ? $data['read_projection'] : array();
+		foreach ( array( 'direct', 'catalog' ) as $surface ) {
+			if ( ! isset( $projection[ $surface ] ) || ! is_array( $projection[ $surface ] ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_projection_invalid', 'MAD4B operation registry read projection is incomplete.' );
+				return self::$catalog;
+			}
+			$seen = array();
+			foreach ( $projection[ $surface ] as $ability ) {
+				$ability = (string) $ability;
+				if ( ! preg_match( '#^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$#', $ability ) || isset( $seen[ $ability ] ) ) {
+					self::$catalog = new WP_Error( 'mad4b_operation_registry_projection_invalid', 'MAD4B operation registry read projection contains an invalid or duplicate Ability.' );
+					return self::$catalog;
+				}
+				$seen[ $ability ] = true;
+			}
+		}
+		if ( array_diff( $projection['direct'], $projection['catalog'] ) ) {
+			self::$catalog = new WP_Error( 'mad4b_operation_registry_projection_invalid', 'Direct WordPress operation tools must be a subset of the full read catalog.' );
+			return self::$catalog;
+		}
 		self::$catalog = $data;
 		return self::$catalog;
+	}
+
+	public static function read_projection( $surface = 'catalog' ) {
+		$surface = sanitize_key( (string) $surface );
+		if ( ! in_array( $surface, array( 'direct', 'catalog' ), true ) ) return array();
+		$catalog = self::catalog();
+		if ( is_wp_error( $catalog ) ) return array();
+		$projection = isset( $catalog['read_projection'][ $surface ] ) && is_array( $catalog['read_projection'][ $surface ] )
+			? $catalog['read_projection'][ $surface ]
+			: array();
+		return array_values( array_unique( array_map( 'strval', $projection ) ) );
+	}
+
+	public static function aliases() {
+		$catalog = self::catalog();
+		return is_wp_error( $catalog ) || empty( $catalog['aliases'] ) || ! is_array( $catalog['aliases'] ) ? array() : $catalog['aliases'];
 	}
 
 	public static function status( $input = null ) {
@@ -181,19 +226,7 @@ final class MAD4B_SCP_Operation_Registry {
 		$catalog = self::catalog();
 		if ( is_wp_error( $catalog ) ) return $catalog;
 
-		$aliases = array(
-			'update' => 'wordpress.plugin.transaction',
-			'install' => 'wordpress.plugin.transaction',
-			'replace' => 'wordpress.plugin.transaction',
-			'activate' => 'wordpress.plugin.transaction',
-			'deactivate' => 'wordpress.plugin.transaction',
-			'self-update' => 'wordpress.control-plane.self-update',
-			'reconcile-skills' => 'wordpress.skills.reconcile',
-			'reconcile-provider' => 'wordpress.provider.recertify',
-			'recertify-provider' => 'wordpress.provider.recertify',
-			'import' => 'wordpress.content.import',
-			'export' => 'wordpress.content.export',
-		);
+		$aliases = self::aliases();
 		$desired_id = isset( $aliases[ $requested ] ) ? $aliases[ $requested ] : $requested;
 
 		$exact = array();
