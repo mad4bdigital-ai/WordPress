@@ -179,6 +179,11 @@ assert "'protected_workspace'" in impact
 assert "if ( 'mad4b/developer-workspace-apply' === (string) $ability_name ) return true;" in impact
 ai_approval = (inc / "class-mad4b-scp-ai-approval.php").read_text(encoding="utf-8")
 assert "$bounded_developer_ticket" in ai_approval
+assert "ai_approval_developer_executor_separation_required" in ai_approval
+assert "developer_executor_separation_required' => true" in ai_approval
+assert "ai_approval_developer_promotion_plan_digest_invalid" in ai_approval
+assert "ai_approval_developer_promotion_workspace_digest_invalid" in ai_approval
+assert "ai_approval_developer_promotion_installed_digest_invalid" in ai_approval
 assert "array( 'mad4b/developer-workspace-apply', 'mad4b/developer-workspace-promote' )" in ai_approval
 assert "'mad4b/developer-workspace-promote' === $ability_name" in impact
 assert "'certified_package'" in impact
@@ -392,4 +397,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v23: PASS")
+print("mad4b.developer-runtime-contract.v24: PASS")
