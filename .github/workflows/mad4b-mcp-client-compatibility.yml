@@ -161,22 +161,14 @@ jobs:
           required = {
               'mad4b-site-info',
               'mad4b-site-profile-status',
-              'mad4b-build-provenance-status',
+              'mad4b-session-safe-diagnostics',
               'mad4b-tool-discover',
               'mad4b-tool-info',
               'mad4b-read-execute',
               'mad4b-write-discover',
               'mad4b-write-info',
               'mad4b-write-execute',
-              'mad4b-diagnostics-health',
-              'mad4b-runtime-authority-status',
-              'mad4b-connection-status',
               'mad4b-plugin-package-plan',
-              'mad4b-write-authority-status',
-              'mad4b-write-authority-reconciliation-plan',
-              'mad4b-write-runtime-certification',
-              'mad4b-rest-compatibility-status',
-              'mad4b-staging-certification-status',
               'mad4b-full-staging-authority-apply',
           }
           missing = sorted(required.difference(names))
@@ -184,6 +176,22 @@ jobs:
               raise SystemExit(f'tools/list missing required minimal Staging transport tools: {missing}')
 
           hidden = {
+              'mad4b-build-provenance-status',
+              'mad4b-diagnostics-health',
+              'mad4b-runtime-authority-status',
+              'mad4b-multi-authority-registry-status',
+              'mad4b-connection-status',
+              'mad4b-connector-preflight',
+              'mad4b-read-snapshot-header',
+              'mad4b-read-diagnostic-bundle',
+              'mad4b-control-plane-update-status',
+              'mad4b-remote-operation-parity-status',
+              'mad4b-write-authority-status',
+              'mad4b-write-authority-reconciliation-plan',
+              'mad4b-write-runtime-certification',
+              'mad4b-rest-compatibility-status',
+              'mad4b-staging-certification-status',
+              'mad4b-full-staging-authority-status',
               'mad4b-list-post-types',
               'mad4b-list-plugins',
               'mad4b-abilities-inventory',
@@ -216,8 +224,8 @@ jobs:
               raise SystemExit(f'tools/list leaked capabilities that must stay behind governed discovery: {leaked_hidden}')
 
           payload_bytes = len(json.dumps(tools_response, separators=(',', ':'), ensure_ascii=False).encode('utf-8'))
-          if len(names) > 48:
-              raise SystemExit(f'tools/list exceeded minimal tool-count budget: {len(names)} > 48')
+          if len(names) > 36:
+              raise SystemExit(f'tools/list exceeded session-safe tool-count budget: {len(names)} > 36')
           if payload_bytes > 131072:
               raise SystemExit(f'tools/list exceeded refresh payload budget: {payload_bytes} > 131072 bytes')
 
@@ -226,5 +234,5 @@ jobs:
           if leaked:
               raise SystemExit(f'tools/list leaked Breakglass/Raw SQL tools: {leaked}')
 
-          print(json.dumps({'status': 'PASS', 'catalog_mode': 'minimal_direct_plus_governed_read_write_dispatch', 'tool_count': len(names), 'tools_payload_bytes': payload_bytes, 'tools': names}, indent=2))
+          print(json.dumps({'status': 'PASS', 'catalog_mode': 'session_safe_direct_plus_governed_read_write_dispatch', 'tool_count': len(names), 'tools_payload_bytes': payload_bytes, 'tools': names}, indent=2))
           PY
