@@ -4,7 +4,22 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.81**.
+Current plugin version: **0.4.0-rc.82**.
+
+### rc.82 session-safe Full Staging Authority handshake
+
+rc.82 replaces the direct ChatGPT status+plan fan-out for Full Staging Authority
+with one compact generation-fenced handshake. The handshake computes the exact
+internal plan once, verifies that runtime generation did not change while the
+plan was prepared, and returns only bounded readiness/blocker data plus the
+exact apply identity fields required by the composite mutation. The response is
+capped at 8 KiB.
+
+Deep Full Staging Authority status and plan remain available through governed
+read dispatch for deliberate diagnosis, but they are no longer projected as
+direct ChatGPT read tools. This reduces MCP session pressure without weakening
+exact-plan matching, OAuth step-up, Site Profile binding, candidate binding,
+audit, Developer isolation, or the no-raw-SQL Production-safe boundary.
 
 ### rc.81 exact WP All Import read runtime bootstrap
 
