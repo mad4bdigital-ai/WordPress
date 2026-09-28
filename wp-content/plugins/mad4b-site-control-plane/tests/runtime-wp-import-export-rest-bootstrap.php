@@ -11,7 +11,11 @@ if ( ! is_string( $root ) || '' === trim( $root ) ) {
 	exit( 1 );
 }
 $root = rtrim( $root, "/\\" );
+$_SERVER['HTTP_HOST'] = 'bulk-io.test';
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$_SERVER['REQUEST_URI'] = '/wp-json/mad4b-ci/wp-import-export';
 require $root . '/wp-load.php';
+if ( ! defined( 'REST_REQUEST' ) ) define( 'REST_REQUEST', true );
 
 $fail = static function ( $message ) {
 	fwrite( STDERR, '[MAD4B WP Import REST bootstrap] ' . $message . PHP_EOL );
