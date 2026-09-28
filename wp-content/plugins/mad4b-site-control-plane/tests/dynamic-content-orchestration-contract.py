@@ -97,6 +97,12 @@ for marker in [
     "mad4b_dynamic_taxonomy_restore_denied",
     "mad4b_dynamic_restore_publish_denied",
     "pipeline_config",
+    "mad4b_dynamic_direct_publication_denied",
+    "mad4b_dynamic_live_target_denied",
+    "separate_publication_required",
+    "live_target_requires_draft_workflow",
+    "required_next_ability",
+
     "mad4b.execution-state.v1",
     "not_started_error",
 
