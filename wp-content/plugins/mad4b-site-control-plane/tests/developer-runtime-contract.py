@@ -6,6 +6,10 @@ root = Path(__file__).resolve().parents[1]
 inc = root / "includes"
 
 developer = (inc / "class-mad4b-scp-developer-runtime.php").read_text(encoding="utf-8")
+abilities = (inc / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+identity = (inc / "class-mad4b-scp-identity-context.php").read_text(encoding="utf-8")
+planning = (inc / "class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
+write_authority = (inc / "class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
 servers = (inc / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 policy = (inc / "class-mad4b-scp-policy.php").read_text(encoding="utf-8")
 auth = (inc / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
@@ -132,6 +136,33 @@ assert "self::core_tools( 'mad4b-developer' )" not in chatgpt
 assert "self::core_tools( 'mad4b-developer-breakglass' )" not in chatgpt
 assert "array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in chatgpt
 
+# The normal Developer plane may be reached from the same compact ChatGPT app
+# only through the bounded dispatcher; direct Developer tools remain unmounted.
+for dispatcher in [
+    "mad4b/developer-discover",
+    "mad4b/developer-info",
+    "mad4b/developer-execute",
+]:
+    assert dispatcher in abilities, dispatcher
+    assert dispatcher in servers, dispatcher
+for direct_tool in [
+    "mad4b/developer-wp-cli",
+    "mad4b/developer-filesystem",
+    "mad4b/developer-package-install",
+]:
+    assert f"'{direct_tool}'" not in chatgpt, direct_tool
+assert "'mad4b/developer-execute'" in servers
+assert "developer-dispatch" in abilities
+assert "generic_remote_admin'] = false" in abilities
+assert "production_mutation_allowed'] = false" in abilities
+assert "breakglass_allowed'] = false" in abilities
+assert "public function can_developer_dispatch" in abilities
+assert "public function developer_execute" in abilities
+assert "MAD4B_SCP_Transport_Context::with_developer_dispatch_target" in abilities
+assert "approval_lane' => isset( $annotations['readonly'] ) && true === $annotations['readonly'] ? 'none' : 'human_only'" in abilities
+assert "production_mutation' => false" in abilities
+assert "breakglass_authorized' => false" in abilities
+
 authority_tools = [
     "mad4b/developer-authority-status",
     "mad4b/developer-authority-plan",
@@ -206,6 +237,33 @@ for source in [oauth_context, oauth_header, oauth_challenge]:
 derivation_marker = "hash( 'sha256', 'oauth-developer' . \"\\0\" ."
 assert derivation_marker in authority
 assert derivation_marker in oauth
+for marker in [
+    "public static function chatgpt_dispatch_identity",
+    "mad4b:authority:step-up",
+    "mcp_developer_dispatch",
+    "public static function chatgpt_dispatch_scope_allowed",
+    "MAD4B_SCP_Transport_Context::developer_dispatch_target_matches",
+    "production_authorized' => false",
+    "breakglass_authorized' => false",
+]:
+    assert marker in authority, marker
+for marker in [
+    "private static $request_subject_override = array();",
+    "public static function with_request_subject_override",
+    "'oauth_developer' !== $subject_type",
+    "'mcp_developer_dispatch' !== $origin",
+    "finally",
+]:
+    assert marker in identity, marker
+for marker in [
+    "private static $developer_dispatch_target = '';",
+    "public static function with_developer_dispatch_target",
+    "public static function developer_dispatch_target_matches",
+    "MAD4B_SCP_Developer_Authority::chatgpt_dispatch_identity()",
+    "MAD4B_SCP_Identity_Context::with_request_subject_override",
+    "mad4b_developer_dispatch_breakglass_denied",
+]:
+    assert marker in transport, marker
 assert "'subject_type' => $subject_type" in oauth
 assert "'oauth_developer'" in oauth
 assert "'server:mad4b-developer'" in local_oauth
@@ -225,12 +283,25 @@ for marker in [
 
 assert "developer-breakglass-" in impact and "return 'exceptional'" in impact
 assert "developer-" in impact and "return 'high'" in impact
+assert "0 === strpos( $ability_name, 'mad4b/developer-' )" in impact
+assert "human_only" in impact
 assert "MAD4B_SCP_Authorization::claim_mutation" in auth
 assert "MAD4B_SCP_Approval_Tickets::claim_exact" in auth
 assert "MAD4B_SCP_Budgets::reserve" in auth
 assert "finalize_execution_claim" in auth
 assert "array( 'content', 'write', 'admin', 'breakglass', 'developer', 'developer-breakglass' )" in auth
+assert "MAD4B_SCP_Developer_Authority::chatgpt_dispatch_scope_allowed" in auth
 assert "'server_id' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Servers::expected_server_ids() )" in governance
+for marker in [
+    "'mad4b-developer' === $server_id",
+    "MAD4B_SCP_Developer_Authority::status()",
+    "MAD4B_SCP_Developer_Runtime::tool_names( false )",
+    "mad4b_remote_plan_developer_target_denied",
+    "mad4b_remote_plan_developer_read_target_denied",
+    "Developer approval planning may target only the normal Developer inventory; Breakglass is excluded.",
+]:
+    assert marker in planning, marker
+assert "array( 'enrollment', 'developer-dispatch' )" in write_authority
 assert "MAD4B_SCP_Impact_Policy::ticket_class_for" in governance
 assert "MAD4B_SCP_Approval_Tickets::create_pending" in governance
 assert "class-mad4b-scp-developer-runtime.php" in plugin
@@ -246,4 +317,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v20: PASS")
+print("mad4b.developer-runtime-contract.v21: PASS")
