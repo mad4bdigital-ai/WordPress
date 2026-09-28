@@ -121,6 +121,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	public function execution_readiness( $input = array() ) {
+		self::ensure_import_runtime_loaded();
 		$import_secret=self::provider_option_present('PMXI_Plugin','cron_job_key');
 		$export_secret=self::provider_option_present('PMXE_Plugin','cron_job_key');
 		$certification=$this->provider_certification($this->is_available());
@@ -702,7 +703,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 	private function limit( $input ){ $input=is_array($input)?$input:array(); $n=isset($input['limit'])?absint($input['limit']):25; return min(self::MAX_ITEMS,max(1,$n)); }
 	private static function record_options( $r ){ $v=self::record_value($r,'options',array()); return is_array($v)?$v:array(); }
 	private static function record_value( $r,$key,$default=null ){ if(!is_object($r))return $default; try{return isset($r->$key)?$r->$key:$default;}catch(Throwable $e){return $default;} }
-	private static function import_runtime_available(){return class_exists('PMXI_Import_Record')&&class_exists('PMXI_Import_List')&&class_exists('PMXI_Plugin');}
+	private static function import_runtime_available(){return class_exists('PMXI_Import_Record',false)&&class_exists('PMXI_Import_List',false)&&class_exists('PMXI_Plugin',false);}
 	private static function export_runtime_available(){return class_exists('PMXE_Export_Record')&&class_exists('PMXE_Export_List')&&class_exists('PMXE_Plugin');}
 	private static function provider_option_present( $class,$option ){
 		if(!class_exists($class)||!method_exists($class,'getInstance'))return false;
