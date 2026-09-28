@@ -35,6 +35,7 @@ final class MAD4B_SCP_Self_Update {
 
 	private static $booted = false;
 	private static $managed_apply = false;
+	private static $rendered_update_rows = array();
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -43,11 +44,18 @@ final class MAD4B_SCP_Self_Update {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 34 );
 		add_filter( 'mad4b_scp_authorization_input', array( __CLASS__, 'authorization_input' ), 20, 3 );
 
-		// WordPress-admin update channel. This deliberately does not alter
-		// WordPress core update transients or automatic-update routines.
+		// WordPress-admin update channel. Keep the exact plugin hook for the
+		// ordinary installation path, and add a generic realpath-bound fallback
+		// for deployments where WordPress exposes the same plugin through a
+		// different basename (for example a renamed/symlinked release directory).
+		// This still does not alter WordPress core update transients or automatic
+		// update routines; every visible update action routes through the governed
+		// manifest verifier and rollback/readback path below.
 		$plugin = plugin_basename( MAD4B_SCP_FILE );
 		add_filter( 'plugin_action_links_' . $plugin, array( __CLASS__, 'plugin_action_links' ), 20, 1 );
+		add_filter( 'plugin_action_links', array( __CLASS__, 'plugin_action_links_fallback' ), 20, 4 );
 		add_action( 'after_plugin_row_' . $plugin, array( __CLASS__, 'render_update_row' ), 10, 3 );
+		add_action( 'after_plugin_row', array( __CLASS__, 'render_update_row_fallback' ), 10, 3 );
 		add_action( 'admin_post_mad4b_control_plane_native_update', array( __CLASS__, 'handle_native_update' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'native_update_notice' ) );
 	}
@@ -179,6 +187,8 @@ final class MAD4B_SCP_Self_Update {
 				'ready' => (bool) $native_ready,
 				'surface' => 'wp_admin_plugins_page',
 				'manual_only' => true,
+				'admin_update_capability' => (bool) current_user_can( 'update_plugins' ),
+				'ui_hook_mode' => 'exact_hook_plus_realpath_fallback',
 				'modifies_core_update_transients' => false,
 				'automatic_update_enabled' => false,
 				'manifest_url' => self::MANIFEST_URL,
@@ -402,8 +412,27 @@ final class MAD4B_SCP_Self_Update {
 		return $result;
 	}
 
-	public static function plugin_action_links( $links ) {
-		$links = is_array( $links ) ? $links : array();
+	private static function is_control_plane_plugin_file( $plugin_file ) {
+		$plugin_file = ltrim( wp_normalize_path( (string) $plugin_file ), '/' );
+		if ( '' === $plugin_file ) return false;
+
+		$canonical = wp_normalize_path( MAD4B_SCP_FILE );
+		$candidate = defined( 'WP_PLUGIN_DIR' )
+			? wp_normalize_path( trailingslashit( WP_PLUGIN_DIR ) . $plugin_file )
+			: '';
+
+		if ( '' !== $candidate && $candidate === $canonical ) return true;
+
+		$candidate_real = '' !== $candidate ? realpath( $candidate ) : false;
+		$canonical_real = realpath( MAD4B_SCP_FILE );
+		if ( false !== $candidate_real && false !== $canonical_real ) {
+			return wp_normalize_path( $candidate_real ) === wp_normalize_path( $canonical_real );
+		}
+
+		return plugin_basename( MAD4B_SCP_FILE ) === $plugin_file;
+	}
+
+	private static function native_update_action_link( array $links ) {
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) || ! self::environment_allowed( false ) ) return $links;
 
 		$manifest = self::fetch_manifest();
@@ -422,13 +451,27 @@ final class MAD4B_SCP_Self_Update {
 		return $links;
 	}
 
-	public static function render_update_row( $plugin_file, $plugin_data, $status ) {
+	public static function plugin_action_links( $links ) {
+		return self::native_update_action_link( is_array( $links ) ? $links : array() );
+	}
+
+	public static function plugin_action_links_fallback( $links, $plugin_file, $plugin_data = array(), $context = '' ) {
+		unset( $plugin_data, $context );
+		$links = is_array( $links ) ? $links : array();
+		if ( ! self::is_control_plane_plugin_file( $plugin_file ) ) return $links;
+		return self::native_update_action_link( $links );
+	}
+
+	public static function render_update_row( $plugin_file, $plugin_data = array(), $status = '' ) {
 		unset( $plugin_data, $status );
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) || ! self::environment_allowed( false ) ) return;
-		if ( plugin_basename( MAD4B_SCP_FILE ) !== (string) $plugin_file ) return;
+		if ( ! self::is_control_plane_plugin_file( $plugin_file ) ) return;
+		$row_key = wp_normalize_path( (string) $plugin_file );
+		if ( isset( self::$rendered_update_rows[ $row_key ] ) ) return;
 
 		$manifest = self::fetch_manifest();
 		if ( is_wp_error( $manifest ) || ! self::update_available( $manifest ) ) return;
+		self::$rendered_update_rows[ $row_key ] = true;
 
 		$url = wp_nonce_url(
 			admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
@@ -443,6 +486,12 @@ final class MAD4B_SCP_Self_Update {
 		echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
 			. esc_html( $message ) . ' <a href="' . esc_url( $url ) . '">'
 			. esc_html__( 'Update now', 'mad4b-site-control-plane' ) . '</a></p></div></td></tr>';
+	}
+
+
+	public static function render_update_row_fallback( $plugin_file, $plugin_data = array(), $status = '' ) {
+		if ( ! self::is_control_plane_plugin_file( $plugin_file ) ) return;
+		self::render_update_row( $plugin_file, $plugin_data, $status );
 	}
 
 	public static function handle_native_update() {

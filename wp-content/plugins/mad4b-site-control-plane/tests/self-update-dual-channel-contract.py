@@ -148,6 +148,21 @@ for forbidden_hook in (
 if "'automatic_update_enabled' => false" not in self_update:
     raise SystemExit("automatic Control Plane update policy is not fail-closed")
 
+# The wp-admin update affordance must survive basename drift without enrolling
+# WordPress core updater transients or bypassing the governed verifier.
+for marker in (
+    "add_filter( 'plugin_action_links', array( __CLASS__, 'plugin_action_links_fallback' ), 20, 4 )",
+    "add_action( 'after_plugin_row', array( __CLASS__, 'render_update_row_fallback' ), 10, 3 )",
+    "private static function is_control_plane_plugin_file",
+    "realpath( $candidate )",
+    "realpath( MAD4B_SCP_FILE )",
+    "private static $rendered_update_rows = array();",
+    "'ui_hook_mode' => 'exact_hook_plus_realpath_fallback'",
+    "'admin_update_capability' => (bool) current_user_can( 'update_plugins' )",
+):
+    if marker not in self_update:
+        raise SystemExit(f"native update UI fallback invariant missing: {marker}")
+
 # Uploaded archive staging must inherit MAD4B protected-storage policy, never generic web temp fallback.
 if "MAD4B_SCP_Policy::prepare_backup_root()" not in self_update:
     raise SystemExit("uploaded archive staging is not rooted in protected MAD4B storage")

@@ -4,7 +4,12 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.78**.
+Current plugin version: **0.4.0-rc.79**.
+
+### rc.79 resilient native update UI
+
+The Plugins screen now registers both the exact plugin-file hooks and a realpath-bound generic fallback for the manual governed update action. This keeps the visible `Update MAD4B…` / `Update now` affordance available when deployment paths, symlinks, or renamed release directories cause WordPress's plugin basename to differ from the loaded Control Plane file. The fallback is exact-file-bound, deduplicated, and still routes through the fixed Release-Verdict manifest, archive/provenance verification, backup, exact readback and rollback path. WordPress core update transients and automatic plugin updates remain untouched.
+
 
 ### rc.78 approval planner preflight truth preservation
 
