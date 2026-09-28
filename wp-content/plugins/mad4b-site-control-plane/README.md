@@ -4,15 +4,26 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.79**.
+Current plugin version: **0.4.0-rc.80**.
 
-### rc.79 exact WP All Import read-runtime bootstrap
+### rc.80 exact WP All Import read-runtime bootstrap
 
-rc.79 closes the live REST/MCP compatibility gap discovered after the exact WP All Import Pro 5.0.8 package was installed on ETG Staging. The provider can expose `PMXI_Plugin` while leaving `PMXI_Import_Record` and `PMXI_Import_List` unloaded in a non-admin REST/MCP request, so governed read/plan abilities could report an exact certified artifact yet still remain structurally incomplete.
+rc.80 closes the live REST/MCP compatibility gap discovered after the exact WP All Import Pro 5.0.8 package was installed on ETG Staging. The provider can expose `PMXI_Plugin` while leaving `PMXI_Import_Record` and `PMXI_Import_List` unloaded in a non-admin REST/MCP request, so governed read/plan abilities could report an exact certified artifact yet still remain structurally incomplete.
 
 The adapter performs a bounded **read-only provider autoload bootstrap** only after exact composite WP Import/Export certification and a clean import integrity manifest. It disables implicit pre-certification Import model autoload and calls only the provider-owned `PMXI_Plugin::autoload()` (or reviewed legacy `__autoload()`) for the fixed dependency allowlist `PMXI_Model`, `PMXI_Model_Record`, `PMXI_Model_List`, `PMXI_Import_Record`, and `PMXI_Import_List`.
 
-rc.79 preserves rc.78 portable zero-authority read connection and rc.77 session-safe diagnostics unchanged. No caller-controlled paths, direct vendor requires, filesystem scans, provider execution, cron/network calls, secret exposure, grant widening, Production mutation, Breakglass, or Raw SQL are introduced. High-risk `run-import` and `run-export` remain unmounted and execution certification remains fail-closed.
+rc.80 preserves rc.79 resilient native update UI, rc.78 approval planner preflight/portable read connection, and rc.77 session-safe diagnostics unchanged. No caller-controlled paths, direct vendor requires, filesystem scans, provider execution, cron/network calls, secret exposure, grant widening, Production mutation, Breakglass, or Raw SQL are introduced. High-risk `run-import` and `run-export` remain unmounted and execution certification remains fail-closed.
+
+### rc.79 resilient native update UI
+
+The Plugins screen now registers both the exact plugin-file hooks and a realpath-bound generic fallback for the manual governed update action. This keeps the visible `Update MAD4B…` / `Update now` affordance available when deployment paths, symlinks, or renamed release directories cause WordPress's plugin basename to differ from the loaded Control Plane file. The fallback is exact-file-bound, deduplicated, and still routes through the fixed Release-Verdict manifest, archive/provenance verification, backup, exact readback and rollback path. WordPress core update transients and automatic plugin updates remain untouched.
+
+
+### rc.78 approval planner preflight truth preservation
+
+rc.78 validates and canonicalizes remote `mad4b/approval-plan` input before WordPress Ability execution. This preserves exact server/provider/agent/context blockers that WordPress would otherwise collapse into `ability_invalid_permissions`, and classifies permission-stage failures as `mutation_state=not_started` with no reconciliation requirement. The execution-time guard remains authoritative and runs again before creating a pending ticket; this change does not widen write, Production, Breakglass, provider, or approval authority.
+
+Provider version drift remains fail-closed. In particular, a newer JetEngine build is not promoted by changing a version string: bounded reversible writes must use the existing artifact-bound behavioral recertification path with verified mutation, exact rollback and terminal approval evidence before they become write-eligible.
 
 ### rc.78 Portable zero-authority ChatGPT read connection
 
