@@ -15,6 +15,7 @@ final class MAD4B_SCP_Developer_Workspace {
 	const MAX_FILES = 1000;
 	const MAX_PROJECT_BYTES = 16777216;
 	const MAX_FILE_BYTES = 1048576;
+	const MAX_BATCH_BYTES = 1048576;
 
 	private static $booted = false;
 
@@ -396,6 +397,11 @@ final class MAD4B_SCP_Developer_Workspace {
 		@chmod( $project_path, 0700 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 
 		$operations = isset( $input['operations'] ) && is_array( $input['operations'] ) ? $input['operations'] : array();
+		$batch_bytes = 0;
+		foreach ( $operations as $operation ) {
+			if ( is_array( $operation ) && 'write' === ( isset( $operation['action'] ) ? sanitize_key( (string) $operation['action'] ) : '' ) ) $batch_bytes += strlen( isset( $operation['content'] ) ? (string) $operation['content'] : '' );
+		}
+		if ( $batch_bytes > self::MAX_BATCH_BYTES ) return new WP_Error( 'mad4b_developer_workspace_batch_too_large', 'Workspace source batch exceeds the bounded transport limit; split the reviewed change into smaller batches.', array( 'max_batch_bytes' => self::MAX_BATCH_BYTES, 'requested_batch_bytes' => $batch_bytes ) );
 		$applied = array();
 		foreach ( $operations as $index => $operation ) {
 			$result = self::apply_operation( $project_path, is_array( $operation ) ? $operation : array() );
