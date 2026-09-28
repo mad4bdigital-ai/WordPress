@@ -33,8 +33,10 @@ final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
 		if ( ! in_array( $route, array( '/mcp/mad4b-chatgpt', '/mcp/mad4b-enrollment' ), true ) ) return $result;
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $result;
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::oauth_enabled() ) {
-			return self::deny( 'mad4b_oauth_site_profile_not_enrolled', 'Verified OAuth identity is not bound to an exact enrolled Site Profile.' );
+		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
+		$portable_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
+		if ( ! $profile_ready && ! $portable_ready ) {
+			return self::deny( 'mad4b_oauth_site_identity_not_ready', 'Verified OAuth identity is not bound to an enrolled Site Profile or portable read-only connection.' );
 		}
 
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
@@ -51,8 +53,11 @@ final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 		}
 
 		$user_id = absint( $matches[1] );
-		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) {
-			return self::deny( 'mad4b_oauth_subject_user_not_enrolled', 'Verified OAuth user is not enrolled in the current Site Profile.' );
+		$user_enrolled = $profile_ready
+			? MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id )
+			: ( $portable_ready && MAD4B_SCP_Portable_Readonly_Connection::user_is_enrolled( $user_id ) );
+		if ( $user_id < 1 || ! $user_enrolled ) {
+			return self::deny( 'mad4b_oauth_subject_user_not_enrolled', 'Verified OAuth user is not enrolled for the current MCP connection.' );
 		}
 		$user = get_userdata( $user_id );
 		if ( ! $user ) return self::deny( 'mad4b_oauth_subject_user_missing', 'Verified OAuth WordPress user no longer exists.' );
@@ -69,9 +74,9 @@ final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 			'origin' => 'mcp',
 			'issuer' => $issuer,
 			'subject' => $subject,
-			'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
-			'site_profile_revision' => MAD4B_SCP_Site_Profile::revision(),
-			'site_profile_digest' => MAD4B_SCP_Site_Profile::profile_digest(),
+			'site_uuid' => $profile_ready ? MAD4B_SCP_Site_Profile::site_uuid() : MAD4B_SCP_Portable_Readonly_Connection::connection_uuid(),
+			'site_profile_revision' => $profile_ready ? MAD4B_SCP_Site_Profile::revision() : 0,
+			'site_profile_digest' => $profile_ready ? MAD4B_SCP_Site_Profile::profile_digest() : MAD4B_SCP_Portable_Readonly_Connection::connection_digest(),
 		);
 		return $result;
 	}
