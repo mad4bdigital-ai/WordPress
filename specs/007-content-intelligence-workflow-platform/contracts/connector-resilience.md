@@ -205,6 +205,32 @@ evidence into live evidence.
 No persistent read transaction, session circuit breaker, authority cache, or
 resume cursor is stored in WordPress.
 
+
+## Session-safe composite diagnostics
+
+Composite connector health inspection MUST prefer
+`mad4b/session-safe-diagnostics` over issuing multiple status tools in parallel.
+
+The session-safe diagnostic ability:
+
+- executes the fixed `identity`, `runtime`, `certification`, and `providers`
+  bundle order sequentially inside one WordPress request;
+- binds the complete report to one runtime generation and discards the report
+  if that generation changes before completion;
+- uses the shared request budget and transient read classifier;
+- returns compact allowlisted projections rather than raw provider/catalog
+  payloads;
+- caps scalar blocker lists and other repeated status vectors;
+- enforces a hard 16 KiB response budget and automatically reduces oversized
+  results first to section summaries and then to section digests;
+- requires exactly one external MCP call for the composite report and explicitly
+  declares direct composite fan-out unsupported;
+- remains read-only, non-authorizing, and incapable of Production mutation.
+
+Direct status tools remain available for deliberate single-scope inspection, but
+clients MUST NOT use parallel direct status fan-out to construct a composite
+health report. Deep follow-up uses exactly one generation-bound bundle at a time.
+
 ## Cache and circuit-breaker policy
 
 The resilience layer must not add persistent authority/catalog caches or a
