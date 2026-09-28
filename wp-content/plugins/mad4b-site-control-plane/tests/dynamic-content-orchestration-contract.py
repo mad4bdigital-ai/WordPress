@@ -373,4 +373,11 @@ for marker in [
     if marker not in pipeline_update:
         raise SystemExit(f"pipeline prewrite failure marker missing: {marker}")
 
+
+
+if "'heartbeat'=>function() use ($lock)" not in adapter:
+    raise SystemExit("dynamic content loop must carry a request-local mutation lock heartbeat")
+if "isset($current['heartbeat'])&&is_callable($current['heartbeat'])" not in pipeline:
+    raise SystemExit("dynamic pipeline must refresh request-local heartbeat before configured stages")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
