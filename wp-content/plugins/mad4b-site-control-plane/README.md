@@ -16,6 +16,12 @@ Governed WP All Import / Export planning, exact identity, dry-run, classificatio
 
 ### rc.72 approval expiry reconciliation + processed DB attribution
 
+### rc.72 governed nested-write authorization + terminal reconciliation
+
+The same rc.72 line also closes two live Staging control-path defects. Central authorization now boots before WordPress Abilities are materialized, ensuring nested `mad4b/write-execute` calls enter the exact target's governed execution boundary instead of relying on an outer dispatcher permission alone. Runtime certification and write-surface smoke tests fail closed if any projected write Ability lacks the central execution-boundary or governed-authority metadata.
+
+Durable Brand Context reconciliation now treats an observer that arrives after `released_verified_no_effect` as a terminal idempotent readback, eliminating the scheduled-attempt race without replaying provider creation. Write-dispatch resilience also distinguishes a proven pre-target rejection (`mutation_state=not_started`) from a genuinely uncertain effect outcome. Blind mutation replay remains denied and a fresh exact plan is still required.
+
 rc.72 closes two live Staging recovery/diagnostic gaps without widening authority. Approval-plan reconciliation now treats pending and approved tickets as time/build sensitive: an approved ticket past its TTL becomes effectively expired, an approved ticket bound to an old candidate becomes stale, and expired/revoked/stale history no longer creates a false active-duplicate blocker when one fresh exact ticket exists. Multiple live exact tickets still fail closed. Claim-time TTL enforcement remains unchanged.
 
 The release also preserves the existing front-end performance budgets while backfilling Query Monitor database attribution after collector processing. The exact matching request sample can receive bounded query counts/timings, sanitized caller/component aggregates, slow/duplicate statistics and SHA-256 query fingerprints from the processed `db_queries` collector. Raw SQL is never persisted or returned.
