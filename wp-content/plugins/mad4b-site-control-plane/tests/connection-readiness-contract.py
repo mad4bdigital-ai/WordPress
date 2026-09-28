@@ -26,6 +26,7 @@ adapter_ui = read('includes/class-mad4b-scp-adapter-coverage-admin-ui.php')
 admin_experience = read('includes/class-mad4b-scp-admin-experience.php')
 peer = read('includes/class-mad4b-scp-mcp-peer-governance.php')
 isolation = read('includes/class-mad4b-scp-mcp-provider-isolation.php')
+transport_catalog = read('config/provider-transport-registry.json')
 bridge = read('includes/class-mad4b-scp-mcp-registration-bridge.php')
 diagnostics = read('includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php')
 transport_context = read('includes/class-mad4b-scp-transport-context.php')
@@ -345,14 +346,58 @@ for marker in (
     "add_filter( 'mcp_adapter_create_default_server'", "add_action( 'rest_api_init', array( __CLASS__, 'suppress_provider_server_registrations' ), 14 )",
     "add_action( 'init', array( __CLASS__, 'suppress_provider_server_registrations' ), 19 )",
     "add_action( 'mcp_adapter_init', array( __CLASS__, 'suppress_provider_server_registrations' ), -1000000 )",
-    "add_filter( 'rest_endpoints'", "'hostinger-ai-assistant-mcp-server'", "'elementskit-mcp-server'",
-    "/hostinger-ai-assistant/v1/mcp/", "/hostinger-ai-assistant/v1/jwt/", "/elementskit/mcp/",
+    "add_filter( 'rest_endpoints'",
     "'unknown_routes_fail_closed' => true", "'changes_provider_settings' => false", "'creates_authority' => false",
     "'legacy_enable_flag_alone_is_non_mutating' => true", "'runtime_suppression_requires_second_gate' => true",
 ):
     require(isolation, marker, 'provider-isolation-contract')
 for forbidden in ('update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post(', 'deactivate_plugins(', 'activate_plugin(', 'ReflectionClass', 'setAccessible('):
     forbid(isolation, forbidden, 'provider-isolation-deny-only')
+
+for marker in (
+    '"provider_id": "hostinger_ai_assistant"', '"provider_id": "elementskit"',
+    '"server_id": "hostinger-ai-assistant-mcp-server"', '"server_id": "elementskit-mcp-server"',
+    '^/hostinger-ai-assistant/v1/mcp/?
+for marker in (
+    "const CONTRACT = 'mad4b.mcp-peer-governance.v2'", 'foreign_transport_inventory', 'rest_get_server()',
+    "get_option( 'active_plugins'", "'mcp-adapter/mcp-adapter.php'", "'mad4b-site-control-plane/mad4b-site-control-plane.php'",
+    'is_known_namespace_index', "'get_namespace_index'", '$callback[0] !== $rest_server',
+    'HOSTINGER_BANNER_CONTROL_ROUTE', 'is_reviewed_non_transport_route', 'reviewed_non_transport_routes',
+    "'mcp_foreign_transport_unreviewed'", "'mcp_write_side_channel_detected'",
+):
+    require(peer, marker, 'foreign-mcp-fail-closed')
+for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_ignore_mcp", "apply_filters( 'mad4b_scp_side_channel", "if ( '/mcp' === $route ) continue"):
+    forbid(peer, bypass, 'foreign-mcp-no-bypass')
+
+print('mad4b.site-control-plane.connection-readiness-contract.v10: PASS'), '^/hostinger-ai-assistant/v1/jwt/(?:token|revoke)/?
+for marker in (
+    "const CONTRACT = 'mad4b.mcp-peer-governance.v2'", 'foreign_transport_inventory', 'rest_get_server()',
+    "get_option( 'active_plugins'", "'mcp-adapter/mcp-adapter.php'", "'mad4b-site-control-plane/mad4b-site-control-plane.php'",
+    'is_known_namespace_index', "'get_namespace_index'", '$callback[0] !== $rest_server',
+    'HOSTINGER_BANNER_CONTROL_ROUTE', 'is_reviewed_non_transport_route', 'reviewed_non_transport_routes',
+    "'mcp_foreign_transport_unreviewed'", "'mcp_write_side_channel_detected'",
+):
+    require(peer, marker, 'foreign-mcp-fail-closed')
+for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_ignore_mcp", "apply_filters( 'mad4b_scp_side_channel", "if ( '/mcp' === $route ) continue"):
+    forbid(peer, bypass, 'foreign-mcp-no-bypass')
+
+print('mad4b.site-control-plane.connection-readiness-contract.v10: PASS'),
+    '^/elementskit/mcp/?
+for marker in (
+    "const CONTRACT = 'mad4b.mcp-peer-governance.v2'", 'foreign_transport_inventory', 'rest_get_server()',
+    "get_option( 'active_plugins'", "'mcp-adapter/mcp-adapter.php'", "'mad4b-site-control-plane/mad4b-site-control-plane.php'",
+    'is_known_namespace_index', "'get_namespace_index'", '$callback[0] !== $rest_server',
+    'HOSTINGER_BANNER_CONTROL_ROUTE', 'is_reviewed_non_transport_route', 'reviewed_non_transport_routes',
+    "'mcp_foreign_transport_unreviewed'", "'mcp_write_side_channel_detected'",
+):
+    require(peer, marker, 'foreign-mcp-fail-closed')
+for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_ignore_mcp", "apply_filters( 'mad4b_scp_side_channel", "if ( '/mcp' === $route ) continue"):
+    forbid(peer, bypass, 'foreign-mcp-no-bypass')
+
+print('mad4b.site-control-plane.connection-readiness-contract.v10: PASS'),
+):
+    require(transport_catalog, marker, 'provider-transport-registry-contract')
+
 
 for marker in (
     "const CONTRACT = 'mad4b.mcp-peer-governance.v2'", 'foreign_transport_inventory', 'rest_get_server()',
