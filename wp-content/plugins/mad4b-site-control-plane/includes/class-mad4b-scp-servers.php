@@ -52,7 +52,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute',
 				'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute',
 				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/connector-preflight', 'mad4b/read-snapshot-header', 'mad4b/read-diagnostic-bundle',
-				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan',
+				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan',
 				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix',
 			), $governed_status ),
 			'mad4b-enrollment' => array_values( array_unique( array_merge(
