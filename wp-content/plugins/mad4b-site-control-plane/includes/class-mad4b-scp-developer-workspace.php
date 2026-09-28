@@ -750,29 +750,31 @@ final class MAD4B_SCP_Developer_Workspace {
 	}
 
 	private static function lint_php_files( $project, array $manifest ) {
+		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! method_exists( 'MAD4B_SCP_Developer_Runtime', 'lint_workspace_php_file' ) ) {
+			return new WP_Error( 'mad4b_developer_workspace_php_linter_unavailable', 'The bounded Developer Runtime PHP linter is unavailable.' );
+		}
 		$count = 0;
+		$digests = array();
 		foreach ( $manifest['files'] as $file ) {
 			if ( 'php' !== strtolower( pathinfo( $file['path'], PATHINFO_EXTENSION ) ) ) continue;
 			$count++;
-			if ( $count > 200 ) return new WP_Error( 'mad4b_developer_workspace_php_file_limit', 'Workspace exceeds the bounded PHP syntax-validation file count.' );
+			if ( $count > 200 ) return new WP_Error( 'mad4b_developer_workspace_php_file_limit', 'Workspace exceeds the bounded PHP lint file count.' );
 			$absolute = trailingslashit( $project ) . str_replace( '/', DIRECTORY_SEPARATOR, $file['path'] );
-			if ( ! is_file( $absolute ) || is_link( $absolute ) || ! is_readable( $absolute ) ) return new WP_Error( 'mad4b_developer_workspace_php_source_unreadable', 'Workspace PHP source is unavailable for syntax validation.' );
-			$source = file_get_contents( $absolute );
-			if ( false === $source || strlen( $source ) > self::MAX_FILE_BYTES ) return new WP_Error( 'mad4b_developer_workspace_php_source_invalid', 'Workspace PHP source could not be read within the bounded file limit.' );
-			try {
-				token_get_all( $source, TOKEN_PARSE );
-			} catch ( \ParseError $error ) {
+			$lint = MAD4B_SCP_Developer_Runtime::lint_workspace_php_file( $absolute, $project );
+			if ( is_wp_error( $lint ) ) {
 				return new WP_Error(
 					'mad4b_developer_workspace_php_lint_failed',
 					'Workspace PHP syntax validation failed.',
 					array(
 						'path' => $file['path'],
-						'diagnostic' => substr( sanitize_text_field( $error->getMessage() ), 0, 500 ),
+						'cause_code' => $lint->get_error_code(),
+						'cause_message' => $lint->get_error_message(),
 					)
 				);
 			}
+			$digests[] = isset( $lint['command_digest'] ) ? (string) $lint['command_digest'] : '';
 		}
-		return array( 'php_files_linted' => $count, 'validator' => 'php_token_parse' );
+		return array( 'php_files_linted' => $count, 'lint_command_digests' => array_values( array_filter( $digests ) ) );
 	}
 
 	private static function build_package( $slug, $project, array $manifest ) {
