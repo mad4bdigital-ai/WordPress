@@ -243,27 +243,20 @@ final class MAD4B_SCP_Developer_Workspace {
 		$configured = defined( 'MAD4B_MCP_DEVELOPER_WORKSPACE_ROOT' ) ? trim( (string) constant( 'MAD4B_MCP_DEVELOPER_WORKSPACE_ROOT' ) ) : '';
 		if ( '' !== $configured ) {
 			$base = $configured;
-			if ( ! file_exists( $base ) ) {
-				if ( ! $create ) return new WP_Error( 'mad4b_developer_workspace_root_missing', 'Developer Workspace root does not exist.' );
-				if ( ! wp_mkdir_p( $base ) ) return new WP_Error( 'mad4b_developer_workspace_root_create_failed', 'Configured Developer Workspace root could not be created.' );
-			}
+			$storage_source = 'configured_constant';
 		} else {
-			if ( ! class_exists( 'MAD4B_SCP_Policy' ) ) return new WP_Error( 'mad4b_developer_workspace_policy_unavailable', 'Workspace policy is unavailable.' );
-			$protected_path = MAD4B_SCP_Policy::backup_root();
-			if ( '' === $protected_path ) return new WP_Error( 'mad4b_developer_workspace_root_missing', 'Protected Developer Workspace parent is not configured.' );
-			if ( ! file_exists( $protected_path ) ) {
-				if ( ! $create ) return new WP_Error( 'mad4b_developer_workspace_root_missing', 'Developer Workspace root does not exist.' );
-				$protected = MAD4B_SCP_Policy::prepare_backup_root();
-				if ( is_wp_error( $protected ) ) return $protected;
-				$protected_path = $protected;
-			}
-			$protected_resolved = realpath( $protected_path );
-			if ( false === $protected_resolved || ! is_dir( $protected_resolved ) ) return new WP_Error( 'mad4b_developer_workspace_root_unusable', 'Protected Developer Workspace parent is not usable.' );
-			$base = trailingslashit( $protected_resolved ) . 'developer-workspaces';
-			if ( ! file_exists( $base ) ) {
-				if ( ! $create ) return new WP_Error( 'mad4b_developer_workspace_root_missing', 'Developer Workspace root does not exist.' );
-				if ( ! wp_mkdir_p( $base ) ) return new WP_Error( 'mad4b_developer_workspace_root_create_failed', 'Developer Workspace root could not be created.' );
-			}
+			$wordpress_root = realpath( ABSPATH );
+			if ( false === $wordpress_root ) return new WP_Error( 'mad4b_developer_workspace_wordpress_root_unavailable', 'WordPress root is unavailable for durable workspace placement.' );
+			$parent = dirname( rtrim( $wordpress_root, DIRECTORY_SEPARATOR ) );
+			if ( '' === $parent || $parent === $wordpress_root ) return new WP_Error( 'mad4b_developer_workspace_parent_unavailable', 'A durable parent outside the WordPress root is unavailable.' );
+			$base = trailingslashit( $parent ) . '.mad4b-developer-workspaces';
+			$storage_source = 'wordpress_parent_default';
+		}
+		if ( ! file_exists( $base ) ) {
+			if ( ! $create ) return new WP_Error( 'mad4b_developer_workspace_root_missing', 'Developer Workspace root does not exist.', array( 'storage_source' => $storage_source ) );
+			$parent = dirname( $base );
+			if ( ! is_dir( $parent ) || ! is_writable( $parent ) ) return new WP_Error( 'mad4b_developer_workspace_parent_unwritable', 'Developer Workspace parent is not writable; configure MAD4B_MCP_DEVELOPER_WORKSPACE_ROOT to a durable out-of-webroot path.' );
+			if ( ! wp_mkdir_p( $base ) ) return new WP_Error( 'mad4b_developer_workspace_root_create_failed', 'Developer Workspace root could not be created.' );
 		}
 		$resolved = realpath( $base );
 		if ( false === $resolved || ! is_dir( $resolved ) || ! is_readable( $resolved ) || ! is_writable( $resolved ) ) return new WP_Error( 'mad4b_developer_workspace_root_unusable', 'Developer Workspace root is not usable.' );
@@ -374,8 +367,20 @@ final class MAD4B_SCP_Developer_Workspace {
 	}
 
 	public static function status( $input = array() ) {
-		$root = self::workspace_root();
-		if ( is_wp_error( $root ) ) return $root;
+		$root = self::workspace_root( false );
+		if ( is_wp_error( $root ) ) {
+			if ( 'mad4b_developer_workspace_root_missing' === $root->get_error_code() ) return array(
+				'contract' => self::CONTRACT,
+				'workspace_ready' => false,
+				'workspace_exists' => false,
+				'workspace_web_exposed' => false,
+				'projects' => array(),
+				'count' => 0,
+				'read_only' => true,
+				'mutation_performed' => false,
+			);
+			return $root;
+		}
 		$slug = isset( $input['project_slug'] ) ? self::valid_slug( $input['project_slug'] ) : '';
 		if ( '' !== $slug ) {
 			$project = self::project_root( $slug, false );
