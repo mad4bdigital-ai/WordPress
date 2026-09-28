@@ -288,4 +288,50 @@ if "'expected_bundle_sha256'=>$bundle_sha256" not in planner:
 if not (pipeline_calc < bindings_emit and state_calc < bindings_emit and bundle_calc < bindings_emit):
     raise SystemExit("execution bindings must be emitted only after pipeline/state/bundle hashes are computed")
 
+
+
+# Pre-merge hardening invariants: exact acceptance-to-publication binding.
+abilities = read("includes/class-mad4b-scp-abilities.php")
+mutations = read("includes/class-mad4b-scp-mutation-manager.php")
+
+for marker in [
+    "dynamic_acceptance_sha256",
+    "mad4b_dynamic_live_update_requires_draft_workflow",
+    "mad4b_dynamic_publication_must_be_status_only",
+    "verify_publication_acceptance",
+]:
+    if marker not in (abilities + mutations + adapter):
+        raise SystemExit(f"publication acceptance hardening marker missing: {marker}")
+
+for marker in [
+    "ACCEPTANCE_META",
+    "ACCEPTANCE_CONTRACT",
+    "persist_acceptance_receipt",
+    "invalidate_acceptance_receipt",
+    "mad4b_dynamic_acceptance_state_drift",
+    "mad4b_dynamic_acceptance_pipeline_drift",
+    "mad4b_dynamic_acceptance_expired",
+    "publication_acceptance",
+]:
+    if marker not in adapter:
+        raise SystemExit(f"dynamic acceptance receipt marker missing: {marker}")
+
+for marker in [
+    "mad4b_dynamic_registered_meta_single_violation",
+    "mad4b_dynamic_compensation_state_drift",
+    "refresh_mutation_lock",
+    "mad4b_dynamic_mutation_lock_lost",
+    "description'=>array('type'=>'string','maxLength'=>65535)",
+    "parent'=>array('type'=>'integer','minimum'=>0)",
+]:
+    if marker not in adapter:
+        raise SystemExit(f"pre-merge dynamic hardening marker missing: {marker}")
+
+if "get_registered_meta_keys('post',$pt)" not in adapter:
+    raise SystemExit("registered meta multiplicity must be checked against the live post subtype")
+if "current_live = in_array" not in mutations or "request_live = in_array" not in mutations:
+    raise SystemExit("dynamic publication guard must distinguish live current state from requested live transition")
+if "status-only transition" not in mutations:
+    raise SystemExit("dynamic publication must remain a status-only transition")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
