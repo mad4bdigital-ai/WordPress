@@ -338,6 +338,21 @@ $no_effect_release = MAD4B_SCP_Durable_Execution::release_idempotency_after_veri
 	$no_effect_proof
 );
 $check( is_array( $no_effect_release ) && ! empty( $no_effect_release['released'] ), 'separated verified no-effect observations did not release pending idempotency' );
+
+$late_observation = $observation_b;
+$late_observation['provider_scan_generation'] = hash( 'sha256', 'scan-late:' . $no_effect_key );
+$late_record = MAD4B_SCP_Durable_Execution::record_idempotency_reconciliation_observation(
+	$no_effect_scope,
+	$no_effect_key,
+	$no_effect_request,
+	'reconcile:idempotency:observation:late',
+	$late_observation
+);
+$check( is_array( $late_record ), 'late no-effect observation returned an error after terminal release' );
+$check( ! empty( $late_record['idempotent'] ) && ! empty( $late_record['terminal'] ), 'late no-effect observation was not a terminal idempotent replay' );
+$check( 'released_verified_no_effect' === (string) $late_record['terminal_status'], 'late no-effect observation lost terminal release status' );
+$check( 2 === (int) $late_record['observation_count'], 'late no-effect replay lost durable observation count' );
+
 $no_effect_claim_b = MAD4B_SCP_Durable_Execution::begin_idempotency( $no_effect_scope, $no_effect_key, $no_effect_request, 3600 );
 $check(
 	is_array( $no_effect_claim_b )
