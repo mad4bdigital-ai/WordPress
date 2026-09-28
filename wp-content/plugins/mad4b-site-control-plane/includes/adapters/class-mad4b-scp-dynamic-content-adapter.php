@@ -19,6 +19,12 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 	const MAX_ITERATIONS=5;
 	const MUTATION_LOCK_PREFIX='mad4b_scp_dynamic_content_lock_';
 	const MUTATION_LOCK_TTL=900;
+	const MAX_BUNDLE_INPUT_BYTES=6291456;
+	const MAX_META_TOTAL_BYTES=2097152;
+	const MAX_META_VALUE_BYTES=262144;
+	const MAX_EVIDENCE_BYTES=524288;
+	const MAX_ACCEPTANCE_TARGET_BYTES=524288;
+	const MAX_VALIDATION_BYTES=65536;
 
 	public function id(){ return 'dynamic-content'; }
 	public function label(){ return 'Dynamic Content Orchestration'; }
@@ -630,6 +636,12 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		return is_null($value)||is_scalar($value)||is_array($value);
 	}
 
+	private function json_size_bytes($value){
+		if(!$this->json_compatible($value)) return -1;
+		$json=wp_json_encode($value,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+		return is_string($json)?strlen($json):-1;
+	}
+
 	private function desired_meta_specs(array $input){
 		$specs=array();
 		$legacy=isset($input['meta'])&&is_array($input['meta'])?$input['meta']:array();
@@ -700,6 +712,19 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	private function validate_bundle(array $input,$strict){
+		$input_bytes=$this->json_size_bytes($input);
+		if($input_bytes<0) return new WP_Error('mad4b_dynamic_input_not_json','Dynamic content bundle input must be bounded JSON-compatible data.');
+		if($input_bytes>self::MAX_BUNDLE_INPUT_BYTES) return new WP_Error('mad4b_dynamic_input_too_large','Dynamic content bundle exceeds the hard input byte budget.',array('input_bytes'=>$input_bytes,'max_bytes'=>self::MAX_BUNDLE_INPUT_BYTES));
+		foreach(array(
+			'evidence'=>self::MAX_EVIDENCE_BYTES,
+			'acceptance_targets'=>self::MAX_ACCEPTANCE_TARGET_BYTES,
+			'validation'=>self::MAX_VALIDATION_BYTES,
+		) as $field=>$max_bytes){
+			if(!array_key_exists($field,$input)) continue;
+			$bytes=$this->json_size_bytes($input[$field]);
+			if($bytes<0) return new WP_Error('mad4b_dynamic_aux_payload_invalid','Dynamic content auxiliary payload is not bounded JSON-compatible data.',array('field'=>$field));
+			if($bytes>$max_bytes) return new WP_Error('mad4b_dynamic_aux_payload_too_large','Dynamic content auxiliary payload exceeds its hard byte budget.',array('field'=>$field,'bytes'=>$bytes,'max_bytes'=>$max_bytes));
+		}
 		$mode=isset($input['mode'])?sanitize_key((string)$input['mode']):'create';
 		if(!in_array($mode,array('create','update'),true)) return new WP_Error('mad4b_dynamic_mode_invalid','Mode must be create or update.');
 		$pt=isset($input['post_type'])?sanitize_key((string)$input['post_type']):'';
@@ -779,10 +804,17 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$meta_specs=$this->desired_meta_specs($input);
 		if(is_wp_error($meta_specs)) return $meta_specs;
 		if(count($meta_specs)>200) return new WP_Error('mad4b_dynamic_meta_limit','Dynamic content bundle exceeds the bounded meta key count.');
+		$meta_total_bytes=0;
 		foreach($meta_specs as $mk=>$spec){
 			if(1!==preg_match('/^[A-Za-z0-9_.:-]{1,191}$/',(string)$mk)) return new WP_Error('mad4b_dynamic_meta_key_invalid','Invalid meta key.');
 			if(is_protected_meta($mk,'post')&&!apply_filters('mad4b_scp_dynamic_content_allow_protected_meta',false,$mk,$pt,$input)) return new WP_Error('mad4b_dynamic_protected_meta_denied','Protected meta requires exact site-policy allowlisting.');
-			foreach(isset($spec['values'])?(array)$spec['values']:array() as $mv) if(!$this->json_compatible($mv)) return new WP_Error('mad4b_dynamic_meta_value_invalid','Meta values must be bounded JSON-compatible data.',array('meta_key'=>(string)$mk));
+			foreach(isset($spec['values'])?(array)$spec['values']:array() as $mv){
+				$bytes=$this->json_size_bytes($mv);
+				if($bytes<0) return new WP_Error('mad4b_dynamic_meta_value_invalid','Meta values must be bounded JSON-compatible data.',array('meta_key'=>(string)$mk));
+				if($bytes>self::MAX_META_VALUE_BYTES) return new WP_Error('mad4b_dynamic_meta_value_too_large','A meta value exceeds the hard byte budget.',array('meta_key'=>(string)$mk,'bytes'=>$bytes,'max_bytes'=>self::MAX_META_VALUE_BYTES));
+				$meta_total_bytes+=$bytes;
+				if($meta_total_bytes>self::MAX_META_TOTAL_BYTES) return new WP_Error('mad4b_dynamic_meta_total_too_large','Combined meta payload exceeds the hard byte budget.',array('bytes'=>$meta_total_bytes,'max_bytes'=>self::MAX_META_TOTAL_BYTES));
+			}
 		}
 		foreach(isset($input['taxonomies'])&&is_array($input['taxonomies'])?$input['taxonomies']:array() as $tax=>$refs){
 			$tax=sanitize_key((string)$tax); $to=get_taxonomy($tax);
