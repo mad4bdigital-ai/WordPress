@@ -38,9 +38,14 @@ final class MAD4B_SCP_Full_Staging_Authority {
 
 	public static function chatgpt_read_tools() {
 		// Direct ChatGPT projection deliberately exposes one compact, generation-
-		// fenced handshake instead of the deep status+plan pair. Deep reads remain
-		// available through governed read dispatch for deliberate inspection.
+		// fenced handshake instead of the deep status+plan pair.
 		return array( self::HANDSHAKE_ABILITY );
+	}
+
+	public static function chatgpt_catalog_read_tools() {
+		// Discovery/read-execute may still expose deliberate deep diagnosis without
+		// putting either heavy response on the direct MCP tools/list surface.
+		return array( self::STATUS_ABILITY, self::PLAN_ABILITY, self::HANDSHAKE_ABILITY );
 	}
 
 	/**
