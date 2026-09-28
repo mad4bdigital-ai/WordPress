@@ -213,6 +213,126 @@ final class MAD4B_SCP_Plugin_Discovery {
 		);
 	}
 
+	public static function provider_candidate_matrix() {
+		$coverage = self::coverage();
+		$items = array();
+		$counts = array( 'L0_inventory' => 0, 'L1_lifecycle' => 0, 'L2_read' => 0, 'L3_governed_write' => 0, 'L4_certified_governed' => 0 );
+
+		foreach ( isset( $coverage['plugins'] ) && is_array( $coverage['plugins'] ) ? $coverage['plugins'] : array() as $plugin ) {
+			if ( ! is_array( $plugin ) ) continue;
+			$active = ! empty( $plugin['active'] );
+			$adapter_registered = ! empty( $plugin['adapter_registered'] );
+			$adapter_runtime_available = ! empty( $plugin['adapter_runtime_available'] );
+			$certification_ok = ! empty( $plugin['provider_certification_ok'] );
+			$side_channel_blocked = ! empty( $plugin['side_channel_blocker'] );
+			$reversible = isset( $plugin['reversible_contracts'] ) && is_array( $plugin['reversible_contracts'] ) ? array_values( $plugin['reversible_contracts'] ) : array();
+			$coverage_state = isset( $plugin['coverage_state'] ) ? sanitize_key( (string) $plugin['coverage_state'] ) : 'unknown';
+			$functional_state = isset( $plugin['functional_coverage']['state'] ) ? sanitize_key( (string) $plugin['functional_coverage']['state'] ) : 'inactive';
+			$risk = isset( $plugin['risk'] ) ? sanitize_key( (string) $plugin['risk'] ) : 'unknown';
+
+			$level = 'L0_inventory';
+			$safe_actions = array( 'inventory', 'status' );
+			$blocked_actions = array( 'auto_generate_adapter', 'auto_create_authority', 'auto_enable_mutation', 'arbitrary_provider_execution' );
+			$next_gate = 'lifecycle_policy_review';
+
+			if ( 'excluded_high_risk' !== $coverage_state ) {
+				$level = 'L1_lifecycle';
+				$safe_actions[] = 'plugin_lifecycle_plan';
+				$safe_actions[] = 'plugin_update_plan';
+				$next_gate = $active ? 'provider_read_contract' : 'activate_then_reinspect';
+			} else {
+				$blocked_actions[] = 'generic_plugin_lifecycle';
+				$next_gate = 'dedicated_high_risk_path';
+			}
+
+			if ( $active && $adapter_registered && $adapter_runtime_available && ! $side_channel_blocked ) {
+				$level = 'L2_read';
+				$safe_actions[] = 'provider_read';
+				$next_gate = 'provider_mutation_certification';
+			}
+
+			if ( 'L2_read' === $level && ! empty( $reversible ) && $certification_ok ) {
+				$level = 'L3_governed_write';
+				$safe_actions[] = 'governed_reversible_write_plan';
+				$next_gate = 'capability_release_ring';
+			}
+
+			if ( 'L3_governed_write' === $level && 'functional_ready' === $functional_state ) {
+				$level = 'L4_certified_governed';
+				$safe_actions[] = 'certified_governed_execution_candidate';
+				$next_gate = 'exact_operation_plan_and_authorization';
+			}
+
+			if ( $side_channel_blocked ) {
+				$blocked_actions[] = 'provider_mutation';
+				$next_gate = 'resolve_side_channel_isolation';
+			}
+			if ( $adapter_registered && $adapter_runtime_available && ! $certification_ok ) {
+				$blocked_actions[] = 'provider_mutation';
+				if ( ! $side_channel_blocked ) $next_gate = 'provider_certification';
+			}
+			if ( ! $adapter_registered && $active ) $next_gate = 'adapter_or_contract_discovery';
+
+			$safe_actions = array_values( array_unique( $safe_actions ) );
+			$blocked_actions = array_values( array_unique( $blocked_actions ) );
+			sort( $safe_actions, SORT_STRING );
+			sort( $blocked_actions, SORT_STRING );
+
+			$row = array(
+				'plugin_file' => isset( $plugin['plugin_file'] ) ? (string) $plugin['plugin_file'] : '',
+				'plugin_name' => isset( $plugin['name'] ) ? (string) $plugin['name'] : '',
+				'plugin_version' => isset( $plugin['version'] ) ? (string) $plugin['version'] : '',
+				'active' => $active,
+				'network_active' => ! empty( $plugin['network_active'] ),
+				'family' => isset( $plugin['family'] ) ? sanitize_key( (string) $plugin['family'] ) : 'unknown',
+				'adapter_id' => isset( $plugin['adapter_id'] ) ? sanitize_key( (string) $plugin['adapter_id'] ) : '',
+				'risk' => $risk,
+				'coverage_state' => $coverage_state,
+				'functional_state' => $functional_state,
+				'provider_certification_ok' => $certification_ok,
+				'side_channel_blocked' => $side_channel_blocked,
+				'reversible_contract_count' => count( $reversible ),
+				'support_level' => $level,
+				'safe_actions' => $safe_actions,
+				'blocked_actions' => $blocked_actions,
+				'next_gate' => $next_gate,
+				'mutation_auto_enabled' => false,
+				'authority_created' => false,
+			);
+			$encoded = wp_json_encode( $row, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$row['candidate_fingerprint'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+			$items[] = $row;
+			if ( isset( $counts[ $level ] ) ) ++$counts[ $level ];
+		}
+
+		usort( $items, static function( $a, $b ) {
+			return strcmp( isset( $a['plugin_file'] ) ? (string) $a['plugin_file'] : '', isset( $b['plugin_file'] ) ? (string) $b['plugin_file'] : '' );
+		} );
+		$manifest = array(
+			'contract' => 'mad4b.provider-candidate-matrix.v1',
+			'read_only' => true,
+			'discovery_only' => true,
+			'network_request_sent' => false,
+			'authority_created' => false,
+			'mutation_auto_enabled' => false,
+			'unknown_plugin_write_default' => 'deny',
+			'levels' => array(
+				'L0_inventory' => 'inventory/status only',
+				'L1_lifecycle' => 'generic governed lifecycle planning only',
+				'L2_read' => 'runtime adapter read surface available',
+				'L3_governed_write' => 'certified reversible write planning candidate',
+				'L4_certified_governed' => 'functionally ready certified governed execution candidate',
+			),
+			'counts' => $counts,
+			'items' => $items,
+			'count' => count( $items ),
+			'truncated' => ! empty( $coverage['truncated'] ),
+		);
+		$encoded = wp_json_encode( $manifest, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$manifest['matrix_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		return $manifest;
+	}
+
 	private static function describe_installed_plugin( $plugin_file, array $headers ) {
 		$plugin_file = self::normalize_plugin_file( $plugin_file );
 		$descriptor = self::descriptor_for( $plugin_file );
