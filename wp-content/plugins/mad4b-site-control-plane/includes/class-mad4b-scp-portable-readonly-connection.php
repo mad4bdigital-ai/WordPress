@@ -42,8 +42,20 @@ final class MAD4B_SCP_Portable_Readonly_Connection {
 		);
 
 		if ( ! self::enabled() ) return self::block( 'portable_readonly_disabled' );
-		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured() ) {
-			return self::block( 'site_profile_present' );
+
+		$profile_status = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		if ( ! empty( $profile_status['configured'] ) ) return self::block( 'site_profile_present' );
+		if ( isset( $profile_status['source'] ) && 'stored_invalid' === sanitize_key( (string) $profile_status['source'] ) ) {
+			return self::block( 'site_profile_invalid_fail_closed' );
+		}
+
+		if ( class_exists( 'MAD4B_SCP_Upgrade_Continuity' ) ) {
+			$continuity = MAD4B_SCP_Upgrade_Continuity::recovery_status();
+			$continuity_state = isset( $continuity['state'] ) ? sanitize_key( (string) $continuity['state'] ) : '';
+			$continuity_blocker = isset( $continuity['blocker'] ) ? sanitize_key( (string) $continuity['blocker'] ) : '';
+			if ( 'blocked' === $continuity_state && '' !== $continuity_blocker ) {
+				return self::block( 'upgrade_continuity_blocked' );
+			}
 		}
 		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) {
 			return self::block( 'environment_not_supported' );
