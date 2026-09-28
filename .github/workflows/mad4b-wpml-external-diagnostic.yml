@@ -258,10 +258,10 @@ jobs:
             exit 0
           fi
 
-          npm install --no-save --no-package-lock playwright@1.55.0
-          npx playwright install --with-deps chromium
+          npm install --prefix "$out" --no-save --no-package-lock playwright@1.55.0
+          "$out/node_modules/.bin/playwright" install --with-deps chromium
 
-          cat > /tmp/mad4b-wpml-external/browser-fallback.mjs <<'JS'
+          cat > "$out/browser-fallback.mjs" <<'JS'
           import fs from 'node:fs';
           import path from 'node:path';
           import { chromium } from 'playwright';
@@ -403,7 +403,7 @@ jobs:
           }
           JS
 
-          node /tmp/mad4b-wpml-external/browser-fallback.mjs
+          node "$out/browser-fallback.mjs"
 
           {
             echo
