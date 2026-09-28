@@ -56,6 +56,9 @@ for marker in required_dispatch:
 
 required_authorization_boundary = [
     "private static $execution_callback_started = array();",
+    "public static function permission_result_from_authorization",
+    "return true === $result['allowed'] && 'preflight_allowed' === (string) $result['reason_code'];",
+    "MAD4B_SCP_Authorization::permission_result_from_authorization( $result )",
     "public static function begin_execution_callback_observation",
     "public static function mark_execution_callback_started",
     "public static function execution_callback_started",
@@ -77,4 +80,4 @@ if "array( 'mad4b/write-execute', 'mad4b/developer-execute', 'mad4b/enrollment-e
 if "mad4b/developer-breakglass" in dispatch_catalog:
     raise SystemExit("Developer Breakglass must never enter the compact ChatGPT dispatcher inventory")
 
-print("mad4b.write-dispatch-nested-transport.contract.v5: PASS")
+print("mad4b.write-dispatch-nested-transport.contract.v6: PASS")
