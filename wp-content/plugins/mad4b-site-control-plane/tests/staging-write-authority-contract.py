@@ -629,6 +629,15 @@ for marker in (
         raise SystemExit('approval-plan immutable registration governance marker missing: ' + marker)
 
 for marker in [
+    "public static function local_approval_planner_execution",
+    "MAD4B_SCP_Authorization::local_approval_planner_execution( $name )",
+    "'mad4b_local_admin_planner_compatibility'] = 'local_only_remote_claim_required'",
+    "array( 'mad4b-chatgpt', 'mad4b-write' )",
+]:
+    if marker not in auth:
+        raise SystemExit('approval-plan local/remote execution-boundary compatibility marker missing: ' + marker)
+
+for marker in [
     "const CONTRACT = 'mad4b.staging-write-planning-guard.v2'",
     "const ABILITY = 'mad4b/approval-plan'",
     "MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-admin', 'core', $input )",
