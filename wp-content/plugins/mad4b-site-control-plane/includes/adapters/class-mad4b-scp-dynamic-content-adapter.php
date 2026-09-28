@@ -860,12 +860,12 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$name=$this->mutation_lock_name($mode,$post_type,$post_id,$binding);
 		$token=wp_generate_uuid4();
 		$value=array('token'=>$token,'acquired_at'=>time());
-		if(add_option($name,$value,'','no')) return array('name'=>$name,'token'=>$token);
+		if(add_option($name,$value,'',false)) return array('name'=>$name,'token'=>$token);
 		$existing=get_option($name,array());
 		$acquired=is_array($existing)&&isset($existing['acquired_at'])?(int)$existing['acquired_at']:0;
 		if($acquired>0&&$acquired<=(time()-self::MUTATION_LOCK_TTL)){
 			delete_option($name);
-			if(add_option($name,$value,'','no')) return array('name'=>$name,'token'=>$token);
+			if(add_option($name,$value,'',false)) return array('name'=>$name,'token'=>$token);
 		}
 		return new WP_Error('mad4b_dynamic_mutation_busy','Another dynamic content mutation is already operating on this exact target.',array('mode'=>sanitize_key((string)$mode),'post_type'=>sanitize_key((string)$post_type),'post_id'=>absint($post_id),'retryable'=>true));
 	}
