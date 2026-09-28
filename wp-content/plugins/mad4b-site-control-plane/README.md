@@ -6,6 +6,12 @@ Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime gen
 
 Current plugin version: **0.4.0-rc.78**.
 
+### rc.78 approval planner preflight truth preservation
+
+rc.78 validates and canonicalizes remote `mad4b/approval-plan` input before WordPress Ability execution. This preserves exact server/provider/agent/context blockers that WordPress would otherwise collapse into `ability_invalid_permissions`, and classifies permission-stage failures as `mutation_state=not_started` with no reconciliation requirement. The execution-time guard remains authoritative and runs again before creating a pending ticket; this change does not widen write, Production, Breakglass, provider, or approval authority.
+
+Provider version drift remains fail-closed. In particular, a newer JetEngine build is not promoted by changing a version string: bounded reversible writes must use the existing artifact-bound behavioral recertification path with verified mutation, exact rollback and terminal approval evidence before they become write-eligible.
+
 ### rc.78 Portable zero-authority ChatGPT read connection
 
 rc.78 makes a fresh installation connection-ready for the dedicated `mad4b-chatgpt` read projection without creating a governed Site Profile. The portable bootstrap derives the current HTTPS origin and existing WordPress Administrators, enables only local OAuth/CIMD/PKCE read identity, and publishes RFC 9728 discovery for the site-local MCP resource. Production uses the same portable read-only boundary; governed write, Skills authoring, Developer, Breakglass, raw SQL and generic filesystem/database surfaces remain disabled until separately enrolled and authorized.
