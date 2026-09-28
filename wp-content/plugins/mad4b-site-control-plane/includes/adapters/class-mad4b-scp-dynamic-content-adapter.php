@@ -529,7 +529,24 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function pipeline_status(){ return class_exists('MAD4B_SCP_Dynamic_Content_Pipeline') ? MAD4B_SCP_Dynamic_Content_Pipeline::effective() : array('contract'=>'mad4b.dynamic-content-pipeline.v1','error'=>'pipeline_unavailable'); }
 	public function can_pipeline_update($input=array()){ return current_user_can('manage_options') ? true : new WP_Error('mad4b_dynamic_pipeline_admin_required','Administrator capability is required.'); }
-	public function pipeline_update($input=array()){ return class_exists('MAD4B_SCP_Dynamic_Content_Pipeline') ? MAD4B_SCP_Dynamic_Content_Pipeline::persist(is_array($input)?$input:array()) : new WP_Error('mad4b_dynamic_pipeline_unavailable','Dynamic content pipeline is unavailable.'); }
+	public function pipeline_update($input=array()){
+		if(!class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')) return $this->not_started_error(new WP_Error('mad4b_dynamic_pipeline_unavailable','Dynamic content pipeline is unavailable.'));
+		$result=MAD4B_SCP_Dynamic_Content_Pipeline::persist(is_array($input)?$input:array());
+		if(!is_wp_error($result)) return $result;
+		$prewrite_codes=array(
+			'mad4b_dynamic_pipeline_admin_required',
+			'mad4b_dynamic_pipeline_busy',
+			'mad4b_dynamic_pipeline_expected_revision_required',
+			'mad4b_dynamic_pipeline_stale',
+			'mad4b_dynamic_pipeline_stage_id_invalid',
+			'mad4b_dynamic_pipeline_stage_duplicate',
+			'mad4b_dynamic_pipeline_dependency_self',
+			'mad4b_dynamic_pipeline_dependency_missing',
+			'mad4b_dynamic_pipeline_dependency_forward',
+			'mad4b_dynamic_pipeline_dependency_cycle',
+		);
+		return in_array((string)$result->get_error_code(),$prewrite_codes,true)?$this->not_started_error($result):$result;
+	}
 
 	public function discover_model($input=array()){
 		$input=is_array($input)?$input:array();
@@ -1228,7 +1245,12 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'accepted_at'=>gmdate('c'),
 		);
 		$written=update_post_meta(absint($id),self::ACCEPTANCE_META,$receipt);
-		if(false===$written) return new WP_Error('mad4b_dynamic_acceptance_receipt_write_failed','Accepted content state could not be bound to a publication receipt.');
+		$readback=$this->acceptance_meta_state(absint($id));
+		if($this->state_sha256($readback)!==$this->state_sha256($receipt)) return new WP_Error(
+			'mad4b_dynamic_acceptance_receipt_write_failed',
+			'Accepted content state could not be bound to an exact publication receipt.',
+			array('write_returned'=>false!==$written)
+		);
 		return array('receipt'=>$receipt,'sha256'=>$this->acceptance_receipt_hash($receipt));
 	}
 
