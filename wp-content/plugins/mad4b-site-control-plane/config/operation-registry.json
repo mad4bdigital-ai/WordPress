@@ -167,6 +167,7 @@
       "mad4b/wordpress-operation-discover",
       "mad4b/plugin-transaction-plan",
       "mad4b/dependency-impact",
+      "mad4b/provider-candidate-matrix",
       "mad4b/provider-transport-registry-status",
       "mad4b/operation-resume-status"
     ]
