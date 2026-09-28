@@ -5,9 +5,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Read-only discovery of installed plugins and their MAD4B adapter coverage.
  *
- * Discovery never grants mutation authority, installs plugins or creates code. Unknown
- * plugins produce deterministic adapter-support requests and remain fail-closed for
- * plugin-specific writes until an explicit adapter contract is registered/certified.
+ * Discovery never grants mutation authority, installs plugins, writes generated code,
+ * registers generated adapters, or creates write certification. Unknown plugins can
+ * receive deterministic in-memory adapter candidates and shadow identity certification
+ * by default, while plugin-specific writes remain fail-closed until governed promotion.
  */
 final class MAD4B_SCP_Plugin_Discovery {
 	const CONTRACT = 'mad4b.plugin-adapter-discovery.v1';
