@@ -347,4 +347,30 @@ for marker in [
 if "in_array( $update['post_status'], array( 'publish', 'private' ), true )" not in mutations:
     raise SystemExit("content-update-post must require publish capability for both publish and private transitions")
 
+
+
+for marker in [
+    "mad4b_dynamic_acceptance_scope_meta_invalid",
+    "mad4b_dynamic_acceptance_scope_taxonomy_invalid",
+    "mad4b_dynamic_acceptance_scope_recursive",
+    "invalidate_acceptance_after_restore",
+    "mad4b_dynamic_acceptance_restore_invalidation_failed",
+    "mad4b_dynamic_acceptance_receipt_write_failed",
+    "write_returned",
+]:
+    if marker not in adapter:
+        raise SystemExit(f"acceptance scope/receipt invariant missing: {marker}")
+
+pipeline_update_start = adapter.find("public function pipeline_update")
+pipeline_update_end = adapter.find("public function discover_model", pipeline_update_start)
+pipeline_update = adapter[pipeline_update_start:pipeline_update_end]
+for marker in [
+    "mad4b_dynamic_pipeline_busy",
+    "mad4b_dynamic_pipeline_stale",
+    "mad4b_dynamic_pipeline_dependency_cycle",
+    "not_started_error",
+]:
+    if marker not in pipeline_update:
+        raise SystemExit(f"pipeline prewrite failure marker missing: {marker}")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
