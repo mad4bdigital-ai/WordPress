@@ -4,7 +4,13 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.75**.
+Current plugin version: **0.4.0-rc.76**.
+
+### rc.76 Brand materialization provider preflight and bounded failure evidence
+
+rc.76 hardens generated Brand Core materialization without widening provider authority. Before a Brand draft can create a Drive file, the governed source folder must now return an explicit `capabilities.canAddChildren=true` decision. Missing or denied folder-create capability fails closed before the provider create request.
+
+Provider-create failures also emit bounded audit evidence containing only the internal provider error code, HTTP status, sanitized provider code and provider-effect state. The existing durable uncertainty model remains unchanged: uncertain provider outcomes still reconcile by exact provider identity, never auto-retry a create, and require verified no-effect before a fresh governed materialization request.
 
 ### rc.75 WordPress Ability permission contract + release-identity closure
 

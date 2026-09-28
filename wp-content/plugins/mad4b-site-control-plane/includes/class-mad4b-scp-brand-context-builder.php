@@ -1516,13 +1516,32 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$name = (string) $identity['name'];
 		$created = MAD4B_SCP_Context_Provider_Gateway::create_brand_asset( $source_id, $name, $content, $format, (array) $identity['provider_identity'] );
 		if ( is_wp_error( $created ) ) {
+			$provider_error_data = $created->get_error_data();
+			$provider_error_data = is_array( $provider_error_data ) ? $provider_error_data : array();
+			$provider_http_status = isset( $provider_error_data['status'] ) ? absint( $provider_error_data['status'] ) : 0;
+			$provider_code = isset( $provider_error_data['provider_code'] ) ? sanitize_key( (string) $provider_error_data['provider_code'] ) : '';
+			$provider_effect_state = isset( $provider_error_data['provider_effect_state'] ) ? sanitize_key( (string) $provider_error_data['provider_effect_state'] ) : 'unknown';
+			if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+				MAD4B_SCP_Audit::record(
+					'context/materialize-brand-draft-provider-error',
+					array(
+						'artifact_id' => $artifact_id,
+						'source_id' => $source_id,
+						'provider_error_code' => sanitize_key( (string) $created->get_error_code() ),
+						'provider_http_status' => $provider_http_status,
+						'provider_code' => $provider_code,
+						'provider_effect_state' => $provider_effect_state,
+					),
+					'failed'
+				);
+			}
 			$scheduled_reconciliation = self::schedule_materialization_reconciliation( $identity, 1, 30 );
 			return new WP_Error(
 				'mad4b_brand_materialize_provider_outcome_uncertain',
 				'Provider creation did not return a committed Brand Context receipt. The durable claim remains fail-closed and automatic reconciliation has been requested where scheduling is available.',
 				array(
 					'provider_error_code' => $created->get_error_code(),
-					'provider_error_data' => $created->get_error_data(),
+					'provider_error_data' => $provider_error_data,
 					'scope_key' => $scope_key,
 					'idempotency_key' => $idempotency_key,
 					'request_sha256' => $request_sha256,

@@ -70,6 +70,9 @@ for marker in [
     "MAD4B_SCP_Durable_Execution::complete_idempotency",
     "MAD4B_SCP_Durable_Execution::scope_key",
     "mad4b_brand_materialize_provider_outcome_uncertain",
+    "context/materialize-brand-draft-provider-error",
+    "provider_http_status",
+    "provider_effect_state",
     "mad4b_brand_materialize_idempotency_commit_failed",
     "idempotency_scope_key",
     "expected_plan_sha256",
@@ -157,6 +160,8 @@ if "status='pending',claim_epoch=%d" not in durable:
 materialize_section = builder[builder.index("public static function materialize_draft"):builder.index("public static function rollback_materialized_draft")]
 if materialize_section.index("MAD4B_SCP_Durable_Execution::begin_idempotency") > materialize_section.index("MAD4B_SCP_Context_Provider_Gateway::create_brand_asset"):
     raise SystemExit("Brand materialization provider-bound create occurs before durable idempotency claim")
+if materialize_section.index("MAD4B_SCP_Context_Provider_Gateway::create_brand_asset") > materialize_section.index("context/materialize-brand-draft-provider-error"):
+    raise SystemExit("Brand provider failure evidence must be recorded only after the provider create attempt")
 if "MAD4B_SCP_Context_Provider_Gateway::create_asset" in materialize_section:
     raise SystemExit("Brand materialization must not use generic provider create")
 
@@ -334,6 +339,10 @@ for marker in [
     "mad4b_brand_create_rollback_artifact_mismatch",
     "mad4b_brand_create_rollback_receipt_mismatch",
     "delete_provider_file_for_rollback",
+    "capabilities(canAddChildren)",
+    "mad4b_google_drive_folder_create_capability_unavailable",
+    "mad4b_google_drive_folder_create_forbidden",
+    "provider_effect_state",
 ]:
     if marker not in drive:
         raise SystemExit(f"Google Drive exact-created rollback invariant missing: {marker}")
