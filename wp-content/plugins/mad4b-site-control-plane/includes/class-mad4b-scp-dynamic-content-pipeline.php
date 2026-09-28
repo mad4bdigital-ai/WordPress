@@ -307,7 +307,7 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline {
 			}
 			if(is_wp_error($result)){
 				$on_error=isset($stage['policy']['on_error'])?sanitize_key((string)$stage['policy']['on_error']):'stop';
-				if('repair'===$phase||!in_array($on_error,array('skip','finding'),true)) return $result;
+				if(!empty($stage['policy']['required'])||'repair'===$phase||!in_array($on_error,array('skip','finding'),true)) return $result;
 				if('finding'===$on_error){
 					$findings=isset($current['findings'])?(array)$current['findings']:array();
 					$findings[]=array('code'=>'pipeline_stage_error','stage_id'=>$stage['id'],'error_code'=>sanitize_key((string)$result->get_error_code()),'repairable'=>false);
@@ -331,8 +331,11 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline {
 	}
 	private static function extension_findings_stage($filter,array $context,array $policy,array $stage){
 		if(!has_filter($filter)){
-			if(!empty($policy['required'])) return new WP_Error('mad4b_dynamic_pipeline_validator_unavailable','A required pipeline validator has no registered implementation.',array('stage_id'=>$stage['id'],'filter'=>$filter));
-			return $context;
+			return new WP_Error(
+				'mad4b_dynamic_pipeline_validator_unavailable',
+				'An enabled pipeline validator has no registered implementation.',
+				array('stage_id'=>$stage['id'],'filter'=>$filter,'required'=>!empty($policy['required']))
+			);
 		}
 		$extra=apply_filters($filter,array(),$context,$policy,$stage);
 		if(is_wp_error($extra)) return $extra;
