@@ -142,5 +142,33 @@
       "dependency_impact": true,
       "required_runtime": false
     }
-  ]
+  ],
+  "aliases": {
+    "update": "wordpress.plugin.transaction",
+    "install": "wordpress.plugin.transaction",
+    "replace": "wordpress.plugin.transaction",
+    "activate": "wordpress.plugin.transaction",
+    "deactivate": "wordpress.plugin.transaction",
+    "self-update": "wordpress.control-plane.self-update",
+    "reconcile-skills": "wordpress.skills.reconcile",
+    "reconcile-provider": "wordpress.provider.recertify",
+    "recertify-provider": "wordpress.provider.recertify",
+    "import": "wordpress.content.import",
+    "export": "wordpress.content.export"
+  },
+  "read_projection": {
+    "direct": [
+      "mad4b/wordpress-operation-discover",
+      "mad4b/plugin-transaction-plan",
+      "mad4b/operation-resume-status"
+    ],
+    "catalog": [
+      "mad4b/operation-registry-status",
+      "mad4b/wordpress-operation-discover",
+      "mad4b/plugin-transaction-plan",
+      "mad4b/dependency-impact",
+      "mad4b/provider-transport-registry-status",
+      "mad4b/operation-resume-status"
+    ]
+  }
 }
