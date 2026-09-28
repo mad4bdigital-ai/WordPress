@@ -490,7 +490,7 @@ final class MAD4B_SCP_Authorization {
 	}
 
 	public static function audit_remote_permission_denial( $ability_name, $error, $input = null ) {
-		if ( ! is_wp_error( $error ) || 'mad4b_approval_replay_denied' !== (string) $error->get_error_code() ) return false;
+		if ( ! is_wp_error( $error ) ) return false;
 		$server_id = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
 		if ( ! in_array( $server_id, array( 'mad4b-chatgpt', 'mad4b-write', 'mad4b-developer', 'mad4b-developer-breakglass' ), true ) ) return false;
 		self::audit_execution_denial( $ability_name, $error, $input );
