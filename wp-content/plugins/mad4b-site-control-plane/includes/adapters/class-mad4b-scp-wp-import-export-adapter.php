@@ -12,10 +12,21 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 	const MAX_ITEMS = 100;
 	const MAX_HASH_BYTES = 67108864;
 	const IMPORT_ROLLBACK_CONTRACT = 'mad4b.rollback.wp-all-import-run.v1';
+	private static $import_readonly_autoload_attempted = false;
+	private static $import_readonly_autoload_succeeded = false;
+	private static $import_readonly_autoload_blocker = '';
+	private static $import_readonly_autoload_classes = array(
+		'PMXI_Model',
+		'PMXI_Model_Record',
+		'PMXI_Model_List',
+		'PMXI_Import_Record',
+		'PMXI_Import_List',
+	);
 
 	public function id() { return 'wp-import-export'; }
 	public function label() { return 'WP All Import / Export'; }
 	public function is_available() {
+		self::ensure_import_runtime_loaded();
 		return self::import_runtime_available() || self::export_runtime_available() ||
 			( class_exists( 'MAD4B_SCP_Repository_Artifact_Catalog' ) && ! empty( MAD4B_SCP_Repository_Artifact_Catalog::runtime_plugins_for_family( $this->id() ) ) );
 	}
@@ -88,6 +99,11 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 				'import'=>self::runtime_symbol_state('import'),
 				'export'=>self::runtime_symbol_state('export'),
 				'autoload_or_bootstrap_mutation_attempted'=>false,
+				'provider_readonly_autoload_attempted'=>self::$import_readonly_autoload_attempted,
+				'provider_readonly_autoload_succeeded'=>self::$import_readonly_autoload_succeeded,
+				'provider_readonly_autoload_blocker'=>self::$import_readonly_autoload_blocker,
+				'provider_readonly_autoload_exact_artifact_required'=>true,
+				'provider_readonly_autoload_class_allowlist'=>self::$import_readonly_autoload_classes,
 				'filesystem_scan_performed'=>false,
 				'authorizing'=>false,
 				'read_only'=>true,
@@ -557,6 +573,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	private function list_records( $kind, $limit ) {
 		$is_import='import'===$kind;
+		if($is_import)self::ensure_import_runtime_loaded();
 		if($is_import&&!self::import_runtime_available())return new WP_Error('mad4b_wp_all_import_unavailable','WP All Import runtime is unavailable.');
 		if(!$is_import&&!self::export_runtime_available())return new WP_Error('mad4b_wp_all_export_unavailable','WP All Export runtime is unavailable.');
 		$class=$is_import?'PMXI_Import_List':'PMXE_Export_List';
@@ -572,6 +589,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 	private function record( $kind, $id ) {
 		if($id<1)return new WP_Error('mad4b_wp_import_export_id_invalid','A positive job ID is required.');
 		$is_import='import'===$kind;
+		if($is_import)self::ensure_import_runtime_loaded();
 		if($is_import&&!self::import_runtime_available())return new WP_Error('mad4b_wp_all_import_unavailable','WP All Import runtime is unavailable.');
 		if(!$is_import&&!self::export_runtime_available())return new WP_Error('mad4b_wp_all_export_unavailable','WP All Export runtime is unavailable.');
 		$class=$is_import?'PMXI_Import_Record':'PMXE_Export_Record';
@@ -603,6 +621,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 	private static function runtime_symbol_state( $kind ) {
 		$kind=sanitize_key((string)$kind);
+		if('import'===$kind)self::ensure_import_runtime_loaded();
 		$classes='import'===$kind
 			?array('PMXI_Plugin','PMXI_Import_Record','PMXI_Import_List')
 			:array('PMXE_Plugin','PMXE_Export_Record','PMXE_Export_List');
@@ -618,6 +637,65 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'complete'=>empty($missing),
 			'provider_runtime_available'=>'import'===$kind?self::import_runtime_available():self::export_runtime_available(),
 		);
+	}
+
+	private static function ensure_import_runtime_loaded() {
+		if(self::import_runtime_available()){
+			self::$import_readonly_autoload_succeeded=true;
+			self::$import_readonly_autoload_blocker='';
+			return true;
+		}
+		if(self::$import_readonly_autoload_attempted)return self::$import_readonly_autoload_succeeded;
+		if(!class_exists('PMXI_Plugin')||!method_exists('PMXI_Plugin','getInstance')){
+			self::$import_readonly_autoload_blocker='provider_bootstrap_unavailable';
+			return false;
+		}
+		if(!class_exists('MAD4B_SCP_Provider_Contracts')){
+			self::$import_readonly_autoload_blocker='provider_contract_authority_unavailable';
+			return false;
+		}
+		$runtime=MAD4B_SCP_Provider_Contracts::runtime_status('wp-import-export',true);
+		$component=isset($runtime['components']['import'])&&is_array($runtime['components']['import'])?$runtime['components']['import']:array();
+		$integrity=isset($component['runtime_integrity'])&&is_array($component['runtime_integrity'])?$component['runtime_integrity']:array();
+		$exact=!empty($runtime['runtime_contract_ok'])
+			&&'certified'===(isset($runtime['status'])?(string)$runtime['status']:'')
+			&&'certified'===(isset($component['status'])?(string)$component['status']:'')
+			&&!empty($integrity['manifest_present'])
+			&&empty($integrity['missing'])
+			&&empty($integrity['mismatched']);
+		if(!$exact){
+			self::$import_readonly_autoload_blocker='exact_import_artifact_not_certified';
+			return false;
+		}
+		self::$import_readonly_autoload_attempted=true;
+		try{
+			$plugin=PMXI_Plugin::getInstance();
+			if(!is_object($plugin)){
+				self::$import_readonly_autoload_blocker='provider_instance_unavailable';
+				return false;
+			}
+			$loader='';
+			if(is_callable(array($plugin,'autoload')))$loader='autoload';
+			elseif(is_callable(array($plugin,'__autoload')))$loader='__autoload';
+			if(''===$loader){
+				self::$import_readonly_autoload_blocker='provider_autoload_unavailable';
+				return false;
+			}
+			foreach(self::$import_readonly_autoload_classes as $class){
+				if(!class_exists($class,false))call_user_func(array($plugin,$loader),$class);
+				if(!class_exists($class,false)){
+					self::$import_readonly_autoload_blocker='provider_readonly_autoload_incomplete';
+					return false;
+				}
+			}
+			self::$import_readonly_autoload_succeeded=self::import_runtime_available();
+			self::$import_readonly_autoload_blocker=self::$import_readonly_autoload_succeeded?'':'provider_readonly_autoload_incomplete';
+			return self::$import_readonly_autoload_succeeded;
+		}catch(Throwable $e){
+			self::$import_readonly_autoload_succeeded=false;
+			self::$import_readonly_autoload_blocker='provider_readonly_autoload_failed';
+			return false;
+		}
 	}
 
 	private function input_id( $input ){ $input=is_array($input)?$input:array(); return isset($input['id'])?absint($input['id']):0; }
