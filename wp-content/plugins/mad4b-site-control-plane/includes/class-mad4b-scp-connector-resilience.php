@@ -157,6 +157,7 @@ final class MAD4B_SCP_Connector_Resilience {
 				'Generation-fenced read did not complete safely.',
 				array(
 					'category' => isset( $read['category'] ) ? (string) $read['category'] : 'unknown',
+					'source_error_code' => isset( $read['error_code'] ) ? sanitize_key( (string) $read['error_code'] ) : '',
 					'client_action' => isset( $read['client_action'] ) ? (string) $read['client_action'] : 'reconnect_then_retry_once',
 					'automatic_retry_performed' => ! empty( $read['automatic_retry_performed'] ),
 					'automatic_retry_exhausted' => ! empty( $read['automatic_retry_exhausted'] ),
@@ -191,10 +192,20 @@ final class MAD4B_SCP_Connector_Resilience {
 		$projected['automatic_retry_performed'] = ! empty( $read['automatic_retry_performed'] );
 		$projected['response_budget_bytes'] = $max_bytes;
 		$projected['response_bytes'] = 0;
+		$final_bytes = 0;
+		// Stabilize the self-reported byte count. Updating the integer itself can
+		// change the encoded size at a decimal-width boundary (for example 9999 ->
+		// 10000), so compute to a fixed point before enforcing the hard cap.
+		for ( $i = 0; $i < 4; $i++ ) {
+			$encoded = wp_json_encode( $projected, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			if ( ! is_string( $encoded ) ) return new WP_Error( 'mad4b_generation_fenced_read_encoding_failed', 'Generation-fenced compact read could not be encoded.' );
+			$final_bytes = strlen( $encoded );
+			if ( (int) $projected['response_bytes'] === $final_bytes ) break;
+			$projected['response_bytes'] = $final_bytes;
+		}
 		$encoded = wp_json_encode( $projected, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		$projected['response_bytes'] = is_string( $encoded ) ? strlen( $encoded ) : 0;
-		$encoded = wp_json_encode( $projected, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		$final_bytes = is_string( $encoded ) ? strlen( $encoded ) : 0;
+		if ( ! is_string( $encoded ) ) return new WP_Error( 'mad4b_generation_fenced_read_encoding_failed', 'Generation-fenced compact read could not be encoded.' );
+		$final_bytes = strlen( $encoded );
 		$projected['response_bytes'] = $final_bytes;
 		if ( $final_bytes < 1 || $final_bytes > $max_bytes ) {
 			return new WP_Error(
