@@ -34,6 +34,10 @@ if ( ! function_exists( 'is_wp_error' ) ) {
 }
 
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-connector-resilience.php';
+if ( ! function_exists( 'wp_json_encode' ) ) {
+	function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+}
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-read-consistency.php';
 
 function mad4b_assert_true( $condition, $message ) {
 	if ( ! $condition ) {
@@ -313,5 +317,69 @@ mad4b_assert_true( 'session_terminated' === $guidance['session_termination_categ
 mad4b_assert_true( ! empty( $guidance['metadata_micro_read_preferred'] ), 'metadata micro-read must be preferred over multi-call metadata fanout' );
 mad4b_assert_true( 'mad4b/read-metadata-envelope' === $guidance['metadata_envelope_ability'], 'metadata envelope ability drifted' );
 mad4b_assert_true( ! empty( $guidance['resume_after_reconnect_requires_generation_match'] ), 'resume after reconnect must require runtime generation match' );
+
+$read_consistency_reflection = new ReflectionClass( 'MAD4B_SCP_Read_Consistency' );
+$compact_method = $read_consistency_reflection->getMethod( 'compact_status_data' );
+$compact_method->setAccessible( true );
+$oversized_blockers = array();
+for ( $i = 0; $i < 100; $i++ ) $oversized_blockers[] = 'blocker-' . $i;
+$compact = $compact_method->invoke( null, 'staging_certification', array(
+	'contract' => 'test.contract',
+	'ready' => false,
+	'state' => 'blocked',
+	'blocking_gates' => $oversized_blockers,
+	'providers' => array_fill( 0, 100, str_repeat( 'provider-noise', 100 ) ),
+	'unknown_large_field' => str_repeat( 'X', 50000 ),
+	'build' => array(
+		'version' => '0.4.0-rc.77',
+		'source_commit_sha' => str_repeat( 'a', 40 ),
+		'build_fingerprint' => str_repeat( 'b', 64 ),
+	),
+) );
+mad4b_assert_true( 12 === count( $compact['blocking_gates'] ), 'session-safe compact projection must cap blocker lists' );
+mad4b_assert_true( ! array_key_exists( 'unknown_large_field', $compact ), 'session-safe compact projection must drop unknown large fields' );
+mad4b_assert_true( ! array_key_exists( 'providers', $compact ), 'session-safe compact projection must not leak unbounded provider maps' );
+mad4b_assert_true( '0.4.0-rc.77' === $compact['build']['version'], 'session-safe compact projection must preserve bounded build identity' );
+
+$bound_method = $read_consistency_reflection->getMethod( 'bound_session_safe_report' );
+$bound_method->setAccessible( true );
+$synthetic_sections = array();
+foreach ( array( 'identity', 'runtime', 'certification', 'providers' ) as $bundle ) {
+	$checks = array();
+	for ( $i = 0; $i < 40; $i++ ) {
+		$checks[ 'check_' . $i ] = array(
+			'ok' => true,
+			'state' => 'ready',
+			'category' => 'none',
+			'elapsed_ms' => 1,
+			'summary' => array( 'blockers' => $oversized_blockers, 'noise' => str_repeat( 'N', 300 ) ),
+			'evidence_digest' => hash( 'sha256', $bundle . ':' . $i ),
+		);
+	}
+	$synthetic_sections[ $bundle ] = array(
+		'state' => 'ready',
+		'partial' => false,
+		'failed_checks' => array(),
+		'retryable_checks' => array(),
+		'check_count' => count( $checks ),
+		'checks' => $checks,
+		'evidence_digest' => hash( 'sha256', $bundle ),
+	);
+}
+$bounded = $bound_method->invoke( null, array(
+	'contract' => 'mad4b.session-safe-diagnostics.v1',
+	'state' => 'ready',
+	'partial' => false,
+	'read_transaction_id' => 'rtx_runtime_test_1234',
+	'runtime_generation' => str_repeat( 'c', 64 ),
+	'sections' => $synthetic_sections,
+	'read_only' => true,
+	'mutation_performed' => false,
+	'production_mutation_performed' => false,
+) );
+mad4b_assert_true( ! empty( $bounded['payload_reduced'] ), 'oversized session-safe report must reduce itself' );
+mad4b_assert_true( $bounded['response_bytes'] <= MAD4B_SCP_Read_Consistency::MAX_SESSION_SAFE_REPORT_BYTES, 'session-safe report must enforce the hard response byte cap' );
+mad4b_assert_true( empty( $bounded['mutation_performed'] ), 'session-safe diagnostics must remain read-only' );
+mad4b_assert_true( empty( $bounded['production_mutation_performed'] ), 'session-safe diagnostics must never mutate Production' );
 
 echo "mad4b.connector-resilience.runtime.v1: PASS\n";
