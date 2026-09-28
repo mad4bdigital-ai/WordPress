@@ -749,6 +749,44 @@ final class MAD4B_SCP_Developer_Workspace {
 		return hash( 'sha256', false === $json ? '' : $json );
 	}
 
+	/**
+	 * Token-level PHP source safety scan before syntax lint and promotion.
+	 * This intentionally blocks direct process/eval primitives from generated
+	 * add-on source while preserving normal WordPress includes, hooks and APIs.
+	 */
+	private static function php_token_parse( $code, $relative_path ) {
+		if ( ! is_string( $code ) ) return new WP_Error( 'mad4b_developer_workspace_php_source_invalid', 'Workspace PHP source is invalid.' );
+		$tokens = token_get_all( $code );
+		$denied_functions = array( 'assert', 'exec', 'shell_exec', 'system', 'passthru', 'popen', 'proc_open' );
+		$count = count( $tokens );
+		for ( $i = 0; $i < $count; $i++ ) {
+			$token = $tokens[ $i ];
+			if ( is_array( $token ) ) {
+				$id = (int) $token[0];
+				if ( defined( 'T_EVAL' ) && T_EVAL === $id ) {
+					return new WP_Error( 'mad4b_developer_workspace_php_primitive_denied', 'Workspace PHP source contains a denied evaluation primitive.', array( 'path' => (string) $relative_path, 'primitive' => 'eval' ) );
+				}
+				if ( defined( 'T_HALT_COMPILER' ) && T_HALT_COMPILER === $id ) {
+					return new WP_Error( 'mad4b_developer_workspace_php_primitive_denied', 'Workspace PHP source contains a denied compiler halt primitive.', array( 'path' => (string) $relative_path, 'primitive' => '__halt_compiler' ) );
+				}
+				if ( T_STRING !== $id ) continue;
+				$name = strtolower( (string) $token[1] );
+				if ( ! in_array( $name, $denied_functions, true ) ) continue;
+				for ( $j = $i + 1; $j < $count; $j++ ) {
+					$next = $tokens[ $j ];
+					if ( is_array( $next ) && in_array( (int) $next[0], array( T_WHITESPACE, T_COMMENT, T_DOC_COMMENT ), true ) ) continue;
+					if ( '(' === $next ) {
+						return new WP_Error( 'mad4b_developer_workspace_php_primitive_denied', 'Workspace PHP source contains a denied process or assertion primitive.', array( 'path' => (string) $relative_path, 'primitive' => $name ) );
+					}
+					break;
+				}
+			} elseif ( '`' === $token ) {
+				return new WP_Error( 'mad4b_developer_workspace_php_primitive_denied', 'Workspace PHP source contains a denied shell execution primitive.', array( 'path' => (string) $relative_path, 'primitive' => 'backtick' ) );
+			}
+		}
+		return true;
+	}
+
 	private static function lint_php_files( $project, array $manifest ) {
 		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! method_exists( 'MAD4B_SCP_Developer_Runtime', 'lint_workspace_php_file' ) ) {
 			return new WP_Error( 'mad4b_developer_workspace_php_linter_unavailable', 'The bounded Developer Runtime PHP linter is unavailable.' );
@@ -760,6 +798,10 @@ final class MAD4B_SCP_Developer_Workspace {
 			$count++;
 			if ( $count > 200 ) return new WP_Error( 'mad4b_developer_workspace_php_file_limit', 'Workspace exceeds the bounded PHP lint file count.' );
 			$absolute = trailingslashit( $project ) . str_replace( '/', DIRECTORY_SEPARATOR, $file['path'] );
+			$source = file_get_contents( $absolute );
+			if ( false === $source ) return new WP_Error( 'mad4b_developer_workspace_php_read_failed', 'Workspace PHP source could not be read before validation.', array( 'path' => $file['path'] ) );
+			$token_guard = self::php_token_parse( $source, $file['path'] );
+			if ( is_wp_error( $token_guard ) ) return $token_guard;
 			$lint = MAD4B_SCP_Developer_Runtime::lint_workspace_php_file( $absolute, $project );
 			if ( is_wp_error( $lint ) ) {
 				return new WP_Error(
