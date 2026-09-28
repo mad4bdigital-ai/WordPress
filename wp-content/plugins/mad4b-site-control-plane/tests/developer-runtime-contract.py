@@ -166,9 +166,14 @@ assert "'mad4b/developer-workspace-apply' === $ability_name" in impact
 assert "'development_source'" in impact
 assert "'protected_workspace'" in impact
 assert "if ( 'mad4b/developer-workspace-apply' === (string) $ability_name ) return true;" in impact
-assert "$protected_workspace_ticket" in (inc / "class-mad4b-scp-ai-approval.php").read_text(encoding="utf-8")
-assert "'mad4b/developer-workspace-promote' === $ability_name" not in (inc / "class-mad4b-scp-ai-approval.php").read_text(encoding="utf-8")
-assert "0 === strpos( $ability_name, 'mad4b/developer-' ) && ! $developer_workspace_source" in impact
+ai_approval = (inc / "class-mad4b-scp-ai-approval.php").read_text(encoding="utf-8")
+assert "$bounded_developer_ticket" in ai_approval
+assert "array( 'mad4b/developer-workspace-apply', 'mad4b/developer-workspace-promote' )" in ai_approval
+assert "'mad4b/developer-workspace-promote' === $ability_name" in impact
+assert "'certified_package'" in impact
+assert "'development_promotion'" in impact
+assert "array( 'mad4b/developer-workspace-apply', 'mad4b/developer-workspace-promote' )" in impact
+assert "0 === strpos( $ability_name, 'mad4b/developer-' ) && ! $bounded_developer_ai" in impact
 
 # No direct PHP eval()/shell_exec()/system()/passthru() execution primitive.
 for pattern in [
