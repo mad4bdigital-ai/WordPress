@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 resilience = (ROOT / "includes/class-mad4b-scp-connector-resilience.php").read_text(encoding="utf-8")
+read_consistency = (ROOT / "includes/class-mad4b-scp-read-consistency.php").read_text(encoding="utf-8")
 connection = (ROOT / "includes/class-mad4b-scp-connection-ability.php").read_text(encoding="utf-8")
 abilities = (ROOT / "includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 staging = (ROOT / "includes/class-mad4b-scp-staging-certification.php").read_text(encoding="utf-8")
@@ -40,6 +41,10 @@ for marker in [
     "'session_breaker_scope' => 'request_local'",
     "'metadata_micro_read_preferred' => true",
     "'metadata_envelope_ability' => 'mad4b/read-metadata-envelope'",
+    "'session_safe_diagnostics_ability' => 'mad4b/session-safe-diagnostics'",
+    "'single_request_composite_diagnostics_preferred' => true",
+    "'direct_composite_fanout_allowed' => false",
+    "'session_safe_report_max_bytes' => 16384",
     "'resume_after_reconnect_requires_generation_match' => true",
     "'skipped_session_breaker'",
     "'auto_retry' => false",
@@ -129,6 +134,25 @@ require(parity, "'contract' => 'mad4b.operation-discovery.v2'", "discovery v2 co
 
 if servers.count("'mad4b/connector-preflight'") < 2:
     raise SystemExit("connector preflight must be mounted on read and ChatGPT surfaces")
+
+if servers.count("'mad4b/session-safe-diagnostics'") < 2:
+    raise SystemExit("session-safe diagnostics must be mounted on read and ChatGPT surfaces")
+
+for marker in [
+    "const SESSION_SAFE_REPORT_ABILITY = 'mad4b/session-safe-diagnostics'",
+    "const MAX_SESSION_SAFE_REPORT_BYTES = 16384",
+    "public static function register_session_safe_report()",
+    "public static function session_safe_diagnostics( $input = array() )",
+    "'external_mcp_calls_required' => 1",
+    "'server_sequential_execution' => true",
+    "'direct_parallel_fanout_required' => false",
+    "'direct_composite_fanout_allowed' => false",
+    "private static function compact_bundle_result",
+    "private static function compact_status_data",
+    "private static function bound_session_safe_report",
+    "'runtime_changed_during_session_safe_report'",
+]:
+    require(read_consistency, marker, "session-safe diagnostic invariant")
 
 require(main, "class-mad4b-scp-connector-resilience.php", "resilience runtime include")
 
