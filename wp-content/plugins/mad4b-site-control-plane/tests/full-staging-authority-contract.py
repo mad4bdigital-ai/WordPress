@@ -138,6 +138,11 @@ assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_to
 assert "$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_tools
 assert "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in chatgpt_map
 assert "$candidates = array_merge( $core, $bootstrap )" in chatgpt_tools
+direct_read_helper = servers.split('public static function chatgpt_direct_read_transport_tools()', 1)[1].split('public static function chatgpt_dispatch_transport_tools()', 1)[0]
+assert "MAD4B_SCP_Full_Staging_Authority::HANDSHAKE_ABILITY" in direct_read_helper
+assert "MAD4B_SCP_Full_Staging_Authority::PLAN_ABILITY" not in direct_read_helper
+assert "MAD4B_SCP_Full_Staging_Authority::STATUS_ABILITY" not in direct_read_helper
+
 dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_tools()', 1)[0]
 assert "'mad4b/write-execute'" in dispatcher_helper
 assert "'mad4b/enrollment-execute'" in dispatcher_helper
