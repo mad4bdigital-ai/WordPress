@@ -326,7 +326,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$encoded = wp_json_encode( $row, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			$row['candidate_fingerprint'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
 			$row['autopilot'] = class_exists( 'MAD4B_SCP_Provider_Autopilot' )
-				? MAD4B_SCP_Provider_Autopilot::proposal_for_candidate( $row )
+				? MAD4B_SCP_Provider_Autopilot::proposal_for_candidate( $row, false, false )
 				: array( 'enabled' => false, 'reason' => 'provider_autopilot_unavailable' );
 			$items[] = $row;
 			if ( isset( $counts[ $level ] ) ) ++$counts[ $level ];
