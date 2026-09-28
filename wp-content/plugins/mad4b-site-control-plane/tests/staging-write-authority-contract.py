@@ -226,6 +226,23 @@ for marker in [
     if marker not in grant_plan:
         raise SystemExit(f'missing exact transport grant planning invariant: {marker}')
 
+# Connector-facing reconciliation schemas must remain evolution-safe. Runtime
+# allowlists and exact provider checks remain authoritative and fail closed.
+if "'items' => array( 'type' => 'string', 'enum' => self::allowed_abilities() )" in grant_reconcile:
+    raise SystemExit('grant reconciliation input schema must not freeze the live write allowlist into a client enum')
+if "'items' => array( 'type' => 'string', 'enum' => self::allowed_transport_abilities() )" in grant_reconcile:
+    raise SystemExit('grant reconciliation transport schema must not freeze the live transport allowlist into a client enum')
+for marker in [
+    "mad4b_grant_reconcile_missing_outside_allowlist",
+    "mad4b_grant_reconcile_provider_mismatch",
+    "mad4b_grant_reconcile_missing_set_mismatch",
+    "mad4b_grant_reconcile_transport_outside_allowlist",
+    "mad4b_grant_reconcile_transport_provider_mismatch",
+    "mad4b_grant_reconcile_transport_missing_set_mismatch",
+]:
+    if marker not in grant_reconcile:
+        raise SystemExit('runtime grant reconciliation allowlist protection missing: ' + marker)
+
 for marker in [
     "const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v3'",
     "const ABILITY = 'mad4b/staging-write-grant-reconcile'",

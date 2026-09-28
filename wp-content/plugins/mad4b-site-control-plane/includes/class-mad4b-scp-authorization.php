@@ -38,6 +38,13 @@ final class MAD4B_SCP_Authorization {
 		if ( '' !== $ability_name ) unset( self::$execution_callback_started[ $ability_name ] );
 	}
 
+	public static function permission_result_from_authorization( $result ) {
+		if ( is_wp_error( $result ) || is_bool( $result ) ) return $result;
+		if ( ! is_array( $result ) ) return false;
+		if ( ! isset( $result['allowed'], $result['reason_code'] ) ) return false;
+		return true === $result['allowed'] && 'preflight_allowed' === (string) $result['reason_code'];
+	}
+
 	public static function target_fingerprint( $ability_name, $provider, $input, array $agent = array(), array $identity = array() ) {
 		$provider = sanitize_key( (string) $provider );
 		if ( '' === $provider ) $provider = 'core';
@@ -346,7 +353,7 @@ final class MAD4B_SCP_Authorization {
 			$args['permission_callback'] = static function ( $input = null ) use ( $permission, $name ) {
 				$result = call_user_func( $permission, $input );
 				if ( is_wp_error( $result ) ) MAD4B_SCP_Authorization::audit_remote_permission_denial( $name, $result, $input );
-				return $result;
+				return MAD4B_SCP_Authorization::permission_result_from_authorization( $result );
 			};
 			if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
 			$args['meta']['mcp']['mad4b_permission_denial_audit'] = self::PERMISSION_DENIAL_AUDIT_CONTRACT;
