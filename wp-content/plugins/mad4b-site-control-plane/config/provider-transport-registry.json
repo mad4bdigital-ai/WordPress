@@ -1,0 +1,162 @@
+{
+  "contract": "mad4b.provider-transport-registry.v1",
+  "version": 1,
+  "default_unknown_transport": "visible_to_peer_governance",
+  "descriptors": [
+    {
+      "provider_id": "hostinger_ai_assistant",
+      "kind": "rest",
+      "external_visibility": "suppress_when_isolation_effective",
+      "internal_retention": false,
+      "routes": [
+        {
+          "pattern": "^/hostinger-ai-assistant/v1/mcp/?$",
+          "methods": [
+            "GET",
+            "POST"
+          ],
+          "class": "mcp_transport"
+        },
+        {
+          "pattern": "^/hostinger-ai-assistant/v1/jwt/(?:token|revoke)/?$",
+          "methods": [
+            "POST"
+          ],
+          "class": "mcp_credential_control"
+        }
+      ],
+      "server_callbacks": [
+        {
+          "server_id": "hostinger-ai-assistant-mcp-server",
+          "callback_class": "Hostinger\\AiAssistant\\Mcp\\McpServer",
+          "callback_method": "create_server"
+        }
+      ]
+    },
+    {
+      "provider_id": "fluent_forms",
+      "kind": "rest",
+      "external_visibility": "suppress_when_isolation_effective",
+      "internal_retention": false,
+      "routes": [
+        {
+          "pattern": "^/fluentform/v1/mcp/(?:status|toggle|install-adapter|config-snippets)/?$",
+          "methods": [
+            "GET",
+            "POST"
+          ],
+          "class": "mcp_control_surface"
+        },
+        {
+          "pattern": "^/fluentform/mcp/?$",
+          "methods": [
+            "GET",
+            "POST"
+          ],
+          "class": "mcp_transport"
+        }
+      ]
+    },
+    {
+      "provider_id": "jetengine",
+      "kind": "rest",
+      "external_visibility": "suppress_when_isolation_effective",
+      "internal_retention": true,
+      "routes": [
+        {
+          "pattern": "^/jet-engine/v1/mcp/?$",
+          "methods": [
+            "GET",
+            "POST"
+          ],
+          "class": "mcp_transport"
+        },
+        {
+          "pattern": "^/jet-engine/v1/mcp-tools/?$",
+          "methods": [
+            "GET"
+          ],
+          "class": "mcp_execution_surface",
+          "purpose": "registry"
+        },
+        {
+          "pattern": "^/jet-engine/v1/mcp-tools/run(?:/.*)?$",
+          "methods": [
+            "POST"
+          ],
+          "class": "mcp_execution_surface",
+          "purpose": "execute"
+        }
+      ]
+    },
+    {
+      "provider_id": "uae_hfe",
+      "kind": "rest",
+      "external_visibility": "suppress_when_isolation_effective",
+      "internal_retention": false,
+      "routes": [
+        {
+          "pattern": "^/hfe/v1/mcp-(?:abilities|settings)/?$",
+          "methods": [
+            "GET",
+            "POST"
+          ],
+          "class": "mcp_control_surface"
+        },
+        {
+          "pattern": "^/uae/mcp/?$",
+          "methods": [
+            "GET",
+            "POST"
+          ],
+          "class": "mcp_transport"
+        }
+      ]
+    },
+    {
+      "provider_id": "elementskit",
+      "kind": "rest",
+      "external_visibility": "suppress_when_isolation_effective",
+      "internal_retention": false,
+      "routes": [
+        {
+          "pattern": "^/elementskit/mcp/?$",
+          "methods": [
+            "GET",
+            "POST"
+          ],
+          "class": "mcp_transport"
+        },
+        {
+          "pattern": "^/elementskit/v1/mcp-proxy/?$",
+          "methods": [
+            "GET",
+            "POST"
+          ],
+          "class": "mcp_execution_surface"
+        }
+      ],
+      "server_callbacks": [
+        {
+          "server_id": "elementskit-mcp-server",
+          "callback_class": "ElementsKit_Lite\\Mcp\\Server",
+          "callback_method": "register_server"
+        }
+      ]
+    },
+    {
+      "provider_id": "wp-media",
+      "kind": "mcp_server",
+      "server_id": "mcp-oauth-server",
+      "external_visibility": "suppress_when_isolation_effective",
+      "internal_retention": false
+    },
+    {
+      "provider_id": "mcp-adapter-default",
+      "kind": "mcp_server",
+      "server_id": "default",
+      "external_visibility": "suppress_when_isolation_effective",
+      "internal_retention": false
+    }
+  ]
+}

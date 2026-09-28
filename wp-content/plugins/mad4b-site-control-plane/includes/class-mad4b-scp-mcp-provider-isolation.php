@@ -246,7 +246,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		foreach ( array_keys( $endpoints ) as $route ) {
 			$descriptor = self::descriptor_for_route( (string) $route );
 			if ( ! $descriptor ) continue;
-			if ( 'jetengine' === (string) $descriptor['provider'] && 'mcp_execution_surface' === (string) $descriptor['class'] ) {
+			if ( ! empty( $descriptor['internal_retention'] ) && 'mcp_execution_surface' === (string) $descriptor['class'] ) {
 				self::retain_internal_provider_route( (string) $route, isset( $endpoints[ $route ] ) ? $endpoints[ $route ] : array() );
 			}
 			self::$removed_routes[] = substr( (string) $route, 0, 255 );
@@ -258,10 +258,10 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 
 	private static function retain_internal_provider_route( $route, $definition ) {
 		$route = (string) $route;
-		if ( ! is_array( $definition ) || count( self::$internal_provider_routes ) >= 8 ) return;
+		if ( ! is_array( $definition ) || count( self::$internal_provider_routes ) >= 32 ) return;
 		$descriptor = self::descriptor_for_route( $route );
-		if ( ! $descriptor || 'jetengine' !== (string) $descriptor['provider'] || 'mcp_execution_surface' !== (string) $descriptor['class'] ) return;
-		self::$internal_provider_routes[ $route ] = $definition;
+		if ( ! $descriptor || empty( $descriptor['internal_retention'] ) || 'mcp_execution_surface' !== (string) $descriptor['class'] ) return;
+		self::$internal_provider_routes[ $route ] = array( 'definition' => $definition, 'descriptor' => $descriptor );
 	}
 
 	public static function internal_provider_transport_status( $provider ) {
@@ -269,12 +269,13 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		$registry = false;
 		$run = false;
 		$count = 0;
-		if ( 'jetengine' === $provider ) {
-			foreach ( array_keys( self::$internal_provider_routes ) as $route ) {
-				++$count;
-				if ( preg_match( '#^/jet-engine/v1/mcp-tools/?$#', (string) $route ) ) $registry = true;
-				if ( 0 === strpos( (string) $route, '/jet-engine/v1/mcp-tools/run' ) ) $run = true;
-			}
+		foreach ( self::$internal_provider_routes as $route => $retained ) {
+			$descriptor = isset( $retained['descriptor'] ) && is_array( $retained['descriptor'] ) ? $retained['descriptor'] : array();
+			if ( $provider !== sanitize_key( isset( $descriptor['provider'] ) ? (string) $descriptor['provider'] : '' ) ) continue;
+			++$count;
+			$purpose = isset( $descriptor['purpose'] ) ? sanitize_key( (string) $descriptor['purpose'] ) : '';
+			if ( 'registry' === $purpose ) $registry = true;
+			if ( 'execute' === $purpose ) $run = true;
 		}
 		return array(
 			'provider' => $provider,
@@ -301,34 +302,38 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 
 	private static function retained_route_match( $actual_route ) {
 		$actual_route = '/' . ltrim( (string) $actual_route, '/' );
-		foreach ( self::$internal_provider_routes as $route_pattern => $definition ) {
-			$descriptor = self::descriptor_for_route( (string) $route_pattern );
-			if ( ! $descriptor || 'jetengine' !== (string) $descriptor['provider'] || 'mcp_execution_surface' !== (string) $descriptor['class'] ) continue;
+		foreach ( self::$internal_provider_routes as $route_pattern => $retained ) {
+			$definition = isset( $retained['definition'] ) && is_array( $retained['definition'] ) ? $retained['definition'] : array();
+			$descriptor = isset( $retained['descriptor'] ) && is_array( $retained['descriptor'] ) ? $retained['descriptor'] : self::descriptor_for_route( (string) $route_pattern );
+			if ( ! $descriptor || empty( $descriptor['internal_retention'] ) || 'mcp_execution_surface' !== (string) $descriptor['class'] ) continue;
 			$regex = '#^' . str_replace( '#', '\\#', (string) $route_pattern ) . '$#';
 			$matches = array();
 			if ( 1 !== @preg_match( $regex, $actual_route, $matches ) ) continue;
 			$params = array();
 			foreach ( $matches as $key => $value ) if ( is_string( $key ) ) $params[ $key ] = $value;
-			return array( 'route' => (string) $route_pattern, 'definition' => $definition, 'params' => $params );
+			return array( 'route' => (string) $route_pattern, 'definition' => $definition, 'params' => $params, 'descriptor' => $descriptor );
 		}
 		return null;
 	}
 
 	public static function dispatch_internal_provider_request( $provider, $request ) {
 		if ( ! self::effective() ) return new WP_Error( 'mad4b_internal_provider_isolation_inactive', 'Internal provider handoff requires effective provider isolation.' );
-		if ( 'jetengine' !== sanitize_key( (string) $provider ) ) return new WP_Error( 'mad4b_internal_provider_not_allowed', 'Internal provider handoff is not allowed for this provider.' );
+		$provider = sanitize_key( (string) $provider );
+		if ( '' === $provider ) return new WP_Error( 'mad4b_internal_provider_not_allowed', 'Internal provider handoff requires a cataloged provider.' );
 		if ( ! ( $request instanceof WP_REST_Request ) ) return new WP_Error( 'mad4b_internal_provider_request_invalid', 'Internal provider handoff requires a REST request object.' );
 		if ( ! class_exists( 'MAD4B_SCP_Internal_Provider_REST_Dispatcher', false ) ) return new WP_Error( 'mad4b_internal_provider_dispatcher_unavailable', 'Internal provider REST dispatcher is unavailable.' );
 
 		$actual_route = '/' . ltrim( (string) $request->get_route(), '/' );
-		$is_registry = preg_match( '#^/jet-engine/v1/mcp-tools/?$#', $actual_route );
-		$is_run = preg_match( '#^/jet-engine/v1/mcp-tools/run/[a-zA-Z0-9\-/]+$#', $actual_route );
-		if ( ( 'GET' !== strtoupper( $request->get_method() ) || ! $is_registry ) && ( 'POST' !== strtoupper( $request->get_method() ) || ! $is_run ) ) {
-			return new WP_Error( 'mad4b_internal_provider_route_not_allowed', 'Only the isolated JetEngine native registry and run routes may be dispatched internally.' );
-		}
-
 		$matched = self::retained_route_match( $actual_route );
-		if ( ! is_array( $matched ) ) return new WP_Error( 'mad4b_internal_provider_route_unavailable', 'The isolated JetEngine provider route was not retained for internal governed use.' );
+		if ( ! is_array( $matched ) ) return new WP_Error( 'mad4b_internal_provider_route_unavailable', 'The isolated provider route was not retained for internal governed use.' );
+		$descriptor = isset( $matched['descriptor'] ) && is_array( $matched['descriptor'] ) ? $matched['descriptor'] : array();
+		if ( $provider !== sanitize_key( isset( $descriptor['provider'] ) ? (string) $descriptor['provider'] : '' ) || empty( $descriptor['internal_retention'] ) ) {
+			return new WP_Error( 'mad4b_internal_provider_route_not_allowed', 'Requested provider route is not cataloged for internal retention.' );
+		}
+		$allowed_methods = isset( $descriptor['methods'] ) && is_array( $descriptor['methods'] ) ? array_map( 'strtoupper', $descriptor['methods'] ) : array();
+		if ( ! in_array( strtoupper( $request->get_method() ), $allowed_methods, true ) ) {
+			return new WP_Error( 'mad4b_internal_provider_method_not_allowed', 'Requested method is not cataloged for the retained provider route.' );
+		}
 		$definition = isset( $matched['definition'] ) && is_array( $matched['definition'] ) ? $matched['definition'] : array();
 		$handlers = isset( $definition['callback'] ) ? array( $definition ) : $definition;
 		foreach ( $handlers as $key => $handler ) {
@@ -343,30 +348,25 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 				true
 			);
 		}
-		return new WP_Error( 'mad4b_internal_provider_handler_unavailable', 'No retained JetEngine provider handler accepts the requested method.' );
+		return new WP_Error( 'mad4b_internal_provider_handler_unavailable', 'No retained provider handler accepts the requested method.' );
 	}
 
 	public static function descriptors() {
-		return array(
-			array( 'provider' => 'hostinger_ai_assistant', 'pattern' => '#^/hostinger-ai-assistant/v1/mcp/?$#', 'class' => 'mcp_transport' ),
-			array( 'provider' => 'hostinger_ai_assistant', 'pattern' => '#^/hostinger-ai-assistant/v1/jwt/(?:token|revoke)/?$#', 'class' => 'mcp_credential_control' ),
-			array( 'provider' => 'fluent_forms', 'pattern' => '#^/fluentform/v1/mcp/(?:status|toggle|install-adapter|config-snippets)/?$#', 'class' => 'mcp_control_surface' ),
-			array( 'provider' => 'fluent_forms', 'pattern' => '#^/fluentform/mcp/?$#', 'class' => 'mcp_transport' ),
-			array( 'provider' => 'jetengine', 'pattern' => '#^/jet-engine/v1/mcp/?$#', 'class' => 'mcp_transport' ),
-			array( 'provider' => 'jetengine', 'pattern' => '#^/jet-engine/v1/mcp-tools/?$#', 'class' => 'mcp_execution_surface' ),
-			array( 'provider' => 'jetengine', 'pattern' => '#^/jet-engine/v1/mcp-tools/run(?:/.*)?$#', 'class' => 'mcp_execution_surface' ),
-			array( 'provider' => 'uae_hfe', 'pattern' => '#^/hfe/v1/mcp-(?:abilities|settings)/?$#', 'class' => 'mcp_control_surface' ),
-			array( 'provider' => 'uae_hfe', 'pattern' => '#^/uae/mcp/?$#', 'class' => 'mcp_transport' ),
-			array( 'provider' => 'elementskit', 'pattern' => '#^/elementskit/mcp/?$#', 'class' => 'mcp_transport' ),
-			array( 'provider' => 'elementskit', 'pattern' => '#^/elementskit/v1/mcp-proxy/?$#', 'class' => 'mcp_execution_surface' ),
-		);
+		if ( class_exists( 'MAD4B_SCP_Provider_Transport_Registry' ) ) {
+			$registered = MAD4B_SCP_Provider_Transport_Registry::route_descriptors();
+			if ( is_array( $registered ) && ! empty( $registered ) ) return $registered;
+		}
+		// Fail closed if the declarative registry is unavailable. An empty descriptor
+		// set does not hide unknown transports; Peer Governance still observes them.
+		return array();
 	}
 
 	public static function server_callback_descriptors() {
-		return array(
-			array( 'provider' => 'hostinger_ai_assistant', 'server_id' => 'hostinger-ai-assistant-mcp-server', 'callback_class' => 'Hostinger\\AiAssistant\\Mcp\\McpServer', 'callback_method' => 'create_server' ),
-			array( 'provider' => 'elementskit', 'server_id' => 'elementskit-mcp-server', 'callback_class' => 'ElementsKit_Lite\\Mcp\\Server', 'callback_method' => 'register_server' ),
-		);
+		if ( class_exists( 'MAD4B_SCP_Provider_Transport_Registry' ) ) {
+			$registered = MAD4B_SCP_Provider_Transport_Registry::server_callback_descriptors();
+			if ( is_array( $registered ) ) return $registered;
+		}
+		return array();
 	}
 
 	public static function descriptor_for_route( $route ) {
@@ -421,6 +421,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 			'server_callback_descriptors' => $server_descriptors,
 			'removed_route_count' => count( self::$removed_routes ),
 			'internal_handoff' => self::internal_provider_transport_status( 'jetengine' ),
+			'transport_registry' => class_exists( 'MAD4B_SCP_Provider_Transport_Registry' ) ? MAD4B_SCP_Provider_Transport_Registry::status() : array( 'ready' => false ),
 			'removed_routes' => array_slice( self::$removed_routes, 0, 100 ),
 			'descriptors' => $route_descriptors,
 			'unknown_routes_fail_closed' => true,

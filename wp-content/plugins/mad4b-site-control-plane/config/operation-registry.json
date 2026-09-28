@@ -1,0 +1,146 @@
+{
+  "contract": "mad4b.operation-registry.v1",
+  "version": 1,
+  "default_mutation_policy": "deny",
+  "generic_shell": false,
+  "arbitrary_operation_ids": false,
+  "operations": [
+    {
+      "id": "wordpress.plugin.transaction",
+      "target_kind": "plugin",
+      "risk": "high",
+      "planner": "mad4b/plugin-transaction-plan",
+      "executor": "exact_executor_from_plan",
+      "supports": [
+        "install",
+        "replace",
+        "update",
+        "activate",
+        "deactivate"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true
+    },
+    {
+      "id": "wordpress.plugin.activate",
+      "target_kind": "plugin",
+      "risk": "high",
+      "planner": "mad4b/plugin-lifecycle-plan",
+      "executor": "mad4b/plugin-activate",
+      "supports": [
+        "activate"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": true
+    },
+    {
+      "id": "wordpress.plugin.deactivate",
+      "target_kind": "plugin",
+      "risk": "high",
+      "planner": "mad4b/plugin-lifecycle-plan",
+      "executor": "mad4b/plugin-deactivate",
+      "supports": [
+        "deactivate"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": true
+    },
+    {
+      "id": "wordpress.plugin.certified-package",
+      "target_kind": "plugin",
+      "risk": "high",
+      "planner": "mad4b/plugin-package-plan",
+      "executor": "mad4b/plugin-package-apply",
+      "supports": [
+        "install",
+        "replace"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": true
+    },
+    {
+      "id": "wordpress.plugin.remote-update",
+      "target_kind": "plugin",
+      "risk": "high",
+      "planner": "mad4b/plugin-remote-update-plan",
+      "executor": "mad4b/plugin-remote-update-apply",
+      "supports": [
+        "update"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": true
+    },
+    {
+      "id": "wordpress.control-plane.self-update",
+      "target_kind": "control_plane",
+      "risk": "exceptional",
+      "planner": "mad4b/control-plane-native-plan",
+      "executor": "mad4b/control-plane-native-apply",
+      "supports": [
+        "self-update"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": true
+    },
+    {
+      "id": "wordpress.skills.reconcile",
+      "target_kind": "skills",
+      "risk": "medium",
+      "planner": "mad4b/remote-operation-parity-status",
+      "executor": "mad4b/reconcile-managed-skills",
+      "supports": [
+        "reconcile-skills"
+      ],
+      "durable_resume": true,
+      "dependency_impact": false,
+      "required_runtime": true
+    },
+    {
+      "id": "wordpress.provider.recertify",
+      "target_kind": "provider",
+      "risk": "high",
+      "planner": "mad4b/provider-closure-matrix",
+      "executor": "mad4b/provider-behavioral-recertify",
+      "supports": [
+        "reconcile-provider",
+        "recertify-provider"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": true
+    },
+    {
+      "id": "wordpress.content.import",
+      "target_kind": "provider",
+      "risk": "high",
+      "planner": "wp-import-export/plan-import-run",
+      "executor": "wp-import-export/run-import",
+      "supports": [
+        "import"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": false
+    },
+    {
+      "id": "wordpress.content.export",
+      "target_kind": "provider",
+      "risk": "high",
+      "planner": "wp-import-export/plan-export-run",
+      "executor": "wp-import-export/run-export",
+      "supports": [
+        "export"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": false
+    }
+  ]
+}

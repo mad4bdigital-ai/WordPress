@@ -30,6 +30,7 @@ final class MAD4B_SCP_Plugin_Lifecycle {
 					'properties' => array(
 						'plugin' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191 ),
 						'desired_active' => array( 'type' => 'boolean' ),
+						'activation_scope' => array( 'type' => 'string', 'enum' => array( 'site', 'network' ), 'default' => 'site' ),
 						'expected_state_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
 						'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
 					),
@@ -51,6 +52,9 @@ final class MAD4B_SCP_Plugin_Lifecycle {
 		$input = is_array( $input ) ? $input : array();
 		$plugin = isset( $input['plugin'] ) ? self::normalize_plugin_file( $input['plugin'] ) : '';
 		$desired = ! empty( $input['desired_active'] );
+		$activation_scope = isset( $input['activation_scope'] ) ? sanitize_key( (string) $input['activation_scope'] ) : 'site';
+		if ( ! in_array( $activation_scope, array( 'site', 'network' ), true ) ) return new WP_Error( 'mad4b_plugin_activation_scope_invalid', 'activation_scope must be site or network.' );
+		if ( 'network' === $activation_scope && ! is_multisite() ) return new WP_Error( 'mad4b_plugin_network_scope_unavailable', 'Network activation scope requires WordPress multisite.' );
 		$reason = isset( $input['reason'] ) ? sanitize_text_field( (string) $input['reason'] ) : '';
 		$expected_state_sha = isset( $input['expected_state_sha256'] ) ? strtolower( trim( (string) $input['expected_state_sha256'] ) ) : '';
 
@@ -63,7 +67,9 @@ final class MAD4B_SCP_Plugin_Lifecycle {
 		$active_dependents = self::active_dependents( $plugin );
 
 		if ( '' !== $expected_state_sha && ! hash_equals( $expected_state_sha, $snapshot['state_sha256'] ) ) $blockers[] = 'plugin_state_changed_since_review';
-		if ( $desired === (bool) $snapshot['active'] ) $blockers[] = $desired ? 'already_active' : 'already_inactive';
+		$current_scope_active = 'network' === $activation_scope ? (bool) $snapshot['network_active'] : (bool) $snapshot['site_active'];
+		if ( 'site' === $activation_scope && ! empty( $snapshot['network_active'] ) ) $blockers[] = 'network_activation_controls_site_state';
+		if ( $desired === $current_scope_active ) $blockers[] = $desired ? 'already_active_in_scope' : 'already_inactive_in_scope';
 		if ( ! self::lifecycle_gate_enabled() ) $blockers[] = 'plugin_lifecycle_global_gate_disabled';
 		if ( ! MAD4B_SCP_Policy::plugin_lifecycle_allowed( $plugin, $operation ) ) $blockers[] = 'plugin_not_allowlisted_for_operation';
 
@@ -87,7 +93,9 @@ final class MAD4B_SCP_Plugin_Lifecycle {
 			'plugin_version' => $snapshot['version'],
 			'operation' => $operation,
 			'desired_active' => $desired,
-			'current_active' => (bool) $snapshot['active'],
+			'activation_scope' => $activation_scope,
+			'current_active' => $current_scope_active,
+			'current_site_active' => (bool) $snapshot['site_active'],
 			'current_network_active' => (bool) $snapshot['network_active'],
 			'plugin_main_file_sha256' => $snapshot['plugin_main_file_sha256'],
 			'state_sha256' => $snapshot['state_sha256'],
@@ -115,6 +123,7 @@ final class MAD4B_SCP_Plugin_Lifecycle {
 			'plugin' => $plugin,
 			'desired_active' => (bool) $desired_active,
 			'reason' => isset( $input['reason'] ) ? (string) $input['reason'] : 'governed plugin lifecycle mutation',
+			'activation_scope' => isset( $input['activation_scope'] ) ? (string) $input['activation_scope'] : 'site',
 		);
 		if ( ! empty( $input['expected_state_sha256'] ) ) $plan_input['expected_state_sha256'] = (string) $input['expected_state_sha256'];
 		$plan = self::plan( $plan_input );
@@ -132,14 +141,17 @@ final class MAD4B_SCP_Plugin_Lifecycle {
 		return $plan;
 	}
 
-	public static function verify_state( $plugin, $desired_active ) {
+	public static function verify_state( $plugin, $desired_active, $activation_scope = 'site' ) {
 		$snapshot = self::snapshot( $plugin );
 		if ( is_wp_error( $snapshot ) ) return $snapshot;
-		if ( (bool) $snapshot['active'] !== (bool) $desired_active ) {
+		$activation_scope = sanitize_key( (string) $activation_scope );
+		if ( ! in_array( $activation_scope, array( 'site', 'network' ), true ) ) return new WP_Error( 'mad4b_plugin_activation_scope_invalid', 'activation_scope must be site or network.' );
+		$current = 'network' === $activation_scope ? (bool) $snapshot['network_active'] : (bool) $snapshot['site_active'];
+		if ( $current !== (bool) $desired_active ) {
 			return new WP_Error(
 				'mad4b_plugin_lifecycle_readback_mismatch',
-				'Plugin lifecycle readback does not match the requested state.',
-				array( 'current_active' => (bool) $snapshot['active'], 'state_sha256' => $snapshot['state_sha256'] )
+				'Plugin lifecycle readback does not match the requested activation scope.',
+				array( 'activation_scope' => $activation_scope, 'current_active' => $current, 'state_sha256' => $snapshot['state_sha256'] )
 			);
 		}
 		return $snapshot;
@@ -154,12 +166,15 @@ final class MAD4B_SCP_Plugin_Lifecycle {
 		$headers = is_array( $plugins[ $plugin ] ) ? $plugins[ $plugin ] : array();
 		$path = wp_normalize_path( WP_PLUGIN_DIR . '/' . $plugin );
 		$file_sha = is_file( $path ) && is_readable( $path ) ? hash_file( 'sha256', $path ) : '';
-		$active = is_plugin_active( $plugin );
+		$site_plugins = get_option( 'active_plugins', array() );
+		$site_active = is_array( $site_plugins ) && in_array( $plugin, $site_plugins, true );
 		$network_active = is_multisite() ? is_plugin_active_for_network( $plugin ) : false;
+		$active = $site_active || $network_active;
 		$state_payload = array(
 			'plugin' => $plugin,
 			'version' => isset( $headers['Version'] ) ? (string) $headers['Version'] : '',
 			'active' => (bool) $active,
+			'site_active' => (bool) $site_active,
 			'network_active' => (bool) $network_active,
 			'main_file_sha256' => $file_sha,
 			'requires_plugins' => isset( $headers['RequiresPlugins'] ) ? (string) $headers['RequiresPlugins'] : '',
@@ -169,6 +184,7 @@ final class MAD4B_SCP_Plugin_Lifecycle {
 			'name' => isset( $headers['Name'] ) ? (string) $headers['Name'] : $plugin,
 			'version' => isset( $headers['Version'] ) ? (string) $headers['Version'] : '',
 			'active' => (bool) $active,
+			'site_active' => (bool) $site_active,
 			'network_active' => (bool) $network_active,
 			'plugin_main_file_sha256' => $file_sha,
 			'state_sha256' => hash( 'sha256', wp_json_encode( self::canonicalize( $state_payload ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ),

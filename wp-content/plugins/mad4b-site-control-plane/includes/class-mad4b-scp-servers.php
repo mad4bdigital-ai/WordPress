@@ -44,6 +44,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status',
 				'mad4b/site-bootstrap-snapshot',
 				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
+				'mad4b/operation-registry-status', 'mad4b/wordpress-operation-discover', 'mad4b/plugin-transaction-plan', 'mad4b/dependency-impact', 'mad4b/provider-transport-registry-status', 'mad4b/operation-resume-status',
 			), $governed_status ),
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status',
@@ -55,6 +56,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute',
 				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan',
 				'mad4b/operation-discover', 'mad4b/provider-closure-matrix',
+				'mad4b/wordpress-operation-discover', 'mad4b/plugin-transaction-plan', 'mad4b/operation-resume-status',
 			), $governed_status ),
 			'mad4b-enrollment' => array_values( array_unique( array_merge(
 				array(
