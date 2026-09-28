@@ -9,6 +9,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-manager.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/dynamic-content-orchestration-contract.py'
@@ -47,6 +49,8 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-manager.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/dynamic-content-pipeline-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
