@@ -67,7 +67,11 @@ final class MAD4B_SCP_Abilities {
 		$this->add( 'mad4b/developer-execute', 'Execute Normal Developer Ability', 'mad4b-admin', 'developer_execute', 'developer_dispatch', $this->schema(
 			array(
 				'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
-				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64} 'Discover Bounded Enrollment Operations', 'mad4b-read', 'enrollment_discover', 'read', $this->schema(
+				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+				'input' => array( 'type' => 'object', 'default' => array() ),
+			), array( 'ability_name', 'expected_input_schema_sha256' )
+		), false, false, true, false );
+		$this->add( 'mad4b/enrollment-discover', 'Discover Bounded Enrollment Operations', 'mad4b-read', 'enrollment_discover', 'read', $this->schema(
 			array(
 				'query' => array( 'type' => 'string', 'default' => '', 'maxLength' => 160 ),
 				'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 50 ),
