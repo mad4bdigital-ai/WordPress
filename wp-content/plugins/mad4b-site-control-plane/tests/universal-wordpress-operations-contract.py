@@ -18,6 +18,8 @@ activation_state = (PLUGIN / "includes/class-mad4b-scp-plugin-activation-state.p
 plugin_package = (PLUGIN / "includes/class-mad4b-scp-plugin-package.php").read_text(encoding="utf-8")
 remote_update = (PLUGIN / "includes/class-mad4b-scp-remote-plugin-update.php").read_text(encoding="utf-8")
 dependency_impact = (PLUGIN / "includes/class-mad4b-scp-dependency-impact-graph.php").read_text(encoding="utf-8")
+plugin_discovery = (PLUGIN / "includes/class-mad4b-scp-plugin-discovery.php").read_text(encoding="utf-8")
+adapter_registry = (PLUGIN / "includes/class-mad4b-scp-adapter-registry.php").read_text(encoding="utf-8")
 transport_registry = (PLUGIN / "includes/class-mad4b-scp-provider-transport-registry.php").read_text(encoding="utf-8")
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 all_php = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in (PLUGIN / "includes").rglob("*.php"))
@@ -93,6 +95,7 @@ assert direct_projection == [
     "mad4b/operation-resume-status",
 ]
 assert "mad4b/dependency-impact" in catalog_projection
+assert "mad4b/provider-candidate-matrix" in catalog_projection
 assert "mad4b/provider-transport-registry-status" in catalog_projection
 
 assert transport["contract"] == "mad4b.provider-transport-registry.v1"
@@ -138,6 +141,21 @@ for source in (plugin_package, remote_update):
     assert "current_site_active" in source
     assert "MAD4B_SCP_Plugin_Activation_State::snapshot" in source
     assert "MAD4B_SCP_Plugin_Activation_State::restore" in source
+
+assert "mad4b.provider-candidate-matrix.v1" in plugin_discovery
+for level in ("L0_inventory", "L1_lifecycle", "L2_read", "L3_governed_write", "L4_certified_governed"):
+    assert level in plugin_discovery
+for invariant in (
+    "'mutation_auto_enabled' => false",
+    "'authority_created' => false",
+    "'unknown_plugin_write_default' => 'deny'",
+    "'auto_generate_adapter'",
+    "'auto_create_authority'",
+    "'arbitrary_provider_execution'",
+):
+    assert invariant in plugin_discovery, invariant
+assert "mad4b/provider-candidate-matrix" in adapter_registry
+assert "provider_candidate_matrix" in adapter_registry
 
 assert "infer_provider_id" in dependency_impact
 assert "certified-providers.json" in dependency_impact
