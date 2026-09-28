@@ -90,6 +90,14 @@ for marker in required:
     if marker not in bridge:
         raise SystemExit(f"missing OAuth bridge marker: {marker}")
 
+for marker in [
+    "MAD4B_SCP_Portable_Readonly_Connection::effective()",
+    "$portable_ready",
+    "$portable_only",
+]:
+    if marker not in bridge:
+        raise SystemExit(f"missing portable OAuth bridge boundary marker: {marker}")
+
 if "rest_url( 'mcp/mad4b-chatgpt' )" in bridge:
     raise SystemExit("OAuth protected-resource identity must not depend on WordPress REST permalink representation")
 
