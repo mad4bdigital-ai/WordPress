@@ -56,9 +56,21 @@ if ( ! class_exists( 'MAD4B_SCP_Durable_Execution' ) ) {
 	final class MAD4B_SCP_Durable_Execution {
 		const NO_EFFECT_MIN_OBSERVATION_SECONDS = 60;
 		public static $begin_calls = 0;
+		public static $terminal_replay = false;
 		public static function scope_key( $site, $contract, $op, $subject ) { return hash( 'sha256', implode('|', func_get_args()) ); }
 		public static function begin_idempotency() { ++self::$begin_calls; return array( 'replay' => false ); }
 		public static function record_idempotency_reconciliation_observation() {
+			if ( self::$terminal_replay ) {
+				return array(
+					'observation_count' => 2,
+					'elapsed_seconds' => 120,
+					'minimum_interval_seconds' => 60,
+					'observations' => array(),
+					'terminal' => true,
+					'terminal_status' => 'released_verified_no_effect',
+					'reconciliation_ref' => 'reconcile:no-effect:terminal',
+				);
+			}
 			return array( 'observation_count' => 2, 'elapsed_seconds' => 120, 'minimum_interval_seconds' => 60, 'observations' => array(
 				array( 'provider_scan_generation' => 'g1' ), array( 'provider_scan_generation' => 'g2' ),
 			) );
@@ -147,6 +159,14 @@ MAD4B_SCP_Context_Provider_Gateway::$mode = 'zero';
 $no_effect = MAD4B_SCP_Brand_Context_Builder::reconcile_materialization( $input );
 $check( is_array( $no_effect ) && 'verified_no_effect' === $no_effect['status'] && ! empty( $no_effect['safe_to_retry'] ), 'verified no-effect reconciliation did not release retry safely' );
 $check( 0 === MAD4B_SCP_Context_Provider_Gateway::$create_calls, 'reconciliation re-executed provider create after verified no-effect' );
+
+MAD4B_SCP_Durable_Execution::$terminal_replay = true;
+$late_no_effect = MAD4B_SCP_Brand_Context_Builder::reconcile_materialization( $input );
+$check( is_array( $late_no_effect ) && 'verified_no_effect' === $late_no_effect['status'], 'late no-effect reconciliation did not replay terminal result' );
+$check( ! empty( $late_no_effect['late_reconciliation_idempotent'] ), 'late no-effect reconciliation was not marked idempotent' );
+$check( ! empty( $late_no_effect['idempotency_released'] ) && ! empty( $late_no_effect['safe_to_retry'] ), 'late no-effect replay lost released retry state' );
+$check( 0 === MAD4B_SCP_Context_Provider_Gateway::$create_calls, 'late terminal reconciliation re-executed provider create' );
+MAD4B_SCP_Durable_Execution::$terminal_replay = false;
 
 MAD4B_SCP_Context_Provider_Gateway::$mode = 'duplicate';
 $duplicate = MAD4B_SCP_Brand_Context_Builder::reconcile_materialization( $input );
