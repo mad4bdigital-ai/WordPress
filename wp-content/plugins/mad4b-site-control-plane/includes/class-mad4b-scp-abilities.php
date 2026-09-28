@@ -542,14 +542,16 @@ final class MAD4B_SCP_Abilities {
 		$params = $this->forward_write_dispatch_governance_envelope( $input, $params );
 		if ( is_wp_error( $params ) ) return $params;
 
-		$execute_target = static function () use ( $ability, $params, $ability_name, $actual_schema_sha256 ) {
+		$target_entered = false;
+		$execute_target = static function () use ( $ability, $params, $ability_name, $actual_schema_sha256, &$target_entered ) {
 			if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) || ! method_exists( 'MAD4B_SCP_Transport_Context', 'with_write_dispatch_target' ) ) {
 				return new WP_Error( 'mad4b_write_dispatch_transport_context_unavailable', 'Exact nested write-dispatch transport binding is unavailable.' );
 			}
 			return MAD4B_SCP_Transport_Context::with_write_dispatch_target(
 				$ability_name,
 				$actual_schema_sha256,
-				static function () use ( $ability, $params ) {
+				static function () use ( $ability, $params, &$target_entered ) {
+					$target_entered = true;
 					return $ability->execute( $params );
 				}
 			);
@@ -598,7 +600,38 @@ final class MAD4B_SCP_Abilities {
 					return $execute_target();
 				}
 			);
-			if ( is_wp_error( $execution ) ) return $execution;
+			if ( is_wp_error( $execution ) ) {
+				if ( ! $target_entered ) {
+					$data = $execution->get_error_data();
+					$data = is_array( $data ) ? $data : array();
+					$original_error_code = isset( $data['original_error_code'] ) ? sanitize_key( (string) $data['original_error_code'] ) : '';
+					if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+						MAD4B_SCP_Audit::record( 'mad4b/write-dispatch-target-not-started', array(
+							'target_ability' => $ability_name,
+							'original_error_code' => $original_error_code,
+							'mutation_state' => 'not_started',
+							'reconciliation_required' => false,
+						) );
+					}
+					return new WP_Error(
+						'mad4b_write_dispatch_target_not_started',
+						'Governed write dispatch stopped before the target execution boundary. Repair dispatch or runtime mounting, then create a fresh exact plan before retrying.',
+						array(
+							'ability_name' => $ability_name,
+							'original_error_code' => $original_error_code,
+							'category' => isset( $data['category'] ) ? sanitize_key( (string) $data['category'] ) : 'unknown',
+							'client_action' => 'repair_dispatch_then_replan',
+							'mutation_state' => 'not_started',
+							'target_execution_entered' => false,
+							'reconciliation_required' => false,
+							'blind_retry_allowed' => false,
+							'fresh_plan_required' => true,
+							'raw_error_message_exposed' => false,
+						)
+					);
+				}
+				return $execution;
+			}
 		}
 		return array(
 			'contract' => 'mad4b.chatgpt-write-execute.v1',
