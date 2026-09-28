@@ -67,6 +67,7 @@ for marker in [
     "'mutation_state' => $dispatch_not_started ? 'not_started' : 'unknown'",
     "'client_action' => $dispatch_not_started ? 'repair_dispatch_then_replan' : 'reconcile_then_replan'",
     "private static function wp_error_proves_mutation_not_started",
+    "'mad4b_write_dispatch_target_not_started'",
     "'persistent_circuit_breaker_used' => false",
     "'persistent_catalog_cache_used' => false",
     "'skipped_budget'",

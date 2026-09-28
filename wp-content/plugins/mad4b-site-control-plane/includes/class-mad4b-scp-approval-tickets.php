@@ -329,11 +329,12 @@ final class MAD4B_SCP_Approval_Tickets {
 		return $ticket;
 	}
 
-	public static function finalize_claim( $ticket_id, $terminal_status ) {
+	public static function finalize_claim( $ticket_id, $terminal_status, $execution_error_code = '' ) {
 		global $wpdb;
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
 		$terminal_status = sanitize_key( (string) $terminal_status );
+		$execution_error_code = substr( sanitize_key( (string) $execution_error_code ), 0, 96 );
 		if ( ! in_array( $terminal_status, array( 'used', 'failed' ), true ) ) return new WP_Error( 'mad4b_approval_finalize_status_invalid', 'Approval ticket final status must be used or failed.' );
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
@@ -341,7 +342,9 @@ final class MAD4B_SCP_Approval_Tickets {
 		else $updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'failed' WHERE ticket_id = %s AND status = 'executing'", (string) $ticket_id ) );
 		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_finalize_conflict', 'Approval ticket is not in the expected executing state.' );
 		$event = 'used' === $terminal_status ? 'mad4b/approval-consumed' : 'mad4b/approval-execution-failed';
-		MAD4B_SCP_Audit::record( $event, array( 'ticket_id' => $ticket_id, 'result_status' => $terminal_status ), 'used' === $terminal_status ? 'ok' : 'failed' );
+		$summary = array( 'ticket_id' => $ticket_id, 'result_status' => $terminal_status );
+		if ( 'failed' === $terminal_status && '' !== $execution_error_code ) $summary['execution_error_code'] = $execution_error_code;
+		MAD4B_SCP_Audit::record( $event, $summary, 'used' === $terminal_status ? 'ok' : 'failed' );
 		return self::get( $ticket_id );
 	}
 

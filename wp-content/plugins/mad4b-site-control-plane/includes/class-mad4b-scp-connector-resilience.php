@@ -439,6 +439,7 @@ final class MAD4B_SCP_Connector_Resilience {
 				'mad4b_write_dispatch_callback_invalid',
 				'mad4b_write_dispatch_nested_recursion_denied',
 				'mad4b_write_dispatch_target_denied',
+				'mad4b_write_dispatch_target_not_started',
 				'mad4b_write_dispatch_schema_invalid',
 				'mad4b_write_dispatch_target_not_runtime_eligible',
 				'mad4b_write_dispatch_target_unavailable',

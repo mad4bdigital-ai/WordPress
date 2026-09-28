@@ -28,7 +28,11 @@ class MAD4B_SCP_Schema {
 	public static function critical_ready() { return true; }
 }
 class MAD4B_SCP_Audit {
-	public static function record( $ability, $summary, $status = 'ok' ) { return true; }
+	public static $events = array();
+	public static function record( $ability, $summary, $status = 'ok' ) {
+		self::$events[] = array( 'ability' => $ability, 'summary' => $summary, 'status' => $status );
+		return true;
+	}
 }
 
 final class MAD4B_SCP_Site_Profile {
@@ -184,8 +188,14 @@ $used_replay = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $
 mad4b_replay_assert( is_wp_error( $used_replay ) && 'mad4b_approval_replay_denied' === $used_replay->get_error_code(), 'Used ticket replay must be denied.' );
 
 $wpdb->ticket['status'] = 'executing';
-$failed_final = MAD4B_SCP_Approval_Tickets::finalize_claim( $ticket_id, 'failed' );
-mad4b_replay_assert( is_array( $failed_final ) && 'failed' === $wpdb->ticket['status'], 'Execution failure must transition executing to terminal failed.' );
+$failed_result = new WP_Error( 'mad4b_context_scan_registry_commit_failed', 'Internal detail must not enter audit evidence.' );
+$failed_claim = array( 'approval_required' => true, 'approval_ticket_id' => $ticket_id, 'ability' => 'mad4b/context-source-scan-apply' );
+$failed_final = MAD4B_SCP_Authorization::finalize_execution_claim( $failed_claim, $failed_result );
+mad4b_replay_assert( true === $failed_final && 'failed' === $wpdb->ticket['status'], 'Execution failure must transition executing to terminal failed.' );
+$failure_event = end( MAD4B_SCP_Audit::$events );
+mad4b_replay_assert( is_array( $failure_event ) && 'mad4b/approval-execution-failed' === $failure_event['ability'], 'Approval execution failure audit event is missing.' );
+mad4b_replay_assert( 'mad4b_context_scan_registry_commit_failed' === $failure_event['summary']['execution_error_code'], 'Approval failure audit lost the exact sanitized execution error code.' );
+mad4b_replay_assert( false === strpos( json_encode( $failure_event ), 'Internal detail must not enter audit evidence.' ), 'Approval failure audit leaked raw error message.' );
 $failed_replay = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
 mad4b_replay_assert( is_wp_error( $failed_replay ) && 'mad4b_approval_replay_denied' === $failed_replay->get_error_code(), 'Failed ticket replay must be denied.' );
 

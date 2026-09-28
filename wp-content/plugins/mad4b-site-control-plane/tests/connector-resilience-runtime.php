@@ -216,6 +216,24 @@ mad4b_assert_true( 'repair_dispatch_then_replan' === $dispatch_preflight_data['c
 mad4b_assert_true( empty( $dispatch_preflight_data['blind_retry_allowed'] ), 'pre-target dispatch failure must still require a fresh plan before retry' );
 mad4b_assert_true( false === strpos( json_encode( $dispatch_preflight_data ), 'SECRET-MUST-NOT-LEAK' ), 'raw pre-target dispatch error leaked' );
 
+$nested_not_started_attempts = 0;
+$nested_not_started = MAD4B_SCP_Connector_Resilience::execute_mutation(
+	'write',
+	'mad4b/plugin-package-apply',
+	static function () use ( &$nested_not_started_attempts ) {
+		$nested_not_started_attempts++;
+		return new WP_Error( 'mad4b_write_dispatch_target_not_started', 'Nested dispatcher proved target callback was never entered SECRET-MUST-NOT-LEAK' );
+	}
+);
+mad4b_assert_true( is_wp_error( $nested_not_started ), 'nested not-started wrapper must remain an error' );
+mad4b_assert_true( 1 === $nested_not_started_attempts, 'nested not-started wrapper must execute exactly once' );
+$nested_not_started_data = $nested_not_started->get_error_data();
+mad4b_assert_true( 'not_started' === $nested_not_started_data['mutation_state'], 'outer resilience wrapper must preserve proven not-started state' );
+mad4b_assert_true( empty( $nested_not_started_data['reconciliation_required'] ), 'proven nested pre-target failure must not require postcondition reconciliation' );
+mad4b_assert_true( 'mad4b_write_dispatch_target_not_started' === $nested_not_started_data['original_error_code'], 'outer resilience wrapper lost the inner not-started reason code' );
+mad4b_assert_true( 'repair_dispatch_then_replan' === $nested_not_started_data['client_action'], 'nested pre-target recovery action drifted' );
+mad4b_assert_true( false === strpos( json_encode( $nested_not_started_data ), 'SECRET-MUST-NOT-LEAK' ), 'nested pre-target raw error leaked' );
+
 $recovered_session_attempts = 0;
 $recovered_session = MAD4B_SCP_Connector_Resilience::run_checks(
 	array(
