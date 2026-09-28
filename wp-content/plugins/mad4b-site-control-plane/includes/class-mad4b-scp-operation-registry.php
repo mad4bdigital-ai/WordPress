@@ -159,6 +159,10 @@ final class MAD4B_SCP_Operation_Registry {
 			self::$catalog = new WP_Error( 'mad4b_operation_registry_autopilot_level_invalid', 'Default provider autopilot automatic support level exceeds the bounded read ceiling.' );
 			return self::$catalog;
 		}
+		if ( ! isset( $autopilot['candidate_ttl_seconds'] ) || ! is_int( $autopilot['candidate_ttl_seconds'] ) || $autopilot['candidate_ttl_seconds'] < 60 || $autopilot['candidate_ttl_seconds'] > 86400 ) {
+			self::$catalog = new WP_Error( 'mad4b_operation_registry_autopilot_ttl_invalid', 'Dynamic provider autopilot candidate TTL must be an integer between 60 and 86400 seconds.' );
+			return self::$catalog;
+		}
 
 		$stage_bindings = isset( $data['stage_bindings'] ) && is_array( $data['stage_bindings'] ) ? $data['stage_bindings'] : array();
 		if ( empty( $stage_bindings ) ) {

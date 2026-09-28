@@ -104,8 +104,6 @@ final class MAD4B_SCP_Provider_Autopilot {
 	private static function effective_mode( array $config ) {
 		$environment = self::environment();
 		$modes = isset( $config['environments'] ) && is_array( $config['environments'] ) ? $config['environments'] : array();
-		// Unknown/custom environments must never inherit a permissive default mode.
-		// Only explicitly reviewed environment keys may enable shadow automation.
 		if ( ! isset( $modes[ $environment ] ) ) return 'observe_propose_only';
 		$mode = sanitize_key( (string) $modes[ $environment ] );
 		return in_array( $mode, array( 'shadow_auto', 'observe_propose_only' ), true ) ? $mode : 'observe_propose_only';
@@ -142,6 +140,12 @@ final class MAD4B_SCP_Provider_Autopilot {
 		return false !== strpos( $plugin_file, '..' ) ? '' : $plugin_file;
 	}
 
+	private static function candidate_identity_suffix( array $candidate ) {
+		$plugin_file = self::normalize_plugin_file( isset( $candidate['plugin_file'] ) ? $candidate['plugin_file'] : '' );
+		$seed = '' !== $plugin_file ? $plugin_file : wp_json_encode( $candidate, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return substr( hash( 'sha256', (string) $seed ), 0, 12 );
+	}
+
 	private static function class_name_for( array $candidate ) {
 		$seed = isset( $candidate['family'] ) && 'unknown' !== $candidate['family']
 			? (string) $candidate['family']
@@ -149,10 +153,8 @@ final class MAD4B_SCP_Provider_Autopilot {
 		$seed = preg_replace( '/[^A-Za-z0-9]+/', ' ', (string) $seed );
 		$seed = str_replace( ' ', '_', ucwords( strtolower( trim( $seed ) ) ) );
 		$seed = preg_replace( '/[^A-Za-z0-9_]/', '', (string) $seed );
-		if ( '' === $seed || ctype_digit( substr( $seed, 0, 1 ) ) ) $seed = 'Generated_' . $seed;
-		$plugin_file = self::normalize_plugin_file( isset( $candidate['plugin_file'] ) ? $candidate['plugin_file'] : '' );
-		$identity_suffix = substr( hash( 'sha256', $plugin_file ), 0, 12 );
-		return 'MAD4B_SCP_Generated_' . $seed . '_' . $identity_suffix . '_Adapter_Candidate';
+		if ( '' === $seed || ctype_digit( substr( $seed, 0, 1 ) ) ) $seed = 'Provider';
+		return 'MAD4B_SCP_Generated_' . $seed . '_' . strtoupper( self::candidate_identity_suffix( $candidate ) ) . '_Adapter_Candidate';
 	}
 
 	private static function adapter_id_for( array $candidate ) {
@@ -160,11 +162,10 @@ final class MAD4B_SCP_Provider_Autopilot {
 			? sanitize_key( (string) $candidate['family'] )
 			: sanitize_key( basename( dirname( isset( $candidate['plugin_file'] ) ? (string) $candidate['plugin_file'] : 'provider' ) ) );
 		if ( '' === $base || '.' === $base ) $base = 'provider';
-		$plugin_file = self::normalize_plugin_file( isset( $candidate['plugin_file'] ) ? $candidate['plugin_file'] : '' );
-		return 'generated-' . $base . '-' . substr( hash( 'sha256', $plugin_file ), 0, 12 );
+		return 'generated-' . $base . '-' . self::candidate_identity_suffix( $candidate );
 	}
 
-	private static function adapter_candidate( array $candidate, $mode ) {
+	private static function adapter_candidate( array $candidate, $mode, $include_source = false ) {
 		$plugin_file = self::normalize_plugin_file( isset( $candidate['plugin_file'] ) ? $candidate['plugin_file'] : '' );
 		$adapter_id = self::adapter_id_for( $candidate );
 		$class_name = self::class_name_for( $candidate );
@@ -198,10 +199,18 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'declared_abilities' => array(),
 			'write_abilities' => array(),
 			'generated_php_sha256' => hash( 'sha256', $skeleton ),
-			'generated_php' => $skeleton,
 		);
 		$encoded = wp_json_encode( $descriptor, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$descriptor['candidate_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		if ( $include_source ) $descriptor['generated_php'] = $skeleton;
+		$config = self::config();
+		$ttl = isset( $config['candidate_ttl_seconds'] ) ? max( 60, min( 86400, (int) $config['candidate_ttl_seconds'] ) ) : 3600;
+		$observed_at = time();
+		$descriptor['candidate_ttl_seconds'] = $ttl;
+		$descriptor['observed_at_unix'] = $observed_at;
+		$descriptor['expires_at_unix'] = $observed_at + $ttl;
+		$descriptor['fresh'] = true;
+		$descriptor['recompute_before_promotion'] = true;
 		return $descriptor;
 	}
 
@@ -237,19 +246,29 @@ final class MAD4B_SCP_Provider_Autopilot {
 		);
 		$encoded = wp_json_encode( $cert, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$cert['certification_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		$cert['candidate_ttl_seconds'] = isset( $adapter_candidate['candidate_ttl_seconds'] ) ? (int) $adapter_candidate['candidate_ttl_seconds'] : 0;
+		$cert['observed_at_unix'] = isset( $adapter_candidate['observed_at_unix'] ) ? (int) $adapter_candidate['observed_at_unix'] : 0;
+		$cert['expires_at_unix'] = isset( $adapter_candidate['expires_at_unix'] ) ? (int) $adapter_candidate['expires_at_unix'] : 0;
+		$cert['fresh'] = ! empty( $adapter_candidate['fresh'] );
+		$cert['recompute_before_promotion'] = true;
 		return $cert;
 	}
 
-	public static function proposal_for_candidate( array $candidate ) {
+	public static function proposal_for_candidate( array $candidate, $include_source = false, $include_freshness = true ) {
 		$config = self::config();
 		$enabled = ! empty( $config['enabled_by_default'] );
 		$mode = self::effective_mode( $config );
 		$adapter = $enabled && ! empty( $config['auto_generate_adapter_candidate'] )
-			? self::adapter_candidate( $candidate, $mode )
+			? self::adapter_candidate( $candidate, $mode, (bool) $include_source )
 			: array();
 		$cert = $enabled && ! empty( $config['auto_shadow_certify_provider'] ) && ! empty( $adapter )
 			? self::shadow_certification( $candidate, $mode, $adapter )
 			: array();
+		if ( ! $include_freshness ) {
+			foreach ( array( 'candidate_ttl_seconds', 'observed_at_unix', 'expires_at_unix', 'fresh', 'recompute_before_promotion' ) as $freshness_key ) {
+				unset( $adapter[ $freshness_key ], $cert[ $freshness_key ] );
+			}
+		}
 		return array(
 			'contract' => self::CONTRACT,
 			'enabled' => $enabled,
@@ -288,7 +307,10 @@ final class MAD4B_SCP_Provider_Autopilot {
 		$blockers = array();
 		$automatic_steps = array();
 		$governed_steps = array();
-		$autopilot = isset( $candidate['autopilot'] ) && is_array( $candidate['autopilot'] ) ? $candidate['autopilot'] : self::proposal_for_candidate( $candidate );
+		$config = self::config();
+		$environment = self::environment();
+		$effective_mode = self::effective_mode( $config );
+		$autopilot = self::proposal_for_candidate( $candidate, false, true );
 
 		if ( $target_index >= 1 ) {
 			$requirements[] = 'installed_plugin_identity';
@@ -301,7 +323,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 			$governed_steps[] = 'materialize_and_review_generated_adapter_or_register_existing_adapter';
 			$governed_steps[] = 'runtime_read_contract_validation';
 			if ( empty( $candidate['adapter_runtime_available'] ) ) $blockers[] = 'adapter_runtime_unavailable';
-			if ( empty( $candidate['read_ability_count'] ) ) $blockers[] = 'bounded_read_abilities_required';
+			if ( empty( $candidate['adapter_read_ability_count'] ) ) $blockers[] = 'bounded_read_abilities_required';
 			if ( ! empty( $candidate['side_channel_blocked'] ) ) $blockers[] = 'provider_side_channel_blocked';
 		}
 		if ( $target_index >= 3 ) {
@@ -331,6 +353,15 @@ final class MAD4B_SCP_Provider_Autopilot {
 		sort( $automatic_steps, SORT_STRING );
 		sort( $governed_steps, SORT_STRING );
 
+		$already_at_target = $current_index === $target_index;
+		$evidence_eligible = empty( $blockers );
+		$promotion_execution_permitted = $evidence_eligible && ! $already_at_target && 'observe_propose_only' !== $effective_mode && 'production' !== $environment;
+		$next_action = $already_at_target
+			? 'no_promotion_required'
+			: ( ! $evidence_eligible
+				? 'satisfy_blockers_then_recompile'
+				: ( $promotion_execution_permitted ? 'enter_governed_promotion_lane' : 'observe_propose_only' ) );
+
 		$result = array(
 			'contract' => 'mad4b.provider-autopilot-promotion-plan.v1',
 			'plugin_file' => $plugin,
@@ -338,7 +369,12 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'current_level' => $current,
 			'target_level' => $target,
 			'already_at_or_above_target' => $current_index >= $target_index,
-			'eligible_now' => empty( $blockers ),
+			'already_at_target' => $already_at_target,
+			'environment' => $environment,
+			'effective_mode' => $effective_mode,
+			'evidence_eligible' => $evidence_eligible,
+			'promotion_execution_permitted' => $promotion_execution_permitted,
+			'eligible_now' => $promotion_execution_permitted,
 			'requirements' => $requirements,
 			'blockers' => $blockers,
 			'automatic_steps' => $automatic_steps,
@@ -353,10 +389,14 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'auto_enable_mutation' => false,
 			'mutation_performed' => false,
 			'authority_created' => false,
-			'next_action' => empty( $blockers ) ? 'enter_governed_promotion_lane' : 'satisfy_blockers_then_recompile',
+			'next_action' => $next_action,
 		);
 		$encoded = wp_json_encode( $result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$result['promotion_plan_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		$result['candidate_observed_at_unix'] = isset( $autopilot['adapter_candidate']['observed_at_unix'] ) ? (int) $autopilot['adapter_candidate']['observed_at_unix'] : 0;
+		$result['candidate_expires_at_unix'] = isset( $autopilot['adapter_candidate']['expires_at_unix'] ) ? (int) $autopilot['adapter_candidate']['expires_at_unix'] : 0;
+		$result['candidate_fresh'] = ! empty( $autopilot['adapter_candidate']['fresh'] );
+		$result['recompute_before_promotion'] = true;
 		return $result;
 	}
 
@@ -372,7 +412,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 				'plugin_file' => isset( $candidate['plugin_file'] ) ? (string) $candidate['plugin_file'] : '',
 				'support_level' => isset( $candidate['support_level'] ) ? (string) $candidate['support_level'] : '',
 				'candidate_fingerprint' => isset( $candidate['candidate_fingerprint'] ) ? (string) $candidate['candidate_fingerprint'] : '',
-				'autopilot' => self::proposal_for_candidate( $candidate ),
+				'autopilot' => self::proposal_for_candidate( $candidate, '' !== $plugin, false ),
 			);
 		}
 		if ( '' !== $plugin && empty( $items ) ) return new WP_Error( 'mad4b_provider_autopilot_plugin_not_found', 'Requested installed plugin was not found in provider discovery.' );
@@ -386,6 +426,8 @@ final class MAD4B_SCP_Provider_Autopilot {
 		);
 		$encoded = wp_json_encode( $result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$result['plan_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		$result['freshness_generated_at_unix'] = time();
+		$result['recompute_before_promotion'] = true;
 		return $result;
 	}
 }
