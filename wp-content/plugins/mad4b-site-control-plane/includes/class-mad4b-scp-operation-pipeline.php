@@ -126,10 +126,31 @@ final class MAD4B_SCP_Operation_Pipeline {
 		$missing_required = array_values( array_unique( array_filter( $missing_required ) ) );
 		sort( $missing_required, SORT_STRING );
 
+		$registry_status = MAD4B_SCP_Operation_Registry::status();
+		$registry_sha = is_array( $registry_status ) && isset( $registry_status['catalog_sha256'] ) ? (string) $registry_status['catalog_sha256'] : '';
+		$plugin_file = isset( $input['plugin'] ) ? ltrim( wp_normalize_path( sanitize_text_field( (string) $input['plugin'] ) ), '/' ) : '';
+		$target_state_sha = '';
+		$provider_candidate_fingerprint = '';
+		if ( '' !== $plugin_file && class_exists( 'MAD4B_SCP_Plugin_Lifecycle' ) ) {
+			$target_state = MAD4B_SCP_Plugin_Lifecycle::snapshot( $plugin_file );
+			if ( is_array( $target_state ) && isset( $target_state['state_sha256'] ) ) $target_state_sha = (string) $target_state['state_sha256'];
+		}
+		if ( '' !== $plugin_file && class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ) {
+			$candidate = MAD4B_SCP_Plugin_Discovery::provider_candidate_for( $plugin_file );
+			if ( is_array( $candidate ) && isset( $candidate['candidate_fingerprint'] ) ) $provider_candidate_fingerprint = (string) $candidate['candidate_fingerprint'];
+		}
+		$dependency_impact = isset( $discovery['dependency_impact'] ) && is_array( $discovery['dependency_impact'] ) ? $discovery['dependency_impact'] : array();
+		$dependency_encoded = wp_json_encode( $dependency_impact, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$dependency_impact_sha = is_string( $dependency_encoded ) ? hash( 'sha256', $dependency_encoded ) : '';
+
 		$result = array(
 			'contract' => self::CONTRACT,
 			'operation_id' => isset( $operation['id'] ) ? (string) $operation['id'] : '',
 			'pipeline_profile' => $profile_id,
+			'registry_catalog_sha256' => $registry_sha,
+			'target_state_sha256' => $target_state_sha,
+			'provider_candidate_fingerprint' => $provider_candidate_fingerprint,
+			'dependency_impact_sha256' => $dependency_impact_sha,
 			'target_kind' => isset( $operation['target_kind'] ) ? (string) $operation['target_kind'] : '',
 			'risk' => isset( $operation['risk'] ) ? (string) $operation['risk'] : '',
 			'ready' => empty( $missing_required ),
@@ -146,6 +167,18 @@ final class MAD4B_SCP_Operation_Pipeline {
 		);
 		$encoded = wp_json_encode( $result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$result['pipeline_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		$binding_payload = array(
+			'operation_id' => $result['operation_id'],
+			'registry_catalog_sha256' => $registry_sha,
+			'pipeline_sha256' => $result['pipeline_sha256'],
+			'target_state_sha256' => $target_state_sha,
+			'provider_candidate_fingerprint' => $provider_candidate_fingerprint,
+			'dependency_impact_sha256' => $dependency_impact_sha,
+			'planner' => $result['planner'],
+			'executor' => $result['executor'],
+		);
+		$binding_encoded = wp_json_encode( $binding_payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$result['execution_binding_sha256'] = is_string( $binding_encoded ) ? hash( 'sha256', $binding_encoded ) : '';
 		return $result;
 	}
 }
