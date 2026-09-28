@@ -231,6 +231,8 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $transport_ability ) ) $missing_write_transport[] = $transport_ability;
 		}
 		$metadata_mismatch = array();
+		$missing_execution_boundaries = array();
+		$missing_governed_write_authority = array();
 		$breakglass = array();
 		foreach ( $tools as $ability_name ) {
 			if ( 'mad4b/database-raw-query' === $ability_name ) $breakglass[] = $ability_name;
@@ -244,7 +246,12 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) { $metadata_mismatch[] = $ability_name; continue; }
 			$meta = $ability->get_meta();
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+			$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 			if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) $metadata_mismatch[] = $ability_name;
+			$expected_boundary = class_exists( 'MAD4B_SCP_Authorization' ) ? MAD4B_SCP_Authorization::EXECUTION_BOUNDARY_CONTRACT : '';
+			if ( '' === $expected_boundary || ! isset( $mcp['mad4b_execution_boundary'] ) || ! hash_equals( $expected_boundary, (string) $mcp['mad4b_execution_boundary'] ) ) $missing_execution_boundaries[] = $ability_name;
+			$expected_authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::CONTRACT : '';
+			if ( '' === $expected_authority || ! isset( $mcp['mad4b_governed_write_authority'] ) || ! hash_equals( $expected_authority, (string) $mcp['mad4b_governed_write_authority'] ) ) $missing_governed_write_authority[] = $ability_name;
 		}
 		$provider_blocked_write_tools = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::blocked_write_tools() : array();
 		$provider_blocked_mount_leaks = array();
@@ -268,9 +275,11 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		// enumerated directly in tools/list.
 		$checks['all_write_tools_exposed_on_same_plugin_transport'] = $checks['write_dispatch_transport_available'] && $checks['direct_write_schemas_hidden_from_chatgpt'];
 		$checks['all_write_tools_annotated_mutating'] = empty( $metadata_mismatch );
+		$checks['all_write_tools_execution_boundary_wrapped'] = empty( $missing_execution_boundaries );
+		$checks['all_write_tools_governed_authority_bound'] = empty( $missing_governed_write_authority );
 		$checks['provider_uncertified_write_tools_safely_unmounted'] = empty( $provider_blocked_mount_leaks );
 		$checks['breakglass_absent_from_write_inventory'] = empty( $breakglass );
-		foreach ( array( 'write_inventory_nonempty', 'all_write_tools_mounted_on_authority', 'write_dispatch_transport_available', 'direct_write_schemas_hidden_from_chatgpt', 'all_write_tools_exposed_on_same_plugin_transport', 'all_write_tools_annotated_mutating', 'provider_uncertified_write_tools_safely_unmounted', 'breakglass_absent_from_write_inventory' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
+		foreach ( array( 'write_inventory_nonempty', 'all_write_tools_mounted_on_authority', 'write_dispatch_transport_available', 'direct_write_schemas_hidden_from_chatgpt', 'all_write_tools_exposed_on_same_plugin_transport', 'all_write_tools_annotated_mutating', 'all_write_tools_execution_boundary_wrapped', 'all_write_tools_governed_authority_bound', 'provider_uncertified_write_tools_safely_unmounted', 'breakglass_absent_from_write_inventory' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		// approval-plan is a mutation because it persists a pending ticket. It must
 		// itself use NHI + exact mad4b-write grant + budget, but it is the only remote
@@ -336,6 +345,8 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'missing_write_transport' => $missing_write_transport,
 			'direct_write_schema_leaks' => $direct_write_schema_leaks,
 			'metadata_mismatch' => $metadata_mismatch,
+			'missing_execution_boundaries' => $missing_execution_boundaries,
+			'missing_governed_write_authority' => $missing_governed_write_authority,
 			'breakglass' => $breakglass,
 			'rest' => $rest,
 		);
@@ -354,6 +365,8 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'provider_blocked_mount_leaks' => $provider_blocked_mount_leaks,
 			'missing_write_mounts' => $missing_write_mounts,
 			'metadata_mismatch' => $metadata_mismatch,
+			'missing_execution_boundaries' => $missing_execution_boundaries,
+			'missing_governed_write_authority' => $missing_governed_write_authority,
 			'authority' => $authority,
 			'approval_planner' => $planner,
 			'rest_compatibility' => $rest,
