@@ -10,6 +10,14 @@ Current plugin version: **0.4.0-rc.83**.
 
 rc.83 introduces a provider-neutral operation registry, unified plugin transaction planning, dependency/certification impact projection, declarative provider transport descriptors, durable reconnect guidance, and explicit site-vs-network plugin lifecycle scope. Existing exact planners/executors remain the mutation authority; the orchestration layer does not add a generic shell, arbitrary operation IDs, arbitrary package locations, approval bypass, or Production mutation. Unknown provider transports remain visible to fail-closed Peer Governance.
 
+### rc.83 dynamic governed content orchestration
+
+rc.83 adds a provider-neutral content orchestration layer that discovers the live WordPress content model at runtime instead of hard-coding site-specific CPT, taxonomy or term names. The new model discovery exposes registered post types, supports, attached taxonomies, existing terms on demand and registered post meta. A single governed content bundle can create or update any eligible post type, assign arbitrary attached taxonomies, set bounded non-protected meta, set featured media, perform exact readback and run a bounded convergence loop.
+
+The convergence loop is registry-driven rather than hard-coded. Trusted code may register validate/repair/accept stages; persisted settings can enable, disable, order and parameterize those stages and attach bounded conditions such as environment, post type, status, required meta, taxonomy or finding code. Settings never contain executable callbacks. The default structural validation, site-policy hook, safe repair and final acceptance stages can therefore be extended without changing the core orchestrator. Pipeline settings are available in wp-admin and through governed reversible abilities.
+
+rc.83 also fixes the nested ChatGPT write-dispatch scope boundary. Once `mad4b/write-execute` has bound an exact target and schema request-locally, that nested target may cross only the OAuth transport-scope check; NHI grant, exact approval, budget, policy, provider, commit-guard, audit and rollback enforcement remain independent. Missing approval now reaches the approval layer instead of being misreported as a generic OAuth scope failure. No generic write OAuth scope, Production auto-write, Breakglass, raw SQL or wildcard grant is introduced.
+
 ### rc.82 session-safe Full Staging Authority handshake
 
 rc.82 replaces the direct ChatGPT status+plan fan-out for Full Staging Authority
