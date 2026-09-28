@@ -101,7 +101,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'auto_write_certification' => false,
 			'auto_create_authority' => false,
 			'auto_enable_mutation' => false,
-			'max_automatic_support_level' => isset( $config['max_automatic_support_level'] ) ? (string) $config['max_automatic_support_level'] : 'L2_read',
+			'max_automatic_support_level' => isset( $config['max_automatic_support_level'] ) ? (string) $config['max_automatic_support_level'] : 'L1_lifecycle',
 			'promotion_required_for' => isset( $config['promotion_required_for'] ) && is_array( $config['promotion_required_for'] ) ? array_values( $config['promotion_required_for'] ) : array(),
 			'production_behavior' => 'observe_propose_only',
 			'mutation_performed' => false,

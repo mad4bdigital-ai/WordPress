@@ -53,7 +53,7 @@ assert autopilot_policy["auto_write_certification"] is False
 assert autopilot_policy["auto_create_authority"] is False
 assert autopilot_policy["auto_enable_mutation"] is False
 assert autopilot_policy["environments"]["production"] == "observe_propose_only"
-assert autopilot_policy["max_automatic_support_level"] == "L2_read"
+assert autopilot_policy["max_automatic_support_level"] == "L1_lifecycle"
 ids = [row["id"] for row in operation["operations"]]
 assert len(ids) == len(set(ids))
 assert "wordpress.plugin.transaction" in ids
