@@ -4,7 +4,15 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.76**.
+Current plugin version: **0.4.0-rc.77**.
+
+### rc.77 exact WP All Import read-runtime bootstrap
+
+rc.77 closes the live REST/MCP compatibility gap discovered after the exact WP All Import Pro 5.0.8 package was installed on ETG Staging. WP All Import can expose `PMXI_Plugin` while leaving its model autoloader unavailable in a non-admin REST request, so governed read/plan abilities could report an exact certified artifact yet still miss `PMXI_Import_Record` and `PMXI_Import_List`.
+
+The adapter now performs a bounded **read-only provider autoload bootstrap** only when the composite WP Import/Export runtime is exact-certified and its import integrity manifest has no missing or mismatched files. It calls the provider-owned `PMXI_Plugin::autoload()` (or reviewed legacy `__autoload()`) for a fixed five-class dependency allowlist: `PMXI_Model`, `PMXI_Model_Record`, `PMXI_Model_List`, `PMXI_Import_Record`, and `PMXI_Import_List`. It does not scan the filesystem, accept caller paths, require vendor files directly, access cron URLs, expose secrets, grant authority, or mount Import/Export execution abilities.
+
+Provider behavioral execution, dry-run parity, rollback and operation-receipt gates remain unchanged and fail closed. This fix restores the exact-certified **read/plan runtime** without promoting high-risk `run-import` or `run-export` execution.
 
 ### rc.76 Brand materialization provider preflight and bounded failure evidence
 
