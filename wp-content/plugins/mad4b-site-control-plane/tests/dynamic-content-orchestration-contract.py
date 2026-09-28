@@ -61,6 +61,11 @@ for marker in [
     "missing_terms",
     "dependency_create_term",
     "plan_sha256",
+    "bundle_sha256",
+    "execution_bindings",
+    "expected_pipeline_settings_sha256",
+    "expected_state_sha256",
+
     "compensation_on_error",
     "failure_with_compensation",
     "metadata_exists",
@@ -252,5 +257,17 @@ for marker in ["0.4.0-rc.83"]:
     require(plugin, marker, "plugin release identity")
     require(readme, marker, "readme release identity")
     require(build, marker, "runtime build identity")
+
+planner_start = adapter.find("public function orchestration_plan")
+planner_end = adapter.find("public function pipeline_status", planner_start)
+planner = adapter[planner_start:planner_end]
+pipeline_calc = planner.find("$pipeline_settings_sha256=''")
+state_calc = planner.find("$expected_state_sha256=''")
+bundle_calc = planner.find("$bundle_sha256=")
+bindings_emit = planner.find("'execution_bindings'=>array(")
+if min(pipeline_calc, state_calc, bundle_calc, bindings_emit) < 0:
+    raise SystemExit("execution-ready planner binding markers missing")
+if not (pipeline_calc < bindings_emit and state_calc < bindings_emit and bundle_calc < bindings_emit):
+    raise SystemExit("execution bindings must be emitted only after pipeline/state/bundle hashes are computed")
 
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
