@@ -1,0 +1,62 @@
+name: MAD4B Dynamic Content Orchestration
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dynamic-content-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-content-pipeline.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-content-pipeline-admin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/dynamic-content-orchestration-contract.py'
+      - '.github/workflows/mad4b-dynamic-content-orchestration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-dynamic-content-orchestration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Dynamic content orchestration contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          coverage: none
+      - name: Lint dynamic content sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dynamic-content-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-content-pipeline.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-content-pipeline-admin.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/dynamic-content-pipeline-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+      - name: Verify dynamic orchestration contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-content-orchestration-contract.py
+      - name: Verify dynamic pipeline runtime behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/dynamic-content-pipeline-runtime.php
