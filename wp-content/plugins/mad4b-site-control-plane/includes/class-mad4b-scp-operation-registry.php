@@ -180,9 +180,12 @@ final class MAD4B_SCP_Operation_Registry {
 					self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_stage_required_invalid', 'Pipeline stage required must be boolean.' );
 					return self::$catalog;
 				}
-				if ( isset( $stage['when'] ) && ! preg_match( '/^[a-z0-9_.-]+:[a-z0-9_.-]+$/', (string) $stage['when'] ) ) {
-					self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_condition_invalid', 'Pipeline stage condition syntax is invalid.' );
-					return self::$catalog;
+				if ( isset( $stage['when'] ) ) {
+					$condition = strtolower( trim( (string) $stage['when'] ) );
+					if ( ! preg_match( '/^(?:target_kind|operation\.[a-z0-9_-]+|input\.[a-z0-9_-]+):[a-z0-9_.-]+$/', $condition ) ) {
+						self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_condition_invalid', 'Pipeline stage condition syntax or source is invalid.' );
+						return self::$catalog;
+					}
 				}
 				$stage_ids[ $stage_id ] = true;
 				if ( ! isset( $type_positions[ $type ] ) ) $type_positions[ $type ] = array();
