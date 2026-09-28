@@ -251,7 +251,25 @@ final class MAD4B_SCP_Durable_Execution {
 				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
 			}
-			if ( 'pending' !== (string) $row['status'] ) {
+			$status = (string) $row['status'];
+			if ( 'released_verified_no_effect' === $status ) {
+				$proof = ! empty( $row['result_json'] ) ? json_decode( (string) $row['result_json'], true ) : array();
+				$proof = is_array( $proof ) ? $proof : array();
+				$wpdb->query( 'COMMIT' );
+				return array(
+					'contract' => self::RECONCILIATION_OBSERVATIONS_CONTRACT,
+					'recorded' => false,
+					'idempotent' => true,
+					'terminal' => true,
+					'terminal_status' => 'released_verified_no_effect',
+					'observation_count' => isset( $proof['durable_observation_count'] ) ? (int) $proof['durable_observation_count'] : 0,
+					'observations' => array(),
+					'elapsed_seconds' => isset( $proof['durable_observation_elapsed_seconds'] ) ? (int) $proof['durable_observation_elapsed_seconds'] : 0,
+					'minimum_interval_seconds' => self::NO_EFFECT_MIN_OBSERVATION_SECONDS,
+					'reconciliation_ref' => isset( $row['reconciliation_ref'] ) ? (string) $row['reconciliation_ref'] : '',
+				);
+			}
+			if ( 'pending' !== $status ) {
 				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_idempotency_observation_state_denied', 'Reconciliation observations may be recorded only while the idempotency record is pending.' );
 			}
