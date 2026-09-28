@@ -140,6 +140,9 @@ assert 'scandir(' not in src
 assert "'autoload_or_bootstrap_mutation_attempted'=>false" in src
 assert "'filesystem_scan_performed'=>false" in src
 assert "'content' => array(), 'admin' => array()" in src
+assert "class_exists('PMXI_Import_Record',false)" in src
+assert "class_exists('PMXI_Import_List',false)" in src
+assert "class_exists('PMXI_Plugin',false)" in src
 
 # Read/plan code must not invoke provider network/cron execution or accept raw provider keys.
 for forbidden in [
