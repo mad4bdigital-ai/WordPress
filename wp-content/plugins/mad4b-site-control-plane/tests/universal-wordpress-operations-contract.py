@@ -321,7 +321,7 @@ print("universal-wordpress-operations-contract: PASS")
 # Autopilot hardening invariants.
 assert "private static function adapter_candidate( array $candidate, $mode, $include_source = false )" in provider_autopilot
 assert "if ( $include_source ) $descriptor['generated_php'] = $skeleton;" in provider_autopilot
-assert "self::proposal_for_candidate( $candidate, '' !== $plugin )" in provider_autopilot
+assert "self::proposal_for_candidate( $candidate, '' !== $plugin, false )" in provider_autopilot
 promotion_hash_pos = provider_autopilot.index("$result['promotion_plan_sha256']")
 promotion_observed_pos = provider_autopilot.index("$result['candidate_observed_at_unix']")
 assert promotion_hash_pos < promotion_observed_pos, "promotion freshness metadata must stay outside the deterministic plan hash"
