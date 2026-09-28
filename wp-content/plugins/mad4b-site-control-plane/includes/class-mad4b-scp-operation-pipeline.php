@@ -62,26 +62,6 @@ final class MAD4B_SCP_Operation_Pipeline {
 		return false;
 	}
 
-	private static function stage_binding( $stage_id, array $operation ) {
-		$stage_id = sanitize_key( (string) $stage_id );
-		$map = array(
-			'discover' => array( 'binding_type' => 'ability', 'ability' => 'mad4b/wordpress-operation-discover' ),
-			'provider_candidate' => array( 'binding_type' => 'ability', 'ability' => 'mad4b/provider-candidate-matrix' ),
-			'dependency_impact' => array( 'binding_type' => 'ability', 'ability' => 'mad4b/dependency-impact' ),
-			'authorization_boundary' => array( 'binding_type' => 'policy_boundary', 'ability' => '' ),
-			'readback' => array( 'binding_type' => 'executor_owned_verification', 'ability' => '' ),
-			'durable_resume' => array( 'binding_type' => 'ability', 'ability' => 'mad4b/operation-resume-status' ),
-		);
-		if ( 'native_plan' === $stage_id ) return array( 'binding_type' => 'ability', 'ability' => isset( $operation['planner'] ) ? (string) $operation['planner'] : '' );
-		if ( 'exact_execute' === $stage_id ) {
-			$executor = isset( $operation['executor'] ) ? (string) $operation['executor'] : '';
-			return array(
-				'binding_type' => 'exact_executor_from_plan' === $executor ? 'plan_bound_executor' : 'ability',
-				'ability' => 'exact_executor_from_plan' === $executor ? '' : $executor,
-			);
-		}
-		return isset( $map[ $stage_id ] ) ? $map[ $stage_id ] : array( 'binding_type' => 'unbound', 'ability' => '' );
-	}
 
 	public static function compile( $input ) {
 		$input = is_array( $input ) ? $input : array();
@@ -99,7 +79,8 @@ final class MAD4B_SCP_Operation_Pipeline {
 		foreach ( $profile as $position => $stage ) {
 			$condition = isset( $stage['when'] ) ? (string) $stage['when'] : '';
 			$enabled = self::condition_matches( $condition, $operation, $input );
-			$binding = self::stage_binding( isset( $stage['id'] ) ? $stage['id'] : '', $operation );
+			$binding = MAD4B_SCP_Operation_Registry::stage_binding( isset( $stage['id'] ) ? $stage['id'] : '', $operation );
+			if ( is_wp_error( $binding ) ) return $binding;
 			$ability = isset( $binding['ability'] ) ? (string) $binding['ability'] : '';
 			$ability_registered = '' === $ability || ! function_exists( 'wp_has_ability' ) ? null : (bool) wp_has_ability( $ability );
 			$row = array(
