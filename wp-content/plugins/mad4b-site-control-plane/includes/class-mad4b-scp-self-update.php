@@ -387,15 +387,8 @@ final class MAD4B_SCP_Self_Update {
 			}
 		}
 
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		$tmp = download_url( $manifest['package_url'], 30 );
-		if ( is_wp_error( $tmp ) ) return new WP_Error( 'mad4b_self_update_native_download_failed', 'Unable to download the exact governed Control Plane release.', array( 'cause' => $tmp->get_error_code() ) );
-
-		$size = @filesize( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		if ( false === $size || (int) $size !== (int) $manifest['size_bytes'] || (int) $size > self::MAX_UPLOAD_BYTES ) {
-			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-			return new WP_Error( 'mad4b_self_update_native_size_mismatch', 'Downloaded governed release size does not match the exact manifest.' );
-		}
+		$tmp = self::download_governed_release_to_protected_storage( $manifest );
+		if ( is_wp_error( $tmp ) ) return $tmp;
 
 		$verified = self::verify_archive( $tmp, $manifest );
 		if ( is_wp_error( $verified ) ) {
@@ -556,7 +549,7 @@ final class MAD4B_SCP_Self_Update {
 		delete_transient( self::MANIFEST_TRANSIENT );
 
 		return array(
-			'contract' => self::APPLY_CONTRACT,
+			'contract' => 'governed_native_release_pull' === (string) $channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT,
 			'channel' => $channel,
 			'plugin' => plugin_basename( MAD4B_SCP_FILE ),
 			'before' => $before,
@@ -573,6 +566,40 @@ final class MAD4B_SCP_Self_Update {
 			'authority_created' => false,
 			'authorizing' => false,
 		);
+	}
+
+	private static function download_governed_release_to_protected_storage( array $manifest ) {
+		$tmp = self::temp_archive_path();
+		if ( is_wp_error( $tmp ) ) return $tmp;
+
+		$response = wp_safe_remote_get(
+			$manifest['package_url'],
+			array(
+				'timeout' => 30,
+				'redirection' => 3,
+				'stream' => true,
+				'filename' => $tmp,
+				'limit_response_size' => self::MAX_UPLOAD_BYTES + 1,
+				'user-agent' => 'MAD4B-Site-Control-Plane/' . MAD4B_SCP_VERSION,
+				'headers' => array( 'Accept' => 'application/zip' ),
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			return new WP_Error( 'mad4b_self_update_native_download_failed', 'Unable to download the exact governed Control Plane release.', array( 'cause' => $response->get_error_code() ) );
+		}
+		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			return new WP_Error( 'mad4b_self_update_native_download_http_error', 'Governed Control Plane release returned a non-200 response.' );
+		}
+
+		$size = @filesize( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( false === $size || (int) $size !== (int) $manifest['size_bytes'] || (int) $size > self::MAX_UPLOAD_BYTES ) {
+			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			return new WP_Error( 'mad4b_self_update_native_size_mismatch', 'Downloaded governed release size does not match the exact manifest.' );
+		}
+		@chmod( $tmp, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		return $tmp;
 	}
 
 	private static function fetch_manifest( $force = false ) {
