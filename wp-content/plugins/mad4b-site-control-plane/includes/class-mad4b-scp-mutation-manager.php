@@ -59,7 +59,7 @@ final class MAD4B_SCP_Mutation_Manager {
 		$update = array( 'ID' => $id );
 		foreach ( array( 'post_title', 'post_content', 'post_excerpt', 'post_status' ) as $field ) if ( array_key_exists( $field, $input ) ) $update[ $field ] = $input[ $field ];
 		if ( count( $update ) < 2 ) return new WP_Error( 'mad4b_post_no_changes', 'No mutable post fields were supplied.' );
-		if ( isset( $update['post_status'] ) && 'publish' === $update['post_status'] ) {
+		if ( isset( $update['post_status'] ) && in_array( $update['post_status'], array( 'publish', 'private' ), true ) ) {
 			$type = get_post_type_object( $post->post_type );
 			$cap = $type && isset( $type->cap->publish_posts ) ? $type->cap->publish_posts : 'publish_posts';
 			if ( ! current_user_can( $cap ) ) return new WP_Error( 'mad4b_cannot_publish', 'Current user cannot publish this post type.' );
