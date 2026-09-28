@@ -859,9 +859,14 @@ final class MAD4B_SCP_Developer_Runtime {
 	 * This is not an Ability and cannot be remotely invoked by name.
 	 */
 	public static function lint_workspace_php_file( $absolute_file, $workspace_root ) {
-		$gate = self::runtime_gate( false, array(), true );
-		if ( is_wp_error( $gate ) && 'mad4b_developer_source_binding_mismatch' !== $gate->get_error_code() ) return $gate;
-		if ( 'production' === self::environment() ) return new WP_Error( 'mad4b_developer_workspace_lint_production_denied', 'Workspace lint is never authorized in Production.' );
+		$environment = self::environment();
+		if ( 'production' === $environment ) return new WP_Error( 'mad4b_developer_workspace_lint_production_denied', 'Workspace lint is never authorized in Production.' );
+		if ( ! in_array( $environment, array( 'staging', 'development', 'local' ), true ) ) return new WP_Error( 'mad4b_developer_workspace_lint_environment_denied', 'Workspace lint requires an explicit non-Production environment.' );
+		if ( ! self::developer_flag_enabled() || ! self::direct_execution_enabled() || self::kill_switch_enabled() ) return new WP_Error( 'mad4b_developer_workspace_lint_runtime_not_ready', 'Developer runtime is not ready for workspace lint.' );
+		if ( ! function_exists( 'proc_open' ) ) return new WP_Error( 'mad4b_developer_proc_open_unavailable', 'proc_open is unavailable on this runtime.' );
+		if ( '' === self::prlimit_binary() ) return new WP_Error( 'mad4b_developer_resource_limiter_unavailable', 'Workspace lint requires the Developer resource limiter.' );
+		if ( '' === self::network_sandbox_binary() ) return new WP_Error( 'mad4b_developer_network_isolation_unavailable', 'Workspace lint requires the no-network Developer sandbox backend.' );
+		if ( function_exists( 'posix_geteuid' ) && 0 === (int) posix_geteuid() ) return new WP_Error( 'mad4b_developer_root_execution_denied', 'Developer execution under Unix root is forbidden.' );
 		$root = realpath( (string) $workspace_root );
 		$file = realpath( (string) $absolute_file );
 		$wp_root = realpath( ABSPATH );
