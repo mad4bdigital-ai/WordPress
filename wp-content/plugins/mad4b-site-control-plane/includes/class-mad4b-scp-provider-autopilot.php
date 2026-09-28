@@ -301,6 +301,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 			$governed_steps[] = 'materialize_and_review_generated_adapter_or_register_existing_adapter';
 			$governed_steps[] = 'runtime_read_contract_validation';
 			if ( empty( $candidate['adapter_runtime_available'] ) ) $blockers[] = 'adapter_runtime_unavailable';
+			if ( empty( $candidate['read_ability_count'] ) ) $blockers[] = 'bounded_read_abilities_required';
 			if ( ! empty( $candidate['side_channel_blocked'] ) ) $blockers[] = 'provider_side_channel_blocked';
 		}
 		if ( $target_index >= 3 ) {
