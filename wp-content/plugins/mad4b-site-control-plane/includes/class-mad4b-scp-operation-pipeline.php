@@ -44,22 +44,41 @@ final class MAD4B_SCP_Operation_Pipeline {
 		) );
 	}
 
+	private static function condition_value( $path, array $operation, array $input ) {
+		$path = strtolower( trim( (string) $path ) );
+		if ( 'target_kind' === $path ) {
+			return isset( $input['target_kind'] ) && '' !== trim( (string) $input['target_kind'] )
+				? sanitize_key( (string) $input['target_kind'] )
+				: sanitize_key( isset( $operation['target_kind'] ) ? (string) $operation['target_kind'] : '' );
+		}
+		$source = null;
+		$key = '';
+		if ( 0 === strpos( $path, 'operation.' ) ) {
+			$source = $operation;
+			$key = substr( $path, strlen( 'operation.' ) );
+		} elseif ( 0 === strpos( $path, 'input.' ) ) {
+			$source = $input;
+			$key = substr( $path, strlen( 'input.' ) );
+		} else {
+			return null;
+		}
+		if ( ! is_array( $source ) || '' === $key || false !== strpos( $key, '.' ) || ! array_key_exists( $key, $source ) ) return null;
+		$value = $source[ $key ];
+		if ( is_bool( $value ) ) return $value ? 'true' : 'false';
+		if ( is_int( $value ) || is_float( $value ) ) return (string) $value;
+		if ( is_string( $value ) ) return sanitize_key( $value );
+		return null;
+	}
+
 	private static function condition_matches( $condition, array $operation, array $input ) {
 		$condition = trim( (string) $condition );
 		if ( '' === $condition ) return true;
 		$parts = explode( ':', $condition, 2 );
 		if ( 2 !== count( $parts ) ) return false;
-		$key = sanitize_key( str_replace( '.', '_', (string) $parts[0] ) );
+		$actual = self::condition_value( (string) $parts[0], $operation, $input );
+		if ( null === $actual ) return false;
 		$expected = sanitize_key( (string) $parts[1] );
-		if ( 'target_kind' === $key ) {
-			$actual = isset( $input['target_kind'] ) && '' !== trim( (string) $input['target_kind'] )
-				? sanitize_key( (string) $input['target_kind'] )
-				: sanitize_key( isset( $operation['target_kind'] ) ? (string) $operation['target_kind'] : '' );
-			return $actual === $expected;
-		}
-		if ( 'operation_dependency_impact' === $key ) return ( ! empty( $operation['dependency_impact'] ) ? 'true' : 'false' ) === $expected;
-		if ( 'operation_durable_resume' === $key ) return ( ! empty( $operation['durable_resume'] ) ? 'true' : 'false' ) === $expected;
-		return false;
+		return hash_equals( (string) $expected, (string) $actual );
 	}
 
 
