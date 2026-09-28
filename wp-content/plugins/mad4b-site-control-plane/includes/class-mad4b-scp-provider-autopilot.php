@@ -199,9 +199,9 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'write_abilities' => array(),
 			'generated_php_sha256' => hash( 'sha256', $skeleton ),
 		);
-		if ( $include_source ) $descriptor['generated_php'] = $skeleton;
 		$encoded = wp_json_encode( $descriptor, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$descriptor['candidate_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		if ( $include_source ) $descriptor['generated_php'] = $skeleton;
 		$config = self::config();
 		$ttl = isset( $config['candidate_ttl_seconds'] ) ? max( 60, min( 86400, (int) $config['candidate_ttl_seconds'] ) ) : 3600;
 		$observed_at = time();
