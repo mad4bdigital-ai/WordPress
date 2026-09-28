@@ -230,6 +230,8 @@ for marker in (
     "observe_propose_only",
     "generated_php_sha256",
     "candidate_sha256",
+    "plugin_state_sha256",
+    "provider_candidate_fingerprint",
     "SHADOW_IDENTITY_CERTIFIED",
     "'read_execution_eligible' => false",
     "'write_eligible' => false",
