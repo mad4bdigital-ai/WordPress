@@ -380,4 +380,22 @@ if "'heartbeat'=>function() use ($lock)" not in adapter:
 if "isset($current['heartbeat'])&&is_callable($current['heartbeat'])" not in pipeline:
     raise SystemExit("dynamic pipeline must refresh request-local heartbeat before configured stages")
 
+
+
+for marker in [
+    "consume_publication_acceptance",
+    "mad4b_dynamic_acceptance_receipt_raced",
+    "mad4b_dynamic_acceptance_receipt_consume_failed",
+]:
+    if marker not in adapter:
+        raise SystemExit(f"single-use acceptance marker missing: {marker}")
+
+for marker in [
+    "consume_publication_acceptance",
+    "$dynamic_publication",
+    "mad4b_dynamic_acceptance_runtime_unavailable",
+]:
+    if marker not in mutations:
+        raise SystemExit(f"publication receipt consumption marker missing: {marker}")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
