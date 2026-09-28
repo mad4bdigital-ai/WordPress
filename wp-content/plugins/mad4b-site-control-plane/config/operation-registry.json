@@ -179,6 +179,8 @@
       "mad4b/plugin-transaction-plan",
       "mad4b/dependency-impact",
       "mad4b/provider-candidate-matrix",
+      "mad4b/provider-autopilot-plan",
+      "mad4b/provider-autopilot-status",
       "mad4b/provider-transport-registry-status",
       "mad4b/operation-resume-status"
     ]
@@ -259,5 +261,30 @@
       "binding_type": "ability",
       "ability": "mad4b/operation-resume-status"
     }
+  },
+  "dynamic_provider_autopilot": {
+    "enabled_by_default": true,
+    "mode": "shadow_auto",
+    "environments": {
+      "staging": "shadow_auto",
+      "development": "shadow_auto",
+      "local": "shadow_auto",
+      "production": "observe_propose_only"
+    },
+    "auto_generate_adapter_candidate": true,
+    "auto_shadow_certify_provider": true,
+    "auto_materialize_candidate_code": false,
+    "auto_register_generated_adapter": false,
+    "auto_write_certification": false,
+    "auto_create_authority": false,
+    "auto_enable_mutation": false,
+    "max_automatic_support_level": "L2_read",
+    "promotion_required_for": [
+      "L3_governed_write",
+      "L4_certified_governed",
+      "production"
+    ],
+    "unknown_provider_default": "deny_write",
+    "candidate_ttl_seconds": 3600
   }
 }
