@@ -14,6 +14,11 @@ lifecycle = (PLUGIN / "includes/class-mad4b-scp-plugin-lifecycle.php").read_text
 abilities = (PLUGIN / "includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 transaction = (PLUGIN / "includes/class-mad4b-scp-plugin-transaction.php").read_text(encoding="utf-8")
 resume = (PLUGIN / "includes/class-mad4b-scp-operation-resume.php").read_text(encoding="utf-8")
+activation_state = (PLUGIN / "includes/class-mad4b-scp-plugin-activation-state.php").read_text(encoding="utf-8")
+plugin_package = (PLUGIN / "includes/class-mad4b-scp-plugin-package.php").read_text(encoding="utf-8")
+remote_update = (PLUGIN / "includes/class-mad4b-scp-remote-plugin-update.php").read_text(encoding="utf-8")
+dependency_impact = (PLUGIN / "includes/class-mad4b-scp-dependency-impact-graph.php").read_text(encoding="utf-8")
+transport_registry = (PLUGIN / "includes/class-mad4b-scp-provider-transport-registry.php").read_text(encoding="utf-8")
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 all_php = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in (PLUGIN / "includes").rglob("*.php"))
 
@@ -79,6 +84,17 @@ assert "MAD4B_SCP_Provider_Transport_Registry::route_descriptors()" in isolation
 assert "unknown_routes_fail_closed" in isolation
 assert "internal_retention" in isolation
 assert "Only the isolated JetEngine" not in isolation
+for marker in (
+    "catalog_version_invalid",
+    "unknown_transport_default_invalid",
+    "provider_id_duplicate",
+    "external_visibility_invalid",
+    "route_pattern_invalid",
+    "route_methods_invalid",
+    "callback_class_invalid",
+    "suppress_when_isolation_effective",
+):
+    assert marker in transport_registry, marker
 
 assert "activation_scope" in lifecycle
 assert "get_option( 'active_plugins', array() )" in lifecycle
@@ -89,6 +105,19 @@ assert "mad4b_plugin_network_activation_controls_site" in abilities
 assert "manage_network_plugins" in abilities
 assert "activate_plugin( $plugin, '', 'network' === $scope )" in abilities
 assert "deactivate_plugins( $plugin, false, $network )" in abilities
+assert "mad4b.plugin-activation-state.v1" in activation_state
+assert "get_option( 'active_plugins', array() )" in activation_state
+assert "expected_site_active" in activation_state
+assert "expected_network_active" in activation_state
+assert "mad4b_plugin_activation_state_restore_mismatch" in activation_state
+for source in (plugin_package, remote_update):
+    assert "current_site_active" in source
+    assert "MAD4B_SCP_Plugin_Activation_State::snapshot" in source
+    assert "MAD4B_SCP_Plugin_Activation_State::restore" in source
+
+assert "infer_provider_id" in dependency_impact
+assert "certified-providers.json" in dependency_impact
+assert "'provider_id_inferred' => $provider_inferred" in dependency_impact
 
 assert "mad4b.plugin-transaction-plan.v1" in transaction
 assert "generic_mutation_dispatch" in transaction
