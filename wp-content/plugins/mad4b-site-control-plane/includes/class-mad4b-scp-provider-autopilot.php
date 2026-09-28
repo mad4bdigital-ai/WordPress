@@ -104,7 +104,10 @@ final class MAD4B_SCP_Provider_Autopilot {
 	private static function effective_mode( array $config ) {
 		$environment = self::environment();
 		$modes = isset( $config['environments'] ) && is_array( $config['environments'] ) ? $config['environments'] : array();
-		$mode = isset( $modes[ $environment ] ) ? sanitize_key( (string) $modes[ $environment ] ) : sanitize_key( isset( $config['mode'] ) ? (string) $config['mode'] : 'observe_propose_only' );
+		// Unknown/custom environments must never inherit a permissive default mode.
+		// Only explicitly reviewed environment keys may enable shadow automation.
+		if ( ! isset( $modes[ $environment ] ) ) return 'observe_propose_only';
+		$mode = sanitize_key( (string) $modes[ $environment ] );
 		return in_array( $mode, array( 'shadow_auto', 'observe_propose_only' ), true ) ? $mode : 'observe_propose_only';
 	}
 
@@ -147,7 +150,9 @@ final class MAD4B_SCP_Provider_Autopilot {
 		$seed = str_replace( ' ', '_', ucwords( strtolower( trim( $seed ) ) ) );
 		$seed = preg_replace( '/[^A-Za-z0-9_]/', '', (string) $seed );
 		if ( '' === $seed || ctype_digit( substr( $seed, 0, 1 ) ) ) $seed = 'Generated_' . $seed;
-		return 'MAD4B_SCP_Generated_' . $seed . '_Adapter_Candidate';
+		$plugin_file = self::normalize_plugin_file( isset( $candidate['plugin_file'] ) ? $candidate['plugin_file'] : '' );
+		$identity_suffix = substr( hash( 'sha256', $plugin_file ), 0, 12 );
+		return 'MAD4B_SCP_Generated_' . $seed . '_' . $identity_suffix . '_Adapter_Candidate';
 	}
 
 	private static function adapter_id_for( array $candidate ) {
@@ -155,7 +160,8 @@ final class MAD4B_SCP_Provider_Autopilot {
 			? sanitize_key( (string) $candidate['family'] )
 			: sanitize_key( basename( dirname( isset( $candidate['plugin_file'] ) ? (string) $candidate['plugin_file'] : 'provider' ) ) );
 		if ( '' === $base || '.' === $base ) $base = 'provider';
-		return 'generated-' . $base;
+		$plugin_file = self::normalize_plugin_file( isset( $candidate['plugin_file'] ) ? $candidate['plugin_file'] : '' );
+		return 'generated-' . $base . '-' . substr( hash( 'sha256', $plugin_file ), 0, 12 );
 	}
 
 	private static function adapter_candidate( array $candidate, $mode ) {
@@ -202,8 +208,12 @@ final class MAD4B_SCP_Provider_Autopilot {
 	private static function shadow_certification( array $candidate, $mode, array $adapter_candidate ) {
 		$active = ! empty( $candidate['active'] );
 		$side_channel_blocked = ! empty( $candidate['side_channel_blocked'] );
+		$plugin_state_sha = isset( $adapter_candidate['plugin_state_sha256'] ) ? strtolower( (string) $adapter_candidate['plugin_state_sha256'] ) : '';
+		$provider_fingerprint = isset( $adapter_candidate['provider_candidate_fingerprint'] ) ? strtolower( (string) $adapter_candidate['provider_candidate_fingerprint'] ) : '';
 		$identity_ok = '' !== self::normalize_plugin_file( isset( $candidate['plugin_file'] ) ? $candidate['plugin_file'] : '' )
-			&& '' !== trim( isset( $candidate['plugin_version'] ) ? (string) $candidate['plugin_version'] : '' );
+			&& '' !== trim( isset( $candidate['plugin_version'] ) ? (string) $candidate['plugin_version'] : '' )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $plugin_state_sha )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $provider_fingerprint );
 		$shadow_ok = $identity_ok && $active && ! $side_channel_blocked;
 		$cert = array(
 			'contract' => self::SHADOW_CERT_CONTRACT,
@@ -291,6 +301,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 			$governed_steps[] = 'materialize_and_review_generated_adapter_or_register_existing_adapter';
 			$governed_steps[] = 'runtime_read_contract_validation';
 			if ( empty( $candidate['adapter_runtime_available'] ) ) $blockers[] = 'adapter_runtime_unavailable';
+			if ( empty( $candidate['read_ability_count'] ) ) $blockers[] = 'bounded_read_abilities_required';
 			if ( ! empty( $candidate['side_channel_blocked'] ) ) $blockers[] = 'provider_side_channel_blocked';
 		}
 		if ( $target_index >= 3 ) {

@@ -215,6 +215,10 @@ for invariant in (
     "'auto_write_certification' => false",
     "'auto_create_authority' => false",
     "'arbitrary_provider_execution'",
+    "'adapter_registered' => $adapter_registered",
+    "'adapter_runtime_available' => $adapter_runtime_available",
+    "'read_ability_count' => $read_ability_count",
+    "$read_ability_count > 0",
 ):
     assert invariant in plugin_discovery, invariant
 assert "MAD4B_SCP_Provider_Autopilot::proposal_for_candidate" in plugin_discovery
@@ -254,6 +258,11 @@ for marker in (
     "functional_ready",
     "enter_governed_promotion_lane",
     "promotion_plan_sha256",
+    "bounded_read_abilities_required",
+    "if ( ! isset( $modes[ $environment ] ) ) return 'observe_propose_only';",
+    "identity_suffix",
+    "preg_match( '/^[a-f0-9]{64}$/', $plugin_state_sha )",
+    "preg_match( '/^[a-f0-9]{64}$/', $provider_fingerprint )",
 ):
     assert marker in provider_autopilot, marker
 
