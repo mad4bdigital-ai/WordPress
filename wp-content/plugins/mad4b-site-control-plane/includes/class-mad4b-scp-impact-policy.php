@@ -49,10 +49,12 @@ final class MAD4B_SCP_Impact_Policy {
 			} elseif ( in_array( $ability_name, array( 'mad4b/mutation-undo', 'context/rollback-materialized-brand-draft' ), true ) || false !== strpos( $ability_name, 'rollback' ) ) {
 				$operation_type = 'recovery';
 				$mutation_kind = 'rollback';
-			} elseif ( in_array( $ability_name, array( 'mad4b/content-update-post', 'mad4b/content-create-post' ), true ) ) {
-				$status = isset( $input['post_status'] ) ? sanitize_key( (string) $input['post_status'] ) : '';
+			} elseif ( in_array( $ability_name, array( 'mad4b/content-update-post', 'mad4b/content-create-post', 'mad4b/content-apply-bundle' ), true ) ) {
+				$status = 'mad4b/content-apply-bundle' === $ability_name && isset( $input['post'] ) && is_array( $input['post'] ) && isset( $input['post']['post_status'] )
+					? sanitize_key( (string) $input['post']['post_status'] )
+					: ( isset( $input['post_status'] ) ? sanitize_key( (string) $input['post_status'] ) : '' );
 				$operation_type = in_array( $status, array( 'publish', 'private' ), true ) ? 'content_publish' : 'content_change';
-				$mutation_kind = 'publish' === $status ? 'publish' : ( 'private' === $status ? 'visibility_change' : ( false !== strpos( $ability_name, 'create' ) ? 'create' : 'update' ) );
+				$mutation_kind = 'publish' === $status ? 'publish' : ( 'private' === $status ? 'visibility_change' : ( 'mad4b/content-apply-bundle' === $ability_name && isset( $input['mode'] ) && 'create' === sanitize_key( (string) $input['mode'] ) ? 'create' : ( false !== strpos( $ability_name, 'create' ) ? 'create' : 'update' ) ) );
 			} elseif ( in_array( $ability_name, array( 'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/provider-canary-execute' ), true ) ) {
 				$operation_type = 'system_admin';
 				if ( 'mad4b/plugin-activate' === $ability_name ) $mutation_kind = 'activate';
@@ -88,7 +90,7 @@ final class MAD4B_SCP_Impact_Policy {
 		$approval_required = ! $readonly && self::requires_approval( $ability_name, $provider, $input );
 		$approval_lane = $readonly ? 'none' : ( $ai_eligible ? 'ai_autonomous' : 'human_only' );
 		$risk_tier = $readonly ? 'none' : ( 'exceptional' === $impact ? 'exceptional' : ( 'high' === $impact ? 'high' : ( in_array( $operation_type, array( 'content_change', 'provider_configuration', 'governed_mutation' ), true ) ? 'medium' : 'low' ) ) );
-		$rollback_evidence_required = ! $readonly && in_array( $operation_type, array( 'certified_package', 'recovery', 'system_admin', 'provider_configuration', 'development_source' ), true );
+		$rollback_evidence_required = ! $readonly && ( 'mad4b/content-apply-bundle' === $ability_name || in_array( $operation_type, array( 'certified_package', 'recovery', 'system_admin', 'provider_configuration', 'development_source' ), true ) );
 
 		$side_effect_scope = 'none';
 		if ( ! $readonly ) {
@@ -144,13 +146,15 @@ final class MAD4B_SCP_Impact_Policy {
 		if ( 0 === strpos( $ability_name, 'mad4b/developer-' ) && 'mad4b/developer-runtime-status' !== $ability_name ) return 'high';
 		$high_core = array(
 			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/mutation-undo',
-			'mad4b/provider-canary-execute',
+			'mad4b/provider-canary-execute', 'mad4b/content-pipeline-settings-update',
 		);
 		if ( in_array( $ability_name, $high_core, true ) ) return 'high';
-		if ( in_array( $ability_name, array( 'mad4b/content-update-post', 'mad4b/content-create-post' ), true )
-			&& is_array( $input )
-			&& isset( $input['post_status'] )
-			&& in_array( $input['post_status'], array( 'publish', 'private' ), true ) ) return 'high';
+		if ( in_array( $ability_name, array( 'mad4b/content-update-post', 'mad4b/content-create-post', 'mad4b/content-apply-bundle' ), true ) && is_array( $input ) ) {
+			$status = 'mad4b/content-apply-bundle' === $ability_name && isset( $input['post'] ) && is_array( $input['post'] ) && isset( $input['post']['post_status'] )
+				? sanitize_key( (string) $input['post']['post_status'] )
+				: ( isset( $input['post_status'] ) ? sanitize_key( (string) $input['post_status'] ) : '' );
+			if ( in_array( $status, array( 'publish', 'private' ), true ) ) return 'high';
+		}
 		if ( 'core' !== $provider && 'media' !== $provider ) return 'high';
 		$impact = 'low';
 		$filtered = apply_filters( 'mad4b_scp_mutation_impact', $impact, $ability_name, $provider, $input );
