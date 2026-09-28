@@ -38,7 +38,7 @@ final class MAD4B_SCP_Operation_Registry {
 			) );
 		}
 		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( 'mad4b/wordpress-operation-discover' ) ) {
-			wp_register_ability( 'mad4b/universal-operation-discover', array(
+			wp_register_ability( 'mad4b/wordpress-operation-discover', array(
 				'label' => 'Discover Governed WordPress Operation',
 				'description' => 'Resolve a requested semantic operation to an exact governed planner/executor pair without creating authority or executing mutation.',
 				'category' => 'mad4b-read',
@@ -79,13 +79,38 @@ final class MAD4B_SCP_Operation_Registry {
 			self::$catalog = new WP_Error( 'mad4b_operation_registry_invalid', 'MAD4B operation registry catalog contract is invalid.' );
 			return self::$catalog;
 		}
+		if ( 1 !== ( isset( $data['version'] ) ? (int) $data['version'] : 0 )
+			|| 'deny' !== ( isset( $data['default_mutation_policy'] ) ? (string) $data['default_mutation_policy'] : '' )
+			|| false !== ( isset( $data['generic_shell'] ) ? $data['generic_shell'] : null )
+			|| false !== ( isset( $data['arbitrary_operation_ids'] ) ? $data['arbitrary_operation_ids'] : null ) ) {
+			self::$catalog = new WP_Error( 'mad4b_operation_registry_policy_invalid', 'MAD4B operation registry safety policy is invalid.' );
+			return self::$catalog;
+		}
 		$ids = array();
 		foreach ( $data['operations'] as $row ) {
 			if ( ! is_array( $row ) || empty( $row['id'] ) || empty( $row['planner'] ) || empty( $row['executor'] ) ) {
 				self::$catalog = new WP_Error( 'mad4b_operation_registry_item_invalid', 'MAD4B operation registry contains an incomplete operation.' );
 				return self::$catalog;
 			}
-			$id = sanitize_key( str_replace( '.', '-', (string) $row['id'] ) );
+			$id = strtolower( trim( (string) $row['id'] ) );
+			$planner = strtolower( trim( (string) $row['planner'] ) );
+			$executor = strtolower( trim( (string) $row['executor'] ) );
+			if ( ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,95}$/', $id ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_id_invalid', 'MAD4B operation registry contains an invalid operation id.' );
+				return self::$catalog;
+			}
+			if ( ! preg_match( '#^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$#', $planner ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_planner_invalid', 'MAD4B operation registry contains an invalid planner ability name.' );
+				return self::$catalog;
+			}
+			if ( 'exact_executor_from_plan' !== $executor && ! preg_match( '#^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$#', $executor ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_executor_invalid', 'MAD4B operation registry contains an invalid executor ability name.' );
+				return self::$catalog;
+			}
+			if ( isset( $row['required_runtime'] ) && ! is_bool( $row['required_runtime'] ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_required_runtime_invalid', 'MAD4B operation registry required_runtime must be boolean.' );
+				return self::$catalog;
+			}
 			if ( isset( $ids[ $id ] ) ) {
 				self::$catalog = new WP_Error( 'mad4b_operation_registry_duplicate', 'MAD4B operation registry contains duplicate operation ids.' );
 				return self::$catalog;
