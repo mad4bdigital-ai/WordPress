@@ -764,13 +764,23 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$out=array(); foreach(array('post_title','post_content','post_excerpt','post_status','post_parent','post_author') as $k) if(array_key_exists($k,$post)) $out[$k]=in_array($k,array('post_parent','post_author'),true)?absint($post[$k]):(string)$post[$k]; return $out;
 	}
 
+	private function not_started_error($error){
+		if(!is_wp_error($error)) $error=new WP_Error('mad4b_dynamic_not_started','Dynamic content mutation did not start.');
+		$code=$error->get_error_code();
+		$data=$error->get_error_data($code);
+		if(!is_array($data)) $data=array();
+		$data['mad4b_execution_state']=array('contract'=>'mad4b.execution-state.v1','started'=>false);
+		$error->add_data($data,$code);
+		return $error;
+	}
+
 	public function apply_bundle($input=array()){
 		$input=is_array($input)?$input:array();
 		$pre=$this->validate_bundle($input,false);
-		if(is_wp_error($pre)) return $pre;
+		if(is_wp_error($pre)) return $this->not_started_error($pre);
 		$binding=$this->binding($pre['post_type'],$pre['operation_key']);
 		$lock=$this->acquire_mutation_lock($pre['mode'],$pre['post_type'],$pre['post_id'],$binding);
-		if(is_wp_error($lock)) return $lock;
+		if(is_wp_error($lock)) return $this->not_started_error($lock);
 		try{
 			return $this->apply_bundle_locked($input);
 		} finally {
@@ -780,7 +790,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	private function apply_bundle_locked(array $input){
 		$v=$this->validate_bundle($input,true);
-		if(is_wp_error($v)) return $v;
+		if(is_wp_error($v)) return $this->not_started_error($v);
 
 		$binding=$this->binding($v['post_type'],$v['operation_key']);
 		$id=$v['post_id'];
@@ -788,8 +798,8 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 		if($v['mode']==='create'){
 			$existing=$this->bound_post($v['post_type'],$binding);
-			if(is_wp_error($existing)) return $existing;
-			if($existing) return new WP_Error('mad4b_dynamic_binding_exists','operation_key already created a post.',array('post_id'=>$existing));
+			if(is_wp_error($existing)) return $this->not_started_error($existing);
+			if($existing) return $this->not_started_error(new WP_Error('mad4b_dynamic_binding_exists','operation_key already created a post.',array('post_id'=>$existing)));
 			$arr=array_merge(array('post_type'=>$v['post_type']),$this->post_fields($input['post']));
 			$arr['meta_input']=array(self::BINDING=>$binding);
 			$id=wp_insert_post(wp_slash($arr),true);
