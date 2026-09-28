@@ -67,6 +67,18 @@ for marker in [
     "expected_bundle_sha256",
     "mad4b_dynamic_bundle_drift",
     "bundle_sha256_for_input",
+    "MAX_BUNDLE_INPUT_BYTES",
+    "MAX_META_TOTAL_BYTES",
+    "MAX_META_VALUE_BYTES",
+    "MAX_EVIDENCE_BYTES",
+    "MAX_ACCEPTANCE_TARGET_BYTES",
+    "MAX_VALIDATION_BYTES",
+    "json_size_bytes",
+    "mad4b_dynamic_input_too_large",
+    "mad4b_dynamic_meta_value_too_large",
+    "mad4b_dynamic_meta_total_too_large",
+    "mad4b_dynamic_aux_payload_too_large",
+
 
     "expected_state_sha256",
 
