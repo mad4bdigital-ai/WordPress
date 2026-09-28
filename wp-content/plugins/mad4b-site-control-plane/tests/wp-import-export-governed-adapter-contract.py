@@ -18,6 +18,22 @@ required = [
     'missing_classes',
     'autoload_or_bootstrap_mutation_attempted',
     'filesystem_scan_performed',
+    'ensure_import_runtime_loaded',
+    'provider_readonly_autoload_attempted',
+    'provider_readonly_autoload_succeeded',
+    'provider_readonly_autoload_blocker',
+    'provider_readonly_autoload_exact_artifact_required',
+    'provider_readonly_autoload_class_allowlist',
+    "MAD4B_SCP_Provider_Contracts::runtime_status('wp-import-export',true)",
+    "'exact_import_artifact_not_certified'",
+    "'PMXI_Model'",
+    "'PMXI_Model_Record'",
+    "'PMXI_Model_List'",
+    "'PMXI_Import_Record'",
+    "'PMXI_Import_List'",
+    "is_callable(array($plugin,'autoload'))",
+    "is_callable(array($plugin,'__autoload'))",
+    "call_user_func(array($plugin,$loader),$class)",
     'mad4b.bulk-content-io-execution-evidence.v1',
     'mad4b.wp-all-import.server-local-wp-cli.v1',
     'mad4b.wp-all-export.server-local-record-execute.v1',
@@ -115,6 +131,15 @@ assert "'wp-import-export/run-import','wp-import-export/run-export'" in src
 assert "'content' => array(), 'admin' => array()" in src
 assert "protected function mutation_requires_certification() { return false; }" not in src
 assert "protected function provider_certification( $available ) { return null; }" not in src
+
+# Exact-artifact runtime bootstrap may only call the provider-owned autoloader for a fixed class allowlist.
+assert "WP_PLUGIN_DIR . '/wp-all-import-pro" not in src
+assert 'require_once WP_PLUGIN_DIR' not in src
+assert 'glob(' not in src
+assert 'scandir(' not in src
+assert "'autoload_or_bootstrap_mutation_attempted'=>false" in src
+assert "'filesystem_scan_performed'=>false" in src
+assert "'content' => array(), 'admin' => array()" in src
 
 # Read/plan code must not invoke provider network/cron execution or accept raw provider keys.
 for forbidden in [
