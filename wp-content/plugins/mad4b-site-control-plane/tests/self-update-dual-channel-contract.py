@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import json
 import subprocess
 
 root = Path("wp-content/plugins/mad4b-site-control-plane")
@@ -13,6 +14,7 @@ commit_guard = (root / "includes" / "class-mad4b-scp-execution-commit-guard.php"
 governance = (root / "includes" / "class-mad4b-scp-governance-abilities.php").read_text(encoding="utf-8")
 bootstrap = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 readback_runtime = (root / "tests" / "self-update-readback-runtime.php").read_text(encoding="utf-8")
+handoff = json.loads((root / "config" / "staging-deployment-handoff.json").read_text(encoding="utf-8"))
 
 required_self_update = [
     "final class MAD4B_SCP_Self_Update",
@@ -229,6 +231,31 @@ for marker in (
 ):
     if marker not in bootstrap:
         raise SystemExit(f"self-update bootstrap invariant missing: {marker}")
+
+channels = handoff.get("self_update", {}).get("channels", {})
+if handoff.get("self_update", {}).get("purpose") != "permanent_multi_channel_control_plane_updates_after_first_bootstrap":
+    raise SystemExit("deployment handoff still describes the obsolete dual-channel self-update model")
+for channel in ("wordpress_native_update", "governed_file_upload", "governed_native_release_pull"):
+    if channel not in channels:
+        raise SystemExit(f"deployment handoff self-update channel missing: {channel}")
+native_handoff = channels["governed_native_release_pull"]
+for key, expected in {
+    "ability_plan": "mad4b/control-plane-native-plan",
+    "ability_apply": "mad4b/control-plane-native-apply",
+    "caller_supplied_url_allowed": False,
+    "caller_supplied_path_allowed": False,
+    "caller_package_bytes_allowed": False,
+    "target_derived_from_release_manifest": True,
+    "staging_only": True,
+    "exact_plan_required": True,
+    "exact_one_time_approval_required": True,
+    "release_verdict_required": True,
+    "production_allowed": False,
+}.items():
+    if native_handoff.get(key) != expected:
+        raise SystemExit(f"deployment handoff governed native pull invariant mismatch: {key}")
+if handoff.get("self_update", {}).get("forbidden", {}).get("production_remote_native_pull") is not True:
+    raise SystemExit("deployment handoff does not explicitly forbid Production remote native pull")
 
 # Repository-root publishing is deliberately governed in a separate root-governance PR.
 # This plugin contract only trusts the fixed repository-owned Release manifest.
