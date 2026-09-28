@@ -265,13 +265,14 @@ for marker in (
     "authorization",
     "executor",
     "readback",
-    "exact_executor_from_plan",
     "generic_mutation_dispatch",
     "arbitrary_stage_execution",
     "pipeline_sha256",
 ):
     assert marker in pipeline, marker
 assert "wp_register_ability( 'mad4b/operation-pipeline-compile'" in pipeline
+assert operation["stage_bindings"]["exact_execute"]["binding_type"] == "operation_executor"
+assert any(row["executor"] == "exact_executor_from_plan" for row in operation["operations"])
 
 assert "mad4b.plugin-transaction-plan.v1" in transaction
 assert "generic_mutation_dispatch" in transaction
