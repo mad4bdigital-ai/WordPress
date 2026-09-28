@@ -1,4 +1,7 @@
 from pathlib import Path
+import subprocess
+import tempfile
+import textwrap
 
 root = Path(__file__).resolve().parents[1]
 transport = (root / "includes" / "class-mad4b-scp-transport-context.php").read_text(encoding="utf-8")
@@ -69,6 +72,62 @@ for marker in required_authorization_boundary:
     if marker not in authorization:
         raise SystemExit("execution callback boundary invariant missing: " + marker)
 
+# Execute the real central permission wrapper against the WordPress 7.1
+# bool|WP_Error contract. This reproduces the live failure without booting a
+# complete WordPress site and proves that only the exact successful preflight
+# decision becomes true; every other non-boolean value fails closed.
+with tempfile.TemporaryDirectory() as tmp:
+    harness = Path(tmp) / "authorization-permission-wrapper-runtime.php"
+    harness.write_text(textwrap.dedent(r"""<?php
+define( 'ABSPATH', __DIR__ );
+
+class WP_Error {
+    private $code;
+    public function __construct( $code = 'error' ) { $this->code = (string) $code; }
+    public function get_error_code() { return $this->code; }
+}
+
+function is_wp_error( $value ) { return $value instanceof WP_Error; }
+function sanitize_key( $value ) {
+    return strtolower( preg_replace( '/[^a-z0-9_\\-]/', '', (string) $value ) );
+}
+
+require $argv[1];
+
+function wrapped_permission_result( $result ) {
+    $args = array(
+        'execute_callback' => static function () { return true; },
+        'permission_callback' => static function ( $input = null ) use ( $result ) { return $result; },
+        'category' => 'mad4b-write',
+        'meta' => array(
+            'annotations' => array( 'readonly' => false ),
+            'mcp' => array(
+                'mad4b_governed_write_authority' => 'runtime-test',
+                'surface' => 'write',
+            ),
+        ),
+    );
+    $wrapped = MAD4B_SCP_Authorization::wrap_execution_boundary( $args, 'mad4b/plugin-package-apply' );
+    return call_user_func( $wrapped['permission_callback'], array() );
+}
+
+if ( true !== wrapped_permission_result( array( 'allowed' => true, 'reason_code' => 'preflight_allowed' ) ) ) exit( 10 );
+if ( false !== wrapped_permission_result( array( 'allowed' => true, 'reason_code' => 'execution_claimed' ) ) ) exit( 11 );
+if ( false !== wrapped_permission_result( array( 'allowed' => false, 'reason_code' => 'preflight_allowed' ) ) ) exit( 12 );
+if ( false !== wrapped_permission_result( array( 'allowed' => true ) ) ) exit( 13 );
+if ( true !== wrapped_permission_result( true ) ) exit( 14 );
+if ( false !== wrapped_permission_result( false ) ) exit( 15 );
+$error = new WP_Error( 'denied' );
+if ( $error !== wrapped_permission_result( $error ) ) exit( 16 );
+if ( false !== wrapped_permission_result( 'truthy-but-invalid' ) ) exit( 17 );
+
+echo "mad4b.authorization-permission-wrapper.runtime.v1: PASS\\n";
+"""), encoding="utf-8")
+    subprocess.run(
+        ["php", str(harness), str(root / "includes" / "class-mad4b-scp-authorization.php")],
+        check=True,
+    )
+
 if "'mad4b_approval_replay_denied' !== (string) $error->get_error_code()" in authorization:
     raise SystemExit("remote permission denial audit must not hide non-replay denial reason codes")
 
@@ -80,4 +139,4 @@ if "array( 'mad4b/write-execute', 'mad4b/developer-execute', 'mad4b/enrollment-e
 if "mad4b/developer-breakglass" in dispatch_catalog:
     raise SystemExit("Developer Breakglass must never enter the compact ChatGPT dispatcher inventory")
 
-print("mad4b.write-dispatch-nested-transport.contract.v6: PASS")
+print("mad4b.write-dispatch-nested-transport.contract.v7: PASS")

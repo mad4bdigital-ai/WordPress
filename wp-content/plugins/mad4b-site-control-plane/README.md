@@ -4,7 +4,13 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.74**.
+Current plugin version: **0.4.0-rc.75**.
+
+### rc.75 WordPress Ability permission contract + release-identity closure
+
+rc.75 follows the merged #143 governance fix and gives that live-defect repair a distinct immutable release identity instead of publishing different source under the already-issued rc.74 version. It also executes the real central permission wrapper in CI against the WordPress 7.1 `bool|WP_Error` contract: only the exact `allowed=true` + `reason_code=preflight_allowed` structured decision becomes `true`; booleans and `WP_Error` retain their semantics and all other non-boolean values fail closed.
+
+The #143 reconciliation schema change remains runtime-bounded by the reviewed Ability allowlist, exact provider mapping, exact live inventory fingerprints and exact missing-set equality. No Production, Breakglass, raw-SQL, wildcard-grant, approval or retry authority is widened.
 
 ### rc.74 Developer host hardening + maintainability closure
 
