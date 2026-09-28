@@ -1694,6 +1694,23 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				$observation
 			);
 			if ( is_wp_error( $ledger ) ) return $ledger;
+			if ( ! empty( $ledger['terminal'] ) && 'released_verified_no_effect' === ( isset( $ledger['terminal_status'] ) ? (string) $ledger['terminal_status'] : '' ) ) {
+				return array_merge(
+					$observation,
+					array(
+						'status' => 'verified_no_effect',
+						'durable_observation_count' => isset( $ledger['observation_count'] ) ? (int) $ledger['observation_count'] : 0,
+						'durable_observation_elapsed_seconds' => isset( $ledger['elapsed_seconds'] ) ? (int) $ledger['elapsed_seconds'] : 0,
+						'minimum_observation_interval_seconds' => isset( $ledger['minimum_interval_seconds'] ) ? (int) $ledger['minimum_interval_seconds'] : MAD4B_SCP_Durable_Execution::NO_EFFECT_MIN_OBSERVATION_SECONDS,
+						'idempotency_released' => true,
+						'safe_to_retry' => true,
+						'reconciliation_ref' => isset( $ledger['reconciliation_ref'] ) ? (string) $ledger['reconciliation_ref'] : '',
+						'idempotency_scope_key' => (string) $identity['scope_key'],
+						'idempotency_key' => (string) $identity['idempotency_key'],
+						'late_reconciliation_idempotent' => true,
+					)
+				);
+			}
 			$count = isset( $ledger['observation_count'] ) ? (int) $ledger['observation_count'] : 0;
 			$elapsed = isset( $ledger['elapsed_seconds'] ) ? (int) $ledger['elapsed_seconds'] : 0;
 			$minimum = isset( $ledger['minimum_interval_seconds'] ) ? (int) $ledger['minimum_interval_seconds'] : MAD4B_SCP_Durable_Execution::NO_EFFECT_MIN_OBSERVATION_SECONDS;
