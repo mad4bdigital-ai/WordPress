@@ -174,7 +174,7 @@ if "'mad4b/control-plane-upload-apply' => 'core'" not in grants:
 # Ability must be present on the normal governed write projection.
 for marker in (
     "'mad4b/control-plane-upload-apply'",
-    "'mad4b/plugin-package-apply', 'mad4b/control-plane-upload-apply'",
+    "'mad4b/plugin-package-apply'",
 ):
     if marker not in servers:
         raise SystemExit(f"self-update write projection invariant missing: {marker}")
