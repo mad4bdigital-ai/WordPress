@@ -90,7 +90,12 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'contract' => self::CONTRACT,
 			'discovery_only' => true,
 			'auto_install' => false,
-			'auto_generate_adapter' => false,
+			'auto_generate_adapter' => true,
+			'auto_generate_adapter_scope' => 'candidate_only',
+			'auto_certify_provider' => true,
+			'auto_certify_provider_scope' => 'shadow_identity_only',
+			'auto_register_generated_adapter' => false,
+			'auto_write_certification' => false,
 			'auto_create_authority' => false,
 			'unknown_plugin_write_default' => 'deny',
 			'plugins' => $items,
@@ -242,7 +247,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 
 			$level = 'L0_inventory';
 			$safe_actions = array( 'inventory', 'status' );
-			$blocked_actions = array( 'auto_generate_adapter', 'auto_create_authority', 'auto_enable_mutation', 'arbitrary_provider_execution' );
+			$blocked_actions = array( 'auto_register_generated_adapter', 'auto_write_certification', 'auto_create_authority', 'auto_enable_mutation', 'arbitrary_provider_execution' );
 			$next_gate = 'lifecycle_policy_review';
 
 			if ( 'excluded_high_risk' !== $coverage_state ) {
@@ -311,6 +316,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 			);
 			$encoded = wp_json_encode( $row, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			$row['candidate_fingerprint'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+			$row['autopilot'] = class_exists( 'MAD4B_SCP_Provider_Autopilot' )
+				? MAD4B_SCP_Provider_Autopilot::proposal_for_candidate( $row )
+				: array( 'enabled' => false, 'reason' => 'provider_autopilot_unavailable' );
 			$items[] = $row;
 			if ( isset( $counts[ $level ] ) ) ++$counts[ $level ];
 		}
@@ -325,6 +333,11 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'network_request_sent' => false,
 			'authority_created' => false,
 			'mutation_auto_enabled' => false,
+			'autopilot_default_enabled' => true,
+			'autopilot_auto_generate_adapter_candidate' => true,
+			'autopilot_auto_shadow_certify_provider' => true,
+			'autopilot_auto_register_generated_adapter' => false,
+			'autopilot_auto_write_certification' => false,
 			'unknown_plugin_write_default' => 'deny',
 			'levels' => array(
 				'L0_inventory' => 'inventory/status only',
