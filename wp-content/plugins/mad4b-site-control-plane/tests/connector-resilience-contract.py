@@ -164,6 +164,12 @@ for marker in [
 ]:
     require(servers, marker, "direct ChatGPT read allowlist invariant")
 
+direct_helper = servers.split("public static function chatgpt_direct_read_transport_tools()", 1)[1].split("public static function chatgpt_dispatch_transport_tools()", 1)[0]
+require(direct_helper, "MAD4B_SCP_Full_Staging_Authority::HANDSHAKE_ABILITY", "session-safe full authority direct tool")
+for forbidden in ["MAD4B_SCP_Full_Staging_Authority::PLAN_ABILITY", "MAD4B_SCP_Full_Staging_Authority::STATUS_ABILITY"]:
+    if forbidden in direct_helper:
+        raise SystemExit("deep Full Staging Authority read leaked into direct ChatGPT catalog: " + forbidden)
+
 
 for marker in [
     "const SESSION_SAFE_REPORT_ABILITY = 'mad4b/session-safe-diagnostics'",
