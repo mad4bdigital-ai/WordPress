@@ -4,15 +4,21 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.77**.
+Current plugin version: **0.4.0-rc.78**.
 
-### rc.77 exact WP All Import read-runtime bootstrap
+### rc.78 exact WP All Import read-runtime bootstrap
 
-rc.77 closes the live REST/MCP compatibility gap discovered after the exact WP All Import Pro 5.0.8 package was installed on ETG Staging. WP All Import can expose `PMXI_Plugin` while leaving its model autoloader unavailable in a non-admin REST request, so governed read/plan abilities could report an exact certified artifact yet still miss `PMXI_Import_Record` and `PMXI_Import_List`.
+rc.78 closes the live REST/MCP compatibility gap discovered after the exact WP All Import Pro 5.0.8 package was installed on ETG Staging. WP All Import can expose `PMXI_Plugin` while leaving its model classes unloaded in a non-admin REST/MCP request, so governed read/plan abilities could report an exact certified artifact yet still miss `PMXI_Import_Record` and `PMXI_Import_List`.
 
-The adapter now performs a bounded **read-only provider autoload bootstrap** only when the composite WP Import/Export runtime is exact-certified and its import integrity manifest has no missing or mismatched files. It calls the provider-owned `PMXI_Plugin::autoload()` (or reviewed legacy `__autoload()`) for a fixed five-class dependency allowlist: `PMXI_Model`, `PMXI_Model_Record`, `PMXI_Model_List`, `PMXI_Import_Record`, and `PMXI_Import_List`. It does not scan the filesystem, accept caller paths, require vendor files directly, access cron URLs, expose secrets, grant authority, or mount Import/Export execution abilities.
+The adapter now performs a bounded **read-only provider autoload bootstrap** only after the composite WP Import/Export runtime is exact-certified and the import integrity manifest is present with zero missing or mismatched files. It disables implicit pre-certification `class_exists()` autoload for the Import runtime gate and calls only the provider-owned `PMXI_Plugin::autoload()` (or reviewed legacy `__autoload()`) for the fixed dependency allowlist `PMXI_Model`, `PMXI_Model_Record`, `PMXI_Model_List`, `PMXI_Import_Record`, and `PMXI_Import_List`.
 
-Provider behavioral execution, dry-run parity, rollback and operation-receipt gates remain unchanged and fail closed. This fix restores the exact-certified **read/plan runtime** without promoting high-risk `run-import` or `run-export` execution.
+No caller-controlled path, direct vendor require, filesystem scan, provider execution, cron request, secret exposure, grant widening, Production mutation, Breakglass, or Raw SQL is introduced. High-risk `run-import` and `run-export` remain unmounted and execution certification remains fail-closed. CI includes a plain WordPress/REST-style exact-package bootstrap regression in addition to PHP 7.4/8.3 contracts and the existing execution-shadowed composite runtime proof.
+
+### rc.77 Session-safe composite diagnostics
+
+rc.77 removes the need for large parallel MCP status fan-out. The new `mad4b/session-safe-diagnostics` read ability runs the fixed identity/runtime/certification/providers diagnostic sequence inside one generation-fenced WordPress request, returns only bounded allowlisted summaries, and enforces a hard 16 KiB response cap with deterministic summary/digest reduction. Runtime generation drift invalidates the whole report. The ability is read-only, non-authorizing, and cannot mutate Production.
+
+Detailed diagnostic abilities remain in the governed logical/read catalog for deliberate single-scope follow-up, but broad status tools are no longer projected directly onto `mad4b-chatgpt`. Composite health checks use the session-safe report; deeper inspection uses `mad4b-read` or one `read-execute` target at a time.
 
 ### rc.76 Brand materialization provider preflight and bounded failure evidence
 

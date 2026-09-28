@@ -191,19 +191,29 @@ for marker in (
         raise SystemExit(f"same-request self-update runtime regression fixture missing: {marker}")
 subprocess.run(["php", str(root / "tests" / "self-update-readback-runtime.php")], check=True)
 
-# Read-side discovery/status must be projected to both normal read and ChatGPT catalogs.
+# Read-side plans remain directly projectable where operator action needs them.
+# Broad update status remains in the governed read/logical catalog so composite
+# ChatGPT diagnostics stay single-path and bounded.
 for marker in (
     "'mad4b/control-plane-update-status'",
     "'mad4b/control-plane-upload-plan'",
 ):
     if marker not in servers:
         raise SystemExit(f"self-update read projection invariant missing: {marker}")
-if servers.count("'mad4b/control-plane-update-status'") < 2:
-    raise SystemExit("Control Plane update status is not projected to both read and ChatGPT catalogs")
-if servers.count("'mad4b/control-plane-upload-plan'") < 2:
-    raise SystemExit("Control Plane upload plan is not projected to both read and ChatGPT catalogs")
-if servers.count("'mad4b/control-plane-native-plan'") != 2:
-    raise SystemExit("Control Plane native plan projection must be exactly read + ChatGPT")
+if servers.count("'mad4b/control-plane-update-status'") != 1:
+    raise SystemExit("Control Plane update status must remain read/logical-discovery-only rather than direct ChatGPT status fan-out")
+if "self::core_tools( 'mad4b-read' )" not in servers or "public static function chatgpt_full_catalog_candidates()" not in servers:
+    raise SystemExit("Control Plane update status lost governed ChatGPT logical discovery path")
+read_catalog = servers.split("'mad4b-read' => array_merge( array(", 1)[1].split("), $governed_status", 1)[0]
+direct_read_allowlist = servers.split("public static function chatgpt_direct_read_transport_tools()", 1)[1].split("public static function chatgpt_dispatch_transport_tools()", 1)[0]
+for direct_plan in (
+    "'mad4b/control-plane-upload-plan'",
+    "'mad4b/control-plane-native-plan'",
+):
+    if direct_plan not in read_catalog:
+        raise SystemExit(f"Control Plane plan missing from normal read catalog: {direct_plan}")
+    if direct_plan not in direct_read_allowlist:
+        raise SystemExit(f"Control Plane plan missing from reviewed direct ChatGPT allowlist: {direct_plan}")
 
 # Exact governed-write execution must be converged into the canonical Staging NHI inventory.
 if "'mad4b/control-plane-upload-apply' => 'core'" not in grants:
