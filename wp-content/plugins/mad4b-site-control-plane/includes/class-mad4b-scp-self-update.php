@@ -14,10 +14,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Channel C: governed native release pull. The caller supplies no package URL,
  * filesystem path, archive bytes, target SHA, or version. The target is derived
  * exclusively from the fixed repository release manifest, revalidated at apply,
- * downloaded by WordPress, then passed through the same exact archive verifier.
+ * downloaded into protected MAD4B storage, then passed through the same exact
+ * archive/provenance verifier.
  *
- * All channels share the same archive/provenance verifier and the same
- * backup/readback/rollback semantics. Automatic plugin updates are disabled.
+ * All channels share the same backup/readback/rollback semantics.
+ * Automatic plugin updates remain disabled.
  */
 final class MAD4B_SCP_Self_Update {
 	const CONTRACT              = 'mad4b.control-plane-self-update.v1';
@@ -368,7 +369,7 @@ final class MAD4B_SCP_Self_Update {
 	public static function native_apply( $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$expected = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
-		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected ) ) return new WP_Error( 'mad4b_self_update_plan_digest_required', 'expected_plan_sha256 from the reviewed native release plan is required.' );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/' , $expected ) ) return new WP_Error( 'mad4b_self_update_plan_digest_required', 'expected_plan_sha256 from the reviewed native release plan is required.' );
 
 		$plan_input = array( 'reason' => isset( $input['reason'] ) ? (string) $input['reason'] : '' );
 		$plan = self::native_plan( $plan_input );
@@ -930,46 +931,7 @@ final class MAD4B_SCP_Self_Update {
 
 	private static function native_apply_schema() {
 		$schema = self::native_plan_schema();
-		$schema['properties']['expected_plan_sha256'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}
-		return array(
-			'type' => 'object',
-			'properties' => array(
-				'version' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64 ),
-				'source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
-				'archive_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
-				'build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
-				'package_manifest_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
-				'size_bytes' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_UPLOAD_BYTES ),
-				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
-			),
-			'required' => array( 'version', 'source_commit_sha', 'archive_sha256', 'build_fingerprint', 'package_manifest_digest', 'size_bytes', 'reason' ),
-			'additionalProperties' => false,
-		);
-	}
-
-	private static function apply_schema() {
-		$schema = self::plan_schema();
 		$schema['properties']['expected_plan_sha256'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' );
-		$schema['properties']['package_base64'] = array( 'type' => 'string', 'minLength' => 16, 'maxLength' => (int) ceil( self::MAX_UPLOAD_BYTES * 4 / 3 ) + 16 );
-		$schema['required'][] = 'expected_plan_sha256';
-		$schema['required'][] = 'package_base64';
-		return $schema;
-	}
-
-	private static function digest( $value ) {
-		$encoded = wp_json_encode( self::canonicalize( $value ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		return is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
-	}
-
-	private static function canonicalize( $value ) {
-		if ( ! is_array( $value ) ) return $value;
-		$is_list = empty( $value ) || array_keys( $value ) === range( 0, count( $value ) - 1 );
-		if ( ! $is_list ) ksort( $value, SORT_STRING );
-		foreach ( $value as $key => $item ) $value[ $key ] = self::canonicalize( $item );
-		return $value;
-	}
-}
- );
 		$schema['required'][] = 'expected_plan_sha256';
 		return $schema;
 	}
