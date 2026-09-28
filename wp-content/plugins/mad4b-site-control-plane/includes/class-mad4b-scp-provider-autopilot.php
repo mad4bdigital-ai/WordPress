@@ -302,6 +302,9 @@ final class MAD4B_SCP_Provider_Autopilot {
 		$blockers = array();
 		$automatic_steps = array();
 		$governed_steps = array();
+		$config = self::config();
+		$environment = self::environment();
+		$effective_mode = self::effective_mode( $config );
 		$autopilot = self::proposal_for_candidate( $candidate, false, true );
 
 		if ( $target_index >= 1 ) {
@@ -345,6 +348,15 @@ final class MAD4B_SCP_Provider_Autopilot {
 		sort( $automatic_steps, SORT_STRING );
 		sort( $governed_steps, SORT_STRING );
 
+		$already_at_target = $current_index === $target_index;
+		$evidence_eligible = empty( $blockers );
+		$promotion_execution_permitted = $evidence_eligible && ! $already_at_target && 'observe_propose_only' !== $effective_mode && 'production' !== $environment;
+		$next_action = $already_at_target
+			? 'no_promotion_required'
+			: ( ! $evidence_eligible
+				? 'satisfy_blockers_then_recompile'
+				: ( $promotion_execution_permitted ? 'enter_governed_promotion_lane' : 'observe_propose_only' ) );
+
 		$result = array(
 			'contract' => 'mad4b.provider-autopilot-promotion-plan.v1',
 			'plugin_file' => $plugin,
@@ -352,7 +364,12 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'current_level' => $current,
 			'target_level' => $target,
 			'already_at_or_above_target' => $current_index >= $target_index,
-			'eligible_now' => empty( $blockers ),
+			'already_at_target' => $already_at_target,
+			'environment' => $environment,
+			'effective_mode' => $effective_mode,
+			'evidence_eligible' => $evidence_eligible,
+			'promotion_execution_permitted' => $promotion_execution_permitted,
+			'eligible_now' => $promotion_execution_permitted,
 			'requirements' => $requirements,
 			'blockers' => $blockers,
 			'automatic_steps' => $automatic_steps,
@@ -367,7 +384,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'auto_enable_mutation' => false,
 			'mutation_performed' => false,
 			'authority_created' => false,
-			'next_action' => empty( $blockers ) ? 'enter_governed_promotion_lane' : 'satisfy_blockers_then_recompile',
+			'next_action' => $next_action,
 		);
 		$encoded = wp_json_encode( $result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$result['promotion_plan_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
