@@ -333,6 +333,14 @@ final class MAD4B_SCP_Authorization {
 		$original = $args['execute_callback'];
 		$declared_server = self::declared_server_for_registration( $args );
 		$args['execute_callback'] = static function ( $input = null ) use ( $original, $name, $declared_server ) {
+			// approval-plan remains a local administrator primitive when no governed
+			// remote write transport is active. Its registration is still wrapped so
+			// a later same-request Staging enablement cannot leave the nested remote
+			// dispatcher without an execution boundary.
+			if ( 'mad4b/approval-plan' === (string) $name ) {
+				$current_transport = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
+				if ( ! in_array( $current_transport, array( 'mad4b-chatgpt', 'mad4b-write' ), true ) ) return call_user_func( $original, $input );
+			}
 			$provider = MAD4B_SCP_Authorization::provider_for_execution( $name, $declared_server );
 			if ( is_wp_error( $provider ) ) return $provider;
 			$claim = MAD4B_SCP_Authorization::claim_mutation( $name, $declared_server, $provider, $input );
