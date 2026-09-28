@@ -4,7 +4,13 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.77**.
+Current plugin version: **0.4.0-rc.78**.
+
+### rc.78 Portable zero-authority ChatGPT read connection
+
+rc.78 makes a fresh installation connection-ready for the dedicated `mad4b-chatgpt` read projection without creating a governed Site Profile. The portable bootstrap derives the current HTTPS origin and existing WordPress Administrators, enables only local OAuth/CIMD/PKCE read identity, and publishes RFC 9728 discovery for the site-local MCP resource. Production uses the same portable read-only boundary; governed write, Skills authoring, Developer, Breakglass, raw SQL and generic filesystem/database surfaces remain disabled until separately enrolled and authorized.
+
+Existing Site Profiles retain precedence and behavior. Explicit operator OAuth disables/mode/issuer settings remain fail-closed, and `MAD4B_SCP_PORTABLE_READONLY_AUTO_CONNECT=false` disables the portable bootstrap for hosts that require manual enrollment.
 
 ### rc.77 Session-safe composite diagnostics
 
