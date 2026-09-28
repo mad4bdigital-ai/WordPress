@@ -691,6 +691,25 @@ final class MAD4B_SCP_Abilities {
 		return $target_input;
 	}
 
+	private function approval_plan_dispatch_preflight_failure( $error ) {
+		$code = is_wp_error( $error ) ? sanitize_key( (string) $error->get_error_code() ) : 'unknown';
+		$data = is_wp_error( $error ) ? $error->get_error_data() : array();
+		$data = is_array( $data ) ? $data : array();
+		return new WP_Error(
+			'mad4b_approval_plan_dispatch_preflight_failed',
+			'Approval planning stopped before ticket creation with blocker: ' . ( '' !== $code ? $code : 'unknown' ) . '.',
+			array_merge( $data, array(
+				'original_error_code' => $code,
+				'mutation_state' => 'not_started',
+				'target_execution_entered' => false,
+				'reconciliation_required' => false,
+				'blind_retry_allowed' => false,
+				'fresh_plan_required' => true,
+				'client_action' => 'correct_plan_input_or_authority_then_replan',
+			) )
+		);
+	}
+
 	public function write_execute( $input ) {
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_write_target( $ability_name, true );
@@ -704,6 +723,22 @@ final class MAD4B_SCP_Abilities {
 		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 		$params = $this->forward_write_dispatch_governance_envelope( $input, $params );
 		if ( is_wp_error( $params ) ) return $params;
+
+		// WordPress Abilities normalizes a failed permission_callback to
+		// ability_invalid_permissions. For approval-plan that would erase the
+		// precise planning blocker (server/provider/agent/context drift) and could
+		// incorrectly imply a ticket may have been created. Run the pure planner
+		// validation before Ability::execute so invalid plans fail as not-started.
+		$approval_plan_ability = class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) ? MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY : 'mad4b/approval-plan';
+		if ( $approval_plan_ability === $ability_name && ! class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) ) {
+			return $this->approval_plan_dispatch_preflight_failure( new WP_Error( 'mad4b_approval_plan_guard_unavailable', 'Remote approval planning guard is unavailable.' ) );
+		}
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) && MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY === $ability_name ) {
+			$params = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input( $params );
+			if ( is_wp_error( $params ) ) return $this->approval_plan_dispatch_preflight_failure( $params );
+			$planner_preflight = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $params );
+			if ( is_wp_error( $planner_preflight ) ) return $this->approval_plan_dispatch_preflight_failure( $planner_preflight );
+		}
 
 		$target_entered = false;
 		if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'begin_execution_callback_observation' ) ) {
@@ -747,6 +782,7 @@ final class MAD4B_SCP_Abilities {
 			}
 			if ( is_wp_error( $planner_result ) ) {
 				$original_code = sanitize_key( (string) $planner_result->get_error_code() );
+				if ( ! $target_entered ) return $this->approval_plan_dispatch_preflight_failure( $planner_result );
 				return new WP_Error(
 					'mad4b_approval_plan_dispatch_target_error',
 					'Approval planning failed with blocker: ' . ( '' !== $original_code ? $original_code : 'unknown' ) . '. Reconcile Approval Decisions before retrying.',
