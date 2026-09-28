@@ -44,3 +44,15 @@ The resume endpoint never replays mutation and never exposes stored result paylo
 ## Compatibility
 
 Existing abilities remain in place. rc.83 adds orchestration on top of them rather than replacing their authorization, approval, plan-digest, package-integrity, rollback, readback, or certification rules.
+
+## Declarative dynamic pipelines
+
+The operation registry is also the source of truth for semantic aliases, ChatGPT read projection and pipeline profiles. A pipeline profile can add or reorder reviewed stages without changing the mutation executor, but the registry fails closed unless the profile preserves the mandatory order:
+
+`planner → authorization → executor → verification`
+
+Supported stage types are bounded to read checks, planning, authorization, execution, verification and reconciliation. The read-only `mad4b/operation-pipeline-compile` ability resolves conditions and exact stage bindings, emits a `pipeline_sha256`, and never runs a mutation stage. Arbitrary callbacks and arbitrary stage execution remain disabled.
+
+## Dynamic provider trust ladder
+
+Installed plugins are classified from runtime evidence into L0 inventory, L1 generic lifecycle planning, L2 governed read, L3 certified reversible write candidate and L4 functionally ready certified governed candidate. Unknown plugins cannot become write-capable merely because they are installed or active. Adapter availability, side-channel isolation, reversible contracts and provider certification are required evidence, and the matrix never creates authority or automatically enables mutation.
