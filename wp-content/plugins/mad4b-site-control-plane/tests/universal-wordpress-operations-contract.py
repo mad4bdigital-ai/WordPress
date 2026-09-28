@@ -84,6 +84,7 @@ for marker in (
     "mad4b_operation_registry_autopilot_boundary_invalid",
     "mad4b_operation_registry_autopilot_production_invalid",
     "mad4b_operation_registry_autopilot_level_invalid",
+    "mad4b_operation_registry_autopilot_ttl_invalid",
 ):
     assert marker in registry, marker
 assert "public static function autopilot_config" in registry
@@ -218,6 +219,11 @@ for invariant in (
 ):
     assert invariant in plugin_discovery, invariant
 assert "MAD4B_SCP_Provider_Autopilot::proposal_for_candidate" in plugin_discovery
+assert "'adapter_registered' => $adapter_registered" in plugin_discovery
+assert "'adapter_runtime_available' => $adapter_runtime_available" in plugin_discovery
+assert "'adapter_read_ability_count' => $read_ability_count" in plugin_discovery
+assert "$read_ability_count > 0" in plugin_discovery
+assert "bounded_read_contract_required" in plugin_discovery
 assert "mad4b/provider-candidate-matrix" in adapter_registry
 assert "provider_candidate_matrix" in adapter_registry
 
@@ -232,6 +238,11 @@ for marker in (
     "candidate_sha256",
     "plugin_state_sha256",
     "provider_candidate_fingerprint",
+    "candidate_identity_suffix",
+    "candidate_ttl_seconds",
+    "observed_at_unix",
+    "expires_at_unix",
+    "recompute_before_promotion",
     "SHADOW_IDENTITY_CERTIFIED",
     "'read_execution_eligible' => false",
     "'write_eligible' => false",
@@ -247,6 +258,8 @@ assert "wp_register_ability( 'mad4b/provider-autopilot-promotion-plan'" in provi
 assert "mad4b.provider-autopilot-promotion-plan.v1" in provider_autopilot
 for marker in (
     "runtime_adapter_available",
+    "adapter_read_ability_count",
+    "bounded_read_abilities_required",
     "bounded_read_abilities_declared",
     "side_channel_clear",
     "provider_certification_ok",
@@ -304,3 +317,14 @@ assert "automatic_mutation_retry_allowed" in resume
 assert "result_payload_exposed" in resume
 
 print("universal-wordpress-operations-contract: PASS")
+
+# Autopilot hardening invariants.
+assert "private static function adapter_candidate( array $candidate, $mode, $include_source = false )" in provider_autopilot
+assert "if ( $include_source ) $descriptor['generated_php'] = $skeleton;" in provider_autopilot
+assert "self::proposal_for_candidate( $candidate, '' !== $plugin )" in provider_autopilot
+promotion_hash_pos = provider_autopilot.index("$result['promotion_plan_sha256']")
+promotion_observed_pos = provider_autopilot.index("$result['candidate_observed_at_unix']")
+assert promotion_hash_pos < promotion_observed_pos, "promotion freshness metadata must stay outside the deterministic plan hash"
+cert_hash_pos = provider_autopilot.index("$cert['certification_sha256']")
+cert_observed_pos = provider_autopilot.index("$cert['observed_at_unix']")
+assert cert_hash_pos < cert_observed_pos, "shadow freshness metadata must stay outside the deterministic certification hash"
