@@ -105,7 +105,18 @@ foreach ( $write_tools as $ability_name ) {
     $check( is_object( $ability ) && method_exists( $ability, 'get_meta' ), 'Projected write ability metadata is unavailable: ' . $ability_name );
     $meta = $ability->get_meta();
     $annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+    $mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
     $check( array_key_exists( 'readonly', $annotations ) && false === $annotations['readonly'], 'mad4b-write projected an ability without explicit readonly=false: ' . $ability_name );
+    $check(
+        isset( $mcp['mad4b_execution_boundary'] )
+        && MAD4B_SCP_Authorization::EXECUTION_BOUNDARY_CONTRACT === (string) $mcp['mad4b_execution_boundary'],
+        'mad4b-write projected an ability without the central authorization execution boundary: ' . $ability_name
+    );
+    $check(
+        isset( $mcp['mad4b_governed_write_authority'] )
+        && MAD4B_SCP_Staging_Write_Authority::CONTRACT === (string) $mcp['mad4b_governed_write_authority'],
+        'mad4b-write projected an ability without governed write authority metadata: ' . $ability_name
+    );
 }
 
 $write_request = new WP_REST_Request( 'POST', '/mcp/mad4b-write' );
