@@ -157,6 +157,43 @@ $result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$context);
 check(!is_wp_error($result),'validator on_error=finding continues');
 check(count($result['findings'])===1 && $result['findings'][0]['code']==='pipeline_stage_error','validator error converted to finding');
 
+
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array(
+	'stages'=>array(
+		array('id'=>'failing_validator','enabled'=>true,'order'=>1,'phase'=>'validate','conditions'=>array(),'policy'=>array('required'=>true,'on_error'=>'skip')),
+	)
+);
+$result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$context);
+check(is_wp_error($result) && $result->get_error_code()==='validator_boom','required validator errors cannot be bypassed with on_error=skip');
+
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array(
+	'stages'=>array(
+		array('id'=>'source_fidelity','enabled'=>true,'order'=>1,'phase'=>'validate','conditions'=>array(),'policy'=>array('required'=>false,'on_error'=>'finding')),
+	)
+);
+$result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$context);
+check(!is_wp_error($result),'optional missing validator follows configured on_error policy');
+check(
+	count($result['findings'])===1
+	&& $result['findings'][0]['code']==='pipeline_stage_error'
+	&& $result['findings'][0]['error_code']==='mad4b_dynamic_pipeline_validator_unavailable',
+	'enabled optional validator absence is explicit finding, not silent success'
+);
+
+$heartbeat_calls=0;
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array(
+	'stages'=>array(
+		array('id'=>'structural','enabled'=>true,'order'=>1,'phase'=>'validate','conditions'=>array(),'policy'=>array('required'=>true,'on_error'=>'stop')),
+	)
+);
+$heartbeat_context=array_merge($context,array(
+	'mode'=>'create',
+	'input'=>array('force_finding'=>false,'meta'=>array(),'taxonomies'=>array()),
+	'heartbeat'=>function($phase,$stage,$ctx) use (&$heartbeat_calls){ $heartbeat_calls++; return true; },
+));
+$result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$heartbeat_context);
+check(!is_wp_error($result) && $heartbeat_calls===1,'request-local heartbeat runs before enabled pipeline stage');
+
 $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array(
 	'stages'=>array(
 		array('id'=>'failing_repair','enabled'=>true,'order'=>1,'phase'=>'repair','conditions'=>array(),'policy'=>array('required'=>false,'on_error'=>'skip')),
