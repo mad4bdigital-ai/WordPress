@@ -213,6 +213,16 @@ final class MAD4B_SCP_Plugin_Discovery {
 		);
 	}
 
+	public static function provider_candidate_for( $plugin_file ) {
+		$plugin_file = self::normalize_plugin_file( $plugin_file );
+		if ( '' === $plugin_file ) return new WP_Error( 'mad4b_provider_candidate_plugin_invalid', 'Plugin file identity is required.' );
+		$matrix = self::provider_candidate_matrix();
+		foreach ( isset( $matrix['items'] ) && is_array( $matrix['items'] ) ? $matrix['items'] : array() as $row ) {
+			if ( isset( $row['plugin_file'] ) && hash_equals( $plugin_file, (string) $row['plugin_file'] ) ) return $row;
+		}
+		return new WP_Error( 'mad4b_provider_candidate_not_found', 'Installed plugin was not found in the provider candidate matrix.' );
+	}
+
 	public static function provider_candidate_matrix() {
 		$coverage = self::coverage();
 		$items = array();
