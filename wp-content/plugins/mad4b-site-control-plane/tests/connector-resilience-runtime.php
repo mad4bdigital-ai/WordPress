@@ -379,6 +379,8 @@ $bounded = $bound_method->invoke( null, array(
 ) );
 mad4b_assert_true( ! empty( $bounded['payload_reduced'] ), 'oversized session-safe report must reduce itself' );
 mad4b_assert_true( $bounded['response_bytes'] <= MAD4B_SCP_Read_Consistency::MAX_SESSION_SAFE_REPORT_BYTES, 'session-safe report must enforce the hard response byte cap' );
+$bounded_json = wp_json_encode( $bounded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+mad4b_assert_true( false !== $bounded_json && strlen( $bounded_json ) <= MAD4B_SCP_Read_Consistency::MAX_SESSION_SAFE_REPORT_BYTES, 'final encoded session-safe report must remain under the hard byte cap' );
 mad4b_assert_true( empty( $bounded['mutation_performed'] ), 'session-safe diagnostics must remain read-only' );
 mad4b_assert_true( empty( $bounded['production_mutation_performed'] ), 'session-safe diagnostics must never mutate Production' );
 
