@@ -308,6 +308,7 @@ require(bootstrap, 'MAD4B_SCP_External_Handshake_Evidence::boot();', 'external-e
 require(plugin, 'MAD4B_SCP_Connection_Admin_UI::boot()', 'connection-ui-boot')
 require(plugin, 'MAD4B_SCP_Connection_Ability::boot()', 'connection-ability-boot')
 require(bootstrap, 'MAD4B_SCP_Read_Consistency::boot();', 'read-consistency-boot')
+require(bootstrap, 'MAD4B_SCP_Authorization::boot();', 'authorization-execution-boundary-boot')
 require(plugin, 'MAD4B_SCP_MCP_Provider_Isolation::boot();', 'isolation-boot')
 require(plugin, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'registration-bridge-idempotent-boot')
 forbid(plugin, "add_action( 'mcp_adapter_init', array( $servers, 'register_servers' )", 'no-late-mcp-server-binding')
