@@ -74,4 +74,4 @@ Default automatic behavior:
 - create authority: disabled
 - enable mutation: disabled
 
-The automatic ceiling is L2/read. Reaching governed write or fully certified execution still requires governed promotion with runtime validation, reversible contracts, certification evidence and the normal authorization boundary.
+Automatic candidate generation and shadow identity certification stop at L1/lifecycle. L2/read requires a registered runtime adapter with at least one bounded read ability and clear side-channel governance. L3/L4 additionally require governed promotion with reversible contracts, certification evidence, functional acceptance and the normal authorization boundary.

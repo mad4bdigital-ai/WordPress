@@ -239,12 +239,12 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$active = ! empty( $plugin['active'] );
 			$adapter_registered = ! empty( $plugin['adapter_registered'] );
 			$adapter_runtime_available = ! empty( $plugin['adapter_runtime_available'] );
+			$read_ability_count = isset( $plugin['adapter_read_ability_count'] ) ? max( 0, (int) $plugin['adapter_read_ability_count'] ) : 0;
 			$certification_ok = ! empty( $plugin['provider_certification_ok'] );
 			$side_channel_blocked = ! empty( $plugin['side_channel_blocker'] );
 			$reversible = isset( $plugin['reversible_contracts'] ) && is_array( $plugin['reversible_contracts'] ) ? array_values( $plugin['reversible_contracts'] ) : array();
 			$coverage_state = isset( $plugin['coverage_state'] ) ? sanitize_key( (string) $plugin['coverage_state'] ) : 'unknown';
 			$functional_state = isset( $plugin['functional_coverage']['state'] ) ? sanitize_key( (string) $plugin['functional_coverage']['state'] ) : 'inactive';
-			$read_ability_count = isset( $plugin['functional_coverage']['read_ability_count'] ) ? max( 0, (int) $plugin['functional_coverage']['read_ability_count'] ) : 0;
 			$risk = isset( $plugin['risk'] ) ? sanitize_key( (string) $plugin['risk'] ) : 'unknown';
 
 			$level = 'L0_inventory';
@@ -284,6 +284,10 @@ final class MAD4B_SCP_Plugin_Discovery {
 				$blocked_actions[] = 'provider_mutation';
 				$next_gate = 'resolve_side_channel_isolation';
 			}
+			if ( $adapter_registered && $adapter_runtime_available && 0 === $read_ability_count ) {
+				$blocked_actions[] = 'provider_read';
+				if ( ! $side_channel_blocked ) $next_gate = 'bounded_read_contract_required';
+			}
 			if ( $adapter_registered && $adapter_runtime_available && ! $certification_ok ) {
 				$blocked_actions[] = 'provider_mutation';
 				if ( ! $side_channel_blocked ) $next_gate = 'provider_certification';
@@ -305,7 +309,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 				'adapter_id' => isset( $plugin['adapter_id'] ) ? sanitize_key( (string) $plugin['adapter_id'] ) : '',
 				'adapter_registered' => $adapter_registered,
 				'adapter_runtime_available' => $adapter_runtime_available,
-				'read_ability_count' => $read_ability_count,
+				'adapter_read_ability_count' => $read_ability_count,
 				'risk' => $risk,
 				'coverage_state' => $coverage_state,
 				'functional_state' => $functional_state,
@@ -322,7 +326,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$encoded = wp_json_encode( $row, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			$row['candidate_fingerprint'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
 			$row['autopilot'] = class_exists( 'MAD4B_SCP_Provider_Autopilot' )
-				? MAD4B_SCP_Provider_Autopilot::proposal_for_candidate( $row )
+				? MAD4B_SCP_Provider_Autopilot::proposal_for_candidate( $row, false, false )
 				: array( 'enabled' => false, 'reason' => 'provider_autopilot_unavailable' );
 			$items[] = $row;
 			if ( isset( $counts[ $level ] ) ) ++$counts[ $level ];
@@ -390,6 +394,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 		);
 
 		$certification = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
+		$declared_abilities = is_object( $adapter ) && method_exists( $adapter, 'ability_names' ) ? $adapter->ability_names() : array();
+		$declared_abilities = is_array( $declared_abilities ) ? $declared_abilities : array();
+		$read_abilities = isset( $declared_abilities['read'] ) && is_array( $declared_abilities['read'] ) ? array_values( array_filter( $declared_abilities['read'], 'is_string' ) ) : array();
 		return array(
 			'plugin_file' => $plugin_file,
 			'slug' => self::plugin_slug( $plugin_file ),
@@ -402,6 +409,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'adapter_id' => $adapter_id,
 			'adapter_registered' => is_object( $adapter ),
 			'adapter_runtime_available' => is_object( $adapter ) ? (bool) $adapter->is_available() : false,
+			'adapter_read_ability_count' => count( $read_abilities ),
 			'coverage_state' => $state,
 			'risk' => $risk,
 			'reversible_contracts' => $reversible,
