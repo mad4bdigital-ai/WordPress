@@ -80,9 +80,9 @@ assert "return array( self::HANDSHAKE_ABILITY );" in full
 assert "public static function handshake()" in full
 for marker in [
     "mad4b.full-staging-authority-handshake.v1",
-    "MAD4B_SCP_Read_Consistency::snapshot_header",
-    "mad4b_full_authority_runtime_generation_changed",
-    "'response_budget_bytes' => 8192",
+    "MAD4B_SCP_Connector_Resilience::generation_fenced_compact_read",
+    "mad4b_full_authority_handshake_resilience_unavailable",
+    "8192",
     "'deep_status_direct_projection' => false",
     "'deep_plan_direct_projection' => false",
     "'deep_reads_available_via_governed_dispatch' => true",
