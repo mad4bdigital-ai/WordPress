@@ -229,10 +229,6 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'adapter_candidate_sha256' => isset( $adapter_candidate['candidate_sha256'] ) ? (string) $adapter_candidate['candidate_sha256'] : '',
 			'plugin_state_sha256' => isset( $adapter_candidate['plugin_state_sha256'] ) ? (string) $adapter_candidate['plugin_state_sha256'] : '',
 			'provider_candidate_fingerprint' => isset( $adapter_candidate['provider_candidate_fingerprint'] ) ? (string) $adapter_candidate['provider_candidate_fingerprint'] : '',
-			'candidate_ttl_seconds' => isset( $adapter_candidate['candidate_ttl_seconds'] ) ? (int) $adapter_candidate['candidate_ttl_seconds'] : 0,
-			'observed_at_unix' => isset( $adapter_candidate['observed_at_unix'] ) ? (int) $adapter_candidate['observed_at_unix'] : 0,
-			'expires_at_unix' => isset( $adapter_candidate['expires_at_unix'] ) ? (int) $adapter_candidate['expires_at_unix'] : 0,
-			'fresh' => ! empty( $adapter_candidate['fresh'] ),
 			'read_execution_eligible' => false,
 			'write_eligible' => false,
 			'canary_eligible' => false,
@@ -245,6 +241,11 @@ final class MAD4B_SCP_Provider_Autopilot {
 		);
 		$encoded = wp_json_encode( $cert, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$cert['certification_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		$cert['candidate_ttl_seconds'] = isset( $adapter_candidate['candidate_ttl_seconds'] ) ? (int) $adapter_candidate['candidate_ttl_seconds'] : 0;
+		$cert['observed_at_unix'] = isset( $adapter_candidate['observed_at_unix'] ) ? (int) $adapter_candidate['observed_at_unix'] : 0;
+		$cert['expires_at_unix'] = isset( $adapter_candidate['expires_at_unix'] ) ? (int) $adapter_candidate['expires_at_unix'] : 0;
+		$cert['fresh'] = ! empty( $adapter_candidate['fresh'] );
+		$cert['recompute_before_promotion'] = true;
 		return $cert;
 	}
 
