@@ -174,6 +174,7 @@ for source in (plugin_package, remote_update):
     assert "MAD4B_SCP_Plugin_Activation_State::restore" in source
 
 assert "mad4b.provider-candidate-matrix.v1" in plugin_discovery
+assert "public static function provider_candidate_for" in plugin_discovery
 for level in ("L0_inventory", "L1_lifecycle", "L2_read", "L3_governed_write", "L4_certified_governed"):
     assert level in plugin_discovery
 for invariant in (
@@ -193,6 +194,16 @@ assert "certified-providers.json" in dependency_impact
 assert "'provider_id_inferred' => $provider_inferred" in dependency_impact
 
 assert "mad4b.operation-pipeline-compile.v1" in pipeline
+for marker in (
+    "registry_catalog_sha256",
+    "target_state_sha256",
+    "provider_candidate_fingerprint",
+    "dependency_impact_sha256",
+    "execution_binding_sha256",
+    "MAD4B_SCP_Plugin_Lifecycle::snapshot",
+    "MAD4B_SCP_Plugin_Discovery::provider_candidate_for",
+):
+    assert marker in pipeline, marker
 assert "MAD4B_SCP_Operation_Registry::stage_binding" in pipeline
 assert "condition_value" in pipeline
 assert "operation_dependency_impact" not in pipeline
