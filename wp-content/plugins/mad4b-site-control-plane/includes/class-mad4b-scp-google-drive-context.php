@@ -891,7 +891,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( 'root' === $folder_id ) return array( 'id' => 'root', 'name' => 'My Drive', 'mimeType' => 'application/vnd.google-apps.folder', 'parents' => array() );
 		$url = self::DRIVE_API . '/files/' . rawurlencode( $folder_id ) . '?' . http_build_query(
 			array(
-				'fields' => 'id,name,mimeType,parents,driveId,webViewLink',
+				'fields' => 'id,name,mimeType,parents,driveId,webViewLink,capabilities(canAddChildren)',
 				'supportsAllDrives' => 'true',
 			),
 			'',
@@ -1061,6 +1061,23 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $content_guard ) ) return $content_guard;
 		$target_folder_id = self::bounded_drive_id( isset( $source['external_root_id'] ) ? $source['external_root_id'] : '' );
 		if ( '' === $target_folder_id || 'root' === $target_folder_id ) return new WP_Error( 'mad4b_google_drive_write_folder_invalid', 'A specific selected Drive folder is required for creates.' );
+		$target_folder = self::get_folder( $target_folder_id );
+		if ( is_wp_error( $target_folder ) ) return $target_folder;
+		$folder_capabilities = isset( $target_folder['capabilities'] ) && is_array( $target_folder['capabilities'] ) ? $target_folder['capabilities'] : array();
+		if ( ! array_key_exists( 'canAddChildren', $folder_capabilities ) ) {
+			return new WP_Error(
+				'mad4b_google_drive_folder_create_capability_unavailable',
+				'Google Drive did not return a create-capability decision for the governed Brand Core folder; creation remains fail-closed.',
+				array( 'target_folder_id' => $target_folder_id, 'provider_effect_state' => 'not_started' )
+			);
+		}
+		if ( empty( $folder_capabilities['canAddChildren'] ) ) {
+			return new WP_Error(
+				'mad4b_google_drive_folder_create_forbidden',
+				'The connected Google identity can read the governed Brand Core folder but cannot add files to it.',
+				array( 'target_folder_id' => $target_folder_id, 'provider_effect_state' => 'not_started' )
+			);
+		}
 		$file = self::create_provider_file( $target_folder_id, $name, $content, $format, $properties );
 		if ( is_wp_error( $file ) ) return $file;
 		$observed_properties = isset( $file['appProperties'] ) && is_array( $file['appProperties'] ) ? $file['appProperties'] : array();
