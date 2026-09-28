@@ -56,8 +56,10 @@ for row in operation["operations"]:
 assert "wp_register_ability( 'mad4b/wordpress-operation-discover', array(" in registry
 assert "wp_register_ability( 'mad4b/universal-operation-discover', array(" not in registry
 assert "wp_register_ability( 'mad4b/operation-discover', array(" not in registry
-assert "'update' => 'wordpress.plugin.transaction'" in registry
-assert "'activate' => 'wordpress.plugin.transaction'" in registry
+assert "$aliases = self::aliases();" in registry
+assert "public static function read_projection" in registry
+assert "mad4b_operation_registry_alias_invalid" in registry
+assert "mad4b_operation_registry_projection_invalid" in registry
 assert "registered_ability_gap" in registry
 assert "mad4b_operation_planner_unregistered" in registry
 assert "mad4b_operation_executor_unregistered" in registry
@@ -70,15 +72,25 @@ for marker in (
     "mad4b_operation_registry_required_runtime_invalid",
 ):
     assert marker in registry, marker
-for expected in (
-    "mad4b/operation-registry-status",
+assert "MAD4B_SCP_Operation_Registry::read_projection( 'catalog' )" in servers
+assert "MAD4B_SCP_Operation_Registry::read_projection( 'direct' )" in servers
+assert "mad4b/wordpress-operation-discover" not in servers
+assert "mad4b/plugin-transaction-plan" not in servers
+assert "mad4b/operation-resume-status" not in servers
+
+assert operation["aliases"]["update"] == "wordpress.plugin.transaction"
+assert operation["aliases"]["activate"] == "wordpress.plugin.transaction"
+assert operation["aliases"]["reconcile-provider"] == "wordpress.provider.recertify"
+direct_projection = operation["read_projection"]["direct"]
+catalog_projection = operation["read_projection"]["catalog"]
+assert set(direct_projection).issubset(set(catalog_projection))
+assert direct_projection == [
     "mad4b/wordpress-operation-discover",
     "mad4b/plugin-transaction-plan",
-    "mad4b/dependency-impact",
-    "mad4b/provider-transport-registry-status",
     "mad4b/operation-resume-status",
-):
-    assert expected in servers
+]
+assert "mad4b/dependency-impact" in catalog_projection
+assert "mad4b/provider-transport-registry-status" in catalog_projection
 
 assert transport["contract"] == "mad4b.provider-transport-registry.v1"
 assert transport["default_unknown_transport"] == "visible_to_peer_governance"
