@@ -16,6 +16,10 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 	const ROLLBACK='mad4b.rollback.dynamic-content-bundle.v1';
 	const PIPELINE_ROLLBACK='mad4b.rollback.dynamic-content-pipeline-settings.v1';
 	const BINDING='_mad4b_dynamic_content_binding';
+	const ACCEPTANCE_META='_mad4b_dynamic_content_acceptance_v1';
+	const ACCEPTANCE_CONTRACT='mad4b.dynamic-content-acceptance.v1';
+	const DEFAULT_ACCEPTANCE_TTL=86400;
+	const MAX_ACCEPTANCE_TTL=604800;
 	const MAX_ITERATIONS=5;
 	const MUTATION_LOCK_PREFIX='mad4b_scp_dynamic_content_lock_';
 	const MUTATION_LOCK_TTL=900;
@@ -209,7 +213,9 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				'properties'=>array(
 					'term_id'=>array('type'=>'integer','minimum'=>1),
 					'slug'=>array('type'=>'string','minLength'=>1,'maxLength'=>200),
-					'name'=>array('type'=>'string','minLength'=>1,'maxLength'=>200)
+					'name'=>array('type'=>'string','minLength'=>1,'maxLength'=>200),
+					'description'=>array('type'=>'string','maxLength'=>65535),
+					'parent'=>array('type'=>'integer','minimum'=>0)
 				)
 			);
 			$this->add_ability(
@@ -804,8 +810,14 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$meta_specs=$this->desired_meta_specs($input);
 		if(is_wp_error($meta_specs)) return $meta_specs;
 		if(count($meta_specs)>200) return new WP_Error('mad4b_dynamic_meta_limit','Dynamic content bundle exceeds the bounded meta key count.');
+		$registered_meta=function_exists('get_registered_meta_keys')?get_registered_meta_keys('post',$pt):array();
 		$meta_total_bytes=0;
 		foreach($meta_specs as $mk=>$spec){
+			if(isset($registered_meta[$mk])&&is_array($registered_meta[$mk])&&!empty($registered_meta[$mk]['single'])&&'multi'===(string)$spec['mode']) return new WP_Error(
+				'mad4b_dynamic_registered_meta_single_violation',
+				'Registered single-value meta cannot be written through multi mode.',
+				array('meta_key'=>(string)$mk)
+			);
 			if(1!==preg_match('/^[A-Za-z0-9_.:-]{1,191}$/',(string)$mk)) return new WP_Error('mad4b_dynamic_meta_key_invalid','Invalid meta key.');
 			if(is_protected_meta($mk,'post')&&!apply_filters('mad4b_scp_dynamic_content_allow_protected_meta',false,$mk,$pt,$input)) return new WP_Error('mad4b_dynamic_protected_meta_denied','Protected meta requires exact site-policy allowlisting.');
 			foreach(isset($spec['values'])?(array)$spec['values']:array() as $mv){
@@ -836,7 +848,14 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			if(!empty($ref['name'])){
 				$n++;
 				$name=sanitize_text_field((string)$ref['name']);
-				$matches=get_terms(array('taxonomy'=>$tax,'hide_empty'=>false,'name'=>$name,'number'=>2,'orderby'=>'term_id','order'=>'ASC'));
+				$args=array('taxonomy'=>$tax,'hide_empty'=>false,'name'=>$name,'number'=>2,'orderby'=>'term_id','order'=>'ASC');
+				if(isset($ref['parent'])){
+					$parent=absint($ref['parent']);
+					$tax_obj=get_taxonomy($tax);
+					if($parent>0&&(!$tax_obj||empty($tax_obj->hierarchical))) return new WP_Error('mad4b_dynamic_parent_not_supported','Term parent is only supported for hierarchical taxonomies.',array('taxonomy'=>$tax));
+					$args['parent']=$parent;
+				}
+				$matches=get_terms($args);
 				if(is_wp_error($matches)) return $matches;
 				if(count($matches)>1) return new WP_Error('mad4b_dynamic_term_name_ambiguous','Term name resolves to multiple terms; use term_id or slug.',array('taxonomy'=>$tax,'name'=>$name));
 				$t=!empty($matches)?$matches[0]:null;
@@ -868,6 +887,27 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			if(add_option($name,$value,'',false)) return array('name'=>$name,'token'=>$token);
 		}
 		return new WP_Error('mad4b_dynamic_mutation_busy','Another dynamic content mutation is already operating on this exact target.',array('mode'=>sanitize_key((string)$mode),'post_type'=>sanitize_key((string)$post_type),'post_id'=>absint($post_id),'retryable'=>true));
+	}
+
+	private function refresh_mutation_lock(array $lock){
+		$name=isset($lock['name'])?(string)$lock['name']:'';
+		$token=isset($lock['token'])?(string)$lock['token']:'';
+		if($name===''||$token==='') return new WP_Error('mad4b_dynamic_mutation_lock_invalid','Dynamic content mutation lock identity is invalid.');
+		$current=get_option($name,array());
+		if(!is_array($current)||empty($current['token'])||!hash_equals((string)$current['token'],$token)) return new WP_Error(
+			'mad4b_dynamic_mutation_lock_lost',
+			'Dynamic content mutation lock was lost before the operation completed.',
+			array('recovery_required'=>true)
+		);
+		$current['acquired_at']=time();
+		update_option($name,$current,false);
+		$verify=get_option($name,array());
+		if(!is_array($verify)||empty($verify['token'])||!hash_equals((string)$verify['token'],$token)) return new WP_Error(
+			'mad4b_dynamic_mutation_lock_lost',
+			'Dynamic content mutation lock refresh could not be verified.',
+			array('recovery_required'=>true)
+		);
+		return true;
 	}
 
 	private function release_mutation_lock(array $lock){
@@ -906,15 +946,17 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$lock=$this->acquire_mutation_lock($pre['mode'],$pre['post_type'],$pre['post_id'],$binding);
 		if(is_wp_error($lock)) return $this->not_started_error($lock);
 		try{
-			return $this->apply_bundle_locked($input);
+			return $this->apply_bundle_locked($input,$lock);
 		} finally {
 			$this->release_mutation_lock($lock);
 		}
 	}
 
-	private function apply_bundle_locked(array $input){
+	private function apply_bundle_locked(array $input,array $lock){
 		$v=$this->validate_bundle($input,true);
 		if(is_wp_error($v)) return $this->not_started_error($v);
+		$lock_ok=$this->refresh_mutation_lock($lock);
+		if(is_wp_error($lock_ok)) return $this->not_started_error($lock_ok);
 
 		$binding=$this->binding($v['post_type'],$v['operation_key']);
 		$id=$v['post_id'];
@@ -936,6 +978,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 		$a=$this->apply_desired($id,$input);
 		if(is_wp_error($a)) return $this->failure_with_compensation($a,$v['mode'],$id,$before);
+		$owned_after=$this->snapshot($id,$input);
 
 		$pipeline=isset($v['pipeline_config'])&&is_array($v['pipeline_config'])
 			? $v['pipeline_config']
@@ -958,6 +1001,8 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$acceptance='review_required';
 
 		for($i=1;$i<=$max;$i++){
+			$lock_ok=$this->refresh_mutation_lock($lock);
+			if(is_wp_error($lock_ok)) return $this->failure_with_compensation($lock_ok,$v['mode'],$id,$before,$owned_after);
 			$final=$this->snapshot($id,$input);
 			$context=array(
 				'adapter'=>$this,
@@ -978,7 +1023,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 			if(class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')){
 				$validated=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$context);
-				if(is_wp_error($validated)) return $this->failure_with_compensation($validated,$v['mode'],$id,$before);
+				if(is_wp_error($validated)) return $this->failure_with_compensation($validated,$v['mode'],$id,$before,$owned_after);
 				$findings=isset($validated['findings'])?(array)$validated['findings']:array();
 				$context=$validated;
 			}else{
@@ -999,8 +1044,9 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 			if(class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')){
 				$repaired=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('repair',$context);
-				if(is_wp_error($repaired)) return $this->failure_with_compensation($repaired,$v['mode'],$id,$before);
+				if(is_wp_error($repaired)) return $this->failure_with_compensation($repaired,$v['mode'],$id,$before,$owned_after);
 				$context=$repaired;
+				$owned_after=$this->snapshot($id,$input);
 				$last=count($history)-1;
 				if($last>=0){
 					$history[$last]['stage_results']=isset($context['stage_results'])?(array)$context['stage_results']:array();
@@ -1010,13 +1056,16 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				if(isset($context['repair_performed'])&&!$context['repair_performed']) break;
 			}else{
 				$r=$this->repair_desired_state($id,$input);
-				if(is_wp_error($r)) return $this->failure_with_compensation($r,$v['mode'],$id,$before);
+				if(is_wp_error($r)) return $this->failure_with_compensation($r,$v['mode'],$id,$before,$owned_after);
 				$last=count($history)-1;
 				if($last>=0) $history[$last]['repair_performed']=true;
+				$owned_after=$this->snapshot($id,$input);
 			}
 			$previous=$d;
 		}
 
+		$lock_ok=$this->refresh_mutation_lock($lock);
+		if(is_wp_error($lock_ok)) return $this->failure_with_compensation($lock_ok,$v['mode'],$id,$before,$owned_after);
 		$final=$this->snapshot($id,$input);
 		$final_context=array(
 			'adapter'=>$this,
@@ -1042,7 +1091,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			$validated['findings']=$findings;
 
 			$accepted=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('accept',$validated);
-			if(is_wp_error($accepted)) return $this->failure_with_compensation($accepted,$v['mode'],$id,$before);
+			if(is_wp_error($accepted)) return $this->failure_with_compensation($accepted,$v['mode'],$id,$before,$owned_after);
 			$acceptance=isset($accepted['acceptance_status'])?(string)$accepted['acceptance_status']:($findings?'review_required':'accepted');
 		}else{
 			$findings=$this->structural_findings($final,$input,count($history)+1);
@@ -1054,10 +1103,19 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if($require_acceptance&&(!empty($findings)||'accepted'!==$acceptance)){
 			return $this->failure_with_compensation(
 				new WP_Error('mad4b_dynamic_acceptance_required','A live content state reached the draft-only orchestrator unexpectedly and failed final acceptance.',array('post_status'=>$final_status,'acceptance_status'=>$acceptance,'finding_count'=>count($findings))),
-				$v['mode'],$id,$before
+				$v['mode'],$id,$before,$owned_after
 			);
 		}
 
+		$publication_acceptance=array('ready'=>false,'receipt_sha256'=>'');
+		if(empty($findings)&&'accepted'===$acceptance){
+			$receipt=$this->persist_acceptance_receipt($id,$final,$input,$pipeline,isset($input['expected_bundle_sha256'])?(string)$input['expected_bundle_sha256']:'');
+			if(is_wp_error($receipt)) return $this->failure_with_compensation($receipt,$v['mode'],$id,$before,$owned_after);
+			$publication_acceptance=array('ready'=>true,'receipt_sha256'=>$receipt['sha256'],'accepted_at'=>$receipt['receipt']['accepted_at']);
+		}else{
+			$invalidated=$this->invalidate_acceptance_receipt($id);
+			if(is_wp_error($invalidated)) return $this->failure_with_compensation($invalidated,$v['mode'],$id,$before,$owned_after);
+		}
 		$final_stage_results=isset($accepted)&&is_array($accepted)&&isset($accepted['stage_results'])?(array)$accepted['stage_results']:(isset($validated)&&is_array($validated)&&isset($validated['stage_results'])?(array)$validated['stage_results']:array());
 		$evidence=isset($input['evidence'])&&is_array($input['evidence'])?$input['evidence']:array();
 		$targets=isset($input['acceptance_targets'])&&is_array($input['acceptance_targets'])?$input['acceptance_targets']:array();
@@ -1076,6 +1134,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'acceptance_targets_sha256'=>$this->state_sha256($targets),
 			'validation_history'=>$history,
 			'final_stage_results'=>$final_stage_results,
+			'publication_acceptance'=>$publication_acceptance,
 			'unresolved_findings'=>$findings,
 			'readback'=>$final,
 			'readback_sha256'=>$this->state_sha256($final),
@@ -1122,6 +1181,65 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		foreach(isset($input['taxonomies'])?(array)$input['taxonomies']:array() as $tax=>$refs){$e=$this->resolve_terms(sanitize_key((string)$tax),(array)$refs);$a=isset($state['taxonomies'][$tax])?$state['taxonomies'][$tax]:array();if(!is_wp_error($e)&&$e!==$a)$f[]=array('code'=>'taxonomy_mismatch','field'=>(string)$tax,'repairable'=>true);}
 		if(array_key_exists('featured_media_id',$input)&&(int)$state['featured_media_id']!==absint($input['featured_media_id']))$f[]=array('code'=>'featured_media_mismatch','field'=>'featured_media_id','repairable'=>true);
 		$extended=apply_filters('mad4b_scp_dynamic_content_validation_findings',$f,$state,$input,absint($iteration)); return is_array($extended)?array_values($extended):$f;
+	}
+
+	private function acceptance_meta_state($id){
+		$value=get_post_meta(absint($id),self::ACCEPTANCE_META,true);
+		return is_array($value)?$value:array();
+	}
+
+	private function acceptance_receipt_hash(array $receipt){ return $this->state_sha256($receipt); }
+
+	private function persist_acceptance_receipt($id,array $final,array $input,array $pipeline,$bundle_sha){
+		$receipt=array(
+			'contract'=>self::ACCEPTANCE_CONTRACT,
+			'post_id'=>absint($id),
+			'post_type'=>isset($final['post']['post_type'])?(string)$final['post']['post_type']:'',
+			'post_status'=>isset($final['post']['post_status'])?(string)$final['post']['post_status']:'',
+			'state_sha256'=>$this->state_sha256($final),
+			'bundle_sha256'=>(string)$bundle_sha,
+			'pipeline_settings_sha256'=>isset($pipeline['settings_sha256'])?(string)$pipeline['settings_sha256']:'',
+			'environment'=>function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown',
+			'scope'=>isset($final['scope'])&&is_array($final['scope'])?$final['scope']:array(),
+			'accepted_at'=>gmdate('c'),
+		);
+		$written=update_post_meta(absint($id),self::ACCEPTANCE_META,$receipt);
+		if(false===$written) return new WP_Error('mad4b_dynamic_acceptance_receipt_write_failed','Accepted content state could not be bound to a publication receipt.');
+		return array('receipt'=>$receipt,'sha256'=>$this->acceptance_receipt_hash($receipt));
+	}
+
+	private function invalidate_acceptance_receipt($id){
+		if(!metadata_exists('post',absint($id),self::ACCEPTANCE_META)) return true;
+		return delete_post_meta(absint($id),self::ACCEPTANCE_META)
+			? true
+			: new WP_Error('mad4b_dynamic_acceptance_receipt_delete_failed','Stale publication acceptance receipt could not be invalidated.');
+	}
+
+	public function verify_publication_acceptance($post_id,$expected_sha256){
+		$post_id=absint($post_id);
+		$expected_sha256=strtolower(trim((string)$expected_sha256));
+		if($post_id<1||1!==preg_match('/^[a-f0-9]{64}$/',$expected_sha256)) return new WP_Error('mad4b_dynamic_acceptance_receipt_required','Exact dynamic acceptance receipt hash is required for publication.');
+		$receipt=$this->acceptance_meta_state($post_id);
+		if(empty($receipt)||self::ACCEPTANCE_CONTRACT!==(isset($receipt['contract'])?(string)$receipt['contract']:'')) return new WP_Error('mad4b_dynamic_acceptance_receipt_missing','No valid dynamic acceptance receipt exists for this post.');
+		$actual_hash=$this->acceptance_receipt_hash($receipt);
+		if(!hash_equals($actual_hash,$expected_sha256)) return new WP_Error('mad4b_dynamic_acceptance_receipt_mismatch','Dynamic acceptance receipt hash does not match the accepted state.');
+		if($post_id!==(isset($receipt['post_id'])?absint($receipt['post_id']):0)) return new WP_Error('mad4b_dynamic_acceptance_receipt_target_mismatch','Dynamic acceptance receipt targets a different post.');
+		$post=get_post($post_id);
+		if(!$post||(string)$post->post_type!==(isset($receipt['post_type'])?(string)$receipt['post_type']:'')) return new WP_Error('mad4b_dynamic_acceptance_receipt_target_mismatch','Dynamic acceptance receipt no longer matches the post type.');
+		if(!in_array((string)$post->post_status,array('draft','pending'),true)) return new WP_Error('mad4b_dynamic_acceptance_publication_state_invalid','Dynamic acceptance publication requires a draft or pending target.');
+		$ttl=(int)apply_filters('mad4b_scp_dynamic_content_acceptance_ttl',self::DEFAULT_ACCEPTANCE_TTL,$post_id,$receipt);
+		$ttl=max(60,min(self::MAX_ACCEPTANCE_TTL,$ttl));
+		$accepted_at=isset($receipt['accepted_at'])?strtotime((string)$receipt['accepted_at']):false;
+		if(false===$accepted_at||$accepted_at<time()-$ttl) return new WP_Error('mad4b_dynamic_acceptance_expired','Dynamic acceptance receipt is stale; rerun acceptance before publication.');
+		$environment=function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown';
+		if(!hash_equals((string)(isset($receipt['environment'])?$receipt['environment']:''),$environment)) return new WP_Error('mad4b_dynamic_acceptance_environment_drift','Dynamic acceptance receipt belongs to a different WordPress environment.');
+		$pipeline=class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')?MAD4B_SCP_Dynamic_Content_Pipeline::effective():array();
+		$current_pipeline=isset($pipeline['settings_sha256'])?(string)$pipeline['settings_sha256']:'';
+		if($current_pipeline===''||!hash_equals((string)(isset($receipt['pipeline_settings_sha256'])?$receipt['pipeline_settings_sha256']:''),$current_pipeline)) return new WP_Error('mad4b_dynamic_acceptance_pipeline_drift','Pipeline settings changed after acceptance; rerun acceptance before publication.');
+		$scope=isset($receipt['scope'])&&is_array($receipt['scope'])?$receipt['scope']:array();
+		$current=$this->snapshot($post_id,$this->input_from_state_scope($scope));
+		if(!hash_equals((string)(isset($receipt['state_sha256'])?$receipt['state_sha256']:''),$this->state_sha256($current))) return new WP_Error('mad4b_dynamic_acceptance_state_drift','Post, meta, taxonomy or featured-media state changed after acceptance; rerun acceptance before publication.');
+		return array('verified'=>true,'receipt_sha256'=>$actual_hash,'accepted_at'=>(string)$receipt['accepted_at'],'state_sha256'=>(string)$receipt['state_sha256'],'pipeline_settings_sha256'=>$current_pipeline);
 	}
 
 	public function readback($input=array()){
@@ -1253,8 +1371,17 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		return true;
 	}
 
-	private function local_compensate($mode,$id,$before){
+	private function local_compensate($mode,$id,$before,$expected_current=null){
 		$mode=sanitize_key((string)$mode);
+		if(is_array($expected_current)){
+			$scope=isset($expected_current['scope'])&&is_array($expected_current['scope'])?$expected_current['scope']:array();
+			$current=$this->snapshot($id,$this->input_from_state_scope($scope));
+			if(!hash_equals($this->state_sha256($expected_current),$this->state_sha256($current))) return new WP_Error(
+				'mad4b_dynamic_compensation_state_drift',
+				'Automatic compensation refused to overwrite state changed after the orchestrator last wrote it.',
+				array('post_id'=>absint($id),'mode'=>$mode,'recovery_required'=>true)
+			);
+		}
 		if('create'===$mode){
 			if($id>0&&get_post($id)&&!wp_delete_post($id,true)) return new WP_Error('mad4b_dynamic_compensation_delete_failed','Failed to remove the partially created post.');
 			return array('compensated'=>true,'mode'=>'create');
@@ -1270,9 +1397,9 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		return new WP_Error('mad4b_dynamic_compensation_state_invalid','Compensation state is invalid.');
 	}
 
-	private function failure_with_compensation($error,$mode,$id,$before){
+	private function failure_with_compensation($error,$mode,$id,$before,$expected_current=null){
 		if(!is_wp_error($error)) $error=new WP_Error('mad4b_dynamic_operation_failed','Dynamic content operation failed.');
-		$comp=$this->local_compensate($mode,$id,$before);
+		$comp=$this->local_compensate($mode,$id,$before,$expected_current);
 		if(is_wp_error($comp)){
 			return new WP_Error(
 				'mad4b_dynamic_compensation_failed',
