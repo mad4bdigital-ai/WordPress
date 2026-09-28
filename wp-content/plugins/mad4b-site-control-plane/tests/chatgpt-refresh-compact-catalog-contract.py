@@ -166,7 +166,7 @@ require("$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_bo
 require("'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in core_chatgpt, "bounded Enrollment dispatcher must remain in the canonical compact ChatGPT core catalog")
 require("$candidates = array_merge( $core, $bootstrap )" in chatgpt_body, "runtime ChatGPT tools/list must start from the canonical compact core catalog")
 dispatcher_helper = SERVERS.split("public static function chatgpt_dispatch_transport_tools()", 1)[1].split("public static function chatgpt_tools()", 1)[0]
-for dispatcher in ("'mad4b/write-execute'", "'mad4b/enrollment-execute'"):
+for dispatcher in ("'mad4b/write-execute'", "'mad4b/developer-execute'", "'mad4b/enrollment-execute'"):
     require(dispatcher in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory is incomplete: " + dispatcher)
 require("array_values( array_unique( array_map( 'strval', $tools ) ) )" in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory must remain deduplicated")
 require("sort( $tools, SORT_STRING )" in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory must remain deterministic")

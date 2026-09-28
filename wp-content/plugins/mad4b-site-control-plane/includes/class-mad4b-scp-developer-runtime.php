@@ -49,12 +49,14 @@ final class MAD4B_SCP_Developer_Runtime {
 				'mad4b/developer-breakglass-wp-eval',
 			);
 		}
-		return array(
+		$tools = array(
 			'mad4b/developer-runtime-status',
 			'mad4b/developer-wp-cli',
 			'mad4b/developer-filesystem',
 			'mad4b/developer-package-install',
 		);
+		if ( class_exists( 'MAD4B_SCP_Developer_Workspace' ) ) $tools = array_merge( $tools, MAD4B_SCP_Developer_Workspace::tool_names() );
+		return array_values( array_unique( $tools ) );
 	}
 
 	public static function register_abilities() {
@@ -551,6 +553,96 @@ final class MAD4B_SCP_Developer_Runtime {
 		return array_merge( $wrapped, array_values( array_map( 'strval', $argv ) ) );
 	}
 
+	/**
+	 * Syntax-check one PHP source file without executing it.
+	 *
+	 * This is intentionally separate from the generic process executor: `php -n -l`
+	 * parses source without running the file and without loading php.ini, so the
+	 * operation has no script-level network capability. Resource limits still
+	 * apply and the file must remain inside the supplied out-of-webroot workspace.
+	 */
+	public static function lint_php_source_file( $file, $workspace_root, $timeout = 10 ) {
+		if ( 'production' === self::environment() || ! self::developer_flag_enabled() || ! self::direct_execution_enabled() || self::kill_switch_enabled() ) {
+			return new WP_Error( 'mad4b_developer_lint_runtime_denied', 'Developer PHP syntax validation requires the enabled non-Production Developer runtime.' );
+		}
+		if ( function_exists( 'posix_geteuid' ) && 0 === (int) posix_geteuid() ) return new WP_Error( 'mad4b_developer_root_execution_denied', 'Developer execution under Unix root is forbidden.' );
+		$php = defined( 'PHP_BINARY' ) ? (string) PHP_BINARY : '';
+		$prlimit = self::prlimit_binary();
+		if ( '' === $php || ! is_file( $php ) || ! is_executable( $php ) ) return new WP_Error( 'mad4b_developer_php_linter_unavailable', 'PHP parser executable is unavailable.' );
+		if ( '' === $prlimit ) return new WP_Error( 'mad4b_developer_resource_limiter_unavailable', 'Developer PHP syntax validation requires prlimit.' );
+		$root = realpath( (string) $workspace_root );
+		$source = realpath( (string) $file );
+		if ( false === $root || false === $source || ! is_dir( $root ) || ! is_file( $source ) ) return new WP_Error( 'mad4b_developer_lint_path_invalid', 'Developer PHP syntax validation requires an existing workspace source file.' );
+		$root_n = rtrim( str_replace( '\\', '/', $root ), '/' );
+		$source_n = str_replace( '\\', '/', $source );
+		if ( 0 !== strpos( $source_n, $root_n . '/' ) ) return new WP_Error( 'mad4b_developer_lint_path_escape', 'PHP syntax validation source escaped the reviewed workspace.' );
+		foreach ( array( ABSPATH, WP_CONTENT_DIR ) as $web_root ) {
+			$web = realpath( $web_root );
+			if ( false === $web ) continue;
+			$web = rtrim( str_replace( '\\', '/', $web ), '/' );
+			if ( $root_n === $web || 0 === strpos( $root_n, $web . '/' ) ) return new WP_Error( 'mad4b_developer_lint_workspace_web_exposed', 'PHP syntax validation workspace must remain outside WordPress web roots.' );
+		}
+		$timeout = max( 1, min( 30, absint( $timeout ) ) );
+		$argv = array(
+			$prlimit,
+			'--as=' . (string) self::DEFAULT_MEMORY_LIMIT_BYTES . ':' . (string) self::DEFAULT_MEMORY_LIMIT_BYTES,
+			'--cpu=' . (string) ( $timeout + 1 ) . ':' . (string) ( $timeout + 1 ),
+			'--nofile=32:32',
+			'--nproc=8:8',
+			'--',
+			$php,
+			'-n',
+			'-l',
+			$source,
+		);
+		$descriptor = array( 0 => array( 'pipe', 'r' ), 1 => array( 'pipe', 'w' ), 2 => array( 'pipe', 'w' ) );
+		$process = @proc_open( $argv, $descriptor, $pipes, $root, self::sanitized_env( false ), array( 'bypass_shell' => true ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( ! is_resource( $process ) ) return new WP_Error( 'mad4b_developer_lint_start_failed', 'PHP syntax validator could not start.' );
+		fclose( $pipes[0] );
+		stream_set_blocking( $pipes[1], false );
+		stream_set_blocking( $pipes[2], false );
+		$stdout = '';
+		$stderr = '';
+		$started = microtime( true );
+		$timed_out = false;
+		while ( true ) {
+			$stdout .= (string) stream_get_contents( $pipes[1] );
+			$stderr .= (string) stream_get_contents( $pipes[2] );
+			if ( strlen( $stdout ) > 32768 || strlen( $stderr ) > 32768 ) {
+				@proc_terminate( $process, 9 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				$timed_out = true;
+				break;
+			}
+			$status = proc_get_status( $process );
+			if ( empty( $status['running'] ) ) break;
+			if ( microtime( true ) - $started >= $timeout ) {
+				@proc_terminate( $process, 9 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				$timed_out = true;
+				break;
+			}
+			usleep( 50000 );
+		}
+		$stdout .= (string) stream_get_contents( $pipes[1] );
+		$stderr .= (string) stream_get_contents( $pipes[2] );
+		fclose( $pipes[1] );
+		fclose( $pipes[2] );
+		$status = proc_get_status( $process );
+		$exit = isset( $status['exitcode'] ) && $status['exitcode'] >= 0 ? (int) $status['exitcode'] : -1;
+		$closed = @proc_close( $process ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( $exit < 0 && is_int( $closed ) ) $exit = $closed;
+		if ( $timed_out ) $exit = 124;
+		if ( 0 !== $exit ) return new WP_Error( 'mad4b_developer_php_lint_failed', 'PHP syntax validation failed.', array( 'exit_code' => $exit, 'diagnostic' => substr( self::redact( trim( $stderr . ' ' . $stdout ) ), 0, 500 ) ) );
+		return array(
+			'contract' => self::RECEIPT_CONTRACT,
+			'ability' => 'mad4b/developer-workspace-promote:php-lint',
+			'parser_only' => true,
+			'php_ini_loaded' => false,
+			'network_execution_possible' => false,
+			'source_sha256' => hash_file( 'sha256', $source ),
+			'exit_code' => 0,
+		);
+	}
+
 	private static function normal_wp_cli_guard( array $args ) {
 		$normalized = array_values( array_map( 'strval', $args ) );
 		$positionals = array();
@@ -680,8 +772,8 @@ final class MAD4B_SCP_Developer_Runtime {
 		return $resolved;
 	}
 
-	private static function execute( $ability, array $argv, $input, $breakglass, $mutation_assumed, $isolated_wp_cli = false ) {
-		$cwd = $isolated_wp_cli ? self::isolated_wp_cli_cwd() : self::working_dir( is_array( $input ) ? $input : array() );
+	private static function execute( $ability, array $argv, $input, $breakglass, $mutation_assumed, $isolated_wp_cli = false, $explicit_cwd = '' ) {
+		$cwd = '' !== (string) $explicit_cwd ? (string) $explicit_cwd : ( $isolated_wp_cli ? self::isolated_wp_cli_cwd() : self::working_dir( is_array( $input ) ? $input : array() ) );
 		if ( is_wp_error( $cwd ) ) return $cwd;
 		$timeout = isset( $input['timeout_seconds'] ) ? absint( $input['timeout_seconds'] ) : self::DEFAULT_TIMEOUT;
 		$timeout = max( 1, min( self::MAX_TIMEOUT, $timeout ) );
@@ -759,6 +851,60 @@ final class MAD4B_SCP_Developer_Runtime {
 			MAD4B_SCP_Audit::record( 'mad4b/developer-execution', array_diff_key( $receipt, array( 'stdout' => true, 'stderr' => true ) ), 0 === $exit ? 'ok' : 'error' );
 		}
 		return $receipt;
+	}
+
+	/**
+	 * Syntax-check one PHP file inside the protected out-of-webroot Developer
+	 * Workspace using the single bounded process executor owned by this class.
+	 * This is not an Ability and cannot be remotely invoked by name.
+	 */
+	public static function lint_workspace_php_file( $absolute_file, $workspace_root ) {
+		$environment = self::environment();
+		if ( 'production' === $environment ) return new WP_Error( 'mad4b_developer_workspace_lint_production_denied', 'Workspace lint is never authorized in Production.' );
+		if ( ! in_array( $environment, array( 'staging', 'development', 'local' ), true ) ) return new WP_Error( 'mad4b_developer_workspace_lint_environment_denied', 'Workspace lint requires an explicit non-Production environment.' );
+		if ( ! self::developer_flag_enabled() || ! self::direct_execution_enabled() || self::kill_switch_enabled() ) return new WP_Error( 'mad4b_developer_workspace_lint_runtime_not_ready', 'Developer runtime is not ready for workspace lint.' );
+		if ( ! function_exists( 'proc_open' ) ) return new WP_Error( 'mad4b_developer_proc_open_unavailable', 'proc_open is unavailable on this runtime.' );
+		if ( '' === self::prlimit_binary() ) return new WP_Error( 'mad4b_developer_resource_limiter_unavailable', 'Workspace lint requires the Developer resource limiter.' );
+		if ( '' === self::network_sandbox_binary() ) return new WP_Error( 'mad4b_developer_network_isolation_unavailable', 'Workspace lint requires the no-network Developer sandbox backend.' );
+		if ( function_exists( 'posix_geteuid' ) && 0 === (int) posix_geteuid() ) return new WP_Error( 'mad4b_developer_root_execution_denied', 'Developer execution under Unix root is forbidden.' );
+		$root = realpath( (string) $workspace_root );
+		$file = realpath( (string) $absolute_file );
+		$wp_root = realpath( ABSPATH );
+		$content_root = realpath( WP_CONTENT_DIR );
+		if ( false === $root || false === $file || ! is_dir( $root ) || ! is_file( $file ) || is_link( $file ) ) return new WP_Error( 'mad4b_developer_workspace_lint_path_invalid', 'Workspace lint requires a real PHP file under a real workspace root.' );
+		$root_n = rtrim( str_replace( '\\', '/', $root ), '/' );
+		$file_n = str_replace( '\\', '/', $file );
+		if ( 0 !== strpos( $file_n, $root_n . '/' ) || 'php' !== strtolower( pathinfo( $file_n, PATHINFO_EXTENSION ) ) ) return new WP_Error( 'mad4b_developer_workspace_lint_escape', 'Workspace lint target escaped the protected project root or is not PHP.' );
+		foreach ( array( $wp_root, $content_root ) as $web ) {
+			if ( false === $web ) continue;
+			$web_n = rtrim( str_replace( '\\', '/', $web ), '/' );
+			if ( $root_n === $web_n || 0 === strpos( $root_n, $web_n . '/' ) ) return new WP_Error( 'mad4b_developer_workspace_lint_web_root_denied', 'Workspace lint root must remain outside WordPress web roots.' );
+		}
+		if ( ! defined( 'PHP_BINARY' ) || '' === PHP_BINARY || ! is_executable( PHP_BINARY ) ) return new WP_Error( 'mad4b_developer_workspace_php_linter_unavailable', 'PHP binary is unavailable for mandatory syntax validation.' );
+		$receipt = self::execute(
+			'mad4b/developer-workspace-php-lint',
+			array( PHP_BINARY, '-l', $file ),
+			array( 'timeout_seconds' => min( 30, self::DEFAULT_TIMEOUT ) ),
+			false,
+			false,
+			false,
+			$root
+		);
+		if ( is_wp_error( $receipt ) ) return $receipt;
+		if ( ! is_array( $receipt ) || 0 !== ( isset( $receipt['exit_code'] ) ? (int) $receipt['exit_code'] : -1 ) ) {
+			return new WP_Error(
+				'mad4b_developer_workspace_php_lint_failed',
+				'Workspace PHP syntax validation failed.',
+				array(
+					'diagnostic' => is_array( $receipt ) ? substr( sanitize_text_field( (string) ( isset( $receipt['stderr'] ) ? $receipt['stderr'] : '' ) . ' ' . ( isset( $receipt['stdout'] ) ? $receipt['stdout'] : '' ) ), 0, 500 ) : '',
+				)
+			);
+		}
+		return array(
+			'ok' => true,
+			'command_digest' => isset( $receipt['command_digest'] ) ? (string) $receipt['command_digest'] : '',
+			'duration_ms' => isset( $receipt['duration_ms'] ) ? (int) $receipt['duration_ms'] : 0,
+		);
 	}
 
 	private static function filesystem_receipt( $action, $path, $ok, $mutation, $sha = '' ) {
