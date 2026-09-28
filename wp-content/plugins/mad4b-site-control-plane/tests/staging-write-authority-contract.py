@@ -618,6 +618,16 @@ if claim.index('MAD4B_SCP_Budgets::reserve') > claim.index('MAD4B_SCP_Approval_T
 if claim.index('MAD4B_SCP_Approval_Tickets::claim_exact') > claim.index('MAD4B_SCP_Budgets::commit'):
     raise SystemExit('approval claim must precede budget commit')
 
+planning_registration = planning[planning.index('public static function govern_registration'):planning.index('/**\n\t * Canonicalize the operation nested inside approval-plan')]
+if "MAD4B_SCP_Staging_Write_Authority::eligible()" in planning_registration:
+    raise SystemExit('approval-plan registration governance must not depend on authority eligibility at registration time')
+for marker in (
+    "'mad4b_governed_write_authority'] = MAD4B_SCP_Staging_Write_Authority::CONTRACT",
+    "'mad4b_target_server'] = 'mad4b-write'",
+):
+    if marker not in planning_registration:
+        raise SystemExit('approval-plan immutable registration governance marker missing: ' + marker)
+
 for marker in [
     "const CONTRACT = 'mad4b.staging-write-planning-guard.v2'",
     "const ABILITY = 'mad4b/approval-plan'",
