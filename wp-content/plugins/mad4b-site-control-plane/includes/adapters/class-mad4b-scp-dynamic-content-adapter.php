@@ -187,7 +187,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 							'post_title'=>array('type'=>'string','maxLength'=>1000),
 							'post_content'=>array('type'=>'string','maxLength'=>2097152),
 							'post_excerpt'=>array('type'=>'string','maxLength'=>262144),
-							'post_status'=>array('type'=>'string','enum'=>array('draft','pending','private','publish')),
+							'post_status'=>array('type'=>'string','enum'=>array('draft','pending')),
 							'post_parent'=>array('type'=>'integer','minimum'=>0),
 							'post_author'=>array('type'=>'integer','minimum'=>1)
 						)
@@ -246,22 +246,21 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$post_id=isset($input['post_id'])?absint($input['post_id']):0;
 		$target_ready=true;
 		$target_reason='';
+		$target=null;
+		$live_target=false;
 		if('update'===$mode){
 			$target=$post_id>0?get_post($post_id):null;
 			$target_ready=$target&&$post_type===(string)$target->post_type&&current_user_can('edit_post',$post_id);
 			if(!$target_ready) $target_reason='update_target_missing_mismatch_or_denied';
+			$live_target=$target&&in_array((string)$target->post_status,array('publish','private'),true);
 		}elseif($post_id>0){
 			$target_ready=false;
 			$target_reason='create_mode_post_id_not_allowed';
 		}
-		$publish_ready=true;
 		$status=isset($input['post_status'])?sanitize_key((string)$input['post_status']):'';
-		if(in_array($status,array('publish','private'),true)){
-			$publish_cap=$post_object&&isset($post_object->cap->publish_posts)?(string)$post_object->cap->publish_posts:'publish_posts';
-			$publish_ready=current_user_can($publish_cap);
-		}else{
-			$publish_cap='';
-		}
+		$live_state_requested=in_array($status,array('publish','private'),true);
+		$publish_cap=$live_state_requested&&$post_object&&isset($post_object->cap->publish_posts)?(string)$post_object->cap->publish_posts:'';
+		$publish_ready=!$live_state_requested;
 		$environment=function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown';
 		$environment_eligible=(bool)apply_filters('mad4b_scp_dynamic_content_environment_mutation_eligible',true,$environment,$mode,$post_type,$input);
 		$post_type_readiness=array(
@@ -276,7 +275,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'target_reason'=>$target_reason,
 			'publish_capability'=>$publish_cap,
 			'publish_allowed'=>$publish_ready,
-			'ready'=>$environment_eligible&&$policy_eligible&&$capability_allowed&&$target_ready&&$publish_ready,
+			'ready'=>$environment_eligible&&$policy_eligible&&$capability_allowed&&$target_ready&&$publish_ready&&!$live_target,
 		);
 
 		$steps=array();
@@ -287,7 +286,8 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if(!$policy_eligible) $blockers[]=array('code'=>'post_type_policy_ineligible','post_type'=>$post_type);
 		if(!$capability_allowed) $blockers[]=array('code'=>'post_type_capability_denied','post_type'=>$post_type,'capability'=>$required_cap,'mode'=>$mode);
 		if(!$target_ready) $blockers[]=array('code'=>'post_target_not_ready','post_type'=>$post_type,'post_id'=>$post_id,'reason'=>$target_reason);
-		if(!$publish_ready) $blockers[]=array('code'=>'post_publish_denied','post_type'=>$post_type,'capability'=>$publish_cap,'post_status'=>$status);
+		if($live_state_requested) $blockers[]=array('code'=>'separate_publication_required','post_type'=>$post_type,'post_status'=>$status,'required_next_ability'=>'mad4b/content-update-post');
+		if($live_target) $blockers[]=array('code'=>'live_target_requires_draft_workflow','post_type'=>$post_type,'post_id'=>$post_id,'post_status'=>(string)$target->post_status);
 		$taxonomy_readiness=array();
 		$taxonomies=isset($input['taxonomies'])&&is_array($input['taxonomies'])?$input['taxonomies']:array();
 		ksort($taxonomies,SORT_STRING);
@@ -656,10 +656,11 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if($title_required&&(!array_key_exists('post_title',$post)||''===trim((string)$post['post_title']))) return new WP_Error('mad4b_dynamic_title_required','This post type requires a non-empty post_title under the current site policy.');
 
 		$status=isset($post['post_status'])?sanitize_key((string)$post['post_status']):('create'===$mode?'draft':'');
-		if(in_array($status,array('publish','private'),true)){
-			$publish_cap=$obj&&isset($obj->cap->publish_posts)?(string)$obj->cap->publish_posts:'publish_posts';
-			if(!current_user_can($publish_cap)) return new WP_Error('mad4b_dynamic_publish_denied','Current user cannot publish or private-publish the requested post type.');
-		}
+		if(in_array($status,array('publish','private'),true)) return new WP_Error(
+			'mad4b_dynamic_direct_publication_denied',
+			'Dynamic content bundles are draft/pending-only. Complete acceptance first, then use the separate governed publication ability.',
+			array('post_status'=>$status,'required_next_ability'=>'mad4b/content-update-post')
+		);
 
 		if(isset($post['post_parent'])&&absint($post['post_parent'])>0){
 			$parent_id=absint($post['post_parent']);
@@ -681,6 +682,11 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if($mode==='update'){
 			$p=get_post($id); if(!$p||$p->post_type!==$pt) return new WP_Error('mad4b_dynamic_update_target_invalid','Update target does not match post_type.');
 			if(!current_user_can('edit_post',$id)) return new WP_Error('mad4b_dynamic_update_denied','Current user cannot edit target.');
+			if(in_array((string)$p->post_status,array('publish','private'),true)) return new WP_Error(
+				'mad4b_dynamic_live_target_denied',
+				'Dynamic content bundles do not mutate live posts directly. Use a draft/shadow workflow and publish separately after acceptance.',
+				array('post_id'=>$id,'post_status'=>(string)$p->post_status,'required_next_ability'=>'mad4b/content-update-post')
+			);
 			if($strict){ $expected=isset($input['expected_state_sha256'])?strtolower(trim((string)$input['expected_state_sha256'])):''; $actual=$this->state_sha256($this->snapshot($id,$input));
 				if(1!==preg_match('/^[a-f0-9]{64}$/',$expected)||!hash_equals($actual,$expected)) return new WP_Error('mad4b_dynamic_state_drift','Target changed after planning; fresh readback and approval are required.'); }
 		}elseif($id>0) return new WP_Error('mad4b_dynamic_create_post_id_denied','Create mode must not supply post_id.');
@@ -929,7 +935,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$require_acceptance=(bool)apply_filters('mad4b_scp_dynamic_content_require_acceptance',in_array($final_status,array('publish','private'),true),$final_status,$v['mode'],$v['post_type'],$input,$pipeline);
 		if($require_acceptance&&(!empty($findings)||'accepted'!==$acceptance)){
 			return $this->failure_with_compensation(
-				new WP_Error('mad4b_dynamic_acceptance_required','Final acceptance is required before this content state may remain published or private.',array('post_status'=>$final_status,'acceptance_status'=>$acceptance,'finding_count'=>count($findings))),
+				new WP_Error('mad4b_dynamic_acceptance_required','A live content state reached the draft-only orchestrator unexpectedly and failed final acceptance.',array('post_status'=>$final_status,'acceptance_status'=>$acceptance,'finding_count'=>count($findings))),
 				$v['mode'],$id,$before
 			);
 		}
