@@ -227,9 +227,12 @@ The session-safe diagnostic ability:
   declares direct composite fan-out unsupported;
 - remains read-only, non-authorizing, and incapable of Production mutation.
 
-Direct status tools remain available for deliberate single-scope inspection, but
-clients MUST NOT use parallel direct status fan-out to construct a composite
-health report. Deep follow-up uses exactly one generation-bound bundle at a time.
+Broad status abilities remain available on the governed logical/read surface for
+deliberate single-scope inspection, but they MUST NOT be projected as direct
+`mad4b-chatgpt` tools. The ChatGPT direct catalog uses an explicit reviewed
+read allowlist centered on `mad4b/session-safe-diagnostics`, discovery/info and
+single-target dispatch. Deep follow-up uses `mad4b-read` or exactly one
+generation-bound `read-execute` target at a time.
 
 ## Cache and circuit-breaker policy
 
