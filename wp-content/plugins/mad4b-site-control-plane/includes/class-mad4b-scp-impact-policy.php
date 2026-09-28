@@ -37,7 +37,7 @@ final class MAD4B_SCP_Impact_Policy {
 			} elseif ( 'mad4b/database-raw-query' === $ability_name || 0 === strpos( $ability_name, 'mad4b/developer-breakglass-' ) ) {
 				$operation_type = 'exceptional';
 				$mutation_kind = 'privileged_execute';
-			} elseif ( in_array( $ability_name, array( 'mad4b/plugin-package-apply', 'mad4b/control-plane-upload-apply' ), true ) ) {
+			} elseif ( in_array( $ability_name, array( 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply' ), true ) ) {
 				$operation_type = 'certified_package';
 				$mutation_kind = 'package_replace';
 			} elseif ( in_array( $ability_name, array( 'mad4b/mutation-undo', 'context/rollback-materialized-brand-draft' ), true ) || false !== strpos( $ability_name, 'rollback' ) ) {
@@ -133,7 +133,7 @@ final class MAD4B_SCP_Impact_Policy {
 		if ( 'mad4b/approval-ai-decide' === $ability_name ) return 'low';
 		if ( 0 === strpos( $ability_name, 'mad4b/developer-' ) && 'mad4b/developer-runtime-status' !== $ability_name ) return 'high';
 		$high_core = array(
-			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/mutation-undo',
+			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/mutation-undo',
 			'mad4b/provider-canary-execute',
 		);
 		if ( in_array( $ability_name, $high_core, true ) ) return 'high';
