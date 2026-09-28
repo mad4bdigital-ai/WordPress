@@ -172,12 +172,19 @@ final class MAD4B_SCP_Provider_Autopilot {
 			. "\tpublic function ability_names() { return array( 'read' => array(), 'content' => array(), 'admin' => array() ); }\n"
 			. "\tpublic function register_abilities() { /* Candidate only: no abilities are registered automatically. */ }\n"
 			. "}\n";
+		$plugin_state_sha = '';
+		if ( '' !== $plugin_file && class_exists( 'MAD4B_SCP_Plugin_Lifecycle' ) ) {
+			$snapshot = MAD4B_SCP_Plugin_Lifecycle::snapshot( $plugin_file );
+			if ( is_array( $snapshot ) && isset( $snapshot['state_sha256'] ) ) $plugin_state_sha = (string) $snapshot['state_sha256'];
+		}
 		$descriptor = array(
 			'contract' => self::ADAPTER_CANDIDATE_CONTRACT,
 			'adapter_id' => $adapter_id,
 			'class_name' => $class_name,
 			'plugin_file' => $plugin_file,
 			'plugin_version' => isset( $candidate['plugin_version'] ) ? (string) $candidate['plugin_version'] : '',
+			'plugin_state_sha256' => $plugin_state_sha,
+			'provider_candidate_fingerprint' => isset( $candidate['candidate_fingerprint'] ) ? (string) $candidate['candidate_fingerprint'] : '',
 			'mode' => $mode,
 			'candidate_only' => true,
 			'executable' => false,
@@ -206,6 +213,8 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'provider_active' => $active,
 			'side_channel_clear' => ! $side_channel_blocked,
 			'adapter_candidate_sha256' => isset( $adapter_candidate['candidate_sha256'] ) ? (string) $adapter_candidate['candidate_sha256'] : '',
+			'plugin_state_sha256' => isset( $adapter_candidate['plugin_state_sha256'] ) ? (string) $adapter_candidate['plugin_state_sha256'] : '',
+			'provider_candidate_fingerprint' => isset( $adapter_candidate['provider_candidate_fingerprint'] ) ? (string) $adapter_candidate['provider_candidate_fingerprint'] : '',
 			'read_execution_eligible' => false,
 			'write_eligible' => false,
 			'canary_eligible' => false,
@@ -324,6 +333,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'automatic_steps' => $automatic_steps,
 			'governed_steps' => $governed_steps,
 			'autopilot_candidate_sha256' => isset( $autopilot['adapter_candidate']['candidate_sha256'] ) ? (string) $autopilot['adapter_candidate']['candidate_sha256'] : '',
+			'plugin_state_sha256' => isset( $autopilot['adapter_candidate']['plugin_state_sha256'] ) ? (string) $autopilot['adapter_candidate']['plugin_state_sha256'] : '',
 			'shadow_certification_sha256' => isset( $autopilot['shadow_certification']['certification_sha256'] ) ? (string) $autopilot['shadow_certification']['certification_sha256'] : '',
 			'auto_materialize_candidate_code' => false,
 			'auto_register_generated_adapter' => false,
