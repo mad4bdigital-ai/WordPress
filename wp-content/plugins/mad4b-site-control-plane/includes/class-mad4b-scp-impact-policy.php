@@ -37,6 +37,9 @@ final class MAD4B_SCP_Impact_Policy {
 			} elseif ( 'mad4b/developer-workspace-apply' === $ability_name ) {
 				$operation_type = 'development_source';
 				$mutation_kind = 'source_batch';
+			} elseif ( 'mad4b/developer-workspace-promote' === $ability_name ) {
+				$operation_type = 'certified_package';
+				$mutation_kind = 'development_promotion';
 			} elseif ( 'mad4b/database-raw-query' === $ability_name || 0 === strpos( $ability_name, 'mad4b/developer-breakglass-' ) ) {
 				$operation_type = 'exceptional';
 				$mutation_kind = 'privileged_execute';
@@ -73,13 +76,13 @@ final class MAD4B_SCP_Impact_Policy {
 			}
 		}
 
-		$developer_workspace_source = 'mad4b/developer-workspace-apply' === $ability_name;
+		$bounded_developer_ai = in_array( $ability_name, array( 'mad4b/developer-workspace-apply', 'mad4b/developer-workspace-promote' ), true );
 		$ai_forbidden = $readonly
 			|| 'staging' !== $environment
 			|| 'breakglass' === $ticket_class
 			|| 'exceptional' === $impact
 			|| 'exceptional' === $operation_type
-			|| ( 0 === strpos( $ability_name, 'mad4b/developer-' ) && ! $developer_workspace_source )
+			|| ( 0 === strpos( $ability_name, 'mad4b/developer-' ) && ! $bounded_developer_ai )
 			|| 'mad4b/database-raw-query' === $ability_name;
 		$ai_eligible = ! $ai_forbidden;
 		$approval_required = ! $readonly && self::requires_approval( $ability_name, $provider, $input );
@@ -137,6 +140,7 @@ final class MAD4B_SCP_Impact_Policy {
 		// classification, build/profile binding and AI NHI grant.
 		if ( 'mad4b/approval-ai-decide' === $ability_name ) return 'low';
 		if ( 'mad4b/developer-workspace-apply' === $ability_name ) return 'low';
+		if ( 'mad4b/developer-workspace-promote' === $ability_name ) return 'high';
 		if ( 0 === strpos( $ability_name, 'mad4b/developer-' ) && 'mad4b/developer-runtime-status' !== $ability_name ) return 'high';
 		$high_core = array(
 			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/mutation-undo',
