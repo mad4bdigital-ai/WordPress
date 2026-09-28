@@ -218,6 +218,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 					'operation_key'=>array('type'=>'string','minLength'=>8,'maxLength'=>128,'pattern'=>'^[A-Za-z0-9._:-]+$'),
 					'expected_state_sha256'=>array('type'=>'string','pattern'=>'^[A-Fa-f0-9]{64}$'),
 					'expected_pipeline_settings_sha256'=>array('type'=>'string','pattern'=>'^[A-Fa-f0-9]{64}$'),
+					'expected_bundle_sha256'=>array('type'=>'string','pattern'=>'^[A-Fa-f0-9]{64}$'),
 					'post'=>array(
 						'type'=>'object',
 						'additionalProperties'=>false,
@@ -257,7 +258,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 							'repair_mode'=>array('type'=>'string','enum'=>array('safe_only','off'),'default'=>'safe_only')
 						)
 					)
-				),array('post_type','operation_key','post','expected_pipeline_settings_sha256')),
+				),array('post_type','operation_key','post','expected_pipeline_settings_sha256','expected_bundle_sha256')),
 				'content',
 				false,
 				true,
@@ -451,22 +452,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if('update'===$mode&&$target_ready&&$target){
 			$expected_state_sha256=$this->state_sha256($this->snapshot($post_id,$input));
 		}
-		$bundle_basis=$this->canonical_value(array(
-			'mode'=>$mode,
-			'post_type'=>$post_type,
-			'post_id'=>$post_id,
-			'operation_key'=>$operation_key,
-			'post'=>$post_input,
-			'meta'=>isset($input['meta'])&&is_array($input['meta'])?$input['meta']:array(),
-			'meta_entries'=>isset($input['meta_entries'])&&is_array($input['meta_entries'])?$input['meta_entries']:array(),
-			'taxonomies'=>$taxonomies,
-			'featured_media_id'=>array_key_exists('featured_media_id',$input)?absint($input['featured_media_id']):null,
-			'evidence'=>isset($input['evidence'])&&is_array($input['evidence'])?$input['evidence']:array(),
-			'acceptance_targets'=>isset($input['acceptance_targets'])&&is_array($input['acceptance_targets'])?$input['acceptance_targets']:array(),
-			'validation'=>isset($input['validation'])&&is_array($input['validation'])?$input['validation']:array(),
-		));
-		$bundle_json=wp_json_encode($bundle_basis,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
-		$bundle_sha256=is_string($bundle_json)?hash('sha256',$bundle_json):'';
+		$bundle_sha256=$this->bundle_sha256_for_input($input,$mode,$post_type,$post_id,$operation_key);
 		$steps[]=array(
 			'order'=>count($steps)+1,
 			'kind'=>'content_bundle',
@@ -478,7 +464,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				'operation_key'=>$operation_key,
 				'expected_state_sha256'=>$expected_state_sha256,
 				'expected_pipeline_settings_sha256'=>$pipeline_settings_sha256,
-				'bundle_sha256'=>$bundle_sha256
+				'expected_bundle_sha256'=>$bundle_sha256
 			)
 		);
 
@@ -694,6 +680,25 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		return array('exists'=>true,'values'=>$normalized);
 	}
 
+	private function bundle_sha256_for_input(array $input,$mode,$post_type,$post_id,$operation_key){
+		$basis=$this->canonical_value(array(
+			'mode'=>sanitize_key((string)$mode),
+			'post_type'=>sanitize_key((string)$post_type),
+			'post_id'=>absint($post_id),
+			'operation_key'=>(string)$operation_key,
+			'post'=>isset($input['post'])&&is_array($input['post'])?$input['post']:array(),
+			'meta'=>isset($input['meta'])&&is_array($input['meta'])?$input['meta']:array(),
+			'meta_entries'=>isset($input['meta_entries'])&&is_array($input['meta_entries'])?$input['meta_entries']:array(),
+			'taxonomies'=>isset($input['taxonomies'])&&is_array($input['taxonomies'])?$input['taxonomies']:array(),
+			'featured_media_id'=>array_key_exists('featured_media_id',$input)?absint($input['featured_media_id']):null,
+			'evidence'=>isset($input['evidence'])&&is_array($input['evidence'])?$input['evidence']:array(),
+			'acceptance_targets'=>isset($input['acceptance_targets'])&&is_array($input['acceptance_targets'])?$input['acceptance_targets']:array(),
+			'validation'=>isset($input['validation'])&&is_array($input['validation'])?$input['validation']:array(),
+		));
+		$json=wp_json_encode($basis,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+		return is_string($json)?hash('sha256',$json):'';
+	}
+
 	private function validate_bundle(array $input,$strict){
 		$mode=isset($input['mode'])?sanitize_key((string)$input['mode']):'create';
 		if(!in_array($mode,array('create','update'),true)) return new WP_Error('mad4b_dynamic_mode_invalid','Mode must be create or update.');
@@ -723,6 +728,13 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 		$key=isset($input['operation_key'])?trim((string)$input['operation_key']):'';
 		if(1!==preg_match('/^[A-Za-z0-9._:-]{8,128}$/',$key)) return new WP_Error('mad4b_dynamic_operation_key_invalid','Stable operation_key is required.');
+		$expected_bundle_sha=isset($input['expected_bundle_sha256'])?strtolower(trim((string)$input['expected_bundle_sha256'])):'';
+		$current_bundle_sha=$this->bundle_sha256_for_input($input,$mode,$pt,isset($input['post_id'])?absint($input['post_id']):0,$key);
+		if(1!==preg_match('/^[a-f0-9]{64}$/',$expected_bundle_sha)||!hash_equals($current_bundle_sha,$expected_bundle_sha)) return new WP_Error(
+			'mad4b_dynamic_bundle_drift',
+			'Content bundle differs from the exact orchestration plan. Refresh the plan before mutation.',
+			array('expected_bundle_sha256'=>$expected_bundle_sha,'current_bundle_sha256'=>$current_bundle_sha)
+		);
 		$post=isset($input['post'])&&is_array($input['post'])?$input['post']:array();
 
 		$title_supported=post_type_supports($pt,'title');
