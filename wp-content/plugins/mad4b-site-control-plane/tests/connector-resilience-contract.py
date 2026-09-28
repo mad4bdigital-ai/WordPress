@@ -142,6 +142,8 @@ if servers.count("'mad4b/session-safe-diagnostics'") < 2:
     raise SystemExit("session-safe diagnostics must be mounted on read and ChatGPT surfaces")
 
 chatgpt_core = servers.split("'mad4b-chatgpt' => array_merge( array(", 1)[1].split("), $governed_status", 1)[0]
+require(chatgpt_core, "'mad4b/full-staging-authority-handshake'", "compact ChatGPT authority handshake")
+
 for forbidden_direct in [
     "'mad4b/diagnostics-health'",
     "'mad4b/runtime-authority-status'",
