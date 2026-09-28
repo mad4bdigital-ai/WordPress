@@ -177,22 +177,28 @@ final class MAD4B_SCP_Connector_Resilience {
 			$result = call_user_func( $callback );
 			if ( is_wp_error( $result ) ) {
 				$classification = self::classify_wp_error( $result );
-				$code_suffix = ! empty( $classification['retryable'] ) ? '_dispatch_uncertain_remote_error' : '_dispatch_target_error';
+				$original_error_code = self::safe_error_code( $result );
+				$dispatch_not_started = self::wp_error_proves_mutation_not_started( $original_error_code );
+				$code_suffix = $dispatch_not_started
+					? '_dispatch_not_started'
+					: ( ! empty( $classification['retryable'] ) ? '_dispatch_uncertain_remote_error' : '_dispatch_target_error' );
 				return new WP_Error(
 					'mad4b_' . ( '' !== $surface ? $surface : 'mutation' ) . $code_suffix,
-					'Governed mutation returned an error after execution may have started. Reconcile observed postconditions before any retry.',
+					$dispatch_not_started
+						? 'Governed mutation was rejected before the target callback started. Repair the dispatch contract and re-plan before retrying.'
+						: 'Governed mutation returned an error after execution may have started. Reconcile observed postconditions before any retry.',
 					array(
 						'surface' => $surface,
 						'target' => $target,
-						'original_error_code' => self::safe_error_code( $result ),
+						'original_error_code' => $original_error_code,
 						'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown',
-						'client_action' => 'reconcile_then_replan',
+						'client_action' => $dispatch_not_started ? 'repair_dispatch_then_replan' : 'reconcile_then_replan',
 						'retryable' => false,
 						'attempts' => 1,
 						'elapsed_ms' => self::elapsed_ms( $started ),
 						'error_fingerprint' => self::wp_error_fingerprint( $surface . '_' . sanitize_key( $target ), $result ),
-						'mutation_state' => 'unknown',
-						'reconciliation_required' => true,
+						'mutation_state' => $dispatch_not_started ? 'not_started' : 'unknown',
+						'reconciliation_required' => ! $dispatch_not_started,
 						'blind_retry_allowed' => false,
 						'automatic_retry_performed' => false,
 						'raw_error_message_exposed' => false,
@@ -422,6 +428,25 @@ final class MAD4B_SCP_Connector_Resilience {
 	private static function safe_error_code( WP_Error $error ) {
 		$code = sanitize_key( (string) $error->get_error_code() );
 		return substr( $code, 0, 96 );
+	}
+
+	private static function wp_error_proves_mutation_not_started( $error_code ) {
+		$error_code = sanitize_key( (string) $error_code );
+		return in_array(
+			$error_code,
+			array(
+				'mad4b_write_dispatch_transport_invalid',
+				'mad4b_write_dispatch_callback_invalid',
+				'mad4b_write_dispatch_nested_recursion_denied',
+				'mad4b_write_dispatch_target_denied',
+				'mad4b_write_dispatch_schema_invalid',
+				'mad4b_write_dispatch_target_not_runtime_eligible',
+				'mad4b_write_dispatch_target_unavailable',
+				'mad4b_write_dispatch_contract_unavailable',
+				'mad4b_write_dispatch_schema_drift',
+			),
+			true
+		);
 	}
 
 	private static function retry_after_seconds_from_wp_error( WP_Error $error ) {
