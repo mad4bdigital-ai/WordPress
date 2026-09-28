@@ -4,7 +4,7 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.71**.
+Current plugin version: **0.4.0-rc.72**.
 
 Provider-gap closure is zero-touch and non-authorizing. The package embeds exact-head repository evidence plus `functional-gap-policy.json`; `mad4b/functional-gap-runtime-evidence` performs bounded local runtime collection, fixed-point drift checks, and deterministic evaluation without shell, WP-CLI, raw SQL, remote requests, credential reads, or mutation. Evidence readiness never grants provider write authority or Production activation. Provider capability diagnostics also distinguish mounted from latent capabilities and read readiness from blocked write certification.
 
@@ -13,6 +13,12 @@ Provider-gap closure is zero-touch and non-authorizing. The package embeds exact
 Operator deployment, authority reconciliation, recovery, rollback and lifecycle guidance: [`docs/RELEASE-AND-OPERATOR-RUNBOOK.md`](docs/RELEASE-AND-OPERATOR-RUNBOOK.md).
 
 Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
+
+### rc.72 approval expiry reconciliation + processed DB attribution
+
+rc.72 closes two live Staging recovery/diagnostic gaps without widening authority. Approval-plan reconciliation now treats pending and approved tickets as time/build sensitive: an approved ticket past its TTL becomes effectively expired, an approved ticket bound to an old candidate becomes stale, and expired/revoked/stale history no longer creates a false active-duplicate blocker when one fresh exact ticket exists. Multiple live exact tickets still fail closed. Claim-time TTL enforcement remains unchanged.
+
+The release also preserves the existing front-end performance budgets while backfilling Query Monitor database attribution after collector processing. The exact matching request sample can receive bounded query counts/timings, sanitized caller/component aggregates, slow/duplicate statistics and SHA-256 query fingerprints from the processed `db_queries` collector. Raw SQL is never persisted or returned.
 
 ### rc.71 governed remote updates for any installed plugin
 

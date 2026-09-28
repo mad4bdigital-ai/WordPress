@@ -108,6 +108,41 @@ mad4b_approval_reconcile_assert( ! empty( $result['candidate_binding_exact'] ), 
 mad4b_approval_reconcile_assert( empty( $result['retry_plan_safe'] ), 'Pending exact ticket must prohibit approval-plan replay.' );
 mad4b_approval_reconcile_assert( 'use_existing_ticket_or_human_handoff' === $result['next_action'], 'Pending exact ticket next action drifted.' );
 
+$expired_approved = $base;
+$expired_approved['status'] = 'approved';
+$expired_approved['expires_at'] = gmdate( 'Y-m-d H:i:s', time() - 60 );
+$wpdb->rows = array( $expired_approved );
+$result = MAD4B_SCP_Approval_Repository::reconcile_plan(
+    $candidate, $agent, 'elementor/update-widget-settings', 'elementor',
+    str_repeat( 'e', 64 ), array( 'post_id' => 1 )
+);
+mad4b_approval_reconcile_assert( 'expired' === $result['effective_status'], 'Expired approved ticket must not remain effectively approved.' );
+mad4b_approval_reconcile_assert( ! empty( $result['retry_plan_safe'] ), 'Expired approved ticket may be replaced after postcondition reconciliation.' );
+mad4b_approval_reconcile_assert( 'create_new_plan_if_operation_is_still_required' === $result['next_action'], 'Expired approved ticket must direct the client to a fresh exact plan.' );
+
+$stale_approved = $base;
+$stale_approved['status'] = 'approved';
+$stale_approved['candidate_sha'] = str_repeat( 'f', 40 );
+$wpdb->rows = array( $stale_approved );
+$result = MAD4B_SCP_Approval_Repository::reconcile_plan(
+    $candidate, $agent, 'elementor/update-widget-settings', 'elementor',
+    str_repeat( 'e', 64 ), array( 'post_id' => 1 )
+);
+mad4b_approval_reconcile_assert( 'stale' === $result['effective_status'], 'Old-build approved ticket must reconcile as stale.' );
+mad4b_approval_reconcile_assert( ! empty( $result['retry_plan_safe'] ), 'Stale approved ticket may be replaced on the current candidate.' );
+
+$fresh_after_expired = $base;
+$fresh_after_expired['id'] = 21;
+$fresh_after_expired['ticket_id'] = '55555555-5555-4555-8555-555555555555';
+$wpdb->rows = array( $fresh_after_expired, $expired_approved );
+$result = MAD4B_SCP_Approval_Repository::reconcile_plan(
+    $candidate, $agent, 'elementor/update-widget-settings', 'elementor',
+    str_repeat( 'e', 64 ), array( 'post_id' => 1 )
+);
+mad4b_approval_reconcile_assert( 'pending' === $result['effective_status'], 'Fresh exact ticket must win over expired historical ticket.' );
+mad4b_approval_reconcile_assert( empty( $result['duplicate_matches_detected'] ), 'Expired historical ticket must not create a false active duplicate.' );
+mad4b_approval_reconcile_assert( 'use_existing_ticket_or_human_handoff' === $result['next_action'], 'Fresh replacement ticket next action drifted.' );
+
 $stale = $base;
 $stale['candidate_sha'] = str_repeat( 'f', 40 );
 $wpdb->rows = array( $stale );

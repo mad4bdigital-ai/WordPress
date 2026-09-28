@@ -466,7 +466,30 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 
 	private static function query_performance_profile() {
 		global $wpdb;
-		$profile = array(
+		if ( ! is_object( $wpdb ) || ! isset( $wpdb->queries ) || ! is_array( $wpdb->queries ) || empty( $wpdb->queries ) ) {
+			return self::empty_query_performance_profile();
+		}
+		return self::query_performance_profile_from_rows( $wpdb->queries );
+	}
+
+	private static function processed_query_performance_profile() {
+		$profile = self::empty_query_performance_profile();
+		if ( ! defined( 'QM_VERSION' ) || ! class_exists( 'QM_Collectors' ) || ! method_exists( 'QM_Collectors', 'get' ) ) return $profile;
+		$collector = QM_Collectors::get( 'db_queries' );
+		if ( ! is_object( $collector ) || ! method_exists( $collector, 'get_data' ) ) return $profile;
+		$data = $collector->get_data();
+		$rows = is_object( $data ) && isset( $data->rows ) && is_array( $data->rows ) ? $data->rows : array();
+		if ( empty( $rows ) ) return $profile;
+		return self::query_performance_profile_from_rows( $rows );
+	}
+
+	/** @internal Pure runtime seam for post-Query-Monitor DB attribution tests. */
+	public static function processed_query_performance_profile_for_test() {
+		return self::processed_query_performance_profile();
+	}
+
+	private static function empty_query_performance_profile() {
+		return array(
 			'contract' => 'mad4b.query-performance-profile.v1',
 			'available' => false,
 			'query_rows_observed' => 0,
@@ -482,7 +505,11 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			'duplicate_groups' => array(),
 			'raw_sql_returned' => false,
 		);
-		if ( ! is_object( $wpdb ) || ! isset( $wpdb->queries ) || ! is_array( $wpdb->queries ) || empty( $wpdb->queries ) ) return $profile;
+	}
+
+	private static function query_performance_profile_from_rows( array $queries ) {
+		$profile = self::empty_query_performance_profile();
+		if ( empty( $queries ) ) return $profile;
 
 		$callers = array();
 		$components = array();
@@ -492,7 +519,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		$observed = 0;
 		$extended = 0;
 
-		foreach ( $wpdb->queries as $query ) {
+		foreach ( $queries as $query ) {
 			$sql = '';
 			$seconds = 0.0;
 			$stack = '';
@@ -506,6 +533,13 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 				$sql = (string) $query['query'];
 				$seconds = is_numeric( $query['elapsed'] ) ? max( 0.0, (float) $query['elapsed'] ) : 0.0;
 				$stack = isset( $query['debug'] ) ? (string) $query['debug'] : '';
+			} elseif ( is_array( $query ) && isset( $query['sql'], $query['ltime'] ) ) {
+				// Processed Query Monitor 4.x db_queries collector row.
+				$sql = (string) $query['sql'];
+				$seconds = is_numeric( $query['ltime'] ) ? max( 0.0, (float) $query['ltime'] ) : 0.0;
+				if ( isset( $query['trace'] ) && is_object( $query['trace'] ) ) $trace = $query['trace'];
+				if ( isset( $query['stack'] ) && is_array( $query['stack'] ) ) $stack = implode( ', ', array_map( 'strval', $query['stack'] ) );
+				elseif ( isset( $query['stack'] ) && is_string( $query['stack'] ) ) $stack = $query['stack'];
 			} else {
 				continue;
 			}
@@ -590,7 +624,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		foreach ( $components as &$entry ) $entry['time_ms'] = round( (float) $entry['time_ms'], 3 );
 		unset( $entry );
 
-		$profile['available'] = true;
+		$profile['available'] = $observed > 0;
 		$profile['query_rows_observed'] = $observed;
 		$profile['total_db_time_ms'] = round( $total_time * 1000.0, 3 );
 		$profile['slow_query_count'] = count( $slow );
@@ -603,8 +637,6 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		$profile['duplicate_groups'] = array_slice( $duplicates, 0, 12 );
 		return $profile;
 	}
-
-
 
 	private static function request_sample_id() {
 		if ( '' !== self::$request_sample_id ) return self::$request_sample_id;
@@ -638,10 +670,14 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	}
 
 	public static function capture_processed_http_profile( $outputters, $collectors = null ) {
+		unset( $collectors );
 		if ( ! is_array( self::$last_capture_telemetry ) || '' === self::$last_capture_build || '' === self::$last_capture_class ) return $outputters;
 		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed() ) return $outputters;
-		$profile = self::http_api_profile();
-		if ( empty( $profile['available'] ) ) return $outputters;
+		$http_profile = self::http_api_profile();
+		$db_profile = self::processed_query_performance_profile();
+		$http_available = ! empty( $http_profile['available'] );
+		$db_available = ! empty( $db_profile['available'] );
+		if ( ! $http_available && ! $db_available ) return $outputters;
 
 		$telemetry = self::$last_capture_telemetry;
 		$sample_id = self::request_sample_id();
@@ -650,7 +686,8 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			for ( $i = count( $telemetry['performance']['samples'] ) - 1; $i >= 0; --$i ) {
 				$sample = $telemetry['performance']['samples'][ $i ];
 				if ( ! is_array( $sample ) || ! isset( $sample['sample_id'] ) || ! hash_equals( $sample_id, (string) $sample['sample_id'] ) ) continue;
-				$telemetry['performance']['samples'][ $i ]['http_api_profile'] = $profile;
+				if ( $http_available ) $telemetry['performance']['samples'][ $i ]['http_api_profile'] = $http_profile;
+				if ( $db_available ) $telemetry['performance']['samples'][ $i ]['db_profile'] = $db_profile;
 				$updated = true;
 				break;
 			}
@@ -660,13 +697,21 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			&& is_array( $telemetry['performance']['last_by_class'][ $class ] )
 			&& isset( $telemetry['performance']['last_by_class'][ $class ]['sample_id'] )
 			&& hash_equals( $sample_id, (string) $telemetry['performance']['last_by_class'][ $class ]['sample_id'] ) ) {
-			$telemetry['performance']['last_by_class'][ $class ]['http_api_profile'] = $profile;
+			if ( $http_available ) $telemetry['performance']['last_by_class'][ $class ]['http_api_profile'] = $http_profile;
+			if ( $db_available ) $telemetry['performance']['last_by_class'][ $class ]['db_profile'] = $db_profile;
 			$updated = true;
 		}
 		if ( $updated ) {
-			$telemetry['performance']['last_http_api_profile'] = $profile;
-			$telemetry['performance']['last_http_api_profile_sample_id'] = $sample_id;
-			$telemetry['performance']['last_http_api_profile_observed_at'] = gmdate( 'Y-m-d H:i:s' );
+			if ( $http_available ) {
+				$telemetry['performance']['last_http_api_profile'] = $http_profile;
+				$telemetry['performance']['last_http_api_profile_sample_id'] = $sample_id;
+				$telemetry['performance']['last_http_api_profile_observed_at'] = gmdate( 'Y-m-d H:i:s' );
+			}
+			if ( $db_available ) {
+				$telemetry['performance']['last_db_query_profile'] = $db_profile;
+				$telemetry['performance']['last_db_query_profile_sample_id'] = $sample_id;
+				$telemetry['performance']['last_db_query_profile_observed_at'] = gmdate( 'Y-m-d H:i:s' );
+			}
 			update_option( MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION, $telemetry, false );
 			self::$last_capture_telemetry = $telemetry;
 		}
