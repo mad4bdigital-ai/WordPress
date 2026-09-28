@@ -4,7 +4,13 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.73**.
+Current plugin version: **0.4.0-rc.74**.
+
+### rc.74 Developer host hardening + maintainability closure
+
+rc.74 centralizes Developer host capability discovery in the non-authorizing `mad4b.developer-host-capabilities.v1` component. Runtime status keeps every rc.73 compatibility field while adding a deterministic capability fingerprint plus explicit readiness/blocker sets for the bounded process backend, default-deny no-network execution and protected-workspace PHP lint. Absolute executable paths are never exposed by the snapshot, and execution behavior remains fail-closed when required host controls are unavailable.
+
+The refactor does not widen Developer, Breakglass, governed-write, OAuth or Production authority. Existing subprocess execution still uses the same exact approval, grant, runtime-binding, resource-limit, network and audit boundaries. The deployment handoff is aligned with the live multi-channel implementation and certifies WordPress-native manual update, governed bounded file upload and governed manifest-derived native release pull.
 
 ### rc.73 same-app normal Developer dispatcher
 

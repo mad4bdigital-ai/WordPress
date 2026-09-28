@@ -1,10 +1,11 @@
 # MAD4B Developer Agent Runtime Plane
 
-Release: `0.4.0-rc.59`
+Release: `0.4.0-rc.74`
 
 Contracts:
 
 - Runtime: `mad4b.developer-runtime.v1`
+- Host capability snapshot: `mad4b.developer-host-capabilities.v1`
 - Execution receipt: `mad4b.developer-execution-receipt.v1`
 - Authority bootstrap: `mad4b.developer-authority.v1`
 
@@ -130,6 +131,18 @@ Normal `developer-wp-cli` is a finite read/verification surface, not a mutation 
 Normal WP-CLI also runs from an isolated system temporary working directory outside the WordPress tree, disables global/system WP-CLI config discovery through controlled environment settings, and adds `--skip-packages`. This prevents project/global aliases, `require` directives, or installed WP-CLI packages from silently widening the reviewed command.
 
 The normal allowlist is limited to bounded read/verification subcommands under `plugin`, `theme` and `core`. Activation, installation, update, deletion, content/database mutation, arbitrary code, account/role changes, network/site administration and other WP-CLI families are not admitted through the generic normal WP-CLI surface.
+
+## Host capability readiness
+
+`mad4b/developer-runtime-status` preserves the stable runtime fields and also returns a non-authorizing host capability snapshot. The snapshot exposes booleans, backend names, blocker codes and a deterministic SHA-256 fingerprint; it never returns absolute executable paths.
+
+Readiness is separated into:
+
+- bounded process backend: `proc_open` + `prlimit` + non-root execution
+- default-deny no-network execution: bounded process backend + certified Bubblewrap or `unshare --net`
+- protected-workspace PHP lint: no-network readiness + executable `PHP_BINARY`
+
+The snapshot creates no grants, tickets or durable state. Execution recomputes the actual backend immediately before process start and still fails closed if the host changed after status was read.
 
 ## Network policy
 

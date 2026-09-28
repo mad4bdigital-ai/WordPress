@@ -238,9 +238,8 @@ final class MAD4B_SCP_Developer_Runtime {
 
 	public static function runtime_status() {
 		$env = self::environment();
-		$wp = self::wp_cli_binary();
-		$shell = self::shell_binary();
 		$agent = self::configured_agent_public_id();
+		$host = MAD4B_SCP_Developer_Host_Capabilities::snapshot();
 		return array(
 			'contract' => self::CONTRACT,
 			'read_only' => true,
@@ -255,30 +254,43 @@ final class MAD4B_SCP_Developer_Runtime {
 			'configuration_source' => self::configuration_source(),
 			'configured_agent_public_id' => $agent,
 			'configured_agent_exact' => '' !== $agent,
-			'proc_open_available' => function_exists( 'proc_open' ),
-			'wp_cli_available' => '' !== $wp,
-			'wp_cli_binary' => '' !== $wp ? basename( $wp ) : '',
-			'shell_available' => '' !== $shell,
-			'shell_binary' => '' !== $shell ? basename( $shell ) : '',
+			'proc_open_available' => $host['proc_open_available'],
+			'wp_cli_available' => $host['wp_cli_available'],
+			'wp_cli_binary' => $host['wp_cli_binary'],
+			'shell_available' => $host['shell_available'],
+			'shell_binary' => $host['shell_binary'],
 			'network_default_deny' => true,
 			'network_per_job_opt_in_required' => true,
 			'network_global_gate_enabled' => defined( 'MAD4B_MCP_DEVELOPER_NETWORK_ENABLED' ) && true === constant( 'MAD4B_MCP_DEVELOPER_NETWORK_ENABLED' ),
-			'network_isolation_backend' => self::network_sandbox_type(),
-			'network_sandbox_binary_present' => '' !== self::network_sandbox_binary(),
+			'network_isolation_backend' => $host['network_isolation_backend'],
+			'network_sandbox_binary_present' => $host['network_sandbox_binary_present'],
 			'network_enforcement' => 'execution_proves_os_sandbox_or_fails_closed_unless_explicit_global_plus_per_job_opt_in',
-			'resource_limit_backend' => '' !== self::prlimit_binary() ? 'prlimit' : '',
-			'resource_limiter_binary_present' => '' !== self::prlimit_binary(),
+			'resource_limit_backend' => $host['resource_limit_backend'],
+			'resource_limiter_binary_present' => $host['resource_limiter_binary_present'],
 			'resource_limits_enforcement' => 'execution_proves_prlimit_or_fails_closed',
 			'default_memory_limit_bytes' => self::DEFAULT_MEMORY_LIMIT_BYTES,
 			'max_open_files' => self::MAX_OPEN_FILES,
 			'max_processes' => self::MAX_PROCESSES,
-			'non_root_verified' => function_exists( 'posix_geteuid' ) ? 0 !== (int) posix_geteuid() : null,
+			'non_root_verified' => $host['non_root_verified'],
 			'exact_runtime_binding_required' => true,
 			'secret_redaction_enabled' => true,
 			'max_timeout_seconds' => self::MAX_TIMEOUT,
 			'max_output_bytes' => self::MAX_OUTPUT_BYTES,
 			'normal_server' => self::NORMAL_SERVER,
 			'breakglass_server' => self::BREAKGLASS_SERVER,
+			'host_capabilities_contract' => $host['contract'],
+			'host_capability_fingerprint' => $host['capability_fingerprint'],
+			'execution_readiness' => array(
+				'process_backend_ready' => $host['process_backend_ready'],
+				'process_backend_blockers' => $host['process_backend_blockers'],
+				'normal_no_network_execution_ready' => $host['normal_no_network_execution_ready'],
+				'normal_no_network_execution_blockers' => $host['normal_no_network_execution_blockers'],
+				'workspace_php_lint_ready' => $host['workspace_php_lint_ready'],
+				'workspace_php_lint_blockers' => $host['workspace_php_lint_blockers'],
+				'network_isolation_backend_certified' => $host['network_isolation_backend_certified'],
+				'php_binary_available' => $host['php_binary_available'],
+			),
+			'host_capabilities' => $host,
 		);
 	}
 
@@ -478,51 +490,23 @@ final class MAD4B_SCP_Developer_Runtime {
 	}
 
 	private static function wp_cli_binary() {
-		$candidates = array();
-		if ( defined( 'MAD4B_MCP_WP_CLI_BIN' ) ) $candidates[] = (string) constant( 'MAD4B_MCP_WP_CLI_BIN' );
-		$candidates = array_merge( $candidates, array( '/usr/local/bin/wp', '/usr/bin/wp', '/bin/wp' ) );
-		foreach ( $candidates as $candidate ) {
-			$candidate = trim( (string) $candidate );
-			if ( '' !== $candidate && is_file( $candidate ) && is_executable( $candidate ) ) return $candidate;
-		}
-		return '';
+		return MAD4B_SCP_Developer_Host_Capabilities::wp_cli_binary();
 	}
 
 	private static function shell_binary() {
-		$candidates = array( '/bin/bash', '/bin/sh' );
-		foreach ( $candidates as $candidate ) if ( is_file( $candidate ) && is_executable( $candidate ) ) return $candidate;
-		return '';
+		return MAD4B_SCP_Developer_Host_Capabilities::shell_binary();
 	}
 
 	private static function prlimit_binary() {
-		$candidates = array();
-		if ( defined( 'MAD4B_MCP_DEVELOPER_PRLIMIT_BIN' ) ) $candidates[] = (string) constant( 'MAD4B_MCP_DEVELOPER_PRLIMIT_BIN' );
-		$candidates = array_merge( $candidates, array( '/usr/bin/prlimit', '/bin/prlimit' ) );
-		foreach ( $candidates as $candidate ) {
-			$candidate = trim( (string) $candidate );
-			if ( '' !== $candidate && is_file( $candidate ) && is_executable( $candidate ) ) return $candidate;
-		}
-		return '';
+		return MAD4B_SCP_Developer_Host_Capabilities::prlimit_binary();
 	}
 
 	private static function network_sandbox_binary() {
-		$candidates = array();
-		if ( defined( 'MAD4B_MCP_DEVELOPER_NETWORK_SANDBOX_BIN' ) ) $candidates[] = (string) constant( 'MAD4B_MCP_DEVELOPER_NETWORK_SANDBOX_BIN' );
-		$candidates = array_merge( $candidates, array( '/usr/bin/bwrap', '/bin/bwrap', '/usr/bin/unshare', '/bin/unshare' ) );
-		foreach ( $candidates as $candidate ) {
-			$candidate = trim( (string) $candidate );
-			if ( '' !== $candidate && is_file( $candidate ) && is_executable( $candidate ) ) return $candidate;
-		}
-		return '';
+		return MAD4B_SCP_Developer_Host_Capabilities::network_sandbox_binary();
 	}
 
 	private static function network_sandbox_type() {
-		$binary = self::network_sandbox_binary();
-		if ( '' === $binary ) return '';
-		$name = strtolower( basename( $binary ) );
-		if ( 'bwrap' === $name ) return 'bubblewrap';
-		if ( 'unshare' === $name ) return 'unshare-net';
-		return 'configured';
+		return MAD4B_SCP_Developer_Host_Capabilities::network_sandbox_type();
 	}
 
 	private static function bounded_execution_argv( array $argv, $cwd, $timeout, $network_authorized ) {
