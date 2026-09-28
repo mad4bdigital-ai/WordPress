@@ -138,12 +138,38 @@ for marker in [
     "'mad4b/tool-discover'",
     "'mad4b/tool-info'",
     "'mad4b/read-execute'",
+    "'mad4b/session-safe-diagnostics'",
     "'mad4b/write-discover'",
     "'mad4b/write-info'",
     "'mad4b/write-execute'",
     "'mad4b/plugin-package-plan'",
 ]:
     require(marker in core_chatgpt, f"required minimal direct ChatGPT tool missing: {marker}")
+
+for forbidden_direct in [
+    "'mad4b/diagnostics-health'",
+    "'mad4b/runtime-authority-status'",
+    "'mad4b/multi-authority-registry-status'",
+    "'mad4b/connection-status'",
+    "'mad4b/connector-preflight'",
+    "'mad4b/read-snapshot-header'",
+    "'mad4b/read-diagnostic-bundle'",
+    "'mad4b/control-plane-update-status'",
+    "'mad4b/remote-operation-parity-status'",
+]:
+    require(forbidden_direct not in core_chatgpt, f"parallel diagnostic primitive leaked into direct ChatGPT core catalog: {forbidden_direct}")
+
+direct_read_helper = SERVERS.split("public static function chatgpt_direct_read_transport_tools()", 1)[1].split("public static function chatgpt_dispatch_transport_tools()", 1)[0]
+require("'mad4b/session-safe-diagnostics'" in direct_read_helper, "session-safe diagnostics missing from reviewed direct read allowlist")
+for forbidden_direct in [
+    "'mad4b/build-provenance-status'",
+    "'mad4b/full-staging-authority-status'",
+    "'mad4b/write-authority-status'",
+    "'mad4b/write-runtime-certification'",
+    "'mad4b/staging-certification-status'",
+]:
+    require(forbidden_direct not in direct_read_helper, f"broad status tool leaked into reviewed direct read allowlist: {forbidden_direct}")
+
 
 require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in SERVERS, "bounded Write Authority plan must be projectable on enrolled Staging")
 require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in SERVERS, "bounded Write Authority apply must be conditionally projectable as a single-app step-up tool")
