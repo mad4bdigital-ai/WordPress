@@ -605,6 +605,66 @@ final class MAD4B_SCP_Developer_Authority {
 		return hash( 'sha256', false === $json ? '' : $json );
 	}
 
+	/**
+	 * Derive the already-provisioned Developer subject from the normal enrolled
+	 * ChatGPT OAuth identity for one request-local dispatcher call. This is not an
+	 * OAuth scope mint and does not create or modify an Agent/grant.
+	 */
+	public static function chatgpt_dispatch_identity( $identity = null ) {
+		if ( null === $identity ) {
+			$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_developer_dispatch_identity_unavailable', 'Governance identity is unavailable.' );
+		}
+		if ( is_wp_error( $identity ) ) return $identity;
+		if ( ! is_array( $identity ) || empty( $identity['authenticated'] ) || 'oauth' !== ( isset( $identity['subject_type'] ) ? (string) $identity['subject_type'] : '' ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) {
+			return new WP_Error( 'mad4b_developer_dispatch_normal_oauth_required', 'Developer dispatch derivation requires the enrolled normal OAuth subject.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) || 'mad4b-chatgpt' !== MAD4B_SCP_Transport_Context::current_server_id() ) return new WP_Error( 'mad4b_developer_dispatch_transport_denied', 'Developer dispatch derivation is limited to the compact ChatGPT transport.' );
+		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
+		if ( ! in_array( 'mad4b:read', $scopes, true ) || ! in_array( 'mad4b:authority:step-up', $scopes, true ) ) return new WP_Error( 'mad4b_developer_dispatch_step_up_scope_required', 'Developer dispatch requires read identity plus the bounded authority step-up scope.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_developer_dispatch_staging_profile_required', 'Developer dispatch is limited to the exact enrolled Staging profile.' );
+		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! MAD4B_SCP_Developer_Runtime::developer_flag_enabled() || ! MAD4B_SCP_Developer_Runtime::direct_execution_enabled() || MAD4B_SCP_Developer_Runtime::kill_switch_enabled() ) return new WP_Error( 'mad4b_developer_dispatch_runtime_not_ready', 'Developer runtime is not enabled for direct governed execution.' );
+
+		$authority = self::status();
+		if ( empty( $authority['normal_authority']['ready'] ) || empty( $authority['agent_present'] ) || empty( $authority['agent_public_id'] ) ) return new WP_Error( 'mad4b_developer_dispatch_authority_not_ready', 'Normal Developer authority is not ready.' );
+		$derived = self::derived_subject_fingerprint( $identity );
+		if ( is_wp_error( $derived ) ) return $derived;
+		$bound = class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::resolve_agent( array(
+			'authenticated' => true,
+			'subject_type' => self::SUBJECT_TYPE,
+			'subject_fingerprint' => $derived,
+		) ) : new WP_Error( 'mad4b_developer_dispatch_agent_registry_unavailable', 'Developer Agent registry is unavailable.' );
+		if ( is_wp_error( $bound ) || empty( $bound['public_id'] ) || ! hash_equals( strtolower( (string) $authority['agent_public_id'] ), strtolower( (string) $bound['public_id'] ) ) ) return new WP_Error( 'mad4b_developer_dispatch_subject_binding_mismatch', 'Derived Developer subject is not bound to the configured Developer Agent.' );
+		return array(
+			'subject_type' => self::SUBJECT_TYPE,
+			'subject_fingerprint' => $derived,
+			'agent_public_id' => strtolower( (string) $bound['public_id'] ),
+			'production_authorized' => false,
+			'breakglass_authorized' => false,
+		);
+	}
+
+	/**
+	 * OAuth scope delegation for the exact normal Developer target selected by
+	 * developer-execute. The bearer remains read + authority:step-up; target
+	 * authority still comes from the isolated Developer Agent exact grant and the
+	 * one-time human approval required by the target mutation.
+	 */
+	public static function chatgpt_dispatch_scope_allowed( array $identity, $server_id, $ability_name, $input = null ) {
+		unset( $input );
+		$server_id = sanitize_key( (string) $server_id );
+		$ability_name = (string) $ability_name;
+		if ( 'mad4b-developer' !== $server_id || 0 === strpos( $ability_name, 'mad4b/developer-breakglass-' ) ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) || 'mad4b-chatgpt' !== MAD4B_SCP_Transport_Context::current_server_id() || ! MAD4B_SCP_Transport_Context::developer_dispatch_target_matches( $ability_name ) ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! in_array( $ability_name, MAD4B_SCP_Developer_Runtime::tool_names( false ), true ) ) return false;
+		if ( empty( $identity['authenticated'] ) || 'oauth_developer' !== ( isset( $identity['subject_type'] ) ? (string) $identity['subject_type'] : '' ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) || 'mcp_developer_dispatch' !== ( isset( $identity['origin'] ) ? (string) $identity['origin'] : '' ) ) return false;
+		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
+		if ( ! in_array( 'mad4b:read', $scopes, true ) || ! in_array( 'mad4b:authority:step-up', $scopes, true ) ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! MAD4B_SCP_Developer_Runtime::developer_flag_enabled() || ! MAD4B_SCP_Developer_Runtime::direct_execution_enabled() || MAD4B_SCP_Developer_Runtime::kill_switch_enabled() ) return false;
+		$agent = class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::resolve_agent( $identity ) : null;
+		$configured = MAD4B_SCP_Developer_Runtime::configured_agent_public_id();
+		return is_array( $agent ) && ! empty( $agent['public_id'] ) && 1 === preg_match( '/^[a-f0-9-]{36}$/', $configured ) && hash_equals( $configured, strtolower( (string) $agent['public_id'] ) );
+	}
+
 	private static function identity_has_developer_derivation_material( array $identity ) {
 		$subject = isset( $identity['subject_fingerprint'] ) ? strtolower( trim( (string) $identity['subject_fingerprint'] ) ) : '';
 		$client = isset( $identity['client_fingerprint'] ) ? strtolower( trim( (string) $identity['client_fingerprint'] ) ) : '';
