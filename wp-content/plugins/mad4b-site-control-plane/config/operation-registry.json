@@ -21,7 +21,8 @@
       "durable_resume": true,
       "dependency_impact": true,
       "generic_mutation_dispatch": false,
-      "required_runtime": true
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
     },
     {
       "id": "wordpress.plugin.activate",
@@ -34,7 +35,8 @@
       ],
       "durable_resume": true,
       "dependency_impact": true,
-      "required_runtime": true
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
     },
     {
       "id": "wordpress.plugin.deactivate",
@@ -47,7 +49,8 @@
       ],
       "durable_resume": true,
       "dependency_impact": true,
-      "required_runtime": true
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
     },
     {
       "id": "wordpress.plugin.certified-package",
@@ -61,7 +64,8 @@
       ],
       "durable_resume": true,
       "dependency_impact": true,
-      "required_runtime": true
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
     },
     {
       "id": "wordpress.plugin.remote-update",
@@ -74,7 +78,8 @@
       ],
       "durable_resume": true,
       "dependency_impact": true,
-      "required_runtime": true
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
     },
     {
       "id": "wordpress.control-plane.self-update",
@@ -87,7 +92,8 @@
       ],
       "durable_resume": true,
       "dependency_impact": true,
-      "required_runtime": true
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
     },
     {
       "id": "wordpress.skills.reconcile",
@@ -100,7 +106,8 @@
       ],
       "durable_resume": true,
       "dependency_impact": false,
-      "required_runtime": true
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
     },
     {
       "id": "wordpress.provider.recertify",
@@ -114,7 +121,8 @@
       ],
       "durable_resume": true,
       "dependency_impact": true,
-      "required_runtime": true
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
     },
     {
       "id": "wordpress.content.import",
@@ -127,7 +135,8 @@
       ],
       "durable_resume": true,
       "dependency_impact": true,
-      "required_runtime": false
+      "required_runtime": false,
+      "pipeline_profile": "governed_mutation_v1"
     },
     {
       "id": "wordpress.content.export",
@@ -140,7 +149,8 @@
       ],
       "durable_resume": true,
       "dependency_impact": true,
-      "required_runtime": false
+      "required_runtime": false,
+      "pipeline_profile": "governed_mutation_v1"
     }
   ],
   "aliases": {
@@ -165,11 +175,59 @@
     "catalog": [
       "mad4b/operation-registry-status",
       "mad4b/wordpress-operation-discover",
+      "mad4b/operation-pipeline-compile",
       "mad4b/plugin-transaction-plan",
       "mad4b/dependency-impact",
       "mad4b/provider-candidate-matrix",
       "mad4b/provider-transport-registry-status",
       "mad4b/operation-resume-status"
+    ]
+  },
+  "pipeline_profiles": {
+    "governed_mutation_v1": [
+      {
+        "id": "discover",
+        "type": "read_check",
+        "required": true
+      },
+      {
+        "id": "provider_candidate",
+        "type": "read_check",
+        "required": false,
+        "when": "target_kind:plugin"
+      },
+      {
+        "id": "dependency_impact",
+        "type": "read_check",
+        "required": false,
+        "when": "operation.dependency_impact:true"
+      },
+      {
+        "id": "native_plan",
+        "type": "planner",
+        "required": true
+      },
+      {
+        "id": "authorization_boundary",
+        "type": "authorization",
+        "required": true
+      },
+      {
+        "id": "exact_execute",
+        "type": "executor",
+        "required": true
+      },
+      {
+        "id": "readback",
+        "type": "verification",
+        "required": true
+      },
+      {
+        "id": "durable_resume",
+        "type": "reconcile",
+        "required": false,
+        "when": "operation.durable_resume:true"
+      }
     ]
   }
 }
