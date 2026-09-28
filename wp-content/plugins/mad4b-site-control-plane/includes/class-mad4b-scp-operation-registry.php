@@ -126,6 +126,32 @@ final class MAD4B_SCP_Operation_Registry {
 				return self::$catalog;
 			}
 		}
+		$stage_bindings = isset( $data['stage_bindings'] ) && is_array( $data['stage_bindings'] ) ? $data['stage_bindings'] : array();
+		if ( empty( $stage_bindings ) ) {
+			self::$catalog = new WP_Error( 'mad4b_operation_registry_stage_bindings_missing', 'MAD4B operation registry stage bindings are missing.' );
+			return self::$catalog;
+		}
+		$allowed_binding_types = array( 'ability', 'operation_planner', 'operation_executor', 'policy_boundary', 'executor_owned_verification' );
+		foreach ( $stage_bindings as $stage_id => $binding ) {
+			$stage_id = (string) $stage_id;
+			if ( sanitize_key( $stage_id ) !== $stage_id || ! is_array( $binding ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_stage_binding_invalid', 'MAD4B operation registry contains an invalid stage binding.' );
+				return self::$catalog;
+			}
+			$binding_type = isset( $binding['binding_type'] ) ? sanitize_key( (string) $binding['binding_type'] ) : '';
+			if ( ! in_array( $binding_type, $allowed_binding_types, true ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_stage_binding_type_invalid', 'MAD4B operation registry contains an unsupported stage binding type.' );
+				return self::$catalog;
+			}
+			if ( 'ability' === $binding_type ) {
+				$ability = isset( $binding['ability'] ) ? strtolower( trim( (string) $binding['ability'] ) ) : '';
+				if ( ! preg_match( '#^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$#', $ability ) ) {
+					self::$catalog = new WP_Error( 'mad4b_operation_registry_stage_binding_ability_invalid', 'MAD4B operation registry stage binding references an invalid Ability.' );
+					return self::$catalog;
+				}
+			}
+		}
+
 		$profiles = isset( $data['pipeline_profiles'] ) && is_array( $data['pipeline_profiles'] ) ? $data['pipeline_profiles'] : array();
 		if ( empty( $profiles ) ) {
 			self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_profiles_missing', 'MAD4B operation registry pipeline profiles are missing.' );
@@ -146,7 +172,7 @@ final class MAD4B_SCP_Operation_Registry {
 				}
 				$stage_id = sanitize_key( (string) $stage['id'] );
 				$type = sanitize_key( (string) $stage['type'] );
-				if ( $stage_id !== (string) $stage['id'] || isset( $stage_ids[ $stage_id ] ) || ! in_array( $type, $allowed_stage_types, true ) ) {
+				if ( $stage_id !== (string) $stage['id'] || isset( $stage_ids[ $stage_id ] ) || ! in_array( $type, $allowed_stage_types, true ) || ! isset( $stage_bindings[ $stage_id ] ) ) {
 					self::$catalog = new WP_Error( 'mad4b_operation_registry_pipeline_stage_invalid', 'MAD4B operation registry contains an invalid or duplicate pipeline stage.' );
 					return self::$catalog;
 				}
@@ -235,6 +261,29 @@ final class MAD4B_SCP_Operation_Registry {
 		return new WP_Error( 'mad4b_operation_not_registered', 'Requested operation is not present in the governed operation registry.' );
 	}
 
+	public static function stage_binding( $stage_id, array $operation = array() ) {
+		$stage_id = sanitize_key( (string) $stage_id );
+		$catalog = self::catalog();
+		if ( is_wp_error( $catalog ) ) return $catalog;
+		if ( '' === $stage_id || ! isset( $catalog['stage_bindings'][ $stage_id ] ) || ! is_array( $catalog['stage_bindings'][ $stage_id ] ) ) {
+			return new WP_Error( 'mad4b_operation_stage_binding_not_registered', 'Requested operation stage binding is not registered.' );
+		}
+		$binding = $catalog['stage_bindings'][ $stage_id ];
+		$type = isset( $binding['binding_type'] ) ? sanitize_key( (string) $binding['binding_type'] ) : '';
+		if ( 'operation_planner' === $type ) return array( 'binding_type' => 'ability', 'ability' => isset( $operation['planner'] ) ? (string) $operation['planner'] : '' );
+		if ( 'operation_executor' === $type ) {
+			$executor = isset( $operation['executor'] ) ? (string) $operation['executor'] : '';
+			return array(
+				'binding_type' => 'exact_executor_from_plan' === $executor ? 'plan_bound_executor' : 'ability',
+				'ability' => 'exact_executor_from_plan' === $executor ? '' : $executor,
+			);
+		}
+		return array(
+			'binding_type' => $type,
+			'ability' => isset( $binding['ability'] ) ? (string) $binding['ability'] : '',
+		);
+	}
+
 	public static function pipeline_profile( $profile_id ) {
 		$profile_id = sanitize_key( (string) $profile_id );
 		$catalog = self::catalog();
@@ -309,6 +358,7 @@ final class MAD4B_SCP_Operation_Registry {
 				'catalog' => self::read_projection( 'catalog' ),
 			),
 			'pipeline_profiles' => array_keys( isset( $catalog['pipeline_profiles'] ) && is_array( $catalog['pipeline_profiles'] ) ? $catalog['pipeline_profiles'] : array() ),
+			'stage_bindings' => array_keys( isset( $catalog['stage_bindings'] ) && is_array( $catalog['stage_bindings'] ) ? $catalog['stage_bindings'] : array() ),
 			'count' => count( $items ),
 		);
 	}
