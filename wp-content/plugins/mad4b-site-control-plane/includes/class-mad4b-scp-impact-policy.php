@@ -34,6 +34,9 @@ final class MAD4B_SCP_Impact_Policy {
 			if ( 'mad4b/approval-ai-decide' === $ability_name ) {
 				$operation_type = 'governance_decision';
 				$mutation_kind = 'decision';
+			} elseif ( 'mad4b/developer-workspace-apply' === $ability_name ) {
+				$operation_type = 'development_source';
+				$mutation_kind = 'source_batch';
 			} elseif ( 'mad4b/database-raw-query' === $ability_name || 0 === strpos( $ability_name, 'mad4b/developer-breakglass-' ) ) {
 				$operation_type = 'exceptional';
 				$mutation_kind = 'privileged_execute';
@@ -70,24 +73,26 @@ final class MAD4B_SCP_Impact_Policy {
 			}
 		}
 
+		$developer_workspace_source = 'mad4b/developer-workspace-apply' === $ability_name;
 		$ai_forbidden = $readonly
 			|| 'staging' !== $environment
 			|| 'breakglass' === $ticket_class
 			|| 'exceptional' === $impact
 			|| 'exceptional' === $operation_type
-			|| 0 === strpos( $ability_name, 'mad4b/developer-' )
+			|| ( 0 === strpos( $ability_name, 'mad4b/developer-' ) && ! $developer_workspace_source )
 			|| 'mad4b/database-raw-query' === $ability_name;
 		$ai_eligible = ! $ai_forbidden;
 		$approval_required = ! $readonly && self::requires_approval( $ability_name, $provider, $input );
 		$approval_lane = $readonly ? 'none' : ( $ai_eligible ? 'ai_autonomous' : 'human_only' );
 		$risk_tier = $readonly ? 'none' : ( 'exceptional' === $impact ? 'exceptional' : ( 'high' === $impact ? 'high' : ( in_array( $operation_type, array( 'content_change', 'provider_configuration', 'governed_mutation' ), true ) ? 'medium' : 'low' ) ) );
-		$rollback_evidence_required = ! $readonly && in_array( $operation_type, array( 'certified_package', 'recovery', 'system_admin', 'provider_configuration' ), true );
+		$rollback_evidence_required = ! $readonly && in_array( $operation_type, array( 'certified_package', 'recovery', 'system_admin', 'provider_configuration', 'development_source' ), true );
 
 		$side_effect_scope = 'none';
 		if ( ! $readonly ) {
 			if ( in_array( $operation_type, array( 'content_change', 'content_publish' ), true ) ) $side_effect_scope = 'content';
 			elseif ( 'provider_configuration' === $operation_type ) $side_effect_scope = 'provider';
 			elseif ( 'certified_package' === $operation_type ) $side_effect_scope = 'package';
+			elseif ( 'development_source' === $operation_type ) $side_effect_scope = 'protected_workspace';
 			elseif ( 'system_admin' === $operation_type ) $side_effect_scope = 'system';
 			elseif ( 'recovery' === $operation_type ) $side_effect_scope = 'recovery';
 			elseif ( 'governance_decision' === $operation_type ) $side_effect_scope = 'governance';
@@ -131,6 +136,7 @@ final class MAD4B_SCP_Impact_Policy {
 		// Its standing delegation is evaluated separately against the exact ticket,
 		// classification, build/profile binding and AI NHI grant.
 		if ( 'mad4b/approval-ai-decide' === $ability_name ) return 'low';
+		if ( 'mad4b/developer-workspace-apply' === $ability_name ) return 'low';
 		if ( 0 === strpos( $ability_name, 'mad4b/developer-' ) && 'mad4b/developer-runtime-status' !== $ability_name ) return 'high';
 		$high_core = array(
 			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/mutation-undo',
@@ -150,6 +156,7 @@ final class MAD4B_SCP_Impact_Policy {
 	}
 
 	public static function requires_approval( $ability_name, $provider = 'core', $input = null ) {
+		if ( 'mad4b/developer-workspace-apply' === (string) $ability_name ) return true;
 		$impact = self::impact_for( $ability_name, $provider, $input );
 		if ( in_array( $impact, array( 'high', 'exceptional' ), true ) ) return true;
 		return (bool) apply_filters( 'mad4b_scp_low_impact_requires_approval', false, $ability_name, $provider, $input );
