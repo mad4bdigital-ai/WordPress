@@ -120,7 +120,17 @@ final class MAD4B_SCP_Developer_Workspace {
 			$schema['required'] = array_values( array_unique( array_merge( $schema['required'], array( 'expected_source_commit_sha', 'expected_site_uuid', 'expected_environment' ) ) ) );
 		}
 		$permission = $readonly
-			? array( 'MAD4B_SCP_Policy', 'can_developer_read' )
+			? static function ( $input = null ) use ( $name ) {
+				unset( $input );
+				if ( ! MAD4B_SCP_Policy::can_developer_read() ) return false;
+				if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
+				$identity = MAD4B_SCP_Identity_Context::current();
+				if ( is_wp_error( $identity ) ) return false;
+				$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+				if ( is_wp_error( $agent ) || empty( $agent['id'] ) ) return false;
+				$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-developer', (string) $name, 'core' );
+				return ! is_wp_error( $grant );
+			}
 			: static function ( $input = null ) use ( $name ) {
 				$granted = MAD4B_SCP_Policy::can_developer();
 				if ( is_wp_error( $granted ) || ! $granted ) return $granted;
