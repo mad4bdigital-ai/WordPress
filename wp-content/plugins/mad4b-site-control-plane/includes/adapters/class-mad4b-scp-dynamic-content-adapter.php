@@ -1196,10 +1196,23 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$scope=isset($final['scope'])&&is_array($final['scope'])?$final['scope']:array();
 		$scope=apply_filters('mad4b_scp_dynamic_content_acceptance_scope',$scope,absint($id),$input,$final,$pipeline);
 		if(!is_array($scope)) return new WP_Error('mad4b_dynamic_acceptance_scope_invalid','Dynamic acceptance scope filter must return a bounded scope object.');
-		$scope=array(
-			'meta_keys'=>isset($scope['meta_keys'])&&is_array($scope['meta_keys'])?array_values(array_unique(array_filter(array_map('strval',array_slice($scope['meta_keys'],0,200))))):array(),
-			'taxonomies'=>isset($scope['taxonomies'])&&is_array($scope['taxonomies'])?array_values(array_unique(array_filter(array_map('sanitize_key',array_slice($scope['taxonomies'],0,50))))):array(),
-		);
+		$meta_keys=array();
+		foreach(isset($scope['meta_keys'])&&is_array($scope['meta_keys'])?array_slice($scope['meta_keys'],0,200):array() as $key){
+			$key=(string)$key;
+			if(1!==preg_match('/^[A-Za-z0-9_.:-]{1,191}$/',$key)) return new WP_Error('mad4b_dynamic_acceptance_scope_meta_invalid','Dynamic acceptance scope contains an invalid meta key.',array('meta_key'=>$key));
+			if(self::ACCEPTANCE_META===$key) return new WP_Error('mad4b_dynamic_acceptance_scope_recursive','Dynamic acceptance receipt metadata cannot be included in its own state scope.');
+			$meta_keys[$key]=true;
+		}
+		$taxonomies=array();
+		$post_type=(string)get_post_type(absint($id));
+		foreach(isset($scope['taxonomies'])&&is_array($scope['taxonomies'])?array_slice($scope['taxonomies'],0,50):array() as $taxonomy){
+			$taxonomy=sanitize_key((string)$taxonomy);
+			if($taxonomy===''||strlen($taxonomy)>64) return new WP_Error('mad4b_dynamic_acceptance_scope_taxonomy_invalid','Dynamic acceptance scope contains an invalid taxonomy.');
+			$tax=get_taxonomy($taxonomy);
+			if(!$tax||!in_array($post_type,(array)$tax->object_type,true)) return new WP_Error('mad4b_dynamic_acceptance_scope_taxonomy_invalid','Dynamic acceptance scope taxonomy is not attached to the accepted post type.',array('taxonomy'=>$taxonomy,'post_type'=>$post_type));
+			$taxonomies[$taxonomy]=true;
+		}
+		$scope=array('meta_keys'=>array_keys($meta_keys),'taxonomies'=>array_keys($taxonomies));
 		sort($scope['meta_keys'],SORT_STRING);sort($scope['taxonomies'],SORT_STRING);
 		$accepted_state=$this->snapshot(absint($id),$this->input_from_state_scope($scope));
 		$receipt=array(
@@ -1382,6 +1395,13 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		return true;
 	}
 
+	private function invalidate_acceptance_after_restore($id){
+		if(!metadata_exists('post',absint($id),self::ACCEPTANCE_META)) return true;
+		return delete_post_meta(absint($id),self::ACCEPTANCE_META)
+			? true
+			: new WP_Error('mad4b_dynamic_acceptance_restore_invalidation_failed','Restored content could not invalidate its previous publication acceptance receipt.');
+	}
+
 	private function local_compensate($mode,$id,$before,$expected_current=null){
 		$mode=sanitize_key((string)$mode);
 		if(is_array($expected_current)){
@@ -1558,6 +1578,8 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			if(!current_user_can('edit_post',$id)) return new WP_Error('mad4b_dynamic_rollback_edit_denied','Current user cannot restore the updated post.');
 			$r=$this->restore_snapshot_state($id,$state);
 			if(is_wp_error($r)) return $r;
+			$acceptance_invalidated=$this->invalidate_acceptance_after_restore($id);
+			if(is_wp_error($acceptance_invalidated)) return $acceptance_invalidated;
 			$scope=isset($target['scope'])&&is_array($target['scope'])?$target['scope']:array();
 			$readback=$this->snapshot($id,$this->input_from_state_scope($scope));
 			if(!hash_equals($this->state_sha256($state),$this->state_sha256($readback))) return new WP_Error('mad4b_dynamic_rollback_verification_failed','Rollback completed but exact readback did not match the recorded before-state.');
