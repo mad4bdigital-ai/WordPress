@@ -180,6 +180,7 @@ final class MAD4B_SCP_Operation_Registry {
 		$items = array();
 		$missing = array();
 		$optional_unavailable = array();
+		$projection_missing = array();
 		foreach ( $catalog['operations'] as $row ) {
 			$planner = (string) $row['planner'];
 			$executor = (string) $row['executor'];
@@ -202,17 +203,32 @@ final class MAD4B_SCP_Operation_Registry {
 		}
 		$missing = array_values( array_unique( $missing ) );
 		sort( $missing, SORT_STRING );
+		if ( function_exists( 'wp_has_ability' ) ) {
+			foreach ( self::read_projection( 'catalog' ) as $ability_name ) {
+				if ( ! wp_has_ability( $ability_name ) ) $projection_missing[] = $ability_name;
+			}
+		}
+		$projection_missing = array_values( array_unique( $projection_missing ) );
+		sort( $projection_missing, SORT_STRING );
+		$ready = empty( $missing ) && empty( $projection_missing );
+		$encoded_catalog = wp_json_encode( $catalog, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		return array(
 			'contract' => self::CONTRACT,
-			'ready' => empty( $missing ),
-			'state' => empty( $missing ) ? 'ready' : 'registered_ability_gap',
+			'ready' => $ready,
+			'state' => $ready ? 'ready' : ( ! empty( $missing ) ? 'registered_ability_gap' : 'read_projection_gap' ),
 			'default_mutation_policy' => 'deny',
 			'generic_shell' => false,
 			'arbitrary_operation_ids' => false,
 			'authority_created' => false,
 			'operations' => $items,
 			'missing_registered_abilities' => $missing,
+			'projection_missing_registered_abilities' => $projection_missing,
 			'optional_unavailable_operations' => array_values( array_unique( $optional_unavailable ) ),
+			'catalog_sha256' => is_string( $encoded_catalog ) ? hash( 'sha256', $encoded_catalog ) : '',
+			'read_projection' => array(
+				'direct' => self::read_projection( 'direct' ),
+				'catalog' => self::read_projection( 'catalog' ),
+			),
 			'count' => count( $items ),
 		);
 	}
