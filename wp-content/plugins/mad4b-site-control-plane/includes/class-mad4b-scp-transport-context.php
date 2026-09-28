@@ -178,11 +178,16 @@ final class MAD4B_SCP_Transport_Context {
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/', self::$developer_dispatch_schema_sha256 );
 	}
 
-	private static function write_dispatch_target_matches( $ability_name ) {
+	public static function write_dispatch_target_matches( $ability_name, $expected_schema_sha256 = '' ) {
 		$ability_name = (string) $ability_name;
-		return '' !== self::$write_dispatch_target
-			&& hash_equals( self::$write_dispatch_target, $ability_name )
-			&& 1 === preg_match( '/^[a-f0-9]{64}$/', self::$write_dispatch_schema_sha256 );
+		$expected_schema_sha256 = strtolower( trim( (string) $expected_schema_sha256 ) );
+		if ( '' === self::$write_dispatch_target || ! hash_equals( self::$write_dispatch_target, $ability_name ) ) return false;
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', self::$write_dispatch_schema_sha256 ) ) return false;
+		return '' === $expected_schema_sha256 || ( 1 === preg_match( '/^[a-f0-9]{64}$/', $expected_schema_sha256 ) && hash_equals( self::$write_dispatch_schema_sha256, $expected_schema_sha256 ) );
+	}
+
+	public static function bounded_write_dispatch_active_for( $ability_name ) {
+		return 'mad4b-chatgpt' === self::current_server_id() && self::write_dispatch_target_matches( $ability_name );
 	}
 
 	public static function current_server_id() {
