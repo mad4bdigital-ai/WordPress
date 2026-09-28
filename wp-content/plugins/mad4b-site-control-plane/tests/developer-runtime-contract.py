@@ -7,6 +7,7 @@ root = Path(__file__).resolve().parents[1]
 inc = root / "includes"
 
 developer = (inc / "class-mad4b-scp-developer-runtime.php").read_text(encoding="utf-8")
+host_caps = (inc / "class-mad4b-scp-developer-host-capabilities.php").read_text(encoding="utf-8")
 workspace = (inc / "class-mad4b-scp-developer-workspace.php").read_text(encoding="utf-8")
 abilities = (inc / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 identity = (inc / "class-mad4b-scp-identity-context.php").read_text(encoding="utf-8")
@@ -48,6 +49,8 @@ required_tools = [
 for tool in required_tools:
     assert tool in developer or tool in workspace, tool
 
+subprocess.run(["php", "-l", str(inc / "class-mad4b-scp-developer-host-capabilities.php")], check=True)
+subprocess.run(["php", "-l", str(inc / "class-mad4b-scp-developer-runtime.php")], check=True)
 subprocess.run(["php", "-l", str(inc / "class-mad4b-scp-developer-workspace.php")], check=True)
 
 for server in ["mad4b-developer", "mad4b-developer-breakglass"]:
@@ -115,9 +118,9 @@ assert "prlimit_binary" in developer
 assert "DEFAULT_MEMORY_LIMIT_BYTES" in developer
 assert "MAX_OPEN_FILES" in developer
 assert "MAX_PROCESSES" in developer
-assert "'resource_limiter_binary_present' => '' !== self::prlimit_binary()" in developer
+assert "'resource_limiter_binary_present' => '' !== $prlimit" in host_caps
 assert "'resource_limits_enforcement' => 'execution_proves_prlimit_or_fails_closed'" in developer
-assert "'network_sandbox_binary_present' => '' !== self::network_sandbox_binary()" in developer
+assert "'network_sandbox_binary_present' => '' !== $sandbox" in host_caps
 assert "self::runtime_gate( false, $input, false )" in developer
 assert "secret_redaction_enabled" in developer
 assert "proc_open" in developer
@@ -411,6 +414,8 @@ for marker in [
 assert "array( 'enrollment', 'developer-dispatch' )" in write_authority
 assert "MAD4B_SCP_Impact_Policy::ticket_class_for" in governance
 assert "MAD4B_SCP_Approval_Tickets::create_pending" in governance
+assert "class-mad4b-scp-developer-host-capabilities.php" in plugin
+assert plugin.index("class-mad4b-scp-developer-host-capabilities.php") < plugin.index("class-mad4b-scp-developer-runtime.php")
 assert "class-mad4b-scp-developer-runtime.php" in plugin
 runtime_release_match = re.search(r"^release=(0\.4\.0-rc\.\d+)$", runtime_build, re.M)
 assert runtime_release_match, "runtime release marker missing"
@@ -424,4 +429,27 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v25: PASS")
+for marker in [
+    "mad4b.developer-host-capabilities.v1",
+    "normal_no_network_execution_ready",
+    "workspace_php_lint_ready",
+    "network_isolation_backend_certified",
+    "capability_fingerprint",
+    "resource_limiter_unavailable",
+    "network_isolation_unavailable",
+    "network_isolation_backend_uncertified",
+    "root_execution_denied",
+    "php_linter_unavailable",
+]:
+    assert marker in host_caps, marker
+for marker in [
+    "'host_capabilities_contract' => $host['contract']",
+    "'host_capability_fingerprint' => $host['capability_fingerprint']",
+    "'execution_readiness' => array(",
+    "'host_capabilities' => $host",
+    "MAD4B_SCP_Developer_Host_Capabilities::prlimit_binary()",
+    "MAD4B_SCP_Developer_Host_Capabilities::network_sandbox_binary()",
+]:
+    assert marker in developer, marker
+
+print("mad4b.developer-runtime-contract.v26: PASS")
