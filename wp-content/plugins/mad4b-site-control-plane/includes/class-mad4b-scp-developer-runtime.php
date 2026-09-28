@@ -49,12 +49,14 @@ final class MAD4B_SCP_Developer_Runtime {
 				'mad4b/developer-breakglass-wp-eval',
 			);
 		}
-		return array(
+		$tools = array(
 			'mad4b/developer-runtime-status',
 			'mad4b/developer-wp-cli',
 			'mad4b/developer-filesystem',
 			'mad4b/developer-package-install',
 		);
+		if ( class_exists( 'MAD4B_SCP_Developer_Workspace' ) ) $tools = array_merge( $tools, MAD4B_SCP_Developer_Workspace::tool_names() );
+		return array_values( array_unique( $tools ) );
 	}
 
 	public static function register_abilities() {
