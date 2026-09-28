@@ -217,7 +217,19 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 	}
 
 	private static function finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, array $before, $before_hash, $error, $error_code ) {
+		$declared_not_started = self::provider_declared_not_started( $error );
 		$observed = $adapter->read_reversible_state( $ability_name, $before['target'] );
+		if ( $declared_not_started ) {
+			$after_hash = is_array( $observed ) ? self::state_hash( $observed ) : '';
+			self::update_record( $mutation_id, array(
+				'status' => 'failed',
+				'after_sha256' => $after_hash,
+				'error_code' => (string) $error_code,
+				'verification_code' => 'provider_declared_not_started',
+			) );
+			$evidence = self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, $after_hash, 'failed', false );
+			return self::attach_failure_evidence( $error, $evidence );
+		}
 		$after_hash = '';
 		$changed = false;
 		if ( is_array( $observed ) ) {
@@ -274,6 +286,17 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		$data['mad4b_mutation_evidence'] = $evidence;
 		$error->add_data( $data, $code );
 		return $error;
+	}
+
+	private static function provider_declared_not_started( $error ) {
+		if ( ! is_wp_error( $error ) ) return false;
+		$code = $error->get_error_code();
+		$data = $error->get_error_data( $code );
+		if ( ! is_array( $data ) || ! isset( $data['mad4b_execution_state'] ) || ! is_array( $data['mad4b_execution_state'] ) ) return false;
+		$state = $data['mad4b_execution_state'];
+		return isset( $state['contract'], $state['started'] )
+			&& 'mad4b.execution-state.v1' === (string) $state['contract']
+			&& false === $state['started'];
 	}
 
 	private static function failure_status_from_error( $error ) {
