@@ -57,6 +57,7 @@ final class MAD4B_SCP_Self_Update {
 		add_action( 'after_plugin_row_' . $plugin, array( __CLASS__, 'render_update_row' ), 10, 3 );
 		add_action( 'after_plugin_row', array( __CLASS__, 'render_update_row_fallback' ), 10, 3 );
 		add_action( 'admin_post_mad4b_control_plane_native_update', array( __CLASS__, 'handle_native_update' ) );
+		add_action( 'admin_post_mad4b_control_plane_refresh_update', array( __CLASS__, 'handle_refresh_update' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'native_update_notice' ) );
 	}
 
@@ -178,6 +179,7 @@ final class MAD4B_SCP_Self_Update {
 		$manifest_error = is_wp_error( $manifest ) ? $manifest->get_error_code() : '';
 		$native_ready = ! is_wp_error( $manifest ) && self::environment_allowed( false );
 		$remote_ready = self::environment_allowed( true ) && current_user_can( 'update_plugins' );
+		$ui_state = self::native_update_ui_state( $manifest );
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -189,6 +191,8 @@ final class MAD4B_SCP_Self_Update {
 				'manual_only' => true,
 				'admin_update_capability' => (bool) current_user_can( 'update_plugins' ),
 				'ui_hook_mode' => 'exact_hook_plus_realpath_fallback',
+				'ui_state' => $ui_state['state'],
+				'ui_blockers' => $ui_state['blockers'],
 				'modifies_core_update_transients' => false,
 				'automatic_update_enabled' => false,
 				'manifest_url' => self::MANIFEST_URL,
@@ -433,22 +437,57 @@ final class MAD4B_SCP_Self_Update {
 	}
 
 	private static function native_update_action_link( array $links ) {
-		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) || ! self::environment_allowed( false ) ) return $links;
+		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) return $links;
 
 		$manifest = self::fetch_manifest();
-		if ( is_wp_error( $manifest ) || ! self::update_available( $manifest ) ) return $links;
+		$ui = self::native_update_ui_state( $manifest );
+		if ( 'available' === $ui['state'] && is_array( $manifest ) ) {
+			$url = wp_nonce_url(
+				admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
+				'mad4b_control_plane_native_update'
+			);
+			$label = sprintf(
+				/* translators: %s: target version. */
+				__( 'Update MAD4B to %s', 'mad4b-site-control-plane' ),
+				$manifest['display_version']
+			);
+			$links['mad4b_update'] = '<a href="' . esc_url( $url ) . '" aria-label="' . esc_attr( $label ) . '">' . esc_html( $label ) . '</a>';
+			return $links;
+		}
 
-		$url = wp_nonce_url(
-			admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
-			'mad4b_control_plane_native_update'
-		);
-		$label = sprintf(
-			/* translators: %s: target version. */
-			__( 'Update MAD4B to %s', 'mad4b-site-control-plane' ),
-			$manifest['display_version']
-		);
-		$links['mad4b_update'] = '<a href="' . esc_url( $url ) . '" aria-label="' . esc_attr( $label ) . '">' . esc_html( $label ) . '</a>';
+		if ( in_array( $ui['state'], array( 'current', 'manifest_unavailable' ), true ) ) {
+			$url = wp_nonce_url(
+				admin_url( 'admin-post.php?action=mad4b_control_plane_refresh_update' ),
+				'mad4b_control_plane_refresh_update'
+			);
+			$label = 'manifest_unavailable' === $ui['state']
+				? __( 'Retry MAD4B update check', 'mad4b-site-control-plane' )
+				: __( 'Check MAD4B update', 'mad4b-site-control-plane' );
+			$links['mad4b_update_check'] = '<a href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
+			return $links;
+		}
+
+		if ( 'policy_blocked' === $ui['state'] ) {
+			$links['mad4b_update_state'] = '<span aria-label="' . esc_attr__( 'MAD4B update policy status', 'mad4b-site-control-plane' ) . '">'
+				. esc_html__( 'MAD4B update blocked by policy', 'mad4b-site-control-plane' ) . '</span>';
+		}
 		return $links;
+	}
+
+	private static function native_update_ui_state( $manifest = null ) {
+		$blockers = array();
+		if ( ! current_user_can( 'update_plugins' ) ) $blockers[] = 'update_plugins_capability_required';
+		if ( ! self::environment_allowed( false ) ) $blockers[] = 'native_update_environment_policy_blocked';
+		if ( null === $manifest ) $manifest = self::fetch_manifest();
+		if ( is_wp_error( $manifest ) ) {
+			$blockers[] = sanitize_key( $manifest->get_error_code() );
+			return array( 'state' => 'manifest_unavailable', 'blockers' => array_values( array_unique( $blockers ) ) );
+		}
+		if ( ! empty( $blockers ) ) return array( 'state' => 'policy_blocked', 'blockers' => array_values( array_unique( $blockers ) ) );
+		return array(
+			'state' => self::update_available( $manifest ) ? 'available' : 'current',
+			'blockers' => array(),
+		);
 	}
 
 	public static function plugin_action_links( $links ) {
@@ -464,34 +503,66 @@ final class MAD4B_SCP_Self_Update {
 
 	public static function render_update_row( $plugin_file, $plugin_data = array(), $status = '' ) {
 		unset( $plugin_data, $status );
-		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) || ! self::environment_allowed( false ) ) return;
+		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) return;
 		if ( ! self::is_control_plane_plugin_file( $plugin_file ) ) return;
 		$row_key = wp_normalize_path( (string) $plugin_file );
 		if ( isset( self::$rendered_update_rows[ $row_key ] ) ) return;
 
 		$manifest = self::fetch_manifest();
-		if ( is_wp_error( $manifest ) || ! self::update_available( $manifest ) ) return;
+		$ui = self::native_update_ui_state( $manifest );
+		if ( 'current' === $ui['state'] ) return;
 		self::$rendered_update_rows[ $row_key ] = true;
 
-		$url = wp_nonce_url(
-			admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
-			'mad4b_control_plane_native_update'
-		);
-		$message = sprintf(
-			/* translators: 1: target version, 2: short source commit. */
-			__( 'A governed MAD4B update is available: %1$s (build %2$s).', 'mad4b-site-control-plane' ),
-			$manifest['version'],
-			substr( $manifest['source_commit_sha'], 0, 12 )
-		);
-		echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
-			. esc_html( $message ) . ' <a href="' . esc_url( $url ) . '">'
-			. esc_html__( 'Update now', 'mad4b-site-control-plane' ) . '</a></p></div></td></tr>';
-	}
+		if ( 'available' === $ui['state'] && is_array( $manifest ) ) {
+			$url = wp_nonce_url(
+				admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
+				'mad4b_control_plane_native_update'
+			);
+			$message = sprintf(
+				/* translators: 1: target version, 2: short source commit. */
+				__( 'A governed MAD4B update is available: %1$s (build %2$s).', 'mad4b-site-control-plane' ),
+				$manifest['version'],
+				substr( $manifest['source_commit_sha'], 0, 12 )
+			);
+			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
+				. esc_html( $message ) . ' <a href="' . esc_url( $url ) . '">'
+				. esc_html__( 'Update now', 'mad4b-site-control-plane' ) . '</a></p></div></td></tr>';
+			return;
+		}
 
+		if ( 'manifest_unavailable' === $ui['state'] ) {
+			$url = wp_nonce_url(
+				admin_url( 'admin-post.php?action=mad4b_control_plane_refresh_update' ),
+				'mad4b_control_plane_refresh_update'
+			);
+			$reason = ! empty( $ui['blockers'] ) ? implode( ', ', $ui['blockers'] ) : 'manifest_unavailable';
+			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-error notice-alt"><p>'
+				. esc_html__( 'MAD4B could not verify the governed update channel.', 'mad4b-site-control-plane' )
+				. ' ' . esc_html( $reason ) . ' <a href="' . esc_url( $url ) . '">'
+				. esc_html__( 'Retry update check', 'mad4b-site-control-plane' ) . '</a></p></div></td></tr>';
+			return;
+		}
+
+		if ( 'policy_blocked' === $ui['state'] ) {
+			$reason = ! empty( $ui['blockers'] ) ? implode( ', ', $ui['blockers'] ) : 'policy_blocked';
+			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
+				. esc_html__( 'MAD4B update is currently blocked by policy.', 'mad4b-site-control-plane' )
+				. ' ' . esc_html( $reason ) . '</p></div></td></tr>';
+		}
+	}
 
 	public static function render_update_row_fallback( $plugin_file, $plugin_data = array(), $status = '' ) {
 		if ( ! self::is_control_plane_plugin_file( $plugin_file ) ) return;
 		self::render_update_row( $plugin_file, $plugin_data, $status );
+	}
+
+	public static function handle_refresh_update() {
+		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) wp_die( esc_html__( 'You are not allowed to check plugin updates.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
+		check_admin_referer( 'mad4b_control_plane_refresh_update' );
+		delete_transient( self::MANIFEST_TRANSIENT );
+		delete_site_transient( 'update_plugins' );
+		wp_safe_redirect( admin_url( 'plugins.php' ) );
+		exit;
 	}
 
 	public static function handle_native_update() {
