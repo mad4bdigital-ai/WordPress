@@ -407,7 +407,8 @@ final class MAD4B_SCP_Authorization {
 	public static function finalize_execution_claim( array $claim, $result ) {
 		if ( empty( $claim['approval_required'] ) || empty( $claim['approval_ticket_id'] ) ) return true;
 		$status = is_wp_error( $result ) ? 'failed' : 'used';
-		$final = MAD4B_SCP_Approval_Tickets::finalize_claim( $claim['approval_ticket_id'], $status );
+		$execution_error_code = is_wp_error( $result ) ? sanitize_key( (string) $result->get_error_code() ) : '';
+		$final = MAD4B_SCP_Approval_Tickets::finalize_claim( $claim['approval_ticket_id'], $status, $execution_error_code );
 		if ( is_wp_error( $final ) ) {
 			self::audit( isset( $claim['ability'] ) ? $claim['ability'] : '', array(
 				'allowed' => false,

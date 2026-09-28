@@ -231,4 +231,81 @@ mad4b_scan_assert( 'partial' === $scan_events[0]['status'] && empty( $scan_event
 mad4b_scan_assert( 'ok' === $scan_events[3]['status'] && ! empty( $scan_events[3]['summary']['scan_complete'] ), 'Complete source scan must be recorded as complete audit evidence.', $scan_events[3] );
 mad4b_scan_assert( ! array_key_exists( 'content', $scan_events[3]['summary'] ) && ! array_key_exists( 'file_id', $scan_events[3]['summary'] ), 'Scan audit summary must not contain raw Context content or provider file IDs.', $scan_events[3] );
 
-echo "mad4b.site-control-plane.context-scan-completeness.runtime.v3: PASS\n";
+
+// End-to-end regression for the exact live Brand Context path:
+// provider inventory -> source_scan_plan -> source_scan_apply -> registry revision +1.
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ] = array(
+	$source_id => array(
+		'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
+		'source_id' => $source_id,
+		'site_uuid' => $site_uuid,
+		'brand_id' => 'brand-fixture',
+		'provider' => 'google_drive',
+		'mode' => 'governed',
+		'external_root_id' => 'folder-fixture',
+		'label' => 'Brand Core',
+		'task_scope' => '',
+		'write_policy' => 'repair_only',
+		'recursive' => true,
+		'status' => 'ready',
+		'last_scan_complete' => true,
+		'last_scan_generation' => str_repeat( '6', 64 ),
+		'last_complete_scan_generation' => str_repeat( '6', 64 ),
+		'last_complete_scan_at' => '2026-09-28T04:00:00Z',
+		'last_scan_truncation_reasons' => array(),
+		'last_synced_at' => '2026-09-28T04:00:00Z',
+		'asset_count' => 0,
+	),
+);
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] = array();
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::REGISTRY_REVISION_OPTION ] = 20;
+
+class MAD4B_SCP_Context_Provider_Gateway {
+	public static function scan_source( $requested_source_id ) {
+		return array(
+			'complete' => true,
+			'scan_generation' => hash( 'sha256', 'brand-source-scan-regression' ),
+			'started_at' => '2026-09-28T04:01:00Z',
+			'completed_at' => '2026-09-28T04:01:01Z',
+			'truncation_reasons' => array(),
+			'assets' => array(
+				array(
+					'file_id' => 'drive-new-tone-of-voice',
+					'parent_folder_id' => 'folder-fixture',
+					'title' => 'Egypt Tour Gates - Tone of Voice.md',
+					'mimeType' => 'text/markdown',
+					'modifiedTime' => '2026-09-28T04:00:30Z',
+					'webViewLink' => 'https://docs.google.com/document/d/drive-new-tone-of-voice/edit',
+					'normalized_text' => 'Evidence-bound tone of voice regression fixture.',
+					'content_complete' => true,
+					'content_bytes' => 49,
+					'normalization_status' => 'ready',
+					'content_hash' => hash( 'sha256', 'Evidence-bound tone of voice regression fixture.' ),
+					'appProperties' => array( 'mad4b_kind' => 'brand_context' ),
+				),
+			),
+		);
+	}
+}
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-brand-context-builder.php';
+
+$scan_plan = MAD4B_SCP_Brand_Context_Builder::source_scan_plan( array( 'source_id' => $source_id ) );
+mad4b_scan_assert( ! is_wp_error( $scan_plan ), 'End-to-end source scan plan must succeed.', $scan_plan );
+mad4b_scan_assert( in_array( 'drive-new-tone-of-voice', $scan_plan['new_files'], true ), 'New provider file must be visible in the exact scan plan.', $scan_plan );
+$before_apply_revision = MAD4B_SCP_Context_Authority::registry_revision();
+$scan_apply = MAD4B_SCP_Brand_Context_Builder::source_scan_apply(
+	array(
+		'source_id' => $source_id,
+		'expected_plan_sha256' => $scan_plan['plan_sha256'],
+		'expected_provider_inventory_digest' => $scan_plan['provider_inventory_digest'],
+		'expected_registry_revision' => $scan_plan['registry_revision'],
+	)
+);
+mad4b_scan_assert( ! is_wp_error( $scan_apply ), 'End-to-end source scan apply must commit the observed provider file.', $scan_apply );
+mad4b_scan_assert( $before_apply_revision + 1 === MAD4B_SCP_Context_Authority::registry_revision(), 'Successful source scan apply must advance registry revision exactly once.' );
+$registered = array_values( array_filter( MAD4B_SCP_Context_Authority::assets(), static function ( $asset ) {
+	return is_array( $asset ) && isset( $asset['file_id'] ) && 'drive-new-tone-of-voice' === (string) $asset['file_id'];
+} ) );
+mad4b_scan_assert( 1 === count( $registered ), 'End-to-end source scan apply must register the newly observed Drive asset exactly once.', $registered );
+
+echo "mad4b.site-control-plane.context-scan-completeness.runtime.v4: PASS\n";
