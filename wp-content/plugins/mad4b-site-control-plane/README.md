@@ -4,7 +4,7 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.71**.
+Current plugin version: **0.4.0-rc.72**.
 
 Provider-gap closure is zero-touch and non-authorizing. The package embeds exact-head repository evidence plus `functional-gap-policy.json`; `mad4b/functional-gap-runtime-evidence` performs bounded local runtime collection, fixed-point drift checks, and deterministic evaluation without shell, WP-CLI, raw SQL, remote requests, credential reads, or mutation. Evidence readiness never grants provider write authority or Production activation. Provider capability diagnostics also distinguish mounted from latent capabilities and read readiness from blocked write certification.
 
@@ -13,6 +13,12 @@ Provider-gap closure is zero-touch and non-authorizing. The package embeds exact
 Operator deployment, authority reconciliation, recovery, rollback and lifecycle guidance: [`docs/RELEASE-AND-OPERATOR-RUNBOOK.md`](docs/RELEASE-AND-OPERATOR-RUNBOOK.md).
 
 Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
+
+### rc.72 governed nested-write authorization and reconciliation closure
+
+rc.72 closes two fail-closed runtime defects found during live ETG Staging acceptance. First, the central authorization execution-boundary filter is now booted before WordPress Abilities are materialized, so nested `mad4b/write-execute` calls cannot bypass the exact target's governed authorization/approval/commit-guard boundary. Runtime certification already requires every projected write Ability to carry the execution-boundary and governed-authority metadata; the bootstrap now makes that invariant true rather than only detectable after deployment.
+
+Second, durable Brand Context reconciliation treats a late observer arriving after `released_verified_no_effect` as a terminal idempotent readback instead of an observation-state error. This removes the race between scheduled reconciliation attempts without replaying provider creation. Connector mutation resilience also distinguishes a proven pre-target write-dispatch rejection (`mutation_state=not_started`) from an effect outcome that is genuinely unknown; blind retries remain denied and a fresh plan is required.
 
 ### rc.71 governed remote updates for any installed plugin
 
