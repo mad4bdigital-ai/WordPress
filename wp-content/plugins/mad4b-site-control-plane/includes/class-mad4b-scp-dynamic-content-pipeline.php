@@ -268,6 +268,10 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline {
 		$phase=sanitize_key((string)$phase);$registry=self::registry();$cfg=self::pinned_config_from_context($context);if(!is_array($cfg))$cfg=self::effective();$results=isset($context['stage_results'])&&is_array($context['stage_results'])?array_values($context['stage_results']):array();$current=$context;
 		foreach($cfg['stages'] as $stage){
 			if(empty($stage['enabled'])||$stage['phase']!==$phase) continue;
+			if(isset($current['heartbeat'])&&is_callable($current['heartbeat'])){
+				$heartbeat=call_user_func($current['heartbeat'],$phase,$stage,$current);
+				if(is_wp_error($heartbeat)) return $heartbeat;
+			}
 			if(!isset($registry[$stage['id']])||$registry[$stage['id']]['phase']!==$phase){
 				if(!empty($stage['policy']['required'])) return new WP_Error('mad4b_dynamic_pipeline_required_stage_unavailable','A required configured pipeline stage is not registered.',array('stage_id'=>$stage['id'],'phase'=>$phase));
 				continue;
