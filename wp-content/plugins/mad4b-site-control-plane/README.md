@@ -14,6 +14,12 @@ Operator deployment, authority reconciliation, recovery, rollback and lifecycle 
 
 Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
 
+### rc.72 governed nested-write authorization and reconciliation closure
+
+rc.72 closes two live Staging defects found during ETG acceptance without widening authority. First, the central authorization execution-boundary filter is booted before WordPress Abilities are materialized, so nested `mad4b/write-execute` calls cannot bypass the selected target's governed authorization, approval, budget and commit-guard boundary. Write-runtime certification also fails closed when any projected write Ability lacks the exact execution-boundary or governed-authority metadata.
+
+Second, durable Brand Context reconciliation treats a late observer arriving after `released_verified_no_effect` as a terminal idempotent readback instead of a reconciliation-state error. This removes the scheduled/manual observation race without replaying provider creation. Mutation resilience also distinguishes a proven pre-target dispatch rejection (`mutation_state=not_started`) from a target outcome that is genuinely unknown; blind retry remains denied and a fresh exact plan is required after dispatch repair.
+
 ### rc.72 approval expiry reconciliation + processed DB attribution
 
 rc.72 closes two live Staging recovery/diagnostic gaps without widening authority. Approval-plan reconciliation now treats pending and approved tickets as time/build sensitive: an approved ticket past its TTL becomes effectively expired, an approved ticket bound to an old candidate becomes stale, and expired/revoked/stale history no longer creates a false active-duplicate blocker when one fresh exact ticket exists. Multiple live exact tickets still fail closed. Claim-time TTL enforcement remains unchanged.
