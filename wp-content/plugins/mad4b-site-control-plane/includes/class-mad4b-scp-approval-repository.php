@@ -134,10 +134,17 @@ final class MAD4B_SCP_Approval_Repository {
 		}
 
 		$now = time();
-		$normalized = self::normalize( $rows[0], $candidate, $now );
+		$normalized_rows = array_map( static function ( $row ) use ( $candidate, $now ) {
+			return self::normalize( $row, $candidate, $now );
+		}, $rows );
+		$blocking_rows = array_values( array_filter( $normalized_rows, static function ( $row ) {
+			$effective = isset( $row['effective_status'] ) ? (string) $row['effective_status'] : '';
+			return ! in_array( $effective, array( 'expired', 'revoked', 'stale' ), true );
+		} ) );
+		$normalized = ! empty( $blocking_rows ) ? $blocking_rows[0] : $normalized_rows[0];
 		$effective = isset( $normalized['effective_status'] ) ? (string) $normalized['effective_status'] : '';
-		$duplicates = count( $rows ) > 1;
-		$retry_safe = ! $duplicates && in_array( $effective, array( 'expired', 'revoked', 'stale' ), true );
+		$duplicates = count( $blocking_rows ) > 1;
+		$retry_safe = empty( $blocking_rows ) && in_array( $effective, array( 'expired', 'revoked', 'stale' ), true );
 		$next_action = 'do_not_replay_plan';
 		if ( 'pending' === $effective ) $next_action = 'use_existing_ticket_or_human_handoff';
 		elseif ( 'approved' === $effective ) $next_action = 'execute_with_existing_ticket_only';
@@ -177,8 +184,9 @@ final class MAD4B_SCP_Approval_Repository {
 		$binding_exact = self::binding_exact( $row, $candidate );
 		$status = isset( $row['status'] ) ? (string) $row['status'] : '';
 		$effective = $status;
-		if ( 'pending' === $status && ( false === $expires || $expires < $now ) ) $effective = 'expired';
-		elseif ( 'pending' === $status && ! $binding_exact ) $effective = 'stale';
+		$time_or_binding_sensitive = in_array( $status, array( 'pending', 'approved' ), true );
+		if ( $time_or_binding_sensitive && ( false === $expires || $expires < $now ) ) $effective = 'expired';
+		elseif ( $time_or_binding_sensitive && ! $binding_exact ) $effective = 'stale';
 		$row['binding_exact'] = $binding_exact;
 		$row['effective_status'] = $effective;
 		$row['actionable'] = 'pending' === $status

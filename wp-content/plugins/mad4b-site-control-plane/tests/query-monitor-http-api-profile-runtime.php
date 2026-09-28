@@ -35,9 +35,14 @@ class MAD4B_HTTP_Collector {
 	public function __construct( $requests ) { $this->data = (object) array( 'http' => $requests ); }
 	public function get_data() { return $this->data; }
 }
+class MAD4B_DB_Collector {
+	public $data;
+	public function __construct( $rows ) { $this->data = (object) array( 'rows' => $rows ); }
+	public function get_data() { return $this->data; }
+}
 class QM_Collectors {
-	public static $collector;
-	public static function get( $id ) { return 'http' === $id ? self::$collector : null; }
+	public static $collectors = array();
+	public static function get( $id ) { return isset( self::$collectors[$id] ) ? self::$collectors[$id] : null; }
 }
 
 $requests = array();
@@ -72,7 +77,26 @@ $r->result = new MAD4B_HTTP_Response( 204 );
 $r->trace = new MAD4B_HTTP_Trace( 'Core_Check::run()', new MAD4B_HTTP_Component( 'plugin', 'MAD4B Core' ) );
 $requests[] = $r;
 
-QM_Collectors::$collector = new MAD4B_HTTP_Collector( $requests );
+QM_Collectors::$collectors['http'] = new MAD4B_HTTP_Collector( $requests );
+
+$db_rows = array(
+	array(
+		'sql' => 'SELECT * FROM private_table WHERE token = "DB_SECRET"',
+		'ltime' => 0.010,
+		'trace' => new MAD4B_HTTP_Trace( 'Plugin_DB::load()', new MAD4B_HTTP_Component( 'plugin', 'Plugin DB' ) ),
+	),
+	array(
+		'sql' => 'SELECT * FROM private_table WHERE token = "DB_SECRET"',
+		'ltime' => 0.012,
+		'trace' => new MAD4B_HTTP_Trace( 'Plugin_DB::load()', new MAD4B_HTTP_Component( 'plugin', 'Plugin DB' ) ),
+	),
+	array(
+		'sql' => 'SELECT * FROM slow_private_table',
+		'ltime' => 0.080,
+		'trace' => new MAD4B_HTTP_Trace( 'Slow_DB::load()', new MAD4B_HTTP_Component( 'plugin', 'Slow DB' ) ),
+	),
+);
+QM_Collectors::$collectors['db_queries'] = new MAD4B_DB_Collector( $db_rows );
 
 final class MAD4B_SCP_Live_Acceptance_Observer {
 	const TELEMETRY_OPTION = 'mad4b_http_profile_test_option';
@@ -108,6 +132,22 @@ foreach ( array( 'VERY_SECRET_TOKEN', 'SECOND_SECRET', 'LOCAL_SECRET', '/private
 	mad4b_http_assert( false === strpos( $encoded, $forbidden ), 'HTTP profile leaked forbidden request detail: ' . $forbidden, $p );
 }
 
+$db = MAD4B_SCP_Query_Monitor_Evidence_Bridge::processed_query_performance_profile_for_test();
+mad4b_http_assert( 'mad4b.query-performance-profile.v1' === $db['contract'], 'DB profile contract drifted', $db );
+mad4b_http_assert( ! empty( $db['available'] ), 'processed DB profile should be available with collector rows', $db );
+mad4b_http_assert( 3 === (int) $db['query_rows_observed'], 'processed DB row count drifted', $db );
+mad4b_http_assert( 1 === (int) $db['duplicate_query_count'], 'processed DB duplicate count drifted', $db );
+mad4b_http_assert( 1 === (int) $db['duplicate_group_count'], 'processed DB duplicate-group count drifted', $db );
+mad4b_http_assert( 1 === (int) $db['slow_query_count'], 'processed DB slow-query count drifted', $db );
+mad4b_http_assert( 'Plugin_DB::load' === $db['top_callers'][0]['caller'], 'processed DB caller attribution drifted', $db );
+mad4b_http_assert( 'plugin:Plugin DB' === $db['top_components'][0]['component'], 'processed DB component attribution drifted', $db );
+mad4b_http_assert( 64 === strlen( $db['duplicate_groups'][0]['query_fingerprint'] ), 'processed DB fingerprint invalid', $db );
+mad4b_http_assert( empty( $db['raw_sql_returned'] ), 'processed DB profile must not expose raw SQL', $db );
+$db_encoded = json_encode( $db );
+foreach ( array( 'DB_SECRET', 'private_table', 'slow_private_table', 'SELECT *' ) as $forbidden ) {
+	mad4b_http_assert( false === strpos( $db_encoded, $forbidden ), 'processed DB profile leaked raw SQL detail: ' . $forbidden, $db );
+}
+
 
 // Prove post-QM processing enrichment updates only the exact same request sample.
 $sample_id = str_repeat( 'a', 64 );
@@ -120,11 +160,11 @@ foreach ( array(
 		'events' => array( array( 'type' => 'preserve-me' ) ),
 		'performance' => array(
 			'samples' => array(
-				array( 'sample_id' => str_repeat( 'c', 64 ), 'request_class' => 'frontend', 'http_api_profile' => array( 'available' => false ) ),
-				array( 'sample_id' => $sample_id, 'request_class' => 'wp_admin', 'http_api_profile' => array( 'available' => false ) ),
+				array( 'sample_id' => str_repeat( 'c', 64 ), 'request_class' => 'frontend', 'http_api_profile' => array( 'available' => false ), 'db_profile' => array( 'available' => false ) ),
+				array( 'sample_id' => $sample_id, 'request_class' => 'wp_admin', 'http_api_profile' => array( 'available' => false ), 'db_profile' => array( 'available' => false ) ),
 			),
 			'last_by_class' => array(
-				'wp_admin' => array( 'sample_id' => $sample_id, 'request_class' => 'wp_admin', 'http_api_profile' => array( 'available' => false ) ),
+				'wp_admin' => array( 'sample_id' => $sample_id, 'request_class' => 'wp_admin', 'http_api_profile' => array( 'available' => false ), 'db_profile' => array( 'available' => false ) ),
 			),
 		),
 	),
@@ -142,8 +182,13 @@ mad4b_http_assert( 'mad4b_http_profile_test_option' === $GLOBALS['mad4b_http_upd
 $stored = $GLOBALS['mad4b_http_updated_option']['value'];
 mad4b_http_assert( 'preserve-me' === $stored['events'][0]['type'], 'HTTP enrichment overwrote already-collected telemetry events', $stored );
 mad4b_http_assert( empty( $stored['performance']['samples'][0]['http_api_profile']['available'] ), 'HTTP profile leaked into a different request sample', $stored );
-mad4b_http_assert( ! empty( $stored['performance']['samples'][1]['http_api_profile']['available'] ), 'matching request sample was not enriched', $stored );
-mad4b_http_assert( ! empty( $stored['performance']['last_by_class']['wp_admin']['http_api_profile']['available'] ), 'last_by_class was not enriched', $stored );
-mad4b_http_assert( $sample_id === $stored['performance']['last_http_api_profile_sample_id'], 'enriched sample identity drifted', $stored );
+mad4b_http_assert( empty( $stored['performance']['samples'][0]['db_profile']['available'] ), 'DB profile leaked into a different request sample', $stored );
+mad4b_http_assert( ! empty( $stored['performance']['samples'][1]['http_api_profile']['available'] ), 'matching request sample HTTP profile was not enriched', $stored );
+mad4b_http_assert( ! empty( $stored['performance']['samples'][1]['db_profile']['available'] ), 'matching request sample DB profile was not enriched', $stored );
+mad4b_http_assert( ! empty( $stored['performance']['last_by_class']['wp_admin']['http_api_profile']['available'] ), 'last_by_class HTTP profile was not enriched', $stored );
+mad4b_http_assert( ! empty( $stored['performance']['last_by_class']['wp_admin']['db_profile']['available'] ), 'last_by_class DB profile was not enriched', $stored );
+mad4b_http_assert( $sample_id === $stored['performance']['last_http_api_profile_sample_id'], 'HTTP enriched sample identity drifted', $stored );
+mad4b_http_assert( $sample_id === $stored['performance']['last_db_query_profile_sample_id'], 'DB enriched sample identity drifted', $stored );
+mad4b_http_assert( false === strpos( json_encode( $stored['performance']['samples'][1]['db_profile'] ), 'DB_SECRET' ), 'persisted DB profile leaked raw SQL', $stored );
 
-echo "mad4b.query-monitor-http-api-profile.runtime.v2: PASS\n";
+echo "mad4b.query-monitor-processed-profiles.runtime.v3: PASS\n";
