@@ -349,3 +349,7 @@ for marker in (
 ):
     assert marker in provider_autopilot, marker
 assert "'eligible_now' => $promotion_execution_permitted" in provider_autopilot
+
+assert "if ( ! isset( $modes[ $environment ] ) ) return 'observe_propose_only';" in provider_autopilot
+assert "preg_match( '/^[a-f0-9]{64}$/', $plugin_state_sha )" in provider_autopilot
+assert "preg_match( '/^[a-f0-9]{64}$/', $provider_fingerprint )" in provider_autopilot
