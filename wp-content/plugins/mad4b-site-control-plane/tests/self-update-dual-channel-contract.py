@@ -8,6 +8,7 @@ servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding
 grants = (root / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
 authority = (root / "includes" / "class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
 authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
+impact = (root / "includes" / "class-mad4b-scp-impact-policy.php").read_text(encoding="utf-8")
 commit_guard = (root / "includes" / "class-mad4b-scp-execution-commit-guard.php").read_text(encoding="utf-8")
 governance = (root / "includes" / "class-mad4b-scp-governance-abilities.php").read_text(encoding="utf-8")
 bootstrap = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
@@ -30,6 +31,7 @@ required_self_update = [
     "mad4b_self_update_native_download_failed",
     "published_from_master",
     "release_root_trust_verified",
+    "production_remote_native_pull_allowed",
     "plugin_action_links_",
     "after_plugin_row_",
     "admin_post_mad4b_control_plane_native_update",
@@ -198,8 +200,8 @@ if servers.count("'mad4b/control-plane-update-status'") < 2:
     raise SystemExit("Control Plane update status is not projected to both read and ChatGPT catalogs")
 if servers.count("'mad4b/control-plane-upload-plan'") < 2:
     raise SystemExit("Control Plane upload plan is not projected to both read and ChatGPT catalogs")
-if servers.count("'mad4b/control-plane-native-plan'") < 2:
-    raise SystemExit("Control Plane native plan is not projected to both read and ChatGPT catalogs")
+if servers.count("'mad4b/control-plane-native-plan'") != 2:
+    raise SystemExit("Control Plane native plan projection must be exactly read + ChatGPT")
 
 # Exact governed-write execution must be converged into the canonical Staging NHI inventory.
 if "'mad4b/control-plane-upload-apply' => 'core'" not in grants:
@@ -215,6 +217,10 @@ for marker in (
 ):
     if marker not in servers:
         raise SystemExit(f"self-update write projection invariant missing: {marker}")
+if servers.count("'mad4b/control-plane-native-apply'") != 2:
+    raise SystemExit("Control Plane native apply projection must be exactly admin + governed write candidate")
+if impact.count("'mad4b/control-plane-native-apply'") < 2:
+    raise SystemExit("Control Plane native apply must be classified as certified-package and high-impact")
 
 # Bootstrap must load and boot the coordinator.
 for marker in (
