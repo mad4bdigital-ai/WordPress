@@ -139,6 +139,12 @@ final class MAD4B_SCP_Provider_Autopilot {
 		return false !== strpos( $plugin_file, '..' ) ? '' : $plugin_file;
 	}
 
+	private static function candidate_identity_suffix( array $candidate ) {
+		$plugin_file = self::normalize_plugin_file( isset( $candidate['plugin_file'] ) ? $candidate['plugin_file'] : '' );
+		$seed = '' !== $plugin_file ? $plugin_file : wp_json_encode( $candidate, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return substr( hash( 'sha256', (string) $seed ), 0, 12 );
+	}
+
 	private static function class_name_for( array $candidate ) {
 		$seed = isset( $candidate['family'] ) && 'unknown' !== $candidate['family']
 			? (string) $candidate['family']
@@ -146,8 +152,8 @@ final class MAD4B_SCP_Provider_Autopilot {
 		$seed = preg_replace( '/[^A-Za-z0-9]+/', ' ', (string) $seed );
 		$seed = str_replace( ' ', '_', ucwords( strtolower( trim( $seed ) ) ) );
 		$seed = preg_replace( '/[^A-Za-z0-9_]/', '', (string) $seed );
-		if ( '' === $seed || ctype_digit( substr( $seed, 0, 1 ) ) ) $seed = 'Generated_' . $seed;
-		return 'MAD4B_SCP_Generated_' . $seed . '_Adapter_Candidate';
+		if ( '' === $seed || ctype_digit( substr( $seed, 0, 1 ) ) ) $seed = 'Provider';
+		return 'MAD4B_SCP_Generated_' . $seed . '_' . strtoupper( self::candidate_identity_suffix( $candidate ) ) . '_Adapter_Candidate';
 	}
 
 	private static function adapter_id_for( array $candidate ) {
@@ -155,7 +161,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 			? sanitize_key( (string) $candidate['family'] )
 			: sanitize_key( basename( dirname( isset( $candidate['plugin_file'] ) ? (string) $candidate['plugin_file'] : 'provider' ) ) );
 		if ( '' === $base || '.' === $base ) $base = 'provider';
-		return 'generated-' . $base;
+		return 'generated-' . $base . '-' . self::candidate_identity_suffix( $candidate );
 	}
 
 	private static function adapter_candidate( array $candidate, $mode ) {
@@ -196,6 +202,14 @@ final class MAD4B_SCP_Provider_Autopilot {
 		);
 		$encoded = wp_json_encode( $descriptor, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$descriptor['candidate_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		$config = self::config();
+		$ttl = isset( $config['candidate_ttl_seconds'] ) ? max( 60, min( 86400, (int) $config['candidate_ttl_seconds'] ) ) : 3600;
+		$observed_at = time();
+		$descriptor['candidate_ttl_seconds'] = $ttl;
+		$descriptor['observed_at_unix'] = $observed_at;
+		$descriptor['expires_at_unix'] = $observed_at + $ttl;
+		$descriptor['fresh'] = true;
+		$descriptor['recompute_before_promotion'] = true;
 		return $descriptor;
 	}
 
@@ -215,6 +229,10 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'adapter_candidate_sha256' => isset( $adapter_candidate['candidate_sha256'] ) ? (string) $adapter_candidate['candidate_sha256'] : '',
 			'plugin_state_sha256' => isset( $adapter_candidate['plugin_state_sha256'] ) ? (string) $adapter_candidate['plugin_state_sha256'] : '',
 			'provider_candidate_fingerprint' => isset( $adapter_candidate['provider_candidate_fingerprint'] ) ? (string) $adapter_candidate['provider_candidate_fingerprint'] : '',
+			'candidate_ttl_seconds' => isset( $adapter_candidate['candidate_ttl_seconds'] ) ? (int) $adapter_candidate['candidate_ttl_seconds'] : 0,
+			'observed_at_unix' => isset( $adapter_candidate['observed_at_unix'] ) ? (int) $adapter_candidate['observed_at_unix'] : 0,
+			'expires_at_unix' => isset( $adapter_candidate['expires_at_unix'] ) ? (int) $adapter_candidate['expires_at_unix'] : 0,
+			'fresh' => ! empty( $adapter_candidate['fresh'] ),
 			'read_execution_eligible' => false,
 			'write_eligible' => false,
 			'canary_eligible' => false,
@@ -334,6 +352,10 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'governed_steps' => $governed_steps,
 			'autopilot_candidate_sha256' => isset( $autopilot['adapter_candidate']['candidate_sha256'] ) ? (string) $autopilot['adapter_candidate']['candidate_sha256'] : '',
 			'plugin_state_sha256' => isset( $autopilot['adapter_candidate']['plugin_state_sha256'] ) ? (string) $autopilot['adapter_candidate']['plugin_state_sha256'] : '',
+			'candidate_observed_at_unix' => isset( $autopilot['adapter_candidate']['observed_at_unix'] ) ? (int) $autopilot['adapter_candidate']['observed_at_unix'] : 0,
+			'candidate_expires_at_unix' => isset( $autopilot['adapter_candidate']['expires_at_unix'] ) ? (int) $autopilot['adapter_candidate']['expires_at_unix'] : 0,
+			'candidate_fresh' => ! empty( $autopilot['adapter_candidate']['fresh'] ),
+			'recompute_before_promotion' => true,
 			'shadow_certification_sha256' => isset( $autopilot['shadow_certification']['certification_sha256'] ) ? (string) $autopilot['shadow_certification']['certification_sha256'] : '',
 			'auto_materialize_candidate_code' => false,
 			'auto_register_generated_adapter' => false,
