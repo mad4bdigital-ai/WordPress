@@ -64,6 +64,9 @@ assert "registered_ability_gap" in registry
 assert "mad4b_operation_planner_unregistered" in registry
 assert "mad4b_operation_executor_unregistered" in registry
 assert "optional_unavailable_operations" in registry
+assert "projection_missing_registered_abilities" in registry
+assert "read_projection_gap" in registry
+assert "catalog_sha256" in registry
 for marker in (
     "mad4b_operation_registry_policy_invalid",
     "mad4b_operation_registry_id_invalid",
