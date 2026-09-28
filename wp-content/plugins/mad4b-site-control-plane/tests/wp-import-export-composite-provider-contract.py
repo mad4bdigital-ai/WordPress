@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import json
+import shutil
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 provider_src = (ROOT / "includes/class-mad4b-scp-provider-contracts.php").read_text("utf-8")
@@ -82,5 +84,11 @@ assert "'content' => array(), 'admin' => array()" in adapter_src
 assert "'mounted_execution_abilities'=>array()" in adapter_src
 assert "wp-import-export/run-import" in adapter_src
 assert "wp-import-export/run-export" in adapter_src
+
+bootstrap_runtime = ROOT / "tests/wp-import-export-readonly-bootstrap-runtime.php"
+assert bootstrap_runtime.is_file()
+php = shutil.which("php")
+if php:
+    subprocess.run([php, str(bootstrap_runtime)], check=True)
 
 print("mad4b.wp-import-export-composite-provider-contract.v1: PASS")
