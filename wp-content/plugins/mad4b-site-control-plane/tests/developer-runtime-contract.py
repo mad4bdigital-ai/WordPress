@@ -155,6 +155,10 @@ for marker in [
     "installed_manifest_sha256",
     "php_token_parse",
     "exact_grant",
+    "MAD4B_MCP_DEVELOPER_WORKSPACE_ROOT",
+    "wordpress_parent_default",
+    ".mad4b-developer-workspaces",
+    "workspace_root( $create = false )",
     "addon_registry_state",
     "unregistered_development_candidate",
     "production_promotion_authorized' => false",
@@ -190,6 +194,18 @@ assert "'certified_package'" in impact
 assert "'development_promotion'" in impact
 assert "array( 'mad4b/developer-workspace-apply', 'mad4b/developer-workspace-promote' )" in impact
 assert "0 === strpos( $ability_name, 'mad4b/developer-' ) && ! $bounded_developer_ai" in impact
+
+# Read-only Workspace status/planning must not create durable state or clear
+# persistent plugin-update transients.
+status_body = workspace.split("public static function status", 1)[1].split("public static function read", 1)[0]
+plan_body = workspace.split("public static function promote_plan", 1)[1].split("public static function apply", 1)[0]
+for read_body in [status_body, plan_body]:
+    assert "workspace_root( true )" not in read_body
+    assert "wp_mkdir_p(" not in read_body
+    assert "prepare_backup_root()" not in read_body
+assert "wp_clean_plugins_cache( true )" not in plan_body
+assert "wp_clean_plugins_cache( false )" in plan_body
+assert "'workspace_exists' => false" in status_body
 
 # No direct PHP eval()/shell_exec()/system()/passthru() execution primitive.
 for pattern in [
@@ -397,4 +413,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v24: PASS")
+print("mad4b.developer-runtime-contract.v25: PASS")
