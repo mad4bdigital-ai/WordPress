@@ -47,7 +47,12 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 
 	public static function govern_registration( $args, $name ) {
 		if ( ! is_array( $args ) || self::ABILITY !== (string) $name ) return $args;
-		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return $args;
+		// Registration metadata is an immutable execution-safety contract, not a
+		// snapshot of current authority. A site can enroll governed write authority
+		// after abilities have already been materialized in the same request/process.
+		// Always install the approval-plan guard and central-boundary metadata now;
+		// runtime authorization below still fails closed unless authority is eligible.
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) return $args;
 		if ( ! isset( $args['permission_callback'] ) || ! is_callable( $args['permission_callback'] ) ) return $args;
 
 		$original_permission = $args['permission_callback'];
