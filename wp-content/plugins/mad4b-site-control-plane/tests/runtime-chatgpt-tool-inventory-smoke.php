@@ -93,7 +93,7 @@ $direct_required = array(
 	'mad4b-write-execute',
 	'mad4b-plugin-package-plan',
 	'mad4b-staging-write-candidate-binding-audit',
-	'mad4b-full-staging-authority-plan',
+	'mad4b-full-staging-authority-handshake',
 	'mad4b-full-staging-authority-apply',
 );
 foreach ( $direct_required as $tool_name ) {
@@ -136,6 +136,7 @@ $hidden_read_required = array(
 	'mad4b/rest-compatibility-status',
 	'mad4b/staging-certification-status',
 	'mad4b/full-staging-authority-status',
+	'mad4b/full-staging-authority-plan',
 	'mad4b/filesystem-list',
 	'mad4b/filesystem-read',
 	'mad4b/database-list-tables',
