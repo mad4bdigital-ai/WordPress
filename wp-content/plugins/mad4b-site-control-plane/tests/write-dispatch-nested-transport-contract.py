@@ -48,6 +48,13 @@ required_dispatch = [
     "MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request",
     "mad4b_write_dispatch_governance_envelope_conflict",
     "mad4b_write_dispatch_approval_binding_conflict",
+    "approval_plan_dispatch_preflight_failure",
+    "mad4b_approval_plan_guard_unavailable",
+    "MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input",
+    "MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input",
+    "'mutation_state' => 'not_started'",
+    "'reconciliation_required' => false",
+    "'client_action' => 'correct_plan_input_or_authority_then_replan'",
     "if ( empty( $present ) ) return true;",
     "mad4b_write_dispatch_governance_envelope_rebind_conflict",
     "_mad4b_approval_ticket_id",
@@ -139,4 +146,4 @@ if "array( 'mad4b/write-execute', 'mad4b/developer-execute', 'mad4b/enrollment-e
 if "mad4b/developer-breakglass" in dispatch_catalog:
     raise SystemExit("Developer Breakglass must never enter the compact ChatGPT dispatcher inventory")
 
-print("mad4b.write-dispatch-nested-transport.contract.v7: PASS")
+print("mad4b.write-dispatch-nested-transport.contract.v8: PASS")
