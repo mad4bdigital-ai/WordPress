@@ -102,7 +102,18 @@ $coverage_ability = wp_get_ability( 'mad4b/plugin-adapter-coverage' );
 // null/no argument for no-input abilities; passing an empty object is invalid on WP 7.1+.
 $initial = $coverage_ability->execute();
 $check( ! is_wp_error( $initial ) && 'mad4b.plugin-adapter-discovery.v1' === $initial['contract'], 'Initial plugin discovery contract failed.' );
-$check( ! empty( $initial['discovery_only'] ) && empty( $initial['auto_install'] ) && empty( $initial['auto_generate_adapter'] ) && empty( $initial['auto_create_authority'] ), 'Discovery can create authority/code/install plugins.' );
+$check(
+	! empty( $initial['discovery_only'] )
+	&& empty( $initial['auto_install'] )
+	&& ! empty( $initial['auto_generate_adapter'] )
+	&& 'candidate_only' === $initial['auto_generate_adapter_scope']
+	&& ! empty( $initial['auto_certify_provider'] )
+	&& 'shadow_identity_only' === $initial['auto_certify_provider_scope']
+	&& empty( $initial['auto_register_generated_adapter'] )
+	&& empty( $initial['auto_write_certification'] )
+	&& empty( $initial['auto_create_authority'] ),
+	'Discovery autopilot escaped candidate/shadow-only non-authorizing boundary.'
+);
 $check( 'deny' === $initial['unknown_plugin_write_default'], 'Unknown plugin write default is not deny.' );
 
 $priority_ids = array();

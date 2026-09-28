@@ -240,8 +240,16 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 		$plugins = get_plugins();
 		$installed = isset( $plugins[ $plugin_file ] );
 		$current_version = $installed && isset( $plugins[ $plugin_file ]['Version'] ) ? trim( (string) $plugins[ $plugin_file ]['Version'] ) : '';
-		$current_active = $installed ? is_plugin_active( $plugin_file ) : false;
-		$current_network_active = $installed && is_multisite() ? is_plugin_active_for_network( $plugin_file ) : false;
+		$current_active = false;
+		$current_site_active = false;
+		$current_network_active = false;
+		if ( $installed ) {
+			$activation_state = class_exists( 'MAD4B_SCP_Plugin_Activation_State' ) ? MAD4B_SCP_Plugin_Activation_State::snapshot( $plugin_file ) : new WP_Error( 'mad4b_plugin_activation_state_unavailable', 'Shared plugin activation-state service is unavailable.' );
+			if ( is_wp_error( $activation_state ) ) return $activation_state;
+			$current_active = ! empty( $activation_state['effective_active'] );
+			$current_site_active = ! empty( $activation_state['site_active'] );
+			$current_network_active = ! empty( $activation_state['network_active'] );
+		}
 		$blockers = array();
 
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ), 'write' ) ) {
@@ -293,6 +301,7 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 			'installed' => $installed,
 			'current_version' => $current_version,
 			'current_active' => (bool) $current_active,
+			'current_site_active' => (bool) $current_site_active,
 			'current_network_active' => (bool) $current_network_active,
 			'update_offer_target_version' => $target_version,
 		);
@@ -304,6 +313,7 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 			'current_version' => $current_version,
 			'target_version' => $target_version,
 			'current_active' => (bool) $current_active,
+			'current_site_active' => (bool) $current_site_active,
 			'current_network_active' => (bool) $current_network_active,
 			'state_sha256' => self::digest( $state_payload ),
 			'package_sha256' => ! empty( $package['sha256'] ) ? $package['sha256'] : '',
@@ -554,11 +564,14 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$plugins = get_plugins();
 		if ( ! isset( $plugins[ $plugin_file ] ) ) return new WP_Error( 'mad4b_remote_plugin_update_plugin_not_installed', 'Plugin is not currently installed.' );
+		$activation = class_exists( 'MAD4B_SCP_Plugin_Activation_State' ) ? MAD4B_SCP_Plugin_Activation_State::snapshot( $plugin_file ) : new WP_Error( 'mad4b_plugin_activation_state_unavailable', 'Shared plugin activation-state service is unavailable.' );
+		if ( is_wp_error( $activation ) ) return $activation;
 		return array(
 			'plugin_file' => $plugin_file,
 			'version' => isset( $plugins[ $plugin_file ]['Version'] ) ? (string) $plugins[ $plugin_file ]['Version'] : '',
-			'active' => is_plugin_active( $plugin_file ),
-			'network_active' => is_multisite() ? is_plugin_active_for_network( $plugin_file ) : false,
+			'active' => ! empty( $activation['effective_active'] ),
+			'site_active' => ! empty( $activation['site_active'] ),
+			'network_active' => ! empty( $activation['network_active'] ),
 		);
 	}
 
@@ -608,17 +621,18 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 	}
 
 	private static function restore_activation_state( $plugin_file, array $before ) {
-		require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		$should_active = ! empty( $before['active'] );
-		$should_network = ! empty( $before['network_active'] );
-		$current = is_plugin_active( $plugin_file );
-		if ( $should_active && ! $current ) {
-			$result = activate_plugin( $plugin_file, '', $should_network );
-			if ( is_wp_error( $result ) ) return $result;
-		} elseif ( ! $should_active && $current ) {
-			deactivate_plugins( $plugin_file, false, $should_network );
+		if ( ! class_exists( 'MAD4B_SCP_Plugin_Activation_State' ) ) return new WP_Error( 'mad4b_plugin_activation_state_unavailable', 'Shared plugin activation-state service is unavailable.' );
+		$desired = array(
+			'site_active' => ! empty( $before['site_active'] ),
+			'network_active' => ! empty( $before['network_active'] ),
+		);
+		// Backward compatibility for pre-rc.82 snapshots that carried only
+		// effective active + network_active.
+		if ( ! array_key_exists( 'site_active', $before ) ) {
+			$desired['site_active'] = ! empty( $before['active'] ) && empty( $before['network_active'] );
 		}
-		return true;
+		$result = MAD4B_SCP_Plugin_Activation_State::restore( $plugin_file, $desired );
+		return is_wp_error( $result ) ? $result : true;
 	}
 
 	private static function rollback( $plugin_file, array $backup, $before ) {

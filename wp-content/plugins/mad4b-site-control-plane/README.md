@@ -4,7 +4,11 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.82**.
+Current plugin version: **0.4.0-rc.83**.
+
+### rc.83 universal governed WordPress operations
+
+rc.83 introduces a provider-neutral operation registry, unified plugin transaction planning, dependency/certification impact projection, declarative provider transport descriptors, durable reconnect guidance, and explicit site-vs-network plugin lifecycle scope. Existing exact planners/executors remain the mutation authority; the orchestration layer does not add a generic shell, arbitrary operation IDs, arbitrary package locations, approval bypass, or Production mutation. Unknown provider transports remain visible to fail-closed Peer Governance.
 
 ### rc.82 session-safe Full Staging Authority handshake
 

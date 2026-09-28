@@ -1,0 +1,291 @@
+{
+  "contract": "mad4b.operation-registry.v1",
+  "version": 1,
+  "default_mutation_policy": "deny",
+  "generic_shell": false,
+  "arbitrary_operation_ids": false,
+  "operations": [
+    {
+      "id": "wordpress.plugin.transaction",
+      "target_kind": "plugin",
+      "risk": "high",
+      "planner": "mad4b/plugin-transaction-plan",
+      "executor": "exact_executor_from_plan",
+      "supports": [
+        "install",
+        "replace",
+        "update",
+        "activate",
+        "deactivate"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
+    },
+    {
+      "id": "wordpress.plugin.activate",
+      "target_kind": "plugin",
+      "risk": "high",
+      "planner": "mad4b/plugin-lifecycle-plan",
+      "executor": "mad4b/plugin-activate",
+      "supports": [
+        "activate"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
+    },
+    {
+      "id": "wordpress.plugin.deactivate",
+      "target_kind": "plugin",
+      "risk": "high",
+      "planner": "mad4b/plugin-lifecycle-plan",
+      "executor": "mad4b/plugin-deactivate",
+      "supports": [
+        "deactivate"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
+    },
+    {
+      "id": "wordpress.plugin.certified-package",
+      "target_kind": "plugin",
+      "risk": "high",
+      "planner": "mad4b/plugin-package-plan",
+      "executor": "mad4b/plugin-package-apply",
+      "supports": [
+        "install",
+        "replace"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
+    },
+    {
+      "id": "wordpress.plugin.remote-update",
+      "target_kind": "plugin",
+      "risk": "high",
+      "planner": "mad4b/plugin-remote-update-plan",
+      "executor": "mad4b/plugin-remote-update-apply",
+      "supports": [
+        "update"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
+    },
+    {
+      "id": "wordpress.control-plane.self-update",
+      "target_kind": "control_plane",
+      "risk": "exceptional",
+      "planner": "mad4b/control-plane-native-plan",
+      "executor": "mad4b/control-plane-native-apply",
+      "supports": [
+        "self-update"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
+    },
+    {
+      "id": "wordpress.skills.reconcile",
+      "target_kind": "skills",
+      "risk": "medium",
+      "planner": "mad4b/remote-operation-parity-status",
+      "executor": "mad4b/reconcile-managed-skills",
+      "supports": [
+        "reconcile-skills"
+      ],
+      "durable_resume": true,
+      "dependency_impact": false,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
+    },
+    {
+      "id": "wordpress.provider.recertify",
+      "target_kind": "provider",
+      "risk": "high",
+      "planner": "mad4b/provider-closure-matrix",
+      "executor": "mad4b/provider-behavioral-recertify",
+      "supports": [
+        "reconcile-provider",
+        "recertify-provider"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
+    },
+    {
+      "id": "wordpress.content.import",
+      "target_kind": "provider",
+      "risk": "high",
+      "planner": "wp-import-export/plan-import-run",
+      "executor": "wp-import-export/run-import",
+      "supports": [
+        "import"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": false,
+      "pipeline_profile": "governed_mutation_v1"
+    },
+    {
+      "id": "wordpress.content.export",
+      "target_kind": "provider",
+      "risk": "high",
+      "planner": "wp-import-export/plan-export-run",
+      "executor": "wp-import-export/run-export",
+      "supports": [
+        "export"
+      ],
+      "durable_resume": true,
+      "dependency_impact": true,
+      "required_runtime": false,
+      "pipeline_profile": "governed_mutation_v1"
+    }
+  ],
+  "aliases": {
+    "update": "wordpress.plugin.transaction",
+    "install": "wordpress.plugin.transaction",
+    "replace": "wordpress.plugin.transaction",
+    "activate": "wordpress.plugin.transaction",
+    "deactivate": "wordpress.plugin.transaction",
+    "self-update": "wordpress.control-plane.self-update",
+    "reconcile-skills": "wordpress.skills.reconcile",
+    "reconcile-provider": "wordpress.provider.recertify",
+    "recertify-provider": "wordpress.provider.recertify",
+    "import": "wordpress.content.import",
+    "export": "wordpress.content.export"
+  },
+  "read_projection": {
+    "direct": [
+      "mad4b/wordpress-operation-discover",
+      "mad4b/plugin-transaction-plan",
+      "mad4b/operation-resume-status"
+    ],
+    "catalog": [
+      "mad4b/operation-registry-status",
+      "mad4b/wordpress-operation-discover",
+      "mad4b/operation-pipeline-compile",
+      "mad4b/plugin-transaction-plan",
+      "mad4b/dependency-impact",
+      "mad4b/provider-candidate-matrix",
+      "mad4b/provider-autopilot-plan",
+      "mad4b/provider-autopilot-promotion-plan",
+      "mad4b/provider-autopilot-status",
+      "mad4b/provider-transport-registry-status",
+      "mad4b/operation-resume-status"
+    ]
+  },
+  "pipeline_profiles": {
+    "governed_mutation_v1": [
+      {
+        "id": "discover",
+        "type": "read_check",
+        "required": true
+      },
+      {
+        "id": "provider_candidate",
+        "type": "read_check",
+        "required": false,
+        "when": "target_kind:plugin"
+      },
+      {
+        "id": "dependency_impact",
+        "type": "read_check",
+        "required": false,
+        "when": "operation.dependency_impact:true"
+      },
+      {
+        "id": "native_plan",
+        "type": "planner",
+        "required": true
+      },
+      {
+        "id": "authorization_boundary",
+        "type": "authorization",
+        "required": true
+      },
+      {
+        "id": "exact_execute",
+        "type": "executor",
+        "required": true
+      },
+      {
+        "id": "readback",
+        "type": "verification",
+        "required": true
+      },
+      {
+        "id": "durable_resume",
+        "type": "reconcile",
+        "required": false,
+        "when": "operation.durable_resume:true"
+      }
+    ]
+  },
+  "stage_bindings": {
+    "discover": {
+      "binding_type": "ability",
+      "ability": "mad4b/wordpress-operation-discover"
+    },
+    "provider_candidate": {
+      "binding_type": "ability",
+      "ability": "mad4b/provider-candidate-matrix"
+    },
+    "dependency_impact": {
+      "binding_type": "ability",
+      "ability": "mad4b/dependency-impact"
+    },
+    "native_plan": {
+      "binding_type": "operation_planner"
+    },
+    "authorization_boundary": {
+      "binding_type": "policy_boundary"
+    },
+    "exact_execute": {
+      "binding_type": "operation_executor"
+    },
+    "readback": {
+      "binding_type": "executor_owned_verification"
+    },
+    "durable_resume": {
+      "binding_type": "ability",
+      "ability": "mad4b/operation-resume-status"
+    }
+  },
+  "dynamic_provider_autopilot": {
+    "enabled_by_default": true,
+    "mode": "shadow_auto",
+    "environments": {
+      "staging": "shadow_auto",
+      "development": "shadow_auto",
+      "local": "shadow_auto",
+      "production": "observe_propose_only"
+    },
+    "auto_generate_adapter_candidate": true,
+    "auto_shadow_certify_provider": true,
+    "auto_materialize_candidate_code": false,
+    "auto_register_generated_adapter": false,
+    "auto_write_certification": false,
+    "auto_create_authority": false,
+    "auto_enable_mutation": false,
+    "max_automatic_support_level": "L1_lifecycle",
+    "promotion_required_for": [
+      "L3_governed_write",
+      "L4_certified_governed",
+      "production"
+    ],
+    "unknown_provider_default": "deny_write",
+    "candidate_ttl_seconds": 3600
+  }
+}

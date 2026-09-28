@@ -2,6 +2,7 @@
 from pathlib import Path
 import json
 import re
+import runpy
 
 ROOT = Path(__file__).resolve().parents[1]
 main = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
@@ -274,5 +275,10 @@ for browser_marker in [
     "durable_job_id",
 ]:
     require(cert, browser_marker, "durable Browser Acceptance certification invariant")
+
+# Universal WordPress operations is part of the plugin-owned certification surface.
+# Keep this chained from the existing baseline-owned workflow instead of widening
+# a release-critical repository workflow from a feature PR.
+runpy.run_path(str(ROOT / "tests/universal-wordpress-operations-contract.py"), run_name="__main__")
 
 print("MAD4B staging post-deployment certification contract PASS")

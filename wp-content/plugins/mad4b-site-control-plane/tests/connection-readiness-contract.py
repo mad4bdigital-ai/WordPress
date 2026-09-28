@@ -26,6 +26,8 @@ adapter_ui = read('includes/class-mad4b-scp-adapter-coverage-admin-ui.php')
 admin_experience = read('includes/class-mad4b-scp-admin-experience.php')
 peer = read('includes/class-mad4b-scp-mcp-peer-governance.php')
 isolation = read('includes/class-mad4b-scp-mcp-provider-isolation.php')
+transport_registry = read('includes/class-mad4b-scp-provider-transport-registry.php')
+transport_catalog = read('config/provider-transport-registry.json')
 bridge = read('includes/class-mad4b-scp-mcp-registration-bridge.php')
 diagnostics = read('includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php')
 transport_context = read('includes/class-mad4b-scp-transport-context.php')
@@ -342,15 +344,33 @@ for marker in (
     'public static function runtime_suppression_approved()',
     'if ( ! self::configured() || ! self::runtime_suppression_approved() ) return false;',
     "add_filter( 'wpmedia_mcp_oauth_server_enabled'", 'filter_wpmedia_oauth_server_enabled',
-    "add_filter( 'mcp_adapter_create_default_server'", "add_action( 'rest_api_init', array( __CLASS__, 'suppress_provider_server_registrations' ), 14 )",
+    "add_filter( 'mcp_adapter_create_default_server'",
+    "add_action( 'rest_api_init', array( __CLASS__, 'suppress_provider_server_registrations' ), 14 )",
     "add_action( 'init', array( __CLASS__, 'suppress_provider_server_registrations' ), 19 )",
     "add_action( 'mcp_adapter_init', array( __CLASS__, 'suppress_provider_server_registrations' ), -1000000 )",
-    "add_filter( 'rest_endpoints'", "'hostinger-ai-assistant-mcp-server'", "'elementskit-mcp-server'",
-    "/hostinger-ai-assistant/v1/mcp/", "/hostinger-ai-assistant/v1/jwt/", "/elementskit/mcp/",
+    "add_filter( 'rest_endpoints'",
+    "MAD4B_SCP_Provider_Transport_Registry::route_descriptors()",
+    "MAD4B_SCP_Provider_Transport_Registry::server_callback_descriptors()",
     "'unknown_routes_fail_closed' => true", "'changes_provider_settings' => false", "'creates_authority' => false",
     "'legacy_enable_flag_alone_is_non_mutating' => true", "'runtime_suppression_requires_second_gate' => true",
 ):
     require(isolation, marker, 'provider-isolation-contract')
+
+for marker in (
+    "const CONTRACT = 'mad4b.provider-transport-registry.v1'",
+    "'unknown_transport_auto_allowed' => false",
+    "suppress_when_isolation_effective",
+    "catalog_version_invalid", "external_visibility_invalid", "route_pattern_invalid",
+):
+    require(transport_registry, marker, 'provider-transport-registry-contract')
+
+for marker in (
+    '"server_id": "hostinger-ai-assistant-mcp-server"',
+    '"server_id": "elementskit-mcp-server"',
+    '/hostinger-ai-assistant/v1/mcp/', '/hostinger-ai-assistant/v1/jwt/', '/elementskit/mcp/',
+):
+    require(transport_catalog, marker, 'provider-transport-catalog')
+
 for forbidden in ('update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post(', 'deactivate_plugins(', 'activate_plugin(', 'ReflectionClass', 'setAccessible('):
     forbid(isolation, forbidden, 'provider-isolation-deny-only')
 

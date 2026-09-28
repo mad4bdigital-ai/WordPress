@@ -9,6 +9,8 @@ client = (ROOT / 'includes/adapters/class-mad4b-scp-jetengine-mcp-client.php').r
 bridge = (ROOT / 'includes/adapters/class-mad4b-scp-native-provider-bridge-adapter.php').read_text('utf-8')
 servers = (ROOT / 'includes/class-mad4b-scp-servers.php').read_text('utf-8')
 write_runtime = (ROOT / 'includes/class-mad4b-scp-write-runtime-certification.php').read_text('utf-8')
+transport_registry = (ROOT / 'includes/class-mad4b-scp-provider-transport-registry.php').read_text('utf-8')
+transport_catalog = (ROOT / 'config/provider-transport-registry.json').read_text('utf-8')
 
 PREVIOUS_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v4'
 LEGACY_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v3'
@@ -105,8 +107,15 @@ for forbidden in (
     retained_end = isolation.index('public static function descriptors()', retained_start)
     forbid(isolation[retained_start:retained_end], forbidden, 'internal-handoff-no-route-registration-or-rest-replay')
 
+require(isolation, "MAD4B_SCP_Provider_Transport_Registry::route_descriptors()", 'declarative-route-registry-consumption')
+require(isolation, "MAD4B_SCP_Provider_Transport_Registry::server_callback_descriptors()", 'declarative-server-registry-consumption')
+require(transport_registry, "const CONTRACT = 'mad4b.provider-transport-registry.v1'", 'transport-registry-contract')
+require(transport_registry, "'unknown_transport_auto_allowed' => false", 'unknown-transport-not-auto-allowed')
+require(transport_registry, 'public static function route_descriptors()', 'transport-route-projection')
+require(transport_registry, 'public static function server_callback_descriptors()', 'transport-server-projection')
+
 for provider in ('hostinger_ai_assistant', 'fluent_forms', 'jetengine', 'uae_hfe', 'elementskit'):
-    require(isolation, f"'provider' => '{provider}'", f'provider-{provider}')
+    require(transport_catalog, f'"provider_id": "{provider}"', f'provider-{provider}')
 
 for exact_surface in (
     '/hostinger-ai-assistant/v1/mcp/', '/hostinger-ai-assistant/v1/jwt/',
@@ -114,17 +123,17 @@ for exact_surface in (
     '/jet-engine/v1/mcp-tools/', '/hfe/v1/mcp-', '/uae/mcp/',
     '/elementskit/mcp/', '/elementskit/v1/mcp-proxy/'
 ):
-    require(isolation, exact_surface, f'route-{exact_surface}')
+    require(transport_catalog, exact_surface, f'route-{exact_surface}')
 
 # Hostinger Easy Onboarding banner state is a reviewed non-transport route and
 # must remain visible; peer governance classifies it instead of isolation deleting it.
-forbid(isolation, 'update-mcp-connector-banner-status', 'do-not-hide-hostinger-banner-control')
+forbid(transport_catalog, 'update-mcp-connector-banner-status', 'do-not-hide-hostinger-banner-control')
 
 for exact_server in (
     'hostinger-ai-assistant-mcp-server', 'Hostinger\\\\AiAssistant\\\\Mcp\\\\McpServer', 'create_server',
     'elementskit-mcp-server', 'ElementsKit_Lite\\\\Mcp\\\\Server', 'register_server',
 ):
-    require(isolation, exact_server, f'server-{exact_server}')
+    require(transport_catalog, exact_server, f'server-{exact_server}')
 
 for forbidden in (
     'wp_remote_get(', 'wp_remote_post(', 'wp_safe_remote_get(', 'wp_safe_remote_post(',
@@ -135,6 +144,8 @@ for forbidden in (
 ):
     forbid(isolation, forbidden, 'isolation-no-mutation-or-outbound')
 
+require(bootstrap, "class-mad4b-scp-provider-transport-registry.php", 'transport-registry-bootstrap-load')
+require(bootstrap, "MAD4B_SCP_Provider_Transport_Registry::boot();", 'transport-registry-bootstrap')
 require(bootstrap, "class-mad4b-scp-mcp-provider-isolation.php", 'bootstrap-load')
 require(bootstrap, 'MAD4B_SCP_MCP_Provider_Isolation::boot_early();', 'bootstrap-early-kill-switch')
 require(plugin, 'MAD4B_SCP_MCP_Provider_Isolation::boot();', 'plugin-boot')

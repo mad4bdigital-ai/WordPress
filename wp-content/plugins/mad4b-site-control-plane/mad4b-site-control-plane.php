@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.82
+ * Version: 0.4.0-rc.83
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Author: MAD4B
@@ -13,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.82' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.83' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -106,12 +106,20 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-fence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mutation-manager.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reversible-adapter-mutations.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-discovery.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-autopilot.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-functional-gap-evidence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-host-capabilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-runtime.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-workspace.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dependency-impact-graph.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-pipeline.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-transaction.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-resume.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-activation-state.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-package.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-plugin-update.php';
@@ -228,6 +236,13 @@ MAD4B_SCP_Context_Authority::boot();
 MAD4B_SCP_AI_Approval::boot();
 MAD4B_SCP_Context_Provider_Gateway::boot();
 MAD4B_SCP_Brand_Context_Builder::boot();
+MAD4B_SCP_Provider_Transport_Registry::boot();
+MAD4B_SCP_Dependency_Impact_Graph::boot();
+MAD4B_SCP_Operation_Registry::boot();
+MAD4B_SCP_Operation_Pipeline::boot();
+MAD4B_SCP_Provider_Autopilot::boot();
+MAD4B_SCP_Plugin_Transaction::boot();
+MAD4B_SCP_Operation_Resume::boot();
 MAD4B_SCP_Plugin_Lifecycle::boot();
 MAD4B_SCP_Plugin_Package::boot();
 MAD4B_SCP_Remote_Plugin_Update::boot();
