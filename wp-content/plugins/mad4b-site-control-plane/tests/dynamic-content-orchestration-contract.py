@@ -334,4 +334,17 @@ if "current_live = in_array" not in mutations or "request_live = in_array" not i
 if "status-only transition" not in mutations:
     raise SystemExit("dynamic publication must remain a status-only transition")
 
+
+
+for marker in [
+    "create_slug",
+    "mad4b_scp_dynamic_content_acceptance_scope",
+    "mad4b_dynamic_acceptance_scope_invalid",
+]:
+    if marker not in adapter:
+        raise SystemExit(f"dynamic term/acceptance extensibility marker missing: {marker}")
+
+if "in_array( $update['post_status'], array( 'publish', 'private' ), true )" not in mutations:
+    raise SystemExit("content-update-post must require publish capability for both publish and private transitions")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
