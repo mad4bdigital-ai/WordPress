@@ -384,6 +384,7 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 		if ( true !== $zip->open( $path ) ) return new WP_Error( 'mad4b_remote_plugin_update_zip_open_failed', 'Remote plugin update archive could not be opened.' );
 
 		$manifest = array();
+		$seen_paths = array();
 		$total_uncompressed = 0;
 		$file_count = 0;
 		$plugin_dir = dirname( $plugin_file );
@@ -400,6 +401,12 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 			}
 			$name = wp_normalize_path( $raw_name );
 			if ( '/' === substr( $name, -1 ) ) continue;
+			$collision_key = strtolower( $name );
+			if ( isset( $seen_paths[ $collision_key ] ) ) {
+				$zip->close();
+				return new WP_Error( 'mad4b_remote_plugin_update_zip_duplicate_path', 'Plugin update archive contains duplicate or case-colliding file paths.' );
+			}
+			$seen_paths[ $collision_key ] = true;
 			if ( '/' === substr( $name, 0, 1 ) || false !== strpos( $name, '../' ) || 0 === strpos( $name, './' ) || preg_match( '#(^|/)\.\.(/|$)#', $name ) ) {
 				$zip->close();
 				return new WP_Error( 'mad4b_remote_plugin_update_zip_path_escape', 'Plugin archive contains a path traversal or absolute path.' );
