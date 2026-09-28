@@ -8,6 +8,7 @@ transport = (root / "includes/class-mad4b-scp-transport-context.php").read_text(
 authority = (root / "includes/class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
 reconciliation = (root / "includes/class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
 impact = (root / "includes/class-mad4b-scp-impact-policy.php").read_text(encoding="utf-8")
+reversible = (root / "includes/class-mad4b-scp-reversible-adapter-mutations.php").read_text(encoding="utf-8")
 registry = (root / "includes/class-mad4b-scp-adapter-registry.php").read_text(encoding="utf-8")
 plugin = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 readme = (root / "README.md").read_text(encoding="utf-8")
@@ -96,6 +97,9 @@ for marker in [
     "mad4b_dynamic_taxonomy_restore_denied",
     "mad4b_dynamic_restore_publish_denied",
     "pipeline_config",
+    "mad4b.execution-state.v1",
+    "not_started_error",
+
 
 ]:
     require(adapter, marker, "dynamic content adapter")
@@ -206,6 +210,14 @@ nested_pos = scope.find("bounded_write_dispatch_active_for")
 ticket_pos = scope.rfind("approval_ticket_from_input")
 if nested_pos < 0 or ticket_pos < 0 or nested_pos > ticket_pos:
     raise SystemExit("nested transport delegation must occur before ordinary approval-ticket fallback")
+
+for marker in [
+    "provider_declared_not_started",
+    "provider_declared_not_started",
+    "mad4b.execution-state.v1",
+    "provider_declared_not_started",
+]:
+    require(reversible, marker, "reversible not-started execution contract")
 
 for marker in [
     "'mad4b/content-apply-bundle'",
