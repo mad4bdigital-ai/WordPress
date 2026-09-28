@@ -20,6 +20,7 @@ plugin_package = (PLUGIN / "includes/class-mad4b-scp-plugin-package.php").read_t
 remote_update = (PLUGIN / "includes/class-mad4b-scp-remote-plugin-update.php").read_text(encoding="utf-8")
 dependency_impact = (PLUGIN / "includes/class-mad4b-scp-dependency-impact-graph.php").read_text(encoding="utf-8")
 plugin_discovery = (PLUGIN / "includes/class-mad4b-scp-plugin-discovery.php").read_text(encoding="utf-8")
+provider_autopilot = (PLUGIN / "includes/class-mad4b-scp-provider-autopilot.php").read_text(encoding="utf-8")
 adapter_registry = (PLUGIN / "includes/class-mad4b-scp-adapter-registry.php").read_text(encoding="utf-8")
 transport_registry = (PLUGIN / "includes/class-mad4b-scp-provider-transport-registry.php").read_text(encoding="utf-8")
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
@@ -29,6 +30,7 @@ assert "Version: 0.4.0-rc.83" in main
 for boot in (
     "MAD4B_SCP_Operation_Registry::boot();",
     "MAD4B_SCP_Operation_Pipeline::boot();",
+    "MAD4B_SCP_Provider_Autopilot::boot();",
     "MAD4B_SCP_Plugin_Transaction::boot();",
     "MAD4B_SCP_Operation_Resume::boot();",
     "MAD4B_SCP_Provider_Transport_Registry::boot();",
@@ -40,6 +42,18 @@ assert operation["contract"] == "mad4b.operation-registry.v1"
 assert operation["default_mutation_policy"] == "deny"
 assert operation["generic_shell"] is False
 assert operation["arbitrary_operation_ids"] is False
+autopilot_policy = operation["dynamic_provider_autopilot"]
+assert autopilot_policy["enabled_by_default"] is True
+assert autopilot_policy["mode"] == "shadow_auto"
+assert autopilot_policy["auto_generate_adapter_candidate"] is True
+assert autopilot_policy["auto_shadow_certify_provider"] is True
+assert autopilot_policy["auto_materialize_candidate_code"] is False
+assert autopilot_policy["auto_register_generated_adapter"] is False
+assert autopilot_policy["auto_write_certification"] is False
+assert autopilot_policy["auto_create_authority"] is False
+assert autopilot_policy["auto_enable_mutation"] is False
+assert autopilot_policy["environments"]["production"] == "observe_propose_only"
+assert autopilot_policy["max_automatic_support_level"] == "L2_read"
 ids = [row["id"] for row in operation["operations"]]
 assert len(ids) == len(set(ids))
 assert "wordpress.plugin.transaction" in ids
@@ -64,6 +78,15 @@ assert "$aliases = self::aliases();" in registry
 assert "public static function read_projection" in registry
 assert "mad4b_operation_registry_alias_invalid" in registry
 assert "mad4b_operation_registry_projection_invalid" in registry
+for marker in (
+    "mad4b_operation_registry_autopilot_invalid",
+    "mad4b_operation_registry_autopilot_environment_invalid",
+    "mad4b_operation_registry_autopilot_boundary_invalid",
+    "mad4b_operation_registry_autopilot_production_invalid",
+    "mad4b_operation_registry_autopilot_level_invalid",
+):
+    assert marker in registry, marker
+assert "public static function autopilot_config" in registry
 for marker in (
     "mad4b_operation_registry_stage_bindings_missing",
     "mad4b_operation_registry_stage_binding_invalid",
@@ -119,6 +142,8 @@ assert direct_projection == [
 ]
 assert "mad4b/dependency-impact" in catalog_projection
 assert "mad4b/provider-candidate-matrix" in catalog_projection
+assert "mad4b/provider-autopilot-status" in catalog_projection
+assert "mad4b/provider-autopilot-plan" in catalog_projection
 assert "mad4b/operation-pipeline-compile" in catalog_projection
 assert "mad4b/provider-transport-registry-status" in catalog_projection
 stage_bindings = operation["stage_bindings"]
@@ -181,13 +206,40 @@ for invariant in (
     "'mutation_auto_enabled' => false",
     "'authority_created' => false",
     "'unknown_plugin_write_default' => 'deny'",
-    "'auto_generate_adapter'",
-    "'auto_create_authority'",
+    "'auto_generate_adapter' => true",
+    "'auto_generate_adapter_scope' => 'candidate_only'",
+    "'auto_certify_provider' => true",
+    "'auto_certify_provider_scope' => 'shadow_identity_only'",
+    "'auto_register_generated_adapter' => false",
+    "'auto_write_certification' => false",
+    "'auto_create_authority' => false",
     "'arbitrary_provider_execution'",
 ):
     assert invariant in plugin_discovery, invariant
+assert "MAD4B_SCP_Provider_Autopilot::proposal_for_candidate" in plugin_discovery
 assert "mad4b/provider-candidate-matrix" in adapter_registry
 assert "provider_candidate_matrix" in adapter_registry
+
+assert "mad4b.provider-autopilot.v1" in provider_autopilot
+assert "mad4b.generated-adapter-candidate.v1" in provider_autopilot
+assert "mad4b.provider-shadow-certification.v1" in provider_autopilot
+for marker in (
+    "enabled_by_default",
+    "shadow_auto",
+    "observe_propose_only",
+    "generated_php_sha256",
+    "candidate_sha256",
+    "SHADOW_IDENTITY_CERTIFIED",
+    "'read_execution_eligible' => false",
+    "'write_eligible' => false",
+    "'auto_registered' => false",
+    "'auto_write_certified' => false",
+    "'auto_authority_created' => false",
+    "'auto_mutation_enabled' => false",
+):
+    assert marker in provider_autopilot, marker
+assert "wp_register_ability( 'mad4b/provider-autopilot-status'" in provider_autopilot
+assert "wp_register_ability( 'mad4b/provider-autopilot-plan'" in provider_autopilot
 
 assert "infer_provider_id" in dependency_impact
 assert "certified-providers.json" in dependency_impact
