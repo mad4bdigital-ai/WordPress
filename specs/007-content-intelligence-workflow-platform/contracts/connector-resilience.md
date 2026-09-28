@@ -234,6 +234,34 @@ read allowlist centered on `mad4b/session-safe-diagnostics`, discovery/info and
 single-target dispatch. Deep follow-up uses `mad4b-read` or exactly one
 generation-bound `read-execute` target at a time.
 
+## Full Staging Authority session-safe handshake
+
+ChatGPT MUST NOT prepare Full Staging Authority by issuing the deep
+`full-staging-authority-status` and `full-staging-authority-plan` reads as a
+direct multi-call sequence.
+
+The direct ChatGPT projection uses exactly one compact read-only ability:
+`mad4b/full-staging-authority-handshake`.
+
+The handshake:
+
+- evaluates the exact internal full authority plan once;
+- captures a runtime-generation snapshot before and after planning;
+- fails closed if the generation changes during preparation;
+- returns only the bounded blockers/readiness summary and the exact fields
+  required by `full-staging-authority-apply`;
+- exposes the candidate-binding current/stored source SHA pair without returning
+  the full write/developer plan trees;
+- has an 8 KiB response budget;
+- performs no mutation and grants no authority.
+
+The deep status and plan abilities remain available through governed read
+dispatch for deliberate diagnosis, but they are not direct ChatGPT read tools.
+
+After an external session termination, the client reconnects and requests a new
+handshake. A mutation is never replayed merely because the preceding transport
+session ended.
+
 ## Cache and circuit-breaker policy
 
 The resilience layer must not add persistent authority/catalog caches or a

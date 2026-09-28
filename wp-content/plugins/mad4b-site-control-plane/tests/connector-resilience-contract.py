@@ -21,6 +21,12 @@ for marker in [
     "const DEFAULT_READ_ATTEMPTS = 2",
     "const DEFAULT_REQUEST_BUDGET_MS = 12000",
     "public static function safe_read(",
+    "public static function generation_fenced_compact_read(",
+    "mad4b_generation_fenced_read_generation_changed",
+    "mad4b_generation_fenced_read_oversized",
+    "mad4b_generation_fenced_read_encoding_failed",
+    "'source_error_code' =>",
+    "for ( $i = 0; $i < 4; $i++ )",
     "public static function execute_read(",
     "public static function execute_mutation(",
     "public static function run_checks(",
@@ -42,6 +48,9 @@ for marker in [
     "'metadata_micro_read_preferred' => true",
     "'metadata_envelope_ability' => 'mad4b/read-metadata-envelope'",
     "'session_safe_diagnostics_ability' => 'mad4b/session-safe-diagnostics'",
+    "'full_staging_authority_handshake_ability' => 'mad4b/full-staging-authority-handshake'",
+    "'full_staging_authority_direct_status_plan_fanout_allowed' => false",
+    "'full_staging_authority_handshake_response_budget_bytes' => 8192",
     "'single_request_composite_diagnostics_preferred' => true",
     "'direct_composite_fanout_allowed' => false",
     "'session_safe_report_max_bytes' => 16384",
@@ -139,6 +148,8 @@ if servers.count("'mad4b/session-safe-diagnostics'") < 2:
     raise SystemExit("session-safe diagnostics must be mounted on read and ChatGPT surfaces")
 
 chatgpt_core = servers.split("'mad4b-chatgpt' => array_merge( array(", 1)[1].split("), $governed_status", 1)[0]
+require(chatgpt_core, "'mad4b/full-staging-authority-handshake'", "compact ChatGPT authority handshake")
+
 for forbidden_direct in [
     "'mad4b/diagnostics-health'",
     "'mad4b/runtime-authority-status'",
@@ -160,6 +171,12 @@ for marker in [
     "in_array( $ability_name, $direct_read_transport, true )",
 ]:
     require(servers, marker, "direct ChatGPT read allowlist invariant")
+
+direct_helper = servers.split("public static function chatgpt_direct_read_transport_tools()", 1)[1].split("public static function chatgpt_dispatch_transport_tools()", 1)[0]
+require(direct_helper, "MAD4B_SCP_Full_Staging_Authority::HANDSHAKE_ABILITY", "session-safe full authority direct tool")
+for forbidden in ["MAD4B_SCP_Full_Staging_Authority::PLAN_ABILITY", "MAD4B_SCP_Full_Staging_Authority::STATUS_ABILITY"]:
+    if forbidden in direct_helper:
+        raise SystemExit("deep Full Staging Authority read leaked into direct ChatGPT catalog: " + forbidden)
 
 
 for marker in [
@@ -214,6 +231,9 @@ for marker in [
     "reduce_scope_then_retry_preflight",
     "Future connector onboarding",
     "fault-injection",
+    "Full Staging Authority session-safe handshake",
+    "mad4b/full-staging-authority-handshake",
+    "8 KiB response budget",
 ]:
     require(contract, marker, "normative resilience contract")
 

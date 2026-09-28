@@ -48,6 +48,7 @@ final class MAD4B_SCP_Servers {
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status',
 				'mad4b/session-safe-diagnostics',
+				'mad4b/full-staging-authority-handshake',
 				'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute',
 				'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute',
 				'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute',
@@ -480,7 +481,7 @@ final class MAD4B_SCP_Servers {
 			$tools = array_merge( $tools, MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools() );
 		}
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) {
-			$tools[] = MAD4B_SCP_Full_Staging_Authority::PLAN_ABILITY;
+			$tools[] = MAD4B_SCP_Full_Staging_Authority::HANDSHAKE_ABILITY;
 		}
 		$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
 		sort( $tools, SORT_STRING );
@@ -587,7 +588,7 @@ final class MAD4B_SCP_Servers {
 			self::core_tools( 'mad4b-chatgpt' ),
 			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools() : array(),
 			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools() : array(),
-			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools() : array(),
+			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_catalog_read_tools() : array(),
 			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools() : array(),
 			self::chatgpt_enrollment_candidates(),
 			self::core_tools( 'mad4b-content' ),

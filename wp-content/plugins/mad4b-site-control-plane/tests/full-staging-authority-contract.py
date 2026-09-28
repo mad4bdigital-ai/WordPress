@@ -18,6 +18,7 @@ required = [
     "mad4b.full-staging-authority.v1",
     "mad4b/full-staging-authority-status",
     "mad4b/full-staging-authority-plan",
+    "mad4b/full-staging-authority-handshake",
     "mad4b/full-staging-authority-apply",
     "ENABLE FULL STAGING AUTHORITY",
     "'production_allowed' => false",
@@ -75,7 +76,22 @@ assert "'mad4b/database-raw-query'" not in full
 
 assert "class-mad4b-scp-full-staging-authority.php" in servers
 assert "public static function chatgpt_read_tools()" in full
-assert "return array( self::STATUS_ABILITY, self::PLAN_ABILITY );" in full
+assert "return array( self::HANDSHAKE_ABILITY );" in full
+assert "public static function chatgpt_catalog_read_tools()" in full
+assert "return array( self::STATUS_ABILITY, self::PLAN_ABILITY, self::HANDSHAKE_ABILITY );" in full
+assert "public static function handshake()" in full
+for marker in [
+    "mad4b.full-staging-authority-handshake.v1",
+    "MAD4B_SCP_Connector_Resilience::generation_fenced_compact_read",
+    "mad4b_full_authority_handshake_resilience_unavailable",
+    "8192",
+    "'deep_status_direct_projection' => false",
+    "'deep_plan_direct_projection' => false",
+    "'deep_reads_available_via_governed_dispatch' => true",
+    "'exact_apply' => array(",
+    "'client_action' => ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_handshake' : 'repair_blockers_then_request_fresh_handshake'",
+]:
+    assert marker in full, marker
 assert "public static function chatgpt_step_up_tools()" in full
 step_up = full.split("public static function chatgpt_step_up_tools()", 1)[1].split("public static function register_category()", 1)[0]
 for marker in [
@@ -124,6 +140,11 @@ assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_to
 assert "$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_tools
 assert "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in chatgpt_map
 assert "$candidates = array_merge( $core, $bootstrap )" in chatgpt_tools
+direct_read_helper = servers.split('public static function chatgpt_direct_read_transport_tools()', 1)[1].split('public static function chatgpt_dispatch_transport_tools()', 1)[0]
+assert "MAD4B_SCP_Full_Staging_Authority::HANDSHAKE_ABILITY" in direct_read_helper
+assert "MAD4B_SCP_Full_Staging_Authority::PLAN_ABILITY" not in direct_read_helper
+assert "MAD4B_SCP_Full_Staging_Authority::STATUS_ABILITY" not in direct_read_helper
+
 dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_tools()', 1)[0]
 assert "'mad4b/write-execute'" in dispatcher_helper
 assert "'mad4b/enrollment-execute'" in dispatcher_helper
@@ -137,11 +158,12 @@ for low_level in [
 ]:
     assert low_level not in chatgpt_tools
 full_catalog = servers.split("public static function chatgpt_full_catalog_candidates()", 1)[1].split("public static function is_chatgpt_full_catalog_candidate", 1)[0]
+assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_catalog_read_tools()" in full_catalog
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in full_catalog
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in full_catalog
-assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in full_catalog
+assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_catalog_read_tools()" in full_catalog
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in full_catalog
-assert full.count("self::meta( true, 'read' )") >= 2
+assert full.count("self::meta( true, 'read' )") >= 3
 assert "self::meta( false, 'enrollment' )" in full
 assert "'permission_callback' => array( __CLASS__, 'can_apply' )" in full
 

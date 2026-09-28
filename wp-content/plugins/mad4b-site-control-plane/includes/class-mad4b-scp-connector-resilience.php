@@ -133,6 +133,90 @@ final class MAD4B_SCP_Connector_Resilience {
 		);
 	}
 
+	public static function generation_fenced_compact_read( $name, $callback, $projector, $max_bytes = 8192 ) {
+		$name = sanitize_key( (string) $name );
+		$max_bytes = max( 1024, min( 32768, absint( $max_bytes ) ) );
+		if ( ! is_callable( $callback ) || ! is_callable( $projector ) ) {
+			return new WP_Error( 'mad4b_generation_fenced_read_callback_invalid', 'Generation-fenced compact read requires callable read and projection callbacks.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Read_Consistency' ) || ! method_exists( 'MAD4B_SCP_Read_Consistency', 'snapshot_header' ) ) {
+			return new WP_Error( 'mad4b_generation_fenced_read_snapshot_unavailable', 'Runtime generation snapshot service is unavailable.' );
+		}
+
+		$before = MAD4B_SCP_Read_Consistency::snapshot_header( array() );
+		if ( ! is_array( $before ) || empty( $before['runtime_generation'] ) ) {
+			return new WP_Error( 'mad4b_generation_fenced_read_snapshot_incomplete', 'Runtime generation snapshot is incomplete before the read.' );
+		}
+		$read = self::safe_read( $name, $callback, array(
+			'retry_transient' => true,
+			'max_attempts' => self::DEFAULT_READ_ATTEMPTS,
+		) );
+		if ( empty( $read['ok'] ) ) {
+			return new WP_Error(
+				'mad4b_generation_fenced_read_failed',
+				'Generation-fenced read did not complete safely.',
+				array(
+					'category' => isset( $read['category'] ) ? (string) $read['category'] : 'unknown',
+					'source_error_code' => isset( $read['error_code'] ) ? sanitize_key( (string) $read['error_code'] ) : '',
+					'client_action' => isset( $read['client_action'] ) ? (string) $read['client_action'] : 'reconnect_then_retry_once',
+					'automatic_retry_performed' => ! empty( $read['automatic_retry_performed'] ),
+					'automatic_retry_exhausted' => ! empty( $read['automatic_retry_exhausted'] ),
+					'mutation_performed' => false,
+				)
+			);
+		}
+		$after = MAD4B_SCP_Read_Consistency::snapshot_header( array() );
+		if ( ! is_array( $after ) || empty( $after['runtime_generation'] ) ) {
+			return new WP_Error( 'mad4b_generation_fenced_read_snapshot_incomplete', 'Runtime generation snapshot is incomplete after the read.' );
+		}
+		$before_generation = strtolower( (string) $before['runtime_generation'] );
+		$after_generation = strtolower( (string) $after['runtime_generation'] );
+		if ( ! hash_equals( $before_generation, $after_generation ) ) {
+			return new WP_Error(
+				'mad4b_generation_fenced_read_generation_changed',
+				'Runtime generation changed during the compact read.',
+				array(
+					'client_action' => 'reconnect_then_restart_read',
+					'blind_apply_allowed' => false,
+					'mutation_performed' => false,
+				)
+			);
+		}
+
+		$projected = call_user_func( $projector, array_key_exists( 'data', $read ) ? $read['data'] : null, $before, $after );
+		if ( is_wp_error( $projected ) ) return $projected;
+		if ( ! is_array( $projected ) ) return new WP_Error( 'mad4b_generation_fenced_read_projection_invalid', 'Compact read projection must return an object.' );
+		$projected['runtime_generation'] = $after_generation;
+		$projected['snapshot_id'] = isset( $after['snapshot_id'] ) ? (string) $after['snapshot_id'] : '';
+		$projected['read_attempts'] = isset( $read['attempts'] ) ? (int) $read['attempts'] : 1;
+		$projected['automatic_retry_performed'] = ! empty( $read['automatic_retry_performed'] );
+		$projected['response_budget_bytes'] = $max_bytes;
+		$projected['response_bytes'] = 0;
+		$final_bytes = 0;
+		// Stabilize the self-reported byte count. Updating the integer itself can
+		// change the encoded size at a decimal-width boundary (for example 9999 ->
+		// 10000), so compute to a fixed point before enforcing the hard cap.
+		for ( $i = 0; $i < 4; $i++ ) {
+			$encoded = wp_json_encode( $projected, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			if ( ! is_string( $encoded ) ) return new WP_Error( 'mad4b_generation_fenced_read_encoding_failed', 'Generation-fenced compact read could not be encoded.' );
+			$final_bytes = strlen( $encoded );
+			if ( (int) $projected['response_bytes'] === $final_bytes ) break;
+			$projected['response_bytes'] = $final_bytes;
+		}
+		$encoded = wp_json_encode( $projected, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $encoded ) ) return new WP_Error( 'mad4b_generation_fenced_read_encoding_failed', 'Generation-fenced compact read could not be encoded.' );
+		$final_bytes = strlen( $encoded );
+		$projected['response_bytes'] = $final_bytes;
+		if ( $final_bytes < 1 || $final_bytes > $max_bytes ) {
+			return new WP_Error(
+				'mad4b_generation_fenced_read_oversized',
+				'Generation-fenced compact read exceeded its response budget.',
+				array( 'response_bytes' => $final_bytes, 'response_budget_bytes' => $max_bytes )
+			);
+		}
+		return $projected;
+	}
+
 	public static function execute_read( $target, $callback ) {
 		$target = sanitize_text_field( (string) $target );
 		$result = self::safe_read( 'dispatch_' . sanitize_key( $target ), $callback, array(
@@ -348,6 +432,9 @@ final class MAD4B_SCP_Connector_Resilience {
 			'metadata_micro_read_preferred' => true,
 			'metadata_envelope_ability' => 'mad4b/read-metadata-envelope',
 			'session_safe_diagnostics_ability' => 'mad4b/session-safe-diagnostics',
+			'full_staging_authority_handshake_ability' => 'mad4b/full-staging-authority-handshake',
+			'full_staging_authority_direct_status_plan_fanout_allowed' => false,
+			'full_staging_authority_handshake_response_budget_bytes' => 8192,
 			'single_request_composite_diagnostics_preferred' => true,
 			'direct_composite_fanout_allowed' => false,
 			'session_safe_report_max_bytes' => 16384,
