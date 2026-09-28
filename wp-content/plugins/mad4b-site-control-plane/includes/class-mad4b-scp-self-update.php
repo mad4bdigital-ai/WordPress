@@ -462,10 +462,12 @@ final class MAD4B_SCP_Self_Update {
 		return self::native_update_action_link( $links );
 	}
 
-	public static function render_update_row( $plugin_file, $plugin_data, $status ) {
+	public static function render_update_row( $plugin_file, $plugin_data = array(), $status = '' ) {
 		unset( $plugin_data, $status );
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) || ! self::environment_allowed( false ) ) return;
-		if ( plugin_basename( MAD4B_SCP_FILE ) !== (string) $plugin_file ) return;
+		if ( ! self::is_control_plane_plugin_file( $plugin_file ) ) return;
+		$row_key = wp_normalize_path( (string) $plugin_file );
+		if ( isset( self::$rendered_update_rows[ $row_key ] ) ) return;
 
 		$manifest = self::fetch_manifest();
 		if ( is_wp_error( $manifest ) || ! self::update_available( $manifest ) ) return;
