@@ -309,14 +309,15 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'observed_at' => gmdate( 'c' ),
 			'ready_to_apply' => ! empty( $plan['ready_to_apply'] ),
 			'hard_blockers' => self::compact_string_list( isset( $plan['hard_blockers'] ) ? $plan['hard_blockers'] : array(), 16 ),
-			'write_ready' => ! empty( $write['current_ready'] ),
+			'write_ready' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective(),
+			'write_grants_ready' => ! empty( $write['current_ready'] ),
 			'developer_ready' => $normal_ready,
 			'developer_breakglass_ready' => $breakglass_ready,
 			'candidate_binding' => array(
 				'required' => ! empty( $binding['required'] ),
 				'match' => ! empty( $binding['match'] ),
 				'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
-				'bound_source_commit_sha' => isset( $binding['bound_source_commit_sha'] ) ? (string) $binding['bound_source_commit_sha'] : '',
+				'stored_source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : '',
 			),
 			'exact_apply' => array(
 				'expected_plan_sha256' => isset( $plan['plan_sha256'] ) ? (string) $plan['plan_sha256'] : '',
