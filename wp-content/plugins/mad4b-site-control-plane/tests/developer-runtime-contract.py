@@ -121,6 +121,14 @@ assert "'network_sandbox_binary_present' => '' !== self::network_sandbox_binary(
 assert "self::runtime_gate( false, $input, false )" in developer
 assert "secret_redaction_enabled" in developer
 assert "proc_open" in developer
+assert "public static function lint_workspace_php_file" in developer
+assert "mad4b/developer-workspace-php-lint" in developer
+assert "array( PHP_BINARY, '-l', $file )" in developer
+assert "mad4b_developer_workspace_lint_production_denied" in developer
+assert "mad4b_developer_workspace_lint_environment_denied" in developer
+assert "mad4b_developer_workspace_lint_runtime_not_ready" in developer
+assert "MAD4B_SCP_Developer_Runtime::lint_workspace_php_file( $absolute, $project )" in workspace
+assert "php_token_parse" not in workspace
 assert "wp eval" not in developer.lower() or "'eval'" in developer
 
 # Developer Workspace is the governed source-code path: author outside web roots,
@@ -153,7 +161,7 @@ for marker in [
     "verify_installed",
     "readback_verified",
     "installed_manifest_sha256",
-    "php_token_parse",
+    "MAD4B_SCP_Developer_Runtime::lint_workspace_php_file",
     "exact_grant",
     "MAD4B_MCP_DEVELOPER_WORKSPACE_ROOT",
     "wordpress_parent_default",
