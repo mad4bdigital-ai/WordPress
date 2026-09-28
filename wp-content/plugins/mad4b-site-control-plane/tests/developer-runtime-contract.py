@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import re
+import subprocess
 
 root = Path(__file__).resolve().parents[1]
 inc = root / "includes"
 
 developer = (inc / "class-mad4b-scp-developer-runtime.php").read_text(encoding="utf-8")
+workspace = (inc / "class-mad4b-scp-developer-workspace.php").read_text(encoding="utf-8")
 abilities = (inc / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 identity = (inc / "class-mad4b-scp-identity-context.php").read_text(encoding="utf-8")
 planning = (inc / "class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
@@ -35,11 +37,17 @@ required_tools = [
     "mad4b/developer-wp-cli",
     "mad4b/developer-filesystem",
     "mad4b/developer-package-install",
+    "mad4b/developer-workspace-status",
+    "mad4b/developer-workspace-read",
+    "mad4b/developer-workspace-apply",
+    "mad4b/developer-workspace-promote",
     "mad4b/developer-breakglass-shell",
     "mad4b/developer-breakglass-wp-eval",
 ]
 for tool in required_tools:
-    assert tool in developer, tool
+    assert tool in developer or tool in workspace, tool
+
+subprocess.run(["php", "-l", str(inc / "class-mad4b-scp-developer-workspace.php")], check=True)
 
 for server in ["mad4b-developer", "mad4b-developer-breakglass"]:
     assert server in servers, server
@@ -114,6 +122,54 @@ assert "secret_redaction_enabled" in developer
 assert "proc_open" in developer
 assert "wp eval" not in developer.lower() or "'eval'" in developer
 
+# Developer Workspace is the governed source-code path: author outside web roots,
+# bind every batch to an exact manifest and promote only after lint/backup/readback.
+for marker in [
+    "const CONTRACT = 'mad4b.developer-workspace.v1'",
+    "const PROMOTION_CONTRACT = 'mad4b.developer-workspace-promotion.v1'",
+    "mad4b/developer-workspace-status",
+    "mad4b/developer-workspace-read",
+    "mad4b/developer-workspace-apply",
+    "mad4b/developer-workspace-promote",
+    "MAD4B_SCP_Policy::prepare_backup_root()",
+    "mad4b_developer_workspace_web_exposed",
+    "expected_manifest_sha256",
+    "expected_workspace_manifest_sha256",
+    "snapshot_project",
+    "restore_snapshot",
+    "lint_php_files",
+    "Plugin_Upgrader",
+    "overwrite_package",
+    "backup_installed_plugin",
+    "rollback_plugin",
+    "verify_installed",
+    "readback_verified",
+    "addon_registry_state",
+    "unregistered_development_candidate",
+    "production_promotion_authorized' => false",
+    "breakglass_authorized' => false",
+]:
+    assert marker in workspace, marker
+
+for forbidden in [
+    "shell_exec(",
+    "eval(",
+    "database-raw-query",
+    "developer-breakglass-shell",
+    "developer-breakglass-wp-eval",
+]:
+    assert forbidden not in workspace, "Developer Workspace leaked forbidden primitive: " + forbidden
+
+assert "class-mad4b-scp-developer-workspace.php" in plugin
+assert "MAD4B_SCP_Developer_Workspace::tool_names()" in developer
+assert "'mad4b/developer-workspace-apply' === $ability_name" in impact
+assert "'development_source'" in impact
+assert "'protected_workspace'" in impact
+assert "if ( 'mad4b/developer-workspace-apply' === (string) $ability_name ) return true;" in impact
+assert "$protected_workspace_ticket" in (inc / "class-mad4b-scp-ai-approval.php").read_text(encoding="utf-8")
+assert "'mad4b/developer-workspace-promote' === $ability_name" not in (inc / "class-mad4b-scp-ai-approval.php").read_text(encoding="utf-8")
+assert "0 === strpos( $ability_name, 'mad4b/developer-' ) && ! $developer_workspace_source" in impact
+
 # No direct PHP eval()/shell_exec()/system()/passthru() execution primitive.
 for pattern in [
     r"(?<![A-Za-z0-9_])eval\s*\(",
@@ -132,6 +188,8 @@ start = servers.index("public static function chatgpt_tools")
 end = servers.index("private static function surface_for_server", start)
 chatgpt = servers[start:end]
 assert "developer-runtime-status" not in chatgpt
+for direct_workspace_tool in ["developer-workspace-status", "developer-workspace-read", "developer-workspace-apply", "developer-workspace-promote"]:
+    assert direct_workspace_tool not in chatgpt, direct_workspace_tool
 assert "self::core_tools( 'mad4b-developer' )" not in chatgpt
 assert "self::core_tools( 'mad4b-developer-breakglass' )" not in chatgpt
 assert "array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in chatgpt
@@ -317,4 +375,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v21: PASS")
+print("mad4b.developer-runtime-contract.v22: PASS")
