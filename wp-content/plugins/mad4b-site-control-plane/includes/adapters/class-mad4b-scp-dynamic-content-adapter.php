@@ -1038,6 +1038,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				'findings'=>array(),
 				'repair_allowed'=>'safe_only'===$repair,
 				'pipeline_config'=>$pipeline,
+				'heartbeat'=>function() use ($lock){ return $this->refresh_mutation_lock($lock); },
 			);
 
 			if(class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')){
@@ -1101,6 +1102,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'findings'=>array(),
 			'repair_allowed'=>false,
 			'pipeline_config'=>$pipeline,
+				'heartbeat'=>function() use ($lock){ return $this->refresh_mutation_lock($lock); },
 		);
 
 		if(class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')){
