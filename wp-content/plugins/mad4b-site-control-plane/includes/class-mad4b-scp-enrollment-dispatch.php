@@ -99,6 +99,10 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		return $ability;
 	}
 
+	public static function input_schema_sha256( $ability ) {
+		return self::ability_input_schema_sha256( $ability );
+	}
+
 	private static function ability_input_schema_sha256( $ability ) {
 		$schema = is_object( $ability ) && method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
 		$json = wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );

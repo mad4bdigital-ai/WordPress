@@ -109,6 +109,7 @@ The shared classifier uses stable categories:
 
 - `rate_limit`;
 - `timeout`;
+- `session_terminated`;
 - `transport`;
 - `upstream_unavailable`;
 - `authorization`;
@@ -130,6 +131,10 @@ to expose deterministic recovery semantics.
 After an external session disconnect:
 
 - read-only callers reconnect and begin with `mad4b/connector-preflight`;
+- `session_terminated` is classified separately from generic transport failure;
+- two session-termination observations exhaust the request-local termination budget;
+- once that budget is exhausted, the current composite read stops launching sibling checks and reports `skipped_session_breaker`;
+- the circuit breaker is request-local only and is never persisted;
 - mutation callers do not replay the mutation blindly;
 - mutation callers reconcile postconditions and re-plan if state is uncertain.
 
@@ -150,6 +155,23 @@ Routine diagnostics use only fixed bundles exposed by
 - `runtime`;
 - `certification`;
 - `providers`.
+
+Execution preparation that needs exact Ability or governed-operation metadata
+uses the compact `mad4b/read-metadata-envelope`. The Ability is mounted on
+`mad4b-read` and remains hidden from the direct `mad4b-chatgpt` tool list;
+ChatGPT invokes it through the existing `mad4b/read-execute` dispatcher. One
+generation-bound response contains only the metadata needed for safe planning:
+registration identity, canonical enrollment `dispatch_policy_digest`,
+input/output schema digests, metadata digest, authority surface, and an
+execution-binding digest. It does not return a full catalog.
+
+For governed enrollment operations the envelope MUST obtain registration,
+dispatch-policy, and input-schema identity from
+`MAD4B_SCP_Enrollment_Dispatch::info()`, and MUST fail closed if the live
+Ability schema digest differs from that canonical dispatch identity. Ability
+metadata lookup MUST be limited to the governed ChatGPT capability universe;
+raw-SQL/breakglass or unrelated registered Abilities may not be probed through
+this path.
 
 The bundle API never accepts caller-selected tool names. Every bundle runs
 sequentially through `MAD4B_SCP_Connector_Resilience::run_checks()`.
@@ -213,6 +235,12 @@ New composite diagnostics should:
 CI must include fault-injection tests and prove:
 
 - transient reads retry no more than once;
+- one recovered session termination does not poison sibling reads;
+- repeated session termination opens only the request-local breaker and stops additional fan-out;
+- reconnect/resume requires an exact runtime-generation match;
+- the compact metadata envelope stays hidden from the direct ChatGPT tool list and remains reachable through governed read dispatch;
+- enrollment metadata digests exactly match the canonical enrollment execution contract;
+- metadata lookup outside the governed ChatGPT catalog fails closed;
 - transient WordPress `WP_Error` reads follow the same bounded retry policy;
 - rate-limit reads do not retry immediately and preserve safe backoff hints;
 - permanent read failures do not retry;
