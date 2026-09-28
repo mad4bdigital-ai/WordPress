@@ -34,6 +34,8 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runner-contract.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-wp-import-export-exact-packages.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/wp-import-export-readonly-bootstrap-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/wp-import-export-readonly-bootstrap-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/wp-import-export-composite-provider-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runner-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php
