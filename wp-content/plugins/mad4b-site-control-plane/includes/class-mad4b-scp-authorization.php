@@ -333,6 +333,13 @@ final class MAD4B_SCP_Authorization {
 		$original = $args['execute_callback'];
 		$declared_server = self::declared_server_for_registration( $args );
 		$args['execute_callback'] = static function ( $input = null ) use ( $original, $name, $declared_server ) {
+			// approval-plan predates remote governed write and remains a valid local
+			// administrator planning primitive. Keep the immutable execution-boundary
+			// wrapper on the Ability, but require the NHI execution claim only when the
+			// request is actually crossing the governed remote write transport.
+			if ( MAD4B_SCP_Authorization::local_approval_planner_execution( $name ) ) {
+				return call_user_func( $original, $input );
+			}
 			$provider = MAD4B_SCP_Authorization::provider_for_execution( $name, $declared_server );
 			if ( is_wp_error( $provider ) ) return $provider;
 			$claim = MAD4B_SCP_Authorization::claim_mutation( $name, $declared_server, $provider, $input );
@@ -358,7 +365,21 @@ final class MAD4B_SCP_Authorization {
 		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
 		$args['meta']['mcp']['mad4b_execution_boundary'] = self::EXECUTION_BOUNDARY_CONTRACT;
 		$args['meta']['mcp']['mad4b_execution_commit_guard'] = class_exists( 'MAD4B_SCP_Execution_Commit_Guard' ) ? MAD4B_SCP_Execution_Commit_Guard::CONTRACT : '';
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) && MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY === (string) $name ) {
+			$args['meta']['mcp']['mad4b_local_admin_planner_compatibility'] = 'local_only_remote_claim_required';
+		}
 		return $args;
+	}
+
+	public static function local_approval_planner_execution( $ability_name ) {
+		$planner = class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' )
+			? MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY
+			: 'mad4b/approval-plan';
+		if ( $planner !== (string) $ability_name ) return false;
+		$current = class_exists( 'MAD4B_SCP_Transport_Context' )
+			? sanitize_key( (string) MAD4B_SCP_Transport_Context::current_server_id() )
+			: '';
+		return ! in_array( $current, array( 'mad4b-chatgpt', 'mad4b-write' ), true );
 	}
 
 	public static function finalize_execution_claim( array $claim, $result ) {

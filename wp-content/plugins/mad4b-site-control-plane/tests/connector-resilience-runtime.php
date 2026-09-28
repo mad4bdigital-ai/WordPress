@@ -198,6 +198,24 @@ mad4b_assert_true( empty( $mutation_permanent_data['blind_retry_allowed'] ), 'pe
 mad4b_assert_true( 'reconcile_then_replan' === $mutation_permanent_data['client_action'], 'permanent mutation client action drifted' );
 mad4b_assert_true( false === strpos( json_encode( $mutation_permanent_data ), 'SECRET-MUST-NOT-LEAK' ), 'raw permanent mutation WP_Error message leaked' );
 
+$dispatch_preflight_attempts = 0;
+$dispatch_preflight = MAD4B_SCP_Connector_Resilience::execute_mutation(
+	'write',
+	'mad4b/plugin-package-apply',
+	static function () use ( &$dispatch_preflight_attempts ) {
+		$dispatch_preflight_attempts++;
+		return new WP_Error( 'mad4b_write_dispatch_schema_drift', 'Target schema changed before callback entry SECRET-MUST-NOT-LEAK' );
+	}
+);
+mad4b_assert_true( is_wp_error( $dispatch_preflight ), 'pre-target dispatch failure must remain an error' );
+mad4b_assert_true( 1 === $dispatch_preflight_attempts, 'pre-target dispatch probe must execute exactly once' );
+$dispatch_preflight_data = $dispatch_preflight->get_error_data();
+mad4b_assert_true( 'not_started' === $dispatch_preflight_data['mutation_state'], 'pre-target dispatch failure must prove mutation not started' );
+mad4b_assert_true( empty( $dispatch_preflight_data['reconciliation_required'] ), 'pre-target dispatch failure must not require postcondition reconciliation' );
+mad4b_assert_true( 'repair_dispatch_then_replan' === $dispatch_preflight_data['client_action'], 'pre-target dispatch recovery action drifted' );
+mad4b_assert_true( empty( $dispatch_preflight_data['blind_retry_allowed'] ), 'pre-target dispatch failure must still require a fresh plan before retry' );
+mad4b_assert_true( false === strpos( json_encode( $dispatch_preflight_data ), 'SECRET-MUST-NOT-LEAK' ), 'raw pre-target dispatch error leaked' );
+
 $recovered_session_attempts = 0;
 $recovered_session = MAD4B_SCP_Connector_Resilience::run_checks(
 	array(

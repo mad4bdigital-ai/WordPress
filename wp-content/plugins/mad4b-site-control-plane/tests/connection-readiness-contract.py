@@ -308,6 +308,11 @@ require(bootstrap, 'MAD4B_SCP_External_Handshake_Evidence::boot();', 'external-e
 require(plugin, 'MAD4B_SCP_Connection_Admin_UI::boot()', 'connection-ui-boot')
 require(plugin, 'MAD4B_SCP_Connection_Ability::boot()', 'connection-ability-boot')
 require(bootstrap, 'MAD4B_SCP_Read_Consistency::boot();', 'read-consistency-boot')
+require(bootstrap, 'MAD4B_SCP_Authorization::boot();', 'authorization-execution-boundary-boot')
+authorization_boot_pos = bootstrap.find('MAD4B_SCP_Authorization::boot();')
+ability_bootstrap_pos = bootstrap.find('MAD4B_SCP_Site_Profile::bootstrap();')
+if authorization_boot_pos < 0 or ability_bootstrap_pos < 0 or authorization_boot_pos > ability_bootstrap_pos:
+    raise SystemExit('central authorization execution boundary must boot before runtime ability/bootstrap registration begins')
 require(plugin, 'MAD4B_SCP_MCP_Provider_Isolation::boot();', 'isolation-boot')
 require(plugin, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'registration-bridge-idempotent-boot')
 forbid(plugin, "add_action( 'mcp_adapter_init', array( $servers, 'register_servers' )", 'no-late-mcp-server-binding')
