@@ -104,9 +104,14 @@ for forbidden in ("url", "path", "package_url", "package_path", "package_base64"
         raise SystemExit(f"caller-controlled native release field leaked into schema: {forbidden}")
 for marker in (
     "self::fetch_manifest( true )",
-    "download_url( $manifest['package_url'], 30 )",
+    "self::download_governed_release_to_protected_storage( $manifest )",
+    "private static function download_governed_release_to_protected_storage",
+    "'stream' => true",
+    "'limit_response_size' => self::MAX_UPLOAD_BYTES + 1",
+    "self::temp_archive_path()",
     "self::verify_archive( $tmp, $manifest )",
     "self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected )",
+    "'governed_native_release_pull' === (string) $channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT",
 ):
     if marker not in self_update:
         raise SystemExit(f"governed native release pull invariant missing: {marker}")
