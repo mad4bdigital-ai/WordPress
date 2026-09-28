@@ -318,7 +318,9 @@ for marker in (
     'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'reversible_adapter_count',
 ): require(impl['adapter_registry'], marker, 'implementation-adapter-registry')
 for marker in (
-    'mad4b.plugin-adapter-discovery.v1', 'get_plugins()', "'auto_install' => false", "'auto_generate_adapter' => false",
+    'mad4b.plugin-adapter-discovery.v1', 'get_plugins()', "'auto_install' => false",
+    "'autopilot_default_enabled' => true", "'autopilot_auto_generate_adapter_candidate' => true",
+    "'autopilot_auto_register_generated_adapter' => false", "'autopilot_auto_write_certification' => false",
     'adapter_present_certification_required', 'adapter_present_side_channel_blocked',
     'parallel_mcp_write_plane_requires_isolation', 'mcp_foreign_transport_unreviewed',
 ): require(impl['plugin_discovery'], marker, 'implementation-plugin-discovery')
