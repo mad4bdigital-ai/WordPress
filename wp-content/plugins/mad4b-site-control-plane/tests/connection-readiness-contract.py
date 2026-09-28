@@ -386,45 +386,4 @@ for marker in (
 for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_ignore_mcp", "apply_filters( 'mad4b_scp_side_channel", "if ( '/mcp' === $route ) continue"):
     forbid(peer, bypass, 'foreign-mcp-no-bypass')
 
-print('mad4b.site-control-plane.connection-readiness-contract.v10: PASS'), '^/hostinger-ai-assistant/v1/jwt/(?:token|revoke)/?
-for marker in (
-    "const CONTRACT = 'mad4b.mcp-peer-governance.v2'", 'foreign_transport_inventory', 'rest_get_server()',
-    "get_option( 'active_plugins'", "'mcp-adapter/mcp-adapter.php'", "'mad4b-site-control-plane/mad4b-site-control-plane.php'",
-    'is_known_namespace_index', "'get_namespace_index'", '$callback[0] !== $rest_server',
-    'HOSTINGER_BANNER_CONTROL_ROUTE', 'is_reviewed_non_transport_route', 'reviewed_non_transport_routes',
-    "'mcp_foreign_transport_unreviewed'", "'mcp_write_side_channel_detected'",
-):
-    require(peer, marker, 'foreign-mcp-fail-closed')
-for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_ignore_mcp", "apply_filters( 'mad4b_scp_side_channel", "if ( '/mcp' === $route ) continue"):
-    forbid(peer, bypass, 'foreign-mcp-no-bypass')
-
-print('mad4b.site-control-plane.connection-readiness-contract.v10: PASS'),
-    '^/elementskit/mcp/?
-for marker in (
-    "const CONTRACT = 'mad4b.mcp-peer-governance.v2'", 'foreign_transport_inventory', 'rest_get_server()',
-    "get_option( 'active_plugins'", "'mcp-adapter/mcp-adapter.php'", "'mad4b-site-control-plane/mad4b-site-control-plane.php'",
-    'is_known_namespace_index', "'get_namespace_index'", '$callback[0] !== $rest_server',
-    'HOSTINGER_BANNER_CONTROL_ROUTE', 'is_reviewed_non_transport_route', 'reviewed_non_transport_routes',
-    "'mcp_foreign_transport_unreviewed'", "'mcp_write_side_channel_detected'",
-):
-    require(peer, marker, 'foreign-mcp-fail-closed')
-for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_ignore_mcp", "apply_filters( 'mad4b_scp_side_channel", "if ( '/mcp' === $route ) continue"):
-    forbid(peer, bypass, 'foreign-mcp-no-bypass')
-
-print('mad4b.site-control-plane.connection-readiness-contract.v10: PASS'),
-):
-    require(transport_catalog, marker, 'provider-transport-registry-contract')
-
-
-for marker in (
-    "const CONTRACT = 'mad4b.mcp-peer-governance.v2'", 'foreign_transport_inventory', 'rest_get_server()',
-    "get_option( 'active_plugins'", "'mcp-adapter/mcp-adapter.php'", "'mad4b-site-control-plane/mad4b-site-control-plane.php'",
-    'is_known_namespace_index', "'get_namespace_index'", '$callback[0] !== $rest_server',
-    'HOSTINGER_BANNER_CONTROL_ROUTE', 'is_reviewed_non_transport_route', 'reviewed_non_transport_routes',
-    "'mcp_foreign_transport_unreviewed'", "'mcp_write_side_channel_detected'",
-):
-    require(peer, marker, 'foreign-mcp-fail-closed')
-for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_ignore_mcp", "apply_filters( 'mad4b_scp_side_channel", "if ( '/mcp' === $route ) continue"):
-    forbid(peer, bypass, 'foreign-mcp-no-bypass')
-
 print('mad4b.site-control-plane.connection-readiness-contract.v10: PASS')
