@@ -55,14 +55,16 @@ final class MAD4B_SCP_Connection_Status {
 		$certification_blockers = array_values( array_unique( array_map( 'sanitize_key', $certification_blockers ) ) );
 		$connection_certified = empty( $certification_blockers );
 		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
+		$portable_readonly_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
 		$environment_key = sanitize_key( (string) $environment );
-		$environment_supported = $profile_enrolled && in_array( $environment_key, array( 'local', 'development', 'staging', 'production' ), true );
+		$environment_supported = ( $profile_enrolled || $portable_readonly_ready ) && in_array( $environment_key, array( 'local', 'development', 'staging', 'production' ), true );
 
 		return array(
 			'contract' => self::CONTRACT,
 			'environment' => $environment_key,
 			'environment_supported' => $environment_supported,
 			'site_profile_enrolled' => $profile_enrolled,
+			'portable_readonly_ready' => $portable_readonly_ready,
 			'environment_is_staging' => 'staging' === $environment_key,
 			'site_url' => esc_url_raw( site_url() ),
 			'home_url' => esc_url_raw( home_url() ),
@@ -156,7 +158,8 @@ final class MAD4B_SCP_Connection_Status {
 		if ( empty( $oauth['https'] ) ) $blockers[] = 'oauth_https_required';
 		$env = isset( $oauth['environment'] ) ? sanitize_key( (string) $oauth['environment'] ) : '';
 		$profile_ok = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
-		$environment_allowed = $profile_ok && ( in_array( $env, array( 'local', 'development', 'staging' ), true ) || ( 'production' === $env && ! empty( $oauth['production_approved'] ) ) );
+		$portable_ok = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
+		$environment_allowed = ( $profile_ok || $portable_ok ) && ( in_array( $env, array( 'local', 'development', 'staging' ), true ) || ( 'production' === $env && ! empty( $oauth['production_approved'] ) ) );
 		if ( ! $environment_allowed ) $blockers[] = 'oauth_environment_not_allowed';
 		if ( empty( $oauth['effective'] ) && ! $blockers ) $blockers[] = 'oauth_resource_bridge_not_effective';
 		return array_values( array_unique( $blockers ) );
