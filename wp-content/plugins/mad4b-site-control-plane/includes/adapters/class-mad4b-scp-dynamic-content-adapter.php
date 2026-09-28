@@ -442,20 +442,6 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		});
 		foreach($steps as $i=>$step) $steps[$i]['order']=$i+1;
 
-		$steps[]=array(
-			'order'=>count($steps)+1,
-			'kind'=>'content_bundle',
-			'ability'=>self::APPLY,
-			'provider'=>'core',
-			'requires_dependency_resolution'=>!empty($missing),
-			'reversible'=>true,
-			'execution_bindings'=>array(
-				'operation_key'=>$operation_key,
-				'expected_state_sha256'=>$expected_state_sha256,
-				'expected_pipeline_settings_sha256'=>$pipeline_settings_sha256
-			)
-		);
-
 		$pipeline_settings_sha256='';
 		if(class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')){
 			$pipeline_settings=MAD4B_SCP_Dynamic_Content_Pipeline::effective();
@@ -481,6 +467,21 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		));
 		$bundle_json=wp_json_encode($bundle_basis,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
 		$bundle_sha256=is_string($bundle_json)?hash('sha256',$bundle_json):'';
+		$steps[]=array(
+			'order'=>count($steps)+1,
+			'kind'=>'content_bundle',
+			'ability'=>self::APPLY,
+			'provider'=>'core',
+			'requires_dependency_resolution'=>!empty($missing),
+			'reversible'=>true,
+			'execution_bindings'=>array(
+				'operation_key'=>$operation_key,
+				'expected_state_sha256'=>$expected_state_sha256,
+				'expected_pipeline_settings_sha256'=>$pipeline_settings_sha256,
+				'bundle_sha256'=>$bundle_sha256
+			)
+		);
+
 		$canonical=array(
 			'mode'=>$mode,
 			'post_type'=>$post_type,
