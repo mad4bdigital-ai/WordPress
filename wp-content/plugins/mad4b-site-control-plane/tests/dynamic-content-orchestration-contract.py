@@ -64,6 +64,10 @@ for marker in [
     "bundle_sha256",
     "execution_bindings",
     "expected_pipeline_settings_sha256",
+    "expected_bundle_sha256",
+    "mad4b_dynamic_bundle_drift",
+    "bundle_sha256_for_input",
+
     "expected_state_sha256",
 
     "compensation_on_error",
@@ -267,6 +271,8 @@ bundle_calc = planner.find("$bundle_sha256=")
 bindings_emit = planner.find("'execution_bindings'=>array(")
 if min(pipeline_calc, state_calc, bundle_calc, bindings_emit) < 0:
     raise SystemExit("execution-ready planner binding markers missing")
+if "'expected_bundle_sha256'=>$bundle_sha256" not in planner:
+    raise SystemExit("planner content-bundle step must emit expected_bundle_sha256")
 if not (pipeline_calc < bindings_emit and state_calc < bindings_emit and bundle_calc < bindings_emit):
     raise SystemExit("execution bindings must be emitted only after pipeline/state/bundle hashes are computed")
 
