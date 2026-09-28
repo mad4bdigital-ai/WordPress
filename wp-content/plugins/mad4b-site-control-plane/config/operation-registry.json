@@ -180,6 +180,7 @@
       "mad4b/dependency-impact",
       "mad4b/provider-candidate-matrix",
       "mad4b/provider-autopilot-plan",
+      "mad4b/provider-autopilot-promotion-plan",
       "mad4b/provider-autopilot-status",
       "mad4b/provider-transport-registry-status",
       "mad4b/operation-resume-status"
