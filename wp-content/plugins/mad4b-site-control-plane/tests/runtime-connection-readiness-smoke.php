@@ -173,16 +173,23 @@ $check(
     . ' registrations=' . wp_json_encode( MAD4B_SCP_Servers::registration_status() )
     . ' servers=' . wp_json_encode( $status['servers'] )
 );
-$check( empty( $status['remote_endpoint_preflight_ready'] ), 'Unconfigured OAuth resource server must not claim remote endpoint preflight readiness.' );
+$portable_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
 $is_https_target = 'https' === strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_SCHEME ) );
+$check( isset( $status['portable_readonly_ready'] ) && (bool) $status['portable_readonly_ready'] === (bool) $portable_ready, 'Portable read-only connection truth did not project into connection readiness.' );
 $check( $is_https_target ? ! in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ) : in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ), 'HTTPS remote blocker did not match the disposable target scheme.' );
-$check( in_array( 'oauth_resource_bridge_not_configured', $status['remote_preflight_blockers'], true ), 'Unconfigured OAuth bridge did not block remote preflight.' );
-$check( in_array( 'oauth_issuer_unconfigured', $status['remote_preflight_blockers'], true ), 'Missing OAuth issuer did not block remote preflight.' );
-$check( in_array( 'oauth_wp_subject_unconfigured', $status['remote_preflight_blockers'], true ), 'Missing OAuth WordPress subject did not block remote preflight.' );
 $check( isset( $status['oauth_resource_server'] ) && is_array( $status['oauth_resource_server'] ), 'OAuth resource-server truth missing from connection status.' );
-$check( empty( $status['oauth_resource_server']['configured'] ), 'Disposable connection runtime unexpectedly reports OAuth configured.' );
-$check( empty( $status['oauth_resource_server']['effective'] ), 'Disposable connection runtime unexpectedly reports OAuth effective.' );
-$check( empty( $status['oauth_resource_server']['preflight_ready'] ), 'Disposable connection runtime unexpectedly reports OAuth preflight ready.' );
+if ( $portable_ready && $is_https_target ) {
+    $check( ! empty( $status['remote_endpoint_preflight_ready'] ), 'Portable read-only connection did not make the HTTPS remote endpoint preflight-ready.' );
+    foreach ( array( 'oauth_resource_bridge_not_configured', 'oauth_issuer_unconfigured', 'oauth_wp_subject_unconfigured', 'oauth_environment_not_allowed' ) as $blocker ) {
+        $check( ! in_array( $blocker, $status['remote_preflight_blockers'], true ), 'Portable read-only connection retained obsolete OAuth blocker: ' . $blocker );
+    }
+    $check( ! empty( $status['oauth_resource_server']['configured'] ), 'Portable connection did not configure the OAuth resource bridge.' );
+    $check( ! empty( $status['oauth_resource_server']['effective'] ), 'Portable connection did not make the OAuth resource bridge effective.' );
+    $check( ! empty( $status['oauth_resource_server']['preflight_ready'] ), 'Portable connection did not make OAuth preflight ready.' );
+    $check( empty( $status['oauth_resource_server']['write_surfaces_enabled'] ), 'Portable connection must not enable write surfaces.' );
+} else {
+    $check( empty( $status['remote_endpoint_preflight_ready'] ), 'Non-portable or non-HTTPS runtime must not claim remote endpoint preflight readiness.' );
+}
 $check( empty( $status['connection_certified'] ), 'Repository/local inspection must never self-certify the external connection.' );
 $check( empty( $status['external_handshake']['verified'] ), 'External handshake was incorrectly marked verified.' );
 $check( 'unverified' === $status['external_handshake']['status'], 'Absent durable external evidence must remain explicitly unverified.' );
@@ -240,7 +247,11 @@ $check( false !== strpos( $readiness_html, 'Stage 1' ), 'Connection readiness ta
 $check( false !== strpos( $readiness_html, 'Next step' ), 'Connection readiness tab omitted next-step guidance.' );
 $check( false !== strpos( $oauth_html, 'WordPress local OAuth authority' ), 'OAuth tab omitted the standalone WordPress authority.' );
 $check( false !== strpos( $oauth_html, 'External / federated OAuth resource bridge' ), 'OAuth tab omitted the external federated authority.' );
-$check( false !== strpos( $oauth_html, 'oauth_resource_bridge_not_configured' ), 'OAuth tab omitted OAuth blocker truth.' );
+if ( $portable_ready && $is_https_target ) {
+    $check( false === strpos( $oauth_html, 'oauth_resource_bridge_not_configured' ), 'OAuth tab retained an obsolete not-configured blocker in portable mode.' );
+} else {
+    $check( false !== strpos( $oauth_html, 'oauth_resource_bridge_not_configured' ), 'OAuth tab omitted OAuth blocker truth.' );
+}
 $check( false !== strpos( $endpoints_html, 'mad4b-read' ), 'MCP Endpoints tab omitted the read endpoint.' );
 $check( false !== strpos( $endpoints_html, 'mad4b-chatgpt' ), 'MCP Endpoints tab omitted the ChatGPT endpoint.' );
 $check( false !== strpos( $endpoints_html, 'mad4b-write' ), 'MCP Endpoints tab omitted the write endpoint.' );

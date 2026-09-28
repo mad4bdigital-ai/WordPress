@@ -129,6 +129,9 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	public static function metadata() {
+		$portable_only = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' )
+			&& MAD4B_SCP_Portable_Readonly_Connection::effective()
+			&& ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::oauth_enabled() );
 		return array(
 			'issuer' => self::issuer(),
 			'authorization_endpoint' => self::authorize_url(),
@@ -139,7 +142,9 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'grant_types_supported' => array( 'authorization_code', 'refresh_token' ),
 			'token_endpoint_auth_methods_supported' => array( 'none' ),
 			'code_challenge_methods_supported' => array( 'S256' ),
-			'scopes_supported' => array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' ),
+			'scopes_supported' => $portable_only
+				? array( 'mad4b:read', 'offline_access' )
+				: array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' ),
 			'authorization_response_iss_parameter_supported' => true,
 			'protected_resources' => self::resource_identifiers(),
 			'client_id_metadata_document_supported' => true,
@@ -178,6 +183,10 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	public static function resource_identifiers() {
+		$portable_only = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' )
+			&& MAD4B_SCP_Portable_Readonly_Connection::effective()
+			&& ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::oauth_enabled() );
+		if ( $portable_only ) return array( self::resource_identifier() );
 		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'resource_identifiers' ) ) return MAD4B_SCP_OAuth_Resource_Bridge::resource_identifiers();
 		return array( self::resource_identifier() );
 	}
@@ -1054,7 +1063,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	private static function environment_allowed() {
 		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
-		if ( ! $profile_ready ) return false;
+		$portable_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
+		if ( ! $profile_ready && ! $portable_ready ) return false;
 		if ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) return true;
 		return 'production' === $environment && self::production_approved();
 	}

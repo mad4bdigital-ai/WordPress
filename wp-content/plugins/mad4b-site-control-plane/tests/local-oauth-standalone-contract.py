@@ -9,6 +9,7 @@ key_policy = (root / 'includes' / 'class-mad4b-scp-local-oauth-key-path-policy.p
 init_lock = (root / 'includes' / 'class-mad4b-scp-local-oauth-init-lock.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+portable = (root / 'includes' / 'class-mad4b-scp-portable-readonly-connection.php').read_text(encoding='utf-8')
 
 required_server = [
     'mad4b.local-oauth-server.v3',
@@ -153,6 +154,21 @@ required_server = [
 for marker in required_server:
     if marker not in server:
         raise SystemExit(f'missing local OAuth server marker: {marker}')
+
+for marker in [
+    'mad4b.portable-readonly-connection.v1',
+    'MAD4B_SCP_PORTABLE_READONLY_AUTO_CONNECT',
+    "MAD4B_MCP_LOCAL_OAUTH_ENABLED",
+    "MAD4B_MCP_OAUTH_ENABLED",
+    "MAD4B_MCP_OAUTH_MODE",
+    "MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS",
+    "'write_enabled' => false",
+    "'developer_enabled' => false",
+    "'breakglass_enabled' => false",
+    "'skills_enabled' => false",
+]:
+    if marker not in portable:
+        raise SystemExit(f'missing portable read-only connection marker: {marker}')
 
 refresh_body = server.split("private static function exchange_refresh_token( array $params )", 1)[1].split("private static function issue_token_response", 1)[0]
 refresh_normalize = "$scopes = self::normalize_scopes( (string) $row['scope'], $resource, $client_id );"
@@ -324,3 +340,8 @@ for marker in [
         raise SystemExit(f'missing local OAuth document-root runtime proof: {marker}')
 
 print('mad4b.site-control-plane.local-oauth-standalone.v9: PASS')
+
+if "class-mad4b-scp-portable-readonly-connection.php" not in main:
+    raise SystemExit('main plugin does not load portable read-only connection')
+if "MAD4B_SCP_Portable_Readonly_Connection::bootstrap();" not in main:
+    raise SystemExit('portable read-only connection is not bootstrapped')

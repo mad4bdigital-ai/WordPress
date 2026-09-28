@@ -72,7 +72,11 @@ final class MAD4B_SCP_ChatGPT_OAuth_Lifecycle {
 			$changed = true;
 		}
 
-		$step_up_available = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+		$portable_only = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' )
+			&& MAD4B_SCP_Portable_Readonly_Connection::effective()
+			&& ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::oauth_enabled() );
+		$step_up_available = ! $portable_only
+			&& class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
 			&& method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'authority_step_up_scope_available' )
 			&& MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available();
 		if ( $step_up_available && ! in_array( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE, $scopes, true ) ) {

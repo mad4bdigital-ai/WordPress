@@ -4,15 +4,21 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.78**.
+Current plugin version: **0.4.0-rc.79**.
 
-### rc.78 exact WP All Import read-runtime bootstrap
+### rc.79 exact WP All Import read-runtime bootstrap
 
-rc.78 closes the live REST/MCP compatibility gap discovered after the exact WP All Import Pro 5.0.8 package was installed on ETG Staging. WP All Import can expose `PMXI_Plugin` while leaving its model classes unloaded in a non-admin REST/MCP request, so governed read/plan abilities could report an exact certified artifact yet still miss `PMXI_Import_Record` and `PMXI_Import_List`.
+rc.79 closes the live REST/MCP compatibility gap discovered after the exact WP All Import Pro 5.0.8 package was installed on ETG Staging. The provider can expose `PMXI_Plugin` while leaving `PMXI_Import_Record` and `PMXI_Import_List` unloaded in a non-admin REST/MCP request, so governed read/plan abilities could report an exact certified artifact yet still remain structurally incomplete.
 
-The adapter now performs a bounded **read-only provider autoload bootstrap** only after the composite WP Import/Export runtime is exact-certified and the import integrity manifest is present with zero missing or mismatched files. It disables implicit pre-certification `class_exists()` autoload for the Import runtime gate and calls only the provider-owned `PMXI_Plugin::autoload()` (or reviewed legacy `__autoload()`) for the fixed dependency allowlist `PMXI_Model`, `PMXI_Model_Record`, `PMXI_Model_List`, `PMXI_Import_Record`, and `PMXI_Import_List`.
+The adapter performs a bounded **read-only provider autoload bootstrap** only after exact composite WP Import/Export certification and a clean import integrity manifest. It disables implicit pre-certification Import model autoload and calls only the provider-owned `PMXI_Plugin::autoload()` (or reviewed legacy `__autoload()`) for the fixed dependency allowlist `PMXI_Model`, `PMXI_Model_Record`, `PMXI_Model_List`, `PMXI_Import_Record`, and `PMXI_Import_List`.
 
-No caller-controlled path, direct vendor require, filesystem scan, provider execution, cron request, secret exposure, grant widening, Production mutation, Breakglass, or Raw SQL is introduced. High-risk `run-import` and `run-export` remain unmounted and execution certification remains fail-closed. CI includes a plain WordPress/REST-style exact-package bootstrap regression in addition to PHP 7.4/8.3 contracts and the existing execution-shadowed composite runtime proof.
+rc.79 preserves rc.78 portable zero-authority read connection and rc.77 session-safe diagnostics unchanged. No caller-controlled paths, direct vendor requires, filesystem scans, provider execution, cron/network calls, secret exposure, grant widening, Production mutation, Breakglass, or Raw SQL are introduced. High-risk `run-import` and `run-export` remain unmounted and execution certification remains fail-closed.
+
+### rc.78 Portable zero-authority ChatGPT read connection
+
+rc.78 makes a fresh installation connection-ready for the dedicated `mad4b-chatgpt` read projection without creating a governed Site Profile. The portable bootstrap derives the current HTTPS origin and existing WordPress Administrators, enables only local OAuth/CIMD/PKCE read identity, and publishes RFC 9728 discovery for the site-local MCP resource. Production uses the same portable read-only boundary; governed write, Skills authoring, Developer, Breakglass, raw SQL and generic filesystem/database surfaces remain disabled until separately enrolled and authorized.
+
+Existing Site Profiles retain precedence and behavior. Explicit operator OAuth disables/mode/issuer settings remain fail-closed, and `MAD4B_SCP_PORTABLE_READONLY_AUTO_CONNECT=false` disables the portable bootstrap for hosts that require manual enrollment.
 
 ### rc.77 Session-safe composite diagnostics
 
