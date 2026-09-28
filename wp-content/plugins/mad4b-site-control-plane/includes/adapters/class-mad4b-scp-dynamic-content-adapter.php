@@ -1290,6 +1290,24 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		return array('verified'=>true,'receipt_sha256'=>$actual_hash,'accepted_at'=>(string)$receipt['accepted_at'],'state_sha256'=>(string)$receipt['state_sha256'],'pipeline_settings_sha256'=>$current_pipeline);
 	}
 
+	public function consume_publication_acceptance($post_id,$expected_sha256){
+		$verified=$this->verify_publication_acceptance($post_id,$expected_sha256);
+		if(is_wp_error($verified)) return $verified;
+		$post_id=absint($post_id);
+		$receipt=$this->acceptance_meta_state($post_id);
+		$expected_sha256=strtolower(trim((string)$expected_sha256));
+		if(empty($receipt)||!hash_equals($expected_sha256,$this->acceptance_receipt_hash($receipt))) return new WP_Error(
+			'mad4b_dynamic_acceptance_receipt_raced',
+			'Dynamic acceptance receipt changed before it could be consumed.'
+		);
+		if(!delete_post_meta($post_id,self::ACCEPTANCE_META,$receipt)) return new WP_Error(
+			'mad4b_dynamic_acceptance_receipt_consume_failed',
+			'Dynamic acceptance receipt could not be consumed exactly; publication is denied.'
+		);
+		$verified['consumed']=true;
+		return $verified;
+	}
+
 	public function readback($input=array()){
 		$input=is_array($input)?$input:array();
 		$id=isset($input['post_id'])?absint($input['post_id']):0;
