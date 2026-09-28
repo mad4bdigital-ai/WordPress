@@ -47,7 +47,7 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 
 	public static function govern_registration( $args, $name ) {
 		if ( ! is_array( $args ) || self::ABILITY !== (string) $name ) return $args;
-		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return $args;
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) return $args;
 		if ( ! isset( $args['permission_callback'] ) || ! is_callable( $args['permission_callback'] ) ) return $args;
 
 		$original_permission = $args['permission_callback'];
@@ -55,6 +55,7 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			$granted = call_user_func( $original_permission, $input );
 			if ( is_wp_error( $granted ) || ! $granted ) return $granted;
 			if ( ! MAD4B_SCP_Staging_Write_Planning_Guard::is_remote_write_transport() ) return true;
+			if ( ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return new WP_Error( 'mad4b_write_authority_not_eligible', 'Governed Staging write authority is not eligible for remote approval planning.' );
 
 			$input = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input( $input );
 			if ( is_wp_error( $input ) ) return $input;
@@ -74,6 +75,7 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			$args['execute_callback'] = static function ( $input = null ) use ( $original_execute ) {
 				$remote = MAD4B_SCP_Staging_Write_Planning_Guard::is_remote_write_transport();
 				if ( $remote ) {
+					if ( ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return new WP_Error( 'mad4b_write_authority_not_eligible', 'Governed Staging write authority is not eligible for remote approval planning.' );
 					$input = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input( $input );
 					if ( is_wp_error( $input ) ) return $input;
 					$guard = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $input );
