@@ -126,6 +126,40 @@ final class MAD4B_SCP_Operation_Registry {
 				return self::$catalog;
 			}
 		}
+		$autopilot = isset( $data['dynamic_provider_autopilot'] ) && is_array( $data['dynamic_provider_autopilot'] ) ? $data['dynamic_provider_autopilot'] : array();
+		if ( empty( $autopilot ) || ! array_key_exists( 'enabled_by_default', $autopilot ) || ! is_bool( $autopilot['enabled_by_default'] ) ) {
+			self::$catalog = new WP_Error( 'mad4b_operation_registry_autopilot_invalid', 'Dynamic provider autopilot configuration is missing or invalid.' );
+			return self::$catalog;
+		}
+		foreach ( array( 'auto_generate_adapter_candidate', 'auto_shadow_certify_provider', 'auto_materialize_candidate_code', 'auto_register_generated_adapter', 'auto_write_certification', 'auto_create_authority', 'auto_enable_mutation' ) as $flag ) {
+			if ( ! array_key_exists( $flag, $autopilot ) || ! is_bool( $autopilot[ $flag ] ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_autopilot_invalid', 'Dynamic provider autopilot boolean policy is incomplete.' );
+				return self::$catalog;
+			}
+		}
+		if ( empty( $autopilot['environments'] ) || ! is_array( $autopilot['environments'] ) ) {
+			self::$catalog = new WP_Error( 'mad4b_operation_registry_autopilot_invalid', 'Dynamic provider autopilot environment modes are missing.' );
+			return self::$catalog;
+		}
+		foreach ( $autopilot['environments'] as $environment => $mode ) {
+			if ( sanitize_key( (string) $environment ) !== (string) $environment || ! in_array( sanitize_key( (string) $mode ), array( 'shadow_auto', 'observe_propose_only' ), true ) ) {
+				self::$catalog = new WP_Error( 'mad4b_operation_registry_autopilot_environment_invalid', 'Dynamic provider autopilot environment mode is invalid.' );
+				return self::$catalog;
+			}
+		}
+		if ( ! empty( $autopilot['auto_materialize_candidate_code'] ) || ! empty( $autopilot['auto_register_generated_adapter'] ) || ! empty( $autopilot['auto_write_certification'] ) || ! empty( $autopilot['auto_create_authority'] ) || ! empty( $autopilot['auto_enable_mutation'] ) ) {
+			self::$catalog = new WP_Error( 'mad4b_operation_registry_autopilot_boundary_invalid', 'Default provider autopilot may generate and shadow-certify candidates but may not auto-materialize code, register generated adapters, create write certification, authority, or mutation.' );
+			return self::$catalog;
+		}
+		if ( 'observe_propose_only' !== ( isset( $autopilot['environments']['production'] ) ? sanitize_key( (string) $autopilot['environments']['production'] ) : '' ) ) {
+			self::$catalog = new WP_Error( 'mad4b_operation_registry_autopilot_production_invalid', 'Production provider autopilot must remain observe/propose-only.' );
+			return self::$catalog;
+		}
+		if ( ! in_array( isset( $autopilot['max_automatic_support_level'] ) ? (string) $autopilot['max_automatic_support_level'] : '', array( 'L0_inventory', 'L1_lifecycle', 'L2_read' ), true ) ) {
+			self::$catalog = new WP_Error( 'mad4b_operation_registry_autopilot_level_invalid', 'Default provider autopilot automatic support level exceeds the bounded read ceiling.' );
+			return self::$catalog;
+		}
+
 		$stage_bindings = isset( $data['stage_bindings'] ) && is_array( $data['stage_bindings'] ) ? $data['stage_bindings'] : array();
 		if ( empty( $stage_bindings ) ) {
 			self::$catalog = new WP_Error( 'mad4b_operation_registry_stage_bindings_missing', 'MAD4B operation registry stage bindings are missing.' );
@@ -249,6 +283,12 @@ final class MAD4B_SCP_Operation_Registry {
 		return array_values( array_unique( array_map( 'strval', $projection ) ) );
 	}
 
+	public static function autopilot_config() {
+		$catalog = self::catalog();
+		if ( is_wp_error( $catalog ) ) return array();
+		return isset( $catalog['dynamic_provider_autopilot'] ) && is_array( $catalog['dynamic_provider_autopilot'] ) ? $catalog['dynamic_provider_autopilot'] : array();
+	}
+
 	public static function aliases() {
 		$catalog = self::catalog();
 		return is_wp_error( $catalog ) || empty( $catalog['aliases'] ) || ! is_array( $catalog['aliases'] ) ? array() : $catalog['aliases'];
@@ -360,6 +400,7 @@ final class MAD4B_SCP_Operation_Registry {
 				'direct' => self::read_projection( 'direct' ),
 				'catalog' => self::read_projection( 'catalog' ),
 			),
+			'dynamic_provider_autopilot' => self::autopilot_config(),
 			'pipeline_profiles' => array_keys( isset( $catalog['pipeline_profiles'] ) && is_array( $catalog['pipeline_profiles'] ) ? $catalog['pipeline_profiles'] : array() ),
 			'stage_bindings' => array_keys( isset( $catalog['stage_bindings'] ) && is_array( $catalog['stage_bindings'] ) ? $catalog['stage_bindings'] : array() ),
 			'count' => count( $items ),
