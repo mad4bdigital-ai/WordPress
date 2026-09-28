@@ -217,6 +217,9 @@ for marker in [
     "reduce_scope_then_retry_preflight",
     "Future connector onboarding",
     "fault-injection",
+    "Full Staging Authority session-safe handshake",
+    "mad4b/full-staging-authority-handshake",
+    "8 KiB response budget",
 ]:
     require(contract, marker, "normative resilience contract")
 
