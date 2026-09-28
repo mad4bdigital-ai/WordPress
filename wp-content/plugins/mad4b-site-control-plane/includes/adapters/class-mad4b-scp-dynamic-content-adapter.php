@@ -131,7 +131,34 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				'mode'=>array('type'=>'string','enum'=>array('create','update'),'default'=>'create'),
 				'post_type'=>array('type'=>'string','minLength'=>1,'maxLength'=>64,'pattern'=>'^[a-zA-Z0-9_-]+$'),
 				'post_id'=>array('type'=>'integer','minimum'=>1),
-				'post_status'=>array('type'=>'string','enum'=>array('draft','pending','private','publish')),
+				'operation_key'=>array('type'=>'string','minLength'=>8,'maxLength'=>128,'pattern'=>'^[A-Za-z0-9._:-]+$'),
+				'post'=>array(
+					'type'=>'object',
+					'additionalProperties'=>false,
+					'properties'=>array(
+						'post_title'=>array('type'=>'string','maxLength'=>1000),
+						'post_content'=>array('type'=>'string','maxLength'=>2097152),
+						'post_excerpt'=>array('type'=>'string','maxLength'=>262144),
+						'post_status'=>array('type'=>'string','enum'=>array('draft','pending','private','publish')),
+						'post_parent'=>array('type'=>'integer','minimum'=>0),
+						'post_author'=>array('type'=>'integer','minimum'=>1)
+					)
+				),
+				'meta'=>array('type'=>'object','maxProperties'=>200,'additionalProperties'=>$this->json_value_schema()),
+				'meta_entries'=>array(
+					'type'=>'object',
+					'maxProperties'=>200,
+					'additionalProperties'=>array(
+						'type'=>'object',
+						'additionalProperties'=>false,
+						'properties'=>array(
+							'mode'=>array('type'=>'string','enum'=>array('single','multi','delete')),
+							'value'=>$this->json_value_schema(),
+							'values'=>array('type'=>'array','minItems'=>1,'maxItems'=>100,'items'=>$this->json_value_schema())
+						),
+						'required'=>array('mode')
+					)
+				),
 				'taxonomies'=>array(
 					'type'=>'object',
 					'maxProperties'=>50,
@@ -150,8 +177,19 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 							)
 						)
 					)
+				),
+				'featured_media_id'=>array('type'=>'integer','minimum'=>0),
+				'evidence'=>array('type'=>'object','maxProperties'=>64,'additionalProperties'=>$this->json_value_schema()),
+				'acceptance_targets'=>array('type'=>'object','maxProperties'=>64,'additionalProperties'=>$this->json_value_schema()),
+				'validation'=>array(
+					'type'=>'object',
+					'additionalProperties'=>false,
+					'properties'=>array(
+						'max_iterations'=>array('type'=>'integer','minimum'=>1,'maximum'=>self::MAX_ITERATIONS),
+						'repair_mode'=>array('type'=>'string','enum'=>array('safe_only','off'))
+					)
 				)
-			),array('post_type')),
+			),array('post_type','operation_key','post')),
 			'read',
 			true,
 			false,
@@ -235,6 +273,9 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if($post_type===''||!post_type_exists($post_type)) return new WP_Error('mad4b_dynamic_post_type_missing','Requested post type is not registered.');
 		$mode=isset($input['mode'])?sanitize_key((string)$input['mode']):'create';
 		if(!in_array($mode,array('create','update'),true)) return new WP_Error('mad4b_dynamic_mode_invalid','Plan mode must be create or update.');
+		$operation_key=isset($input['operation_key'])?trim((string)$input['operation_key']):'';
+		if(1!==preg_match('/^[A-Za-z0-9._:-]{8,128}$/',$operation_key)) return new WP_Error('mad4b_dynamic_operation_key_invalid','Stable operation_key is required for orchestration planning.');
+		$post_input=isset($input['post'])&&is_array($input['post'])?$input['post']:array();
 
 		$post_object=get_post_type_object($post_type);
 		$default_eligible=$post_object&&(!empty($post_object->show_ui)||!empty($post_object->public)||!empty($post_object->show_in_rest));
@@ -257,7 +298,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			$target_ready=false;
 			$target_reason='create_mode_post_id_not_allowed';
 		}
-		$status=isset($input['post_status'])?sanitize_key((string)$input['post_status']):'';
+		$status=isset($post_input['post_status'])?sanitize_key((string)$post_input['post_status']):'';
 		$live_state_requested=in_array($status,array('publish','private'),true);
 		$publish_cap=$live_state_requested&&$post_object&&isset($post_object->cap->publish_posts)?(string)$post_object->cap->publish_posts:'';
 		$publish_ready=!$live_state_requested;
@@ -407,7 +448,12 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'ability'=>self::APPLY,
 			'provider'=>'core',
 			'requires_dependency_resolution'=>!empty($missing),
-			'reversible'=>true
+			'reversible'=>true,
+			'execution_bindings'=>array(
+				'operation_key'=>$operation_key,
+				'expected_state_sha256'=>$expected_state_sha256,
+				'expected_pipeline_settings_sha256'=>$pipeline_settings_sha256
+			)
 		);
 
 		$pipeline_settings_sha256='';
@@ -415,11 +461,34 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			$pipeline_settings=MAD4B_SCP_Dynamic_Content_Pipeline::effective();
 			$pipeline_settings_sha256=isset($pipeline_settings['settings_sha256'])?(string)$pipeline_settings['settings_sha256']:'';
 		}
+		$expected_state_sha256='';
+		if('update'===$mode&&$target_ready&&$target){
+			$expected_state_sha256=$this->state_sha256($this->snapshot($post_id,$input));
+		}
+		$bundle_basis=$this->canonical_value(array(
+			'mode'=>$mode,
+			'post_type'=>$post_type,
+			'post_id'=>$post_id,
+			'operation_key'=>$operation_key,
+			'post'=>$post_input,
+			'meta'=>isset($input['meta'])&&is_array($input['meta'])?$input['meta']:array(),
+			'meta_entries'=>isset($input['meta_entries'])&&is_array($input['meta_entries'])?$input['meta_entries']:array(),
+			'taxonomies'=>$taxonomies,
+			'featured_media_id'=>array_key_exists('featured_media_id',$input)?absint($input['featured_media_id']):null,
+			'evidence'=>isset($input['evidence'])&&is_array($input['evidence'])?$input['evidence']:array(),
+			'acceptance_targets'=>isset($input['acceptance_targets'])&&is_array($input['acceptance_targets'])?$input['acceptance_targets']:array(),
+			'validation'=>isset($input['validation'])&&is_array($input['validation'])?$input['validation']:array(),
+		));
+		$bundle_json=wp_json_encode($bundle_basis,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+		$bundle_sha256=is_string($bundle_json)?hash('sha256',$bundle_json):'';
 		$canonical=array(
 			'mode'=>$mode,
 			'post_type'=>$post_type,
 			'post_id'=>$post_id,
+			'operation_key'=>$operation_key,
 			'post_status'=>$status,
+			'bundle_sha256'=>$bundle_sha256,
+			'expected_state_sha256'=>$expected_state_sha256,
 			'post_type_readiness'=>$post_type_readiness,
 			'resolved_terms'=>$resolved,
 			'missing_terms'=>$missing,
@@ -442,6 +511,10 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'post_type'=>$post_type,
 			'post_id'=>$post_id,
 			'post_status'=>$status,
+			'operation_key'=>$operation_key,
+			'bundle_sha256'=>$bundle_sha256,
+			'expected_state_sha256'=>$expected_state_sha256,
+			'pipeline_settings_sha256'=>$pipeline_settings_sha256,
 			'post_type_readiness'=>$post_type_readiness,
 			'resolved_terms'=>$resolved,
 			'missing_terms'=>$missing,
