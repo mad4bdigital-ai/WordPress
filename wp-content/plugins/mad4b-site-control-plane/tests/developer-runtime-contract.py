@@ -39,6 +39,7 @@ required_tools = [
     "mad4b/developer-package-install",
     "mad4b/developer-workspace-status",
     "mad4b/developer-workspace-read",
+    "mad4b/developer-workspace-promote-plan",
     "mad4b/developer-workspace-apply",
     "mad4b/developer-workspace-promote",
     "mad4b/developer-breakglass-shell",
@@ -126,6 +127,7 @@ assert "wp eval" not in developer.lower() or "'eval'" in developer
 # bind every batch to an exact manifest and promote only after lint/backup/readback.
 for marker in [
     "const CONTRACT = 'mad4b.developer-workspace.v1'",
+    "const PROMOTION_PLAN_CONTRACT = 'mad4b.developer-workspace-promotion-plan.v1'",
     "const PROMOTION_CONTRACT = 'mad4b.developer-workspace-promotion.v1'",
     "mad4b/developer-workspace-status",
     "mad4b/developer-workspace-read",
@@ -135,6 +137,12 @@ for marker in [
     "mad4b_developer_workspace_web_exposed",
     "expected_manifest_sha256",
     "expected_workspace_manifest_sha256",
+    "expected_installed_manifest_sha256",
+    "expected_plan_sha256",
+    "promotion_plan_sha256",
+    "mad4b_developer_workspace_promotion_plan_changed",
+    "mad4b_developer_workspace_target_manifest_stale",
+    "mad4b_developer_workspace_target_absence_confirmation_required",
     "snapshot_project",
     "restore_snapshot",
     "lint_php_files",
@@ -144,6 +152,9 @@ for marker in [
     "rollback_plugin",
     "verify_installed",
     "readback_verified",
+    "installed_manifest_sha256",
+    "php_token_parse",
+    "exact_grant",
     "addon_registry_state",
     "unregistered_development_candidate",
     "production_promotion_authorized' => false",
@@ -193,7 +204,7 @@ start = servers.index("public static function chatgpt_tools")
 end = servers.index("private static function surface_for_server", start)
 chatgpt = servers[start:end]
 assert "developer-runtime-status" not in chatgpt
-for direct_workspace_tool in ["developer-workspace-status", "developer-workspace-read", "developer-workspace-apply", "developer-workspace-promote"]:
+for direct_workspace_tool in ["developer-workspace-status", "developer-workspace-read", "developer-workspace-promote-plan", "developer-workspace-apply", "developer-workspace-promote"]:
     assert direct_workspace_tool not in chatgpt, direct_workspace_tool
 assert "self::core_tools( 'mad4b-developer' )" not in chatgpt
 assert "self::core_tools( 'mad4b-developer-breakglass' )" not in chatgpt
@@ -222,7 +233,8 @@ assert "breakglass_allowed'] = false" in abilities
 assert "public function can_developer_dispatch" in abilities
 assert "public function developer_execute" in abilities
 assert "MAD4B_SCP_Transport_Context::with_developer_dispatch_target" in abilities
-assert "approval_lane' => isset( $annotations['readonly'] ) && true === $annotations['readonly'] ? 'none' : 'human_only'" in abilities
+assert "private function developer_approval_lane" in abilities
+assert "MAD4B_SCP_Impact_Policy::classify" in abilities
 assert "production_mutation' => false" in abilities
 assert "breakglass_authorized' => false" in abilities
 
@@ -380,4 +392,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v22: PASS")
+print("mad4b.developer-runtime-contract.v23: PASS")
