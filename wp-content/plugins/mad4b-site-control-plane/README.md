@@ -4,7 +4,13 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.72**.
+Current plugin version: **0.4.0-rc.73**.
+
+### rc.73 same-app normal Developer dispatcher
+
+The compact `mad4b-chatgpt` resource can now discover, inspect and execute the **normal** Developer Plane through `mad4b/developer-discover`, `mad4b/developer-info` and `mad4b/developer-execute`. The dispatcher does not mount raw Developer tools on the ChatGPT resource and does not mint `server:mad4b-developer` scope. Instead, an already-provisioned Staging Developer Agent is derived request-locally from the enrolled normal OAuth subject plus exact client fingerprint while one exact schema-bound target executes. The overlay is cleared in `finally` and never persists credentials or authority.
+
+Mutating Developer targets remain high-risk and **human-only approval** under the central impact policy. The normal Developer Agent exact grant, one-time ticket, budget, commit guard, source/site/environment binding and Developer runtime guard all still apply. Production, Developer Breakglass, raw SQL and generic shell execution remain excluded from the compact dispatcher.
 
 Provider-gap closure is zero-touch and non-authorizing. The package embeds exact-head repository evidence plus `functional-gap-policy.json`; `mad4b/functional-gap-runtime-evidence` performs bounded local runtime collection, fixed-point drift checks, and deterministic evaluation without shell, WP-CLI, raw SQL, remote requests, credential reads, or mutation. Evidence readiness never grants provider write authority or Production activation. Provider capability diagnostics also distinguish mounted from latent capabilities and read readiness from blocked write certification.
 
