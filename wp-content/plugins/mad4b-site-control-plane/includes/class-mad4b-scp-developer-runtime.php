@@ -772,8 +772,8 @@ final class MAD4B_SCP_Developer_Runtime {
 		return $resolved;
 	}
 
-	private static function execute( $ability, array $argv, $input, $breakglass, $mutation_assumed, $isolated_wp_cli = false ) {
-		$cwd = $isolated_wp_cli ? self::isolated_wp_cli_cwd() : self::working_dir( is_array( $input ) ? $input : array() );
+	private static function execute( $ability, array $argv, $input, $breakglass, $mutation_assumed, $isolated_wp_cli = false, $explicit_cwd = '' ) {
+		$cwd = '' !== (string) $explicit_cwd ? (string) $explicit_cwd : ( $isolated_wp_cli ? self::isolated_wp_cli_cwd() : self::working_dir( is_array( $input ) ? $input : array() ) );
 		if ( is_wp_error( $cwd ) ) return $cwd;
 		$timeout = isset( $input['timeout_seconds'] ) ? absint( $input['timeout_seconds'] ) : self::DEFAULT_TIMEOUT;
 		$timeout = max( 1, min( self::MAX_TIMEOUT, $timeout ) );
@@ -851,6 +851,55 @@ final class MAD4B_SCP_Developer_Runtime {
 			MAD4B_SCP_Audit::record( 'mad4b/developer-execution', array_diff_key( $receipt, array( 'stdout' => true, 'stderr' => true ) ), 0 === $exit ? 'ok' : 'error' );
 		}
 		return $receipt;
+	}
+
+	/**
+	 * Syntax-check one PHP file inside the protected out-of-webroot Developer
+	 * Workspace using the single bounded process executor owned by this class.
+	 * This is not an Ability and cannot be remotely invoked by name.
+	 */
+	public static function lint_workspace_php_file( $absolute_file, $workspace_root ) {
+		$gate = self::runtime_gate( false, array(), true );
+		if ( is_wp_error( $gate ) && 'mad4b_developer_source_binding_mismatch' !== $gate->get_error_code() ) return $gate;
+		if ( 'production' === self::environment() ) return new WP_Error( 'mad4b_developer_workspace_lint_production_denied', 'Workspace lint is never authorized in Production.' );
+		$root = realpath( (string) $workspace_root );
+		$file = realpath( (string) $absolute_file );
+		$wp_root = realpath( ABSPATH );
+		$content_root = realpath( WP_CONTENT_DIR );
+		if ( false === $root || false === $file || ! is_dir( $root ) || ! is_file( $file ) || is_link( $file ) ) return new WP_Error( 'mad4b_developer_workspace_lint_path_invalid', 'Workspace lint requires a real PHP file under a real workspace root.' );
+		$root_n = rtrim( str_replace( '\\', '/', $root ), '/' );
+		$file_n = str_replace( '\\', '/', $file );
+		if ( 0 !== strpos( $file_n, $root_n . '/' ) || 'php' !== strtolower( pathinfo( $file_n, PATHINFO_EXTENSION ) ) ) return new WP_Error( 'mad4b_developer_workspace_lint_escape', 'Workspace lint target escaped the protected project root or is not PHP.' );
+		foreach ( array( $wp_root, $content_root ) as $web ) {
+			if ( false === $web ) continue;
+			$web_n = rtrim( str_replace( '\\', '/', $web ), '/' );
+			if ( $root_n === $web_n || 0 === strpos( $root_n, $web_n . '/' ) ) return new WP_Error( 'mad4b_developer_workspace_lint_web_root_denied', 'Workspace lint root must remain outside WordPress web roots.' );
+		}
+		if ( ! defined( 'PHP_BINARY' ) || '' === PHP_BINARY || ! is_executable( PHP_BINARY ) ) return new WP_Error( 'mad4b_developer_workspace_php_linter_unavailable', 'PHP binary is unavailable for mandatory syntax validation.' );
+		$receipt = self::execute(
+			'mad4b/developer-workspace-php-lint',
+			array( PHP_BINARY, '-l', $file ),
+			array( 'timeout_seconds' => min( 30, self::DEFAULT_TIMEOUT ) ),
+			false,
+			false,
+			false,
+			$root
+		);
+		if ( is_wp_error( $receipt ) ) return $receipt;
+		if ( ! is_array( $receipt ) || 0 !== ( isset( $receipt['exit_code'] ) ? (int) $receipt['exit_code'] : -1 ) ) {
+			return new WP_Error(
+				'mad4b_developer_workspace_php_lint_failed',
+				'Workspace PHP syntax validation failed.',
+				array(
+					'diagnostic' => is_array( $receipt ) ? substr( sanitize_text_field( (string) ( isset( $receipt['stderr'] ) ? $receipt['stderr'] : '' ) . ' ' . ( isset( $receipt['stdout'] ) ? $receipt['stdout'] : '' ) ), 0, 500 ) : '',
+				)
+			);
+		}
+		return array(
+			'ok' => true,
+			'command_digest' => isset( $receipt['command_digest'] ) ? (string) $receipt['command_digest'] : '',
+			'duration_ms' => isset( $receipt['duration_ms'] ) ? (int) $receipt['duration_ms'] : 0,
+		);
 	}
 
 	private static function filesystem_receipt( $action, $path, $ok, $mutation, $sha = '' ) {
