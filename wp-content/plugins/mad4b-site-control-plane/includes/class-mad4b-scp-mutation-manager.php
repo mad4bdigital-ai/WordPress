@@ -115,6 +115,26 @@ final class MAD4B_SCP_Mutation_Manager {
 		if ( false === $inserted ) return new WP_Error( 'mad4b_mutation_record_failed', 'Unable to persist the mutation envelope before execution.', array( 'db_error' => $wpdb->last_error ) );
 		self::update_record( $mutation_id, array( 'status' => 'executing' ) );
 
+		$dynamic_publication = self::is_dynamic_managed_post( $id )
+			&& isset( $update['post_status'] )
+			&& in_array( $update['post_status'], array( 'publish', 'private' ), true );
+		if ( $dynamic_publication ) {
+			$adapter = class_exists( 'MAD4B_SCP_Adapter_Registry' ) ? MAD4B_SCP_Adapter_Registry::instance()->get( 'dynamic-content' ) : null;
+			if ( ! $adapter || ! method_exists( $adapter, 'consume_publication_acceptance' ) ) {
+				$error = new WP_Error( 'mad4b_dynamic_acceptance_runtime_unavailable', 'Dynamic publication acceptance consumer is unavailable.' );
+				self::update_record( $mutation_id, array( 'status' => 'failed', 'error_code' => $error->get_error_code() ) );
+				return $error;
+			}
+			$consumed = $adapter->consume_publication_acceptance(
+				$id,
+				isset( $input['dynamic_acceptance_sha256'] ) ? (string) $input['dynamic_acceptance_sha256'] : ''
+			);
+			if ( is_wp_error( $consumed ) ) {
+				self::update_record( $mutation_id, array( 'status' => 'failed', 'error_code' => $consumed->get_error_code() ) );
+				return $consumed;
+			}
+		}
+
 		$result = wp_update_post( wp_slash( $update ), true );
 		if ( is_wp_error( $result ) ) {
 			self::update_record( $mutation_id, array( 'status' => 'failed', 'error_code' => $result->get_error_code() ) );
