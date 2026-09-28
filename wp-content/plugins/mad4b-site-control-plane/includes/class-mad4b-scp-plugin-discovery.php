@@ -302,6 +302,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 				'network_active' => ! empty( $plugin['network_active'] ),
 				'family' => isset( $plugin['family'] ) ? sanitize_key( (string) $plugin['family'] ) : 'unknown',
 				'adapter_id' => isset( $plugin['adapter_id'] ) ? sanitize_key( (string) $plugin['adapter_id'] ) : '',
+				'adapter_registered' => $adapter_registered,
+				'adapter_runtime_available' => $adapter_runtime_available,
 				'risk' => $risk,
 				'coverage_state' => $coverage_state,
 				'functional_state' => $functional_state,
