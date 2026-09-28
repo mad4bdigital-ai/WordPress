@@ -112,6 +112,12 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate wp-all-import-pro wp-all-export-pro mcp-adapter mad4b-site-control-plane --path="$WP_PATH"
 
+      - name: Prove plain WordPress WP All Import read bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAD4B_WP_PATH=/tmp/mad4b-wp-import-export-runtime php "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-wp-import-export-rest-bootstrap.php"
+
       - name: Prove server-local WP All Import CLI and deny synthetic Export CLI
         shell: bash
         run: |
