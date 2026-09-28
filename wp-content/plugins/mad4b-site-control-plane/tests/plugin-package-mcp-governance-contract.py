@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import re
+import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "includes" / "class-mad4b-scp-plugin-package.php"
@@ -131,5 +133,11 @@ require("repository_source_commit_sha()" in repository_fn, "repository package m
 require("wp-content/plugins/" in package and "repository_artifact_path" in package, "repository package path must derive from certified provider authority")
 require("'package_url'" not in schema and "'archive_path'" not in schema and "'repository_url'" not in schema, "caller must never select repository package location")
 
+
+subprocess.run(
+    [sys.executable, str(ROOT / "tests" / "remote-plugin-update-governance-contract.py")],
+    cwd=ROOT.parents[3],
+    check=True,
+)
 
 print("mad4b.plugin-package-mcp-governance.v1: PASS")
