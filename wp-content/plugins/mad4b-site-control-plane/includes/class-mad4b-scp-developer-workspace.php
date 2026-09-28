@@ -238,20 +238,35 @@ final class MAD4B_SCP_Developer_Workspace {
 		return 1 === preg_match( '/^[a-f0-9]{40}$/', $sha ) ? $sha : '';
 	}
 
-	private static function workspace_root() {
+	private static function workspace_root( $create = false ) {
+		$create = (bool) $create;
 		$configured = defined( 'MAD4B_MCP_DEVELOPER_WORKSPACE_ROOT' ) ? trim( (string) constant( 'MAD4B_MCP_DEVELOPER_WORKSPACE_ROOT' ) ) : '';
 		if ( '' !== $configured ) {
 			$base = $configured;
-			if ( ! file_exists( $base ) && ! wp_mkdir_p( $base ) ) return new WP_Error( 'mad4b_developer_workspace_root_create_failed', 'Configured Developer Workspace root could not be created.' );
+			if ( ! file_exists( $base ) ) {
+				if ( ! $create ) return new WP_Error( 'mad4b_developer_workspace_root_missing', 'Developer Workspace root does not exist.' );
+				if ( ! wp_mkdir_p( $base ) ) return new WP_Error( 'mad4b_developer_workspace_root_create_failed', 'Configured Developer Workspace root could not be created.' );
+			}
 		} else {
 			if ( ! class_exists( 'MAD4B_SCP_Policy' ) ) return new WP_Error( 'mad4b_developer_workspace_policy_unavailable', 'Workspace policy is unavailable.' );
-			$protected = MAD4B_SCP_Policy::prepare_backup_root();
-			if ( is_wp_error( $protected ) ) return $protected;
-			$base = trailingslashit( $protected ) . 'developer-workspaces';
-			if ( ! file_exists( $base ) && ! wp_mkdir_p( $base ) ) return new WP_Error( 'mad4b_developer_workspace_root_create_failed', 'Developer Workspace root could not be created.' );
+			$protected_path = MAD4B_SCP_Policy::backup_root();
+			if ( '' === $protected_path ) return new WP_Error( 'mad4b_developer_workspace_root_missing', 'Protected Developer Workspace parent is not configured.' );
+			if ( ! file_exists( $protected_path ) ) {
+				if ( ! $create ) return new WP_Error( 'mad4b_developer_workspace_root_missing', 'Developer Workspace root does not exist.' );
+				$protected = MAD4B_SCP_Policy::prepare_backup_root();
+				if ( is_wp_error( $protected ) ) return $protected;
+				$protected_path = $protected;
+			}
+			$protected_resolved = realpath( $protected_path );
+			if ( false === $protected_resolved || ! is_dir( $protected_resolved ) ) return new WP_Error( 'mad4b_developer_workspace_root_unusable', 'Protected Developer Workspace parent is not usable.' );
+			$base = trailingslashit( $protected_resolved ) . 'developer-workspaces';
+			if ( ! file_exists( $base ) ) {
+				if ( ! $create ) return new WP_Error( 'mad4b_developer_workspace_root_missing', 'Developer Workspace root does not exist.' );
+				if ( ! wp_mkdir_p( $base ) ) return new WP_Error( 'mad4b_developer_workspace_root_create_failed', 'Developer Workspace root could not be created.' );
+			}
 		}
 		$resolved = realpath( $base );
-		if ( false === $resolved || ! is_dir( $resolved ) || ! is_writable( $resolved ) ) return new WP_Error( 'mad4b_developer_workspace_root_unusable', 'Developer Workspace root is not usable.' );
+		if ( false === $resolved || ! is_dir( $resolved ) || ! is_readable( $resolved ) || ! is_writable( $resolved ) ) return new WP_Error( 'mad4b_developer_workspace_root_unusable', 'Developer Workspace root is not usable.' );
 		$check = rtrim( str_replace( '\\', '/', $resolved ), '/' );
 		foreach ( array( ABSPATH, WP_CONTENT_DIR ) as $web_root ) {
 			$web = realpath( $web_root );
@@ -259,7 +274,7 @@ final class MAD4B_SCP_Developer_Workspace {
 			$web = rtrim( str_replace( '\\', '/', $web ), '/' );
 			if ( $check === $web || 0 === strpos( $check, $web . '/' ) ) return new WP_Error( 'mad4b_developer_workspace_web_exposed', 'Developer Workspace must remain outside WordPress web roots.' );
 		}
-		@chmod( $resolved, 0700 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( $create ) @chmod( $resolved, 0700 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return $resolved;
 	}
 
@@ -288,7 +303,7 @@ final class MAD4B_SCP_Developer_Workspace {
 	private static function project_root( $slug, $create = false ) {
 		$slug = self::valid_slug( $slug );
 		if ( '' === $slug ) return new WP_Error( 'mad4b_developer_workspace_slug_invalid', 'Developer Workspace project slug is invalid.' );
-		$root = self::workspace_root();
+		$root = self::workspace_root( $create );
 		if ( is_wp_error( $root ) ) return $root;
 		$path = trailingslashit( $root ) . $slug;
 		if ( $create && ! file_exists( $path ) && ! wp_mkdir_p( $path ) ) return new WP_Error( 'mad4b_developer_workspace_project_create_failed', 'Developer Workspace project could not be created.' );
@@ -425,7 +440,7 @@ final class MAD4B_SCP_Developer_Workspace {
 		$lint = self::lint_php_files( $project, $workspace_manifest );
 		if ( is_wp_error( $lint ) ) return $lint;
 
-		wp_clean_plugins_cache( true );
+		wp_clean_plugins_cache( false );
 		$plugins = get_plugins();
 		$plugin_dir = trailingslashit( WP_PLUGIN_DIR ) . $slug;
 		$directory_exists = is_dir( $plugin_dir );
@@ -480,7 +495,7 @@ final class MAD4B_SCP_Developer_Workspace {
 		if ( is_wp_error( $gate ) ) return $gate;
 		$slug = self::valid_slug( isset( $input['project_slug'] ) ? $input['project_slug'] : '' );
 		if ( '' === $slug ) return new WP_Error( 'mad4b_developer_workspace_slug_invalid', 'Workspace project slug is invalid.' );
-		$root = self::workspace_root();
+		$root = self::workspace_root( true );
 		if ( is_wp_error( $root ) ) return $root;
 		$project_path = trailingslashit( $root ) . $slug;
 		$exists = is_dir( $project_path ) && ! is_link( $project_path );
