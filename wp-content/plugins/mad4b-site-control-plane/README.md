@@ -4,7 +4,13 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.80**.
+Current plugin version: **0.4.0-rc.81**.
+
+### rc.81 exact WP All Import read runtime bootstrap
+
+rc.81 ports the previously reviewed WP All Import REST/MCP read-runtime repair onto the consolidated rc.80 runtime-integrity line. The adapter may bootstrap only the fixed read-model allowlist when the exact composite provider certification and import-package integrity manifest are valid. Loading is delegated only to provider-owned autoloaders; no caller-controlled path, vendor require, filesystem scan, provider execution, cron/network call or mutation is introduced.
+
+The write operations `run-import` and `run-export` remain unmounted and fail closed. The release preserves rc.80 portable OAuth continuity, provider-isolation bootstrap and updater observability unchanged.
 
 ### rc.80 portable read-only provider isolation bootstrap
 
