@@ -227,6 +227,10 @@ MAD4B_SCP_Workflow_Providers::boot();
 MAD4B_SCP_Addon_Registry::boot();
 MAD4B_SCP_Operating_Model::boot();
 MAD4B_SCP_Governed_Ability_Overrides::boot();
+// Install the central mutation execution boundary before abilities are
+// materialized. Nested mad4b/write-execute invokes Ability::execute() directly,
+// so permission callbacks alone are not a sufficient execution fence.
+MAD4B_SCP_Authorization::boot();
 $mad4b_write_augment = array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' );
 if ( false === has_filter( 'wp_register_ability_args', $mad4b_write_augment ) ) add_filter( 'wp_register_ability_args', $mad4b_write_augment, 70, 2 );
 unset( $mad4b_write_augment );
