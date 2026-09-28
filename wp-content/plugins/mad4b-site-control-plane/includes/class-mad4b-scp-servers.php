@@ -48,6 +48,7 @@ final class MAD4B_SCP_Servers {
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status',
 				'mad4b/session-safe-diagnostics',
+				'mad4b/full-staging-authority-handshake',
 				'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute',
 				'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute',
 				'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute',
