@@ -9,6 +9,7 @@ main = (PLUGIN / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 operation = json.loads((PLUGIN / "config/operation-registry.json").read_text(encoding="utf-8"))
 transport = json.loads((PLUGIN / "config/provider-transport-registry.json").read_text(encoding="utf-8"))
 registry = (PLUGIN / "includes/class-mad4b-scp-operation-registry.php").read_text(encoding="utf-8")
+pipeline = (PLUGIN / "includes/class-mad4b-scp-operation-pipeline.php").read_text(encoding="utf-8")
 isolation = (PLUGIN / "includes/class-mad4b-scp-mcp-provider-isolation.php").read_text(encoding="utf-8")
 lifecycle = (PLUGIN / "includes/class-mad4b-scp-plugin-lifecycle.php").read_text(encoding="utf-8")
 abilities = (PLUGIN / "includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
@@ -27,6 +28,7 @@ all_php = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in (PLU
 assert "Version: 0.4.0-rc.83" in main
 for boot in (
     "MAD4B_SCP_Operation_Registry::boot();",
+    "MAD4B_SCP_Operation_Pipeline::boot();",
     "MAD4B_SCP_Plugin_Transaction::boot();",
     "MAD4B_SCP_Operation_Resume::boot();",
     "MAD4B_SCP_Provider_Transport_Registry::boot();",
@@ -62,6 +64,17 @@ assert "$aliases = self::aliases();" in registry
 assert "public static function read_projection" in registry
 assert "mad4b_operation_registry_alias_invalid" in registry
 assert "mad4b_operation_registry_projection_invalid" in registry
+for marker in (
+    "mad4b_operation_registry_pipeline_profiles_missing",
+    "mad4b_operation_registry_pipeline_profile_invalid",
+    "mad4b_operation_registry_pipeline_stage_invalid",
+    "mad4b_operation_registry_pipeline_condition_invalid",
+    "mad4b_operation_registry_pipeline_required_stage_missing",
+    "mad4b_operation_registry_pipeline_order_invalid",
+    "mad4b_operation_registry_pipeline_binding_invalid",
+):
+    assert marker in registry, marker
+assert "public static function pipeline_profile" in registry
 assert "registered_ability_gap" in registry
 assert "mad4b_operation_planner_unregistered" in registry
 assert "mad4b_operation_executor_unregistered" in registry
@@ -96,6 +109,7 @@ assert direct_projection == [
 ]
 assert "mad4b/dependency-impact" in catalog_projection
 assert "mad4b/provider-candidate-matrix" in catalog_projection
+assert "mad4b/operation-pipeline-compile" in catalog_projection
 assert "mad4b/provider-transport-registry-status" in catalog_projection
 
 assert transport["contract"] == "mad4b.provider-transport-registry.v1"
@@ -160,6 +174,20 @@ assert "provider_candidate_matrix" in adapter_registry
 assert "infer_provider_id" in dependency_impact
 assert "certified-providers.json" in dependency_impact
 assert "'provider_id_inferred' => $provider_inferred" in dependency_impact
+
+assert "mad4b.operation-pipeline-compile.v1" in pipeline
+for marker in (
+    "planner",
+    "authorization",
+    "executor",
+    "verification",
+    "exact_executor_from_plan",
+    "generic_mutation_dispatch",
+    "arbitrary_stage_execution",
+    "pipeline_sha256",
+):
+    assert marker in pipeline, marker
+assert "wp_register_ability( 'mad4b/operation-pipeline-compile'" in pipeline
 
 assert "mad4b.plugin-transaction-plan.v1" in transaction
 assert "generic_mutation_dispatch" in transaction
