@@ -291,8 +291,8 @@ if not (pipeline_calc < bindings_emit and state_calc < bindings_emit and bundle_
 
 
 # Pre-merge hardening invariants: exact acceptance-to-publication binding.
-abilities = read("includes/class-mad4b-scp-abilities.php")
-mutations = read("includes/class-mad4b-scp-mutation-manager.php")
+abilities = (root / "includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+mutations = (root / "includes/class-mad4b-scp-mutation-manager.php").read_text(encoding="utf-8")
 
 for marker in [
     "dynamic_acceptance_sha256",
