@@ -249,7 +249,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 		return $cert;
 	}
 
-	public static function proposal_for_candidate( array $candidate, $include_source = false ) {
+	public static function proposal_for_candidate( array $candidate, $include_source = false, $include_freshness = true ) {
 		$config = self::config();
 		$enabled = ! empty( $config['enabled_by_default'] );
 		$mode = self::effective_mode( $config );
@@ -259,6 +259,11 @@ final class MAD4B_SCP_Provider_Autopilot {
 		$cert = $enabled && ! empty( $config['auto_shadow_certify_provider'] ) && ! empty( $adapter )
 			? self::shadow_certification( $candidate, $mode, $adapter )
 			: array();
+		if ( ! $include_freshness ) {
+			foreach ( array( 'candidate_ttl_seconds', 'observed_at_unix', 'expires_at_unix', 'fresh', 'recompute_before_promotion' ) as $freshness_key ) {
+				unset( $adapter[ $freshness_key ], $cert[ $freshness_key ] );
+			}
+		}
 		return array(
 			'contract' => self::CONTRACT,
 			'enabled' => $enabled,
@@ -297,7 +302,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 		$blockers = array();
 		$automatic_steps = array();
 		$governed_steps = array();
-		$autopilot = isset( $candidate['autopilot'] ) && is_array( $candidate['autopilot'] ) ? $candidate['autopilot'] : self::proposal_for_candidate( $candidate );
+		$autopilot = self::proposal_for_candidate( $candidate, false, true );
 
 		if ( $target_index >= 1 ) {
 			$requirements[] = 'installed_plugin_identity';
@@ -385,7 +390,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 				'plugin_file' => isset( $candidate['plugin_file'] ) ? (string) $candidate['plugin_file'] : '',
 				'support_level' => isset( $candidate['support_level'] ) ? (string) $candidate['support_level'] : '',
 				'candidate_fingerprint' => isset( $candidate['candidate_fingerprint'] ) ? (string) $candidate['candidate_fingerprint'] : '',
-				'autopilot' => self::proposal_for_candidate( $candidate, '' !== $plugin ),
+				'autopilot' => self::proposal_for_candidate( $candidate, '' !== $plugin, false ),
 			);
 		}
 		if ( '' !== $plugin && empty( $items ) ) return new WP_Error( 'mad4b_provider_autopilot_plugin_not_found', 'Requested installed plugin was not found in provider discovery.' );
@@ -399,6 +404,8 @@ final class MAD4B_SCP_Provider_Autopilot {
 		);
 		$encoded = wp_json_encode( $result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$result['plan_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		$result['freshness_generated_at_unix'] = time();
+		$result['recompute_before_promotion'] = true;
 		return $result;
 	}
 }
