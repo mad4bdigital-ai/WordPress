@@ -54,7 +54,9 @@ for marker in required_dispatch:
 dispatch_catalog = servers.split("public static function chatgpt_dispatch_transport_tools", 1)[1].split("public static function chatgpt_tools", 1)[0]
 if "mad4b/approval-plan" in dispatch_catalog:
     raise SystemExit("approval-plan must remain hidden behind write-execute, not mounted as a direct ChatGPT mutation transport")
-if "array( 'mad4b/write-execute', 'mad4b/enrollment-execute' )" not in dispatch_catalog:
+if "array( 'mad4b/write-execute', 'mad4b/developer-execute', 'mad4b/enrollment-execute' )" not in dispatch_catalog:
     raise SystemExit("compact ChatGPT mutation transport set drifted unexpectedly")
+if "mad4b/developer-breakglass" in dispatch_catalog:
+    raise SystemExit("Developer Breakglass must never enter the compact ChatGPT dispatcher inventory")
 
 print("mad4b.write-dispatch-nested-transport.contract.v3: PASS")
