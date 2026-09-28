@@ -164,7 +164,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 		return 'generated-' . $base . '-' . self::candidate_identity_suffix( $candidate );
 	}
 
-	private static function adapter_candidate( array $candidate, $mode ) {
+	private static function adapter_candidate( array $candidate, $mode, $include_source = false ) {
 		$plugin_file = self::normalize_plugin_file( isset( $candidate['plugin_file'] ) ? $candidate['plugin_file'] : '' );
 		$adapter_id = self::adapter_id_for( $candidate );
 		$class_name = self::class_name_for( $candidate );
@@ -198,8 +198,8 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'declared_abilities' => array(),
 			'write_abilities' => array(),
 			'generated_php_sha256' => hash( 'sha256', $skeleton ),
-			'generated_php' => $skeleton,
 		);
+		if ( $include_source ) $descriptor['generated_php'] = $skeleton;
 		$encoded = wp_json_encode( $descriptor, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$descriptor['candidate_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
 		$config = self::config();
@@ -249,12 +249,12 @@ final class MAD4B_SCP_Provider_Autopilot {
 		return $cert;
 	}
 
-	public static function proposal_for_candidate( array $candidate ) {
+	public static function proposal_for_candidate( array $candidate, $include_source = false ) {
 		$config = self::config();
 		$enabled = ! empty( $config['enabled_by_default'] );
 		$mode = self::effective_mode( $config );
 		$adapter = $enabled && ! empty( $config['auto_generate_adapter_candidate'] )
-			? self::adapter_candidate( $candidate, $mode )
+			? self::adapter_candidate( $candidate, $mode, (bool) $include_source )
 			: array();
 		$cert = $enabled && ! empty( $config['auto_shadow_certify_provider'] ) && ! empty( $adapter )
 			? self::shadow_certification( $candidate, $mode, $adapter )
@@ -354,10 +354,6 @@ final class MAD4B_SCP_Provider_Autopilot {
 			'governed_steps' => $governed_steps,
 			'autopilot_candidate_sha256' => isset( $autopilot['adapter_candidate']['candidate_sha256'] ) ? (string) $autopilot['adapter_candidate']['candidate_sha256'] : '',
 			'plugin_state_sha256' => isset( $autopilot['adapter_candidate']['plugin_state_sha256'] ) ? (string) $autopilot['adapter_candidate']['plugin_state_sha256'] : '',
-			'candidate_observed_at_unix' => isset( $autopilot['adapter_candidate']['observed_at_unix'] ) ? (int) $autopilot['adapter_candidate']['observed_at_unix'] : 0,
-			'candidate_expires_at_unix' => isset( $autopilot['adapter_candidate']['expires_at_unix'] ) ? (int) $autopilot['adapter_candidate']['expires_at_unix'] : 0,
-			'candidate_fresh' => ! empty( $autopilot['adapter_candidate']['fresh'] ),
-			'recompute_before_promotion' => true,
 			'shadow_certification_sha256' => isset( $autopilot['shadow_certification']['certification_sha256'] ) ? (string) $autopilot['shadow_certification']['certification_sha256'] : '',
 			'auto_materialize_candidate_code' => false,
 			'auto_register_generated_adapter' => false,
@@ -370,6 +366,10 @@ final class MAD4B_SCP_Provider_Autopilot {
 		);
 		$encoded = wp_json_encode( $result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$result['promotion_plan_sha256'] = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		$result['candidate_observed_at_unix'] = isset( $autopilot['adapter_candidate']['observed_at_unix'] ) ? (int) $autopilot['adapter_candidate']['observed_at_unix'] : 0;
+		$result['candidate_expires_at_unix'] = isset( $autopilot['adapter_candidate']['expires_at_unix'] ) ? (int) $autopilot['adapter_candidate']['expires_at_unix'] : 0;
+		$result['candidate_fresh'] = ! empty( $autopilot['adapter_candidate']['fresh'] );
+		$result['recompute_before_promotion'] = true;
 		return $result;
 	}
 
@@ -385,7 +385,7 @@ final class MAD4B_SCP_Provider_Autopilot {
 				'plugin_file' => isset( $candidate['plugin_file'] ) ? (string) $candidate['plugin_file'] : '',
 				'support_level' => isset( $candidate['support_level'] ) ? (string) $candidate['support_level'] : '',
 				'candidate_fingerprint' => isset( $candidate['candidate_fingerprint'] ) ? (string) $candidate['candidate_fingerprint'] : '',
-				'autopilot' => self::proposal_for_candidate( $candidate ),
+				'autopilot' => self::proposal_for_candidate( $candidate, '' !== $plugin ),
 			);
 		}
 		if ( '' !== $plugin && empty( $items ) ) return new WP_Error( 'mad4b_provider_autopilot_plugin_not_found', 'Requested installed plugin was not found in provider discovery.' );
