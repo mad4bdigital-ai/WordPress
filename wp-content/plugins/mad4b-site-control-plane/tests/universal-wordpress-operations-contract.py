@@ -332,3 +332,10 @@ assert cert_hash_pos < cert_observed_pos, "shadow freshness metadata must stay o
 candidate_hash_pos = provider_autopilot.index("$descriptor['candidate_sha256']")
 candidate_source_pos = provider_autopilot.index("if ( $include_source ) $descriptor['generated_php']")
 assert candidate_hash_pos < candidate_source_pos, "candidate identity must not depend on whether generated PHP source is projected"
+
+assert "proposal_for_candidate( $row, false, false )" in plugin_discovery
+assert "self::proposal_for_candidate( $candidate, false, true )" in provider_autopilot
+assert "self::proposal_for_candidate( $candidate, '' !== $plugin, false )" in provider_autopilot
+plan_hash_pos = provider_autopilot.index("$result['plan_sha256']")
+plan_freshness_pos = provider_autopilot.index("$result['freshness_generated_at_unix']")
+assert plan_hash_pos < plan_freshness_pos, "autopilot plan freshness must stay outside deterministic plan hash"
