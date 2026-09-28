@@ -579,23 +579,15 @@ final class MAD4B_SCP_Developer_Workspace {
 	}
 
 	private static function lint_php_files( $project, array $manifest ) {
-		if ( ! defined( 'PHP_BINARY' ) || '' === PHP_BINARY || ! is_executable( PHP_BINARY ) ) return new WP_Error( 'mad4b_developer_workspace_php_linter_unavailable', 'PHP binary is unavailable for mandatory syntax validation.' );
+		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! method_exists( 'MAD4B_SCP_Developer_Runtime', 'lint_php_source_file' ) ) return new WP_Error( 'mad4b_developer_workspace_php_linter_unavailable', 'Isolated Developer PHP syntax validator is unavailable.' );
 		$count = 0;
 		foreach ( $manifest['files'] as $file ) {
 			if ( 'php' !== strtolower( pathinfo( $file['path'], PATHINFO_EXTENSION ) ) ) continue;
 			$count++;
 			if ( $count > 200 ) return new WP_Error( 'mad4b_developer_workspace_php_file_limit', 'Workspace exceeds the bounded PHP lint file count.' );
 			$absolute = trailingslashit( $project ) . str_replace( '/', DIRECTORY_SEPARATOR, $file['path'] );
-			$descriptors = array( 0 => array( 'pipe', 'r' ), 1 => array( 'pipe', 'w' ), 2 => array( 'pipe', 'w' ) );
-			$process = proc_open( array( PHP_BINARY, '-l', $absolute ), $descriptors, $pipes, $project, array( 'PATH' => getenv( 'PATH' ) ?: '' ) );
-			if ( ! is_resource( $process ) ) return new WP_Error( 'mad4b_developer_workspace_php_lint_start_failed', 'PHP syntax validator could not start.' );
-			fclose( $pipes[0] );
-			$stdout = stream_get_contents( $pipes[1] );
-			$stderr = stream_get_contents( $pipes[2] );
-			fclose( $pipes[1] );
-			fclose( $pipes[2] );
-			$exit = proc_close( $process );
-			if ( 0 !== (int) $exit ) return new WP_Error( 'mad4b_developer_workspace_php_lint_failed', 'Workspace PHP syntax validation failed.', array( 'path' => $file['path'], 'diagnostic' => substr( sanitize_text_field( (string) $stderr . ' ' . (string) $stdout ), 0, 500 ) ) );
+			$lint = MAD4B_SCP_Developer_Runtime::lint_php_source_file( $absolute, $project, 10 );
+			if ( is_wp_error( $lint ) ) return new WP_Error( 'mad4b_developer_workspace_php_lint_failed', 'Workspace PHP syntax validation failed.', array( 'path' => $file['path'], 'cause_code' => $lint->get_error_code(), 'diagnostic' => $lint->get_error_message() ) );
 		}
 		return array( 'php_files_linted' => $count );
 	}
