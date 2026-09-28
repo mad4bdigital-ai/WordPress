@@ -264,7 +264,7 @@ for marker in (
     "planner",
     "authorization",
     "executor",
-    "verification",
+    "readback",
     "exact_executor_from_plan",
     "generic_mutation_dispatch",
     "arbitrary_stage_execution",
