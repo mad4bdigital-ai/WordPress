@@ -168,8 +168,8 @@ final class MAD4B_SCP_AI_Approval {
 				$ability = isset( $ticket['ability_name'] ) ? (string) $ticket['ability_name'] : '';
 				$provider = isset( $ticket['provider'] ) ? sanitize_key( (string) $ticket['provider'] ) : '';
 				$ticket_server = sanitize_key( isset( $ticket['server_id'] ) ? (string) $ticket['server_id'] : '' );
-				$protected_workspace_ticket = 'mad4b-developer' === $ticket_server && 'mad4b/developer-workspace-apply' === $ability && 'core' === $provider;
-				if ( 'mad4b-write' !== $ticket_server && ! $protected_workspace_ticket ) $blockers[] = 'ai_approval_server_denied';
+				$bounded_developer_ticket = 'mad4b-developer' === $ticket_server && in_array( $ability, array( 'mad4b/developer-workspace-apply', 'mad4b/developer-workspace-promote' ), true ) && 'core' === $provider;
+				if ( 'mad4b-write' !== $ticket_server && ! $bounded_developer_ticket ) $blockers[] = 'ai_approval_server_denied';
 				if ( ! empty( $ticket['expires_at'] ) && strtotime( $ticket['expires_at'] . ' UTC' ) < time() ) $blockers[] = 'ai_approval_ticket_expired';
 				if ( empty( $ticket['payload_sha256'] ) || ! hash_equals( strtolower( (string) $ticket['payload_sha256'] ), $exact['payload_sha256'] ) ) $blockers[] = 'ai_approval_payload_mismatch';
 				$classification = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::classify( $ability, $provider, $exact['operation_input'] ) : array();
