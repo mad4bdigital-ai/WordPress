@@ -4,6 +4,7 @@ root = Path(__file__).resolve().parents[1]
 transport = (root / "includes" / "class-mad4b-scp-transport-context.php").read_text(encoding="utf-8")
 abilities = (root / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 
 required_transport = [
     "private static $write_dispatch_target = '';",
@@ -27,7 +28,9 @@ for marker in required_transport:
 required_dispatch = [
     "$target_entered = false;",
     "$execute_target = static function () use ( $ability, $params, $ability_name, $actual_schema_sha256, &$target_entered )",
-    "$target_entered = true;",
+    "MAD4B_SCP_Authorization::begin_execution_callback_observation( $ability_name );",
+    "MAD4B_SCP_Authorization::execution_callback_started( $ability_name )",
+    "MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name )",
     "if ( ! $target_entered ) {",
     "mad4b_write_dispatch_target_not_started",
     "'mutation_state' => 'not_started'",
@@ -51,6 +54,21 @@ for marker in required_dispatch:
     if marker not in abilities:
         raise SystemExit("write dispatcher target binding/governance invariant missing: " + marker)
 
+required_authorization_boundary = [
+    "private static $execution_callback_started = array();",
+    "public static function begin_execution_callback_observation",
+    "public static function mark_execution_callback_started",
+    "public static function execution_callback_started",
+    "public static function clear_execution_callback_observation",
+    "MAD4B_SCP_Authorization::mark_execution_callback_started( $name );",
+]
+for marker in required_authorization_boundary:
+    if marker not in authorization:
+        raise SystemExit("execution callback boundary invariant missing: " + marker)
+
+if "'mad4b_approval_replay_denied' !== (string) $error->get_error_code()" in authorization:
+    raise SystemExit("remote permission denial audit must not hide non-replay denial reason codes")
+
 dispatch_catalog = servers.split("public static function chatgpt_dispatch_transport_tools", 1)[1].split("public static function chatgpt_tools", 1)[0]
 if "mad4b/approval-plan" in dispatch_catalog:
     raise SystemExit("approval-plan must remain hidden behind write-execute, not mounted as a direct ChatGPT mutation transport")
@@ -59,4 +77,4 @@ if "array( 'mad4b/write-execute', 'mad4b/developer-execute', 'mad4b/enrollment-e
 if "mad4b/developer-breakglass" in dispatch_catalog:
     raise SystemExit("Developer Breakglass must never enter the compact ChatGPT dispatcher inventory")
 
-print("mad4b.write-dispatch-nested-transport.contract.v3: PASS")
+print("mad4b.write-dispatch-nested-transport.contract.v5: PASS")
