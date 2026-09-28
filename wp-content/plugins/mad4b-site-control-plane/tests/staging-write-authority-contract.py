@@ -47,10 +47,11 @@ if not write.rstrip().endswith('}'):
     raise SystemExit('write authority file must end at the canonical class closing brace')
 
 augment_body = write.split('public static function augment_write_ability', 1)[1].split('public static function reconciliation_plan', 1)[0]
-if "if ( 'enrollment' === $mcp_surface ) return $args;" not in augment_body:
-    raise SystemExit('bounded Enrollment dispatcher must remain outside governed-write augmentation')
-if augment_body.find("if ( 'enrollment' === $mcp_surface ) return $args;") > augment_body.find("self::APPROVAL_INPUT_KEY"):
-    raise SystemExit('Enrollment exclusion must run before normal write approval input augmentation')
+dispatch_exclusion = "if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch' ), true ) ) return $args;"
+if dispatch_exclusion not in augment_body:
+    raise SystemExit('bounded Enrollment and Developer dispatchers must remain outside governed-write augmentation')
+if augment_body.find(dispatch_exclusion) > augment_body.find("self::APPROVAL_INPUT_KEY"):
+    raise SystemExit('Dispatcher exclusions must run before normal write approval input augmentation')
 for marker in [
     "$mcp_meta['surface'] = 'enrollment';",
     "$mcp_meta['generic_remote_admin'] = false;",
@@ -719,6 +720,10 @@ for marker in [
     "breakglass_absent_from_write_inventory",
     "approval_planner_governed",
     "approval_planner_no_prior_ticket",
+    "approval_planner_target_agent_bounded",
+    "approval_planner_target_server_bounded",
+    "approval_planner_developer_dispatch_explicit",
+    "approval_planner_developer_breakglass_denied",
     "approval_planner_self_agent_only",
     "approval_planner_breakglass_denied",
     "control_plane_not_on_rest_enabled_hook",

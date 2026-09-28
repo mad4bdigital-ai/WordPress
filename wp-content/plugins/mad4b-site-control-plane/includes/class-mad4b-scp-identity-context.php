@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Identity_Context {
 	const MAX_SCOPES = 200;
 	private static $request_approval_ticket_id = '';
+	private static $request_subject_override = array();
 
 	public static function current() {
 		$context = array(
@@ -22,6 +23,9 @@ final class MAD4B_SCP_Identity_Context {
 			'origin' => '',
 		);
 		$context = apply_filters( 'mad4b_scp_authenticated_subject_context', $context );
+		if ( is_array( $context ) && self::$request_subject_override ) {
+			foreach ( self::$request_subject_override as $key => $value ) $context[ $key ] = $value;
+		}
 		if ( is_array( $context ) && empty( $context['approval_ticket_id'] ) && '' !== self::$request_approval_ticket_id ) {
 			$context['approval_ticket_id'] = self::$request_approval_ticket_id;
 		}
@@ -42,6 +46,32 @@ final class MAD4B_SCP_Identity_Context {
 		if ( '' !== self::$request_approval_ticket_id && ! hash_equals( self::$request_approval_ticket_id, $ticket_id ) ) return false;
 		self::$request_approval_ticket_id = $ticket_id;
 		return true;
+	}
+
+	/**
+	 * Apply one bounded request-local subject override while executing a nested
+	 * Developer dispatcher target. This never changes token scopes, user identity,
+	 * credentials or persistent bindings and is cleared in a finally block.
+	 */
+	public static function with_request_subject_override( $subject_type, $subject_fingerprint, $origin, $callback ) {
+		if ( ! is_callable( $callback ) ) return new WP_Error( 'mad4b_identity_override_callback_invalid', 'Request-local identity override requires a callable target.' );
+		if ( self::$request_subject_override ) return new WP_Error( 'mad4b_identity_override_nested_denied', 'Nested request-local identity overrides are not allowed.' );
+		$subject_type = sanitize_key( (string) $subject_type );
+		$subject_fingerprint = strtolower( trim( (string) $subject_fingerprint ) );
+		$origin = sanitize_key( (string) $origin );
+		if ( 'oauth_developer' !== $subject_type || 1 !== preg_match( '/^[a-f0-9]{64}$/', $subject_fingerprint ) || 'mcp_developer_dispatch' !== $origin ) {
+			return new WP_Error( 'mad4b_identity_override_denied', 'Only the bounded Developer dispatcher identity override is permitted.' );
+		}
+		self::$request_subject_override = array(
+			'subject_type' => $subject_type,
+			'subject_fingerprint' => $subject_fingerprint,
+			'origin' => $origin,
+		);
+		try {
+			return call_user_func( $callback );
+		} finally {
+			self::$request_subject_override = array();
+		}
 	}
 
 	public static function normalize( $context ) {

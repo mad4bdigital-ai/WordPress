@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import re
+import subprocess
 
 root = Path(__file__).resolve().parents[1]
 inc = root / "includes"
 
 developer = (inc / "class-mad4b-scp-developer-runtime.php").read_text(encoding="utf-8")
+workspace = (inc / "class-mad4b-scp-developer-workspace.php").read_text(encoding="utf-8")
+abilities = (inc / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+identity = (inc / "class-mad4b-scp-identity-context.php").read_text(encoding="utf-8")
+planning = (inc / "class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
+write_authority = (inc / "class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
 servers = (inc / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 policy = (inc / "class-mad4b-scp-policy.php").read_text(encoding="utf-8")
 auth = (inc / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
@@ -31,11 +37,18 @@ required_tools = [
     "mad4b/developer-wp-cli",
     "mad4b/developer-filesystem",
     "mad4b/developer-package-install",
+    "mad4b/developer-workspace-status",
+    "mad4b/developer-workspace-read",
+    "mad4b/developer-workspace-promote-plan",
+    "mad4b/developer-workspace-apply",
+    "mad4b/developer-workspace-promote",
     "mad4b/developer-breakglass-shell",
     "mad4b/developer-breakglass-wp-eval",
 ]
 for tool in required_tools:
-    assert tool in developer, tool
+    assert tool in developer or tool in workspace, tool
+
+subprocess.run(["php", "-l", str(inc / "class-mad4b-scp-developer-workspace.php")], check=True)
 
 for server in ["mad4b-developer", "mad4b-developer-breakglass"]:
     assert server in servers, server
@@ -108,7 +121,102 @@ assert "'network_sandbox_binary_present' => '' !== self::network_sandbox_binary(
 assert "self::runtime_gate( false, $input, false )" in developer
 assert "secret_redaction_enabled" in developer
 assert "proc_open" in developer
+assert "public static function lint_workspace_php_file" in developer
+assert "mad4b/developer-workspace-php-lint" in developer
+assert "array( PHP_BINARY, '-l', $file )" in developer
+assert "mad4b_developer_workspace_lint_production_denied" in developer
+assert "mad4b_developer_workspace_lint_environment_denied" in developer
+assert "mad4b_developer_workspace_lint_runtime_not_ready" in developer
+assert "MAD4B_SCP_Developer_Runtime::lint_workspace_php_file( $absolute, $project )" in workspace
+assert "private static function php_token_parse" in workspace
+assert "token_get_all( $code )" in workspace
+assert "mad4b_developer_workspace_php_primitive_denied" in workspace
+assert "$token_guard = self::php_token_parse( $source, $file['path'] );" in workspace
 assert "wp eval" not in developer.lower() or "'eval'" in developer
+
+# Developer Workspace is the governed source-code path: author outside web roots,
+# bind every batch to an exact manifest and promote only after lint/backup/readback.
+for marker in [
+    "const CONTRACT = 'mad4b.developer-workspace.v1'",
+    "const PROMOTION_PLAN_CONTRACT = 'mad4b.developer-workspace-promotion-plan.v1'",
+    "const PROMOTION_CONTRACT = 'mad4b.developer-workspace-promotion.v1'",
+    "mad4b/developer-workspace-status",
+    "mad4b/developer-workspace-read",
+    "mad4b/developer-workspace-apply",
+    "mad4b/developer-workspace-promote",
+    "MAD4B_SCP_Policy::prepare_backup_root()",
+    "mad4b_developer_workspace_web_exposed",
+    "expected_manifest_sha256",
+    "expected_workspace_manifest_sha256",
+    "expected_installed_manifest_sha256",
+    "expected_plan_sha256",
+    "promotion_plan_sha256",
+    "mad4b_developer_workspace_promotion_plan_changed",
+    "mad4b_developer_workspace_target_manifest_stale",
+    "mad4b_developer_workspace_target_absence_confirmation_required",
+    "snapshot_project",
+    "restore_snapshot",
+    "lint_php_files",
+    "Plugin_Upgrader",
+    "overwrite_package",
+    "backup_installed_plugin",
+    "rollback_plugin",
+    "verify_installed",
+    "readback_verified",
+    "installed_manifest_sha256",
+    "MAD4B_SCP_Developer_Runtime::lint_workspace_php_file",
+    "exact_grant",
+    "MAD4B_MCP_DEVELOPER_WORKSPACE_ROOT",
+    "wordpress_parent_default",
+    ".mad4b-developer-workspaces",
+    "workspace_root( $create = false )",
+    "addon_registry_state",
+    "unregistered_development_candidate",
+    "production_promotion_authorized' => false",
+    "breakglass_authorized' => false",
+]:
+    assert marker in workspace, marker
+
+for forbidden in [
+    "shell_exec(",
+    "eval(",
+    "database-raw-query",
+    "developer-breakglass-shell",
+    "developer-breakglass-wp-eval",
+]:
+    assert forbidden not in workspace, "Developer Workspace leaked forbidden primitive: " + forbidden
+
+assert "class-mad4b-scp-developer-workspace.php" in plugin
+assert "MAD4B_SCP_Developer_Workspace::tool_names()" in developer
+assert "'mad4b/developer-workspace-apply' === $ability_name" in impact
+assert "'development_source'" in impact
+assert "'protected_workspace'" in impact
+assert "if ( 'mad4b/developer-workspace-apply' === (string) $ability_name ) return true;" in impact
+ai_approval = (inc / "class-mad4b-scp-ai-approval.php").read_text(encoding="utf-8")
+assert "$bounded_developer_ticket" in ai_approval
+assert "ai_approval_developer_executor_separation_required" in ai_approval
+assert "developer_executor_separation_required' => true" in ai_approval
+assert "ai_approval_developer_promotion_plan_digest_invalid" in ai_approval
+assert "ai_approval_developer_promotion_workspace_digest_invalid" in ai_approval
+assert "ai_approval_developer_promotion_installed_digest_invalid" in ai_approval
+assert "array( 'mad4b/developer-workspace-apply', 'mad4b/developer-workspace-promote' )" in ai_approval
+assert "'mad4b/developer-workspace-promote' === $ability_name" in impact
+assert "'certified_package'" in impact
+assert "'development_promotion'" in impact
+assert "array( 'mad4b/developer-workspace-apply', 'mad4b/developer-workspace-promote' )" in impact
+assert "0 === strpos( $ability_name, 'mad4b/developer-' ) && ! $bounded_developer_ai" in impact
+
+# Read-only Workspace status/planning must not create durable state or clear
+# persistent plugin-update transients.
+status_body = workspace.split("public static function status", 1)[1].split("public static function read", 1)[0]
+plan_body = workspace.split("public static function promote_plan", 1)[1].split("public static function apply", 1)[0]
+for read_body in [status_body, plan_body]:
+    assert "workspace_root( true )" not in read_body
+    assert "wp_mkdir_p(" not in read_body
+    assert "prepare_backup_root()" not in read_body
+assert "wp_clean_plugins_cache( true )" not in plan_body
+assert "wp_clean_plugins_cache( false )" in plan_body
+assert "'workspace_exists' => false" in status_body
 
 # No direct PHP eval()/shell_exec()/system()/passthru() execution primitive.
 for pattern in [
@@ -128,9 +236,39 @@ start = servers.index("public static function chatgpt_tools")
 end = servers.index("private static function surface_for_server", start)
 chatgpt = servers[start:end]
 assert "developer-runtime-status" not in chatgpt
+for direct_workspace_tool in ["developer-workspace-status", "developer-workspace-read", "developer-workspace-promote-plan", "developer-workspace-apply", "developer-workspace-promote"]:
+    assert direct_workspace_tool not in chatgpt, direct_workspace_tool
 assert "self::core_tools( 'mad4b-developer' )" not in chatgpt
 assert "self::core_tools( 'mad4b-developer-breakglass' )" not in chatgpt
 assert "array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in chatgpt
+
+# The normal Developer plane may be reached from the same compact ChatGPT app
+# only through the bounded dispatcher; direct Developer tools remain unmounted.
+for dispatcher in [
+    "mad4b/developer-discover",
+    "mad4b/developer-info",
+    "mad4b/developer-execute",
+]:
+    assert dispatcher in abilities, dispatcher
+    assert dispatcher in servers, dispatcher
+for direct_tool in [
+    "mad4b/developer-wp-cli",
+    "mad4b/developer-filesystem",
+    "mad4b/developer-package-install",
+]:
+    assert f"'{direct_tool}'" not in chatgpt, direct_tool
+assert "'mad4b/developer-execute'" in servers
+assert "developer-dispatch" in abilities
+assert "generic_remote_admin'] = false" in abilities
+assert "production_mutation_allowed'] = false" in abilities
+assert "breakglass_allowed'] = false" in abilities
+assert "public function can_developer_dispatch" in abilities
+assert "public function developer_execute" in abilities
+assert "MAD4B_SCP_Transport_Context::with_developer_dispatch_target" in abilities
+assert "private function developer_approval_lane" in abilities
+assert "MAD4B_SCP_Impact_Policy::classify" in abilities
+assert "production_mutation' => false" in abilities
+assert "breakglass_authorized' => false" in abilities
 
 authority_tools = [
     "mad4b/developer-authority-status",
@@ -206,6 +344,33 @@ for source in [oauth_context, oauth_header, oauth_challenge]:
 derivation_marker = "hash( 'sha256', 'oauth-developer' . \"\\0\" ."
 assert derivation_marker in authority
 assert derivation_marker in oauth
+for marker in [
+    "public static function chatgpt_dispatch_identity",
+    "mad4b:authority:step-up",
+    "mcp_developer_dispatch",
+    "public static function chatgpt_dispatch_scope_allowed",
+    "MAD4B_SCP_Transport_Context::developer_dispatch_target_matches",
+    "production_authorized' => false",
+    "breakglass_authorized' => false",
+]:
+    assert marker in authority, marker
+for marker in [
+    "private static $request_subject_override = array();",
+    "public static function with_request_subject_override",
+    "'oauth_developer' !== $subject_type",
+    "'mcp_developer_dispatch' !== $origin",
+    "finally",
+]:
+    assert marker in identity, marker
+for marker in [
+    "private static $developer_dispatch_target = '';",
+    "public static function with_developer_dispatch_target",
+    "public static function developer_dispatch_target_matches",
+    "MAD4B_SCP_Developer_Authority::chatgpt_dispatch_identity()",
+    "MAD4B_SCP_Identity_Context::with_request_subject_override",
+    "mad4b_developer_dispatch_breakglass_denied",
+]:
+    assert marker in transport, marker
 assert "'subject_type' => $subject_type" in oauth
 assert "'oauth_developer'" in oauth
 assert "'server:mad4b-developer'" in local_oauth
@@ -225,12 +390,25 @@ for marker in [
 
 assert "developer-breakglass-" in impact and "return 'exceptional'" in impact
 assert "developer-" in impact and "return 'high'" in impact
+assert "0 === strpos( $ability_name, 'mad4b/developer-' )" in impact
+assert "human_only" in impact
 assert "MAD4B_SCP_Authorization::claim_mutation" in auth
 assert "MAD4B_SCP_Approval_Tickets::claim_exact" in auth
 assert "MAD4B_SCP_Budgets::reserve" in auth
 assert "finalize_execution_claim" in auth
 assert "array( 'content', 'write', 'admin', 'breakglass', 'developer', 'developer-breakglass' )" in auth
+assert "MAD4B_SCP_Developer_Authority::chatgpt_dispatch_scope_allowed" in auth
 assert "'server_id' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Servers::expected_server_ids() )" in governance
+for marker in [
+    "'mad4b-developer' === $server_id",
+    "MAD4B_SCP_Developer_Authority::status()",
+    "MAD4B_SCP_Developer_Runtime::tool_names( false )",
+    "mad4b_remote_plan_developer_target_denied",
+    "mad4b_remote_plan_developer_read_target_denied",
+    "Developer approval planning may target only the normal Developer inventory; Breakglass is excluded.",
+]:
+    assert marker in planning, marker
+assert "array( 'enrollment', 'developer-dispatch' )" in write_authority
 assert "MAD4B_SCP_Impact_Policy::ticket_class_for" in governance
 assert "MAD4B_SCP_Approval_Tickets::create_pending" in governance
 assert "class-mad4b-scp-developer-runtime.php" in plugin
@@ -246,4 +424,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v20: PASS")
+print("mad4b.developer-runtime-contract.v25: PASS")

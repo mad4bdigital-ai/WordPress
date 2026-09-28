@@ -1039,7 +1039,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		// step-up scope, exact ChatGPT client, enrolled administrator, allowlisted
 		// Remote Operation Parity target, and exact registration/policy/schema
 		// digests. It must never inherit normal governed-write/NHI approval metadata.
-		if ( 'enrollment' === $mcp_surface ) return $args;
+		if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch' ), true ) ) return $args;
 
 		$ai_review = class_exists( 'MAD4B_SCP_Context_Authority' ) && MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY === (string) $name;
 		$ai_approval = class_exists( 'MAD4B_SCP_AI_Approval' ) && MAD4B_SCP_AI_Approval::ABILITY === (string) $name;

@@ -55,6 +55,22 @@ final class MAD4B_SCP_Abilities {
 				'input' => array( 'type' => 'object', 'default' => array() ),
 			), array( 'ability_name', 'expected_input_schema_sha256' )
 		), false, false, true, false );
+		$this->add( 'mad4b/developer-discover', 'Discover Normal Developer Abilities', 'mad4b-read', 'developer_discover', 'read', $this->schema(
+			array(
+				'query' => array( 'type' => 'string', 'default' => '', 'maxLength' => 160 ),
+				'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 20, 'default' => 10 ),
+			), array()
+		), false, true, false, true );
+		$this->add( 'mad4b/developer-info', 'Get Normal Developer Ability Info', 'mad4b-read', 'developer_info', 'read', $this->schema(
+			array( 'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ) ), array( 'ability_name' )
+		), false, true, false, true );
+		$this->add( 'mad4b/developer-execute', 'Execute Normal Developer Ability', 'mad4b-admin', 'developer_execute', 'developer_dispatch', $this->schema(
+			array(
+				'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
+				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+				'input' => array( 'type' => 'object', 'default' => array() ),
+			), array( 'ability_name', 'expected_input_schema_sha256' )
+		), false, false, true, false );
 		$this->add( 'mad4b/enrollment-discover', 'Discover Bounded Enrollment Operations', 'mad4b-read', 'enrollment_discover', 'read', $this->schema(
 			array(
 				'query' => array( 'type' => 'string', 'default' => '', 'maxLength' => 160 ),
@@ -164,6 +180,12 @@ final class MAD4B_SCP_Abilities {
 
 	private function add( $name, $label, $category, $method, $permission, $input, $mcp_public, $readonly, $destructive, $idempotent ) {
 		$mcp_meta = array( 'public' => false, 'type' => 'tool' );
+		if ( in_array( (string) $name, array( 'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute' ), true ) ) {
+			$mcp_meta['surface'] = 'developer-dispatch';
+			$mcp_meta['generic_remote_admin'] = false;
+			$mcp_meta['production_mutation_allowed'] = false;
+			$mcp_meta['breakglass_allowed'] = false;
+		}
 		if ( in_array( (string) $name, array( 'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute' ), true ) ) {
 			$mcp_meta['surface'] = 'enrollment';
 			$mcp_meta['generic_remote_admin'] = false;
@@ -193,6 +215,7 @@ final class MAD4B_SCP_Abilities {
 
 	private function mutation_permission_callback( $permission, $readonly, $ability_name, $server_id ) {
 		if ( 'write_dispatch' === $permission ) return array( $this, 'can_write_dispatch' );
+		if ( 'developer_dispatch' === $permission ) return array( $this, 'can_developer_dispatch' );
 		if ( 'enrollment_dispatch' === $permission ) return array( $this, 'can_enrollment_dispatch' );
 		$callback = $this->permission_callback( $permission );
 		if ( $readonly ) return $callback;
@@ -364,6 +387,146 @@ final class MAD4B_SCP_Abilities {
 			'result' => array_key_exists( 'result', $execution ) ? $execution['result'] : null,
 			'read_only' => true,
 			'mutation_performed' => false,
+		);
+	}
+
+	private function governed_developer_target( $ability_name ) {
+		$ability_name = trim( (string) $ability_name );
+		if ( '' === $ability_name ) return new WP_Error( 'mad4b_developer_dispatch_target_required', 'A normal Developer ability_name is required.' );
+		if ( in_array( $ability_name, array( 'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute' ), true ) || 0 === strpos( $ability_name, 'mad4b/developer-breakglass-' ) ) return new WP_Error( 'mad4b_developer_dispatch_target_denied', 'Nested Developer dispatch and Breakglass targets are denied.' );
+		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! in_array( $ability_name, MAD4B_SCP_Developer_Runtime::tool_names( false ), true ) ) return new WP_Error( 'mad4b_developer_dispatch_target_not_cataloged', 'Requested ability is not in the normal Developer inventory.' );
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || 'core' !== MAD4B_SCP_Servers::provider_for_ability( 'mad4b-developer', $ability_name ) ) return new WP_Error( 'mad4b_developer_dispatch_target_unmounted', 'Requested Developer ability is not mounted on mad4b-developer.' );
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_developer_dispatch_target_unavailable', 'Requested Developer ability is not registered in the current runtime.' );
+		$ability = wp_get_ability( $ability_name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) return new WP_Error( 'mad4b_developer_dispatch_contract_unavailable', 'Requested Developer ability does not expose the required WordPress Ability contract.' );
+		$meta = $ability->get_meta();
+		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+		if ( 'developer' !== ( isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '' ) ) return new WP_Error( 'mad4b_developer_dispatch_surface_mismatch', 'Requested target is not on the normal Developer surface.' );
+		return $ability;
+	}
+
+	public function can_developer_dispatch( $input = null ) {
+		if ( ! MAD4B_SCP_Policy::can_admin() ) return false;
+		if ( ! is_array( $input ) || empty( $input['ability_name'] ) || empty( $input['expected_input_schema_sha256'] ) ) return new WP_Error( 'mad4b_developer_dispatch_request_invalid', 'Developer dispatch requires an exact target and schema digest.' );
+		$ability = $this->governed_developer_target( $input['ability_name'] );
+		if ( is_wp_error( $ability ) ) return $ability;
+		$actual = $this->ability_input_schema_sha256( $ability );
+		$expected = strtolower( trim( (string) $input['expected_input_schema_sha256'] ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected ) || ! hash_equals( strtolower( $actual ), $expected ) ) return new WP_Error( 'mad4b_developer_dispatch_schema_drift', 'Developer target schema changed after discovery.' );
+		if ( ! class_exists( 'MAD4B_SCP_Developer_Authority' ) || ! method_exists( 'MAD4B_SCP_Developer_Authority', 'chatgpt_dispatch_identity' ) ) return new WP_Error( 'mad4b_developer_dispatch_authority_unavailable', 'Bounded Developer dispatch authority is unavailable.' );
+		$derived = MAD4B_SCP_Developer_Authority::chatgpt_dispatch_identity();
+		return is_wp_error( $derived ) ? $derived : true;
+	}
+
+	public function developer_discover( $input ) {
+		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
+		$limit = isset( $input['limit'] ) ? max( 1, min( 20, absint( $input['limit'] ) ) ) : 10;
+		$items = array();
+		$candidates = class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( false ) : array();
+		foreach ( $candidates as $ability_name ) {
+			$ability = $this->governed_developer_target( $ability_name );
+			if ( is_wp_error( $ability ) ) continue;
+			$label = method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '';
+			$description = method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '';
+			$category = method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
+			$meta = $ability->get_meta();
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+			$haystack = strtolower( $ability_name . ' ' . $label . ' ' . $description . ' ' . $category );
+			if ( '' !== $query && false === strpos( $haystack, $query ) ) continue;
+			$items[] = array(
+				'ability_name' => $ability_name,
+				'label' => $label,
+				'description' => $description,
+				'category' => $category,
+				'readonly' => isset( $annotations['readonly'] ) && true === $annotations['readonly'],
+				'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
+				'approval_lane' => $this->developer_approval_lane( $ability_name, isset( $annotations['readonly'] ) && true === $annotations['readonly'] ),
+			);
+			if ( count( $items ) >= $limit ) break;
+		}
+		return array(
+			'contract' => 'mad4b.chatgpt-developer-discovery.v1',
+			'items' => $items,
+			'count' => count( $items ),
+			'production_authorized' => false,
+			'breakglass_included' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	public function developer_info( $input ) {
+		$ability_name = (string) $input['ability_name'];
+		$ability = $this->governed_developer_target( $ability_name );
+		if ( is_wp_error( $ability ) ) return $ability;
+		$meta = $ability->get_meta();
+		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+		return array(
+			'contract' => 'mad4b.chatgpt-developer-ability-info.v1',
+			'ability_name' => $ability_name,
+			'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '',
+			'description' => method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '',
+			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
+			'input_schema' => method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null,
+			'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
+			'annotations' => $annotations,
+			'approval_lane' => $this->developer_approval_lane( $ability_name, isset( $annotations['readonly'] ) && true === $annotations['readonly'] ),
+			'production_authorized' => false,
+			'breakglass_included' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	private function developer_approval_lane( $ability_name, $readonly ) {
+		if ( $readonly ) return 'none';
+		if ( class_exists( 'MAD4B_SCP_Impact_Policy' ) ) {
+			$classification = MAD4B_SCP_Impact_Policy::classify( (string) $ability_name, 'core', array() );
+			if ( is_array( $classification ) && isset( $classification['approval_lane'] ) && in_array( $classification['approval_lane'], array( 'ai_autonomous', 'human_only' ), true ) ) return (string) $classification['approval_lane'];
+		}
+		return 'human_only';
+	}
+
+	public function developer_execute( $input ) {
+		$ability_name = (string) $input['ability_name'];
+		$ability = $this->governed_developer_target( $ability_name );
+		if ( is_wp_error( $ability ) ) return $ability;
+		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) return new WP_Error( 'mad4b_connector_resilience_unavailable', 'Shared connector resilience service is unavailable.' );
+		$actual_schema_sha256 = $this->ability_input_schema_sha256( $ability );
+		$expected_schema_sha256 = strtolower( trim( (string) $input['expected_input_schema_sha256'] ) );
+		if ( ! hash_equals( strtolower( $actual_schema_sha256 ), $expected_schema_sha256 ) ) return new WP_Error( 'mad4b_developer_dispatch_schema_drift', 'Developer target schema changed after discovery.', array( 'current_input_schema_sha256' => $actual_schema_sha256 ) );
+		$params = array_key_exists( 'input', $input ) ? $input['input'] : null;
+		$target_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		if ( ( null === $target_schema || empty( $target_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
+		$meta = $ability->get_meta();
+		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+		$readonly = isset( $annotations['readonly'] ) && true === $annotations['readonly'];
+
+		$execute_target = static function () use ( $ability, $params, $ability_name, $actual_schema_sha256 ) {
+			if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) || ! method_exists( 'MAD4B_SCP_Transport_Context', 'with_developer_dispatch_target' ) ) return new WP_Error( 'mad4b_developer_dispatch_transport_context_unavailable', 'Exact Developer dispatcher transport binding is unavailable.' );
+			return MAD4B_SCP_Transport_Context::with_developer_dispatch_target(
+				$ability_name,
+				$actual_schema_sha256,
+				static function () use ( $ability, $params ) { return $ability->execute( $params ); }
+			);
+		};
+
+		$execution = $readonly
+			? MAD4B_SCP_Connector_Resilience::execute_read( $ability_name, $execute_target )
+			: MAD4B_SCP_Connector_Resilience::execute_mutation( 'developer', $ability_name, $execute_target );
+		if ( is_wp_error( $execution ) ) return $execution;
+		return array(
+			'contract' => 'mad4b.chatgpt-developer-execute.v1',
+			'resilience_contract' => MAD4B_SCP_Connector_Resilience::CONTRACT,
+			'ability_name' => $ability_name,
+			'input_schema_sha256' => $actual_schema_sha256,
+			'result' => array_key_exists( 'result', $execution ) ? $execution['result'] : null,
+			'mutation_performed' => ! $readonly,
+			'production_mutation' => false,
+			'breakglass_authorized' => false,
+			'attempts' => isset( $execution['attempts'] ) ? (int) $execution['attempts'] : 1,
+			'elapsed_ms' => isset( $execution['elapsed_ms'] ) ? (int) $execution['elapsed_ms'] : 0,
+			'automatic_retry_performed' => false,
 		);
 	}
 
@@ -601,6 +764,9 @@ final class MAD4B_SCP_Abilities {
 				'elapsed_ms' => max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) ),
 				'automatic_retry_performed' => false,
 			);
+			if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'clear_execution_callback_observation' ) ) {
+				MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name );
+			}
 		} else {
 			$execution = MAD4B_SCP_Connector_Resilience::execute_mutation(
 				'write',

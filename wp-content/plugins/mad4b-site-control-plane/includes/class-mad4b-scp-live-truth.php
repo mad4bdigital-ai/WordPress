@@ -420,11 +420,31 @@ final class MAD4B_SCP_Live_Truth {
 		$checks['approval_planner_exact_grant_required'] = ! empty( $planner['remote_planner_requires_exact_mad4b_write_grant'] );
 		$checks['approval_planner_budgeted'] = ! empty( $planner['remote_planner_budgeted'] );
 		$checks['approval_planner_no_prior_ticket'] = isset( $planner['remote_planner_requires_prior_ticket'] ) && false === $planner['remote_planner_requires_prior_ticket'];
-		$checks['approval_planner_self_agent_only'] = isset( $planner['target_agent'] ) && in_array( (string) $planner['target_agent'], array( 'dedicated_staging_write_agent_only', 'dedicated_governed_write_agent_only' ), true );
-		$checks['approval_planner_write_server_only'] = isset( $planner['target_server'] ) && 'mad4b-write' === $planner['target_server'];
+		$checks['approval_planner_target_agent_bounded'] = isset( $planner['target_agent'] ) && in_array( $planner['target_agent'], array( 'dedicated_governed_write_agent_only', 'dedicated_governed_write_or_configured_developer_agent' ), true );
+		$checks['approval_planner_target_server_bounded'] = isset( $planner['target_server'] ) && in_array( $planner['target_server'], array( 'mad4b-write', 'mad4b-write_or_bounded_mad4b-developer' ), true );
+		$developer_planning = isset( $planner['target_server'] ) && 'mad4b-write_or_bounded_mad4b-developer' === $planner['target_server'];
+		$checks['approval_planner_developer_dispatch_explicit'] = ! $developer_planning || ! empty( $planner['developer_dispatch_planning_enabled'] );
+		$checks['approval_planner_developer_breakglass_denied'] = ! $developer_planning || ( isset( $planner['developer_breakglass_target_allowed'] ) && false === $planner['developer_breakglass_target_allowed'] );
+		// Compatibility aliases retained for consumers that still read the rc.72
+		// field names. In rc.73 they mean no target outside the bounded planner set.
+		$checks['approval_planner_self_agent_only'] = $checks['approval_planner_target_agent_bounded'];
+		$checks['approval_planner_write_server_only'] = $checks['approval_planner_target_server_bounded'];
 		$checks['approval_planner_mutation_class_only'] = isset( $planner['target_ticket_class'] ) && 'mutation' === $planner['target_ticket_class'];
 		$checks['approval_planner_breakglass_denied'] = isset( $planner['breakglass_target_allowed'] ) && false === $planner['breakglass_target_allowed'];
-		foreach ( array( 'approval_planner_in_write_inventory', 'approval_planner_governed', 'approval_planner_nhi_required', 'approval_planner_exact_grant_required', 'approval_planner_budgeted', 'approval_planner_no_prior_ticket', 'approval_planner_self_agent_only', 'approval_planner_write_server_only', 'approval_planner_mutation_class_only', 'approval_planner_breakglass_denied' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
+		foreach ( array(
+			'approval_planner_in_write_inventory',
+			'approval_planner_governed',
+			'approval_planner_nhi_required',
+			'approval_planner_exact_grant_required',
+			'approval_planner_budgeted',
+			'approval_planner_no_prior_ticket',
+			'approval_planner_target_agent_bounded',
+			'approval_planner_target_server_bounded',
+			'approval_planner_developer_dispatch_explicit',
+			'approval_planner_developer_breakglass_denied',
+			'approval_planner_mutation_class_only',
+			'approval_planner_breakglass_denied',
+		) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$counts = class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::counts() : array();
 		$checks['no_wildcard_grants'] = empty( $counts['wildcard_grants'] );
