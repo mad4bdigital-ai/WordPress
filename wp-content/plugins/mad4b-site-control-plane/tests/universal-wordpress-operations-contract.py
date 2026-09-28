@@ -339,3 +339,13 @@ assert "self::proposal_for_candidate( $candidate, '' !== $plugin, false )" in pr
 plan_hash_pos = provider_autopilot.index("$result['plan_sha256']")
 plan_freshness_pos = provider_autopilot.index("$result['freshness_generated_at_unix']")
 assert plan_hash_pos < plan_freshness_pos, "autopilot plan freshness must stay outside deterministic plan hash"
+
+for marker in (
+    "already_at_target",
+    "evidence_eligible",
+    "promotion_execution_permitted",
+    "no_promotion_required",
+    "observe_propose_only",
+):
+    assert marker in provider_autopilot, marker
+assert "'eligible_now' => $promotion_execution_permitted" in provider_autopilot
