@@ -112,6 +112,10 @@ for marker in [
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
     "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
     "$step_up = array_merge( $narrow_step_up, $full_step_up )",
+    "public static function chatgpt_direct_read_transport_tools()",
+    "'mad4b/session-safe-diagnostics'",
+    "$direct_read_transport = self::chatgpt_direct_read_transport_tools()",
+    "in_array( $ability_name, $direct_read_transport, true )",
     "public static function chatgpt_dispatch_transport_tools()",
     "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )",
     "'mad4b/write-execute'",
@@ -150,13 +154,31 @@ assert 'self::chatgpt_internal_enrollment_mutations()' in logical_enrollment
 assert 'if ( ! self::chatgpt_unified_catalog_enabled() )' in servers
 fallback = servers.split('if ( ! self::chatgpt_unified_catalog_enabled() )', 1)[1].split("$narrow_read = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )", 1)[0]
 for marker in [
-    "$tools = array_values( array_diff( $core, $breakglass, array( 'mad4b/database-raw-query' ) ) )",
+    "$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools() )",
+    "$tools = array_values( array_intersect( $core, $direct_allowlist ) )",
+    "$tools = array_values( array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) ) )",
     "array_unique( array_map( 'strval', $tools ) )",
     "sort( $tools, SORT_STRING )",
     "return $tools",
 ]:
-    assert marker in fallback, f'missing non-Staging minimal fallback marker: {marker}'
+    assert marker in fallback, f'missing non-Staging session-safe fallback marker: {marker}'
 assert 'self::write_tools()' not in fallback, 'non-Staging fallback must not merge the governed write catalog directly'
+
+direct_read = servers.split('public static function chatgpt_direct_read_transport_tools()', 1)[1].split('public static function chatgpt_dispatch_transport_tools()', 1)[0]
+assert "'mad4b/session-safe-diagnostics'" in direct_read, 'session-safe diagnostics missing from direct ChatGPT read allowlist'
+for forbidden_direct in [
+    "'mad4b/build-provenance-status'",
+    "'mad4b/diagnostics-health'",
+    "'mad4b/runtime-authority-status'",
+    "'mad4b/connection-status'",
+    "'mad4b/read-snapshot-header'",
+    "'mad4b/read-diagnostic-bundle'",
+    "'mad4b/control-plane-update-status'",
+    "'mad4b/write-authority-status'",
+    "'mad4b/write-runtime-certification'",
+    "'mad4b/staging-certification-status'",
+]:
+    assert forbidden_direct not in direct_read, f'broad diagnostic/status primitive leaked into direct ChatGPT allowlist: {forbidden_direct}'
 
 # Discovery never grants execution. Every normal mutation arriving through ChatGPT
 # is intercepted regardless of current write readiness and can only cross to

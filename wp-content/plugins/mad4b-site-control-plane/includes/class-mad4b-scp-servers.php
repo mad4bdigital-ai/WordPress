@@ -27,11 +27,11 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function core_tools( $server_id ) {
-		$governed_status = array( 'mad4b/write-authority-status', 'mad4b/write-authority-reconciliation-plan', 'mad4b/write-runtime-certification', 'mad4b/rest-compatibility-status', 'mad4b/staging-certification-status' );
+		$governed_status = 'mad4b-read' === $server_id ? array( 'mad4b/write-authority-status', 'mad4b/write-authority-reconciliation-plan', 'mad4b/write-runtime-certification', 'mad4b/rest-compatibility-status', 'mad4b/staging-certification-status' ) : array();
 		$map = array(
 			'mad4b-read' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
-				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/schema-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/connector-preflight', 'mad4b/read-snapshot-header', 'mad4b/read-diagnostic-bundle', 'mad4b/read-metadata-envelope', 'mad4b/context-authority-status',
+				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/schema-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/connector-preflight', 'mad4b/session-safe-diagnostics', 'mad4b/read-snapshot-header', 'mad4b/read-diagnostic-bundle', 'mad4b/read-metadata-envelope', 'mad4b/context-authority-status',
 				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
 				'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve', 'mad4b/addon-registry-status',
@@ -47,13 +47,13 @@ final class MAD4B_SCP_Servers {
 			), $governed_status ),
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status',
+				'mad4b/session-safe-diagnostics',
 				'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute',
 				'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute',
 				'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute',
 				'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute',
-				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/connector-preflight', 'mad4b/read-snapshot-header', 'mad4b/read-diagnostic-bundle',
-				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan',
-				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix',
+				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan',
+				'mad4b/operation-discover', 'mad4b/provider-closure-matrix',
 			), $governed_status ),
 			'mad4b-enrollment' => array_values( array_unique( array_merge(
 				array(
@@ -454,6 +454,39 @@ final class MAD4B_SCP_Servers {
 			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
 	}
 
+	public static function chatgpt_direct_read_transport_tools() {
+		$tools = array(
+			'mad4b/site-info',
+			'mad4b/site-profile-status',
+			'mad4b/session-safe-diagnostics',
+			'mad4b/tool-discover',
+			'mad4b/tool-info',
+			'mad4b/read-execute',
+			'mad4b/write-discover',
+			'mad4b/write-info',
+			'mad4b/developer-discover',
+			'mad4b/developer-info',
+			'mad4b/enrollment-discover',
+			'mad4b/enrollment-info',
+			'mad4b/plugin-package-plan',
+			'mad4b/plugin-remote-update-plan',
+			'mad4b/control-plane-upload-plan',
+			'mad4b/control-plane-native-plan',
+			'mad4b/operation-discover',
+			'mad4b/provider-closure-matrix',
+			'mad4b/staging-write-candidate-binding-audit',
+		);
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ) {
+			$tools = array_merge( $tools, MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools() );
+		}
+		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) {
+			$tools[] = MAD4B_SCP_Full_Staging_Authority::PLAN_ABILITY;
+		}
+		$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
+		sort( $tools, SORT_STRING );
+		return $tools;
+	}
+
 	public static function chatgpt_dispatch_transport_tools() {
 		$tools = array( 'mad4b/write-execute', 'mad4b/developer-execute', 'mad4b/enrollment-execute' );
 		$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
@@ -473,7 +506,9 @@ final class MAD4B_SCP_Servers {
 		// write dispatcher. This keeps tools/list small and stable enough for client
 		// refresh without weakening the underlying ability authority contracts.
 		if ( ! self::chatgpt_unified_catalog_enabled() ) {
-			$tools = array_values( array_diff( $core, $breakglass, array( 'mad4b/database-raw-query' ) ) );
+			$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools() );
+			$tools = array_values( array_intersect( $core, $direct_allowlist ) );
+			$tools = array_values( array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) ) );
 			$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
 			sort( $tools, SORT_STRING );
 			if ( $cacheable ) self::$chatgpt_tools_cache = $tools;
@@ -505,6 +540,7 @@ final class MAD4B_SCP_Servers {
 		$candidates = array_merge( $core, $bootstrap );
 		$step_up = array_merge( $narrow_step_up, $full_step_up );
 		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up ) ) );
+		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
 
 		$tools = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
@@ -515,7 +551,7 @@ final class MAD4B_SCP_Servers {
 			$meta = $ability->get_meta();
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 			if ( array_key_exists( 'readonly', $annotations ) && true === $annotations['readonly'] ) {
-				$tools[] = $ability_name;
+				if ( in_array( $ability_name, $direct_read_transport, true ) ) $tools[] = $ability_name;
 				continue;
 			}
 			if ( array_key_exists( 'readonly', $annotations ) && false === $annotations['readonly'] && in_array( $ability_name, $direct_mutation_transport, true ) ) {

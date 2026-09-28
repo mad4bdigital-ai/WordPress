@@ -16,12 +16,17 @@ final class MAD4B_SCP_Read_Consistency {
 	const SNAPSHOT_ABILITY = 'mad4b/read-snapshot-header';
 	const BUNDLE_ABILITY = 'mad4b/read-diagnostic-bundle';
 	const METADATA_ABILITY = 'mad4b/read-metadata-envelope';
+	const SESSION_SAFE_REPORT_ABILITY = 'mad4b/session-safe-diagnostics';
+	const MAX_SESSION_SAFE_REPORT_BYTES = 16384;
+	const DEFAULT_SESSION_SAFE_BUDGET_MS = 12000;
+	const MAX_SESSION_SAFE_BUDGET_MS = 20000;
 	const DEFAULT_SNAPSHOT_TTL_SECONDS = 120;
 	const DEFAULT_BUNDLE_BUDGET_MS = 8000;
 	const MAX_BUNDLE_BUDGET_MS = 12000;
 
 	public static function boot() {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register' ), 26 );
+		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_session_safe_report' ), 27 );
 	}
 
 	public static function register() {
@@ -118,6 +123,48 @@ final class MAD4B_SCP_Read_Consistency {
 				)
 			);
 		}
+	}
+
+	public static function register_session_safe_report() {
+		if ( ! function_exists( 'wp_register_ability' ) ) return;
+		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::SESSION_SAFE_REPORT_ABILITY ) ) return;
+
+		wp_register_ability(
+			self::SESSION_SAFE_REPORT_ABILITY,
+			array(
+				'label' => 'Session-Safe Diagnostics',
+				'description' => 'Return one bounded generation-fenced diagnostic report that replaces parallel status fan-out for MCP clients.',
+				'category' => 'mad4b-read',
+				'execute_callback' => array( __CLASS__, 'session_safe_diagnostics' ),
+				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+				'input_schema' => array(
+					'type' => 'object',
+					'properties' => array(
+						'read_transaction_id' => array(
+							'type' => 'string',
+							'pattern' => '^rtx_[A-Za-z0-9._-]{8,80}$',
+							'maxLength' => 84,
+						),
+						'expected_runtime_generation' => array(
+							'type' => 'string',
+							'pattern' => '^[a-f0-9]{64}$',
+							'minLength' => 64,
+							'maxLength' => 64,
+						),
+						'retry_transient_reads' => array( 'type' => 'boolean', 'default' => true ),
+						'budget_ms' => array(
+							'type' => 'integer',
+							'minimum' => 4000,
+							'maximum' => self::MAX_SESSION_SAFE_BUDGET_MS,
+							'default' => self::DEFAULT_SESSION_SAFE_BUDGET_MS,
+						),
+					),
+					'additionalProperties' => false,
+				),
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => self::read_meta(),
+			)
+		);
 	}
 
 	public static function bundle_names() {
@@ -379,6 +426,288 @@ final class MAD4B_SCP_Read_Consistency {
 		$result['resilience_contract'] = MAD4B_SCP_Connector_Resilience::CONTRACT;
 		$result['client_guidance'] = MAD4B_SCP_Connector_Resilience::client_guidance();
 		return $result;
+	}
+
+	public static function session_safe_diagnostics( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) {
+			return new WP_Error( 'mad4b_connector_resilience_unavailable', 'Shared connector resilience service is unavailable.' );
+		}
+
+		$transaction_id = self::transaction_id( isset( $input['read_transaction_id'] ) ? $input['read_transaction_id'] : '' );
+		$expected_generation = isset( $input['expected_runtime_generation'] ) ? strtolower( trim( (string) $input['expected_runtime_generation'] ) ) : '';
+		$retry = ! array_key_exists( 'retry_transient_reads', $input ) || ! empty( $input['retry_transient_reads'] );
+		$budget_ms = isset( $input['budget_ms'] )
+			? max( 4000, min( self::MAX_SESSION_SAFE_BUDGET_MS, absint( $input['budget_ms'] ) ) )
+			: self::DEFAULT_SESSION_SAFE_BUDGET_MS;
+		$started = microtime( true );
+
+		$before = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		$runtime_generation = isset( $before['runtime_generation'] ) ? (string) $before['runtime_generation'] : '';
+		if ( '' !== $expected_generation && ! self::generation_matches( $expected_generation, $runtime_generation ) ) {
+			return self::generation_changed_envelope( 'session_safe_diagnostics', $transaction_id, 1, $expected_generation, $before, 'session_safe_preflight_generation_mismatch' );
+		}
+
+		$sections = array();
+		$partial = false;
+		$session_termination_count = 0;
+		$stop_reason = '';
+
+		foreach ( self::bundle_names() as $index => $bundle ) {
+			$elapsed_ms = (int) round( ( microtime( true ) - $started ) * 1000 );
+			$remaining_ms = $budget_ms - $elapsed_ms;
+			if ( $remaining_ms < 1000 ) {
+				$partial = true;
+				$stop_reason = 'request_budget';
+				$sections[ $bundle ] = array(
+					'state' => 'skipped_budget',
+					'partial' => true,
+					'failed_checks' => array(),
+					'retryable_checks' => array(),
+					'skipped_budget_checks' => array( '*' ),
+					'session_termination_count' => $session_termination_count,
+					'check_count' => count( self::bundle_checks( $bundle ) ),
+					'evidence_digest' => self::digest( array( 'bundle' => $bundle, 'state' => 'skipped_budget', 'generation' => $runtime_generation ) ),
+				);
+				continue;
+			}
+
+			$result = MAD4B_SCP_Connector_Resilience::run_checks(
+				self::bundle_checks( $bundle ),
+				array(
+					'budget_ms' => min( self::MAX_BUNDLE_BUDGET_MS, max( 1000, $remaining_ms ) ),
+					'retry_transient' => $retry,
+				)
+			);
+			$sections[ $bundle ] = self::compact_bundle_result( $bundle, $result );
+			$session_termination_count += isset( $result['session_termination_count'] ) ? max( 0, (int) $result['session_termination_count'] ) : 0;
+			if ( ! empty( $result['partial'] ) ) $partial = true;
+
+			if ( ! empty( $result['session_breaker_open'] ) ) {
+				$partial = true;
+				$stop_reason = 'session_breaker';
+				foreach ( array_slice( self::bundle_names(), $index + 1 ) as $remaining_bundle ) {
+					$sections[ $remaining_bundle ] = array(
+						'state' => 'skipped_session_breaker',
+						'partial' => true,
+						'failed_checks' => array(),
+						'retryable_checks' => array( '*' ),
+						'skipped_budget_checks' => array(),
+						'session_termination_count' => $session_termination_count,
+						'check_count' => count( self::bundle_checks( $remaining_bundle ) ),
+						'evidence_digest' => self::digest( array( 'bundle' => $remaining_bundle, 'state' => 'skipped_session_breaker', 'generation' => $runtime_generation ) ),
+					);
+				}
+				break;
+			}
+		}
+
+		$after = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		if ( ! self::generation_matches( $runtime_generation, isset( $after['runtime_generation'] ) ? $after['runtime_generation'] : '' ) ) {
+			$changed = self::generation_changed_envelope( 'session_safe_diagnostics', $transaction_id, 1, $runtime_generation, $after, 'runtime_changed_during_session_safe_report' );
+			$changed['discarded_section_count'] = count( $sections );
+			$changed['report_payload_discarded'] = true;
+			return $changed;
+		}
+
+		$report = array(
+			'contract' => 'mad4b.session-safe-diagnostics.v1',
+			'state' => $partial ? 'partial' : 'ready',
+			'partial' => $partial,
+			'read_transaction_id' => $transaction_id,
+			'snapshot_id' => isset( $after['snapshot_id'] ) ? (string) $after['snapshot_id'] : '',
+			'runtime_generation' => $runtime_generation,
+			'generation_match' => true,
+			'valid_for_merge' => true,
+			'projection_freshness' => 'live',
+			'observed_at' => gmdate( 'c' ),
+			'elapsed_ms' => (int) round( ( microtime( true ) - $started ) * 1000 ),
+			'budget_ms' => $budget_ms,
+			'fixed_bundle_order' => self::bundle_names(),
+			'section_count' => count( $sections ),
+			'sections' => $sections,
+			'session_termination_count' => $session_termination_count,
+			'stop_reason' => $stop_reason,
+			'transport_policy' => array(
+				'external_mcp_calls_required' => 1,
+				'server_sequential_execution' => true,
+				'direct_parallel_fanout_required' => false,
+				'direct_composite_fanout_allowed' => false,
+				'max_response_bytes' => self::MAX_SESSION_SAFE_REPORT_BYTES,
+			),
+			'client_action' => $partial ? 'inspect_partial_report_then_retry_missing_scope' : 'use_report_without_parallel_status_fanout',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'production_mutation_performed' => false,
+		);
+		return self::bound_session_safe_report( $report );
+	}
+
+	private static function compact_bundle_result( $bundle, array $result ) {
+		$checks = array();
+		foreach ( isset( $result['checks'] ) && is_array( $result['checks'] ) ? $result['checks'] : array() as $name => $check ) {
+			$check = is_array( $check ) ? $check : array();
+			$checks[ sanitize_key( (string) $name ) ] = array(
+				'ok' => ! empty( $check['ok'] ),
+				'state' => isset( $check['state'] ) ? sanitize_key( (string) $check['state'] ) : '',
+				'category' => isset( $check['category'] ) ? sanitize_key( (string) $check['category'] ) : '',
+				'elapsed_ms' => isset( $check['elapsed_ms'] ) ? max( 0, (int) $check['elapsed_ms'] ) : 0,
+				'summary' => self::compact_status_data( $name, isset( $check['data'] ) ? $check['data'] : array() ),
+				'evidence_digest' => self::digest( isset( $check['data'] ) ? $check['data'] : array() ),
+			);
+		}
+		return array(
+			'state' => isset( $result['state'] ) ? sanitize_key( (string) $result['state'] ) : ( ! empty( $result['partial'] ) ? 'partial' : 'ready' ),
+			'partial' => ! empty( $result['partial'] ),
+			'elapsed_ms' => isset( $result['elapsed_ms'] ) ? max( 0, (int) $result['elapsed_ms'] ) : 0,
+			'failed_checks' => self::bounded_scalar_list( isset( $result['failed_checks'] ) ? $result['failed_checks'] : array(), 16 ),
+			'retryable_checks' => self::bounded_scalar_list( isset( $result['retryable_checks'] ) ? $result['retryable_checks'] : array(), 16 ),
+			'skipped_budget_checks' => self::bounded_scalar_list( isset( $result['skipped_budget_checks'] ) ? $result['skipped_budget_checks'] : array(), 16 ),
+			'session_termination_count' => isset( $result['session_termination_count'] ) ? max( 0, (int) $result['session_termination_count'] ) : 0,
+			'check_count' => count( $checks ),
+			'checks' => $checks,
+			'evidence_digest' => self::digest( array( 'bundle' => $bundle, 'result' => $result ) ),
+		);
+	}
+
+	private static function compact_status_data( $name, $data ) {
+		if ( ! is_array( $data ) ) return is_scalar( $data ) || null === $data ? $data : null;
+		$name = sanitize_key( (string) $name );
+		$scalar_keys = array(
+			'contract', 'ready', 'state', 'supported', 'configured', 'environment', 'revision',
+			'profile_digest', 'exact_profile_bound', 'write_enabled', 'skills_enabled',
+			'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest',
+			'artifact_identity', 'mcp_adapter_version', 'runtime_manifest_match', 'stale',
+			'local_transport_ready', 'remote_endpoint_preflight_ready', 'connection_certified',
+			'resource', 'local_oauth_effective', 'oauth_resource_bridge_effective', 'chatgpt_registered',
+			'missed_rest_recovery_state', 'write_auto_enabled', 'production_authority_auto_enabled',
+			'breakglass_auto_enabled', 'eligible', 'runtime_reconciled', 'candidate_binding_required',
+			'candidate_binding_match', 'current_source_commit_sha', 'candidate_source_commit_sha',
+			'write_tool_count', 'write_inventory_fingerprint', 'provider_blocked_fingerprint',
+			'wildcard_grants', 'breakglass_included', 'production_auto_enable', 'breakglass_auto_enable',
+			'persistence', 'provider_count', 'expected_provider_count', 'managed_skill_count',
+			'expected_managed_skill_count', 'manifest_state', 'manifest_error', 'native_update_ready',
+			'production_remote_upload_allowed', 'default_provider', 'provider_summary_digest',
+			'chatgpt_tool_count', 'raw_sql_breakglass_in_write_inventory', 'reconciliation_required',
+			'blind_retry_allowed', 'next_action', 'candidate_match', 'build_fingerprint_match',
+			'seo_publication_authorized', 'production_activation_authorized', 'observed_at'
+		);
+		$out = array();
+		foreach ( $scalar_keys as $key ) {
+			if ( ! array_key_exists( $key, $data ) ) continue;
+			$value = $data[ $key ];
+			if ( is_scalar( $value ) || null === $value ) $out[ $key ] = $value;
+		}
+		foreach ( array( 'blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch' ) as $key ) {
+			if ( array_key_exists( $key, $data ) ) $out[ $key ] = self::bounded_scalar_list( $data[ $key ], 12 );
+		}
+		foreach ( array( 'current', 'target', 'build', 'connection', 'write_authority' ) as $nested_key ) {
+			if ( empty( $data[ $nested_key ] ) || ! is_array( $data[ $nested_key ] ) ) continue;
+			$nested = array();
+			foreach ( array(
+				'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity',
+				'environment', 'control_plane_version', 'mcp_adapter_version', 'connection_certified',
+				'ready', 'state', 'candidate_binding_match', 'current_source_commit_sha', 'candidate_source_commit_sha'
+			) as $key ) {
+				if ( array_key_exists( $key, $data[ $nested_key ] ) && ( is_scalar( $data[ $nested_key ][ $key ] ) || null === $data[ $nested_key ][ $key ] ) ) {
+					$nested[ $key ] = $data[ $nested_key ][ $key ];
+				}
+			}
+			$out[ $nested_key ] = $nested;
+		}
+		if ( 'workflow_providers' === $name ) {
+			unset( $out['providers'] );
+			$out['provider_count'] = isset( $data['provider_count'] ) ? max( 0, (int) $data['provider_count'] ) : 0;
+		}
+		return $out;
+	}
+
+	private static function bounded_scalar_list( $value, $max_items ) {
+		$value = is_array( $value ) ? array_values( $value ) : array();
+		$out = array();
+		foreach ( $value as $item ) {
+			if ( ! is_scalar( $item ) && null !== $item ) continue;
+			$out[] = is_string( $item ) ? substr( $item, 0, 191 ) : $item;
+			if ( count( $out ) >= max( 1, (int) $max_items ) ) break;
+		}
+		return $out;
+	}
+
+	private static function bound_session_safe_report( array $report ) {
+		$report['payload_reduced'] = false;
+		$report['max_response_bytes'] = self::MAX_SESSION_SAFE_REPORT_BYTES;
+		$report['response_bytes'] = 0;
+		$encoded = wp_json_encode( $report, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$bytes = false === $encoded ? self::MAX_SESSION_SAFE_REPORT_BYTES + 1 : strlen( $encoded );
+		if ( $bytes > self::MAX_SESSION_SAFE_REPORT_BYTES ) {
+			$reduced_sections = array();
+			foreach ( isset( $report['sections'] ) && is_array( $report['sections'] ) ? $report['sections'] : array() as $bundle => $section ) {
+				$section = is_array( $section ) ? $section : array();
+				$reduced_sections[ $bundle ] = array(
+					'state' => isset( $section['state'] ) ? (string) $section['state'] : '',
+					'partial' => ! empty( $section['partial'] ),
+					'failed_checks' => self::bounded_scalar_list( isset( $section['failed_checks'] ) ? $section['failed_checks'] : array(), 8 ),
+					'retryable_checks' => self::bounded_scalar_list( isset( $section['retryable_checks'] ) ? $section['retryable_checks'] : array(), 8 ),
+					'check_count' => isset( $section['check_count'] ) ? max( 0, (int) $section['check_count'] ) : 0,
+					'evidence_digest' => isset( $section['evidence_digest'] ) ? (string) $section['evidence_digest'] : self::digest( $section ),
+				);
+			}
+			$report['sections'] = $reduced_sections;
+			$report['payload_reduced'] = true;
+			$report['client_action'] = ! empty( $report['partial'] )
+				? 'inspect_partial_summary_then_query_one_bundle'
+				: 'use_summary_then_query_one_bundle_only_if_needed';
+		}
+		$encoded = wp_json_encode( $report, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$bytes = false === $encoded ? self::MAX_SESSION_SAFE_REPORT_BYTES + 1 : strlen( $encoded );
+		if ( $bytes > self::MAX_SESSION_SAFE_REPORT_BYTES ) {
+			$section_digests = array();
+			foreach ( isset( $report['sections'] ) && is_array( $report['sections'] ) ? $report['sections'] : array() as $bundle => $section ) {
+				$section_digests[ $bundle ] = array(
+					'state' => is_array( $section ) && isset( $section['state'] ) ? (string) $section['state'] : '',
+					'partial' => is_array( $section ) && ! empty( $section['partial'] ),
+					'evidence_digest' => is_array( $section ) && isset( $section['evidence_digest'] ) ? (string) $section['evidence_digest'] : self::digest( $section ),
+				);
+			}
+			$report['sections'] = $section_digests;
+			$report['payload_reduced'] = true;
+			$report['client_action'] = 'query_exactly_one_generation_bound_bundle_for_details';
+		}
+		$report['response_bytes'] = 0;
+		for ( $i = 0; $i < 3; $i++ ) {
+			$encoded = wp_json_encode( $report, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$report['response_bytes'] = false === $encoded ? 0 : strlen( $encoded );
+		}
+		$encoded = wp_json_encode( $report, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( false !== $encoded && strlen( $encoded ) <= self::MAX_SESSION_SAFE_REPORT_BYTES ) return $report;
+
+		$minimal = array(
+			'contract' => 'mad4b.session-safe-diagnostics.v1',
+			'state' => isset( $report['state'] ) ? (string) $report['state'] : 'partial',
+			'partial' => ! empty( $report['partial'] ),
+			'read_transaction_id' => isset( $report['read_transaction_id'] ) ? (string) $report['read_transaction_id'] : '',
+			'snapshot_id' => isset( $report['snapshot_id'] ) ? (string) $report['snapshot_id'] : '',
+			'runtime_generation' => isset( $report['runtime_generation'] ) ? (string) $report['runtime_generation'] : '',
+			'generation_match' => ! empty( $report['generation_match'] ),
+			'valid_for_merge' => ! empty( $report['valid_for_merge'] ),
+			'section_digests' => array(),
+			'session_termination_count' => isset( $report['session_termination_count'] ) ? max( 0, (int) $report['session_termination_count'] ) : 0,
+			'payload_reduced' => true,
+			'max_response_bytes' => self::MAX_SESSION_SAFE_REPORT_BYTES,
+			'client_action' => 'query_exactly_one_generation_bound_bundle_for_details',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'production_mutation_performed' => false,
+			'response_bytes' => 0,
+		);
+		foreach ( isset( $report['sections'] ) && is_array( $report['sections'] ) ? $report['sections'] : array() as $bundle => $section ) {
+			$minimal['section_digests'][ sanitize_key( (string) $bundle ) ] = self::digest( $section );
+		}
+		for ( $i = 0; $i < 3; $i++ ) {
+			$encoded = wp_json_encode( $minimal, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$minimal['response_bytes'] = false === $encoded ? 0 : strlen( $encoded );
+		}
+		return $minimal;
 	}
 
 	private static function bundle_checks( $bundle ) {

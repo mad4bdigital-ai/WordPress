@@ -142,22 +142,14 @@ sort( $names );
 foreach ( array(
 	'mad4b-site-info',
 	'mad4b-site-profile-status',
-	'mad4b-build-provenance-status',
+	'mad4b-session-safe-diagnostics',
 	'mad4b-tool-discover',
 	'mad4b-tool-info',
 	'mad4b-read-execute',
 	'mad4b-write-discover',
 	'mad4b-write-info',
 	'mad4b-write-execute',
-	'mad4b-diagnostics-health',
-	'mad4b-runtime-authority-status',
-	'mad4b-connection-status',
 	'mad4b-plugin-package-plan',
-	'mad4b-write-authority-status',
-	'mad4b-write-authority-reconciliation-plan',
-	'mad4b-write-runtime-certification',
-	'mad4b-rest-compatibility-status',
-	'mad4b-staging-certification-status',
 	'mad4b-full-staging-authority-apply'
 ) as $required ) {
 	if ( ! in_array( $required, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required minimal transport tool.', $required );
@@ -167,6 +159,22 @@ foreach ( array(
 // behind their governed/internal transports. The only direct authority
 // mutation is the composite Full Staging Authority step-up.
 foreach ( array(
+	'mad4b-build-provenance-status',
+	'mad4b-diagnostics-health',
+	'mad4b-runtime-authority-status',
+	'mad4b-multi-authority-registry-status',
+	'mad4b-connection-status',
+	'mad4b-connector-preflight',
+	'mad4b-read-snapshot-header',
+	'mad4b-read-diagnostic-bundle',
+	'mad4b-control-plane-update-status',
+	'mad4b-remote-operation-parity-status',
+	'mad4b-write-authority-status',
+	'mad4b-write-authority-reconciliation-plan',
+	'mad4b-write-runtime-certification',
+	'mad4b-rest-compatibility-status',
+	'mad4b-staging-certification-status',
+	'mad4b-full-staging-authority-status',
 	'mad4b-browser-acceptance-capabilities',
 	'mad4b-filesystem-read',
 	'mad4b-database-select',
@@ -189,8 +197,8 @@ foreach ( array(
 	if ( in_array( $hidden_tool, $names, true ) ) $fail( 'OAuth bearer tools/list leaked a capability that must stay behind governed discovery.', $hidden_tool );
 }
 
-if ( count( $names ) > 48 ) {
-	$fail( 'OAuth bearer tools/list exceeded the minimal refresh tool-count budget.', array( 'tool_count' => count( $names ), 'budget' => 48 ) );
+if ( count( $names ) > 36 ) {
+	$fail( 'OAuth bearer tools/list exceeded the session-safe refresh/fanout budget.', array( 'tool_count' => count( $names ), 'budget' => 36 ) );
 }
 if ( $tools_payload_bytes > 131072 ) {
 	$fail( 'OAuth bearer tools/list exceeded the refresh payload budget.', array( 'payload_bytes' => $tools_payload_bytes, 'budget_bytes' => 131072 ) );

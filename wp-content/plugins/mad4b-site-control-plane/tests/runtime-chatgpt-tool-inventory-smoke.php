@@ -84,24 +84,15 @@ if ( $actual_names !== $expected_names ) {
 $direct_required = array(
 	'mad4b-site-info',
 	'mad4b-site-profile-status',
-	'mad4b-build-provenance-status',
+	'mad4b-session-safe-diagnostics',
 	'mad4b-tool-discover',
 	'mad4b-tool-info',
 	'mad4b-read-execute',
 	'mad4b-write-discover',
 	'mad4b-write-info',
 	'mad4b-write-execute',
-	'mad4b-diagnostics-health',
-	'mad4b-runtime-authority-status',
-	'mad4b-connection-status',
 	'mad4b-plugin-package-plan',
-	'mad4b-write-authority-status',
-	'mad4b-write-authority-reconciliation-plan',
-	'mad4b-write-runtime-certification',
-	'mad4b-rest-compatibility-status',
-	'mad4b-staging-certification-status',
 	'mad4b-staging-write-candidate-binding-audit',
-	'mad4b-full-staging-authority-status',
 	'mad4b-full-staging-authority-plan',
 	'mad4b-full-staging-authority-apply',
 );
@@ -129,17 +120,33 @@ foreach ( $internal_only_direct_forbidden as $tool_name ) {
 // bounded. These abilities remain in the governed capability universe and are
 // reachable only through the read-only discovery/info/execute surface.
 $hidden_read_required = array(
-		'mad4b/filesystem-list',
-		'mad4b/filesystem-read',
-		'mad4b/database-list-tables',
-		'mad4b/database-describe-table',
-		'mad4b/database-select',
-		'mad4b/content-get-post',
-		'mad4b/post-identity',
-		'mad4b/audit-tail',
-		'mad4b/mutation-get',
-		'mad4b/agent-list',
-		'mad4b/agent-effective-access',
+	'mad4b/build-provenance-status',
+	'mad4b/diagnostics-health',
+	'mad4b/runtime-authority-status',
+	'mad4b/multi-authority-registry-status',
+	'mad4b/connection-status',
+	'mad4b/connector-preflight',
+	'mad4b/read-snapshot-header',
+	'mad4b/read-diagnostic-bundle',
+	'mad4b/control-plane-update-status',
+	'mad4b/remote-operation-parity-status',
+	'mad4b/write-authority-status',
+	'mad4b/write-authority-reconciliation-plan',
+	'mad4b/write-runtime-certification',
+	'mad4b/rest-compatibility-status',
+	'mad4b/staging-certification-status',
+	'mad4b/full-staging-authority-status',
+	'mad4b/filesystem-list',
+	'mad4b/filesystem-read',
+	'mad4b/database-list-tables',
+	'mad4b/database-describe-table',
+	'mad4b/database-select',
+	'mad4b/content-get-post',
+	'mad4b/post-identity',
+	'mad4b/audit-tail',
+	'mad4b/mutation-get',
+	'mad4b/agent-list',
+	'mad4b/agent-effective-access',
 );
 $full_candidates = MAD4B_SCP_Servers::chatgpt_full_catalog_candidates();
 if ( ! in_array( 'mad4b/full-staging-authority-apply', $full_candidates, true ) ) {
@@ -195,8 +202,8 @@ foreach ( $hidden_write_required as $ability_name ) {
 	}
 }
 
-if ( count( $actual_names ) > 48 ) {
-	$fail( 'Minimal ChatGPT tools/list exceeded the refresh-safety budget.', array( 'tool_count' => count( $actual_names ), 'budget' => 48 ) );
+if ( count( $actual_names ) > 36 ) {
+	$fail( 'Session-safe ChatGPT tools/list exceeded the reduced refresh/fanout-safety budget.', array( 'tool_count' => count( $actual_names ), 'budget' => 36 ) );
 }
 
 $discover = wp_get_ability( 'mad4b/tool-discover' );
