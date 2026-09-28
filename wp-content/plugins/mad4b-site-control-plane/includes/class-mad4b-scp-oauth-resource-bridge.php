@@ -84,7 +84,8 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$https = self::resources_are_https();
 		$resource_transport_allowed = self::resources_transport_allowed();
 		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
-		$environment_allowed = $profile_ready && ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) || ( 'production' === $environment && $production_approved ) );
+		$portable_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
+		$environment_allowed = ( $profile_ready || $portable_ready ) && ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) || ( 'production' === $environment && $production_approved ) );
 		$registry_valid = self::authority_registry_valid( $mode, $authorities );
 		$subject_policy_ready = $registry_valid && self::subject_policy_ready( $issuers );
 		$wp_users_ready = $registry_valid && self::authority_users_ready( $issuers );
@@ -169,7 +170,10 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$resource = untrailingslashit( trim( (string) $resource ) );
 		if ( hash_equals( self::resource_identifier( 'mad4b-developer' ), $resource ) ) return array( self::READ_SCOPE, self::DEVELOPER_SCOPE );
 		if ( hash_equals( self::resource_identifier( 'mad4b-developer-breakglass' ), $resource ) ) return array( self::READ_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE );
-		if ( hash_equals( self::resource_identifier(), $resource ) && self::authority_step_up_scope_available() ) {
+		$portable_only = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' )
+			&& MAD4B_SCP_Portable_Readonly_Connection::effective()
+			&& ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::oauth_enabled() );
+		if ( ! $portable_only && hash_equals( self::resource_identifier(), $resource ) && self::authority_step_up_scope_available() ) {
 			return array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE );
 		}
 		return array( self::READ_SCOPE );
