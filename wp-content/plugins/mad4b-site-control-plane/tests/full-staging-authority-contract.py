@@ -18,6 +18,7 @@ required = [
     "mad4b.full-staging-authority.v1",
     "mad4b/full-staging-authority-status",
     "mad4b/full-staging-authority-plan",
+    "mad4b/full-staging-authority-handshake",
     "mad4b/full-staging-authority-apply",
     "ENABLE FULL STAGING AUTHORITY",
     "'production_allowed' => false",
@@ -75,7 +76,20 @@ assert "'mad4b/database-raw-query'" not in full
 
 assert "class-mad4b-scp-full-staging-authority.php" in servers
 assert "public static function chatgpt_read_tools()" in full
-assert "return array( self::STATUS_ABILITY, self::PLAN_ABILITY );" in full
+assert "return array( self::HANDSHAKE_ABILITY );" in full
+assert "public static function handshake()" in full
+for marker in [
+    "mad4b.full-staging-authority-handshake.v1",
+    "MAD4B_SCP_Read_Consistency::snapshot_header",
+    "mad4b_full_authority_runtime_generation_changed",
+    "'response_budget_bytes' => 8192",
+    "'deep_status_direct_projection' => false",
+    "'deep_plan_direct_projection' => false",
+    "'deep_reads_available_via_governed_dispatch' => true",
+    "'exact_apply' => array(",
+    "'client_action' => ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_handshake' : 'repair_blockers_then_request_fresh_handshake'",
+]:
+    assert marker in full, marker
 assert "public static function chatgpt_step_up_tools()" in full
 step_up = full.split("public static function chatgpt_step_up_tools()", 1)[1].split("public static function register_category()", 1)[0]
 for marker in [
@@ -141,7 +155,7 @@ assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in f
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in full_catalog
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in full_catalog
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in full_catalog
-assert full.count("self::meta( true, 'read' )") >= 2
+assert full.count("self::meta( true, 'read' )") >= 3
 assert "self::meta( false, 'enrollment' )" in full
 assert "'permission_callback' => array( __CLASS__, 'can_apply' )" in full
 
