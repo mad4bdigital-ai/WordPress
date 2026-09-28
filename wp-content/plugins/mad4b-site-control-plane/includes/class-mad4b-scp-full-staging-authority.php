@@ -261,87 +261,67 @@ final class MAD4B_SCP_Full_Staging_Authority {
 	public static function handshake() {
 		$access = self::can_access();
 		if ( is_wp_error( $access ) || ! $access ) return $access;
+		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) || ! method_exists( 'MAD4B_SCP_Connector_Resilience', 'generation_fenced_compact_read' ) ) {
+			return new WP_Error( 'mad4b_full_authority_handshake_resilience_unavailable', 'Shared connector resilience service is unavailable.' );
+		}
 
-		$before = class_exists( 'MAD4B_SCP_Read_Consistency' )
-			? MAD4B_SCP_Read_Consistency::snapshot_header( array() )
-			: array();
-		$plan = self::plan();
-		if ( is_wp_error( $plan ) ) return $plan;
-		$after = class_exists( 'MAD4B_SCP_Read_Consistency' )
-			? MAD4B_SCP_Read_Consistency::snapshot_header( array() )
-			: array();
+		return MAD4B_SCP_Connector_Resilience::generation_fenced_compact_read(
+			'full_staging_authority_handshake',
+			array( __CLASS__, 'plan' ),
+			static function ( $plan, $before, $after ) {
+				unset( $before );
+				if ( ! is_array( $plan ) ) return new WP_Error( 'mad4b_full_authority_handshake_plan_invalid', 'Full Staging Authority plan is unavailable.' );
+				$write = isset( $plan['write_reconciliation'] ) && is_array( $plan['write_reconciliation'] ) ? $plan['write_reconciliation'] : array();
+				$binding = isset( $write['candidate_binding'] ) && is_array( $write['candidate_binding'] ) ? $write['candidate_binding'] : array();
+				$developer_status = isset( $plan['developer_status'] ) && is_array( $plan['developer_status'] ) ? $plan['developer_status'] : array();
+				$normal_ready = ! empty( $developer_status['developer_enabled'] )
+					&& ! empty( $developer_status['direct_execution_enabled'] )
+					&& empty( $developer_status['kill_switch_enabled'] )
+					&& ! empty( $developer_status['normal_authority']['ready'] );
+				$breakglass_ready = $normal_ready
+					&& ! empty( $developer_status['breakglass_enabled'] )
+					&& ! empty( $developer_status['breakglass_authority']['ready'] );
 
-		$before_generation = isset( $before['runtime_generation'] ) ? strtolower( (string) $before['runtime_generation'] ) : '';
-		$after_generation = isset( $after['runtime_generation'] ) ? strtolower( (string) $after['runtime_generation'] ) : '';
-		if ( '' !== $before_generation && '' !== $after_generation && ! hash_equals( $before_generation, $after_generation ) ) {
-			return new WP_Error(
-				'mad4b_full_authority_runtime_generation_changed',
-				'Runtime generation changed while preparing Full Staging Authority. Reconnect and request a fresh handshake.',
-				array(
-					'client_action' => 'reconnect_then_replan',
-					'blind_apply_allowed' => false,
+				return array(
+					'contract' => 'mad4b.full-staging-authority-handshake.v1',
+					'full_authority_contract' => self::CONTRACT,
+					'read_only' => true,
+					'authorizing' => false,
 					'mutation_performed' => false,
-				)
-			);
-		}
-
-		$write = isset( $plan['write_reconciliation'] ) && is_array( $plan['write_reconciliation'] ) ? $plan['write_reconciliation'] : array();
-		$binding = isset( $write['candidate_binding'] ) && is_array( $write['candidate_binding'] ) ? $write['candidate_binding'] : array();
-		$developer_status = isset( $plan['developer_status'] ) && is_array( $plan['developer_status'] ) ? $plan['developer_status'] : array();
-		$normal_ready = ! empty( $developer_status['developer_enabled'] )
-			&& ! empty( $developer_status['direct_execution_enabled'] )
-			&& empty( $developer_status['kill_switch_enabled'] )
-			&& ! empty( $developer_status['normal_authority']['ready'] );
-		$breakglass_ready = $normal_ready
-			&& ! empty( $developer_status['breakglass_enabled'] )
-			&& ! empty( $developer_status['breakglass_authority']['ready'] );
-
-		$envelope = array(
-			'contract' => 'mad4b.full-staging-authority-handshake.v1',
-			'full_authority_contract' => self::CONTRACT,
-			'read_only' => true,
-			'authorizing' => false,
-			'mutation_performed' => false,
-			'production_allowed' => false,
-			'generic_raw_sql_breakglass_included' => false,
-			'runtime_generation' => '' !== $after_generation ? $after_generation : $before_generation,
-			'snapshot_id' => isset( $after['snapshot_id'] ) ? (string) $after['snapshot_id'] : ( isset( $before['snapshot_id'] ) ? (string) $before['snapshot_id'] : '' ),
-			'observed_at' => gmdate( 'c' ),
-			'ready_to_apply' => ! empty( $plan['ready_to_apply'] ),
-			'hard_blockers' => self::compact_string_list( isset( $plan['hard_blockers'] ) ? $plan['hard_blockers'] : array(), 16 ),
-			'write_ready' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective(),
-			'write_grants_ready' => ! empty( $write['current_ready'] ),
-			'developer_ready' => $normal_ready,
-			'developer_breakglass_ready' => $breakglass_ready,
-			'candidate_binding' => array(
-				'required' => ! empty( $binding['required'] ),
-				'match' => ! empty( $binding['match'] ),
-				'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
-				'stored_source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : '',
-			),
-			'exact_apply' => array(
-				'expected_plan_sha256' => isset( $plan['plan_sha256'] ) ? (string) $plan['plan_sha256'] : '',
-				'expected_source_commit_sha' => isset( $plan['source_commit_sha'] ) ? (string) $plan['source_commit_sha'] : '',
-				'expected_build_fingerprint' => isset( $plan['build_fingerprint'] ) ? (string) $plan['build_fingerprint'] : '',
-				'expected_package_manifest_digest' => isset( $plan['package_manifest_digest'] ) ? (string) $plan['package_manifest_digest'] : '',
-				'expected_artifact_identity' => isset( $plan['artifact_identity'] ) ? (string) $plan['artifact_identity'] : '',
-				'expected_site_uuid' => isset( $plan['site_uuid'] ) ? (string) $plan['site_uuid'] : '',
-				'expected_profile_revision' => isset( $plan['site_profile_revision'] ) ? (int) $plan['site_profile_revision'] : 0,
-				'expected_profile_digest' => isset( $plan['site_profile_digest'] ) ? (string) $plan['site_profile_digest'] : '',
-				'confirmation' => self::CONFIRMATION,
-			),
-			'client_action' => ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_handshake' : 'repair_blockers_then_request_fresh_handshake',
-			'deep_status_direct_projection' => false,
-			'deep_plan_direct_projection' => false,
-			'deep_reads_available_via_governed_dispatch' => true,
+					'production_allowed' => false,
+					'generic_raw_sql_breakglass_included' => false,
+					'observed_at' => isset( $after['observed_at'] ) ? (string) $after['observed_at'] : gmdate( 'c' ),
+					'ready_to_apply' => ! empty( $plan['ready_to_apply'] ),
+					'hard_blockers' => self::compact_string_list( isset( $plan['hard_blockers'] ) ? $plan['hard_blockers'] : array(), 16 ),
+					'write_ready' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective(),
+					'write_grants_ready' => ! empty( $write['current_ready'] ),
+					'developer_ready' => $normal_ready,
+					'developer_breakglass_ready' => $breakglass_ready,
+					'candidate_binding' => array(
+						'required' => ! empty( $binding['required'] ),
+						'match' => ! empty( $binding['match'] ),
+						'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
+						'stored_source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : '',
+					),
+					'exact_apply' => array(
+						'expected_plan_sha256' => isset( $plan['plan_sha256'] ) ? (string) $plan['plan_sha256'] : '',
+						'expected_source_commit_sha' => isset( $plan['source_commit_sha'] ) ? (string) $plan['source_commit_sha'] : '',
+						'expected_build_fingerprint' => isset( $plan['build_fingerprint'] ) ? (string) $plan['build_fingerprint'] : '',
+						'expected_package_manifest_digest' => isset( $plan['package_manifest_digest'] ) ? (string) $plan['package_manifest_digest'] : '',
+						'expected_artifact_identity' => isset( $plan['artifact_identity'] ) ? (string) $plan['artifact_identity'] : '',
+						'expected_site_uuid' => isset( $plan['site_uuid'] ) ? (string) $plan['site_uuid'] : '',
+						'expected_profile_revision' => isset( $plan['site_profile_revision'] ) ? (int) $plan['site_profile_revision'] : 0,
+						'expected_profile_digest' => isset( $plan['site_profile_digest'] ) ? (string) $plan['site_profile_digest'] : '',
+						'confirmation' => self::CONFIRMATION,
+					),
+					'client_action' => ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_handshake' : 'repair_blockers_then_request_fresh_handshake',
+					'deep_status_direct_projection' => false,
+					'deep_plan_direct_projection' => false,
+					'deep_reads_available_via_governed_dispatch' => true,
+				);
+			},
+			8192
 		);
-		$encoded = wp_json_encode( $envelope, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		$envelope['response_bytes'] = is_string( $encoded ) ? strlen( $encoded ) : 0;
-		$envelope['response_budget_bytes'] = 8192;
-		if ( $envelope['response_bytes'] > $envelope['response_budget_bytes'] ) {
-			return new WP_Error( 'mad4b_full_authority_handshake_oversized', 'Full Staging Authority handshake exceeded its compact response budget.' );
-		}
-		return $envelope;
 	}
 
 	private static function compact_string_list( $items, $limit = 16 ) {
