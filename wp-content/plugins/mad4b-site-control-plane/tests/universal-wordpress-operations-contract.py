@@ -144,6 +144,7 @@ assert "mad4b/dependency-impact" in catalog_projection
 assert "mad4b/provider-candidate-matrix" in catalog_projection
 assert "mad4b/provider-autopilot-status" in catalog_projection
 assert "mad4b/provider-autopilot-plan" in catalog_projection
+assert "mad4b/provider-autopilot-promotion-plan" in catalog_projection
 assert "mad4b/operation-pipeline-compile" in catalog_projection
 assert "mad4b/provider-transport-registry-status" in catalog_projection
 stage_bindings = operation["stage_bindings"]
@@ -240,6 +241,19 @@ for marker in (
     assert marker in provider_autopilot, marker
 assert "wp_register_ability( 'mad4b/provider-autopilot-status'" in provider_autopilot
 assert "wp_register_ability( 'mad4b/provider-autopilot-plan'" in provider_autopilot
+assert "wp_register_ability( 'mad4b/provider-autopilot-promotion-plan'" in provider_autopilot
+assert "mad4b.provider-autopilot-promotion-plan.v1" in provider_autopilot
+for marker in (
+    "runtime_adapter_available",
+    "bounded_read_abilities_declared",
+    "side_channel_clear",
+    "provider_certification_ok",
+    "reversible_write_contracts",
+    "functional_ready",
+    "enter_governed_promotion_lane",
+    "promotion_plan_sha256",
+):
+    assert marker in provider_autopilot, marker
 
 assert "infer_provider_id" in dependency_impact
 assert "certified-providers.json" in dependency_impact
