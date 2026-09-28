@@ -2320,4 +2320,4 @@ final class MAD4B_SCP_Abilities {
 		MAD4B_SCP_Audit::record( 'mad4b/database-raw-query', array( 'verb' => $verb, 'query_hash' => $hash, 'affected' => $result ) );
 		return array( 'verb' => $verb, 'query_hash' => $hash, 'affected_rows' => (int) $result );
 	}
-}
+
