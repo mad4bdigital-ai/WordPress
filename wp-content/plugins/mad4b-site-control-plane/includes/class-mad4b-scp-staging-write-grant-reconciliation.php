@@ -22,7 +22,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 	private static $running = false;
 
 	public static function allowed_ability_providers() {
-		return array(
+		$allowed = array(
 			'mad4b/plugin-package-apply' => 'core',
 			'mad4b/plugin-remote-update-apply' => 'core',
 			'mad4b/control-plane-upload-apply' => 'core',
@@ -50,6 +50,24 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			'context/rollback-materialized-brand-draft' => 'google_drive_context',
 			'context/source-scan-apply' => 'google_drive_context',
 		);
+
+		// Generic content authority remains exact and code-reviewed. Site runtime
+		// models (CPTs/taxonomies/terms/meta) are dynamic, but the abilities that
+		// may receive Staging grants are restricted to the bundled core adapters
+		// and their explicit reversible contracts. Never derive this allowlist
+		// from third-party adapter registration hooks.
+		if ( class_exists( 'MAD4B_SCP_Core_Content_Modeling_Adapter' ) ) {
+			$allowed[ MAD4B_SCP_Core_Content_Modeling_Adapter::CREATE_POST_ABILITY ] = 'core';
+			$allowed[ MAD4B_SCP_Core_Content_Modeling_Adapter::CREATE_TERM_ABILITY ] = 'core';
+			$allowed[ MAD4B_SCP_Core_Content_Modeling_Adapter::SET_TERMS_ABILITY ] = 'core';
+		}
+		if ( class_exists( 'MAD4B_SCP_Dynamic_Content_Adapter' ) ) {
+			$allowed[ MAD4B_SCP_Dynamic_Content_Adapter::APPLY ] = 'core';
+			$allowed[ MAD4B_SCP_Dynamic_Content_Adapter::PIPELINE_UPDATE ] = 'core';
+		}
+
+		ksort( $allowed, SORT_STRING );
+		return $allowed;
 	}
 
 	public static function allowed_abilities() {
