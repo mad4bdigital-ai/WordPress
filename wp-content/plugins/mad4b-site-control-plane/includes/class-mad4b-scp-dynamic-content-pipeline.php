@@ -374,12 +374,12 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline {
 	private static function acquire_settings_lock(){
 		$token=wp_generate_uuid4();
 		$value=array('token'=>$token,'acquired_at'=>time());
-		if(add_option(self::LOCK_OPTION,$value,'','no')) return $token;
+		if(add_option(self::LOCK_OPTION,$value,'',false)) return $token;
 		$existing=get_option(self::LOCK_OPTION,array());
 		$acquired=is_array($existing)&&isset($existing['acquired_at'])?(int)$existing['acquired_at']:0;
 		if($acquired>0&&$acquired<=(time()-self::LOCK_TTL)){
 			delete_option(self::LOCK_OPTION);
-			if(add_option(self::LOCK_OPTION,$value,'','no')) return $token;
+			if(add_option(self::LOCK_OPTION,$value,'',false)) return $token;
 		}
 		return new WP_Error('mad4b_dynamic_pipeline_busy','Pipeline settings are being updated by another request. Reload and retry.');
 	}
