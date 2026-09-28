@@ -13,6 +13,8 @@ final class MAD4B_SCP_Transport_Context {
 	private static $route = '';
 	private static $write_dispatch_target = '';
 	private static $write_dispatch_schema_sha256 = '';
+	private static $developer_dispatch_target = '';
+	private static $developer_dispatch_schema_sha256 = '';
 
 	public static function bind( $server_id, $request ) {
 		self::clear();
@@ -49,6 +51,18 @@ final class MAD4B_SCP_Transport_Context {
 		if ( '' === $current ) return $declared_server_id;
 		if ( ! class_exists( 'MAD4B_SCP_Servers' ) ) {
 			return new WP_Error( 'mad4b_transport_server_registry_unavailable', 'MAD4B server membership is unavailable.' );
+		}
+
+		// The compact ChatGPT transport may delegate exactly one normal Developer
+		// target after schema binding and request-local Developer identity derivation.
+		// Breakglass is never eligible for this path.
+		if ( 'mad4b-chatgpt' === $current && self::developer_dispatch_target_matches( $ability_name ) ) {
+			if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! in_array( $ability_name, MAD4B_SCP_Developer_Runtime::tool_names( false ), true ) ) {
+				return new WP_Error( 'mad4b_developer_dispatch_target_denied', 'The nested Developer target is outside the normal Developer tool inventory.' );
+			}
+			if ( 0 === strpos( $ability_name, 'mad4b/developer-breakglass-' ) ) return new WP_Error( 'mad4b_developer_dispatch_breakglass_denied', 'Developer Breakglass is never available through the ChatGPT dispatcher.' );
+			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-developer', $ability_name ) ) return new WP_Error( 'mad4b_developer_dispatch_mount_missing', 'The nested Developer target is not mounted on mad4b-developer.' );
+			return 'mad4b-developer';
 		}
 
 		// The exact enrolled Staging ChatGPT transport may expose the complete stable
@@ -115,6 +129,55 @@ final class MAD4B_SCP_Transport_Context {
 		}
 	}
 
+	/**
+	 * Execute exactly one normal Developer target behind mad4b/developer-execute.
+	 * The outer HTTP transport remains mad4b-chatgpt. The derived Developer
+	 * identity exists only for the nested callback and creates no OAuth scope,
+	 * grant, approval or persistent credential.
+	 */
+	public static function with_developer_dispatch_target( $ability_name, $expected_schema_sha256, $callback ) {
+		$ability_name = trim( (string) $ability_name );
+		$expected_schema_sha256 = strtolower( trim( (string) $expected_schema_sha256 ) );
+		if ( 'mad4b-chatgpt' !== self::current_server_id() ) return new WP_Error( 'mad4b_developer_dispatch_transport_invalid', 'Nested Developer dispatch requires the active ChatGPT transport.' );
+		if ( ! is_callable( $callback ) ) return new WP_Error( 'mad4b_developer_dispatch_callback_invalid', 'Nested Developer dispatch requires a callable target.' );
+		if ( '' !== self::$developer_dispatch_target || '' !== self::$write_dispatch_target ) return new WP_Error( 'mad4b_developer_dispatch_nested_recursion_denied', 'Nested mutation dispatcher recursion is not allowed.' );
+		if ( '' === $ability_name || 'mad4b/developer-execute' === $ability_name || 0 === strpos( $ability_name, 'mad4b/developer-breakglass-' ) ) return new WP_Error( 'mad4b_developer_dispatch_target_denied', 'The requested Developer target is not eligible for compact dispatcher delegation.' );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_schema_sha256 ) ) return new WP_Error( 'mad4b_developer_dispatch_schema_invalid', 'Nested Developer dispatch requires an exact input schema digest.' );
+		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! in_array( $ability_name, MAD4B_SCP_Developer_Runtime::tool_names( false ), true ) ) return new WP_Error( 'mad4b_developer_dispatch_target_not_cataloged', 'The requested target is not in the normal Developer inventory.' );
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-developer', $ability_name ) ) return new WP_Error( 'mad4b_developer_dispatch_target_not_runtime_eligible', 'The requested Developer target is not mounted on the dedicated Developer authority.' );
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_developer_dispatch_target_unavailable', 'The requested Developer target is not registered in the current runtime.' );
+		$ability = wp_get_ability( $ability_name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_input_schema' ) ) return new WP_Error( 'mad4b_developer_dispatch_contract_unavailable', 'The requested Developer target does not expose an input schema contract.' );
+		$encoded_schema = wp_json_encode( $ability->get_input_schema(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( false === $encoded_schema || ! hash_equals( hash( 'sha256', $encoded_schema ), $expected_schema_sha256 ) ) return new WP_Error( 'mad4b_developer_dispatch_schema_drift', 'Developer target schema changed after dispatcher validation.' );
+		if ( ! class_exists( 'MAD4B_SCP_Developer_Authority' ) || ! method_exists( 'MAD4B_SCP_Developer_Authority', 'chatgpt_dispatch_identity' ) ) return new WP_Error( 'mad4b_developer_dispatch_authority_unavailable', 'Developer dispatch authority derivation is unavailable.' );
+		$derived = MAD4B_SCP_Developer_Authority::chatgpt_dispatch_identity();
+		if ( is_wp_error( $derived ) ) return $derived;
+		if ( ! is_array( $derived ) || empty( $derived['subject_fingerprint'] ) ) return new WP_Error( 'mad4b_developer_dispatch_identity_unavailable', 'Developer dispatch identity derivation did not return an exact subject fingerprint.' );
+		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! method_exists( 'MAD4B_SCP_Identity_Context', 'with_request_subject_override' ) ) return new WP_Error( 'mad4b_developer_dispatch_identity_context_unavailable', 'Request-local Developer identity overlay is unavailable.' );
+
+		self::$developer_dispatch_target = $ability_name;
+		self::$developer_dispatch_schema_sha256 = $expected_schema_sha256;
+		try {
+			return MAD4B_SCP_Identity_Context::with_request_subject_override(
+				'oauth_developer',
+				(string) $derived['subject_fingerprint'],
+				'mcp_developer_dispatch',
+				$callback
+			);
+		} finally {
+			self::$developer_dispatch_target = '';
+			self::$developer_dispatch_schema_sha256 = '';
+		}
+	}
+
+	public static function developer_dispatch_target_matches( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		return '' !== self::$developer_dispatch_target
+			&& hash_equals( self::$developer_dispatch_target, $ability_name )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', self::$developer_dispatch_schema_sha256 );
+	}
+
 	private static function write_dispatch_target_matches( $ability_name ) {
 		$ability_name = (string) $ability_name;
 		return '' !== self::$write_dispatch_target
@@ -136,6 +199,8 @@ final class MAD4B_SCP_Transport_Context {
 			'chatgpt_write_discovery_model' => 'stable_unified_catalog_fail_closed_execution',
 			'chatgpt_write_authority_server' => 'mad4b-write',
 			'write_dispatch_target_bound' => '' !== self::$write_dispatch_target,
+			'developer_dispatch_target_bound' => '' !== self::$developer_dispatch_target,
+			'chatgpt_developer_dispatch_breakglass_allowed' => false,
 			'credential_material_stored' => false,
 		);
 	}
@@ -145,5 +210,7 @@ final class MAD4B_SCP_Transport_Context {
 		self::$route = '';
 		self::$write_dispatch_target = '';
 		self::$write_dispatch_schema_sha256 = '';
+		self::$developer_dispatch_target = '';
+		self::$developer_dispatch_schema_sha256 = '';
 	}
 }
