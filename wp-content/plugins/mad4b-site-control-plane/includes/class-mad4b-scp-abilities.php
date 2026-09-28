@@ -440,7 +440,7 @@ final class MAD4B_SCP_Abilities {
 				'category' => $category,
 				'readonly' => isset( $annotations['readonly'] ) && true === $annotations['readonly'],
 				'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
-				'approval_lane' => isset( $annotations['readonly'] ) && true === $annotations['readonly'] ? 'none' : 'human_only',
+				'approval_lane' => $this->developer_approval_lane( $ability_name, isset( $annotations['readonly'] ) && true === $annotations['readonly'] ),
 			);
 			if ( count( $items ) >= $limit ) break;
 		}
@@ -470,12 +470,21 @@ final class MAD4B_SCP_Abilities {
 			'input_schema' => method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null,
 			'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
 			'annotations' => $annotations,
-			'approval_lane' => isset( $annotations['readonly'] ) && true === $annotations['readonly'] ? 'none' : 'human_only',
+			'approval_lane' => $this->developer_approval_lane( $ability_name, isset( $annotations['readonly'] ) && true === $annotations['readonly'] ),
 			'production_authorized' => false,
 			'breakglass_included' => false,
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
+	}
+
+	private function developer_approval_lane( $ability_name, $readonly ) {
+		if ( $readonly ) return 'none';
+		if ( class_exists( 'MAD4B_SCP_Impact_Policy' ) ) {
+			$classification = MAD4B_SCP_Impact_Policy::classify( (string) $ability_name, 'core', array() );
+			if ( is_array( $classification ) && isset( $classification['approval_lane'] ) && in_array( $classification['approval_lane'], array( 'ai_autonomous', 'human_only' ), true ) ) return (string) $classification['approval_lane'];
+		}
+		return 'human_only';
 	}
 
 	public function developer_execute( $input ) {
