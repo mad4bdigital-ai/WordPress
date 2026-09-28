@@ -260,23 +260,44 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_remote_plan_input_invalid', 'Remote approval planning requires an object input.' );
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) return new WP_Error( 'mad4b_remote_plan_authority_not_ready', 'Governed write authority is not ready.' );
 
-		$status = MAD4B_SCP_Staging_Write_Authority::status();
-		$expected_agent = isset( $status['agent_public_id'] ) ? (string) $status['agent_public_id'] : '';
-		$requested_agent = isset( $input['agent_public_id'] ) ? (string) $input['agent_public_id'] : '';
-		if ( '' === $expected_agent || ! hash_equals( $expected_agent, $requested_agent ) ) return new WP_Error( 'mad4b_remote_plan_agent_mismatch', 'Remote approval planning is restricted to the dedicated governed write agent.' );
-
 		$server_id = isset( $input['server_id'] ) ? sanitize_key( (string) $input['server_id'] ) : '';
-		if ( 'mad4b-write' !== $server_id ) return new WP_Error( 'mad4b_remote_plan_server_denied', 'Remote approval planning may target only mad4b-write.' );
-
 		$target_ability = isset( $input['ability'] ) ? trim( (string) $input['ability'] ) : '';
-		if ( '' === $target_ability || self::ABILITY === $target_ability || 'mad4b/database-raw-query' === $target_ability ) return new WP_Error( 'mad4b_remote_plan_target_denied', 'Remote approval planning cannot target itself or breakglass.' );
-		if ( ! MAD4B_SCP_Staging_Write_Authority::is_write_ability( $target_ability ) ) return new WP_Error( 'mad4b_remote_plan_target_not_write', 'Remote approval planning target is not in the certified governed write inventory.' );
-
-		$expected_provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $target_ability );
-		if ( null === $expected_provider ) return new WP_Error( 'mad4b_remote_plan_target_unmounted', 'Remote approval target is not mounted on mad4b-write.' );
-		if ( isset( $input['provider'] ) && '' !== trim( (string) $input['provider'] ) && sanitize_key( (string) $input['provider'] ) !== $expected_provider ) return new WP_Error( 'mad4b_remote_plan_provider_mismatch', 'Remote approval target provider does not match the certified mad4b-write mount.' );
-
+		$requested_agent = isset( $input['agent_public_id'] ) ? strtolower( trim( (string) $input['agent_public_id'] ) ) : '';
 		$operation_input = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
+		$is_developer = 'mad4b-developer' === $server_id;
+
+		if ( $is_developer ) {
+			if ( ! class_exists( 'MAD4B_SCP_Developer_Authority' ) || ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) ) return new WP_Error( 'mad4b_remote_plan_developer_unavailable', 'Developer approval planning requires the Developer authority runtime.' );
+			$developer = MAD4B_SCP_Developer_Authority::status();
+			if ( 'staging' !== ( isset( $developer['environment'] ) ? sanitize_key( (string) $developer['environment'] ) : '' ) || empty( $developer['normal_authority']['ready'] ) || empty( $developer['developer_enabled'] ) || empty( $developer['direct_execution_enabled'] ) || ! empty( $developer['kill_switch_enabled'] ) ) {
+				return new WP_Error( 'mad4b_remote_plan_developer_not_ready', 'Normal Developer authority is not ready on exact Staging.' );
+			}
+			$expected_agent = isset( $developer['agent_public_id'] ) ? strtolower( (string) $developer['agent_public_id'] ) : '';
+			if ( '' === $expected_agent || ! hash_equals( $expected_agent, $requested_agent ) ) return new WP_Error( 'mad4b_remote_plan_developer_agent_mismatch', 'Developer approval planning is restricted to the configured Developer Agent.' );
+			if ( '' === $target_ability || 0 === strpos( $target_ability, 'mad4b/developer-breakglass-' ) || ! in_array( $target_ability, MAD4B_SCP_Developer_Runtime::tool_names( false ), true ) ) {
+				return new WP_Error( 'mad4b_remote_plan_developer_target_denied', 'Remote Developer approval planning may target only the normal Developer inventory; Breakglass is excluded.' );
+			}
+			$expected_provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-developer', $target_ability ) : null;
+			if ( 'core' !== $expected_provider ) return new WP_Error( 'mad4b_remote_plan_developer_target_unmounted', 'Developer approval target is not mounted on the dedicated Developer authority.' );
+			if ( isset( $input['provider'] ) && '' !== trim( (string) $input['provider'] ) && 'core' !== sanitize_key( (string) $input['provider'] ) ) return new WP_Error( 'mad4b_remote_plan_provider_mismatch', 'Developer approval target provider must be core.' );
+			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $target_ability ) ) return new WP_Error( 'mad4b_remote_plan_developer_target_unavailable', 'Developer approval target is not registered.' );
+			$target = wp_get_ability( $target_ability );
+			$meta = is_object( $target ) && method_exists( $target, 'get_meta' ) ? $target->get_meta() : array();
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+			if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) return new WP_Error( 'mad4b_remote_plan_developer_read_target_denied', 'Approval planning is only for mutating Developer targets.' );
+			if ( isset( $operation_input['expected_environment'] ) && 'staging' !== sanitize_key( (string) $operation_input['expected_environment'] ) ) return new WP_Error( 'mad4b_remote_plan_developer_environment_denied', 'Developer approval planning may target only Staging execution.' );
+		} else {
+			$status = MAD4B_SCP_Staging_Write_Authority::status();
+			$expected_agent = isset( $status['agent_public_id'] ) ? strtolower( (string) $status['agent_public_id'] ) : '';
+			if ( '' === $expected_agent || ! hash_equals( $expected_agent, $requested_agent ) ) return new WP_Error( 'mad4b_remote_plan_agent_mismatch', 'Remote approval planning is restricted to the dedicated governed write agent.' );
+			if ( 'mad4b-write' !== $server_id ) return new WP_Error( 'mad4b_remote_plan_server_denied', 'Remote approval planning may target only mad4b-write or the bounded normal Developer plane.' );
+			if ( '' === $target_ability || self::ABILITY === $target_ability || 'mad4b/database-raw-query' === $target_ability ) return new WP_Error( 'mad4b_remote_plan_target_denied', 'Remote approval planning cannot target itself or breakglass.' );
+			if ( ! MAD4B_SCP_Staging_Write_Authority::is_write_ability( $target_ability ) ) return new WP_Error( 'mad4b_remote_plan_target_not_write', 'Remote approval planning target is not in the certified governed write inventory.' );
+			$expected_provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $target_ability );
+			if ( null === $expected_provider ) return new WP_Error( 'mad4b_remote_plan_target_unmounted', 'Remote approval target is not mounted on mad4b-write.' );
+			if ( isset( $input['provider'] ) && '' !== trim( (string) $input['provider'] ) && sanitize_key( (string) $input['provider'] ) !== $expected_provider ) return new WP_Error( 'mad4b_remote_plan_provider_mismatch', 'Remote approval target provider does not match the certified mad4b-write mount.' );
+		}
+
 		if ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
 			$context_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard( $target_ability, $operation_input );
 			if ( is_wp_error( $context_guard ) ) return $context_guard;
@@ -287,7 +308,7 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			$undo_guard = self::validate_undo_plan_target( $operation_input );
 			if ( is_wp_error( $undo_guard ) ) return $undo_guard;
 		}
-		if ( ! class_exists( 'MAD4B_SCP_Impact_Policy' ) || 'mutation' !== MAD4B_SCP_Impact_Policy::ticket_class_for( $target_ability, $expected_provider, $operation_input ) ) return new WP_Error( 'mad4b_remote_plan_ticket_class_denied', 'Remote approval bootstrap may create mutation-class tickets only; breakglass/recovery remains excluded.' );
+		if ( ! class_exists( 'MAD4B_SCP_Impact_Policy' ) || 'mutation' !== MAD4B_SCP_Impact_Policy::ticket_class_for( $target_ability, $expected_provider, $operation_input ) ) return new WP_Error( 'mad4b_remote_plan_ticket_class_denied', 'Remote approval bootstrap may create mutation-class tickets only; Breakglass/recovery remains excluded.' );
 		if ( isset( $input['ticket_class'] ) && '' !== trim( (string) $input['ticket_class'] ) && 'mutation' !== sanitize_key( (string) $input['ticket_class'] ) ) return new WP_Error( 'mad4b_remote_plan_ticket_class_denied', 'Remote approval bootstrap may create mutation-class tickets only.' );
 		return true;
 	}
@@ -315,8 +336,10 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			'remote_planner_budgeted' => true,
 			'remote_planner_requires_prior_ticket' => false,
 			'remote_planner_scope' => 'ability:' . self::ABILITY,
-			'target_agent' => 'dedicated_governed_write_agent_only',
-			'target_server' => 'mad4b-write',
+			'target_agent' => 'dedicated_governed_write_or_configured_developer_agent',
+			'target_server' => 'mad4b-write_or_bounded_mad4b-developer',
+			'developer_dispatch_planning_enabled' => true,
+			'developer_breakglass_target_allowed' => false,
 			'target_ticket_class' => 'mutation',
 			'breakglass_target_allowed' => false,
 			'creates_pending_ticket_only' => true,
