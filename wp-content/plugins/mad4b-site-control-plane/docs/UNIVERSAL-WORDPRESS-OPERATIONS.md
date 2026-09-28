@@ -56,3 +56,22 @@ Supported stage types are bounded to read checks, planning, authorization, execu
 ## Dynamic provider trust ladder
 
 Installed plugins are classified from runtime evidence into L0 inventory, L1 generic lifecycle planning, L2 governed read, L3 certified reversible write candidate and L4 functionally ready certified governed candidate. Unknown plugins cannot become write-capable merely because they are installed or active. Adapter availability, side-channel isolation, reversible contracts and provider certification are required evidence, and the matrix never creates authority or automatically enables mutation.
+
+## Default provider autopilot
+
+Dynamic provider autopilot is enabled by default.
+
+For Staging, development and local environments the effective mode is `shadow_auto`. Discovery automatically generates an in-memory adapter candidate and a shadow provider identity certification proposal for uncovered plugins. These candidates are deterministic and fingerprinted but are not written to disk or registered as executable adapters.
+
+For Production the effective mode is always `observe_propose_only`.
+
+Default automatic behavior:
+- generate adapter candidate: enabled
+- shadow provider certification: enabled
+- materialize generated PHP: disabled
+- register generated adapter: disabled
+- write certification: disabled
+- create authority: disabled
+- enable mutation: disabled
+
+The automatic ceiling is L2/read. Reaching governed write or fully certified execution still requires governed promotion with runtime validation, reversible contracts, certification evidence and the normal authorization boundary.
