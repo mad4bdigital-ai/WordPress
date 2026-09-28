@@ -64,6 +64,11 @@ require(isolation, "'changes_provider_settings' => false", 'no-provider-settings
 require(isolation, "'disables_provider_plugins' => false", 'no-plugin-disable')
 require(isolation, "'creates_authority' => false", 'no-authority-creation')
 require(isolation, "'wpmedia_oauth_server_suppressed' => self::effective()", 'wpmedia-status-evidence')
+require(isolation, "MAD4B_SCP_Portable_Readonly_Connection::effective()", 'portable-readonly-isolation-bootstrap')
+require(isolation, "'portable_readonly_bootstrap'", 'portable-readonly-isolation-source')
+require(isolation, "'site_profile_not_enrolled_and_portable_readonly_unavailable'", 'portable-readonly-fail-closed-without-bootstrap')
+require(isolation, "'portable_readonly_isolation_nonproduction_only'", 'portable-readonly-no-production-auto-isolation')
+require(isolation, "'staging_zero_touch_autoconfig_source' => self::$staging_autoconfig_source", 'portable-readonly-status-source')
 
 require(isolation, "retain_internal_provider_route", 'jetengine-internal-route-retention')
 require(isolation, "internal_provider_transport_status", 'jetengine-internal-transport-status')
@@ -133,4 +138,4 @@ require(bootstrap, "class-mad4b-scp-mcp-provider-isolation.php", 'bootstrap-load
 require(bootstrap, 'MAD4B_SCP_MCP_Provider_Isolation::boot_early();', 'bootstrap-early-kill-switch')
 require(plugin, 'MAD4B_SCP_MCP_Provider_Isolation::boot();', 'plugin-boot')
 
-print('mad4b.site-control-plane.mcp-provider-isolation-contract.v6: PASS')
+print('mad4b.site-control-plane.mcp-provider-isolation-contract.v7: PASS')
