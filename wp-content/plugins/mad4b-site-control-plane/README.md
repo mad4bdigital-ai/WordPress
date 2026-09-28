@@ -10,7 +10,7 @@ Current plugin version: **0.4.0-rc.77**.
 
 rc.77 removes the need for large parallel MCP status fan-out. The new `mad4b/session-safe-diagnostics` read ability runs the fixed identity/runtime/certification/providers diagnostic sequence inside one generation-fenced WordPress request, returns only bounded allowlisted summaries, and enforces a hard 16 KiB response cap with deterministic summary/digest reduction. Runtime generation drift invalidates the whole report. The ability is read-only, non-authorizing, and cannot mutate Production.
 
-Direct diagnostic tools remain available for deliberate single-scope follow-up, but composite health checks should use the session-safe report instead of parallel direct reads.
+Detailed diagnostic abilities remain in the governed logical/read catalog for deliberate single-scope follow-up, but broad status tools are no longer projected directly onto `mad4b-chatgpt`. Composite health checks use the session-safe report; deeper inspection uses `mad4b-read` or one `read-execute` target at a time.
 
 ### rc.76 Brand materialization provider preflight and bounded failure evidence
 
