@@ -77,6 +77,8 @@ assert "'mad4b/database-raw-query'" not in full
 assert "class-mad4b-scp-full-staging-authority.php" in servers
 assert "public static function chatgpt_read_tools()" in full
 assert "return array( self::HANDSHAKE_ABILITY );" in full
+assert "public static function chatgpt_catalog_read_tools()" in full
+assert "return array( self::STATUS_ABILITY, self::PLAN_ABILITY, self::HANDSHAKE_ABILITY );" in full
 assert "public static function handshake()" in full
 for marker in [
     "mad4b.full-staging-authority-handshake.v1",
@@ -142,6 +144,7 @@ direct_read_helper = servers.split('public static function chatgpt_direct_read_t
 assert "MAD4B_SCP_Full_Staging_Authority::HANDSHAKE_ABILITY" in direct_read_helper
 assert "MAD4B_SCP_Full_Staging_Authority::PLAN_ABILITY" not in direct_read_helper
 assert "MAD4B_SCP_Full_Staging_Authority::STATUS_ABILITY" not in direct_read_helper
+assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_catalog_read_tools()" in full_catalog
 
 dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_tools()', 1)[0]
 assert "'mad4b/write-execute'" in dispatcher_helper
@@ -158,7 +161,7 @@ for low_level in [
 full_catalog = servers.split("public static function chatgpt_full_catalog_candidates()", 1)[1].split("public static function is_chatgpt_full_catalog_candidate", 1)[0]
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in full_catalog
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in full_catalog
-assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in full_catalog
+assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_catalog_read_tools()" in full_catalog
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in full_catalog
 assert full.count("self::meta( true, 'read' )") >= 3
 assert "self::meta( false, 'enrollment' )" in full
