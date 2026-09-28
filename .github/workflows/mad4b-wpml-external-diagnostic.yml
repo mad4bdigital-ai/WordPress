@@ -261,7 +261,9 @@ jobs:
           npm install --no-save --no-package-lock playwright@1.55.0
           npx playwright install --with-deps chromium
 
-          cat > /tmp/mad4b-wpml-external/browser-fallback.mjs <<'JS'
+          browser_script="$GITHUB_WORKSPACE/.mad4b-wpml-browser-fallback.mjs"
+          trap 'rm -f "$browser_script"' EXIT
+          cat > "$browser_script" <<'JS'
           import fs from 'node:fs';
           import path from 'node:path';
           import { chromium } from 'playwright';
@@ -403,7 +405,7 @@ jobs:
           }
           JS
 
-          node /tmp/mad4b-wpml-external/browser-fallback.mjs
+          node "$browser_script"
 
           {
             echo
