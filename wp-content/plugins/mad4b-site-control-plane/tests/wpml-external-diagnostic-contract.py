@@ -39,6 +39,10 @@ def main() -> int:
         "WPML REST namespace/route is missing on a reachable endpoint": "reachable route failure remains blocking",
         "WPML external contract failed on a reachable endpoint": "reachable response-contract failure remains blocking",
         "mad4b.wpml-external-http-acceptance.v5: PASS": "accepted evidence contract",
+        'npm install --prefix "$out" --no-save --no-package-lock playwright@1.55.0': "Playwright package must be installed beside the /tmp ESM fallback script",
+        '"$out/node_modules/.bin/playwright" install --with-deps chromium': "browser binary install must use the same local Playwright package",
+        'cat > "$out/browser-fallback.mjs"': "browser fallback script must live beside its local node_modules",
+        'node "$out/browser-fallback.mjs"': "browser fallback execution must preserve local ESM package resolution",
     }
     for marker, message in required.items():
         require(source, marker, message)

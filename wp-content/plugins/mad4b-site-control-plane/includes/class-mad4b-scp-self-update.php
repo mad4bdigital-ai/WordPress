@@ -2,7 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Dual-channel, fail-closed self update for MAD4B Site Control Plane.
+ * Multi-channel, fail-closed self update for MAD4B Site Control Plane.
  *
  * Channel A: WordPress-native manual plugin update from a repository-owned,
  * Release-Verdict-gated immutable package.
@@ -11,13 +11,21 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * bytes only (base64) plus exact identity metadata. Caller URLs and filesystem
  * paths are never accepted.
  *
- * Both channels share the same archive/provenance verifier and the same
- * backup/readback/rollback semantics. Automatic plugin updates are disabled.
+ * Channel C: governed native release pull. The caller supplies no package URL,
+ * filesystem path, archive bytes, target SHA, or version. The target is derived
+ * exclusively from the fixed repository release manifest, revalidated at apply,
+ * downloaded into protected MAD4B storage, then passed through the same exact
+ * archive/provenance verifier.
+ *
+ * All channels share the same backup/readback/rollback semantics.
+ * Automatic plugin updates remain disabled.
  */
 final class MAD4B_SCP_Self_Update {
 	const CONTRACT              = 'mad4b.control-plane-self-update.v1';
 	const PLAN_CONTRACT         = 'mad4b.control-plane-upload-plan.v1';
 	const APPLY_CONTRACT        = 'mad4b.control-plane-upload-apply.v1';
+	const NATIVE_PLAN_CONTRACT  = 'mad4b.control-plane-native-plan.v1';
+	const NATIVE_APPLY_CONTRACT = 'mad4b.control-plane-native-apply.v1';
 	const MANIFEST_CONTRACT     = 'mad4b.control-plane-update-channel.v1';
 	const RELEASE_TAG           = 'mad4b-site-control-plane-update-channel';
 	const MANIFEST_URL          = 'https://github.com/mad4bdigital-ai/WordPress/releases/download/mad4b-site-control-plane-update-channel/mad4b-site-control-plane-update.json';
@@ -73,6 +81,24 @@ final class MAD4B_SCP_Self_Update {
 			false,
 			array( __CLASS__, 'can_upload_apply' )
 		);
+
+		self::register_ability(
+			'mad4b/control-plane-native-plan',
+			'Plan Governed Native MAD4B Control Plane Update',
+			'native_plan',
+			self::native_plan_schema(),
+			true,
+			array( 'MAD4B_SCP_Policy', 'can_read' )
+		);
+
+		self::register_ability(
+			'mad4b/control-plane-native-apply',
+			'Apply Governed Native MAD4B Control Plane Update',
+			'native_apply',
+			self::native_apply_schema(),
+			false,
+			array( __CLASS__, 'can_native_apply' )
+		);
 	}
 
 	private static function register_ability( $name, $label, $method, $schema, $readonly, $permission ) {
@@ -81,7 +107,7 @@ final class MAD4B_SCP_Self_Update {
 			$name,
 			array(
 				'label' => $label,
-				'description' => $label . ' through the fail-closed dual-channel MAD4B self-update coordinator.',
+				'description' => $label . ' through the fail-closed multi-channel MAD4B self-update coordinator.',
 				'category' => $readonly ? 'mad4b-read' : 'mad4b-admin',
 				'execute_callback' => array( __CLASS__, $method ),
 				'permission_callback' => $permission,
@@ -123,6 +149,20 @@ final class MAD4B_SCP_Self_Update {
 		);
 	}
 
+	public static function can_native_apply( $input = null ) {
+		$admin = MAD4B_SCP_Policy::can_admin();
+		if ( is_wp_error( $admin ) || ! $admin ) return $admin;
+		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled.' );
+		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_self_update_staging_only', 'Remote Control Plane native release pull is Staging-only.' );
+		if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
+		return MAD4B_SCP_Authorization::authorize_mutation(
+			'mad4b/control-plane-native-apply',
+			'mad4b-admin',
+			'core',
+			is_array( $input ) ? $input : array()
+		);
+	}
+
 	public static function status( $input = array() ) {
 		unset( $input );
 		$current = self::installed_identity();
@@ -156,7 +196,23 @@ final class MAD4B_SCP_Self_Update {
 				'exact_approval_required' => true,
 				'rollback_required' => true,
 			),
+			'governed_native_release_pull' => array(
+				'ready' => (bool) ( $remote_ready && ! is_wp_error( $manifest ) ),
+				'staging_only' => true,
+				'fixed_manifest_url' => self::MANIFEST_URL,
+				'caller_url_allowed' => false,
+				'caller_path_allowed' => false,
+				'caller_package_bytes_allowed' => false,
+				'target_derived_from_release_manifest' => true,
+				'exact_plan_required' => true,
+				'exact_approval_required' => true,
+				'archive_integrity_required' => true,
+				'embedded_provenance_required' => true,
+				'rollback_required' => true,
+				'release_channel_bound' => true,
+			),
 			'production_remote_upload_allowed' => false,
+			'production_remote_native_pull_allowed' => false,
 			'mutation_performed' => false,
 			'authorizing' => false,
 		);
@@ -258,6 +314,90 @@ final class MAD4B_SCP_Self_Update {
 		}
 
 		$result = self::apply_verified_archive( $tmp, $plan['target'], 'governed_file_upload', $expected );
+		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		return $result;
+	}
+
+	public static function native_plan( $input ) {
+		$input = is_array( $input ) ? $input : array();
+		$current = self::installed_identity();
+		$manifest = self::fetch_manifest( true );
+		$blockers = array();
+
+		if ( ! self::environment_allowed( true ) ) $blockers[] = 'staging_enrolled_write_profile_required';
+		if ( ! current_user_can( 'update_plugins' ) ) $blockers[] = 'update_plugins_capability_required';
+		if ( is_wp_error( $manifest ) ) {
+			$blockers[] = $manifest->get_error_code();
+			$target = array();
+		} else {
+			$target = self::public_manifest( $manifest );
+			if ( ! empty( $current['source_commit_sha'] ) && hash_equals( $current['source_commit_sha'], $manifest['source_commit_sha'] ) ) $blockers[] = 'already_on_exact_source_commit';
+			if ( ! empty( $current['version'] ) && version_compare( $current['version'], $manifest['version'], '>' ) ) $blockers[] = 'target_version_older_than_runtime';
+		}
+
+		$plan = array(
+			'contract' => self::NATIVE_PLAN_CONTRACT,
+			'plugin' => plugin_basename( MAD4B_SCP_FILE ),
+			'operation' => 'replace',
+			'channel' => 'governed_native_release_pull',
+			'current' => $current,
+			'target' => $target,
+			'fixed_manifest_url' => self::MANIFEST_URL,
+			'caller_url_allowed' => false,
+			'caller_path_allowed' => false,
+			'caller_package_bytes_allowed' => false,
+			'target_derived_from_release_manifest' => true,
+			'backup_required' => true,
+			'activation_state_preserved' => true,
+			'archive_integrity_required' => true,
+			'embedded_provenance_required' => true,
+			'rollback_on_failed_readback' => true,
+			'release_channel_bound' => true,
+			'production_allowed' => false,
+			'eligible' => empty( $blockers ),
+			'blockers' => array_values( array_unique( $blockers ) ),
+			'reason' => isset( $input['reason'] ) ? sanitize_text_field( (string) $input['reason'] ) : '',
+			'mutation_performed' => false,
+			'authorizing' => false,
+		);
+		sort( $plan['blockers'], SORT_STRING );
+		$plan['plan_sha256'] = self::digest( $plan );
+		$plan['write_binding'] = array( 'expected_plan_sha256' => $plan['plan_sha256'] );
+		return $plan;
+	}
+
+	public static function native_apply( $input ) {
+		$input = is_array( $input ) ? $input : array();
+		$expected = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/' , $expected ) ) return new WP_Error( 'mad4b_self_update_plan_digest_required', 'expected_plan_sha256 from the reviewed native release plan is required.' );
+
+		$plan_input = array( 'reason' => isset( $input['reason'] ) ? (string) $input['reason'] : '' );
+		$plan = self::native_plan( $plan_input );
+		if ( is_wp_error( $plan ) ) return $plan;
+		if ( ! hash_equals( $plan['plan_sha256'], $expected ) ) {
+			return new WP_Error( 'mad4b_self_update_plan_changed', 'Control Plane native release plan changed since review.', array( 'current_plan_sha256' => $plan['plan_sha256'], 'expected_plan_sha256' => $expected ) );
+		}
+		if ( empty( $plan['eligible'] ) ) return new WP_Error( 'mad4b_self_update_preflight_blocked', 'Control Plane native release preflight blocked the mutation.', array( 'blockers' => $plan['blockers'] ) );
+
+		$manifest = self::fetch_manifest( true );
+		if ( is_wp_error( $manifest ) ) return $manifest;
+		$current_target = self::public_manifest( $manifest );
+		foreach ( array( 'version', 'source_commit_sha', 'archive_sha256', 'build_fingerprint', 'package_manifest_digest', 'size_bytes' ) as $field ) {
+			if ( ! array_key_exists( $field, $plan['target'] ) || ! array_key_exists( $field, $current_target ) || (string) $plan['target'][ $field ] !== (string) $current_target[ $field ] ) {
+				return new WP_Error( 'mad4b_self_update_native_release_drift', 'Governed release channel changed after native update planning.', array( 'field' => $field ) );
+			}
+		}
+
+		$tmp = self::download_governed_release_to_protected_storage( $manifest );
+		if ( is_wp_error( $tmp ) ) return $tmp;
+
+		$verified = self::verify_archive( $tmp, $manifest );
+		if ( is_wp_error( $verified ) ) {
+			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			return $verified;
+		}
+
+		$result = self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected );
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return $result;
 	}
@@ -410,7 +550,7 @@ final class MAD4B_SCP_Self_Update {
 		delete_transient( self::MANIFEST_TRANSIENT );
 
 		return array(
-			'contract' => self::APPLY_CONTRACT,
+			'contract' => 'governed_native_release_pull' === (string) $channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT,
 			'channel' => $channel,
 			'plugin' => plugin_basename( MAD4B_SCP_FILE ),
 			'before' => $before,
@@ -427,6 +567,40 @@ final class MAD4B_SCP_Self_Update {
 			'authority_created' => false,
 			'authorizing' => false,
 		);
+	}
+
+	private static function download_governed_release_to_protected_storage( array $manifest ) {
+		$tmp = self::temp_archive_path();
+		if ( is_wp_error( $tmp ) ) return $tmp;
+
+		$response = wp_safe_remote_get(
+			$manifest['package_url'],
+			array(
+				'timeout' => 30,
+				'redirection' => 3,
+				'stream' => true,
+				'filename' => $tmp,
+				'limit_response_size' => self::MAX_UPLOAD_BYTES + 1,
+				'user-agent' => 'MAD4B-Site-Control-Plane/' . MAD4B_SCP_VERSION,
+				'headers' => array( 'Accept' => 'application/zip' ),
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			return new WP_Error( 'mad4b_self_update_native_download_failed', 'Unable to download the exact governed Control Plane release.', array( 'cause' => $response->get_error_code() ) );
+		}
+		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			return new WP_Error( 'mad4b_self_update_native_download_http_error', 'Governed Control Plane release returned a non-200 response.' );
+		}
+
+		$size = @filesize( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( false === $size || (int) $size !== (int) $manifest['size_bytes'] || (int) $size > self::MAX_UPLOAD_BYTES ) {
+			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			return new WP_Error( 'mad4b_self_update_native_size_mismatch', 'Downloaded governed release size does not match the exact manifest.' );
+		}
+		@chmod( $tmp, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		return $tmp;
 	}
 
 	private static function fetch_manifest( $force = false ) {
@@ -479,13 +653,15 @@ final class MAD4B_SCP_Self_Update {
 		if ( ! is_array( $parts ) || 'https' !== ( isset( $parts['scheme'] ) ? strtolower( (string) $parts['scheme'] ) : '' )
 			|| 'github.com' !== ( isset( $parts['host'] ) ? strtolower( (string) $parts['host'] ) : '' )
 			|| $expected_path !== ( isset( $parts['path'] ) ? (string) $parts['path'] : '' )
-			|| ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) || ! empty( $parts['fragment'] ) ) {
+			|| ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) || ! empty( $parts['port'] ) || ! empty( $parts['query'] ) || ! empty( $parts['fragment'] ) ) {
 			return new WP_Error( 'mad4b_self_update_manifest_package_url_invalid', 'Update manifest package URL is outside the fixed repository release channel.' );
 		}
 		$manifest['package_url'] = $url;
 		$manifest['size_bytes'] = isset( $manifest['size_bytes'] ) ? absint( $manifest['size_bytes'] ) : 0;
 		if ( $manifest['size_bytes'] < 1 || $manifest['size_bytes'] > self::MAX_UPLOAD_BYTES ) return new WP_Error( 'mad4b_self_update_manifest_size_invalid', 'Update package size is outside the bounded self-update budget.' );
-		if ( empty( $manifest['release_verdict_success'] ) ) return new WP_Error( 'mad4b_self_update_release_verdict_missing', 'Update manifest is not bound to a successful Release Verdict.' );
+		if ( ! isset( $manifest['release_verdict_success'] ) || true !== $manifest['release_verdict_success'] ) return new WP_Error( 'mad4b_self_update_release_verdict_missing', 'Update manifest is not bound to a successful Release Verdict.' );
+		if ( ! isset( $manifest['published_from_master'] ) || true !== $manifest['published_from_master'] ) return new WP_Error( 'mad4b_self_update_master_publication_missing', 'Update manifest is not bound to an exact master publication.' );
+		if ( ! isset( $manifest['release_root_trust_verified'] ) || true !== $manifest['release_root_trust_verified'] ) return new WP_Error( 'mad4b_self_update_release_root_trust_missing', 'Update manifest is not bound to verified release-root trust.' );
 		return true;
 	}
 
@@ -740,6 +916,24 @@ final class MAD4B_SCP_Self_Update {
 			$extra
 		);
 		MAD4B_SCP_Audit::record( 'mad4b/control-plane-self-update', $payload, $success ? 'success' : 'failure' );
+	}
+
+	private static function native_plan_schema() {
+		return array(
+			'type' => 'object',
+			'properties' => array(
+				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+			),
+			'required' => array( 'reason' ),
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function native_apply_schema() {
+		$schema = self::native_plan_schema();
+		$schema['properties']['expected_plan_sha256'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' );
+		$schema['required'][] = 'expected_plan_sha256';
+		return $schema;
 	}
 
 	private static function plan_schema() {
