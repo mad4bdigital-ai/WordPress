@@ -480,7 +480,7 @@ final class MAD4B_SCP_Servers {
 			$tools = array_merge( $tools, MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools() );
 		}
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) {
-			$tools[] = MAD4B_SCP_Full_Staging_Authority::PLAN_ABILITY;
+			$tools[] = MAD4B_SCP_Full_Staging_Authority::HANDSHAKE_ABILITY;
 		}
 		$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
 		sort( $tools, SORT_STRING );
