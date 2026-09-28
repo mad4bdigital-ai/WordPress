@@ -70,7 +70,14 @@ final class MAD4B_SCP_Developer_Workspace {
 			self::schema(
 				array(
 					'project_slug' => self::project_slug_schema(),
-					'plugin_file' => array( 'type' => 'string', 'minLength' => 5, 'maxLength' => 191, 'pattern' => '^[A-Za-z0-9._-]+\\.php
+					'plugin_file' => array( 'type' => 'string', 'minLength' => 5, 'maxLength' => 191, 'pattern' => '^[A-Za-z0-9._-]+\\.php$' ),
+					'activate_after_install' => array( 'type' => 'boolean', 'default' => false ),
+				),
+				array( 'project_slug', 'plugin_file' )
+			)
+		);
+		self::add(
+			'mad4b/developer-workspace-apply',
 			'Developer Workspace Apply',
 			'apply',
 			false,
@@ -109,7 +116,11 @@ final class MAD4B_SCP_Developer_Workspace {
 				array(
 					'project_slug' => self::project_slug_schema(),
 					'plugin_file' => array( 'type' => 'string', 'minLength' => 5, 'maxLength' => 191, 'pattern' => '^[A-Za-z0-9._-]+\\.php$' ),
-					'expected_workspace_manifest_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}
+					'expected_plan_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+					'expected_workspace_manifest_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+					'expected_installed_manifest_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'default' => '' ),
+					'expected_absent' => array( 'type' => 'boolean', 'default' => false ),
+					'activate_after_install' => array( 'type' => 'boolean', 'default' => false ),
 					'reason' => array( 'type' => 'string', 'minLength' => 8, 'maxLength' => 500 ),
 					'_mad4b_approval_ticket_id' => self::approval_schema(),
 				),
