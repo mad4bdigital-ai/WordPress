@@ -150,6 +150,8 @@ final class MAD4B_SCP_AI_Approval {
 		$agent = array();
 		$classification = array();
 		$ticket = array();
+		$executor_agent = array();
+		$bounded_developer_ticket = false;
 		if ( self::ABILITY !== (string) $ability_name ) $blockers[] = 'ability_not_ai_approval';
 		if ( ! self::catalog_eligible() ) $blockers[] = 'ai_approval_policy_not_eligible';
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) $blockers[] = 'ai_approval_write_authority_not_effective';
@@ -170,6 +172,20 @@ final class MAD4B_SCP_AI_Approval {
 				$ticket_server = sanitize_key( isset( $ticket['server_id'] ) ? (string) $ticket['server_id'] : '' );
 				$bounded_developer_ticket = 'mad4b-developer' === $ticket_server && in_array( $ability, array( 'mad4b/developer-workspace-apply', 'mad4b/developer-workspace-promote' ), true ) && 'core' === $provider;
 				if ( 'mad4b-write' !== $ticket_server && ! $bounded_developer_ticket ) $blockers[] = 'ai_approval_server_denied';
+				if ( 'mad4b/developer-workspace-promote' === $ability ) {
+					$operation = isset( $exact['operation_input'] ) && is_array( $exact['operation_input'] ) ? $exact['operation_input'] : array();
+					$plan_sha = isset( $operation['expected_plan_sha256'] ) ? strtolower( trim( (string) $operation['expected_plan_sha256'] ) ) : '';
+					$workspace_sha = isset( $operation['expected_workspace_manifest_sha256'] ) ? strtolower( trim( (string) $operation['expected_workspace_manifest_sha256'] ) ) : '';
+					$installed_sha = isset( $operation['expected_installed_manifest_sha256'] ) ? strtolower( trim( (string) $operation['expected_installed_manifest_sha256'] ) ) : '';
+					$expected_absent = ! empty( $operation['expected_absent'] );
+					if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $plan_sha ) ) $blockers[] = 'ai_approval_developer_promotion_plan_digest_invalid';
+					if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $workspace_sha ) ) $blockers[] = 'ai_approval_developer_promotion_workspace_digest_invalid';
+					if ( $expected_absent ) {
+						if ( '' !== $installed_sha ) $blockers[] = 'ai_approval_developer_promotion_absent_target_digest_conflict';
+					} elseif ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $installed_sha ) ) {
+						$blockers[] = 'ai_approval_developer_promotion_installed_digest_invalid';
+					}
+				}
 				if ( ! empty( $ticket['expires_at'] ) && strtotime( $ticket['expires_at'] . ' UTC' ) < time() ) $blockers[] = 'ai_approval_ticket_expired';
 				if ( empty( $ticket['payload_sha256'] ) || ! hash_equals( strtolower( (string) $ticket['payload_sha256'] ), $exact['payload_sha256'] ) ) $blockers[] = 'ai_approval_payload_mismatch';
 				$classification = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::classify( $ability, $provider, $exact['operation_input'] ) : array();
@@ -213,6 +229,9 @@ final class MAD4B_SCP_AI_Approval {
 				if ( 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) $blockers[] = 'ai_approval_agent_ineligible';
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', self::ABILITY, 'core' );
 				if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) $blockers[] = 'ai_approval_exact_nhi_grant_missing';
+				if ( $bounded_developer_ticket && is_array( $executor_agent ) && ! empty( $executor_agent['public_id'] ) && hash_equals( strtolower( (string) $executor_agent['public_id'] ), strtolower( (string) $agent['public_id'] ) ) ) {
+					$blockers[] = 'ai_approval_developer_executor_separation_required';
+				}
 			}
 		}
 
@@ -229,6 +248,7 @@ final class MAD4B_SCP_AI_Approval {
 			'classification' => $classification,
 			'prior_human_approval_required' => false,
 			'exact_nhi_grant_required' => true,
+			'developer_executor_separation_required' => true,
 			'candidate_binding_required' => true,
 			'budget_required' => true,
 			'audit_required' => true,
