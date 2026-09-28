@@ -244,6 +244,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$reversible = isset( $plugin['reversible_contracts'] ) && is_array( $plugin['reversible_contracts'] ) ? array_values( $plugin['reversible_contracts'] ) : array();
 			$coverage_state = isset( $plugin['coverage_state'] ) ? sanitize_key( (string) $plugin['coverage_state'] ) : 'unknown';
 			$functional_state = isset( $plugin['functional_coverage']['state'] ) ? sanitize_key( (string) $plugin['functional_coverage']['state'] ) : 'inactive';
+			$read_ability_count = isset( $plugin['functional_coverage']['read_ability_count'] ) ? max( 0, (int) $plugin['functional_coverage']['read_ability_count'] ) : 0;
 			$risk = isset( $plugin['risk'] ) ? sanitize_key( (string) $plugin['risk'] ) : 'unknown';
 
 			$level = 'L0_inventory';
@@ -261,7 +262,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 				$next_gate = 'dedicated_high_risk_path';
 			}
 
-			if ( $active && $adapter_registered && $adapter_runtime_available && ! $side_channel_blocked ) {
+			if ( $active && $adapter_registered && $adapter_runtime_available && $read_ability_count > 0 && ! $side_channel_blocked ) {
 				$level = 'L2_read';
 				$safe_actions[] = 'provider_read';
 				$next_gate = 'provider_mutation_certification';
@@ -302,6 +303,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 				'network_active' => ! empty( $plugin['network_active'] ),
 				'family' => isset( $plugin['family'] ) ? sanitize_key( (string) $plugin['family'] ) : 'unknown',
 				'adapter_id' => isset( $plugin['adapter_id'] ) ? sanitize_key( (string) $plugin['adapter_id'] ) : '',
+				'adapter_registered' => $adapter_registered,
+				'adapter_runtime_available' => $adapter_runtime_available,
+				'read_ability_count' => $read_ability_count,
 				'risk' => $risk,
 				'coverage_state' => $coverage_state,
 				'functional_state' => $functional_state,
