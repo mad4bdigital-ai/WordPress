@@ -673,9 +673,41 @@ final class MAD4B_SCP_Read_Consistency {
 			$report['payload_reduced'] = true;
 			$report['client_action'] = 'query_exactly_one_generation_bound_bundle_for_details';
 		}
+		$report['response_bytes'] = 0;
+		for ( $i = 0; $i < 3; $i++ ) {
+			$encoded = wp_json_encode( $report, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$report['response_bytes'] = false === $encoded ? 0 : strlen( $encoded );
+		}
 		$encoded = wp_json_encode( $report, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		$report['response_bytes'] = false === $encoded ? 0 : strlen( $encoded );
-		return $report;
+		if ( false !== $encoded && strlen( $encoded ) <= self::MAX_SESSION_SAFE_REPORT_BYTES ) return $report;
+
+		$minimal = array(
+			'contract' => 'mad4b.session-safe-diagnostics.v1',
+			'state' => isset( $report['state'] ) ? (string) $report['state'] : 'partial',
+			'partial' => ! empty( $report['partial'] ),
+			'read_transaction_id' => isset( $report['read_transaction_id'] ) ? (string) $report['read_transaction_id'] : '',
+			'snapshot_id' => isset( $report['snapshot_id'] ) ? (string) $report['snapshot_id'] : '',
+			'runtime_generation' => isset( $report['runtime_generation'] ) ? (string) $report['runtime_generation'] : '',
+			'generation_match' => ! empty( $report['generation_match'] ),
+			'valid_for_merge' => ! empty( $report['valid_for_merge'] ),
+			'section_digests' => array(),
+			'session_termination_count' => isset( $report['session_termination_count'] ) ? max( 0, (int) $report['session_termination_count'] ) : 0,
+			'payload_reduced' => true,
+			'max_response_bytes' => self::MAX_SESSION_SAFE_REPORT_BYTES,
+			'client_action' => 'query_exactly_one_generation_bound_bundle_for_details',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'production_mutation_performed' => false,
+			'response_bytes' => 0,
+		);
+		foreach ( isset( $report['sections'] ) && is_array( $report['sections'] ) ? $report['sections'] : array() as $bundle => $section ) {
+			$minimal['section_digests'][ sanitize_key( (string) $bundle ) ] = self::digest( $section );
+		}
+		for ( $i = 0; $i < 3; $i++ ) {
+			$encoded = wp_json_encode( $minimal, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$minimal['response_bytes'] = false === $encoded ? 0 : strlen( $encoded );
+		}
+		return $minimal;
 	}
 
 	private static function bundle_checks( $bundle ) {
