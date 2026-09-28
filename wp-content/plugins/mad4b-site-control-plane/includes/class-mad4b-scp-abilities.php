@@ -543,6 +543,9 @@ final class MAD4B_SCP_Abilities {
 		if ( is_wp_error( $params ) ) return $params;
 
 		$target_entered = false;
+		if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'begin_execution_callback_observation' ) ) {
+			MAD4B_SCP_Authorization::begin_execution_callback_observation( $ability_name );
+		}
 		$execute_target = static function () use ( $ability, $params, $ability_name, $actual_schema_sha256, &$target_entered ) {
 			if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) || ! method_exists( 'MAD4B_SCP_Transport_Context', 'with_write_dispatch_target' ) ) {
 				return new WP_Error( 'mad4b_write_dispatch_transport_context_unavailable', 'Exact nested write-dispatch transport binding is unavailable.' );
@@ -550,9 +553,15 @@ final class MAD4B_SCP_Abilities {
 			return MAD4B_SCP_Transport_Context::with_write_dispatch_target(
 				$ability_name,
 				$actual_schema_sha256,
-				static function () use ( $ability, $params, &$target_entered ) {
-					$target_entered = true;
-					return $ability->execute( $params );
+				static function () use ( $ability, $params, $ability_name, &$target_entered ) {
+					try {
+						return $ability->execute( $params );
+					} finally {
+						$target_entered = class_exists( 'MAD4B_SCP_Authorization' )
+							&& method_exists( 'MAD4B_SCP_Authorization', 'execution_callback_started' )
+							? MAD4B_SCP_Authorization::execution_callback_started( $ability_name )
+							: true;
+					}
 				}
 			);
 		};
@@ -600,6 +609,9 @@ final class MAD4B_SCP_Abilities {
 					return $execute_target();
 				}
 			);
+			if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'clear_execution_callback_observation' ) ) {
+				MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name );
+			}
 			if ( is_wp_error( $execution ) ) {
 				if ( ! $target_entered ) {
 					$data = $execution->get_error_data();

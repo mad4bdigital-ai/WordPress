@@ -10,11 +10,32 @@ final class MAD4B_SCP_Authorization {
 	const MAX_TARGET_DEPTH = 8;
 
 	private static $booted = false;
+	private static $execution_callback_started = array();
 
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_filter' ) ) return;
 		self::$booted = true;
 		add_filter( 'wp_register_ability_args', array( __CLASS__, 'wrap_execution_boundary' ), 190, 2 );
+	}
+
+	public static function begin_execution_callback_observation( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		if ( '' !== $ability_name ) self::$execution_callback_started[ $ability_name ] = false;
+	}
+
+	public static function mark_execution_callback_started( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		if ( '' !== $ability_name ) self::$execution_callback_started[ $ability_name ] = true;
+	}
+
+	public static function execution_callback_started( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		return '' !== $ability_name && ! empty( self::$execution_callback_started[ $ability_name ] );
+	}
+
+	public static function clear_execution_callback_observation( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		if ( '' !== $ability_name ) unset( self::$execution_callback_started[ $ability_name ] );
 	}
 
 	public static function target_fingerprint( $ability_name, $provider, $input, array $agent = array(), array $identity = array() ) {
@@ -352,6 +373,7 @@ final class MAD4B_SCP_Authorization {
 				}
 				$claim['commit_guard_receipt'] = $commit_guard;
 			}
+			MAD4B_SCP_Authorization::mark_execution_callback_started( $name );
 			try {
 				$result = call_user_func( $original, $input );
 			} catch ( \Throwable $throwable ) {
@@ -467,7 +489,7 @@ final class MAD4B_SCP_Authorization {
 	}
 
 	public static function audit_remote_permission_denial( $ability_name, $error, $input = null ) {
-		if ( ! is_wp_error( $error ) || 'mad4b_approval_replay_denied' !== (string) $error->get_error_code() ) return false;
+		if ( ! is_wp_error( $error ) ) return false;
 		$server_id = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
 		if ( ! in_array( $server_id, array( 'mad4b-chatgpt', 'mad4b-write', 'mad4b-developer', 'mad4b-developer-breakglass' ), true ) ) return false;
 		self::audit_execution_denial( $ability_name, $error, $input );
