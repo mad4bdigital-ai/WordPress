@@ -399,3 +399,12 @@ peer_call_pos = status.index("MAD4B_SCP_MCP_Peer_Governance::status()")
 hotpath_pos = status.index("current_request_is_protocol_hotpath()")
 if hotpath_pos > peer_call_pos:
     raise SystemExit('FAIL connection-peer-deferral-order: hotpath decision must precede deep peer inventory')
+
+# Deferred deep verification on an already-running MCP request is informational,
+# not evidence that local transport is broken.
+local_blocker_section = status.split("$local_blockers = array();", 1)[1].split("$remote_preflight_blockers", 1)[0]
+require(local_blocker_section, "if ( ! $protocol_hotpath && empty( $peer['inventory_ready'] ) )", 'deferred-peer-neutral-readiness')
+require(local_blocker_section, "if ( ! $protocol_hotpath && ! empty( $peer['blockers'] )", 'deferred-peer-blockers-not-promoted')
+require(status, "'deferred_checks' => $protocol_hotpath ? array( 'route_permission_validation', 'mcp_peer_inventory', 'write_catalog_inventory' ) : array()", 'connection-deferred-checks-explicit')
+require(status, "'route_registered' => $protocol_hotpath ? null", 'write-surface-deferred-route-tristate')
+require(status, "'permission_callback_match' => $protocol_hotpath ? null", 'write-surface-deferred-permission-tristate')
