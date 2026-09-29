@@ -61,7 +61,7 @@ final class MAD4B_SCP_Truth_Projection {
 	public static function gate_effective_ready( array $gate ) {
 		$freshness_required = array_key_exists( 'freshness_required', $gate )
 			? ! empty( $gate['freshness_required'] )
-			: true;
+			: array_key_exists( 'fresh', $gate );
 		return ! empty( $gate['ready'] )
 			&& ( ! $freshness_required || ! empty( $gate['fresh'] ) );
 	}
