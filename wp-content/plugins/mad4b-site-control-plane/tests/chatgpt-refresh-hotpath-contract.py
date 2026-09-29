@@ -17,6 +17,7 @@ oauth_autoconfig = (root / "includes/class-mad4b-scp-staging-oauth-autoconfig.ph
 audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
 request_scope = (root / "includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
 mu_refresh = (root / "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php").read_text(encoding="utf-8")
+runtime_conflict = (root / "includes/class-mad4b-scp-mcp-runtime-conflict-guard.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
@@ -266,3 +267,13 @@ assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstra
 scope_boot_pos = entry.index("MAD4B_SCP_MCP_Request_Scope::bootstrap();")
 mu_boot_pos = entry.index("MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();")
 assert scope_boot_pos < mu_boot_pos, "request scope must be classified before MU refresh bootstrap"
+
+# Runtime conflict repair is also a mutation/recovery transaction and must be
+# deferred on protocol hotpaths before active_plugins or MU/audit repair work.
+conflict_bootstrap = runtime_conflict.split("public static function bootstrap()", 1)[1].split("public static function status()", 1)[0]
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in conflict_bootstrap
+assert "'repair_deferred_protocol_hotpath'" in conflict_bootstrap
+assert "$status['repair_deferred'] = true;" in conflict_bootstrap
+assert conflict_bootstrap.index("current_request_is_protocol_hotpath()") < conflict_bootstrap.index("get_option( 'active_plugins'")
+assert conflict_bootstrap.index("current_request_is_protocol_hotpath()") < conflict_bootstrap.index("update_option( 'active_plugins'")
+assert conflict_bootstrap.index("current_request_is_protocol_hotpath()") < conflict_bootstrap.index("MAD4B_SCP_Audit::record(")
