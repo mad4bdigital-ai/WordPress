@@ -805,8 +805,16 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$raw = self::raw_configured_issuer();
 		if ( in_array( $mode, array( 'local', 'hybrid' ), true ) && '' !== $local ) {
 			$local_ready = true;
-			if ( class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'status' ) ) {
-				$local_status = MAD4B_SCP_Local_OAuth_Server::status();
+			if ( class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ) {
+				$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+					&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
+				if ( $protocol_hotpath && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'runtime_identity_status' ) ) {
+					$local_status = MAD4B_SCP_Local_OAuth_Server::runtime_identity_status();
+				} elseif ( method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'status' ) ) {
+					$local_status = MAD4B_SCP_Local_OAuth_Server::status();
+				} else {
+					$local_status = array();
+				}
 				$local_ready = is_array( $local_status ) && ! empty( $local_status['effective'] );
 			}
 			$registry[ $local ] = array( 'type' => 'local', 'runtime_ready' => $local_ready );
