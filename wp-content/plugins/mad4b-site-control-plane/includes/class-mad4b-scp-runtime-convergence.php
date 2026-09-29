@@ -418,16 +418,35 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$reasons = array();
 		if ( '' !== $current_version && ! hash_equals( $current_version, $stored_version ) ) $reasons[] = 'plugin_version_drift';
 		if ( $expected_schema > 0 && $schema_version < $expected_schema ) $reasons[] = 'schema_version_drift';
+
+		// The common no-drift path is options/constants only: no file read, REST
+		// initialization, provider discovery, schema probe or database repair.
+		if ( empty( $reasons ) ) {
+			return array(
+				'detected' => false,
+				'reasons' => array(),
+				'identity' => array(),
+				'identity_complete' => false,
+				'option_reads_only' => true,
+				'bounded_provenance_file_read' => false,
+				'filesystem_scan_performed' => false,
+				'database_schema_probe_performed' => false,
+			);
+		}
+
+		// Only observed drift justifies one bounded provenance-file read so the
+		// queued convergence job can be exact-build fenced.
 		$identity = self::current_identity();
 		$identity_complete = ! empty( $identity['source_commit_sha'] )
 			&& ! empty( $identity['build_fingerprint'] )
 			&& ! empty( $identity['package_manifest_digest'] );
 		return array(
-			'detected' => ! empty( $reasons ),
+			'detected' => true,
 			'reasons' => $reasons,
 			'identity' => $identity,
 			'identity_complete' => $identity_complete,
-			'option_reads_only' => true,
+			'option_reads_only' => false,
+			'bounded_provenance_file_read' => true,
 			'filesystem_scan_performed' => false,
 			'database_schema_probe_performed' => false,
 		);
