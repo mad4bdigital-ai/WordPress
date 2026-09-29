@@ -674,7 +674,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		$all_ready = true; foreach ( $gates as $gate ) if ( empty( $gate['ready'] ) ) { $all_ready = false; break; } return array( 'contract' => self::AGGREGATE_CONTRACT, 'ready' => $all_ready, 'state' => $all_ready ? 'ready' : 'pending_or_blocked', 'gates' => $gates, 'external_facts_self_certified' => false );
 	}
 
-	private static function gate( $ready, $state, $fresh, $source_contract, array $blockers ) { return array( 'state' => (string) $state, 'ready' => (bool) $ready, 'fresh' => (bool) $fresh, 'source_contract' => (string) $source_contract, 'blockers' => array_values( $blockers ), 'observed_at' => gmdate( 'Y-m-d H:i:s' ) ); }
+	private static function gate( $ready, $state, $fresh, $source_contract, array $blockers ) { return class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::gate( $ready, $state, $fresh, $source_contract, $blockers, gmdate( 'Y-m-d H:i:s' ), true ) : array( 'state' => (string) $state, 'ready' => (bool) $ready, 'fresh' => (bool) $fresh, 'freshness_required' => true, 'effective_ready' => (bool) $ready && (bool) $fresh, 'source_contract' => (string) $source_contract, 'blockers' => array_values( $blockers ), 'observed_at' => gmdate( 'Y-m-d H:i:s' ) ); }
 	private static function nonproduction_profile_enrolled() { return class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::nonproduction_governed() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment(); }
 	public static function staging_passive_receipt_allowed() {
 		if ( defined( 'WP_CLI' ) && WP_CLI ) return false;
