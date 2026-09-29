@@ -181,11 +181,12 @@ assert "'generic_raw_sql_breakglass_included' => false" in oauth
 assert "What you are approving now" in ui
 assert "Approve read access" in ui
 assert "Approve governed access" in ui
-assert "Read identity + Staging authority step-up" in ui
+assert "Read identity + ' . $environment_label . ' authority step-up" in ui
 assert "mad4b:authority:step-up" in ui
 assert "Deny access" in ui
 assert "Generic raw-SQL Breakglass" in ui
-assert "Current Staging authority" in ui
+assert "Current governed authority" in ui
+assert "Full Staging Authority (Staging only)" in ui
 
 header = re.search(r"(?mi)^\s*\*\s*Version:\s*([^\r\n]+)", plugin)
 constant = re.search(r"define\(\s*'MAD4B_SCP_VERSION'\s*,\s*'([^']+)'\s*\);", plugin)
