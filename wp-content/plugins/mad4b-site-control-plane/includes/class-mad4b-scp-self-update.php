@@ -1543,8 +1543,17 @@ final class MAD4B_SCP_Self_Update {
 
 	private static function native_apply_schema() {
 		$schema = self::native_plan_schema();
-		$schema['properties']['expected_plan_sha256'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}
+		$schema['properties']['expected_plan_sha256'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' );
+		$schema['required'][] = 'expected_plan_sha256';
+		return $schema;
+	}
 
+	private static function bootstrap_apply_schema() {
+		$schema = self::native_apply_schema();
+		$schema['properties']['confirmation'] = array( 'type' => 'string', 'enum' => array( self::BOOTSTRAP_CONFIRMATION ) );
+		$schema['required'][] = 'confirmation';
+		return $schema;
+	}
 	private static function plan_schema() {
 		return array(
 			'type' => 'object',
