@@ -533,6 +533,9 @@ final class MAD4B_SCP_Servers {
 		$self_update_step_up = class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'chatgpt_step_up_tools' )
 			? MAD4B_SCP_Self_Update::chatgpt_step_up_tools()
 			: array();
+		$semantic_step_up = class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'chatgpt_direct_step_up_tools' )
+			? MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_tools()
+			: array();
 		$bootstrap = array_merge(
 			array(
 				'mad4b/build-provenance-status',
@@ -542,10 +545,12 @@ final class MAD4B_SCP_Servers {
 			$narrow_step_up,
 			$full_read,
 			$full_step_up,
-			$self_update_step_up
+			$self_update_step_up,
+			$semantic_step_up
 		);
 		$candidates = array_merge( $core, $bootstrap );
 		$step_up = array_merge( $narrow_step_up, $full_step_up, $self_update_step_up );
+		$step_up = array_merge( $step_up, $semantic_step_up );
 		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up ) ) );
 		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
 
@@ -818,7 +823,7 @@ final class MAD4B_SCP_Servers {
 
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
 		if ( self::chatgpt_unified_catalog_enabled() ) {
-			$chatgpt_description = 'Exact enrolled Staging governed gateway with one compact app catalog. Read/write universes remain available through governed discovery/info/dispatch. Normal Developer operations are available through an exact-schema, request-local derived-identity dispatcher that preserves isolated Developer Agent authority and excludes Breakglass. Bounded Remote Operation Parity enrollment operations are available only through a dedicated allowlisted enrollment dispatcher; low-level enrollment mutations stay internal. Write Authority convergence and Full Staging Authority apply remain guarded plan-bound step-up tools. Breakglass and Raw SQL remain excluded.';
+			$chatgpt_description = 'Exact enrolled Staging governed gateway with one compact app catalog. Read/write universes remain available through governed discovery/info/dispatch. Normal Developer operations are available through an exact-schema, request-local derived-identity dispatcher that preserves isolated Developer Agent authority and excludes Breakglass. Bounded Remote Operation Parity enrollment operations remain available through the dedicated allowlisted enrollment dispatcher; explicitly reviewed semantic step-up operations may also be projected as narrow direct tools with exact schemas so compatible MCP clients do not need a generic operation_id envelope. Low-level enrollment mutations stay internal. Write Authority convergence and Full Staging Authority apply remain guarded plan-bound step-up tools. Breakglass and Raw SQL remain excluded.';
 		} else {
 			$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT governed gateway with compact read/write discovery transports. Provider writes remain fail-closed until runtime eligible, exactly granted and approved. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
 		}
