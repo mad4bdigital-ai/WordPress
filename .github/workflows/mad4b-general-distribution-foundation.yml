@@ -6,10 +6,6 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-enrollment.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-write-enablement.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation-plan.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-candidate-binding.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
@@ -73,10 +69,6 @@ jobs:
             wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-enrollment.php \
-            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-write-enablement.php \
-            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation-plan.php \
-            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php \
-            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-candidate-binding.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php \
@@ -146,15 +138,13 @@ jobs:
           grep -Fq "site_profile_write_disabled" "$authority"
           grep -Fq "'production_auto_enable' => false" "$authority"
           grep -Fq "'breakglass_auto_enable' => false" "$authority"
-          grep -Fq "\$policy['production_exact_approval_only'] = \$production;" "$authority"
-          grep -Fq "'all_remote_writes_require_exact_approval' => 'production' === \$environment" "$authority"
+          grep -Fq "'all_remote_writes_require_exact_approval' => false" "$authority"
           grep -Fq "'normal_remote_writes_require_exact_approval' => true" "$authority"
-          grep -Fq "'remote_write_approval_policy' => 'production' === \$environment ? 'exact_approval_required' : 'exact_approval_with_bounded_standing_exceptions'" "$authority"
-          grep -Fq "'remote_write_prior_approval_exceptions' => 'production' === \$environment ? array() : array(" "$authority"
-          grep -Fq "if ( 'production' === self::current_environment() ) return self::effective() ? true : \$required;" "$authority"
+          grep -Fq "'remote_write_approval_policy' => 'exact_approval_with_bounded_standing_exceptions'" "$authority"
+          grep -Fq "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' )" "$authority"
           grep -Fq "write_enabled" "$enrollment"
           grep -Fq "mad4b/site-profile-feature-reenrolled" "$enrollment"
-          grep -Fq "site_profile_feature_reenroll_environment_denied" "$enrollment"
+          grep -Fq "site_profile_feature_reenroll_staging_only" "$enrollment"
           grep -Fq "auto_downloads_remote_code' => false" "$dependency"
           grep -Fq "site_profile_admin_owner_required" "$oauth"
           grep -Fq "oauth_user_ids" "$oauth"
