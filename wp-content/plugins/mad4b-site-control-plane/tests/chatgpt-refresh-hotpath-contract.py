@@ -258,7 +258,7 @@ print("mad4b.chatgpt-refresh-hotpath.v14: PASS")
 mu_bootstrap = mu_refresh.split("public static function bootstrap()", 1)[1].split("public static function status()", 1)[0]
 assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in mu_bootstrap
 assert "'deferred_protocol_hotpath'" in mu_bootstrap
-assert "'refresh_deferred' => true" in mu_bootstrap
+assert "$status['refresh_deferred'] = true;" in mu_bootstrap
 assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("hash_file(")
 assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("@copy(")
 assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("MAD4B_SCP_Audit::record(")
