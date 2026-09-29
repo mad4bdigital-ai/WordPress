@@ -16,7 +16,7 @@ final class FakeWpdb {
 }
 $GLOBALS['wpdb']=new FakeWpdb();
 final class MAD4B_SCP_Audit { static function storage_status(){return array('ready'=>!empty($GLOBALS['audit_ready']));} static function record($a,$s,$st=''){if(!empty($GLOBALS['audit_fail']))return new WP_Error('audit_failed','forced');$GLOBALS['events'][]=array($a,$s,$st);return true;} }
-final class MAD4B_SCP_OAuth_Resource_Bridge { static function verified_bearer_active(){return !empty($GLOBALS['bearer']);} }
+final class MAD4B_SCP_OAuth_Resource_Bridge { const AUTHORITY_STEP_UP_SCOPE='mad4b:authority:step-up'; static function verified_bearer_active(){return !empty($GLOBALS['bearer']);} static function verified_bearer_has_scope($scope){return self::AUTHORITY_STEP_UP_SCOPE===$scope&&!empty($GLOBALS['bearer']);} }
 final class MAD4B_SCP_Live_Acceptance_Observer { static function build_provenance_status(){return $GLOBALS['prov'];} }
 final class MAD4B_SCP_Local_OAuth_Server { static function issuer(){return 'https://staging.client.test/oauth/mcp';} }
 final class MAD4B_SCP_Schema { static function critical_ready(){return true;} static function tables(){return array('agents'=>'agents','subjects'=>'subjects','grants'=>'grants');} }
