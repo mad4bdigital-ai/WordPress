@@ -358,22 +358,39 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'production_mutation' => false,
 		);
 		update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
-		self::schedule_resume();
-		return array( 'scheduled' => true, 'state' => 'pending_restart', 'target_identity' => $checkpoint['target_identity'] );
+		$stored = get_option( self::CHECKPOINT_OPTION, array() );
+		if ( ! is_array( $stored ) || empty( $stored['target_identity'] ) || ! self::identity_matches( $checkpoint['target_identity'], $stored['target_identity'] ) ) {
+			return array( 'scheduled' => false, 'state' => 'checkpoint_persist_failed', 'target_identity' => $checkpoint['target_identity'] );
+		}
+		$scheduled = self::schedule_resume();
+		if ( ! $scheduled ) {
+			$checkpoint['state'] = 'pending_manual_resume';
+			$checkpoint['resume_blocker'] = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'wp_cron_disabled' : 'wp_cron_unavailable';
+			$checkpoint['updated_at'] = gmdate( 'c' );
+			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+		}
+		return array(
+			'scheduled' => (bool) $scheduled,
+			'state' => $scheduled ? 'pending_restart' : 'pending_manual_resume',
+			'resume_blocker' => $scheduled ? '' : $checkpoint['resume_blocker'],
+			'target_identity' => $checkpoint['target_identity'],
+		);
 	}
 
 	public static function maybe_schedule_pending() {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
-		if ( ! is_array( $checkpoint ) || ! in_array( isset( $checkpoint['state'] ) ? (string) $checkpoint['state'] : '', array( 'pending_restart', 'pending_safe_phases', 'blocked' ), true ) ) return;
+		if ( ! is_array( $checkpoint ) || ! in_array( isset( $checkpoint['state'] ) ? (string) $checkpoint['state'] : '', array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'blocked' ), true ) ) return;
 		if ( 'staging' !== ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' ) ) return;
 		self::schedule_resume();
 	}
 
 	private static function schedule_resume() {
+		if ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ) return false;
 		if ( ! function_exists( 'wp_next_scheduled' ) || ! function_exists( 'wp_schedule_single_event' ) ) return false;
-		if ( false === wp_next_scheduled( self::CRON_HOOK ) ) wp_schedule_single_event( time() + 5, self::CRON_HOOK );
-		return true;
+		if ( false !== wp_next_scheduled( self::CRON_HOOK ) ) return true;
+		$scheduled = wp_schedule_single_event( time() + 5, self::CRON_HOOK, array(), true );
+		return ! is_wp_error( $scheduled ) && false !== $scheduled;
 	}
 
 	public static function resume_safe_phases() {
