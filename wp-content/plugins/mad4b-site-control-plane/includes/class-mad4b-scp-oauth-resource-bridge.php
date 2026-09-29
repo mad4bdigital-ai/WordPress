@@ -252,7 +252,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$candidate_binding = false;
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'chatgpt_step_up_tools' ) ) {
 			$tools = MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools();
-			$candidate_binding = is_array( $tools ) && in_array( MAD4B_SCP_Staging_Write_Candidate_Binding::BIND_ABILITY, $tools, true );
+			$candidate_binding = is_array( $tools ) && in_array( MAD4B_SCP_Staging_Write_Candidate_Binding::ABILITY, $tools, true );
 		}
 		$full_authority = false;
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) && method_exists( 'MAD4B_SCP_Full_Staging_Authority', 'chatgpt_step_up_tools' ) ) {
