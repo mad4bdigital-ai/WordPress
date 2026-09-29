@@ -71,7 +71,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'production_readonly_profile_supported' => true,
 			'production_readonly_enabled' => $production_readonly_enabled,
 			'production_readonly_auto_enabled' => $production_readonly_auto_enabled,
-			'production_readonly_opt_in_required' => 'production' === $environment && ! $production_readonly_enabled,
+			'production_readonly_opt_in_required' => 'production' === $environment && ! $production_readonly_enabled && ! $production_governed_write_enabled,
 			'production_readonly_write_enabled' => false,
 			'production_governed_write_enabled' => (bool) $production_governed_write_enabled,
 			'production_write_policy' => 'production' === $environment ? 'exact_profile_plus_exact_one_time_approval' : 'not_applicable',
@@ -140,11 +140,20 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			<?php endif; ?>
 
 			<?php if ( 'production' === $status['environment'] ) : ?>
-				<div class="notice notice-<?php echo ! empty( $status['production_readonly_enabled'] ) ? 'success' : 'warning'; ?> inline"><p>
-					<strong><?php echo esc_html( ! empty( $status['production_readonly_enabled'] ) ? __( 'Production read-only OAuth profile is enabled.', 'mad4b-site-control-plane' ) : __( 'Production read-only OAuth requires explicit administrator opt-in.', 'mad4b-site-control-plane' ) ); ?></strong>
-					<?php echo esc_html__( ' Portable mode is read-only. An exact enrolled Production Site Profile may separately enable governed write authority; every Production write remains bound to exact grants and a one-time approval. Developer and Breakglass remain unavailable.', 'mad4b-site-control-plane' ); ?>
+				<?php $production_governed = ! empty( $status['production_governed_write_enabled'] ); ?>
+				<div class="notice notice-<?php echo ( $production_governed || ! empty( $status['production_readonly_enabled'] ) ) ? 'success' : 'warning'; ?> inline"><p>
+					<strong><?php
+						echo esc_html(
+							$production_governed
+								? __( 'Production governed OAuth and write authority are enabled.', 'mad4b-site-control-plane' )
+								: ( ! empty( $status['production_readonly_enabled'] )
+									? __( 'Production read-only OAuth profile is enabled.', 'mad4b-site-control-plane' )
+									: __( 'Production read-only OAuth requires explicit administrator opt-in.', 'mad4b-site-control-plane' ) )
+						);
+					?></strong>
+					<?php echo esc_html__( ' Portable mode is read-only. An exact enrolled Production Site Profile with explicit Production write confirmation may bootstrap governed OAuth directly; every Production write remains bound to exact grants and a one-time approval. Developer and Breakglass remain unavailable.', 'mad4b-site-control-plane' ); ?>
 				</p></div>
-				<?php if ( empty( $status['production_readonly_auto_enabled'] ) ) : ?>
+				<?php if ( ! $production_governed && empty( $status['production_readonly_auto_enabled'] ) ) : ?>
 					<form class="mad4b-settings-ajax-form" data-mad4b-refresh-selector=".wrap" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin:14px 0 20px">
 						<?php wp_nonce_field( 'mad4b_production_readonly_oauth' ); ?>
 						<input type="hidden" name="action" value="<?php echo esc_attr( ! empty( $status['production_readonly_enabled'] ) ? 'mad4b_disable_production_readonly_oauth' : 'mad4b_enable_production_readonly_oauth' ); ?>">
