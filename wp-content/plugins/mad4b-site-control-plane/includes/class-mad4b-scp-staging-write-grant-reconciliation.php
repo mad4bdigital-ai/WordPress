@@ -729,7 +729,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 
 			return array(
 				'contract' => self::CONTRACT,
-				'state' => ( empty( $created_abilities ) && empty( $created_transport_abilities ) ) ? 'candidate_rebound' : 'reconciled',
+				'state' => ( empty( $created_abilities ) && empty( $created_transport_abilities ) && empty( $revoked_stale_ids ) ) ? 'candidate_rebound' : 'reconciled',
 				'agent_public_id' => (string) $agent['public_id'],
 				'created_count' => count( $created_abilities ),
 				'revoked_stale_count' => count( $revoked_stale_ids ),
