@@ -1,18 +1,19 @@
 # Traceability
 
-| Goal | Requirements | Tasks | Gate |
-|---|---|---|---|
-| Maintainability | FR-001 | T010-T018 | decomposition |
-| Observability | FR-002, FR-003, FR-004 | T020-T024 | observability |
-| Discovery scale | FR-005 | T030-T035 | discovery_scale |
-| Provider SDK | FR-006, FR-012 | T040-T045, T093 | provider_sdk / side_effect_policy |
-| TTL | FR-007 | T050-T054 | ttl_policy |
-| Crash recovery | FR-008, FR-009 | T060-T067 | durable_journal / recovery |
-| Concurrency | FR-010 | T080-T086 | concurrency |
-| Fault injection | FR-011 | T087-T089 | fault_injection |
-| Approval policy | FR-013 | T090-T093 | approval_classes |
-| Dry-run | FR-014 | T070, T074 | simulation_diff |
-| Semantic diff | FR-015 | T071-T073 | simulation_diff |
-| Visualizer | FR-016 | T100-T102 | visualizer_docs |
-| SDK/runbook | G16 | T103-T105 | visualizer_docs |
-| Staging certification | FR-017 | T110-T119 | staging_canary |
+| Area | Tasks | Gate |
+|---|---|---|
+| Repository consistency/characterization | T003-T006 | repository_spec_consistency / rc83_characterization |
+| Identity/canonical hashes | T004-T005, T010-T013 | canonical_identity |
+| Telemetry privacy/security | T015-T016, T030-T037 | telemetry_privacy_security |
+| Journal foundation | T010-T016 | minimal_operation_journal |
+| Decomposition/compatibility | T020-T029 | decomposition / compatibility_verification |
+| Discovery scale | T040-T047, T118 | discovery_scale |
+| Provider bridge | T050-T055 | provider_contract_bridge |
+| TTL/locks | T060-T065 | ttl_lock_policy |
+| Effects/approval | T070-T076 | side_effect_policy / approval_policy |
+| Recovery | T080-T089 | recovery_model / recovery_runtime |
+| Simulation/diff | T090-T096 | simulation_semantic_diff |
+| Concurrency/chaos | T100-T109 | concurrency / fault_injection |
+| Migration/decommission | T110-T117 | upgrade_migration |
+| Performance/soak | T118-T121 | performance_soak |
+| Staging certification | T140-T155 | staging_canary |

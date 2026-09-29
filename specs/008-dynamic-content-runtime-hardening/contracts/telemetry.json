@@ -1,0 +1,27 @@
+{
+  "contract": "mad4b.dynamic-operation-telemetry.v1",
+  "privacy": {
+    "protected_meta": "redact",
+    "unregistered_meta_default": "redact",
+    "safe_meta_display_requires_policy_allowlist": true,
+    "raw_post_content_default": "not_emitted",
+    "large_text_representation": [
+      "sha256",
+      "length",
+      "bounded_preview_when_allowed"
+    ]
+  },
+  "access": {
+    "trace_read_requires_governed_read_capability": true,
+    "admin_ui_requires_manage_options_or_exact_policy": true
+  },
+  "boundedness": {
+    "max_events_per_operation": 1000,
+    "max_safe_metadata_bytes_per_event": 16384,
+    "retention_required": true
+  },
+  "metrics": {
+    "core_backend": "bounded_internal_aggregates",
+    "external_exporters_optional": true
+  }
+}

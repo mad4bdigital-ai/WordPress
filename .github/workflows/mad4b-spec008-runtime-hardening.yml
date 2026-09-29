@@ -11,31 +11,58 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-spec008-runtime-hardening-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   contract:
+    name: Spec 008 runtime-hardening contract
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Validate Spec 008 structure
         shell: bash
         run: |
           set -euo pipefail
           base=specs/008-dynamic-content-runtime-hardening
-          for f in README.md spec.md plan.md tasks.md research.md data-model.md constitution.md traceability.md runbook.md quickstart.md quality-model.md feature.json gate-graph.json contracts/runtime-hardening.json checklists/requirements.md; do
-            test -s "$base/$f"
-          done
+          required=(
+            README.md spec.md plan.md tasks.md research.md data-model.md constitution.md
+            traceability.md runbook.md quickstart.md quality-model.md feature.json gate-graph.json
+            architecture-decisions.md security-privacy.md storage-retention.md migration-upgrade.md
+            performance-slo.md canary-matrix.md
+            contracts/runtime-hardening.json contracts/identity-binding.json
+            contracts/operation-journal.json contracts/provider-manifest.json
+            contracts/telemetry.json contracts/canonicalization.json
+            checklists/requirements.md
+          )
+          for f in "${required[@]}"; do test -s "$base/$f"; done
           python3 - <<'PY'
           import json, pathlib
           base=pathlib.Path("specs/008-dynamic-content-runtime-hardening")
           feature=json.loads((base/"feature.json").read_text())
           graph=json.loads((base/"gate-graph.json").read_text())
-          contract=json.loads((base/"contracts/runtime-hardening.json").read_text())
+          umbrella=json.loads((base/"contracts/runtime-hardening.json").read_text())
+          identity=json.loads((base/"contracts/identity-binding.json").read_text())
+          journal=json.loads((base/"contracts/operation-journal.json").read_text())
+          provider=json.loads((base/"contracts/provider-manifest.json").read_text())
+          telemetry=json.loads((base/"contracts/telemetry.json").read_text())
+          canonical=json.loads((base/"contracts/canonicalization.json").read_text())
           pointer=json.loads(pathlib.Path(".specify/feature.json").read_text())
           assert feature["feature_id"]=="008"
           assert pointer["feature_directory"]==str(base)
           ids={g["id"] for g in graph["gates"]}
           assert set(feature["required_gates"]) <= ids
-          assert contract["invariants"]["no_generic_write_scope"] is True
-          assert contract["invariants"]["production_fault_injection"] is False
-          print("Spec 008 contract: PASS")
+          assert umbrella["invariants"]["cache_never_authorizes_mutation"] is True
+          assert umbrella["invariants"]["ai_approval_default_deny"] is True
+          assert identity["invariants"]["operation_id_not_operation_key"] is True
+          assert journal["storage"]["engine"]=="custom_table"
+          assert journal["tamper_evidence"]["enabled"] is True
+          assert provider["side_effect_model"]["dimensions"]==["effect_scope","ownership","reversibility","compensation_support","externality"]
+          assert telemetry["privacy"]["unregistered_meta_default"]=="redact"
+          assert canonical["domain_separation"]["required"] is True
+          print("Spec 008 hardened contract: PASS")
           PY

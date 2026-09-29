@@ -1,0 +1,37 @@
+{
+  "contract": "mad4b.dynamic-operation-journal.v1",
+  "storage": {
+    "engine": "custom_table",
+    "table_suffix": "mad4b_dynamic_operation_events",
+    "append_only_events": true,
+    "indexed_fields": [
+      "operation_id",
+      "created_at",
+      "event_type"
+    ],
+    "head_table_suffix": "mad4b_dynamic_operation_heads"
+  },
+  "event_model": {
+    "checkpoint_optional": true,
+    "lifecycle_state_required": true,
+    "terminal_outcome_optional": true,
+    "linear_checkpoint_assumption": false
+  },
+  "tamper_evidence": {
+    "enabled": true,
+    "previous_event_sha256": true,
+    "domain_separated_event_hash": true
+  },
+  "orphan_detection": [
+    "heartbeat_at",
+    "lock_expires_at",
+    "hard_deadline_at",
+    "stale_after"
+  ],
+  "retention": {
+    "verbose_trace_days_default": 30,
+    "journal_evidence_days_default": 180,
+    "cleanup_bounded_batches": true,
+    "automatic_destructive_uninstall": false
+  }
+}

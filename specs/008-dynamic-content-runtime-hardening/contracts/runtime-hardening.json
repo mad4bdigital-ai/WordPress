@@ -1,64 +1,35 @@
 {
-  "contract": "mad4b.dynamic-content-runtime-hardening.v1",
-  "abilities": {
-    "read_only": [
-      "mad4b/content-operation-status",
-      "mad4b/content-operation-trace",
-      "mad4b/content-recovery-inspect",
-      "mad4b/content-recovery-plan"
-    ],
-    "governed_mutation": [
-      "mad4b/content-recovery-apply",
-      "mad4b/content-recovery-close"
-    ],
-    "extended_existing": [
-      "mad4b/content-model-discover",
-      "mad4b/content-orchestration-plan",
-      "mad4b/content-apply-bundle",
-      "mad4b/content-bundle-readback",
-      "mad4b/content-update-post"
-    ]
-  },
+  "contract": "mad4b.dynamic-content-runtime-hardening.v2",
+  "identities": [
+    "operation_key",
+    "operation_id",
+    "operation_binding_sha256"
+  ],
   "planner_modes": [
     "plan",
     "simulate",
     "explain",
     "diff"
   ],
-  "impact_classes": [
-    "low",
-    "medium",
-    "high",
-    "publication",
-    "schema_change",
-    "external_side_effect",
-    "irreversible"
-  ],
-  "provider_side_effect_coverage": [
-    "none",
-    "read_only",
-    "reversible",
-    "compensatable",
-    "irreversible",
-    "external"
-  ],
-  "journal_checkpoints": [
-    "planned",
-    "approval_bound",
-    "lock_acquired",
-    "mutation_started",
-    "post_written",
-    "meta_written",
-    "taxonomy_written",
-    "media_written",
-    "validation_started",
-    "accepted",
-    "publish_started",
-    "published_verified",
-    "receipt_consumed",
-    "completed",
-    "compensated",
-    "recovery_required"
+  "impact": {
+    "levels": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "flags": [
+      "publication",
+      "schema_change",
+      "external_side_effect",
+      "irreversible",
+      "recovery",
+      "provider_mutation"
+    ]
+  },
+  "ttl_tiers": [
+    "short",
+    "standard",
+    "long"
   ],
   "invariants": {
     "no_generic_write_scope": true,
@@ -68,6 +39,10 @@
     "production_fault_injection": false,
     "simulation_is_read_only": true,
     "visualizer_is_read_only": true,
-    "recovery_apply_requires_exact_plan": true
+    "recovery_apply_requires_exact_plan": true,
+    "recovery_close_content_mutation": false,
+    "cache_never_authorizes_mutation": true,
+    "ai_approval_default_deny": true,
+    "provider_manifest_never_authorizes": true
   }
 }
