@@ -405,3 +405,21 @@ assert "self::session_safe_connection_projection()" in safe_bundle
 assert "self::session_safe_reconnect_projection()" in safe_bundle
 assert "self::connection_projection()" not in safe_bundle
 assert "self::reconnect_projection()" not in safe_bundle
+
+# Session-safe connection identity consumes persisted handshake evidence only.
+# Live status may rebuild catalogs and hash the bounded runtime file set.
+assert "public static function persisted_identity_status()" in handshake
+persisted_handshake = handshake.split("public static function persisted_identity_status()", 1)[1].split("public static function status()", 1)[0]
+assert "get_option( self::OPTION" in persisted_handshake
+for forbidden in (
+    "expected_tool_names()",
+    "expected_write_tool_names()",
+    "expected_eligible_write_tool_names()",
+    "build_fingerprint()",
+    "hash_file(",
+):
+    assert forbidden not in persisted_handshake, forbidden
+assert "'live_verification_deferred' => true" in persisted_handshake
+safe_connection = read_consistency.split("private static function session_safe_connection_projection()", 1)[1].split("private static function session_safe_reconnect_projection()", 1)[0]
+assert "persisted_identity_status()" in safe_connection
+assert "MAD4B_SCP_External_Handshake_Evidence::status()" not in safe_connection
