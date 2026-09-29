@@ -8,7 +8,9 @@ final class MAD4B_SCP_Mutation_Manager {
 	const MAX_UNDO_TTL = 604800;
 
 	private static function is_dynamic_managed_post( $post_id ) {
-		return metadata_exists( 'post', absint( $post_id ), '_mad4b_dynamic_content_binding' );
+		$post_id = absint( $post_id );
+		return metadata_exists( 'post', $post_id, '_mad4b_dynamic_content_managed_v1' )
+			|| metadata_exists( 'post', $post_id, '_mad4b_dynamic_content_binding' );
 	}
 
 	private static function dynamic_publication_guard( $post, array $input ) {
