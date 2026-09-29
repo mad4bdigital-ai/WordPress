@@ -10,6 +10,8 @@ mu = (PLUGIN / "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php").read_tex
 guard = (PLUGIN / "includes/class-mad4b-scp-mcp-runtime-conflict-guard.php").read_text(encoding="utf-8")
 query_monitor = (PLUGIN / "includes/class-mad4b-scp-query-monitor-evidence-bridge.php").read_text(encoding="utf-8")
 live_truth = (PLUGIN / "includes/class-mad4b-scp-live-truth.php").read_text(encoding="utf-8")
+dependency = (PLUGIN / "includes/class-mad4b-scp-dependency-manager.php").read_text(encoding="utf-8")
+continuity = (PLUGIN / "includes/class-mad4b-scp-upgrade-continuity.php").read_text(encoding="utf-8")
 slo = (ROOT / "specs/008-dynamic-content-runtime-hardening/performance-slo.md").read_text(encoding="utf-8")
 
 def method_body(source: str, signature: str, next_signature: str) -> str:
@@ -114,5 +116,23 @@ assert "is_admin()" in recover
 assert "mad4b-control-plane" in recover
 assert "mad4b-approval-decisions" in recover
 assert "current_authority_status();" in recover
+
+
+# Heavy global notices must route before dependency/schema/audit inspection.
+dependency_notice = method_body(
+    dependency,
+    "public static function admin_notice()",
+    "public static function handle_install()",
+)
+assert "mad4b-control-plane" in dependency_notice
+assert dependency_notice.index("mad4b-control-plane") < dependency_notice.index("self::status()")
+
+continuity_notice = method_body(
+    continuity,
+    "public static function replace_ambiguous_governance_notice()",
+    "public static function connection_admin_notice()",
+)
+assert "mad4b-control-plane" in continuity_notice
+assert continuity_notice.index("mad4b-control-plane") < continuity_notice.index("self::governance_status()")
 
 print("admin hotpath isolation contract: PASS")
