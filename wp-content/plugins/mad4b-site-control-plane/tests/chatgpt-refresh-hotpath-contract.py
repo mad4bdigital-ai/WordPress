@@ -299,3 +299,13 @@ qm_db_bootstrap = query_monitor.split("public static function maybe_enable_db_at
 assert "0 !== strpos( $page, 'mad4b-control-plane' )" in qm_db_bootstrap
 assert qm_db_bootstrap.index("0 !== strpos( $page, 'mad4b-control-plane' )") < qm_db_bootstrap.index("@symlink(")
 assert qm_db_bootstrap.index("0 !== strpos( $page, 'mad4b-control-plane' )") < qm_db_bootstrap.index("@fopen(")
+
+# Ordinary wp-admin pages (including plugins.php) get at most one lightweight
+# coverage marker per build and must not execute full Query Monitor profiling.
+assert "private static function current_request_is_mad4b_admin_surface()" in query_monitor
+assert "if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() )" in qm_flush
+admin_budget = qm_flush.split("if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() )", 1)[1].split("$telemetry['observed_request_count']", 2)[0]
+assert "query_monitor_events()" not in admin_budget
+assert "performance_sample(" not in admin_budget
+assert "(int) $telemetry['request_coverage']['wp_admin'] > 0" in qm_flush
+assert qm_flush.index("if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() )") < qm_flush.index("$sample = self::performance_sample( $class )")
