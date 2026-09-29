@@ -107,11 +107,17 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	public static function write_runtime_certification_status() {
 		$status = class_exists( 'MAD4B_SCP_Live_Truth' ) ? MAD4B_SCP_Live_Truth::current_write_certification() : ( class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::status() : array() );
 		if ( ! is_array( $status ) ) $status = array();
-		$wpml = self::external_wpml_receipt_status();
+		$wpml_projection = class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::external_wpml( true ) : array( 'required' => true, 'verified' => false, 'state' => 'pending', 'source_contract' => '', 'receipt' => self::external_wpml_receipt_status() );
+		$wpml = isset( $wpml_projection['receipt'] ) && is_array( $wpml_projection['receipt'] ) ? $wpml_projection['receipt'] : array();
 		$external = self::external_handshake_attestation_status();
-		$status['external_wpml_acceptance_verified'] = ! empty( $wpml['verified'] );
+		$status['local_external_wpml_claimed'] = false;
+		$status['external_wpml_acceptance_required'] = ! empty( $wpml_projection['required'] );
+		$status['external_wpml_acceptance_verified'] = ! empty( $wpml_projection['verified'] );
+		$status['external_wpml_acceptance_state'] = isset( $wpml_projection['state'] ) ? (string) $wpml_projection['state'] : 'pending';
+		$status['external_wpml_acceptance_source'] = isset( $wpml_projection['source_contract'] ) ? (string) $wpml_projection['source_contract'] : '';
+		$status['external_wpml_acceptance'] = $wpml;
 		$status['external_client_tools_verified'] = ! empty( $external['verified'] );
-		$status['external_wpml_evidence_contract'] = self::WPML_RECEIPT_CONTRACT;
+		$status['external_wpml_evidence_contract'] = isset( $wpml_projection['source_contract'] ) && '' !== (string) $wpml_projection['source_contract'] ? (string) $wpml_projection['source_contract'] : self::WPML_RECEIPT_CONTRACT;
 		$status['external_client_tools_evidence_contract'] = self::EXTERNAL_ATTESTATION_CONTRACT;
 		$status['external_evidence_affects_local_ready'] = false;
 		return $status;
@@ -555,7 +561,25 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		update_option( self::WPML_OPTION, $receipt, false );
 	}
 	public static function evaluate_wpml_receipt( $parameter_present, array $data, $build_fingerprint ) { $status = isset( $data['status'] ) ? sanitize_key( (string) $data['status'] ) : ''; $get_parameters = isset( $data['get_parameters'] ) ? sanitize_key( (string) $data['get_parameters'] ) : ''; $success = (bool) $parameter_present && 'valid' === $status && 'valid' === $get_parameters; return array( 'contract' => self::WPML_RECEIPT_CONTRACT, 'observed' => true, 'observed_at' => '', 'build_fingerprint' => preg_match( '/^[a-f0-9]{64}$/', (string) $build_fingerprint ) ? strtolower( (string) $build_fingerprint ) : '', 'request_route' => '/wpml/v1/rest/status', 'test_get_parameter_present' => (bool) $parameter_present, 'success' => $success, 'status' => $status, 'get_parameters' => $get_parameters ); }
-	public static function external_wpml_receipt_status() { $stored = self::staging_capture_allowed() ? get_option( self::WPML_OPTION, array() ) : array(); $current_build = self::current_build_fingerprint(); $base = array( 'contract' => self::WPML_RECEIPT_CONTRACT, 'observed' => false, 'verified' => false, 'stale' => true, 'state' => 'pending_external_evidence', 'observed_at' => '', 'build_fingerprint' => '', 'current_build_fingerprint' => $current_build, 'request_route' => '/wpml/v1/rest/status', 'test_get_parameter_present' => false, 'success' => false, 'status' => '', 'get_parameters' => '' ); if ( ! is_array( $stored ) || empty( $stored['observed'] ) ) return $base; foreach ( array( 'observed', 'observed_at', 'build_fingerprint', 'request_route', 'test_get_parameter_present', 'success', 'status', 'get_parameters' ) as $key ) if ( array_key_exists( $key, $stored ) ) $base[ $key ] = $stored[ $key ]; $match = ! empty( $stored['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $stored['build_fingerprint'] ); $base['stale'] = ! $match; $base['verified'] = $match && ! empty( $stored['success'] ) && 'valid' === (string) $stored['status'] && 'valid' === (string) $stored['get_parameters']; $base['state'] = $base['verified'] ? 'verified_external_wpml' : ( $match ? 'external_wpml_failed' : 'stale_build_evidence' ); return $base; }
+	public static function external_wpml_receipt_status() {
+		// The normalized response contract is the canonical external fact owner.
+		// Keep the older option shape only as a compatibility fallback for partial
+		// upgrades where the response-contract class is not available.
+		if ( class_exists( 'MAD4B_SCP_WPML_Response_Contract' ) && method_exists( 'MAD4B_SCP_WPML_Response_Contract', 'receipt_status' ) ) {
+			$status = MAD4B_SCP_WPML_Response_Contract::receipt_status();
+			return is_array( $status ) ? $status : array();
+		}
+		$stored = self::staging_capture_allowed() ? get_option( self::WPML_OPTION, array() ) : array();
+		$current_build = self::current_build_fingerprint();
+		$base = array( 'contract' => self::WPML_RECEIPT_CONTRACT, 'observed' => false, 'verified' => false, 'stale' => true, 'state' => 'pending_external_evidence', 'observed_at' => '', 'build_fingerprint' => '', 'current_build_fingerprint' => $current_build, 'request_route' => '/wpml/v1/rest/status', 'test_get_parameter_present' => false, 'success' => false, 'status' => '', 'get_parameters' => '' );
+		if ( ! is_array( $stored ) || empty( $stored['observed'] ) ) return $base;
+		foreach ( array( 'observed', 'observed_at', 'build_fingerprint', 'request_route', 'test_get_parameter_present', 'success', 'status', 'get_parameters' ) as $key ) if ( array_key_exists( $key, $stored ) ) $base[ $key ] = $stored[ $key ];
+		$match = ! empty( $stored['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $stored['build_fingerprint'] );
+		$base['stale'] = ! $match;
+		$base['verified'] = $match && ! empty( $stored['success'] ) && 'valid' === (string) $stored['status'] && 'valid' === (string) $stored['get_parameters'];
+		$base['state'] = $base['verified'] ? 'verified_external_wpml' : ( $match ? 'external_wpml_failed' : 'stale_build_evidence' );
+		return $base;
+	}
 
 	private static function observe_external_handshake( $response, $request ) { if ( ! self::external_capture_allowed( $request ) ) return; $method = self::jsonrpc_method( $request ); $rest = rest_ensure_response( $response ); if ( ! $rest instanceof WP_REST_Response || 200 !== (int) $rest->get_status() ) return; if ( 'initialize' === $method ) self::capture_external_initialize( $rest, $request ); elseif ( 'tools/list' === $method ) self::capture_external_tools_list( $rest, $request ); }
 	private static function capture_external_initialize( $response, $request ) { $data = self::normalize_value( $response->get_data() ); if ( ! is_array( $data ) || isset( $data['error'] ) || empty( $data['result']['capabilities']['tools'] ) ) return; $session_id = self::response_session_id( $response ); if ( '' === $session_id ) return; $context = self::verified_request_context( $request ); if ( ! is_array( $context ) ) return; $expected = self::expected_tool_names(); $context['session_fingerprint'] = hash( 'sha256', $session_id ); $context['build_fingerprint'] = self::current_build_fingerprint(); $context['expected_tool_inventory_fingerprint'] = self::inventory_fingerprint( $expected ); $context['initialized_at'] = gmdate( 'Y-m-d H:i:s' ); set_transient( self::pending_key( $context['session_fingerprint'] ), $context, self::PENDING_TTL ); }
