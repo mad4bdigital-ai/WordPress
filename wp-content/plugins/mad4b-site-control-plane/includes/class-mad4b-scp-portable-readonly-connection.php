@@ -38,24 +38,59 @@ final class MAD4B_SCP_Portable_Readonly_Connection {
 			'breakglass_enabled' => false,
 			'skills_enabled' => false,
 			'production_readonly' => 'production' === $environment,
+			'profile_present' => false,
+			'profile_binding_state' => 'unconfigured',
+			'profile_origin_match' => false,
+			'profile_environment_match' => false,
+			'profile_canonical_origin' => '',
+			'profile_configured_environment' => '',
+			'foreign_profile_quarantined' => false,
+			'profile_authority_inherited' => false,
+			'requires_site_enrollment' => false,
+			'upgrade_continuity_state' => '',
+			'upgrade_continuity_blocker' => '',
 			'blocker' => '',
 		);
 
 		if ( ! self::enabled() ) return self::block( 'portable_readonly_disabled' );
 
 		$profile_status = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
-		if ( ! empty( $profile_status['configured'] ) ) return self::block( 'site_profile_present' );
+		$profile_present = ! empty( $profile_status['configured'] );
+		$profile_origin_match = ! empty( $profile_status['origin_match'] );
+		$profile_environment_match = ! empty( $profile_status['environment_match'] );
+		$profile_exact = $profile_present && $profile_origin_match && $profile_environment_match;
+		$profile_binding_state = isset( $profile_status['binding_state'] )
+			? sanitize_key( (string) $profile_status['binding_state'] )
+			: ( $profile_present
+				? ( $profile_origin_match ? 'environment_drift' : 'foreign_origin' )
+				: 'unconfigured' );
+		self::$status['profile_present'] = $profile_present;
+		self::$status['profile_binding_state'] = $profile_binding_state;
+		self::$status['profile_origin_match'] = $profile_origin_match;
+		self::$status['profile_environment_match'] = $profile_environment_match;
+		self::$status['profile_canonical_origin'] = isset( $profile_status['canonical_origin'] ) ? (string) $profile_status['canonical_origin'] : '';
+		self::$status['profile_configured_environment'] = isset( $profile_status['configured_environment'] ) ? sanitize_key( (string) $profile_status['configured_environment'] ) : '';
+
 		if ( isset( $profile_status['source'] ) && 'stored_invalid' === sanitize_key( (string) $profile_status['source'] ) ) {
 			return self::block( 'site_profile_invalid_fail_closed' );
+		}
+		if ( $profile_exact ) return self::block( 'site_profile_present' );
+		if ( $profile_present ) {
+			// A cloned/moved Site Profile belongs to another exact tenant binding.
+			// Keep its authority quarantined and expose only a fresh, current-origin
+			// read-only OAuth surface until an administrator explicitly enrolls this site.
+			self::$status['foreign_profile_quarantined'] = true;
+			self::$status['requires_site_enrollment'] = true;
 		}
 
 		if ( class_exists( 'MAD4B_SCP_Upgrade_Continuity' ) ) {
 			$continuity = MAD4B_SCP_Upgrade_Continuity::recovery_status();
-			$continuity_state = isset( $continuity['state'] ) ? sanitize_key( (string) $continuity['state'] ) : '';
-			$continuity_blocker = isset( $continuity['blocker'] ) ? sanitize_key( (string) $continuity['blocker'] ) : '';
-			if ( 'blocked' === $continuity_state && '' !== $continuity_blocker ) {
-				return self::block( 'upgrade_continuity_blocked' );
-			}
+			self::$status['upgrade_continuity_state'] = isset( $continuity['state'] ) ? sanitize_key( (string) $continuity['state'] ) : '';
+			self::$status['upgrade_continuity_blocker'] = isset( $continuity['blocker'] ) ? sanitize_key( (string) $continuity['blocker'] ) : '';
+			// Continuity is an exact-old-identity recovery path. A blocked/stale recovery
+			// must never import that identity, but it also must not suppress the independent
+			// current-origin portable read-only path. Invalid stored profiles already fail
+			// closed above; explicit OAuth constants are still honored below.
 		}
 		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) {
 			return self::block( 'environment_not_supported' );
