@@ -50,3 +50,8 @@ for marker in ["mutation_ttl_policy","acceptance_ttl_policy","dynamic.apply.atte
 
 for marker in ["owned_state_sha256","post_write_verified","desired_state_write_verified","repair_write_verified","journal_heartbeat"]:
     req(adapter, marker)
+
+# heartbeat instrumentation count guard
+heartbeat_count=adapter.count("$heartbeat=$this->journal_heartbeat($operation,$lock);")
+if heartbeat_count < 2 or heartbeat_count > 6:
+    raise SystemExit(f"unexpected journal heartbeat count: {heartbeat_count}")

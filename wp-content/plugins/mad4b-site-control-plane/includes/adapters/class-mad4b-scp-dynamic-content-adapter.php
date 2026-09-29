@@ -1184,26 +1184,6 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			if(is_wp_error($lock_ok)) return $this->failure_with_compensation($lock_ok,$v['mode'],$id,$before,$owned_after);
 			$heartbeat=$this->journal_heartbeat($operation,$lock);
 			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
-			$heartbeat=$this->journal_heartbeat($operation,$lock);
-			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
-			$heartbeat=$this->journal_heartbeat($operation,$lock);
-			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
-			$heartbeat=$this->journal_heartbeat($operation,$lock);
-			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
-			$heartbeat=$this->journal_heartbeat($operation,$lock);
-			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
-			$heartbeat=$this->journal_heartbeat($operation,$lock);
-			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
-			$heartbeat=$this->journal_heartbeat($operation,$lock);
-			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
-			$heartbeat=$this->journal_heartbeat($operation,$lock);
-			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
-			$heartbeat=$this->journal_heartbeat($operation,$lock);
-			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
-			$heartbeat=$this->journal_heartbeat($operation,$lock);
-			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
-			$heartbeat=$this->journal_heartbeat($operation,$lock);
-			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
 			$final=$this->snapshot($id,$input);
 			$context=array(
 				'adapter'=>$this,
