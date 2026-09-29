@@ -149,13 +149,20 @@ if "defined( 'MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED' )" not in self_update:
 for forbidden_hook in (
     "pre_set_site_transient_update_plugins",
     "site_transient_update_plugins",
-    "auto_update_plugin",
     "upgrader_pre_download",
     "upgrader_pre_install",
     "upgrader_post_install",
 ):
     if forbidden_hook in self_update:
         raise SystemExit(f"self-update must not alter WordPress updater routine: {forbidden_hook}")
+for forbidden_registration in (
+    "add_filter( 'auto_update_plugin'",
+    'add_filter( "auto_update_plugin"',
+    "add_action( 'auto_update_plugin'",
+    'add_action( "auto_update_plugin"',
+):
+    if forbidden_registration in self_update:
+        raise SystemExit("self-update must observe but never register the auto_update_plugin policy hook")
 if "'automatic_update_enabled' => false" in self_update:
     raise SystemExit("automatic update state is still hard-coded instead of observed from WordPress")
 for marker in (
