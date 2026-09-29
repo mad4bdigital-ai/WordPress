@@ -168,6 +168,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 							'maxItems' => 64,
 							'uniqueItems' => true,
 							'items' => array( 'type' => 'integer', 'minimum' => 1 ),
+							'default' => array(),
+							'description' => 'Optional transport assertion for backward-compatible clients. Omission means the caller asserts an empty stale-grant set; any live stale grant still fails closed.',
 						),
 						'expected_transport_tool_count' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 8 ),
 						'expected_transport_inventory_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
@@ -197,7 +199,6 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 						'expected_write_tool_count',
 						'expected_write_inventory_fingerprint',
 						'expected_missing_abilities',
-						'expected_stale_grant_ids',
 						'expected_transport_tool_count',
 						'expected_transport_inventory_fingerprint',
 						'expected_missing_transport_abilities',
@@ -217,6 +218,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 						'creates_exact_staging_grants_only' => true,
 						'retires_reviewed_stale_staging_grants' => true,
 						'stale_retirement_is_authority_narrowing' => true,
+						'expected_stale_grant_ids_optional_when_empty' => true,
+						'stale_grant_omission_fails_closed_on_live_stale' => true,
 						'binds_exact_package_candidate' => true,
 						'candidate_binding_is_commit_point' => true,
 						'enables_developer_authority' => false,
@@ -261,6 +264,11 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		return $items;
 	}
 
+	/**
+	 * Omission is a compatibility-safe assertion that no stale grants are expected.
+	 * The live stale set is still compared exactly, so any non-empty live stale set
+	 * fails closed with mad4b_grant_reconcile_stale_set_mismatch.
+	 */
 	private static function normalized_expected_stale_grant_ids( $input ) {
 		$items = isset( $input['expected_stale_grant_ids'] ) && is_array( $input['expected_stale_grant_ids'] ) ? array_values( array_unique( array_map( 'absint', $input['expected_stale_grant_ids'] ) ) ) : array();
 		$items = array_values( array_filter( $items ) );
