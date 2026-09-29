@@ -1129,24 +1129,13 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function content_update_post( $input ) {
-		$id = absint( $input['post_id'] );
-		$post = get_post( $id );
-		if ( ! $post ) return new WP_Error( 'mad4b_post_missing', 'Post not found.' );
-		$expected = trim( (string) $input['expected_modified_gmt'] );
-		if ( ! hash_equals( (string) $post->post_modified_gmt, $expected ) ) return new WP_Error( 'mad4b_stale_post', 'Post has changed since it was read.', array( 'current_modified_gmt' => $post->post_modified_gmt ) );
-
-		$update = array( 'ID' => $id );
-		foreach ( array( 'post_title', 'post_content', 'post_excerpt', 'post_status' ) as $field ) if ( array_key_exists( $field, $input ) ) $update[ $field ] = $input[ $field ];
-		if ( isset( $update['post_status'] ) && 'publish' === $update['post_status'] ) {
-			$type = get_post_type_object( $post->post_type );
-			$cap = $type && isset( $type->cap->publish_posts ) ? $type->cap->publish_posts : 'publish_posts';
-			if ( ! current_user_can( $cap ) ) return new WP_Error( 'mad4b_cannot_publish', 'Current user cannot publish this post type.' );
-		}
-		$result = wp_update_post( wp_slash( $update ), true ); if ( is_wp_error( $result ) ) return $result;
-		$updated = get_post( $id );
-		MAD4B_SCP_Audit::record( 'mad4b/content-update-post', array( 'post_id' => $id, 'fields' => implode( ',', array_keys( $update ) ), 'before_modified_gmt' => $post->post_modified_gmt, 'after_modified_gmt' => $updated ? $updated->post_modified_gmt : '' ) );
-		return array( 'post_id' => $result, 'updated' => true, 'modified_gmt' => $updated ? $updated->post_modified_gmt : '' );
+		if ( ! class_exists( 'MAD4B_SCP_Mutation_Manager' ) ) return new WP_Error(
+			'mad4b_mutation_manager_unavailable',
+			'Governed content mutation manager is unavailable.'
+		);
+		return MAD4B_SCP_Mutation_Manager::execute_post_update( is_array( $input ) ? $input : array() );
 	}
+
 
 	private function plugin_site_active( $plugin ) {
 		$active_plugins = get_option( 'active_plugins', array() );
