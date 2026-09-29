@@ -769,7 +769,13 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'skills_runtime' => self::gate( ! empty( $skills['ready'] ), ! empty( $skills['ready'] ) ? 'ready' : 'blocked', true, isset( $skills['contract'] ) ? $skills['contract'] : 'mad4b.skill-runtime-certification.v2', ! empty( $skills['ready'] ) ? array() : array( 'skills_runtime_not_ready' ) ),
 			'snapshot_local' => self::gate( ! empty( $snapshot_local['ready'] ), ! empty( $snapshot_local['ready'] ) ? 'ready' : 'blocked', true, isset( $snapshot_local['contract'] ) ? $snapshot_local['contract'] : 'mad4b.skill-snapshot-identity.v1', ! empty( $snapshot_local['ready'] ) ? array() : array( 'local_snapshot_unavailable' ) ),
 			'snapshot_external' => self::gate( ! empty( $snapshot_external['exact_match'] ), ! empty( $snapshot_external['exact_match'] ) ? 'ready' : 'pending_external_evidence', ! empty( $snapshot_external['exact_match'] ), self::SNAPSHOT_VERIFY_CONTRACT, ! empty( $snapshot_external['exact_match'] ) ? array() : array( 'client_snapshot_token_required_or_mismatch' ) ),
-			'provider_projection' => self::gate( empty( $provider_execution_leaks ), empty( $provider_execution_leaks ) ? 'ready' : 'provider_execution_mount_leak_detected', ! empty( $external['build_fingerprint_match'] ), self::EXTERNAL_ATTESTATION_CONTRACT, empty( $provider_execution_leaks ) ? array() : array( 'provider_blocked_tool_mounted_for_execution' ) ),
+			'provider_projection' => self::gate(
+				empty( $provider_execution_leaks ) && ! empty( $external['build_fingerprint_match'] ),
+				! empty( $provider_execution_leaks ) ? 'provider_execution_mount_leak_detected' : ( ! empty( $external['build_fingerprint_match'] ) ? 'ready' : 'external_projection_stale' ),
+				! empty( $external['build_fingerprint_match'] ),
+				self::EXTERNAL_ATTESTATION_CONTRACT,
+				! empty( $provider_execution_leaks ) ? array( 'provider_blocked_tool_mounted_for_execution' ) : ( ! empty( $external['build_fingerprint_match'] ) ? array() : array( 'external_projection_not_current' ) )
+			),
 			'write_authority' => self::gate( ! empty( $write_authority['ready'] ), ! empty( $write_authority['ready'] ) ? 'ready' : 'blocked', true, isset( $write_authority['contract'] ) ? $write_authority['contract'] : 'mad4b.write-authority', ! empty( $write_authority['ready'] ) ? array() : array( 'write_authority_not_ready' ) ),
 			'write_runtime_certification' => self::gate( ! empty( $write_runtime['ready'] ), ! empty( $write_runtime['ready'] ) ? 'ready' : 'blocked', true, isset( $write_runtime['contract'] ) ? $write_runtime['contract'] : 'mad4b.write-runtime-certification.v2', ! empty( $write_runtime['ready'] ) ? array() : array( 'write_runtime_not_ready' ) ),
 			'external_handshake' => self::gate( ! empty( $external['verified'] ), isset( $external['status'] ) ? $external['status'] : 'pending_external_evidence', ! empty( $external['build_fingerprint_match'] ), self::EXTERNAL_ATTESTATION_CONTRACT, ! empty( $external['verified'] ) ? array() : array( 'real_external_session_required' ) ),
@@ -777,7 +783,14 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'mutation_acceptance' => self::gate( false, 'pending_external_evidence', false, 'external-live-acceptance', array( 'one_time_mutation_acceptance_not_observed_locally' ) ),
 			'production_unchanged' => self::gate( false, 'pending_external_evidence', false, 'external-production-proof', array( 'production_unchanged_requires_external_read_only_proof' ) ),
 		);
-		$all_ready = true; foreach ( $gates as $gate ) if ( empty( $gate['ready'] ) ) { $all_ready = false; break; } return array( 'contract' => self::AGGREGATE_CONTRACT, 'ready' => $all_ready, 'state' => $all_ready ? 'ready' : 'pending_or_blocked', 'gates' => $gates, 'external_facts_self_certified' => false );
+		$all_ready = true;
+		foreach ( $gates as $gate ) {
+			$effective = class_exists( 'MAD4B_SCP_Truth_Projection' )
+				? MAD4B_SCP_Truth_Projection::gate_effective_ready( is_array( $gate ) ? $gate : array() )
+				: ( is_array( $gate ) && ! empty( $gate['ready'] ) && ( ! array_key_exists( 'fresh', $gate ) || ! empty( $gate['fresh'] ) ) );
+			if ( ! $effective ) { $all_ready = false; break; }
+		}
+		return array( 'contract' => self::AGGREGATE_CONTRACT, 'ready' => $all_ready, 'state' => $all_ready ? 'ready' : 'pending_or_blocked', 'gates' => $gates, 'external_facts_self_certified' => false );
 	}
 
 	private static function gate( $ready, $state, $fresh, $source_contract, array $blockers ) { return class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::gate( $ready, $state, $fresh, $source_contract, $blockers, gmdate( 'Y-m-d H:i:s' ), true ) : array( 'state' => (string) $state, 'ready' => (bool) $ready, 'fresh' => (bool) $fresh, 'freshness_required' => true, 'effective_ready' => (bool) $ready && (bool) $fresh, 'source_contract' => (string) $source_contract, 'blockers' => array_values( $blockers ), 'observed_at' => gmdate( 'Y-m-d H:i:s' ) ); }
