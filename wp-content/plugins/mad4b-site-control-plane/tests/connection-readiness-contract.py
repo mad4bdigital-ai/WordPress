@@ -29,6 +29,7 @@ peer = read('includes/class-mad4b-scp-mcp-peer-governance.php')
 isolation = read('includes/class-mad4b-scp-mcp-provider-isolation.php')
 transport_registry = read('includes/class-mad4b-scp-provider-transport-registry.php')
 transport_catalog = read('config/provider-transport-registry.json')
+certified_providers = read('config/certified-providers.json')
 bridge = read('includes/class-mad4b-scp-mcp-registration-bridge.php')
 diagnostics = read('includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php')
 transport_context = read('includes/class-mad4b-scp-transport-context.php')
@@ -306,8 +307,15 @@ for marker in (
     "CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
     "CERTIFIED_STATEFUL_ADAPTER_VERSION = '0.6.1'",
     "session_repair_supported_runtime()",
+    "certified_adapter_runtime_integrity_ok()",
+    "MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', true )",
     "'certified_stateful_runtime' => self::session_repair_supported_runtime()",
     "'exact_adapter_version_required' => true",
+    "'certified_runtime_integrity_required' => true",
+    "'runtime_integrity_checked_only_on_candidate_repair_paths' => true",
+    "'runtime_integrity_transport_file_count' => 4",
+    "'version_only_repair_authority_allowed' => false",
+    "'runtime_integrity_gate_blocked'",
     "verified_bearer_client_is( self::CHATGPT_CLIENT_ID )",
     "'canonical_adapter_session_store_used_for_repair' => true",
     "'repair_uses_custom_lock' => false",
@@ -355,6 +363,14 @@ for forbidden in (
     "add_filter( 'mcp_adapter_session_activity_update_interval'",
 ):
     forbid(reconnect, forbidden, 'mcp-session-continuity-bounded')
+
+for marker in (
+    '"includes/Transport/Infrastructure/HttpRequestHandler.php": "27efb5353e78a234faec3246b9603c050c87f46e2497ffe4d4c1757f7a11f375"',
+    '"includes/Transport/Infrastructure/HttpSessionValidator.php": "2f1a06b7b39fb8619d43cf41a6efdb4dc187309bf834c0696801aa754becba88"',
+    '"includes/Transport/Infrastructure/RequestRouter.php": "e91c1dd049a525183e8fbf31edd70967308e2dd7fa8131d4898b246362ea710d"',
+    '"includes/Transport/Infrastructure/SessionManager.php": "70cc27038911811810a0a7186e2b24a968266b7cd63f94ef0ccfc13a71147b7c"',
+):
+    require(certified_providers, marker, 'mcp-adapter-session-runtime-integrity-manifest')
 
 require(transport_context, "const CONTRACT = 'mad4b.mcp-transport-context.v3'", 'transport-context-contract')
 require(transport_context, "'/mcp/' . $server_id", 'transport-exact-route')
