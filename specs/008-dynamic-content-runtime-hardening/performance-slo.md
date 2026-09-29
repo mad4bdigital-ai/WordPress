@@ -34,3 +34,20 @@ Staging acceptance budget for the MAD4B admin page that previously showed multi-
 - WPML Support canary: `admin.php?page=sitepress-multilingual-cms/menu/support.php` must render without MAD4B-triggered REST priming, dependency hashing, governance deep-read, repair work or acceptance-telemetry persistence; no MAD4B-attributable 504 is acceptable.
 
 The structural CI gate is mandatory on every Feature 008 runtime change. The numeric budget is a live Staging acceptance gate because host/plugin composition and object-cache state cannot be faithfully represented by source-only CI.
+
+
+## Provider/API amplification zero-touch SLO
+
+Read/status surfaces are passive observations, not provider probes.
+
+- provider self-calls started by any ordinary MAD4B status read: **0**;
+- internal provider REST dispatch from status/read paths: **0**;
+- loopback HTTP from status/read paths: **0**;
+- implicit REST server materialization from provider compatibility or connection status: **0**;
+- automatic retries of provider probes from read resilience: **0**;
+- if REST is already materialized by another explicit lifecycle, status may inspect the existing route registry without dispatching the route;
+- deep REST registry materialization is confined to the explicit `Connection > MCP Endpoints` workspace;
+- behavioral provider acceptance is delegated to the governed external/browser executor and persisted as bounded evidence;
+- these rules apply provider-neutrally to WPML, Elementor, JetEngine, JetSmartFilters, WooCommerce, Rank Math, LiteSpeed and future providers.
+
+A provider support/status page must therefore remain operational even if MAD4B status polling, MCP tool refresh, Site Health, or external acceptance reads occur concurrently. No status read may create a feedback loop against the provider API it is observing.
