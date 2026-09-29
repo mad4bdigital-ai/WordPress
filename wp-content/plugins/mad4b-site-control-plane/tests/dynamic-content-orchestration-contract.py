@@ -461,4 +461,12 @@ for forbidden in ["wp_update_post(", "MAD4B_SCP_Audit::record("]:
     if forbidden in abilities_method:
         raise SystemExit(f"content_update_post retains bypass mutation logic: {forbidden}")
 
+
+for marker in [
+    "expected_modified_gmt",
+    "required_next_ability'=>'mad4b/content-update-post'",
+]:
+    if marker not in adapter:
+        raise SystemExit(f"publication handoff marker missing: {marker}")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
