@@ -50,3 +50,9 @@ print("runtime convergence contract: PASS")
 assert "MAD4B_SCP_Self_Update::status()" not in runtime
 
 assert "MAD4B_SCP_Full_Staging_Authority::status" not in runtime
+
+assert runtime.count("final class MAD4B_SCP_Runtime_Convergence") == 1
+assert runtime.count("public static function status") == 1
+assert runtime.count("public static function plan") == 1
+assert runtime.count("public static function apply") == 1
+assert runtime.count("MAD4B_SCP_Runtime_Convergence::boot();") == 1
