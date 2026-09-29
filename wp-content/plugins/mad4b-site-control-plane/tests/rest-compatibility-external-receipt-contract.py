@@ -6,11 +6,15 @@ PLUGIN = ROOT / "wp-content/plugins/mad4b-site-control-plane"
 rest = (PLUGIN / "includes/class-mad4b-scp-rest-compatibility.php").read_text(encoding="utf-8")
 runtime = (PLUGIN / "includes/class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
 finalizer = (PLUGIN / "includes/class-mad4b-scp-live-acceptance-finalizer.php").read_text(encoding="utf-8")
+external_finalizer = (PLUGIN / "includes/class-mad4b-scp-external-wpml-acceptance-finalizer.php").read_text(encoding="utf-8")
 policy = (PLUGIN / "includes/class-mad4b-scp-provider-diagnostic-policy.php").read_text(encoding="utf-8")
 response = (PLUGIN / "includes/class-mad4b-scp-wpml-response-contract.php").read_text(encoding="utf-8")
 
 assert "MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status_from_local_wpml( $wpml )" in rest
 assert "MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status()" not in rest
+assert "public static function external_wpml_receipt_status_from_local_wpml( $wpml )" in external_finalizer
+assert "MAD4B_SCP_Live_Acceptance_Finalizer::external_wpml_receipt_status_from_local_wpml( $wpml )" in external_finalizer
+assert "self::authoritative_external_receipt()" in external_finalizer
 assert "bounded_external_wpml_receipt" in rest
 assert "'external_wpml_acceptance_required' => $external_wpml_required" in rest
 assert "'external_wpml_acceptance_verified' => $external_wpml_verified" in rest

@@ -49,8 +49,42 @@ mad4b_zero_touch_assert( MAD4B_SCP_Provider_Diagnostic_Policy::current_request_i
 mad4b_zero_touch_assert( MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface(), 'WPML Support must be zero-touch.' );
 mad4b_zero_touch_assert( 'foreign_wp_admin' === MAD4B_SCP_Provider_Diagnostic_Policy::zero_touch_reason(), 'WPML Support zero-touch reason mismatch.' );
 
+$_GET = array( 'post_type' => 'tour' );
+$_REQUEST = $_GET;
+$_SERVER['REQUEST_URI'] = '/wp-admin/edit.php?post_type=tour';
+$GLOBALS['pagenow'] = 'edit.php';
+mad4b_zero_touch_assert( MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_foreign_wp_admin(), 'Generic CPT edit.php must be zero-touch even without ?page=.' );
+
+$_GET = array( 'post' => '123', 'action' => 'edit' );
+$_REQUEST = $_GET;
+$_SERVER['REQUEST_URI'] = '/wp-admin/post.php?post=123&action=edit';
+$GLOBALS['pagenow'] = 'post.php';
+mad4b_zero_touch_assert( MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_foreign_wp_admin(), 'post.php editing must stay outside MAD4B lifecycle.' );
+
+$_GET = array();
+$_REQUEST = array();
+$_SERVER['REQUEST_URI'] = '/wp-admin/plugins.php';
+$GLOBALS['pagenow'] = 'plugins.php';
+mad4b_zero_touch_assert( MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_foreign_wp_admin(), 'plugins.php listing must be zero-touch.' );
+mad4b_zero_touch_assert( ! MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_wordpress_lifecycle_admin(), 'plugins.php listing must not be lifecycle.' );
+
+$_GET = array( 'action' => 'activate', 'plugin' => 'example/example.php' );
+$_REQUEST = $_GET;
+$_SERVER['REQUEST_URI'] = '/wp-admin/plugins.php?action=activate&plugin=example/example.php';
+$GLOBALS['pagenow'] = 'plugins.php';
+mad4b_zero_touch_assert( MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_wordpress_lifecycle_admin(), 'plugins.php activation must be lifecycle.' );
+mad4b_zero_touch_assert( ! MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_foreign_wp_admin(), 'Plugin activation must retain lifecycle plane.' );
+
+$_GET = array( 'action' => 'upgrade-plugin', 'plugin' => 'example/example.php' );
+$_REQUEST = $_GET;
+$_SERVER['REQUEST_URI'] = '/wp-admin/update.php?action=upgrade-plugin&plugin=example/example.php';
+$GLOBALS['pagenow'] = 'update.php';
+mad4b_zero_touch_assert( MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_wordpress_lifecycle_admin(), 'update.php must retain lifecycle plane.' );
+
 $_GET = array( 'page' => 'mad4b-control-plane-connection', 'tab' => 'endpoints' );
+$_REQUEST = $_GET;
 $_SERVER['REQUEST_URI'] = '/wp-admin/admin.php?page=mad4b-control-plane-connection&tab=endpoints';
+$GLOBALS['pagenow'] = 'admin.php';
 mad4b_zero_touch_assert( ! MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_foreign_wp_admin(), 'MAD4B operator surface must retain explicit diagnostic lifecycle.' );
 mad4b_zero_touch_assert( ! MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface(), 'MAD4B operator surface was incorrectly zero-touched.' );
 

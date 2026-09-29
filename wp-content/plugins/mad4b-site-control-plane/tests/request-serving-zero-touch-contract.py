@@ -15,11 +15,15 @@ for marker in (
     "current_request_is_foreign_rest",
     "current_request_is_wordpress_cron",
     "current_request_is_foreign_wp_admin",
+    "current_request_is_wordpress_lifecycle_admin",
+    "current_wp_admin_script",
     "current_request_is_zero_touch_surface",
     "zero_touch_reason",
     "foreign_rest_zero_touch",
     "wordpress_cron_zero_touch",
     "foreign_wp_admin_zero_touch",
+    "wp_admin_default_zero_touch",
+    "wordpress_lifecycle_admin_explicit_opt_in",
     "current_request_is_external_provider_rest",
 ):
     assert marker in policy, marker

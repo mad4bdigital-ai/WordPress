@@ -75,6 +75,8 @@ $diagnostic = $GLOBALS['mad4b_wpml_diagnostic'];
 
 $verified = MAD4B_SCP_External_WPML_Acceptance_Finalizer::finalize_status( $trusted, $diagnostic );
 mad4b_wpml_authority_assert( ! empty( $verified['verified'] ), 'Trusted external receipt must remain verified.' );
+mad4b_wpml_authority_assert( true === $verified['success'], 'Deprecated success alias must match verified=true.' );
+mad4b_wpml_authority_assert( 'deprecated_alias_of_verified' === $verified['success_semantics'], 'Success alias semantics must be explicit.' );
 mad4b_wpml_authority_assert( 'verified_external_wpml' === $verified['state'], 'Trusted external receipt must retain authoritative state.' );
 mad4b_wpml_authority_assert( 'success' === $verified['classification'], 'Internal route diagnostics must not downgrade external success.' );
 mad4b_wpml_authority_assert( false === $verified['route_registered'], 'Internal route probe must remain visible as diagnostics.' );
@@ -101,6 +103,7 @@ $GLOBALS['mad4b_wpml_legacy_receipt']['verified'] = true;
 $GLOBALS['mad4b_wpml_legacy_receipt']['state'] = 'verified_external_wpml';
 $blocked = MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status();
 mad4b_wpml_authority_assert( empty( $blocked['verified'] ), 'Legacy observer must not bypass an unverified canonical response contract.' );
+mad4b_wpml_authority_assert( empty( $blocked['success'] ), 'Deprecated success alias must match verified=false.' );
 mad4b_wpml_authority_assert( 'route_not_registered' === $blocked['classification'], 'Diagnostic route failure must remain visible without trusted canonical external evidence.' );
 
 fwrite( STDOUT, "mad4b.live-acceptance-wpml-authority.runtime.v2: PASS\n" );
