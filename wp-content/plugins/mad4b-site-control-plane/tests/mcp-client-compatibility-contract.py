@@ -111,7 +111,8 @@ for marker in [
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
     "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
-    "$step_up = array_merge( $narrow_step_up, $full_step_up )",
+    "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()",
+    "$step_up = array_merge( $narrow_step_up, $full_step_up, $self_update_step_up )",
     "public static function chatgpt_direct_read_transport_tools()",
     "'mad4b/session-safe-diagnostics'",
     "$direct_read_transport = self::chatgpt_direct_read_transport_tools()",
@@ -130,6 +131,7 @@ for marker in [
 # must be removed from both direct ChatGPT tools/list and logical user discovery.
 chatgpt_tools_body = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in chatgpt_tools_body, 'bounded convergence step-up projection is missing from ChatGPT transport'
+assert "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in chatgpt_tools_body, 'bootstrap Control Plane self-update step-up projection is missing from ChatGPT transport'
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
