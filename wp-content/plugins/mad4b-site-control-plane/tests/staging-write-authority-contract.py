@@ -488,8 +488,10 @@ for forbidden in [
         raise SystemExit(f'candidate bootstrap guard must remain read-only: {forbidden}')
 
 scope_body = write.split("public static function remote_scope_delegation_allowed", 1)[1].split("public static function force_remote_write_approval", 1)[0]
-if "if ( $bootstrap ) return true;" not in scope_body:
-    raise SystemExit('candidate bootstrap must have one explicit no-prior-ticket scope delegation branch')
+if "if ( ! $production && $bootstrap ) return true;" not in scope_body:
+    raise SystemExit('candidate bootstrap must have one explicit non-Production no-prior-ticket scope delegation branch')
+if "$production = 'production' === self::current_environment();" not in scope_body:
+    raise SystemExit('candidate bootstrap scope delegation must fail closed for Production')
 if "mad4b:read" not in scope_body or "oauth2_bearer" not in scope_body:
     raise SystemExit('candidate bootstrap scope delegation must retain verified OAuth read identity')
 
