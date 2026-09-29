@@ -26,6 +26,19 @@ required_self_update = [
     "mad4b/control-plane-native-apply",
     "mad4b.control-plane-native-plan.v1",
     "mad4b.control-plane-native-apply.v1",
+    "mad4b.control-plane-bootstrap-apply.v1",
+    "mad4b/control-plane-bootstrap-apply",
+    "APPLY EXACT STAGING CONTROL PLANE BOOTSTRAP UPDATE",
+    "public static function chatgpt_step_up_tools()",
+    "public static function can_bootstrap_native_apply",
+    "public static function bootstrap_native_apply",
+    "mad4b_self_update_bootstrap_not_required",
+    "mad4b_self_update_bootstrap_authority_not_clean",
+    "MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE",
+    "MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID",
+    "'authority_mutation_allowed' => false",
+    "'production_allowed' => false",
+    "'generic_raw_sql_breakglass_included' => false",
     "governed_native_release_pull",
     "caller_package_bytes_allowed",
     "target_derived_from_release_manifest",
@@ -85,6 +98,39 @@ required_self_update = [
 for marker in required_self_update:
     if marker not in self_update:
         raise SystemExit(f"missing dual-channel self-update invariant: {marker}")
+
+
+# Bootstrap self-update is a narrow circular-dependency breaker, not a general
+# authority bypass. It must be projected only as a step-up tool and must turn
+# itself off once normal Write Authority is effective.
+for marker in (
+    "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()",
+    "$self_update_step_up",
+    "$step_up = array_merge( $narrow_step_up, $full_step_up, $self_update_step_up )",
+):
+    if marker not in servers:
+        raise SystemExit(f"bootstrap self-update step-up projection missing: {marker}")
+for marker in (
+    "if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() ) return array();",
+    "if ( MAD4B_SCP_Staging_Write_Authority::effective() )",
+    "empty( $authority_plan['eligible'] ) || empty( $authority_plan['current_ready'] )",
+    "'exact_grants_missing_count'",
+    "'stale_allow_grants_count'",
+    "'broad_environment_grants_count'",
+    "'current_agent_wildcard_grants'",
+    "'global_registry_wildcard_grants'",
+    "empty( $binding['required'] ) || ! empty( $binding['match'] )",
+):
+    if marker not in self_update:
+        raise SystemExit(f"bootstrap self-update fail-closed authority invariant missing: {marker}")
+for forbidden in (
+    "MAD4B_SCP_Authorization::authorize_mutation(\n\t\t\tself::BOOTSTRAP_APPLY_ABILITY",
+    "mad4b/control-plane-bootstrap-upload",
+    "package_base64",
+):
+    bootstrap_apply = self_update.split("public static function bootstrap_native_apply", 1)[1].split("private static function is_control_plane_plugin_file", 1)[0]
+    if forbidden in bootstrap_apply:
+        raise SystemExit(f"bootstrap self-update widened beyond manifest-derived native apply: {forbidden}")
 
 if "'release_channel_bound' => true" not in self_update:
     raise SystemExit("governed file upload is not bound to the repository release channel")
