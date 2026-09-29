@@ -132,6 +132,32 @@ for marker in required_parity_markers:
     if marker not in parity:
         raise SystemExit(f'missing remote parity/discoverability invariant: {marker}')
 
+frontend_status = parity.split('private static function frontend_sample_request_status()', 1)[1].split('public static function can_execute', 1)[0]
+for marker in [
+    'private static function exact_identity_matches',
+    'private static function current_build_identity',
+    "'current_build_match'",
+    "'superseded_build'",
+    "'superseded_by_identity'",
+    "self::exact_identity_matches( $request_identity, $current_identity )",
+    "self::persist_browser_request( $request )",
+]:
+    if marker not in parity:
+        raise SystemExit(f'frontend sampling build-transition invariant missing: {marker}')
+if frontend_status.index("'superseded_build'") > frontend_status.index("'expired_waiting_executor'"):
+    raise SystemExit('stale-build frontend requests must be superseded before expiry handling')
+
+frontend_collect = parity.split('public static function collect_frontend_samples( $input )', 1)[1].split('private static function persist_browser_acceptance_receipt', 1)[0]
+for marker in [
+    "'mad4b_frontend_sample_transition_persist_failed'",
+    "self::exact_identity_matches( $current_identity, $input_identity )",
+    "'A different browser sampling request for this exact build is already pending.'",
+]:
+    if marker not in frontend_collect:
+        raise SystemExit(f'frontend sampling exact-build in-flight guard missing: {marker}')
+if "['expected_identity']['source_commit_sha']" in frontend_collect.split("$same =", 1)[1].split("if ( $same )", 1)[0]:
+    raise SystemExit('frontend sampling duplicate detection must compare the full exact-build identity, not source SHA only')
+
 if "delete_option( self::SKILLS_LOCK_OPTION" in parity:
     raise SystemExit("direct delete_option Skills lock reclamation is ABA-unsafe; CAS option fencing is required")
 
