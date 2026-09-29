@@ -56,7 +56,11 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 		$portable_ready = ! empty( $portable['effective'] );
 		$production_readonly_enabled = 'production' === $environment && ( ! empty( $profile['production_readonly_enabled'] ) || $portable_ready );
 		$production_readonly_auto_enabled = 'production' === $environment && $portable_ready;
-		$profile_oauth_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() && MAD4B_SCP_Site_Profile::oauth_enabled();
+		$profile_oauth_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && (
+			'production' === $environment
+				? ( MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() && MAD4B_SCP_Site_Profile::oauth_enabled() )
+				: ( MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' ) && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() )
+		);
 		$production_governed_write_enabled = 'production' === $environment && $profile_oauth_ready && MAD4B_SCP_Site_Profile::write_enabled();
 		$environment_ready = $portable_ready || $profile_oauth_ready;
 		$oauth_canary_available = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() && MAD4B_SCP_Site_Profile::oauth_enabled();
