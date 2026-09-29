@@ -67,7 +67,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			self::$runtime_error = new WP_Error( 'mad4b_local_oauth_client_id_schema_mismatch', 'Local OAuth client-id bounds do not match the durable schema.' );
 			return;
 		}
-		if ( ! MAD4B_SCP_Local_OAuth_Store::is_ready() || (int) get_option( MAD4B_SCP_Local_OAuth_Store::OPTION, 0 ) < MAD4B_SCP_Local_OAuth_Store::VERSION ) {
+		// The version marker is persisted only after dbDelta plus physical
+		// readiness verification succeeds. Do not run SHOW TABLES introspection on
+		// every healthy request; explicit status/diagnostics still verify physics.
+		$installed_store_version = (int) get_option( MAD4B_SCP_Local_OAuth_Store::OPTION, 0 );
+		if ( $installed_store_version < MAD4B_SCP_Local_OAuth_Store::VERSION ) {
 			// dbDelta is a migration transaction, not request-serving work. Never
 			// execute it on MCP/OAuth protocol or WordPress plugin lifecycle hot
 			// paths (notably the first plugins.php request after self-update).
@@ -1100,6 +1104,9 @@ final class MAD4B_SCP_Local_OAuth_Server {
 				@chmod( $path, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- best-effort repair only when permissions drift.
 			}
 			return true;
+		}
+		if ( self::request_is_schema_migration_hotpath() ) {
+			return new WP_Error( 'mad4b_local_oauth_key_generation_deferred', 'Local OAuth signing-key generation is deferred outside the current latency-sensitive request.' );
 		}
 		$dir = dirname( $path );
 		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) return new WP_Error( 'mad4b_local_oauth_key_directory_unavailable', 'Unable to create private OAuth key directory.' );
