@@ -429,7 +429,12 @@ final class MAD4B_SCP_Runtime_Convergence {
 
 	private static function convergence_trigger_allowed() {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
-		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
+		// The dedicated CRON_HOOK executes resume_safe_phases() directly. The
+		// generic wp-cron.php request must not run init-time drift detection or
+		// schedule work merely because Site Health/WordPress spawned loopback cron.
+		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return false;
+		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return false;
 		// Third-party REST traffic is request-serving work. At init time REST_REQUEST
 		// may not be defined yet, so classify both rest_route and the request URI.
 		$route = isset( $_GET['rest_route'] ) ? (string) wp_unslash( $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
