@@ -170,9 +170,23 @@ final class MAD4B_SCP_Repository_Family_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function ability_names() { return array( 'read'=>array( $this->family_id . '/status' ), 'content'=>array(), 'admin'=>array() ); }
 	protected function mutation_requires_certification() { return false; }
 	protected function provider_certification( $available ) { return null; }
-	protected function detect_plugin_version() {
+	private function primary_runtime_plugin() {
 		$plugins = $this->runtime_plugins();
-		return ! empty( $plugins[0]['version'] ) ? (string) $plugins[0]['version'] : '';
+		$declared = isset( $this->descriptor['primary_plugin_file'] )
+			? strtolower( ltrim( str_replace( '\\', '/', (string) $this->descriptor['primary_plugin_file'] ), '/' ) )
+			: '';
+		if ( '' !== $declared ) {
+			foreach ( $plugins as $plugin ) {
+				$file = isset( $plugin['plugin_file'] ) ? strtolower( ltrim( str_replace( '\\', '/', (string) $plugin['plugin_file'] ), '/' ) ) : '';
+				if ( '' !== $file && hash_equals( $declared, $file ) ) return $plugin;
+			}
+			return array();
+		}
+		return 1 === count( $plugins ) ? $plugins[0] : array();
+	}
+	protected function detect_plugin_version() {
+		$primary = $this->primary_runtime_plugin();
+		return ! empty( $primary['version'] ) ? (string) $primary['version'] : '';
 	}
 	public function register_abilities() {
 		$source_label = ! empty( $this->descriptor['artifacts'] ) ? 'Repository Adapter Status' : 'Runtime Family Status';
@@ -181,9 +195,17 @@ final class MAD4B_SCP_Repository_Family_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function family_status() { return $this->status(); }
 	public function status() {
 		$runtime = $this->runtime_plugins();
+		$primary = $this->primary_runtime_plugin();
+		$declared_primary = isset( $this->descriptor['primary_plugin_file'] ) ? (string) $this->descriptor['primary_plugin_file'] : '';
 		$active = 0; foreach ( $runtime as $plugin ) if ( ! empty( $plugin['active'] ) || ! empty( $plugin['network_active'] ) ) ++$active;
+		if ( '' !== $declared_primary ) $version_semantics = ! empty( $primary ) ? 'descriptor_primary_plugin' : 'descriptor_primary_plugin_missing';
+		elseif ( 1 === count( $runtime ) ) $version_semantics = 'single_component';
+		elseif ( count( $runtime ) > 1 ) $version_semantics = 'multi_component_no_single_version';
+		else $version_semantics = 'unavailable';
+		$primary_version = ! empty( $primary['version'] ) ? (string) $primary['version'] : '';
 		return array(
-			'id'=>$this->family_id,'label'=>$this->label(),'available'=>!empty($runtime),'version'=>$this->detect_plugin_version(),'abilities'=>$this->ability_names(),
+			'id'=>$this->family_id,'label'=>$this->label(),'available'=>!empty($runtime),'version'=>$primary_version,'abilities'=>$this->ability_names(),
+			'primary_plugin_file'=>$declared_primary,'primary_version'=>$primary_version,'version_semantics'=>$version_semantics,
 			'contract'=>!empty($this->descriptor['artifacts'])?'mad4b.repository-family-read-adapter.v1':'mad4b.runtime-family-read-adapter.v1','authority_mode'=>'read_only_non_authorizing','mutation_master_enabled'=>false,
 			'mutation_requires_certification'=>false,'mutation_exposed'=>false,'reversible_contracts'=>array(),
 			'support_mode'=>sanitize_key((string)($this->descriptor['support_mode']??'inventory_read')),
