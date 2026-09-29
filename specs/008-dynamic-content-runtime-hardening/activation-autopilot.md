@@ -85,6 +85,8 @@ Certification must never claim READY when the subsequent mutation guard would de
 
 ## Existing-site discovery
 
+A fresh installation is allowed to discover the site before a governed Site Profile exists. When the portable read-only connection is effective, discovery uses its deterministic origin-bound connection UUID as a non-authorizing observation identity. This identity never creates or substitutes a governed Site Profile and cannot enable write authority.
+
 One malformed or provider-specific content item must not abort the full inventory snapshot.
 
 The snapshot returns:
