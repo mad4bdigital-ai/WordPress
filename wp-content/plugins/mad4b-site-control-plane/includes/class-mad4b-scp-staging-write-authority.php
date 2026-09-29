@@ -156,6 +156,8 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		}
 		$policy['remote_write_prior_approval_exceptions'][] = $ai_approval_ability;
 		$policy['environment'] = $environment;
+		// Reassert the environment-bound Production policy after baseline defaults.
+		$policy['production_exact_approval_only'] = $production;
 		if ( $production ) {
 			$policy['remote_write_prior_approval_exceptions'] = array();
 		}
