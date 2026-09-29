@@ -63,7 +63,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		try {
 			wp_register_ability( self::ABILITY, array(
 				'label' => 'Re-enroll Site Profile Bootstrap State',
-				'description' => 'Bind one exact ChatGPT App ID or enable Acceptance and Skills on one exact Staging or Production Site Profile while governed write remains disabled.'
+				'description' => 'Bind one exact ChatGPT App ID or enable Acceptance and Skills on one exact Staging or Production Site Profile while governed write remains disabled.',
 				'category' => 'mad4b-governance',
 				'execute_callback' => array( __CLASS__, 'reenroll_features' ),
 				'permission_callback' => array( __CLASS__, 'can_execute' ),
