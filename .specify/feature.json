@@ -1,11 +1,20 @@
 {
   "feature_branch": "feat/008-dynamic-content-runtime-hardening-20260929",
   "feature_directory": "specs/008-dynamic-content-runtime-hardening",
-  "status": "specified_hardened_v2",
+  "active_feature_id": "008",
+  "active_feature_status": "specified_hardened_v2",
   "baseline_head": "282f837814cb6e5bb50582027c31a42ea050858f",
   "baseline_version": "0.4.0-rc.83",
   "merge_authorized": false,
   "production_activation_authorized": false,
+  "legacy_feature_001": {
+    "feature_branch": "feat/etg-dynamic-filter-seo-bridge",
+    "feature_directory": "specs/001-etg-dynamic-filter-seo-operational",
+    "status": "ajax_runtime_state_alpha",
+    "target_version": "0.4.0-alpha.13"
+  },
+  "status": "ajax_runtime_state_alpha",
+  "target_version": "0.4.0-alpha.13",
   "required_gates": [
     "spec_contract",
     "repository_spec_consistency",
@@ -28,6 +37,19 @@
     "upgrade_migration",
     "performance_soak",
     "staging_canary",
-    "release_verdict"
+    "release_verdict",
+    "runtime_topology_auto_discovery",
+    "inventory_dynamic_content_catalog",
+    "elementor_dynamic_tags",
+    "inventory_profile_planner",
+    "inventory_control_fail_closed",
+    "ajax_filter_state_transport",
+    "ajax_state_url_authority_separation",
+    "ajax_live_dynamic_content",
+    "ajax_multivalue_taxonomy_presentation",
+    "ajax_filtered_result_count",
+    "ajax_rest_non_authorizing",
+    "runtime_acceptance",
+    "release_provenance"
   ]
 }
