@@ -16,6 +16,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 	const ROLLBACK='mad4b.rollback.dynamic-content-bundle.v1';
 	const PIPELINE_ROLLBACK='mad4b.rollback.dynamic-content-pipeline-settings.v1';
 	const BINDING='_mad4b_dynamic_content_binding';
+	const MANAGED_META='_mad4b_dynamic_content_managed_v1';
 	const ACCEPTANCE_META='_mad4b_dynamic_content_acceptance_v1';
 	const ACCEPTANCE_CONTRACT='mad4b.dynamic-content-acceptance.v1';
 	const DEFAULT_ACCEPTANCE_TTL=86400;
@@ -992,7 +993,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			if(is_wp_error($existing)) return $this->not_started_error($existing);
 			if($existing) return $this->not_started_error(new WP_Error('mad4b_dynamic_binding_exists','operation_key already created a post.',array('post_id'=>$existing)));
 			$arr=array_merge(array('post_type'=>$v['post_type']),$this->post_fields($input['post']));
-			$arr['meta_input']=array(self::BINDING=>$binding);
+			$arr['meta_input']=array(self::BINDING=>$binding,self::MANAGED_META=>'1');
 			$id=wp_insert_post(wp_slash($arr),true);
 			if(is_wp_error($id)) return $id;
 			$binding_read=(string)get_post_meta($id,self::BINDING,true);
@@ -1008,6 +1009,14 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			$arr=array_merge(array('ID'=>$id,'post_type'=>$v['post_type']),$this->post_fields($input['post']));
 			$u=wp_update_post(wp_slash($arr),true);
 			if(is_wp_error($u)) return $u;
+			$current_managed=get_post_meta($id,self::MANAGED_META,true);
+			if('1'!==(string)$current_managed){
+				$managed_written=update_post_meta($id,self::MANAGED_META,'1');
+				if(false===$managed_written&&'1'!==(string)get_post_meta($id,self::MANAGED_META,true)) return $this->failure_with_compensation(
+					new WP_Error('mad4b_dynamic_managed_marker_write_failed','Existing post could not be adopted into the dynamic governance lifecycle.'),
+					$v['mode'],$id,$before,$this->snapshot($id,$input)
+				);
+			}
 		}
 
 		$a=$this->apply_desired($id,$input);
@@ -1459,6 +1468,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'meta'=>array(),
 			'taxonomies'=>array(),
 			'featured_media_id'=>(int)get_post_thumbnail_id($id),
+			'dynamic_managed'=>metadata_exists('post',$id,self::MANAGED_META),
 			'scope'=>$scope,
 		);
 		foreach($scope['meta_keys'] as $k){
@@ -1521,6 +1531,16 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			if($current_media!==$desired_media&&!set_post_thumbnail($id,$desired_media)) return new WP_Error('mad4b_dynamic_featured_media_restore_failed','Featured media could not be restored.');
 		}elseif($current_media>0){
 			delete_post_thumbnail($id);
+		}
+		$managed=!empty($state['dynamic_managed']);
+		if($managed){
+			$current_managed=get_post_meta($id,self::MANAGED_META,true);
+			if('1'!==(string)$current_managed){
+				$written=update_post_meta($id,self::MANAGED_META,'1');
+				if(false===$written&&'1'!==(string)get_post_meta($id,self::MANAGED_META,true)) return new WP_Error('mad4b_dynamic_managed_marker_restore_failed','Dynamic-managed marker could not be restored.');
+			}
+		}elseif(metadata_exists('post',$id,self::MANAGED_META)){
+			if(!delete_post_meta($id,self::MANAGED_META)) return new WP_Error('mad4b_dynamic_managed_marker_restore_failed','Dynamic-managed marker could not be removed during restore.');
 		}
 		clean_post_cache($id);
 		return true;
