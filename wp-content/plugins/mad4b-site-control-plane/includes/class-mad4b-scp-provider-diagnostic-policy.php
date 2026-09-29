@@ -159,6 +159,7 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 			'mad4b_context_update_source_policy',
 			'mad4b_enable_production_readonly_oauth',
 			'mad4b_disable_production_readonly_oauth',
+			'mad4b_oauth_grant_projection',
 		);
 		$actions = apply_filters( 'mad4b_scp_owned_admin_ajax_actions', $actions );
 		$actions = is_array( $actions ) ? array_values( array_unique( array_filter( array_map( 'sanitize_key', $actions ) ) ) ) : array();
