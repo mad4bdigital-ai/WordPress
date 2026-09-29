@@ -31,7 +31,7 @@ final class MAD4B_SCP_Connection_Status {
 		$server_ok = count( $servers ) === $expected_count;
 		foreach ( $servers as $server ) {
 			if ( empty( $server['registered'] ) ) { $server_ok = false; break; }
-			if ( ! $protocol_hotpath && ( empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) ) { $server_ok = false; break; }
+			if ( ! $protocol_hotpath && empty( $server['deep_route_validation_deferred'] ) && ( empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) ) { $server_ok = false; break; }
 		}
 		$peer = $protocol_hotpath
 			? array(
@@ -104,7 +104,7 @@ final class MAD4B_SCP_Connection_Status {
 			'connection_certified' => $connection_certified,
 			'certification_blockers' => $certification_blockers,
 			'servers' => $servers,
-			'transport_deep_validation_deferred' => $protocol_hotpath,
+			'transport_deep_validation_deferred' => $protocol_hotpath || self::route_validation_deferred( $servers ),
 			'explicit_deep_validation' => (bool) $force_deep,
 			'deferred_checks' => $protocol_hotpath ? array( 'route_permission_validation', 'mcp_peer_inventory', 'write_catalog_inventory', 'live_handshake_revalidation', 'provider_runtime_integrity' ) : array(),
 			'write_surface' => self::write_surface_summary( $servers, $protocol_hotpath ),
@@ -295,9 +295,12 @@ final class MAD4B_SCP_Connection_Status {
 			} catch ( Throwable $e ) { $adapter_servers = array(); }
 		}
 
+		$rest = class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' )
+			? MAD4B_SCP_Provider_Diagnostic_Policy::current_rest_server()
+			: null;
+		$rest_materialized = is_object( $rest ) && method_exists( $rest, 'get_routes' );
 		try {
-			$rest = function_exists( 'rest_get_server' ) ? rest_get_server() : null;
-			$routes = is_object( $rest ) && method_exists( $rest, 'get_routes' ) ? $rest->get_routes() : array();
+			$routes = $rest_materialized ? $rest->get_routes() : array();
 		} catch ( Throwable $e ) { $routes = array(); }
 		if ( ! is_array( $routes ) ) $routes = array();
 
@@ -322,7 +325,8 @@ final class MAD4B_SCP_Connection_Status {
 				'route_namespace' => $namespace,
 				'route' => $route,
 				'endpoint' => esc_url_raw( rest_url( trim( $namespace, '/' ) . $route ) ),
-				'route_registered' => array_key_exists( $full_route, $routes ),
+				'route_registered' => $rest_materialized ? array_key_exists( $full_route, $routes ) : null,
+				'deep_route_validation_deferred' => ! $rest_materialized,
 				'permission_callback' => self::callback_label( $permission ),
 				'permission_callback_match' => self::callbacks_equal( $permission, $expected_permission ),
 				'server_version' => $server_version,
@@ -330,6 +334,13 @@ final class MAD4B_SCP_Connection_Status {
 			);
 		}
 		return $out;
+	}
+
+	private static function route_validation_deferred( array $servers ) {
+		foreach ( $servers as $server ) {
+			if ( is_array( $server ) && ! empty( $server['deep_route_validation_deferred'] ) ) return true;
+		}
+		return false;
 	}
 
 	private static function write_surface_summary( array $servers, $protocol_hotpath = false ) {
