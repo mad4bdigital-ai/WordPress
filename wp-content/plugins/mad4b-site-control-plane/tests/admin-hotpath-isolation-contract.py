@@ -76,6 +76,9 @@ for token in (
     "database queries: <= 100",
     "peak memory: <= 128 MiB",
     "3 consecutive uncached/warm mixed samples",
+    "third-party wp-admin screens must return from MAD4B admin hooks",
+    "admin.php?page=sitepress-multilingual-cms/menu/support.php",
+    "no MAD4B-attributable 504 is acceptable",
 ):
     assert token in slo, token
 
