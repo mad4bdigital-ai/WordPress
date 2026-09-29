@@ -118,6 +118,10 @@ assert "convergence_trigger_allowed" in runtime
 
 assert "MAX_TRANSIENT_RETRIES = 5" in runtime
 assert "mark_activation_pending" in runtime
+assert "'autopilot_state' => $autopilot_state" in runtime
+assert "'bootstrapping'" in runtime
+assert "'converging'" in runtime
+assert "'gated'" in runtime
 assert "plugin_activation" in runtime
 assert "automatic_bounded_retry" in runtime
 assert "mad4b_runtime_convergence_busy" in runtime
