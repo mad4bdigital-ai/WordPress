@@ -252,3 +252,17 @@ local_identity = local_oauth.split("public static function runtime_identity_stat
 for forbidden in ("public_jwk()", "MAD4B_SCP_Local_OAuth_Store::is_ready()", "openssl_pkey_get_private("):
     if forbidden in local_identity:
         raise SystemExit(f"OAuth protocol identity path performs deep local validation: {forbidden}")
+
+runtime_identity = bridge.split("public static function runtime_identity_status()", 1)[1].split("public static function status()", 1)[0]
+for marker in (
+    "self::authority_registry( true )",
+    "'projection' => 'runtime_identity'",
+    "'deep_local_oauth_status_deferred' => true",
+    "'outbound_discovery_performed' => false",
+):
+    if marker not in runtime_identity:
+        raise SystemExit(f"OAuth runtime identity projection missing: {marker}")
+if "MAD4B_SCP_Local_OAuth_Server::status()" in runtime_identity:
+    raise SystemExit("OAuth transport identity readiness must not call deep Local OAuth status")
+if "wp_safe_remote_get(" in runtime_identity:
+    raise SystemExit("OAuth transport identity readiness must not perform outbound discovery")
