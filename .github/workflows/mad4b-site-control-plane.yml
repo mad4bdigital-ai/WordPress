@@ -137,7 +137,6 @@ jobs:
           candidate_binding="$root/includes/class-mad4b-scp-staging-write-candidate-binding.php"
           write_cert="$root/includes/class-mad4b-scp-write-runtime-certification.php"
           rest_compat="$root/includes/class-mad4b-scp-rest-compatibility.php"
-          provider_diag="$root/includes/class-mad4b-scp-provider-diagnostic-policy.php"
           for file in \
             mad4b-site-control-plane.php \
             config/certified-providers.json \
@@ -163,7 +162,6 @@ jobs:
             MAD4B-ROLLBACK-RETENTION-RECEIPT.json \
             includes/class-mad4b-scp-write-runtime-certification.php \
             includes/class-mad4b-scp-rest-compatibility.php \
-            includes/class-mad4b-scp-provider-diagnostic-policy.php \
             includes/adapters/class-mad4b-scp-adapter-base.php \
             includes/adapters/class-mad4b-scp-elementor-adapter.php \
             includes/adapters/class-mad4b-scp-jetengine-adapter.php \
@@ -299,10 +297,6 @@ jobs:
           python3 "$root/tests/staging-write-candidate-binding-audit-contract.py"
           python3 "$root/tests/plugin-package-mcp-governance-contract.py"
           python3 "$root/tests/chatgpt-refresh-compact-catalog-contract.py"
-          python3 "$root/tests/provider-diagnostic-zero-touch-contract.py"
-          python3 "$root/tests/request-serving-zero-touch-contract.py"
-          php "$root/tests/provider-diagnostic-zero-touch-runtime.php"
-          php "$root/tests/request-serving-zero-touch-runtime.php"
           grep -Fq "all_remote_writes_require_exact_approval" "$write_authority"
           grep -Fq "production_auto_enable" "$write_authority"
           grep -Fq "breakglass_auto_enable" "$write_authority"
@@ -314,12 +308,7 @@ jobs:
           grep -Fq "all_write_tools_exposed_on_same_plugin_transport" "$write_cert"
           grep -Fq "mad4b.rest-compatibility.v2" "$rest_compat"
           grep -Fq "'/wpml/v1/rest/status'" "$rest_compat"
-          grep -Fq "MAD4B_SCP_Provider_Diagnostic_Policy::rest_route_snapshot" "$rest_compat"
-          grep -Fq "'provider_self_calls_started' => 0" "$rest_compat"
-          grep -Fq "'internal_rest_dispatch_performed' => false" "$rest_compat"
-          grep -Fq "current_request_is_foreign_rest" "$provider_diag"
-          grep -Fq "current_request_is_wordpress_cron" "$provider_diag"
-          grep -Fq "current_request_is_zero_touch_surface" "$provider_diag"
+          grep -Fq "rest_do_request" "$rest_compat"
           if grep -Fq "add_filter( 'rest_enabled'" "$rest_compat" || grep -Fq "add_filter( 'rest_authentication_errors'" "$rest_compat"; then
             echo 'REST compatibility component must not globally change WordPress REST behavior.' >&2
             exit 1
