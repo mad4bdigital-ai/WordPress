@@ -14,6 +14,7 @@ def req(key,*needles):
 def deny(key,*needles):
     for n in needles:
         if n in files[key]: raise SystemExit(f'FAIL {key}: forbidden {n!r}')
+reversible=files['reversible']
 req('base','reversible_contract_for','MAD4B_SCP_Reversible_Adapter_Mutations::execute','MAD4B_SCP_Authorization::authorize_mutation')
 req('reversible','before_sha256','after_sha256','mad4b_undo_state_drift','mad4b_undo_verification_failed','restore_reversible_state','read_reversible_state','rollback_payload_sha256','provider_declared_not_started','mad4b.execution-state.v1','provider_declared_not_started')
 req('elementor','mad4b.rollback.elementor-widget-settings.v1','remove_settings','exact_provider_certified','mad4b_elementor_stale_document','mad4b_elementor_widget_not_unique','mad4b_elementor_setting_policy_denied','mad4b_elementor_readback_mismatch','replace_widget_settings')
