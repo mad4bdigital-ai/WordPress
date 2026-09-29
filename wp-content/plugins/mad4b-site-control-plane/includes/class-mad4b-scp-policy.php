@@ -46,7 +46,7 @@ final class MAD4B_SCP_Policy {
 		$explicit_gate_enabled = $explicit_gate_defined && true === MAD4B_MCP_MUTATION_ENABLED;
 		$profile_configured = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured();
 		$profile_ready = $profile_configured && MAD4B_SCP_Site_Profile::governed_write_ready();
-		$hard_kill = $explicit_gate_defined && ! $explicit_gate_enabled;
+		$hard_kill = $explicit_gate_defined && true !== MAD4B_MCP_MUTATION_ENABLED;
 		if ( $hard_kill ) {
 			$effective = false;
 			$source = 'explicit_constant_kill_switch';
