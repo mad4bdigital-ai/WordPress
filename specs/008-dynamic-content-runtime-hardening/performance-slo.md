@@ -51,3 +51,27 @@ Read/status surfaces are passive observations, not provider probes.
 - these rules apply provider-neutrally to WPML, Elementor, JetEngine, JetSmartFilters, WooCommerce, Rank Math, LiteSpeed and future providers.
 
 A provider support/status page must therefore remain operational even if MAD4B status polling, MCP tool refresh, Site Health, or external acceptance reads occur concurrently. No status read may create a feedback loop against the provider API it is observing.
+
+
+## WordPress Site Health / loopback zero-touch SLO
+
+The Control Plane must not turn WordPress self-checks into Control Plane work.
+
+Exact canaries:
+
+- Core REST: `/wp-json/wp/v2/types/post?context=edit`;
+- WPML REST: `/wp-json/wpml/v1/rest/status?test_get_parameter=1`;
+- loopback cron: `/wp-cron.php?doing_wp_cron=...`.
+
+For these request-serving targets MAD4B must contribute:
+
+- **0** provider self-calls;
+- **0** internal provider REST dispatches;
+- **0** implicit `rest_get_server()` materialization from status paths;
+- **0** acceptance/Query Monitor telemetry writes;
+- **0** runtime-convergence drift scans or scheduling from generic WP-Cron;
+- **0** admin/authority/OAuth/Abilities init bootstrap through `MAD4B_SCP_Plugin::boot()`.
+
+The dedicated `mad4b_scp_runtime_convergence_resume` event remains functional because its callback is registered before `init` and executes directly when WordPress dispatches that scheduled hook.
+
+Acceptance requires both WordPress Site Health REST and loopback checks to complete without any MAD4B-attributable timeout. The WordPress 10-second probe timeout is a failure ceiling, not a performance target.
