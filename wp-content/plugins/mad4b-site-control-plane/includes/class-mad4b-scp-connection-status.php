@@ -17,11 +17,14 @@ final class MAD4B_SCP_Connection_Status {
 		} elseif ( $adapter_available && defined( 'WP\\MCP\\Core\\McpAdapter::VERSION' ) ) {
 			$adapter_version = (string) \WP\MCP\Core\McpAdapter::VERSION;
 		}
-		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $adapter_available ) : array( 'status' => 'unavailable', 'runtime_contract_ok' => false );
-		$provider_ok = ! empty( $provider['runtime_contract_ok'] );
-
 		$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
+		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' )
+			? ( $protocol_hotpath
+				? MAD4B_SCP_Provider_Contracts::runtime_identity_status( 'mcp_adapter', $adapter_available )
+				: MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $adapter_available ) )
+			: array( 'status' => 'unavailable', 'runtime_contract_ok' => false, 'identity_contract_ok' => false );
+		$provider_ok = $protocol_hotpath ? ! empty( $provider['identity_contract_ok'] ) : ! empty( $provider['runtime_contract_ok'] );
 		$servers = self::server_status( $protocol_hotpath );
 		$expected_count = class_exists( 'MAD4B_SCP_Servers' ) ? count( MAD4B_SCP_Servers::expected_server_ids() ) : 7;
 		$server_ok = count( $servers ) === $expected_count;
