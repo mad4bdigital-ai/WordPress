@@ -309,17 +309,47 @@ final class MAD4B_SCP_Staging_Certification {
 			) );
 		}
 		if ( in_array( 'write_authority', $blocking, true ) || in_array( 'write_runtime', $blocking, true ) ) {
-			$append( $actions, $seen, 'write_authority_reconcile', array(
-				'kind' => 'governed_mutation',
-				'executor' => 'wordpress_native',
-				'human_decision_required' => true,
-				'automatic_execution_allowed' => false,
-				'plan_ability' => 'mad4b/staging-write-grant-reconciliation-plan',
-				'apply_ability' => 'mad4b/staging-write-grant-reconcile',
-				'readback_ability' => 'mad4b/write-runtime-certification',
-				'production_policy' => 'deny',
-				'breakglass' => false,
-			) );
+			$grant_plan = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan' )
+				? MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan()
+				: array();
+			$missing_write = isset( $grant_plan['expected_missing_abilities'] ) && is_array( $grant_plan['expected_missing_abilities'] ) ? $grant_plan['expected_missing_abilities'] : array();
+			$stale_grants = isset( $grant_plan['expected_stale_grant_ids'] ) && is_array( $grant_plan['expected_stale_grant_ids'] ) ? $grant_plan['expected_stale_grant_ids'] : array();
+			$missing_transport = isset( $grant_plan['expected_missing_transport_abilities'] ) && is_array( $grant_plan['expected_missing_transport_abilities'] ) ? $grant_plan['expected_missing_transport_abilities'] : array();
+			$requires_grant_reconcile = ! empty( $missing_write ) || ! empty( $stale_grants ) || ! empty( $missing_transport );
+			if ( $requires_grant_reconcile ) {
+				$append( $actions, $seen, 'write_authority_reconcile', array(
+					'kind' => 'governed_mutation',
+					'executor' => 'wordpress_native',
+					'human_decision_required' => true,
+					'automatic_execution_allowed' => false,
+					'plan_ability' => 'mad4b/staging-write-grant-reconciliation-plan',
+					'apply_ability' => 'mad4b/staging-write-grant-reconcile',
+					'plan_sha256' => isset( $grant_plan['plan_sha256'] ) ? (string) $grant_plan['plan_sha256'] : '',
+					'expected_missing_abilities' => array_values( $missing_write ),
+					'expected_stale_grant_ids' => array_values( $stale_grants ),
+					'expected_missing_transport_abilities' => array_values( $missing_transport ),
+					'readback_ability' => 'mad4b/write-runtime-certification',
+					'production_policy' => 'deny',
+					'breakglass' => false,
+				) );
+			} else {
+				$candidate_plan = class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'plan' )
+					? MAD4B_SCP_Staging_Write_Candidate_Binding::plan()
+					: array();
+				$append( $actions, $seen, 'candidate_binding_only', array(
+					'kind' => 'governed_mutation',
+					'executor' => 'wordpress_native',
+					'human_decision_required' => true,
+					'automatic_execution_allowed' => false,
+					'plan_ability' => 'mad4b/staging-write-candidate-binding-plan',
+					'apply_ability' => 'mad4b/staging-write-candidate-bind',
+					'plan' => $candidate_plan,
+					'readback_ability' => 'mad4b/write-runtime-certification',
+					'grant_mutation_allowed' => false,
+					'production_policy' => 'deny',
+					'breakglass' => false,
+				) );
+			}
 		}
 		if ( in_array( 'browser_runtime', $blocking, true ) ) {
 			$append( $actions, $seen, 'browser_acceptance', array(
