@@ -899,7 +899,9 @@ final class MAD4B_SCP_Read_Consistency {
 		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' ) && method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_identity_status' )
 			? MAD4B_SCP_Provider_Contracts::runtime_identity_status( 'mcp_adapter', $adapter_available )
 			: array();
-		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? MAD4B_SCP_External_Handshake_Evidence::status() : array();
+		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) && method_exists( 'MAD4B_SCP_External_Handshake_Evidence', 'persisted_identity_status' )
+			? MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()
+			: array();
 		$blockers = array();
 		if ( empty( $profile['configured'] ) ) $blockers[] = 'site_profile_unconfigured';
 		if ( empty( $profile['environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
@@ -918,7 +920,8 @@ final class MAD4B_SCP_Read_Consistency {
 			'chatgpt_registered' => ! empty( $chatgpt['registered'] ),
 			'chatgpt_materialized' => ! empty( $chatgpt['materialized'] ),
 			'chatgpt_tool_count' => isset( $chatgpt['tool_count'] ) ? max( 0, (int) $chatgpt['tool_count'] ) : 0,
-			'external_handshake_verified' => ! empty( $handshake['verified'] ),
+			'external_handshake_evidence_present' => ! empty( $handshake['evidence_present'] ),
+			'external_handshake_live_verification_deferred' => true,
 			'blockers' => array_values( array_unique( $blockers ) ),
 			'deep_route_validation_deferred' => true,
 			'deep_peer_inventory_deferred' => true,
