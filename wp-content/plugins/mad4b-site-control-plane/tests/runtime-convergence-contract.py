@@ -8,7 +8,7 @@ PLUGIN = ROOT / "wp-content/plugins/mad4b-site-control-plane"
 runtime = (PLUGIN / "includes/class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
 self_update = (PLUGIN / "includes/class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
 main = (PLUGIN / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
-remote = (PLUGIN / "includes/class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8")
+servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 registry = json.loads((PLUGIN / "config/operation-registry.json").read_text(encoding="utf-8"))
 
 required = [
@@ -33,14 +33,19 @@ assert "MAD4B_SCP_Provider_Behavioral_Recertification::" not in runtime
 assert "MAD4B_SCP_Provider_Canary_Execution::" not in runtime
 assert "runtime-convergence.php" in main
 assert "mark_post_update_pending" in self_update
-assert "'runtime_convergence' => array(" in remote
-assert "production_policy' => 'deny" in remote
+assert "'mad4b/runtime-convergence-apply'," in servers
+assert servers.index("'mad4b/runtime-convergence-apply',") < servers.index("class_exists( 'MAD4B_SCP_Remote_Operation_Parity' )")
 
 ops = {row["id"]: row for row in registry["operations"]}
 op = ops["wordpress.runtime.converge"]
 assert op["planner"] == "mad4b/runtime-convergence-plan"
 assert op["executor"] == "mad4b/runtime-convergence-apply"
 assert op["required_runtime"] is True
+assert "converge-runtime" in op["supports"]
+assert registry["aliases"]["converge-runtime"] == "wordpress.runtime.converge"
+assert registry["aliases"]["reconcile-runtime"] == "wordpress.runtime.converge"
+assert "mad4b/runtime-convergence-plan" in registry["read_projection"]["direct"]
+assert "mad4b/runtime-convergence-status" in registry["read_projection"]["catalog"]
 assert registry["default_mutation_policy"] == "deny"
 assert registry["dynamic_provider_autopilot"]["environments"]["production"] == "observe_propose_only"
 assert registry["dynamic_provider_autopilot"]["auto_enable_mutation"] is False
