@@ -122,8 +122,8 @@ final class MAD4B_SCP_REST_Compatibility {
 		$rest_auth_hooks = self::hook_inventory( 'rest_authentication_errors' );
 		$rest_enabled = (bool) apply_filters( 'rest_enabled', true );
 		$wpml = self::wpml_probe();
-		$external_wpml = class_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer' ) && method_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer', 'external_wpml_receipt_status' )
-			? MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status()
+		$external_wpml = class_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer' ) && method_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer', 'external_wpml_receipt_status_from_local_wpml' )
+			? MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status_from_local_wpml( $wpml )
 			: array();
 		$external_wpml_required = ! empty( $wpml['wpml_active'] );
 		$external_wpml_verified = ! $external_wpml_required || ( ! empty( $external_wpml['observed'] ) && ! empty( $external_wpml['verified'] ) && empty( $external_wpml['stale'] ) );
