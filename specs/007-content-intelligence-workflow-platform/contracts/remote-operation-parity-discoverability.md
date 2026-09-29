@@ -77,6 +77,14 @@ The platform MUST preserve human agency for decisions and approvals while removi
    - Unknown or incomplete registrations are non-authorizing and MUST be reported as rejected catalog entries.
    - Informational discovery metadata MUST never itself grant write authority.
 
+11. **Client-compatible semantic projection**
+   - A generic governed dispatcher MAY remain available for compatible clients, but it MUST NOT be the only remote path when the client platform cannot safely submit an arbitrary operation selector plus nested mutation payload.
+   - A reviewed core operation MAY opt into a direct ChatGPT step-up projection only when the operation remains semantically named, exact-schema-bound, Staging-only, non-Production, non-Breakglass, non-generic-admin, and `human_decision_required=false`.
+   - Direct ChatGPT projection MUST preserve the operation's existing callback and authority semantics; it is a transport projection, not a second implementation.
+   - Direct mutation execution from the ChatGPT transport MUST require the dedicated authority step-up scope and exact approved ChatGPT client identity.
+   - Extension/addon registrations MUST NOT self-promote into the direct ChatGPT step-up surface. New direct projections require an explicit reviewed core contract change.
+   - Client-side safety rejection before provider invocation is a transport incompatibility signal; the platform SHOULD expose a narrower semantic tool rather than weaken server-side governance or ask operators to bypass the client guard.
+
 ## Initial registered parity operations
 - Managed Skills reconciliation
 - Frontend performance sample collection
