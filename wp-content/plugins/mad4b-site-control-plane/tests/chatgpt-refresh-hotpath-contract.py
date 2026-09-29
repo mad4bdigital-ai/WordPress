@@ -237,7 +237,10 @@ assert "private static function request_requires_schema_reconciliation()" in plu
 schema_reconcile = plugin.split("private static function request_requires_schema_reconciliation()", 1)[1].split("private static function request_requires_skill_reconciliation()", 1)[0]
 assert "defined( 'WP_CLI' )" in schema_reconcile
 assert "0 === strpos( $page, 'mad4b-control-plane' )" in schema_reconcile
-assert "if ( ! is_admin() ) return false;" in schema_reconcile
+assert "if ( is_admin() ) {" in schema_reconcile
+assert schema_reconcile.count("return true;") == 1  # WP_CLI is the only automatic repair owner
+assert schema_reconcile.count("return false;") >= 2
+assert "physical schema probes or dbDelta" in schema_reconcile
 
 # Mutations independently re-prove physical schema readiness, so removing
 # request-global schema scans does not weaken fail-closed write safety.
