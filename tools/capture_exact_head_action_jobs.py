@@ -28,6 +28,51 @@ def gh_json(endpoint: str):
     return json.loads(raw)
 
 
+def pull_request_numbers(run: dict) -> list[int]:
+    rows = run.get("pull_requests", [])
+    if not isinstance(rows, list):
+        return []
+    numbers = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        try:
+            number = int(row.get("number") or 0)
+        except (TypeError, ValueError):
+            continue
+        if number > 0:
+            numbers.append(number)
+    return sorted(set(numbers))
+
+
+def run_matches_scope(
+    run: dict,
+    *,
+    head_sha: str,
+    head_branch: str,
+    pr_number: int,
+) -> bool:
+    run_head = str(run.get("head_sha") or "").strip().lower()
+    if run_head != head_sha:
+        return False
+
+    run_branch = str(run.get("head_branch") or "").strip()
+    associated_prs = pull_request_numbers(run)
+
+    if pr_number > 0:
+        # Prefer GitHub's explicit PR association when it exists. Some
+        # pull_request_target/legacy runs omit pull_requests, so allow those only
+        # when their head branch exactly matches the current PR branch.
+        if associated_prs:
+            return pr_number in associated_prs
+        return bool(head_branch and run_branch == head_branch)
+
+    # Push/manual verdicts must not ingest same-SHA jobs from a PR branch.
+    if head_branch:
+        return run_branch == head_branch
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repository", required=True)
@@ -37,6 +82,14 @@ def main() -> int:
 
     repository = args.repository.strip()
     head_sha = args.head_sha.strip().lower()
+    head_branch = os.environ.get("HEAD_BRANCH", "").strip()
+    raw_pr_number = os.environ.get("PR_NUMBER", "").strip()
+    try:
+        pr_number = int(raw_pr_number or "0")
+    except ValueError as exc:
+        raise SystemExit("PR_NUMBER must be an integer when provided") from exc
+    if pr_number < 0:
+        raise SystemExit("PR_NUMBER may not be negative")
     if "/" not in repository:
         raise SystemExit("repository must use owner/name form")
     if len(head_sha) != 40 or any(ch not in "0123456789abcdef" for ch in head_sha):
@@ -63,10 +116,15 @@ def main() -> int:
         run_id = int(run.get("id") or 0)
         if run_id < 1 or run_id in seen_run_ids:
             continue
+        if not run_matches_scope(
+            run,
+            head_sha=head_sha,
+            head_branch=head_branch,
+            pr_number=pr_number,
+        ):
+            continue
         seen_run_ids.add(run_id)
         run_head = str(run.get("head_sha") or "").lower()
-        if run_head != head_sha:
-            continue
 
         for page in range(1, MAX_JOB_PAGES + 1):
             payload = gh_json(
@@ -104,6 +162,13 @@ def main() -> int:
         "contract": CONTRACT,
         "repository": repository,
         "head_sha": head_sha,
+        "head_branch": head_branch,
+        "pull_request": pr_number,
+        "scope_mode": (
+            "pull_request"
+            if pr_number > 0
+            else ("head_branch" if head_branch else "head_sha_only")
+        ),
         "workflow_run_count": len(seen_run_ids),
         "job_count": len(jobs),
         # Preserve the legacy key so the release-verdict parser remains unchanged.
