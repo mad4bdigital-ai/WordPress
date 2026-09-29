@@ -24,9 +24,14 @@ assert "MAD4B_SCP_External_WPML_Acceptance_Finalizer::" not in runtime
 # prove a negative capability.
 probe = rest.split("public static function wpml_probe()", 1)[1].split("private static function bounded_external_wpml_receipt", 1)[0]
 assert "$wpml_active = self::wpml_active();" in probe
-assert "if ( ! $wpml_active )" in probe
+assert "global $wp_rest_server;" in probe
+assert "if ( ! $wpml_active && ! is_object( $server ) )" in probe
 assert "'rest_server_materialized' => false" in probe
-assert probe.index("if ( ! $wpml_active )") < probe.index("rest_get_server()")
+assert "'rest_server_materialized_by_probe' => false" in probe
+assert "$server = rest_get_server();" in probe
+assert "$materialized_by_probe = true;" in probe
+assert probe.index("if ( ! $wpml_active && ! is_object( $server ) )") < probe.index("$server = rest_get_server();")
+assert "a compatible /wpml/v1/rest/status route must still prove query" in probe
 
 # Canonical external WPML truth must not recurse through REST_Compatibility::status
 # or force full package hashing. REST status passes its existing local probe into
