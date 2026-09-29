@@ -398,4 +398,17 @@ for marker in [
     if marker not in mutations:
         raise SystemExit(f"publication receipt consumption marker missing: {marker}")
 
+
+
+for marker in [
+    "mad4b_dynamic_reserved_meta_denied",
+    "get_post_stati",
+    "mad4b_dynamic_binding_write_failed",
+    "publication_acceptance_status",
+    "'publication_acceptance'=>$this->publication_acceptance_status($id)",
+    "acceptance_receipt_missing",
+]:
+    if marker not in adapter:
+        raise SystemExit(f"binding/session-recovery hardening marker missing: {marker}")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
