@@ -464,7 +464,7 @@ print("mad4b.brand-context-builder.v5: PASS")
 
 # OAuth health must reflect access-token expiry and the last refresh outcome.
 for marker in [
-    "'access_token_valid' => $access_token_valid",
+    "'credential_fresh' => $access_token_valid",
     "'refresh_required' => $refresh_required",
     "'refresh_failed' => $refresh_failed",
     "'refresh_failure_code' => $refresh_failure_code",
