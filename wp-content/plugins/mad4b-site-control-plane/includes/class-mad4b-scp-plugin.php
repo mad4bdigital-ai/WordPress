@@ -39,13 +39,22 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_MCP_Client_Compatibility::boot();
 
 		$plugin_lifecycle = self::request_is_wordpress_plugin_lifecycle();
-		if ( ! $plugin_lifecycle && ( ! MAD4B_SCP_Schema::is_ready() || (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION ) ) {
+		$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
+
+		// Governance schema inspection/migration is lifecycle work, never
+		// request-serving work. In particular, do not execute SHOW/physical
+		// readiness probes or dbDelta on initialize/tools-list/OAuth requests.
+		if ( ! $plugin_lifecycle && ! $protocol_hotpath
+			&& ( ! MAD4B_SCP_Schema::is_ready() || (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION ) ) {
 			$schema = MAD4B_SCP_Schema::install_or_upgrade();
 			if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
 		}
-		if ( ! $plugin_lifecycle && false === get_option( MAD4B_SCP_Audit::LEGACY_OPTION, false ) ) add_option( MAD4B_SCP_Audit::LEGACY_OPTION, array(), '', false );
-		if ( ! $plugin_lifecycle && ! is_wp_error( self::$schema_error )
-			&& ( ! class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) || ! MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) ) {
+		if ( ! $plugin_lifecycle && ! $protocol_hotpath
+			&& false === get_option( MAD4B_SCP_Audit::LEGACY_OPTION, false ) ) {
+			add_option( MAD4B_SCP_Audit::LEGACY_OPTION, array(), '', false );
+		}
+		if ( ! $plugin_lifecycle && ! $protocol_hotpath && ! is_wp_error( self::$schema_error ) ) {
 			// Audit::record() performs the same fail-closed head initialization before
 			// every mutation audit. MCP/OAuth discovery therefore does not need table/
 			// engine/legacy-chain/head inspection merely to establish the protocol.
