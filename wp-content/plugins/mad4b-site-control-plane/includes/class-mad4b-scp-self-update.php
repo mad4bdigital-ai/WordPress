@@ -439,7 +439,9 @@ final class MAD4B_SCP_Self_Update {
 	private static function native_update_action_link( array $links ) {
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) return $links;
 
-		$manifest = self::fetch_manifest();
+		// wp-admin/plugins.php is a latency-sensitive render path. Never perform
+		// outbound HTTP here; use only a previously verified manifest cache.
+		$manifest = self::cached_manifest();
 		$ui = self::native_update_ui_state( $manifest );
 		if ( 'available' === $ui['state'] && is_array( $manifest ) ) {
 			$url = wp_nonce_url(
@@ -508,7 +510,7 @@ final class MAD4B_SCP_Self_Update {
 		$row_key = wp_normalize_path( (string) $plugin_file );
 		if ( isset( self::$rendered_update_rows[ $row_key ] ) ) return;
 
-		$manifest = self::fetch_manifest();
+		$manifest = self::cached_manifest();
 		$ui = self::native_update_ui_state( $manifest );
 		if ( 'current' === $ui['state'] ) return;
 		self::$rendered_update_rows[ $row_key ] = true;
@@ -561,6 +563,11 @@ final class MAD4B_SCP_Self_Update {
 		check_admin_referer( 'mad4b_control_plane_refresh_update' );
 		delete_transient( self::MANIFEST_TRANSIENT );
 		delete_site_transient( 'update_plugins' );
+
+		// Explicit refresh is the only wp-admin UI action allowed to perform
+		// outbound manifest I/O. The plugins table itself remains cache-only.
+		$manifest = self::fetch_manifest( true );
+		if ( is_wp_error( $manifest ) ) self::redirect_native_result( 'manifest_error', $manifest->get_error_code() );
 		wp_safe_redirect( admin_url( 'plugins.php' ) );
 		exit;
 	}
@@ -667,7 +674,9 @@ final class MAD4B_SCP_Self_Update {
 
 		self::audit( $channel, $target, true, array( 'plan_sha256' => $plan_sha256, 'readback' => $readback ) );
 		delete_site_transient( 'update_plugins' );
-		delete_transient( self::MANIFEST_TRANSIENT );
+		// Preserve the already verified release manifest across the immediate
+		// post-update redirect. Deleting it here forced plugins.php to block on
+		// a new remote GitHub request and could trip upstream gateway timeouts.
 
 		return array(
 			'contract' => 'governed_native_release_pull' === (string) $channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT,
@@ -721,6 +730,15 @@ final class MAD4B_SCP_Self_Update {
 		}
 		@chmod( $tmp, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return $tmp;
+	}
+
+	private static function cached_manifest() {
+		$cached = get_transient( self::MANIFEST_TRANSIENT );
+		if ( ! is_array( $cached ) ) {
+			return new WP_Error( 'mad4b_self_update_manifest_not_cached', 'Governed update manifest is not cached; use the explicit refresh action.' );
+		}
+		$valid = self::validate_manifest( $cached );
+		return is_wp_error( $valid ) ? $valid : $cached;
 	}
 
 	private static function fetch_manifest( $force = false ) {
