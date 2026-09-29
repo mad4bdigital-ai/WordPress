@@ -86,6 +86,72 @@ final class MAD4B_SCP_Operation_Journal {
 		return is_array( $row ) ? $row : new WP_Error( 'mad4b_operation_not_found', 'Operation journal head was not found.' );
 	}
 
+	public static function trace( $operation_id, $limit = 200 ) {
+		global $wpdb;
+		$operation_id = strtolower( trim( (string) $operation_id ) );
+		$limit = max( 1, min( 1000, absint( $limit ) ) );
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $operation_id ) ) return new WP_Error( 'mad4b_operation_id_invalid', 'Operation id is invalid.' );
+		$t = MAD4B_SCP_Schema::tables();
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['operation_events']} WHERE operation_id=%s ORDER BY sequence ASC LIMIT %d", $operation_id, $limit ), ARRAY_A );
+		if ( ! is_array( $rows ) ) return new WP_Error( 'mad4b_operation_trace_read_failed', 'Unable to read operation trace.' );
+		$valid = true;
+		$previous = str_repeat( '0', 64 );
+		$events = array();
+		foreach ( $rows as $row ) {
+			$metadata = json_decode( (string) $row['safe_metadata_json'], true );
+			if ( ! is_array( $metadata ) ) { $valid = false; $metadata = array(); }
+			$basis = array(
+				'operation_id'=>(string)$row['operation_id'],
+				'operation_key'=>(string)$row['operation_key'],
+				'operation_binding_sha256'=>(string)$row['operation_binding_sha256'],
+				'sequence'=>(int)$row['sequence'],
+				'event_type'=>(string)$row['event_type'],
+				'checkpoint'=>(string)$row['checkpoint'],
+				'lifecycle_state'=>(string)$row['lifecycle_state'],
+				'terminal_outcome'=>(string)$row['terminal_outcome'],
+				'safe_metadata'=>$metadata,
+				'previous_event_sha256'=>(string)$row['previous_event_sha256'],
+			);
+			$sha = MAD4B_SCP_Canonicalization::digest( self::EVENT_CONTRACT, $basis );
+			if ( is_wp_error( $sha ) || ! hash_equals( $previous, (string)$row['previous_event_sha256'] ) || ! hash_equals( (string)$row['event_sha256'], (string)$sha ) ) $valid = false;
+			$previous = (string)$row['event_sha256'];
+			$events[] = array(
+				'sequence'=>(int)$row['sequence'],'event_type'=>(string)$row['event_type'],'checkpoint'=>(string)$row['checkpoint'],
+				'lifecycle_state'=>(string)$row['lifecycle_state'],'terminal_outcome'=>(string)$row['terminal_outcome'],
+				'safe_metadata'=>$metadata,'previous_event_sha256'=>(string)$row['previous_event_sha256'],'event_sha256'=>(string)$row['event_sha256'],'created_at'=>(string)$row['created_at']
+			);
+		}
+		$head = self::head( $operation_id );
+		$complete = ! is_wp_error( $head ) && (int)$head['latest_sequence'] === count( $events );
+		if ( $complete && ! empty( $events ) && ! hash_equals( (string)$head['latest_event_sha256'], (string)$previous ) ) $valid = false;
+		return array( 'contract'=>'mad4b.dynamic-operation-trace.v1','operation_id'=>$operation_id,'chain_valid'=>$valid,'complete'=>$complete,'count'=>count($events),'events'=>$events,'read_only'=>true,'mutation_performed'=>false );
+	}
+
+	public static function status( $operation_id ) {
+		$head = self::head( $operation_id );
+		if ( is_wp_error( $head ) ) return $head;
+		$heartbeat = ! empty( $head['heartbeat_at'] ) ? strtotime( $head['heartbeat_at'] . ' UTC' ) : false;
+		$deadline = ! empty( $head['hard_deadline_at'] ) ? strtotime( $head['hard_deadline_at'] . ' UTC' ) : false;
+		$now = time();
+		$terminal = in_array( (string)$head['lifecycle_state'], array('completed','terminal_failed'), true );
+		return array(
+			'contract'=>'mad4b.dynamic-operation-status.v1',
+			'operation_id'=>(string)$head['operation_id'],
+			'operation_key'=>(string)$head['operation_key'],
+			'operation_binding_sha256'=>(string)$head['operation_binding_sha256'],
+			'latest_sequence'=>(int)$head['latest_sequence'],
+			'journal_head_sha256'=>(string)$head['latest_event_sha256'],
+			'lifecycle_state'=>(string)$head['lifecycle_state'],
+			'terminal_outcome'=>(string)$head['terminal_outcome'],
+			'heartbeat_at'=>(string)$head['heartbeat_at'],
+			'hard_deadline_at'=>(string)$head['hard_deadline_at'],
+			'stale_heartbeat'=>!$terminal && false!==$heartbeat && ($now-$heartbeat)>300,
+			'hard_deadline_exceeded'=>!$terminal && false!==$deadline && $deadline<=$now,
+			'orphan_candidate'=>!$terminal && ((false!==$heartbeat&&($now-$heartbeat)>300)||(false!==$deadline&&$deadline<=$now)),
+			'read_only'=>true,'mutation_performed'=>false
+		);
+	}
+
 	private static function validate_context( array $context ) {
 		foreach ( array( 'operation_id', 'operation_key', 'operation_binding_sha256', 'hard_deadline_at' ) as $key ) if ( empty( $context[ $key ] ) ) return new WP_Error( 'mad4b_operation_context_incomplete', 'Operation context is incomplete.', array( 'missing' => $key ) );
 		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', strtolower( (string) $context['operation_id'] ) ) ) return new WP_Error( 'mad4b_operation_id_invalid', 'Operation id is invalid.' );

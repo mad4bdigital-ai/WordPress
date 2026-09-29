@@ -27,3 +27,8 @@ print("mad4b.dynamic-runtime-hardening.contract.v1: PASS")
 
 for marker in ["expected_operation_binding_sha256","operation_binding_sha256","MAD4B_SCP_Operation_Context::create","MAD4B_SCP_Operation_Journal::begin","mutation_lock_acquired","operation_completed","operation_failed","mad4b_operation_binding_drift"]:
     req(adapter, marker)
+
+for marker in ["mad4b/content-operation-status","mad4b/content-operation-trace","operation_status","operation_trace"]:
+    req(adapter, marker)
+for marker in ["mad4b.dynamic-operation-trace.v1","chain_valid","orphan_candidate","hard_deadline_exceeded"]:
+    req(journal, marker)
