@@ -74,6 +74,8 @@ required_self_update = [
     "control_plane_version",
     "mad4b_self_update_installed_provenance_version_mismatch",
     "mad4b_self_update_disk_provenance_version_mismatch",
+    "cached_manifest",
+    "mad4b_self_update_manifest_not_cached",
 ]
 for marker in required_self_update:
     if marker not in self_update:
@@ -303,3 +305,29 @@ for marker in (
         raise SystemExit(f"fixed governed release-channel invariant missing: {marker}")
 
 print("mad4b.control-plane-self-update.v1 multi-channel contract: PASS")
+
+# Ordinary plugins.php rendering must be cache-only. Remote GitHub manifest
+# fetches are allowed only on explicit refresh/update/status flows.
+action_link_body = self_update.split("private static function native_update_action_link( array $links )", 1)[1].split("private static function native_update_ui_state", 1)[0]
+assert "self::cached_manifest()" in action_link_body
+assert "self::fetch_manifest(" not in action_link_body
+
+render_body = self_update.split("public static function render_update_row(", 1)[1].split("public static function render_update_row_fallback", 1)[0]
+assert "self::cached_manifest()" in render_body
+assert "self::fetch_manifest(" not in render_body
+
+refresh_body = self_update.split("public static function handle_refresh_update()", 1)[1].split("public static function handle_native_update()", 1)[0]
+assert "self::fetch_manifest( true )" in refresh_body
+assert "self::redirect_native_result( 'manifest_error'" in refresh_body
+
+managed_apply = self_update.split("private static function apply_verified_archive(", 1)[1].split("private static function download_governed_release_to_protected_storage", 1)[0]
+assert "delete_transient( self::MANIFEST_TRANSIENT )" not in managed_apply
+
+# Session-safe/runtime projections must have a public cache-only status path that
+# can never initiate outbound release-channel I/O.
+assert "public static function cached_status( $input = array() )" in self_update
+cached_status = self_update.split("public static function cached_status( $input = array() )", 1)[1].split("public static function upload_plan", 1)[0]
+assert "self::cached_manifest()" in cached_status
+assert "'outbound_network_performed' => false" in cached_status
+assert "self::fetch_manifest(" not in cached_status
+assert "wp_safe_remote_get(" not in cached_status

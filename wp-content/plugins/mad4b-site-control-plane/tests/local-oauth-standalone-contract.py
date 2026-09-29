@@ -268,7 +268,9 @@ required_lock = [
     'mad4b.local-oauth-init-lock.v1',
     "add_action( 'init', array( __CLASS__, 'acquire' ), 0 )",
     "add_action( 'init', array( __CLASS__, 'release' ), 2 )",
-    "flock( $handle, LOCK_EX )",
+    "flock( $handle, LOCK_EX | LOCK_NB )",
+    "remove_action( 'init', array( 'MAD4B_SCP_Local_OAuth_Server', 'ensure_runtime' ), 1 )",
+    "'blocking_wait_used' => false",
     "flock( self::$handle, LOCK_UN )",
     "'.init.lock'",
     "lock_contains_secret_material' => false",
@@ -355,3 +357,64 @@ for marker in (
 ):
     if marker not in portable:
         raise SystemExit(f'portable continuity fail-closed marker missing: {marker}')
+
+ensure_runtime = server.split("public static function ensure_runtime()", 1)[1].split("public static function status()", 1)[0]
+for marker in (
+    "self::request_is_schema_migration_hotpath()",
+    "mad4b_local_oauth_store_upgrade_deferred",
+):
+    if marker not in ensure_runtime:
+        raise SystemExit(f"Local OAuth latency-safe store migration guard missing: {marker}")
+migration_hotpath = server.split("private static function request_is_schema_migration_hotpath()", 1)[1].split("private static function ensure_signing_key()", 1)[0]
+for marker in (
+    "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()",
+    "'plugins.php'",
+    "'update.php'",
+    "'update-core.php'",
+    "'plugin-install.php'",
+):
+    if marker not in migration_hotpath:
+        raise SystemExit(f"Local OAuth schema migration hotpath classification missing: {marker}")
+if ensure_runtime.index("request_is_schema_migration_hotpath()") > ensure_runtime.index("install_or_upgrade()"):
+    raise SystemExit("Local OAuth schema migration guard must run before dbDelta migration")
+if "flock( $handle, LOCK_EX )" in init_lock:
+    raise SystemExit("Local OAuth first-boot lock must never block a PHP worker indefinitely")
+
+ensure_runtime = server.split("public static function ensure_runtime()", 1)[1].split("public static function status()", 1)[0]
+if "MAD4B_SCP_Local_OAuth_Store::is_ready()" in ensure_runtime:
+    raise SystemExit("healthy Local OAuth runtime must not SHOW TABLES on every request")
+for marker in (
+    "$installed_store_version = (int) get_option( MAD4B_SCP_Local_OAuth_Store::OPTION, 0 );",
+    "$installed_store_version < MAD4B_SCP_Local_OAuth_Store::VERSION",
+):
+    if marker not in ensure_runtime:
+        raise SystemExit(f"Local OAuth version-marker fast path missing: {marker}")
+keygen = server.split("private static function ensure_signing_key()", 1)[1].split("private static function private_key_path()", 1)[0]
+if "mad4b_local_oauth_key_generation_deferred" not in keygen:
+    raise SystemExit("Local OAuth key generation lacks latency-hotpath deferral")
+if keygen.index("request_is_schema_migration_hotpath()") > keygen.index("openssl_pkey_new("):
+    raise SystemExit("Local OAuth hotpath guard must precede RSA key generation")
+
+runtime_identity = server.split("public static function runtime_identity_status()", 1)[1].split("public static function status()", 1)[0]
+for marker in (
+    "MAD4B_SCP_Local_OAuth_Store::OPTION",
+    "MAD4B_SCP_Local_OAuth_Store::VERSION",
+    "'deep_key_validation_deferred' => true",
+    "'physical_store_introspection_deferred' => true",
+):
+    if marker not in runtime_identity:
+        raise SystemExit(f"Local OAuth identity readiness marker missing: {marker}")
+for forbidden in (
+    "public_jwk()",
+    "MAD4B_SCP_Local_OAuth_Store::is_ready()",
+    "openssl_pkey_get_private(",
+    "openssl_pkey_get_details(",
+):
+    if forbidden in runtime_identity:
+        raise SystemExit(f"Local OAuth identity readiness must remain hotpath-safe: {forbidden}")
+
+effective_for_protocol = server.split("private static function effective_for_protocol()", 1)[1].split("private static function request_is_schema_migration_hotpath()", 1)[0]
+if "self::runtime_identity_status()" not in effective_for_protocol:
+    raise SystemExit("Local OAuth protocol readiness must use runtime_identity_status()")
+if "self::status()" in effective_for_protocol:
+    raise SystemExit("Local OAuth protocol readiness must not invoke deep status()")

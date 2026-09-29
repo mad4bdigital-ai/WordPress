@@ -103,6 +103,43 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		return hash( 'sha256', implode( "\n", $parts ) );
 	}
 
+	public static function persisted_identity_status() {
+		$evidence = get_option( self::OPTION, array() );
+		if ( ! is_array( $evidence ) || empty( $evidence ) ) {
+			return array(
+				'contract' => self::CONTRACT,
+				'evidence_present' => false,
+				'state' => 'unverified',
+				'live_verification_deferred' => true,
+				'read_only' => true,
+				'mutation_performed' => false,
+			);
+		}
+		$stored_build = isset( $evidence['build_fingerprint'] ) ? strtolower( trim( (string) $evidence['build_fingerprint'] ) ) : '';
+		$tool_inventory = isset( $evidence['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $evidence['tool_inventory_fingerprint'] ) ) : '';
+		$write_inventory = isset( $evidence['write_catalog_fingerprint'] ) ? strtolower( trim( (string) $evidence['write_catalog_fingerprint'] ) ) : '';
+		return array(
+			'contract' => self::CONTRACT,
+			'evidence_present' => true,
+			'state' => 'persisted_identity',
+			'environment' => isset( $evidence['environment'] ) ? sanitize_key( (string) $evidence['environment'] ) : '',
+			'server_id' => isset( $evidence['server_id'] ) ? sanitize_key( (string) $evidence['server_id'] ) : '',
+			'auth_method' => isset( $evidence['auth_method'] ) ? sanitize_key( (string) $evidence['auth_method'] ) : '',
+			'wp_user_id' => isset( $evidence['wp_user_id'] ) ? absint( $evidence['wp_user_id'] ) : 0,
+			'tool_count' => isset( $evidence['tool_count'] ) ? max( 0, (int) $evidence['tool_count'] ) : 0,
+			'write_tool_count' => isset( $evidence['write_tool_count'] ) ? max( 0, (int) $evidence['write_tool_count'] ) : 0,
+			'build_fingerprint' => 1 === preg_match( '/^[a-f0-9]{64}$/', $stored_build ) ? $stored_build : '',
+			'tool_inventory_fingerprint' => 1 === preg_match( '/^[a-f0-9]{64}$/', $tool_inventory ) ? $tool_inventory : '',
+			'write_catalog_fingerprint' => 1 === preg_match( '/^[a-f0-9]{64}$/', $write_inventory ) ? $write_inventory : '',
+			'verified_at' => isset( $evidence['verified_at'] ) ? sanitize_text_field( (string) $evidence['verified_at'] ) : '',
+			'live_verification_deferred' => true,
+			'current_build_hash_deferred' => true,
+			'current_catalog_rebuild_deferred' => true,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
 	public static function status() {
 		$evidence = get_option( self::OPTION, array() );
 		$base = array(

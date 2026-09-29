@@ -22,6 +22,7 @@ function remove_action() { return true; }
 function trailingslashit( $v ) { return rtrim( (string) $v, "/\\" ) . '/'; }
 function wp_normalize_path( $v ) { return str_replace( '\\', '/', (string) $v ); }
 function sanitize_key( $v ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $v ) ); }
+function wp_unslash( $v ) { return $v; }
 function wp_get_environment_type() { return $GLOBALS['mad4b_qm_env']; }
 function is_admin() { return ! empty( $GLOBALS['mad4b_qm_admin'] ); }
 function current_user_can( $cap ) { return 'manage_options' === $cap; }
@@ -55,6 +56,12 @@ $status = MAD4B_SCP_Query_Monitor_Evidence_Bridge::db_attribution_status();
 mad4b_qm_assert( 'enablement_available' === $status['state'], 'fresh Staging install must report safe enablement available' );
 mad4b_qm_assert( ! empty( $status['safe_to_enable'] ), 'fresh Staging install must be safe to enable' );
 
+$_GET['page'] = '';
+$ordinary_admin = MAD4B_SCP_Query_Monitor_Evidence_Bridge::maybe_enable_db_attribution();
+mad4b_qm_assert( ! file_exists( WP_CONTENT_DIR . '/db.php' ), 'ordinary wp-admin pages must never create Query Monitor db.php attribution' );
+mad4b_qm_assert( 'enablement_available' === $ordinary_admin['state'], 'ordinary admin guard must preserve enablement status without mutation' );
+
+$_GET['page'] = 'mad4b-control-plane-diagnostics';
 $enabled = MAD4B_SCP_Query_Monitor_Evidence_Bridge::maybe_enable_db_attribution();
 mad4b_qm_assert( file_exists( WP_CONTENT_DIR . '/db.php' ) && ! is_link( WP_CONTENT_DIR . '/db.php' ), 'bounded Query Monitor loader was not created when symlink was unavailable' );
 mad4b_qm_assert( false !== strpos( (string) file_get_contents( WP_CONTENT_DIR . '/db.php' ), MAD4B_SCP_Query_Monitor_Evidence_Bridge::ATTRIBUTION_LOADER_MARKER ), 'bounded loader marker missing' );

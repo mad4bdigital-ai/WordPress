@@ -21,6 +21,20 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 	public static function bootstrap() {
 		$status = self::base_status();
 		if ( ! $status['eligible'] ) { self::$status = $status; return $status; }
+
+		// Never reconcile managed MU bytes on MCP/OAuth protocol hot paths.
+		// A post-update request may observe source/destination drift, but hashing,
+		// copying, atomic replacement and audit persistence belong to a normal
+		// lifecycle request, not to initialize/tools-list/execute latency.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) {
+			$status['state'] = 'deferred_protocol_hotpath';
+			$status['refresh_deferred'] = true;
+			$status['next_request_required'] = true;
+			$status['blocker'] = '';
+			self::$status = $status;
+			return $status;
+		}
 		if ( ! defined( 'MAD4B_SCP_DIR' ) || ! defined( 'WPMU_PLUGIN_DIR' ) ) {
 			$status['blocker'] = 'mu_bootstrap_path_unavailable';
 			self::$status = $status;
