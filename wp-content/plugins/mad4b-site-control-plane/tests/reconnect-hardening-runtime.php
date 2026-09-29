@@ -171,7 +171,7 @@ $now=time();
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(array(sid(70)=>srec($now)));
 ok(priv('first_empty_race_visible_candidate',array(7,$now)),'single concurrently-created visible winner matches first-empty race shape');
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(array(sid(70)=>srec($now),sid(71)=>srec($now)));
-ok(!priv('first_empty_race_visible_candidate',array(7,$now)),'multi-session visible map cannot be repaired as first-empty race');
+ok(priv('first_empty_race_visible_candidate',array(7,$now)),'bounded same-burst multi-session visible map remains a first-empty race candidate');
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(array(sid(70)=>srec($now-60)));
 ok(!priv('first_empty_race_visible_candidate',array(7,$now)),'old visible session cannot be treated as same initialize burst');
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array();
