@@ -1157,7 +1157,14 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if(empty($findings)&&'accepted'===$acceptance){
 			$receipt=$this->persist_acceptance_receipt($id,$final,$input,$pipeline,isset($input['expected_bundle_sha256'])?(string)$input['expected_bundle_sha256']:'');
 			if(is_wp_error($receipt)) return $this->failure_with_compensation($receipt,$v['mode'],$id,$before,$owned_after);
-			$publication_acceptance=array('ready'=>true,'receipt_sha256'=>$receipt['sha256'],'accepted_at'=>$receipt['receipt']['accepted_at']);
+			$publication_post=get_post($id);
+			$publication_acceptance=array(
+				'ready'=>true,
+				'receipt_sha256'=>$receipt['sha256'],
+				'accepted_at'=>$receipt['receipt']['accepted_at'],
+				'expected_modified_gmt'=>$publication_post?(string)$publication_post->post_modified_gmt:'',
+				'required_next_ability'=>'mad4b/content-update-post'
+			);
 		}else{
 			$invalidated=$this->invalidate_acceptance_receipt($id);
 			if(is_wp_error($invalidated)) return $this->failure_with_compensation($invalidated,$v['mode'],$id,$before,$owned_after);
@@ -1389,6 +1396,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'accepted_at'=>isset($receipt['accepted_at'])?(string)$receipt['accepted_at']:'',
 			'reason_code'=>(string)$verified->get_error_code(),
 		);
+		$post=get_post($post_id);
 		return array(
 			'exists'=>true,
 			'ready'=>true,
@@ -1396,6 +1404,8 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'accepted_at'=>isset($verified['accepted_at'])?(string)$verified['accepted_at']:'',
 			'state_sha256'=>isset($verified['state_sha256'])?(string)$verified['state_sha256']:'',
 			'pipeline_settings_sha256'=>isset($verified['pipeline_settings_sha256'])?(string)$verified['pipeline_settings_sha256']:'',
+			'expected_modified_gmt'=>$post?(string)$post->post_modified_gmt:'',
+			'required_next_ability'=>'mad4b/content-update-post',
 			'reason_code'=>'',
 		);
 	}
