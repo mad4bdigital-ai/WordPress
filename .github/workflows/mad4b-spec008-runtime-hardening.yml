@@ -33,6 +33,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-canonicalization.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-context.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-metrics.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dynamic-content-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-ttl-policy.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-diff.php

@@ -25,6 +25,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-durable-execution.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-canonicalization.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-journal.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-metrics.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-ttl-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-diff.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-provider-contract.php';

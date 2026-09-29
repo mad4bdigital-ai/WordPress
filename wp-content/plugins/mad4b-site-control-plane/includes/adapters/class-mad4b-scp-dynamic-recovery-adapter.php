@@ -2,6 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Dynamic_Recovery_Adapter extends MAD4B_SCP_Adapter_Base {
+	const METRICS='mad4b/content-operation-metrics';
 	const STATUS='mad4b/content-operation-status';
 	const TRACE='mad4b/content-operation-trace';
 	const INSPECT='mad4b/content-recovery-inspect';
@@ -13,9 +14,18 @@ final class MAD4B_SCP_Dynamic_Recovery_Adapter extends MAD4B_SCP_Adapter_Base {
 	protected function certified_provider_key(){ return 'core'; }
 	protected function mutation_requires_certification(){ return false; }
 	protected function detect_plugin_version(){ return defined('MAD4B_SCP_VERSION')?(string)MAD4B_SCP_VERSION:''; }
-	public function ability_names(){ return array('read'=>array(self::STATUS,self::TRACE,self::INSPECT,self::PLAN),'content'=>array(),'admin'=>array(),'write'=>array()); }
+	public function ability_names(){ return array('read'=>array(self::METRICS,self::STATUS,self::TRACE,self::INSPECT,self::PLAN),'content'=>array(),'admin'=>array(),'write'=>array()); }
 
 	public function register_abilities(){
+		if(!wp_has_ability(self::METRICS)) $this->add_ability(
+			self::METRICS,'Dynamic Content Operation Metrics','metrics_read',
+			array('MAD4B_SCP_Policy','can_read'),
+			$this->schema(array(
+				'names'=>array('type'=>'array','maxItems'=>50,'items'=>array('type'=>'string','minLength'=>1,'maxLength'=>96)),
+				'hours'=>array('type'=>'integer','minimum'=>1,'maximum'=>720,'default'=>24)
+			)),
+			'read',true,false,true
+		);
 		if(!wp_has_ability(self::STATUS)) $this->add_ability(
 			self::STATUS,'Dynamic Content Operation Status','status_read',
 			array('MAD4B_SCP_Policy','can_read'),
@@ -45,6 +55,12 @@ final class MAD4B_SCP_Dynamic_Recovery_Adapter extends MAD4B_SCP_Adapter_Base {
 			),array('operation_id','current_state_sha256','provider_state_digest','pipeline_settings_sha256','policy_sha256','environment')),
 			'read',true,false,true
 		);
+	}
+
+	public function metrics_read($input=array()){
+		if(!class_exists('MAD4B_SCP_Runtime_Metrics')) return new WP_Error('mad4b_runtime_metrics_unavailable','Runtime metrics are unavailable.');
+		$input=is_array($input)?$input:array();
+		return MAD4B_SCP_Runtime_Metrics::summary(isset($input['names'])&&is_array($input['names'])?$input['names']:array(),isset($input['hours'])?absint($input['hours']):24);
 	}
 
 	public function status_read($input=array()){
