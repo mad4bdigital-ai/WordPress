@@ -3,6 +3,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 bridge = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
+local_oauth = (root / 'includes' / 'class-mad4b-scp-local-oauth-server.php').read_text(encoding='utf-8')
 context_guard = (root / 'includes' / 'class-mad4b-scp-oauth-request-context-guard.php').read_text(encoding='utf-8')
 header_guard = (root / 'includes' / 'class-mad4b-scp-oauth-jwt-header-guard.php').read_text(encoding='utf-8')
 outbound_guard = (root / 'includes' / 'class-mad4b-scp-oauth-outbound-budget-guard.php').read_text(encoding='utf-8')
@@ -236,3 +237,18 @@ if "bind_local_oauth_subject_compatibility" not in plugin:
     raise SystemExit("plugin boot does not derive local subject compatibility from issuer-bound policy")
 
 print('mad4b.site-control-plane.oauth-resource-bridge.v10: PASS')
+
+authority_registry = bridge.split("private static function authority_registry()", 1)[1].split("private static function authority_registry_valid", 1)[0]
+for marker in (
+    "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()",
+    "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()",
+    "MAD4B_SCP_Local_OAuth_Server::status()",
+):
+    if marker not in authority_registry:
+        raise SystemExit(f"OAuth authority runtime selection missing: {marker}")
+if authority_registry.index("current_request_is_protocol_hotpath()") > authority_registry.index("runtime_identity_status()"):
+    raise SystemExit("OAuth protocol hotpath classification must precede local runtime identity selection")
+local_identity = local_oauth.split("public static function runtime_identity_status()", 1)[1].split("public static function status()", 1)[0]
+for forbidden in ("public_jwk()", "MAD4B_SCP_Local_OAuth_Store::is_ready()", "openssl_pkey_get_private("):
+    if forbidden in local_identity:
+        raise SystemExit(f"OAuth protocol identity path performs deep local validation: {forbidden}")
