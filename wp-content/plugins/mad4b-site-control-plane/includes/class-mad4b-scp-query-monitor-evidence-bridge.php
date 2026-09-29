@@ -124,6 +124,12 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	public static function maybe_enable_db_attribution() {
 		$status = self::db_attribution_status();
 		if ( 'staging' !== (string) $status['environment'] || ! is_admin() || ! current_user_can( 'manage_options' ) ) return $status;
+
+		// Creating a db.php attribution drop-in is instrumentation mutation and
+		// must never happen while rendering arbitrary wp-admin pages such as
+		// plugins.php immediately after a package update.
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : '';
+		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) ) return $status;
 		if ( ! empty( $status['ready'] ) || empty( $status['safe_to_enable'] ) ) return $status;
 		if ( ! defined( 'WP_CONTENT_DIR' ) || ! defined( 'WP_PLUGIN_DIR' ) ) return $status;
 		$dropin = trailingslashit( WP_CONTENT_DIR ) . 'db.php';
@@ -227,6 +233,25 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 
 		$telemetry = self::load_telemetry( $build );
 		$class = self::request_class();
+
+		// MCP/OAuth protocol requests must never pay Query Monitor collection,
+		// duplicate-query analysis or per-request telemetry persistence costs.
+		// Persist one lightweight coverage marker per exact build, then stay silent.
+		$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
+		if ( $protocol_hotpath ) {
+			if ( isset( $telemetry['request_coverage']['mcp'] ) && (int) $telemetry['request_coverage']['mcp'] > 0 ) return;
+			$telemetry['observed_request_count'] = isset( $telemetry['observed_request_count'] ) ? (int) $telemetry['observed_request_count'] + 1 : 1;
+			if ( ! isset( $telemetry['request_coverage']['mcp'] ) ) $telemetry['request_coverage']['mcp'] = 0;
+			$telemetry['request_coverage']['mcp']++;
+			$telemetry['last_observed_at'] = gmdate( 'Y-m-d H:i:s' );
+			update_option( MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION, $telemetry, false );
+			self::$last_capture_telemetry = $telemetry;
+			self::$last_capture_build = $build;
+			self::$last_capture_class = 'mcp';
+			return;
+		}
+
 		$telemetry['observed_request_count'] = isset( $telemetry['observed_request_count'] ) ? (int) $telemetry['observed_request_count'] + 1 : 1;
 		if ( ! isset( $telemetry['request_coverage'][ $class ] ) ) $telemetry['request_coverage'][ $class ] = 0;
 		$telemetry['request_coverage'][ $class ]++;
@@ -370,7 +395,10 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 
 	private static function pin_request_build_fingerprint() {
 		if ( preg_match( '/^[a-f0-9]{64}$/', self::$request_build_fingerprint ) ) return self::$request_build_fingerprint;
-		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		// Telemetry grouping needs only the signed/packaged build identity.
+		// Full byte-for-byte runtime hashing belongs to explicit/final acceptance,
+		// never to every request bootstrap.
+		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status();
 		$build = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
 		if ( preg_match( '/^[a-f0-9]{64}$/', $build ) ) self::$request_build_fingerprint = $build;
 		return self::$request_build_fingerprint;
