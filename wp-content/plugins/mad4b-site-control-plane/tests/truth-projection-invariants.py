@@ -120,6 +120,10 @@ foreign_admin = policy.split("public static function current_request_is_foreign_
 if "wp_doing_ajax() ) return false" in foreign_admin or "DOING_AJAX ) return false" in foreign_admin:
     raise SystemExit("foreign wp-admin still blanket-excludes AJAX")
 
+# Performance evaluation helpers must survive query-monitor status refactors.
+require(observer, "private static function valid_performance_sample( $sample )", "frontend performance sample validator")
+require(observer, "self::valid_performance_sample( $sample )", "frontend performance validator use")
+
 # 6. Query Monitor health and request-surface coverage are separate gates.
 for marker in (
     "mad4b.request-surface-coverage.v1",
