@@ -238,7 +238,7 @@ if "bind_local_oauth_subject_compatibility" not in plugin:
 
 print('mad4b.site-control-plane.oauth-resource-bridge.v10: PASS')
 
-authority_registry = bridge.split("private static function authority_registry()", 1)[1].split("private static function authority_registry_valid", 1)[0]
+authority_registry = bridge.split("private static function authority_registry( $identity_only = false )", 1)[1].split("private static function authority_registry_valid", 1)[0]
 for marker in (
     "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()",
     "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()",
