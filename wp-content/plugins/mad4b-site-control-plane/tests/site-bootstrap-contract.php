@@ -134,6 +134,10 @@ foreach ( array(
 	"'cross_locale_shared_canonical_is_automatic_conflict' => false",
 	"'inventory_items_partially_unreadable'",
 	"'mad4b_bootstrap_item_exception'",
+	"'site_identity_source'",
+	"'portable_readonly_connection'",
+	"MAD4B_SCP_Portable_Readonly_Connection::bootstrap()",
+	"MAD4B_SCP_Portable_Readonly_Connection::connection_uuid()",
 ) as $marker ) {
 	$check( false !== strpos( $source, $marker ), 'bootstrap contract marker missing: ' . $marker );
 }
@@ -150,6 +154,9 @@ foreach ( array(
 	'wp_set_object_terms(',
 	'update_option(',
 	'delete_option(',
+	'MAD4B_SCP_Site_Profile::save',
+	'MAD4B_SCP_Site_Profile::update',
+	'MAD4B_SCP_Site_Profile::enroll',
 	'shell_exec(',
 	'proc_open(',
 ) as $forbidden ) {
