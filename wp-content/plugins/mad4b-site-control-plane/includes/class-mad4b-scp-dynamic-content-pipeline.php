@@ -50,6 +50,7 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline {
 		$base['no_progress_limit']=isset($raw['no_progress_limit'])?max(1,min(3,absint($raw['no_progress_limit']))):$base['no_progress_limit'];
 		$base['default_repair_mode']=isset($raw['default_repair_mode'])&&in_array($raw['default_repair_mode'],array('safe_only','off'),true)?$raw['default_repair_mode']:$base['default_repair_mode'];
 		if(isset($raw['stages'])&&is_array($raw['stages'])) $base['stages']=self::normalize_stage_config($raw['stages']);
+		$base['stages']=self::enforce_mandatory_stages($base['stages']);
 		$base['registry']=self::registry_summary();
 		$base['condition_registry']=self::condition_registry_summary();
 		$base['settings_sha256']=self::config_digest($base);
@@ -96,6 +97,44 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline {
 		}
 		usort($out,static function($a,$b){$cmp=$a['order']<=>$b['order'];return $cmp!==0?$cmp:strcmp($a['id'],$b['id']);});
 		return $out;
+	}
+
+	private static function enforce_mandatory_stages(array $stages){
+		$by_id=array();foreach($stages as $stage)if(is_array($stage)&&!empty($stage['id']))$by_id[sanitize_key((string)$stage['id'])]=$stage;
+		$by_id['structural']=array(
+			'id'=>'structural','enabled'=>true,'order'=>0,'phase'=>'validate','conditions'=>array(),'depends_on'=>array(),
+			'policy'=>array('severity'=>'error','required'=>true,'on_error'=>'stop')
+		);
+		$by_id['acceptance']=array(
+			'id'=>'acceptance','enabled'=>true,'order'=>10000,'phase'=>'accept','conditions'=>array(),'depends_on'=>array(),
+			'policy'=>array('require_zero_findings'=>true,'required'=>true,'on_error'=>'stop')
+		);
+		$out=array_values($by_id);
+		usort($out,static function($a,$b){$cmp=$a['order']<=>$b['order'];return $cmp!==0?$cmp:strcmp($a['id'],$b['id']);});
+		return $out;
+	}
+
+	private static function validate_mandatory_stages(array $stages){
+		$by_id=array();foreach($stages as $stage)if(is_array($stage)&&!empty($stage['id']))$by_id[sanitize_key((string)$stage['id'])]=$stage;
+		foreach(array(
+			'structural'=>array('phase'=>'validate','order'=>0),
+			'acceptance'=>array('phase'=>'accept','order'=>10000),
+		) as $id=>$required){
+			if(!isset($by_id[$id])) return new WP_Error('mad4b_dynamic_pipeline_mandatory_stage_missing','A mandatory core safety stage cannot be removed.',array('stage_id'=>$id));
+			$stage=$by_id[$id];
+			if(empty($stage['enabled'])) return new WP_Error('mad4b_dynamic_pipeline_mandatory_stage_disabled','A mandatory core safety stage cannot be disabled.',array('stage_id'=>$id));
+			if((string)$stage['phase']!==$required['phase']||(int)$stage['order']!==$required['order']) return new WP_Error('mad4b_dynamic_pipeline_mandatory_stage_position','A mandatory core safety stage cannot change phase or safety order.',array('stage_id'=>$id,'required_phase'=>$required['phase'],'required_order'=>$required['order']));
+			if(!empty($stage['conditions'])||!empty($stage['depends_on'])) return new WP_Error('mad4b_dynamic_pipeline_mandatory_stage_conditional','A mandatory core safety stage cannot be conditional or dependency-gated.',array('stage_id'=>$id));
+			$policy=isset($stage['policy'])&&is_array($stage['policy'])?$stage['policy']:array();
+			if(empty($policy['required'])||'stop'!==(isset($policy['on_error'])?sanitize_key((string)$policy['on_error']):'')) return new WP_Error('mad4b_dynamic_pipeline_mandatory_stage_policy','A mandatory core safety stage must remain required and fail closed.',array('stage_id'=>$id));
+			if('acceptance'===$id&&empty($policy['require_zero_findings'])) return new WP_Error('mad4b_dynamic_pipeline_acceptance_policy','Terminal acceptance must require zero findings.');
+		}
+		foreach($stages as $stage){
+			if(!is_array($stage)||'accept'!==(isset($stage['phase'])?(string)$stage['phase']:'')) continue;
+			$id=isset($stage['id'])?sanitize_key((string)$stage['id']):'';
+			if('acceptance'!==$id&&(int)$stage['order']>=10000) return new WP_Error('mad4b_dynamic_pipeline_acceptance_not_terminal','Custom accept stages must execute before terminal acceptance.',array('stage_id'=>$id));
+		}
+		return true;
 	}
 
 	private static function validate_stage_graph(array $stages){
@@ -427,6 +466,8 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline {
 		if(isset($input['no_progress_limit'])) $normalized['no_progress_limit']=max(1,min(3,absint($input['no_progress_limit'])));
 		if(isset($input['default_repair_mode'])&&in_array($input['default_repair_mode'],array('safe_only','off'),true)) $normalized['default_repair_mode']=$input['default_repair_mode'];
 		if(isset($input['stages'])&&is_array($input['stages'])) $normalized['stages']=self::normalize_stage_config($input['stages']);
+		$mandatory=self::validate_mandatory_stages(isset($normalized['stages'])&&is_array($normalized['stages'])?$normalized['stages']:array());
+		if(is_wp_error($mandatory)) return $mandatory;
 		$graph=self::validate_stage_graph(isset($normalized['stages'])&&is_array($normalized['stages'])?$normalized['stages']:array());
 		if(is_wp_error($graph)) return $graph;
 
