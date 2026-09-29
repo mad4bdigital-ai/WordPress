@@ -157,11 +157,16 @@ final class MAD4B_SCP_WPML_Response_Contract {
 			'safe_message' => '',
 		);
 		if ( ! is_array( $stored ) || empty( $stored['observed'] ) ) {
-			$rest = class_exists( 'MAD4B_SCP_REST_Compatibility' ) ? MAD4B_SCP_REST_Compatibility::status() : array();
-			if ( isset( $rest['wpml']['route_registered'] ) && false === (bool) $rest['wpml']['route_registered'] ) {
+			$route = class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' )
+				? MAD4B_SCP_Provider_Diagnostic_Policy::rest_route_snapshot( self::ROUTE )
+				: array( 'route_registered' => null );
+			if ( array_key_exists( 'route_registered', $route ) && false === $route['route_registered'] ) {
 				$base['classification'] = 'route_not_registered';
-				$base['state'] = 'route_not_registered_internal_probe_only';
+				$base['state'] = 'route_not_registered_passive_snapshot';
 			}
+			$base['local_probe_mode'] = 'passive_snapshot';
+			$base['provider_self_calls_started'] = 0;
+			$base['internal_rest_dispatch_performed'] = false;
 			return $base;
 		}
 		foreach ( array( 'observed','observed_at','build_fingerprint','request_route','test_get_parameter_present','response_status','response_content_type','error_code','body_classification','classification','status','get_parameters','safe_message' ) as $key ) {
