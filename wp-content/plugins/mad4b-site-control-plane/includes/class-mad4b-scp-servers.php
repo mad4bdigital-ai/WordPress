@@ -452,7 +452,7 @@ final class MAD4B_SCP_Servers {
 	private static function chatgpt_unified_catalog_enabled() {
 		return class_exists( 'MAD4B_SCP_Site_Profile' )
 			&& MAD4B_SCP_Site_Profile::configured()
-			&& 'staging' === MAD4B_SCP_Site_Profile::current_environment()
+			&& in_array( sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ), array( 'staging', 'production' ), true )
 			&& MAD4B_SCP_Site_Profile::origin_enrolled()
 			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
 	}
@@ -539,6 +539,8 @@ final class MAD4B_SCP_Servers {
 			? MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools()
 			: array();
 		$full_read = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
+			&& class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
 			? MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()
 			: array();
 		$full_step_up = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
@@ -603,6 +605,14 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function chatgpt_full_catalog_candidates() {
+		$full_staging_catalog = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
+			&& class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			? array_merge(
+				MAD4B_SCP_Full_Staging_Authority::chatgpt_catalog_read_tools(),
+				MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()
+			)
+			: array();
 		$candidates = array_merge(
 			self::core_tools( 'mad4b-read' ),
 			self::core_tools( 'mad4b-chatgpt' ),
@@ -611,8 +621,7 @@ final class MAD4B_SCP_Servers {
 			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools() : array(),
 			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools() : array(),
 			class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools() : array(),
-			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_catalog_read_tools() : array(),
-			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools() : array(),
+			$full_staging_catalog,
 			self::chatgpt_enrollment_candidates(),
 			self::core_tools( 'mad4b-content' ),
 			self::core_tools( 'mad4b-admin' ),
@@ -624,7 +633,7 @@ final class MAD4B_SCP_Servers {
 			foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface ) $candidates = array_merge( $candidates, $registry->ability_names( $surface ) );
 		}
 		$candidates = array_values( array_unique( array_map( 'strval', $candidates ) ) );
-		$candidates = array_values( array_diff( $candidates, array( 'mad4b/database-raw-query' ) ) );
+		$candidates = array_values( array_diff( $candidates, self::chatgpt_internal_enrollment_mutations(), array( 'mad4b/database-raw-query' ) ) );
 		sort( $candidates, SORT_STRING );
 		return $candidates;
 	}
