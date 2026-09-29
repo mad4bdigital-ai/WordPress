@@ -19,4 +19,12 @@ assert "external_wpml_acceptance_verified" in runtime
 assert "external_wpml_acceptance_required" in runtime
 assert "MAD4B_SCP_External_WPML_Acceptance_Finalizer::" not in runtime
 
+# Inactive WPML must never materialize the WordPress REST/MCP server merely to
+# prove a negative capability.
+probe = rest.split("public static function wpml_probe()", 1)[1].split("private static function bounded_external_wpml_receipt", 1)[0]
+assert "$wpml_active = self::wpml_active();" in probe
+assert "if ( ! $wpml_active )" in probe
+assert "'rest_server_materialized' => false" in probe
+assert probe.index("if ( ! $wpml_active )") < probe.index("rest_get_server()")
+
 print("REST external WPML receipt reconciliation contract: PASS")
