@@ -111,6 +111,15 @@ if ( is_wp_error( $bootstrap_page ) ) $fail( 'Site bootstrap page execution fail
 if ( ! is_array( $bootstrap_page ) || 'mad4b.site-content-bootstrap.v1' !== ( isset( $bootstrap_page['contract'] ) ? (string) $bootstrap_page['contract'] : '' ) ) {
 	$fail( 'Site bootstrap page returned an invalid contract.' );
 }
+$bootstrap_snapshot_errors = isset( $bootstrap_page['snapshot_errors'] ) && is_array( $bootstrap_page['snapshot_errors'] ) ? $bootstrap_page['snapshot_errors'] : array();
+foreach ( $bootstrap_snapshot_errors as $bootstrap_snapshot_error ) {
+	if ( is_array( $bootstrap_snapshot_error ) && 'identity_observation_exception' === (string) ( $bootstrap_snapshot_error['code'] ?? '' ) ) {
+		$fail( 'Site bootstrap identity observation raised an exception.' );
+	}
+}
+if ( empty( $bootstrap_page['identity']['canonical_origin'] ) || MAD4B_SCP_Site_Profile::site_origin() !== (string) $bootstrap_page['identity']['canonical_origin'] ) {
+	$fail( 'Site bootstrap identity canonical origin drifted from the Site Profile.' );
+}
 if ( empty( $bootstrap_page['bounded'] ) || ! empty( $bootstrap_page['mutation_performed'] ) || ! empty( $bootstrap_page['authorizing'] ) ) {
 	$fail( 'Site bootstrap page crossed the bounded read-only contract.' );
 }

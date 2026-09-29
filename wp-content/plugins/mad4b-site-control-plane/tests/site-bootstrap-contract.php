@@ -192,8 +192,9 @@ $check( (int) $cursor_page['pagination']['next_after_id'] > (int) $cursor_base['
 
 $check( '' === MAD4B_SCP_Site_Bootstrap::normalize_url( 'javascript:alert(1)' ), 'unsafe non-http URL was retained' );
 $check( 'https://example.test/path' === MAD4B_SCP_Site_Bootstrap::normalize_url( 'HTTPS://Example.Test/path' ), 'URL normalization drifted' );
+$check( false === strpos( $source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-site-bootstrap.php' ), 'MAD4B_SCP_Site_Profile::canonical_origin()' ), 'bootstrap identity calls nonexistent Site Profile canonical_origin API' );
+$check( false !== strpos( $source, 'MAD4B_SCP_Site_Profile::site_origin()' ), 'bootstrap identity does not use the canonical Site Profile origin API' );
 
-$source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-site-bootstrap.php' );
 $main = file_get_contents( dirname( __DIR__ ) . '/mad4b-site-control-plane.php' );
 $servers = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
 foreach ( array(
