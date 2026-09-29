@@ -429,4 +429,23 @@ if "mad4b_dynamic_publication_state_drift" not in adapter:
 if "invalidate_acceptance_after_restore" not in adapter:
     raise SystemExit("dynamic bundle rollback must invalidate publication acceptance")
 
+
+# Existing posts adopted by the dynamic orchestrator must remain governed after
+# successful update/publication, while compensation/undo restores prior adoption.
+for marker in [
+    "MANAGED_META",
+    "_mad4b_dynamic_content_managed_v1",
+    "'dynamic_managed'=>metadata_exists('post',$id,self::MANAGED_META)",
+    "self::MANAGED_META=>'1'",
+    "mad4b_dynamic_managed_marker_write_failed",
+    "mad4b_dynamic_managed_marker_restore_failed",
+]:
+    if marker not in adapter:
+        raise SystemExit(f"dynamic-managed adoption marker missing: {marker}")
+
+if "_mad4b_dynamic_content_managed_v1" not in mutations or "_mad4b_dynamic_content_binding" not in mutations:
+    raise SystemExit("publication guard must recognize durable managed marker and legacy binding")
+if "dynamic_managed" not in adapter[adapter.find("private function snapshot"):adapter.find("private function restore_snapshot_state")]:
+    raise SystemExit("managed lifecycle must be part of reversible dynamic state")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
