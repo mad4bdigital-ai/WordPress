@@ -161,7 +161,12 @@ final class MAD4B_SCP_REST_Compatibility {
 		$routes = is_object( $server ) && method_exists( $server, 'get_routes' ) ? $server->get_routes() : array();
 		$route_registered = is_array( $routes ) && array_key_exists( self::WPML_ROUTE, $routes );
 		$wpml_active = self::wpml_active();
-		if ( ! $wpml_active ) {
+		// A registered compatible route is enough for an explicit behavioral
+		// diagnostic. Generic/disposable Staging runtimes intentionally exercise
+		// the contract without requiring the commercial provider plugin itself.
+		// Only the absence of both provider activation and route registration is
+		// truly not applicable.
+		if ( ! $wpml_active && ! $route_registered ) {
 			return array(
 				'contract' => self::DEEP_DIAGNOSTIC_CONTRACT,
 				'mode' => 'explicit_deep_diagnostic',
@@ -219,7 +224,7 @@ final class MAD4B_SCP_REST_Compatibility {
 			'route' => self::WPML_ROUTE,
 			'state' => $preserved ? 'behavior_verified' : 'behavior_mismatch',
 			'ready' => (bool) $preserved,
-			'wpml_active' => true,
+			'wpml_active' => (bool) $wpml_active,
 			'route_registered' => (bool) $route_registered,
 			'query_parameters_preserved' => (bool) $preserved,
 			'response_status' => $status_code,
