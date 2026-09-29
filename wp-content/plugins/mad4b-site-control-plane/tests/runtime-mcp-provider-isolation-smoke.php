@@ -127,6 +127,11 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'hfe/v1', '/mcp-settings', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'elementskit', '/mcp', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'elementskit/v1', '/mcp-proxy', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
+	// Elementor 4.x MCP Composer surfaces. The composer namespace is versioned,
+	// so the registry contract must suppress the family without pinning 1.0.17.
+	register_rest_route( 'elementor-mcp-composer/v1.0.17', '/mcp-settings', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
+	register_rest_route( 'elementor-mcp-composer/v1.0.17', '/mcp-credentials', array( 'methods' => array( 'GET', 'POST', 'DELETE' ), 'callback' => $callback, 'permission_callback' => $permission ) );
+	register_rest_route( 'elementor/v1', '/mcp-proxy', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
 
 	// Reviewed Hostinger UI/control endpoint. It must remain registered and be
 	// classified as non-transport by peer governance, not deleted by isolation.
@@ -159,6 +164,10 @@ foreach ( array(
 	'/hfe/v1/mcp-settings',
 	'/elementskit/mcp',
 	'/elementskit/v1/mcp-proxy',
+	'/elementor-mcp-composer/v1.0.17',
+	'/elementor-mcp-composer/v1.0.17/mcp-settings',
+	'/elementor-mcp-composer/v1.0.17/mcp-credentials',
+	'/elementor/v1/mcp-proxy',
 ) as $route ) {
 	if ( isset( $routes[ $route ] ) ) mad4b_isolation_fail( 'Certified provider MCP/control route remained exposed.', $route );
 }
@@ -300,6 +309,17 @@ $hostinger_banner = '/hostinger-easy-onboarding/v1/update-mcp-connector-banner-s
 if ( ! in_array( $hostinger_banner, $reviewed_routes, true ) || in_array( $hostinger_banner, $foreign_routes, true ) ) {
 	mad4b_isolation_fail( 'Hostinger banner-control route was not classified as reviewed non-transport.', $foreign );
 }
+foreach ( array(
+	'/elementor-mcp-composer/v1.0.17',
+	'/elementor-mcp-composer/v1.0.17/mcp-settings',
+	'/elementor-mcp-composer/v1.0.17/mcp-credentials',
+	'/elementor/v1/mcp-proxy',
+) as $elementor_route ) {
+	if ( in_array( $elementor_route, $foreign_routes, true ) ) {
+		mad4b_isolation_fail( 'Elementor MCP route remained visible after cataloged isolation.', array( 'route' => $elementor_route, 'foreign' => $foreign ) );
+	}
+}
+
 if ( ! in_array( '/unknown-provider/v1/mcp-unreviewed', $foreign_routes, true ) ) {
 	mad4b_isolation_fail( 'Unknown MCP route did not remain visible to peer governance.', $peer );
 }

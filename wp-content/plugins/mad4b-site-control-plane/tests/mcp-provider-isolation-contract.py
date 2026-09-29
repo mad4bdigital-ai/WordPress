@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -114,16 +116,43 @@ require(transport_registry, "'unknown_transport_auto_allowed' => false", 'unknow
 require(transport_registry, 'public static function route_descriptors()', 'transport-route-projection')
 require(transport_registry, 'public static function server_callback_descriptors()', 'transport-server-projection')
 
-for provider in ('hostinger_ai_assistant', 'fluent_forms', 'jetengine', 'uae_hfe', 'elementskit'):
+for provider in ('hostinger_ai_assistant', 'fluent_forms', 'jetengine', 'uae_hfe', 'elementskit', 'elementor'):
     require(transport_catalog, f'"provider_id": "{provider}"', f'provider-{provider}')
 
 for exact_surface in (
     '/hostinger-ai-assistant/v1/mcp/', '/hostinger-ai-assistant/v1/jwt/',
     '/fluentform/v1/mcp/', '/fluentform/mcp/', '/jet-engine/v1/mcp/',
     '/jet-engine/v1/mcp-tools/', '/hfe/v1/mcp-', '/uae/mcp/',
-    '/elementskit/mcp/', '/elementskit/v1/mcp-proxy/'
+    '/elementskit/mcp/', '/elementskit/v1/mcp-proxy/',
+    '/elementor-mcp-composer/v[0-9]+', '/elementor/v1/mcp-proxy/'
 ):
     require(transport_catalog, exact_surface, f'route-{exact_surface}')
+
+catalog_data = json.loads(transport_catalog)
+elementor_descriptor = next((row for row in catalog_data.get('descriptors', []) if row.get('provider_id') == 'elementor'), None)
+if not elementor_descriptor:
+    raise SystemExit('FAIL elementor-transport-descriptor: missing Elementor provider descriptor')
+
+elementor_rules = [row.get('pattern', '') for row in elementor_descriptor.get('routes', [])]
+elementor_versioned_routes = (
+    '/elementor-mcp-composer/v1.0.17',
+    '/elementor-mcp-composer/v1.0.17/mcp-settings',
+    '/elementor-mcp-composer/v1.0.17/mcp-credentials',
+    '/elementor-mcp-composer/v2.4.1',
+    '/elementor-mcp-composer/v2.4.1/mcp-settings',
+    '/elementor-mcp-composer/v2.4.1/mcp-credentials',
+    '/elementor/v1/mcp-proxy',
+)
+for route in elementor_versioned_routes:
+    if not any(re.fullmatch(pattern, route) for pattern in elementor_rules):
+        raise SystemExit(f'FAIL elementor-versioned-route-coverage: no rule matched {route!r}')
+
+for route in (
+    '/elementor-mcp-composer-admin/v1.0.17/mcp-settings',
+    '/elementor/v1/mcp-unreviewed',
+):
+    if any(re.fullmatch(pattern, route) for pattern in elementor_rules):
+        raise SystemExit(f'FAIL elementor-unknown-route-fail-closed: catalog overmatched {route!r}')
 
 # Hostinger Easy Onboarding banner state is a reviewed non-transport route and
 # must remain visible; peer governance classifies it instead of isolation deleting it.
