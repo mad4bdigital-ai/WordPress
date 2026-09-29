@@ -233,9 +233,25 @@ final class MAD4B_SCP_Runtime_Convergence {
 			if ( 'ready' !== $phase['state'] ) $required_blockers[] = $phase_id . ':' . $phase['state'];
 		}
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+		$checkpoint_state = is_array( $checkpoint ) && isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
+		$checkpoint_source = is_array( $checkpoint ) && isset( $checkpoint['source'] ) ? sanitize_key( (string) $checkpoint['source'] ) : '';
+		$auto_pending = false;
+		$gated_pending = false;
+		foreach ( $phases as $phase ) {
+			if ( empty( $phase['required'] ) || 'ready' === $phase['state'] ) continue;
+			if ( ! empty( $phase['auto_safe'] ) ) $auto_pending = true;
+			else $gated_pending = true;
+		}
+		if ( empty( $required_blockers ) ) $autopilot_state = 'ready';
+		elseif ( ! $graph_valid || 'blocked' === $checkpoint_state ) $autopilot_state = 'blocked';
+		elseif ( $auto_pending && 'plugin_activation' === $checkpoint_source ) $autopilot_state = 'bootstrapping';
+		elseif ( $auto_pending || in_array( $checkpoint_state, array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true ) ) $autopilot_state = 'converging';
+		elseif ( $gated_pending ) $autopilot_state = 'gated';
+		else $autopilot_state = 'blocked';
 		return array(
 			'contract' => self::CONTRACT,
 			'state' => empty( $required_blockers ) ? 'ready' : 'convergence_required',
+			'autopilot_state' => $autopilot_state,
 			'ready' => empty( $required_blockers ),
 			'environment' => $environment,
 			'production_mutation_allowed' => false,
