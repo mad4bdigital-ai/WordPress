@@ -117,6 +117,61 @@ $check( false === $partial_error['complete'], 'item-level read failure was hidde
 $check( in_array( 'inventory_items_partially_unreadable', $partial_error['blocking_reasons'], true ), 'item-level read failure omitted bounded blocker' );
 $check( 1 === $partial_error['item_error_count'], 'item error count drifted' );
 
+# Remote ChatGPT transport must never receive an unbounded bootstrap payload.
+$transport_base = $base;
+$transport_base['pagination'] = array(
+	'after_id' => 0,
+	'requested_max_items' => 1000,
+	'effective_page_items' => 5,
+	'last_scanned_id' => 5,
+	'query_has_more' => true,
+);
+$transport_base['transport'] = array(
+	'contract' => 'mad4b.site-bootstrap-transport.v1',
+	'response_byte_budget' => MAD4B_SCP_Site_Bootstrap::MAX_TRANSPORT_RESPONSE_BYTES,
+	'page_item_cap' => MAD4B_SCP_Site_Bootstrap::MAX_TRANSPORT_PAGE_ITEMS,
+	'compact_projection' => true,
+);
+$transport_base['snapshot_errors'] = array();
+$transport_base['snapshot_error_count'] = 0;
+
+$huge = $items[0];
+$huge['title'] = str_repeat( 'Long title ', 100 );
+$huge['internal_links'] = array();
+$huge['outbound_links'] = array();
+for ( $i = 0; $i < 80; $i++ ) {
+	$huge['internal_links'][] = 'https://example.test/internal/' . $i . '?' . str_repeat( 'x', 300 );
+	$huge['outbound_links'][] = 'https://external.example/path/' . $i . '?' . str_repeat( 'y', 300 );
+}
+$huge['internal_link_count'] = count( $huge['internal_links'] );
+$huge['outbound_link_count'] = count( $huge['outbound_links'] );
+$huge['taxonomy_assignments'] = array();
+for ( $i = 0; $i < 80; $i++ ) {
+	$huge['taxonomy_assignments'][] = array(
+		'taxonomy' => 'category',
+		'term_id' => $i + 1,
+		'slug' => 'term-' . $i,
+		'name' => str_repeat( 'Term ', 30 ) . $i,
+	);
+}
+$huge['provider_observations'] = array( 'payload' => str_repeat( 'provider-data-', 1000 ) );
+$huge['structured_data'] = array( 'payload' => str_repeat( 'structured-data-', 1000 ) );
+$huge['seo'] = array(
+	'source' => 'synthetic',
+	'indexability' => 'unknown',
+	'provider_observations' => array( 'payload' => str_repeat( 'seo-data-', 1000 ) ),
+);
+
+$transport = MAD4B_SCP_Site_Bootstrap::finalize_snapshot( $transport_base, array( $huge, $items[1], $items[2], $items[3] ), 20, 1000 );
+$encoded_transport = wp_json_encode( $transport, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+$check( is_string( $encoded_transport ) && strlen( $encoded_transport ) <= MAD4B_SCP_Site_Bootstrap::MAX_TRANSPORT_RESPONSE_BYTES, 'transport-safe snapshot exceeded byte budget' );
+$check( false === $transport['complete'], 'paged transport projection became complete inventory' );
+$check( 'returned_page_only' === $transport['collision_analysis']['scope'], 'partial transport collision scope became global' );
+$check( ! empty( $transport['pagination']['next_after_id'] ), 'paged transport projection omitted continuation cursor' );
+$check( in_array( 'inventory_pagination_required_or_active', $transport['blocking_reasons'], true ), 'paged transport projection omitted pagination blocker' );
+$check( true === $transport['transport']['compact_projection'], 'transport projection lost compact marker' );
+$check( $transport['transport']['response_bytes'] <= MAD4B_SCP_Site_Bootstrap::MAX_TRANSPORT_RESPONSE_BYTES, 'reported response bytes exceeded transport budget' );
+
 $check( '' === MAD4B_SCP_Site_Bootstrap::normalize_url( 'javascript:alert(1)' ), 'unsafe non-http URL was retained' );
 $check( 'https://example.test/path' === MAD4B_SCP_Site_Bootstrap::normalize_url( 'HTTPS://Example.Test/path' ), 'URL normalization drifted' );
 
@@ -136,6 +191,16 @@ foreach ( array(
 	"'mad4b_bootstrap_item_exception'",
 	"'site_identity_source'",
 	"'portable_readonly_connection'",
+	"'after_id'",
+	"'mad4b.site-bootstrap-transport.v1'",
+	"'transport_response_budget_applied'",
+	"'inventory_pagination_required_or_active'",
+	"'inventory_observations_partially_unreadable'",
+	"MAX_TRANSPORT_RESPONSE_BYTES",
+	"MAX_TRANSPORT_PAGE_ITEMS",
+	"reset_db_error",
+	"safe_snapshot_call",
+	"compact_item_for_transport",
 	"MAD4B_SCP_Portable_Readonly_Connection::bootstrap()",
 	"MAD4B_SCP_Portable_Readonly_Connection::connection_uuid()",
 ) as $marker ) {
