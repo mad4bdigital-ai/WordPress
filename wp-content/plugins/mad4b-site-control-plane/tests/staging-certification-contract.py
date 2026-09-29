@@ -88,6 +88,17 @@ require(authority, "'annotations' => array( 'readonly' => true", "read-only abil
 # Unified staging status is observation-only and may never execute remediation.
 for marker in [
     "mad4b.staging-certification-status.v1",
+    "mad4b.staging-convergence-plan.v1",
+    "'mad4b/staging-convergence-plan'",
+    "public static function convergence_plan( $input = array() )",
+    "'external_mcp_handshake_refresh'",
+    "'brand_core_convergence'",
+    "'write_authority_reconcile'",
+    "'browser_acceptance'",
+    "'frontend_performance_sampling'",
+    "'provider_closure_review'",
+    "'automate_evidence_and_planning_never_self_certify_or_auto_approve_authority'",
+
     "'read_only' => true",
     "'mutation_performed' => false",
     "'production_mutation_performed' => false",
