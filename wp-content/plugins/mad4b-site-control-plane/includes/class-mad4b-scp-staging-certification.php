@@ -264,14 +264,34 @@ final class MAD4B_SCP_Staging_Certification {
 			) );
 		}
 		if ( in_array( 'brand_core_context_coverage', $blocking, true ) ) {
+			$google_connection = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && method_exists( 'MAD4B_SCP_Google_Drive_Context', 'public_connection_status' )
+				? MAD4B_SCP_Google_Drive_Context::public_connection_status()
+				: array();
+			if ( ! empty( $google_connection['refresh_failed'] ) || ! empty( $google_connection['reconnect_required'] ) ) {
+				$append( $actions, $seen, 'google_drive_reconnect', array(
+					'kind' => 'external_oauth_reauthorization',
+					'executor' => 'site_owner',
+					'human_decision_required' => true,
+					'automatic_execution_allowed' => false,
+					'instruction' => 'Reconnect the governed Google Drive source with the already-selected access mode, then require a fresh provider readback before Brand generation continues.',
+					'health_state' => isset( $google_connection['health_state'] ) ? (string) $google_connection['health_state'] : '',
+					'refresh_failure_code' => isset( $google_connection['refresh_failure_code'] ) ? (string) $google_connection['refresh_failure_code'] : '',
+					'refresh_failure_provider_code' => isset( $google_connection['refresh_failure_provider_code'] ) ? (string) $google_connection['refresh_failure_provider_code'] : '',
+					'readback_ability' => 'context/google-drive-status',
+					'production_policy' => 'same_site_profile_only',
+				) );
+			}
 			$brand_plan = class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) && method_exists( 'MAD4B_SCP_Brand_Context_Builder', 'convergence_plan' )
 				? MAD4B_SCP_Brand_Context_Builder::convergence_plan( $input )
 				: new WP_Error( 'mad4b_brand_convergence_plan_unavailable', 'Brand Core convergence planner is unavailable.' );
+			$depends_on = array();
+			if ( ! empty( $google_connection['refresh_failed'] ) || ! empty( $google_connection['reconnect_required'] ) ) $depends_on[] = 'google_drive_reconnect';
 			$append( $actions, $seen, 'brand_core_convergence', array(
 				'kind' => 'hybrid_creation',
 				'executor' => 'managed_skill_or_agent_plus_wordpress',
 				'human_decision_required' => true,
 				'automatic_execution_allowed' => false,
+				'depends_on' => $depends_on,
 				'plan_ability' => 'context/brand-core-convergence-plan',
 				'plan' => is_wp_error( $brand_plan ) ? array( 'error_code' => $brand_plan->get_error_code() ) : $brand_plan,
 				'readback_ability' => 'context/brand-core-coverage',
