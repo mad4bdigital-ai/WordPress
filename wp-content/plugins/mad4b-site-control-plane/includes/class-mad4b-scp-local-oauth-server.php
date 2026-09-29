@@ -68,6 +68,13 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			return;
 		}
 		if ( ! MAD4B_SCP_Local_OAuth_Store::is_ready() || (int) get_option( MAD4B_SCP_Local_OAuth_Store::OPTION, 0 ) < MAD4B_SCP_Local_OAuth_Store::VERSION ) {
+			// dbDelta is a migration transaction, not request-serving work. Never
+			// execute it on MCP/OAuth protocol or WordPress plugin lifecycle hot
+			// paths (notably the first plugins.php request after self-update).
+			if ( self::request_is_schema_migration_hotpath() ) {
+				self::$runtime_error = new WP_Error( 'mad4b_local_oauth_store_upgrade_deferred', 'Local OAuth store upgrade is deferred outside the current latency-sensitive request.' );
+				return;
+			}
 			$schema = MAD4B_SCP_Local_OAuth_Store::install_or_upgrade();
 			if ( is_wp_error( $schema ) ) {
 				self::$runtime_error = $schema;
@@ -1072,6 +1079,16 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	private static function effective_for_protocol() {
 		$status = self::status();
 		return ! empty( $status['effective'] );
+	}
+
+	private static function request_is_schema_migration_hotpath() {
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return true;
+		if ( ! is_admin() ) return false;
+		$pagenow = isset( $GLOBALS['pagenow'] ) ? sanitize_key( (string) $GLOBALS['pagenow'] ) : '';
+		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
+		if ( in_array( $pagenow, array( 'plugins.php', 'update.php', 'update-core.php', 'plugin-install.php' ), true ) ) return true;
+		return in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
 	}
 
 	private static function ensure_signing_key() {
