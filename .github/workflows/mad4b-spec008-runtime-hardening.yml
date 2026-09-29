@@ -32,8 +32,11 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/runtime-convergence-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/rest-compatibility-external-receipt-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-diagnostic-zero-touch-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/request-serving-zero-touch-contract.py
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-diagnostic-zero-touch-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-diagnostic-zero-touch-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/request-serving-zero-touch-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/request-serving-zero-touch-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-hotpath-isolation-contract.py
           php -l wp-content/plugins/mad4b-site-control-plane/tests/third-party-admin-hotpath-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/third-party-admin-hotpath-runtime.php
