@@ -98,4 +98,16 @@ assert "restart_identity_now_matches" in runtime
 
 assert "self::identity_matches( $target, $current )" in runtime
 
+assert "convergence_trigger_allowed" in runtime
+
+assert "if ( 'blocked' === $state ) return;" in runtime
+
+assert "'retry_policy' => 'explicit_resume_required'" in runtime
+
+assert "'automatic_retry_allowed' => false" in runtime
+
+assert "'mad4b-approval-decisions' === $page" in runtime
+
+assert "'plugins.php'" in runtime
+
 print("runtime convergence contract: PASS")
