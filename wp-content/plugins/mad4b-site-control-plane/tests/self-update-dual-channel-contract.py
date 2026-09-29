@@ -322,3 +322,12 @@ assert "self::redirect_native_result( 'manifest_error'" in refresh_body
 
 managed_apply = self_update.split("private static function apply_verified_archive(", 1)[1].split("private static function download_governed_release_to_protected_storage", 1)[0]
 assert "delete_transient( self::MANIFEST_TRANSIENT )" not in managed_apply
+
+# Session-safe/runtime projections must have a public cache-only status path that
+# can never initiate outbound release-channel I/O.
+assert "public static function cached_status( $input = array() )" in self_update
+cached_status = self_update.split("public static function cached_status( $input = array() )", 1)[1].split("public static function upload_plan", 1)[0]
+assert "self::cached_manifest()" in cached_status
+assert "'outbound_network_performed' => false" in cached_status
+assert "self::fetch_manifest(" not in cached_status
+assert "wp_safe_remote_get(" not in cached_status
