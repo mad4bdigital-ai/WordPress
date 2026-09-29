@@ -1,6 +1,9 @@
 <?php
 
 define( 'ABSPATH', __DIR__ );
+if ( ! function_exists( 'wp_get_environment_type' ) ) {
+	function wp_get_environment_type() { return 'staging'; }
+}
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-local-oauth-consent-ui.php';
 
 $fail = static function ( $message ) {
