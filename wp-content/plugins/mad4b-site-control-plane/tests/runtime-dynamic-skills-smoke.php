@@ -107,6 +107,9 @@ foreach ( array( 'mad4b/skill-create', 'mad4b/skill-update', 'mad4b/skill-delete
 // Register a disposable WPML-compatible route directly on the REST server. The
 // low-level register_route() API expects the full route path; WordPress' public
 // register_rest_route() wrapper performs this namespace prefixing itself.
+// The deep diagnostic intentionally short-circuits when WPML is not active, so
+// this synthetic provider fixture must explicitly model an active WPML runtime.
+if ( ! defined( 'ICL_SITEPRESS_VERSION' ) ) define( 'ICL_SITEPRESS_VERSION', 'ci-fixture' );
 $rest_server = rest_get_server();
 $rest_server->register_route( 'wpml/v1', '/wpml/v1/rest/status', array(
 	array(
