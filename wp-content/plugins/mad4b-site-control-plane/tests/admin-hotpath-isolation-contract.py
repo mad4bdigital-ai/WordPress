@@ -165,5 +165,9 @@ assert "mad4b-control-plane" in convergence_gate
 assert "'plugins.php'" in convergence_gate
 assert "'update.php'" in convergence_gate
 assert "return true;" in convergence_gate
+assert "REST_REQUEST" in convergence_gate
+assert "$_GET['rest_route']" in convergence_gate
+assert "$_SERVER['REQUEST_URI']" in convergence_gate
+assert "return false;" in convergence_gate
 
 print("admin hotpath isolation contract: PASS")
