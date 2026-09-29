@@ -232,6 +232,12 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		self::$captured = true;
 		$class = self::request_class();
 
+		// Site Health probes, unrelated provider REST endpoints and generic WP-Cron
+		// are request-serving infrastructure. They must never pay MAD4B Query
+		// Monitor collection, provenance reads or telemetry persistence.
+		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return;
+
 		// Third-party wp-admin pages are never acceptance profiling jobs. Exit
 		// before Site Profile reads, build provenance, telemetry options, Query
 		// Monitor collectors or any persistence. This protects WPML and every
