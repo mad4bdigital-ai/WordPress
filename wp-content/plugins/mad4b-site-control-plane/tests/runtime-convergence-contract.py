@@ -75,4 +75,17 @@ assert "checkpoint_persist_failed" in runtime
 
 assert "wp_schedule_single_event" in runtime
 
+assert "lightweight_runtime_drift_detector" in runtime
+assert "detect_lightweight_runtime_drift" in runtime
+assert "'option_reads_only' => true" in runtime
+assert "'filesystem_scan_performed' => false" in runtime
+assert "'database_schema_probe_performed' => false" in runtime
+
+detector = runtime.split("private static function detect_lightweight_runtime_drift()", 1)[1].split("private static function schedule_resume()", 1)[0]
+assert "get_option(" in detector
+assert "MAD4B_SCP_Schema::status" not in detector
+assert "MAD4B_SCP_Schema::install_or_upgrade" not in detector
+assert "hash_file(" not in detector
+assert "rest_get_server(" not in detector
+
 print("runtime convergence contract: PASS")
