@@ -17,6 +17,7 @@ write_authority = (root / "includes/class-mad4b-scp-staging-write-authority.php"
 provider_contracts = (root / "includes/class-mad4b-scp-provider-contracts.php").read_text(encoding="utf-8")
 oauth_autoconfig = (root / "includes/class-mad4b-scp-staging-oauth-autoconfig.php").read_text(encoding="utf-8")
 audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
+authorization = (root / "includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 request_scope = (root / "includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
 read_consistency = (root / "includes/class-mad4b-scp-read-consistency.php").read_text(encoding="utf-8")
 query_monitor = (root / "includes/class-mad4b-scp-query-monitor-evidence-bridge.php").read_text(encoding="utf-8")
