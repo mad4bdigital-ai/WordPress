@@ -270,9 +270,11 @@ MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();
 remove_action( 'plugins_loaded', array( 'MAD4B_SCP_Skill_Provider_Discovery', 'bootstrap' ), 30 );
 MAD4B_SCP_Skill_Autoconfig::bootstrap();
 MAD4B_SCP_Staging_Write_Authority::bootstrap();
+// Request classification must exist before any post-update filesystem
+// reconciliation so MCP/OAuth hot paths can remain mutation-free and bounded.
+MAD4B_SCP_MCP_Request_Scope::bootstrap();
 MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();
 MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();
-MAD4B_SCP_MCP_Request_Scope::bootstrap();
 MAD4B_SCP_MCP_Registration_Bridge::boot_early();
 MAD4B_SCP_MCP_Registration_Rescue::boot();
 MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();
