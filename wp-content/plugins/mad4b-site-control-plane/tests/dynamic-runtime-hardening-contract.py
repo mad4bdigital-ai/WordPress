@@ -47,3 +47,6 @@ if len(adapter.encode("utf-8")) > 200000 or len(adapter.splitlines()) > 3000:
 
 for marker in ["mutation_ttl_policy","acceptance_ttl_policy","dynamic.apply.attempt","dynamic.apply.success","dynamic.apply.failure","dynamic.apply.elapsed_ms","ttl_seconds"]:
     req(adapter, marker)
+
+for marker in ["owned_state_sha256","post_write_verified","desired_state_write_verified","repair_write_verified","journal_heartbeat"]:
+    req(adapter, marker)

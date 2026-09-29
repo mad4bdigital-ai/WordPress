@@ -1006,6 +1006,24 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		return $error;
 	}
 
+	private function journal_owned_checkpoint(array $operation,$event_type,$checkpoint,array $owned_state,array $metadata=array()){
+		if(empty($operation)||!class_exists('MAD4B_SCP_Operation_Journal')) return true;
+		$metadata=is_array($metadata)?$metadata:array();
+		$metadata['owned_state_sha256']=$this->state_sha256($owned_state);
+		$r=MAD4B_SCP_Operation_Journal::append($operation,$event_type,array(
+			'checkpoint'=>$checkpoint,
+			'lifecycle_state'=>'running',
+			'metadata'=>$metadata,
+		));
+		return is_wp_error($r)?$r:true;
+	}
+
+	private function journal_heartbeat(array $operation,array $lock){
+		if(empty($operation)||!class_exists('MAD4B_SCP_Operation_Journal')) return true;
+		$ttl=isset($lock['ttl_seconds'])?max(60,(int)$lock['ttl_seconds']):self::MUTATION_LOCK_TTL;
+		return MAD4B_SCP_Operation_Journal::heartbeat($operation,gmdate('c',time()+$ttl));
+	}
+
 	public function apply_bundle($input=array()){
 		$input=is_array($input)?$input:array();
 		$pre=$this->validate_bundle($input,false);
@@ -1053,7 +1071,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		MAD4B_SCP_Operation_Journal::heartbeat($operation,gmdate('c',time()+$lock_ttl));
 		MAD4B_SCP_Operation_Journal::append($operation,'mutation_lock_acquired',array('checkpoint'=>'lock_acquired','lifecycle_state'=>'running'));
 		try{
-			$result=$this->apply_bundle_locked($input,$lock);
+			$result=$this->apply_bundle_locked($input,$lock,$operation);
 			if(is_wp_error($result)){
 				$data=$result->get_error_data($result->get_error_code());
 				$recovery=is_array($data)&&!empty($data['recovery_required']);
@@ -1081,11 +1099,13 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		}
 	}
 
-	private function apply_bundle_locked(array $input,array $lock){
+	private function apply_bundle_locked(array $input,array $lock,array $operation=array()){
 		$v=$this->validate_bundle($input,true);
 		if(is_wp_error($v)) return $this->not_started_error($v);
 		$lock_ok=$this->refresh_mutation_lock($lock);
 		if(is_wp_error($lock_ok)) return $this->not_started_error($lock_ok);
+		$heartbeat=$this->journal_heartbeat($operation,$lock);
+		if(is_wp_error($heartbeat)) return $this->not_started_error($heartbeat);
 
 		$binding=$this->binding($v['post_type'],$v['operation_key']);
 		$id=$v['post_id'];
@@ -1109,6 +1129,8 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 					'create',$id,null,$created_owned
 				);
 			}
+			$checkpoint=$this->journal_owned_checkpoint($operation,'post_write_verified','post_written',$created_owned,array('post_id'=>(int)$id,'mode'=>'create'));
+			if(is_wp_error($checkpoint)) return $this->failure_with_compensation($checkpoint,'create',$id,null,$created_owned);
 		}else{
 			$arr=array_merge(array('ID'=>$id,'post_type'=>$v['post_type']),$this->post_fields($input['post']));
 			$expected_after_post=$before;
@@ -1127,11 +1149,15 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			}
 			$expected_after_post['dynamic_managed']=true;
 			$owned_after=$expected_after_post;
+			$checkpoint=$this->journal_owned_checkpoint($operation,'post_write_verified','post_written',$owned_after,array('post_id'=>(int)$id,'mode'=>'update'));
+			if(is_wp_error($checkpoint)) return $this->failure_with_compensation($checkpoint,$v['mode'],$id,$before,$owned_after);
 		}
 
 		if($v['mode']==='create') $owned_after=$created_owned;
 		$a=$this->apply_desired($id,$input,$owned_after);
 		if(is_wp_error($a)) return $this->failure_with_compensation($a,$v['mode'],$id,$before,$owned_after);
+		$checkpoint=$this->journal_owned_checkpoint($operation,'desired_state_write_verified','desired_state_written',$owned_after,array('post_id'=>(int)$id));
+		if(is_wp_error($checkpoint)) return $this->failure_with_compensation($checkpoint,$v['mode'],$id,$before,$owned_after);
 
 		$pipeline=isset($v['pipeline_config'])&&is_array($v['pipeline_config'])
 			? $v['pipeline_config']
@@ -1156,6 +1182,28 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		for($i=1;$i<=$max;$i++){
 			$lock_ok=$this->refresh_mutation_lock($lock);
 			if(is_wp_error($lock_ok)) return $this->failure_with_compensation($lock_ok,$v['mode'],$id,$before,$owned_after);
+			$heartbeat=$this->journal_heartbeat($operation,$lock);
+			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
+			$heartbeat=$this->journal_heartbeat($operation,$lock);
+			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
+			$heartbeat=$this->journal_heartbeat($operation,$lock);
+			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
+			$heartbeat=$this->journal_heartbeat($operation,$lock);
+			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
+			$heartbeat=$this->journal_heartbeat($operation,$lock);
+			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
+			$heartbeat=$this->journal_heartbeat($operation,$lock);
+			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
+			$heartbeat=$this->journal_heartbeat($operation,$lock);
+			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
+			$heartbeat=$this->journal_heartbeat($operation,$lock);
+			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
+			$heartbeat=$this->journal_heartbeat($operation,$lock);
+			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
+			$heartbeat=$this->journal_heartbeat($operation,$lock);
+			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
+			$heartbeat=$this->journal_heartbeat($operation,$lock);
+			if(is_wp_error($heartbeat)) return $this->failure_with_compensation($heartbeat,$v['mode'],$id,$before,$owned_after);
 			$final=$this->snapshot($id,$input);
 			$context=array(
 				'adapter'=>$this,
@@ -1172,7 +1220,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				'findings'=>array(),
 				'repair_allowed'=>'safe_only'===$repair,
 				'pipeline_config'=>$pipeline,
-				'heartbeat'=>function() use ($lock){ return $this->refresh_mutation_lock($lock); },
+				'heartbeat'=>function() use ($lock,$operation){ $r=$this->refresh_mutation_lock($lock); if(!is_wp_error($r)){ $h=$this->journal_heartbeat($operation,$lock); if(is_wp_error($h)) return $h; } return $r; },
 			);
 
 			if(class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')){
@@ -1201,6 +1249,8 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				if(is_wp_error($repaired)) return $this->failure_with_compensation($repaired,$v['mode'],$id,$before,$owned_after);
 				$context=$repaired;
 				$owned_after=$this->snapshot($id,$input);
+				$checkpoint=$this->journal_owned_checkpoint($operation,'repair_write_verified','repair_iteration_written',$owned_after,array('post_id'=>(int)$id,'iteration'=>$i));
+				if(is_wp_error($checkpoint)) return $this->failure_with_compensation($checkpoint,$v['mode'],$id,$before,$owned_after);
 				$last=count($history)-1;
 				if($last>=0){
 					$history[$last]['stage_results']=isset($context['stage_results'])?(array)$context['stage_results']:array();
@@ -1236,7 +1286,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'findings'=>array(),
 			'repair_allowed'=>false,
 			'pipeline_config'=>$pipeline,
-				'heartbeat'=>function() use ($lock){ return $this->refresh_mutation_lock($lock); },
+				'heartbeat'=>function() use ($lock,$operation){ $r=$this->refresh_mutation_lock($lock); if(!is_wp_error($r)){ $h=$this->journal_heartbeat($operation,$lock); if(is_wp_error($h)) return $h; } return $r; },
 		);
 
 		if(class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')){
