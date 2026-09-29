@@ -252,6 +252,22 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			return;
 		}
 
+		// Ordinary wp-admin pages are operational surfaces, not profiling jobs.
+		// Capture one coverage marker per build and reserve full Query Monitor
+		// analysis for explicit MAD4B diagnostic/admin surfaces.
+		if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() ) {
+			if ( isset( $telemetry['request_coverage']['wp_admin'] ) && (int) $telemetry['request_coverage']['wp_admin'] > 0 ) return;
+			$telemetry['observed_request_count'] = isset( $telemetry['observed_request_count'] ) ? (int) $telemetry['observed_request_count'] + 1 : 1;
+			if ( ! isset( $telemetry['request_coverage']['wp_admin'] ) ) $telemetry['request_coverage']['wp_admin'] = 0;
+			$telemetry['request_coverage']['wp_admin']++;
+			$telemetry['last_observed_at'] = gmdate( 'Y-m-d H:i:s' );
+			update_option( MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION, $telemetry, false );
+			self::$last_capture_telemetry = $telemetry;
+			self::$last_capture_build = $build;
+			self::$last_capture_class = 'wp_admin';
+			return;
+		}
+
 		$telemetry['observed_request_count'] = isset( $telemetry['observed_request_count'] ) ? (int) $telemetry['observed_request_count'] + 1 : 1;
 		if ( ! isset( $telemetry['request_coverage'][ $class ] ) ) $telemetry['request_coverage'][ $class ] = 0;
 		$telemetry['request_coverage'][ $class ]++;
@@ -897,6 +913,13 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		if ( function_exists( 'is_admin' ) && is_admin() ) return 'wp_admin';
 		return 'frontend';
 	}
+
+	private static function current_request_is_mad4b_admin_surface() {
+		if ( ! is_admin() ) return false;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : '';
+		return 0 === strpos( $page, 'mad4b-control-plane' );
+	}
+
 
 	private static function strip_call_syntax( $value ) {
 		return preg_replace( '/\\(.*$/', '', trim( (string) $value ) );
