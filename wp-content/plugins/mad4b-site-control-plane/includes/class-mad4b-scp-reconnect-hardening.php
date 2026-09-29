@@ -10,8 +10,17 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * converts an otherwise ambiguous REST 404 into bounded 503 diagnostics.
  */
 final class MAD4B_SCP_Reconnect_Hardening {
-	const CONTRACT = 'mad4b.reconnect-hardening.v1';
+	const CONTRACT = 'mad4b.reconnect-hardening.v4';
+	const CHATGPT_SESSION_MAX_PER_USER = 64;
+	const CHATGPT_SESSION_INACTIVITY_TIMEOUT = 604800; // 7 days.
+	const SESSION_SHADOW_TTL = 300;
+	const SESSION_SHADOW_MAX_PER_USER = 16;
+	const SESSION_META_KEY = 'mcp_adapter_sessions';
+	const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
+	const CERTIFIED_STATEFUL_ADAPTER_VERSION = '0.6.1';
 	private static $booted = false;
+	private static $session_repair_state = 'not_attempted';
+	private static $chatgpt_request_active = false;
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -24,7 +33,478 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_category' ), 34 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 34 );
 		add_action( 'admin_notices', array( __CLASS__, 'connection_admin_notice' ), 1 );
+		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'reset_session_policy_scope' ), -200, 3 );
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_rest_dispatch' ), -100, 3 );
+
+		// MCP Adapter 0.6.x uses user-meta backed HTTP sessions. Repeated ChatGPT
+		// reconnects can otherwise evict a still-referenced session at the default
+		// per-user cap, while long-lived connections can expire after one day.
+		// Keep this bounded and non-Production; this changes transport continuity
+		// only and creates no authority or automatic mutation retry.
+		add_filter( 'mcp_adapter_session_max_per_user', array( __CLASS__, 'session_max_per_user' ), 100 );
+		add_filter( 'mcp_adapter_session_inactivity_timeout', array( __CLASS__, 'session_inactivity_timeout' ), 100 );
+		// Run after OAuth subject mapping (priority 2), before the MCP Adapter
+		// callback validates the session. Only verified read requests may use the
+		// bounded shadow to repair a just-lost transport session.
+		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'repair_or_forget_session' ), 3, 3 );
+		add_filter( 'rest_post_dispatch', array( __CLASS__, 'capture_initialized_session' ), 900, 3 );
+		add_filter( 'rest_post_dispatch', array( __CLASS__, 'clear_session_policy_scope' ), PHP_INT_MAX, 3 );
+	}
+
+
+	private static function governed_nonproduction_transport() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return false;
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) return false;
+		$environment = MAD4B_SCP_Site_Profile::current_environment();
+		return in_array( $environment, array( 'local', 'development', 'staging' ), true );
+	}
+
+
+	public static function reset_session_policy_scope( $result, $server, $request ) {
+		self::$chatgpt_request_active = false;
+		return $result;
+	}
+
+	public static function clear_session_policy_scope( $response, $server, $request ) {
+		self::$chatgpt_request_active = false;
+		return $response;
+	}
+
+	private static function exact_chatgpt_transport_context() {
+		return self::$chatgpt_request_active
+			&& self::governed_nonproduction_transport()
+			&& self::session_repair_supported_runtime();
+	}
+
+	public static function session_max_per_user( $current ) {
+		$current = max( 1, absint( $current ) );
+		if ( ! self::exact_chatgpt_transport_context() ) return $current;
+		return max( $current, self::CHATGPT_SESSION_MAX_PER_USER );
+	}
+
+	public static function session_inactivity_timeout( $current ) {
+		$current = max( 60, absint( $current ) );
+		if ( ! self::exact_chatgpt_transport_context() ) return $current;
+		return max( $current, self::CHATGPT_SESSION_INACTIVITY_TIMEOUT );
+	}
+
+
+	public static function session_continuity_policy() {
+		return array(
+			'contract' => self::CONTRACT,
+			'governed_nonproduction' => self::governed_nonproduction_transport(),
+			'exact_chatgpt_transport_context' => self::exact_chatgpt_transport_context(),
+			'request_scope_reset_before_reconnect_guard' => true,
+			'request_scope_reset_before_oauth_dispatch' => true,
+			'request_scope_cleared_after_dispatch' => true,
+			'certified_stateful_runtime' => self::session_repair_supported_runtime(),
+			'max_per_user_floor' => self::CHATGPT_SESSION_MAX_PER_USER,
+			'inactivity_timeout_floor_seconds' => self::CHATGPT_SESSION_INACTIVITY_TIMEOUT,
+			'activity_update_interval_modified' => false,
+			'stateful_http_session_compatibility' => true,
+			'session_policy_applies_to_sibling_mcp_servers' => false,
+			'preauth_guard_delegates_oauth_effectiveness_to_resource_bridge' => true,
+			'preauth_guard_calls_full_reconnect_status' => false,
+			'reinitialize_required_without_valid_repair_shadow' => true,
+			'blind_read_replay_after_transport_reinitialize' => false,
+			'original_read_request_continues_after_verified_repair' => true,
+			'blind_mutation_replay_after_transport_reinitialize' => false,
+			'authority_created' => false,
+			'production_widened' => false,
+		);
+	}
+
+
+	private static function session_repair_supported_runtime() {
+		if ( ! class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) || ! class_exists( '\\WP\\MCP\\Transport\\Infrastructure\\SessionManager' ) ) return false;
+		if ( ! defined( 'WP\\MCP\\Core\\McpAdapter::VERSION' ) ) return false;
+		return hash_equals( self::CERTIFIED_STATEFUL_ADAPTER_VERSION, (string) \WP\MCP\Core\McpAdapter::VERSION );
+	}
+
+	private static function session_meta_key() {
+		if ( ! is_multisite() ) return self::SESSION_META_KEY;
+		$blog_id = (int) get_current_blog_id();
+		return $blog_id > 0 ? self::SESSION_META_KEY . '_' . $blog_id : self::SESSION_META_KEY;
+	}
+
+	private static function shadow_fingerprint( $session_id ) {
+		return hash( 'sha256', (string) $session_id );
+	}
+
+	private static function shadow_store_key( $user_id ) {
+		$blog_id = is_multisite() ? max( 0, (int) get_current_blog_id() ) : 0;
+		return 'mad4b_mcp_session_shadows_' . $blog_id . '_' . absint( $user_id );
+	}
+
+	private static function shadow_tombstone_key( $user_id, $session_id ) {
+		$blog_id = is_multisite() ? max( 0, (int) get_current_blog_id() ) : 0;
+		return 'mad4b_mcp_session_deleted_' . $blog_id . '_' . absint( $user_id ) . '_' . self::shadow_fingerprint( $session_id );
+	}
+
+	private static function store_session_shadow( $user_id, $session_id, array $shadow ) {
+		$user_id = absint( $user_id );
+		$fingerprint = self::shadow_fingerprint( $session_id );
+		if ( $user_id < 1 || 1 !== preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return false;
+		$now = time();
+		$key = self::shadow_store_key( $user_id );
+		$map = get_transient( $key );
+		$map = is_array( $map ) ? $map : array();
+		foreach ( $map as $stored_fingerprint => $entry ) {
+			$captured_at = is_array( $entry ) && isset( $entry['captured_at'] ) ? (int) $entry['captured_at'] : 0;
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $stored_fingerprint ) || $captured_at < $now - self::SESSION_SHADOW_TTL ) unset( $map[ $stored_fingerprint ] );
+		}
+		$map[ $fingerprint ] = $shadow;
+		uasort( $map, static function ( $a, $b ) {
+			return (int) ( $a['captured_at'] ?? 0 ) <=> (int) ( $b['captured_at'] ?? 0 );
+		} );
+		while ( count( $map ) > self::SESSION_SHADOW_MAX_PER_USER ) array_shift( $map );
+		return (bool) set_transient( $key, $map, self::SESSION_SHADOW_TTL );
+	}
+
+	private static function get_session_shadow( $user_id, $session_id ) {
+		$user_id = absint( $user_id );
+		if ( $user_id < 1 || get_transient( self::shadow_tombstone_key( $user_id, $session_id ) ) ) return array();
+		$map = get_transient( self::shadow_store_key( $user_id ) );
+		$fingerprint = self::shadow_fingerprint( $session_id );
+		return is_array( $map ) && isset( $map[ $fingerprint ] ) && is_array( $map[ $fingerprint ] ) ? $map[ $fingerprint ] : array();
+	}
+
+	private static function forget_session_shadow( $user_id, $session_id ) {
+		$user_id = absint( $user_id );
+		if ( $user_id < 1 ) return;
+		set_transient( self::shadow_tombstone_key( $user_id, $session_id ), 1, self::SESSION_SHADOW_TTL );
+		$key = self::shadow_store_key( $user_id );
+		$map = get_transient( $key );
+		if ( ! is_array( $map ) ) return;
+		$fingerprint = self::shadow_fingerprint( $session_id );
+		if ( ! array_key_exists( $fingerprint, $map ) ) return;
+		unset( $map[ $fingerprint ] );
+		if ( empty( $map ) ) delete_transient( $key );
+		else set_transient( $key, $map, self::SESSION_SHADOW_TTL );
+	}
+
+	private static function request_route( $request ) {
+		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return '';
+		return '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
+	}
+
+	private static function request_json( $request ) {
+		if ( ! is_object( $request ) ) return array();
+		if ( method_exists( $request, 'get_json_params' ) ) {
+			$body = $request->get_json_params();
+			if ( is_array( $body ) ) return $body;
+		}
+		if ( ! method_exists( $request, 'get_body' ) ) return array();
+		$decoded = json_decode( (string) $request->get_body(), true );
+		return is_array( $decoded ) ? $decoded : array();
+	}
+
+	private static function response_session_id( $response ) {
+		$response = rest_ensure_response( $response );
+		if ( ! ( $response instanceof WP_REST_Response ) || ! method_exists( $response, 'get_headers' ) ) return '';
+		foreach ( (array) $response->get_headers() as $name => $value ) {
+			if ( 'mcp-session-id' !== strtolower( (string) $name ) ) continue;
+			$value = trim( is_array( $value ) ? (string) reset( $value ) : (string) $value );
+			return strlen( $value ) <= 128 ? $value : '';
+		}
+		return '';
+	}
+
+	private static function minimal_initialize_params( $params ) {
+		if ( ! is_array( $params ) ) return array();
+		$protocol = isset( $params['protocolVersion'] ) && is_string( $params['protocolVersion'] ) ? trim( $params['protocolVersion'] ) : '';
+		if ( '' === $protocol || strlen( $protocol ) > 64 || ! preg_match( '/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/', $protocol ) ) return array();
+		// Adapter 0.6.1 session validation does not consume clientInfo or
+		// capabilities after initialize. Keep only the negotiated protocol revision.
+		return array( 'protocolVersion' => $protocol );
+	}
+
+	private static function current_subject_binding() {
+		$mapped = class_exists( 'MAD4B_SCP_OAuth_Subject_User_Bridge' ) ? MAD4B_SCP_OAuth_Subject_User_Bridge::mapped_context() : array();
+		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
+		if ( is_wp_error( $identity ) || ! is_array( $identity ) ) $identity = array();
+		$user_id = isset( $mapped['wp_user_id'] ) ? absint( $mapped['wp_user_id'] ) : get_current_user_id();
+		$subject = isset( $mapped['subject_fingerprint'] ) ? strtolower( (string) $mapped['subject_fingerprint'] ) : '';
+		$profile = isset( $mapped['site_profile_digest'] ) ? strtolower( (string) $mapped['site_profile_digest'] ) : '';
+		$client = isset( $identity['client_fingerprint'] ) ? strtolower( (string) $identity['client_fingerprint'] ) : '';
+		return array(
+			'wp_user_id' => $user_id,
+			'subject_fingerprint' => $subject,
+			'site_profile_digest' => $profile,
+			'client_fingerprint' => $client,
+		);
+	}
+
+
+	private static function valid_adapter_session_id( $session_id ) {
+		return is_string( $session_id )
+			&& 1 === preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $session_id );
+	}
+
+	private static function valid_session_record( $session ) {
+		if ( ! is_array( $session ) || ! isset( $session['created_at'], $session['last_activity'], $session['client_params'] ) ) return false;
+		if ( ! is_numeric( $session['created_at'] ) || ! is_numeric( $session['last_activity'] ) || ! is_array( $session['client_params'] ) ) return false;
+		$created = (int) $session['created_at'];
+		$activity = (int) $session['last_activity'];
+		return $created > 0 && $activity >= $created && $activity <= time() + 300;
+	}
+
+	private static function canonical_session_rows( $user_id ) {
+		$user_id = absint( $user_id );
+		if ( $user_id < 1 ) return array();
+		wp_cache_delete( $user_id, 'user_meta' );
+		$rows = get_user_meta( $user_id, self::session_meta_key(), false );
+		if ( ! is_array( $rows ) || empty( $rows ) ) return array();
+		$nonempty = array();
+		$has_empty = false;
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) return array();
+			if ( empty( $row ) ) { $has_empty = true; continue; }
+			$nonempty[] = $row;
+		}
+		if ( empty( $nonempty ) ) return array();
+		if ( $has_empty ) {
+			// Exact-value delete is safe here: it cannot delete a concurrent non-empty
+			// session map and removes only ambiguous empty duplicate rows.
+			delete_user_meta( $user_id, self::session_meta_key(), array() );
+		}
+		return $nonempty;
+	}
+
+	private static function merge_session_rows( array $rows ) {
+		$merged = array();
+		foreach ( $rows as $row ) {
+			foreach ( $row as $session_id => $session ) {
+				if ( ! self::valid_adapter_session_id( $session_id ) || ! self::valid_session_record( $session ) ) return false;
+				if ( ! isset( $merged[ $session_id ] ) ) { $merged[ $session_id ] = $session; continue; }
+				$current_activity = (int) $merged[ $session_id ]['last_activity'];
+				$candidate_activity = (int) $session['last_activity'];
+				if ( $candidate_activity > $current_activity ) $merged[ $session_id ] = $session;
+			}
+		}
+		return $merged;
+	}
+
+	private static function mutate_session_map( $user_id, $callback ) {
+		$user_id = absint( $user_id );
+		if ( $user_id < 1 || ! is_callable( $callback ) ) return false;
+		$key = self::session_meta_key();
+		for ( $attempt = 0; $attempt < 5; $attempt++ ) {
+			$rows = self::canonical_session_rows( $user_id );
+			if ( empty( $rows ) ) return false;
+			$previous = self::merge_session_rows( $rows );
+			if ( ! is_array( $previous ) || empty( $previous ) ) return false;
+			$updated = call_user_func( $callback, $previous );
+			if ( ! is_array( $updated ) ) return false;
+			if ( $updated === $previous ) return true;
+			foreach ( $rows as $row ) {
+				if ( empty( $row ) || $row === $updated ) continue;
+				update_user_meta( $user_id, $key, $updated, $row );
+			}
+			wp_cache_delete( $user_id, 'user_meta' );
+			$readback_rows = get_user_meta( $user_id, $key, false );
+			if ( ! is_array( $readback_rows ) || empty( $readback_rows ) ) continue;
+			$all_match = true;
+			foreach ( $readback_rows as $row ) {
+				if ( ! is_array( $row ) || $row !== $updated ) { $all_match = false; break; }
+			}
+			if ( $all_match ) return true;
+		}
+		return false;
+	}
+
+	private static function repair_session_capacity() {
+		$effective = (int) apply_filters( 'mcp_adapter_session_max_per_user', 32 );
+		return max( 1, min( self::CHATGPT_SESSION_MAX_PER_USER, $effective ) );
+	}
+
+	private static function ensure_session_record( $user_id, $session_id, array $client_params ) {
+		if ( ! self::valid_adapter_session_id( (string) $session_id ) ) return false;
+		if ( get_transient( self::shadow_tombstone_key( $user_id, $session_id ) ) ) return false;
+		$now = time();
+		$max_sessions = self::repair_session_capacity();
+		$capacity_denied = false;
+		$stored = self::mutate_session_map( $user_id, static function ( array $sessions ) use ( $session_id, $client_params, $now, $max_sessions, &$capacity_denied ) {
+			if ( isset( $sessions[ $session_id ] ) ) return $sessions;
+			// Never evict or expire another Adapter session from the recovery layer.
+			// The canonical SessionManager owns lifecycle cleanup. Repair is additive
+			// only when bounded capacity is visibly available.
+			if ( count( $sessions ) >= $max_sessions ) {
+				$capacity_denied = true;
+				return $sessions;
+			}
+			$sessions[ $session_id ] = array(
+				'created_at' => $now,
+				'last_activity' => $now,
+				'client_params' => $client_params,
+			);
+			return $sessions;
+		} );
+		if ( ! $stored || $capacity_denied ) return false;
+		if ( get_transient( self::shadow_tombstone_key( $user_id, $session_id ) ) ) {
+			self::remove_session_record( $user_id, $session_id );
+			return false;
+		}
+		return true;
+	}
+
+	private static function remove_session_record( $user_id, $session_id ) {
+		return self::mutate_session_map( $user_id, static function ( array $sessions ) use ( $session_id ) {
+			unset( $sessions[ $session_id ] );
+			return $sessions;
+		} );
+	}
+
+	private static function session_exists( $user_id, $session_id ) {
+		$user_id = absint( $user_id );
+		if ( $user_id < 1 || ! self::valid_adapter_session_id( (string) $session_id ) ) return false;
+		wp_cache_delete( $user_id, 'user_meta' );
+		$rows = get_user_meta( $user_id, self::session_meta_key(), false );
+		if ( ! is_array( $rows ) ) return false;
+		foreach ( $rows as $row ) if ( is_array( $row ) && isset( $row[ (string) $session_id ] ) && self::valid_session_record( $row[ (string) $session_id ] ) ) return true;
+		return false;
+	}
+
+	private static function readonly_transport_request( array $body ) {
+		$method = isset( $body['method'] ) && is_string( $body['method'] ) ? $body['method'] : '';
+		if ( in_array( $method, array( 'tools/list', 'resources/list', 'resources/templates/list', 'prompts/list', 'ping' ), true ) ) return true;
+		if ( 'tools/call' !== $method ) return false;
+		$tool_name = isset( $body['params']['name'] ) && is_string( $body['params']['name'] ) ? trim( $body['params']['name'] ) : '';
+		if ( '' === $tool_name || ! class_exists( 'MAD4B_SCP_Servers' ) || ! class_exists( '\\WP\\MCP\\Domain\\Utils\\McpNameSanitizer' ) ) return false;
+		$candidates = method_exists( 'MAD4B_SCP_Servers', 'chatgpt_direct_read_transport_tools' ) ? MAD4B_SCP_Servers::chatgpt_direct_read_transport_tools() : array();
+		foreach ( is_array( $candidates ) ? $candidates : array() as $ability_name ) {
+			$ability_name = (string) $ability_name;
+			$sanitized = \WP\MCP\Domain\Utils\McpNameSanitizer::sanitize_name( $ability_name );
+			if ( is_wp_error( $sanitized ) || ! is_string( $sanitized ) || ! hash_equals( $sanitized, $tool_name ) ) continue;
+			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return false;
+			$ability = wp_get_ability( $ability_name );
+			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) return false;
+			$meta = $ability->get_meta();
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+			return array_key_exists( 'readonly', $annotations ) && true === $annotations['readonly'];
+		}
+		return false;
+	}
+
+	public static function repair_or_forget_session( $result, $server, $request ) {
+		if ( null !== $result || ! self::governed_nonproduction_transport() || ! self::session_repair_supported_runtime() ) return $result;
+		if ( '/mcp/mad4b-chatgpt' !== self::request_route( $request ) ) return $result;
+		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $result;
+		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID ) ) return $result;
+		self::$chatgpt_request_active = true;
+		$session_id = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'mcp-session-id' ) ) : '';
+		if ( '' === $session_id || strlen( $session_id ) > 128 ) return $result;
+		$method = method_exists( $request, 'get_method' ) ? strtoupper( (string) $request->get_method() ) : 'POST';
+		if ( 'DELETE' === $method ) {
+			self::forget_session_shadow( get_current_user_id(), $session_id );
+			self::$session_repair_state = 'shadow_forgotten_on_delete';
+			return $result;
+		}
+		if ( 'POST' !== $method ) return $result;
+		$user_id = get_current_user_id();
+		$shadow = self::get_session_shadow( $user_id, $session_id );
+		if ( empty( $shadow['client_params'] ) || ! is_array( $shadow['client_params'] ) ) return $result;
+		$body = self::request_json( $request );
+		// Mutation requests never enter session repair. The canonical Adapter
+		// validates their existing session and the normal governance path decides
+		// execution; this layer cannot make a mutation request more executable.
+		if ( ! self::readonly_transport_request( $body ) ) return $result;
+		$binding = self::current_subject_binding();
+		$bound_user_id = isset( $binding['wp_user_id'] ) ? absint( $binding['wp_user_id'] ) : 0;
+		if ( $bound_user_id !== $user_id ) return $result;
+		if ( $user_id < 1 || self::session_exists( $user_id, $session_id ) ) return $result;
+		if ( (int) ( $shadow['wp_user_id'] ?? 0 ) !== $user_id ) return $result;
+		foreach ( array( 'subject_fingerprint', 'site_profile_digest', 'client_fingerprint' ) as $key ) {
+			$expected = isset( $shadow[ $key ] ) ? strtolower( (string) $shadow[ $key ] ) : '';
+			$current = isset( $binding[ $key ] ) ? strtolower( (string) $binding[ $key ] ) : '';
+			if ( '' === $expected || '' === $current || ! hash_equals( $expected, $current ) ) return $result;
+		}
+		if ( ! self::ensure_session_record( $user_id, $session_id, $shadow['client_params'] ) ) {
+			self::$session_repair_state = 'rehydration_failed';
+			return $result;
+		}
+		self::$session_repair_state = 'rehydrated_read_session';
+		return $result;
+	}
+
+	public static function capture_initialized_session( $response, $server, $request ) {
+		if ( ! self::governed_nonproduction_transport() || ! self::session_repair_supported_runtime() || '/mcp/mad4b-chatgpt' !== self::request_route( $request ) ) return $response;
+		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $response;
+		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID ) ) return $response;
+		$body = self::request_json( $request );
+		if ( 'initialize' !== ( $body['method'] ?? '' ) ) return $response;
+		$response_obj = rest_ensure_response( $response );
+		if ( ! ( $response_obj instanceof WP_REST_Response ) || 200 !== (int) $response_obj->get_status() ) return $response;
+		$session_id = self::response_session_id( $response_obj );
+		$params = isset( $body['params'] ) ? self::minimal_initialize_params( $body['params'] ) : array();
+		if ( '' === $session_id || empty( $params ) ) return $response;
+		$binding = self::current_subject_binding();
+		$user_id = isset( $binding['wp_user_id'] ) ? absint( $binding['wp_user_id'] ) : 0;
+		if ( $user_id < 1 ) return $response;
+		$shadow = array(
+			'wp_user_id' => $user_id,
+			'subject_fingerprint' => isset( $binding['subject_fingerprint'] ) ? strtolower( (string) $binding['subject_fingerprint'] ) : '',
+			'site_profile_digest' => isset( $binding['site_profile_digest'] ) ? strtolower( (string) $binding['site_profile_digest'] ) : '',
+			'client_fingerprint' => isset( $binding['client_fingerprint'] ) ? strtolower( (string) $binding['client_fingerprint'] ) : '',
+			'client_params' => $params,
+			'captured_at' => time(),
+			'raw_session_id_stored' => false,
+			'oauth_client_bound' => true,
+			'authority_created' => false,
+		);
+		if ( '' === $shadow['subject_fingerprint'] || '' === $shadow['site_profile_digest'] || 1 !== preg_match( '/^[a-f0-9]{64}$/', $shadow['client_fingerprint'] ) ) return $response;
+		if ( ! self::store_session_shadow( $user_id, $session_id, $shadow ) ) return $response;
+		if ( self::session_exists( $user_id, $session_id ) ) {
+			self::$session_repair_state = 'initialized_session_present';
+			return $response;
+		}
+		self::$session_repair_state = self::ensure_session_record( $user_id, $session_id, $params )
+			? 'initialized_session_race_repaired'
+			: 'initialized_session_race_repair_failed';
+		return $response;
+	}
+
+	public static function session_repair_status() {
+		return array(
+			'contract' => self::CONTRACT,
+			'state' => self::$session_repair_state,
+			'shadow_ttl_seconds' => self::SESSION_SHADOW_TTL,
+			'shadow_max_per_user' => self::SESSION_SHADOW_MAX_PER_USER,
+			'shadow_store_contains_session_fingerprint_only' => true,
+			'shadow_store_single_bounded_map_per_user' => true,
+			'delete_tombstone_blocks_shadow_resurrection' => true,
+			'delete_tombstone_bound_to_site_user_session' => true,
+			'post_cas_delete_tombstone_rechecked' => true,
+			'raw_session_id_persisted_in_shadow' => false,
+			'canonical_adapter_session_store_used_for_repair' => true,
+			'initialize_params_minimized' => true,
+			'initialize_capabilities_persisted_in_shadow' => false,
+			'initialize_client_info_persisted_in_shadow' => false,
+			'initialize_shadow_fields' => array( 'protocolVersion' ),
+			'first_session_race_repair_enabled' => self::governed_nonproduction_transport() && self::session_repair_supported_runtime(),
+			'certified_stateful_adapter_version' => self::CERTIFIED_STATEFUL_ADAPTER_VERSION,
+			'exact_adapter_version_required' => true,
+			'rehydration_read_only' => true,
+			'rehydration_requires_runtime_readonly_annotation' => true,
+			'notifications_do_not_trigger_rehydration' => true,
+			'mutation_session_rehydration_enabled' => false,
+			'rehydration_respects_session_capacity' => true,
+			'repair_never_evicts_existing_adapter_session' => true,
+			'repair_capacity_ceiling' => self::CHATGPT_SESSION_MAX_PER_USER,
+			'session_capacity_multiplier_over_upstream_default' => 2,
+			'repair_uses_custom_lock' => false,
+			'empty_only_session_meta_repair_allowed' => false,
+			'empty_duplicate_rows_removed_by_exact_match' => true,
+			'duplicate_nonempty_rows_converged_by_cas' => true,
+			'repair_readback_verified' => true,
+			'session_id_shape_pinned_to_adapter_uuid_v4' => true,
+			'existing_session_records_shape_validated' => true,
+			'session_exists_scans_all_meta_rows' => true,
+			'steady_state_user_meta_read_after_shadow_expiry' => false,
+			'delete_forgets_shadow' => true,
+			'oauth_client_bound' => true,
+			'authority_created' => false,
+		);
 	}
 
 	public static function register_category() {
@@ -87,7 +567,6 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( empty( $profile['origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $blockers[] = 'site_profile_oauth_disabled';
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) $blockers[] = 'site_profile_managed_runtime_disabled';
-		if ( empty( $local['effective'] ) ) $blockers[] = self::oauth_blocker( $local );
 		if ( empty( $bridge['effective'] ) ) $blockers[] = 'oauth_resource_bridge_not_effective';
 		if ( empty( $chatgpt['registered'] ) ) $blockers[] = ! empty( $chatgpt['error'] ) ? sanitize_key( (string) $chatgpt['error'] ) : 'mcp_chatgpt_not_registered';
 		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
@@ -97,14 +576,18 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'ready' => empty( $blockers ),
 			'blockers' => $blockers,
 			'resource' => self::resource_identifier(),
-			'oauth_authorize_url' => untrailingslashit( home_url( '/oauth/mcp/authorize' ) ),
+			'oauth_authorize_url' => ! empty( $local['effective'] ) ? untrailingslashit( home_url( '/oauth/mcp/authorize' ) ) : '',
 			'site_profile' => self::bounded_profile( $profile ),
 			'local_oauth_effective' => ! empty( $local['effective'] ),
+			'oauth_authority_mode' => isset( $bridge['authority_mode'] ) ? sanitize_key( (string) $bridge['authority_mode'] ) : '',
 			'oauth_resource_bridge_effective' => ! empty( $bridge['effective'] ),
+			'local_oauth_required_for_reconnect' => false,
 			'chatgpt_registered' => ! empty( $chatgpt['registered'] ),
 			'chatgpt_error' => isset( $chatgpt['error'] ) ? sanitize_key( (string) $chatgpt['error'] ) : '',
 			'missed_rest_recovery_state' => isset( $bridge_registration['missed_rest_recovery_state'] ) ? sanitize_key( (string) $bridge_registration['missed_rest_recovery_state'] ) : '',
 			'missed_rest_recovery_blocker' => isset( $bridge_registration['missed_rest_recovery_blocker'] ) ? sanitize_key( (string) $bridge_registration['missed_rest_recovery_blocker'] ) : '',
+			'session_continuity' => self::session_continuity_policy(),
+			'session_repair' => self::session_repair_status(),
 			'upgrade_recovery' => class_exists( 'MAD4B_SCP_Upgrade_Continuity' ) ? MAD4B_SCP_Upgrade_Continuity::recovery_status() : array(),
 			'write_auto_enabled' => false,
 			'production_authority_auto_enabled' => false,
@@ -112,14 +595,29 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		);
 	}
 
+
+	private static function preauth_reconnect_blockers() {
+		$blockers = array();
+		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		if ( empty( $profile['configured'] ) ) $blockers[] = 'site_profile_unconfigured';
+		if ( empty( $profile['environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
+		if ( empty( $profile['origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $blockers[] = 'site_profile_oauth_disabled';
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) $blockers[] = 'site_profile_managed_runtime_disabled';
+		$registrations = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
+		$chatgpt = isset( $registrations['mad4b-chatgpt'] ) && is_array( $registrations['mad4b-chatgpt'] ) ? $registrations['mad4b-chatgpt'] : array();
+		if ( empty( $chatgpt['registered'] ) ) $blockers[] = ! empty( $chatgpt['error'] ) ? sanitize_key( (string) $chatgpt['error'] ) : 'mcp_chatgpt_not_registered';
+		return array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
+	}
+
 	public static function guard_mcp_rest_dispatch( $result, $server, $request ) {
-		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
+		if ( null !== $result || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		if ( ! self::is_resource_request_path( (string) $request->get_route() ) ) return $result;
-		$status = self::reconnect_status();
-		if ( ! empty( $status['ready'] ) ) return $result;
+		$blockers = self::preauth_reconnect_blockers();
+		if ( empty( $blockers ) ) return $result;
 		return new WP_Error( 'mad4b_mcp_reconnect_not_ready', 'MAD4B MCP reconnect is not ready.', array(
 			'status' => 503,
-			'blockers' => $status['blockers'],
+			'blockers' => $blockers,
 			'contract' => self::CONTRACT,
 			'resource' => self::resource_identifier(),
 		) );
@@ -150,16 +648,6 @@ final class MAD4B_SCP_Reconnect_Hardening {
 
 	private static function resource_identifier() {
 		return class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() : untrailingslashit( rest_url( 'mcp/mad4b-chatgpt' ) );
-	}
-
-	private static function oauth_blocker( $status ) {
-		if ( ! is_array( $status ) || empty( $status ) ) return 'local_oauth_status_unavailable';
-		if ( empty( $status['configured'] ) ) return 'local_oauth_disabled';
-		if ( empty( $status['issuer_configuration_valid'] ) ) return ! empty( $status['runtime_error'] ) ? sanitize_key( (string) $status['runtime_error'] ) : 'local_oauth_issuer_invalid';
-		if ( empty( $status['oauth_store_ready'] ) ) return 'oauth_store_not_ready';
-		if ( empty( $status['private_key_present'] ) ) return ! empty( $status['runtime_error'] ) ? sanitize_key( (string) $status['runtime_error'] ) : 'oauth_private_key_not_ready';
-		if ( ! empty( $status['runtime_error'] ) ) return sanitize_key( (string) $status['runtime_error'] );
-		return 'local_oauth_not_effective';
 	}
 
 	private static function bounded_profile( $status ) {
