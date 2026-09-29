@@ -11,6 +11,14 @@ oauth = (ROOT / 'includes/class-mad4b-scp-oauth-resource-bridge.php').read_text(
 
 for marker in [
     "mad4b.staging-write-candidate-binding.v2",
+    "mad4b.staging-write-candidate-binding-plan.v1",
+    "mad4b/staging-write-candidate-binding-plan",
+    "public static function plan( $input = array() )",
+    "'non_authorizing' => true",
+    "'bind_input' => $bind_input",
+    "'expected_grant_rows_fingerprint'",
+    "'candidate_binding_plan_only' => true",
+
     "mad4b/staging-write-candidate-binding-audit",
     "operation_context",
     "subject_fingerprint",
@@ -82,6 +90,7 @@ assert commit_helper.index("COMMIT") < commit_helper.index("reset_authority_opti
 assert commit_helper.index("reset_authority_option_cache") < commit_helper.index("transaction_committed"), 'committed audit dispatch must observe the post-COMMIT cache state'
 
 assert "mad4b/staging-write-candidate-binding-audit" in servers
+assert "mad4b/staging-write-candidate-binding-plan" in servers
 core_write = servers[servers.index('private static function core_write_candidates'):servers.index('private static function registered_adapter_write_candidates')]
 assert "mad4b/staging-write-candidate-binding-audit" not in core_write, 'read-only binding audit leaked into normal write inventory'
 assert "mad4b/staging-write-candidate-bind" not in core_write, 'binding bootstrap leaked into normal write inventory'
@@ -129,3 +138,9 @@ for forbidden in [
     assert forbidden not in authority
 
 print('mad4b.staging-write-candidate-binding-audit.contract.v1: PASS')
+
+
+# Candidate-binding artifact schema must accept both canonical versioned package
+# identities and general-distribution-kit identities while still binding exact SHA.
+assert "^mad4b-site-control-plane-[A-Za-z0-9._-]+-[A-Fa-f0-9]{40}$" in binding
+assert "general-distribution-kit-[A-Fa-f0-9]{40}$" not in binding
