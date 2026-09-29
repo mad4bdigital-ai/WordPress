@@ -114,7 +114,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'contract' => self::CONTRACT,
 			'configured' => self::enabled(),
 			'effective' => (bool) $effective,
-			'environment' => function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown',
+			'environment' => self::current_environment(),
 			'issuer' => self::issuer(),
 			'issuer_configuration_valid' => $issuer_valid,
 			'issuer_transport_allowed' => $transport_allowed,
@@ -142,7 +142,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'contract' => self::CONTRACT,
 			'configured' => self::enabled(),
 			'effective' => (bool) $effective,
-			'environment' => function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown',
+			'environment' => self::current_environment(),
 			'production_approved' => self::production_approved(),
 			'issuer' => self::issuer(),
 			'issuer_same_origin_required' => true,
@@ -1106,12 +1106,23 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		return defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) && true === constant( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' );
 	}
 
+	private static function current_environment() {
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			: ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+	}
+
 	private static function production_approved() {
-		return defined( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) && true === constant( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' );
+		if ( defined( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) && true === constant( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) ) return true;
+		return 'production' === self::current_environment()
+			&& class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			&& MAD4B_SCP_Site_Profile::oauth_enabled();
 	}
 
 	private static function environment_allowed() {
-		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$environment = self::current_environment();
 		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$portable_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
 		if ( ! $profile_ready && ! $portable_ready ) return false;
