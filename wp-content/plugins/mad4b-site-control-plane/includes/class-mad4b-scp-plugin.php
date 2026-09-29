@@ -25,6 +25,13 @@ final class MAD4B_SCP_Plugin {
 		if ( self::$booted ) return;
 		self::$booted = true;
 
+		// Unrelated Core/provider REST and generic wp-cron.php are infrastructure
+		// hotpaths, not Control Plane operator lifecycles. Their owning scheduled
+		// hooks are registered before init; skip admin, authority, OAuth and
+		// Abilities bootstrap here so Site Health loopbacks remain bounded.
+		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return;
+
 		MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap();
 		MAD4B_SCP_Skill_Autoconfig::bootstrap();
 		MAD4B_SCP_Staging_Write_Authority::bootstrap();
