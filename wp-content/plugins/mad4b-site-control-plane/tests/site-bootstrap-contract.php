@@ -172,6 +172,24 @@ $check( in_array( 'inventory_pagination_required_or_active', $transport['blockin
 $check( true === $transport['transport']['compact_projection'], 'transport projection lost compact marker' );
 $check( $transport['transport']['response_bytes'] <= MAD4B_SCP_Site_Bootstrap::MAX_TRANSPORT_RESPONSE_BYTES, 'reported response bytes exceeded transport budget' );
 
+# Cursor order must remain globally monotonic even when object types would sort differently.
+$cursor_items = array( $items[0], $items[1], $items[2] );
+$cursor_items[0]['object_id'] = 30;
+$cursor_items[0]['object_type'] = 'aaa-type';
+$cursor_items[1]['object_id'] = 10;
+$cursor_items[1]['object_type'] = 'zzz-type';
+$cursor_items[2]['object_id'] = 20;
+$cursor_items[2]['object_type'] = 'mmm-type';
+$cursor_base = $transport_base;
+$cursor_base['pagination']['after_id'] = 5;
+$cursor_base['pagination']['last_scanned_id'] = 30;
+$cursor_base['pagination']['query_has_more'] = true;
+$cursor_page = MAD4B_SCP_Site_Bootstrap::finalize_snapshot( $cursor_base, $cursor_items, 20, 1000 );
+$cursor_ids = array_values( array_map( static function ( $item ) { return (int) $item['object_id']; }, $cursor_page['items'] ) );
+$check( array( 10, 20, 30 ) === $cursor_ids, 'transport page order drifted away from object-id cursor order' );
+$check( 30 === (int) $cursor_page['pagination']['next_after_id'], 'continuation cursor did not advance to the greatest represented object ID' );
+$check( (int) $cursor_page['pagination']['next_after_id'] > (int) $cursor_base['pagination']['after_id'], 'continuation cursor did not advance monotonically' );
+
 $check( '' === MAD4B_SCP_Site_Bootstrap::normalize_url( 'javascript:alert(1)' ), 'unsafe non-http URL was retained' );
 $check( 'https://example.test/path' === MAD4B_SCP_Site_Bootstrap::normalize_url( 'HTTPS://Example.Test/path' ), 'URL normalization drifted' );
 

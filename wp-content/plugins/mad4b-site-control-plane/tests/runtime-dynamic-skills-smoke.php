@@ -133,6 +133,24 @@ if ( empty( $bootstrap_page['complete'] ) ) {
 		$fail( 'Partial site bootstrap page omitted a truthful partial-evidence blocker.' );
 	}
 }
+if ( ! empty( $bootstrap_page['pagination']['next_after_id'] ) ) {
+	$bootstrap_cursor = (int) $bootstrap_page['pagination']['next_after_id'];
+	$bootstrap_next = $bootstrap_ability->execute( array( 'max_items' => MAD4B_SCP_Site_Bootstrap::MAX_TRANSPORT_PAGE_ITEMS, 'after_id' => $bootstrap_cursor ) );
+	if ( is_wp_error( $bootstrap_next ) ) $fail( 'Site bootstrap continuation execution failed: ' . $bootstrap_next->get_error_code() );
+	$next_ids = array();
+	foreach ( isset( $bootstrap_next['items'] ) && is_array( $bootstrap_next['items'] ) ? $bootstrap_next['items'] : array() as $next_item ) {
+		$next_id = isset( $next_item['object_id'] ) ? (int) $next_item['object_id'] : 0;
+		if ( $next_id <= $bootstrap_cursor ) $fail( 'Site bootstrap continuation repeated or regressed an object ID.' );
+		$next_ids[] = $next_id;
+	}
+	$sorted_next_ids = $next_ids;
+	sort( $sorted_next_ids, SORT_NUMERIC );
+	if ( $next_ids !== $sorted_next_ids ) $fail( 'Site bootstrap continuation is not ordered by ascending object ID.' );
+	if ( ! empty( $bootstrap_next['pagination']['next_after_id'] )
+		&& (int) $bootstrap_next['pagination']['next_after_id'] <= $bootstrap_cursor ) {
+		$fail( 'Site bootstrap continuation cursor did not advance monotonically.' );
+	}
+}
 
 // Stress the transport projection independently of site content so CI proves
 // that rich provider/link/taxonomy observations cannot overflow the response.

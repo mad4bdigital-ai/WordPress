@@ -219,10 +219,15 @@ final class MAD4B_SCP_Site_Bootstrap {
 	}
 
 	public static function finalize_snapshot( array $base, array $items, $total_count, $max_items ) {
+		// Pagination is keyed by object ID, so transport projection must preserve
+		// the same total order as the SQL cursor before any byte-budget truncation.
 		usort( $items, static function ( $a, $b ) {
-			$left = (string) ( $a['object_type'] ?? '' ) . ':' . sprintf( '%020d', (int) ( $a['object_id'] ?? 0 ) );
-			$right = (string) ( $b['object_type'] ?? '' ) . ':' . sprintf( '%020d', (int) ( $b['object_id'] ?? 0 ) );
-			return strcmp( $left, $right );
+			$left_id = (int) ( $a['object_id'] ?? 0 );
+			$right_id = (int) ( $b['object_id'] ?? 0 );
+			if ( $left_id === $right_id ) {
+				return strcmp( (string) ( $a['object_type'] ?? '' ), (string) ( $b['object_type'] ?? '' ) );
+			}
+			return $left_id <=> $right_id;
 		} );
 
 		$transport_safe = ! empty( $base['transport']['compact_projection'] );
@@ -263,9 +268,11 @@ final class MAD4B_SCP_Site_Bootstrap {
 			$result['pagination']['next_after_id'] = 0;
 			if ( $page_has_more ) {
 				if ( ! empty( $page_items ) ) {
-					$last_item = end( $page_items );
-					$result['pagination']['next_after_id'] = isset( $last_item['object_id'] ) ? (int) $last_item['object_id'] : $after_id;
-					reset( $page_items );
+					$represented_ids = array_values( array_filter( array_map(
+						static function ( $item ) { return isset( $item['object_id'] ) ? (int) $item['object_id'] : 0; },
+						$page_items
+					), static function ( $id ) use ( $after_id ) { return $id > $after_id; } ) );
+					$result['pagination']['next_after_id'] = ! empty( $represented_ids ) ? max( $represented_ids ) : $after_id;
 				} else {
 					$result['pagination']['next_after_id'] = isset( $base['pagination']['last_scanned_id'] ) ? (int) $base['pagination']['last_scanned_id'] : $after_id;
 				}
