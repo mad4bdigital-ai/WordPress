@@ -48,6 +48,7 @@ jobs:
           php -l "$root/tests/runtime-local-oauth-init-lock-smoke.php"
           php -l "$root/tests/runtime-local-oauth-browser-canary-smoke.php"
           php -l "$root/tests/runtime-local-oauth-browser-canary-production-smoke.php"
+          php -l "$root/tests/portable-readonly-cross-tenant-runtime.php"
           php "$root/tests/local-oauth-consent-ui-contract.php"
           php "$root/tests/oauth-live-authority-projection-runtime.php"
           php "$root/tests/runtime-local-oauth-store-readiness-cache.php"
@@ -59,6 +60,9 @@ jobs:
           python3 "$root/tests/chatgpt-oauth-lifecycle-contract.py"
           python3 "$root/tests/local-oauth-browser-canary-contract.py"
           python3 "$root/tests/chatgpt-connection-ui-contract.py"
+          for scenario in fresh foreign environment_drift exact invalid; do
+            php "$root/tests/portable-readonly-cross-tenant-runtime.php" "$scenario"
+          done
           pwsh -NoLogo -NoProfile -File "$root/tools/Invoke-MAD4BLocalOAuthStagingCanary.ps1" -SelfTest
 
   runtime:
