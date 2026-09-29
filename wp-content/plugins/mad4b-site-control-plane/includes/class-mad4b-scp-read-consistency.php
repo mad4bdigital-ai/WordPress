@@ -600,6 +600,11 @@ final class MAD4B_SCP_Read_Consistency {
 			'production_remote_upload_allowed', 'default_provider', 'provider_summary_digest',
 			'chatgpt_tool_count', 'raw_sql_breakglass_in_write_inventory', 'reconciliation_required',
 			'blind_retry_allowed', 'next_action', 'candidate_match', 'build_fingerprint_match',
+			'full_runtime_hash_validation_deferred', 'deep_authority_scan_deferred',
+			'live_skill_evaluation_deferred', 'runtime_catalog_rebuild_deferred',
+			'deep_route_validation_deferred', 'deep_peer_inventory_deferred',
+			'deep_oauth_validation_deferred', 'provider_runtime_hash_validation_deferred',
+			'deep_local_oauth_status_deferred', 'deep_oauth_bridge_status_deferred',
 			'seo_publication_authorized', 'production_activation_authorized', 'observed_at'
 		);
 		$out = array();
@@ -608,7 +613,7 @@ final class MAD4B_SCP_Read_Consistency {
 			$value = $data[ $key ];
 			if ( is_scalar( $value ) || null === $value ) $out[ $key ] = $value;
 		}
-		foreach ( array( 'blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch' ) as $key ) {
+		foreach ( array( 'blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch', 'deferred_checks' ) as $key ) {
 			if ( array_key_exists( $key, $data ) ) $out[ $key ] = self::bounded_scalar_list( $data[ $key ], 12 );
 		}
 		foreach ( array( 'current', 'target', 'build', 'connection', 'write_authority' ) as $nested_key ) {
@@ -725,8 +730,8 @@ final class MAD4B_SCP_Read_Consistency {
 			return array(
 				'site_profile' => static function () { return self::profile_projection(); },
 				'build' => static function () { return self::deep_build_projection(); },
-				'connection' => static function () { return self::connection_projection(); },
-				'reconnect' => static function () { return self::reconnect_projection(); },
+				'connection' => static function () { return self::session_safe_connection_projection(); },
+				'reconnect' => static function () { return self::session_safe_reconnect_projection(); },
 			);
 		}
 		if ( 'runtime' === $bundle ) {
@@ -883,6 +888,69 @@ final class MAD4B_SCP_Read_Consistency {
 			'write_tool_count' => count( $write ),
 			'provider_inventory_digest' => $digest,
 			'raw_sql_breakglass_in_write_inventory' => in_array( 'mad4b/database-raw-query', $write, true ),
+		);
+	}
+
+	private static function session_safe_connection_projection() {
+		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		$registration = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
+		$chatgpt = isset( $registration['mad4b-chatgpt'] ) && is_array( $registration['mad4b-chatgpt'] ) ? $registration['mad4b-chatgpt'] : array();
+		$adapter_available = class_exists( '\\WP\\MCP\\Core\\McpAdapter' );
+		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' ) && method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_identity_status' )
+			? MAD4B_SCP_Provider_Contracts::runtime_identity_status( 'mcp_adapter', $adapter_available )
+			: array();
+		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? MAD4B_SCP_External_Handshake_Evidence::status() : array();
+		$blockers = array();
+		if ( empty( $profile['configured'] ) ) $blockers[] = 'site_profile_unconfigured';
+		if ( empty( $profile['environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
+		if ( empty( $profile['origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
+		if ( ! $adapter_available ) $blockers[] = 'mcp_adapter_unavailable';
+		if ( $adapter_available && empty( $provider['identity_contract_ok'] ) ) $blockers[] = 'mcp_adapter_identity_not_certified';
+		if ( empty( $chatgpt['registered'] ) ) $blockers[] = 'mcp_chatgpt_not_registered';
+		return array(
+			'contract' => 'mad4b.session-safe-connection-identity.v1',
+			'ready' => empty( $blockers ),
+			'state' => empty( $blockers ) ? 'ready_identity' : 'blocked_identity',
+			'environment' => isset( $profile['environment'] ) ? sanitize_key( (string) $profile['environment'] ) : '',
+			'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '',
+			'mcp_adapter_available' => $adapter_available,
+			'mcp_adapter_identity_ok' => ! empty( $provider['identity_contract_ok'] ),
+			'chatgpt_registered' => ! empty( $chatgpt['registered'] ),
+			'chatgpt_materialized' => ! empty( $chatgpt['materialized'] ),
+			'chatgpt_tool_count' => isset( $chatgpt['tool_count'] ) ? max( 0, (int) $chatgpt['tool_count'] ) : 0,
+			'external_handshake_verified' => ! empty( $handshake['verified'] ),
+			'blockers' => array_values( array_unique( $blockers ) ),
+			'deep_route_validation_deferred' => true,
+			'deep_peer_inventory_deferred' => true,
+			'deep_oauth_validation_deferred' => true,
+			'provider_runtime_hash_validation_deferred' => true,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	private static function session_safe_reconnect_projection() {
+		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		$registration = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
+		$chatgpt = isset( $registration['mad4b-chatgpt'] ) && is_array( $registration['mad4b-chatgpt'] ) ? $registration['mad4b-chatgpt'] : array();
+		$recovery = class_exists( 'MAD4B_SCP_Upgrade_Continuity' ) ? MAD4B_SCP_Upgrade_Continuity::recovery_status() : array();
+		$blockers = array();
+		if ( empty( $profile['configured'] ) ) $blockers[] = 'site_profile_unconfigured';
+		if ( empty( $profile['origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
+		if ( empty( $profile['environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
+		if ( empty( $chatgpt['registered'] ) ) $blockers[] = 'mcp_chatgpt_not_registered';
+		return array(
+			'contract' => 'mad4b.session-safe-reconnect-identity.v1',
+			'ready' => empty( $blockers ),
+			'state' => empty( $blockers ) ? 'ready_identity' : 'blocked_identity',
+			'blockers' => array_values( array_unique( $blockers ) ),
+			'resource' => class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() : '',
+			'chatgpt_registered' => ! empty( $chatgpt['registered'] ),
+			'upgrade_recovery_state' => isset( $recovery['state'] ) ? sanitize_key( (string) $recovery['state'] ) : '',
+			'deep_local_oauth_status_deferred' => true,
+			'deep_oauth_bridge_status_deferred' => true,
+			'read_only' => true,
+			'mutation_performed' => false,
 		);
 	}
 
