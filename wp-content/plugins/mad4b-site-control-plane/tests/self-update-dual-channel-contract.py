@@ -192,7 +192,8 @@ for marker in (
     "get_site_transient( 'update_plugins' )",
     "wp_is_auto_update_forced_for_item",
     "'automatic_update_observation' => $auto_update",
-    "'mad4b_auto_update_state'",
+    "plugin_auto_update_setting_html",
+    "mad4b-auto-update-state",
 ):
     if marker not in self_update:
         raise SystemExit(f"native update UI fallback invariant missing: {marker}")
@@ -355,3 +356,20 @@ assert "self::cached_manifest()" in cached_status
 assert "'outbound_network_performed' => false" in cached_status
 assert "self::fetch_manifest(" not in cached_status
 assert "wp_safe_remote_get(" not in cached_status
+
+# MAD4B auto-update observation must render in WordPress' native Auto-updates
+# column, not as a plugin action-link that visually diverges from core plugins.
+if "add_filter( 'plugin_auto_update_setting_html', array( __CLASS__, 'plugin_auto_update_setting_html' ), 20, 3 )" not in self_update:
+    raise SystemExit("native WordPress auto-update column integration missing")
+if "$links['mad4b_auto_update_state']" in self_update:
+    raise SystemExit("MAD4B auto-update state must not render in plugin action links")
+column_body = self_update.split("public static function plugin_auto_update_setting_html(", 1)[1].split("public static function plugin_action_links(", 1)[0]
+for marker in (
+    "self::is_control_plane_plugin_file( $plugin_file )",
+    "self::wordpress_auto_update_state()",
+    "mad4b-auto-update-state",
+    "Auto-updates enabled",
+    "Auto-updates disabled",
+):
+    if marker not in column_body:
+        raise SystemExit(f"native auto-update column invariant missing: {marker}")

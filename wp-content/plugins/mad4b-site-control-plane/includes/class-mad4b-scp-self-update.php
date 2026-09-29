@@ -56,6 +56,7 @@ final class MAD4B_SCP_Self_Update {
 		$plugin = plugin_basename( MAD4B_SCP_FILE );
 		add_filter( 'plugin_action_links_' . $plugin, array( __CLASS__, 'plugin_action_links' ), 20, 1 );
 		add_filter( 'plugin_action_links', array( __CLASS__, 'plugin_action_links_fallback' ), 20, 4 );
+		add_filter( 'plugin_auto_update_setting_html', array( __CLASS__, 'plugin_auto_update_setting_html' ), 20, 3 );
 		add_action( 'after_plugin_row_' . $plugin, array( __CLASS__, 'render_update_row' ), 10, 3 );
 		add_action( 'after_plugin_row', array( __CLASS__, 'render_update_row_fallback' ), 10, 3 );
 		add_action( 'admin_post_mad4b_control_plane_native_update', array( __CLASS__, 'handle_native_update' ) );
@@ -477,22 +478,8 @@ final class MAD4B_SCP_Self_Update {
 	private static function native_update_action_link( array $links ) {
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) return $links;
 
-		$auto_update = self::wordpress_auto_update_state();
-		if ( ! empty( $auto_update['effective_enabled'] ) ) {
-			$auto_label = __( 'WP auto-update: enabled', 'mad4b-site-control-plane' );
-		} elseif ( ! empty( $auto_update['selected_in_site_option'] ) ) {
-			$auto_label = __( 'WP auto-update: selected, not effective', 'mad4b-site-control-plane' );
-		} elseif ( 'forced_disabled' === $auto_update['forced_state'] ) {
-			$auto_label = __( 'WP auto-update: forced off', 'mad4b-site-control-plane' );
-		} elseif ( empty( $auto_update['global_type_enabled'] ) ) {
-			$auto_label = __( 'WP auto-update: globally disabled', 'mad4b-site-control-plane' );
-		} else {
-			$auto_label = __( 'WP auto-update: disabled', 'mad4b-site-control-plane' );
-		}
-		$auto_title = ! empty( $auto_update['blockers'] ) ? implode( ', ', $auto_update['blockers'] ) : __( 'WordPress automatic update is enabled for this plugin.', 'mad4b-site-control-plane' );
-		$links['mad4b_auto_update_state'] = '<span aria-label="' . esc_attr__( 'WordPress automatic update state for MAD4B', 'mad4b-site-control-plane' ) . '" title="' . esc_attr( $auto_title ) . '">'
-			. esc_html( $auto_label ) . '</span>';
-
+		// Auto-update state belongs in WordPress' native Auto-updates column.
+		// Keep the plugin action row limited to actual plugin/update actions.
 		// wp-admin/plugins.php is a latency-sensitive render path. Never perform
 		// outbound HTTP here; use only a previously verified manifest cache.
 		$manifest = self::cached_manifest();
@@ -650,6 +637,31 @@ final class MAD4B_SCP_Self_Update {
 			'mad4b_auto_update_mutation_performed' => false,
 			'blockers' => $blockers,
 		);
+	}
+
+	public static function plugin_auto_update_setting_html( $html, $plugin_file, $plugin_data = array() ) {
+		unset( $plugin_data );
+		if ( ! self::is_control_plane_plugin_file( $plugin_file ) ) return $html;
+
+		$state = self::wordpress_auto_update_state();
+		$title = ! empty( $state['blockers'] )
+			? implode( ', ', $state['blockers'] )
+			: __( 'WordPress automatic updates are enabled for this plugin.', 'mad4b-site-control-plane' );
+
+		if ( ! empty( $state['effective_enabled'] ) ) {
+			$text = __( 'Auto-updates enabled', 'mad4b-site-control-plane' );
+		} elseif ( 'forced_disabled' === $state['forced_state'] ) {
+			$text = __( 'Auto-updates disabled', 'mad4b-site-control-plane' );
+		} elseif ( ! empty( $state['selected_in_site_option'] ) ) {
+			$text = __( 'Auto-updates selected; governed channel required', 'mad4b-site-control-plane' );
+		} elseif ( empty( $state['global_type_enabled'] ) ) {
+			$text = __( 'Auto-updates disabled', 'mad4b-site-control-plane' );
+		} else {
+			$text = __( 'Auto-updates disabled', 'mad4b-site-control-plane' );
+		}
+
+		return '<span class="label mad4b-auto-update-state" title="' . esc_attr( $title ) . '">'
+			. esc_html( $text ) . '</span>';
 	}
 
 	public static function plugin_action_links( $links ) {
