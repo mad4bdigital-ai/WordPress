@@ -144,21 +144,77 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 
 	public static function classify_warning_for_test( $event_type, $function_name, $message, array $trace = array() ) { return self::classify_warning( $event_type, $function_name, $message, $trace ); }
 	private static function classify_warning( $event_type, $function_name, $message, array $trace ) {
-		$function_name = (string) $function_name; $message = (string) $message; $mad4b = 0 === strpos( $function_name, 'MAD4B_' ); $core = false; $callers = array();
+		$function_name = (string) $function_name;
+		$message = (string) $message;
+		$mad4b = 0 === strpos( $function_name, 'MAD4B_' );
+		$core = false;
+		$callers = array();
+		$action_scheduler = in_array( $function_name, array( 'as_next_scheduled_action', 'as_schedule_single_action' ), true )
+			|| false !== stripos( $message, 'Action Scheduler' );
+		$action_scheduler_owner = '';
+
 		foreach ( array_slice( $trace, 0, 12 ) as $frame ) {
 			$file = isset( $frame['file'] ) ? wp_normalize_path( (string) $frame['file'] ) : '';
+			$class = isset( $frame['class'] ) ? (string) $frame['class'] : '';
+			$function = isset( $frame['function'] ) ? (string) $frame['function'] : '';
 			if ( defined( 'MAD4B_SCP_DIR' ) && '' !== $file && 0 === strpos( $file, wp_normalize_path( MAD4B_SCP_DIR ) ) ) $mad4b = true;
 			if ( defined( 'ABSPATH' ) && '' !== $file && false !== strpos( $file, wp_normalize_path( ABSPATH . 'wp-includes/' ) ) ) $core = true;
-			$caller = ''; if ( ! empty( $frame['class'] ) ) $caller .= self::safe_identifier( $frame['class'] ) . '::'; if ( ! empty( $frame['function'] ) ) $caller .= self::safe_identifier( $frame['function'] );
-			if ( '' !== $caller && ! in_array( $caller, $callers, true ) ) $callers[] = $caller; if ( count( $callers ) >= 6 ) break;
+			if ( $action_scheduler && '' === $action_scheduler_owner ) $action_scheduler_owner = self::action_scheduler_owner_from_frame( $file, $class );
+			$caller = '';
+			if ( '' !== $class ) $caller .= self::safe_identifier( $class ) . '::';
+			if ( '' !== $function ) $caller .= self::safe_identifier( $function );
+			if ( '' !== $caller && ! in_array( $caller, $callers, true ) && count( $callers ) < 6 ) $callers[] = $caller;
 		}
-		$fluent = in_array( $function_name, array( 'as_next_scheduled_action', 'as_schedule_single_action' ), true ) || false !== stripos( $message, 'Action Scheduler' );
+
 		$ability_not_found = false !== stripos( $message, 'Ability' ) && false !== stripos( $message, 'not found' );
 		$wp_get_missing = 'wp_get_ability' === $function_name || false !== stripos( $message, 'wp_get_ability' );
 		$pre_init = ( false !== stripos( $message, 'Abilities' ) || false !== stripos( $function_name, 'WP_Abilities_Registry' ) ) && ! did_action( 'init' );
-		if ( $fluent ) return array( 'bucket' => 'third_party', 'severity' => 'third_party_non_blocking', 'component' => 'fluentform', 'plugin_slug' => 'fluentform', 'ability_not_found' => false, 'wp_get_ability_missing' => false, 'pre_init_abilities_violation' => false, 'fluentform_action_scheduler' => true, 'callers' => $callers );
+
+		if ( $action_scheduler ) {
+			$owner = '' !== $action_scheduler_owner ? $action_scheduler_owner : 'action_scheduler_unknown';
+			$owner_is_mad4b = 'mad4b-site-control-plane' === $owner;
+			return array(
+				'bucket' => $owner_is_mad4b ? 'mad4b' : 'third_party',
+				'severity' => $owner_is_mad4b ? 'blocking_regression' : 'third_party_non_blocking',
+				'component' => $owner,
+				'plugin_slug' => 'action_scheduler_unknown' === $owner ? '' : $owner,
+				'ability_not_found' => false,
+				'wp_get_ability_missing' => false,
+				'pre_init_abilities_violation' => false,
+				'action_scheduler_event' => true,
+				'action_scheduler_owner' => $owner,
+				'fluentform_action_scheduler' => 'fluentform' === $owner,
+				'callers' => $callers,
+			);
+		}
+
 		$bucket = $mad4b ? 'mad4b' : ( $core ? 'wordpress_core' : 'unknown' );
-		return array( 'bucket' => $bucket, 'severity' => 'mad4b' === $bucket ? 'blocking_regression' : 'observed', 'component' => 'mad4b' === $bucket ? 'mad4b-site-control-plane' : ( 'wordpress_core' === $bucket ? 'wordpress-core' : '' ), 'plugin_slug' => 'mad4b' === $bucket ? 'mad4b-site-control-plane' : '', 'ability_not_found' => $mad4b && $ability_not_found, 'wp_get_ability_missing' => $mad4b && $wp_get_missing, 'pre_init_abilities_violation' => $mad4b && $pre_init, 'fluentform_action_scheduler' => false, 'callers' => $callers );
+		return array(
+			'bucket' => $bucket,
+			'severity' => 'mad4b' === $bucket ? 'blocking_regression' : 'observed',
+			'component' => 'mad4b' === $bucket ? 'mad4b-site-control-plane' : ( 'wordpress_core' === $bucket ? 'wordpress-core' : '' ),
+			'plugin_slug' => 'mad4b' === $bucket ? 'mad4b-site-control-plane' : '',
+			'ability_not_found' => $mad4b && $ability_not_found,
+			'wp_get_ability_missing' => $mad4b && $wp_get_missing,
+			'pre_init_abilities_violation' => $mad4b && $pre_init,
+			'action_scheduler_event' => false,
+			'action_scheduler_owner' => '',
+			'fluentform_action_scheduler' => false,
+			'callers' => $callers,
+		);
+	}
+
+	private static function action_scheduler_owner_from_frame( $file, $class ) {
+		$file = strtolower( wp_normalize_path( (string) $file ) );
+		$class = strtolower( ltrim( (string) $class, '\\' ) );
+		if ( '' !== $file && preg_match( '#/wp-content/plugins/([^/]+)/#i', $file, $matches ) ) {
+			$slug = sanitize_key( (string) $matches[1] );
+			if ( '' !== $slug ) return $slug;
+		}
+		if ( 0 === strpos( $class, 'hostinger\\' ) ) return 'hostinger';
+		if ( false !== strpos( $class, 'fluentform' ) || false !== strpos( $class, 'fluent_form' ) ) return 'fluentform';
+		if ( 0 === strpos( $class, 'mad4b_' ) ) return 'mad4b-site-control-plane';
+		return '';
 	}
 
 	public static function sanitize_warning_message( $message ) {

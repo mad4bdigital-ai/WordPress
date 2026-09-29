@@ -75,10 +75,21 @@ namespace {
 
 	$deprecated = MAD4B_SCP_Live_Acceptance_Observer::classify_warning_for_test( 'deprecated_function', 'seems_utf8', 'Deprecated function seems_utf8', $mad4b_trace );
 	mad4b_assert( 'mad4b' === $deprecated['bucket'], 'Synthetic seems_utf8 event must classify without invoking the deprecated function.' );
-	$fluent = MAD4B_SCP_Live_Acceptance_Observer::classify_warning_for_test( 'doing_it_wrong', 'as_next_scheduled_action', 'Action Scheduler data store was not initialized', array() );
-	mad4b_assert( 'third_party' === $fluent['bucket'], 'Fluent Forms/Action Scheduler-like warning must be third party.' );
-	mad4b_assert( 'third_party_non_blocking' === $fluent['severity'], 'Fluent Forms baseline must be non-blocking.' );
-	mad4b_assert( 'fluentform' === $fluent['component'], 'Fluent Forms component must be explicit.' );
+	$unknown_as = MAD4B_SCP_Live_Acceptance_Observer::classify_warning_for_test( 'doing_it_wrong', 'as_next_scheduled_action', 'Action Scheduler data store was not initialized', array() );
+	mad4b_assert( 'third_party' === $unknown_as['bucket'], 'Unattributed Action Scheduler warning must remain third party.' );
+	mad4b_assert( 'action_scheduler_unknown' === $unknown_as['component'], 'Action Scheduler without caller evidence must not be mislabeled as FluentForm.' );
+	mad4b_assert( empty( $unknown_as['fluentform_action_scheduler'] ), 'Unattributed Action Scheduler must not increment FluentForm attribution.' );
+
+	$fluent_trace = array( array( 'file' => ABSPATH . 'wp-content/plugins/fluentform/app/Services/Scheduler.php', 'class' => 'FluentForm\\App\\Services\\Scheduler', 'function' => 'schedule' ) );
+	$fluent = MAD4B_SCP_Live_Acceptance_Observer::classify_warning_for_test( 'doing_it_wrong', 'as_schedule_single_action', 'Action Scheduler data store was not initialized', $fluent_trace );
+	mad4b_assert( 'fluentform' === $fluent['component'], 'FluentForm caller trace must be attributed to FluentForm.' );
+	mad4b_assert( ! empty( $fluent['fluentform_action_scheduler'] ), 'FluentForm Action Scheduler counter must require FluentForm caller evidence.' );
+
+	$hostinger_trace = array( array( 'file' => ABSPATH . 'wp-content/plugins/hostinger/includes/Admin/Jobs/ActionScheduler.php', 'class' => 'Hostinger\\Admin\\Jobs\\ActionScheduler', 'function' => 'has_scheduled_action' ) );
+	$hostinger = MAD4B_SCP_Live_Acceptance_Observer::classify_warning_for_test( 'doing_it_wrong', 'as_next_scheduled_action', 'Action Scheduler data store was not initialized', $hostinger_trace );
+	mad4b_assert( 'hostinger' === $hostinger['component'], 'Hostinger caller trace must be attributed to Hostinger.' );
+	mad4b_assert( 'hostinger' === $hostinger['plugin_slug'], 'Hostinger plugin slug must remain explicit.' );
+	mad4b_assert( empty( $hostinger['fluentform_action_scheduler'] ), 'Hostinger Action Scheduler must never increment FluentForm attribution.' );
 
 	$sanitized = MAD4B_SCP_Live_Acceptance_Observer::sanitize_warning_message( 'Authorization: Bearer abc.def.ghi password=hunter2 /home/user/site/wp-content/plugins/example.php' );
 	mad4b_assert( false === stripos( $sanitized, 'abc.def.ghi' ), 'Bearer token must be redacted.' );

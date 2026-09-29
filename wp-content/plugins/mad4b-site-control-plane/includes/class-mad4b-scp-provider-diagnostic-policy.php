@@ -117,16 +117,42 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 		return is_string( $path ) && '/wp-cron.php' === substr( '/' . ltrim( $path, '/' ), -12 );
 	}
 
+	public static function current_wp_admin_script() {
+		$pagenow = isset( $GLOBALS['pagenow'] ) ? (string) $GLOBALS['pagenow'] : '';
+		if ( '' === $pagenow ) {
+			$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- routing observation only.
+			$path = '' !== $uri ? wp_parse_url( $uri, PHP_URL_PATH ) : '';
+			$pagenow = is_string( $path ) ? basename( $path ) : '';
+		}
+		return strtolower( preg_replace( '/[^A-Za-z0-9_.-]/', '', (string) $pagenow ) );
+	}
+
+	public static function current_request_is_wordpress_lifecycle_admin() {
+		$script = self::current_wp_admin_script();
+		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$action2 = isset( $_REQUEST['action2'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action2'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$actions = array_filter( array( $action, $action2 ), static function ( $value ) { return '' !== $value && '-1' !== $value; } );
+
+		if ( 'update.php' === $script ) return true;
+		if ( in_array( $script, array( 'update-core.php', 'plugin-install.php' ), true ) ) return ! empty( $actions );
+		if ( 'plugins.php' !== $script ) return false;
+
+		$lifecycle_actions = array(
+			'activate', 'deactivate', 'activate-selected', 'deactivate-selected',
+			'delete-selected', 'delete-plugin', 'update-selected', 'upgrade-plugin',
+			'enable-auto-update', 'disable-auto-update', 'resume', 'pause',
+		);
+		foreach ( $actions as $candidate ) if ( in_array( $candidate, $lifecycle_actions, true ) ) return true;
+		return false;
+	}
+
 	public static function current_request_is_foreign_wp_admin() {
 		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
 		if ( ( defined( 'DOING_AJAX' ) && DOING_AJAX ) || ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() ) ) return false;
 		if ( self::current_request_is_wordpress_cron() ) return false;
-
-		$pagenow = isset( $GLOBALS['pagenow'] ) ? sanitize_key( (string) $GLOBALS['pagenow'] ) : '';
-		if ( in_array( $pagenow, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return false;
+		if ( self::current_request_is_wordpress_lifecycle_admin() ) return false;
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
-		if ( '' === $page ) return false;
 		if ( 0 === strpos( $page, 'mad4b-control-plane' ) || 'mad4b-approval-decisions' === $page ) return false;
 		return true;
 	}
@@ -197,6 +223,8 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 			'foreign_rest_zero_touch' => true,
 			'wordpress_cron_zero_touch' => true,
 			'foreign_wp_admin_zero_touch' => true,
+			'wp_admin_default_zero_touch' => true,
+			'wordpress_lifecycle_admin_explicit_opt_in' => true,
 			'external_provider_receipt_requires_exact_outer_http_route' => true,
 		);
 	}
