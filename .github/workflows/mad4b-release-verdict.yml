@@ -1348,10 +1348,33 @@ jobs:
               'tested': '7.1',
               'production_auto_update_enabled': False,
           }
-          Path('/tmp/mad4b-site-control-plane-update.json').write_text(
-              json.dumps(manifest, indent=2, sort_keys=True) + '\n',
+          exact_manifest_name = f'mad4b-site-control-plane-update-{source}.json'
+          exact_manifest_path = Path('/tmp') / exact_manifest_name
+          manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + '\n').encode('utf-8')
+          exact_manifest_path.write_bytes(manifest_bytes)
+
+          manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
+          pointer = {
+              'contract': 'mad4b.control-plane-update-pointer.v1',
+              'repository': repo,
+              'release_tag': tag,
+              'source_commit_sha': source,
+              'manifest_asset': exact_manifest_name,
+              'manifest_sha256': manifest_sha256,
+              'release_verdict_run_id': int(os.environ['GITHUB_RUN_ID']),
+              'release_verdict_success': True,
+              'release_root_trust_verified': True,
+              'published_from_master': True,
+          }
+          Path('/tmp/mad4b-site-control-plane-update-pointer.json').write_text(
+              json.dumps(pointer, indent=2, sort_keys=True) + '\n',
               encoding='utf-8',
           )
+
+          # Legacy stable manifest remains during migration so older installed
+          # runtimes continue to update. New runtimes resolve the cache-busted
+          # pointer and then fetch the immutable exact-SHA manifest.
+          Path('/tmp/mad4b-site-control-plane-update.json').write_bytes(manifest_bytes)
           PY
 
       - name: Publish exact package and stable update manifest
@@ -1369,12 +1392,32 @@ jobs:
           fi
 
           exact_asset="/tmp/mad4b-site-control-plane-$SOURCE_SHA.zip"
-          manifest="/tmp/mad4b-site-control-plane-update.json"
+          exact_manifest="/tmp/mad4b-site-control-plane-update-$SOURCE_SHA.json"
+          pointer="/tmp/mad4b-site-control-plane-update-pointer.json"
+          legacy_manifest="/tmp/mad4b-site-control-plane-update.json"
           test -f "$exact_asset"
-          test -f "$manifest"
+          test -f "$exact_manifest"
+          test -f "$pointer"
+          test -f "$legacy_manifest"
 
-          gh release upload "$UPDATE_TAG" "$exact_asset" --repo "$GITHUB_REPOSITORY" --clobber
-          gh release upload "$UPDATE_TAG" "$manifest" --repo "$GITHUB_REPOSITORY" --clobber
+          publish_immutable_asset() {
+            local path="$1"
+            local name
+            name="$(basename "$path")"
+            if gh release view "$UPDATE_TAG" --repo "$GITHUB_REPOSITORY" --json assets                 --jq ".assets[] | select(.name == \"$name\") | .name" | grep -qx "$name"; then
+              rm -rf /tmp/mad4b-existing-asset
+              mkdir -p /tmp/mad4b-existing-asset
+              gh release download "$UPDATE_TAG" --repo "$GITHUB_REPOSITORY"                 --pattern "$name" --dir /tmp/mad4b-existing-asset
+              test "$(sha256sum "$path" | awk '{print $1}')" = "$(sha256sum "/tmp/mad4b-existing-asset/$name" | awk '{print $1}')"
+            else
+              gh release upload "$UPDATE_TAG" "$path" --repo "$GITHUB_REPOSITORY"
+            fi
+          }
+
+          publish_immutable_asset "$exact_asset"
+          publish_immutable_asset "$exact_manifest"
+          gh release upload "$UPDATE_TAG" "$pointer" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "$UPDATE_TAG" "$legacy_manifest" --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Read back published assets
         env:
@@ -1386,7 +1429,46 @@ jobs:
           jq -e --arg pkg "mad4b-site-control-plane-$SOURCE_SHA.zip" '
             [.assets[].name] | index($pkg) != null
           ' <<<"$assets" >/dev/null
+          jq -e --arg manifest "mad4b-site-control-plane-update-$SOURCE_SHA.json" '
+            [.assets[].name] | index($manifest) != null
+          ' <<<"$assets" >/dev/null
+          jq -e '
+            [.assets[].name] | index("mad4b-site-control-plane-update-pointer.json") != null
+          ' <<<"$assets" >/dev/null
           jq -e '
             [.assets[].name] | index("mad4b-site-control-plane-update.json") != null
           ' <<<"$assets" >/dev/null
+
+          rm -rf /tmp/mad4b-update-readback
+          mkdir -p /tmp/mad4b-update-readback
+          gh release download "$UPDATE_TAG" --repo "$GITHUB_REPOSITORY"             --pattern "mad4b-site-control-plane-update-$SOURCE_SHA.json"             --dir /tmp/mad4b-update-readback
+          gh release download "$UPDATE_TAG" --repo "$GITHUB_REPOSITORY"             --pattern "mad4b-site-control-plane-update-pointer.json"             --dir /tmp/mad4b-update-readback
+
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          source = os.environ['SOURCE_SHA']
+          root = Path('/tmp/mad4b-update-readback')
+          manifest_path = root / f'mad4b-site-control-plane-update-{source}.json'
+          pointer_path = root / 'mad4b-site-control-plane-update-pointer.json'
+          manifest_bytes = manifest_path.read_bytes()
+          manifest = json.loads(manifest_bytes)
+          pointer = json.loads(pointer_path.read_text(encoding='utf-8'))
+
+          if manifest.get('source_commit_sha') != source:
+              raise SystemExit('immutable update manifest source mismatch')
+          if pointer.get('contract') != 'mad4b.control-plane-update-pointer.v1':
+              raise SystemExit('update pointer contract mismatch')
+          if pointer.get('source_commit_sha') != source:
+              raise SystemExit('update pointer source mismatch')
+          if pointer.get('manifest_asset') != manifest_path.name:
+              raise SystemExit('update pointer manifest asset mismatch')
+          if pointer.get('manifest_sha256') != hashlib.sha256(manifest_bytes).hexdigest():
+              raise SystemExit('update pointer manifest digest mismatch')
+          if pointer.get('release_verdict_success') is not True or pointer.get('published_from_master') is not True:
+              raise SystemExit('update pointer release evidence missing')
+          PY
 
