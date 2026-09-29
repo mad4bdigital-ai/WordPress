@@ -552,7 +552,7 @@ final class MAD4B_SCP_Self_Update {
 		return $plan;
 	}
 
-	public static function native_apply( $input ) {
+	public static function native_apply( $input, $bootstrap_revalidate = false ) {
 		$input = is_array( $input ) ? $input : array();
 		$expected = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/' , $expected ) ) return new WP_Error( 'mad4b_self_update_plan_digest_required', 'expected_plan_sha256 from the reviewed native release plan is required.' );
@@ -583,6 +583,21 @@ final class MAD4B_SCP_Self_Update {
 			return $verified;
 		}
 
+		// Bootstrap authority is intentionally narrow and can become invalid while
+		// the governed release is being downloaded and verified. Re-evaluate the
+		// live grant/binding state immediately before the filesystem mutation so a
+		// concurrent reconcile, grant change, Breakglass enablement, or candidate
+		// bind fails closed instead of using a stale pre-download authorization.
+		if ( $bootstrap_revalidate ) {
+			$bootstrap_access = self::can_bootstrap_native_apply( $input );
+			if ( is_wp_error( $bootstrap_access ) || ! $bootstrap_access ) {
+				@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				return is_wp_error( $bootstrap_access )
+					? $bootstrap_access
+					: new WP_Error( 'mad4b_self_update_bootstrap_revalidation_failed', 'Bootstrap Control Plane self-update became ineligible before mutation.' );
+			}
+		}
+
 		$result = self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected );
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return $result;
@@ -600,7 +615,8 @@ final class MAD4B_SCP_Self_Update {
 			array(
 				'reason' => isset( $input['reason'] ) ? (string) $input['reason'] : '',
 				'expected_plan_sha256' => isset( $input['expected_plan_sha256'] ) ? (string) $input['expected_plan_sha256'] : '',
-			)
+			),
+			true
 		);
 		if ( is_wp_error( $result ) ) return $result;
 		if ( is_array( $result ) ) {
