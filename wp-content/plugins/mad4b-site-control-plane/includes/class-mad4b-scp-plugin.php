@@ -171,6 +171,12 @@ final class MAD4B_SCP_Plugin {
 	private static function request_requires_skill_reconciliation() {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
 
+		// Preserve the explicit protocol-hotpath invariant for the refresh/MCP
+		// contract, then apply the stronger rule below: no ordinary web/admin read
+		// request owns Skill/provider reconciliation.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime() ) return false;
+
 		// Seed/provider reconciliation performs filesystem and provider discovery.
 		// It is owned by activation, explicit Skills reconciliation, or Runtime
 		// Convergence after a deployment. Read-only admin rendering never owns it.
@@ -248,7 +254,7 @@ final class MAD4B_SCP_Plugin {
 		try {
 			rest_get_server();
 			if ( class_exists( 'MAD4B_SCP_MCP_Registration_Rescue' ) ) {
-				MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_endpoints_prime' );
+				MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );
 			}
 		} catch ( Throwable $e ) {
 			// Diagnostics remain fail-closed and report unavailable registry.
