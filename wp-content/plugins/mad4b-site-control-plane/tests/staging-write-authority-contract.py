@@ -570,8 +570,10 @@ for marker in [
     if marker not in transport_resolver:
         raise SystemExit('transport resolver lost governed ChatGPT write delegation invariant: ' + marker)
 
-if "if ( self::ai_review_delegation_allowed( $ability_name, $input, $identity ) ) return true;" not in scope_body:
-    raise SystemExit('AI review standing delegation must have one exact request-time scope branch')
+if "if ( ! $production && self::ai_review_delegation_allowed( $ability_name, $input, $identity ) ) return true;" not in scope_body:
+    raise SystemExit('AI review standing delegation must have one exact non-Production request-time scope branch')
+if "$production = 'production' === self::current_environment();" not in scope_body:
+    raise SystemExit('AI review standing delegation must fail closed in Production')
 
 ai_status_body = write.split("public static function ai_review_delegation_status", 1)[1].split("public static function ai_review_delegation_allowed", 1)[0]
 for marker in [
