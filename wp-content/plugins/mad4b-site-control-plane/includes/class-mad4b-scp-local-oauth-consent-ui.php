@@ -80,7 +80,7 @@ final class MAD4B_SCP_Local_OAuth_Consent_UI {
 			. ( $step_up_requested ? '<p><code>mad4b:authority:step-up</code> is request permission for exact environment-bound governance operations. It is not a write grant and cannot bypass exact plan matching, enrolled administrator identity, environment-specific confirmation, one-time Production approval, audit readiness, or fail-closed governance.</p>' : '' )
 			. '</section>';
 		$authority_summary = '<section class="mad4b-authority-summary" aria-label="Current governed authority">'
-			. '<h2>Current ' . esc_html( $environment_label ) . ' authority</h2>'
+			. '<h2>Current ' . $environment_label . ' authority</h2>'
 			. '<div class="mad4b-authority-grid">'
 			. '<div><span>Write</span><strong id="mad4b-write-state" class="mad4b-authority-pending">Checking…</strong></div>'
 			. '<div><span>Developer</span><strong id="mad4b-developer-state" class="mad4b-authority-pending">Checking…</strong></div>'
