@@ -55,5 +55,6 @@
     "requires_exact_pr_base_ancestry": true,
     "mutable_metadata_cannot_widen_policy": true
   },
-  "cross_feature_contract_dependencies": []
+  "cross_feature_contract_dependencies": [],
+  "feature_directory": "specs/008-dynamic-content-runtime-hardening"
 }
