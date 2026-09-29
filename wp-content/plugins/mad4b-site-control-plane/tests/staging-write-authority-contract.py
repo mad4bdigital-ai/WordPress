@@ -91,7 +91,7 @@ for marker in [
     "site_profile_write_disabled",
     "'production_auto_enable' => false",
     "'breakglass_auto_enable' => false",
-    "'production_exact_approval_only' => $production",
+    "$policy['production_exact_approval_only'] = $production;",
     "'all_remote_writes_require_exact_approval' => 'production' === $environment",
     "'normal_remote_writes_require_exact_approval' => true",
     "exact_approval_with_bounded_standing_exceptions",
