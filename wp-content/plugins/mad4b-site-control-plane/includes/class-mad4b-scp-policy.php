@@ -41,23 +41,36 @@ final class MAD4B_SCP_Policy {
 		return current_user_can( 'manage_options' );
 	}
 
-	public static function can_mutate() {
+	public static function mutation_gate_status() {
 		$explicit_gate_defined = defined( 'MAD4B_MCP_MUTATION_ENABLED' );
 		$explicit_gate_enabled = $explicit_gate_defined && true === MAD4B_MCP_MUTATION_ENABLED;
 		$profile_configured = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured();
 		$profile_ready = $profile_configured && MAD4B_SCP_Site_Profile::governed_write_ready();
-
-		// An explicit false constant is a hard kill switch. When the constant is
-		// absent, an exact enrolled Site Profile with governed write enabled is
-		// the mutation gate; this removes per-site wp-config edits without ever
-		// granting authority by installation. Legacy/unprofiled deployments retain
-		// the explicit-constant requirement.
-		if ( $explicit_gate_defined && ! $explicit_gate_enabled ) return false;
-		if ( $profile_configured ) {
-			if ( ! $profile_ready ) return false;
-		} elseif ( ! $explicit_gate_enabled ) {
-			return false;
+		$hard_kill = $explicit_gate_defined && ! $explicit_gate_enabled;
+		if ( $hard_kill ) {
+			$effective = false;
+			$source = 'explicit_constant_kill_switch';
+		} elseif ( $profile_configured ) {
+			$effective = $profile_ready;
+			$source = 'exact_site_profile';
+		} else {
+			$effective = $explicit_gate_enabled;
+			$source = $explicit_gate_enabled ? 'legacy_explicit_constant' : 'disabled';
 		}
+		return array(
+			'effective' => (bool) $effective,
+			'source' => $source,
+			'explicit_constant_defined' => (bool) $explicit_gate_defined,
+			'explicit_constant_enabled' => (bool) $explicit_gate_enabled,
+			'explicit_kill_switch' => (bool) $hard_kill,
+			'site_profile_configured' => (bool) $profile_configured,
+			'site_profile_governed_write_ready' => (bool) $profile_ready,
+		);
+	}
+
+	public static function can_mutate() {
+		$gate = self::mutation_gate_status();
+		if ( empty( $gate['effective'] ) ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
 		$identity = MAD4B_SCP_Identity_Context::current();
