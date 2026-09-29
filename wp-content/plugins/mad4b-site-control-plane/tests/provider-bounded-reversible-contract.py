@@ -24,4 +24,13 @@ req('jetengine','mad4b.rollback.jetengine-post-meta.v1',"'_listing_data'",'mad4b
 req('jetsmart','mad4b.rollback.jetsmartfilters-filter-meta.v1',"'_query_var'",'mad4b_jetsmartfilters_meta_missing','mad4b_jetsmartfilters_query_var_invalid','mad4b_jetsmartfilters_stale_meta','mad4b_jetsmartfilters_readback_mismatch','restore_reversible_state')
 for key in ('elementor','jetengine','jetsmart'):
     deny(key,'$wpdb->query(', 'eval(', 'shell_exec(', 'exec(', 'system(', 'passthru(')
+
+if "provider_declared_not_started_verified" not in reversible:
+    raise SystemExit("provider not-started exact-readback hardening missing: provider_declared_not_started_verified")
+
+if "provider_declared_not_started_readback_unverified" not in reversible:
+    raise SystemExit("provider not-started exact-readback hardening missing: provider_declared_not_started_readback_unverified")
+
+if "hash_equals( (string) $before_hash, (string) $after_hash )" not in reversible:
+    raise SystemExit("provider not-started exact-readback hardening missing: hash_equals( (string) $before_hash, (string) $after_hash )")
 print('mad4b.provider-bounded-reversible.v1: PASS')
