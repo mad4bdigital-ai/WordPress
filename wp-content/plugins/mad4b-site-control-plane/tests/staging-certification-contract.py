@@ -94,6 +94,13 @@ for marker in [
     "'external_mcp_handshake_refresh'",
     "'brand_core_convergence'",
     "'write_authority_reconcile'",
+    "'candidate_binding_only'",
+    "'mad4b/staging-write-candidate-binding-plan'",
+    "'expected_missing_transport_abilities'",
+    "$requires_grant_reconcile",
+    "'google_drive_reconnect'",
+    "'external_oauth_reauthorization'",
+
     "'browser_acceptance'",
     "'frontend_performance_sampling'",
     "'provider_closure_review'",
