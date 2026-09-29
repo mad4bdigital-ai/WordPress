@@ -18,7 +18,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * archive/provenance verifier.
  *
  * All channels share the same backup/readback/rollback semantics.
- * Automatic plugin updates remain disabled.
+ * WordPress automatic-update enablement is observed read-only. This coordinator
+ * never opts the plugin into automatic updates and never bypasses the governed
+ * manifest, exact-build verification, backup, readback, or rollback path.
  */
 final class MAD4B_SCP_Self_Update {
 	const CONTRACT              = 'mad4b.control-plane-self-update.v1';
@@ -180,6 +182,7 @@ final class MAD4B_SCP_Self_Update {
 		$native_ready = ! is_wp_error( $manifest ) && self::environment_allowed( false );
 		$remote_ready = self::environment_allowed( true ) && current_user_can( 'update_plugins' );
 		$ui_state = self::native_update_ui_state( $manifest );
+		$auto_update = self::wordpress_auto_update_state();
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -194,7 +197,8 @@ final class MAD4B_SCP_Self_Update {
 				'ui_state' => $ui_state['state'],
 				'ui_blockers' => $ui_state['blockers'],
 				'modifies_core_update_transients' => false,
-				'automatic_update_enabled' => false,
+				'automatic_update_enabled' => (bool) $auto_update['effective_enabled'],
+				'automatic_update_observation' => $auto_update,
 				'manifest_url' => self::MANIFEST_URL,
 				'manifest_state' => is_wp_error( $manifest ) ? 'unavailable' : 'ready',
 				'manifest_error' => $manifest_error,
@@ -240,6 +244,7 @@ final class MAD4B_SCP_Self_Update {
 		$native_ready = ! is_wp_error( $manifest ) && self::environment_allowed( false );
 		$remote_ready = self::environment_allowed( true ) && current_user_can( 'update_plugins' );
 		$ui_state = self::native_update_ui_state( $manifest );
+		$auto_update = self::wordpress_auto_update_state();
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -251,6 +256,8 @@ final class MAD4B_SCP_Self_Update {
 				'ready' => (bool) $native_ready,
 				'ui_state' => $ui_state['state'],
 				'ui_blockers' => $ui_state['blockers'],
+				'automatic_update_enabled' => (bool) $auto_update['effective_enabled'],
+				'automatic_update_observation' => $auto_update,
 				'manifest_state' => is_wp_error( $manifest ) ? 'not_cached' : 'ready',
 				'manifest_error' => $manifest_error,
 				'target' => is_wp_error( $manifest ) ? array() : self::public_manifest( $manifest ),
@@ -470,6 +477,22 @@ final class MAD4B_SCP_Self_Update {
 	private static function native_update_action_link( array $links ) {
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) return $links;
 
+		$auto_update = self::wordpress_auto_update_state();
+		if ( ! empty( $auto_update['effective_enabled'] ) ) {
+			$auto_label = __( 'WP auto-update: enabled', 'mad4b-site-control-plane' );
+		} elseif ( ! empty( $auto_update['selected_in_site_option'] ) ) {
+			$auto_label = __( 'WP auto-update: selected, not effective', 'mad4b-site-control-plane' );
+		} elseif ( 'forced_disabled' === $auto_update['forced_state'] ) {
+			$auto_label = __( 'WP auto-update: forced off', 'mad4b-site-control-plane' );
+		} elseif ( empty( $auto_update['global_type_enabled'] ) ) {
+			$auto_label = __( 'WP auto-update: globally disabled', 'mad4b-site-control-plane' );
+		} else {
+			$auto_label = __( 'WP auto-update: disabled', 'mad4b-site-control-plane' );
+		}
+		$auto_title = ! empty( $auto_update['blockers'] ) ? implode( ', ', $auto_update['blockers'] ) : __( 'WordPress automatic update is enabled for this plugin.', 'mad4b-site-control-plane' );
+		$links['mad4b_auto_update_state'] = '<span aria-label="' . esc_attr__( 'WordPress automatic update state for MAD4B', 'mad4b-site-control-plane' ) . '" title="' . esc_attr( $auto_title ) . '">'
+			. esc_html( $auto_label ) . '</span>';
+
 		// wp-admin/plugins.php is a latency-sensitive render path. Never perform
 		// outbound HTTP here; use only a previously verified manifest cache.
 		$manifest = self::cached_manifest();
@@ -520,6 +543,112 @@ final class MAD4B_SCP_Self_Update {
 		return array(
 			'state' => self::update_available( $manifest ) ? 'available' : 'current',
 			'blockers' => array(),
+		);
+	}
+
+	private static function wordpress_auto_update_state() {
+		$plugin = plugin_basename( MAD4B_SCP_FILE );
+		$global_enabled = false;
+		$global_source = 'unavailable';
+
+		// Mirror wp_is_auto_update_enabled_for_type( 'plugin' ) without mutating
+		// WordPress update transients or enrolling this plugin into core updates.
+		if ( function_exists( 'wp_is_auto_update_enabled_for_type' ) ) {
+			$global_enabled = (bool) wp_is_auto_update_enabled_for_type( 'plugin' );
+			$global_source = 'wp_is_auto_update_enabled_for_type';
+		} else {
+			if ( ! class_exists( 'WP_Automatic_Updater' ) && defined( 'ABSPATH' ) ) {
+				$updater_file = ABSPATH . 'wp-admin/includes/class-wp-automatic-updater.php';
+				if ( is_readable( $updater_file ) ) require_once $updater_file;
+			}
+			if ( class_exists( 'WP_Automatic_Updater' ) ) {
+				$updater = new WP_Automatic_Updater();
+				$global_enabled = ! $updater->is_disabled();
+				$global_enabled = (bool) apply_filters( 'plugins_auto_update_enabled', $global_enabled );
+				$global_source = 'automatic_updater_fallback';
+			}
+		}
+
+		$selected_plugins = (array) get_site_option( 'auto_update_plugins', array() );
+		$selected = in_array( $plugin, $selected_plugins, true );
+
+		$metadata = null;
+		$metadata_source = 'none';
+		$update_info = get_site_transient( 'update_plugins' );
+		if ( is_object( $update_info ) ) {
+			foreach ( array( 'response', 'no_update' ) as $bucket_name ) {
+				$bucket = isset( $update_info->{$bucket_name} ) ? (array) $update_info->{$bucket_name} : array();
+				if ( array_key_exists( $plugin, $bucket ) ) {
+					$metadata = $bucket[ $plugin ];
+					$metadata_source = $bucket_name;
+					break;
+				}
+			}
+		}
+		$update_supported = null !== $metadata;
+
+		$payload = array(
+			'id' => $plugin,
+			'slug' => 'mad4b-site-control-plane',
+			'plugin' => $plugin,
+			'new_version' => '',
+			'url' => '',
+			'package' => '',
+			'icons' => array(),
+			'banners' => array(),
+			'banners_rtl' => array(),
+			'tested' => '',
+			'requires_php' => '',
+			'compatibility' => new stdClass(),
+		);
+		if ( is_object( $metadata ) ) {
+			$payload = array_merge( $payload, get_object_vars( $metadata ) );
+		} elseif ( is_array( $metadata ) ) {
+			$payload = array_merge( $payload, $metadata );
+		}
+		// The exact installed plugin basename is authoritative even if update
+		// metadata contains a stale or foreign plugin field.
+		$payload['plugin'] = $plugin;
+		if ( empty( $payload['id'] ) ) $payload['id'] = $plugin;
+
+		$forced = function_exists( 'wp_is_auto_update_forced_for_item' )
+			? wp_is_auto_update_forced_for_item( 'plugin', null, (object) $payload )
+			: apply_filters( 'auto_update_' . 'plugin', null, (object) $payload );
+		$forced = is_null( $forced ) ? null : (bool) $forced;
+
+		// Match the Plugins list-table preference semantics: a forced decision
+		// overrides the stored selection; otherwise the item must be selected and
+		// recognized by WordPress update metadata.
+		$item_enabled = is_null( $forced ) ? ( $selected && $update_supported ) : $forced;
+		$effective_enabled = $global_enabled && $item_enabled;
+		$current_offer_present = 'response' === $metadata_source;
+
+		$blockers = array();
+		if ( ! $global_enabled ) $blockers[] = 'wordpress_plugin_auto_updates_globally_disabled';
+		if ( false === $forced ) {
+			$blockers[] = 'auto_update_plugin_filter_forced_disabled';
+		} elseif ( null === $forced ) {
+			if ( ! $selected ) $blockers[] = 'plugin_not_selected_for_auto_update';
+			if ( $selected && ! $update_supported ) $blockers[] = 'wordpress_update_metadata_not_supported';
+		}
+		sort( $blockers, SORT_STRING );
+
+		return array(
+			'contract' => 'mad4b.wordpress-plugin-auto-update-observation.v1',
+			'plugin' => $plugin,
+			'global_type_enabled' => (bool) $global_enabled,
+			'global_state_source' => $global_source,
+			'selected_in_site_option' => (bool) $selected,
+			'forced' => $forced,
+			'forced_state' => is_null( $forced ) ? 'not_forced' : ( $forced ? 'forced_enabled' : 'forced_disabled' ),
+			'update_metadata_supported' => (bool) $update_supported,
+			'update_metadata_source' => $metadata_source,
+			'current_update_offer_present' => (bool) $current_offer_present,
+			'effective_enabled' => (bool) $effective_enabled,
+			'current_offer_auto_update_eligible' => (bool) ( $effective_enabled && $current_offer_present ),
+			'filesystem_execution_preflight' => 'deferred_to_wordpress_automatic_updater',
+			'mad4b_auto_update_mutation_performed' => false,
+			'blockers' => $blockers,
 		);
 	}
 
