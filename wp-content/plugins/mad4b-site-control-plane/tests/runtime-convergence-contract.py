@@ -48,3 +48,5 @@ assert registry["dynamic_provider_autopilot"]["auto_enable_mutation"] is False
 print("runtime convergence contract: PASS")
 
 assert "MAD4B_SCP_Self_Update::status()" not in runtime
+
+assert "MAD4B_SCP_Full_Staging_Authority::status" not in runtime
