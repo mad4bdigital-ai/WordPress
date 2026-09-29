@@ -19,6 +19,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	private static $booted = false;
 	private static $session_repair_state = 'not_attempted';
 	private static $initialize_empty_requests = array();
+	private static $delete_cleanup_requests = array();
 	private static $runtime_integrity_ok = null;
 	private static $runtime_integrity_state = 'not_checked';
 
@@ -44,6 +45,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		// bounded shadow to repair a just-lost transport session.
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'repair_or_forget_session' ), 3, 3 );
 		add_filter( 'rest_post_dispatch', array( __CLASS__, 'capture_initialized_session' ), 900, 3 );
+		add_filter( 'rest_post_dispatch', array( __CLASS__, 'finalize_deleted_session' ), 950, 3 );
 		add_filter( 'rest_post_dispatch', array( __CLASS__, 'clear_session_policy_scope' ), PHP_INT_MAX, 3 );
 	}
 
@@ -68,7 +70,10 @@ final class MAD4B_SCP_Reconnect_Hardening {
 
 	public static function clear_session_policy_scope( $response, $server, $request ) {
 		$key = self::request_scope_key( $request );
-		if ( '' !== $key ) unset( self::$initialize_empty_requests[ $key ] );
+		if ( '' !== $key ) {
+			unset( self::$initialize_empty_requests[ $key ] );
+			unset( self::$delete_cleanup_requests[ $key ] );
+		}
 		return $response;
 	}
 
@@ -79,6 +84,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'request_scope_reset_before_reconnect_guard' => true,
 			'request_scope_reset_before_oauth_dispatch' => true,
 			'request_scope_cleared_after_dispatch' => true,
+			'delete_cleanup_bound_to_exact_request_object' => true,
 			'request_scope_bound_to_exact_request_object' => true,
 			'nested_rest_request_cannot_clear_outer_initialize_state' => true,
 			'certified_stateful_runtime' => self::session_repair_supported_runtime(),
@@ -430,8 +436,12 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			$user_id = get_current_user_id();
 			if ( ! self::valid_adapter_session_id( $session_id ) ) return $result;
 			self::forget_session_shadow( $user_id, $session_id );
-			self::remove_session_from_all_rows( $user_id, $session_id );
-			self::$session_repair_state = 'shadow_forgotten_on_delete';
+			$key = self::request_scope_key( $request );
+			if ( '' !== $key ) self::$delete_cleanup_requests[ $key ] = array(
+				'user_id' => $user_id,
+				'session_id' => $session_id,
+			);
+			self::$session_repair_state = 'delete_tombstoned_pending_adapter';
 			return $result;
 		}
 		if ( 'POST' !== $method ) return $result;
@@ -462,6 +472,21 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		}
 		self::$session_repair_state = 'rehydrated_read_session';
 		return $result;
+	}
+
+	public static function finalize_deleted_session( $response, $server, $request ) {
+		$key = self::request_scope_key( $request );
+		if ( '' === $key || empty( self::$delete_cleanup_requests[ $key ] ) || ! is_array( self::$delete_cleanup_requests[ $key ] ) ) return $response;
+		$pending = self::$delete_cleanup_requests[ $key ];
+		unset( self::$delete_cleanup_requests[ $key ] );
+		$user_id = isset( $pending['user_id'] ) ? absint( $pending['user_id'] ) : 0;
+		$session_id = isset( $pending['session_id'] ) ? (string) $pending['session_id'] : '';
+		if ( $user_id < 1 || ! self::valid_adapter_session_id( $session_id ) ) return $response;
+		$cleaned = self::remove_session_from_all_rows( $user_id, $session_id );
+		self::$session_repair_state = $cleaned ? 'delete_finalized_after_adapter' : 'delete_hidden_cleanup_failed';
+		// Preserve the canonical Adapter response verbatim. This callback performs
+		// only duplicate-row cleanup after the Adapter has handled termination.
+		return $response;
 	}
 
 	public static function capture_initialized_session( $response, $server, $request ) {
@@ -554,6 +579,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'repair_matches_adapter_single_meta_visibility' => true,
 			'duplicate_nonempty_rows_union_enabled' => false,
 			'delete_removes_target_from_all_duplicate_rows' => true,
+			'delete_cleanup_runs_after_adapter_dispatch' => true,
+			'delete_response_preserved' => true,
+			'delete_pre_dispatch_removes_canonical_session' => false,
 			'repair_readback_verified' => true,
 			'session_id_shape_pinned_to_adapter_uuid_v4' => true,
 			'existing_session_records_shape_validated' => true,
