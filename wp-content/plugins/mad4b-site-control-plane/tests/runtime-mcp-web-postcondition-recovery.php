@@ -104,7 +104,9 @@ foreach ( $expected as $server_id ) {
 	if ( ! empty( $registrations[ $server_id ]['error'] ) ) $fail( $server_id . ' registration error: ' . $registrations[ $server_id ]['error'] );
 }
 
-$status = MAD4B_SCP_Connection_Status::status();
+// Explicit recovery acceptance must inspect the physical route/permission
+// bindings; protocol-serving status intentionally defers these checks.
+$status = MAD4B_SCP_Connection_Status::status( true );
 if ( empty( $status['local_transport_ready'] ) ) $fail( 'local transport remains blocked: ' . wp_json_encode( $status['local_blockers'] ) );
 if ( empty( $status['servers'] ) || ! is_array( $status['servers'] ) ) $fail( 'connection server inventory missing' );
 foreach ( $status['servers'] as $server ) {
