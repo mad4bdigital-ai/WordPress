@@ -22,6 +22,7 @@ Structural invariants:
 - third-party wp-admin screens must return from MAD4B admin hooks before dependency inventory, bundled-archive hashing, deep governance schema/audit status, build-provenance inspection, Query Monitor profiling, authority inventory, REST/Abilities priming, filesystem repair or telemetry persistence;
 - a third-party plugin materializing WordPress Abilities does not authorize MAD4B automatic authority recovery;
 - global admin notices must route by MAD4B page before invoking any deep status builder.
+- Runtime Convergence fallback detection/checkpoint scheduling must not run on third-party wp-admin screens; blocked convergence checkpoints require explicit resume and are never auto-retried from request traffic.
 
 Staging acceptance budget for the MAD4B admin page that previously showed multi-second server time:
 
