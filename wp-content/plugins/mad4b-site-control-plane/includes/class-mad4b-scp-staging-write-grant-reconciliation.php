@@ -201,7 +201,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 								'pattern' => '^[A-Za-z0-9._+\\/-]+$',
 							),
 						),
-						'confirmation' => array( 'type' => 'string', 'enum' => array( $required_confirmation, self::PRODUCTION_CONFIRMATION ) ),
+						'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRMATION, self::PRODUCTION_CONFIRMATION ) ),
 					),
 					'required' => array(
 						'expected_plan_sha256',
@@ -676,7 +676,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				$binding_snapshot,
 				$current_revision,
 				$current_digest,
-				self::CONFIRMATION,
+				$required_confirmation,
 				'grant_reconciliation',
 				self::CONTRACT
 			);
