@@ -41,20 +41,24 @@ final class MAD4B_SCP_Plugin {
 		$plugin_lifecycle = self::request_is_wordpress_plugin_lifecycle();
 		$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
+		$schema_reconciliation = self::request_requires_schema_reconciliation();
 
-		// Governance schema inspection/migration is lifecycle work, never
-		// request-serving work. In particular, do not execute SHOW/physical
-		// readiness probes or dbDelta on initialize/tools-list/OAuth requests.
-		if ( ! $plugin_lifecycle && ! $protocol_hotpath
-			&& ( ! MAD4B_SCP_Schema::is_ready() || (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION ) ) {
+		// Governance schema repair is lifecycle work, never request-serving work.
+		// Activation performs the normal install. After an update, only explicit
+		// Control Plane/CLI lifecycle may run physical readiness probes or dbDelta.
+		// Mutation authorization independently re-proves Schema::is_ready() before
+		// every side effect, so ordinary frontend/REST/Admin reads stay lightweight
+		// without weakening fail-closed mutation safety.
+		if ( ! $plugin_lifecycle && ! $protocol_hotpath && $schema_reconciliation
+			&& ( (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION || ! MAD4B_SCP_Schema::is_ready() ) ) {
 			$schema = MAD4B_SCP_Schema::install_or_upgrade();
 			if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
 		}
-		if ( ! $plugin_lifecycle && ! $protocol_hotpath
+		if ( ! $plugin_lifecycle && ! $protocol_hotpath && $schema_reconciliation
 			&& false === get_option( MAD4B_SCP_Audit::LEGACY_OPTION, false ) ) {
 			add_option( MAD4B_SCP_Audit::LEGACY_OPTION, array(), '', false );
 		}
-		if ( ! $plugin_lifecycle && ! $protocol_hotpath && ! is_wp_error( self::$schema_error ) ) {
+		if ( ! $plugin_lifecycle && ! $protocol_hotpath && $schema_reconciliation && ! is_wp_error( self::$schema_error ) ) {
 			// Audit::record() performs the same fail-closed head initialization before
 			// every mutation audit. MCP/OAuth discovery therefore does not need table/
 			// engine/legacy-chain/head inspection merely to establish the protocol.
@@ -149,6 +153,13 @@ final class MAD4B_SCP_Plugin {
 		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle observation only.
 		if ( in_array( $pagenow, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return true;
 		return in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
+	}
+
+	private static function request_requires_schema_reconciliation() {
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
+		if ( ! is_admin() ) return false;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle routing only.
+		return 0 === strpos( $page, 'mad4b-control-plane' );
 	}
 
 	private static function request_requires_skill_reconciliation() {
