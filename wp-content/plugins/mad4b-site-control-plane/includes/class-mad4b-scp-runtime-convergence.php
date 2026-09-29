@@ -210,7 +210,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'provider_gated_count' => isset( $providers['provider_gated_count'] ) ? (int) $providers['provider_gated_count'] : 0,
 				'closure_class_counts' => isset( $providers['closure_class_counts'] ) && is_array( $providers['closure_class_counts'] ) ? $providers['closure_class_counts'] : array(),
 			) ),
-			'performance_advisory' => self::phase( 'performance_advisory', 'advisory', false, array( 'schema' ), false, self::bounded_performance( $performance ) ),
+			'performance_advisory' => self::phase( 'performance_advisory', ! empty( $performance['ready'] ) ? 'ready' : 'advisory', false, array( 'schema' ), false, self::bounded_performance( $performance ) ),
 		);
 
 		$context = array(
@@ -286,6 +286,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 		}
 		if ( isset( $phases['external_acceptance'] ) && 'ready' !== $phases['external_acceptance']['state'] ) {
 			$gated[] = self::action( 'external_acceptance', 'refresh_external_acceptance_evidence', 'mad4b/rest-compatibility-status', false, false );
+		}
+		if ( isset( $phases['performance_advisory']['details'] ) && is_array( $phases['performance_advisory']['details'] ) ) {
+			$performance_details = $phases['performance_advisory']['details'];
+			if ( ! empty( $performance_details['reconciliation_required'] ) ) {
+				$gated[] = self::action( 'performance_advisory', 'reconcile_stale_performance_job', 'mad4b/admin-query-performance-reconcile', false, false, array( 'blind_retry_allowed' => false ) );
+			} elseif ( empty( $performance_details['ready'] ) && ! empty( $performance_details['maintenance_executor_ready'] ) ) {
+				$gated[] = self::action( 'performance_advisory', 'queue_bounded_performance_indexes', 'mad4b/admin-query-performance-apply', false, false, array( 'synchronous_ddl' => false ) );
+			}
 		}
 
 		$plan = array(
@@ -564,9 +572,27 @@ final class MAD4B_SCP_Runtime_Convergence {
 
 	private static function bounded_performance( $performance ) {
 		if ( ! is_array( $performance ) ) return array();
-		$out = array();
-		foreach ( array( 'ready', 'state', 'job_state', 'indexes_ready', 'reconciliation_required' ) as $key ) if ( array_key_exists( $key, $performance ) ) $out[ $key ] = $performance[ $key ];
-		return $out;
+		$indexes = isset( $performance['indexes'] ) && is_array( $performance['indexes'] ) ? $performance['indexes'] : array();
+		$missing = array();
+		foreach ( $indexes as $key => $row ) {
+			if ( ! is_array( $row ) || ! empty( $row['present'] ) ) continue;
+			$missing[] = sanitize_key( (string) $key );
+			if ( count( $missing ) >= 32 ) break;
+		}
+		$job = isset( $performance['maintenance_job'] ) && is_array( $performance['maintenance_job'] ) ? $performance['maintenance_job'] : array();
+		$health = isset( $performance['maintenance_job_health'] ) && is_array( $performance['maintenance_job_health'] ) ? $performance['maintenance_job_health'] : array();
+		return array(
+			'ready' => ! empty( $performance['ready'] ),
+			'index_version' => isset( $performance['index_version'] ) ? (int) $performance['index_version'] : 0,
+			'missing_index_count' => count( $missing ),
+			'missing_indexes' => $missing,
+			'maintenance_job_status' => isset( $job['status'] ) ? sanitize_key( (string) $job['status'] ) : '',
+			'reconciliation_required' => ! empty( $health['reconciliation_required'] ),
+			'maintenance_executor_ready' => ! empty( $performance['maintenance_executor_ready'] ),
+			'wp_cron_disabled' => ! empty( $performance['wp_cron_disabled'] ),
+			'automatic_apply' => false,
+			'blind_retry_allowed' => false,
+		);
 	}
 
 	private static function digest( $value ) {
