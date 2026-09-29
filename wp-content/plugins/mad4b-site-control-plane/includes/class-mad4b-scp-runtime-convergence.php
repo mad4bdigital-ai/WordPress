@@ -104,7 +104,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			: array();
 		$write_effective = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
 		$rest = class_exists( 'MAD4B_SCP_REST_Compatibility' ) ? MAD4B_SCP_REST_Compatibility::status() : array();
-		$wpml = class_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer' ) ? MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status() : array();
+		$external_wpml = isset( $rest['external_wpml_acceptance'] ) && is_array( $rest['external_wpml_acceptance'] ) ? $rest['external_wpml_acceptance'] : array();
 		$providers = class_exists( 'MAD4B_SCP_Provider_Closure_Matrix' ) ? MAD4B_SCP_Provider_Closure_Matrix::matrix() : array();
 		$performance = class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) ? MAD4B_SCP_Admin_Query_Performance::status() : array();
 
@@ -116,7 +116,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$write_enabled = ! empty( $profile['write_enabled'] );
 		$skills_enabled = ! empty( $profile['skills_enabled'] );
 		$acceptance_enabled = ! empty( $profile['acceptance_enabled'] );
-		$wpml_required = $acceptance_enabled && ( ! empty( $rest['wpml']['wpml_active'] ) || ! empty( $wpml['observed'] ) );
+		$wpml_required = $acceptance_enabled && ! empty( $rest['external_wpml_acceptance_required'] );
+		$wpml_verified = ! $wpml_required || ! empty( $rest['external_wpml_acceptance_verified'] );
 		$binding_required = ! empty( $candidate_binding['required'] );
 		$binding_match = ! empty( $candidate_binding['match'] );
 		$authority_ready = ! $write_enabled || ( ! empty( $write_authority['ready'] ) && $write_effective && ( ! $binding_required || $binding_match ) );
@@ -148,11 +149,12 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'current_source_commit_sha' => isset( $candidate_binding['current_source_commit_sha'] ) ? (string) $candidate_binding['current_source_commit_sha'] : '',
 				'stored_source_commit_sha' => isset( $candidate_binding['stored_source_commit_sha'] ) ? (string) $candidate_binding['stored_source_commit_sha'] : '',
 			) ),
-			'external_acceptance' => self::phase( 'external_acceptance', ! $wpml_required || ! empty( $wpml['verified'] ) ? 'ready' : 'pending', $wpml_required, array( 'deployment', 'schema' ), false, array(
+			'external_acceptance' => self::phase( 'external_acceptance', $wpml_verified ? 'ready' : 'pending', $wpml_required, array( 'deployment', 'schema' ), false, array(
 				'wpml_required' => $wpml_required,
-				'external_verified' => ! empty( $wpml['verified'] ),
-				'route_registered' => ! empty( $wpml['route_registered'] ),
-				'response_status' => isset( $wpml['response_status'] ) ? (int) $wpml['response_status'] : 0,
+				'external_verified' => $wpml_verified,
+				'external_state' => isset( $rest['external_wpml_acceptance_state'] ) ? sanitize_key( (string) $rest['external_wpml_acceptance_state'] ) : '',
+				'route_registered' => ! empty( $external_wpml['route_registered'] ),
+				'response_status' => isset( $external_wpml['response_status'] ) ? (int) $external_wpml['response_status'] : 0,
 				'internal_rest_state' => isset( $rest['wpml']['state'] ) ? sanitize_key( (string) $rest['wpml']['state'] ) : '',
 			) ),
 			'provider_closure' => self::phase( 'provider_closure', empty( $providers['provider_gated_count'] ) ? 'ready' : 'conditional_gate', false, array( 'schema', 'managed_skills' ), false, array(
