@@ -60,7 +60,15 @@ assert runtime.count("public static function plan") == 1
 assert runtime.count("public static function apply") == 1
 assert runtime.count("MAD4B_SCP_Runtime_Convergence::boot();") == 1
 assert "MAD4B_SCP_Staging_Write_Authority::candidate_binding_status" in runtime
-assert "remove_filter( 'wp_register_ability_args'" in runtime
+registration = runtime.split("public static function register_abilities()", 1)[1].split("private static function register_read", 1)[0]
+assert "self::$abilities_registered" in registration
+assert "wp_has_ability(" not in registration
+assert "remove_filter(" not in registration
+assert "add_filter(" not in registration
+assert "'surface' => 'enrollment'" in registration
+
+read_registration = runtime.split("private static function register_read", 1)[1].split("public static function can_apply", 1)[0]
+assert "wp_has_ability(" not in read_registration
 assert "mad4b_runtime_convergence_phase_cycle" in runtime
 assert "mad4b_runtime_convergence_phase_dependency_missing" in runtime
 
