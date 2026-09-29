@@ -8,6 +8,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 	const APP_MAPPING_CONTRACT = 'mad4b.site-profile-app-mapping.v1';
 	const ABILITY = 'mad4b/site-profile-feature-reenroll';
 	const SERVER_ID = 'mad4b-enrollment';
+	const LEGACY_STAGING_ONLY_ERROR = 'site_profile_feature_reenroll_staging_only';
 	private static $booted = false;
 
 	public static function chatgpt_step_up_tools() {
