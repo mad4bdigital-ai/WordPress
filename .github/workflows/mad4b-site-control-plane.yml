@@ -60,6 +60,13 @@ jobs:
           set -euo pipefail
           find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 | xargs -0 -n1 php -l
 
+      - name: Verify pointer-first self-update contract
+        if: matrix.php == '8.1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py
+
   packaged-provider-contracts:
     name: Packaged provider contract scan
     runs-on: ubuntu-latest
