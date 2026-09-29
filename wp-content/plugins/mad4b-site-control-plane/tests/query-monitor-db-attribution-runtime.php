@@ -56,10 +56,11 @@ $status = MAD4B_SCP_Query_Monitor_Evidence_Bridge::db_attribution_status();
 mad4b_qm_assert( 'enablement_available' === $status['state'], 'fresh Staging install must report safe enablement available' );
 mad4b_qm_assert( ! empty( $status['safe_to_enable'] ), 'fresh Staging install must be safe to enable' );
 
-$_GET['page'] = '';
+$_GET['page'] = 'sitepress-multilingual-cms/menu/support.php';
 $ordinary_admin = MAD4B_SCP_Query_Monitor_Evidence_Bridge::maybe_enable_db_attribution();
-mad4b_qm_assert( ! file_exists( WP_CONTENT_DIR . '/db.php' ), 'ordinary wp-admin pages must never create Query Monitor db.php attribution' );
-mad4b_qm_assert( 'enablement_available' === $ordinary_admin['state'], 'ordinary admin guard must preserve enablement status without mutation' );
+mad4b_qm_assert( ! file_exists( WP_CONTENT_DIR . '/db.php' ), 'WPML/foreign wp-admin pages must never create Query Monitor db.php attribution' );
+mad4b_qm_assert( 'deferred_foreign_admin_surface' === $ordinary_admin['state'], 'foreign admin guard must exit before filesystem attribution status' );
+mad4b_qm_assert( empty( $ordinary_admin['mutation_performed'] ), 'foreign admin guard must remain mutation-free' );
 
 $_GET['page'] = 'mad4b-control-plane-diagnostics';
 $enabled = MAD4B_SCP_Query_Monitor_Evidence_Bridge::maybe_enable_db_attribution();
