@@ -250,6 +250,7 @@ final class MAD4B_SCP_Site_Bootstrap {
 			$result['bounded'] = true;
 			$blocking_reasons = array();
 			if ( $page_has_more || $after_id > 0 || ( $total_count > $max_items && 0 === $after_id ) ) $blocking_reasons[] = 'inventory_pagination_required_or_active';
+			if ( $total_count > $max_items || count( $page_items ) + $item_error_count < min( $total_count, $max_items ) ) $blocking_reasons[] = 'inventory_bound_exceeded_or_incomplete';
 			if ( $item_error_count > 0 ) $blocking_reasons[] = 'inventory_items_partially_unreadable';
 			if ( $snapshot_error_count > 0 ) $blocking_reasons[] = 'inventory_observations_partially_unreadable';
 			if ( $transport_truncated ) $blocking_reasons[] = 'transport_response_budget_applied';
