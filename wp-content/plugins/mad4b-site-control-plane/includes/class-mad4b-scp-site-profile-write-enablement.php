@@ -19,6 +19,17 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 	const PRODUCTION_CONFIRMATION = 'ENABLE GOVERNED PRODUCTION WRITE';
 	private static $booted = false;
 
+	public static function chatgpt_step_up_tools() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return array();
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::oauth_enabled() || ! MAD4B_SCP_Site_Profile::acceptance_enabled() || ! MAD4B_SCP_Site_Profile::skills_enabled() ) return array();
+		if ( MAD4B_SCP_Site_Profile::write_enabled() ) return array();
+		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) return array();
+		return array( self::ABILITY );
+	}
+
 	public static function boot() {
 		if ( self::$booted ) return;
 		if ( ! function_exists( 'add_action' ) ) return;
@@ -56,7 +67,15 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 				'meta' => array(
 					'public' => false,
 					'show_in_rest' => false,
-					'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'enrollment', 'mad4b_write_enablement_authority' => self::CONTRACT ),
+					'mcp' => array(
+						'public' => false,
+						'type' => 'tool',
+						'surface' => 'enrollment',
+						'mad4b_write_enablement_authority' => self::CONTRACT,
+						'generic_remote_admin' => false,
+						'production_mutation_allowed' => true,
+						'production_exact_confirmation_required' => true,
+					),
 					'annotations' => array( 'readonly' => false, 'destructive' => false, 'idempotent' => false ),
 				),
 			) );
@@ -177,7 +196,8 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 			'acceptance_enabled' => true,
 			'skills_enabled' => true,
 			'write_enabled' => true,
-			'production_write_confirmed' => false,
+			'production_write_confirmed' => 'production' === $environment,
+			'production_mutation_authorized' => 'production' === $environment,
 			'source_commit_sha' => $current_sha,
 			'build_fingerprint' => $current_fingerprint,
 			'authority_reconciliation_deferred' => true,
