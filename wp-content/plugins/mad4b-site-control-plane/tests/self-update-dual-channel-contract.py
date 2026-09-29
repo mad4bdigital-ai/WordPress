@@ -106,7 +106,8 @@ for marker in required_self_update:
 for marker in (
     "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()",
     "$self_update_step_up",
-    "$step_up = array_merge( $narrow_step_up, $full_step_up, $self_update_step_up )",
+    "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );",
+    "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );",
 ):
     if marker not in servers:
         raise SystemExit(f"bootstrap self-update step-up projection missing: {marker}")
