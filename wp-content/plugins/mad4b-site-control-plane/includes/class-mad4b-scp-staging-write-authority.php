@@ -760,7 +760,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) $blockers[] = 'site_profile_origin_mismatch';
 			if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) $blockers[] = 'site_profile_write_disabled';
 		}
-		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) || true !== constant( 'MAD4B_MCP_MUTATION_ENABLED' ) ) $blockers[] = 'mutation_gate_disabled';
+		$mutation_gate = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'mutation_gate_status' )
+			? MAD4B_SCP_Policy::mutation_gate_status()
+			: array( 'effective' => false );
+		if ( empty( $mutation_gate['effective'] ) ) $blockers[] = 'mutation_gate_disabled';
 		if ( empty( $authority['ready'] ) || ! empty( $authority['blocker'] ) ) $blockers[] = 'persisted_authority_not_ready';
 		if ( empty( $authority['agent_public_id'] ) || 1 !== preg_match( '/^[a-f0-9-]{36}$/i', (string) $authority['agent_public_id'] ) ) $blockers[] = 'canonical_agent_missing';
 		if ( empty( $authority['write_inventory_fingerprint'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $authority['write_inventory_fingerprint'] ) ) $blockers[] = 'write_inventory_unbound';
