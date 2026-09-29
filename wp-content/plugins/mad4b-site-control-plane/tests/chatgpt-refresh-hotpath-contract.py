@@ -355,13 +355,13 @@ assert "full_runtime_hash_validation_deferred" in snapshot_build
 
 snapshot_catalog = read_consistency.split("private static function catalog_projection()", 1)[1].split("private static function deep_catalog_projection()", 1)[0]
 assert "MAD4B_SCP_Servers::registration_status()" in snapshot_catalog
-assert "MAD4B_SCP_Staging_Write_Authority::status()" in snapshot_catalog
+assert "MAD4B_SCP_Staging_Write_Authority::persisted_status()" in snapshot_catalog
 assert "MAD4B_SCP_Servers::write_tools()" not in snapshot_catalog
 assert "MAD4B_SCP_Servers::chatgpt_tools()" not in snapshot_catalog
 assert "runtime_catalog_rebuild_deferred" in snapshot_catalog
 
 safe_authority = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function deep_write_authority_projection()", 1)[0]
-assert "MAD4B_SCP_Staging_Write_Authority::status()" in safe_authority
+assert "MAD4B_SCP_Staging_Write_Authority::persisted_status()" in safe_authority
 assert "candidate_binding_status()" in safe_authority
 assert "MAD4B_SCP_Live_Truth::current_authority_status()" not in safe_authority
 assert "deep_authority_scan_deferred" in safe_authority
