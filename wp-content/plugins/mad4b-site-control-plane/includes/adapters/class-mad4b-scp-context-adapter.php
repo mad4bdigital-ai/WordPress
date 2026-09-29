@@ -34,6 +34,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/review-queue',
 				'context/review-audit',
 				'context/brand-core-coverage',
+				'context/brand-core-convergence-plan',
 				'context/google-drive-status',
 				'context/runtime-readiness',
 				'context/conflicts',
@@ -51,6 +52,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/update-drive-asset',
 				'context/recreate-drive-asset',
 				'context/brand-draft-append',
+				'context/brand-draft-create',
 				'context/source-scan-apply',
 				'context/materialize-brand-draft',
 				'context/reconcile-brand-materialization',
@@ -112,6 +114,18 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'brand_core_coverage',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
 			$this->schema( array() )
+		);
+		$this->add_ability(
+			'context/brand-core-convergence-plan',
+			'Plan Brand Core Creation and Convergence',
+			'brand_core_convergence_plan',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema(
+				array(
+					'include_authoritative_content' => array( 'type' => 'boolean', 'default' => true ),
+					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
+				)
+			)
 		);
 		$this->add_ability(
 			'context/google-drive-status',
@@ -309,6 +323,26 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			false
 		);
 		$this->add_ability(
+			'context/brand-draft-create',
+			'Create Evidence-Bound Brand Context Draft',
+			'brand_draft_create',
+			$write_permission,
+			$this->schema(
+				array(
+					'category' => array( 'type' => 'string', 'enum' => array( 'tone_of_voice', 'editorial_guidelines' ) ),
+					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Brand_Context_Builder::MAX_DRAFT_BYTES ),
+					'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+					'evidence_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
+				),
+				array( 'category', 'content', 'expected_plan_sha256', 'evidence_digest' )
+			),
+			'write',
+			false,
+			true,
+			false
+		);
+		$this->add_ability(
 			'context/source-scan-apply',
 			'Apply Exact Context Source Scan Plan',
 			'source_scan_apply',
@@ -408,7 +442,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		$ability_name = (string) $ability_name;
 		if ( ! in_array( $ability_name, $this->ability_names()['write'], true ) ) return true;
 		if ( ! $this->is_available() ) return new WP_Error( 'mad4b_context_provider_unavailable', 'Context Authority Google Drive provider is unavailable.' );
-		if ( in_array( $ability_name, array( 'context/brand-draft-append', 'context/source-scan-apply' ), true ) ) {
+		if ( in_array( $ability_name, array( 'context/brand-draft-append', 'context/brand-draft-create', 'context/source-scan-apply' ), true ) ) {
 			return true;
 		}
 		if ( 'context/create-drive-asset' === $ability_name ) {
@@ -479,6 +513,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			),
 			'MAD4B_SCP_Brand_Context_Builder' => array(
 				'gap_plan',
+				'convergence_plan',
+				'create_draft',
 				'append_draft',
 				'source_scan_plan',
 				'source_scan_apply',
@@ -824,6 +860,10 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		return MAD4B_SCP_Brand_Context_Builder::gap_plan( is_array( $input ) ? $input : array() );
 	}
 
+	public function brand_core_convergence_plan( $input = array() ) {
+		return MAD4B_SCP_Brand_Context_Builder::convergence_plan( is_array( $input ) ? $input : array() );
+	}
+
 	public function brand_draft_preflight( $input = array() ) {
 		return MAD4B_SCP_Brand_Context_Builder::draft_preflight( is_array( $input ) ? $input : array() );
 	}
@@ -834,6 +874,10 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function brand_draft_append( $input ) {
 		return MAD4B_SCP_Brand_Context_Builder::append_draft( is_array( $input ) ? $input : array() );
+	}
+
+	public function brand_draft_create( $input ) {
+		return MAD4B_SCP_Brand_Context_Builder::create_draft( is_array( $input ) ? $input : array() );
 	}
 
 	public function source_scan_apply( $input ) {
