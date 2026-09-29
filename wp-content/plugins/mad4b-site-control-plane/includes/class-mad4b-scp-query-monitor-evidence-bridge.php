@@ -231,18 +231,18 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		if ( self::$captured ) return;
 		self::$captured = true;
 		$class = self::request_class();
+		$acceptance_canary = self::request_acceptance_canary_kind();
 
-		// Site Health probes, unrelated provider REST endpoints and generic WP-Cron
-		// are request-serving infrastructure. They must never pay MAD4B Query
-		// Monitor collection, provenance reads or telemetry persistence.
+		// Ordinary Site Health, provider REST, third-party admin/AJAX and generic
+		// WP-Cron stay zero-touch. Only an exact signed acceptance probe may opt
+		// one request into bounded Query Monitor evidence capture.
 		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
-			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return;
+			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface()
+			&& '' === $acceptance_canary ) return;
 
-		// Third-party wp-admin pages are never acceptance profiling jobs. Exit
-		// before Site Profile reads, build provenance, telemetry options, Query
-		// Monitor collectors or any persistence. This protects WPML and every
-		// other plugin's admin hotpath from MAD4B shutdown overhead.
-		if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() ) return;
+		// Third-party wp-admin pages are never profiled unless this exact request
+		// carries the signed acceptance probe and matches a known canary surface.
+		if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() && '' === $acceptance_canary ) return;
 		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed() ) return;
 
 		$build = self::request_build_fingerprint();
@@ -271,6 +271,11 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		$telemetry['observed_request_count'] = isset( $telemetry['observed_request_count'] ) ? (int) $telemetry['observed_request_count'] + 1 : 1;
 		if ( ! isset( $telemetry['request_coverage'][ $class ] ) ) $telemetry['request_coverage'][ $class ] = 0;
 		$telemetry['request_coverage'][ $class ]++;
+		if ( '' !== $acceptance_canary ) {
+			if ( ! isset( $telemetry['canary_coverage'] ) || ! is_array( $telemetry['canary_coverage'] ) ) $telemetry['canary_coverage'] = array();
+			if ( ! isset( $telemetry['canary_coverage'][ $acceptance_canary ] ) ) $telemetry['canary_coverage'][ $acceptance_canary ] = 0;
+			$telemetry['canary_coverage'][ $acceptance_canary ]++;
+		}
 		$telemetry['last_observed_at'] = gmdate( 'Y-m-d H:i:s' );
 		$sample = self::performance_sample( $class );
 		if ( ! isset( $telemetry['performance'] ) || ! is_array( $telemetry['performance'] ) ) $telemetry['performance'] = self::empty_performance();
@@ -450,7 +455,8 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			'capture_started_at' => gmdate( 'Y-m-d H:i:s' ),
 			'last_observed_at' => '',
 			'observed_request_count' => 0,
-			'request_coverage' => array( 'mcp' => 0, 'rest' => 0, 'wp_admin' => 0, 'frontend' => 0 ),
+			'request_coverage' => array( 'mcp' => 0, 'rest' => 0, 'wp_admin' => 0, 'frontend' => 0, 'cron' => 0 ),
+			'canary_coverage' => array( 'wpml_admin' => 0, 'site_health_rest' => 0, 'wpml_external_rest' => 0, 'generic_cron' => 0 ),
 			'counters' => array(
 				'mad4b' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'ability_not_found' => 0, 'wp_get_ability_missing' => 0, 'pre_init_abilities_violation' => 0 ),
 				'third_party' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'fluentform_action_scheduler' => 0 ),
@@ -909,9 +915,46 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	private static function request_class() {
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
 		if ( false !== strpos( $uri, '/mcp/' ) || false !== strpos( $uri, '/wp-json/mcp/' ) ) return 'mcp';
+		if ( ( defined( 'DOING_CRON' ) && DOING_CRON ) || ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) ) return 'cron';
 		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) return 'rest';
 		if ( function_exists( 'is_admin' ) && is_admin() ) return 'wp_admin';
 		return 'frontend';
+	}
+
+	private static function request_acceptance_canary_kind() {
+		// The existing browser-acceptance request is a short-lived, build-bound,
+		// server-issued UUID/hash pair. Reuse that authority instead of trusting a
+		// caller-supplied surface name.
+		if ( '' === self::request_frontend_probe_hash() ) return '';
+
+		if ( ( defined( 'DOING_CRON' ) && DOING_CRON ) || ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) ) return 'generic_cron';
+
+		$route = isset( $_GET['rest_route'] ) ? (string) wp_unslash( $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- routing observation only.
+		if ( '' === $route && '' !== $uri ) {
+			$path = wp_parse_url( $uri, PHP_URL_PATH );
+			if ( is_string( $path ) ) {
+				$path = '/' . ltrim( rawurldecode( $path ), '/' );
+				$prefix = function_exists( 'rest_get_url_prefix' ) ? trim( (string) rest_get_url_prefix(), '/' ) : 'wp-json';
+				$needle = '/' . $prefix . '/';
+				$offset = strpos( $path, $needle );
+				$route = false !== $offset ? '/' . ltrim( substr( $path, $offset + strlen( $needle ) ), '/' ) : '';
+			}
+		}
+		$route = '/' . ltrim( rtrim( (string) $route, '/' ), '/' );
+		if ( '/wpml/v1/rest/status' === $route ) return 'wpml_external_rest';
+		if ( 0 === strpos( $route, '/wp-site-health/v1/' ) ) return 'site_health_rest';
+
+		if ( function_exists( 'is_admin' ) && is_admin() ) {
+			$page = isset( $_GET['page'] ) ? strtolower( trim( str_replace( '\\', '/', (string) wp_unslash( $_GET['page'] ) ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+			if ( in_array( $page, array( 'sitepress-multilingual-cms/menu/support.php', 'wpml-support' ), true ) ) return 'wpml_admin';
+		}
+		return '';
+	}
+
+	/** @internal Pure request classifier seam for regression tests. */
+	public static function request_acceptance_canary_kind_for_test() {
+		return self::request_acceptance_canary_kind();
 	}
 
 	private static function current_request_is_mad4b_admin_surface() {
