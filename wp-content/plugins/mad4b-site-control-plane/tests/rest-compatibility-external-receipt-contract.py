@@ -9,7 +9,7 @@ finalizer = (PLUGIN / "includes/class-mad4b-scp-live-acceptance-finalizer.php").
 policy = (PLUGIN / "includes/class-mad4b-scp-provider-diagnostic-policy.php").read_text(encoding="utf-8")
 response = (PLUGIN / "includes/class-mad4b-scp-wpml-response-contract.php").read_text(encoding="utf-8")
 
-assert "MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status_from_local_wpml( $wpml )" in rest
+assert "MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status()" in rest
 assert "bounded_external_wpml_receipt" in rest
 assert "'external_wpml_acceptance_required' => $external_wpml_required" in rest
 assert "'external_wpml_acceptance_verified' => $external_wpml_verified" in rest
@@ -55,3 +55,27 @@ assert "build_provenance_identity_status()" in identity
 assert "build_provenance_status()" not in identity
 
 print("REST external WPML receipt reconciliation contract: PASS")
+
+# Exact outer-request authority: nested/internal REST dispatch cannot become
+# external WPML evidence, and the canonical response contract is the single
+# writer when available.
+observer = (PLUGIN / "includes/class-mad4b-scp-live-acceptance-observer.php").read_text(encoding="utf-8")
+response_observer = response.split("public static function observe_response", 1)[1].split("/** @internal Pure evaluator", 1)[0]
+assert "current_request_is_external_provider_rest( self::ROUTE )" in response_observer
+assert "'observation_source' => 'external_http_request'" in response_observer
+assert "'internal_rest_dispatch_accepted' => false" in response_observer
+
+identity = response.split("private static function candidate_identity()", 1)[1].split("private static function staging_allowed()", 1)[0]
+assert "build_provenance_identity_status()" in identity
+assert "build_provenance_status()" not in identity
+
+legacy = observer.split("private static function observe_wpml_response", 1)[1].split("public static function evaluate_wpml_receipt", 1)[0]
+assert "class_exists( 'MAD4B_SCP_WPML_Response_Contract' )" in legacy
+assert "current_request_is_external_provider_rest( '/wpml/v1/rest/status' )" in legacy
+
+finalizer_observer = finalizer.split("public static function observe_wpml_response", 1)[1].split("public static function classify_wpml_response", 1)[0]
+assert "class_exists( 'MAD4B_SCP_WPML_Response_Contract' )" in finalizer_observer
+assert "current_request_is_external_provider_rest( '/wpml/v1/rest/status' )" in finalizer_observer
+
+projection = finalizer.split("public static function external_wpml_receipt_status_from_local_wpml", 1)[1].split("private static function acceptance_environment", 1)[0]
+assert "null !== $wpml['route_registered']" in projection

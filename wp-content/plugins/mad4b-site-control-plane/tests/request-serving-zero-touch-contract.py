@@ -13,10 +13,13 @@ convergence = (PLUGIN / "includes/class-mad4b-scp-runtime-convergence.php").read
 for marker in (
     "current_request_is_foreign_rest",
     "current_request_is_wordpress_cron",
+    "current_request_is_foreign_wp_admin",
     "current_request_is_zero_touch_surface",
     "zero_touch_reason",
     "foreign_rest_zero_touch",
     "wordpress_cron_zero_touch",
+    "foreign_wp_admin_zero_touch",
+    "current_request_is_external_provider_rest",
 ):
     assert marker in policy, marker
 

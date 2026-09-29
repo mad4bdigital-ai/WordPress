@@ -5,8 +5,9 @@ define( 'ABSPATH', '/srv/wordpress/' );
 function wp_unslash( $value ) { return $value; }
 function wp_parse_url( $url, $component = -1 ) { return parse_url( $url, $component ); }
 function rest_get_url_prefix() { return 'wp-json'; }
-function is_admin() { return false; }
+function is_admin() { return ! empty( $GLOBALS['mad4b_is_admin'] ); }
 function current_user_can( $cap ) { return true; }
+function wp_doing_ajax() { return false; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-provider-diagnostic-policy.php';
@@ -18,6 +19,7 @@ function mad4b_zero_touch_assert( $condition, $message ) {
 	}
 }
 
+$GLOBALS['mad4b_is_admin'] = false;
 $_GET = array();
 $_SERVER['REQUEST_URI'] = '/wp-json/wp/v2/types/post?context=edit';
 mad4b_zero_touch_assert( MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_foreign_rest(), 'Core Site Health REST route must be foreign REST.' );
@@ -40,6 +42,20 @@ mad4b_zero_touch_assert( ! MAD4B_SCP_Provider_Diagnostic_Policy::current_request
 $_SERVER['REQUEST_URI'] = '/wp-json/mad4b/v1/oauth-protected-resource';
 mad4b_zero_touch_assert( ! MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_foreign_rest(), 'MAD4B OAuth resource route must not be treated as foreign REST.' );
 
+$GLOBALS['mad4b_is_admin'] = true;
+$_GET = array( 'page' => 'sitepress-multilingual-cms/menu/support.php' );
+$_SERVER['REQUEST_URI'] = '/wp-admin/admin.php?page=sitepress-multilingual-cms/menu/support.php';
+mad4b_zero_touch_assert( MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_foreign_wp_admin(), 'WPML Support must be classified as foreign wp-admin.' );
+mad4b_zero_touch_assert( MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface(), 'WPML Support must be zero-touch.' );
+mad4b_zero_touch_assert( 'foreign_wp_admin' === MAD4B_SCP_Provider_Diagnostic_Policy::zero_touch_reason(), 'WPML Support zero-touch reason mismatch.' );
+
+$_GET = array( 'page' => 'mad4b-control-plane-connection', 'tab' => 'endpoints' );
+$_SERVER['REQUEST_URI'] = '/wp-admin/admin.php?page=mad4b-control-plane-connection&tab=endpoints';
+mad4b_zero_touch_assert( ! MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_foreign_wp_admin(), 'MAD4B operator surface must retain explicit diagnostic lifecycle.' );
+mad4b_zero_touch_assert( ! MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface(), 'MAD4B operator surface was incorrectly zero-touched.' );
+
+$GLOBALS['mad4b_is_admin'] = false;
+$_GET = array();
 $_SERVER['REQUEST_URI'] = '/about/';
 mad4b_zero_touch_assert( ! MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface(), 'Normal frontend traffic must remain eligible for bounded acceptance sampling.' );
 

@@ -399,7 +399,24 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	private static function current_build_fingerprint() { $manifest = self::provenance_manifest(); if ( isset( $manifest['build_fingerprint'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $manifest['build_fingerprint'] ) ) return strtolower( (string) $manifest['build_fingerprint'] ); $legacy = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? MAD4B_SCP_External_Handshake_Evidence::build_fingerprint() : ''; $self_hash = is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : ''; return hash( 'sha256', self::CONTRACT . "\n" . ( defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '' ) . "\n" . $legacy . "\n" . $self_hash ); }
 
 	public static function observe_rest_response( $response, $server, $request ) { self::observe_wpml_response( $response, $request ); self::observe_external_handshake( $response, $request ); return $response; }
-	private static function observe_wpml_response( $response, $request ) { if ( ! self::staging_capture_allowed() || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return; $route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' ); if ( '/wpml/v1/rest/status' !== $route ) return; $present = method_exists( $request, 'get_param' ) && '1' === (string) $request->get_param( 'test_get_parameter' ); $rest = rest_ensure_response( $response ); $data = $rest instanceof WP_REST_Response ? $rest->get_data() : array(); $data = is_array( $data ) ? $data : array(); $receipt = self::evaluate_wpml_receipt( $present, $data, self::current_build_fingerprint() ); $receipt['observed_at'] = gmdate( 'Y-m-d H:i:s' ); $receipt['request_route'] = '/wpml/v1/rest/status'; update_option( self::WPML_OPTION, $receipt, false ); }
+	private static function observe_wpml_response( $response, $request ) {
+		// Canonical normalized response contract is the single writer. This path
+		// remains only as a compatibility fallback for older partial installs.
+		if ( class_exists( 'MAD4B_SCP_WPML_Response_Contract' ) ) return;
+		if ( ! self::staging_passive_receipt_allowed() || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return;
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' )
+			|| ! MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_external_provider_rest( '/wpml/v1/rest/status' ) ) return;
+		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
+		if ( '/wpml/v1/rest/status' !== $route ) return;
+		$present = method_exists( $request, 'get_param' ) && '1' === (string) $request->get_param( 'test_get_parameter' );
+		$rest = rest_ensure_response( $response );
+		$data = $rest instanceof WP_REST_Response ? $rest->get_data() : array();
+		$data = is_array( $data ) ? $data : array();
+		$receipt = self::evaluate_wpml_receipt( $present, $data, self::current_build_fingerprint() );
+		$receipt['observed_at'] = gmdate( 'Y-m-d H:i:s' );
+		$receipt['request_route'] = '/wpml/v1/rest/status';
+		update_option( self::WPML_OPTION, $receipt, false );
+	}
 	public static function evaluate_wpml_receipt( $parameter_present, array $data, $build_fingerprint ) { $status = isset( $data['status'] ) ? sanitize_key( (string) $data['status'] ) : ''; $get_parameters = isset( $data['get_parameters'] ) ? sanitize_key( (string) $data['get_parameters'] ) : ''; $success = (bool) $parameter_present && 'valid' === $status && 'valid' === $get_parameters; return array( 'contract' => self::WPML_RECEIPT_CONTRACT, 'observed' => true, 'observed_at' => '', 'build_fingerprint' => preg_match( '/^[a-f0-9]{64}$/', (string) $build_fingerprint ) ? strtolower( (string) $build_fingerprint ) : '', 'request_route' => '/wpml/v1/rest/status', 'test_get_parameter_present' => (bool) $parameter_present, 'success' => $success, 'status' => $status, 'get_parameters' => $get_parameters ); }
 	public static function external_wpml_receipt_status() { $stored = self::staging_capture_allowed() ? get_option( self::WPML_OPTION, array() ) : array(); $current_build = self::current_build_fingerprint(); $base = array( 'contract' => self::WPML_RECEIPT_CONTRACT, 'observed' => false, 'verified' => false, 'stale' => true, 'state' => 'pending_external_evidence', 'observed_at' => '', 'build_fingerprint' => '', 'current_build_fingerprint' => $current_build, 'request_route' => '/wpml/v1/rest/status', 'test_get_parameter_present' => false, 'success' => false, 'status' => '', 'get_parameters' => '' ); if ( ! is_array( $stored ) || empty( $stored['observed'] ) ) return $base; foreach ( array( 'observed', 'observed_at', 'build_fingerprint', 'request_route', 'test_get_parameter_present', 'success', 'status', 'get_parameters' ) as $key ) if ( array_key_exists( $key, $stored ) ) $base[ $key ] = $stored[ $key ]; $match = ! empty( $stored['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $stored['build_fingerprint'] ); $base['stale'] = ! $match; $base['verified'] = $match && ! empty( $stored['success'] ) && 'valid' === (string) $stored['status'] && 'valid' === (string) $stored['get_parameters']; $base['state'] = $base['verified'] ? 'verified_external_wpml' : ( $match ? 'external_wpml_failed' : 'stale_build_evidence' ); return $base; }
 
@@ -603,11 +620,16 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 
 	private static function gate( $ready, $state, $fresh, $source_contract, array $blockers ) { return array( 'state' => (string) $state, 'ready' => (bool) $ready, 'fresh' => (bool) $fresh, 'source_contract' => (string) $source_contract, 'blockers' => array_values( $blockers ), 'observed_at' => gmdate( 'Y-m-d H:i:s' ) ); }
 	private static function nonproduction_profile_enrolled() { return class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::nonproduction_governed() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment(); }
-	public static function staging_capture_allowed() {
+	public static function staging_passive_receipt_allowed() {
 		if ( defined( 'WP_CLI' ) && WP_CLI ) return false;
-		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
-			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return false;
 		if ( defined( 'DOING_CRON' ) && DOING_CRON ) return false;
 		return self::nonproduction_profile_enrolled() && MAD4B_SCP_Site_Profile::acceptance_enabled();
+	}
+
+	public static function staging_capture_allowed() {
+		if ( ! self::staging_passive_receipt_allowed() ) return false;
+		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return false;
+		return true;
 	}
 }

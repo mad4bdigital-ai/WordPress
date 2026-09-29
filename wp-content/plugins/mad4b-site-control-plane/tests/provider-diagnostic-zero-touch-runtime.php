@@ -2,11 +2,14 @@
 
 define( 'ABSPATH', '/srv/wordpress/' );
 define( 'ICL_SITEPRESS_VERSION', 'test' );
+define( 'REST_REQUEST', true );
 
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 function wp_unslash( $value ) { return $value; }
 function is_admin() { return false; }
 function current_user_can( $cap ) { return true; }
+function wp_parse_url( $url, $component = -1 ) { return parse_url( $url, $component ); }
+function rest_get_url_prefix() { return 'wp-json'; }
 function rest_get_server() {
 	fwrite( STDERR, "FAIL: passive provider status attempted to materialize REST\n" );
 	exit( 1 );
@@ -46,5 +49,17 @@ mad4b_diag_assert( true === $snapshot['rest_server_materialized'], 'Existing RES
 mad4b_diag_assert( true === $snapshot['route_registered'], 'Existing route should be observed without dispatch.' );
 mad4b_diag_assert( false === $snapshot['internal_rest_dispatch_performed'], 'Route snapshot must remain zero-dispatch.' );
 mad4b_diag_assert( 0 === $snapshot['provider_self_calls_started'], 'Route snapshot must start zero provider calls.' );
+
+$_GET = array();
+$_SERVER['REQUEST_URI'] = '/wp-json/wpml/v1/rest/status?test_get_parameter=1';
+mad4b_diag_assert(
+	MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_external_provider_rest( '/wpml/v1/rest/status' ),
+	'Exact outer WPML REST request must be eligible as external receipt source.'
+);
+$_SERVER['REQUEST_URI'] = '/wp-json/wp/v2/types/post?context=edit';
+mad4b_diag_assert(
+	! MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_external_provider_rest( '/wpml/v1/rest/status' ),
+	'Nested provider route identity must not be inferred from another outer REST request.'
+);
 
 echo "mad4b.provider-diagnostic-zero-touch.runtime.v1: PASS\n";

@@ -61,6 +61,38 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 		return 'mad4b-control-plane-connection' === $page && 'endpoints' === $tab;
 	}
 
+	/**
+	 * Resolve the outer HTTP REST route without materializing the REST server.
+	 * Nested rest_do_request() calls do not change this outer request identity.
+	 */
+	public static function current_http_rest_route() {
+		$route = isset( $_GET['rest_route'] ) ? (string) wp_unslash( $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		if ( '' !== trim( $route ) ) return '/' . ltrim( rtrim( rawurldecode( $route ), '/' ), '/' );
+
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- routing observation only.
+		if ( '' === $uri ) return '';
+		$path = wp_parse_url( $uri, PHP_URL_PATH );
+		if ( ! is_string( $path ) || '' === $path ) return '';
+		$path = '/' . ltrim( rawurldecode( $path ), '/' );
+		$prefix = function_exists( 'rest_get_url_prefix' ) ? trim( (string) rest_get_url_prefix(), '/' ) : 'wp-json';
+		$needle = '/' . $prefix . '/';
+		$offset = strpos( $path, $needle );
+		if ( false === $offset ) return '';
+		return '/' . ltrim( substr( $path, $offset + strlen( $needle ) ), '/' );
+	}
+
+	/**
+	 * Accept provider evidence only when the outer HTTP request itself targets
+	 * the exact provider route. Internal/nested REST dispatch never qualifies.
+	 */
+	public static function current_request_is_external_provider_rest( $route ) {
+		if ( ! defined( 'REST_REQUEST' ) || ! REST_REQUEST ) return false;
+		if ( self::current_request_is_mad4b_protocol() ) return false;
+		$expected = '/' . ltrim( rtrim( (string) $route, '/' ), '/' );
+		$current = self::current_http_rest_route();
+		return '' !== $current && hash_equals( $expected, $current );
+	}
+
 	public static function current_request_is_foreign_rest() {
 		if ( self::current_request_is_mad4b_protocol() ) return false;
 		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) return true;
@@ -85,13 +117,30 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 		return is_string( $path ) && '/wp-cron.php' === substr( '/' . ltrim( $path, '/' ), -12 );
 	}
 
+	public static function current_request_is_foreign_wp_admin() {
+		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
+		if ( ( defined( 'DOING_AJAX' ) && DOING_AJAX ) || ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() ) ) return false;
+		if ( self::current_request_is_wordpress_cron() ) return false;
+
+		$pagenow = isset( $GLOBALS['pagenow'] ) ? sanitize_key( (string) $GLOBALS['pagenow'] ) : '';
+		if ( in_array( $pagenow, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return false;
+
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		if ( '' === $page ) return false;
+		if ( 0 === strpos( $page, 'mad4b-control-plane' ) || 'mad4b-approval-decisions' === $page ) return false;
+		return true;
+	}
+
 	public static function current_request_is_zero_touch_surface() {
-		return self::current_request_is_foreign_rest() || self::current_request_is_wordpress_cron();
+		return self::current_request_is_foreign_rest()
+			|| self::current_request_is_wordpress_cron()
+			|| self::current_request_is_foreign_wp_admin();
 	}
 
 	public static function zero_touch_reason() {
 		if ( self::current_request_is_foreign_rest() ) return 'foreign_rest';
 		if ( self::current_request_is_wordpress_cron() ) return 'wordpress_cron';
+		if ( self::current_request_is_foreign_wp_admin() ) return 'foreign_wp_admin';
 		return '';
 	}
 
@@ -135,6 +184,8 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 			'current_request_zero_touch_reason' => self::zero_touch_reason(),
 			'foreign_rest_zero_touch' => true,
 			'wordpress_cron_zero_touch' => true,
+			'foreign_wp_admin_zero_touch' => true,
+			'external_provider_receipt_requires_exact_outer_http_route' => true,
 		);
 	}
 }

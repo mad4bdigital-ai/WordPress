@@ -120,14 +120,29 @@ $rest_server->register_route( 'wpml/v1', '/wpml/v1/rest/status', array(
 		'permission_callback' => '__return_true',
 	),
 ), true );
+// The test harness explicitly executes the provider route to prove provider
+// behavior. MAD4B status may observe the already-materialized route only; it
+// must not dispatch it or convert this internal call into external evidence.
+$wpml_request = new WP_REST_Request( 'GET', '/wpml/v1/rest/status' );
+$wpml_request->set_query_params( array( 'test_get_parameter' => '1', 'cachebuster' => 'ci' ) );
+$wpml_response = rest_do_request( $wpml_request );
+$wpml_data = $wpml_response instanceof WP_REST_Response ? $wpml_response->get_data() : array();
+if ( ! is_array( $wpml_data ) || 'valid' !== ( isset( $wpml_data['status'] ) ? (string) $wpml_data['status'] : '' ) || 'valid' !== ( isset( $wpml_data['get_parameters'] ) ? (string) $wpml_data['get_parameters'] : '' ) ) {
+	$fail( 'Explicit WPML-compatible route dispatch did not preserve query parameters.' );
+}
+
 $rest_compat = MAD4B_SCP_REST_Compatibility::status();
 if ( empty( $rest_compat['rest_enabled'] ) ) $fail( 'REST API is disabled in the disposable Staging runtime.' );
 if ( ! empty( $rest_compat['control_plane_disables_rest'] ) ) $fail( 'Control Plane reports REST disablement.' );
 if ( ! empty( $rest_compat['control_plane_filters_rest_enabled'] ) ) $fail( 'Control Plane unexpectedly owns a rest_enabled callback.' );
 if ( ! empty( $rest_compat['control_plane_filters_rest_authentication_errors'] ) ) $fail( 'Control Plane unexpectedly owns a global rest_authentication_errors callback.' );
 if ( ! empty( $rest_compat['rest_enabled_hook']['truncated'] ) || ! empty( $rest_compat['rest_authentication_errors_hook']['truncated'] ) ) $fail( 'REST hook evidence was truncated.' );
-if ( empty( $rest_compat['wpml']['route_registered'] ) || empty( $rest_compat['wpml']['ready'] ) || empty( $rest_compat['wpml']['query_parameters_preserved'] ) ) $fail( 'WPML-compatible REST probe did not preserve query parameters.' );
-if ( ! empty( $rest_compat['wpml']['control_plane_block_detected'] ) ) $fail( 'Control Plane blocked the WPML-compatible REST probe.' );
+if ( true !== $rest_compat['wpml']['route_registered'] || empty( $rest_compat['wpml']['ready'] ) ) $fail( 'Passive WPML route observation did not see the already-materialized route.' );
+if ( null !== $rest_compat['wpml']['query_parameters_preserved'] ) $fail( 'Passive WPML status fabricated behavioral evidence.' );
+if ( ! empty( $rest_compat['wpml']['active_probe_performed'] ) || ! empty( $rest_compat['wpml']['internal_rest_dispatch_performed'] ) || 0 !== (int) $rest_compat['wpml']['provider_self_calls_started'] ) $fail( 'Passive WPML status started provider work.' );
+if ( ! empty( $rest_compat['wpml']['control_plane_block_detected'] ) ) $fail( 'Control Plane blocked the WPML-compatible REST route.' );
+$wpml_receipt = MAD4B_SCP_WPML_Response_Contract::receipt_status();
+if ( ! empty( $wpml_receipt['observed'] ) ) $fail( 'Internal rest_do_request incorrectly minted external WPML evidence.' );
 
 $write_reconciliation = MAD4B_SCP_Staging_Write_Authority::reconcile();
 if ( empty( $write_reconciliation['ready'] ) || 'ready' !== $write_reconciliation['state'] ) $fail( 'Governed write authority is not ready: ' . wp_json_encode( $write_reconciliation ) );
