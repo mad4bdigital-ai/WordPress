@@ -420,7 +420,12 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 	}
 
 	public static function observe_wpml_response( $response, $server, $request ) {
+		// Canonical normalized response contract owns WPML persistence. Avoid a
+		// second write and never let nested REST dispatch mint external evidence.
+		if ( class_exists( 'MAD4B_SCP_WPML_Response_Contract' ) ) return $response;
 		if ( ! self::staging_allowed() || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $response;
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' )
+			|| ! MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_external_provider_rest( '/wpml/v1/rest/status' ) ) return $response;
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
 		if ( '/wpml/v1/rest/status' !== $route ) return $response;
 		$status_code = 0; $data = null; $error_code = ''; $safe_message = ''; $content_type = '';
@@ -484,7 +489,9 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 	public static function external_wpml_receipt_status_from_local_wpml( $wpml ) {
 		$base = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::external_wpml_receipt_status() : array();
 		$diag = self::staging_allowed() ? get_option( self::WPML_DIAGNOSTIC_OPTION, array() ) : array();
-		$route_registered = is_array( $wpml ) && array_key_exists( 'route_registered', $wpml ) ? (bool) $wpml['route_registered'] : null;
+		$route_registered = is_array( $wpml ) && array_key_exists( 'route_registered', $wpml ) && null !== $wpml['route_registered']
+			? (bool) $wpml['route_registered']
+			: null;
 		$current = self::current_candidate_identity();
 		if ( ! is_array( $diag ) ) $diag = array();
 		$classification = isset( $diag['classification'] ) ? (string) $diag['classification'] : 'pending_external_evidence';

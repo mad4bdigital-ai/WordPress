@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wpml-response-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-diagnostic-policy.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-finalizer.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-response-contract-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-wpml-response-contract.yml'
@@ -42,6 +45,9 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-wpml-response-contract.php"
+          php -l "$root/includes/class-mad4b-scp-provider-diagnostic-policy.php"
+          php -l "$root/includes/class-mad4b-scp-live-acceptance-finalizer.php"
+          php -l "$root/includes/class-mad4b-scp-live-acceptance-observer.php"
           php -l "$root/tests/wpml-response-contract-runtime.php"
           php "$root/tests/wpml-response-contract-runtime.php"
 
@@ -65,6 +71,9 @@ jobs:
           grep -Fq "'error_code'" "$contract"
           grep -Fq "'safe_message'" "$contract"
           grep -Fq 'update_option( self::OPTION, $receipt, false )' "$contract"
+          grep -Fq "current_request_is_external_provider_rest( self::ROUTE )" "$contract"
+          grep -Fq "'observation_source' => 'external_http_request'" "$contract"
+          grep -Fq "'internal_rest_dispatch_accepted' => false" "$contract"
           if grep -Eiq "['\"](?:raw_)?body['\"]\s*=>|response_body|raw_response" "$contract"; then
             echo 'WPML receipt must not persist the raw response body.' >&2
             exit 1

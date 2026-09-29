@@ -20,6 +20,13 @@ on:
     branches:
       - feat/etg-dynamic-filter-seo-bridge
       - 'fix/etg-*'
+  workflow_dispatch:
+    inputs:
+      certification_reason:
+        description: 'Why this exact ETG source is being re-certified'
+        required: true
+        default: 'manual exact-source recertification'
+        type: string
 
 concurrency:
   group: etg-dfsb-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
@@ -268,7 +275,7 @@ jobs:
             echo 'changed=false' >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build deterministic installable package and provenance v6
+      - name: Build deterministic installable package and provenance v7
         if: github.event_name != 'pull_request' || steps.etg-installable.outputs.changed == 'true'
         shell: bash
         env:
@@ -278,8 +285,44 @@ jobs:
           ACTUAL_SHA=$(git rev-parse HEAD); test "$ACTUAL_SHA" = "$SOURCE_SHA"
           TREE_SHA=$(git rev-parse HEAD^{tree})
           PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
+          PLUGIN_TREE_SHA=$(git rev-parse "HEAD:$PLUGIN")
           VERSION=$(php -r '$s=file_get_contents($argv[1]); preg_match("/Version:\s*([^\r\n]+)/",$s,$m); echo trim($m[1]);' "$PLUGIN/etg-dynamic-filter-seo-bridge.php")
           test "$VERSION" = '0.4.0-alpha.13'
+          [[ "$PLUGIN_TREE_SHA" =~ ^[0-9a-f]{40}$ ]]
+
+          read -r INSTALLABLE_MANIFEST_SHA256 INSTALLABLE_FILE_COUNT < <(python - "$PLUGIN" <<'PY'
+          import hashlib,pathlib,sys
+          root=pathlib.Path(sys.argv[1])
+          rows=[]
+          count=0
+          for path in sorted(root.rglob('*'), key=lambda p: p.as_posix()):
+              if not path.is_file():
+                  continue
+              rel=path.relative_to(root).as_posix()
+              if rel.startswith('tests/'):
+                  continue
+              data=path.read_bytes()
+              rows.append(f"{rel}\0{len(data)}\0{hashlib.sha256(data).hexdigest()}\n".encode())
+              count += 1
+          print(hashlib.sha256(b''.join(rows)).hexdigest(), count)
+          PY
+          )
+          [[ "$INSTALLABLE_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$INSTALLABLE_FILE_COUNT" =~ ^[0-9]+$ ]]
+
+          HISTORICAL_ALPHA13_SOURCE_SHA='3be47285e9a1f751d7b4068c766c09f414ca7eb6'
+          HISTORICAL_ALPHA13_PLUGIN_TREE_SHA='0f12a5710a117ec50ec04ce86798f8a955bccbcd'
+          if [ "$PLUGIN_TREE_SHA" = "$HISTORICAL_ALPHA13_PLUGIN_TREE_SHA" ]; then
+            HISTORICAL_ALPHA13_PLUGIN_TREE_MATCH=true
+          else
+            HISTORICAL_ALPHA13_PLUGIN_TREE_MATCH=false
+          fi
+          case "$GITHUB_EVENT_NAME" in
+            pull_request) CERTIFICATION_MODE='pull_request_candidate' ;;
+            push) CERTIFICATION_MODE='branch_candidate' ;;
+            workflow_dispatch) CERTIFICATION_MODE='manual_recertification' ;;
+            *) echo "Unsupported certification event: $GITHUB_EVENT_NAME"; exit 1 ;;
+          esac
 
           PHP_MATRIX='7.4,8.3'
           TEST_MANIFEST_SHA256=$(
@@ -329,6 +372,7 @@ jobs:
           case "$GITHUB_EVENT_NAME" in
             pull_request) PR_RUN_ID="$GITHUB_RUN_ID" ;;
             push) PUSH_RUN_ID="$GITHUB_RUN_ID" ;;
+            workflow_dispatch) PUSH_RUN_ID=''; PR_RUN_ID='' ;;
             *) echo "Unsupported provenance event: $GITHUB_EVENT_NAME"; exit 1 ;;
           esac
 
@@ -380,11 +424,19 @@ jobs:
           DIGEST=$(sha256sum "$ZIP" | awk '{print $1}')
           BUILD_TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           {
-            echo "contract=etg.dfsb.release-provenance.v6"
+            echo "contract=etg.dfsb.release-provenance.v7"
             echo "git_sha=$SOURCE_SHA"
             echo "tree_sha=$TREE_SHA"
+            echo "plugin_tree_sha=$PLUGIN_TREE_SHA"
+            echo "installable_manifest_sha256=$INSTALLABLE_MANIFEST_SHA256"
+            echo "installable_file_count=$INSTALLABLE_FILE_COUNT"
             echo "plugin_version=$VERSION"
             echo "package_sha256=$DIGEST"
+            echo "certification_mode=$CERTIFICATION_MODE"
+            echo "certification_reason=${{ github.event.inputs.certification_reason || 'automatic candidate build' }}"
+            echo "historical_alpha13_source_sha=$HISTORICAL_ALPHA13_SOURCE_SHA"
+            echo "historical_alpha13_plugin_tree_sha=$HISTORICAL_ALPHA13_PLUGIN_TREE_SHA"
+            echo "historical_alpha13_plugin_tree_match=$HISTORICAL_ALPHA13_PLUGIN_TREE_MATCH"
             echo "embedded_identity_contract=etg.dfsb.embedded-build-identity.v1"
             echo "embedded_identity_sha256=$IDENTITY_SHA256"
             echo "push_run_id=$PUSH_RUN_ID"
@@ -417,9 +469,9 @@ jobs:
             echo "wpml_seo_blob=$WPML_SEO_BLOB"
           } > "$OUT/etg-dfsb-provenance.txt"
           cat "$OUT/etg-dfsb-provenance.txt"
-          python - "$OUT/etg-dfsb-provenance.txt" "$SOURCE_SHA" "$TREE_SHA" "$DIGEST" "$IDENTITY_SHA256" <<'PY'
+          python - "$OUT/etg-dfsb-provenance.txt" "$SOURCE_SHA" "$TREE_SHA" "$PLUGIN_TREE_SHA" "$INSTALLABLE_MANIFEST_SHA256" "$INSTALLABLE_FILE_COUNT" "$DIGEST" "$IDENTITY_SHA256" "$CERTIFICATION_MODE" <<'PY'
           import re,sys
-          path,source_sha,tree_sha,package_sha,identity_sha=sys.argv[1:]
+          path,source_sha,tree_sha,plugin_tree_sha,installable_sha,installable_count,package_sha,identity_sha,certification_mode=sys.argv[1:]
           values={}
           for lineno,raw in enumerate(open(path,encoding='utf-8'),1):
               line=raw.rstrip('\n')
@@ -430,12 +482,16 @@ jobs:
                   raise SystemExit(f'duplicate provenance key: {key}')
               values[key]=value
           expected={
-              'contract':'etg.dfsb.release-provenance.v6',
+              'contract':'etg.dfsb.release-provenance.v7',
               'git_sha':source_sha,
               'tree_sha':tree_sha,
+              'plugin_tree_sha':plugin_tree_sha,
+              'installable_manifest_sha256':installable_sha,
+              'installable_file_count':installable_count,
               'package_sha256':package_sha,
               'embedded_identity_contract':'etg.dfsb.embedded-build-identity.v1',
               'embedded_identity_sha256':identity_sha,
+              'certification_mode':certification_mode,
           }
           for key,want in expected.items():
               got=values.get(key)
@@ -453,14 +509,27 @@ jobs:
               if values.get('push_run_id','') != current_run_id:
                   raise SystemExit(f"provenance push run mismatch: push_run_id={values.get('push_run_id','')!r} current_run_id={current_run_id!r}")
               cross_event=values.get('pr_run_id','')
+          elif current_event=='workflow_dispatch':
+              if certification_mode!='manual_recertification':
+                  raise SystemExit(f'workflow_dispatch requires manual_recertification mode: {certification_mode!r}')
+              cross_event=''
           else:
               raise SystemExit(f'provenance invalid current_event: {current_event!r}')
           if cross_event and not re.fullmatch(r'[0-9]+',cross_event):
               raise SystemExit(f'provenance invalid optional cross-event run id: {cross_event!r}')
-          for key in ('test_manifest_sha256','vendor_contract_sha256'):
+          for key in ('test_manifest_sha256','vendor_contract_sha256','installable_manifest_sha256'):
               got=values.get(key,'')
               if not re.fullmatch(r'[0-9a-f]{64}',got):
                   raise SystemExit(f'provenance invalid {key}: {got!r}')
+          for key in ('tree_sha','plugin_tree_sha','historical_alpha13_source_sha','historical_alpha13_plugin_tree_sha'):
+              got=values.get(key,'')
+              if not re.fullmatch(r'[0-9a-f]{40}',got):
+                  raise SystemExit(f'provenance invalid {key}: {got!r}')
+          historical_match=values.get('historical_alpha13_plugin_tree_match','')
+          if historical_match not in ('true','false'):
+              raise SystemExit(f'provenance invalid historical tree match: {historical_match!r}')
+          if plugin_tree_sha!='0f12a5710a117ec50ec04ce86798f8a955bccbcd' and historical_match!='false':
+              raise SystemExit('current improved ETG tree must not be labeled as the historical certified Alpha13 tree')
           print('provenance-validation=PASS')
           PY
 

@@ -42,7 +42,8 @@ provider_contracts = read('includes/class-mad4b-scp-provider-contracts.php')
 require(status, "mad4b.connection-readiness.v4", 'connection-contract')
 for marker in (
     'get_server_route_namespace', 'get_server_route', 'get_transport_permission_callback',
-    'rest_get_server()', 'route_registered', 'permission_callback_match',
+    'MAD4B_SCP_Provider_Diagnostic_Policy::current_rest_server()', 'route_registered', 'permission_callback_match',
+    'deep_route_validation_deferred', 'route_validation_deferred',
     "'local_transport_ready'", "'remote_endpoint_preflight_ready'", '$connection_certified',
     "'external_handshake_unverified'", "'external_handshake_stale'",
     "'credential_material_exposed' => false", "'credential_creation_supported_here' => false",
@@ -57,6 +58,7 @@ for marker in (
 ):
     require(status, marker, 'connection-status-truth')
 forbid(status, "'connection_certified' => false", 'connection-no-permanent-false')
+forbid(status, 'rest_get_server()', 'connection-status-no-rest-materialization')
 
 
 require(ability, "'output_schema' => array( 'type' => 'object', 'additionalProperties' => true )", 'connection-output-schema-open')

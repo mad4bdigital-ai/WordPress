@@ -41,6 +41,7 @@ The structural CI gate is mandatory on every Feature 008 runtime change. The num
 Read/status surfaces are passive observations, not provider probes.
 
 - provider self-calls started by any ordinary MAD4B status read: **0**;
+- explicit deep diagnostics are outside ordinary status paths: they require an admin/governed invocation, may perform exactly one allowlisted internal provider dispatch, never loop back over HTTP, never retry automatically, and never become acceptance authority;
 - internal provider REST dispatch from status/read paths: **0**;
 - loopback HTTP from status/read paths: **0**;
 - implicit REST server materialization from provider compatibility or connection status: **0**;
@@ -49,6 +50,7 @@ Read/status surfaces are passive observations, not provider probes.
 - deep REST registry materialization is confined to the explicit `Connection > MCP Endpoints` workspace;
 - behavioral provider acceptance is delegated to the governed external/browser executor and persisted as bounded evidence;
 - these rules apply provider-neutrally to WPML, Elementor, JetEngine, JetSmartFilters, WooCommerce, Rank Math, LiteSpeed and future providers.
+- third-party wp-admin plugin pages are zero-touch; only explicit MAD4B operator pages may enter Control Plane lifecycle work.
 
 A provider support/status page must therefore remain operational even if MAD4B status polling, MCP tool refresh, Site Health, or external acceptance reads occur concurrently. No status read may create a feedback loop against the provider API it is observing.
 
@@ -68,7 +70,8 @@ For these request-serving targets MAD4B must contribute:
 - **0** provider self-calls;
 - **0** internal provider REST dispatches;
 - **0** implicit `rest_get_server()` materialization from status paths;
-- **0** acceptance/Query Monitor telemetry writes;
+- **0** generic acceptance/Query Monitor telemetry writes;
+- **at most 1** canonical WPML canary receipt write, only when the outer HTTP request itself is the exact WPML canary route;
 - **0** runtime-convergence drift scans or scheduling from generic WP-Cron;
 - **0** admin/authority/OAuth/Abilities init bootstrap through `MAD4B_SCP_Plugin::boot()`.
 
