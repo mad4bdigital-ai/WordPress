@@ -290,6 +290,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 	public static function can_execute( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_candidate_bind_admin_required', 'Administrator capability is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return new WP_Error( 'mad4b_candidate_bind_bearer_required', 'Verified OAuth bearer identity is required.' );
+		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) return new WP_Error( 'mad4b_candidate_bind_step_up_scope_required', 'Dedicated authority step-up scope is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return new WP_Error( 'mad4b_candidate_bind_profile_missing', 'An enrolled Site Profile is required.' );
 		$environment = self::current_environment();
 		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) ) return new WP_Error( 'mad4b_candidate_bind_environment_denied', 'Candidate binding is limited to Staging or Production.' );
