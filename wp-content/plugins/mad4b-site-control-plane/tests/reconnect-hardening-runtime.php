@@ -97,16 +97,15 @@ $GLOBALS['abilities']['mad4b/site-info']=new class { public function get_meta(){
 ok(priv('readonly_transport_request',array($call)),'allowlisted runtime-readonly tool may use bounded repair');
 unset($GLOBALS['abilities']['mad4b/site-info']);
 
-// Shadow map is bounded; DELETE tombstone blocks resurrection.
+// Per-session shadows do not overwrite each other; DELETE tombstone blocks resurrection.
 $GLOBALS['transients']=array();
-for($i=1;$i<=17;$i++){
-    $shadow=array('wp_user_id'=>7,'subject_fingerprint'=>str_repeat('a',64),'site_profile_digest'=>str_repeat('b',64),'client_fingerprint'=>str_repeat('c',64),'client_params'=>$minimal,'captured_at'=>time()+$i);
-    ok(priv('store_session_shadow',array(7,sid($i),$shadow)),'shadow store accepts bounded entry '.$i);
-}
-ok(empty(priv('get_session_shadow',array(7,sid(1)))),'oldest shadow is evicted at per-user bound');
-ok(!empty(priv('get_session_shadow',array(7,sid(17)))),'newest shadow remains available');
-priv('forget_session_shadow',array(7,sid(17)));
-ok(empty(priv('get_session_shadow',array(7,sid(17)))),'DELETE tombstone blocks shadow resurrection');
+$shadow=array('wp_user_id'=>7,'subject_fingerprint'=>str_repeat('a',64),'site_profile_digest'=>str_repeat('b',64),'client_fingerprint'=>str_repeat('c',64),'client_params'=>$minimal,'captured_at'=>time());
+ok(priv('store_session_shadow',array(7,sid(1),$shadow)),'first independent shadow stored');
+ok(priv('store_session_shadow',array(7,sid(2),$shadow)),'second independent shadow stored');
+ok(!empty(priv('get_session_shadow',array(7,sid(1))))&&!empty(priv('get_session_shadow',array(7,sid(2)))),'concurrent-session shadow keys remain independent');
+priv('forget_session_shadow',array(7,sid(2)));
+ok(empty(priv('get_session_shadow',array(7,sid(2)))),'DELETE tombstone blocks shadow resurrection');
+ok(!empty(priv('get_session_shadow',array(7,sid(1)))),'deleting one session shadow does not affect sibling shadow');
 
 // Duplicate non-empty session rows converge by CAS and preserve all sessions.
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(
