@@ -19,6 +19,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	private static $booted = false;
 	private static $session_repair_state = 'not_attempted';
 	private static $initialize_empty_requests = array();
+	private static $runtime_integrity_ok = null;
+	private static $runtime_integrity_state = 'not_checked';
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -101,6 +103,53 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( ! class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) || ! class_exists( '\\WP\\MCP\\Transport\\Infrastructure\\SessionManager' ) ) return false;
 		if ( ! defined( 'WP\\MCP\\Core\\McpAdapter::VERSION' ) ) return false;
 		return hash_equals( self::CERTIFIED_STATEFUL_ADAPTER_VERSION, (string) \WP\MCP\Core\McpAdapter::VERSION );
+	}
+
+
+	private static function certified_adapter_runtime_integrity_ok() {
+		if ( null !== self::$runtime_integrity_ok ) return self::$runtime_integrity_ok;
+		self::$runtime_integrity_ok = false;
+		self::$runtime_integrity_state = 'unavailable';
+
+		if ( ! self::session_repair_supported_runtime() ) {
+			self::$runtime_integrity_state = 'version_or_runtime_mismatch';
+			return false;
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) || ! method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_status' ) ) {
+			self::$runtime_integrity_state = 'provider_contract_unavailable';
+			return false;
+		}
+
+		$status = MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', true );
+		if ( ! is_array( $status ) ) {
+			self::$runtime_integrity_state = 'provider_status_invalid';
+			return false;
+		}
+		$integrity = isset( $status['runtime_integrity'] ) && is_array( $status['runtime_integrity'] ) ? $status['runtime_integrity'] : array();
+		$verified = isset( $integrity['verified'] ) && is_array( $integrity['verified'] ) ? array_values( array_map( 'strval', $integrity['verified'] ) ) : array();
+		$required_files = array(
+			'includes/Transport/Infrastructure/HttpRequestHandler.php',
+			'includes/Transport/Infrastructure/HttpSessionValidator.php',
+			'includes/Transport/Infrastructure/RequestRouter.php',
+			'includes/Transport/Infrastructure/SessionManager.php',
+		);
+		$all_transport_files_verified = empty( array_diff( $required_files, $verified ) );
+
+		$ok = isset( $status['status'] )
+			&& 'certified' === $status['status']
+			&& ! empty( $status['runtime_contract_ok'] )
+			&& isset( $status['certified_version'], $status['installed_version'] )
+			&& hash_equals( self::CERTIFIED_STATEFUL_ADAPTER_VERSION, (string) $status['certified_version'] )
+			&& hash_equals( self::CERTIFIED_STATEFUL_ADAPTER_VERSION, (string) $status['installed_version'] )
+			&& ! empty( $integrity['required'] )
+			&& ! empty( $integrity['manifest_present'] )
+			&& empty( $integrity['missing'] )
+			&& empty( $integrity['mismatched'] )
+			&& $all_transport_files_verified;
+
+		self::$runtime_integrity_ok = $ok;
+		self::$runtime_integrity_state = $ok ? 'certified_exact' : 'certification_or_integrity_drift';
+		return $ok;
 	}
 
 	private static function session_meta_key() {
@@ -370,7 +419,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$body = 'POST' === $method ? self::request_json( $request ) : array();
 		if ( 'POST' === $method && 'initialize' === ( $body['method'] ?? '' ) ) {
 			$key = self::request_scope_key( $request );
-			if ( '' !== $key ) self::$initialize_empty_requests[ $key ] = self::session_store_is_empty_for_first_initialize( get_current_user_id() );
+			$started_empty = self::session_store_is_empty_for_first_initialize( get_current_user_id() );
+			if ( '' !== $key ) self::$initialize_empty_requests[ $key ] = $started_empty && self::certified_adapter_runtime_integrity_ok();
+			if ( $started_empty && empty( self::$initialize_empty_requests[ $key ] ) ) self::$session_repair_state = 'runtime_integrity_gate_blocked';
 			return $result;
 		}
 		$session_id = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'mcp-session-id' ) ) : '';
@@ -400,6 +451,10 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			$expected = isset( $shadow[ $key ] ) ? strtolower( (string) $shadow[ $key ] ) : '';
 			$current = isset( $binding[ $key ] ) ? strtolower( (string) $binding[ $key ] ) : '';
 			if ( '' === $expected || '' === $current || ! hash_equals( $expected, $current ) ) return $result;
+		}
+		if ( ! self::certified_adapter_runtime_integrity_ok() ) {
+			self::$session_repair_state = 'runtime_integrity_gate_blocked';
+			return $result;
 		}
 		if ( ! self::ensure_session_record( $user_id, $session_id, $shadow['client_params'] ) ) {
 			self::$session_repair_state = 'rehydration_failed';
@@ -479,8 +534,13 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'first_session_race_repair_enabled' => self::governed_nonproduction_transport() && self::session_repair_supported_runtime(),
 			'repair_scope_first_empty_transition_only' => true,
 			'general_expiry_or_eviction_rehydration_enabled' => false,
+			'version_only_repair_authority_allowed' => false,
 			'certified_stateful_adapter_version' => self::CERTIFIED_STATEFUL_ADAPTER_VERSION,
 			'exact_adapter_version_required' => true,
+			'certified_runtime_integrity_required' => true,
+			'runtime_integrity_checked_only_on_candidate_repair_paths' => true,
+			'runtime_integrity_transport_file_count' => 4,
+			'runtime_integrity_state' => self::$runtime_integrity_state,
 			'rehydration_read_only' => true,
 			'rehydration_requires_runtime_readonly_annotation' => true,
 			'notifications_do_not_trigger_rehydration' => true,
