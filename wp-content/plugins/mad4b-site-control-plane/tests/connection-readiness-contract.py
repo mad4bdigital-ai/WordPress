@@ -422,3 +422,9 @@ require(identity_projection, "'runtime_integrity_verification_deferred' => true"
 require(identity_projection, "'mutation_certified' => false", 'provider-identity-never-mutation-certifies')
 mutation_guard = provider_contracts.split("public static function mutation_guard(", 1)[1]
 require(mutation_guard, "self::runtime_status( $provider, $available )", 'mutation-still-deep-provider-certification')
+
+# Deep transport verification is opt-in. MCP request-serving status remains
+# lightweight, while acceptance fixtures may explicitly force physical checks.
+require(status, "public static function status( $force_deep = false )", 'connection-explicit-deep-signature')
+require(status, "$protocol_hotpath = ! $force_deep", 'connection-deep-bypasses-hotpath-projection')
+require(status, "'explicit_deep_validation' => (bool) $force_deep", 'connection-deep-mode-observable')
