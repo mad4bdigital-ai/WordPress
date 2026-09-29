@@ -165,6 +165,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 		$desired = array();
 		foreach ( $inventory['rows'] as $row ) $desired[ $row['ability'] . "\0" . $row['provider'] ] = $row;
 		$allowed_providers = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::allowed_ability_providers() : array();
+		$retirement_providers = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::retirable_stale_ability_providers() : array();
 		$existing_rows = MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], 'mad4b-write' );
 		$seen_allow = array();
 		$stale_grants = array();
@@ -179,8 +180,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			if ( ! isset( $desired[ $key ] ) ) {
 				// Removing an exact Staging grant is authority-narrowing. Treat it as a
 				// planned cleanup only when the ability/provider pair is itself from the
-				// reviewed reconciliation universe; unknown stale authority still blocks.
-				if ( 'staging' === (string) $grant['environment'] && isset( $allowed_providers[ $ability ] ) && sanitize_key( (string) $allowed_providers[ $ability ] ) === $provider ) {
+				// reviewed retirement universe; unknown stale authority still blocks.
+				if ( 'staging' === (string) $grant['environment'] && isset( $retirement_providers[ $ability ] ) && sanitize_key( (string) $retirement_providers[ $ability ] ) === $provider ) {
 					$stale_grants[] = array( 'id' => (int) $grant['id'], 'ability' => $ability, 'provider' => $provider, 'environment' => 'staging' );
 				} else {
 					$blockers[] = 'stale_allow_unreviewed:' . $ability;
