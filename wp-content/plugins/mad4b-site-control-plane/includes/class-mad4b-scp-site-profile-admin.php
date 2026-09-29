@@ -124,7 +124,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		$profile = MAD4B_SCP_Site_Profile::profile();
 		$resolution = MAD4B_SCP_Site_Profile::environment_resolution();
 		$suggested_environment = isset( $resolution['suggested_environment'] ) ? sanitize_key( (string) $resolution['suggested_environment'] ) : 'production';
-		$selected_environment = ! empty( $status['origin_match'] ) && ! empty( $status['configured_environment'] )
+		$selected_environment = ! empty( $status['origin_match'] ) && ! empty( $status['environment_match'] ) && ! empty( $status['configured_environment'] )
 			? sanitize_key( (string) $status['configured_environment'] )
 			: $suggested_environment;
 		$features = isset( $profile['features'] ) && is_array( $profile['features'] ) ? $profile['features'] : array();
