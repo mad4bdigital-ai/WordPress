@@ -6,6 +6,8 @@ final class MAD4B_SCP_Operation_Journal {
 	const EVENT_CONTRACT = 'dynamic-operation-event:v1';
 	const MAX_METADATA_BYTES = 16384;
 	const MAX_METADATA_ITEMS = 100;
+	const MAX_EVENTS_PER_OPERATION = 1000;
+	const DEFAULT_STALE_SECONDS = 300;
 	const REDACTED = '[redacted]';
 
 	public static function begin( array $context, $lifecycle_state = 'planned', array $metadata = array() ) {
@@ -16,8 +18,8 @@ final class MAD4B_SCP_Operation_Journal {
 		$now = gmdate( 'Y-m-d H:i:s' );
 		$deadline = self::mysql_time( $context['hard_deadline_at'] );
 		$inserted = $wpdb->query( $wpdb->prepare(
-			"INSERT IGNORE INTO {$t['operation_heads']} (operation_id,operation_key,operation_binding_sha256,latest_sequence,latest_event_sha256,lifecycle_state,terminal_outcome,heartbeat_at,hard_deadline_at,created_at,updated_at) VALUES (%s,%s,%s,0,%s,%s,'',%s,%s,%s,%s)",
-			$context['operation_id'], $context['operation_key'], $context['operation_binding_sha256'], str_repeat( '0', 64 ), sanitize_key( $lifecycle_state ), $now, $deadline, $now, $now
+			"INSERT IGNORE INTO {$t['operation_heads']} (operation_id,operation_key,operation_binding_sha256,latest_sequence,latest_event_sha256,lifecycle_state,terminal_outcome,heartbeat_at,lock_expires_at,stale_after,hard_deadline_at,created_at,updated_at) VALUES (%s,%s,%s,0,%s,%s,'',%s,NULL,%s,%s,%s,%s)",
+			$context['operation_id'], $context['operation_key'], $context['operation_binding_sha256'], str_repeat( '0', 64 ), sanitize_key( $lifecycle_state ), $now, gmdate( 'Y-m-d H:i:s', time() + self::DEFAULT_STALE_SECONDS ), $deadline, $now, $now
 		) );
 		if ( false === $inserted ) return new WP_Error( 'mad4b_operation_journal_head_create_failed', 'Unable to initialize operation journal.', array( 'db_error' => $wpdb->last_error ) );
 		return self::append( $context, 'operation_started', array( 'checkpoint' => 'planned', 'lifecycle_state' => $lifecycle_state, 'metadata' => $metadata ) );
@@ -42,6 +44,7 @@ final class MAD4B_SCP_Operation_Journal {
 			$head = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['operation_heads']} WHERE operation_id=%s FOR UPDATE", $context['operation_id'] ), ARRAY_A );
 			if ( ! is_array( $head ) ) throw new RuntimeException( 'operation_head_missing' );
 			if ( ! hash_equals( (string) $head['operation_binding_sha256'], (string) $context['operation_binding_sha256'] ) || (string) $head['operation_key'] !== (string) $context['operation_key'] ) throw new RuntimeException( 'operation_identity_conflict' );
+			if ( (int) $head['latest_sequence'] >= self::MAX_EVENTS_PER_OPERATION ) throw new RuntimeException( 'operation_event_limit_exceeded' );
 			$sequence = (int) $head['latest_sequence'] + 1;
 			$previous = (string) $head['latest_event_sha256'];
 			$basis = array(
@@ -65,8 +68,8 @@ final class MAD4B_SCP_Operation_Journal {
 			) );
 			if ( 1 !== (int) $ok ) throw new RuntimeException( 'operation_event_insert_failed' );
 			$updated = $wpdb->query( $wpdb->prepare(
-				"UPDATE {$t['operation_heads']} SET latest_sequence=%d,latest_event_sha256=%s,lifecycle_state=%s,terminal_outcome=%s,heartbeat_at=%s,updated_at=%s WHERE operation_id=%s AND latest_sequence=%d AND latest_event_sha256=%s",
-				$sequence, $event_sha, $lifecycle, $outcome, $now, $now, $context['operation_id'], $sequence - 1, $previous
+				"UPDATE {$t['operation_heads']} SET latest_sequence=%d,latest_event_sha256=%s,lifecycle_state=%s,terminal_outcome=%s,heartbeat_at=%s,stale_after=%s,updated_at=%s WHERE operation_id=%s AND latest_sequence=%d AND latest_event_sha256=%s",
+				$sequence, $event_sha, $lifecycle, $outcome, $now, gmdate( 'Y-m-d H:i:s', time() + self::DEFAULT_STALE_SECONDS ), $now, $context['operation_id'], $sequence - 1, $previous
 			) );
 			if ( 1 !== (int) $updated ) throw new RuntimeException( 'operation_head_cas_failed' );
 			$wpdb->query( 'COMMIT' );
@@ -84,6 +87,28 @@ final class MAD4B_SCP_Operation_Journal {
 		$t = MAD4B_SCP_Schema::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['operation_heads']} WHERE operation_id=%s LIMIT 1", $operation_id ), ARRAY_A );
 		return is_array( $row ) ? $row : new WP_Error( 'mad4b_operation_not_found', 'Operation journal head was not found.' );
+	}
+
+
+	public static function heartbeat( array $context, $lock_expires_at = '' ) {
+		global $wpdb;
+		$valid = self::validate_context( $context );
+		if ( is_wp_error( $valid ) ) return $valid;
+		$t = MAD4B_SCP_Schema::tables();
+		$now = gmdate( 'Y-m-d H:i:s' );
+		$stale = gmdate( 'Y-m-d H:i:s', time() + self::DEFAULT_STALE_SECONDS );
+		$lock = '';
+		if ( '' !== (string) $lock_expires_at ) {
+			$ts = strtotime( (string) $lock_expires_at );
+			if ( false === $ts ) return new WP_Error( 'mad4b_operation_lock_expiry_invalid', 'Lock expiry timestamp is invalid.' );
+			$lock = gmdate( 'Y-m-d H:i:s', $ts );
+		}
+		if ( '' === $lock ) {
+			$ok = $wpdb->query( $wpdb->prepare( "UPDATE {$t['operation_heads']} SET heartbeat_at=%s,stale_after=%s,updated_at=%s WHERE operation_id=%s AND operation_binding_sha256=%s", $now, $stale, $now, $context['operation_id'], $context['operation_binding_sha256'] ) );
+		} else {
+			$ok = $wpdb->query( $wpdb->prepare( "UPDATE {$t['operation_heads']} SET heartbeat_at=%s,lock_expires_at=%s,stale_after=%s,updated_at=%s WHERE operation_id=%s AND operation_binding_sha256=%s", $now, $lock, $stale, $now, $context['operation_id'], $context['operation_binding_sha256'] ) );
+		}
+		return false === $ok ? new WP_Error( 'mad4b_operation_heartbeat_failed', 'Operation heartbeat update failed.' ) : true;
 	}
 
 	public static function trace( $operation_id, $limit = 200 ) {
@@ -134,6 +159,8 @@ final class MAD4B_SCP_Operation_Journal {
 		$deadline = ! empty( $head['hard_deadline_at'] ) ? strtotime( $head['hard_deadline_at'] . ' UTC' ) : false;
 		$now = time();
 		$terminal = in_array( (string)$head['lifecycle_state'], array('completed','terminal_failed'), true );
+		$stale_after = ! empty( $head['stale_after'] ) ? strtotime( $head['stale_after'] . ' UTC' ) : false;
+		$lock_expires = ! empty( $head['lock_expires_at'] ) ? strtotime( $head['lock_expires_at'] . ' UTC' ) : false;
 		return array(
 			'contract'=>'mad4b.dynamic-operation-status.v1',
 			'operation_id'=>(string)$head['operation_id'],
@@ -145,9 +172,12 @@ final class MAD4B_SCP_Operation_Journal {
 			'terminal_outcome'=>(string)$head['terminal_outcome'],
 			'heartbeat_at'=>(string)$head['heartbeat_at'],
 			'hard_deadline_at'=>(string)$head['hard_deadline_at'],
-			'stale_heartbeat'=>!$terminal && false!==$heartbeat && ($now-$heartbeat)>300,
+			'lock_expires_at'=>isset($head['lock_expires_at'])?(string)$head['lock_expires_at']:'',
+			'stale_after'=>isset($head['stale_after'])?(string)$head['stale_after']:'',
+			'stale_heartbeat'=>!$terminal && false!==$stale_after && $stale_after<=$now,
+			'lock_expired'=>!$terminal && false!==$lock_expires && $lock_expires<=$now,
 			'hard_deadline_exceeded'=>!$terminal && false!==$deadline && $deadline<=$now,
-			'orphan_candidate'=>!$terminal && ((false!==$heartbeat&&($now-$heartbeat)>300)||(false!==$deadline&&$deadline<=$now)),
+			'orphan_candidate'=>!$terminal && ((false!==$stale_after&&$stale_after<=$now)||(false!==$lock_expires&&$lock_expires<=$now)||(false!==$deadline&&$deadline<=$now)),
 			'read_only'=>true,'mutation_performed'=>false
 		);
 	}

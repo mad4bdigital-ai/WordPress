@@ -26,6 +26,7 @@ final class MAD4B_SCP_Schema {
 			'work_leases' => $wpdb->prefix . 'mad4b_work_leases', 'idempotency' => $wpdb->prefix . 'mad4b_idempotency',
 			'outbox' => $wpdb->prefix . 'mad4b_execution_outbox', 'inbox' => $wpdb->prefix . 'mad4b_execution_inbox',
 			'operation_events' => $wpdb->prefix . 'mad4b_dynamic_operation_events', 'operation_heads' => $wpdb->prefix . 'mad4b_dynamic_operation_heads',
+			'recovery_cases' => $wpdb->prefix . 'mad4b_dynamic_recovery_cases', 'metric_buckets' => $wpdb->prefix . 'mad4b_dynamic_metric_buckets',
 		);
 	}
 
@@ -612,12 +613,50 @@ final class MAD4B_SCP_Schema {
 			lifecycle_state varchar(32) NOT NULL DEFAULT 'planned',
 			terminal_outcome varchar(32) NOT NULL DEFAULT '',
 			heartbeat_at datetime NOT NULL,
+			lock_expires_at datetime NULL,
+			stale_after datetime NOT NULL,
 			hard_deadline_at datetime NOT NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (operation_id),
 			KEY lifecycle_updated (lifecycle_state,updated_at),
 			KEY operation_key (operation_key)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['recovery_cases']} (
+			recovery_id char(36) NOT NULL,
+			operation_id char(36) NOT NULL,
+			operation_binding_sha256 char(64) NOT NULL,
+			journal_head_sha256 char(64) NOT NULL,
+			current_state_sha256 char(64) NOT NULL,
+			provider_state_digest char(64) NOT NULL,
+			pipeline_settings_sha256 char(64) NOT NULL,
+			policy_sha256 char(64) NOT NULL,
+			environment varchar(32) NOT NULL,
+			plan_sha256 char(64) NOT NULL,
+			status varchar(32) NOT NULL DEFAULT 'planned',
+			plan_json longtext NOT NULL,
+			generated_at datetime NOT NULL,
+			expires_at datetime NOT NULL,
+			verified_at datetime NULL,
+			closed_at datetime NULL,
+			PRIMARY KEY  (recovery_id),
+			UNIQUE KEY operation_plan (operation_id,plan_sha256),
+			KEY operation_status (operation_id,status),
+			KEY expires_at (expires_at)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['metric_buckets']} (
+			bucket_key varchar(191) NOT NULL,
+			metric_name varchar(96) NOT NULL,
+			bucket_start datetime NOT NULL,
+			count_value bigint(20) unsigned NOT NULL DEFAULT 0,
+			sum_value bigint(20) unsigned NOT NULL DEFAULT 0,
+			min_value bigint(20) unsigned NULL,
+			max_value bigint(20) unsigned NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (bucket_key),
+			KEY metric_bucket (metric_name,bucket_start)
 		) $charset;";
 
 		$dbdelta_diagnostics = array();
@@ -771,7 +810,9 @@ final class MAD4B_SCP_Schema {
 			'outbox' => array( 'outbox_id', 'job_id', 'expected_job_revision', 'provider_id', 'capability_id', 'workflow_plan_sha256', 'idempotency_key', 'request_sha256', 'status', 'attempts', 'available_at' ),
 			'inbox' => array( 'provider_id', 'provider_event_id', 'job_id', 'payload_sha256', 'status', 'provider_execution_ref', 'result_ref', 'received_at' ),
 			'operation_events' => array( 'operation_id', 'operation_key', 'operation_binding_sha256', 'sequence', 'event_type', 'checkpoint', 'lifecycle_state', 'terminal_outcome', 'safe_metadata_json', 'previous_event_sha256', 'event_sha256', 'created_at' ),
-			'operation_heads' => array( 'operation_id', 'operation_key', 'operation_binding_sha256', 'latest_sequence', 'latest_event_sha256', 'lifecycle_state', 'terminal_outcome', 'heartbeat_at', 'hard_deadline_at', 'updated_at' ),
+			'operation_heads' => array( 'operation_id', 'operation_key', 'operation_binding_sha256', 'latest_sequence', 'latest_event_sha256', 'lifecycle_state', 'terminal_outcome', 'heartbeat_at', 'lock_expires_at', 'stale_after', 'hard_deadline_at', 'updated_at' ),
+			'recovery_cases' => array( 'recovery_id', 'operation_id', 'operation_binding_sha256', 'journal_head_sha256', 'current_state_sha256', 'provider_state_digest', 'pipeline_settings_sha256', 'policy_sha256', 'environment', 'plan_sha256', 'status', 'plan_json', 'generated_at', 'expires_at' ),
+			'metric_buckets' => array( 'bucket_key', 'metric_name', 'bucket_start', 'count_value', 'sum_value', 'updated_at' ),
 		);
 	}
 	private static function required_durable_indexes() {
@@ -787,6 +828,8 @@ final class MAD4B_SCP_Schema {
 			'inbox' => array( 'provider_event' => true ),
 			'operation_events' => array( 'operation_sequence' => true, 'event_sha256' => true ),
 			'operation_heads' => array(),
+			'recovery_cases' => array( 'operation_plan' => true ),
+			'metric_buckets' => array(),
 		);
 	}
 
