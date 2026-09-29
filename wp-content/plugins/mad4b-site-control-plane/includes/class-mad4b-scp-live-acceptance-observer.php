@@ -370,6 +370,18 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		);
 	}
 
+
+	private static function valid_performance_sample( $sample ) {
+		return is_array( $sample )
+			&& isset( $sample['server_elapsed_ms'], $sample['db_queries'], $sample['peak_memory_bytes'] )
+			&& is_numeric( $sample['server_elapsed_ms'] )
+			&& (float) $sample['server_elapsed_ms'] >= 0
+			&& is_numeric( $sample['db_queries'] )
+			&& (int) $sample['db_queries'] >= 0
+			&& is_numeric( $sample['peak_memory_bytes'] )
+			&& (int) $sample['peak_memory_bytes'] > 0;
+	}
+
 	private static function frontend_performance_window( array $performance ) {
 		$window = array();
 		$samples = isset( $performance['samples'] ) && is_array( $performance['samples'] ) ? $performance['samples'] : array();
