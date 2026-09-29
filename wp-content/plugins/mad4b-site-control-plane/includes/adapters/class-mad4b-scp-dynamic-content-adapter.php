@@ -1302,25 +1302,63 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$scope=isset($receipt['scope'])&&is_array($receipt['scope'])?$receipt['scope']:array();
 		$current=$this->snapshot($post_id,$this->input_from_state_scope($scope));
 		if(!hash_equals((string)(isset($receipt['state_sha256'])?$receipt['state_sha256']:''),$this->state_sha256($current))) return new WP_Error('mad4b_dynamic_acceptance_state_drift','Post, meta, taxonomy or featured-media state changed after acceptance; rerun acceptance before publication.');
-		return array('verified'=>true,'receipt_sha256'=>$actual_hash,'accepted_at'=>(string)$receipt['accepted_at'],'state_sha256'=>(string)$receipt['state_sha256'],'pipeline_settings_sha256'=>$current_pipeline);
+		return array(
+			'verified'=>true,
+			'receipt_sha256'=>$actual_hash,
+			'accepted_at'=>(string)$receipt['accepted_at'],
+			'accepted_post_status'=>(string)$receipt['post_status'],
+			'post_type'=>(string)$receipt['post_type'],
+			'scope'=>isset($receipt['scope'])&&is_array($receipt['scope'])?$receipt['scope']:array(),
+			'state_sha256'=>(string)$receipt['state_sha256'],
+			'pipeline_settings_sha256'=>$current_pipeline
+		);
+	}
+
+	public function verify_publication_transition($post_id,$expected_sha256,$published_status){
+		$post_id=absint($post_id);
+		$expected_sha256=strtolower(trim((string)$expected_sha256));
+		$published_status=sanitize_key((string)$published_status);
+		if($post_id<1||1!==preg_match('/^[a-f0-9]{64}$/',$expected_sha256)||!in_array($published_status,array('publish','private'),true)) return new WP_Error('mad4b_dynamic_publication_transition_invalid','Dynamic publication transition input is invalid.');
+		$receipt=$this->acceptance_meta_state($post_id);
+		if(empty($receipt)||self::ACCEPTANCE_CONTRACT!==(isset($receipt['contract'])?(string)$receipt['contract']:'')) return new WP_Error('mad4b_dynamic_acceptance_receipt_missing','No valid dynamic acceptance receipt exists for this post.');
+		$actual_hash=$this->acceptance_receipt_hash($receipt);
+		if(!hash_equals($actual_hash,$expected_sha256)) return new WP_Error('mad4b_dynamic_acceptance_receipt_mismatch','Dynamic acceptance receipt changed during publication.');
+		$post=get_post($post_id);
+		if(!$post||(string)$post->post_type!==(isset($receipt['post_type'])?(string)$receipt['post_type']:'')||$published_status!==(string)$post->post_status) return new WP_Error('mad4b_dynamic_publication_transition_mismatch','Published post state does not match the requested transition.');
+		$ttl=(int)apply_filters('mad4b_scp_dynamic_content_acceptance_ttl',self::DEFAULT_ACCEPTANCE_TTL,$post_id,$receipt);
+		$ttl=max(60,min(self::MAX_ACCEPTANCE_TTL,$ttl));
+		$accepted_at=isset($receipt['accepted_at'])?strtotime((string)$receipt['accepted_at']):false;
+		if(false===$accepted_at||$accepted_at<time()-$ttl) return new WP_Error('mad4b_dynamic_acceptance_expired','Dynamic acceptance receipt expired during publication.');
+		$environment=function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown';
+		if(!hash_equals((string)(isset($receipt['environment'])?$receipt['environment']:''),$environment)) return new WP_Error('mad4b_dynamic_acceptance_environment_drift','Dynamic acceptance receipt belongs to a different WordPress environment.');
+		$pipeline=class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')?MAD4B_SCP_Dynamic_Content_Pipeline::effective():array();
+		$current_pipeline=isset($pipeline['settings_sha256'])?(string)$pipeline['settings_sha256']:'';
+		if($current_pipeline===''||!hash_equals((string)(isset($receipt['pipeline_settings_sha256'])?$receipt['pipeline_settings_sha256']:''),$current_pipeline)) return new WP_Error('mad4b_dynamic_acceptance_pipeline_drift','Pipeline settings changed during publication.');
+		$scope=isset($receipt['scope'])&&is_array($receipt['scope'])?$receipt['scope']:array();
+		$current=$this->snapshot($post_id,$this->input_from_state_scope($scope));
+		if(isset($current['post']['post_status'])) $current['post']['post_status']=isset($receipt['post_status'])?(string)$receipt['post_status']:'';
+		if(!hash_equals((string)(isset($receipt['state_sha256'])?$receipt['state_sha256']:''),$this->state_sha256($current))) return new WP_Error(
+			'mad4b_dynamic_publication_state_drift',
+			'Post, meta, taxonomy or featured-media state changed between acceptance verification and publication.'
+		);
+		return array('verified'=>true,'receipt_sha256'=>$actual_hash,'state_sha256'=>(string)$receipt['state_sha256'],'published_status'=>$published_status);
 	}
 
 	public function consume_publication_acceptance($post_id,$expected_sha256){
-		$verified=$this->verify_publication_acceptance($post_id,$expected_sha256);
-		if(is_wp_error($verified)) return $verified;
 		$post_id=absint($post_id);
-		$receipt=$this->acceptance_meta_state($post_id);
 		$expected_sha256=strtolower(trim((string)$expected_sha256));
-		if(empty($receipt)||!hash_equals($expected_sha256,$this->acceptance_receipt_hash($receipt))) return new WP_Error(
+		if($post_id<1||1!==preg_match('/^[a-f0-9]{64}$/',$expected_sha256)) return new WP_Error('mad4b_dynamic_acceptance_receipt_required','Exact dynamic acceptance receipt hash is required.');
+		$receipt=$this->acceptance_meta_state($post_id);
+		if(empty($receipt)||self::ACCEPTANCE_CONTRACT!==(isset($receipt['contract'])?(string)$receipt['contract']:'')) return new WP_Error('mad4b_dynamic_acceptance_receipt_missing','No valid dynamic acceptance receipt exists for this post.');
+		if(!hash_equals($expected_sha256,$this->acceptance_receipt_hash($receipt))) return new WP_Error(
 			'mad4b_dynamic_acceptance_receipt_raced',
 			'Dynamic acceptance receipt changed before it could be consumed.'
 		);
 		if(!delete_post_meta($post_id,self::ACCEPTANCE_META,$receipt)) return new WP_Error(
 			'mad4b_dynamic_acceptance_receipt_consume_failed',
-			'Dynamic acceptance receipt could not be consumed exactly; publication is denied.'
+			'Dynamic acceptance receipt could not be consumed exactly; publication is not finalized.'
 		);
-		$verified['consumed']=true;
-		return $verified;
+		return array('consumed'=>true,'receipt_sha256'=>$expected_sha256);
 	}
 
 	private function publication_acceptance_status($post_id){
