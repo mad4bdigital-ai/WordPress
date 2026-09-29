@@ -241,6 +241,71 @@ final class MAD4B_SCP_Provider_Contracts {
 		return $result;
 	}
 
+	public static function runtime_identity_status( $provider, $available = null ) {
+		$base_contract = self::get( $provider );
+		if ( empty( $base_contract ) ) {
+			return array(
+				'provider' => $provider,
+				'status' => 'uncertified_provider',
+				'identity_contract_ok' => false,
+				'runtime_integrity_verification_deferred' => true,
+			);
+		}
+
+		// Connection/readiness hot paths need package identity, not a byte-for-byte
+		// mutation certification. Composite providers keep their deep integrity
+		// contract on runtime_status(); this projection only compares versions and
+		// verifies that an integrity manifest is structurally declared.
+		if ( ! empty( $base_contract['components'] ) && is_array( $base_contract['components'] ) ) {
+			$components = array();
+			$all_identity_ok = true;
+			foreach ( $base_contract['components'] as $key => $component ) {
+				if ( ! is_array( $component ) ) { $all_identity_ok = false; continue; }
+				$expected = isset( $component['version'] ) ? (string) $component['version'] : '';
+				$actual = self::installed_version_for_contract( $component );
+				$manifest_present = ! empty( $component['critical_files'] ) && is_array( $component['critical_files'] );
+				$identity_ok = '' !== $actual && '' !== $expected && hash_equals( $expected, $actual ) && $manifest_present;
+				$all_identity_ok = $all_identity_ok && $identity_ok;
+				$components[ sanitize_key( (string) $key ) ] = array(
+					'certified_version' => $expected,
+					'installed_version' => $actual,
+					'critical_file_manifest_present' => $manifest_present,
+					'identity_ok' => $identity_ok,
+					'runtime_integrity_verification_deferred' => true,
+				);
+			}
+			return array(
+				'provider' => $provider,
+				'status' => false === $available ? 'unavailable' : ( $all_identity_ok ? 'certified_identity' : 'component_identity_drift' ),
+				'components' => $components,
+				'identity_contract_ok' => false !== $available && $all_identity_ok,
+				'runtime_integrity_verification_deferred' => true,
+				'mutation_certified' => false,
+			);
+		}
+
+		$actual = self::installed_version( $provider );
+		$contract = self::contract_for_version( $provider, $actual );
+		$expected = isset( $contract['version'] ) ? (string) $contract['version'] : '';
+		$certified_versions = self::certified_versions( $provider );
+		$manifest_present = ! empty( $contract['critical_files'] ) && is_array( $contract['critical_files'] );
+		$version_ok = false !== $available && '' !== $actual && '' !== $expected && hash_equals( $expected, $actual ) && in_array( $actual, $certified_versions, true );
+		return array(
+			'provider' => $provider,
+			'label' => isset( $contract['label'] ) ? $contract['label'] : $provider,
+			'status' => false === $available || '' === $actual ? 'unavailable' : ( $version_ok ? 'certified_identity' : 'version_drift' ),
+			'certified_version' => $expected,
+			'certified_versions' => $certified_versions,
+			'installed_version' => $actual,
+			'contract_mode' => isset( $contract['contract_mode'] ) ? $contract['contract_mode'] : '',
+			'certification_authority' => isset( $contract['certification_authority'] ) ? $contract['certification_authority'] : 'repository_baseline',
+			'critical_file_manifest_present' => $manifest_present,
+			'identity_contract_ok' => $version_ok && $manifest_present,
+			'runtime_integrity_verification_deferred' => true,
+			'mutation_certified' => false,
+		);
+	}
+
 	public static function runtime_status( $provider, $available = null ) {
 		$base_contract = self::get( $provider );
 		if ( empty( $base_contract ) ) return array( 'provider' => $provider, 'status' => 'uncertified_provider', 'runtime_contract_ok' => false );
