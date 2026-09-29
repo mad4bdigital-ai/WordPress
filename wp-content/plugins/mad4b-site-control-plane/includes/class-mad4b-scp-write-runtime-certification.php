@@ -354,7 +354,21 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 
 		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array();
 		$checks['peer_inventory_ready'] = ! empty( $peer['inventory_ready'] );
+		$checks['peer_write_side_channel_absent'] = $checks['peer_inventory_ready'] && empty( $peer['write_side_channel_detected'] );
+		$checks['peer_governance_safe'] = $checks['peer_inventory_ready'] && $checks['peer_write_side_channel_absent'];
 		if ( ! $checks['peer_inventory_ready'] ) $blockers[] = 'mcp_peer_inventory_unavailable';
+		elseif ( ! $checks['peer_write_side_channel_absent'] ) $blockers[] = 'mcp_write_side_channel_detected';
+		$peer_summary = array(
+			'contract' => isset( $peer['contract'] ) ? (string) $peer['contract'] : '',
+			'inventory_ready' => $checks['peer_inventory_ready'],
+			'write_side_channel_detected' => ! empty( $peer['write_side_channel_detected'] ),
+			'external_peer_count' => isset( $peer['external_peer_count'] ) ? (int) $peer['external_peer_count'] : 0,
+			'public_write_ability_count' => isset( $peer['public_write_ability_count'] ) ? (int) $peer['public_write_ability_count'] : 0,
+			'risk_count' => isset( $peer['risk_count'] ) ? (int) $peer['risk_count'] : 0,
+			'blockers' => isset( $peer['blockers'] ) && is_array( $peer['blockers'] ) ? array_slice( array_values( $peer['blockers'] ), 0, 20 ) : array(),
+			'foreign_transport_inventory_ready' => ! empty( $peer['foreign_transport_inventory_ready'] ),
+			'foreign_mcp_detected' => ! empty( $peer['foreign_mcp_detected'] ),
+		);
 
 		$evidence = array(
 			'checks' => $checks,
@@ -371,6 +385,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'missing_governed_write_authority' => $missing_governed_write_authority,
 			'breakglass' => $breakglass,
 			'rest' => $rest,
+			'mcp_peer_governance' => $peer_summary,
 		);
 		$digest = hash( 'sha256', wp_json_encode( $evidence, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 		$blockers = array_values( array_unique( $blockers ) );
@@ -392,6 +407,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'authority' => $authority,
 			'approval_planner' => $planner,
 			'rest_compatibility' => $rest,
+			'mcp_peer_governance' => $peer_summary,
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
 			'oauth_role' => 'identity_only',
