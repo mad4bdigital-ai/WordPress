@@ -26,6 +26,18 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 	const INFO_ABILITY = 'mad4b/enrollment-info';
 	const EXECUTE_ABILITY = 'mad4b/enrollment-execute';
 
+	/**
+	 * Compact ChatGPT transport projection for the generic bounded dispatcher.
+	 *
+	 * This remains a compatibility path. Semantically named operations that are
+	 * explicitly marked chatgpt_direct_step_up are projected separately so MCP
+	 * clients do not have to submit an arbitrary operation_id + nested input
+	 * envelope for known-safe maintenance operations.
+	 */
+	public static function chatgpt_tools() {
+		return self::staging_profile_exact() ? array( self::EXECUTE_ABILITY ) : array();
+	}
+
 	public static function can_execute( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_enrollment_dispatch_admin_required', 'Administrator capability is required.' );
 		if ( ! self::staging_profile_exact() ) return new WP_Error( 'mad4b_enrollment_dispatch_staging_profile_required', 'Exact enrolled Staging Site Profile is required.' );
