@@ -626,7 +626,7 @@ final class MAD4B_SCP_Self_Update {
 		$blockers = array();
 		if ( ! $global_enabled ) $blockers[] = 'wordpress_plugin_auto_updates_globally_disabled';
 		if ( false === $forced ) {
-			$blockers[] = 'auto_update_plugin_filter_forced_disabled';
+			$blockers[] = 'wordpress_plugin_auto_update_forced_disabled';
 		} elseif ( null === $forced ) {
 			if ( ! $selected ) $blockers[] = 'plugin_not_selected_for_auto_update';
 			if ( $selected && ! $update_supported ) $blockers[] = 'wordpress_update_metadata_not_supported';
