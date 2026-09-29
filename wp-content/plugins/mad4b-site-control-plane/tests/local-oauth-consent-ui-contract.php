@@ -75,6 +75,7 @@ if ( false === strpos( $step_up_enhanced, '<code>mad4b:authority:step-up</code> 
 if ( false === strpos( $step_up_enhanced, '>Approve governed access</button>' ) ) $fail( 'Governed step-up approval label is missing.' );
 if ( false === strpos( $step_up_enhanced, 'does not itself create write grants, Developer authority, Developer Breakglass authority, or raw-SQL Breakglass authority' ) ) $fail( 'Step-up authority boundary statement is missing.' );
 if ( false === strpos( $step_up_enhanced, 'Production writes still require exact Site Profile confirmation and one-time approval' ) ) $fail( 'Production step-up safety boundary is missing.' );
+if ( false === strpos( $step_up_enhanced, 'bootstrap Control Plane self-update' ) ) $fail( 'Policy-eligible Control Plane self-update step-up explanation is missing.' );
 if ( false === strpos( $step_up_enhanced, 'name="scope" value="mad4b:read offline_access mad4b:authority:step-up"' ) ) $fail( 'Step-up scope field was changed.' );
 
 $connection_sample = '<!doctype html><html><head><title>MAD4B Connection</title></head><body>'

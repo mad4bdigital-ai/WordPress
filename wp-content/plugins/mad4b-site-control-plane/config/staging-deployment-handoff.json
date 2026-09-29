@@ -87,7 +87,7 @@
       "zip_traversal_and_symlink_denied",
       "same_cycle_installed_package_identity_readback"
     ],
-    "first_bootstrap_note": "A runtime predating wordpress_plugin_deploy requires one already-authorized external deployment connector to install the first Host Bridge/Runner-capable candidate; subsequent deployments use the governed semantic path.",
+    "first_bootstrap_note": "A runtime predating both wordpress_plugin_deploy and the bootstrap self-update step-up still requires one already-authorized external deployment connector for the first Host Bridge/Runner-capable candidate. Runtimes containing mad4b/control-plane-bootstrap-apply can repair later candidate-drift self-update deadlocks through the exact Staging step-up path without widening Write, Developer, Breakglass, or Production authority.",
     "activation_mode": "preserve_existing_active_plugin_state_during_exact_directory_replace_then_verify_on_fresh_request",
     "active_runtime_required_before_host_runner_replace": true
   },
@@ -209,6 +209,30 @@
         "resolution": "pointer_first_with_network_or_http_unavailable_legacy_fallback",
         "pointer_manifest_sha256_required": true,
         "pointer_release_verdict_binding_required": true
+      },
+      "governed_bootstrap_release_pull": {
+        "ability_apply": "mad4b/control-plane-bootstrap-apply",
+        "oauth_scope": "mad4b:authority:step-up",
+        "client_binding": "exact_chatgpt_cimd_client",
+        "execution_core": "governed_native_release_pull",
+        "purpose": "break_candidate_binding_self_update_circular_dependency",
+        "availability": "staging_only_when_normal_write_authority_is_not_effective_and_current_exact_grants_are_clean",
+        "exact_plan_required": true,
+        "explicit_confirmation_required": true,
+        "release_channel_bound": true,
+        "target_derived_from_release_manifest": true,
+        "caller_supplied_url_allowed": false,
+        "caller_supplied_path_allowed": false,
+        "caller_package_bytes_allowed": false,
+        "grant_mutation_allowed": false,
+        "developer_authority_mutation_allowed": false,
+        "developer_breakglass_mutation_allowed": false,
+        "generic_raw_sql_breakglass_included": false,
+        "production_allowed": false,
+        "backup_before_replace": true,
+        "readback_required": true,
+        "rollback_on_failed_readback": true,
+        "self_disables_after_normal_write_authority_becomes_effective": true
       }
     },
     "shared_verification": [
@@ -225,7 +249,9 @@
     "first_bootstrap": {
       "required_for_runtime_predating_this_contract": true,
       "external_deployment_connector_required_once": true,
-      "self_update_channels_available_after_first_bootstrap": true
+      "self_update_channels_available_after_first_bootstrap": true,
+      "bootstrap_step_up_after_initial_install": true,
+      "stale_candidate_recovery": "Use mad4b/control-plane-bootstrap-apply when the installed runtime already contains this contract, normal Write Authority is fail-closed only on candidate drift, and current exact grants are otherwise clean."
     },
     "forbidden": {
       "arbitrary_remote_url": true,

@@ -84,6 +84,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-finalizer
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-unchanged-attestation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wpml-response-contract.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-wpml-acceptance-finalizer.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-truth-projection.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-provider-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-planner.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-verdict-reducer.php';

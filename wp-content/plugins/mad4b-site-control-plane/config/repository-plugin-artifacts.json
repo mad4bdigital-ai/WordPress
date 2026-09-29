@@ -231,7 +231,8 @@
         "wpml-import.zip",
         "wpml-meta-id-mapper-ui.zip",
         "wpml-string-translation.zip"
-      ]
+      ],
+      "primary_plugin_file": "sitepress-multilingual-cms/sitepress.php"
     }
   }
 }

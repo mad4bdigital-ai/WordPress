@@ -665,7 +665,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		echo '<p>' . esc_html__( 'OAuth scopes:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( implode( ' ', $validated['scopes'] ) ) . '</code></p>';
 		if ( $step_up_requested ) {
 			echo '<p><strong>' . esc_html__( 'Authority step-up:', 'mad4b-site-control-plane' ) . '</strong> ' .
-				esc_html__( 'This OAuth scope permits ChatGPT to request exact environment-bound governance bootstrap and convergence operations. It does not itself create write grants, Developer authority, Developer Breakglass authority, or raw-SQL Breakglass authority. Production writes require an exact Production Site Profile, environment-specific confirmation, exact grants, one-time approval, matching build/site digests, enrolled administrator identity, audit readiness, and all fail-closed governance gates. Full Staging Authority remains Staging-only.', 'mad4b-site-control-plane' ) .
+				esc_html__( 'This OAuth scope permits ChatGPT to request exact environment-bound governance bootstrap and convergence operations, including bootstrap Control Plane self-update only where the current environment policy permits it. It does not itself create write grants, Developer authority, Developer Breakglass authority, or raw-SQL Breakglass authority. Production writes require an exact Production Site Profile, environment-specific confirmation, exact grants, one-time approval, matching build/site digests, enrolled administrator identity, audit readiness, and all fail-closed governance gates. Full Staging Authority remains Staging-only.', 'mad4b-site-control-plane' ) .
 				'</p>';
 		}
 		$grant_projection = self::consent_grant_projection();

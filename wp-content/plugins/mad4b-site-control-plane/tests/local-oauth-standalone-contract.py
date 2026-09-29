@@ -104,7 +104,7 @@ required_server = [
     "'exact_grant_present'",
     "Live governed write authority",
     "Authority step-up:",
-    "This OAuth scope permits ChatGPT to request exact environment-bound governance bootstrap and convergence operations.",
+    "This OAuth scope permits ChatGPT to request exact environment-bound governance bootstrap and convergence operations, including bootstrap Control Plane self-update only where the current environment policy permits it.",
     "Production writes require an exact Production Site Profile",
     "live governance evidence, not an OAuth permission request",
     "wp_ajax_mad4b_oauth_grant_projection",

@@ -546,6 +546,9 @@ final class MAD4B_SCP_Servers {
 		$full_step_up = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
 			? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()
 			: array();
+		$self_update_step_up = class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'chatgpt_step_up_tools' )
+			? MAD4B_SCP_Self_Update::chatgpt_step_up_tools()
+			: array();
 		$bootstrap = array_merge(
 			array(
 				'mad4b/build-provenance-status',
@@ -557,10 +560,11 @@ final class MAD4B_SCP_Servers {
 			$narrow_step_up,
 			$candidate_step_up,
 			$full_read,
-			$full_step_up
+			$full_step_up,
+			$self_update_step_up
 		);
 		$candidates = array_merge( $core, $bootstrap );
-		$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up );
+		$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );
 		$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );
 		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up ) ) );
 		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
@@ -622,6 +626,7 @@ final class MAD4B_SCP_Servers {
 			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools() : array(),
 			class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools() : array(),
 			$full_staging_catalog,
+			class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Self_Update::chatgpt_step_up_tools() : array(),
 			self::chatgpt_enrollment_candidates(),
 			self::core_tools( 'mad4b-content' ),
 			self::core_tools( 'mad4b-admin' ),
