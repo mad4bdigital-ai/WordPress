@@ -312,11 +312,26 @@ final class MAD4B_SCP_Staging_Certification {
 			$grant_plan = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan' )
 				? MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan()
 				: array();
-			$missing_write = isset( $grant_plan['expected_missing_abilities'] ) && is_array( $grant_plan['expected_missing_abilities'] ) ? $grant_plan['expected_missing_abilities'] : array();
-			$stale_grants = isset( $grant_plan['expected_stale_grant_ids'] ) && is_array( $grant_plan['expected_stale_grant_ids'] ) ? $grant_plan['expected_stale_grant_ids'] : array();
-			$missing_transport = isset( $grant_plan['expected_missing_transport_abilities'] ) && is_array( $grant_plan['expected_missing_transport_abilities'] ) ? $grant_plan['expected_missing_transport_abilities'] : array();
-			$requires_grant_reconcile = ! empty( $missing_write ) || ! empty( $stale_grants ) || ! empty( $missing_transport );
-			if ( $requires_grant_reconcile ) {
+			$grant_plan_error = is_wp_error( $grant_plan );
+			$missing_write = ! $grant_plan_error && isset( $grant_plan['expected_missing_abilities'] ) && is_array( $grant_plan['expected_missing_abilities'] ) ? $grant_plan['expected_missing_abilities'] : array();
+			$stale_grants = ! $grant_plan_error && isset( $grant_plan['expected_stale_grant_ids'] ) && is_array( $grant_plan['expected_stale_grant_ids'] ) ? $grant_plan['expected_stale_grant_ids'] : array();
+			$missing_transport = ! $grant_plan_error && isset( $grant_plan['expected_missing_transport_abilities'] ) && is_array( $grant_plan['expected_missing_transport_abilities'] ) ? $grant_plan['expected_missing_transport_abilities'] : array();
+			$requires_grant_reconcile = ! $grant_plan_error && ( ! empty( $missing_write ) || ! empty( $stale_grants ) || ! empty( $missing_transport ) );
+			if ( $grant_plan_error ) {
+				$append( $actions, $seen, 'write_authority_plan_blocked', array(
+					'kind' => 'read_only_blocker',
+					'executor' => 'wordpress_native',
+					'human_decision_required' => false,
+					'automatic_execution_allowed' => false,
+					'plan_ability' => 'mad4b/staging-write-grant-reconciliation-plan',
+					'error_code' => $grant_plan->get_error_code(),
+					'instruction' => 'Repair the read-only exact authority planning preconditions before any authority mutation is considered.',
+					'production_policy' => 'deny',
+				) );
+			}
+			if ( $grant_plan_error ) {
+				// The blocker action above is intentionally terminal for this authority lane.
+			} elseif ( $requires_grant_reconcile ) {
 				$append( $actions, $seen, 'write_authority_reconcile', array(
 					'kind' => 'governed_mutation',
 					'executor' => 'wordpress_native',
