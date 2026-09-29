@@ -16,6 +16,8 @@ final class MAD4B_SCP_REST_Compatibility {
 	const CONTRACT = 'mad4b.rest-compatibility.v2';
 	const WPML_ROUTE = '/wpml/v1/rest/status';
 	const MAX_HOOK_CALLBACKS = 200;
+	const DEEP_DIAGNOSTIC_CONTRACT = 'mad4b.provider-deep-diagnostic.v1';
+	const DEEP_DIAGNOSTIC_ABILITY = 'mad4b/provider-deep-diagnostic';
 
 	private static $mcp_recovery_scope_evaluated = false;
 	private static $mcp_recovery_request = false;
@@ -101,21 +103,138 @@ final class MAD4B_SCP_REST_Compatibility {
 	}
 
 	public static function register_ability() {
-		if ( ! function_exists( 'wp_register_ability' ) || wp_has_ability( 'mad4b/rest-compatibility-status' ) ) return;
-		wp_register_ability( 'mad4b/rest-compatibility-status', array(
-			'label' => 'Get REST Compatibility Status',
-			'description' => 'Verify that the Control Plane does not disable or globally intercept unrelated WordPress REST routes, including WPML REST health checks.',
-			'category' => 'mad4b-read',
-			'execute_callback' => array( __CLASS__, 'status' ),
-			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
-			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-			'meta' => array(
-				'public' => false,
-				'show_in_rest' => false,
-				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
-				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
-			),
+		if ( ! function_exists( 'wp_register_ability' ) ) return;
+		if ( ! wp_has_ability( 'mad4b/rest-compatibility-status' ) ) {
+			wp_register_ability( 'mad4b/rest-compatibility-status', array(
+				'label' => 'Get REST Compatibility Status',
+				'description' => 'Verify that the Control Plane does not disable or globally intercept unrelated WordPress REST routes, including WPML REST health checks.',
+				'category' => 'mad4b-read',
+				'execute_callback' => array( __CLASS__, 'status' ),
+				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => array(
+					'public' => false,
+					'show_in_rest' => false,
+					'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+					'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+				),
+			) );
+		}
+		if ( ! wp_has_ability( self::DEEP_DIAGNOSTIC_ABILITY ) ) {
+			wp_register_ability( self::DEEP_DIAGNOSTIC_ABILITY, array(
+				'label' => 'Run Explicit Provider Deep Diagnostic',
+				'description' => 'Run one bounded, non-authorizing provider behavior probe. This is never called by passive status and never persists acceptance evidence.',
+				'category' => 'mad4b-admin',
+				'execute_callback' => array( __CLASS__, 'deep_diagnostic' ),
+				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_admin' ),
+				'input_schema' => array(
+					'type' => 'object',
+					'additionalProperties' => false,
+					'properties' => array(
+						'provider' => array( 'type' => 'string', 'enum' => array( 'wpml' ), 'default' => 'wpml' ),
+					),
+				),
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => array(
+					'public' => false,
+					'show_in_rest' => false,
+					'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'admin' ),
+					'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+				),
+			) );
+		}
+	}
+
+	public static function deep_diagnostic( $input = array() ) {
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' )
+			|| ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_deep_diagnostic_allowed() ) {
+			return new WP_Error( 'mad4b_provider_deep_diagnostic_not_allowed', 'Explicit provider deep diagnostic is not allowed in this request context.' );
+		}
+		$input = is_array( $input ) ? $input : array();
+		$provider = isset( $input['provider'] ) ? sanitize_key( (string) $input['provider'] ) : 'wpml';
+		if ( 'wpml' !== $provider ) {
+			return new WP_Error( 'mad4b_provider_deep_diagnostic_unsupported', 'Provider is not in the bounded deep-diagnostic allowlist.' );
+		}
+
+		$before = MAD4B_SCP_Provider_Diagnostic_Policy::current_rest_server();
+		$server = rest_get_server();
+		$routes = is_object( $server ) && method_exists( $server, 'get_routes' ) ? $server->get_routes() : array();
+		$route_registered = is_array( $routes ) && array_key_exists( self::WPML_ROUTE, $routes );
+		$wpml_active = self::wpml_active();
+		if ( ! $wpml_active ) {
+			return array(
+				'contract' => self::DEEP_DIAGNOSTIC_CONTRACT,
+				'mode' => 'explicit_deep_diagnostic',
+				'provider' => 'wpml',
+				'route' => self::WPML_ROUTE,
+				'state' => 'not_applicable',
+				'ready' => true,
+				'wpml_active' => false,
+				'route_registered' => $route_registered,
+				'query_parameters_preserved' => null,
+				'rest_server_materialized' => is_object( $server ),
+				'rest_server_materialized_by_diagnostic' => ! is_object( $before ) && is_object( $server ),
+				'active_probe_performed' => false,
+				'internal_rest_dispatch_performed' => false,
+				'loopback_http_performed' => false,
+				'provider_self_calls_started' => 0,
+				'automatic_retry_allowed' => false,
+				'authorizing' => false,
+				'acceptance_evidence_persisted' => false,
+			);
+		}
+
+		$request = new WP_REST_Request( 'GET', self::WPML_ROUTE );
+		$request->set_query_params( array(
+			'test_get_parameter' => '1',
+			'cachebuster' => 'mad4b-explicit-deep-diagnostic',
 		) );
+		$response = rest_do_request( $request );
+		$status_code = 0;
+		$data = null;
+		$error_code = '';
+		if ( is_wp_error( $response ) ) {
+			$error_code = sanitize_key( (string) $response->get_error_code() );
+			$error_data = $response->get_error_data();
+			$status_code = is_array( $error_data ) && isset( $error_data['status'] ) ? absint( $error_data['status'] ) : 500;
+		} else {
+			$rest_response = rest_ensure_response( $response );
+			if ( $rest_response instanceof WP_REST_Response ) {
+				$status_code = (int) $rest_response->get_status();
+				$data = $rest_response->get_data();
+				if ( is_array( $data ) && isset( $data['code'] ) && is_string( $data['code'] ) ) $error_code = sanitize_key( $data['code'] );
+			}
+		}
+		$evaluated = class_exists( 'MAD4B_SCP_WPML_Response_Contract' )
+			? MAD4B_SCP_WPML_Response_Contract::evaluate_response( true, $status_code, $data, $error_code, $route_registered )
+			: array( 'classification' => 'evaluator_unavailable', 'status' => '', 'get_parameters' => '' );
+		$preserved = 'success' === ( isset( $evaluated['classification'] ) ? (string) $evaluated['classification'] : '' )
+			&& 'valid' === ( isset( $evaluated['status'] ) ? (string) $evaluated['status'] : '' )
+			&& 'valid' === ( isset( $evaluated['get_parameters'] ) ? (string) $evaluated['get_parameters'] : '' );
+
+		return array(
+			'contract' => self::DEEP_DIAGNOSTIC_CONTRACT,
+			'mode' => 'explicit_deep_diagnostic',
+			'provider' => 'wpml',
+			'route' => self::WPML_ROUTE,
+			'state' => $preserved ? 'behavior_verified' : 'behavior_mismatch',
+			'ready' => (bool) $preserved,
+			'wpml_active' => true,
+			'route_registered' => (bool) $route_registered,
+			'query_parameters_preserved' => (bool) $preserved,
+			'response_status' => $status_code,
+			'classification' => isset( $evaluated['classification'] ) ? sanitize_key( (string) $evaluated['classification'] ) : '',
+			'rest_server_materialized' => is_object( $server ),
+			'rest_server_materialized_by_diagnostic' => ! is_object( $before ) && is_object( $server ),
+			'active_probe_performed' => true,
+			'internal_rest_dispatch_performed' => true,
+			'loopback_http_performed' => false,
+			'provider_self_calls_started' => 1,
+			'automatic_retry_allowed' => false,
+			'authorizing' => false,
+			'acceptance_evidence_persisted' => false,
+			'external_acceptance_authority' => false,
+		);
 	}
 
 	public static function status() {

@@ -120,15 +120,17 @@ $rest_server->register_route( 'wpml/v1', '/wpml/v1/rest/status', array(
 		'permission_callback' => '__return_true',
 	),
 ), true );
-// The test harness explicitly executes the provider route to prove provider
-// behavior. MAD4B status may observe the already-materialized route only; it
-// must not dispatch it or convert this internal call into external evidence.
-$wpml_request = new WP_REST_Request( 'GET', '/wpml/v1/rest/status' );
-$wpml_request->set_query_params( array( 'test_get_parameter' => '1', 'cachebuster' => 'ci' ) );
-$wpml_response = rest_do_request( $wpml_request );
-$wpml_data = $wpml_response instanceof WP_REST_Response ? $wpml_response->get_data() : array();
-if ( ! is_array( $wpml_data ) || 'valid' !== ( isset( $wpml_data['status'] ) ? (string) $wpml_data['status'] : '' ) || 'valid' !== ( isset( $wpml_data['get_parameters'] ) ? (string) $wpml_data['get_parameters'] : '' ) ) {
-	$fail( 'Explicit WPML-compatible route dispatch did not preserve query parameters.' );
+// Behavioral proof belongs to the explicit, bounded diagnostic surface.
+$deep = MAD4B_SCP_REST_Compatibility::deep_diagnostic( array( 'provider' => 'wpml' ) );
+if ( is_wp_error( $deep ) ) $fail( 'Explicit WPML deep diagnostic failed: ' . $deep->get_error_code() );
+if ( empty( $deep['ready'] ) || empty( $deep['query_parameters_preserved'] ) || 'behavior_verified' !== (string) $deep['state'] ) {
+	$fail( 'Explicit WPML deep diagnostic did not prove query parameter pass-through.' );
+}
+if ( empty( $deep['active_probe_performed'] ) || empty( $deep['internal_rest_dispatch_performed'] ) || 1 !== (int) $deep['provider_self_calls_started'] ) {
+	$fail( 'Explicit WPML deep diagnostic did not report its one bounded internal dispatch.' );
+}
+if ( ! empty( $deep['loopback_http_performed'] ) || ! empty( $deep['automatic_retry_allowed'] ) || ! empty( $deep['authorizing'] ) || ! empty( $deep['acceptance_evidence_persisted'] ) ) {
+	$fail( 'Explicit WPML deep diagnostic crossed its non-authorizing boundary.' );
 }
 
 $rest_compat = MAD4B_SCP_REST_Compatibility::status();

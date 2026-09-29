@@ -9,6 +9,7 @@ rest = (PLUGIN / "includes/class-mad4b-scp-rest-compatibility.php").read_text(en
 connection = (PLUGIN / "includes/class-mad4b-scp-connection-status.php").read_text(encoding="utf-8")
 wpml = (PLUGIN / "includes/class-mad4b-scp-wpml-response-contract.php").read_text(encoding="utf-8")
 plugin = (PLUGIN / "includes/class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
+servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 bootstrap = (PLUGIN / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
 assert "class-mad4b-scp-provider-diagnostic-policy.php" in bootstrap
@@ -41,5 +42,32 @@ prime = plugin.split("public static function prime_admin_mcp_runtime()", 1)[1].s
 assert "MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed()" in prime
 assert prime.count("rest_get_server()") == 1
 assert "admin_connection_endpoints_prime" in prime
+
+
+assert "explicit_deep_diagnostic_allowed" in policy
+assert "'explicit_deep_diagnostic_ability' => 'mad4b/provider-deep-diagnostic'" in policy
+
+deep = rest.split("public static function deep_diagnostic", 1)[1].split("public static function status()", 1)[0]
+for required in (
+    "rest_get_server()",
+    "new WP_REST_Request( 'GET', self::WPML_ROUTE )",
+    "rest_do_request( $request )",
+    "'mode' => 'explicit_deep_diagnostic'",
+    "'loopback_http_performed' => false",
+    "'automatic_retry_allowed' => false",
+    "'authorizing' => false",
+    "'acceptance_evidence_persisted' => false",
+    "'external_acceptance_authority' => false",
+):
+    assert required in deep, required
+for forbidden in ("wp_remote_get(", "wp_remote_post(", "update_option(", "add_option(", "delete_option("):
+    assert forbidden not in deep, forbidden
+
+admin_block = servers.split("'mad4b-admin' => array(", 1)[1].split("),", 1)[0]
+read_block = servers.split("'mad4b-read' =>", 1)[1].split("'mad4b-chatgpt' =>", 1)[0]
+chatgpt_block = servers.split("'mad4b-chatgpt' =>", 1)[1].split("'mad4b-enrollment' =>", 1)[0]
+assert "'mad4b/provider-deep-diagnostic'" in admin_block
+assert "'mad4b/provider-deep-diagnostic'" not in read_block
+assert "'mad4b/provider-deep-diagnostic'" not in chatgpt_block
 
 print("provider diagnostic zero-touch contract: PASS")

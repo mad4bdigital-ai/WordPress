@@ -41,6 +41,7 @@ The structural CI gate is mandatory on every Feature 008 runtime change. The num
 Read/status surfaces are passive observations, not provider probes.
 
 - provider self-calls started by any ordinary MAD4B status read: **0**;
+- explicit deep diagnostics are outside ordinary status paths: they require an admin/governed invocation, may perform exactly one allowlisted internal provider dispatch, never loop back over HTTP, never retry automatically, and never become acceptance authority;
 - internal provider REST dispatch from status/read paths: **0**;
 - loopback HTTP from status/read paths: **0**;
 - implicit REST server materialization from provider compatibility or connection status: **0**;

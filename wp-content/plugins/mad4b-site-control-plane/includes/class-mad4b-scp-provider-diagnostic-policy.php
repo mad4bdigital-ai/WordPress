@@ -165,9 +165,15 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 	}
 
 	public static function active_provider_dispatch_allowed() {
-		// Provider behavior is proven by the governed external/browser executor.
-		// Local status reads never dispatch a provider endpoint internally.
+		// Passive/read status remains dispatch-free. Callers must use the explicit
+		// deep-diagnostic surface below when they intentionally want local behavior.
 		return false;
+	}
+
+	public static function explicit_deep_diagnostic_allowed() {
+		if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ) return false;
+		if ( self::current_request_is_zero_touch_surface() ) return false;
+		return true;
 	}
 
 	public static function status() {
@@ -180,6 +186,10 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 			'automatic_probe_retry_allowed' => false,
 			'explicit_rest_materialization_surface' => 'mad4b-control-plane-connection:endpoints',
 			'provider_behavior_executor' => 'governed_external_executor',
+			'explicit_deep_diagnostic_ability' => 'mad4b/provider-deep-diagnostic',
+			'explicit_deep_diagnostic_requires_manage_options' => true,
+			'explicit_deep_diagnostic_authorizing' => false,
+			'explicit_deep_diagnostic_persists_evidence' => false,
 			'current_request_zero_touch' => self::current_request_is_zero_touch_surface(),
 			'current_request_zero_touch_reason' => self::zero_touch_reason(),
 			'foreign_rest_zero_touch' => true,
