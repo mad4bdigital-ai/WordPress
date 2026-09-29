@@ -1280,11 +1280,14 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$scope=array('meta_keys'=>array_keys($meta_keys),'taxonomies'=>array_keys($taxonomies));
 		sort($scope['meta_keys'],SORT_STRING);sort($scope['taxonomies'],SORT_STRING);
 		$accepted_state=$this->snapshot(absint($id),$this->input_from_state_scope($scope));
+		$accepted_post=get_post(absint($id));
+		if(!$accepted_post) return new WP_Error('mad4b_dynamic_acceptance_target_missing','Accepted post disappeared before the publication receipt could be persisted.');
 		$receipt=array(
 			'contract'=>self::ACCEPTANCE_CONTRACT,
 			'post_id'=>absint($id),
 			'post_type'=>isset($final['post']['post_type'])?(string)$final['post']['post_type']:'',
 			'post_status'=>isset($final['post']['post_status'])?(string)$final['post']['post_status']:'',
+			'accepted_modified_gmt'=>(string)$accepted_post->post_modified_gmt,
 			'state_sha256'=>$this->state_sha256($accepted_state),
 			'bundle_sha256'=>(string)$bundle_sha,
 			'pipeline_settings_sha256'=>isset($pipeline['settings_sha256'])?(string)$pipeline['settings_sha256']:'',
@@ -1321,6 +1324,12 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$post=get_post($post_id);
 		if(!$post||(string)$post->post_type!==(isset($receipt['post_type'])?(string)$receipt['post_type']:'')) return new WP_Error('mad4b_dynamic_acceptance_receipt_target_mismatch','Dynamic acceptance receipt no longer matches the post type.');
 		if(!in_array((string)$post->post_status,array('draft','pending'),true)) return new WP_Error('mad4b_dynamic_acceptance_publication_state_invalid','Dynamic acceptance publication requires a draft or pending target.');
+		$accepted_modified=isset($receipt['accepted_modified_gmt'])?(string)$receipt['accepted_modified_gmt']:'';
+		if($accepted_modified===''||!hash_equals($accepted_modified,(string)$post->post_modified_gmt)) return new WP_Error(
+			'mad4b_dynamic_acceptance_modified_drift',
+			'Post modification timestamp changed after acceptance; rerun acceptance before publication.',
+			array('accepted_modified_gmt'=>$accepted_modified,'current_modified_gmt'=>(string)$post->post_modified_gmt)
+		);
 		$ttl=(int)apply_filters('mad4b_scp_dynamic_content_acceptance_ttl',self::DEFAULT_ACCEPTANCE_TTL,$post_id,$receipt);
 		$ttl=max(60,min(self::MAX_ACCEPTANCE_TTL,$ttl));
 		$accepted_at=isset($receipt['accepted_at'])?strtotime((string)$receipt['accepted_at']):false;
@@ -1337,6 +1346,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'verified'=>true,
 			'receipt_sha256'=>$actual_hash,
 			'accepted_at'=>(string)$receipt['accepted_at'],
+			'accepted_modified_gmt'=>(string)$receipt['accepted_modified_gmt'],
 			'accepted_post_status'=>(string)$receipt['post_status'],
 			'post_type'=>(string)$receipt['post_type'],
 			'scope'=>isset($receipt['scope'])&&is_array($receipt['scope'])?$receipt['scope']:array(),
@@ -1416,6 +1426,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'ready'=>true,
 			'receipt_sha256'=>$sha,
 			'accepted_at'=>isset($verified['accepted_at'])?(string)$verified['accepted_at']:'',
+			'accepted_modified_gmt'=>isset($verified['accepted_modified_gmt'])?(string)$verified['accepted_modified_gmt']:'',
 			'state_sha256'=>isset($verified['state_sha256'])?(string)$verified['state_sha256']:'',
 			'pipeline_settings_sha256'=>isset($verified['pipeline_settings_sha256'])?(string)$verified['pipeline_settings_sha256']:'',
 			'expected_modified_gmt'=>$post?(string)$post->post_modified_gmt:'',
