@@ -201,6 +201,11 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 		if ( ! $checks['snapshot_identity_skill_count_matches'] ) $blockers[] = 'snapshot_identity_count_mismatch';
 
 		$identity_token = isset( $snapshot_identity['identity_token'] ) ? (string) $snapshot_identity['identity_token'] : '';
+		$build_identity = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) && method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()
+			: array();
+		$source_commit_sha = isset( $build_identity['source_commit_sha'] ) ? strtolower( (string) $build_identity['source_commit_sha'] ) : '';
+		$build_fingerprint = isset( $build_identity['build_fingerprint'] ) ? strtolower( (string) $build_identity['build_fingerprint'] ) : '';
 		$evidence = array(
 			'environment' => $environment,
 			'checks' => $checks,
@@ -213,6 +218,8 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'provider_families' => isset( $provider['families'] ) ? $provider['families'] : array(),
 			'snapshot_skill_count' => isset( $snapshot['skill_count'] ) ? (int) $snapshot['skill_count'] : 0,
 			'snapshot_identity_token' => $identity_token,
+			'source_commit_sha' => $source_commit_sha,
+			'build_fingerprint' => $build_fingerprint,
 		);
 		$digest = hash( 'sha256', wp_json_encode( $evidence, JSON_UNESCAPED_SLASHES ) );
 
@@ -231,6 +238,8 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'snapshot_skill_count' => isset( $snapshot['skill_count'] ) ? (int) $snapshot['skill_count'] : 0,
 			'snapshot_identity_token' => $identity_token,
 			'snapshot_digest' => isset( $snapshot_identity['snapshot_digest'] ) ? (string) $snapshot_identity['snapshot_digest'] : '',
+			'source_commit_sha' => $source_commit_sha,
+			'build_fingerprint' => $build_fingerprint,
 			'app_mapping_source' => isset( $autoconfig['app_mapping_source'] ) ? $autoconfig['app_mapping_source'] : '',
 			'evidence_digest' => $digest,
 			'observed_at' => gmdate( 'c' ),

@@ -9,8 +9,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Skills_Admin_UI {
 	const PAGE_SLUG = 'mad4b-control-plane-skills';
+	private static $booted = false;
 
 	public static function boot() {
+		if ( self::$booted ) return;
+		self::$booted = true;
 		add_action( 'admin_init', array( __CLASS__, 'intercept_export' ), 1 );
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 30 );
 	}

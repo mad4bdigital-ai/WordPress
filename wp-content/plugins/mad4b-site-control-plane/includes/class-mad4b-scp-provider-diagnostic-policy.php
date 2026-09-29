@@ -146,9 +146,45 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 		return false;
 	}
 
+	public static function mad4b_admin_ajax_actions() {
+		$actions = array(
+			'mad4b_site_profile_save',
+			'mad4b_context_save_profile',
+			'mad4b_context_google_save',
+			'mad4b_context_google_dedicated_save',
+			'mad4b_context_google_auth_mode_save',
+			'mad4b_context_google_grants_save',
+			'mad4b_context_review_asset',
+			'mad4b_context_review_policy_save',
+			'mad4b_context_update_source_policy',
+			'mad4b_enable_production_readonly_oauth',
+			'mad4b_disable_production_readonly_oauth',
+			'mad4b_oauth_grant_projection',
+		);
+		$actions = apply_filters( 'mad4b_scp_owned_admin_ajax_actions', $actions );
+		$actions = is_array( $actions ) ? array_values( array_unique( array_filter( array_map( 'sanitize_key', $actions ) ) ) ) : array();
+		return $actions;
+	}
+
+	public static function current_request_is_admin_ajax() {
+		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
+		return ( defined( 'DOING_AJAX' ) && DOING_AJAX )
+			|| ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() );
+	}
+
+	public static function current_request_is_mad4b_admin_ajax() {
+		if ( ! self::current_request_is_admin_ajax() ) return false;
+		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		return '' !== $action && in_array( $action, self::mad4b_admin_ajax_actions(), true );
+	}
+
+	public static function current_request_is_foreign_admin_ajax() {
+		return self::current_request_is_admin_ajax() && ! self::current_request_is_mad4b_admin_ajax();
+	}
+
 	public static function current_request_is_foreign_wp_admin() {
 		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
-		if ( ( defined( 'DOING_AJAX' ) && DOING_AJAX ) || ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() ) ) return false;
+		if ( self::current_request_is_admin_ajax() ) return self::current_request_is_foreign_admin_ajax();
 		if ( self::current_request_is_wordpress_cron() ) return false;
 		if ( self::current_request_is_wordpress_lifecycle_admin() ) return false;
 
@@ -160,12 +196,14 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 	public static function current_request_is_zero_touch_surface() {
 		return self::current_request_is_foreign_rest()
 			|| self::current_request_is_wordpress_cron()
+			|| self::current_request_is_foreign_admin_ajax()
 			|| self::current_request_is_foreign_wp_admin();
 	}
 
 	public static function zero_touch_reason() {
 		if ( self::current_request_is_foreign_rest() ) return 'foreign_rest';
 		if ( self::current_request_is_wordpress_cron() ) return 'wordpress_cron';
+		if ( self::current_request_is_foreign_admin_ajax() ) return 'foreign_admin_ajax';
 		if ( self::current_request_is_foreign_wp_admin() ) return 'foreign_wp_admin';
 		return '';
 	}

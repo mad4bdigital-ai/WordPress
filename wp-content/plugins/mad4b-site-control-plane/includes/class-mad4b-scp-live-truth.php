@@ -459,6 +459,7 @@ final class MAD4B_SCP_Live_Truth {
 		if ( ! $checks['no_wildcard_grants'] ) $blockers[] = 'wildcard_grants_detected';
 
 		$rest = self::local_rest_isolation();
+		$external_wpml = class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::external_wpml( true ) : array( 'required' => true, 'verified' => false, 'state' => 'pending', 'source_contract' => '', 'receipt' => array() );
 		$checks['rest_enabled'] = ! empty( $rest['rest_enabled'] );
 		$checks['control_plane_not_on_rest_enabled_hook'] = empty( $rest['control_plane_filters_rest_enabled'] );
 		$checks['control_plane_not_on_rest_authentication_hook'] = empty( $rest['control_plane_filters_rest_authentication_errors'] );
@@ -484,6 +485,7 @@ final class MAD4B_SCP_Live_Truth {
 			'metadata_mismatch' => $metadata_mismatch,
 			'breakglass' => $breakglass,
 			'local_rest_isolation' => $rest,
+			'external_wpml_acceptance' => $external_wpml,
 			'control_plane_version' => isset( $inventory['control_plane_version'] ) ? $inventory['control_plane_version'] : '',
 			'write_inventory_fingerprint' => isset( $inventory['write_inventory_fingerprint'] ) ? $inventory['write_inventory_fingerprint'] : '',
 			'provider_blocked_fingerprint' => isset( $inventory['provider_blocked_fingerprint'] ) ? $inventory['provider_blocked_fingerprint'] : '',
@@ -526,8 +528,12 @@ final class MAD4B_SCP_Live_Truth {
 			'candidate_bootstrap_prior_approval_exception' => ! empty( $authority['candidate_bootstrap_exception_active'] ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY : '',
 			'candidate_bootstrap_closure' => isset( $authority['candidate_bootstrap_closure'] ) && is_array( $authority['candidate_bootstrap_closure'] ) ? $authority['candidate_bootstrap_closure'] : array(),
 			'approval_planner_bootstrap_exception' => 'pending_ticket_creation_only',
-			'external_wpml_acceptance_required' => true,
-			'external_wpml_acceptance_verified' => false,
+			'local_external_wpml_claimed' => false,
+			'external_wpml_acceptance_required' => ! empty( $external_wpml['required'] ),
+			'external_wpml_acceptance_verified' => ! empty( $external_wpml['verified'] ),
+			'external_wpml_acceptance_state' => isset( $external_wpml['state'] ) ? (string) $external_wpml['state'] : 'pending',
+			'external_wpml_acceptance_source' => isset( $external_wpml['source_contract'] ) ? (string) $external_wpml['source_contract'] : '',
+			'external_wpml_acceptance' => isset( $external_wpml['receipt'] ) && is_array( $external_wpml['receipt'] ) ? $external_wpml['receipt'] : array(),
 			'wpml_internal_probe_blocks_local_certification' => false,
 			'external_wpml_test_url' => self::external_wpml_test_url(),
 			'external_client_tools_verified' => false,
@@ -550,8 +556,12 @@ final class MAD4B_SCP_Live_Truth {
 		$diagnostic['local_rest_isolation_ready'] = ! empty( $local['ready'] );
 		$diagnostic['wpml_internal_probe_role'] = 'diagnostic_only';
 		$diagnostic['wpml_internal_probe_blocks_local_certification'] = false;
-		$diagnostic['external_wpml_acceptance_required'] = true;
-		$diagnostic['external_wpml_acceptance_verified'] = false;
+		$external_wpml = class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::external_wpml( true ) : array( 'required' => true, 'verified' => false, 'state' => 'pending', 'source_contract' => '', 'receipt' => array() );
+		$diagnostic['external_wpml_acceptance_required'] = ! empty( $external_wpml['required'] );
+		$diagnostic['external_wpml_acceptance_verified'] = ! empty( $external_wpml['verified'] );
+		$diagnostic['external_wpml_acceptance_state'] = isset( $external_wpml['state'] ) ? (string) $external_wpml['state'] : 'pending';
+		$diagnostic['external_wpml_acceptance_source'] = isset( $external_wpml['source_contract'] ) ? (string) $external_wpml['source_contract'] : '';
+		$diagnostic['external_wpml_acceptance'] = isset( $external_wpml['receipt'] ) && is_array( $external_wpml['receipt'] ) ? $external_wpml['receipt'] : array();
 		$diagnostic['external_acceptance_gate'] = 'required_before_ready_or_merge';
 		$diagnostic['observed_at'] = gmdate( 'c' );
 		return $diagnostic;
@@ -564,6 +574,7 @@ final class MAD4B_SCP_Live_Truth {
 		$freshness = get_option( self::FRESHNESS_OPTION, array() );
 		$reasons = self::stale_reasons( $value, $freshness, $identity );
 		if ( empty( $reasons ) ) return $value;
+		$external_wpml = class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::external_wpml( true ) : array( 'required' => true, 'verified' => false, 'state' => 'pending', 'source_contract' => '', 'receipt' => array() );
 
 		return array(
 			'contract' => class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::CONTRACT : 'mad4b.write-runtime-certification.v3',
@@ -579,8 +590,12 @@ final class MAD4B_SCP_Live_Truth {
 			'current_write_tool_count' => isset( $identity['write_tool_count'] ) ? (int) $identity['write_tool_count'] : 0,
 			'current_write_inventory_fingerprint' => isset( $identity['write_inventory_fingerprint'] ) ? $identity['write_inventory_fingerprint'] : '',
 			'current_provider_blocked_fingerprint' => isset( $identity['provider_blocked_fingerprint'] ) ? $identity['provider_blocked_fingerprint'] : '',
-			'external_wpml_acceptance_required' => true,
-			'external_wpml_acceptance_verified' => false,
+			'local_external_wpml_claimed' => false,
+			'external_wpml_acceptance_required' => ! empty( $external_wpml['required'] ),
+			'external_wpml_acceptance_verified' => ! empty( $external_wpml['verified'] ),
+			'external_wpml_acceptance_state' => isset( $external_wpml['state'] ) ? (string) $external_wpml['state'] : 'pending',
+			'external_wpml_acceptance_source' => isset( $external_wpml['source_contract'] ) ? (string) $external_wpml['source_contract'] : '',
+			'external_wpml_acceptance' => isset( $external_wpml['receipt'] ) && is_array( $external_wpml['receipt'] ) ? $external_wpml['receipt'] : array(),
 			'persistence' => 'historical_evidence_not_current',
 		);
 	}

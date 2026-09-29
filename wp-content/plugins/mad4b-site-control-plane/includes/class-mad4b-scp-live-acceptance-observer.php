@@ -107,11 +107,17 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	public static function write_runtime_certification_status() {
 		$status = class_exists( 'MAD4B_SCP_Live_Truth' ) ? MAD4B_SCP_Live_Truth::current_write_certification() : ( class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::status() : array() );
 		if ( ! is_array( $status ) ) $status = array();
-		$wpml = self::external_wpml_receipt_status();
+		$wpml_projection = class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::external_wpml( true ) : array( 'required' => true, 'verified' => false, 'state' => 'pending', 'source_contract' => '', 'receipt' => self::external_wpml_receipt_status() );
+		$wpml = isset( $wpml_projection['receipt'] ) && is_array( $wpml_projection['receipt'] ) ? $wpml_projection['receipt'] : array();
 		$external = self::external_handshake_attestation_status();
-		$status['external_wpml_acceptance_verified'] = ! empty( $wpml['verified'] );
+		$status['local_external_wpml_claimed'] = false;
+		$status['external_wpml_acceptance_required'] = ! empty( $wpml_projection['required'] );
+		$status['external_wpml_acceptance_verified'] = ! empty( $wpml_projection['verified'] );
+		$status['external_wpml_acceptance_state'] = isset( $wpml_projection['state'] ) ? (string) $wpml_projection['state'] : 'pending';
+		$status['external_wpml_acceptance_source'] = isset( $wpml_projection['source_contract'] ) ? (string) $wpml_projection['source_contract'] : '';
+		$status['external_wpml_acceptance'] = $wpml;
 		$status['external_client_tools_verified'] = ! empty( $external['verified'] );
-		$status['external_wpml_evidence_contract'] = self::WPML_RECEIPT_CONTRACT;
+		$status['external_wpml_evidence_contract'] = isset( $wpml_projection['source_contract'] ) && '' !== (string) $wpml_projection['source_contract'] ? (string) $wpml_projection['source_contract'] : self::WPML_RECEIPT_CONTRACT;
 		$status['external_client_tools_evidence_contract'] = self::EXTERNAL_ATTESTATION_CONTRACT;
 		$status['external_evidence_affects_local_ready'] = false;
 		return $status;
@@ -125,6 +131,8 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 
 	private static function record_warning( $event_type, $function_name, $message ) {
 		if ( ! self::staging_capture_allowed() ) return;
+		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return;
 		self::mark_current_request();
 		$trace = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 12 );
 		$classification = self::classify_warning( (string) $event_type, (string) $function_name, (string) $message, $trace );
@@ -225,10 +233,30 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		$message = trim( (string) $message ); return strlen( $message ) > 280 ? substr( $message, 0, 280 ) : $message;
 	}
 	private static function safe_identifier( $value ) { $value = preg_replace( '/[^A-Za-z0-9_\\\\:\-\.]/', '', (string) $value ); return strlen( $value ) > 120 ? substr( $value, 0, 120 ) : $value; }
-	private static function mark_current_request() { if ( self::$request_marked || ! self::staging_capture_allowed() ) return; self::$request_marked = true; $telemetry =& self::telemetry(); $class = self::request_class(); if ( ! isset( $telemetry['request_coverage'][ $class ] ) ) $telemetry['request_coverage'][ $class ] = 0; if ( 'mcp' === $class && (int) $telemetry['request_coverage'][ $class ] > 0 ) return; $telemetry['observed_request_count']++; $telemetry['request_coverage'][ $class ]++; $telemetry['last_observed_at'] = gmdate( 'Y-m-d H:i:s' ); self::$telemetry_dirty = true; }
-	private static function request_class() { $uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : ''; if ( false !== strpos( $uri, '/mcp/' ) || false !== strpos( $uri, '/wp-json/mcp/' ) ) return 'mcp'; if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) return 'rest'; if ( function_exists( 'is_admin' ) && is_admin() ) return 'wp_admin'; return 'frontend'; }
+	private static function mark_current_request() {
+		if ( self::$request_marked || ! self::staging_capture_allowed() ) return;
+		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return;
+		self::$request_marked = true;
+		$telemetry =& self::telemetry();
+		$class = self::request_class();
+		if ( ! isset( $telemetry['request_coverage'][ $class ] ) ) $telemetry['request_coverage'][ $class ] = 0;
+		if ( 'mcp' === $class && (int) $telemetry['request_coverage'][ $class ] > 0 ) return;
+		$telemetry['observed_request_count']++;
+		$telemetry['request_coverage'][ $class ]++;
+		$telemetry['last_observed_at'] = gmdate( 'Y-m-d H:i:s' );
+		self::$telemetry_dirty = true;
+	}
+	private static function request_class() {
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
+		if ( false !== strpos( $uri, '/mcp/' ) || false !== strpos( $uri, '/wp-json/mcp/' ) ) return 'mcp';
+		if ( ( defined( 'DOING_CRON' ) && DOING_CRON ) || ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) ) return 'cron';
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) return 'rest';
+		if ( function_exists( 'is_admin' ) && is_admin() ) return 'wp_admin';
+		return 'frontend';
+	}
 	private static function &telemetry() { if ( null !== self::$telemetry ) return self::$telemetry; $current_build = self::current_build_fingerprint(); $stored = self::staging_capture_allowed() ? get_option( self::TELEMETRY_OPTION, array() ) : array(); $valid = is_array( $stored ) && isset( $stored['build_fingerprint'], $stored['capture_started_at'] ) && hash_equals( (string) $stored['build_fingerprint'], $current_build ); $started = $valid ? strtotime( (string) $stored['capture_started_at'] . ' UTC' ) : false; if ( ! $valid || false === $started || ( time() - $started ) > self::TELEMETRY_TTL ) $stored = self::empty_telemetry( $current_build ); self::$telemetry = $stored; return self::$telemetry; }
-	private static function empty_telemetry( $build ) { return array( 'contract' => self::QUERY_MONITOR_CONTRACT, 'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '', 'build_fingerprint' => (string) $build, 'capture_started_at' => gmdate( 'Y-m-d H:i:s' ), 'last_observed_at' => '', 'observed_request_count' => 0, 'request_coverage' => array( 'mcp' => 0, 'rest' => 0, 'wp_admin' => 0, 'frontend' => 0 ), 'counters' => array( 'mad4b' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'ability_not_found' => 0, 'wp_get_ability_missing' => 0, 'pre_init_abilities_violation' => 0 ), 'third_party' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'fluentform_action_scheduler' => 0 ), 'wordpress_core' => array(), 'unknown' => array() ), 'events' => array(), 'events_by_bucket' => array( 'mad4b' => array(), 'third_party' => array(), 'wordpress_core' => array(), 'unknown' => array() ), 'performance' => array( 'contract' => 'mad4b.frontend-performance-evidence.v1', 'frontend_observed' => false, 'rest_observed' => false, 'samples' => array(), 'last_by_class' => array() ) ); }
+	private static function empty_telemetry( $build ) { return array( 'contract' => self::QUERY_MONITOR_CONTRACT, 'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '', 'build_fingerprint' => (string) $build, 'capture_started_at' => gmdate( 'Y-m-d H:i:s' ), 'last_observed_at' => '', 'observed_request_count' => 0, 'request_coverage' => array( 'mcp' => 0, 'rest' => 0, 'wp_admin' => 0, 'frontend' => 0, 'cron' => 0 ), 'canary_coverage' => array( 'wpml_admin' => 0, 'site_health_rest' => 0, 'wpml_external_rest' => 0, 'generic_cron' => 0 ), 'counters' => array( 'mad4b' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'ability_not_found' => 0, 'wp_get_ability_missing' => 0, 'pre_init_abilities_violation' => 0 ), 'third_party' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'fluentform_action_scheduler' => 0 ), 'wordpress_core' => array(), 'unknown' => array() ), 'events' => array(), 'events_by_bucket' => array( 'mad4b' => array(), 'third_party' => array(), 'wordpress_core' => array(), 'unknown' => array() ), 'performance' => array( 'contract' => 'mad4b.frontend-performance-evidence.v1', 'frontend_observed' => false, 'rest_observed' => false, 'samples' => array(), 'last_by_class' => array() ) ); }
 	public static function flush_observation() { if ( ! self::$telemetry_dirty || ! self::staging_capture_allowed() || ! is_array( self::$telemetry ) ) return; self::$telemetry['events'] = array_slice( isset( self::$telemetry['events'] ) ? self::$telemetry['events'] : array(), -1 * self::MAX_EVENTS ); update_option( self::TELEMETRY_OPTION, self::$telemetry, false ); self::$telemetry_dirty = false; }
 
 
@@ -266,9 +294,80 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		);
 	}
 
+	private static function request_surface_coverage_status( array $telemetry ) {
+		$observed = isset( $telemetry['request_coverage'] ) && is_array( $telemetry['request_coverage'] ) ? $telemetry['request_coverage'] : array();
+		$canaries = isset( $telemetry['canary_coverage'] ) && is_array( $telemetry['canary_coverage'] ) ? $telemetry['canary_coverage'] : array();
+		$minimums = array( 'mcp' => 1, 'frontend' => 3, 'rest' => 1, 'wp_admin' => 1, 'cron' => 1 );
+		$required_canaries = array( 'wpml_admin' => 1, 'site_health_rest' => 1, 'wpml_external_rest' => 1, 'generic_cron' => 1 );
+		$blockers = array();
+		foreach ( $minimums as $surface => $minimum ) {
+			$count = isset( $observed[ $surface ] ) ? max( 0, (int) $observed[ $surface ] ) : 0;
+			if ( $count < $minimum ) $blockers[] = 'coverage_' . $surface . '_below_minimum';
+		}
+		foreach ( $required_canaries as $canary => $minimum ) {
+			$count = isset( $canaries[ $canary ] ) ? max( 0, (int) $canaries[ $canary ] ) : 0;
+			if ( $count < $minimum ) $blockers[] = 'canary_' . $canary . '_not_observed';
+		}
+		return array(
+			'contract' => 'mad4b.request-surface-coverage.v1',
+			'ready' => empty( $blockers ),
+			'state' => empty( $blockers ) ? 'ready' : 'insufficient_request_surface_coverage',
+			'minimums' => $minimums,
+			'observed' => array_merge( array( 'mcp' => 0, 'frontend' => 0, 'rest' => 0, 'wp_admin' => 0, 'cron' => 0 ), $observed ),
+			'required_canaries' => $required_canaries,
+			'canaries' => array_merge( array( 'wpml_admin' => 0, 'site_health_rest' => 0, 'wpml_external_rest' => 0, 'generic_cron' => 0 ), $canaries ),
+			'blockers' => array_values( array_unique( $blockers ) ),
+		);
+	}
+
 	public static function query_monitor_status() {
-		$telemetry = self::telemetry(); $current_build = self::current_build_fingerprint(); $current_match = isset( $telemetry['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $telemetry['build_fingerprint'] ); $count = isset( $telemetry['observed_request_count'] ) ? (int) $telemetry['observed_request_count'] : 0; $closed_observation = ! empty( $telemetry['last_observed_at'] ); $fresh = self::staging_capture_allowed() && $current_match && $count > 0 && $closed_observation; $mad4b = isset( $telemetry['counters']['mad4b'] ) ? $telemetry['counters']['mad4b'] : array(); $mad4b_events = self::query_monitor_bucket_events( $telemetry, 'mad4b' ); $retention = self::query_monitor_retention_status( $telemetry, $mad4b ); $blocking = 0; foreach ( array( 'doing_it_wrong', 'deprecated_function', 'deprecated_argument', 'deprecated_hook', 'deprecated_class', 'ability_not_found', 'wp_get_ability_missing', 'pre_init_abilities_violation' ) as $key ) $blocking += isset( $mad4b[ $key ] ) ? (int) $mad4b[ $key ] : 0; $active = defined( 'QM_VERSION' ); $ready = $fresh && $active && 0 === $blocking;
-		return array( 'contract' => self::QUERY_MONITOR_CONTRACT, 'query_monitor' => array( 'installed' => $active || defined( 'QM_DIR' ), 'active' => $active, 'version' => $active ? (string) QM_VERSION : '' ), 'current_build' => array( 'version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '', 'build_fingerprint' => $current_build ), 'evidence' => array( 'fresh' => $fresh, 'current_build_match' => $current_match, 'capture_started_at' => isset( $telemetry['capture_started_at'] ) ? $telemetry['capture_started_at'] : '', 'last_observed_at' => isset( $telemetry['last_observed_at'] ) ? $telemetry['last_observed_at'] : '', 'observed_request_count' => $count, 'closed_observation' => $closed_observation, 'request_coverage' => isset( $telemetry['request_coverage'] ) ? $telemetry['request_coverage'] : array() ), 'mad4b' => array( 'deprecated_function_count' => isset( $mad4b['deprecated_function'] ) ? (int) $mad4b['deprecated_function'] : 0, 'doing_it_wrong_count' => isset( $mad4b['doing_it_wrong'] ) ? (int) $mad4b['doing_it_wrong'] : 0, 'ability_not_found_count' => isset( $mad4b['ability_not_found'] ) ? (int) $mad4b['ability_not_found'] : 0, 'wp_get_ability_missing_count' => isset( $mad4b['wp_get_ability_missing'] ) ? (int) $mad4b['wp_get_ability_missing'] : 0, 'pre_init_abilities_violation_count' => isset( $mad4b['pre_init_abilities_violation'] ) ? (int) $mad4b['pre_init_abilities_violation'] : 0 ), 'third_party' => array( 'fluentform_action_scheduler_count' => isset( $telemetry['counters']['third_party']['fluentform_action_scheduler'] ) ? (int) $telemetry['counters']['third_party']['fluentform_action_scheduler'] : 0 ), 'events' => isset( $telemetry['events'] ) ? $telemetry['events'] : array(), 'mad4b_events' => $mad4b_events, 'event_retention' => $retention, 'performance' => isset( $telemetry['performance'] ) && is_array( $telemetry['performance'] ) ? $telemetry['performance'] : array(), 'ready' => $ready, 'state' => $ready ? 'ready' : ( ! $fresh ? 'insufficient_current_build_observation' : ( ! $active ? 'query_monitor_inactive' : 'mad4b_regression_observed' ) ), 'production_capture_persistence_enabled' => false );
+		$telemetry = self::telemetry();
+		$current_build = self::current_build_fingerprint();
+		$current_match = isset( $telemetry['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $telemetry['build_fingerprint'] );
+		$count = isset( $telemetry['observed_request_count'] ) ? (int) $telemetry['observed_request_count'] : 0;
+		$closed_observation = ! empty( $telemetry['last_observed_at'] );
+		$fresh = self::staging_capture_allowed() && $current_match && $count > 0 && $closed_observation;
+		$mad4b = isset( $telemetry['counters']['mad4b'] ) ? $telemetry['counters']['mad4b'] : array();
+		$mad4b_events = self::query_monitor_bucket_events( $telemetry, 'mad4b' );
+		$retention = self::query_monitor_retention_status( $telemetry, $mad4b );
+		$blocking = 0;
+		foreach ( array( 'doing_it_wrong', 'deprecated_function', 'deprecated_argument', 'deprecated_hook', 'deprecated_class', 'ability_not_found', 'wp_get_ability_missing', 'pre_init_abilities_violation' ) as $key ) $blocking += isset( $mad4b[ $key ] ) ? (int) $mad4b[ $key ] : 0;
+		$active = defined( 'QM_VERSION' );
+		$collector_ready = $fresh && $active && 0 === $blocking;
+		$coverage = self::request_surface_coverage_status( $telemetry );
+		return array(
+			'contract' => self::QUERY_MONITOR_CONTRACT,
+			'query_monitor' => array( 'installed' => $active || defined( 'QM_DIR' ), 'active' => $active, 'version' => $active ? (string) QM_VERSION : '' ),
+			'current_build' => array( 'version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '', 'build_fingerprint' => $current_build ),
+			'evidence' => array(
+				'fresh' => $fresh,
+				'current_build_match' => $current_match,
+				'capture_started_at' => isset( $telemetry['capture_started_at'] ) ? $telemetry['capture_started_at'] : '',
+				'last_observed_at' => isset( $telemetry['last_observed_at'] ) ? $telemetry['last_observed_at'] : '',
+				'observed_request_count' => $count,
+				'closed_observation' => $closed_observation,
+				'request_coverage' => isset( $telemetry['request_coverage'] ) ? $telemetry['request_coverage'] : array(),
+				'canary_coverage' => isset( $telemetry['canary_coverage'] ) ? $telemetry['canary_coverage'] : array(),
+			),
+			'mad4b' => array(
+				'deprecated_function_count' => isset( $mad4b['deprecated_function'] ) ? (int) $mad4b['deprecated_function'] : 0,
+				'doing_it_wrong_count' => isset( $mad4b['doing_it_wrong'] ) ? (int) $mad4b['doing_it_wrong'] : 0,
+				'ability_not_found_count' => isset( $mad4b['ability_not_found'] ) ? (int) $mad4b['ability_not_found'] : 0,
+				'wp_get_ability_missing_count' => isset( $mad4b['wp_get_ability_missing'] ) ? (int) $mad4b['wp_get_ability_missing'] : 0,
+				'pre_init_abilities_violation_count' => isset( $mad4b['pre_init_abilities_violation'] ) ? (int) $mad4b['pre_init_abilities_violation'] : 0,
+			),
+			'third_party' => array( 'fluentform_action_scheduler_count' => isset( $telemetry['counters']['third_party']['fluentform_action_scheduler'] ) ? (int) $telemetry['counters']['third_party']['fluentform_action_scheduler'] : 0 ),
+			'events' => isset( $telemetry['events'] ) ? $telemetry['events'] : array(),
+			'mad4b_events' => $mad4b_events,
+			'event_retention' => $retention,
+			'performance' => isset( $telemetry['performance'] ) && is_array( $telemetry['performance'] ) ? $telemetry['performance'] : array(),
+			'collector_health_ready' => $collector_ready,
+			'request_surface_coverage' => $coverage,
+			'coverage_ready' => ! empty( $coverage['ready'] ),
+			'ready' => $collector_ready,
+			'state' => $collector_ready ? 'ready' : ( ! $fresh ? 'insufficient_current_build_observation' : ( ! $active ? 'query_monitor_inactive' : 'mad4b_regression_observed' ) ),
+			'production_capture_persistence_enabled' => false,
+		);
 	}
 
 
@@ -474,7 +573,25 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		update_option( self::WPML_OPTION, $receipt, false );
 	}
 	public static function evaluate_wpml_receipt( $parameter_present, array $data, $build_fingerprint ) { $status = isset( $data['status'] ) ? sanitize_key( (string) $data['status'] ) : ''; $get_parameters = isset( $data['get_parameters'] ) ? sanitize_key( (string) $data['get_parameters'] ) : ''; $success = (bool) $parameter_present && 'valid' === $status && 'valid' === $get_parameters; return array( 'contract' => self::WPML_RECEIPT_CONTRACT, 'observed' => true, 'observed_at' => '', 'build_fingerprint' => preg_match( '/^[a-f0-9]{64}$/', (string) $build_fingerprint ) ? strtolower( (string) $build_fingerprint ) : '', 'request_route' => '/wpml/v1/rest/status', 'test_get_parameter_present' => (bool) $parameter_present, 'success' => $success, 'status' => $status, 'get_parameters' => $get_parameters ); }
-	public static function external_wpml_receipt_status() { $stored = self::staging_capture_allowed() ? get_option( self::WPML_OPTION, array() ) : array(); $current_build = self::current_build_fingerprint(); $base = array( 'contract' => self::WPML_RECEIPT_CONTRACT, 'observed' => false, 'verified' => false, 'stale' => true, 'state' => 'pending_external_evidence', 'observed_at' => '', 'build_fingerprint' => '', 'current_build_fingerprint' => $current_build, 'request_route' => '/wpml/v1/rest/status', 'test_get_parameter_present' => false, 'success' => false, 'status' => '', 'get_parameters' => '' ); if ( ! is_array( $stored ) || empty( $stored['observed'] ) ) return $base; foreach ( array( 'observed', 'observed_at', 'build_fingerprint', 'request_route', 'test_get_parameter_present', 'success', 'status', 'get_parameters' ) as $key ) if ( array_key_exists( $key, $stored ) ) $base[ $key ] = $stored[ $key ]; $match = ! empty( $stored['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $stored['build_fingerprint'] ); $base['stale'] = ! $match; $base['verified'] = $match && ! empty( $stored['success'] ) && 'valid' === (string) $stored['status'] && 'valid' === (string) $stored['get_parameters']; $base['state'] = $base['verified'] ? 'verified_external_wpml' : ( $match ? 'external_wpml_failed' : 'stale_build_evidence' ); return $base; }
+	public static function external_wpml_receipt_status() {
+		// The normalized response contract is the canonical external fact owner.
+		// Keep the older option shape only as a compatibility fallback for partial
+		// upgrades where the response-contract class is not available.
+		if ( class_exists( 'MAD4B_SCP_WPML_Response_Contract' ) && method_exists( 'MAD4B_SCP_WPML_Response_Contract', 'receipt_status' ) ) {
+			$status = MAD4B_SCP_WPML_Response_Contract::receipt_status();
+			return is_array( $status ) ? $status : array();
+		}
+		$stored = self::staging_capture_allowed() ? get_option( self::WPML_OPTION, array() ) : array();
+		$current_build = self::current_build_fingerprint();
+		$base = array( 'contract' => self::WPML_RECEIPT_CONTRACT, 'observed' => false, 'verified' => false, 'stale' => true, 'state' => 'pending_external_evidence', 'observed_at' => '', 'build_fingerprint' => '', 'current_build_fingerprint' => $current_build, 'request_route' => '/wpml/v1/rest/status', 'test_get_parameter_present' => false, 'success' => false, 'status' => '', 'get_parameters' => '' );
+		if ( ! is_array( $stored ) || empty( $stored['observed'] ) ) return $base;
+		foreach ( array( 'observed', 'observed_at', 'build_fingerprint', 'request_route', 'test_get_parameter_present', 'success', 'status', 'get_parameters' ) as $key ) if ( array_key_exists( $key, $stored ) ) $base[ $key ] = $stored[ $key ];
+		$match = ! empty( $stored['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $stored['build_fingerprint'] );
+		$base['stale'] = ! $match;
+		$base['verified'] = $match && ! empty( $stored['success'] ) && 'valid' === (string) $stored['status'] && 'valid' === (string) $stored['get_parameters'];
+		$base['state'] = $base['verified'] ? 'verified_external_wpml' : ( $match ? 'external_wpml_failed' : 'stale_build_evidence' );
+		return $base;
+	}
 
 	private static function observe_external_handshake( $response, $request ) { if ( ! self::external_capture_allowed( $request ) ) return; $method = self::jsonrpc_method( $request ); $rest = rest_ensure_response( $response ); if ( ! $rest instanceof WP_REST_Response || 200 !== (int) $rest->get_status() ) return; if ( 'initialize' === $method ) self::capture_external_initialize( $rest, $request ); elseif ( 'tools/list' === $method ) self::capture_external_tools_list( $rest, $request ); }
 	private static function capture_external_initialize( $response, $request ) { $data = self::normalize_value( $response->get_data() ); if ( ! is_array( $data ) || isset( $data['error'] ) || empty( $data['result']['capabilities']['tools'] ) ) return; $session_id = self::response_session_id( $response ); if ( '' === $session_id ) return; $context = self::verified_request_context( $request ); if ( ! is_array( $context ) ) return; $expected = self::expected_tool_names(); $context['session_fingerprint'] = hash( 'sha256', $session_id ); $context['build_fingerprint'] = self::current_build_fingerprint(); $context['expected_tool_inventory_fingerprint'] = self::inventory_fingerprint( $expected ); $context['initialized_at'] = gmdate( 'Y-m-d H:i:s' ); set_transient( self::pending_key( $context['session_fingerprint'] ), $context, self::PENDING_TTL ); }
@@ -656,14 +773,21 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'acceptance_capture' => self::gate( $acceptance_enabled, $acceptance_enabled ? 'ready' : 'blocked', true, 'mad4b.acceptance-capture', $acceptance_enabled ? array() : array( 'site_profile_acceptance_disabled' ) ),
 			'build_provenance' => self::gate( ! empty( $provenance['runtime_manifest_match'] ), ! empty( $provenance['runtime_manifest_match'] ) ? 'ready' : 'stale_or_missing', empty( $provenance['stale'] ), self::PROVENANCE_CONTRACT, isset( $provenance['provenance_mismatch'] ) ? $provenance['provenance_mismatch'] : array() ),
 			'ability_registration' => self::gate( function_exists( 'wp_get_ability' ), function_exists( 'wp_get_ability' ) ? 'ready' : 'not_materialized', true, 'wordpress-abilities-api', function_exists( 'wp_get_ability' ) ? array() : array( 'wp_get_ability_unavailable' ) ),
-			'query_monitor_regression' => self::gate( ! empty( $qm['ready'] ), isset( $qm['state'] ) ? $qm['state'] : 'unknown', ! empty( $qm['evidence']['fresh'] ), self::QUERY_MONITOR_CONTRACT, ! empty( $qm['ready'] ) ? array() : array( isset( $qm['state'] ) ? $qm['state'] : 'not_ready' ) ),
+			'query_monitor_regression' => self::gate( ! empty( $qm['collector_health_ready'] ) || ! empty( $qm['ready'] ), isset( $qm['state'] ) ? $qm['state'] : 'unknown', ! empty( $qm['evidence']['fresh'] ), self::QUERY_MONITOR_CONTRACT, ( ! empty( $qm['collector_health_ready'] ) || ! empty( $qm['ready'] ) ) ? array() : array( isset( $qm['state'] ) ? $qm['state'] : 'not_ready' ) ),
+			'request_surface_coverage' => self::gate( ! empty( $qm['coverage_ready'] ), isset( $qm['request_surface_coverage']['state'] ) ? $qm['request_surface_coverage']['state'] : 'insufficient_request_surface_coverage', ! empty( $qm['evidence']['fresh'] ), 'mad4b.request-surface-coverage.v1', ! empty( $qm['coverage_ready'] ) ? array() : ( isset( $qm['request_surface_coverage']['blockers'] ) && is_array( $qm['request_surface_coverage']['blockers'] ) ? $qm['request_surface_coverage']['blockers'] : array( 'request_surface_coverage_incomplete' ) ) ),
 			'frontend_performance_baseline' => self::gate( ! empty( $performance['ready'] ), isset( $performance['state'] ) ? $performance['state'] : 'unknown', ! empty( $performance['current_build_match'] ), 'mad4b.frontend-performance-evidence.v3', ! empty( $performance['ready'] ) ? array() : array( isset( $performance['state'] ) ? $performance['state'] : 'frontend_performance_not_ready' ) ),
 			'local_rest_isolation' => self::gate( ! empty( $rest['ready'] ), ! empty( $rest['ready'] ) ? 'ready' : 'blocked', true, isset( $rest['contract'] ) ? $rest['contract'] : 'mad4b.rest-compatibility.v2', ! empty( $rest['ready'] ) ? array() : array( 'local_rest_isolation_not_ready' ) ),
 			'external_wpml' => self::gate( ! empty( $wpml['verified'] ), isset( $wpml['state'] ) ? $wpml['state'] : 'pending_external_evidence', empty( $wpml['stale'] ), self::WPML_RECEIPT_CONTRACT, ! empty( $wpml['verified'] ) ? array() : array( 'external_wpml_evidence_required' ) ),
 			'skills_runtime' => self::gate( ! empty( $skills['ready'] ), ! empty( $skills['ready'] ) ? 'ready' : 'blocked', true, isset( $skills['contract'] ) ? $skills['contract'] : 'mad4b.skill-runtime-certification.v2', ! empty( $skills['ready'] ) ? array() : array( 'skills_runtime_not_ready' ) ),
 			'snapshot_local' => self::gate( ! empty( $snapshot_local['ready'] ), ! empty( $snapshot_local['ready'] ) ? 'ready' : 'blocked', true, isset( $snapshot_local['contract'] ) ? $snapshot_local['contract'] : 'mad4b.skill-snapshot-identity.v1', ! empty( $snapshot_local['ready'] ) ? array() : array( 'local_snapshot_unavailable' ) ),
 			'snapshot_external' => self::gate( ! empty( $snapshot_external['exact_match'] ), ! empty( $snapshot_external['exact_match'] ) ? 'ready' : 'pending_external_evidence', ! empty( $snapshot_external['exact_match'] ), self::SNAPSHOT_VERIFY_CONTRACT, ! empty( $snapshot_external['exact_match'] ) ? array() : array( 'client_snapshot_token_required_or_mismatch' ) ),
-			'provider_projection' => self::gate( empty( $provider_execution_leaks ), empty( $provider_execution_leaks ) ? 'ready' : 'provider_execution_mount_leak_detected', ! empty( $external['build_fingerprint_match'] ), self::EXTERNAL_ATTESTATION_CONTRACT, empty( $provider_execution_leaks ) ? array() : array( 'provider_blocked_tool_mounted_for_execution' ) ),
+			'provider_projection' => self::gate(
+				empty( $provider_execution_leaks ) && ! empty( $external['build_fingerprint_match'] ),
+				! empty( $provider_execution_leaks ) ? 'provider_execution_mount_leak_detected' : ( ! empty( $external['build_fingerprint_match'] ) ? 'ready' : 'external_projection_stale' ),
+				! empty( $external['build_fingerprint_match'] ),
+				self::EXTERNAL_ATTESTATION_CONTRACT,
+				! empty( $provider_execution_leaks ) ? array( 'provider_blocked_tool_mounted_for_execution' ) : ( ! empty( $external['build_fingerprint_match'] ) ? array() : array( 'external_projection_not_current' ) )
+			),
 			'write_authority' => self::gate( ! empty( $write_authority['ready'] ), ! empty( $write_authority['ready'] ) ? 'ready' : 'blocked', true, isset( $write_authority['contract'] ) ? $write_authority['contract'] : 'mad4b.write-authority', ! empty( $write_authority['ready'] ) ? array() : array( 'write_authority_not_ready' ) ),
 			'write_runtime_certification' => self::gate( ! empty( $write_runtime['ready'] ), ! empty( $write_runtime['ready'] ) ? 'ready' : 'blocked', true, isset( $write_runtime['contract'] ) ? $write_runtime['contract'] : 'mad4b.write-runtime-certification.v2', ! empty( $write_runtime['ready'] ) ? array() : array( 'write_runtime_not_ready' ) ),
 			'external_handshake' => self::gate( ! empty( $external['verified'] ), isset( $external['status'] ) ? $external['status'] : 'pending_external_evidence', ! empty( $external['build_fingerprint_match'] ), self::EXTERNAL_ATTESTATION_CONTRACT, ! empty( $external['verified'] ) ? array() : array( 'real_external_session_required' ) ),
@@ -671,10 +795,17 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'mutation_acceptance' => self::gate( false, 'pending_external_evidence', false, 'external-live-acceptance', array( 'one_time_mutation_acceptance_not_observed_locally' ) ),
 			'production_unchanged' => self::gate( false, 'pending_external_evidence', false, 'external-production-proof', array( 'production_unchanged_requires_external_read_only_proof' ) ),
 		);
-		$all_ready = true; foreach ( $gates as $gate ) if ( empty( $gate['ready'] ) ) { $all_ready = false; break; } return array( 'contract' => self::AGGREGATE_CONTRACT, 'ready' => $all_ready, 'state' => $all_ready ? 'ready' : 'pending_or_blocked', 'gates' => $gates, 'external_facts_self_certified' => false );
+		$all_ready = true;
+		foreach ( $gates as $gate ) {
+			$effective = class_exists( 'MAD4B_SCP_Truth_Projection' )
+				? MAD4B_SCP_Truth_Projection::gate_effective_ready( is_array( $gate ) ? $gate : array() )
+				: ( is_array( $gate ) && ! empty( $gate['ready'] ) && ( ! array_key_exists( 'fresh', $gate ) || ! empty( $gate['fresh'] ) ) );
+			if ( ! $effective ) { $all_ready = false; break; }
+		}
+		return array( 'contract' => self::AGGREGATE_CONTRACT, 'ready' => $all_ready, 'state' => $all_ready ? 'ready' : 'pending_or_blocked', 'gates' => $gates, 'external_facts_self_certified' => false );
 	}
 
-	private static function gate( $ready, $state, $fresh, $source_contract, array $blockers ) { return array( 'state' => (string) $state, 'ready' => (bool) $ready, 'fresh' => (bool) $fresh, 'source_contract' => (string) $source_contract, 'blockers' => array_values( $blockers ), 'observed_at' => gmdate( 'Y-m-d H:i:s' ) ); }
+	private static function gate( $ready, $state, $fresh, $source_contract, array $blockers ) { return class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::gate( $ready, $state, $fresh, $source_contract, $blockers, gmdate( 'Y-m-d H:i:s' ), true ) : array( 'state' => (string) $state, 'ready' => (bool) $ready, 'fresh' => (bool) $fresh, 'freshness_required' => true, 'effective_ready' => (bool) $ready && (bool) $fresh, 'source_contract' => (string) $source_contract, 'blockers' => array_values( $blockers ), 'observed_at' => gmdate( 'Y-m-d H:i:s' ) ); }
 	private static function nonproduction_profile_enrolled() { return class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::nonproduction_governed() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment(); }
 	public static function staging_passive_receipt_allowed() {
 		if ( defined( 'WP_CLI' ) && WP_CLI ) return false;

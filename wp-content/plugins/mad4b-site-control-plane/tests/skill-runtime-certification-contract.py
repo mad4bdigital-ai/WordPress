@@ -330,8 +330,11 @@ for marker in [
     "'provider_blocked_projection_changed'",
     "'provider_blocked_write_tools'",
     "'wpml_internal_probe_blocks_local_certification' => false",
-    "'external_wpml_acceptance_required' => true",
-    "'external_wpml_acceptance_verified' => false",
+    "MAD4B_SCP_Truth_Projection::external_wpml( true )",
+    "'local_external_wpml_claimed' => false",
+    "'external_wpml_acceptance_required' => ! empty( $external_wpml['required'] )",
+    "'external_wpml_acceptance_verified' => ! empty( $external_wpml['verified'] )",
+    "'external_wpml_acceptance' =>",
 ]:
     if marker not in live_truth:
         raise SystemExit(f'missing rc.19 live truth/freshness invariant: {marker}')
