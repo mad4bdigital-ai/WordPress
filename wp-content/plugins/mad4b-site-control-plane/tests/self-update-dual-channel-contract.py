@@ -149,15 +149,30 @@ if "defined( 'MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED' )" not in self_update:
 for forbidden_hook in (
     "pre_set_site_transient_update_plugins",
     "site_transient_update_plugins",
-    "auto_update_plugin",
     "upgrader_pre_download",
     "upgrader_pre_install",
     "upgrader_post_install",
 ):
     if forbidden_hook in self_update:
         raise SystemExit(f"self-update must not alter WordPress updater routine: {forbidden_hook}")
-if "'automatic_update_enabled' => false" not in self_update:
-    raise SystemExit("automatic Control Plane update policy is not fail-closed")
+for forbidden_registration in (
+    "add_filter( 'auto_update_plugin'",
+    'add_filter( "auto_update_plugin"',
+    "add_action( 'auto_update_plugin'",
+    'add_action( "auto_update_plugin"',
+):
+    if forbidden_registration in self_update:
+        raise SystemExit("self-update must observe but never register the auto_update_plugin policy hook")
+if "'automatic_update_enabled' => false" in self_update:
+    raise SystemExit("automatic update state is still hard-coded instead of observed from WordPress")
+for marker in (
+    "'automatic_update_enabled' => (bool) $auto_update['effective_enabled']",
+    "'current_offer_auto_update_eligible' =>",
+    "'filesystem_execution_preflight' => 'deferred_to_wordpress_automatic_updater'",
+    "'mad4b_auto_update_mutation_performed' => false",
+):
+    if marker not in self_update:
+        raise SystemExit(f"WordPress auto-update observation invariant missing: {marker}")
 
 # The wp-admin update affordance must survive basename drift without enrolling
 # WordPress core updater transients or bypassing the governed verifier.
@@ -170,6 +185,14 @@ for marker in (
     "private static $rendered_update_rows = array();",
     "'ui_hook_mode' => 'exact_hook_plus_realpath_fallback'",
     "'admin_update_capability' => (bool) current_user_can( 'update_plugins' )",
+    "private static function wordpress_auto_update_state()",
+    "mad4b.wordpress-plugin-auto-update-observation.v1",
+    "wp_is_auto_update_enabled_for_type",
+    "get_site_option( 'auto_update_plugins', array() )",
+    "get_site_transient( 'update_plugins' )",
+    "wp_is_auto_update_forced_for_item",
+    "'automatic_update_observation' => $auto_update",
+    "'mad4b_auto_update_state'",
 ):
     if marker not in self_update:
         raise SystemExit(f"native update UI fallback invariant missing: {marker}")
@@ -216,6 +239,7 @@ for marker in (
     if marker not in readback_runtime:
         raise SystemExit(f"same-request self-update runtime regression fixture missing: {marker}")
 subprocess.run(["php", str(root / "tests" / "self-update-readback-runtime.php")], check=True)
+subprocess.run(["php", str(root / "tests" / "self-update-auto-update-state-runtime.php")], check=True)
 
 # Read-side plans remain directly projectable where operator action needs them.
 # Broad update status remains in the governed read/logical catalog so composite
