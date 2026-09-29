@@ -50,7 +50,12 @@ required_self_update = [
     "download_url",
     "wp_safe_redirect",
     "mad4b-site-control-plane-update-channel",
+    "mad4b.control-plane-update-pointer.v1",
+    "mad4b-site-control-plane-update-pointer.json",
     "mad4b-site-control-plane-update.json",
+    "pointer_immutable",
+    "legacy_stable_fallback",
+    "mad4b_self_update_manifest_digest_mismatch",
     "release_verdict_success",
     "MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED",
     "package_base64",
@@ -241,6 +246,7 @@ for marker in (
         raise SystemExit(f"same-request self-update runtime regression fixture missing: {marker}")
 subprocess.run(["php", str(root / "tests" / "self-update-readback-runtime.php")], check=True)
 subprocess.run(["php", str(root / "tests" / "self-update-auto-update-state-runtime.php")], check=True)
+subprocess.run(["php", str(root / "tests" / "self-update-pointer-runtime.php")], check=True)
 
 # Read-side plans remain directly projectable where operator action needs them.
 # Broad update status remains in the governed read/logical catalog so composite
@@ -322,7 +328,15 @@ if handoff.get("self_update", {}).get("forbidden", {}).get("production_remote_na
 # This plugin contract only trusts the fixed repository-owned Release manifest.
 for marker in (
     "const RELEASE_TAG           = 'mad4b-site-control-plane-update-channel';",
+    "const POINTER_CONTRACT      = 'mad4b.control-plane-update-pointer.v1';",
+    "const POINTER_URL           = 'https://github.com/mad4bdigital-ai/WordPress/releases/download/mad4b-site-control-plane-update-channel/mad4b-site-control-plane-update-pointer.json';",
     "const MANIFEST_URL          = 'https://github.com/mad4bdigital-ai/WordPress/releases/download/mad4b-site-control-plane-update-channel/mad4b-site-control-plane-update.json';",
+    "self::fetch_pointer( $force )",
+    "self::immutable_manifest_url( $pointer )",
+    "hash( 'sha256', $fetched['body'] )",
+    "self::validate_pointer_manifest_binding( $pointer, $manifest )",
+    "self::manifest_transient_key( $pointer['source_commit_sha'] )",
+    "pointer_legacy_fallback_allowed",
     "'release_verdict_success'",
     "'release_channel_bound' => true",
 ):
@@ -373,3 +387,16 @@ for marker in (
 ):
     if marker not in column_body:
         raise SystemExit(f"native auto-update column invariant missing: {marker}")
+
+# Pointer-first consumer must fail closed on pointer integrity/binding errors and
+# may use the legacy stable manifest only when the pointer cannot be reached.
+fetch_manifest_body = self_update.split("private static function fetch_manifest( $force = false )", 1)[1].split("private static function clear_manifest_cache()", 1)[0]
+assert fetch_manifest_body.index("self::fetch_pointer( $force )") < fetch_manifest_body.index("self::immutable_manifest_url( $pointer )")
+assert "self::pointer_legacy_fallback_allowed( $pointer )" in fetch_manifest_body
+assert "mad4b_self_update_manifest_digest_mismatch" in fetch_manifest_body
+assert "set_transient(\n\t\t\tself::manifest_transient_key( $pointer['source_commit_sha'] )" in fetch_manifest_body
+pointer_fallback = self_update.split("private static function pointer_legacy_fallback_allowed", 1)[1].split("private static function fetch_legacy_manifest", 1)[0]
+assert "mad4b_self_update_pointer_fetch_failed" in pointer_fallback
+assert "mad4b_self_update_pointer_http_error" in pointer_fallback
+for forbidden in ("pointer_contract_mismatch", "pointer_digest_invalid", "pointer_asset_invalid", "pointer_trust_invalid"):
+    assert forbidden not in pointer_fallback
