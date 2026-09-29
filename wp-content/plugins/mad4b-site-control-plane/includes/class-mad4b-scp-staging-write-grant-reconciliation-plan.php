@@ -277,6 +277,12 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 		$encoded = wp_json_encode( self::canonicalize( $payload ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( false === $encoded ) return new WP_Error( 'mad4b_grant_reconcile_plan_encoding_failed', 'Unable to encode exact reconciliation plan.' );
 		$payload['plan_sha256'] = hash( 'sha256', $encoded );
+		$payload['connector_compatibility'] = array(
+			'expected_stale_grant_ids_required_on_wire' => false,
+			'omission_semantics' => 'assert_empty_stale_set',
+			'legacy_schema_compatible' => empty( $payload['expected_stale_grant_ids'] ),
+			'fails_closed_if_live_stale_grants_exist' => true,
+		);
 		$payload['write_binding'] = array(
 			'expected_plan_sha256' => $payload['plan_sha256'],
 			'expected_revision' => $payload['expected_revision'],
