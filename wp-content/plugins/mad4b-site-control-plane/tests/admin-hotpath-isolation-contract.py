@@ -13,6 +13,7 @@ live_truth = (PLUGIN / "includes/class-mad4b-scp-live-truth.php").read_text(enco
 dependency = (PLUGIN / "includes/class-mad4b-scp-dependency-manager.php").read_text(encoding="utf-8")
 continuity = (PLUGIN / "includes/class-mad4b-scp-upgrade-continuity.php").read_text(encoding="utf-8")
 runtime_convergence = (PLUGIN / "includes/class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
+provider_policy = (PLUGIN / "includes/class-mad4b-scp-provider-diagnostic-policy.php").read_text(encoding="utf-8")
 slo = (ROOT / "specs/008-dynamic-content-runtime-hardening/performance-slo.md").read_text(encoding="utf-8")
 
 def method_body(source: str, signature: str, next_signature: str) -> str:
@@ -171,3 +172,25 @@ assert "$_SERVER['REQUEST_URI']" in convergence_gate
 assert "return false;" in convergence_gate
 
 print("admin hotpath isolation contract: PASS")
+
+
+# Core Site Health REST and generic WP-Cron are request-serving zero-touch
+# surfaces. They must not activate Control Plane init, telemetry or convergence.
+for marker in (
+    "current_request_is_foreign_rest",
+    "current_request_is_wordpress_cron",
+    "current_request_is_zero_touch_surface",
+    "foreign_rest_zero_touch",
+    "wordpress_cron_zero_touch",
+):
+    assert marker in provider_policy, marker
+
+plugin_boot = method_body(
+    plugin,
+    "public static function boot()",
+    "public static function boot_oauth_transport_if_effective()",
+)
+assert "current_request_is_zero_touch_surface()" in plugin_boot
+assert plugin_boot.index("current_request_is_zero_touch_surface()") < plugin_boot.index("MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap()")
+
+assert "current_request_is_zero_touch_surface()" in capture
