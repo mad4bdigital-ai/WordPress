@@ -81,7 +81,13 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		}
 		self::$status['eligible'] = true;
 
-		if ( 'production' === $environment ) return self::bootstrap_production_readonly();
+		if ( 'production' === $environment ) {
+			// Production read-only keeps its explicit opt-in. Governed Production
+			// write is already an explicit Site Profile authority and therefore may
+			// bootstrap OAuth directly from that exact confirmed profile.
+			if ( MAD4B_SCP_Site_Profile::write_enabled() ) return self::bootstrap_production_governed();
+			return self::bootstrap_production_readonly();
+		}
 		return self::bootstrap_enrolled_nonproduction();
 	}
 
@@ -124,6 +130,52 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		self::$status['primary_owner_user_id'] = (int) $prepared['owner_user_id'];
 		self::$status['oauth_user_ids'] = $record['oauth_user_ids'];
 		self::$status['configuration_source'] = 'site_profile';
+		self::$status['blocker'] = '';
+		return self::$status;
+	}
+
+	private static function bootstrap_production_governed() {
+		$prepared = self::prepare_profile_subjects();
+		if ( is_wp_error( $prepared ) ) {
+			self::$status['blocker'] = $prepared->get_error_code();
+			return self::$status;
+		}
+		$configured = self::apply_local_oauth_configuration( $prepared['issuer'], $prepared['user_ids'], $prepared['owner_user_id'], true );
+		if ( is_wp_error( $configured ) ) {
+			self::$status['blocker'] = $configured->get_error_code();
+			return self::$status;
+		}
+
+		$record = array(
+			'version' => self::VERSION,
+			'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+			'profile_revision' => MAD4B_SCP_Site_Profile::revision(),
+			'profile_digest' => MAD4B_SCP_Site_Profile::profile_digest(),
+			'canonical_origin' => MAD4B_SCP_Site_Profile::site_origin(),
+			'environment' => MAD4B_SCP_Site_Profile::current_environment(),
+			'wp_user_id' => (int) $prepared['owner_user_id'],
+			'primary_owner_user_id' => (int) $prepared['owner_user_id'],
+			'oauth_user_ids' => array_values( array_map( 'absint', $prepared['user_ids'] ) ),
+			'issuer' => $prepared['issuer'],
+			'production_governed_write' => true,
+		);
+		$existing = get_option( self::OPTION, array() );
+		$existing_semantic = is_array( $existing ) ? $existing : array();
+		unset( $existing_semantic['updated_at'] );
+		if ( $existing_semantic !== $record ) {
+			$record['updated_at'] = gmdate( 'c' );
+			update_option( self::OPTION, $record, false );
+		} elseif ( is_array( $existing ) ) {
+			$record = $existing;
+		}
+
+		self::$status['configured'] = true;
+		self::$status['wp_user_id'] = (int) $prepared['owner_user_id'];
+		self::$status['primary_owner_user_id'] = (int) $prepared['owner_user_id'];
+		self::$status['oauth_user_ids'] = $record['oauth_user_ids'];
+		self::$status['configuration_source'] = 'site_profile_production_governed';
+		self::$status['production_readonly_enabled'] = false;
+		self::$status['write_authority_enabled'] = true;
 		self::$status['blocker'] = '';
 		return self::$status;
 	}
