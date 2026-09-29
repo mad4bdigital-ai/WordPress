@@ -47,7 +47,11 @@ final class MAD4B_SCP_Connection_Status {
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_identity_context_unavailable', 'Identity context is unavailable.' );
 		$isolation = class_exists( 'MAD4B_SCP_MCP_Provider_Isolation' ) ? MAD4B_SCP_MCP_Provider_Isolation::status() : array( 'configured' => false, 'effective' => false );
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array( 'available' => false );
-		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? MAD4B_SCP_External_Handshake_Evidence::status() : array( 'verified' => false, 'status' => 'evidence_component_unavailable' );
+		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' )
+			? ( $protocol_hotpath && method_exists( 'MAD4B_SCP_External_Handshake_Evidence', 'persisted_identity_status' )
+				? MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()
+				: MAD4B_SCP_External_Handshake_Evidence::status() )
+			: array( 'verified' => false, 'status' => 'evidence_component_unavailable' );
 		$oauth_blockers = self::oauth_preflight_blockers( $oauth );
 		$mcp_registration_lifecycle = self::bounded_mcp_registration_lifecycle();
 
@@ -102,7 +106,7 @@ final class MAD4B_SCP_Connection_Status {
 			'servers' => $servers,
 			'transport_deep_validation_deferred' => $protocol_hotpath,
 			'explicit_deep_validation' => (bool) $force_deep,
-			'deferred_checks' => $protocol_hotpath ? array( 'route_permission_validation', 'mcp_peer_inventory', 'write_catalog_inventory' ) : array(),
+			'deferred_checks' => $protocol_hotpath ? array( 'route_permission_validation', 'mcp_peer_inventory', 'write_catalog_inventory', 'live_handshake_revalidation', 'provider_runtime_integrity' ) : array(),
 			'write_surface' => self::write_surface_summary( $servers, $protocol_hotpath ),
 			'provider_mcp_isolation' => self::bounded_isolation_status( $isolation ),
 			'oauth_resource_server' => self::bounded_oauth_status( $oauth, $oauth_blockers ),
