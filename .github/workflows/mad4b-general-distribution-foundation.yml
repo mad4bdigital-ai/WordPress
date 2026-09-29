@@ -146,7 +146,7 @@ jobs:
           grep -Fq "site_profile_write_disabled" "$authority"
           grep -Fq "'production_auto_enable' => false" "$authority"
           grep -Fq "'breakglass_auto_enable' => false" "$authority"
-          grep -Fq "'production_exact_approval_only' => \$production" "$authority"
+          grep -Fq "\$policy['production_exact_approval_only'] = \$production;" "$authority"
           grep -Fq "'all_remote_writes_require_exact_approval' => 'production' === \$environment" "$authority"
           grep -Fq "'normal_remote_writes_require_exact_approval' => true" "$authority"
           grep -Fq "'remote_write_approval_policy' => 'production' === \$environment ? 'exact_approval_required' : 'exact_approval_with_bounded_standing_exceptions'" "$authority"
