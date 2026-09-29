@@ -94,7 +94,11 @@ final class MAD4B_SCP_Authorization {
 	}
 
 	public static function authorize_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
-		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return self::error( 'mad4b_governance_schema_unavailable', 'Governance schema is unavailable.' );
+		if ( ! class_exists( 'MAD4B_SCP_Schema' )
+			|| ! MAD4B_SCP_Schema::is_ready()
+			|| ! MAD4B_SCP_Schema::critical_ready() ) {
+			return self::error( 'mad4b_governance_schema_unavailable', 'Governance schema is unavailable or physically incomplete.' );
+		}
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ) return self::error( 'mcp_peer_inventory_unavailable', 'MCP peer governance is unavailable.' );
 		$peer_guard = MAD4B_SCP_MCP_Peer_Governance::mutation_guard();
 		if ( is_wp_error( $peer_guard ) ) return $peer_guard;

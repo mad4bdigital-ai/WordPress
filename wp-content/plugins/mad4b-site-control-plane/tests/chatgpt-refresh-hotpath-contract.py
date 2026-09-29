@@ -13,9 +13,17 @@ skill_snapshot = (root / "includes/class-mad4b-scp-skill-snapshot-identity.php")
 skill_runtime = (root / "includes/class-mad4b-scp-skill-runtime-certification.php").read_text(encoding="utf-8")
 finalizer = (root / "includes/class-mad4b-scp-live-acceptance-finalizer.php").read_text(encoding="utf-8")
 live_truth = (root / "includes/class-mad4b-scp-live-truth.php").read_text(encoding="utf-8")
+write_authority = (root / "includes/class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
+provider_contracts = (root / "includes/class-mad4b-scp-provider-contracts.php").read_text(encoding="utf-8")
 oauth_autoconfig = (root / "includes/class-mad4b-scp-staging-oauth-autoconfig.php").read_text(encoding="utf-8")
 audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
+authorization = (root / "includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 request_scope = (root / "includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
+read_consistency = (root / "includes/class-mad4b-scp-read-consistency.php").read_text(encoding="utf-8")
+query_monitor = (root / "includes/class-mad4b-scp-query-monitor-evidence-bridge.php").read_text(encoding="utf-8")
+mu_refresh = (root / "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php").read_text(encoding="utf-8")
+runtime_conflict = (root / "includes/class-mad4b-scp-mcp-runtime-conflict-guard.php").read_text(encoding="utf-8")
+upgrade_continuity = (root / "includes/class-mad4b-scp-upgrade-continuity.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
@@ -212,6 +220,34 @@ assert "if ( $existing_semantic !== $record )" in oauth_nonprod
 assert oauth_nonprod.index("$existing_semantic !== $record") < oauth_nonprod.index("$record['updated_at'] = gmdate( 'c' );")
 assert oauth_nonprod.index("$existing_semantic !== $record") < oauth_nonprod.index("update_option( self::OPTION, $record, false );")
 
+# Central plugin boot must classify protocol requests before any governance
+# physical-schema readiness, dbDelta migration, or legacy audit option creation.
+central_boot = plugin.split("public static function boot()", 1)[1].split("public static function boot_oauth_transport_if_effective()", 1)[0]
+assert "$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )" in central_boot
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in central_boot
+schema_guard_pos = central_boot.index("$protocol_hotpath =")
+assert schema_guard_pos < central_boot.index("MAD4B_SCP_Schema::is_ready()")
+assert schema_guard_pos < central_boot.index("MAD4B_SCP_Schema::install_or_upgrade()")
+assert schema_guard_pos < central_boot.index("add_option( MAD4B_SCP_Audit::LEGACY_OPTION")
+assert "$schema_reconciliation = self::request_requires_schema_reconciliation();" in central_boot
+schema_block = central_boot.split("MAD4B_SCP_Schema::is_ready()", 1)[0]
+assert "! $protocol_hotpath" in schema_block
+assert "$schema_reconciliation" in schema_block
+assert "private static function request_requires_schema_reconciliation()" in plugin
+schema_reconcile = plugin.split("private static function request_requires_schema_reconciliation()", 1)[1].split("private static function request_requires_skill_reconciliation()", 1)[0]
+assert "defined( 'WP_CLI' )" in schema_reconcile
+assert "0 === strpos( $page, 'mad4b-control-plane' )" in schema_reconcile
+assert "if ( ! is_admin() ) return false;" in schema_reconcile
+
+# Mutations independently re-prove physical schema readiness, so removing
+# request-global schema scans does not weaken fail-closed write safety.
+assert "MAD4B_SCP_Schema::is_ready()" in authorization
+assert "MAD4B_SCP_Schema::critical_ready()" in authorization
+authorize_mutation = authorization.split("public static function authorize_mutation(", 1)[1]
+assert authorize_mutation.index("MAD4B_SCP_Schema::is_ready()") < authorize_mutation.index("MAD4B_SCP_Agent_Registry::exact_grant")
+assert authorize_mutation.index("MAD4B_SCP_Schema::critical_ready()") < authorize_mutation.index("MAD4B_SCP_Agent_Registry::exact_grant")
+assert "MAD4B_SCP_Schema::critical_ready()" in central_boot
+
 # Audit chain integrity must remain fail-closed for mutations without forcing
 # physical table/engine/legacy-chain/head inspection during MCP discovery.
 plugin_boot = plugin.split("public static function boot()", 1)[1].split("public static function boot_oauth_transport_if_effective()", 1)[0]
@@ -220,6 +256,11 @@ audit_boot_prefix = plugin_boot.split("MAD4B_SCP_Audit::ensure_head_initialized(
 assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in audit_boot_prefix
 audit_record = audit.split("public static function record(", 1)[1].split("public static function ensure_head_initialized()", 1)[0]
 assert "self::ensure_head_initialized();" in audit_record
+
+# Binding OAuth transport hooks on init must use identity-only readiness.
+oauth_boot = plugin.split("public static function boot_oauth_transport_if_effective()", 1)[1].split("private static function oauth_transport_enabled()", 1)[0]
+assert "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()" in oauth_boot
+assert oauth_boot.index("runtime_identity_status()") < oauth_boot.index("MAD4B_SCP_OAuth_Request_Context_Guard::boot()")
 
 # Runtime scope and protocol hotpath are distinct contracts. Developer planes
 # are real MCP routes; OAuth metadata/protocol paths are latency-sensitive but
@@ -251,3 +292,189 @@ for route in [
     assert route in protocol_hotpath, route
 
 print("mad4b.chatgpt-refresh-hotpath.v14: PASS")
+
+# Post-update MU reconciliation must never execute filesystem mutation/audit work
+# before an MCP/OAuth protocol request can be served.
+mu_bootstrap = mu_refresh.split("public static function bootstrap()", 1)[1].split("public static function status()", 1)[0]
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in mu_bootstrap
+assert "'deferred_protocol_hotpath'" in mu_bootstrap
+assert "$status['refresh_deferred'] = true;" in mu_bootstrap
+assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("hash_file(")
+assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("@copy(")
+assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("MAD4B_SCP_Audit::record(")
+
+scope_boot_pos = entry.index("MAD4B_SCP_MCP_Request_Scope::bootstrap();")
+mu_boot_pos = entry.index("MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();")
+assert scope_boot_pos < mu_boot_pos, "request scope must be classified before MU refresh bootstrap"
+
+# Runtime conflict repair is also a mutation/recovery transaction and must be
+# deferred on protocol hotpaths before active_plugins or MU/audit repair work.
+conflict_bootstrap = runtime_conflict.split("public static function bootstrap()", 1)[1].split("public static function status()", 1)[0]
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in conflict_bootstrap
+assert "'repair_deferred_protocol_hotpath'" in conflict_bootstrap
+assert "$status['repair_deferred'] = true;" in conflict_bootstrap
+assert conflict_bootstrap.index("current_request_is_protocol_hotpath()") < conflict_bootstrap.index("get_option( 'active_plugins'")
+assert conflict_bootstrap.index("current_request_is_protocol_hotpath()") < conflict_bootstrap.index("update_option( 'active_plugins'")
+assert conflict_bootstrap.index("current_request_is_protocol_hotpath()") < conflict_bootstrap.index("MAD4B_SCP_Audit::record(")
+
+# Query Monitor telemetry bootstrap needs only packaged identity. Full runtime
+# hashing remains explicit/final acceptance and must not execute on every request.
+qm_pin = query_monitor.split("private static function pin_request_build_fingerprint()", 1)[1].split("private static function request_build_fingerprint()", 1)[0]
+assert "build_provenance_identity_status()" in qm_pin
+assert "build_provenance_status()" not in qm_pin
+assert "hash_file(" not in qm_pin
+
+qm_flush = query_monitor.split("public static function capture_and_flush()", 1)[1].split("/** @internal Pure seam", 1)[0]
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in qm_flush
+protocol_branch = qm_flush.split("if ( $protocol_hotpath )", 1)[1].split("$telemetry['observed_request_count']", 2)[0]
+assert "query_monitor_events()" not in protocol_branch
+assert "performance_sample(" not in protocol_branch
+assert "(int) $telemetry['request_coverage']['mcp'] > 0" in qm_flush
+assert qm_flush.index("if ( $protocol_hotpath )") < qm_flush.index("$sample = self::performance_sample( $class )")
+assert qm_flush.index("if ( $protocol_hotpath )") < qm_flush.index("foreach ( self::query_monitor_events()")
+
+qm_db_bootstrap = query_monitor.split("public static function maybe_enable_db_attribution()", 1)[1].split("private static function bounded_loader_contents()", 1)[0]
+assert "0 !== strpos( $page, 'mad4b-control-plane' )" in qm_db_bootstrap
+assert qm_db_bootstrap.index("0 !== strpos( $page, 'mad4b-control-plane' )") < qm_db_bootstrap.index("@symlink(")
+assert qm_db_bootstrap.index("0 !== strpos( $page, 'mad4b-control-plane' )") < qm_db_bootstrap.index("@fopen(")
+
+# Ordinary wp-admin pages (including plugins.php) get at most one lightweight
+# coverage marker per build and must not execute full Query Monitor profiling.
+assert "private static function current_request_is_mad4b_admin_surface()" in query_monitor
+assert "if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() )" in qm_flush
+admin_budget = qm_flush.split("if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() )", 1)[1].split("$telemetry['observed_request_count']", 2)[0]
+assert "query_monitor_events()" not in admin_budget
+assert "performance_sample(" not in admin_budget
+assert "(int) $telemetry['request_coverage']['wp_admin'] > 0" in qm_flush
+assert qm_flush.index("if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() )") < qm_flush.index("$sample = self::performance_sample( $class )")
+
+# Upgrade continuity may persist recovered profile/OAuth state, so migration
+# recovery must be deferred during MCP/OAuth protocol requests.
+upgrade_preboot = upgrade_continuity.split("public static function pre_boot()", 1)[1].split("public static function boot()", 1)[0]
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in upgrade_preboot
+assert "'deferred_protocol_hotpath'" in upgrade_preboot
+assert upgrade_preboot.index("current_request_is_protocol_hotpath()") < upgrade_preboot.index("recover_verified_read_continuity()")
+
+# The direct ChatGPT "session-safe" report must remain genuinely bounded:
+# no full package hashing, deep authority scan, live Skill reconciliation,
+# network-capable self-update status, or runtime write-catalog rebuild.
+session_safe = read_consistency.split("public static function session_safe_diagnostics", 1)[1].split("private static function compact_bundle_result", 1)[0]
+assert "self::session_safe_bundle_checks( $bundle )" in session_safe
+assert "self::request_metrics()" in session_safe
+for marker in (
+    "full_runtime_provenance_hash",
+    "deep_write_authority_scan",
+    "live_skill_filesystem_reconciliation",
+    "live_update_manifest_network_fetch",
+    "write_catalog_runtime_rebuild",
+):
+    assert marker in session_safe, marker
+
+safe_checks = read_consistency.split("private static function session_safe_bundle_checks", 1)[1].split("private static function build_projection", 1)[0]
+for forbidden in (
+    "MAD4B_SCP_Staging_Certification::status",
+    "workflow_provider_projection()",
+    "deep_build_projection()",
+    "deep_write_authority_projection()",
+    "deep_skills_projection()",
+    "deep_update_projection()",
+    "deep_catalog_projection()",
+):
+    assert forbidden not in safe_checks, forbidden
+
+snapshot_build = read_consistency.split("private static function build_projection()", 1)[1].split("private static function deep_build_projection()", 1)[0]
+assert "build_provenance_identity_status()" in snapshot_build
+assert "build_provenance_status()" not in snapshot_build
+assert "full_runtime_hash_validation_deferred" in snapshot_build
+
+snapshot_catalog = read_consistency.split("private static function catalog_projection()", 1)[1].split("private static function deep_catalog_projection()", 1)[0]
+assert "MAD4B_SCP_Servers::registration_status()" in snapshot_catalog
+assert "MAD4B_SCP_Staging_Write_Authority::persisted_status()" in snapshot_catalog
+assert "MAD4B_SCP_Servers::write_tools()" not in snapshot_catalog
+assert "MAD4B_SCP_Servers::chatgpt_tools()" not in snapshot_catalog
+assert "runtime_catalog_rebuild_deferred" in snapshot_catalog
+
+safe_authority = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function deep_write_authority_projection()", 1)[0]
+assert "MAD4B_SCP_Staging_Write_Authority::persisted_status()" in safe_authority
+assert "candidate_binding_status()" in safe_authority
+assert "MAD4B_SCP_Live_Truth::current_authority_status()" not in safe_authority
+assert "deep_authority_scan_deferred" in safe_authority
+
+safe_skills = read_consistency.split("private static function skills_projection()", 1)[1].split("private static function deep_skills_projection()", 1)[0]
+assert "persisted_status()" in safe_skills
+assert "current_status()" not in safe_skills
+
+safe_update = read_consistency.split("private static function update_projection()", 1)[1].split("private static function deep_update_projection()", 1)[0]
+assert "MAD4B_SCP_Self_Update::cached_status" in safe_update
+assert "MAD4B_SCP_Self_Update::status(" not in safe_update
+
+# Deep explicit bundles retain full integrity/certification semantics.
+deep_bundle = read_consistency.split("private static function bundle_checks", 1)[1].split("private static function session_safe_bundle_checks", 1)[0]
+for marker in (
+    "deep_build_projection()",
+    "deep_write_authority_projection()",
+    "deep_skills_projection()",
+    "deep_update_projection()",
+    "MAD4B_SCP_Staging_Certification::status",
+    "deep_catalog_projection()",
+):
+    assert marker in deep_bundle, marker
+
+metrics = read_consistency.split("private static function request_metrics()", 1)[1].split("private static function transaction_id", 1)[0]
+for marker in (
+    "memory_get_usage",
+    "memory_get_peak_usage",
+    "get_included_files",
+    "get_num_queries",
+    "external_network_calls_started_by_report",
+    "deep_integrity_hashes_started_by_report",
+):
+    assert marker in metrics, marker
+
+deep_bundle = read_consistency.split("private static function bundle_checks", 1)[1].split("private static function session_safe_bundle_checks", 1)[0]
+safe_bundle = read_consistency.split("private static function session_safe_bundle_checks", 1)[1].split("private static function build_projection", 1)[0]
+assert "self::connection_projection()" in deep_bundle
+assert "self::reconnect_projection()" in deep_bundle
+assert "self::session_safe_connection_projection()" not in deep_bundle
+assert "self::session_safe_reconnect_projection()" not in deep_bundle
+assert "self::session_safe_connection_projection()" in safe_bundle
+assert "self::session_safe_reconnect_projection()" in safe_bundle
+assert "self::connection_projection()" not in safe_bundle
+assert "self::reconnect_projection()" not in safe_bundle
+
+# Session-safe connection identity consumes persisted handshake evidence only.
+# Live status may rebuild catalogs and hash the bounded runtime file set.
+assert "public static function persisted_identity_status()" in handshake
+persisted_handshake = handshake.split("public static function persisted_identity_status()", 1)[1].split("public static function status()", 1)[0]
+assert "get_option( self::OPTION" in persisted_handshake
+for forbidden in (
+    "expected_tool_names()",
+    "expected_write_tool_names()",
+    "expected_eligible_write_tool_names()",
+    "build_fingerprint()",
+    "hash_file(",
+):
+    assert forbidden not in persisted_handshake, forbidden
+assert "'live_verification_deferred' => true" in persisted_handshake
+safe_connection = read_consistency.split("private static function session_safe_connection_projection()", 1)[1].split("private static function session_safe_reconnect_projection()", 1)[0]
+assert "persisted_identity_status()" in safe_connection
+assert "MAD4B_SCP_External_Handshake_Evidence::status()" not in safe_connection
+
+# Lightweight authority projections consume persisted runtime evidence only and
+# must not rebuild approval-policy/catalog eligibility.
+assert "public static function persisted_status()" in write_authority
+persisted_authority = write_authority.split("public static function persisted_status()", 1)[1].split("public static function status()", 1)[0]
+assert "self::raw_status()" in persisted_authority
+assert "approval_policy_projection()" not in persisted_authority
+assert "approval_policy_projection_deferred" in persisted_authority
+safe_authority = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function deep_write_authority_projection()", 1)[0]
+assert "persisted_status()" in safe_authority
+assert "MAD4B_SCP_Staging_Write_Authority::status()" not in safe_authority
+
+# Provider header/version inspection is request-local memoized so repeated
+# connection/session-safe projections do not re-read plugin headers.
+assert "private static $installed_version_cache = array();" in provider_contracts
+version_reader = provider_contracts.split("private static function installed_version_for_contract", 1)[1].split("private static function composite_version_string", 1)[0]
+assert "array_key_exists( $file, self::$installed_version_cache )" in version_reader
+assert version_reader.index("array_key_exists( $file, self::$installed_version_cache )") < version_reader.index("get_file_data(")
+assert "self::$installed_version_cache[ $file ] = trim" in version_reader

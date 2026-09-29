@@ -25,6 +25,19 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		$status = self::base_status();
 		if ( ! $status['eligible'] ) { self::$status = $status; return $status; }
 
+		// Runtime repair may rewrite active_plugins, install/replace the managed
+		// MU bootstrap and append audit state. None of that belongs on an
+		// initialize/tools-list/execute/OAuth protocol request.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) {
+			$status['state'] = 'repair_deferred_protocol_hotpath';
+			$status['repair_deferred'] = true;
+			$status['next_request_required'] = true;
+			$status['blocker'] = '';
+			self::$status = $status;
+			return $status;
+		}
+
 		$active = get_option( 'active_plugins', array() );
 		if ( ! is_array( $active ) ) {
 			$status['blocker'] = 'active_plugin_inventory_invalid';

@@ -46,11 +46,14 @@ runtime_certification = (wp / 'includes' / 'class-mad4b-scp-skill-runtime-certif
 
 for marker in [
     "private static function request_is_wordpress_plugin_lifecycle()",
+    "private static function request_requires_schema_reconciliation()",
     "array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' )",
     "array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' )",
     "$plugin_lifecycle = self::request_is_wordpress_plugin_lifecycle();",
-    "if ( ! $plugin_lifecycle && ( ! MAD4B_SCP_Schema::is_ready()",
-    "if ( ! $plugin_lifecycle && false === get_option( MAD4B_SCP_Audit::LEGACY_OPTION, false ) )",
+    "$schema_reconciliation = self::request_requires_schema_reconciliation();",
+    "if ( ! $plugin_lifecycle && ! $protocol_hotpath && $schema_reconciliation",
+    "MAD4B_SCP_Schema::critical_ready()",
+    "add_option( MAD4B_SCP_Audit::LEGACY_OPTION, array(), '', false );",
     "if ( ! $plugin_lifecycle && ! is_wp_error( self::$schema_error ) && self::request_requires_skill_reconciliation() )",
 ]:
     if marker not in plugin_boot:

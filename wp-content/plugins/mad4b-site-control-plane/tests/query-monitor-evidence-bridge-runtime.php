@@ -41,7 +41,8 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
     const MAX_EVENTS = 32;
     const TELEMETRY_TTL = 21600;
     public static function staging_capture_allowed() { return true; }
-    public static function build_provenance_status() { return array('build_fingerprint' => $GLOBALS['current_build_fingerprint']); }
+    public static function build_provenance_identity_status() { return array('build_fingerprint' => $GLOBALS['current_build_fingerprint']); }
+    public static function build_provenance_status() { throw new RuntimeException('full provenance must not run during Query Monitor bootstrap'); }
     public static function sanitize_warning_message( $m ) { return (string)$m; }
     public static function classify_warning_for_test( $type, $function, $message, array $trace = array() ) {
         $mad4b = false;
