@@ -210,8 +210,11 @@ for marker in [
     "'mcp_recovery_scoped_to_mad4b_routes' => $mcp_recovery_scoped",
     "'wpml_internal_probe_role' => 'diagnostic_only'",
     "'wpml_internal_probe_blocks_local_certification' => false",
-    "'external_wpml_acceptance_required' => true",
-    "'external_wpml_acceptance_verified' => false",
+    "'external_wpml_acceptance_required' => $external_wpml_required",
+    "'external_wpml_acceptance_verified' => $external_wpml_verified",
+    "'external_wpml_acceptance_state' => ! $external_wpml_required ? 'not_required' : ( $external_wpml_verified ? 'verified' : 'pending' )",
+    "'external_wpml_acceptance' => self::bounded_external_wpml_receipt( $external_wpml )",
+    "MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status()",
     "'external_http_probe_performed' => false",
 ]:
     if marker not in rest:
