@@ -12,6 +12,10 @@ $_SERVER['HTTPS'] = 'on';
 $_SERVER['SERVER_PORT'] = '443';
 $_SERVER['REQUEST_METHOD'] = 'GET';
 $_SERVER['REQUEST_URI'] = '/wp-admin/admin.php?page=mad4b-control-plane-connection&tab=endpoints';
+$_GET['page'] = 'mad4b-control-plane-connection';
+$_GET['tab'] = 'endpoints';
+$_REQUEST['page'] = $_GET['page'];
+$_REQUEST['tab'] = $_GET['tab'];
 require $wp_path . '/wp-load.php';
 
 $fail = static function ( $message ) {
