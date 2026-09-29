@@ -6,6 +6,7 @@ PLUGIN = ROOT / "wp-content/plugins/mad4b-site-control-plane"
 
 policy = (PLUGIN / "includes/class-mad4b-scp-provider-diagnostic-policy.php").read_text(encoding="utf-8")
 plugin = (PLUGIN / "includes/class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
+main = (PLUGIN / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 observer = (PLUGIN / "includes/class-mad4b-scp-live-acceptance-observer.php").read_text(encoding="utf-8")
 qm = (PLUGIN / "includes/class-mad4b-scp-query-monitor-evidence-bridge.php").read_text(encoding="utf-8")
 convergence = (PLUGIN / "includes/class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
@@ -39,5 +40,15 @@ gate = convergence.split("private static function convergence_trigger_allowed()"
 assert "current_request_is_zero_touch_surface()" in gate
 assert "wp_doing_cron() ) return false" in gate
 assert "wp_doing_cron() ) return true" not in gate
+
+
+# Request classification and zero-touch fencing must happen before the two
+# direct pre-init bootstraps that can read Site Profile/authority state.
+assert "MAD4B_SCP_MCP_Request_Scope::bootstrap();" in main
+assert "$mad4b_zero_touch_request" in main
+assert "MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface()" in main
+assert main.index("MAD4B_SCP_MCP_Request_Scope::bootstrap();") < main.index("MAD4B_SCP_Skill_Autoconfig::bootstrap();")
+assert main.index("$mad4b_zero_touch_request") < main.index("MAD4B_SCP_Skill_Autoconfig::bootstrap();")
+assert main.index("$mad4b_zero_touch_request") < main.index("MAD4B_SCP_Staging_Write_Authority::bootstrap();")
 
 print("request-serving zero-touch contract: PASS")

@@ -280,11 +280,19 @@ MAD4B_SCP_Skill_Abilities::boot();
 MAD4B_SCP_Skills_Adapter::boot();
 MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();
 remove_action( 'plugins_loaded', array( 'MAD4B_SCP_Skill_Provider_Discovery', 'bootstrap' ), 30 );
-MAD4B_SCP_Skill_Autoconfig::bootstrap();
-MAD4B_SCP_Staging_Write_Authority::bootstrap();
-// Request classification must exist before any post-update filesystem
-// reconciliation so MCP/OAuth hot paths can remain mutation-free and bounded.
+
+// Classify the request before any direct Skills/Write bootstrap. Third-party
+// wp-admin, provider/Core REST and generic wp-cron are request-serving hotpaths:
+// they do not need site-profile-driven feature enablement or authority restore.
 MAD4B_SCP_MCP_Request_Scope::bootstrap();
+$mad4b_zero_touch_request = class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+	&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface();
+if ( ! $mad4b_zero_touch_request ) {
+	MAD4B_SCP_Skill_Autoconfig::bootstrap();
+	MAD4B_SCP_Staging_Write_Authority::bootstrap();
+}
+unset( $mad4b_zero_touch_request );
+
 MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();
 MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();
 MAD4B_SCP_MCP_Registration_Bridge::boot_early();
