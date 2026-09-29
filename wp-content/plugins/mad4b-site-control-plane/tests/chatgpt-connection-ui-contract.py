@@ -45,7 +45,11 @@ required_ui = [
     'mad4b_production_readonly_oauth',
     'Enable Production read-only OAuth',
     'Disable Production read-only OAuth',
-    'It does not enable mutation, Skills authoring, write authority or Breakglass.',
+    'Portable mode is read-only.',
+    "'production_governed_write_enabled' => (bool) $production_governed_write_enabled",
+    "'production_write_policy' => 'production' === $environment ? 'exact_profile_plus_exact_one_time_approval' : 'not_applicable'",
+    "'authority_step_up_available' => (bool) $step_up_available",
+    'every Production write remains bound to exact grants and a one-time approval',
     'CIMD / ChatGPT managed',
     'Open ChatGPT Plugin Builder',
     'Run OAuth Canary',
@@ -68,7 +72,7 @@ required_consent_semantics = [
     'mad4b.local-oauth-consent-ui.v4',
     "add_action( 'admin_init', array( __CLASS__, 'start_buffer_for_connection_admin' ), -20 )",
     'This consent authenticates the client and grants only the read resource scope shown below. Write, Developer and Developer Breakglass are separate governed authorities and are not created by this OAuth approval.',
-    'Read identity + Staging authority step-up',
+    "Read identity + ' . $environment_label . ' authority step-up",
     'mad4b:authority:step-up',
     'Approve governed access',
     'Write, Developer and Developer Breakglass are separate governed authorities',
@@ -79,7 +83,9 @@ required_consent_semantics = [
     'This certification does not grant write authority; governed mutation availability is evaluated separately by Write Authority and Write Runtime Certification.',
     'What you are approving now',
     'Generic raw-SQL Breakglass',
-    'Current Staging authority',
+    'Current governed authority',
+    'Full Staging Authority (Staging only)',
+    'Production writes still require exact Site Profile confirmation and one-time approval',
 ]
 for marker in required_consent_semantics:
     if marker not in consent_ui:
