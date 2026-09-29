@@ -75,9 +75,35 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function register_abilities(){
 		if(!wp_has_ability(self::OP_STATUS)) $this->add_ability(
-			self::OP_STATUS,'Dynamic Content Operation Status','operation_status',
+			self::OP_STATUS,
+			'Dynamic Content Operation Status',
+			'operation_status',
 			array('MAD4B_SCP_Policy','can_read'),
-			$this->schema(array('operation_id'=>array('type'=>'string','minLength'=>36,'maxLength'=>36,'pattern'=>'^[A-Fa-f0-9-]{36}		if(!wp_has_ability(self::PIPELINE_STATUS)) $this->add_ability(
+			$this->schema(array(
+				'operation_id'=>array('type'=>'string','minLength'=>36,'maxLength'=>36,'pattern'=>'^[A-Fa-f0-9-]{36}$')
+			),array('operation_id')),
+			'read',
+			true,
+			false,
+			true
+		);
+
+		if(!wp_has_ability(self::OP_TRACE)) $this->add_ability(
+			self::OP_TRACE,
+			'Dynamic Content Operation Trace',
+			'operation_trace',
+			array('MAD4B_SCP_Policy','can_read'),
+			$this->schema(array(
+				'operation_id'=>array('type'=>'string','minLength'=>36,'maxLength'=>36,'pattern'=>'^[A-Fa-f0-9-]{36}$'),
+				'limit'=>array('type'=>'integer','minimum'=>1,'maximum'=>1000,'default'=>200)
+			),array('operation_id')),
+			'read',
+			true,
+			false,
+			true
+		);
+
+		if(!wp_has_ability(self::PIPELINE_STATUS)) $this->add_ability(
 			self::PIPELINE_STATUS,
 			'Dynamic Content Pipeline Status',
 			'pipeline_status',
