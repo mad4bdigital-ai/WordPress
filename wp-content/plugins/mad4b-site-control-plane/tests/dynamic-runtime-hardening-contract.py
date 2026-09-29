@@ -32,3 +32,13 @@ for marker in ["mad4b/content-operation-status","mad4b/content-operation-trace",
     req(adapter, marker)
 for marker in ["mad4b.dynamic-operation-trace.v1","chain_valid","orphan_candidate","hard_deadline_exceeded"]:
     req(journal, marker)
+
+recovery=(root/"includes/class-mad4b-scp-dynamic-recovery.php").read_text()
+recovery_adapter=(root/"includes/adapters/class-mad4b-scp-dynamic-recovery-adapter.php").read_text()
+registry=(root/"includes/class-mad4b-scp-adapter-registry.php").read_text()
+for marker in ["journal_head_sha256","current_state_sha256","provider_state_digest","pipeline_settings_sha256","policy_sha256","expires_at","ai_approval_allowed'=>false"]:
+    req(recovery, marker)
+for marker in ["mad4b/content-recovery-inspect","mad4b/content-recovery-plan","Dynamic Content Recovery Inspect","Dynamic Content Recovery Plan"]:
+    req(recovery_adapter, marker)
+for marker in ["class-mad4b-scp-dynamic-recovery-adapter.php","MAD4B_SCP_Dynamic_Recovery_Adapter"]:
+    req(registry, marker)

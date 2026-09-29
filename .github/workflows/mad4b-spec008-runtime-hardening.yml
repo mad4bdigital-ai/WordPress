@@ -37,6 +37,8 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-ttl-policy.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-diff.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-provider-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-recovery.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dynamic-recovery-adapter.php
           php wp-content/plugins/mad4b-site-control-plane/tests/dynamic-hardening-pure-runtime.php
 
       - name: Validate Spec 008 structure
