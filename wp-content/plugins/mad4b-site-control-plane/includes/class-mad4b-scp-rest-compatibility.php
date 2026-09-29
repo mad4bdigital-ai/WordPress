@@ -195,11 +195,18 @@ final class MAD4B_SCP_REST_Compatibility {
 
 	public static function wpml_probe() {
 		$wpml_active = self::wpml_active();
-		// An inactive WPML runtime has no WPML REST contract to certify. Return the
-		// same not-active truth without materializing WordPress REST/MCP servers.
-		// This keeps generic Production, CLI and unrelated plugin requests out of
-		// expensive REST server construction solely for a negative capability test.
-		if ( ! $wpml_active ) {
+		global $wp_rest_server;
+		$server = isset( $wp_rest_server ) && is_object( $wp_rest_server ) && method_exists( $wp_rest_server, 'get_routes' )
+			? $wp_rest_server
+			: null;
+		$materialized_by_probe = false;
+
+		// When WPML is absent and WordPress has not already materialized REST, a
+		// negative capability check must not construct the entire REST/MCP server.
+		// If another component already materialized REST, inspect that existing
+		// server: a compatible /wpml/v1/rest/status route must still prove query
+		// parameter pass-through even without the SitePress class being loaded.
+		if ( ! $wpml_active && ! is_object( $server ) ) {
 			return array(
 				'ready' => true,
 				'state' => 'wpml_not_active',
@@ -208,14 +215,21 @@ final class MAD4B_SCP_REST_Compatibility {
 				'query_parameters_preserved' => true,
 				'control_plane_block_detected' => false,
 				'rest_server_materialized' => false,
+				'rest_server_materialized_by_probe' => false,
 			);
 		}
-		if ( ! function_exists( 'rest_get_server' ) || ! class_exists( 'WP_REST_Request' ) ) {
-			return array( 'ready' => false, 'state' => 'rest_runtime_unavailable', 'wpml_active' => true, 'route_registered' => false, 'query_parameters_preserved' => false, 'control_plane_block_detected' => false, 'rest_server_materialized' => false );
+		if ( ! is_object( $server ) ) {
+			if ( ! function_exists( 'rest_get_server' ) ) {
+				return array( 'ready' => false, 'state' => 'rest_runtime_unavailable', 'wpml_active' => $wpml_active, 'route_registered' => false, 'query_parameters_preserved' => false, 'control_plane_block_detected' => false, 'rest_server_materialized' => false, 'rest_server_materialized_by_probe' => false );
+			}
+			$server = rest_get_server();
+			$materialized_by_probe = true;
+		}
+		if ( ! class_exists( 'WP_REST_Request' ) ) {
+			return array( 'ready' => false, 'state' => 'rest_runtime_unavailable', 'wpml_active' => $wpml_active, 'route_registered' => false, 'query_parameters_preserved' => false, 'control_plane_block_detected' => false, 'rest_server_materialized' => is_object( $server ), 'rest_server_materialized_by_probe' => $materialized_by_probe );
 		}
 
 		try {
-			$server = rest_get_server();
 			$routes = is_object( $server ) && method_exists( $server, 'get_routes' ) ? $server->get_routes() : array();
 			$registered = is_array( $routes ) && isset( $routes[ self::WPML_ROUTE ] );
 			if ( ! $registered ) {
@@ -227,6 +241,7 @@ final class MAD4B_SCP_REST_Compatibility {
 					'query_parameters_preserved' => ! $wpml_active,
 					'control_plane_block_detected' => false,
 					'rest_server_materialized' => true,
+					'rest_server_materialized_by_probe' => $materialized_by_probe,
 				);
 			}
 
@@ -255,6 +270,7 @@ final class MAD4B_SCP_REST_Compatibility {
 				'query_parameters_preserved' => $get_valid,
 				'control_plane_block_detected' => $blocked_by_mad4b,
 				'rest_server_materialized' => true,
+				'rest_server_materialized_by_probe' => $materialized_by_probe,
 				'error_code' => is_array( $data ) && isset( $data['code'] ) ? sanitize_key( (string) $data['code'] ) : '',
 			);
 		} catch ( Throwable $e ) {
@@ -266,6 +282,7 @@ final class MAD4B_SCP_REST_Compatibility {
 				'query_parameters_preserved' => false,
 				'control_plane_block_detected' => false,
 				'rest_server_materialized' => true,
+				'rest_server_materialized_by_probe' => $materialized_by_probe,
 				'exception_class' => get_class( $e ),
 			);
 		}
