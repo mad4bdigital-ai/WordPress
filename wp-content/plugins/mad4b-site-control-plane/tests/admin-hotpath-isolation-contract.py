@@ -8,6 +8,7 @@ plugin = (PLUGIN / "includes/class-mad4b-scp-plugin.php").read_text(encoding="ut
 admin = (PLUGIN / "includes/class-mad4b-scp-admin-ui.php").read_text(encoding="utf-8")
 mu = (PLUGIN / "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php").read_text(encoding="utf-8")
 guard = (PLUGIN / "includes/class-mad4b-scp-mcp-runtime-conflict-guard.php").read_text(encoding="utf-8")
+slo = (ROOT / "specs/008-dynamic-content-runtime-hardening/performance-slo.md").read_text(encoding="utf-8")
 
 def method_body(source: str, signature: str, next_signature: str) -> str:
     start = source.index(signature)
@@ -64,5 +65,14 @@ for source in (mu, guard):
 
 assert "deferred_request_hotpath" in mu
 assert "repair_deferred_request_hotpath" in guard
+
+for token in (
+    "WordPress Admin read-hotpath SLO",
+    "server elapsed: <= 1500 ms target, <= 2000 ms hard ceiling",
+    "database queries: <= 100",
+    "peak memory: <= 128 MiB",
+    "3 consecutive uncached/warm mixed samples",
+):
+    assert token in slo, token
 
 print("admin hotpath isolation contract: PASS")
