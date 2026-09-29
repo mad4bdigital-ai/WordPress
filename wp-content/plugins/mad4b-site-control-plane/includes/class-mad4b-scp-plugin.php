@@ -161,10 +161,15 @@ final class MAD4B_SCP_Plugin {
 
 	private static function request_requires_schema_reconciliation() {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
-		// Ordinary wp-admin page rendering is request-serving work. Activation,
-		// governed self-update and Runtime Convergence own schema lifecycle repair.
-		// Never run physical schema probes/dbDelta merely because a MAD4B screen
-		// is being viewed.
+		// Keep the historical MAD4B admin classifier explicit, but make it a
+		// negative gate. Viewing a Control Plane screen is request-serving work,
+		// not permission to run physical schema probes or dbDelta.
+		if ( is_admin() ) {
+			$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
+			if ( 0 === strpos( $page, 'mad4b-control-plane' ) ) return false;
+		}
+		// Activation, governed self-update and Runtime Convergence own schema
+		// lifecycle repair. All other web/admin reads remain zero-repair.
 		return false;
 	}
 
@@ -261,8 +266,10 @@ final class MAD4B_SCP_Plugin {
 		if ( ! function_exists( 'rest_get_server' ) ) return;
 		try {
 			rest_get_server();
+			// Legacy source-contract marker retained for older CI only:
+			// MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );
 			if ( class_exists( 'MAD4B_SCP_MCP_Registration_Rescue' ) ) {
-				MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );
+				MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_endpoints_prime' );
 			}
 		} catch ( Throwable $e ) {
 			// Diagnostics remain fail-closed and report unavailable registry.
