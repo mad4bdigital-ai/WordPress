@@ -77,7 +77,7 @@ final class MAD4B_SCP_Upgrade_Continuity {
 
 require dirname(__DIR__).'/includes/class-mad4b-scp-portable-readonly-connection.php';
 
-function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL [$GLOBALS[mad4b_portable_scenario]]: $m\n");exit(1);}}
+function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL [" . $GLOBALS['mad4b_portable_scenario'] . "]: {$m}\n");exit(1);}}
 
 $status=MAD4B_SCP_Portable_Readonly_Connection::bootstrap();
 
