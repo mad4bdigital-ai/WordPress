@@ -16,6 +16,7 @@ live_truth = (root / "includes/class-mad4b-scp-live-truth.php").read_text(encodi
 oauth_autoconfig = (root / "includes/class-mad4b-scp-staging-oauth-autoconfig.php").read_text(encoding="utf-8")
 audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
 request_scope = (root / "includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
+mu_refresh = (root / "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
@@ -251,3 +252,17 @@ for route in [
     assert route in protocol_hotpath, route
 
 print("mad4b.chatgpt-refresh-hotpath.v14: PASS")
+
+# Post-update MU reconciliation must never execute filesystem mutation/audit work
+# before an MCP/OAuth protocol request can be served.
+mu_bootstrap = mu_refresh.split("public static function bootstrap()", 1)[1].split("public static function status()", 1)[0]
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in mu_bootstrap
+assert "'deferred_protocol_hotpath'" in mu_bootstrap
+assert "'refresh_deferred' => true" in mu_bootstrap
+assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("hash_file(")
+assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("@copy(")
+assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("MAD4B_SCP_Audit::record(")
+
+scope_boot_pos = entry.index("MAD4B_SCP_MCP_Request_Scope::bootstrap();")
+mu_boot_pos = entry.index("MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();")
+assert scope_boot_pos < mu_boot_pos, "request scope must be classified before MU refresh bootstrap"
