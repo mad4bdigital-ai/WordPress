@@ -37,6 +37,34 @@
         ".github/workflows/mad4b-site-control-plane.yml"
       ],
       "release_critical_workflows_must_be_baseline_owned": true
+    },
+    "008": {
+      "feature_directory": "specs/008-dynamic-content-runtime-hardening",
+      "allowed_branch_kinds": [
+        "feat",
+        "fix",
+        "spec"
+      ],
+      "allowed_path_prefixes": [
+        "specs/008-dynamic-content-runtime-hardening/",
+        "wp-content/plugins/mad4b-site-control-plane/"
+      ],
+      "allowed_exact_paths": [
+        ".github/workflows/etg-dfsb-ci.yml",
+        ".github/workflows/mad4b-spec008-runtime-hardening.yml"
+      ],
+      "cross_feature_exact_paths": [],
+      "repository_governance_mutation_allowed": false,
+      "metadata_cannot_widen_grant": true,
+      "self_certifying_paths_forbidden": [
+        ".github/workflows/feature-007-critical-kernel.yml",
+        ".github/workflows/mad4b-context-authority.yml",
+        ".github/workflows/mad4b-control-plane-package.yml",
+        ".github/workflows/mad4b-site-control-plane.yml",
+        ".github/workflows/mad4b-live-acceptance-evidence.yml",
+        "tools/verify_release_root_trust.py"
+      ],
+      "release_critical_workflows_must_be_baseline_owned": true
     }
   }
 }
