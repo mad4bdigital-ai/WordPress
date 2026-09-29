@@ -378,8 +378,12 @@ final class MAD4B_SCP_Upgrade_Continuity {
 	}
 
 	public static function replace_ambiguous_governance_notice() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only notice routing.
+		// Deep schema/audit diagnostics belong to the Control Plane. Third-party
+		// admin pages must not pay physical-schema or append-only-audit inspection.
+		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) && 'mad4b-approval-decisions' !== $page ) return;
 		remove_action( 'admin_notices', array( 'MAD4B_SCP_Plugin', 'schema_notice' ) );
-		if ( ! current_user_can( 'manage_options' ) ) return;
 		$status = self::governance_status();
 		if ( ! empty( $status['ready'] ) ) return;
 		$code = isset( $status['blocker_code'] ) ? sanitize_key( (string) $status['blocker_code'] ) : 'governance_unavailable';

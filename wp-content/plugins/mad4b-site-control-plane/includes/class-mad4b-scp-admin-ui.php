@@ -33,7 +33,7 @@ final class MAD4B_SCP_Admin_UI {
 		);
 	}
 
-	public static function snapshot( $agent_public_id = '' ) {
+	public static function snapshot( $agent_public_id = '', $section = 'overview' ) {
 		global $wpdb;
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return new WP_Error( 'mad4b_admin_ui_capability_denied', 'Administrator capability is required to inspect control-plane governance.' );
@@ -42,58 +42,75 @@ final class MAD4B_SCP_Admin_UI {
 			return new WP_Error( 'mad4b_admin_ui_schema_unavailable', 'Governance schema is unavailable.' );
 		}
 
+		$section = sanitize_key( (string) $section );
+		if ( ! in_array( $section, array( 'overview', 'agents', 'approvals', 'mutations', 'audit' ), true ) ) $section = 'overview';
 		$t = MAD4B_SCP_Schema::tables();
-		$agents = MAD4B_SCP_Governance_Abilities::agent_list( array( 'status' => 'all', 'limit' => self::AGENT_LIMIT ) );
-		if ( is_wp_error( $agents ) ) return $agents;
+		$snapshot = array(
+			'section' => $section,
+			'authority' => array(),
+			'agents' => array( 'agents' => array() ),
+			'effective_access' => null,
+			'approvals' => array(),
+			'mutations' => array(),
+			'audit_storage' => array(),
+			'audit_tail' => array(),
+			'runtime_self_test' => array( 'status' => 'deferred' ),
+			'mcp_peer_governance' => array( 'inventory_ready' => false, 'blockers' => array( 'deferred_to_connection_or_diagnostics_workspace' ) ),
+		);
 
-		$effective = null;
-		$agent_public_id = trim( (string) $agent_public_id );
-		if ( '' !== $agent_public_id ) {
-			$effective = MAD4B_SCP_Governance_Abilities::agent_effective_access(
-				array(
-					'agent_public_id' => $agent_public_id,
-					'token_scopes' => array(),
-					'server_id' => '',
-				)
-			);
+		if ( 'overview' === $section ) {
+			$snapshot['authority'] = MAD4B_SCP_Authorization::authority_status();
+			$snapshot['audit_storage'] = MAD4B_SCP_Audit::storage_status();
+			// Deep adapter/provider self-tests and peer scans are intentionally not
+			// executed during ordinary dashboard render. Their dedicated workspaces
+			// own those diagnostics so the Control Plane overview remains bounded.
+			return $snapshot;
 		}
 
-		$approvals = $wpdb->get_results(
-			"SELECT a.ticket_id,a.ticket_class,a.server_id,a.ability_name,a.provider,a.target_fingerprint,a.status,a.reason,a.approved_by,a.approved_at,a.expires_at,a.used_at,a.created_at,g.public_id AS agent_public_id,g.slug AS agent_slug,g.label AS agent_label
-			 FROM {$t['approvals']} a
-			 LEFT JOIN {$t['agents']} g ON g.id = a.agent_id
-			 ORDER BY a.id DESC LIMIT " . self::EVIDENCE_LIMIT,
-			ARRAY_A
-		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
-		if ( ! is_array( $approvals ) ) $approvals = array();
+		if ( 'agents' === $section ) {
+			$agents = MAD4B_SCP_Governance_Abilities::agent_list( array( 'status' => 'all', 'limit' => self::AGENT_LIMIT ) );
+			if ( is_wp_error( $agents ) ) return $agents;
+			$snapshot['agents'] = $agents;
+			$agent_public_id = trim( (string) $agent_public_id );
+			if ( '' !== $agent_public_id ) {
+				$snapshot['effective_access'] = MAD4B_SCP_Governance_Abilities::agent_effective_access(
+					array(
+						'agent_public_id' => $agent_public_id,
+						'token_scopes' => array(),
+						'server_id' => '',
+					)
+				);
+			}
+			return $snapshot;
+		}
 
-		$mutations = $wpdb->get_results(
-			"SELECT m.mutation_id,m.parent_mutation_id,m.request_id,m.server_id,m.ability_name,m.provider,m.provider_version,m.target_type,m.target_id,m.approval_ticket_id,m.impact,m.status,m.reversible,m.before_sha256,m.after_sha256,m.undo_expires_at,m.verification_code,m.error_code,m.created_at,m.updated_at,g.public_id AS agent_public_id,g.slug AS agent_slug,g.label AS agent_label
-			 FROM {$t['mutations']} m
-			 LEFT JOIN {$t['agents']} g ON g.id = m.agent_id
-			 ORDER BY m.id DESC LIMIT " . self::EVIDENCE_LIMIT,
-			ARRAY_A
-		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
-		if ( ! is_array( $mutations ) ) $mutations = array();
+		if ( 'approvals' === $section ) {
+			$rows = $wpdb->get_results(
+				"SELECT a.ticket_id,a.ticket_class,a.server_id,a.ability_name,a.provider,a.target_fingerprint,a.status,a.reason,a.approved_by,a.approved_at,a.expires_at,a.used_at,a.created_at,g.public_id AS agent_public_id,g.slug AS agent_slug,g.label AS agent_label
+				 FROM {$t['approvals']} a
+				 LEFT JOIN {$t['agents']} g ON g.id = a.agent_id
+				 ORDER BY a.id DESC LIMIT " . self::EVIDENCE_LIMIT,
+				ARRAY_A
+			); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$snapshot['approvals'] = is_array( $rows ) ? $rows : array();
+			return $snapshot;
+		}
 
-		$self_test = class_exists( 'MAD4B_SCP_Adapter_Registry' )
-			? MAD4B_SCP_Adapter_Registry::instance()->runtime_self_test()
-			: array( 'status' => 'degraded', 'missing' => array( 'adapter_registry' ) );
-		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' )
-			? MAD4B_SCP_MCP_Peer_Governance::status()
-			: array( 'inventory_ready' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
+		if ( 'mutations' === $section ) {
+			$rows = $wpdb->get_results(
+				"SELECT m.mutation_id,m.parent_mutation_id,m.request_id,m.server_id,m.ability_name,m.provider,m.provider_version,m.target_type,m.target_id,m.approval_ticket_id,m.impact,m.status,m.reversible,m.before_sha256,m.after_sha256,m.undo_expires_at,m.verification_code,m.error_code,m.created_at,m.updated_at,g.public_id AS agent_public_id,g.slug AS agent_slug,g.label AS agent_label
+				 FROM {$t['mutations']} m
+				 LEFT JOIN {$t['agents']} g ON g.id = m.agent_id
+				 ORDER BY m.id DESC LIMIT " . self::EVIDENCE_LIMIT,
+				ARRAY_A
+			); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$snapshot['mutations'] = is_array( $rows ) ? $rows : array();
+			return $snapshot;
+		}
 
-		return array(
-			'authority' => MAD4B_SCP_Authorization::authority_status(),
-			'agents' => $agents,
-			'effective_access' => $effective,
-			'approvals' => $approvals,
-			'mutations' => $mutations,
-			'audit_storage' => MAD4B_SCP_Audit::storage_status(),
-			'audit_tail' => MAD4B_SCP_Audit::tail( self::EVIDENCE_LIMIT ),
-			'runtime_self_test' => $self_test,
-			'mcp_peer_governance' => $peer,
-		);
+		$snapshot['audit_storage'] = MAD4B_SCP_Audit::storage_status();
+		$snapshot['audit_tail'] = MAD4B_SCP_Audit::tail( self::EVIDENCE_LIMIT );
+		return $snapshot;
 	}
 
 	public static function render_page() {
@@ -111,7 +128,7 @@ final class MAD4B_SCP_Admin_UI {
 		$agent_public_id = isset( $_GET['agent'] ) ? sanitize_text_field( wp_unslash( $_GET['agent'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only inspection.
 		if ( '' !== $agent_public_id && ! preg_match( '/^[A-Za-z0-9-]{36,64}$/', $agent_public_id ) ) $agent_public_id = '';
 
-		$snapshot = self::snapshot( $agent_public_id );
+		$snapshot = self::snapshot( $agent_public_id, $tab );
 		echo '<div class="wrap">';
 		echo '<h1>' . esc_html__( 'MAD4B Control Plane', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Read-only governance and runtime evidence. This screen does not grant authority, approve tickets, execute mutations, or perform undo.', 'mad4b-site-control-plane' ) . '</p>';

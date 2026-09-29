@@ -703,7 +703,11 @@ final class MAD4B_SCP_Self_Update {
 			) );
 		}
 
-		self::audit( $channel, $target, true, array( 'plan_sha256' => $plan_sha256, 'readback' => $readback ) );
+		$convergence = array();
+		if ( class_exists( 'MAD4B_SCP_Runtime_Convergence' ) && method_exists( 'MAD4B_SCP_Runtime_Convergence', 'mark_post_update_pending' ) ) {
+			$convergence = MAD4B_SCP_Runtime_Convergence::mark_post_update_pending( $target, $channel, $plan_sha256 );
+		}
+		self::audit( $channel, $target, true, array( 'plan_sha256' => $plan_sha256, 'readback' => $readback, 'post_update_convergence' => $convergence ) );
 		delete_site_transient( 'update_plugins' );
 		// Preserve the already verified release manifest across the immediate
 		// post-update redirect. Deleting it here forced plugins.php to block on
@@ -723,6 +727,7 @@ final class MAD4B_SCP_Self_Update {
 			'readback_verified' => true,
 			'rollback_required' => false,
 			'runtime_reboot_required' => true,
+			'post_update_convergence' => $convergence,
 			'production_mutation_performed' => false,
 			'authority_created' => false,
 			'authorizing' => false,

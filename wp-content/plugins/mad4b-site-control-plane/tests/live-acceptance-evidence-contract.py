@@ -210,8 +210,11 @@ for marker in [
     "'mcp_recovery_scoped_to_mad4b_routes' => $mcp_recovery_scoped",
     "'wpml_internal_probe_role' => 'diagnostic_only'",
     "'wpml_internal_probe_blocks_local_certification' => false",
-    "'external_wpml_acceptance_required' => true",
-    "'external_wpml_acceptance_verified' => false",
+    "'external_wpml_acceptance_required' => $external_wpml_required",
+    "'external_wpml_acceptance_verified' => $external_wpml_verified",
+    "'external_wpml_acceptance_state' => ! $external_wpml_required ? 'not_required' : ( $external_wpml_verified ? 'verified' : 'pending' )",
+    "'external_wpml_acceptance' => self::bounded_external_wpml_receipt( $external_wpml )",
+    "MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status_from_local_wpml( $wpml )",
     "'external_http_probe_performed' => false",
 ]:
     if marker not in rest:
@@ -235,6 +238,25 @@ if "'external_wpml' => self::gate( ! empty( $wpml['verified'] )" not in observer
     raise SystemExit('External WPML acceptance must remain a separate observer gate before finalization.')
 if "'frontend_performance_baseline' => self::gate( ! empty( $performance['ready'] )" not in observer:
     raise SystemExit('Front-end performance baseline must remain a separate current-build gate.')
+
+# REST compatibility and external WPML receipt projection must be acyclic.
+receipt_projection = finalizer.split(
+    "public static function external_wpml_receipt_status_from_local_wpml",
+    1,
+)[1].split("private static function acceptance_environment", 1)[0]
+if "MAD4B_SCP_REST_Compatibility::status()" in receipt_projection:
+    raise SystemExit('External WPML receipt projection must not recurse into REST compatibility status.')
+if "build_provenance_status()" in receipt_projection:
+    raise SystemExit('External WPML receipt projection must not perform full runtime package hashing.')
+if "current_candidate_identity()" not in receipt_projection:
+    raise SystemExit('External WPML receipt projection must use bounded candidate identity.')
+identity_projection = finalizer.split(
+    "private static function current_candidate_identity()",
+    1,
+)[1].split("private static function current_candidate()", 1)[0]
+if "build_provenance_identity_status()" not in identity_projection or "build_provenance_status()" in identity_projection:
+    raise SystemExit('Bounded external WPML candidate identity must remain identity-only.')
+
 
 # Environment/profile enrollment, acceptance capture and write eligibility are
 # separate governance facts. Disabled features must stay fail-closed without

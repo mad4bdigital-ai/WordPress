@@ -122,6 +122,11 @@ final class MAD4B_SCP_REST_Compatibility {
 		$rest_auth_hooks = self::hook_inventory( 'rest_authentication_errors' );
 		$rest_enabled = (bool) apply_filters( 'rest_enabled', true );
 		$wpml = self::wpml_probe();
+		$external_wpml = class_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer' ) && method_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer', 'external_wpml_receipt_status_from_local_wpml' )
+			? MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status_from_local_wpml( $wpml )
+			: array();
+		$external_wpml_required = ! empty( $wpml['wpml_active'] );
+		$external_wpml_verified = ! $external_wpml_required || ( ! empty( $external_wpml['observed'] ) && ! empty( $external_wpml['verified'] ) && empty( $external_wpml['stale'] ) );
 		$control_plane_on_rest_enabled = ! empty( $rest_enabled_hooks['control_plane_detected'] );
 		$control_plane_on_rest_auth = ! empty( $rest_auth_hooks['control_plane_detected'] );
 		$expected_rest_scope = array(
@@ -178,24 +183,55 @@ final class MAD4B_SCP_REST_Compatibility {
 			'query_parameters_preserved' => ! empty( $wpml['query_parameters_preserved'] ),
 			'wpml_internal_probe_role' => 'diagnostic_only',
 			'wpml_internal_probe_blocks_local_certification' => false,
-			'external_wpml_acceptance_required' => true,
-			'external_wpml_acceptance_verified' => false,
+			'external_wpml_acceptance_required' => $external_wpml_required,
+			'external_wpml_acceptance_verified' => $external_wpml_verified,
+			'external_wpml_acceptance_state' => ! $external_wpml_required ? 'not_required' : ( $external_wpml_verified ? 'verified' : 'pending' ),
+			'external_wpml_acceptance' => self::bounded_external_wpml_receipt( $external_wpml ),
 			'external_http_probe_performed' => false,
 			'external_test_url' => self::wpml_external_test_url(),
-			'note' => 'Local REST isolation is evaluated only from MAD4B-controlled structural facts. The internal WPML probe is diagnostic only; external WPML HTTP acceptance remains a separate live gate.',
+			'note' => 'Local REST isolation remains structural and non-authorizing. The internal WPML probe is diagnostic only; current external acceptance is projected from the separately observed signed/passive receipt without performing HTTP in this status call.',
 		);
 	}
 
 	public static function wpml_probe() {
-		if ( ! function_exists( 'rest_get_server' ) || ! class_exists( 'WP_REST_Request' ) ) {
-			return array( 'ready' => false, 'state' => 'rest_runtime_unavailable', 'wpml_active' => self::wpml_active(), 'route_registered' => false, 'query_parameters_preserved' => false, 'control_plane_block_detected' => false );
+		$wpml_active = self::wpml_active();
+		global $wp_rest_server;
+		$server = isset( $wp_rest_server ) && is_object( $wp_rest_server ) && method_exists( $wp_rest_server, 'get_routes' )
+			? $wp_rest_server
+			: null;
+		$materialized_by_probe = false;
+
+		// When WPML is absent and WordPress has not already materialized REST, a
+		// negative capability check must not construct the entire REST/MCP server.
+		// If another component already materialized REST, inspect that existing
+		// server: a compatible /wpml/v1/rest/status route must still prove query
+		// parameter pass-through even without the SitePress class being loaded.
+		if ( ! $wpml_active && ! is_object( $server ) ) {
+			return array(
+				'ready' => true,
+				'state' => 'wpml_not_active',
+				'wpml_active' => false,
+				'route_registered' => false,
+				'query_parameters_preserved' => true,
+				'control_plane_block_detected' => false,
+				'rest_server_materialized' => false,
+				'rest_server_materialized_by_probe' => false,
+			);
+		}
+		if ( ! is_object( $server ) ) {
+			if ( ! function_exists( 'rest_get_server' ) ) {
+				return array( 'ready' => false, 'state' => 'rest_runtime_unavailable', 'wpml_active' => $wpml_active, 'route_registered' => false, 'query_parameters_preserved' => false, 'control_plane_block_detected' => false, 'rest_server_materialized' => false, 'rest_server_materialized_by_probe' => false );
+			}
+			$server = rest_get_server();
+			$materialized_by_probe = true;
+		}
+		if ( ! class_exists( 'WP_REST_Request' ) ) {
+			return array( 'ready' => false, 'state' => 'rest_runtime_unavailable', 'wpml_active' => $wpml_active, 'route_registered' => false, 'query_parameters_preserved' => false, 'control_plane_block_detected' => false, 'rest_server_materialized' => is_object( $server ), 'rest_server_materialized_by_probe' => $materialized_by_probe );
 		}
 
 		try {
-			$server = rest_get_server();
 			$routes = is_object( $server ) && method_exists( $server, 'get_routes' ) ? $server->get_routes() : array();
 			$registered = is_array( $routes ) && isset( $routes[ self::WPML_ROUTE ] );
-			$wpml_active = self::wpml_active();
 			if ( ! $registered ) {
 				return array(
 					'ready' => ! $wpml_active,
@@ -204,6 +240,8 @@ final class MAD4B_SCP_REST_Compatibility {
 					'route_registered' => false,
 					'query_parameters_preserved' => ! $wpml_active,
 					'control_plane_block_detected' => false,
+					'rest_server_materialized' => true,
+					'rest_server_materialized_by_probe' => $materialized_by_probe,
 				);
 			}
 
@@ -231,6 +269,8 @@ final class MAD4B_SCP_REST_Compatibility {
 				'get_parameters_field_valid' => $get_valid,
 				'query_parameters_preserved' => $get_valid,
 				'control_plane_block_detected' => $blocked_by_mad4b,
+				'rest_server_materialized' => true,
+				'rest_server_materialized_by_probe' => $materialized_by_probe,
 				'error_code' => is_array( $data ) && isset( $data['code'] ) ? sanitize_key( (string) $data['code'] ) : '',
 			);
 		} catch ( Throwable $e ) {
@@ -241,9 +281,26 @@ final class MAD4B_SCP_REST_Compatibility {
 				'route_registered' => false,
 				'query_parameters_preserved' => false,
 				'control_plane_block_detected' => false,
+				'rest_server_materialized' => true,
+				'rest_server_materialized_by_probe' => $materialized_by_probe,
 				'exception_class' => get_class( $e ),
 			);
 		}
+	}
+
+	private static function bounded_external_wpml_receipt( $receipt ) {
+		if ( ! is_array( $receipt ) ) return array();
+		return array(
+			'contract' => isset( $receipt['contract'] ) ? sanitize_text_field( (string) $receipt['contract'] ) : '',
+			'observed' => ! empty( $receipt['observed'] ),
+			'verified' => ! empty( $receipt['verified'] ),
+			'stale' => ! empty( $receipt['stale'] ),
+			'state' => isset( $receipt['state'] ) ? sanitize_key( (string) $receipt['state'] ) : '',
+			'route_registered' => ! empty( $receipt['route_registered'] ),
+			'response_status' => isset( $receipt['response_status'] ) ? (int) $receipt['response_status'] : 0,
+			'classification' => isset( $receipt['classification'] ) ? sanitize_key( (string) $receipt['classification'] ) : '',
+			'observed_at' => isset( $receipt['observed_at'] ) ? sanitize_text_field( (string) $receipt['observed_at'] ) : '',
+		);
 	}
 
 	private static function wpml_active() {

@@ -237,7 +237,10 @@ assert "private static function request_requires_schema_reconciliation()" in plu
 schema_reconcile = plugin.split("private static function request_requires_schema_reconciliation()", 1)[1].split("private static function request_requires_skill_reconciliation()", 1)[0]
 assert "defined( 'WP_CLI' )" in schema_reconcile
 assert "0 === strpos( $page, 'mad4b-control-plane' )" in schema_reconcile
-assert "if ( ! is_admin() ) return false;" in schema_reconcile
+assert "if ( is_admin() ) {" in schema_reconcile
+assert schema_reconcile.count("return true;") == 1  # WP_CLI is the only automatic repair owner
+assert schema_reconcile.count("return false;") >= 2
+assert "physical schema probes or dbDelta" in schema_reconcile
 
 # Mutations independently re-prove physical schema readiness, so removing
 # request-global schema scans does not weaken fail-closed write safety.
@@ -338,15 +341,22 @@ assert "0 !== strpos( $page, 'mad4b-control-plane' )" in qm_db_bootstrap
 assert qm_db_bootstrap.index("0 !== strpos( $page, 'mad4b-control-plane' )") < qm_db_bootstrap.index("@symlink(")
 assert qm_db_bootstrap.index("0 !== strpos( $page, 'mad4b-control-plane' )") < qm_db_bootstrap.index("@fopen(")
 
-# Ordinary wp-admin pages (including plugins.php) get at most one lightweight
-# coverage marker per build and must not execute full Query Monitor profiling.
+# Third-party wp-admin pages (WPML, plugins.php, Elementor, etc.) are not
+# profiling jobs at all. Exit before acceptance/profile checks, provenance,
+# telemetry reads/writes, Query Monitor collectors, or performance sampling.
 assert "private static function current_request_is_mad4b_admin_surface()" in query_monitor
-assert "if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() )" in qm_flush
-admin_budget = qm_flush.split("if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() )", 1)[1].split("$telemetry['observed_request_count']", 2)[0]
-assert "query_monitor_events()" not in admin_budget
-assert "performance_sample(" not in admin_budget
-assert "(int) $telemetry['request_coverage']['wp_admin'] > 0" in qm_flush
-assert qm_flush.index("if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() )") < qm_flush.index("$sample = self::performance_sample( $class )")
+foreign_admin_guard = "if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() ) return;"
+assert foreign_admin_guard in qm_flush
+guard_pos = qm_flush.index(foreign_admin_guard)
+assert guard_pos < qm_flush.index("MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed()")
+assert guard_pos < qm_flush.index("self::request_build_fingerprint()")
+assert guard_pos < qm_flush.index("self::load_telemetry( $build )")
+assert guard_pos < qm_flush.index("$sample = self::performance_sample( $class )")
+assert guard_pos < qm_flush.index("foreach ( self::query_monitor_events()")
+foreign_prefix = qm_flush[:guard_pos]
+assert "update_option(" not in foreign_prefix
+assert "query_monitor_events()" not in foreign_prefix
+assert "performance_sample(" not in foreign_prefix
 
 # Upgrade continuity may persist recovered profile/OAuth state, so migration
 # recovery must be deferred during MCP/OAuth protocol requests.

@@ -140,6 +140,7 @@ assert direct_projection == [
     "mad4b/wordpress-operation-discover",
     "mad4b/plugin-transaction-plan",
     "mad4b/operation-resume-status",
+    "mad4b/runtime-convergence-plan",
 ]
 assert "mad4b/dependency-impact" in catalog_projection
 assert "mad4b/provider-candidate-matrix" in catalog_projection
@@ -148,6 +149,10 @@ assert "mad4b/provider-autopilot-plan" in catalog_projection
 assert "mad4b/provider-autopilot-promotion-plan" in catalog_projection
 assert "mad4b/operation-pipeline-compile" in catalog_projection
 assert "mad4b/provider-transport-registry-status" in catalog_projection
+assert "mad4b/runtime-convergence-status" in catalog_projection
+assert "mad4b/runtime-convergence-plan" in catalog_projection
+assert operation["aliases"]["converge-runtime"] == "wordpress.runtime.converge"
+assert operation["aliases"]["reconcile-runtime"] == "wordpress.runtime.converge"
 stage_bindings = operation["stage_bindings"]
 assert stage_bindings["native_plan"]["binding_type"] == "operation_planner"
 assert stage_bindings["exact_execute"]["binding_type"] == "operation_executor"

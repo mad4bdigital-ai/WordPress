@@ -1,4 +1,5 @@
 <?php
+if ( function_exists( 'set_time_limit' ) ) @set_time_limit( 90 );
 /**
  * Regression acceptance for WordPress 6.9+ Ability lifecycle discipline.
  *

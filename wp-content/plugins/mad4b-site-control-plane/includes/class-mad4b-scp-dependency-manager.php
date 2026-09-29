@@ -139,6 +139,10 @@ final class MAD4B_SCP_Dependency_Manager {
 
 	public static function admin_notice() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only notice routing.
+		// Dependency inventory hashes archives and reads the plugin catalog. Never
+		// perform that work while rendering WPML or any third-party wp-admin page.
+		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) ) return;
 		$status = self::status();
 		if ( ! empty( $status['ready'] ) ) return;
 		$mcp = isset( $status['mcp_adapter'] ) && is_array( $status['mcp_adapter'] ) ? $status['mcp_adapter'] : array();

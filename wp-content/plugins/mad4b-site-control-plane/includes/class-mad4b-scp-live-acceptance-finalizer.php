@@ -475,14 +475,20 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 	}
 
 	public static function external_wpml_receipt_status() {
+		$wpml = class_exists( 'MAD4B_SCP_REST_Compatibility' ) && method_exists( 'MAD4B_SCP_REST_Compatibility', 'wpml_probe' )
+			? MAD4B_SCP_REST_Compatibility::wpml_probe()
+			: array();
+		return self::external_wpml_receipt_status_from_local_wpml( $wpml );
+	}
+
+	public static function external_wpml_receipt_status_from_local_wpml( $wpml ) {
 		$base = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::external_wpml_receipt_status() : array();
 		$diag = self::staging_allowed() ? get_option( self::WPML_DIAGNOSTIC_OPTION, array() ) : array();
-		$rest = class_exists( 'MAD4B_SCP_REST_Compatibility' ) ? MAD4B_SCP_REST_Compatibility::status() : array();
-		$route_registered = isset( $rest['wpml']['route_registered'] ) ? (bool) $rest['wpml']['route_registered'] : null;
-		$current = self::current_candidate();
+		$route_registered = is_array( $wpml ) && array_key_exists( 'route_registered', $wpml ) ? (bool) $wpml['route_registered'] : null;
+		$current = self::current_candidate_identity();
 		if ( ! is_array( $diag ) ) $diag = array();
 		$classification = isset( $diag['classification'] ) ? (string) $diag['classification'] : 'pending_external_evidence';
-		if ( false === $route_registered ) $classification = 'route_not_registered';
+		if ( false === $route_registered && ! empty( $wpml['wpml_active'] ) ) $classification = 'route_not_registered';
 		$build_match = ! empty( $diag['build_fingerprint'] ) && ! empty( $current['build_fingerprint'] ) && hash_equals( (string) $current['build_fingerprint'], (string) $diag['build_fingerprint'] );
 		$verified = ! empty( $base['verified'] ) && $build_match && 'success' === $classification;
 		$out = is_array( $base ) ? $base : array();
@@ -493,6 +499,8 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 		$out['state'] = $verified ? 'verified_external_wpml' : ( ! $build_match && ! empty( $diag ) ? 'stale_build_evidence' : $classification );
 		foreach ( array( 'response_status','response_content_type','error_code','body_classification','safe_message','observed_at' ) as $key ) if ( array_key_exists( $key, $diag ) ) $out[ $key ] = $diag[ $key ];
 		$out['route_registered'] = $route_registered;
+		$out['candidate_identity_ready'] = ! empty( $current['ready'] );
+		$out['full_runtime_hash_validation_performed'] = false;
 		return $out;
 	}
 
@@ -515,6 +523,16 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 	private static function production_origin() {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return '';
 		return rtrim( (string) MAD4B_SCP_Site_Profile::related_origin( 'production' ), '/' );
+	}
+
+	private static function current_candidate_identity() {
+		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) && method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()
+			: array();
+		$sha = isset( $provenance['source_commit_sha'] ) ? strtolower( (string) $provenance['source_commit_sha'] ) : '';
+		$fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
+		$ready = ! empty( $provenance['identity_ready'] ) && preg_match( '/^[a-f0-9]{40}$/', $sha ) && self::valid_hash( $fingerprint );
+		return array( 'ready' => (bool) $ready, 'source_commit_sha' => $sha, 'build_fingerprint' => $fingerprint );
 	}
 
 	private static function current_candidate() {

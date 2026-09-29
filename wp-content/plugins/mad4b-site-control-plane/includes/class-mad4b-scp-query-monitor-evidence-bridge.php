@@ -31,8 +31,10 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ) return;
-		self::pin_request_build_fingerprint();
 
+		// Build/provenance identity is intentionally lazy. Foreign wp-admin pages
+		// (WPML, Elementor, JetEngine, WooCommerce, etc.) must not pay any MAD4B
+		// filesystem/provenance cost merely because this bridge is loaded.
 		// Query Monitor already owns these concern hooks. Keeping MAD4B listeners on
 		// them makes MAD4B show up in "Hooks in Use" and makes a self-frame available
 		// to the legacy classifier. Remove only our exact callbacks/priorities.
@@ -122,14 +124,16 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	}
 
 	public static function maybe_enable_db_attribution() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return array( 'state' => 'deferred_non_admin', 'mutation_performed' => false );
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : '';
+		// Guard before touching db.php, Query Monitor source paths or filesystem
+		// ownership evidence. Foreign wp-admin pages are never instrumentation jobs.
+		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) ) return array( 'state' => 'deferred_foreign_admin_surface', 'mutation_performed' => false );
 		$status = self::db_attribution_status();
-		if ( 'staging' !== (string) $status['environment'] || ! is_admin() || ! current_user_can( 'manage_options' ) ) return $status;
+		if ( 'staging' !== (string) $status['environment'] ) return $status;
 
 		// Creating a db.php attribution drop-in is instrumentation mutation and
-		// must never happen while rendering arbitrary wp-admin pages such as
-		// plugins.php immediately after a package update.
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : '';
-		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) ) return $status;
+		// remains restricted to explicit MAD4B admin surfaces.
 		if ( ! empty( $status['ready'] ) || empty( $status['safe_to_enable'] ) ) return $status;
 		if ( ! defined( 'WP_CONTENT_DIR' ) || ! defined( 'WP_PLUGIN_DIR' ) ) return $status;
 		$dropin = trailingslashit( WP_CONTENT_DIR ) . 'db.php';
@@ -226,13 +230,19 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	public static function capture_and_flush() {
 		if ( self::$captured ) return;
 		self::$captured = true;
+		$class = self::request_class();
+
+		// Third-party wp-admin pages are never acceptance profiling jobs. Exit
+		// before Site Profile reads, build provenance, telemetry options, Query
+		// Monitor collectors or any persistence. This protects WPML and every
+		// other plugin's admin hotpath from MAD4B shutdown overhead.
+		if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() ) return;
 		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed() ) return;
 
 		$build = self::request_build_fingerprint();
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $build ) ) return;
 
 		$telemetry = self::load_telemetry( $build );
-		$class = self::request_class();
 
 		// MCP/OAuth protocol requests must never pay Query Monitor collection,
 		// duplicate-query analysis or per-request telemetry persistence costs.
@@ -249,22 +259,6 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			self::$last_capture_telemetry = $telemetry;
 			self::$last_capture_build = $build;
 			self::$last_capture_class = 'mcp';
-			return;
-		}
-
-		// Ordinary wp-admin pages are operational surfaces, not profiling jobs.
-		// Capture one coverage marker per build and reserve full Query Monitor
-		// analysis for explicit MAD4B diagnostic/admin surfaces.
-		if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() ) {
-			if ( isset( $telemetry['request_coverage']['wp_admin'] ) && (int) $telemetry['request_coverage']['wp_admin'] > 0 ) return;
-			$telemetry['observed_request_count'] = isset( $telemetry['observed_request_count'] ) ? (int) $telemetry['observed_request_count'] + 1 : 1;
-			if ( ! isset( $telemetry['request_coverage']['wp_admin'] ) ) $telemetry['request_coverage']['wp_admin'] = 0;
-			$telemetry['request_coverage']['wp_admin']++;
-			$telemetry['last_observed_at'] = gmdate( 'Y-m-d H:i:s' );
-			update_option( MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION, $telemetry, false );
-			self::$last_capture_telemetry = $telemetry;
-			self::$last_capture_build = $build;
-			self::$last_capture_class = 'wp_admin';
 			return;
 		}
 
