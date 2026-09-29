@@ -228,8 +228,21 @@ schema_guard_pos = central_boot.index("$protocol_hotpath =")
 assert schema_guard_pos < central_boot.index("MAD4B_SCP_Schema::is_ready()")
 assert schema_guard_pos < central_boot.index("MAD4B_SCP_Schema::install_or_upgrade()")
 assert schema_guard_pos < central_boot.index("add_option( MAD4B_SCP_Audit::LEGACY_OPTION")
+assert "$schema_reconciliation = self::request_requires_schema_reconciliation();" in central_boot
 schema_block = central_boot.split("MAD4B_SCP_Schema::is_ready()", 1)[0]
 assert "! $protocol_hotpath" in schema_block
+assert "$schema_reconciliation" in schema_block
+assert "private static function request_requires_schema_reconciliation()" in plugin
+schema_reconcile = plugin.split("private static function request_requires_schema_reconciliation()", 1)[1].split("private static function request_requires_skill_reconciliation()", 1)[0]
+assert "defined( 'WP_CLI' )" in schema_reconcile
+assert "0 === strpos( $page, 'mad4b-control-plane' )" in schema_reconcile
+assert "if ( ! is_admin() ) return false;" in schema_reconcile
+
+# Mutations independently re-prove physical schema readiness, so removing
+# request-global schema scans does not weaken fail-closed write safety.
+assert "MAD4B_SCP_Schema::is_ready()" in authorization
+authorize_mutation = authorization.split("public static function authorize_mutation(", 1)[1]
+assert authorize_mutation.index("MAD4B_SCP_Schema::is_ready()") < authorize_mutation.index("MAD4B_SCP_Agent_Registry::exact_grant")
 
 # Audit chain integrity must remain fail-closed for mutations without forcing
 # physical table/engine/legacy-chain/head inspection during MCP discovery.
