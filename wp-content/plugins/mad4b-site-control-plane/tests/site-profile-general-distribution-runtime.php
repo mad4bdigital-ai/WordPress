@@ -63,7 +63,7 @@ $dynamic=MAD4B_SCP_Site_Profile::save_current_site(array(
 ok(!is_wp_error($dynamic),'explicit site enrollment can use advisory environment without wp-config edit');
 ok('staging'===MAD4B_SCP_Site_Profile::current_environment(),'exact Site Profile becomes MAD4B environment authority');
 ok('staging'===($dynamic['environment']??'')&&'production'===($dynamic['wordpress_environment']??''),'status separates effective MAD4B environment from raw WordPress environment');
-ok('exact_site_profile'===($dynamic['effective_environment_source']??''),'environment source is exact Site Profile');
+ok('exact_site_profile_default_override'===($dynamic['effective_environment_source']??''),'implicit WordPress Production default is replaced only by exact Site Profile enrollment');
 ok(!empty($dynamic['wordpress_profile_mismatch']),'raw WordPress/default mismatch is explicit diagnostics');
 ok(empty($dynamic['hostname_hint_used_for_authority']),'hostname hint never becomes authority by itself');
 $GLOBALS['mad4b_test_home']='https://dynamic-client.test/';
