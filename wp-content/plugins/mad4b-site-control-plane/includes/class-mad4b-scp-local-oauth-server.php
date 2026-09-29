@@ -67,7 +67,18 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			self::$runtime_error = new WP_Error( 'mad4b_local_oauth_client_id_schema_mismatch', 'Local OAuth client-id bounds do not match the durable schema.' );
 			return;
 		}
-		if ( ! MAD4B_SCP_Local_OAuth_Store::is_ready() || (int) get_option( MAD4B_SCP_Local_OAuth_Store::OPTION, 0 ) < MAD4B_SCP_Local_OAuth_Store::VERSION ) {
+		// The version marker is persisted only after dbDelta plus physical
+		// readiness verification succeeds. Do not run SHOW TABLES introspection on
+		// every healthy request; explicit status/diagnostics still verify physics.
+		$installed_store_version = (int) get_option( MAD4B_SCP_Local_OAuth_Store::OPTION, 0 );
+		if ( $installed_store_version < MAD4B_SCP_Local_OAuth_Store::VERSION ) {
+			// dbDelta is a migration transaction, not request-serving work. Never
+			// execute it on MCP/OAuth protocol or WordPress plugin lifecycle hot
+			// paths (notably the first plugins.php request after self-update).
+			if ( self::request_is_schema_migration_hotpath() ) {
+				self::$runtime_error = new WP_Error( 'mad4b_local_oauth_store_upgrade_deferred', 'Local OAuth store upgrade is deferred outside the current latency-sensitive request.' );
+				return;
+			}
 			$schema = MAD4B_SCP_Local_OAuth_Store::install_or_upgrade();
 			if ( is_wp_error( $schema ) ) {
 				self::$runtime_error = $schema;
@@ -76,6 +87,45 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		}
 		$key = self::ensure_signing_key();
 		if ( is_wp_error( $key ) ) self::$runtime_error = $key;
+	}
+
+	public static function runtime_identity_status() {
+		$issuer_validation = self::configured_issuer_validation();
+		$issuer_valid = ! is_wp_error( $issuer_validation );
+		$transport_allowed = self::issuer_transport_allowed( self::issuer() );
+		$installed_store_version = class_exists( 'MAD4B_SCP_Local_OAuth_Store' )
+			? (int) get_option( MAD4B_SCP_Local_OAuth_Store::OPTION, 0 )
+			: 0;
+		$store_ready = class_exists( 'MAD4B_SCP_Local_OAuth_Store' )
+			&& $installed_store_version >= MAD4B_SCP_Local_OAuth_Store::VERSION;
+		$key_path = self::private_key_path();
+		$key_ready = ! is_wp_error( $key_path ) && is_file( $key_path ) && is_readable( $key_path );
+		$clients = self::clients();
+		$client_policy_ready = ! empty( $clients ) || self::cimd_supported();
+		$effective = self::enabled()
+			&& self::environment_allowed()
+			&& $transport_allowed
+			&& $issuer_valid
+			&& $store_ready
+			&& $key_ready
+			&& $client_policy_ready
+			&& ! is_wp_error( self::$runtime_error );
+		return array(
+			'contract' => self::CONTRACT,
+			'configured' => self::enabled(),
+			'effective' => (bool) $effective,
+			'environment' => function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown',
+			'issuer' => self::issuer(),
+			'issuer_configuration_valid' => $issuer_valid,
+			'issuer_transport_allowed' => $transport_allowed,
+			'private_key_present' => $key_ready,
+			'oauth_store_ready' => $store_ready,
+			'oauth_store_version' => $installed_store_version,
+			'client_policy_ready' => $client_policy_ready,
+			'deep_key_validation_deferred' => true,
+			'physical_store_introspection_deferred' => true,
+			'runtime_error' => is_wp_error( self::$runtime_error ) ? self::$runtime_error->get_error_code() : ( is_wp_error( $issuer_validation ) ? $issuer_validation->get_error_code() : '' ),
+		);
 	}
 
 	public static function status() {
@@ -1070,8 +1120,18 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function effective_for_protocol() {
-		$status = self::status();
+		$status = self::runtime_identity_status();
 		return ! empty( $status['effective'] );
+	}
+
+	private static function request_is_schema_migration_hotpath() {
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return true;
+		if ( ! is_admin() ) return false;
+		$pagenow = isset( $GLOBALS['pagenow'] ) ? sanitize_key( (string) $GLOBALS['pagenow'] ) : '';
+		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
+		if ( in_array( $pagenow, array( 'plugins.php', 'update.php', 'update-core.php', 'plugin-install.php' ), true ) ) return true;
+		return in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
 	}
 
 	private static function ensure_signing_key() {
@@ -1083,6 +1143,9 @@ final class MAD4B_SCP_Local_OAuth_Server {
 				@chmod( $path, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- best-effort repair only when permissions drift.
 			}
 			return true;
+		}
+		if ( self::request_is_schema_migration_hotpath() ) {
+			return new WP_Error( 'mad4b_local_oauth_key_generation_deferred', 'Local OAuth signing-key generation is deferred outside the current latency-sensitive request.' );
 		}
 		$dir = dirname( $path );
 		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) return new WP_Error( 'mad4b_local_oauth_key_directory_unavailable', 'Unable to create private OAuth key directory.' );

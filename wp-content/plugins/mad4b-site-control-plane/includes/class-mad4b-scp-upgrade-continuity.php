@@ -23,6 +23,13 @@ final class MAD4B_SCP_Upgrade_Continuity {
 	public static function pre_boot() {
 		if ( self::$pre_booted ) return self::$recovery;
 		self::$pre_booted = true;
+		// Upgrade migrations may inspect users and persist recovered profile state.
+		// Never perform that recovery transaction on MCP/OAuth protocol hotpaths.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) {
+			self::$recovery = self::recovery_result( 'deferred_protocol_hotpath', false, '' );
+			return self::$recovery;
+		}
 		self::$recovery = self::recover_verified_read_continuity();
 		return self::$recovery;
 	}

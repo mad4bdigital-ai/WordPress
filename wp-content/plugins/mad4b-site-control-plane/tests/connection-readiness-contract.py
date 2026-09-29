@@ -35,6 +35,7 @@ authz = read('includes/class-mad4b-scp-authorization.php')
 servers = read('includes/class-mad4b-scp-servers.php')
 bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
+provider_contracts = read('includes/class-mad4b-scp-provider-contracts.php')
 
 require(status, "mad4b.connection-readiness.v4", 'connection-contract')
 for marker in (
@@ -386,3 +387,52 @@ for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_
     forbid(peer, bypass, 'foreign-mcp-no-bypass')
 
 print('mad4b.site-control-plane.connection-readiness-contract.v10: PASS')
+
+# Connection status is callable over MCP, so deep peer inventory must fail-soft
+# on protocol hotpaths instead of scanning all servers/tools/routes inline.
+for marker in (
+    "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()",
+    "'mcp_peer_inventory_deferred_protocol_hotpath'",
+    "'deep_inventory_performed' => false",
+):
+    require(status, marker, 'connection-protocol-hotpath-peer-deferral')
+peer_call_pos = status.index("MAD4B_SCP_MCP_Peer_Governance::status()")
+hotpath_pos = status.index("current_request_is_protocol_hotpath()")
+if hotpath_pos > peer_call_pos:
+    raise SystemExit('FAIL connection-peer-deferral-order: hotpath decision must precede deep peer inventory')
+
+# Deferred deep verification on an already-running MCP request is informational,
+# not evidence that local transport is broken.
+local_blocker_section = status.split("$local_blockers = array();", 1)[1].split("$remote_preflight_blockers", 1)[0]
+require(local_blocker_section, "if ( ! $protocol_hotpath && empty( $peer['inventory_ready'] ) )", 'deferred-peer-neutral-readiness')
+require(local_blocker_section, "if ( ! $protocol_hotpath && ! empty( $peer['blockers'] )", 'deferred-peer-blockers-not-promoted')
+require(status, "'deferred_checks' => $protocol_hotpath ? array( 'route_permission_validation', 'mcp_peer_inventory', 'write_catalog_inventory', 'live_handshake_revalidation', 'provider_runtime_integrity' ) : array()", 'connection-deferred-checks-explicit')
+require(status, "'route_registered' => $protocol_hotpath ? null", 'write-surface-deferred-route-tristate')
+require(status, "'permission_callback_match' => $protocol_hotpath ? null", 'write-surface-deferred-permission-tristate')
+
+# Protocol connection readiness uses a hash-free provider identity projection.
+# Deep critical-file hashing remains mandatory for runtime_status/mutation_guard.
+require(status, "MAD4B_SCP_Provider_Contracts::runtime_identity_status( 'mcp_adapter', $adapter_available )", 'connection-provider-identity-fastpath')
+provider_branch = status.split("$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' )", 1)[1].split("$provider_ok =", 1)[0]
+require(provider_branch, "$protocol_hotpath", 'provider-identity-hotpath-branch')
+require(provider_contracts, "public static function runtime_identity_status( $provider, $available = null )", 'provider-identity-projection')
+identity_projection = provider_contracts.split("public static function runtime_identity_status( $provider, $available = null )", 1)[1].split("public static function runtime_status( $provider, $available = null )", 1)[0]
+forbid(identity_projection, "hash_file(", 'provider-identity-no-byte-hashing')
+require(identity_projection, "'runtime_integrity_verification_deferred' => true", 'provider-identity-deferred-integrity-explicit')
+require(identity_projection, "'mutation_certified' => false", 'provider-identity-never-mutation-certifies')
+mutation_guard = provider_contracts.split("public static function mutation_guard(", 1)[1]
+require(mutation_guard, "self::runtime_status( $provider, $available )", 'mutation-still-deep-provider-certification')
+
+# Deep transport verification is opt-in. MCP request-serving status remains
+# lightweight, while acceptance fixtures may explicitly force physical checks.
+require(status, "public static function status( $force_deep = false )", 'connection-explicit-deep-signature')
+require(status, "$protocol_hotpath = ! $force_deep", 'connection-deep-bypasses-hotpath-projection')
+require(status, "'explicit_deep_validation' => (bool) $force_deep", 'connection-deep-mode-observable')
+
+# Protocol connection status consumes persisted handshake evidence only. Live
+# build/tool revalidation remains available through explicit deep diagnostics.
+status_method = status.split("public static function status( $force_deep = false )", 1)[1].split("private static function bounded_mcp_registration_lifecycle()", 1)[0]
+require(status_method, "MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()", 'connection-persisted-handshake-hotpath')
+require(status_method, "MAD4B_SCP_External_Handshake_Evidence::status()", 'connection-live-handshake-deep-path')
+require(status_method, "'live_handshake_revalidation'", 'connection-deferred-live-handshake-marker')
+require(status_method, "'provider_runtime_integrity'", 'connection-deferred-provider-integrity-marker')

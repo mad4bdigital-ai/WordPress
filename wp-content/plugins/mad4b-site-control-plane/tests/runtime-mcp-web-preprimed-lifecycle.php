@@ -67,7 +67,9 @@ foreach ( $expected as $server_id ) {
 	if ( ! empty( $registrations[ $server_id ]['error'] ) ) $fail( $server_id . ' registration error: ' . $registrations[ $server_id ]['error'] );
 }
 
-$status = MAD4B_SCP_Connection_Status::status();
+// This is an acceptance fixture, not a client refresh hotpath: force the
+// physical route/permission validation that protocol-serving status defers.
+$status = MAD4B_SCP_Connection_Status::status( true );
 if ( empty( $status['local_transport_ready'] ) ) $fail( 'connection status still reports local transport blocked: ' . wp_json_encode( $status['local_blockers'] ) );
 if ( empty( $status['servers'] ) || ! is_array( $status['servers'] ) ) $fail( 'connection server inventory missing' );
 foreach ( $status['servers'] as $server ) {

@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class MAD4B_SCP_Provider_Contracts {
+	private static $installed_version_cache = array();
 	private static $contracts = null;
 	private static $profiles = null;
 	private static $profile_catalog = null;
@@ -172,14 +173,27 @@ final class MAD4B_SCP_Provider_Contracts {
 	private static function installed_version_for_contract( array $contract ) {
 		if ( empty( $contract['plugin_file'] ) ) return '';
 		$file = ltrim( str_replace( '\\', '/', (string) $contract['plugin_file'] ), '/' );
+		if ( array_key_exists( $file, self::$installed_version_cache ) ) return self::$installed_version_cache[ $file ];
 		$absolute = trailingslashit( WP_PLUGIN_DIR ) . $file;
 		if ( is_readable( $absolute ) && function_exists( 'get_file_data' ) ) {
 			$data = get_file_data( $absolute, array( 'Version' => 'Version' ), 'plugin' );
-			if ( is_array( $data ) && ! empty( $data['Version'] ) ) return trim( (string) $data['Version'] );
+			if ( is_array( $data ) && ! empty( $data['Version'] ) ) return self::$installed_version_cache[ $file ] = trim( (string) $data['Version'] );
 		}
 		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$plugins = get_plugins();
-		return isset( $plugins[ $file ] ) && ! empty( $plugins[ $file ]['Version'] ) ? (string) $plugins[ $file ]['Version'] : '';
+		return self::$installed_version_cache[ $file ] = ( isset( $plugins[ $file ] ) && ! empty( $plugins[ $file ]['Version'] ) ? (string) $plugins[ $file ]['Version'] : '' );
+	}
+
+	private static function invalidate_installed_version_cache_for_contract( array $contract ) {
+		if ( ! empty( $contract['plugin_file'] ) ) {
+			$file = ltrim( str_replace( '\\', '/', (string) $contract['plugin_file'] ), '/' );
+			unset( self::$installed_version_cache[ $file ] );
+		}
+		if ( ! empty( $contract['components'] ) && is_array( $contract['components'] ) ) {
+			foreach ( $contract['components'] as $component ) {
+				if ( is_array( $component ) ) self::invalidate_installed_version_cache_for_contract( $component );
+			}
+		}
 	}
 
 	private static function composite_version_string( array $components, $installed ) {
@@ -241,8 +255,77 @@ final class MAD4B_SCP_Provider_Contracts {
 		return $result;
 	}
 
+	public static function runtime_identity_status( $provider, $available = null ) {
+		$base_contract = self::get( $provider );
+		if ( empty( $base_contract ) ) {
+			return array(
+				'provider' => $provider,
+				'status' => 'uncertified_provider',
+				'identity_contract_ok' => false,
+				'runtime_integrity_verification_deferred' => true,
+			);
+		}
+
+		// Connection/readiness hot paths need package identity, not a byte-for-byte
+		// mutation certification. Composite providers keep their deep integrity
+		// contract on runtime_status(); this projection only compares versions and
+		// verifies that an integrity manifest is structurally declared.
+		if ( ! empty( $base_contract['components'] ) && is_array( $base_contract['components'] ) ) {
+			$components = array();
+			$all_identity_ok = true;
+			foreach ( $base_contract['components'] as $key => $component ) {
+				if ( ! is_array( $component ) ) { $all_identity_ok = false; continue; }
+				$expected = isset( $component['version'] ) ? (string) $component['version'] : '';
+				$actual = self::installed_version_for_contract( $component );
+				$manifest_present = ! empty( $component['critical_files'] ) && is_array( $component['critical_files'] );
+				$identity_ok = '' !== $actual && '' !== $expected && hash_equals( $expected, $actual ) && $manifest_present;
+				$all_identity_ok = $all_identity_ok && $identity_ok;
+				$components[ sanitize_key( (string) $key ) ] = array(
+					'certified_version' => $expected,
+					'installed_version' => $actual,
+					'critical_file_manifest_present' => $manifest_present,
+					'identity_ok' => $identity_ok,
+					'runtime_integrity_verification_deferred' => true,
+				);
+			}
+			return array(
+				'provider' => $provider,
+				'status' => false === $available ? 'unavailable' : ( $all_identity_ok ? 'certified_identity' : 'component_identity_drift' ),
+				'components' => $components,
+				'identity_contract_ok' => false !== $available && $all_identity_ok,
+				'runtime_integrity_verification_deferred' => true,
+				'mutation_certified' => false,
+			);
+		}
+
+		$actual = self::installed_version( $provider );
+		$contract = self::contract_for_version( $provider, $actual );
+		$expected = isset( $contract['version'] ) ? (string) $contract['version'] : '';
+		$certified_versions = self::certified_versions( $provider );
+		$manifest_present = ! empty( $contract['critical_files'] ) && is_array( $contract['critical_files'] );
+		$version_ok = false !== $available && '' !== $actual && '' !== $expected && hash_equals( $expected, $actual ) && in_array( $actual, $certified_versions, true );
+		return array(
+			'provider' => $provider,
+			'label' => isset( $contract['label'] ) ? $contract['label'] : $provider,
+			'status' => false === $available || '' === $actual ? 'unavailable' : ( $version_ok ? 'certified_identity' : 'version_drift' ),
+			'certified_version' => $expected,
+			'certified_versions' => $certified_versions,
+			'installed_version' => $actual,
+			'contract_mode' => isset( $contract['contract_mode'] ) ? $contract['contract_mode'] : '',
+			'certification_authority' => isset( $contract['certification_authority'] ) ? $contract['certification_authority'] : 'repository_baseline',
+			'critical_file_manifest_present' => $manifest_present,
+			'identity_contract_ok' => $version_ok && $manifest_present,
+			'runtime_integrity_verification_deferred' => true,
+			'mutation_certified' => false,
+		);
+	}
+
 	public static function runtime_status( $provider, $available = null ) {
 		$base_contract = self::get( $provider );
+		// Deep certification/mutation truth must observe version drift that occurs
+		// after an earlier request-local identity read. Keep hot identity paths
+		// memoized, but force exact plugin-header refresh before deep runtime truth.
+		if ( ! empty( $base_contract ) ) self::invalidate_installed_version_cache_for_contract( $base_contract );
 		if ( empty( $base_contract ) ) return array( 'provider' => $provider, 'status' => 'uncertified_provider', 'runtime_contract_ok' => false );
 		if ( ! empty( $base_contract['components'] ) && is_array( $base_contract['components'] ) ) {
 			return self::composite_runtime_status( $provider, $base_contract, $available );
