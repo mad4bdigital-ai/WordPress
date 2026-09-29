@@ -4,6 +4,14 @@ if ( ! defined( 'MAD4B_SCP_DIR' ) ) define( 'MAD4B_SCP_DIR', rtrim( dirname( __D
 $GLOBALS['opts']=array(); $GLOBALS['env']='staging'; $GLOBALS['home']='https://staging.example.test';
 $GLOBALS['transients']=array(); $GLOBALS['user_meta_rows']=array(); $GLOBALS['abilities']=array(); $GLOBALS['after_user_meta_update']=null;
 class WP_Error { private $c; private $d; public function __construct($c,$m='',$d=null){$this->c=$c;$this->d=$d;} public function get_error_code(){return $this->c;} public function get_error_data(){return $this->d;} }
+class WP_REST_Response {
+    private $data; private $status; private $headers=array();
+    public function __construct($data=null,$status=200){$this->data=$data;$this->status=(int)$status;}
+    public function get_status(){return $this->status;}
+    public function get_headers(){return $this->headers;}
+    public function header($name,$value){$this->headers[$name]=$value;}
+}
+function rest_ensure_response($v){return $v instanceof WP_REST_Response?$v:new WP_REST_Response($v,200);}
 function is_wp_error($v){return $v instanceof WP_Error;} function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/','',(string)$v));} function sanitize_text_field($v){return trim((string)$v);} function absint($v){return abs((int)$v);} function wp_parse_url($u,$c=-1){return parse_url($u,$c);} function wp_json_encode($v,$f=0){return json_encode($v,$f);} function trailingslashit($v){return rtrim((string)$v,'/\\').'/';} function untrailingslashit($v){return rtrim((string)$v,'/\\');}
 function home_url($p=''){return rtrim($GLOBALS['home'],'/').(''===$p?'':'/'.ltrim($p,'/'));} function rest_url($p=''){return rtrim($GLOBALS['home'],'/').'/wp-json/'.ltrim($p,'/');} function wp_get_environment_type(){return $GLOBALS['env'];} function get_option($k,$d=false){return array_key_exists($k,$GLOBALS['opts'])?$GLOBALS['opts'][$k]:$d;} function update_option($k,$v,$a=null){$GLOBALS['opts'][$k]=$v;return true;} function delete_option($k){unset($GLOBALS['opts'][$k]);return true;} function get_userdata($id){return (int)$id===7?(object)array('ID'=>7):false;} function user_can($u,$c){return is_object($u)&&$u->ID===7&&$c==='manage_options';} function current_user_can($c){return true;} function get_current_user_id(){return 7;} function wp_generate_uuid4(){return 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';} function get_bloginfo($k){return 'Test';}
 function add_action(){return true;} function remove_action(){return true;} function add_filter(){return true;} function apply_filters($hook,$value){return $value;} function is_admin(){return false;} function wp_unslash($v){return $v;} function esc_html($v){return $v;} function esc_html__($v){return $v;} function wp_register_ability_category(){} function wp_register_ability(){}
@@ -26,6 +34,7 @@ final class MAD4B_SCP_Local_OAuth_Server { public static $effective=true; public
 final class MAD4B_SCP_OAuth_Resource_Bridge { public static $effective=true; public static function status(){return array('effective'=>self::$effective);} public static function resource_identifier(){return rest_url('mcp/mad4b-chatgpt');} public static function verified_bearer_active(){return true;} public static function verified_bearer_client_is($id){return $id==='https://chatgpt.com/oauth/client.json';} }
 final class MAD4B_SCP_MCP_Registration_Bridge { public static $status=array(); public static function status(){return self::$status;} }
 final class MAD4B_SCP_Servers { public static $status=array(); public static function registration_status(){return self::$status;} public static function chatgpt_direct_read_transport_tools(){return array('mad4b/site-info');} }
+final class MAD4B_SCP_Transport_Context { public static $server='mad4b-chatgpt'; public static function current_server_id(){return self::$server;} }
 final class MAD4B_SCP_Provider_Contracts {
     public static $ok=true;
     public static $drop_file='';
@@ -100,6 +109,11 @@ $scope=$rp->getValue();
 ok(!empty($scope[$outer_key]),'nested REST clear cannot erase outer initialize scope');
 MAD4B_SCP_Reconnect_Hardening::clear_session_policy_scope(null,null,$outer_request);
 ok(empty($rp->getValue()),'outer REST clear removes only its exact initialize scope');
+$delete_scope_key=priv('request_scope_key',array($outer_request));
+set_priv('delete_cleanup_requests',array($delete_scope_key=>array('user_id'=>7,'session_id'=>sid(9))));
+MAD4B_SCP_Reconnect_Hardening::reset_session_policy_scope(null,null,$outer_request);
+$drp=new ReflectionProperty('MAD4B_SCP_Reconnect_Hardening','delete_cleanup_requests'); $drp->setAccessible(true);
+ok(empty($drp->getValue()),'request reset clears stale pending DELETE state for the exact request object');
 // Preserve the exact bootstrap failure when runtime initialization knows more than a derived status snapshot.
 MAD4B_SCP_Audit::$storage=array('ready'=>false,'schema_ready'=>true,'schema_physical_ready'=>true,'tables_ready'=>true,'transactional'=>true,'legacy_chain_valid'=>true,'head_initialized'=>false,'head_consistent'=>false,'legacy_anchor_match'=>true);
 $bootstrap_error=new ReflectionProperty('MAD4B_SCP_Plugin','schema_error');
@@ -150,6 +164,17 @@ $minimal=priv('minimal_initialize_params',array(array(
 ok(isset($minimal['protocolVersion'])&&!isset($minimal['capabilities']),'initialize capabilities are not persisted in recovery shadow');
 ok(!isset($minimal['clientInfo'])&&count($minimal)===1,'recovery shadow retains protocolVersion only');
 
+// Repair shape must look like the documented concurrent first-empty overwrite,
+// never like later capacity eviction or expiry.
+$now=time();
+$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(array(sid(70)=>srec($now)));
+ok(priv('first_empty_race_visible_candidate',array(7,$now)),'single concurrently-created visible winner matches first-empty race shape');
+$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(array(sid(70)=>srec($now),sid(71)=>srec($now)));
+ok(!priv('first_empty_race_visible_candidate',array(7,$now)),'multi-session visible map cannot be repaired as first-empty race');
+$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(array(sid(70)=>srec($now-60)));
+ok(!priv('first_empty_race_visible_candidate',array(7,$now)),'old visible session cannot be treated as same initialize burst');
+$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array();
+
 // Static read allowlist is insufficient: runtime readonly annotation is mandatory.
 $GLOBALS['abilities']['mad4b/site-info']=new class { public function get_meta(){return array('annotations'=>array('readonly'=>false));} };
 $call=array('method'=>'tools/call','params'=>array('name'=>'mad4b-site-info'));
@@ -188,12 +213,49 @@ $delete_request=new class($delete_sid) {
 MAD4B_SCP_Reconnect_Hardening::repair_or_forget_session(null,null,$delete_request);
 $rows=$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'];
 ok(isset($rows[0][$delete_sid]),'pre-dispatch DELETE leaves canonical session for Adapter termination');
-$adapter_response=(object)array('status'=>200);
+$adapter_response=new WP_REST_Response(null,200);
 $returned=MAD4B_SCP_Reconnect_Hardening::finalize_deleted_session($adapter_response,null,$delete_request);
 ok($returned===$adapter_response,'post-dispatch DELETE cleanup preserves Adapter response verbatim');
 $rows=$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'];
 ok(!isset($rows[0][$delete_sid])&&!isset($rows[1][$delete_sid]),'post-dispatch cleanup removes terminated session from all duplicate rows');
 ok(isset($rows[0][sid(41)])&&isset($rows[1][sid(42)]),'post-dispatch cleanup preserves sibling sessions');
+
+// A later pre-dispatch short-circuit/error must not be mistaken for Adapter DELETE success.
+$blocked_sid=sid(43);
+$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(
+    array($blocked_sid=>srec(time()),sid(44)=>srec(time())),
+    array($blocked_sid=>srec(time()),sid(45)=>srec(time())),
+);
+$blocked_request=new class($blocked_sid) {
+    private $sid;
+    public function __construct($sid){$this->sid=$sid;}
+    public function get_route(){return '/mcp/mad4b-chatgpt';}
+    public function get_method(){return 'DELETE';}
+    public function get_header($name){return strtolower((string)$name)==='mcp-session-id'?$this->sid:'';}
+};
+MAD4B_SCP_Reconnect_Hardening::repair_or_forget_session(null,null,$blocked_request);
+MAD4B_SCP_Reconnect_Hardening::finalize_deleted_session(new WP_REST_Response(null,403),null,$blocked_request);
+$rows=$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'];
+ok(isset($rows[0][$blocked_sid])&&isset($rows[1][$blocked_sid]),'non-200 response cannot trigger hidden-row DELETE cleanup');
+
+$wrong_transport_sid=sid(46);
+$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(
+    array($wrong_transport_sid=>srec(time())),
+    array($wrong_transport_sid=>srec(time())),
+);
+$wrong_transport_request=new class($wrong_transport_sid) {
+    private $sid;
+    public function __construct($sid){$this->sid=$sid;}
+    public function get_route(){return '/mcp/mad4b-chatgpt';}
+    public function get_method(){return 'DELETE';}
+    public function get_header($name){return strtolower((string)$name)==='mcp-session-id'?$this->sid:'';}
+};
+MAD4B_SCP_Reconnect_Hardening::repair_or_forget_session(null,null,$wrong_transport_request);
+MAD4B_SCP_Transport_Context::$server='mad4b-read';
+MAD4B_SCP_Reconnect_Hardening::finalize_deleted_session(new WP_REST_Response(null,200),null,$wrong_transport_request);
+MAD4B_SCP_Transport_Context::$server='mad4b-chatgpt';
+$rows=$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'];
+ok(isset($rows[0][$wrong_transport_sid])&&isset($rows[1][$wrong_transport_sid]),'wrong transport binding cannot trigger hidden-row DELETE cleanup');
 
 // Duplicate rows: match Adapter single=true visibility instead of unioning hidden state.
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(
