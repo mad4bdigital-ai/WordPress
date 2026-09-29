@@ -180,7 +180,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		try {
 			wp_register_ability( self::ABILITY, array(
 				'label' => 'Bind Exact Governed Write Candidate',
-				'description' => 'Bind an already-clean governed-write authority snapshot to the exact current Staging or Production package candidate without reconciling grants, subjects or agents.'
+				'description' => 'Bind an already-clean governed-write authority snapshot to the exact current Staging or Production package candidate without reconciling grants, subjects or agents.',
 				'category' => 'mad4b-governance',
 				'execute_callback' => array( __CLASS__, 'bind' ),
 				'permission_callback' => array( __CLASS__, 'can_execute' ),
