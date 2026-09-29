@@ -566,8 +566,13 @@ final class MAD4B_SCP_Site_Profile {
 		$legacy = self::normalize_record( $record );
 		$environment = self::current_environment();
 		$origin = self::current_origin();
-		if ( ! hash_equals( (string) $legacy['environment'], $environment ) ) return array();
 		if ( '' === $origin || ! hash_equals( (string) $legacy['canonical_origin'], $origin ) ) return array();
+		if ( ! hash_equals( (string) $legacy['environment'], $environment ) ) {
+			$wordpress = self::wordpress_environment();
+			$implicit_production_default = 'production' === $wordpress && ! self::wordpress_environment_explicit();
+			if ( ! $implicit_production_default ) return array();
+			$environment = sanitize_key( (string) $legacy['environment'] );
+		}
 		return array(
 			'contract' => self::CONTRACT,
 			'version' => self::VERSION,
@@ -663,11 +668,13 @@ final class MAD4B_SCP_Site_Profile {
 		if ( ! is_array( $decoded ) || self::PRESET_CONTRACT !== ( isset( $decoded['contract'] ) ? (string) $decoded['contract'] : '' ) || empty( $decoded['profiles'] ) || ! is_array( $decoded['profiles'] ) ) return array();
 		$environment = self::current_environment();
 		$origin = self::current_origin();
+		$implicit_production_default = 'production' === self::wordpress_environment() && ! self::wordpress_environment_explicit();
 		foreach ( $decoded['profiles'] as $preset ) {
 			if ( ! is_array( $preset ) ) continue;
 			$preset = self::normalize_record( $preset );
 			if ( ! self::valid_record( $preset ) ) continue;
-			if ( ! hash_equals( (string) $preset['environment'], $environment ) || ! hash_equals( (string) $preset['canonical_origin'], $origin ) ) continue;
+			if ( ! hash_equals( (string) $preset['canonical_origin'], $origin ) ) continue;
+			if ( ! hash_equals( (string) $preset['environment'], $environment ) && ! $implicit_production_default ) continue;
 			return $preset;
 		}
 		return array();
