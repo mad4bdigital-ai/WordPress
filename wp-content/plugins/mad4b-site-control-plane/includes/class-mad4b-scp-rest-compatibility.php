@@ -122,6 +122,11 @@ final class MAD4B_SCP_REST_Compatibility {
 		$rest_auth_hooks = self::hook_inventory( 'rest_authentication_errors' );
 		$rest_enabled = (bool) apply_filters( 'rest_enabled', true );
 		$wpml = self::wpml_probe();
+		$external_wpml = class_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer' ) && method_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer', 'external_wpml_receipt_status' )
+			? MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status()
+			: array();
+		$external_wpml_required = ! empty( $wpml['wpml_active'] );
+		$external_wpml_verified = ! $external_wpml_required || ( ! empty( $external_wpml['observed'] ) && ! empty( $external_wpml['verified'] ) && empty( $external_wpml['stale'] ) );
 		$control_plane_on_rest_enabled = ! empty( $rest_enabled_hooks['control_plane_detected'] );
 		$control_plane_on_rest_auth = ! empty( $rest_auth_hooks['control_plane_detected'] );
 		$expected_rest_scope = array(
@@ -178,11 +183,13 @@ final class MAD4B_SCP_REST_Compatibility {
 			'query_parameters_preserved' => ! empty( $wpml['query_parameters_preserved'] ),
 			'wpml_internal_probe_role' => 'diagnostic_only',
 			'wpml_internal_probe_blocks_local_certification' => false,
-			'external_wpml_acceptance_required' => true,
-			'external_wpml_acceptance_verified' => false,
+			'external_wpml_acceptance_required' => $external_wpml_required,
+			'external_wpml_acceptance_verified' => $external_wpml_verified,
+			'external_wpml_acceptance_state' => ! $external_wpml_required ? 'not_required' : ( $external_wpml_verified ? 'verified' : 'pending' ),
+			'external_wpml_acceptance' => self::bounded_external_wpml_receipt( $external_wpml ),
 			'external_http_probe_performed' => false,
 			'external_test_url' => self::wpml_external_test_url(),
-			'note' => 'Local REST isolation is evaluated only from MAD4B-controlled structural facts. The internal WPML probe is diagnostic only; external WPML HTTP acceptance remains a separate live gate.',
+			'note' => 'Local REST isolation remains structural and non-authorizing. The internal WPML probe is diagnostic only; current external acceptance is projected from the separately observed signed/passive receipt without performing HTTP in this status call.',
 		);
 	}
 
@@ -244,6 +251,21 @@ final class MAD4B_SCP_REST_Compatibility {
 				'exception_class' => get_class( $e ),
 			);
 		}
+	}
+
+	private static function bounded_external_wpml_receipt( $receipt ) {
+		if ( ! is_array( $receipt ) ) return array();
+		return array(
+			'contract' => isset( $receipt['contract'] ) ? sanitize_text_field( (string) $receipt['contract'] ) : '',
+			'observed' => ! empty( $receipt['observed'] ),
+			'verified' => ! empty( $receipt['verified'] ),
+			'stale' => ! empty( $receipt['stale'] ),
+			'state' => isset( $receipt['state'] ) ? sanitize_key( (string) $receipt['state'] ) : '',
+			'route_registered' => ! empty( $receipt['route_registered'] ),
+			'response_status' => isset( $receipt['response_status'] ) ? (int) $receipt['response_status'] : 0,
+			'classification' => isset( $receipt['classification'] ) ? sanitize_key( (string) $receipt['classification'] ) : '',
+			'observed_at' => isset( $receipt['observed_at'] ) ? sanitize_text_field( (string) $receipt['observed_at'] ) : '',
+		);
 	}
 
 	private static function wpml_active() {
