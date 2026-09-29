@@ -151,8 +151,8 @@ for marker in [
     "'auto_approval' => false",
     "public static function create_draft(",
     "mad4b_brand_draft_quality_gate_failed",
-    "'materialization_performed' => false",
-    "'review_performed' => false",
+    "$result['materialization_performed'] = false",
+    "$result['review_performed'] = false",
 
 ]:
     if marker not in builder:
