@@ -92,4 +92,10 @@ assert "hash_file(" not in detector
 assert "rest_get_server(" not in detector
 assert detector.index("if ( empty( $reasons ) )") < detector.index("$identity = self::current_identity();")
 
+assert "waiting_for_exact_runtime_restart" in runtime
+
+assert "restart_identity_now_matches" in runtime
+
+assert "self::identity_matches( $target, $current )" in runtime
+
 print("runtime convergence contract: PASS")
