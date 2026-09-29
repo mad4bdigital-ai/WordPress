@@ -244,7 +244,7 @@ for marker in [
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
     "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()",
-    "MAD4B_SCP_Staging_Write_Authority::status()",
+    "MAD4B_SCP_Staging_Write_Authority::persisted_status()",
     "MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()",
     "'full_runtime_hash_validation_deferred' => true",
     "'deep_authority_scan_deferred' => true",
