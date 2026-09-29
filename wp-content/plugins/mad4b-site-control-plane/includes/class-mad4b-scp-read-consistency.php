@@ -730,8 +730,8 @@ final class MAD4B_SCP_Read_Consistency {
 			return array(
 				'site_profile' => static function () { return self::profile_projection(); },
 				'build' => static function () { return self::deep_build_projection(); },
-				'connection' => static function () { return self::session_safe_connection_projection(); },
-				'reconnect' => static function () { return self::session_safe_reconnect_projection(); },
+				'connection' => static function () { return self::connection_projection(); },
+				'reconnect' => static function () { return self::reconnect_projection(); },
 			);
 		}
 		if ( 'runtime' === $bundle ) {
@@ -771,8 +771,8 @@ final class MAD4B_SCP_Read_Consistency {
 			return array(
 				'site_profile' => static function () { return self::profile_projection(); },
 				'build' => static function () { return self::build_projection(); },
-				'connection' => static function () { return self::connection_projection(); },
-				'reconnect' => static function () { return self::reconnect_projection(); },
+				'connection' => static function () { return self::session_safe_connection_projection(); },
+				'reconnect' => static function () { return self::session_safe_reconnect_projection(); },
 			);
 		}
 		if ( 'runtime' === $bundle ) {
