@@ -55,10 +55,12 @@ final class MAD4B_SCP_Local_OAuth_Consent_UI {
 		if ( false === strpos( $html, '</head>' ) ) return $html;
 
 		$step_up_requested = false !== strpos( $html, 'mad4b:authority:step-up' );
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : 'unknown';
+		$environment_label = 'production' === $environment ? 'Production' : ( 'staging' === $environment ? 'Staging' : ucfirst( $environment ) );
 		$legacy_request = 'is requesting read access to this WordPress MCP resource.';
-		$legacy_step_up_request = 'is requesting read access plus a governed Staging authority step-up scope for this WordPress MCP resource.';
+		$legacy_step_up_request = 'is requesting read access plus a governed authority step-up scope for this WordPress MCP resource.';
 		$read_request = 'is requesting OAuth read access to this WordPress MCP resource. This consent authenticates the client and grants only the read resource scope shown below. Write, Developer and Developer Breakglass are separate governed authorities and are not created by this OAuth approval.';
-		$step_up_request = 'is requesting OAuth read access plus a governed Staging authority step-up scope on this same WordPress MCP resource. The step-up scope permits requesting the composite Full Staging Authority operation only; it does not itself create Write, Developer, Developer Breakglass, Production, or raw-SQL Breakglass authority.';
+		$step_up_request = 'is requesting OAuth read access plus a governed authority step-up scope on this same WordPress MCP resource. The step-up scope permits requesting exact environment-bound bootstrap/convergence operations. It does not itself create Write, Developer, Developer Breakglass, Production, or raw-SQL Breakglass authority; Production writes still require exact Site Profile confirmation and one-time approval.';
 		$html = str_replace( $legacy_request, $step_up_requested ? $step_up_request : $read_request, $html );
 		$html = str_replace( $legacy_step_up_request, $step_up_request, $html );
 		$html = str_replace( '<title>Authorize MCP access</title>', $step_up_requested ? '<title>Authorize governed MCP access</title>' : '<title>Authorize read access</title>', $html );
@@ -68,23 +70,23 @@ final class MAD4B_SCP_Local_OAuth_Consent_UI {
 			. '<h2>What you are approving now</h2>'
 			. '<div class="mad4b-consent-grid">'
 			. '<div><span>Resource</span><strong><code>mad4b-chatgpt</code></strong></div>'
-			. '<div><span>Access</span><strong>' . ( $step_up_requested ? 'Read identity + Staging authority step-up' : 'Read identity' ) . '</strong></div>'
+			. '<div><span>Access</span><strong>' . ( $step_up_requested ? 'Read identity + ' . $environment_label . ' authority step-up' : 'Read identity' ) . '</strong></div>'
 			. '<div><span>Write authority</span><strong>Separate governance</strong></div>'
 			. '<div><span>Developer authority</span><strong>Separate governance</strong></div>'
 			. '<div><span>Developer Breakglass</span><strong>Separate governance</strong></div>'
 			. '<div><span>Generic raw-SQL Breakglass</span><strong>Not included</strong></div>'
 			. '</div>'
 			. '<p><code>offline_access</code> keeps the approved connection active without repeatedly asking you to sign in; it does not add mutation authority.</p>'
-			. ( $step_up_requested ? '<p><code>mad4b:authority:step-up</code> is a request permission for the exact composite Staging convergence flow. It is not a write grant and cannot bypass exact plan matching, enrolled administrator identity, confirmation, audit readiness, or fail-closed governance.</p>' : '' )
+			. ( $step_up_requested ? '<p><code>mad4b:authority:step-up</code> is request permission for exact environment-bound governance operations. It is not a write grant and cannot bypass exact plan matching, enrolled administrator identity, environment-specific confirmation, one-time Production approval, audit readiness, or fail-closed governance.</p>' : '' )
 			. '</section>';
-		$authority_summary = '<section class="mad4b-authority-summary" aria-label="Current Staging authority">'
-			. '<h2>Current Staging authority</h2>'
+		$authority_summary = '<section class="mad4b-authority-summary" aria-label="Current governed authority">'
+			. '<h2>Current ' . esc_html( $environment_label ) . ' authority</h2>'
 			. '<div class="mad4b-authority-grid">'
 			. '<div><span>Write</span><strong id="mad4b-write-state" class="mad4b-authority-pending">Checking…</strong></div>'
 			. '<div><span>Developer</span><strong id="mad4b-developer-state" class="mad4b-authority-pending">Checking…</strong></div>'
 			. '<div><span>Developer Breakglass</span><strong id="mad4b-developer-breakglass-state" class="mad4b-authority-pending">Checking…</strong></div>'
 			. '</div>'
-			. '<p id="mad4b-full-authority-state" class="mad4b-full-blocked"><strong>Full Staging Authority:</strong> Checking…</p>'
+			. '<p id="mad4b-full-authority-state" class="mad4b-full-blocked"><strong>Full Staging Authority (Staging only):</strong> Checking…</p>'
 			. '<p>Generic raw-SQL Breakglass is not included in Full Staging Authority.</p>'
 			. '</section>';
 		if ( false !== strpos( $html, '<section class="mad4b-live-grants"' ) ) {
