@@ -448,4 +448,17 @@ if "_mad4b_dynamic_content_managed_v1" not in mutations or "_mad4b_dynamic_conte
 if "dynamic_managed" not in adapter[adapter.find("private function snapshot"):adapter.find("private function restore_snapshot_state")]:
     raise SystemExit("managed lifecycle must be part of reversible dynamic state")
 
+
+# The public content-update-post ability must not retain a second mutation path.
+abilities_method_start = abilities.find("public function content_update_post( $input )")
+abilities_method_end = abilities.find("private function plugin_site_active", abilities_method_start)
+if abilities_method_start < 0 or abilities_method_end < 0:
+    raise SystemExit("content_update_post delegation method missing")
+abilities_method = abilities[abilities_method_start:abilities_method_end]
+if "MAD4B_SCP_Mutation_Manager::execute_post_update" not in abilities_method:
+    raise SystemExit("content_update_post must delegate exclusively to Mutation Manager")
+for forbidden in ["wp_update_post(", "MAD4B_SCP_Audit::record("]:
+    if forbidden in abilities_method:
+        raise SystemExit(f"content_update_post retains bypass mutation logic: {forbidden}")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
