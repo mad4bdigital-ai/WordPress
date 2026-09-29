@@ -24,3 +24,6 @@ for marker in ["append-only","operation_started","previous_event_sha256","FOR UP
 for marker in ["mad4b/content-model-discover","mad4b/content-bundle-readback","mad4b/content-orchestration-plan","mad4b/content-apply-bundle","mad4b/content-pipeline-status","mad4b/content-pipeline-settings-update","mad4b.rollback.dynamic-content-bundle.v1"]:
     req(adapter, marker)
 print("mad4b.dynamic-runtime-hardening.contract.v1: PASS")
+
+for marker in ["expected_operation_binding_sha256","operation_binding_sha256","MAD4B_SCP_Operation_Context::create","MAD4B_SCP_Operation_Journal::begin","mutation_lock_acquired","operation_completed","operation_failed","mad4b_operation_binding_drift"]:
+    req(adapter, marker)
