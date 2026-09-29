@@ -288,6 +288,8 @@ final class MAD4B_SCP_Self_Update {
 		$remote_ready = self::environment_allowed( true ) && current_user_can( 'update_plugins' );
 		$ui_state = self::native_update_ui_state( $manifest );
 		$auto_update = self::wordpress_auto_update_state();
+		$normal_write_effective = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
+		$bootstrap_step_up_available = in_array( self::BOOTSTRAP_APPLY_ABILITY, self::chatgpt_step_up_tools(), true );
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -321,6 +323,20 @@ final class MAD4B_SCP_Self_Update {
 				'exact_plan_required' => true,
 				'exact_approval_required' => true,
 				'rollback_required' => true,
+			),
+			'bootstrap_step_up' => array(
+				'contract' => self::BOOTSTRAP_APPLY_CONTRACT,
+				'ability' => self::BOOTSTRAP_APPLY_ABILITY,
+				'available' => (bool) $bootstrap_step_up_available,
+				'staging_only' => true,
+				'oauth_scope' => 'mad4b:authority:step-up',
+				'bootstrap_only' => true,
+				'normal_write_authority_effective' => (bool) $normal_write_effective,
+				'requires_clean_exact_grants' => true,
+				'requires_candidate_drift' => true,
+				'authority_mutation_allowed' => false,
+				'production_allowed' => false,
+				'generic_raw_sql_breakglass_included' => false,
 			),
 			'governed_native_release_pull' => array(
 				'ready' => (bool) ( $remote_ready && ! is_wp_error( $manifest ) ),
