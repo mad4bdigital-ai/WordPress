@@ -232,6 +232,37 @@ final class MAD4B_SCP_Self_Update {
 		);
 	}
 
+	public static function cached_status( $input = array() ) {
+		unset( $input );
+		$current = self::installed_identity();
+		$manifest = self::cached_manifest();
+		$manifest_error = is_wp_error( $manifest ) ? $manifest->get_error_code() : '';
+		$native_ready = ! is_wp_error( $manifest ) && self::environment_allowed( false );
+		$remote_ready = self::environment_allowed( true ) && current_user_can( 'update_plugins' );
+		$ui_state = self::native_update_ui_state( $manifest );
+
+		return array(
+			'contract' => self::CONTRACT,
+			'projection' => 'cache_only',
+			'outbound_network_performed' => false,
+			'plugin' => plugin_basename( MAD4B_SCP_FILE ),
+			'current' => $current,
+			'native_wordpress_update' => array(
+				'ready' => (bool) $native_ready,
+				'ui_state' => $ui_state['state'],
+				'ui_blockers' => $ui_state['blockers'],
+				'manifest_state' => is_wp_error( $manifest ) ? 'not_cached' : 'ready',
+				'manifest_error' => $manifest_error,
+				'target' => is_wp_error( $manifest ) ? array() : self::public_manifest( $manifest ),
+			),
+			'governed_file_upload' => array( 'ready' => (bool) $remote_ready, 'staging_only' => true ),
+			'production_remote_upload_allowed' => false,
+			'production_remote_native_pull_allowed' => false,
+			'mutation_performed' => false,
+			'authorizing' => false,
+		);
+	}
+
 	public static function upload_plan( $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$identity = self::normalize_requested_identity( $input );
