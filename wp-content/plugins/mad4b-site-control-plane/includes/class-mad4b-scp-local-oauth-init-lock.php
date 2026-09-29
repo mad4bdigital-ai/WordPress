@@ -17,6 +17,7 @@ final class MAD4B_SCP_Local_OAuth_Init_Lock {
 	const CONTRACT = 'mad4b.local-oauth-init-lock.v1';
 	private static $handle = null;
 	private static $lock_path = '';
+	private static $contended = false;
 
 	public static function boot() {
 		add_action( 'init', array( __CLASS__, 'acquire' ), 0 );
@@ -34,9 +35,18 @@ final class MAD4B_SCP_Local_OAuth_Init_Lock {
 		$handle = @fopen( $lock_path, 'c' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,WordPress.WP.AlternativeFunctions.file_system_operations_fopen
 		if ( false === $handle ) return;
 		@chmod( $lock_path, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		if ( ! flock( $handle, LOCK_EX ) ) { fclose( $handle ); return; }
+		if ( ! flock( $handle, LOCK_EX | LOCK_NB ) ) {
+			fclose( $handle );
+			self::$contended = true;
+			// Another request is already performing first-boot key initialization.
+			// Never block a PHP worker waiting for that request and never race it
+			// with a second key generation attempt.
+			remove_action( 'init', array( 'MAD4B_SCP_Local_OAuth_Server', 'ensure_runtime' ), 1 );
+			return;
+		}
 		self::$handle = $handle;
 		self::$lock_path = $lock_path;
+		self::$contended = false;
 	}
 
 	public static function release() {
@@ -53,6 +63,8 @@ final class MAD4B_SCP_Local_OAuth_Init_Lock {
 			'enabled' => self::enabled(),
 			'key_present' => '' !== $key_path && is_file( $key_path ),
 			'lock_active' => is_resource( self::$handle ),
+			'lock_contended' => self::$contended,
+			'blocking_wait_used' => false,
 			'first_boot_serialized' => true,
 			'lock_contains_secret_material' => false,
 		);
