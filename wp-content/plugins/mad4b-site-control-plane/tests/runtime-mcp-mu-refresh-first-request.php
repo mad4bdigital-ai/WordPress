@@ -7,6 +7,7 @@ if ( ! is_string( $wp_path ) || '' === trim( $wp_path ) ) {
 	exit( 1 );
 }
 $wp_path = rtrim( $wp_path, '/\\' );
+if ( ! defined( 'WP_ADMIN' ) ) define( 'WP_ADMIN', true );
 $_SERVER['HTTP_HOST'] = 'staging.egypttourgates.com';
 $_SERVER['HTTPS'] = 'on';
 $_SERVER['SERVER_PORT'] = '443';
