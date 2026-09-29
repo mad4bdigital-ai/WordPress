@@ -161,24 +161,20 @@ final class MAD4B_SCP_Plugin {
 
 	private static function request_requires_schema_reconciliation() {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
-		if ( ! is_admin() ) return false;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle routing only.
-		return 0 === strpos( $page, 'mad4b-control-plane' );
+		// Ordinary wp-admin page rendering is request-serving work. Activation,
+		// governed self-update and Runtime Convergence own schema lifecycle repair.
+		// Never run physical schema probes/dbDelta merely because a MAD4B screen
+		// is being viewed.
+		return false;
 	}
 
 	private static function request_requires_skill_reconciliation() {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
 
-		// MCP transport requests are latency-sensitive and must remain read/execute
-		// hot paths. Seed/provider Skill reconciliation performs filesystem, plugin
-		// discovery and durable status work and is not required to construct an MCP
-		// server or execute an already-registered Ability. Activation and explicit
-		// Control Plane admin/CLI lifecycle remain the reconciliation authorities.
-		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime() ) return false;
-
-		if ( ! is_admin() ) return false;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
-		return 0 === strpos( $page, 'mad4b-control-plane' );
+		// Seed/provider reconciliation performs filesystem and provider discovery.
+		// It is owned by activation, explicit Skills reconciliation, or Runtime
+		// Convergence after a deployment. Read-only admin rendering never owns it.
+		return false;
 	}
 
 	private static function bind_local_oauth_subject_compatibility() {
@@ -242,15 +238,20 @@ final class MAD4B_SCP_Plugin {
 	}
 
 	public static function prime_admin_mcp_runtime() {
-		if ( ! current_user_can( 'manage_options' ) || ! self::is_authority_admin_surface() ) return;
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
+		// REST/Abilities initialization is a deep diagnostic. Restrict it to the
+		// exact MCP Endpoints workspace instead of every MAD4B admin page.
+		if ( 'mad4b-control-plane-connection' !== $page || 'endpoints' !== $tab ) return;
 		if ( ! function_exists( 'rest_get_server' ) ) return;
 		try {
 			rest_get_server();
 			if ( class_exists( 'MAD4B_SCP_MCP_Registration_Rescue' ) ) {
-				MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );
+				MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_endpoints_prime' );
 			}
 		} catch ( Throwable $e ) {
-			// Readiness surfaces remain fail-closed and report unavailable registry.
+			// Diagnostics remain fail-closed and report unavailable registry.
 		}
 	}
 
