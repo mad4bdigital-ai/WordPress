@@ -63,6 +63,14 @@ final class MAD4B_SCP_Live_Truth {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 			&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_is_protocol_hotpath' )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
+		// A third-party wp-admin page may initialize the Abilities API for its own
+		// reasons. Never turn that into a MAD4B authority inventory scan. Automatic
+		// recovery is confined to MAD4B operator surfaces; explicit read abilities
+		// call current truth directly and are unaffected by this guard.
+		if ( is_admin() ) {
+			$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
+			if ( 0 !== strpos( $page, 'mad4b-control-plane' ) && 'mad4b-approval-decisions' !== $page ) return;
+		}
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return;
 		self::$recovering = true;
 		// Runtime recovery means refreshing truth, never reconciling grants/subjects.
