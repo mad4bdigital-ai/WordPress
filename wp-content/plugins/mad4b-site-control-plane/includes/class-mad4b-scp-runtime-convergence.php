@@ -21,6 +21,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 	const LOCK_OPTION = 'mad4b_scp_runtime_convergence_lock_v1';
 	const CRON_HOOK = 'mad4b_scp_runtime_convergence_resume';
 	const LOCK_TTL = 300;
+	const MAX_TRANSIENT_RETRIES = 5;
 
 	private static $booted = false;
 	private static $abilities_registered = false;
@@ -153,7 +154,13 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$update_target = isset( $update['native_wordpress_update']['target'] ) && is_array( $update['native_wordpress_update']['target'] ) ? $update['native_wordpress_update']['target'] : array();
 		$target_sha = isset( $update_target['source_commit_sha'] ) ? strtolower( trim( (string) $update_target['source_commit_sha'] ) ) : '';
 		$current_sha = isset( $identity['source_commit_sha'] ) ? strtolower( trim( (string) $identity['source_commit_sha'] ) ) : '';
-		$deployment_state = '' === $target_sha ? 'unknown' : ( '' !== $current_sha && hash_equals( $target_sha, $current_sha ) ? 'ready' : 'pending' );
+		$runtime_identity_complete = ! empty( $identity['source_commit_sha'] ) && ! empty( $identity['build_fingerprint'] ) && ! empty( $identity['package_manifest_digest'] );
+		// A missing cached release target means "no update-channel observation", not
+		// "runtime unknown". Exact on-disk identity is sufficient for local runtime
+		// convergence; update freshness remains a separate advisory concern.
+		$deployment_state = '' === $target_sha
+			? ( $runtime_identity_complete ? 'ready' : 'unknown' )
+			: ( '' !== $current_sha && hash_equals( $target_sha, $current_sha ) ? 'ready' : 'pending' );
 
 		$write_enabled = ! empty( $profile['write_enabled'] );
 		$skills_enabled = ! empty( $profile['skills_enabled'] );
@@ -169,6 +176,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'current_identity' => $identity,
 				'target_identity' => $update_target,
 				'manifest_state' => isset( $update['native_wordpress_update']['manifest_state'] ) ? (string) $update['native_wordpress_update']['manifest_state'] : '',
+				'cached_release_target_present' => '' !== $target_sha,
+				'runtime_identity_complete' => $runtime_identity_complete,
+				'readiness_basis' => '' === $target_sha && $runtime_identity_complete ? 'exact_current_runtime_identity' : 'cached_release_target',
 			) ),
 			'schema' => self::phase( 'schema', ! empty( $schema['ready'] ) ? 'ready' : 'pending', true, array( 'deployment' ), true, array(
 				'expected_version' => isset( $schema['expected_version'] ) ? (int) $schema['expected_version'] : 0,
@@ -223,9 +233,27 @@ final class MAD4B_SCP_Runtime_Convergence {
 			if ( 'ready' !== $phase['state'] ) $required_blockers[] = $phase_id . ':' . $phase['state'];
 		}
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+		$checkpoint_state = is_array( $checkpoint ) && isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
+		$checkpoint_source = is_array( $checkpoint ) && isset( $checkpoint['source'] ) ? sanitize_key( (string) $checkpoint['source'] ) : '';
+		$auto_pending = false;
+		$gated_pending = false;
+		foreach ( $phases as $phase ) {
+			if ( empty( $phase['required'] ) || 'ready' === $phase['state'] ) continue;
+			if ( ! empty( $phase['auto_safe'] ) ) $auto_pending = true;
+			else $gated_pending = true;
+		}
+		$manual_resume_gate = 'pending_manual_resume' === $checkpoint_state && is_array( $checkpoint ) && ! empty( $checkpoint['resume_blocker'] );
+		if ( empty( $required_blockers ) ) $autopilot_state = 'ready';
+		elseif ( ! $graph_valid || 'blocked' === $checkpoint_state ) $autopilot_state = 'blocked';
+		elseif ( $manual_resume_gate ) $autopilot_state = 'gated';
+		elseif ( $auto_pending && 'plugin_activation' === $checkpoint_source ) $autopilot_state = 'bootstrapping';
+		elseif ( $auto_pending || in_array( $checkpoint_state, array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true ) ) $autopilot_state = 'converging';
+		elseif ( $gated_pending ) $autopilot_state = 'gated';
+		else $autopilot_state = 'blocked';
 		return array(
 			'contract' => self::CONTRACT,
 			'state' => empty( $required_blockers ) ? 'ready' : 'convergence_required',
+			'autopilot_state' => $autopilot_state,
 			'ready' => empty( $required_blockers ),
 			'environment' => $environment,
 			'production_mutation_allowed' => false,
@@ -336,6 +364,44 @@ final class MAD4B_SCP_Runtime_Convergence {
 		return $result;
 	}
 
+	public static function mark_activation_pending() {
+		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		if ( 'staging' !== $environment ) return array( 'scheduled' => false, 'state' => 'observe_only_non_staging', 'environment' => $environment );
+		$identity = self::current_identity();
+		$identity_complete = ! empty( $identity['source_commit_sha'] ) && ! empty( $identity['build_fingerprint'] ) && ! empty( $identity['package_manifest_digest'] );
+		if ( ! $identity_complete ) return array( 'scheduled' => false, 'state' => 'activation_identity_incomplete', 'environment' => $environment );
+		$checkpoint = array(
+			'contract' => self::CONTRACT,
+			'state' => 'pending_safe_phases',
+			'source' => 'plugin_activation',
+			'target_identity' => self::bounded_identity( $identity ),
+			'automatic_retry_allowed' => true,
+			'transient_retry_count' => 0,
+			'created_at' => gmdate( 'c' ),
+			'updated_at' => gmdate( 'c' ),
+			'production_mutation' => false,
+		);
+		update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+		$stored = get_option( self::CHECKPOINT_OPTION, array() );
+		$stored_source = is_array( $stored ) && isset( $stored['source'] ) ? sanitize_key( (string) $stored['source'] ) : '';
+		if ( ! is_array( $stored ) || 'plugin_activation' !== $stored_source || empty( $stored['target_identity'] ) || ! self::identity_matches( $checkpoint['target_identity'], $stored['target_identity'] ) ) {
+			return array( 'scheduled' => false, 'state' => 'checkpoint_persist_failed', 'target_identity' => $checkpoint['target_identity'], 'production_mutation' => false );
+		}
+		$scheduled = self::schedule_resume();
+		if ( ! $scheduled ) {
+			$checkpoint['state'] = 'pending_manual_resume';
+			$checkpoint['resume_blocker'] = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'wp_cron_disabled' : 'wp_cron_unavailable';
+			$checkpoint['updated_at'] = gmdate( 'c' );
+			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+		}
+		return array(
+			'scheduled' => (bool) $scheduled,
+			'state' => $scheduled ? 'pending_safe_phases' : 'pending_manual_resume',
+			'target_identity' => $checkpoint['target_identity'],
+			'production_mutation' => false,
+		);
+	}
+
 	public static function mark_post_update_pending( array $target, $channel = '', $plan_sha256 = '' ) {
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
 		if ( 'staging' !== $environment ) return array( 'scheduled' => false, 'state' => 'ignored_non_staging' );
@@ -400,7 +466,17 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$state = 'pending_safe_phases';
 		}
 
-		if ( 'blocked' === $state ) return;
+		if ( 'blocked' === $state ) {
+			$last_error = isset( $checkpoint['last_error_code'] ) ? sanitize_key( (string) $checkpoint['last_error_code'] ) : '';
+			$retry_count = isset( $checkpoint['transient_retry_count'] ) ? absint( $checkpoint['transient_retry_count'] ) : 0;
+			if ( ! self::is_transient_error_code( $last_error ) || $retry_count >= self::MAX_TRANSIENT_RETRIES ) return;
+			$checkpoint['state'] = 'pending_safe_phases';
+			$checkpoint['retry_policy'] = 'automatic_bounded_retry';
+			$checkpoint['automatic_retry_allowed'] = true;
+			$checkpoint['updated_at'] = gmdate( 'c' );
+			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			$state = 'pending_safe_phases';
+		}
 		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume' ), true ) ) {
 			$detected = self::detect_lightweight_runtime_drift();
 			if ( ! empty( $detected['detected'] ) && ! empty( $detected['identity_complete'] ) ) {
@@ -501,7 +577,18 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( ! function_exists( 'wp_next_scheduled' ) || ! function_exists( 'wp_schedule_single_event' ) ) return false;
 		if ( false !== wp_next_scheduled( self::CRON_HOOK ) ) return true;
 		$scheduled = wp_schedule_single_event( time() + 5, self::CRON_HOOK, array(), true );
-		return ! is_wp_error( $scheduled ) && false !== $scheduled;
+		if ( ! is_wp_error( $scheduled ) && false !== $scheduled ) return true;
+		// Another request may have won the scheduling race between the first
+		// wp_next_scheduled() read and wp_schedule_single_event(). Treat the
+		// resulting duplicate as success when the postcondition now exists.
+		return false !== wp_next_scheduled( self::CRON_HOOK );
+	}
+
+	private static function is_transient_error_code( $code ) {
+		return in_array( sanitize_key( (string) $code ), array(
+			'mad4b_runtime_convergence_busy',
+			'mad4b_runtime_convergence_lock_failed',
+		), true );
 	}
 
 	public static function resume_safe_phases() {
@@ -519,8 +606,21 @@ final class MAD4B_SCP_Runtime_Convergence {
 		}
 		$result = self::run_safe_phases( 'post_update_cron', array() );
 		if ( is_wp_error( $result ) ) {
+			$error_code = sanitize_key( (string) $result->get_error_code() );
+			$retry_count = isset( $checkpoint['transient_retry_count'] ) ? absint( $checkpoint['transient_retry_count'] ) : 0;
+			if ( self::is_transient_error_code( $error_code ) && $retry_count < self::MAX_TRANSIENT_RETRIES ) {
+				$checkpoint['state'] = 'pending_safe_phases';
+				$checkpoint['last_error_code'] = $error_code;
+				$checkpoint['transient_retry_count'] = $retry_count + 1;
+				$checkpoint['retry_policy'] = 'automatic_bounded_retry';
+				$checkpoint['automatic_retry_allowed'] = true;
+				$checkpoint['updated_at'] = gmdate( 'c' );
+				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+				self::schedule_resume();
+				return;
+			}
 			$checkpoint['state'] = 'blocked';
-			$checkpoint['last_error_code'] = $result->get_error_code();
+			$checkpoint['last_error_code'] = $error_code;
 			$checkpoint['retry_policy'] = 'explicit_resume_required';
 			$checkpoint['automatic_retry_allowed'] = false;
 			$checkpoint['updated_at'] = gmdate( 'c' );

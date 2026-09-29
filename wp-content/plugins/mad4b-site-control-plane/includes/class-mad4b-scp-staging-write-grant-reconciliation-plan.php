@@ -164,16 +164,32 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 
 		$desired = array();
 		foreach ( $inventory['rows'] as $row ) $desired[ $row['ability'] . "\0" . $row['provider'] ] = $row;
+		$allowed_providers = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::allowed_ability_providers() : array();
+		$retirement_providers = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::retirable_stale_ability_providers() : array();
 		$existing_rows = MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], 'mad4b-write' );
 		$seen_allow = array();
+		$stale_grants = array();
 		foreach ( $existing_rows as $grant ) {
 			if ( 'allow' !== (string) $grant['effect'] ) continue;
-			$key = (string) $grant['ability_name'] . "\0" . sanitize_key( (string) $grant['provider'] );
-			if ( ! isset( $desired[ $key ] ) ) $blockers[] = 'stale_allow:' . (string) $grant['ability_name'];
-			if ( 'staging' !== (string) $grant['environment'] ) $blockers[] = 'non_staging_allow:' . (string) $grant['ability_name'];
-			if ( isset( $seen_allow[ $key ] ) ) $blockers[] = 'duplicate_allow:' . (string) $grant['ability_name'];
+			$ability = (string) $grant['ability_name'];
+			$provider = sanitize_key( (string) $grant['provider'] );
+			$key = $ability . "\0" . $provider;
+			if ( 'staging' !== (string) $grant['environment'] ) $blockers[] = 'non_staging_allow:' . $ability;
+			if ( isset( $seen_allow[ $key ] ) ) $blockers[] = 'duplicate_allow:' . $ability;
 			$seen_allow[ $key ] = true;
+			if ( ! isset( $desired[ $key ] ) ) {
+				// Removing an exact Staging grant is authority-narrowing. Treat it as a
+				// planned cleanup only when the ability/provider pair is itself from the
+				// reviewed retirement universe; unknown stale authority still blocks.
+				if ( 'staging' === (string) $grant['environment'] && isset( $retirement_providers[ $ability ] ) && sanitize_key( (string) $retirement_providers[ $ability ] ) === $provider ) {
+					$stale_grants[] = array( 'id' => (int) $grant['id'], 'ability' => $ability, 'provider' => $provider, 'environment' => 'staging' );
+				} else {
+					$blockers[] = 'stale_allow_unreviewed:' . $ability;
+				}
+			}
 		}
+		usort( $stale_grants, static function ( $a, $b ) { return (int) $a['id'] <=> (int) $b['id']; } );
+		$stale_grant_ids = array_values( array_map( static function ( $row ) { return (int) $row['id']; }, $stale_grants ) );
 
 		$missing = array();
 		$missing_providers = array();
@@ -190,7 +206,6 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 		}
 		sort( $missing, SORT_STRING );
 
-		$allowed_providers = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::allowed_ability_providers() : array();
 		foreach ( $missing as $ability ) {
 			if ( ! isset( $allowed_providers[ $ability ] ) ) {
 				$blockers[] = 'missing_outside_allowlist:' . $ability;
@@ -247,6 +262,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			'expected_write_tool_count' => (int) $inventory['count'],
 			'expected_write_inventory_fingerprint' => (string) $inventory['fingerprint'],
 			'expected_missing_abilities' => $missing,
+			'expected_stale_grant_ids' => $stale_grant_ids,
+			'stale_grants_to_revoke' => $stale_grants,
 			'expected_transport_tool_count' => (int) $transport_inventory['count'],
 			'expected_transport_inventory_fingerprint' => (string) $transport_inventory['fingerprint'],
 			'expected_missing_transport_abilities' => $transport_missing,
@@ -272,6 +289,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			'expected_write_tool_count' => $payload['expected_write_tool_count'],
 			'expected_write_inventory_fingerprint' => $payload['expected_write_inventory_fingerprint'],
 			'expected_missing_abilities' => $payload['expected_missing_abilities'],
+			'expected_stale_grant_ids' => $payload['expected_stale_grant_ids'],
 			'expected_transport_tool_count' => $payload['expected_transport_tool_count'],
 			'expected_transport_inventory_fingerprint' => $payload['expected_transport_inventory_fingerprint'],
 			'expected_missing_transport_abilities' => $payload['expected_missing_transport_abilities'],

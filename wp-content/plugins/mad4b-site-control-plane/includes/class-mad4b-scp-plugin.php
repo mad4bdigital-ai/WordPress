@@ -19,6 +19,13 @@ final class MAD4B_SCP_Plugin {
 			if ( is_wp_error( $audit ) ) self::$schema_error = $audit;
 		}
 		if ( ! is_wp_error( self::$schema_error ) ) MAD4B_SCP_Skill_Seeder::bootstrap();
+		// Activation is the start of the safe autopilot lifecycle. It schedules
+		// bounded post-activation convergence after schema/audit bootstrap instead
+		// of waiting for a later request to rediscover version drift. Production
+		// remains observe-only inside Runtime_Convergence.
+		if ( ! is_wp_error( self::$schema_error ) && class_exists( 'MAD4B_SCP_Runtime_Convergence' ) ) {
+			MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
+		}
 	}
 
 	public static function boot() {

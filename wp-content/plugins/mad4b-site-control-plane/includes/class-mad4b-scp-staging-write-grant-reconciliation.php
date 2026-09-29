@@ -10,8 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * prove the clean runtime-eligible grant snapshot, then bind the exact current
  * four-part package candidate as the final commit point. It cannot create
  * wildcard grants, touch Production, enable Developer/Developer Breakglass,
- * grant import/export, create/replace agents or subjects, or revoke pre-existing
- * grants except grants created by the same failed invocation before commit.
+ * grant import/export or create/replace agents or subjects. Reviewed stale exact
+ * Staging grants may be retired as monotonic authority narrowing. Unknown stale
+ * authority remains fail-closed and retired stale authority is never restored.
  */
 final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 	const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v3';
@@ -74,6 +75,16 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		return array_keys( self::allowed_ability_providers() );
 	}
 
+	public static function retirable_stale_ability_providers() {
+		// Retirement may recognize a strictly broader historical set than grant
+		// creation. This is authority-narrowing only; these legacy pairs are never
+		// eligible for new grant creation.
+		$providers = self::allowed_ability_providers();
+		$providers['elementor/update-widget-settings'] = 'elementor';
+		ksort( $providers, SORT_STRING );
+		return $providers;
+	}
+
 	public static function allowed_transport_ability_providers() {
 		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! method_exists( 'MAD4B_SCP_Servers', 'chatgpt_dispatch_transport_tools' ) ) return array();
 		$providers = array();
@@ -122,7 +133,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		try {
 			wp_register_ability( self::ABILITY, array(
 				'label' => 'Converge Exact Staging Write Authority',
-				'description' => 'Create only reviewed exact missing Staging grants, prove the clean governed-write snapshot, and bind the exact current package candidate without enabling Developer, Breakglass, or Production authority.',
+				'description' => 'Converge reviewed exact Staging authority by creating exact missing grants and retiring reviewed stale exact grants, then prove the clean governed-write snapshot and bind the exact current package candidate without enabling Developer, Breakglass, or Production authority.',
 				'category' => 'mad4b-governance',
 				'execute_callback' => array( __CLASS__, 'reconcile' ),
 				'permission_callback' => array( __CLASS__, 'can_execute' ),
@@ -150,6 +161,13 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 								'maxLength' => 191,
 								'pattern' => '^[A-Za-z0-9._+\\/-]+$',
 							),
+						),
+						'expected_stale_grant_ids' => array(
+							'type' => 'array',
+							'minItems' => 0,
+							'maxItems' => 64,
+							'uniqueItems' => true,
+							'items' => array( 'type' => 'integer', 'minimum' => 1 ),
 						),
 						'expected_transport_tool_count' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 8 ),
 						'expected_transport_inventory_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
@@ -179,6 +197,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 						'expected_write_tool_count',
 						'expected_write_inventory_fingerprint',
 						'expected_missing_abilities',
+						'expected_stale_grant_ids',
 						'expected_transport_tool_count',
 						'expected_transport_inventory_fingerprint',
 						'expected_missing_transport_abilities',
@@ -196,6 +215,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 						'surface' => 'enrollment',
 						'mad4b_grant_reconciliation_authority' => self::CONTRACT,
 						'creates_exact_staging_grants_only' => true,
+						'retires_reviewed_stale_staging_grants' => true,
+						'stale_retirement_is_authority_narrowing' => true,
 						'binds_exact_package_candidate' => true,
 						'candidate_binding_is_commit_point' => true,
 						'enables_developer_authority' => false,
@@ -237,6 +258,13 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 	private static function normalized_expected_missing( $input ) {
 		$items = isset( $input['expected_missing_abilities'] ) && is_array( $input['expected_missing_abilities'] ) ? array_values( array_unique( array_map( 'strval', $input['expected_missing_abilities'] ) ) ) : array();
 		sort( $items, SORT_STRING );
+		return $items;
+	}
+
+	private static function normalized_expected_stale_grant_ids( $input ) {
+		$items = isset( $input['expected_stale_grant_ids'] ) && is_array( $input['expected_stale_grant_ids'] ) ? array_values( array_unique( array_map( 'absint', $input['expected_stale_grant_ids'] ) ) ) : array();
+		$items = array_values( array_filter( $items ) );
+		sort( $items, SORT_NUMERIC );
 		return $items;
 	}
 
@@ -313,10 +341,10 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		return $errors;
 	}
 
-	private static function rollback_transaction( array $agent, array $grant_ids, $authority_checkpoint, array $transport_grant_ids = array() ) {
+	private static function rollback_transaction( array $agent, array $grant_ids, $authority_checkpoint, array $transport_grant_ids = array(), $restore_authority = true ) {
 		$errors = self::rollback_created( $agent, $transport_grant_ids, 'mad4b-chatgpt' );
 		$errors = array_merge( $errors, self::rollback_created( $agent, $grant_ids, 'mad4b-write' ) );
-		if ( empty( $errors ) ) {
+		if ( empty( $errors ) && $restore_authority ) {
 			$restored = MAD4B_SCP_Staging_Write_Authority::restore_persistence_checkpoint( $authority_checkpoint );
 			if ( is_wp_error( $restored ) ) {
 				$errors[] = $restored->get_error_code() . ':authority_checkpoint';
@@ -325,8 +353,9 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			}
 		} else {
 			// Never restore a previously-ready persisted snapshot while any newly-created
-			// grant could still exist. Force the hot path blocked across fresh requests.
-			$blocked = MAD4B_SCP_Staging_Write_Authority::fail_closed_persisted_authority( 'grant_rollback_incomplete' );
+			// grant could still exist, or after monotonic stale-authority retirement.
+			$reason = $restore_authority ? 'grant_rollback_incomplete' : 'stale_grants_retired_pending_reconciliation';
+			$blocked = MAD4B_SCP_Staging_Write_Authority::fail_closed_persisted_authority( $reason );
 			if ( is_wp_error( $blocked ) ) $errors[] = $blocked->get_error_code() . ':authority_fail_closed';
 		}
 		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
@@ -337,7 +366,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'created_transport_grant_ids' => array_values( array_map( 'intval', $transport_grant_ids ) ),
 				'rollback_complete' => empty( $errors ),
 				'rollback_errors' => array_values( $errors ),
-				'authority_forced_blocked' => ! empty( $errors ),
+				'authority_forced_blocked' => ! $restore_authority || ! empty( $errors ),
+				'authority_checkpoint_restored' => (bool) $restore_authority && empty( $errors ),
 				'production_mutation' => false,
 			), empty( $errors ) ? 'ok' : 'error' );
 			if ( is_wp_error( $audit ) ) $errors[] = $audit->get_error_code() . ':rollback_audit';
@@ -414,16 +444,30 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 
 			$desired = array();
 			foreach ( $inventory['rows'] as $row ) $desired[ $row['ability'] . "\0" . $row['provider'] ] = $row;
+			$allowed_providers = self::allowed_ability_providers();
+			$retirement_providers = self::retirable_stale_ability_providers();
 			$existing_rows = MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], 'mad4b-write' );
 			$seen_allow = array();
+			$stale_rows = array();
 			foreach ( $existing_rows as $grant ) {
 				if ( 'allow' !== (string) $grant['effect'] ) continue;
-				$key = (string) $grant['ability_name'] . "\0" . sanitize_key( (string) $grant['provider'] );
-				if ( ! isset( $desired[ $key ] ) ) return new WP_Error( 'mad4b_grant_reconcile_stale_allow_present', 'Unexpected/stale mad4b-write allow grant must be reconciled separately.', array( 'ability' => $grant['ability_name'], 'provider' => $grant['provider'] ) );
-				if ( 'staging' !== (string) $grant['environment'] ) return new WP_Error( 'mad4b_grant_reconcile_non_staging_allow_present', 'Exact reconciliation refuses all-environment or non-Staging grants.', array( 'ability' => $grant['ability_name'] ) );
-				if ( isset( $seen_allow[ $key ] ) ) return new WP_Error( 'mad4b_grant_reconcile_duplicate_allow_present', 'Duplicate exact mad4b-write allow grant detected.', array( 'ability' => $grant['ability_name'] ) );
+				$ability = (string) $grant['ability_name'];
+				$provider = sanitize_key( (string) $grant['provider'] );
+				$key = $ability . "\0" . $provider;
+				if ( 'staging' !== (string) $grant['environment'] ) return new WP_Error( 'mad4b_grant_reconcile_non_staging_allow_present', 'Exact reconciliation refuses all-environment or non-Staging grants.', array( 'ability' => $ability ) );
+				if ( isset( $seen_allow[ $key ] ) ) return new WP_Error( 'mad4b_grant_reconcile_duplicate_allow_present', 'Duplicate exact mad4b-write allow grant detected.', array( 'ability' => $ability ) );
 				$seen_allow[ $key ] = true;
+				if ( ! isset( $desired[ $key ] ) ) {
+					if ( ! isset( $retirement_providers[ $ability ] ) || sanitize_key( (string) $retirement_providers[ $ability ] ) !== $provider ) {
+						return new WP_Error( 'mad4b_grant_reconcile_stale_allow_unreviewed', 'Unexpected stale authority exists outside the reviewed reconciliation universe.', array( 'ability' => $ability, 'provider' => $provider ) );
+					}
+					$stale_rows[] = $grant;
+				}
 			}
+			usort( $stale_rows, static function ( $a, $b ) { return (int) $a['id'] <=> (int) $b['id']; } );
+			$stale_ids = array_values( array_map( static function ( $row ) { return (int) $row['id']; }, $stale_rows ) );
+			$expected_stale_ids = self::normalized_expected_stale_grant_ids( $input );
+			if ( $stale_ids !== $expected_stale_ids ) return new WP_Error( 'mad4b_grant_reconcile_stale_set_mismatch', 'Live stale-grant set changed or does not match the exact reviewed plan.', array( 'live_stale_grant_ids' => $stale_ids, 'expected_stale_grant_ids' => $expected_stale_ids ) );
 
 			$missing = array();
 			$providers = array();
@@ -437,7 +481,6 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			}
 			sort( $missing, SORT_STRING );
 
-			$allowed_providers = self::allowed_ability_providers();
 			$allowed = array_keys( $allowed_providers );
 			sort( $allowed, SORT_STRING );
 			foreach ( $missing as $ability ) {
@@ -489,6 +532,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'write_tool_count' => (int) $inventory['count'],
 				'write_inventory_fingerprint' => (string) $inventory['fingerprint'],
 				'exact_missing_abilities' => $missing,
+				'exact_stale_grant_ids' => $stale_ids,
 				'transport_tool_count' => (int) $transport_inventory['count'],
 				'transport_inventory_fingerprint' => (string) $transport_inventory['fingerprint'],
 				'exact_missing_transport_abilities' => $transport_missing,
@@ -499,6 +543,29 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			), 'ok' );
 			if ( is_wp_error( $intent ) ) return new WP_Error( 'mad4b_grant_reconcile_intent_audit_failed', 'Authorization evidence could not be committed before grant mutation.' );
 			$authority_checkpoint = MAD4B_SCP_Staging_Write_Authority::persistence_checkpoint();
+			$revoked_stale_ids = array();
+			if ( ! empty( $stale_rows ) ) {
+				$blocked = MAD4B_SCP_Staging_Write_Authority::fail_closed_persisted_authority( 'stale_grants_retiring' );
+				if ( is_wp_error( $blocked ) ) return new WP_Error( 'mad4b_grant_reconcile_stale_fail_closed_failed', 'Unable to fail-close persisted authority before stale grant retirement.' );
+				foreach ( $stale_rows as $stale ) {
+					$grant_id = (int) $stale['id'];
+					$revoked = MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id( $agent['public_id'], $grant_id, 'mad4b-write' );
+					if ( is_wp_error( $revoked ) ) return new WP_Error( 'mad4b_grant_reconcile_stale_revoke_failed', 'Reviewed stale authority retirement stopped fail-closed; retry requires a fresh exact plan.', array( 'grant_id' => $grant_id, 'revoked_stale_grant_ids' => $revoked_stale_ids, 'code' => $revoked->get_error_code() ) );
+					$revoked_stale_ids[] = $grant_id;
+					$stale_audit = MAD4B_SCP_Audit::record( 'mad4b/exact-staging-write-stale-grant-retired', array(
+						'contract' => self::CONTRACT,
+						'agent_public_id' => (string) $agent['public_id'],
+						'server_id' => 'mad4b-write',
+						'grant_id' => $grant_id,
+						'ability' => (string) $stale['ability_name'],
+						'provider' => sanitize_key( (string) $stale['provider'] ),
+						'environment' => 'staging',
+						'authority_change' => 'narrowing',
+						'production_mutation' => false,
+					), 'ok' );
+					if ( is_wp_error( $stale_audit ) ) return new WP_Error( 'mad4b_grant_reconcile_stale_audit_failed', 'Stale grant was retired but its audit write failed; authority remains fail-closed.', array( 'grant_id' => $grant_id, 'revoked_stale_grant_ids' => $revoked_stale_ids ) );
+				}
+			}
 
 			$created_ids = array();
 			$created_abilities = array();
@@ -506,12 +573,12 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				$provider = $providers[ $ability ];
 				$created = MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-write', $ability, $provider, array(), 'allow', 'staging' );
 				if ( is_wp_error( $created ) ) {
-					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, array(), empty( $revoked_stale_ids ) );
 					return new WP_Error( 'mad4b_grant_reconcile_create_failed', 'Exact grant creation failed; newly-created grants were rolled back.', array( 'ability' => $ability, 'code' => $created->get_error_code(), 'rollback_errors' => $rollback ) );
 				}
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-write', $ability, $provider );
 				if ( ! is_array( $grant ) || 'allow' !== (string) $grant['effect'] || 'staging' !== (string) $grant['environment'] ) {
-					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, array(), empty( $revoked_stale_ids ) );
 					return new WP_Error( 'mad4b_grant_reconcile_postcondition_failed', 'New exact grant failed immediate postcondition verification.', array( 'ability' => $ability, 'rollback_errors' => $rollback ) );
 				}
 				$created_ids[] = (int) $grant['id'];
@@ -528,7 +595,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 					'write_inventory_fingerprint' => (string) $inventory['fingerprint'],
 				), 'ok' );
 				if ( is_wp_error( $grant_audit ) ) {
-					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, array(), empty( $revoked_stale_ids ) );
 					return new WP_Error( 'mad4b_grant_reconcile_grant_audit_failed', 'Per-grant audit failed; newly-created grants were rolled back.', array( 'ability' => $ability, 'rollback_errors' => $rollback ) );
 				}
 			}
@@ -536,28 +603,28 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			foreach ( $missing as $ability ) {
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-write', $ability, $providers[ $ability ] );
 				if ( ! is_array( $grant ) || 'allow' !== (string) $grant['effect'] || 'staging' !== (string) $grant['environment'] ) {
-					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, array(), empty( $revoked_stale_ids ) );
 					return new WP_Error( 'mad4b_grant_reconcile_final_grant_check_failed', 'Exact grant set did not converge after mutation; newly-created grants were rolled back.', array( 'ability' => $ability, 'rollback_errors' => $rollback ) );
 				}
 			}
 
 			$authority = MAD4B_SCP_Staging_Write_Authority::finalize_exact_existing_authority();
 			if ( ! is_array( $authority ) || empty( $authority['ready'] ) || 'ready' !== ( isset( $authority['state'] ) ? (string) $authority['state'] : '' ) || ! empty( $authority['grant_blockers'] ) || (int) ( isset( $authority['write_tool_count'] ) ? $authority['write_tool_count'] : 0 ) !== (int) $inventory['count'] || ! isset( $authority['write_inventory_fingerprint'] ) || ! hash_equals( (string) $inventory['fingerprint'], (string) $authority['write_inventory_fingerprint'] ) ) {
-				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, array(), empty( $revoked_stale_ids ) );
 				return new WP_Error( 'mad4b_grant_reconcile_authority_not_ready', 'Exact existing authority did not converge after grant reconciliation; newly-created grants and persisted authority state were rolled back.', array( 'authority' => $authority, 'rollback_errors' => $rollback ) );
 			}
 			if ( ! empty( $authority['exact_grants_created'] ) || ! empty( $authority['stale_allow_grants_revoked'] ) || ! empty( $authority['stale_subjects_disabled'] ) ) {
-				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, array(), empty( $revoked_stale_ids ) );
 				return new WP_Error( 'mad4b_grant_reconcile_unexpected_authority_mutation', 'Exact authority finalization reported mutation outside the explicitly created exact grant set.', array( 'authority' => $authority, 'rollback_errors' => $rollback ) );
 			}
 
 			if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) || ! method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'operation_context' ) ) {
-				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, array(), empty( $revoked_stale_ids ) );
 				return new WP_Error( 'mad4b_grant_reconcile_binding_context_unavailable', 'Audited candidate-binding context factory is unavailable; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
 			}
 			$binding_plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
 			if ( ! is_array( $binding_plan ) ) {
-				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, array(), empty( $revoked_stale_ids ) );
 				return new WP_Error( 'mad4b_grant_reconcile_binding_plan_unavailable', 'Exact binding plan is unavailable after grant convergence; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
 			}
 			$binding_snapshot = isset( $binding_plan['candidate_binding'] ) && is_array( $binding_plan['candidate_binding'] ) ? $binding_plan['candidate_binding'] : array();
@@ -572,7 +639,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				&& hash_equals( $expected_manifest, strtolower( (string) $binding_snapshot['current_package_manifest_digest'] ) )
 				&& hash_equals( $expected_artifact, (string) $binding_snapshot['current_artifact_identity'] );
 			if ( ! $binding_identity_matches ) {
-				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, array(), empty( $revoked_stale_ids ) );
 				return new WP_Error( 'mad4b_grant_reconcile_binding_identity_drift', 'Exact four-part package identity changed before the candidate-binding commit point; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
 			}
 			$binding_context = MAD4B_SCP_Staging_Write_Candidate_Binding::operation_context(
@@ -585,7 +652,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				self::CONTRACT
 			);
 			if ( is_wp_error( $binding_context ) ) {
-				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, array(), empty( $revoked_stale_ids ) );
 				return new WP_Error( 'mad4b_grant_reconcile_binding_context_failed', 'Audited candidate-binding context could not be created after grant reconciliation; newly-created grants and persisted authority state were rolled back.', array( 'code' => $binding_context->get_error_code(), 'rollback_errors' => $rollback ) );
 			}
 
@@ -598,12 +665,12 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				$provider = $transport_providers[ $ability ];
 				$created = MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-chatgpt', $ability, $provider, array(), 'allow', 'staging' );
 				if ( is_wp_error( $created ) ) {
-					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids );
+					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids, empty( $revoked_stale_ids ) );
 					return new WP_Error( 'mad4b_grant_reconcile_transport_create_failed', 'Exact enrollment transport grant creation failed; newly-created grants were rolled back.', array( 'ability' => $ability, 'code' => $created->get_error_code(), 'rollback_errors' => $rollback ) );
 				}
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-chatgpt', $ability, $provider );
 				if ( ! is_array( $grant ) || 'allow' !== (string) $grant['effect'] || 'staging' !== (string) $grant['environment'] ) {
-					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids );
+					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids, empty( $revoked_stale_ids ) );
 					return new WP_Error( 'mad4b_grant_reconcile_transport_postcondition_failed', 'New enrollment transport grant failed immediate postcondition verification.', array( 'ability' => $ability, 'rollback_errors' => $rollback ) );
 				}
 				$created_transport_ids[] = (int) $grant['id'];
@@ -622,7 +689,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 					'breakglass_included' => false,
 				), 'ok' );
 				if ( is_wp_error( $grant_audit ) ) {
-					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids );
+					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids, empty( $revoked_stale_ids ) );
 					return new WP_Error( 'mad4b_grant_reconcile_transport_audit_failed', 'Enrollment transport grant audit failed; newly-created grants were rolled back.', array( 'ability' => $ability, 'rollback_errors' => $rollback ) );
 				}
 			}
@@ -630,7 +697,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			foreach ( $transport_inventory['rows'] as $row ) {
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $row['server_id'], $row['ability'], $row['provider'] );
 				if ( ! is_array( $grant ) || 'allow' !== (string) $grant['effect'] || 'staging' !== (string) $grant['environment'] ) {
-					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids );
+					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids, empty( $revoked_stale_ids ) );
 					return new WP_Error( 'mad4b_grant_reconcile_transport_final_check_failed', 'Enrollment transport grant set did not converge before candidate binding.', array( 'ability' => $row['ability'], 'rollback_errors' => $rollback ) );
 				}
 			}
@@ -657,7 +724,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'breakglass_included' => false,
 			), 'ok' );
 			if ( is_wp_error( $prepared ) ) {
-				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids );
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids, empty( $revoked_stale_ids ) );
 				return new WP_Error( 'mad4b_grant_reconcile_prepared_audit_failed', 'Prepared authority evidence could not be committed before the candidate-binding commit point; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
 			}
 			// Final commit point: candidate binding commits the exact four-part package
@@ -665,7 +732,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			// No fallible governance mutation is permitted after successful return.
 			$bound = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $current_sha, $current_fingerprint, $binding_context );
 			if ( is_wp_error( $bound ) ) {
-				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids );
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids, empty( $revoked_stale_ids ) );
 				return new WP_Error( 'mad4b_grant_reconcile_candidate_binding_failed', 'Exact package candidate could not be bound after grant reconciliation; newly-created grants and persisted authority state were rolled back.', array( 'code' => $bound->get_error_code(), 'rollback_errors' => $rollback ) );
 			}
 			$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
@@ -676,9 +743,11 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 
 			return array(
 				'contract' => self::CONTRACT,
-				'state' => ( empty( $created_abilities ) && empty( $created_transport_abilities ) ) ? 'candidate_rebound' : 'reconciled',
+				'state' => ( empty( $created_abilities ) && empty( $created_transport_abilities ) && empty( $revoked_stale_ids ) ) ? 'candidate_rebound' : 'reconciled',
 				'agent_public_id' => (string) $agent['public_id'],
 				'created_count' => count( $created_abilities ),
+				'revoked_stale_count' => count( $revoked_stale_ids ),
+				'revoked_stale_grant_ids' => $revoked_stale_ids,
 				'created_abilities' => $created_abilities,
 				'created_transport_count' => count( $created_transport_abilities ),
 				'created_transport_abilities' => $created_transport_abilities,
@@ -695,7 +764,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'artifact_identity' => $current_artifact,
 				'plan_sha256' => $current_plan_sha,
 				'candidate_binding_match' => ! empty( $binding['match'] ),
-				'candidate_rebound_without_grant_changes' => empty( $created_abilities ) && empty( $created_transport_abilities ),
+				'candidate_rebound_without_grant_changes' => empty( $created_abilities ) && empty( $created_transport_abilities ) && empty( $revoked_stale_ids ),
 				'runtime_reconciled' => true,
 				'authority_ready' => true,
 				'effective' => true,

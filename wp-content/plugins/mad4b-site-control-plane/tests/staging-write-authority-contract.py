@@ -239,6 +239,8 @@ for marker in [
     "mad4b_grant_reconcile_transport_outside_allowlist",
     "mad4b_grant_reconcile_transport_provider_mismatch",
     "mad4b_grant_reconcile_transport_missing_set_mismatch",
+    "mad4b_grant_reconcile_stale_set_mismatch",
+    "mad4b_grant_reconcile_stale_allow_unreviewed",
 ]:
     if marker not in grant_reconcile:
         raise SystemExit('runtime grant reconciliation allowlist protection missing: ' + marker)
@@ -308,6 +310,11 @@ for marker in [
     "candidate_binding_is_commit_point",
     "'post_commit_governance_mutation' => false",
     "expected_missing_abilities",
+    "expected_stale_grant_ids",
+    "revoked_stale_grant_ids",
+    "mad4b/exact-staging-write-stale-grant-retired",
+    "'authority_change' => 'narrowing'",
+    "stale_grants_retired_pending_reconciliation",
     "expected_agent_public_id",
     "Breakglass/raw SQL must never enter governed grant reconciliation",
     "'native-provider'",
@@ -320,7 +327,8 @@ for marker in [
     if marker not in grant_reconcile:
         raise SystemExit(f'missing bounded exact grant-reconciliation invariant: {marker}')
 
-allowlist = grant_reconcile.split('public static function allowed_ability_providers()', 1)[1].split('public static function allowed_transport_ability_providers()', 1)[0]
+allowlist = grant_reconcile.split('public static function allowed_ability_providers()', 1)[1].split('public static function allowed_abilities()', 1)[0]
+retirement_allowlist = grant_reconcile.split('public static function retirable_stale_ability_providers()', 1)[1].split('public static function allowed_transport_ability_providers()', 1)[0]
 transport_allowlist = grant_reconcile.split('public static function allowed_transport_ability_providers()', 1)[1].split('public static function chatgpt_read_tools()', 1)[0]
 if "MAD4B_SCP_Servers::chatgpt_dispatch_transport_tools()" not in transport_allowlist:
     raise SystemExit('ChatGPT mutation transport grant allowlist must derive from the canonical dispatcher inventory')
@@ -340,6 +348,13 @@ for required_pair in [
 ]:
     if required_pair not in allowlist:
         raise SystemExit(f'exact grant-reconciliation provider pair missing: {required_pair}')
+
+if "'elementor/update-widget-settings' => 'elementor'" in allowlist:
+    raise SystemExit('historical Elementor grant leaked back into grant-creation allowlist')
+if "'elementor/update-widget-settings'] = 'elementor'" not in retirement_allowlist:
+    raise SystemExit('historical Elementor stale grant is not explicitly retirement-only')
+if "retirable_stale_ability_providers" not in grant_plan:
+    raise SystemExit('stale grant plan does not use retirement-only historical allowlist')
 
 for forbidden_grant in [
     "'jetengine/import-configuration'",
@@ -813,17 +828,30 @@ if "MAD4B_SCP_Live_Truth::current_authority_status()" in write.split("public sta
 expected_missing_schema = grant_reconcile.split("'expected_missing_abilities' => array(", 1)[1].split("'expected_transport_tool_count'", 1)[0]
 if "'minItems' => 0" not in expected_missing_schema:
     raise SystemExit('exact grant reconciliation must permit an empty write missing set for same-inventory package candidate rebind')
+expected_stale_schema = grant_reconcile.split("'expected_stale_grant_ids' => array(", 1)[1].split("'expected_transport_tool_count'", 1)[0]
+if "'minItems' => 0" not in expected_stale_schema:
+    raise SystemExit('exact grant reconciliation must permit an empty stale-grant retirement set')
 expected_transport_schema = grant_reconcile.split("'expected_missing_transport_abilities' => array(", 1)[1].split("'confirmation' => array(", 1)[0]
 if "'minItems' => 0" not in expected_transport_schema:
     raise SystemExit('exact grant reconciliation must permit an empty transport missing set after transport convergence')
 if 'mad4b_grant_reconcile_nothing_to_do' in grant_reconcile:
     raise SystemExit('same-inventory package candidate rebind may not fail as nothing-to-do')
-if "'state' => ( empty( $created_abilities ) && empty( $created_transport_abilities ) ) ? 'candidate_rebound' : 'reconciled'" not in grant_reconcile:
-    raise SystemExit('grant reconciliation must distinguish zero-change candidate rebind from write or transport grant creation')
-if "'candidate_rebound_without_grant_changes' => empty( $created_abilities ) && empty( $created_transport_abilities )" not in grant_reconcile:
-    raise SystemExit('candidate rebound evidence must account for both write and ChatGPT transport grant mutation')
+if "'state' => ( empty( $created_abilities ) && empty( $created_transport_abilities ) && empty( $revoked_stale_ids ) ) ? 'candidate_rebound' : 'reconciled'" not in grant_reconcile:
+    raise SystemExit('grant reconciliation must classify stale-authority retirement as a real reconciliation change')
+if "'candidate_rebound_without_grant_changes' => empty( $created_abilities ) && empty( $created_transport_abilities ) && empty( $revoked_stale_ids )" not in grant_reconcile:
+    raise SystemExit('candidate rebound evidence must account for write, transport, and stale-authority mutation')
 if "'source_commit_sha' => $current_sha" not in grant_reconcile or "'build_fingerprint' => $current_fingerprint" not in grant_reconcile:
     raise SystemExit('grant reconciliation completion evidence must remain exact-build bound')
+
+# Certification and the actual mutation guard must agree on peer-governance safety.
+for marker in [
+    "peer_write_side_channel_absent",
+    "peer_governance_safe",
+    "mcp_write_side_channel_detected",
+    "mcp_peer_governance",
+]:
+    if marker not in cert:
+        raise SystemExit('write runtime certification does not expose the live MCP peer mutation gate: ' + marker)
 
 effective_body = write.split("public static function effective()", 1)[1].split("public static function status()", 1)[0]
 if "candidate_binding_status()" not in effective_body:
