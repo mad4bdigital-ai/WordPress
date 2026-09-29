@@ -33,22 +33,26 @@ require(admin, 'MAD4B_SCP_Audit::storage_status()', 'audit-status')
 require(admin, 'MAD4B_SCP_Audit::tail(', 'audit-tail')
 require(admin, "'Legacy anchor matches' => ! empty( $audit['legacy_anchor_match'] )", 'audit-anchor-truth')
 forbid(admin, "$audit['legacy_anchor_matches']", 'audit-anchor-typo')
-require(admin, 'MAD4B_SCP_Adapter_Registry::instance()->runtime_self_test()', 'runtime-self-test')
-require(admin, 'MAD4B_SCP_MCP_Peer_Governance::status()', 'peer-governance')
+forbid(admin, 'MAD4B_SCP_Adapter_Registry::instance()->runtime_self_test()', 'overview-no-deep-runtime-self-test')
+forbid(admin, 'MAD4B_SCP_MCP_Peer_Governance::status()', 'overview-no-peer-scan')
+require(admin, "'runtime_self_test' => array( 'status' => 'deferred' )", 'runtime-self-test-deferred')
+require(admin, 'deferred_to_connection_or_diagnostics_workspace', 'peer-governance-deferred')
 require(admin, "'Inventory reason' => isset( $peer['reason'] ) ? $peer['reason'] : ''", 'peer-inventory-reason')
 require(admin, 'Read-only governance and runtime evidence.', 'read-only-disclosure')
 require(bootstrap, "class-mad4b-scp-admin-ui.php", 'bootstrap-load')
 require(plugin, 'MAD4B_SCP_Admin_UI::boot()', 'plugin-boot')
 
-# wp-admin does not naturally run rest_api_init. The Control Plane primes the
-# local in-memory REST/MCP registry only on bounded authority admin surfaces
-# before rendering readiness/decision state. Scope is centralized so the
-# governance console and human approval console cannot drift independently.
+# wp-admin does not naturally run rest_api_init. Deep MCP registry priming is
+# therefore allowed only on the exact Connection > Endpoints diagnostics tab.
+# Ordinary MAD4B pages (Site Setup, Overview, Governance, Providers, etc.) must
+# remain request-serving reads and may not initialize REST/Abilities as a side effect.
 require(plugin, "add_action( 'admin_init', array( __CLASS__, 'prime_admin_mcp_runtime' ), 1 )", 'admin-mcp-prime-hook')
 require(plugin, 'public static function prime_admin_mcp_runtime()', 'admin-mcp-prime-method')
+require(plugin, "'mad4b-control-plane-connection' !== $page", 'admin-mcp-prime-page-scope')
+require(plugin, "'endpoints' !== $tab", 'admin-mcp-prime-tab-scope')
+require(plugin, "admin_connection_endpoints_prime", 'admin-mcp-prime-diagnostic-reason')
 require(plugin, 'public static function is_authority_admin_surface()', 'admin-authority-surface-helper')
 require(plugin, "return 0 === strpos( $page, 'mad4b-control-plane' ) || 'mad4b-approval-decisions' === $page;", 'admin-authority-surface-boundary')
-require(plugin, "if ( ! current_user_can( 'manage_options' ) || ! self::is_authority_admin_surface() ) return;", 'admin-mcp-prime-scope')
 require(plugin, 'public static function reconcile_authority_on_mad4b_admin()', 'admin-authority-reconcile-method')
 require(plugin, 'rest_get_server();', 'admin-mcp-local-rest-bootstrap')
 for outbound in ('wp_remote_get(', 'wp_remote_post(', 'wp_safe_remote_get(', 'wp_safe_remote_post('):
@@ -70,4 +74,4 @@ for forbidden_sensitive in (
 ):
     forbid(admin, forbidden_sensitive, 'admin-ui-no-sensitive-fields')
 
-print('mad4b.site-control-plane.admin-governance-ui-contract.v4: PASS')
+print('mad4b.site-control-plane.admin-governance-ui-contract.v5: PASS')
