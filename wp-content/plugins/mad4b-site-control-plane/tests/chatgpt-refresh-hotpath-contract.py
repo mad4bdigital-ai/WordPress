@@ -257,6 +257,11 @@ assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in a
 audit_record = audit.split("public static function record(", 1)[1].split("public static function ensure_head_initialized()", 1)[0]
 assert "self::ensure_head_initialized();" in audit_record
 
+# Binding OAuth transport hooks on init must use identity-only readiness.
+oauth_boot = plugin.split("public static function boot_oauth_transport_if_effective()", 1)[1].split("private static function oauth_transport_enabled()", 1)[0]
+assert "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()" in oauth_boot
+assert oauth_boot.index("runtime_identity_status()") < oauth_boot.index("MAD4B_SCP_OAuth_Request_Context_Guard::boot()")
+
 # Runtime scope and protocol hotpath are distinct contracts. Developer planes
 # are real MCP routes; OAuth metadata/protocol paths are latency-sensitive but
 # must not keep the MCP Adapter alive.
