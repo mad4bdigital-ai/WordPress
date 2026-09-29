@@ -196,6 +196,26 @@ plugin_boot = method_body(
     "public static function boot_oauth_transport_if_effective()",
 )
 assert "current_request_is_zero_touch_surface()" in plugin_boot
+assert plugin_boot.index("self::boot_admin_navigation()") < plugin_boot.index("current_request_is_zero_touch_surface()")
 assert plugin_boot.index("current_request_is_zero_touch_surface()") < plugin_boot.index("MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap()")
+
+admin_navigation = method_body(
+    plugin,
+    "private static function boot_admin_navigation()",
+    "public static function boot_oauth_transport_if_effective()",
+)
+for menu_boot in (
+    "MAD4B_SCP_Admin_UI::boot();",
+    "MAD4B_SCP_Context_Admin_UI::boot();",
+    "MAD4B_SCP_Connection_Admin_UI::boot();",
+    "MAD4B_SCP_ChatGPT_Connection_Admin_UI::boot();",
+    "MAD4B_SCP_Adapter_Coverage_Admin_UI::boot();",
+    "MAD4B_SCP_Runtime_Components_Admin_UI::boot();",
+    "MAD4B_SCP_Skills_Admin_UI::boot();",
+):
+    assert menu_boot in admin_navigation, menu_boot
+assert "MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap()" not in admin_navigation
+assert "MAD4B_SCP_Staging_Write_Authority::bootstrap()" not in admin_navigation
+assert "MAD4B_SCP_Skill_Autoconfig::bootstrap()" not in admin_navigation
 
 assert "current_request_is_zero_touch_surface()" in capture
