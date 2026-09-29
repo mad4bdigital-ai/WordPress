@@ -603,5 +603,11 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 
 	private static function gate( $ready, $state, $fresh, $source_contract, array $blockers ) { return array( 'state' => (string) $state, 'ready' => (bool) $ready, 'fresh' => (bool) $fresh, 'source_contract' => (string) $source_contract, 'blockers' => array_values( $blockers ), 'observed_at' => gmdate( 'Y-m-d H:i:s' ) ); }
 	private static function nonproduction_profile_enrolled() { return class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::nonproduction_governed() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment(); }
-	public static function staging_capture_allowed() { if ( defined( 'WP_CLI' ) && WP_CLI ) return false; if ( defined( 'DOING_CRON' ) && DOING_CRON ) return false; return self::nonproduction_profile_enrolled() && MAD4B_SCP_Site_Profile::acceptance_enabled(); }
+	public static function staging_capture_allowed() {
+		if ( defined( 'WP_CLI' ) && WP_CLI ) return false;
+		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return false;
+		if ( defined( 'DOING_CRON' ) && DOING_CRON ) return false;
+		return self::nonproduction_profile_enrolled() && MAD4B_SCP_Site_Profile::acceptance_enabled();
+	}
 }
