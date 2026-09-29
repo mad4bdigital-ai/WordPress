@@ -437,6 +437,15 @@ final class MAD4B_SCP_Runtime_Convergence {
 	private static function convergence_trigger_allowed() {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
 		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
+		// Third-party REST traffic is request-serving work. At init time REST_REQUEST
+		// may not be defined yet, so classify both rest_route and the request URI.
+		$route = isset( $_GET['rest_route'] ) ? (string) wp_unslash( $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- routing observation only.
+		$rest_prefix = function_exists( 'rest_get_url_prefix' ) ? trim( (string) rest_get_url_prefix(), '/' ) : 'wp-json';
+		$uri_path = '' !== $uri && function_exists( 'wp_parse_url' ) ? (string) wp_parse_url( $uri, PHP_URL_PATH ) : '';
+		if ( ( defined( 'REST_REQUEST' ) && REST_REQUEST )
+			|| '' !== trim( $route )
+			|| ( '' !== $uri_path && false !== strpos( '/' . ltrim( $uri_path, '/' ), '/' . $rest_prefix . '/' ) ) ) return false;
 		if ( ! is_admin() ) return true;
 		global $pagenow;
 		$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
