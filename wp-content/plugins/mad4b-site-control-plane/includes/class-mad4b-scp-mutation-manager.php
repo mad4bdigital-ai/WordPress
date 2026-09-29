@@ -45,6 +45,23 @@ final class MAD4B_SCP_Mutation_Manager {
 		return true;
 	}
 
+	private static function rollback_dynamic_publication_transition( $id, array $before ) {
+		$restore = array( 'ID' => absint( $id ) );
+		foreach ( array( 'post_title', 'post_content', 'post_excerpt', 'post_status' ) as $field ) {
+			if ( ! array_key_exists( $field, $before ) ) return new WP_Error( 'mad4b_dynamic_publication_rollback_state_invalid', 'Publication rollback state is incomplete.' );
+			$restore[ $field ] = $before[ $field ];
+		}
+		$result = wp_update_post( wp_slash( $restore ), true );
+		if ( is_wp_error( $result ) ) return $result;
+		$readback = get_post( absint( $id ) );
+		if ( ! $readback || ! hash_equals( self::state_hash( $before ), self::state_hash( self::post_state( $readback ) ) ) ) return new WP_Error(
+			'mad4b_dynamic_publication_rollback_verification_failed',
+			'Publication rollback completed but exact post readback did not match the pre-publication state.',
+			array( 'recovery_required' => true )
+		);
+		return true;
+	}
+
 	public static function execute_post_update( array $input ) {
 		global $wpdb;
 		$id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
@@ -118,21 +135,16 @@ final class MAD4B_SCP_Mutation_Manager {
 		$dynamic_publication = self::is_dynamic_managed_post( $id )
 			&& isset( $update['post_status'] )
 			&& in_array( $update['post_status'], array( 'publish', 'private' ), true );
+		$dynamic_adapter = null;
+		$dynamic_acceptance_sha256 = '';
 		if ( $dynamic_publication ) {
-			$adapter = class_exists( 'MAD4B_SCP_Adapter_Registry' ) ? MAD4B_SCP_Adapter_Registry::instance()->get( 'dynamic-content' ) : null;
-			if ( ! $adapter || ! method_exists( $adapter, 'consume_publication_acceptance' ) ) {
-				$error = new WP_Error( 'mad4b_dynamic_acceptance_runtime_unavailable', 'Dynamic publication acceptance consumer is unavailable.' );
+			$dynamic_adapter = class_exists( 'MAD4B_SCP_Adapter_Registry' ) ? MAD4B_SCP_Adapter_Registry::instance()->get( 'dynamic-content' ) : null;
+			if ( ! $dynamic_adapter || ! method_exists( $dynamic_adapter, 'verify_publication_transition' ) || ! method_exists( $dynamic_adapter, 'consume_publication_acceptance' ) ) {
+				$error = new WP_Error( 'mad4b_dynamic_acceptance_runtime_unavailable', 'Dynamic publication acceptance verifier/consumer is unavailable.' );
 				self::update_record( $mutation_id, array( 'status' => 'failed', 'error_code' => $error->get_error_code() ) );
 				return $error;
 			}
-			$consumed = $adapter->consume_publication_acceptance(
-				$id,
-				isset( $input['dynamic_acceptance_sha256'] ) ? (string) $input['dynamic_acceptance_sha256'] : ''
-			);
-			if ( is_wp_error( $consumed ) ) {
-				self::update_record( $mutation_id, array( 'status' => 'failed', 'error_code' => $consumed->get_error_code() ) );
-				return $consumed;
-			}
+			$dynamic_acceptance_sha256 = isset( $input['dynamic_acceptance_sha256'] ) ? strtolower( trim( (string) $input['dynamic_acceptance_sha256'] ) ) : '';
 		}
 
 		$result = wp_update_post( wp_slash( $update ), true );
@@ -154,7 +166,49 @@ final class MAD4B_SCP_Mutation_Manager {
 			return $verify;
 		}
 
-		self::update_record( $mutation_id, array( 'status' => 'verified', 'after_sha256' => $after_hash, 'verification_code' => 'readback_match', 'error_code' => '' ) );
+		if ( $dynamic_publication ) {
+			$transition = $dynamic_adapter->verify_publication_transition( $id, $dynamic_acceptance_sha256, (string) $update['post_status'] );
+			if ( is_wp_error( $transition ) ) {
+				$rollback = self::rollback_dynamic_publication_transition( $id, $before );
+				$recovery_required = is_wp_error( $rollback );
+				$error = $recovery_required
+					? new WP_Error( 'mad4b_dynamic_publication_recovery_required', 'Dynamic publication state verification failed and the pre-publication state could not be restored exactly.', array(
+						'original_error_code' => $transition->get_error_code(),
+						'rollback_error_code' => $rollback->get_error_code(),
+						'post_id' => $id,
+						'recovery_required' => true,
+					) )
+					: $transition;
+				self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => $error->get_error_code(), 'verification_code' => 'dynamic_publication_state_mismatch' ) );
+				MAD4B_SCP_Audit::record( 'mad4b/content-update-post', array( 'mutation_id' => $mutation_id, 'post_id' => $id, 'verified' => false, 'error_code' => $error->get_error_code(), 'dynamic_publication_rolled_back' => ! $recovery_required ), 'failed' );
+				return $error;
+			}
+
+			$consumed = $dynamic_adapter->consume_publication_acceptance( $id, $dynamic_acceptance_sha256 );
+			if ( is_wp_error( $consumed ) ) {
+				$rollback = self::rollback_dynamic_publication_transition( $id, $before );
+				$recovery_required = is_wp_error( $rollback );
+				$error = $recovery_required
+					? new WP_Error( 'mad4b_dynamic_publication_recovery_required', 'Dynamic acceptance receipt consumption failed and the pre-publication state could not be restored exactly.', array(
+						'original_error_code' => $consumed->get_error_code(),
+						'rollback_error_code' => $rollback->get_error_code(),
+						'post_id' => $id,
+						'recovery_required' => true,
+					) )
+					: $consumed;
+				self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => $error->get_error_code(), 'verification_code' => 'dynamic_acceptance_consume_failed' ) );
+				MAD4B_SCP_Audit::record( 'mad4b/content-update-post', array( 'mutation_id' => $mutation_id, 'post_id' => $id, 'verified' => false, 'error_code' => $error->get_error_code(), 'dynamic_publication_rolled_back' => ! $recovery_required ), 'failed' );
+				return $error;
+			}
+		}
+
+		if ( $dynamic_publication ) {
+			$updated = get_post( $id );
+			if ( ! $updated ) return new WP_Error( 'mad4b_mutation_verification_failed', 'Post disappeared after dynamic publication finalization.' );
+			$after = self::post_state( $updated );
+			$after_hash = self::state_hash( $after );
+		}
+		self::update_record( $mutation_id, array( 'status' => 'verified', 'after_sha256' => $after_hash, 'verification_code' => $dynamic_publication ? 'dynamic_publication_readback_match' : 'readback_match', 'error_code' => '' ) );
 		$audit_payload = array( 'mutation_id' => $mutation_id, 'post_id' => $id, 'before_sha256' => $before_hash, 'after_sha256' => $after_hash, 'verified' => true );
 		if ( ! empty( $input['dynamic_acceptance_sha256'] ) ) $audit_payload['dynamic_acceptance_sha256'] = strtolower( (string) $input['dynamic_acceptance_sha256'] );
 		MAD4B_SCP_Audit::record( 'mad4b/content-update-post', $audit_payload );
