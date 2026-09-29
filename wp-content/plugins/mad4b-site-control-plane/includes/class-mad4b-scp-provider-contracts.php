@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class MAD4B_SCP_Provider_Contracts {
+	private static $installed_version_cache = array();
 	private static $contracts = null;
 	private static $profiles = null;
 	private static $profile_catalog = null;
@@ -172,14 +173,15 @@ final class MAD4B_SCP_Provider_Contracts {
 	private static function installed_version_for_contract( array $contract ) {
 		if ( empty( $contract['plugin_file'] ) ) return '';
 		$file = ltrim( str_replace( '\\', '/', (string) $contract['plugin_file'] ), '/' );
+		if ( array_key_exists( $file, self::$installed_version_cache ) ) return self::$installed_version_cache[ $file ];
 		$absolute = trailingslashit( WP_PLUGIN_DIR ) . $file;
 		if ( is_readable( $absolute ) && function_exists( 'get_file_data' ) ) {
 			$data = get_file_data( $absolute, array( 'Version' => 'Version' ), 'plugin' );
-			if ( is_array( $data ) && ! empty( $data['Version'] ) ) return trim( (string) $data['Version'] );
+			if ( is_array( $data ) && ! empty( $data['Version'] ) ) return self::$installed_version_cache[ $file ] = trim( (string) $data['Version'] );
 		}
 		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$plugins = get_plugins();
-		return isset( $plugins[ $file ] ) && ! empty( $plugins[ $file ]['Version'] ) ? (string) $plugins[ $file ]['Version'] : '';
+		return self::$installed_version_cache[ $file ] = ( isset( $plugins[ $file ] ) && ! empty( $plugins[ $file ]['Version'] ) ? (string) $plugins[ $file ]['Version'] : '' );
 	}
 
 	private static function composite_version_string( array $components, $installed ) {
