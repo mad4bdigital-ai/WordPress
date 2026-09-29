@@ -181,7 +181,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			if ( isset( $seen_allow[ $key ] ) ) $blockers[] = 'duplicate_allow:' . $ability;
 			$seen_allow[ $key ] = true;
 			if ( ! isset( $desired[ $key ] ) ) {
-				// Removing an exact Staging grant is authority-narrowing. Treat it as a
+				// Removing an exact current-environment grant is authority-narrowing. Treat it as a
 				// planned cleanup only when the ability/provider pair is itself from the
 				// reviewed retirement universe; unknown stale authority still blocks.
 				if ( $environment === (string) $grant['environment'] && isset( $retirement_providers[ $ability ] ) && sanitize_key( (string) $retirement_providers[ $ability ] ) === $provider ) {
@@ -229,7 +229,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 				$blockers[] = 'duplicate_transport_allow:' . $row['ability'];
 				continue;
 			}
-			if ( 1 === count( $matching_allows ) && 'staging' !== (string) $matching_allows[0]['environment'] ) {
+			if ( 1 === count( $matching_allows ) && $environment !== (string) $matching_allows[0]['environment'] ) {
 				$blockers[] = 'non_current_environment_transport_allow:' . $row['ability'];
 				continue;
 			}
@@ -253,7 +253,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			'non_authorizing' => true,
 			'eligible' => empty( $blockers ),
 			'blockers' => $blockers,
-			'environment' => 'staging',
+			'environment' => $environment,
 			'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
 			'expected_revision' => (int) MAD4B_SCP_Site_Profile::revision(),
 			'expected_profile_digest' => strtolower( (string) MAD4B_SCP_Site_Profile::profile_digest() ),
