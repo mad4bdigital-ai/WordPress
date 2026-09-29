@@ -89,6 +89,45 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( is_wp_error( $key ) ) self::$runtime_error = $key;
 	}
 
+	public static function runtime_identity_status() {
+		$issuer_validation = self::configured_issuer_validation();
+		$issuer_valid = ! is_wp_error( $issuer_validation );
+		$transport_allowed = self::issuer_transport_allowed( self::issuer() );
+		$installed_store_version = class_exists( 'MAD4B_SCP_Local_OAuth_Store' )
+			? (int) get_option( MAD4B_SCP_Local_OAuth_Store::OPTION, 0 )
+			: 0;
+		$store_ready = class_exists( 'MAD4B_SCP_Local_OAuth_Store' )
+			&& $installed_store_version >= MAD4B_SCP_Local_OAuth_Store::VERSION;
+		$key_path = self::private_key_path();
+		$key_ready = ! is_wp_error( $key_path ) && is_file( $key_path ) && is_readable( $key_path );
+		$clients = self::clients();
+		$client_policy_ready = ! empty( $clients ) || self::cimd_supported();
+		$effective = self::enabled()
+			&& self::environment_allowed()
+			&& $transport_allowed
+			&& $issuer_valid
+			&& $store_ready
+			&& $key_ready
+			&& $client_policy_ready
+			&& ! is_wp_error( self::$runtime_error );
+		return array(
+			'contract' => self::CONTRACT,
+			'configured' => self::enabled(),
+			'effective' => (bool) $effective,
+			'environment' => function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown',
+			'issuer' => self::issuer(),
+			'issuer_configuration_valid' => $issuer_valid,
+			'issuer_transport_allowed' => $transport_allowed,
+			'private_key_present' => $key_ready,
+			'oauth_store_ready' => $store_ready,
+			'oauth_store_version' => $installed_store_version,
+			'client_policy_ready' => $client_policy_ready,
+			'deep_key_validation_deferred' => true,
+			'physical_store_introspection_deferred' => true,
+			'runtime_error' => is_wp_error( self::$runtime_error ) ? self::$runtime_error->get_error_code() : ( is_wp_error( $issuer_validation ) ? $issuer_validation->get_error_code() : '' ),
+		);
+	}
+
 	public static function status() {
 		$key = self::public_jwk();
 		$key_ready = ! is_wp_error( $key );
