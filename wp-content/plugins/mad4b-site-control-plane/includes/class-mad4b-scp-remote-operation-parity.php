@@ -945,6 +945,28 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		return $count;
 	}
 
+	private static function exact_identity_matches( array $left, array $right ) {
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $key ) {
+			$a = strtolower( trim( (string) ( isset( $left[ $key ] ) ? $left[ $key ] : '' ) ) );
+			$b = strtolower( trim( (string) ( isset( $right[ $key ] ) ? $right[ $key ] : '' ) ) );
+			if ( '' === $a || '' === $b || ! hash_equals( $a, $b ) ) return false;
+		}
+		return true;
+	}
+
+	private static function current_build_identity() {
+		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
+		$identity = array(
+			'source_commit_sha' => strtolower( trim( (string) ( isset( $provenance['source_commit_sha'] ) ? $provenance['source_commit_sha'] : '' ) ) ),
+			'build_fingerprint' => strtolower( trim( (string) ( isset( $provenance['build_fingerprint'] ) ? $provenance['build_fingerprint'] : '' ) ) ),
+			'package_manifest_digest' => strtolower( trim( (string) ( isset( $provenance['package_manifest_digest'] ) ? $provenance['package_manifest_digest'] : '' ) ) ),
+		);
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $identity['source_commit_sha'] )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $identity['build_fingerprint'] )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $identity['package_manifest_digest'] ) ) return array();
+		return $identity;
+	}
+
 	private static function frontend_sample_request_status() {
 		$request = get_option( self::BROWSER_REQUEST_OPTION, array() );
 		if ( ! is_array( $request ) || empty( $request ) ) return array();
@@ -960,6 +982,24 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				$claimed_at = isset( $work_job['claimed_at'] ) ? (string) $work_job['claimed_at'] : '';
 			}
 		}
+
+		$current_identity = self::current_build_identity();
+		$request_identity = isset( $request['expected_identity'] ) && is_array( $request['expected_identity'] ) ? $request['expected_identity'] : array();
+		$current_build_match = ! empty( $current_identity ) && self::exact_identity_matches( $request_identity, $current_identity );
+		$request['current_build_match'] = $current_build_match;
+		if ( 'pending_external_executor' === ( isset( $request['status'] ) ? (string) $request['status'] : '' )
+			&& ! empty( $current_identity ) && ! $current_build_match ) {
+			$request['status'] = 'superseded_build';
+			$request['superseded_at'] = gmdate( 'c' );
+			$request['completed_at'] = $request['superseded_at'];
+			$request['superseded_by_identity'] = $current_identity;
+			if ( ! self::persist_browser_request( $request ) ) {
+				$request['status'] = 'persistence_failed';
+				$request['persistence_state'] = 'failed';
+			}
+			return $request;
+		}
+
 		$observed_probe_samples = self::matched_frontend_probe_samples(
 			$performance,
 			isset( $request['probe_hash'] ) ? (string) $request['probe_hash'] : '',
@@ -1555,12 +1595,21 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( 1 !== preg_match( '#^/[A-Za-z0-9/_\.\-]*$#', $path ) || false !== strpos( $path, '..' ) ) return new WP_Error( 'mad4b_frontend_sample_path_invalid', 'Frontend sample target must be a bounded same-origin relative path.' );
 
 		$current = self::frontend_sample_request_status();
+		if ( ! empty( $current ) && 'persistence_failed' === ( isset( $current['status'] ) ? (string) $current['status'] : '' ) ) {
+			return new WP_Error( 'mad4b_frontend_sample_transition_persist_failed', 'Frontend sampling build-transition state could not be durably persisted; retry is denied until state can be read back safely.' );
+		}
 		if ( ! empty( $current ) && 'pending_external_executor' === ( isset( $current['status'] ) ? (string) $current['status'] : '' ) && time() < (int) ( isset( $current['expires_at_epoch'] ) ? $current['expires_at_epoch'] : 0 ) ) {
+			$input_identity = array(
+				'source_commit_sha' => strtolower( (string) $input['expected_source_commit_sha'] ),
+				'build_fingerprint' => strtolower( (string) $input['expected_build_fingerprint'] ),
+				'package_manifest_digest' => strtolower( (string) $input['expected_package_manifest_digest'] ),
+			);
+			$current_identity = isset( $current['expected_identity'] ) && is_array( $current['expected_identity'] ) ? $current['expected_identity'] : array();
 			$same = hash_equals( (string) ( isset( $current['target_path'] ) ? $current['target_path'] : '' ), $path )
 				&& (int) ( isset( $current['requested_samples'] ) ? $current['requested_samples'] : 0 ) === $count
-				&& hash_equals( (string) ( isset( $current['expected_identity']['source_commit_sha'] ) ? $current['expected_identity']['source_commit_sha'] : '' ), strtolower( (string) $input['expected_source_commit_sha'] ) );
+				&& self::exact_identity_matches( $current_identity, $input_identity );
 			if ( $same ) return array( 'contract' => 'mad4b.remote-frontend-performance-sampling.v2', 'state' => 'already_queued', 'request' => $current, 'manual_interaction_required' => false, 'production_mutation' => false );
-			return new WP_Error( 'mad4b_frontend_sample_request_in_flight', 'A different current-build browser sampling request is already pending.' );
+			return new WP_Error( 'mad4b_frontend_sample_request_in_flight', 'A different browser sampling request for this exact build is already pending.' );
 		}
 
 		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
