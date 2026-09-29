@@ -228,6 +228,29 @@ for marker in [
 
 # Connector-facing reconciliation schemas must remain evolution-safe. Runtime
 # allowlists and exact provider checks remain authoritative and fail closed.
+reconcile_schema = grant_reconcile.split("'input_schema' => array(", 1)[1].split("'output_schema' => array", 1)[0]
+stale_schema = reconcile_schema.split("'expected_stale_grant_ids' => array(", 1)[1].split("'expected_transport_tool_count'", 1)[0]
+required_schema = reconcile_schema.split("'required' => array(", 1)[1].split("'additionalProperties' => false", 1)[0]
+if "'default' => array()" not in stale_schema:
+    raise SystemExit('stale-grant assertion must default to an empty set for stale connector compatibility')
+if "'expected_stale_grant_ids'" in required_schema:
+    raise SystemExit('stale-grant assertion must remain optional on the wire for backward-compatible connector schemas')
+for marker in [
+    "expected_stale_grant_ids_optional_when_empty",
+    "stale_grant_omission_fails_closed_on_live_stale",
+    "mad4b_grant_reconcile_stale_set_mismatch",
+]:
+    if marker not in grant_reconcile:
+        raise SystemExit('stale-schema compatibility lost fail-closed protection: ' + marker)
+for marker in [
+    "'expected_stale_grant_ids_required_on_wire' => false",
+    "'omission_semantics' => 'assert_empty_stale_set'",
+    "'legacy_schema_compatible' => empty( $payload['expected_stale_grant_ids'] )",
+    "'fails_closed_if_live_stale_grants_exist' => true",
+]:
+    if marker not in grant_plan:
+        raise SystemExit('reconciliation plan does not expose connector compatibility semantics: ' + marker)
+
 if "'items' => array( 'type' => 'string', 'enum' => self::allowed_abilities() )" in grant_reconcile:
     raise SystemExit('grant reconciliation input schema must not freeze the live write allowlist into a client enum')
 if "'items' => array( 'type' => 'string', 'enum' => self::allowed_transport_abilities() )" in grant_reconcile:
