@@ -109,7 +109,8 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				'sample_size'=>array('type'=>'integer','minimum'=>1,'maximum'=>20,'default'=>5),
 				'term_search'=>array('type'=>'string','maxLength'=>200,'default'=>''),
 				'term_offset'=>array('type'=>'integer','minimum'=>0,'maximum'=>1000000,'default'=>0),
-				'term_limit'=>array('type'=>'integer','minimum'=>1,'maximum'=>200,'default'=>50)
+				'term_limit'=>array('type'=>'integer','minimum'=>1,'maximum'=>200,'default'=>50),
+				'detail'=>array('type'=>'string','enum'=>array('summary','expanded'),'default'=>'summary')
 			)),
 			'read',
 			true,
@@ -575,7 +576,8 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$taxq=isset($input['taxonomy'])?sanitize_key((string)$input['taxonomy']):'';
 		if($pt!==''&&!post_type_exists($pt)) return new WP_Error('mad4b_dynamic_post_type_missing','Requested post type is not registered.');
 		if($taxq!==''&&!taxonomy_exists($taxq)) return new WP_Error('mad4b_dynamic_taxonomy_missing','Requested taxonomy is not registered.');
-		$with_terms=!empty($input['include_terms']); $include_observed_meta=!empty($input['include_observed_meta']); $sample_size=isset($input['sample_size'])?max(1,min(20,absint($input['sample_size']))):5; $offset=isset($input['term_offset'])?max(0,min(1000000,absint($input['term_offset']))):0; $limit=isset($input['term_limit'])?max(1,min(200,absint($input['term_limit']))):50;
+		$detail=isset($input['detail'])&&'expanded'===sanitize_key((string)$input['detail'])?'expanded':'summary';
+		$with_terms='expanded'===$detail&&!empty($input['include_terms']); $include_observed_meta='expanded'===$detail&&!empty($input['include_observed_meta']); $sample_size=isset($input['sample_size'])?max(1,min(20,absint($input['sample_size']))):5; $offset=isset($input['term_offset'])?max(0,min(1000000,absint($input['term_offset']))):0; $limit=isset($input['term_limit'])?max(1,min(200,absint($input['term_limit']))):50;
 		$search=isset($input['term_search'])?sanitize_text_field((string)$input['term_search']):'';
 		$out=array();
 		foreach(get_post_types(array(),'objects') as $name=>$obj){
@@ -609,7 +611,9 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			$descriptor=apply_filters('mad4b_scp_dynamic_content_model_post_type',$descriptor,$name,$obj,$input);
 			if(is_array($descriptor))$out[]=$descriptor;
 		}
-		return array('contract'=>self::CONTRACT,'wordpress_runtime_dynamic'=>true,'hard_coded_post_types'=>false,'hard_coded_taxonomies'=>false,'post_types'=>$out,'count'=>count($out),'read_only'=>true,'mutation_performed'=>false);
+		$model_digest=class_exists('MAD4B_SCP_Canonicalization')?MAD4B_SCP_Canonicalization::digest('dynamic-content-model:v1',array('detail'=>$detail,'post_types'=>$out)):'';
+		if(is_wp_error($model_digest)) $model_digest='';
+		return array('contract'=>self::CONTRACT,'wordpress_runtime_dynamic'=>true,'hard_coded_post_types'=>false,'hard_coded_taxonomies'=>false,'detail'=>$detail,'complete'=>true,'truncated_sections'=>array(),'applied_limits'=>array('term_limit'=>$limit,'sample_size'=>$sample_size),'model_digest'=>$model_digest,'cache_hit'=>false,'post_types'=>$out,'count'=>count($out),'read_only'=>true,'mutation_performed'=>false);
 	}
 
 	private function taxonomy_descriptor($tax,$with_terms,$search,$offset,$limit){
