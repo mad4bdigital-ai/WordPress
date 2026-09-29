@@ -102,9 +102,9 @@ assert "convergence_trigger_allowed" in runtime
 
 assert "if ( 'blocked' === $state ) return;" in runtime
 
-assert "'retry_policy' => 'explicit_resume_required'" in runtime
+assert "$checkpoint['retry_policy'] = 'explicit_resume_required';" in runtime
 
-assert "'automatic_retry_allowed' => false" in runtime
+assert "$checkpoint['automatic_retry_allowed'] = false;" in runtime
 
 assert "'mad4b-approval-decisions' === $page" in runtime
 
