@@ -105,7 +105,7 @@ final class MAD4B_SCP_Connection_Ability {
 				);
 			},
 			'build' => static function () {
-				$status = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
+				$status = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
 				return array(
 					'version' => isset( $status['version'] ) ? (string) $status['version'] : '',
 					'source_commit_sha' => isset( $status['source_commit_sha'] ) ? (string) $status['source_commit_sha'] : '',
@@ -113,9 +113,9 @@ final class MAD4B_SCP_Connection_Ability {
 					'package_manifest_digest' => isset( $status['package_manifest_digest'] ) ? (string) $status['package_manifest_digest'] : '',
 					'artifact_identity' => isset( $status['artifact_identity'] ) ? (string) $status['artifact_identity'] : '',
 					'mcp_adapter_version' => isset( $status['mcp_adapter_version'] ) ? (string) $status['mcp_adapter_version'] : '',
-					'runtime_manifest_match' => ! empty( $status['runtime_manifest_match'] ),
-					'stale' => ! empty( $status['stale'] ),
-					'provenance_mismatch' => isset( $status['provenance_mismatch'] ) && is_array( $status['provenance_mismatch'] ) ? array_values( array_slice( $status['provenance_mismatch'], 0, 20 ) ) : array(),
+					'identity_ready' => ! empty( $status['identity_ready'] ),
+					'full_runtime_hash_validation_deferred' => true,
+					'identity_mismatch' => isset( $status['identity_mismatch'] ) && is_array( $status['identity_mismatch'] ) ? array_values( array_slice( $status['identity_mismatch'], 0, 20 ) ) : array(),
 				);
 			},
 			'connection' => static function () {
@@ -131,15 +131,20 @@ final class MAD4B_SCP_Connection_Ability {
 				);
 			},
 			'write_authority' => static function () {
-				$status = class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_authority_status' )
-					? MAD4B_SCP_Live_Truth::current_authority_status()
-					: ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array() );
+				// Compact preflight reports the persisted exact authority plus the
+				// current candidate-binding fingerprint. Deep grant/provider scans
+				// remain explicit diagnostics and mutation authorization concerns.
+				$status = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
+				$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+					? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
+					: array();
 				return array(
 					'ready' => ! empty( $status['ready'] ),
 					'state' => isset( $status['state'] ) ? (string) $status['state'] : '',
-					'candidate_binding_match' => ! empty( $status['candidate_binding_match'] ),
-					'current_source_commit_sha' => isset( $status['current_source_commit_sha'] ) ? (string) $status['current_source_commit_sha'] : '',
-					'candidate_source_commit_sha' => isset( $status['candidate_source_commit_sha'] ) ? (string) $status['candidate_source_commit_sha'] : '',
+					'candidate_binding_match' => ! empty( $binding['match'] ),
+					'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
+					'candidate_source_commit_sha' => isset( $status['source_commit_sha'] ) ? (string) $status['source_commit_sha'] : '',
+					'deep_authority_scan_deferred' => true,
 					'write_tool_count' => isset( $status['write_tool_count'] ) ? (int) $status['write_tool_count'] : 0,
 					'wildcard_grants' => isset( $status['wildcard_grants'] ) ? (int) $status['wildcard_grants'] : 0,
 					'blockers' => isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? array_values( array_slice( $status['blockers'], 0, 20 ) ) : array(),
