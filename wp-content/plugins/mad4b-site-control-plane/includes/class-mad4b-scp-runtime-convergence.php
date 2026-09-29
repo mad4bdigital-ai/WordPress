@@ -379,10 +379,58 @@ final class MAD4B_SCP_Runtime_Convergence {
 
 	public static function maybe_schedule_pending() {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
+		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '';
+		if ( 'staging' !== $environment ) return;
+
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
-		if ( ! is_array( $checkpoint ) || ! in_array( isset( $checkpoint['state'] ) ? (string) $checkpoint['state'] : '', array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'blocked' ), true ) ) return;
-		if ( 'staging' !== ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' ) ) return;
-		self::schedule_resume();
+		$state = is_array( $checkpoint ) && isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
+		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'blocked' ), true ) ) {
+			$detected = self::detect_lightweight_runtime_drift();
+			if ( ! empty( $detected['detected'] ) && ! empty( $detected['identity_complete'] ) ) {
+				$checkpoint = array(
+					'contract' => self::CONTRACT,
+					'state' => 'pending_safe_phases',
+					'source' => 'lightweight_runtime_drift_detector',
+					'target_identity' => $detected['identity'],
+					'drift_reasons' => $detected['reasons'],
+					'created_at' => gmdate( 'c' ),
+					'updated_at' => gmdate( 'c' ),
+					'production_mutation' => false,
+				);
+				update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+				$state = 'pending_safe_phases';
+			}
+		}
+		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'blocked' ), true ) ) return;
+		if ( ! self::schedule_resume() && is_array( $checkpoint ) ) {
+			$checkpoint['state'] = 'pending_manual_resume';
+			$checkpoint['resume_blocker'] = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'wp_cron_disabled' : 'wp_cron_unavailable';
+			$checkpoint['updated_at'] = gmdate( 'c' );
+			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+		}
+	}
+
+	private static function detect_lightweight_runtime_drift() {
+		$current_version = defined( 'MAD4B_SCP_VERSION' ) ? trim( (string) MAD4B_SCP_VERSION ) : '';
+		$stored_version = trim( (string) get_option( 'mad4b_scp_version', '' ) );
+		$schema_version = class_exists( 'MAD4B_SCP_Schema' ) ? (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) : 0;
+		$expected_schema = class_exists( 'MAD4B_SCP_Schema' ) ? (int) MAD4B_SCP_Schema::VERSION : 0;
+		$reasons = array();
+		if ( '' !== $current_version && ! hash_equals( $current_version, $stored_version ) ) $reasons[] = 'plugin_version_drift';
+		if ( $expected_schema > 0 && $schema_version < $expected_schema ) $reasons[] = 'schema_version_drift';
+		$identity = self::current_identity();
+		$identity_complete = ! empty( $identity['source_commit_sha'] )
+			&& ! empty( $identity['build_fingerprint'] )
+			&& ! empty( $identity['package_manifest_digest'] );
+		return array(
+			'detected' => ! empty( $reasons ),
+			'reasons' => $reasons,
+			'identity' => $identity,
+			'identity_complete' => $identity_complete,
+			'option_reads_only' => true,
+			'filesystem_scan_performed' => false,
+			'database_schema_probe_performed' => false,
+		);
 	}
 
 	private static function schedule_resume() {
@@ -456,6 +504,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'provider_write_certification' => false,
 			);
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			if ( defined( 'MAD4B_SCP_VERSION' ) ) update_option( 'mad4b_scp_version', (string) MAD4B_SCP_VERSION, false );
 			if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 				MAD4B_SCP_Audit::record( self::APPLY_ABILITY, array(
 					'source' => $source,
