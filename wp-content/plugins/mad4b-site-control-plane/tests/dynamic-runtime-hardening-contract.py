@@ -44,3 +44,6 @@ for marker in ["class-mad4b-scp-dynamic-recovery-adapter.php","MAD4B_SCP_Dynamic
 # Guard against accidental adapter text expansion during patch generation.
 if len(adapter.encode("utf-8")) > 200000 or len(adapter.splitlines()) > 3000:
     raise SystemExit("dynamic content adapter size guard failed")
+
+for marker in ["mutation_ttl_policy","acceptance_ttl_policy","dynamic.apply.attempt","dynamic.apply.success","dynamic.apply.failure","dynamic.apply.elapsed_ms","ttl_seconds"]:
+    req(adapter, marker)

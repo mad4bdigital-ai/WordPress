@@ -470,6 +470,10 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			$expected_state_sha256=$this->state_sha256($this->snapshot($post_id,$input));
 		}
 		$bundle_sha256=$this->bundle_sha256_for_input($input,$mode,$post_type,$post_id,$operation_key);
+		$mutation_ttl_policy=class_exists('MAD4B_SCP_Dynamic_TTL_Policy')
+			? MAD4B_SCP_Dynamic_TTL_Policy::decide('mutation_lock',array('impact_level'=>'medium','impact_flags'=>array()))
+			: array('selected_seconds'=>self::MUTATION_LOCK_TTL,'hard_deadline_seconds'=>self::MUTATION_LOCK_TTL*2,'policy_sha256'=>'');
+		if(is_wp_error($mutation_ttl_policy)) return $mutation_ttl_policy;
 		$operation_binding_basis=array(
 			'operation_key'=>$operation_key,
 			'mode'=>$mode,
@@ -480,7 +484,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'bundle_sha256'=>$bundle_sha256,
 			'expected_state_sha256'=>$expected_state_sha256,
 			'pipeline_settings_sha256'=>$pipeline_settings_sha256,
-			'policy_sha256'=>'',
+			'policy_sha256'=>isset($mutation_ttl_policy['policy_sha256'])?(string)$mutation_ttl_policy['policy_sha256']:'',
 			'provider_state_digest'=>'',
 		);
 		if(!class_exists('MAD4B_SCP_Canonicalization')) return new WP_Error('mad4b_operation_binding_unavailable','Operation binding canonicalization is unavailable.');
@@ -518,6 +522,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'steps'=>$steps,
 			'pipeline_settings_sha256'=>$pipeline_settings_sha256,
 			'operation_binding_sha256'=>$operation_binding_sha256,
+			'mutation_ttl_policy'=>$mutation_ttl_policy,
 		);
 		$canonical_json=wp_json_encode($canonical,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
 		return array(
@@ -538,6 +543,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'expected_state_sha256'=>$expected_state_sha256,
 			'pipeline_settings_sha256'=>$pipeline_settings_sha256,
 			'operation_binding_sha256'=>$operation_binding_sha256,
+			'mutation_ttl_policy'=>$mutation_ttl_policy,
 			'post_type_readiness'=>$post_type_readiness,
 			'resolved_terms'=>$resolved,
 			'missing_terms'=>$missing,
@@ -935,16 +941,17 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		return self::MUTATION_LOCK_PREFIX.substr(hash('sha256',$identity),0,48);
 	}
 
-	private function acquire_mutation_lock($mode,$post_type,$post_id,$binding){
+	private function acquire_mutation_lock($mode,$post_type,$post_id,$binding,$ttl=self::MUTATION_LOCK_TTL){
+		$ttl=max(60,min(7200,absint($ttl)));
 		$name=$this->mutation_lock_name($mode,$post_type,$post_id,$binding);
 		$token=wp_generate_uuid4();
 		$value=array('token'=>$token,'acquired_at'=>time());
-		if(add_option($name,$value,'',false)) return array('name'=>$name,'token'=>$token);
+		if(add_option($name,$value,'',false)) return array('name'=>$name,'token'=>$token,'ttl_seconds'=>$ttl);
 		$existing=get_option($name,array());
 		$acquired=is_array($existing)&&isset($existing['acquired_at'])?(int)$existing['acquired_at']:0;
-		if($acquired>0&&$acquired<=(time()-self::MUTATION_LOCK_TTL)){
+		if($acquired>0&&$acquired<=(time()-$ttl)){
 			delete_option($name);
-			if(add_option($name,$value,'',false)) return array('name'=>$name,'token'=>$token);
+			if(add_option($name,$value,'',false)) return array('name'=>$name,'token'=>$token,'ttl_seconds'=>$ttl);
 		}
 		return new WP_Error('mad4b_dynamic_mutation_busy','Another dynamic content mutation is already operating on this exact target.',array('mode'=>sanitize_key((string)$mode),'post_type'=>sanitize_key((string)$post_type),'post_id'=>absint($post_id),'retryable'=>true));
 	}
@@ -1005,16 +1012,22 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if(is_wp_error($pre)) return $this->not_started_error($pre);
 		if(!class_exists('MAD4B_SCP_Operation_Context')||!class_exists('MAD4B_SCP_Operation_Journal')) return $this->not_started_error(new WP_Error('mad4b_operation_journal_unavailable','Operation journal foundation is unavailable.'));
 
+		$metric_started=microtime(true);
+		if(class_exists('MAD4B_SCP_Runtime_Metrics')) MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.attempt',1);
 		$environment=function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown';
+		$mutation_ttl_policy=class_exists('MAD4B_SCP_Dynamic_TTL_Policy')
+			? MAD4B_SCP_Dynamic_TTL_Policy::decide('mutation_lock',array('impact_level'=>'medium','impact_flags'=>array()))
+			: array('selected_seconds'=>self::MUTATION_LOCK_TTL,'hard_deadline_seconds'=>self::MUTATION_LOCK_TTL*2,'policy_sha256'=>'');
+		if(is_wp_error($mutation_ttl_policy)) return $this->not_started_error($mutation_ttl_policy);
 		$binding_basis=array(
 			'operation_key'=>$pre['operation_key'],'mode'=>$pre['mode'],'environment'=>$environment,'scope'=>'dynamic_content',
 			'post_type'=>$pre['post_type'],'post_id_or_zero'=>$pre['post_id'],
 			'bundle_sha256'=>isset($input['expected_bundle_sha256'])?strtolower((string)$input['expected_bundle_sha256']):'',
 			'expected_state_sha256'=>isset($input['expected_state_sha256'])?strtolower((string)$input['expected_state_sha256']):'',
 			'pipeline_settings_sha256'=>isset($input['expected_pipeline_settings_sha256'])?strtolower((string)$input['expected_pipeline_settings_sha256']):'',
-			'policy_sha256'=>'','provider_state_digest'=>'',
+			'policy_sha256'=>isset($mutation_ttl_policy['policy_sha256'])?(string)$mutation_ttl_policy['policy_sha256']:'','provider_state_digest'=>'',
 		);
-		$operation=MAD4B_SCP_Operation_Context::create($pre['operation_key'],$binding_basis,array('hard_deadline_seconds'=>1800));
+		$operation=MAD4B_SCP_Operation_Context::create($pre['operation_key'],$binding_basis,array('hard_deadline_seconds'=>isset($mutation_ttl_policy['hard_deadline_seconds'])?(int)$mutation_ttl_policy['hard_deadline_seconds']:1800));
 		if(is_wp_error($operation)) return $this->not_started_error($operation);
 		$expected_operation_binding=isset($input['expected_operation_binding_sha256'])?strtolower(trim((string)$input['expected_operation_binding_sha256'])):'';
 		if($expected_operation_binding!==''&&!hash_equals((string)$operation['operation_binding_sha256'],$expected_operation_binding)) return $this->not_started_error(new WP_Error(
@@ -1025,12 +1038,14 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if(is_wp_error($journal)) return $this->not_started_error($journal);
 
 		$binding=$this->binding($pre['post_type'],$pre['operation_key']);
-		$lock=$this->acquire_mutation_lock($pre['mode'],$pre['post_type'],$pre['post_id'],$binding);
+		$lock=$this->acquire_mutation_lock($pre['mode'],$pre['post_type'],$pre['post_id'],$binding,isset($mutation_ttl_policy['selected_seconds'])?(int)$mutation_ttl_policy['selected_seconds']:self::MUTATION_LOCK_TTL);
 		if(is_wp_error($lock)){
+			if(class_exists('MAD4B_SCP_Runtime_Metrics')) MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.lock_rejected',1);
 			MAD4B_SCP_Operation_Journal::append($operation,'lock_rejected',array('lifecycle_state'=>'terminal_failed','terminal_outcome'=>'rejected_before_start','metadata'=>array('error_code'=>$lock->get_error_code())));
 			return $this->not_started_error($lock);
 		}
-		MAD4B_SCP_Operation_Journal::heartbeat($operation,gmdate('c',time()+self::MUTATION_LOCK_TTL));
+		$lock_ttl=isset($lock['ttl_seconds'])?(int)$lock['ttl_seconds']:self::MUTATION_LOCK_TTL;
+		MAD4B_SCP_Operation_Journal::heartbeat($operation,gmdate('c',time()+$lock_ttl));
 		MAD4B_SCP_Operation_Journal::append($operation,'mutation_lock_acquired',array('checkpoint'=>'lock_acquired','lifecycle_state'=>'running'));
 		try{
 			$result=$this->apply_bundle_locked($input,$lock);
@@ -1040,10 +1055,20 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				$compensated=is_array($data)&&isset($data['mad4b_compensation']['compensated'])&&!empty($data['mad4b_compensation']['compensated']);
 				$outcome=$recovery?'recovery_required':($compensated?'compensated':'manual_required');
 				MAD4B_SCP_Operation_Journal::append($operation,'operation_failed',array('lifecycle_state'=>'terminal_failed','terminal_outcome'=>$outcome,'metadata'=>array('error_code'=>$result->get_error_code(),'recovery_required'=>$recovery,'compensated'=>$compensated)));
+				if(class_exists('MAD4B_SCP_Runtime_Metrics')){
+					MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.failure',1);
+					if($recovery) MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.recovery_required',1);
+					if($compensated) MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.compensated',1);
+					MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.elapsed_ms',(int)round((microtime(true)-$metric_started)*1000));
+				}
 				return $result;
 			}
 			$tail=MAD4B_SCP_Operation_Journal::append($operation,'operation_completed',array('lifecycle_state'=>'completed','terminal_outcome'=>'success','metadata'=>array('post_id'=>isset($result['post_id'])?$result['post_id']:(isset($result['state']['post']['ID'])?$result['state']['post']['ID']:0))));
 			if(is_wp_error($tail)) return $tail;
+			if(class_exists('MAD4B_SCP_Runtime_Metrics')){
+				MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.success',1);
+				MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.elapsed_ms',(int)round((microtime(true)-$metric_started)*1000));
+			}
 			if(is_array($result)) $result['operation']=array('operation_id'=>$operation['operation_id'],'operation_key'=>$operation['operation_key'],'operation_binding_sha256'=>$operation['operation_binding_sha256'],'journal_head_sha256'=>$tail['journal_head_sha256']);
 			return $result;
 		} finally {
@@ -1362,6 +1387,10 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$accepted_state=$this->snapshot(absint($id),$this->input_from_state_scope($scope));
 		$accepted_post=get_post(absint($id));
 		if(!$accepted_post) return new WP_Error('mad4b_dynamic_acceptance_target_missing','Accepted post disappeared before the publication receipt could be persisted.');
+		$acceptance_ttl_policy=class_exists('MAD4B_SCP_Dynamic_TTL_Policy')
+			? MAD4B_SCP_Dynamic_TTL_Policy::decide('acceptance',array('impact_level'=>'low','impact_flags'=>array()))
+			: array('tier'=>'long','selected_seconds'=>self::DEFAULT_ACCEPTANCE_TTL,'policy_sha256'=>'');
+		if(is_wp_error($acceptance_ttl_policy)) return $acceptance_ttl_policy;
 		$receipt=array(
 			'contract'=>self::ACCEPTANCE_CONTRACT,
 			'post_id'=>absint($id),
@@ -1374,6 +1403,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'environment'=>function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown',
 			'scope'=>$scope,
 			'accepted_at'=>gmdate('c'),
+			'acceptance_ttl_policy'=>$acceptance_ttl_policy,
 		);
 		$written=update_post_meta(absint($id),self::ACCEPTANCE_META,$receipt);
 		$readback=$this->acceptance_meta_state(absint($id));
@@ -1410,7 +1440,8 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'Post modification timestamp changed after acceptance; rerun acceptance before publication.',
 			array('accepted_modified_gmt'=>$accepted_modified,'current_modified_gmt'=>(string)$post->post_modified_gmt)
 		);
-		$ttl=(int)apply_filters('mad4b_scp_dynamic_content_acceptance_ttl',self::DEFAULT_ACCEPTANCE_TTL,$post_id,$receipt);
+		$ttl_default=isset($receipt['acceptance_ttl_policy']['selected_seconds'])?(int)$receipt['acceptance_ttl_policy']['selected_seconds']:self::DEFAULT_ACCEPTANCE_TTL;
+		$ttl=(int)apply_filters('mad4b_scp_dynamic_content_acceptance_ttl',$ttl_default,$post_id,$receipt);
 		$ttl=max(60,min(self::MAX_ACCEPTANCE_TTL,$ttl));
 		$accepted_at=isset($receipt['accepted_at'])?strtotime((string)$receipt['accepted_at']):false;
 		if(false===$accepted_at||$accepted_at<time()-$ttl) return new WP_Error('mad4b_dynamic_acceptance_expired','Dynamic acceptance receipt is stale; rerun acceptance before publication.');
