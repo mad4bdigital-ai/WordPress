@@ -123,7 +123,13 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 
 	public static function aggregate_ready( array $gates ) {
 		if ( empty( $gates ) ) return false;
-		foreach ( $gates as $gate ) if ( ! is_array( $gate ) || empty( $gate['ready'] ) ) return false;
+		foreach ( $gates as $gate ) {
+			if ( ! is_array( $gate ) ) return false;
+			$effective = class_exists( 'MAD4B_SCP_Truth_Projection' )
+				? MAD4B_SCP_Truth_Projection::gate_effective_ready( $gate )
+				: ( ! empty( $gate['ready'] ) && ( ! array_key_exists( 'fresh', $gate ) || ! empty( $gate['fresh'] ) ) );
+			if ( ! $effective ) return false;
+		}
 		return true;
 	}
 
@@ -575,10 +581,13 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 	}
 
 	private static function gate( $ready, $state, $fresh, $contract, array $blockers, $observed_at = '' ) {
+		if ( class_exists( 'MAD4B_SCP_Truth_Projection' ) ) return MAD4B_SCP_Truth_Projection::gate( $ready, $state, $fresh, $contract, $blockers, $observed_at, true );
 		return array(
 			'state' => (string) $state,
 			'ready' => (bool) $ready,
 			'fresh' => (bool) $fresh,
+			'freshness_required' => true,
+			'effective_ready' => (bool) $ready && (bool) $fresh,
 			'source_contract' => (string) $contract,
 			'blockers' => array_values( array_unique( array_filter( array_map( 'strval', $blockers ) ) ) ),
 			'observed_at' => '' !== (string) $observed_at ? (string) $observed_at : gmdate( 'c' ),

@@ -341,13 +341,22 @@ assert "0 !== strpos( $page, 'mad4b-control-plane' )" in qm_db_bootstrap
 assert qm_db_bootstrap.index("0 !== strpos( $page, 'mad4b-control-plane' )") < qm_db_bootstrap.index("@symlink(")
 assert qm_db_bootstrap.index("0 !== strpos( $page, 'mad4b-control-plane' )") < qm_db_bootstrap.index("@fopen(")
 
-# Third-party wp-admin pages (WPML, plugins.php, Elementor, etc.) are not
-# profiling jobs at all. Exit before acceptance/profile checks, provenance,
-# telemetry reads/writes, Query Monitor collectors, or performance sampling.
+# Third-party wp-admin pages (WPML, plugins.php, Elementor, etc.) remain
+# zero-touch by default. The only opt-in is the exact short-lived governed
+# acceptance canary. Both the generic zero-touch guard and the wp-admin-specific
+# guard must run before provenance, telemetry reads/writes, Query Monitor
+# collectors, or performance sampling.
 assert "private static function current_request_is_mad4b_admin_surface()" in query_monitor
-foreign_admin_guard = "if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() ) return;"
+assert "private static function request_acceptance_canary_kind()" in query_monitor
+assert "$acceptance_canary = self::request_acceptance_canary_kind();" in qm_flush
+zero_touch_guard = "MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface()"
+foreign_admin_guard = "if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() && '' === $acceptance_canary ) return;"
+assert zero_touch_guard in qm_flush
+assert "&& '' === $acceptance_canary ) return;" in qm_flush
 assert foreign_admin_guard in qm_flush
 guard_pos = qm_flush.index(foreign_admin_guard)
+assert qm_flush.index("$acceptance_canary = self::request_acceptance_canary_kind();") < qm_flush.index(zero_touch_guard)
+assert qm_flush.index(zero_touch_guard) < guard_pos
 assert guard_pos < qm_flush.index("MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed()")
 assert guard_pos < qm_flush.index("self::request_build_fingerprint()")
 assert guard_pos < qm_flush.index("self::load_telemetry( $build )")

@@ -510,15 +510,28 @@ final class MAD4B_SCP_Read_Consistency {
 			return $changed;
 		}
 
+		$subject_blockers = array();
+		$runtime_checks = isset( $sections['runtime']['checks'] ) && is_array( $sections['runtime']['checks'] ) ? $sections['runtime']['checks'] : array();
+		foreach ( array(
+			'write_authority' => 'effective_authority_ready',
+			'skills_runtime' => 'effective_skill_ready',
+		) as $check_name => $effective_key ) {
+			$summary = isset( $runtime_checks[ $check_name ]['summary'] ) && is_array( $runtime_checks[ $check_name ]['summary'] ) ? $runtime_checks[ $check_name ]['summary'] : array();
+			if ( empty( $summary[ $effective_key ] ) ) $subject_blockers[] = $check_name . '_not_effective';
+		}
+		$subject_blockers = array_values( array_unique( $subject_blockers ) );
+		$valid_for_merge = ! $partial && empty( $subject_blockers );
+
 		$report = array(
 			'contract' => 'mad4b.session-safe-diagnostics.v1',
-			'state' => $partial ? 'partial' : 'ready',
+			'state' => $partial ? 'partial' : ( $valid_for_merge ? 'ready' : 'subject_not_ready' ),
 			'partial' => $partial,
 			'read_transaction_id' => $transaction_id,
 			'snapshot_id' => isset( $after['snapshot_id'] ) ? (string) $after['snapshot_id'] : '',
 			'runtime_generation' => $runtime_generation,
 			'generation_match' => true,
-			'valid_for_merge' => true,
+			'valid_for_merge' => $valid_for_merge,
+			'subject_blockers' => $subject_blockers,
 			'projection_freshness' => 'live',
 			'observed_at' => gmdate( 'c' ),
 			'elapsed_ms' => (int) round( ( microtime( true ) - $started ) * 1000 ),
@@ -557,13 +570,18 @@ final class MAD4B_SCP_Read_Consistency {
 		$checks = array();
 		foreach ( isset( $result['checks'] ) && is_array( $result['checks'] ) ? $result['checks'] : array() as $name => $check ) {
 			$check = is_array( $check ) ? $check : array();
+			$data = isset( $check['data'] ) && is_array( $check['data'] ) ? $check['data'] : array();
+			$summary = self::compact_status_data( $name, $data );
 			$checks[ sanitize_key( (string) $name ) ] = array(
 				'ok' => ! empty( $check['ok'] ),
 				'state' => isset( $check['state'] ) ? sanitize_key( (string) $check['state'] ) : '',
+				'check_execution_state' => isset( $check['state'] ) ? sanitize_key( (string) $check['state'] ) : '',
+				'subject_state' => isset( $summary['state'] ) ? sanitize_key( (string) $summary['state'] ) : '',
+				'subject_ready' => array_key_exists( 'ready', $summary ) ? (bool) $summary['ready'] : null,
 				'category' => isset( $check['category'] ) ? sanitize_key( (string) $check['category'] ) : '',
 				'elapsed_ms' => isset( $check['elapsed_ms'] ) ? max( 0, (int) $check['elapsed_ms'] ) : 0,
-				'summary' => self::compact_status_data( $name, isset( $check['data'] ) ? $check['data'] : array() ),
-				'evidence_digest' => self::digest( isset( $check['data'] ) ? $check['data'] : array() ),
+				'summary' => $summary,
+				'evidence_digest' => self::digest( $data ),
 			);
 		}
 		return array(
@@ -602,6 +620,8 @@ final class MAD4B_SCP_Read_Consistency {
 			'blind_retry_allowed', 'next_action', 'candidate_match', 'build_fingerprint_match',
 			'full_runtime_hash_validation_deferred', 'deep_authority_scan_deferred',
 			'live_skill_evaluation_deferred', 'runtime_catalog_rebuild_deferred',
+			'recorded_ready', 'current_candidate_match', 'effective_skill_ready', 'recorded_source_commit_sha', 'recorded_build_fingerprint',
+			'persisted_authority_ready', 'effective_authority_ready',
 			'deep_route_validation_deferred', 'deep_peer_inventory_deferred',
 			'deep_oauth_validation_deferred', 'provider_runtime_hash_validation_deferred',
 			'deep_local_oauth_status_deferred', 'deep_oauth_bridge_status_deferred',
@@ -993,10 +1013,24 @@ final class MAD4B_SCP_Read_Consistency {
 			'write_tool_count', 'write_inventory_fingerprint', 'provider_blocked_fingerprint',
 			'wildcard_grants', 'breakglass_included', 'production_auto_enable', 'breakglass_auto_enable', 'observed_at',
 		) );
-		$result['candidate_binding_required'] = ! empty( $binding['required'] );
-		$result['candidate_binding_match'] = ! empty( $binding['match'] );
+		$persisted_ready = ! empty( $result['ready'] );
+		$binding_required = ! empty( $binding['required'] );
+		$binding_match = ! empty( $binding['match'] );
+		$effective_ready = $persisted_ready && ( ! $binding_required || $binding_match );
+		$result['persisted_authority_ready'] = $persisted_ready;
+		$result['candidate_binding_required'] = $binding_required;
+		$result['candidate_binding_match'] = $binding_match;
+		$result['effective_authority_ready'] = $effective_ready;
+		$result['ready'] = $effective_ready;
+		$result['state'] = $effective_ready ? 'ready' : ( ! empty( $result['eligible'] ) ? 'blocked' : 'ineligible' );
 		$result['current_source_commit_sha'] = isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '';
-		$result['candidate_source_commit_sha'] = isset( $status['source_commit_sha'] ) ? (string) $status['source_commit_sha'] : '';
+		$result['candidate_source_commit_sha'] = isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : ( isset( $status['source_commit_sha'] ) ? (string) $status['source_commit_sha'] : '' );
+		if ( $binding_required && ! $binding_match ) {
+			$result['blockers'] = isset( $result['blockers'] ) && is_array( $result['blockers'] ) ? $result['blockers'] : array();
+			$result['blockers'][] = 'runtime_authority_candidate_not_reconciled';
+			$result['blockers'] = array_values( array_unique( $result['blockers'] ) );
+			$result['blocker'] = 'runtime_authority_candidate_not_reconciled';
+		}
 		$result['deep_authority_scan_deferred'] = true;
 		return $result;
 	}
@@ -1023,8 +1057,35 @@ final class MAD4B_SCP_Read_Consistency {
 		$result = self::bounded_keys( $status, array(
 			'contract', 'ready', 'state', 'persistence', 'blocker', 'blockers',
 			'provider_count', 'expected_provider_count', 'managed_skill_count',
-			'expected_managed_skill_count', 'observed_at',
+			'expected_managed_skill_count', 'source_commit_sha', 'build_fingerprint', 'observed_at',
 		) );
+		$current = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) && method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()
+			: array();
+		$recorded_sha = isset( $result['source_commit_sha'] ) ? strtolower( (string) $result['source_commit_sha'] ) : '';
+		$recorded_fingerprint = isset( $result['build_fingerprint'] ) ? strtolower( (string) $result['build_fingerprint'] ) : '';
+		$current_sha = isset( $current['source_commit_sha'] ) ? strtolower( (string) $current['source_commit_sha'] ) : '';
+		$current_fingerprint = isset( $current['build_fingerprint'] ) ? strtolower( (string) $current['build_fingerprint'] ) : '';
+		$candidate_match = preg_match( '/^[a-f0-9]{40}$/', $recorded_sha )
+			&& preg_match( '/^[a-f0-9]{64}$/', $recorded_fingerprint )
+			&& hash_equals( $recorded_sha, $current_sha )
+			&& hash_equals( $recorded_fingerprint, $current_fingerprint );
+		$recorded_ready = ! empty( $result['ready'] );
+		$effective_ready = $recorded_ready && $candidate_match;
+		$result['recorded_ready'] = $recorded_ready;
+		$result['recorded_source_commit_sha'] = $recorded_sha;
+		$result['recorded_build_fingerprint'] = $recorded_fingerprint;
+		$result['current_source_commit_sha'] = $current_sha;
+		$result['current_build_fingerprint'] = $current_fingerprint;
+		$result['current_candidate_match'] = $candidate_match;
+		$result['effective_skill_ready'] = $effective_ready;
+		$result['ready'] = $effective_ready;
+		if ( $recorded_ready && ! $candidate_match ) {
+			$result['state'] = 'historical_evidence';
+			$result['blockers'] = isset( $result['blockers'] ) && is_array( $result['blockers'] ) ? $result['blockers'] : array();
+			$result['blockers'][] = 'skill_runtime_candidate_identity_unproven';
+			$result['blockers'] = array_values( array_unique( $result['blockers'] ) );
+		}
 		$result['live_skill_evaluation_deferred'] = true;
 		return $result;
 	}
