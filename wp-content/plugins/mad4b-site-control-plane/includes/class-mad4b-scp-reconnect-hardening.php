@@ -18,7 +18,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	const CERTIFIED_STATEFUL_ADAPTER_VERSION = '0.6.1';
 	private static $booted = false;
 	private static $session_repair_state = 'not_attempted';
-	private static $initialize_started_with_empty_store = false;
+	private static $initialize_empty_requests = array();
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -54,13 +54,19 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	}
 
 
+	private static function request_scope_key( $request ) {
+		return is_object( $request ) ? spl_object_hash( $request ) : '';
+	}
+
 	public static function reset_session_policy_scope( $result, $server, $request ) {
-		self::$initialize_started_with_empty_store = false;
+		$key = self::request_scope_key( $request );
+		if ( '' !== $key ) unset( self::$initialize_empty_requests[ $key ] );
 		return $result;
 	}
 
 	public static function clear_session_policy_scope( $response, $server, $request ) {
-		self::$initialize_started_with_empty_store = false;
+		$key = self::request_scope_key( $request );
+		if ( '' !== $key ) unset( self::$initialize_empty_requests[ $key ] );
 		return $response;
 	}
 
@@ -71,6 +77,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'request_scope_reset_before_reconnect_guard' => true,
 			'request_scope_reset_before_oauth_dispatch' => true,
 			'request_scope_cleared_after_dispatch' => true,
+			'request_scope_bound_to_exact_request_object' => true,
+			'nested_rest_request_cannot_clear_outer_initialize_state' => true,
 			'certified_stateful_runtime' => self::session_repair_supported_runtime(),
 			'adapter_session_max_modified' => false,
 			'adapter_inactivity_timeout_modified' => false,
@@ -372,7 +380,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$method = method_exists( $request, 'get_method' ) ? strtoupper( (string) $request->get_method() ) : 'POST';
 		$body = 'POST' === $method ? self::request_json( $request ) : array();
 		if ( 'POST' === $method && 'initialize' === ( $body['method'] ?? '' ) ) {
-			self::$initialize_started_with_empty_store = self::session_store_is_empty_for_first_initialize( get_current_user_id() );
+			$key = self::request_scope_key( $request );
+			if ( '' !== $key ) self::$initialize_empty_requests[ $key ] = self::session_store_is_empty_for_first_initialize( get_current_user_id() );
 			return $result;
 		}
 		$session_id = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'mcp-session-id' ) ) : '';
@@ -414,7 +423,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID ) ) return $response;
 		$body = self::request_json( $request );
 		if ( 'initialize' !== ( $body['method'] ?? '' ) ) return $response;
-		if ( ! self::$initialize_started_with_empty_store ) {
+		$key = self::request_scope_key( $request );
+		$started_empty = '' !== $key && ! empty( self::$initialize_empty_requests[ $key ] );
+		if ( ! $started_empty ) {
 			self::$session_repair_state = 'initialize_not_first_empty_transition';
 			return $response;
 		}
