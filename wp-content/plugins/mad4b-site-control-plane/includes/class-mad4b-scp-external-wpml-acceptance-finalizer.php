@@ -95,10 +95,16 @@ final class MAD4B_SCP_External_WPML_Acceptance_Finalizer {
 
 	public static function external_wpml_receipt_status_from_local_wpml( $wpml ) {
 		$external = self::authoritative_external_receipt();
-		$diagnostic = class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' )
-			&& method_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer', 'external_wpml_receipt_status_from_local_wpml' )
-			? MAD4B_SCP_Live_Acceptance_Finalizer::external_wpml_receipt_status_from_local_wpml( $wpml )
-			: array();
+		$diagnostic = array();
+		if ( class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' ) ) {
+			if ( method_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer', 'external_wpml_receipt_status_from_local_wpml' ) ) {
+				$diagnostic = MAD4B_SCP_Live_Acceptance_Finalizer::external_wpml_receipt_status_from_local_wpml( $wpml );
+			} elseif ( method_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer', 'external_wpml_receipt_status' ) ) {
+				// Compatibility fallback for partial/older runtime compositions. The
+				// canonical external receipt remains authoritative after the merge.
+				$diagnostic = MAD4B_SCP_Live_Acceptance_Finalizer::external_wpml_receipt_status();
+			}
+		}
 		if ( ! is_array( $diagnostic ) ) $diagnostic = array();
 		$out = self::finalize_status( $external, $diagnostic );
 		$out['authority_contract'] = self::CONTRACT;
