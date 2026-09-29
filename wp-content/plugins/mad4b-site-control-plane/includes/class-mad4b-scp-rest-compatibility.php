@@ -305,7 +305,7 @@ final class MAD4B_SCP_REST_Compatibility {
 			'mcp_recovery_callbacks_removed_for_unrelated_request' => array_values( self::$mcp_recovery_callbacks_removed ),
 			'wpml' => $wpml,
 			'wpml_internal_probe_ready' => ! empty( $wpml['ready'] ),
-			'query_parameters_preserved' => ! empty( $wpml['query_parameters_preserved'] ),
+			'query_parameters_preserved' => class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::tri_state( $wpml, 'query_parameters_preserved' ) : ( array_key_exists( 'query_parameters_preserved', $wpml ) ? $wpml['query_parameters_preserved'] : null ),
 			'wpml_internal_probe_role' => 'diagnostic_only',
 			'wpml_internal_probe_blocks_local_certification' => false,
 			'external_wpml_acceptance_required' => $external_wpml_required,
