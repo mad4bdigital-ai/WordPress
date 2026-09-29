@@ -61,6 +61,60 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 		return 'mad4b-control-plane-connection' === $page && 'endpoints' === $tab;
 	}
 
+	public static function current_request_is_foreign_rest() {
+		if ( self::current_request_is_mad4b_protocol() ) return false;
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) return true;
+
+		$route = isset( $_GET['rest_route'] ) ? (string) wp_unslash( $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		if ( '' !== trim( $route ) ) return true;
+
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- routing observation only.
+		if ( '' === $uri ) return false;
+		$path = wp_parse_url( $uri, PHP_URL_PATH );
+		if ( ! is_string( $path ) || '' === $path ) return false;
+		$prefix = function_exists( 'rest_get_url_prefix' ) ? trim( (string) rest_get_url_prefix(), '/' ) : 'wp-json';
+		return false !== strpos( '/' . ltrim( rawurldecode( $path ), '/' ), '/' . $prefix . '/' );
+	}
+
+	public static function current_request_is_wordpress_cron() {
+		if ( defined( 'DOING_CRON' ) && DOING_CRON ) return true;
+		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- routing observation only.
+		if ( '' === $uri ) return false;
+		$path = wp_parse_url( $uri, PHP_URL_PATH );
+		return is_string( $path ) && '/wp-cron.php' === substr( '/' . ltrim( $path, '/' ), -12 );
+	}
+
+	public static function current_request_is_zero_touch_surface() {
+		return self::current_request_is_foreign_rest() || self::current_request_is_wordpress_cron();
+	}
+
+	public static function zero_touch_reason() {
+		if ( self::current_request_is_foreign_rest() ) return 'foreign_rest';
+		if ( self::current_request_is_wordpress_cron() ) return 'wordpress_cron';
+		return '';
+	}
+
+	private static function current_request_is_mad4b_protocol() {
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_is_protocol_hotpath' )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return true;
+
+		$route = isset( $_GET['rest_route'] ) ? (string) wp_unslash( $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$route = '/' . ltrim( rtrim( $route, '/' ), '/' );
+		if ( 0 === strpos( $route, '/mad4b/' ) || 0 === strpos( $route, '/mcp/mad4b-' ) ) return true;
+
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- routing observation only.
+		if ( '' === $uri ) return false;
+		$path = wp_parse_url( $uri, PHP_URL_PATH );
+		if ( ! is_string( $path ) ) return false;
+		$path = '/' . ltrim( rawurldecode( $path ), '/' );
+		return false !== strpos( $path, '/wp-json/mad4b/' )
+			|| false !== strpos( $path, '/wp-json/mcp/mad4b-' )
+			|| 0 === strpos( $path, '/oauth/mcp/' )
+			|| 0 === strpos( $path, '/.well-known/oauth-' );
+	}
+
 	public static function active_provider_dispatch_allowed() {
 		// Provider behavior is proven by the governed external/browser executor.
 		// Local status reads never dispatch a provider endpoint internally.
@@ -77,6 +131,10 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 			'automatic_probe_retry_allowed' => false,
 			'explicit_rest_materialization_surface' => 'mad4b-control-plane-connection:endpoints',
 			'provider_behavior_executor' => 'governed_external_executor',
+			'current_request_zero_touch' => self::current_request_is_zero_touch_surface(),
+			'current_request_zero_touch_reason' => self::zero_touch_reason(),
+			'foreign_rest_zero_touch' => true,
+			'wordpress_cron_zero_touch' => true,
 		);
 	}
 }
