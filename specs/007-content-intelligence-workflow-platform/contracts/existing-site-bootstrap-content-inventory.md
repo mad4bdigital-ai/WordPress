@@ -35,6 +35,8 @@ Bootstrap is read-only unless a separate reconciliation plan is approved.
 The bootstrap inventory is consumable through bounded remote MCP transports and therefore MUST NOT assume that an entire existing site fits in one response.
 
 - `after_id` is a stable ascending object-id continuation cursor.
+- returned inventory items remain ordered by ascending `object_id` after compact transport projection and before any byte-budget truncation;
+- when continuation is required, `next_after_id` is the greatest represented object ID and MUST advance strictly beyond the request `after_id`, preventing replay across adjacent pages;
 - the runtime may cap the effective page size below the caller's requested `max_items` to respect the transport byte budget;
 - a page that does not cover the full inventory is truthful partial evidence and returns `inventory_pagination_required_or_active`;
 - `next_after_id` advances only through material represented by the returned page, so transport truncation cannot silently skip content;
