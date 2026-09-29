@@ -260,6 +260,7 @@ for marker in (
     "'activity_update_interval_modified' => false",
     "'repair_capacity_ceiling' => 32",
     "'repair_uses_upstream_session_capacity' => true",
+    "apply_filters( 'mcp_adapter_session_max_per_user', 32 )",
     "'reinitialize_required_without_valid_repair_shadow' => true",
     "'blind_read_replay_after_transport_reinitialize' => false",
     "'original_read_request_continues_after_verified_repair' => true",
@@ -348,10 +349,10 @@ for forbidden in (
     "'general_expiry_or_eviction_rehydration_enabled' => true",
     "CHATGPT_SESSION_MAX_PER_USER",
     "CHATGPT_SESSION_INACTIVITY_TIMEOUT",
-    "mcp_adapter_session_max_per_user",
-    "mcp_adapter_session_inactivity_timeout",
+    "add_filter( 'mcp_adapter_session_max_per_user'",
+    "add_filter( 'mcp_adapter_session_inactivity_timeout'",
     "CHATGPT_SESSION_ACTIVITY_UPDATE_INTERVAL",
-    "mcp_adapter_session_activity_update_interval",
+    "add_filter( 'mcp_adapter_session_activity_update_interval'",
 ):
     forbid(reconnect, forbidden, 'mcp-session-continuity-bounded')
 
