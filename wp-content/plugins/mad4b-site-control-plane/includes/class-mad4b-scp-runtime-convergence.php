@@ -381,6 +381,11 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '';
 		if ( 'staging' !== $environment ) return;
+		// Third-party wp-admin pages are pure request-serving surfaces. They must
+		// never inspect build provenance, mutate checkpoints, schedule convergence,
+		// or revive failed lifecycle jobs. Governed update/plugin lifecycle, MAD4B
+		// operator pages, Cron/CLI and ordinary front-end traffic remain triggers.
+		if ( ! self::convergence_trigger_allowed() ) return;
 
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		$state = is_array( $checkpoint ) && isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
@@ -402,7 +407,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$state = 'pending_safe_phases';
 		}
 
-		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'blocked' ), true ) ) {
+		if ( 'blocked' === $state ) return;
+		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume' ), true ) ) {
 			$detected = self::detect_lightweight_runtime_drift();
 			if ( ! empty( $detected['detected'] ) && ! empty( $detected['identity_complete'] ) ) {
 				$checkpoint = array(
@@ -419,13 +425,26 @@ final class MAD4B_SCP_Runtime_Convergence {
 				$state = 'pending_safe_phases';
 			}
 		}
-		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'blocked' ), true ) ) return;
+		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume' ), true ) ) return;
 		if ( ! self::schedule_resume() && is_array( $checkpoint ) ) {
 			$checkpoint['state'] = 'pending_manual_resume';
 			$checkpoint['resume_blocker'] = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'wp_cron_disabled' : 'wp_cron_unavailable';
 			$checkpoint['updated_at'] = gmdate( 'c' );
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 		}
+	}
+
+	private static function convergence_trigger_allowed() {
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
+		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
+		if ( ! is_admin() ) return true;
+		global $pagenow;
+		$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
+		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
+		if ( 0 === strpos( $page, 'mad4b-control-plane' ) || 'mad4b-approval-decisions' === $page ) return true;
+		if ( in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return true;
+		return in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
 	}
 
 	private static function detect_lightweight_runtime_drift() {
@@ -495,6 +514,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( is_wp_error( $result ) ) {
 			$checkpoint['state'] = 'blocked';
 			$checkpoint['last_error_code'] = $result->get_error_code();
+			$checkpoint['retry_policy'] = 'explicit_resume_required';
+			$checkpoint['automatic_retry_allowed'] = false;
 			$checkpoint['updated_at'] = gmdate( 'c' );
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 		}
