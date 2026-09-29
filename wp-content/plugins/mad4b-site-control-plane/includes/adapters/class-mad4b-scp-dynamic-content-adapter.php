@@ -1010,6 +1010,10 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if(empty($operation)||!class_exists('MAD4B_SCP_Operation_Journal')) return true;
 		$metadata=is_array($metadata)?$metadata:array();
 		$metadata['owned_state_sha256']=$this->state_sha256($owned_state);
+		$mode=isset($metadata['mode'])?sanitize_key((string)$metadata['mode']):'';
+		$post_id=isset($metadata['post_id'])?absint($metadata['post_id']):0;
+		$recovery_state=('create'===$mode&&$post_id>0)?array('exists'=>true,'post_id'=>$post_id):$owned_state;
+		$metadata['recovery_owned_state_sha256']=$this->state_sha256($recovery_state);
 		$r=MAD4B_SCP_Operation_Journal::append($operation,$event_type,array(
 			'checkpoint'=>$checkpoint,
 			'lifecycle_state'=>'running',
@@ -1156,7 +1160,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if($v['mode']==='create') $owned_after=$created_owned;
 		$a=$this->apply_desired($id,$input,$owned_after);
 		if(is_wp_error($a)) return $this->failure_with_compensation($a,$v['mode'],$id,$before,$owned_after);
-		$checkpoint=$this->journal_owned_checkpoint($operation,'desired_state_write_verified','desired_state_written',$owned_after,array('post_id'=>(int)$id));
+		$checkpoint=$this->journal_owned_checkpoint($operation,'desired_state_write_verified','desired_state_written',$owned_after,array('post_id'=>(int)$id,'mode'=>$v['mode']));
 		if(is_wp_error($checkpoint)) return $this->failure_with_compensation($checkpoint,$v['mode'],$id,$before,$owned_after);
 
 		$pipeline=isset($v['pipeline_config'])&&is_array($v['pipeline_config'])
@@ -1229,7 +1233,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				if(is_wp_error($repaired)) return $this->failure_with_compensation($repaired,$v['mode'],$id,$before,$owned_after);
 				$context=$repaired;
 				$owned_after=$this->snapshot($id,$input);
-				$checkpoint=$this->journal_owned_checkpoint($operation,'repair_write_verified','repair_iteration_written',$owned_after,array('post_id'=>(int)$id,'iteration'=>$i));
+				$checkpoint=$this->journal_owned_checkpoint($operation,'repair_write_verified','repair_iteration_written',$owned_after,array('post_id'=>(int)$id,'mode'=>$v['mode'],'iteration'=>$i));
 				if(is_wp_error($checkpoint)) return $this->failure_with_compensation($checkpoint,$v['mode'],$id,$before,$owned_after);
 				$last=count($history)-1;
 				if($last>=0){
