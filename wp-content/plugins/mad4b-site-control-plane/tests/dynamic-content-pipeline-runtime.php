@@ -118,7 +118,11 @@ $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array
 );
 $result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$context);
 check(!is_wp_error($result),'optional stage may skip unavailable condition');
-check(!empty($result['stage_results'][0]['status']) && $result['stage_results'][0]['status']==='skipped_condition_unavailable','optional unavailable condition is explicit, not silently removed');
+$optional_status='';
+foreach(isset($result['stage_results'])?(array)$result['stage_results']:array() as $stage_result){
+	if(isset($stage_result['stage_id'])&&$stage_result['stage_id']==='source_fidelity') $optional_status=isset($stage_result['status'])?(string)$stage_result['status']:'';
+}
+check($optional_status==='skipped_condition_unavailable','optional unavailable condition is explicit, not silently removed');
 
 $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array(
 	'stages'=>array(
