@@ -42,6 +42,8 @@ final class MAD4B_SCP_WPML_Response_Contract {
 		if ( ! self::staging_allowed() || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $response;
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
 		if ( self::ROUTE !== $route ) return $response;
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' )
+			|| ! MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_external_provider_rest( self::ROUTE ) ) return $response;
 
 		$parameter_present = method_exists( $request, 'get_param' ) && '1' === (string) $request->get_param( 'test_get_parameter' );
 		$status_code = 0;
@@ -88,6 +90,8 @@ final class MAD4B_SCP_WPML_Response_Contract {
 			'status' => $evaluated['status'],
 			'get_parameters' => $evaluated['get_parameters'],
 			'safe_message' => $safe_message,
+			'observation_source' => 'external_http_request',
+			'internal_rest_dispatch_accepted' => false,
 		);
 		update_option( self::OPTION, $receipt, false );
 		return $response;
@@ -157,11 +161,16 @@ final class MAD4B_SCP_WPML_Response_Contract {
 			'safe_message' => '',
 		);
 		if ( ! is_array( $stored ) || empty( $stored['observed'] ) ) {
-			$rest = class_exists( 'MAD4B_SCP_REST_Compatibility' ) ? MAD4B_SCP_REST_Compatibility::status() : array();
-			if ( isset( $rest['wpml']['route_registered'] ) && false === (bool) $rest['wpml']['route_registered'] ) {
+			$route = class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' )
+				? MAD4B_SCP_Provider_Diagnostic_Policy::rest_route_snapshot( self::ROUTE )
+				: array( 'route_registered' => null );
+			if ( array_key_exists( 'route_registered', $route ) && false === $route['route_registered'] ) {
 				$base['classification'] = 'route_not_registered';
-				$base['state'] = 'route_not_registered_internal_probe_only';
+				$base['state'] = 'route_not_registered_passive_snapshot';
 			}
+			$base['local_probe_mode'] = 'passive_snapshot';
+			$base['provider_self_calls_started'] = 0;
+			$base['internal_rest_dispatch_performed'] = false;
 			return $base;
 		}
 		foreach ( array( 'observed','observed_at','build_fingerprint','request_route','test_get_parameter_present','response_status','response_content_type','error_code','body_classification','classification','status','get_parameters','safe_message' ) as $key ) {
@@ -200,7 +209,9 @@ final class MAD4B_SCP_WPML_Response_Contract {
 	}
 
 	private static function candidate_identity() {
-		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
+		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) && method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()
+			: array();
 		$sha = isset( $provenance['source_commit_sha'] ) ? strtolower( (string) $provenance['source_commit_sha'] ) : '';
 		$fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
 		return array(
@@ -210,7 +221,9 @@ final class MAD4B_SCP_WPML_Response_Contract {
 	}
 
 	private static function staging_allowed() {
-		return class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) && MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed();
+		return class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
+			&& method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'staging_passive_receipt_allowed' )
+			&& MAD4B_SCP_Live_Acceptance_Observer::staging_passive_receipt_allowed();
 	}
 
 	private static function parse_time( $value ) {

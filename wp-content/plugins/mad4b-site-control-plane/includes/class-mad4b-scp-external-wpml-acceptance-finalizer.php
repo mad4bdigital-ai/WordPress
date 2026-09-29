@@ -46,16 +46,20 @@ final class MAD4B_SCP_External_WPML_Acceptance_Finalizer {
 			&& empty( $external['stale'] )
 			&& 'valid' === ( isset( $external['status'] ) ? (string) $external['status'] : '' )
 			&& 'valid' === ( isset( $external['get_parameters'] ) ? (string) $external['get_parameters'] : '' );
-		if ( ! $authoritative ) return $diagnostic;
+		if ( ! $authoritative ) {
+			$diagnostic['success'] = ! empty( $diagnostic['verified'] );
+			$diagnostic['success_semantics'] = 'deprecated_alias_of_verified';
+			return $diagnostic;
+		}
 
 		$out = array_merge( $diagnostic, $external );
 		$out['verified'] = true;
+		$out['success'] = true;
+		$out['success_semantics'] = 'deprecated_alias_of_verified';
 		$out['stale'] = isset( $external['stale'] ) ? (bool) $external['stale'] : false;
 		$out['classification'] = 'success';
 		$out['state'] = 'verified_external_wpml';
 		$out['internal_probe_role'] = 'diagnostic_only';
-		// Keep the diagnostic probe visible without allowing it to become the
-		// acceptance authority.
 		if ( array_key_exists( 'route_registered', $diagnostic ) ) {
 			$out['route_registered'] = $diagnostic['route_registered'];
 		}
@@ -83,10 +87,24 @@ final class MAD4B_SCP_External_WPML_Acceptance_Finalizer {
 	}
 
 	public static function external_wpml_receipt_status() {
-		$external = self::authoritative_external_receipt();
-		$diagnostic = class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' )
-			? MAD4B_SCP_Live_Acceptance_Finalizer::external_wpml_receipt_status()
+		$wpml = class_exists( 'MAD4B_SCP_REST_Compatibility' ) && method_exists( 'MAD4B_SCP_REST_Compatibility', 'wpml_probe' )
+			? MAD4B_SCP_REST_Compatibility::wpml_probe()
 			: array();
+		return self::external_wpml_receipt_status_from_local_wpml( $wpml );
+	}
+
+	public static function external_wpml_receipt_status_from_local_wpml( $wpml ) {
+		$external = self::authoritative_external_receipt();
+		$diagnostic = array();
+		if ( class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' ) ) {
+			if ( method_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer', 'external_wpml_receipt_status_from_local_wpml' ) ) {
+				$diagnostic = MAD4B_SCP_Live_Acceptance_Finalizer::external_wpml_receipt_status_from_local_wpml( $wpml );
+			} elseif ( method_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer', 'external_wpml_receipt_status' ) ) {
+				// Compatibility fallback for partial/older runtime compositions. The
+				// canonical external receipt remains authoritative after the merge.
+				$diagnostic = MAD4B_SCP_Live_Acceptance_Finalizer::external_wpml_receipt_status();
+			}
+		}
 		if ( ! is_array( $diagnostic ) ) $diagnostic = array();
 		$out = self::finalize_status( $external, $diagnostic );
 		$out['authority_contract'] = self::CONTRACT;
