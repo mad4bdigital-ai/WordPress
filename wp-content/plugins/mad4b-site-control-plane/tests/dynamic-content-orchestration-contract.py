@@ -479,4 +479,13 @@ for marker in [
     if marker not in adapter:
         raise SystemExit(f"local compensation acceptance invalidation missing: {marker}")
 
+
+for marker in [
+    "$owned_state['meta'][(string)$k]=array('exists'=>false,'values'=>array())",
+    "$owned_state['meta'][(string)$k]['values'][]=$this->normalize_meta_storage_value($value)",
+    "mad4b_dynamic_featured_media_delete_failed",
+]:
+    if marker not in adapter:
+        raise SystemExit(f"partial-write ownership invariant missing: {marker}")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
