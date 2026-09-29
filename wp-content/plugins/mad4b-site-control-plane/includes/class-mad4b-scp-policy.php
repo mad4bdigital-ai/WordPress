@@ -42,8 +42,22 @@ final class MAD4B_SCP_Policy {
 	}
 
 	public static function can_mutate() {
-		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) || true !== MAD4B_MCP_MUTATION_ENABLED ) return false;
-		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured() && ! MAD4B_SCP_Site_Profile::governed_write_ready() ) return false;
+		$explicit_gate_defined = defined( 'MAD4B_MCP_MUTATION_ENABLED' );
+		$explicit_gate_enabled = $explicit_gate_defined && true === MAD4B_MCP_MUTATION_ENABLED;
+		$profile_configured = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured();
+		$profile_ready = $profile_configured && MAD4B_SCP_Site_Profile::governed_write_ready();
+
+		// An explicit false constant is a hard kill switch. When the constant is
+		// absent, an exact enrolled Site Profile with governed write enabled is
+		// the mutation gate; this removes per-site wp-config edits without ever
+		// granting authority by installation. Legacy/unprofiled deployments retain
+		// the explicit-constant requirement.
+		if ( $explicit_gate_defined && ! $explicit_gate_enabled ) return false;
+		if ( $profile_configured ) {
+			if ( ! $profile_ready ) return false;
+		} elseif ( ! $explicit_gate_enabled ) {
+			return false;
+		}
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
 		$identity = MAD4B_SCP_Identity_Context::current();
