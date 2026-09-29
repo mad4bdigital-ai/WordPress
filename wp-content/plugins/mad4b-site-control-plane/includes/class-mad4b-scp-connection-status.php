@@ -51,9 +51,9 @@ final class MAD4B_SCP_Connection_Status {
 		if ( ! $adapter_available ) $local_blockers[] = 'mcp_adapter_unavailable';
 		if ( $adapter_available && ! $provider_ok ) $local_blockers[] = 'mcp_adapter_not_certified';
 		if ( ! $server_ok ) $local_blockers[] = 'mad4b_transport_registration_incomplete';
-		if ( empty( $peer['inventory_ready'] ) ) $local_blockers[] = 'mcp_peer_inventory_unavailable';
+		if ( ! $protocol_hotpath && empty( $peer['inventory_ready'] ) ) $local_blockers[] = 'mcp_peer_inventory_unavailable';
 		if ( ! empty( $peer['write_side_channel_detected'] ) ) $local_blockers[] = 'mcp_write_side_channel_detected';
-		if ( ! empty( $peer['blockers'] ) && is_array( $peer['blockers'] ) ) $local_blockers = array_merge( $local_blockers, $peer['blockers'] );
+		if ( ! $protocol_hotpath && ! empty( $peer['blockers'] ) && is_array( $peer['blockers'] ) ) $local_blockers = array_merge( $local_blockers, $peer['blockers'] );
 		$local_blockers = array_values( array_unique( array_map( 'sanitize_key', $local_blockers ) ) );
 
 		$remote_preflight_blockers = array_merge( $local_blockers, $oauth_blockers );
@@ -97,6 +97,7 @@ final class MAD4B_SCP_Connection_Status {
 			'certification_blockers' => $certification_blockers,
 			'servers' => $servers,
 			'transport_deep_validation_deferred' => $protocol_hotpath,
+			'deferred_checks' => $protocol_hotpath ? array( 'route_permission_validation', 'mcp_peer_inventory', 'write_catalog_inventory' ) : array(),
 			'write_surface' => self::write_surface_summary( $servers, $protocol_hotpath ),
 			'provider_mcp_isolation' => self::bounded_isolation_status( $isolation ),
 			'oauth_resource_server' => self::bounded_oauth_status( $oauth, $oauth_blockers ),
@@ -331,8 +332,8 @@ final class MAD4B_SCP_Connection_Status {
 		return array(
 			'server_id' => 'mad4b-write',
 			'registered' => ! empty( $server['registered'] ),
-			'route_registered' => ! empty( $server['route_registered'] ),
-			'permission_callback_match' => ! empty( $server['permission_callback_match'] ),
+			'route_registered' => $protocol_hotpath ? null : ! empty( $server['route_registered'] ),
+			'permission_callback_match' => $protocol_hotpath ? null : ! empty( $server['permission_callback_match'] ),
 			'endpoint' => isset( $server['endpoint'] ) ? esc_url_raw( $server['endpoint'] ) : esc_url_raw( rest_url( 'mcp/mad4b-write' ) ),
 			'mounted_write_tool_count' => $protocol_hotpath ? null : ( is_array( $tools ) ? count( $tools ) : 0 ),
 			'write_catalog_deferred' => (bool) $protocol_hotpath,
