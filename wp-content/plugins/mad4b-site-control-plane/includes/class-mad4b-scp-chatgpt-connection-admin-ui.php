@@ -70,6 +70,10 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'production_readonly_breakglass_enabled' => false,
 			'profile_oauth_ready' => (bool) $profile_oauth_ready,
 			'portable_readonly_ready' => (bool) $portable_ready,
+			'portable_profile_binding_state' => isset( $portable['profile_binding_state'] ) ? sanitize_key( (string) $portable['profile_binding_state'] ) : '',
+			'foreign_profile_quarantined' => ! empty( $portable['foreign_profile_quarantined'] ),
+			'requires_site_enrollment' => ! empty( $portable['requires_site_enrollment'] ),
+			'portable_blocker' => isset( $portable['blocker'] ) ? sanitize_key( (string) $portable['blocker'] ) : '',
 			'environment_ready' => (bool) $environment_ready,
 			'oauth_canary_available' => (bool) $oauth_canary_available,
 			'server_url' => $server_url,
@@ -118,6 +122,13 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'Connect WordPress to ChatGPT', 'mad4b-site-control-plane' ); ?></h1>
 			<p><?php echo esc_html__( 'Use the dedicated mad4b-chatgpt gateway. ChatGPT discovers OAuth and uses its Client ID Metadata Document automatically; no WordPress-side ChatGPT client secret or manual client registration is required.', 'mad4b-site-control-plane' ); ?></p>
+
+			<?php if ( ! empty( $status['foreign_profile_quarantined'] ) ) : ?>
+				<div class="notice notice-warning inline"><p>
+					<strong><?php echo esc_html__( 'A Site Profile from another tenant is quarantined.', 'mad4b-site-control-plane' ); ?></strong>
+					<?php echo esc_html__( ' Read-only OAuth is bound dynamically to this site’s current origin and local Administrators. No write, Skills, Developer or Breakglass authority is inherited. Explicitly enroll this site before enabling governed features.', 'mad4b-site-control-plane' ); ?>
+				</p></div>
+			<?php endif; ?>
 
 			<?php if ( 'production' === $status['environment'] ) : ?>
 				<div class="notice notice-<?php echo ! empty( $status['production_readonly_enabled'] ) ? 'success' : 'warning'; ?> inline"><p>
@@ -179,6 +190,8 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			<table class="widefat striped" style="max-width:900px">
 				<tbody>
 					<tr><th>Environment</th><td><?php echo esc_html( $status['environment'] ); ?></td></tr>
+					<tr><th>Site Profile binding</th><td><?php echo esc_html( '' !== $status['portable_profile_binding_state'] ? $status['portable_profile_binding_state'] : ( ! empty( $status['profile_oauth_ready'] ) ? 'exact' : 'unconfigured' ) ); ?></td></tr>
+					<tr><th>Foreign profile quarantined</th><td><?php echo ! empty( $status['foreign_profile_quarantined'] ) ? 'yes' : 'no'; ?></td></tr>
 					<?php if ( 'production' === $status['environment'] ) : ?><tr><th>Production read-only profile</th><td><?php echo ! empty( $status['production_readonly_enabled'] ) ? 'enabled' : 'disabled'; ?></td></tr><?php endif; ?>
 					<tr><th>ChatGPT gateway registered</th><td><?php echo ! empty( $status['gateway_registered'] ) ? 'yes' : 'no'; ?></td></tr>
 					<tr><th>Local OAuth effective</th><td><?php echo ! empty( $status['local_oauth_effective'] ) ? 'yes' : 'no'; ?></td></tr>

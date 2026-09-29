@@ -325,11 +325,19 @@ final class MAD4B_SCP_Site_Profile {
 		if ( 'local' !== $environment && 'https' !== strtolower( (string) wp_parse_url( $origin, PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_site_profile_https_required', 'Non-local governed sites require HTTPS.' );
 
 		$existing = get_option( self::OPTION, array() );
-		$current_revision = is_array( $existing ) && self::valid_record( $existing ) && isset( $existing['revision'] ) ? absint( $existing['revision'] ) : 0;
+		$existing_valid = is_array( $existing ) && self::valid_record( $existing );
+		$existing_normalized = $existing_valid ? self::normalize_record( $existing ) : array();
+		$current_revision = $existing_valid && isset( $existing_normalized['revision'] ) ? absint( $existing_normalized['revision'] ) : 0;
 		$expected_revision = isset( $input['expected_revision'] ) ? absint( $input['expected_revision'] ) : $current_revision;
 		if ( $expected_revision !== $current_revision ) return new WP_Error( 'mad4b_site_profile_stale', 'Site profile changed since this form was loaded. Reload before saving.' );
-		$site_uuid = is_array( $existing ) && ! empty( $existing['site_uuid'] ) && self::valid_uuid( $existing['site_uuid'] ) ? strtolower( (string) $existing['site_uuid'] ) : wp_generate_uuid4();
-		$revision = $current_revision + 1;
+		$existing_identity_matches = $existing_valid
+			&& hash_equals( (string) $existing_normalized['environment'], $environment )
+			&& hash_equals( (string) $existing_normalized['canonical_origin'], $origin );
+		$identity_rebound = $existing_valid && ! $existing_identity_matches;
+		$site_uuid = $existing_identity_matches && ! empty( $existing_normalized['site_uuid'] )
+			? strtolower( (string) $existing_normalized['site_uuid'] )
+			: wp_generate_uuid4();
+		$revision = $existing_identity_matches ? $current_revision + 1 : 1;
 		$app_id = isset( $input['chatgpt_app_id'] ) ? trim( sanitize_text_field( (string) $input['chatgpt_app_id'] ) ) : '';
 		if ( '' !== $app_id && ! preg_match( '/^plugin_asdk_app_[A-Za-z0-9]+$/', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_id_invalid', 'ChatGPT App ID is invalid.' );
 
@@ -355,6 +363,13 @@ final class MAD4B_SCP_Site_Profile {
 			if ( '' !== $raw ) $related[ $key ] = $raw;
 		}
 		$related[ $environment ] = $origin;
+		$current_display_name = function_exists( 'get_bloginfo' ) ? trim( (string) get_bloginfo( 'name' ) ) : '';
+		if ( '' === $current_display_name ) $current_display_name = self::current_host();
+		$display_name = isset( $input['display_name'] )
+			? substr( sanitize_text_field( (string) $input['display_name'] ), 0, 191 )
+			: ( $existing_identity_matches && ! empty( $existing_normalized['display_name'] )
+				? substr( sanitize_text_field( (string) $existing_normalized['display_name'] ), 0, 191 )
+				: substr( sanitize_text_field( $current_display_name ), 0, 191 ) );
 
 		$record = array(
 			'contract' => self::CONTRACT,
@@ -363,7 +378,7 @@ final class MAD4B_SCP_Site_Profile {
 			'revision' => $revision,
 			'environment' => $environment,
 			'canonical_origin' => $origin,
-			'display_name' => isset( $input['display_name'] ) ? substr( sanitize_text_field( (string) $input['display_name'] ), 0, 191 ) : self::display_name(),
+			'display_name' => $display_name,
 			'chatgpt_app_id' => $app_id,
 			'oauth_user_ids' => $user_ids,
 			'related_origins' => $related,
@@ -378,7 +393,7 @@ final class MAD4B_SCP_Site_Profile {
 			),
 			'legacy_agent_slug' => '',
 			'legacy_zero_touch' => false,
-			'created_at' => is_array( $existing ) && ! empty( $existing['created_at'] ) ? (string) $existing['created_at'] : gmdate( 'c' ),
+			'created_at' => $existing_identity_matches && ! empty( $existing_normalized['created_at'] ) ? (string) $existing_normalized['created_at'] : gmdate( 'c' ),
 			'updated_at' => gmdate( 'c' ),
 		);
 		$before_digest = is_array( $existing ) && self::valid_record( $existing ) ? self::digest_record( self::normalize_record( $existing ) ) : '';
@@ -392,6 +407,9 @@ final class MAD4B_SCP_Site_Profile {
 				'profile_digest' => self::profile_digest(),
 				'environment' => $environment,
 				'canonical_origin' => $origin,
+				'identity_rebound' => $identity_rebound,
+				'previous_environment' => $existing_valid ? (string) $existing_normalized['environment'] : '',
+				'previous_canonical_origin' => $existing_valid ? (string) $existing_normalized['canonical_origin'] : '',
 				'write_enabled' => self::write_enabled(),
 				'oauth_user_count' => count( $user_ids ),
 			), 'ok' );
@@ -484,6 +502,14 @@ final class MAD4B_SCP_Site_Profile {
 		$origin_match = $configured && '' !== $origin && hash_equals( (string) $profile['canonical_origin'], $origin );
 		$blockers = array();
 		$reenrollment_required = $configured && ! empty( $profile['migration_requires_reenrollment'] );
+		$binding_state = ! $configured
+			? 'unconfigured'
+			: ( ! $origin_match
+				? 'foreign_origin'
+				: ( ! $environment_match
+					? 'environment_drift'
+					: ( $reenrollment_required ? 'reenrollment_required' : 'exact' ) ) );
+		$foreign_profile_detected = $configured && ( ! $origin_match || ! $environment_match );
 		if ( ! $configured ) $blockers[] = 'site_profile_unconfigured';
 		if ( $configured && ! $environment_match ) $blockers[] = 'site_profile_environment_drift';
 		if ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';
@@ -502,6 +528,9 @@ final class MAD4B_SCP_Site_Profile {
 			'canonical_origin' => $configured ? (string) $profile['canonical_origin'] : '',
 			'environment_match' => $environment_match,
 			'origin_match' => $origin_match,
+			'binding_state' => $binding_state,
+			'foreign_profile_detected' => $foreign_profile_detected,
+			'profile_authority_quarantined' => $foreign_profile_detected,
 			'reenrollment_required' => $reenrollment_required,
 			'write_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'write', $environment ),
 			'oauth_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'oauth', $environment ),

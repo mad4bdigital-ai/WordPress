@@ -352,11 +352,18 @@ if main.index("MAD4B_SCP_Upgrade_Continuity::pre_boot();") > main.index("MAD4B_S
     raise SystemExit('portable read-only connection boots before upgrade continuity recovery')
 for marker in (
     "site_profile_invalid_fail_closed",
-    "upgrade_continuity_blocked",
+    "foreign_profile_quarantined",
+    "profile_authority_inherited",
+    "requires_site_enrollment",
+    "upgrade_continuity_state",
+    "upgrade_continuity_blocker",
     "MAD4B_SCP_Upgrade_Continuity::recovery_status()",
 ):
     if marker not in portable:
-        raise SystemExit(f'portable continuity fail-closed marker missing: {marker}')
+        raise SystemExit(f'portable cross-tenant isolation marker missing: {marker}')
+
+if "return self::block( 'upgrade_continuity_blocked' );" in portable:
+    raise SystemExit('stale prior-tenant continuity evidence must not suppress the independent current-origin read-only path')
 
 ensure_runtime = server.split("public static function ensure_runtime()", 1)[1].split("public static function status()", 1)[0]
 for marker in (

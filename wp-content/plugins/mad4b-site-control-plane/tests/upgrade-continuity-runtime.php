@@ -66,6 +66,7 @@ function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL: $m\n");exit(1);}}
 function legacy($env='staging',$origin='https://staging.example.test'){return array('contract'=>MAD4B_SCP_Site_Profile::LEGACY_CONTRACT,'version'=>MAD4B_SCP_Site_Profile::LEGACY_VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>4,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Legacy','chatgpt_app_id'=>'plugin_asdk_app_legacy','oauth_user_ids'=>array(7,8),'related_origins'=>array(),'features'=>array('oauth'=>true,'skills'=>true,'write'=>true,'production_write_confirmed'=>true,'provider_isolation'=>true,'managed_runtime'=>true,'acceptance'=>true),'legacy_agent_slug'=>'legacy','legacy_zero_touch'=>true);}
 function snapshot($env='staging',$origin='https://staging.example.test'){return array('version'=>3,'environment'=>$env,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','profile_revision'=>4,'profile_digest'=>str_repeat('a',64),'canonical_origin'=>$origin,'wp_user_id'=>7,'primary_owner_user_id'=>7,'oauth_user_ids'=>array(7),'issuer'=>rtrim($origin,'/').'/oauth/mcp','updated_at'=>'2026-09-14T00:00:00Z');}
 function legacy_snapshot($origin='https://staging.example.test'){return array('version'=>1,'wp_user_id'=>7,'issuer'=>rtrim($origin,'/').'/oauth/mcp','updated_at'=>'2026-09-10T00:00:00Z');}
+function v2_profile($env='staging',$origin='https://staging.example.test'){return array('contract'=>MAD4B_SCP_Site_Profile::CONTRACT,'version'=>MAD4B_SCP_Site_Profile::VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>7,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Current V2','chatgpt_app_id'=>'','oauth_user_ids'=>array(7),'related_origins'=>array($env=>$origin),'features'=>array('oauth'=>true,'skills'=>false,'write'=>false,'production_write_confirmed'=>false,'provider_isolation'=>false,'managed_runtime'=>false,'acceptance'=>false),'legacy_agent_slug'=>'','legacy_zero_touch'=>false,'created_at'=>'2026-09-20T00:00:00Z','updated_at'=>'2026-09-20T00:00:00Z');}
 function resetx(){ $GLOBALS['opts']=array();$GLOBALS['env']='staging';$GLOBALS['home']='https://staging.example.test';MAD4B_SCP_Site_Profile::reset_cache(); }
 
 // Fresh installs remain zero-authority.
@@ -73,6 +74,20 @@ resetx();
 $r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
 ok(!$r['recovered']&&'not_applicable'===$r['state'],'fresh install must not recover authority');
 ok(!MAD4B_SCP_Site_Profile::oauth_enabled()&&!MAD4B_SCP_Site_Profile::write_enabled(),'fresh install remains zero-authority');
+
+// A normal valid v2 profile is not a migration-continuity candidate and must not
+// be mislabeled as corrupt. The exact/foreign binding decision belongs to Site Profile.
+resetx();
+$GLOBALS['opts'][MAD4B_SCP_Site_Profile::OPTION]=v2_profile();
+$r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
+ok(!$r['recovered']&&'not_applicable'===$r['state']&&''===$r['blocker'],'normal v2 profile bypasses legacy continuity recovery');
+ok(!empty($r['current_profile_present'])&&'exact'===($r['current_profile_binding_state']??''),'normal v2 profile reports exact binding state');
+
+resetx();
+$GLOBALS['opts'][MAD4B_SCP_Site_Profile::OPTION]=v2_profile('staging','https://source-tenant.test');
+$r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
+ok(!$r['recovered']&&'not_applicable'===$r['state'],'foreign valid v2 profile is not treated as continuity corruption');
+ok('foreign_origin'===($r['current_profile_binding_state']??''),'foreign valid v2 profile remains explicitly classified for quarantine');
 
 // A surviving exact prior OAuth snapshot can rebuild only the minimal v2 read identity.
 resetx();
