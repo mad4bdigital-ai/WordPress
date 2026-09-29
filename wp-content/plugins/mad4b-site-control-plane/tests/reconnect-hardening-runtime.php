@@ -26,6 +26,33 @@ final class MAD4B_SCP_Local_OAuth_Server { public static $effective=true; public
 final class MAD4B_SCP_OAuth_Resource_Bridge { public static $effective=true; public static function status(){return array('effective'=>self::$effective);} public static function resource_identifier(){return rest_url('mcp/mad4b-chatgpt');} public static function verified_bearer_active(){return true;} public static function verified_bearer_client_is($id){return $id==='https://chatgpt.com/oauth/client.json';} }
 final class MAD4B_SCP_MCP_Registration_Bridge { public static $status=array(); public static function status(){return self::$status;} }
 final class MAD4B_SCP_Servers { public static $status=array(); public static function registration_status(){return self::$status;} public static function chatgpt_direct_read_transport_tools(){return array('mad4b/site-info');} }
+final class MAD4B_SCP_Provider_Contracts {
+    public static $ok=true;
+    public static $drop_file='';
+    public static function runtime_status($provider,$available=null){
+        $verified=array(
+            'includes/Transport/Infrastructure/HttpRequestHandler.php',
+            'includes/Transport/Infrastructure/HttpSessionValidator.php',
+            'includes/Transport/Infrastructure/RequestRouter.php',
+            'includes/Transport/Infrastructure/SessionManager.php',
+        );
+        if(''!==self::$drop_file)$verified=array_values(array_diff($verified,array(self::$drop_file)));
+        return array(
+            'provider'=>$provider,
+            'status'=>self::$ok?'certified':'version_drift',
+            'runtime_contract_ok'=>self::$ok,
+            'certified_version'=>'0.6.1',
+            'installed_version'=>'0.6.1',
+            'runtime_integrity'=>array(
+                'required'=>true,
+                'manifest_present'=>true,
+                'verified'=>$verified,
+                'missing'=>self::$ok?array():array('includes/Transport/Infrastructure/SessionManager.php'),
+                'mismatched'=>array(),
+            ),
+        );
+    }
+}
 eval('namespace WP\\MCP\\Core; final class McpAdapter { const VERSION = "0.6.1"; }');
 eval('namespace WP\\MCP\\Transport\\Infrastructure; final class SessionManager {}');
 eval('namespace WP\\MCP\\Domain\\Utils; final class McpNameSanitizer { public static function sanitize_name($name){ return str_replace("/","-",trim((string)$name)); } }');
@@ -89,6 +116,21 @@ MAD4B_SCP_Audit::$storage=array('ready'=>true);
 // ChatGPT recovery must not modify Adapter-global session capacity or timeout.
 $policy=MAD4B_SCP_Reconnect_Hardening::session_continuity_policy();
 ok(empty($policy['adapter_session_max_modified'])&&empty($policy['adapter_inactivity_timeout_modified'])&&empty($policy['activity_update_interval_modified']),'ChatGPT repair leaves Adapter-global session policy unchanged');
+
+// Low-level repair requires exact certified runtime integrity, not version string alone.
+set_priv('runtime_integrity_ok',null); set_priv('runtime_integrity_state','not_checked');
+MAD4B_SCP_Provider_Contracts::$ok=true; MAD4B_SCP_Provider_Contracts::$drop_file='';
+ok(priv('certified_adapter_runtime_integrity_ok'),'exact certified Adapter runtime passes repair integrity gate');
+MAD4B_SCP_Provider_Contracts::$ok=false;
+set_priv('runtime_integrity_ok',null); set_priv('runtime_integrity_state','not_checked');
+ok(!priv('certified_adapter_runtime_integrity_ok'),'same Adapter version with runtime drift fails closed');
+MAD4B_SCP_Provider_Contracts::$ok=true;
+MAD4B_SCP_Provider_Contracts::$drop_file='includes/Transport/Infrastructure/SessionManager.php';
+set_priv('runtime_integrity_ok',null); set_priv('runtime_integrity_state','not_checked');
+ok(!priv('certified_adapter_runtime_integrity_ok'),'missing certified session transport file blocks repair even when provider status says certified');
+MAD4B_SCP_Provider_Contracts::$drop_file='';
+set_priv('runtime_integrity_ok',null); set_priv('runtime_integrity_state','not_checked');
+ok(priv('certified_adapter_runtime_integrity_ok'),'repair integrity gate recovers only after complete certified transport evidence');
 
 // Recovery admission exists only for the proven first empty->non-empty race.
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array();
