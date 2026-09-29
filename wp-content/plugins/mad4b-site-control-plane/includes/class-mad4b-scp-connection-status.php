@@ -20,14 +20,15 @@ final class MAD4B_SCP_Connection_Status {
 		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $adapter_available ) : array( 'status' => 'unavailable', 'runtime_contract_ok' => false );
 		$provider_ok = ! empty( $provider['runtime_contract_ok'] );
 
-		$servers = self::server_status();
+		$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
+		$servers = self::server_status( $protocol_hotpath );
 		$expected_count = class_exists( 'MAD4B_SCP_Servers' ) ? count( MAD4B_SCP_Servers::expected_server_ids() ) : 7;
 		$server_ok = count( $servers ) === $expected_count;
 		foreach ( $servers as $server ) {
-			if ( empty( $server['registered'] ) || empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) { $server_ok = false; break; }
+			if ( empty( $server['registered'] ) ) { $server_ok = false; break; }
+			if ( ! $protocol_hotpath && ( empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) ) { $server_ok = false; break; }
 		}
-		$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
-			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
 		$peer = $protocol_hotpath
 			? array(
 				'inventory_ready' => false,
@@ -95,7 +96,8 @@ final class MAD4B_SCP_Connection_Status {
 			'connection_certified' => $connection_certified,
 			'certification_blockers' => $certification_blockers,
 			'servers' => $servers,
-			'write_surface' => self::write_surface_summary( $servers ),
+			'transport_deep_validation_deferred' => $protocol_hotpath,
+			'write_surface' => self::write_surface_summary( $servers, $protocol_hotpath ),
 			'provider_mcp_isolation' => self::bounded_isolation_status( $isolation ),
 			'oauth_resource_server' => self::bounded_oauth_status( $oauth, $oauth_blockers ),
 			'authentication' => array(
@@ -241,8 +243,26 @@ final class MAD4B_SCP_Connection_Status {
 		);
 	}
 
-	private static function server_status() {
+	private static function server_status( $protocol_hotpath = false ) {
 		$ids = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::expected_server_ids() : array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
+		$registration = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
+		if ( $protocol_hotpath ) {
+			$out = array();
+			foreach ( $ids as $id ) {
+				$row = isset( $registration[ $id ] ) && is_array( $registration[ $id ] ) ? $registration[ $id ] : array();
+				$out[] = array(
+					'server_id' => $id,
+					'registered' => ! empty( $row['registered'] ),
+					'registration_error' => isset( $row['error'] ) ? sanitize_key( (string) $row['error'] ) : '',
+					'materialized' => ! empty( $row['materialized'] ),
+					'tool_count' => isset( $row['tool_count'] ) ? max( 0, (int) $row['tool_count'] ) : 0,
+					'route_registered' => null,
+					'permission_callback_match' => null,
+					'deep_route_validation_deferred' => true,
+				);
+			}
+			return $out;
+		}
 		$expected_permissions = array(
 			'mad4b-read' => array( 'MAD4B_SCP_Servers', 'can_read_transport' ),
 			'mad4b-chatgpt' => array( 'MAD4B_SCP_Servers', 'can_chatgpt_transport' ),
@@ -254,7 +274,6 @@ final class MAD4B_SCP_Connection_Status {
 			'mad4b-developer-breakglass' => array( 'MAD4B_SCP_Servers', 'can_developer_breakglass_transport' ),
 			'mad4b-breakglass' => array( 'MAD4B_SCP_Servers', 'can_breakglass_transport' ),
 		);
-		$registration = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
 		$adapter_servers = array();
 		if ( class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ) {
 			try {
@@ -303,19 +322,20 @@ final class MAD4B_SCP_Connection_Status {
 		return $out;
 	}
 
-	private static function write_surface_summary( array $servers ) {
+	private static function write_surface_summary( array $servers, $protocol_hotpath = false ) {
 		$server = array();
 		foreach ( $servers as $candidate ) {
 			if ( isset( $candidate['server_id'] ) && 'mad4b-write' === $candidate['server_id'] ) { $server = $candidate; break; }
 		}
-		$tools = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::write_tools() : array();
+		$tools = ( ! $protocol_hotpath && class_exists( 'MAD4B_SCP_Servers' ) ) ? MAD4B_SCP_Servers::write_tools() : array();
 		return array(
 			'server_id' => 'mad4b-write',
 			'registered' => ! empty( $server['registered'] ),
 			'route_registered' => ! empty( $server['route_registered'] ),
 			'permission_callback_match' => ! empty( $server['permission_callback_match'] ),
 			'endpoint' => isset( $server['endpoint'] ) ? esc_url_raw( $server['endpoint'] ) : esc_url_raw( rest_url( 'mcp/mad4b-write' ) ),
-			'mounted_write_tool_count' => is_array( $tools ) ? count( $tools ) : 0,
+			'mounted_write_tool_count' => $protocol_hotpath ? null : ( is_array( $tools ) ? count( $tools ) : 0 ),
+			'write_catalog_deferred' => (bool) $protocol_hotpath,
 			'mutation_global_enabled' => defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === MAD4B_MCP_MUTATION_ENABLED,
 			'mutation_effective_for_current_request' => class_exists( 'MAD4B_SCP_Policy' ) ? (bool) MAD4B_SCP_Policy::can_mutate() : false,
 			'exact_transport_grant_required' => true,
