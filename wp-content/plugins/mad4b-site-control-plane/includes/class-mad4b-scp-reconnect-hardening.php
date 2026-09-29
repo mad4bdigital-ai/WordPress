@@ -16,6 +16,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	const SESSION_META_KEY = 'mcp_adapter_sessions';
 	const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
 	const CERTIFIED_STATEFUL_ADAPTER_VERSION = '0.6.1';
+	const FIRST_EMPTY_RACE_MAX_VISIBLE_SESSIONS = 8;
+	const FIRST_EMPTY_RACE_CREATION_SKEW_SECONDS = 30;
 	private static $booted = false;
 	private static $session_repair_state = 'not_attempted';
 	private static $initialize_empty_requests = array();
@@ -425,12 +427,16 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$captured_at = (int) $captured_at;
 		if ( $captured_at < 1 ) return false;
 		$sessions = self::adapter_visible_session_map( $user_id );
-		if ( 1 !== count( $sessions ) || ! self::valid_session_map( $sessions ) ) return false;
-		$winner = reset( $sessions );
-		$created_at = is_array( $winner ) && isset( $winner['created_at'] ) ? (int) $winner['created_at'] : 0;
+		$count = count( $sessions );
+		if ( $count < 1 || $count > self::FIRST_EMPTY_RACE_MAX_VISIBLE_SESSIONS || ! self::valid_session_map( $sessions ) ) return false;
 		// Concurrent empty-map initializers are created in the same short burst.
-		// Do not use the shadow to recover later eviction/expiry scenarios.
-		return $created_at > 0 && abs( $created_at - $captured_at ) <= 30;
+		// Permit a bounded multi-way race to converge, but refuse later lifecycle
+		// recovery: every visible survivor must belong to the same creation burst.
+		foreach ( $sessions as $session ) {
+			$created_at = is_array( $session ) && isset( $session['created_at'] ) ? (int) $session['created_at'] : 0;
+			if ( $created_at < 1 || abs( $created_at - $captured_at ) > self::FIRST_EMPTY_RACE_CREATION_SKEW_SECONDS ) return false;
+		}
+		return true;
 	}
 
 	private static function readonly_transport_request( array $body ) {
@@ -657,10 +663,11 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'first_session_race_repair_configured' => self::governed_nonproduction_transport() && self::session_repair_supported_runtime(),
 			'first_session_race_repair_enabled' => true === self::$runtime_integrity_ok,
 			'repair_scope_first_empty_transition_only' => true,
+			'bounded_multiway_first_empty_race_repair' => true,
 			'general_expiry_or_eviction_rehydration_enabled' => false,
 			'first_empty_race_visible_map_shape_required' => true,
-			'first_empty_race_visible_map_max_sessions' => 1,
-			'first_empty_race_creation_skew_seconds' => 30,
+			'first_empty_race_visible_map_max_sessions' => self::FIRST_EMPTY_RACE_MAX_VISIBLE_SESSIONS,
+			'first_empty_race_creation_skew_seconds' => self::FIRST_EMPTY_RACE_CREATION_SKEW_SECONDS,
 			'version_only_repair_authority_allowed' => false,
 			'certified_stateful_adapter_version' => self::CERTIFIED_STATEFUL_ADAPTER_VERSION,
 			'exact_adapter_version_required' => true,
