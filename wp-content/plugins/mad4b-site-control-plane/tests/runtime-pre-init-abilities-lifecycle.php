@@ -1,4 +1,9 @@
 <?php
+if ( function_exists( 'set_time_limit' ) ) @set_time_limit( 90 );
+register_shutdown_function( static function () {
+	$error = error_get_last();
+	if ( is_array( $error ) ) fwrite( STDERR, 'TRACE pre-init shutdown: ' . json_encode( $error, JSON_UNESCAPED_SLASHES ) . PHP_EOL );
+} );
 /**
  * Regression acceptance for WordPress 6.9+ Ability lifecycle discipline.
  *
