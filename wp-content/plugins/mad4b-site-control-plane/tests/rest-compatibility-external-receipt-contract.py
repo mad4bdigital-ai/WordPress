@@ -9,7 +9,8 @@ finalizer = (PLUGIN / "includes/class-mad4b-scp-live-acceptance-finalizer.php").
 policy = (PLUGIN / "includes/class-mad4b-scp-provider-diagnostic-policy.php").read_text(encoding="utf-8")
 response = (PLUGIN / "includes/class-mad4b-scp-wpml-response-contract.php").read_text(encoding="utf-8")
 
-assert "MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status()" in rest
+assert "MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status_from_local_wpml( $wpml )" in rest
+assert "MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status()" not in rest
 assert "bounded_external_wpml_receipt" in rest
 assert "'external_wpml_acceptance_required' => $external_wpml_required" in rest
 assert "'external_wpml_acceptance_verified' => $external_wpml_verified" in rest
