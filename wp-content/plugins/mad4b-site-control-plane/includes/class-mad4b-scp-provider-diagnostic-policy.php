@@ -173,7 +173,9 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 	public static function explicit_deep_diagnostic_allowed() {
 		if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ) return false;
 		if ( self::current_request_is_zero_touch_surface() ) return false;
-		return true;
+		if ( defined( 'WP_CLI' ) && WP_CLI ) return true;
+		if ( self::current_request_is_mad4b_protocol() ) return true;
+		return self::explicit_rest_materialization_allowed();
 	}
 
 	public static function status() {

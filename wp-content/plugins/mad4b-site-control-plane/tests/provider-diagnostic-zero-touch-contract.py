@@ -45,6 +45,10 @@ assert "admin_connection_endpoints_prime" in prime
 
 
 assert "explicit_deep_diagnostic_allowed" in policy
+explicit_gate = policy.split("public static function explicit_deep_diagnostic_allowed()", 1)[1].split("public static function status()", 1)[0]
+assert "defined( 'WP_CLI' ) && WP_CLI" in explicit_gate
+assert "self::current_request_is_mad4b_protocol()" in explicit_gate
+assert "self::explicit_rest_materialization_allowed()" in explicit_gate
 assert "'explicit_deep_diagnostic_ability' => 'mad4b/provider-deep-diagnostic'" in policy
 
 deep = rest.split("public static function deep_diagnostic", 1)[1].split("public static function status()", 1)[0]
