@@ -160,7 +160,13 @@
         "backup_before_replace": true,
         "readback_required": true,
         "rollback_on_failed_readback": true,
-        "production_requires_explicit_opt_in": true
+        "production_requires_explicit_opt_in": true,
+        "pointer_asset": "mad4b-site-control-plane-update-pointer.json",
+        "immutable_manifest_asset_template": "mad4b-site-control-plane-update-{exact_source_commit_sha}.json",
+        "legacy_manifest_asset": "mad4b-site-control-plane-update.json",
+        "resolution": "pointer_first_with_network_or_http_unavailable_legacy_fallback",
+        "pointer_manifest_sha256_required": true,
+        "pointer_release_verdict_binding_required": true
       },
       "governed_file_upload": {
         "ability_plan": "mad4b/control-plane-upload-plan",
@@ -196,10 +202,19 @@
         "backup_before_replace": true,
         "readback_required": true,
         "rollback_on_failed_readback": true,
-        "production_allowed": false
+        "production_allowed": false,
+        "pointer_asset": "mad4b-site-control-plane-update-pointer.json",
+        "immutable_manifest_asset_template": "mad4b-site-control-plane-update-{exact_source_commit_sha}.json",
+        "legacy_manifest_asset": "mad4b-site-control-plane-update.json",
+        "resolution": "pointer_first_with_network_or_http_unavailable_legacy_fallback",
+        "pointer_manifest_sha256_required": true,
+        "pointer_release_verdict_binding_required": true
       }
     },
     "shared_verification": [
+      "pointer_source_commit_sha",
+      "pointer_manifest_sha256",
+      "pointer_release_verdict_run_id",
       "archive_sha256",
       "safe_zip_inventory",
       "embedded_source_commit_sha",
