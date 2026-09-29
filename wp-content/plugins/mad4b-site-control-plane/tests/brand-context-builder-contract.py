@@ -460,3 +460,21 @@ if manifest.get("seed_version") != 13:
     raise SystemExit("Brand Context Builder requires canonical seed version 13")
 
 print("mad4b.brand-context-builder.v5: PASS")
+
+
+# OAuth health must reflect access-token expiry and the last refresh outcome.
+for marker in [
+    "'access_token_valid' => $access_token_valid",
+    "'refresh_required' => $refresh_required",
+    "'refresh_failed' => $refresh_failed",
+    "'refresh_failure_code' => $refresh_failure_code",
+    "'refresh_failure_provider_code' => $refresh_failure_provider_code",
+    "'reconnect_required'",
+    "'health_state' => $health_state",
+    "private static function record_refresh_failure",
+    "google_drive_token_refresh_failed",
+]:
+    if marker not in drive:
+        raise SystemExit("Google OAuth health contract missing marker: " + marker)
+if "'token_healthy' => $connected && ( ! empty( $token['access_token'] ) || ! empty( $token['refresh_token'] ) )" in drive:
+    raise SystemExit("Google OAuth health must not treat an expired access token plus refresh-token presence as healthy")
