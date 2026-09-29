@@ -36,7 +36,7 @@ final class MAD4B_SCP_Plugin {
 		// wp-admin screen, including zero-touch third-party/plugin pages. Register
 		// menu hooks before the heavy-runtime zero-touch gate; render callbacks stay
 		// lazy and no authority/provider reconciliation is performed here.
-		if ( is_admin() ) self::boot_admin_navigation();
+		if ( is_admin() || ( defined( 'WP_CLI' ) && WP_CLI ) ) self::boot_admin_navigation();
 
 		// Unrelated Core/provider REST and generic wp-cron.php are infrastructure
 		// hotpaths, not Control Plane operator lifecycles. Their owning scheduled
@@ -145,7 +145,7 @@ final class MAD4B_SCP_Plugin {
 	}
 
 	private static function boot_admin_navigation() {
-		if ( ! is_admin() ) return;
+		if ( ! is_admin() && ( ! defined( 'WP_CLI' ) || ! WP_CLI ) ) return;
 		MAD4B_SCP_Admin_UI::boot();
 		MAD4B_SCP_Context_Admin_UI::boot();
 		MAD4B_SCP_Connection_Admin_UI::boot();
