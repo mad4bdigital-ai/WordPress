@@ -118,6 +118,10 @@ assert "convergence_trigger_allowed" in runtime
 
 assert "MAX_TRANSIENT_RETRIES = 5" in runtime
 assert "mark_activation_pending" in runtime
+assert "'plugin_activation' !== $stored_source" in runtime
+assert "'checkpoint_persist_failed'" in runtime
+assert "$manual_resume_gate" in runtime
+assert "'pending_manual_resume' === $checkpoint_state" in runtime
 assert "'autopilot_state' => $autopilot_state" in runtime
 assert "'bootstrapping'" in runtime
 assert "'converging'" in runtime
