@@ -69,6 +69,7 @@ for marker in (
     "gate_effective_ready",
     "'freshness_required'",
     "'effective_ready'",
+    ": array_key_exists( 'fresh', $gate )",
 ):
     require(projection, marker, "truth gate contract")
 aggregate = finalizer.split("public static function aggregate_ready", 1)[1].split("public static function production_receipt_status", 1)[0]
