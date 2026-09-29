@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Read-only exact plan for Staging governed-write grant reconciliation.
+ * Read-only exact plan for environment-bound governed-write grant reconciliation.
  *
  * The plan never creates/revokes grants, agents, subjects, approvals or authority.
  * It snapshots the exact enrolled profile, package provenance, canonical agent,
@@ -26,8 +26,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ABILITY ) ) return;
 		wp_register_ability( self::ABILITY, array(
-			'label' => 'Plan Exact Staging Write Grant Reconciliation',
-			'description' => 'Read-only exact plan for reconciling the canonical Staging governed-write grant set. Produces a deterministic plan digest and performs no mutation.',
+			'label' => 'Plan Exact Governed Write Grant Reconciliation',
+			'description' => 'Read-only exact plan for reconciling the canonical current-environment governed-write grant set. Produces a deterministic plan digest and performs no mutation.',
 			'category' => 'mad4b-governance',
 			'execute_callback' => array( __CLASS__, 'plan' ),
 			'permission_callback' => array( __CLASS__, 'can_plan' ),
@@ -51,7 +51,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_admin_required', 'Administrator capability is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return new WP_Error( 'mad4b_grant_reconcile_plan_bearer_required', 'Verified OAuth bearer identity is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return new WP_Error( 'mad4b_grant_reconcile_plan_profile_missing', 'An enrolled Site Profile is required.' );
-		if ( 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_grant_reconcile_plan_staging_only', 'Grant reconciliation planning is Staging-only.' );
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_environment_denied', 'Grant reconciliation planning is limited to Staging or Production.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_grant_reconcile_plan_profile_not_exact', 'Current origin and URLs must exactly match the enrolled Site Profile.' );
 		if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_grant_reconcile_plan_write_disabled', 'Governed write must already be enabled.' );
 		if ( 'https' !== strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_https_required', 'Remote Write Authority planning requires HTTPS.' );
@@ -79,7 +80,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 		if ( empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_oauth_identity_required', 'Verified OAuth bearer governance identity is required.' );
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return $agent;
-		if ( 'chatgpt-governed-write' !== (string) $agent['slug'] || 'enabled' !== (string) $agent['status'] || 'staging' !== (string) $agent['environment'] ) return new WP_Error( 'mad4b_grant_reconcile_plan_agent_invalid', 'Resolved governance identity is not the canonical enabled Staging write agent.' );
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+		if ( 'chatgpt-governed-write' !== (string) $agent['slug'] || 'enabled' !== (string) $agent['status'] || $environment !== (string) $agent['environment'] ) return new WP_Error( 'mad4b_grant_reconcile_plan_agent_invalid', 'Resolved governance identity is not the canonical enabled current-environment write agent.' );
 		if ( (int) $agent['wp_user_id'] !== get_current_user_id() ) return new WP_Error( 'mad4b_grant_reconcile_plan_agent_user_mismatch', 'Resolved governed-write agent belongs to another WordPress user.' );
 		return $agent;
 	}
@@ -131,6 +133,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 	public static function plan( $input = null ) {
 		$permission = self::can_plan( $input );
 		if ( is_wp_error( $permission ) || ! $permission ) return $permission;
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::critical_ready() ) return new WP_Error( 'mad4b_grant_reconcile_plan_schema_unavailable', 'Governance schema must be physically ready.' );
 		$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
 		if ( empty( $audit['ready'] ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_audit_required', 'Ready append-only audit storage is required.' );
@@ -174,15 +177,15 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			$ability = (string) $grant['ability_name'];
 			$provider = sanitize_key( (string) $grant['provider'] );
 			$key = $ability . "\0" . $provider;
-			if ( 'staging' !== (string) $grant['environment'] ) $blockers[] = 'non_staging_allow:' . $ability;
+			if ( $environment !== (string) $grant['environment'] ) $blockers[] = 'non_current_environment_allow:' . $ability;
 			if ( isset( $seen_allow[ $key ] ) ) $blockers[] = 'duplicate_allow:' . $ability;
 			$seen_allow[ $key ] = true;
 			if ( ! isset( $desired[ $key ] ) ) {
 				// Removing an exact Staging grant is authority-narrowing. Treat it as a
 				// planned cleanup only when the ability/provider pair is itself from the
 				// reviewed retirement universe; unknown stale authority still blocks.
-				if ( 'staging' === (string) $grant['environment'] && isset( $retirement_providers[ $ability ] ) && sanitize_key( (string) $retirement_providers[ $ability ] ) === $provider ) {
-					$stale_grants[] = array( 'id' => (int) $grant['id'], 'ability' => $ability, 'provider' => $provider, 'environment' => 'staging' );
+				if ( $environment === (string) $grant['environment'] && isset( $retirement_providers[ $ability ] ) && sanitize_key( (string) $retirement_providers[ $ability ] ) === $provider ) {
+					$stale_grants[] = array( 'id' => (int) $grant['id'], 'ability' => $ability, 'provider' => $provider, 'environment' => $environment );
 				} else {
 					$blockers[] = 'stale_allow_unreviewed:' . $ability;
 				}
@@ -227,7 +230,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 				continue;
 			}
 			if ( 1 === count( $matching_allows ) && 'staging' !== (string) $matching_allows[0]['environment'] ) {
-				$blockers[] = 'non_staging_transport_allow:' . $row['ability'];
+				$blockers[] = 'non_current_environment_transport_allow:' . $row['ability'];
 				continue;
 			}
 			$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $row['server_id'], $row['ability'], $row['provider'] );
@@ -270,8 +273,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			'candidate_binding_match' => ! empty( $binding['match'] ),
 			'candidate_binding_required' => ! empty( $binding['required'] ),
 			'apply_ability' => MAD4B_SCP_Staging_Write_Grant_Reconciliation::ABILITY,
-			'required_confirmation' => MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONFIRMATION,
-			'production_mutation' => false,
+			'required_confirmation' => MAD4B_SCP_Staging_Write_Grant_Reconciliation::required_confirmation(),
+			'production_mutation' => 'production' === $environment,
 			'breakglass_included' => false,
 		);
 		$encoded = wp_json_encode( self::canonicalize( $payload ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
@@ -299,7 +302,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 			'expected_transport_tool_count' => $payload['expected_transport_tool_count'],
 			'expected_transport_inventory_fingerprint' => $payload['expected_transport_inventory_fingerprint'],
 			'expected_missing_transport_abilities' => $payload['expected_missing_transport_abilities'],
-			'confirmation' => MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONFIRMATION,
+			'confirmation' => MAD4B_SCP_Staging_Write_Grant_Reconciliation::required_confirmation(),
 		);
 		return $payload;
 	}
