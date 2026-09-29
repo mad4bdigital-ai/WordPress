@@ -219,6 +219,18 @@ assert "if ( $existing_semantic !== $record )" in oauth_nonprod
 assert oauth_nonprod.index("$existing_semantic !== $record") < oauth_nonprod.index("$record['updated_at'] = gmdate( 'c' );")
 assert oauth_nonprod.index("$existing_semantic !== $record") < oauth_nonprod.index("update_option( self::OPTION, $record, false );")
 
+# Central plugin boot must classify protocol requests before any governance
+# physical-schema readiness, dbDelta migration, or legacy audit option creation.
+central_boot = plugin.split("public static function boot()", 1)[1].split("public static function boot_oauth_transport_if_effective()", 1)[0]
+assert "$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )" in central_boot
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in central_boot
+schema_guard_pos = central_boot.index("$protocol_hotpath =")
+assert schema_guard_pos < central_boot.index("MAD4B_SCP_Schema::is_ready()")
+assert schema_guard_pos < central_boot.index("MAD4B_SCP_Schema::install_or_upgrade()")
+assert schema_guard_pos < central_boot.index("add_option( MAD4B_SCP_Audit::LEGACY_OPTION")
+schema_block = central_boot.split("MAD4B_SCP_Schema::is_ready()", 1)[0]
+assert "! $protocol_hotpath" in schema_block
+
 # Audit chain integrity must remain fail-closed for mutations without forcing
 # physical table/engine/legacy-chain/head inspection during MCP discovery.
 plugin_boot = plugin.split("public static function boot()", 1)[1].split("public static function boot_oauth_transport_if_effective()", 1)[0]
