@@ -36,7 +36,9 @@ prime = method_body(
 )
 
 # Ordinary MAD4B admin rendering must never be treated as lifecycle repair.
-assert "mad4b-control-plane" not in schema_route
+assert "0 === strpos( $page, 'mad4b-control-plane' )" in schema_route
+assert "return 0 === strpos" not in schema_route
+assert schema_route.count("return true;") == 1  # WP_CLI only
 assert "return false;" in schema_route
 assert "0 === strpos( $page, 'mad4b-control-plane' )" in skill_route
 assert "return 0 === strpos" not in skill_route
@@ -47,7 +49,8 @@ assert "return false;" in skill_route
 assert "'mad4b-control-plane-connection' !== $page" in prime
 assert "'endpoints' !== $tab" in prime
 assert "rest_get_server()" in prime
-assert "admin_connection_prime" in prime
+assert "admin_connection_endpoints_prime" in prime
+assert "admin_connection_prime" in prime  # legacy source-contract marker only
 
 # Main governance UI is tab scoped and no longer runs deep provider/peer scans
 # simply to render Overview.
