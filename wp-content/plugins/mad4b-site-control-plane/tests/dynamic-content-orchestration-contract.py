@@ -488,4 +488,12 @@ for marker in [
     if marker not in adapter:
         raise SystemExit(f"partial-write ownership invariant missing: {marker}")
 
+
+for marker in [
+    "accepted_modified_gmt",
+    "mad4b_dynamic_acceptance_modified_drift",
+]:
+    if marker not in adapter:
+        raise SystemExit(f"acceptance modified-time binding missing: {marker}")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
