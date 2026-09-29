@@ -19,6 +19,7 @@ request_scope = (root / "includes/class-mad4b-scp-mcp-request-scope.php").read_t
 query_monitor = (root / "includes/class-mad4b-scp-query-monitor-evidence-bridge.php").read_text(encoding="utf-8")
 mu_refresh = (root / "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php").read_text(encoding="utf-8")
 runtime_conflict = (root / "includes/class-mad4b-scp-mcp-runtime-conflict-guard.php").read_text(encoding="utf-8")
+upgrade_continuity = (root / "includes/class-mad4b-scp-upgrade-continuity.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
@@ -309,3 +310,10 @@ assert "query_monitor_events()" not in admin_budget
 assert "performance_sample(" not in admin_budget
 assert "(int) $telemetry['request_coverage']['wp_admin'] > 0" in qm_flush
 assert qm_flush.index("if ( 'wp_admin' === $class && ! self::current_request_is_mad4b_admin_surface() )") < qm_flush.index("$sample = self::performance_sample( $class )")
+
+# Upgrade continuity may persist recovered profile/OAuth state, so migration
+# recovery must be deferred during MCP/OAuth protocol requests.
+upgrade_preboot = upgrade_continuity.split("public static function pre_boot()", 1)[1].split("public static function boot()", 1)[0]
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in upgrade_preboot
+assert "'deferred_protocol_hotpath'" in upgrade_preboot
+assert upgrade_preboot.index("current_request_is_protocol_hotpath()") < upgrade_preboot.index("recover_verified_read_continuity()")
