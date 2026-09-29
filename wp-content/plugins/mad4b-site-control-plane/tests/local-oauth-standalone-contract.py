@@ -379,3 +379,18 @@ if ensure_runtime.index("request_is_schema_migration_hotpath()") > ensure_runtim
     raise SystemExit("Local OAuth schema migration guard must run before dbDelta migration")
 if "flock( $handle, LOCK_EX )" in init_lock:
     raise SystemExit("Local OAuth first-boot lock must never block a PHP worker indefinitely")
+
+ensure_runtime = server.split("public static function ensure_runtime()", 1)[1].split("public static function status()", 1)[0]
+if "MAD4B_SCP_Local_OAuth_Store::is_ready()" in ensure_runtime:
+    raise SystemExit("healthy Local OAuth runtime must not SHOW TABLES on every request")
+for marker in (
+    "$installed_store_version = (int) get_option( MAD4B_SCP_Local_OAuth_Store::OPTION, 0 );",
+    "$installed_store_version < MAD4B_SCP_Local_OAuth_Store::VERSION",
+):
+    if marker not in ensure_runtime:
+        raise SystemExit(f"Local OAuth version-marker fast path missing: {marker}")
+keygen = server.split("private static function ensure_signing_key()", 1)[1].split("private static function private_key_path()", 1)[0]
+if "mad4b_local_oauth_key_generation_deferred" not in keygen:
+    raise SystemExit("Local OAuth key generation lacks latency-hotpath deferral")
+if keygen.index("request_is_schema_migration_hotpath()") > keygen.index("openssl_pkey_new("):
+    raise SystemExit("Local OAuth hotpath guard must precede RSA key generation")
