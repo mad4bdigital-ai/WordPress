@@ -61,10 +61,11 @@ final class MAD4B_SCP_Local_OAuth_Consent_UI {
 		$environment_label = 'production' === $environment ? 'Production' : ( 'staging' === $environment ? 'Staging' : ucfirst( $environment ) );
 		$legacy_request = 'is requesting read access to this WordPress MCP resource.';
 		$legacy_step_up_request = 'is requesting read access plus a governed authority step-up scope for this WordPress MCP resource.';
+		$legacy_staging_step_up_request = 'is requesting read access plus a governed Staging authority step-up scope for this WordPress MCP resource.';
 		$read_request = 'is requesting OAuth read access to this WordPress MCP resource. This consent authenticates the client and grants only the read resource scope shown below. Write, Developer and Developer Breakglass are separate governed authorities and are not created by this OAuth approval.';
 		$step_up_request = 'is requesting OAuth read access plus a governed authority step-up scope on this same WordPress MCP resource. The step-up scope permits requesting exact environment-bound bootstrap/convergence operations, including bootstrap Control Plane self-update only where the current environment policy permits it. It does not itself create write grants, Developer authority, Developer Breakglass authority, or raw-SQL Breakglass authority; Production writes still require exact Site Profile confirmation and one-time approval.';
 		$html = str_replace( $legacy_request, $step_up_requested ? $step_up_request : $read_request, $html );
-		$html = str_replace( $legacy_step_up_request, $step_up_request, $html );
+		$html = str_replace( array( $legacy_step_up_request, $legacy_staging_step_up_request ), $step_up_request, $html );
 		$html = str_replace( '<title>Authorize MCP access</title>', $step_up_requested ? '<title>Authorize governed MCP access</title>' : '<title>Authorize read access</title>', $html );
 		$html = str_replace( '<h1>Authorize MCP access</h1>', $step_up_requested ? '<h1>Authorize governed MCP access</h1>' : '<h1>Authorize read access</h1>', $html );
 
