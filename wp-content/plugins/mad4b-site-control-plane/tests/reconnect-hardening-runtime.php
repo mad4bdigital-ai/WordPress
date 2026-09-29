@@ -125,16 +125,31 @@ ok(!empty(priv('get_session_shadow',array(7,sid(1))))&&!empty(priv('get_session_
 priv('forget_session_shadow',array(7,sid(2)));
 ok(empty(priv('get_session_shadow',array(7,sid(2)))),'DELETE tombstone blocks shadow resurrection');
 ok(!empty(priv('get_session_shadow',array(7,sid(1)))),'deleting one session shadow does not affect sibling shadow');
+$transient_count=count($GLOBALS['transients']);
+priv('forget_session_shadow',array(7,'not-a-session'));
+ok(count($GLOBALS['transients'])===$transient_count,'invalid session id cannot allocate a DELETE tombstone');
 
-// Duplicate non-empty session rows converge by CAS and preserve all sessions.
+// Duplicate rows: match Adapter single=true visibility instead of unioning hidden state.
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(
     array(sid(101)=>srec(1000)),
     array(sid(102)=>srec(1001)),
 );
-ok(priv('ensure_session_record',array(7,sid(103),$minimal)),'CAS repair converges duplicate non-empty session rows');
+ok(priv('session_exists',array(7,sid(101))),'visible first-row session is recognized');
+ok(!priv('session_exists',array(7,sid(102))),'hidden duplicate-row session is not falsely treated as Adapter-visible');
+ok(priv('ensure_session_record',array(7,sid(102),$minimal)),'hidden raced session is repaired into Adapter-visible row');
 $rows=$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'];
-ok(count($rows)===2 && $rows[0]===$rows[1],'duplicate rows converge to the same canonical map');
-ok(isset($rows[0][sid(101)],$rows[0][sid(102)],$rows[0][sid(103)]),'CAS convergence preserves existing sessions and repaired session');
+ok(isset($rows[0][sid(101)],$rows[0][sid(102)]),'visible row gains the repaired session');
+ok(count($rows)===2 && isset($rows[1][sid(102)]) && !isset($rows[1][sid(101)]),'hidden row is not union-converged or rewritten');
+
+// Explicit termination removes the target from every duplicate row without merging siblings.
+$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(
+    array(sid(301)=>srec(1000),sid(302)=>srec(1000)),
+    array(sid(302)=>srec(1001),sid(303)=>srec(1001)),
+);
+ok(priv('remove_session_from_all_rows',array(7,sid(302))),'DELETE cleanup removes target across duplicate rows');
+$rows=$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'];
+ok(!isset($rows[0][sid(302)])&&!isset($rows[1][sid(302)]),'terminated session cannot survive in a hidden duplicate row');
+ok(isset($rows[0][sid(301)])&&isset($rows[1][sid(303)]),'DELETE cleanup does not union or erase sibling sessions');
 
 // Empty-only or corrupt state fails closed.
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(array());
