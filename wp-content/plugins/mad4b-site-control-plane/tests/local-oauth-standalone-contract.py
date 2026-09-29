@@ -394,3 +394,21 @@ if "mad4b_local_oauth_key_generation_deferred" not in keygen:
     raise SystemExit("Local OAuth key generation lacks latency-hotpath deferral")
 if keygen.index("request_is_schema_migration_hotpath()") > keygen.index("openssl_pkey_new("):
     raise SystemExit("Local OAuth hotpath guard must precede RSA key generation")
+
+runtime_identity = server.split("public static function runtime_identity_status()", 1)[1].split("public static function status()", 1)[0]
+for marker in (
+    "MAD4B_SCP_Local_OAuth_Store::OPTION",
+    "MAD4B_SCP_Local_OAuth_Store::VERSION",
+    "'deep_key_validation_deferred' => true",
+    "'physical_store_introspection_deferred' => true",
+):
+    if marker not in runtime_identity:
+        raise SystemExit(f"Local OAuth identity readiness marker missing: {marker}")
+for forbidden in (
+    "public_jwk()",
+    "MAD4B_SCP_Local_OAuth_Store::is_ready()",
+    "openssl_pkey_get_private(",
+    "openssl_pkey_get_details(",
+):
+    if forbidden in runtime_identity:
+        raise SystemExit(f"Local OAuth identity readiness must remain hotpath-safe: {forbidden}")
