@@ -29,11 +29,16 @@ final class MAD4B_SCP_Self_Update {
 	const NATIVE_PLAN_CONTRACT  = 'mad4b.control-plane-native-plan.v1';
 	const NATIVE_APPLY_CONTRACT = 'mad4b.control-plane-native-apply.v1';
 	const MANIFEST_CONTRACT     = 'mad4b.control-plane-update-channel.v1';
+	const POINTER_CONTRACT      = 'mad4b.control-plane-update-pointer.v1';
 	const RELEASE_TAG           = 'mad4b-site-control-plane-update-channel';
+	const POINTER_URL           = 'https://github.com/mad4bdigital-ai/WordPress/releases/download/mad4b-site-control-plane-update-channel/mad4b-site-control-plane-update-pointer.json';
 	const MANIFEST_URL          = 'https://github.com/mad4bdigital-ai/WordPress/releases/download/mad4b-site-control-plane-update-channel/mad4b-site-control-plane-update.json';
 	const MAX_UPLOAD_BYTES      = 16777216; // 16 MiB decoded.
-	const MANIFEST_CACHE_TTL    = 300;
-	const MANIFEST_TRANSIENT    = 'mad4b_scp_update_manifest_v1';
+	const POINTER_CACHE_TTL     = 300;
+	const MANIFEST_CACHE_TTL    = 86400;
+	const POINTER_TRANSIENT     = 'mad4b_scp_update_pointer_v1';
+	const MANIFEST_TRANSIENT    = 'mad4b_scp_update_manifest_v1'; // Legacy/cache-only compatibility slot.
+	const MANIFEST_TRANSIENT_PREFIX = 'mad4b_scp_update_manifest_sha_';
 
 	private static $booted = false;
 	private static $managed_apply = false;
@@ -201,6 +206,9 @@ final class MAD4B_SCP_Self_Update {
 				'automatic_update_enabled' => (bool) $auto_update['effective_enabled'],
 				'automatic_update_observation' => $auto_update,
 				'manifest_url' => self::MANIFEST_URL,
+				'pointer_url' => self::POINTER_URL,
+				'release_channel_entrypoint' => 'pointer_first',
+				'manifest_resolution' => is_wp_error( $manifest ) ? 'unavailable' : self::manifest_resolution( $manifest ),
 				'manifest_state' => is_wp_error( $manifest ) ? 'unavailable' : 'ready',
 				'manifest_error' => $manifest_error,
 				'target' => is_wp_error( $manifest ) ? array() : self::public_manifest( $manifest ),
@@ -219,6 +227,9 @@ final class MAD4B_SCP_Self_Update {
 				'ready' => (bool) ( $remote_ready && ! is_wp_error( $manifest ) ),
 				'staging_only' => true,
 				'fixed_manifest_url' => self::MANIFEST_URL,
+				'fixed_pointer_url' => self::POINTER_URL,
+				'pointer_first' => true,
+				'legacy_fallback_policy' => 'network_or_http_unavailable_only',
 				'caller_url_allowed' => false,
 				'caller_path_allowed' => false,
 				'caller_package_bytes_allowed' => false,
@@ -259,6 +270,9 @@ final class MAD4B_SCP_Self_Update {
 				'ui_blockers' => $ui_state['blockers'],
 				'automatic_update_enabled' => (bool) $auto_update['effective_enabled'],
 				'automatic_update_observation' => $auto_update,
+				'pointer_url' => self::POINTER_URL,
+				'release_channel_entrypoint' => 'pointer_first',
+				'manifest_resolution' => is_wp_error( $manifest ) ? 'not_cached' : self::manifest_resolution( $manifest ),
 				'manifest_state' => is_wp_error( $manifest ) ? 'not_cached' : 'ready',
 				'manifest_error' => $manifest_error,
 				'target' => is_wp_error( $manifest ) ? array() : self::public_manifest( $manifest ),
@@ -396,6 +410,10 @@ final class MAD4B_SCP_Self_Update {
 			'current' => $current,
 			'target' => $target,
 			'fixed_manifest_url' => self::MANIFEST_URL,
+			'fixed_pointer_url' => self::POINTER_URL,
+			'pointer_first' => true,
+			'legacy_fallback_policy' => 'network_or_http_unavailable_only',
+			'release_resolution' => is_wp_error( $manifest ) ? 'unavailable' : self::manifest_resolution( $manifest ),
 			'caller_url_allowed' => false,
 			'caller_path_allowed' => false,
 			'caller_package_bytes_allowed' => false,
@@ -733,7 +751,7 @@ final class MAD4B_SCP_Self_Update {
 	public static function handle_refresh_update() {
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) wp_die( esc_html__( 'You are not allowed to check plugin updates.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		check_admin_referer( 'mad4b_control_plane_refresh_update' );
-		delete_transient( self::MANIFEST_TRANSIENT );
+		self::clear_manifest_cache();
 		delete_site_transient( 'update_plugins' );
 
 		// Explicit refresh is the only wp-admin UI action allowed to perform
@@ -909,41 +927,192 @@ final class MAD4B_SCP_Self_Update {
 		return $tmp;
 	}
 
-	private static function cached_manifest() {
-		$cached = get_transient( self::MANIFEST_TRANSIENT );
-		if ( ! is_array( $cached ) ) {
-			return new WP_Error( 'mad4b_self_update_manifest_not_cached', 'Governed update manifest is not cached; use the explicit refresh action.' );
-		}
-		$valid = self::validate_manifest( $cached );
-		return is_wp_error( $valid ) ? $valid : $cached;
+	private static function manifest_transient_key( $source_commit_sha ) {
+		$source_commit_sha = strtolower( trim( (string) $source_commit_sha ) );
+		return self::MANIFEST_TRANSIENT_PREFIX . $source_commit_sha;
 	}
 
-	private static function fetch_manifest( $force = false ) {
-		if ( ! $force ) {
-			$cached = get_transient( self::MANIFEST_TRANSIENT );
-			if ( is_array( $cached ) ) return $cached;
-		}
+	private static function manifest_resolution( array $manifest ) {
+		return isset( $manifest['_mad4b_resolution'] ) ? (string) $manifest['_mad4b_resolution'] : 'legacy_compatibility_cache';
+	}
 
+	private static function cache_busted_url( $url ) {
+		return (string) $url . '?mad4b_cb=' . rawurlencode( uniqid( 'mad4b-', true ) );
+	}
+
+	private static function fetch_release_json( $url, $max_bytes, $kind, $cache_bust = false ) {
+		$request_url = $cache_bust ? self::cache_busted_url( $url ) : (string) $url;
 		$response = wp_safe_remote_get(
-			self::MANIFEST_URL,
+			$request_url,
 			array(
 				'timeout' => 12,
 				'redirection' => 3,
 				'user-agent' => 'MAD4B-Site-Control-Plane/' . MAD4B_SCP_VERSION,
-				'headers' => array( 'Accept' => 'application/json' ),
+				'headers' => array(
+					'Accept' => 'application/json',
+					'Cache-Control' => 'no-cache',
+					'Pragma' => 'no-cache',
+				),
 			)
 		);
-		if ( is_wp_error( $response ) ) return new WP_Error( 'mad4b_self_update_manifest_fetch_failed', 'Unable to fetch the MAD4B update manifest.', array( 'cause' => $response->get_error_code() ) );
-		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) return new WP_Error( 'mad4b_self_update_manifest_http_error', 'MAD4B update manifest returned a non-200 response.' );
+		$prefix = 'mad4b_self_update_' . sanitize_key( (string) $kind );
+		if ( is_wp_error( $response ) ) return new WP_Error( $prefix . '_fetch_failed', 'Unable to fetch the MAD4B release-channel document.', array( 'cause' => $response->get_error_code() ) );
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		if ( 200 !== $status ) return new WP_Error( $prefix . '_http_error', 'MAD4B release-channel document returned a non-200 response.', array( 'status' => $status ) );
 		$body = wp_remote_retrieve_body( $response );
-		if ( ! is_string( $body ) || strlen( $body ) > 65536 ) return new WP_Error( 'mad4b_self_update_manifest_invalid', 'MAD4B update manifest body is invalid.' );
-		$manifest = json_decode( $body, true );
-		if ( ! is_array( $manifest ) ) return new WP_Error( 'mad4b_self_update_manifest_invalid', 'MAD4B update manifest is not valid JSON.' );
+		if ( ! is_string( $body ) || '' === $body || strlen( $body ) > (int) $max_bytes ) return new WP_Error( $prefix . '_invalid', 'MAD4B release-channel document body is invalid.' );
+		$data = json_decode( $body, true );
+		if ( ! is_array( $data ) ) return new WP_Error( $prefix . '_invalid', 'MAD4B release-channel document is not valid JSON.' );
+		return array( 'body' => $body, 'data' => $data );
+	}
 
+	private static function validate_pointer( array &$pointer ) {
+		if ( self::POINTER_CONTRACT !== ( isset( $pointer['contract'] ) ? (string) $pointer['contract'] : '' ) ) return new WP_Error( 'mad4b_self_update_pointer_contract_mismatch', 'Update pointer contract mismatch.' );
+		if ( 'mad4bdigital-ai/WordPress' !== ( isset( $pointer['repository'] ) ? (string) $pointer['repository'] : '' ) ) return new WP_Error( 'mad4b_self_update_pointer_repository_mismatch', 'Update pointer repository mismatch.' );
+		if ( self::RELEASE_TAG !== ( isset( $pointer['release_tag'] ) ? (string) $pointer['release_tag'] : '' ) ) return new WP_Error( 'mad4b_self_update_pointer_release_tag_mismatch', 'Update pointer release channel mismatch.' );
+
+		$source = isset( $pointer['source_commit_sha'] ) ? strtolower( trim( (string) $pointer['source_commit_sha'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $source ) ) return new WP_Error( 'mad4b_self_update_pointer_source_invalid', 'Update pointer exact source commit is invalid.' );
+		$pointer['source_commit_sha'] = $source;
+
+		$expected_asset = 'mad4b-site-control-plane-update-' . $source . '.json';
+		$asset = isset( $pointer['manifest_asset'] ) ? trim( (string) $pointer['manifest_asset'] ) : '';
+		if ( ! hash_equals( $expected_asset, $asset ) ) return new WP_Error( 'mad4b_self_update_pointer_asset_invalid', 'Update pointer immutable manifest asset is invalid.' );
+		$pointer['manifest_asset'] = $asset;
+
+		$digest = isset( $pointer['manifest_sha256'] ) ? strtolower( trim( (string) $pointer['manifest_sha256'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $digest ) ) return new WP_Error( 'mad4b_self_update_pointer_digest_invalid', 'Update pointer manifest digest is invalid.' );
+		$pointer['manifest_sha256'] = $digest;
+
+		$pointer['release_verdict_run_id'] = isset( $pointer['release_verdict_run_id'] ) ? absint( $pointer['release_verdict_run_id'] ) : 0;
+		if ( $pointer['release_verdict_run_id'] < 1 ) return new WP_Error( 'mad4b_self_update_pointer_verdict_invalid', 'Update pointer Release Verdict identity is invalid.' );
+		foreach ( array( 'release_verdict_success', 'release_root_trust_verified', 'published_from_master' ) as $field ) {
+			if ( ! isset( $pointer[ $field ] ) || true !== $pointer[ $field ] ) return new WP_Error( 'mad4b_self_update_pointer_trust_invalid', 'Update pointer is not bound to the trusted master Release Verdict.', array( 'field' => $field ) );
+		}
+		return true;
+	}
+
+	private static function immutable_manifest_url( array $pointer ) {
+		return 'https://github.com/mad4bdigital-ai/WordPress/releases/download/' . self::RELEASE_TAG . '/' . $pointer['manifest_asset'] . '?mad4b_manifest_sha256=' . $pointer['manifest_sha256'];
+	}
+
+	private static function validate_pointer_manifest_binding( array $pointer, array $manifest ) {
+		if ( empty( $manifest['source_commit_sha'] ) || ! hash_equals( $pointer['source_commit_sha'], (string) $manifest['source_commit_sha'] ) ) return new WP_Error( 'mad4b_self_update_pointer_source_mismatch', 'Immutable update manifest does not match the pointer source commit.' );
+		if ( empty( $manifest['release_verdict_run_id'] ) || (int) $pointer['release_verdict_run_id'] !== (int) $manifest['release_verdict_run_id'] ) return new WP_Error( 'mad4b_self_update_pointer_verdict_mismatch', 'Immutable update manifest does not match the pointer Release Verdict identity.' );
+		return true;
+	}
+
+	private static function fetch_pointer( $force = false ) {
+		if ( ! $force ) {
+			$cached = get_transient( self::POINTER_TRANSIENT );
+			if ( is_array( $cached ) ) {
+				$valid = self::validate_pointer( $cached );
+				if ( is_wp_error( $valid ) ) return $valid;
+				return $cached;
+			}
+		}
+		$fetched = self::fetch_release_json( self::POINTER_URL, 16384, 'pointer', true );
+		if ( is_wp_error( $fetched ) ) return $fetched;
+		$pointer = $fetched['data'];
+		$valid = self::validate_pointer( $pointer );
+		if ( is_wp_error( $valid ) ) return $valid;
+		set_transient( self::POINTER_TRANSIENT, $pointer, self::POINTER_CACHE_TTL );
+		return $pointer;
+	}
+
+	private static function pointer_legacy_fallback_allowed( $error ) {
+		if ( ! is_wp_error( $error ) ) return false;
+		return in_array( $error->get_error_code(), array( 'mad4b_self_update_pointer_fetch_failed', 'mad4b_self_update_pointer_http_error' ), true );
+	}
+
+	private static function fetch_legacy_manifest( $pointer_error = null ) {
+		$fetched = self::fetch_release_json( self::MANIFEST_URL, 65536, 'manifest', true );
+		if ( is_wp_error( $fetched ) ) return $fetched;
+		$manifest = $fetched['data'];
 		$valid = self::validate_manifest( $manifest );
 		if ( is_wp_error( $valid ) ) return $valid;
-		set_transient( self::MANIFEST_TRANSIENT, $manifest, self::MANIFEST_CACHE_TTL );
+		$manifest['_mad4b_resolution'] = 'legacy_stable_fallback';
+		if ( is_wp_error( $pointer_error ) ) $manifest['_mad4b_pointer_error'] = $pointer_error->get_error_code();
+		set_transient( self::MANIFEST_TRANSIENT, $manifest, self::POINTER_CACHE_TTL );
 		return $manifest;
+	}
+
+	private static function cached_manifest() {
+		$pointer = get_transient( self::POINTER_TRANSIENT );
+		if ( is_array( $pointer ) ) {
+			$valid_pointer = self::validate_pointer( $pointer );
+			if ( is_wp_error( $valid_pointer ) ) return $valid_pointer;
+			$cached = get_transient( self::manifest_transient_key( $pointer['source_commit_sha'] ) );
+			if ( is_array( $cached ) && isset( $cached['manifest'], $cached['manifest_sha256'] ) && is_array( $cached['manifest'] ) ) {
+				if ( ! hash_equals( $pointer['manifest_sha256'], strtolower( trim( (string) $cached['manifest_sha256'] ) ) ) ) return new WP_Error( 'mad4b_self_update_manifest_cache_binding_mismatch', 'Cached immutable manifest digest does not match the current pointer.' );
+				$manifest = $cached['manifest'];
+				$valid_manifest = self::validate_manifest( $manifest );
+				if ( is_wp_error( $valid_manifest ) ) return $valid_manifest;
+				$binding = self::validate_pointer_manifest_binding( $pointer, $manifest );
+				if ( is_wp_error( $binding ) ) return $binding;
+				$manifest['_mad4b_resolution'] = 'pointer_immutable_cache';
+				return $manifest;
+			}
+			return new WP_Error( 'mad4b_self_update_manifest_not_cached', 'Governed immutable update manifest is not cached; use the explicit refresh action.' );
+		}
+
+		$legacy = get_transient( self::MANIFEST_TRANSIENT );
+		if ( is_array( $legacy ) ) {
+			$valid = self::validate_manifest( $legacy );
+			if ( is_wp_error( $valid ) ) return $valid;
+			if ( empty( $legacy['_mad4b_resolution'] ) ) $legacy['_mad4b_resolution'] = 'legacy_compatibility_cache';
+			return $legacy;
+		}
+		return new WP_Error( 'mad4b_self_update_manifest_not_cached', 'Governed update manifest is not cached; use the explicit refresh action.' );
+	}
+
+	private static function fetch_manifest( $force = false ) {
+		if ( ! $force ) {
+			$cached = self::cached_manifest();
+			if ( ! is_wp_error( $cached ) ) return $cached;
+		}
+
+		$pointer = self::fetch_pointer( $force );
+		if ( is_wp_error( $pointer ) ) {
+			if ( ! self::pointer_legacy_fallback_allowed( $pointer ) ) return $pointer;
+			return self::fetch_legacy_manifest( $pointer );
+		}
+
+		$fetched = self::fetch_release_json( self::immutable_manifest_url( $pointer ), 65536, 'manifest', false );
+		if ( is_wp_error( $fetched ) ) return $fetched;
+		$actual_digest = hash( 'sha256', $fetched['body'] );
+		if ( ! hash_equals( $pointer['manifest_sha256'], $actual_digest ) ) return new WP_Error( 'mad4b_self_update_manifest_digest_mismatch', 'Immutable update manifest bytes do not match the pointer digest.' );
+
+		$manifest = $fetched['data'];
+		$valid = self::validate_manifest( $manifest );
+		if ( is_wp_error( $valid ) ) return $valid;
+		$binding = self::validate_pointer_manifest_binding( $pointer, $manifest );
+		if ( is_wp_error( $binding ) ) return $binding;
+		$manifest['_mad4b_resolution'] = 'pointer_immutable';
+		$manifest['_mad4b_pointer_manifest_sha256'] = $pointer['manifest_sha256'];
+
+		set_transient(
+			self::manifest_transient_key( $pointer['source_commit_sha'] ),
+			array(
+				'manifest' => $manifest,
+				'manifest_sha256' => $pointer['manifest_sha256'],
+				'source_commit_sha' => $pointer['source_commit_sha'],
+			),
+			self::MANIFEST_CACHE_TTL
+		);
+		// Preserve a short-lived cache-only compatibility slot for older UI paths
+		// and safe rollback to a runtime that predates pointer-first resolution.
+		set_transient( self::MANIFEST_TRANSIENT, $manifest, self::POINTER_CACHE_TTL );
+		return $manifest;
+	}
+
+	private static function clear_manifest_cache() {
+		$pointer = get_transient( self::POINTER_TRANSIENT );
+		if ( is_array( $pointer ) && ! empty( $pointer['source_commit_sha'] ) && 1 === preg_match( '/^[a-f0-9]{40}$/', strtolower( (string) $pointer['source_commit_sha'] ) ) ) {
+			delete_transient( self::manifest_transient_key( strtolower( (string) $pointer['source_commit_sha'] ) ) );
+		}
+		delete_transient( self::POINTER_TRANSIENT );
+		delete_transient( self::MANIFEST_TRANSIENT );
 	}
 
 	private static function validate_manifest( array &$manifest ) {
@@ -974,6 +1143,8 @@ final class MAD4B_SCP_Self_Update {
 		$manifest['package_url'] = $url;
 		$manifest['size_bytes'] = isset( $manifest['size_bytes'] ) ? absint( $manifest['size_bytes'] ) : 0;
 		if ( $manifest['size_bytes'] < 1 || $manifest['size_bytes'] > self::MAX_UPLOAD_BYTES ) return new WP_Error( 'mad4b_self_update_manifest_size_invalid', 'Update package size is outside the bounded self-update budget.' );
+		$manifest['release_verdict_run_id'] = isset( $manifest['release_verdict_run_id'] ) ? absint( $manifest['release_verdict_run_id'] ) : 0;
+		if ( $manifest['release_verdict_run_id'] < 1 ) return new WP_Error( 'mad4b_self_update_release_verdict_identity_missing', 'Update manifest Release Verdict identity is invalid.' );
 		if ( ! isset( $manifest['release_verdict_success'] ) || true !== $manifest['release_verdict_success'] ) return new WP_Error( 'mad4b_self_update_release_verdict_missing', 'Update manifest is not bound to a successful Release Verdict.' );
 		if ( ! isset( $manifest['published_from_master'] ) || true !== $manifest['published_from_master'] ) return new WP_Error( 'mad4b_self_update_master_publication_missing', 'Update manifest is not bound to an exact master publication.' );
 		if ( ! isset( $manifest['release_root_trust_verified'] ) || true !== $manifest['release_root_trust_verified'] ) return new WP_Error( 'mad4b_self_update_release_root_trust_missing', 'Update manifest is not bound to verified release-root trust.' );
