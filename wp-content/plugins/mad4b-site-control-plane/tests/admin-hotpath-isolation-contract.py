@@ -12,6 +12,7 @@ query_monitor = (PLUGIN / "includes/class-mad4b-scp-query-monitor-evidence-bridg
 live_truth = (PLUGIN / "includes/class-mad4b-scp-live-truth.php").read_text(encoding="utf-8")
 dependency = (PLUGIN / "includes/class-mad4b-scp-dependency-manager.php").read_text(encoding="utf-8")
 continuity = (PLUGIN / "includes/class-mad4b-scp-upgrade-continuity.php").read_text(encoding="utf-8")
+runtime_convergence = (PLUGIN / "includes/class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
 slo = (ROOT / "specs/008-dynamic-content-runtime-hardening/performance-slo.md").read_text(encoding="utf-8")
 
 def method_body(source: str, signature: str, next_signature: str) -> str:
@@ -142,5 +143,27 @@ continuity_notice = method_body(
 )
 assert "mad4b-control-plane" in continuity_notice
 assert continuity_notice.index("mad4b-control-plane") < continuity_notice.index("self::governance_status()")
+
+
+# Runtime Convergence fallback detection is also forbidden on foreign wp-admin
+# screens. The route gate must run before checkpoint/provenance work.
+maybe_converge = method_body(
+    runtime_convergence,
+    "public static function maybe_schedule_pending()",
+    "private static function convergence_trigger_allowed()",
+)
+assert "convergence_trigger_allowed()" in maybe_converge
+assert maybe_converge.index("convergence_trigger_allowed()") < maybe_converge.index("get_option( self::CHECKPOINT_OPTION")
+assert "if ( 'blocked' === $state ) return;" in maybe_converge
+
+convergence_gate = method_body(
+    runtime_convergence,
+    "private static function convergence_trigger_allowed()",
+    "private static function detect_lightweight_runtime_drift()",
+)
+assert "mad4b-control-plane" in convergence_gate
+assert "'plugins.php'" in convergence_gate
+assert "'update.php'" in convergence_gate
+assert "return true;" in convergence_gate
 
 print("admin hotpath isolation contract: PASS")
