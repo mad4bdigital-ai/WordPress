@@ -1,9 +1,5 @@
 <?php
 if ( function_exists( 'set_time_limit' ) ) @set_time_limit( 90 );
-register_shutdown_function( static function () {
-	$error = error_get_last();
-	if ( is_array( $error ) ) fwrite( STDERR, 'TRACE pre-init shutdown: ' . json_encode( $error, JSON_UNESCAPED_SLASHES ) . PHP_EOL );
-} );
 /**
  * Regression acceptance for WordPress 6.9+ Ability lifecycle discipline.
  *
@@ -104,9 +100,7 @@ $_SERVER['REQUEST_URI'] = '/wp-json/wpml/v1/rest/status?test_get_parameter=1&cac
 $_GET['test_get_parameter'] = '1';
 $_GET['cachebuster'] = 'ci';
 
-fwrite( STDERR, "TRACE pre-init: before_wp_load\n" );
 require $wp_path . '/wp-load.php';
-fwrite( STDERR, "TRACE pre-init: after_wp_load\n" );
 @unlink( $observer );
 
 $violations = isset( $GLOBALS['mad4b_ci_pre_init_ability_violations'] ) && is_array( $GLOBALS['mad4b_ci_pre_init_ability_violations'] )
@@ -133,7 +127,6 @@ if ( ! function_exists( 'wp_has_ability' ) ) {
 	exit( 1 );
 }
 
-fwrite( STDERR, "TRACE pre-init: before_expected_catalog_checks\n" );
 $expected = array(
 	'mad4b/site-info',
 	'mad4b/content-update-post',
@@ -157,7 +150,6 @@ if ( ! empty( $missing ) ) {
 	fwrite( STDERR, 'FAIL pre-init-abilities-lifecycle: early-materialized catalog is incomplete: ' . json_encode( $missing, JSON_UNESCAPED_SLASHES ) . PHP_EOL );
 	exit( 1 );
 }
-fwrite( STDERR, "TRACE pre-init: after_expected_catalog_checks\n" );
 
 $missing_lookups = isset( $GLOBALS['mad4b_ci_missing_ability_lookups'] ) && is_array( $GLOBALS['mad4b_ci_missing_ability_lookups'] )
 	? $GLOBALS['mad4b_ci_missing_ability_lookups']
@@ -181,13 +173,9 @@ if ( empty( $admin_ids ) ) {
 }
 wp_set_current_user( (int) $admin_ids[0] );
 
-fwrite( STDERR, "TRACE pre-init: before_write_tools\n" );
 $live_write_count = count( MAD4B_SCP_Servers::write_tools() );
-fwrite( STDERR, "TRACE pre-init: after_write_tools count=" . $live_write_count . "\n" );
-fwrite( STDERR, "TRACE pre-init: before_authority_ability\n" );
 $authority_ability = wp_get_ability( 'mad4b/write-authority-status' );
 $authority_truth = is_object( $authority_ability ) && method_exists( $authority_ability, 'execute' ) ? $authority_ability->execute() : new WP_Error( 'mad4b_ci_ability_unexecutable', 'Authority ability is not executable.' );
-fwrite( STDERR, "TRACE pre-init: after_authority_execute\n" );
 if ( is_wp_error( $authority_truth ) ) {
 	fwrite( STDERR, 'FAIL pre-init-abilities-lifecycle: authority truth execution failed: ' . $authority_truth->get_error_code() . PHP_EOL );
 	exit( 1 );
@@ -224,10 +212,8 @@ if ( ! is_array( $legacy_readback ) || ! empty( $legacy_readback['ready'] ) || '
 	exit( 1 );
 }
 
-fwrite( STDERR, "TRACE pre-init: before_write_cert_ability\n" );
 $write_cert_ability = wp_get_ability( 'mad4b/write-runtime-certification' );
 $write_truth = is_object( $write_cert_ability ) && method_exists( $write_cert_ability, 'execute' ) ? $write_cert_ability->execute() : new WP_Error( 'mad4b_ci_ability_unexecutable', 'Write certification ability is not executable.' );
-fwrite( STDERR, "TRACE pre-init: after_write_cert_execute\n" );
 if ( is_wp_error( $write_truth ) ) {
 	fwrite( STDERR, 'FAIL pre-init-abilities-lifecycle: write truth execution failed: ' . $write_truth->get_error_code() . PHP_EOL );
 	exit( 1 );
@@ -245,10 +231,8 @@ if ( ! array_key_exists( 'wpml_internal_probe_blocks_local_certification', $writ
 	exit( 1 );
 }
 
-fwrite( STDERR, "TRACE pre-init: before_rest_ability\n" );
 $rest_ability = wp_get_ability( 'mad4b/rest-compatibility-status' );
 $rest_truth = is_object( $rest_ability ) && method_exists( $rest_ability, 'execute' ) ? $rest_ability->execute() : new WP_Error( 'mad4b_ci_ability_unexecutable', 'REST compatibility ability is not executable.' );
-fwrite( STDERR, "TRACE pre-init: after_rest_execute\n" );
 if ( is_wp_error( $rest_truth ) || empty( $rest_truth['local_rest_isolation_ready'] ) ) {
 	fwrite( STDERR, 'FAIL pre-init-abilities-lifecycle: local REST isolation truth is not ready: ' . ( is_wp_error( $rest_truth ) ? $rest_truth->get_error_code() : json_encode( $rest_truth, JSON_UNESCAPED_SLASHES ) ) . PHP_EOL );
 	exit( 1 );
