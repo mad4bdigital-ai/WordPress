@@ -19,6 +19,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const BROWSER_ACCEPTANCE_ABILITY = 'mad4b/browser-acceptance-run';
 	const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';
 	const PERFORMANCE_RECONCILE_ABILITY = 'mad4b/admin-query-performance-reconcile';
+	const RUNTIME_CONVERGENCE_ABILITY = 'mad4b/runtime-convergence-apply';
 	const WORK_QUEUE_ABILITY = 'mad4b/remote-operation-work-queue';
 	const WORK_CLAIM_ABILITY = 'mad4b/remote-operation-work-claim';
 	const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';
@@ -51,6 +52,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			self::BROWSER_ACCEPTANCE_ABILITY,
 			self::PERFORMANCE_INDEX_ABILITY,
 			self::PERFORMANCE_RECONCILE_ABILITY,
+			self::RUNTIME_CONVERGENCE_ABILITY,
 			self::WORK_CLAIM_ABILITY,
 			self::WORK_COMPLETE_ABILITY,
 		);
@@ -391,6 +393,20 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'remote_caller_role' => 'owner',
 				'production_policy' => 'deny',
 				'human_decision_required' => true,
+			),
+			'runtime_convergence' => array(
+				'feature_id' => '008-dynamic-content-runtime-hardening',
+				'capability_tags' => array( 'runtime', 'convergence', 'deployment', 'schema', 'skills', 'providers', 'authority', 'acceptance', 'self-healing' ),
+				'provider' => 'core',
+				'status_ability' => 'mad4b/runtime-convergence-status',
+				'local_surface' => '',
+				'remote_ability' => self::RUNTIME_CONVERGENCE_ABILITY,
+				'authority_surface' => 'mad4b-enrollment',
+				'executor' => 'wordpress_native',
+				'remote_mode' => 'checkpointed_dependency_graph_convergence',
+				'remote_caller_role' => 'operator',
+				'production_policy' => 'deny',
+				'human_decision_required' => false,
 			),
 			'provider_closure_matrix' => array(
 				'feature_id' => 'provider-certification',

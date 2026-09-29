@@ -96,6 +96,23 @@
       "pipeline_profile": "governed_mutation_v1"
     },
     {
+      "id": "wordpress.runtime.converge",
+      "target_kind": "runtime",
+      "risk": "high",
+      "planner": "mad4b/runtime-convergence-plan",
+      "executor": "mad4b/runtime-convergence-apply",
+      "supports": [
+        "converge-runtime",
+        "reconcile-runtime",
+        "post-deploy-convergence"
+      ],
+      "durable_resume": true,
+      "dependency_impact": false,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1"
+    },
+    {
       "id": "wordpress.skills.reconcile",
       "target_kind": "skills",
       "risk": "medium",
@@ -164,13 +181,16 @@
     "reconcile-provider": "wordpress.provider.recertify",
     "recertify-provider": "wordpress.provider.recertify",
     "import": "wordpress.content.import",
-    "export": "wordpress.content.export"
+    "export": "wordpress.content.export",
+    "converge-runtime": "wordpress.runtime.converge",
+    "reconcile-runtime": "wordpress.runtime.converge"
   },
   "read_projection": {
     "direct": [
       "mad4b/wordpress-operation-discover",
       "mad4b/plugin-transaction-plan",
-      "mad4b/operation-resume-status"
+      "mad4b/operation-resume-status",
+      "mad4b/runtime-convergence-plan"
     ],
     "catalog": [
       "mad4b/operation-registry-status",
@@ -183,7 +203,9 @@
       "mad4b/provider-autopilot-promotion-plan",
       "mad4b/provider-autopilot-status",
       "mad4b/provider-transport-registry-status",
-      "mad4b/operation-resume-status"
+      "mad4b/operation-resume-status",
+      "mad4b/runtime-convergence-status",
+      "mad4b/runtime-convergence-plan"
     ]
   },
   "pipeline_profiles": {

@@ -34,3 +34,45 @@
 
 ## Staging certification
 Execute eight scenarios defined in tasks T110-T117 and retain machine-readable evidence tied to exact build/site/policy digests.
+
+
+---
+
+## Post-deploy Runtime Convergence Addendum
+
+Feature 008 now includes a provider-neutral runtime convergence layer for post-deploy drift.
+
+### Dependency graph
+
+```
+deployment
+  -> schema
+     -> managed_skills
+        -> provider_closure (conditional)
+  -> authority_binding (owner gate)
+  -> external_acceptance
+  -> performance_advisory
+```
+
+The graph is extensible through `mad4b_scp_runtime_convergence_phases`. Add-ons may contribute bounded phases but cannot obtain authority from metadata.
+
+### Automatic safe phases
+
+Only these lifecycle operations may converge automatically on enrolled Staging:
+
+- additive schema migration with physical readback;
+- MAD4B-managed canonical Skill seed reconciliation;
+- MAD4B-managed provider Skill reconciliation.
+
+### Explicit gates retained
+
+The convergence engine MUST NOT automatically perform:
+
+- Control Plane release installation;
+- candidate binding or Full Staging Authority widening;
+- provider behavioral write certification;
+- provider canary activation;
+- Production mutation;
+- raw SQL or Breakglass.
+
+A successful governed self-update records a restart-bound convergence checkpoint and schedules one bounded cron continuation. The continuation verifies exact installed identity before running safe phases.
