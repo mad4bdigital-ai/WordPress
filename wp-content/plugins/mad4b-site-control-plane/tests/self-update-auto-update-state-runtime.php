@@ -9,6 +9,10 @@ $GLOBALS['mad4b_auto_forced'] = null;
 $GLOBALS['mad4b_effective_environment'] = 'staging';
 $GLOBALS['mad4b_profile_write_allowed'] = true;
 
+function sanitize_key( $key ) {
+	$key = strtolower( (string) $key );
+	return preg_replace( '/[^a-z0-9_\-]/', '', $key );
+}
 function plugin_basename( $file ) {
 	unset( $file );
 	return 'mad4b-site-control-plane/mad4b-site-control-plane.php';
