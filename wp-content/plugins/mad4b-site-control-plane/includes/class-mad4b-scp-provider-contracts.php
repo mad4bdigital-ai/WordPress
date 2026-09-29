@@ -184,6 +184,18 @@ final class MAD4B_SCP_Provider_Contracts {
 		return self::$installed_version_cache[ $file ] = ( isset( $plugins[ $file ] ) && ! empty( $plugins[ $file ]['Version'] ) ? (string) $plugins[ $file ]['Version'] : '' );
 	}
 
+	private static function invalidate_installed_version_cache_for_contract( array $contract ) {
+		if ( ! empty( $contract['plugin_file'] ) ) {
+			$file = ltrim( str_replace( '\\', '/', (string) $contract['plugin_file'] ), '/' );
+			unset( self::$installed_version_cache[ $file ] );
+		}
+		if ( ! empty( $contract['components'] ) && is_array( $contract['components'] ) ) {
+			foreach ( $contract['components'] as $component ) {
+				if ( is_array( $component ) ) self::invalidate_installed_version_cache_for_contract( $component );
+			}
+		}
+	}
+
 	private static function composite_version_string( array $components, $installed ) {
 		$parts = array();
 		ksort( $components, SORT_STRING );
@@ -310,6 +322,10 @@ final class MAD4B_SCP_Provider_Contracts {
 
 	public static function runtime_status( $provider, $available = null ) {
 		$base_contract = self::get( $provider );
+		// Deep certification/mutation truth must observe version drift that occurs
+		// after an earlier request-local identity read. Keep hot identity paths
+		// memoized, but force exact plugin-header refresh before deep runtime truth.
+		if ( ! empty( $base_contract ) ) self::invalidate_installed_version_cache_for_contract( $base_contract );
 		if ( empty( $base_contract ) ) return array( 'provider' => $provider, 'status' => 'uncertified_provider', 'runtime_contract_ok' => false );
 		if ( ! empty( $base_contract['components'] ) && is_array( $base_contract['components'] ) ) {
 			return self::composite_runtime_status( $provider, $base_contract, $available );
