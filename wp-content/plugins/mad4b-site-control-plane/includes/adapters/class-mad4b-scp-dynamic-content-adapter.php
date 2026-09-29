@@ -1131,7 +1131,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 		if(class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')){
 			$validated=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$final_context);
-			if(is_wp_error($validated)) return $this->failure_with_compensation($validated,$v['mode'],$id,$before);
+			if(is_wp_error($validated)) return $this->failure_with_compensation($validated,$v['mode'],$id,$before,$owned_after);
 			$findings=isset($validated['findings'])?(array)$validated['findings']:array();
 			$validated['findings']=$findings;
 
@@ -1585,7 +1585,9 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			$scope=isset($before['scope'])&&is_array($before['scope'])?$before['scope']:array();
 			$readback=$this->snapshot($id,$this->input_from_state_scope($scope));
 			if(!hash_equals($this->state_sha256($before),$this->state_sha256($readback))) return new WP_Error('mad4b_dynamic_compensation_verification_failed','Compensation completed but exact readback did not match the pre-mutation snapshot.');
-			return array('compensated'=>true,'mode'=>'update');
+			$acceptance_invalidated=$this->invalidate_acceptance_after_restore($id);
+			if(is_wp_error($acceptance_invalidated)) return $acceptance_invalidated;
+			return array('compensated'=>true,'mode'=>'update','acceptance_invalidated'=>true);
 		}
 		return new WP_Error('mad4b_dynamic_compensation_state_invalid','Compensation state is invalid.');
 	}
