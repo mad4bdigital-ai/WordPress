@@ -230,6 +230,17 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline {
 			'acceptance'=>array('phase'=>'accept','callback'=>array(__CLASS__,'stage_acceptance'),'description'=>'Reduce final findings to a deterministic acceptance decision.'),
 		);
 		$registry=apply_filters('mad4b_scp_dynamic_content_pipeline_registry',$registry);
+		if(!is_array($registry)) $registry=array();
+		$registry['structural']=array(
+			'phase'=>'validate',
+			'callback'=>array(__CLASS__,'stage_structural'),
+			'description'=>'Verify desired post fields, meta, taxonomies and featured media against exact readback.'
+		);
+		$registry['acceptance']=array(
+			'phase'=>'accept',
+			'callback'=>array(__CLASS__,'stage_acceptance'),
+			'description'=>'Reduce final findings to a deterministic acceptance decision.'
+		);
 		$out=array();
 		foreach(is_array($registry)?$registry:array() as $id=>$stage){
 			$id=sanitize_key((string)$id); if($id===''||!is_array($stage)||empty($stage['callback'])||!is_callable($stage['callback'])) continue;
