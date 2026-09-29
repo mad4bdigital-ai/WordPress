@@ -97,8 +97,125 @@ $required_read = array(
 	'mad4b/write-authority-status',
 	'mad4b/write-runtime-certification',
 	'mad4b/rest-compatibility-status',
+	'mad4b/site-bootstrap-snapshot',
 );
 foreach ( $required_read as $ability ) if ( ! wp_has_ability( $ability ) ) $fail( 'Missing read ability: ' . $ability );
+
+// Existing-site bootstrap must be safe to execute through the same read-only
+// runtime used by remote ChatGPT. A small page must never fail merely because
+// the full site inventory is larger than the MCP response envelope.
+$bootstrap_ability = wp_get_ability( 'mad4b/site-bootstrap-snapshot' );
+if ( ! is_object( $bootstrap_ability ) || ! method_exists( $bootstrap_ability, 'execute' ) ) $fail( 'Site bootstrap ability is not executable.' );
+$bootstrap_page = $bootstrap_ability->execute( array( 'max_items' => 1 ) );
+if ( is_wp_error( $bootstrap_page ) ) $fail( 'Site bootstrap page execution failed: ' . $bootstrap_page->get_error_code() );
+if ( ! is_array( $bootstrap_page ) || 'mad4b.site-content-bootstrap.v1' !== ( isset( $bootstrap_page['contract'] ) ? (string) $bootstrap_page['contract'] : '' ) ) {
+	$fail( 'Site bootstrap page returned an invalid contract.' );
+}
+if ( empty( $bootstrap_page['bounded'] ) || ! empty( $bootstrap_page['mutation_performed'] ) || ! empty( $bootstrap_page['authorizing'] ) ) {
+	$fail( 'Site bootstrap page crossed the bounded read-only contract.' );
+}
+if ( ! isset( $bootstrap_page['transport']['contract'] ) || 'mad4b.site-bootstrap-transport.v1' !== (string) $bootstrap_page['transport']['contract'] ) {
+	$fail( 'Site bootstrap page did not expose the transport safety contract.' );
+}
+if ( empty( $bootstrap_page['transport']['compact_projection'] ) ) $fail( 'Site bootstrap page is not compacted for remote transport.' );
+if ( ! isset( $bootstrap_page['transport']['response_byte_budget'], $bootstrap_page['transport']['response_bytes'] ) ) $fail( 'Site bootstrap page omitted response budget evidence.' );
+if ( (int) $bootstrap_page['transport']['response_bytes'] > (int) $bootstrap_page['transport']['response_byte_budget'] ) $fail( 'Site bootstrap page exceeded its response byte budget.' );
+if ( ! isset( $bootstrap_page['returned_item_count'] ) || (int) $bootstrap_page['returned_item_count'] > 1 ) $fail( 'Site bootstrap page exceeded requested item scope.' );
+$bootstrap_wire = wp_json_encode( $bootstrap_page, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+if ( ! is_string( $bootstrap_wire ) || strlen( $bootstrap_wire ) > MAD4B_SCP_Site_Bootstrap::MAX_TRANSPORT_RESPONSE_BYTES ) {
+	$fail( 'Serialized site bootstrap page exceeded the runtime transport budget.' );
+}
+if ( empty( $bootstrap_page['complete'] ) ) {
+	$bootstrap_blockers = isset( $bootstrap_page['blocking_reasons'] ) && is_array( $bootstrap_page['blocking_reasons'] ) ? $bootstrap_page['blocking_reasons'] : array();
+	if ( ! in_array( 'inventory_pagination_required_or_active', $bootstrap_blockers, true )
+		&& ! in_array( 'inventory_items_partially_unreadable', $bootstrap_blockers, true )
+		&& ! in_array( 'inventory_observations_partially_unreadable', $bootstrap_blockers, true ) ) {
+		$fail( 'Partial site bootstrap page omitted a truthful partial-evidence blocker.' );
+	}
+}
+
+// Stress the transport projection independently of site content so CI proves
+// that rich provider/link/taxonomy observations cannot overflow the response.
+$synthetic_item = array(
+	'contract' => MAD4B_SCP_Site_Bootstrap::ITEM_CONTRACT,
+	'content_id' => MAD4B_SCP_Site_Profile::site_uuid() . ':post:999001',
+	'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+	'locale' => 'en',
+	'language' => 'en',
+	'object_type' => 'post',
+	'object_id' => 999001,
+	'public_url' => home_url( '/synthetic-bootstrap-item/' ),
+	'canonical_url' => home_url( '/synthetic-bootstrap-item/' ),
+	'title' => str_repeat( 'Synthetic bootstrap title ', 80 ),
+	'status' => 'publish',
+	'content_fingerprint' => hash( 'sha256', 'synthetic-bootstrap-item' ),
+	'taxonomy_assignments' => array(),
+	'internal_link_count' => 80,
+	'outbound_link_count' => 80,
+	'internal_links' => array(),
+	'outbound_links' => array(),
+	'seo' => array(
+		'source' => 'synthetic',
+		'indexability' => 'unknown',
+		'provider_observations' => array( 'payload' => str_repeat( 'seo-data-', 1000 ) ),
+	),
+	'indexability' => 'unknown',
+	'structured_data' => array( 'payload' => str_repeat( 'structured-data-', 1000 ) ),
+	'provider_observations' => array( 'payload' => str_repeat( 'provider-data-', 1000 ) ),
+	'published_gmt' => '2026-09-29 00:00:00',
+	'modified_gmt' => '2026-09-29 00:00:00',
+);
+for ( $i = 0; $i < 80; $i++ ) {
+	$synthetic_item['internal_links'][] = home_url( '/internal-' . $i . '/?q=' . str_repeat( 'x', 300 ) );
+	$synthetic_item['outbound_links'][] = 'https://external.example/item-' . $i . '/?q=' . str_repeat( 'y', 300 );
+	$synthetic_item['taxonomy_assignments'][] = array(
+		'taxonomy' => 'category',
+		'term_id' => $i + 1,
+		'slug' => 'synthetic-term-' . $i,
+		'name' => str_repeat( 'Synthetic Term ', 20 ) . $i,
+	);
+}
+$synthetic_base = array(
+	'contract' => MAD4B_SCP_Site_Bootstrap::CONTRACT,
+	'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+	'site_identity_source' => 'enrolled_site_profile',
+	'identity' => array(),
+	'wordpress_version' => isset( $GLOBALS['wp_version'] ) ? (string) $GLOBALS['wp_version'] : '',
+	'active_languages' => array( 'en' ),
+	'content_types' => array(),
+	'taxonomies' => array(),
+	'redirect_observations' => array(),
+	'inventory_scope' => array( 'post_types' => array( 'post' ), 'post_statuses' => array( 'publish' ), 'max_items' => 1000, 'effective_page_items' => 5 ),
+	'pagination' => array( 'after_id' => 0, 'requested_max_items' => 1000, 'effective_page_items' => 5, 'last_scanned_id' => 999001, 'query_has_more' => true ),
+	'transport' => array(
+		'contract' => 'mad4b.site-bootstrap-transport.v1',
+		'response_byte_budget' => MAD4B_SCP_Site_Bootstrap::MAX_TRANSPORT_RESPONSE_BYTES,
+		'page_item_cap' => MAD4B_SCP_Site_Bootstrap::MAX_TRANSPORT_PAGE_ITEMS,
+		'compact_projection' => true,
+	),
+	'observed_at' => gmdate( 'c' ),
+	'historical_source_attribution' => 'synthetic_ci',
+	'backfill_performed' => false,
+	'intent_claims_created' => false,
+	'artifacts_created' => false,
+	'mutation_performed' => false,
+	'authorizing' => false,
+	'item_errors' => array(),
+	'item_error_count' => 0,
+	'item_errors_truncated' => false,
+	'snapshot_errors' => array(),
+	'snapshot_error_count' => 0,
+);
+$synthetic_snapshot = MAD4B_SCP_Site_Bootstrap::finalize_snapshot( $synthetic_base, array( $synthetic_item ), 20, 1000 );
+$synthetic_wire = wp_json_encode( $synthetic_snapshot, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+if ( ! is_string( $synthetic_wire ) || strlen( $synthetic_wire ) > MAD4B_SCP_Site_Bootstrap::MAX_TRANSPORT_RESPONSE_BYTES ) {
+	$fail( 'Synthetic rich bootstrap snapshot exceeded transport budget.' );
+}
+if ( empty( $synthetic_snapshot['transport']['truncated'] ) ) $fail( 'Synthetic rich bootstrap snapshot did not record transport compaction.' );
+if ( 'returned_page_only' !== ( isset( $synthetic_snapshot['collision_analysis']['scope'] ) ? (string) $synthetic_snapshot['collision_analysis']['scope'] : '' ) ) {
+	$fail( 'Synthetic paged bootstrap collision analysis was not page-scoped.' );
+}
+if ( empty( $synthetic_snapshot['pagination']['next_after_id'] ) ) $fail( 'Synthetic paged bootstrap snapshot omitted continuation cursor.' );
 
 foreach ( array( 'mad4b/skill-create', 'mad4b/skill-update', 'mad4b/skill-delete', 'mad4b/skill-write' ) as $ability ) {
 	if ( wp_has_ability( $ability ) ) $fail( 'Forbidden Skill write ability is registered: ' . $ability );

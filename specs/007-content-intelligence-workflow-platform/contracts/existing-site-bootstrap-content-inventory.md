@@ -30,6 +30,21 @@ A SiteBootstrapSnapshot captures:
 
 Bootstrap is read-only unless a separate reconciliation plan is approved.
 
+### Remote transport safety and pagination
+
+The bootstrap inventory is consumable through bounded remote MCP transports and therefore MUST NOT assume that an entire existing site fits in one response.
+
+- `after_id` is a stable ascending object-id continuation cursor.
+- the runtime may cap the effective page size below the caller's requested `max_items` to respect the transport byte budget;
+- a page that does not cover the full inventory is truthful partial evidence and returns `inventory_pagination_required_or_active`;
+- `next_after_id` advances only through material represented by the returned page, so transport truncation cannot silently skip content;
+- verbose link arrays and provider/structured observations may be compacted for transport while their counts/digests and the full content fingerprint remain evidence-bearing;
+- collision analysis on a partial page is explicitly scoped to `returned_page_only` and MUST NOT be presented as site-global collision truth;
+- stale database error state from unrelated requests MUST NOT be mistaken for a bootstrap query failure;
+- non-critical observation callbacks are exception-isolated and surface bounded snapshot errors instead of terminating the entire read.
+
+The ChatGPT transport projection targets a response budget below the enclosing MCP transport maximum so wrapper/envelope metadata cannot push a valid page over the wire limit.
+
 ## ContentInventoryItem
 
 Normalized item:

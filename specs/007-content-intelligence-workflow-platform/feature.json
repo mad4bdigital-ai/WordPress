@@ -163,12 +163,12 @@
   "tool_execution_contract": "mad4b.governed-tool-execution.v1",
   "cli_host_runner_contract": "mad4b.cli-host-runner.v1",
   "host_provider_validation_profile": "mad4b.host-provider-validation-profile.v1",
-  "baseline_checked_at": "2026-09-28",
+  "baseline_checked_at": "2026-09-29",
   "implementation_closure_document": "implementation-closure.md",
   "implementation_closure_ledger": "implementation-closure.json",
   "implementation_closure_contract": "mad4b.feature007-implementation-closure.v2",
   "baseline_model": "mad4b.feature007-reviewed-parent-and-runtime-release.v1",
-  "last_reviewed_master_parent_sha": "c2f6405bdd43aeec43b7027dda818daf4cf71468",
+  "last_reviewed_master_parent_sha": "e0b68b04432085008daa6249e947c815e4b6d599",
   "repository_baseline_semantics": "committed metadata records the exact master parent reviewed by the PR; current master HEAD is external evidence and is intentionally not self-referential",
   "runtime_release_identity": {
     "contract": "mad4b.runtime-release-identity.v1",
@@ -182,7 +182,7 @@
     "general_distribution_artifact_id": 10838403565,
     "runtime_affecting_changes_since_release": true,
     "repository_changes_since_release_are_non_runtime": false,
-    "recapture_reason": "rc.82 session-safe Full Staging Authority handshake changes Control Plane runtime read semantics and direct ChatGPT catalog; recapture the trusted post-merge package before Staging deployment"
+    "recapture_reason": "site bootstrap transport-safe pagination, byte budgeting and read-failure isolation change Control Plane runtime read semantics; recapture the trusted post-merge package before Staging deployment"
   },
   "runtime_identity_paths": [
     "wp-content/plugins/mad4b-site-control-plane/",
