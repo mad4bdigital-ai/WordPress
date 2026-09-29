@@ -401,7 +401,7 @@ final class MAD4B_SCP_Site_Bootstrap {
 			: array();
 		$profile_configured = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured();
 		$canonical_origin = class_exists( 'MAD4B_SCP_Site_Profile' )
-			? ( $profile_configured ? (string) MAD4B_SCP_Site_Profile::canonical_origin() : (string) MAD4B_SCP_Site_Profile::current_origin() )
+			? ( $profile_configured ? (string) MAD4B_SCP_Site_Profile::site_origin() : (string) MAD4B_SCP_Site_Profile::current_origin() )
 			: '';
 		return array(
 			'site_uuid' => $site_uuid,
