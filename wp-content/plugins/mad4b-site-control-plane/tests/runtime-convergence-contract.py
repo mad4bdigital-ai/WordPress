@@ -8,6 +8,7 @@ PLUGIN = ROOT / "wp-content/plugins/mad4b-site-control-plane"
 runtime = (PLUGIN / "includes/class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
 self_update = (PLUGIN / "includes/class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
 main = (PLUGIN / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
+plugin = (PLUGIN / "includes/class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 registry = json.loads((PLUGIN / "config/operation-registry.json").read_text(encoding="utf-8"))
 
@@ -51,6 +52,8 @@ assert registry["dynamic_provider_autopilot"]["environments"]["production"] == "
 assert registry["dynamic_provider_autopilot"]["auto_enable_mutation"] is False
 
 assert "MAD4B_SCP_Self_Update::status()" not in runtime
+assert "exact_current_runtime_identity" in runtime
+assert "cached_release_target_present" in runtime
 
 assert "MAD4B_SCP_Full_Staging_Authority::status" not in runtime
 
@@ -113,7 +116,14 @@ assert "self::identity_matches( $target, $current )" in runtime
 
 assert "convergence_trigger_allowed" in runtime
 
-assert "if ( 'blocked' === $state ) return;" in runtime
+assert "MAX_TRANSIENT_RETRIES = 5" in runtime
+assert "mark_activation_pending" in runtime
+assert "plugin_activation" in runtime
+assert "automatic_bounded_retry" in runtime
+assert "mad4b_runtime_convergence_busy" in runtime
+assert "return false !== wp_next_scheduled( self::CRON_HOOK );" in runtime
+assert "MAD4B_SCP_Runtime_Convergence::mark_activation_pending();" in plugin
+assert "if ( 'blocked' === $state ) return;" not in runtime
 
 assert "$checkpoint['retry_policy'] = 'explicit_resume_required';" in runtime
 
