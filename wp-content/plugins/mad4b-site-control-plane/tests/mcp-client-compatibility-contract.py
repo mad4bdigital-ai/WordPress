@@ -111,7 +111,7 @@ for marker in [
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
     "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
-    "$step_up = array_merge( $narrow_step_up, $full_step_up )",
+    "$step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $full_step_up )",
     "public static function chatgpt_direct_read_transport_tools()",
     "'mad4b/session-safe-diagnostics'",
     "$direct_read_transport = self::chatgpt_direct_read_transport_tools()",
