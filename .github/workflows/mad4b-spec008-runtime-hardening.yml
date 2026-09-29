@@ -40,6 +40,8 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-query-monitor-evidence-bridge.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-canonicalization.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-context.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php
