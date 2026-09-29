@@ -334,7 +334,9 @@ jobs:
           PY
           )
           test -n "$CERTIFICATION_REASON"
-          ! printf '%s' "$CERTIFICATION_REASON" | grep -q           TEST_MANIFEST_SHA256=$(
+
+          PHP_MATRIX='7.4,8.3'
+          TEST_MANIFEST_SHA256=$(
             cd "$PLUGIN"
             find tests -type f \( -name '*.php' -o -name '*.js' \) -print0 \
               | LC_ALL=C sort -z \
