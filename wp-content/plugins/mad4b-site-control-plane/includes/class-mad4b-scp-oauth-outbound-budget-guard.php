@@ -63,11 +63,15 @@ final class MAD4B_SCP_OAuth_Outbound_Budget_Guard {
 			'url_scope_exact' => true,
 			'host_wide_budgeting' => false,
 			'non_oauth_same_origin_requests_ignored' => true,
+			'explicit_request_marker_required' => true,
+			'allowed_request_markers' => array( 'discovery', 'jwks' ),
 		);
 	}
 
 	private static function bridge_shaped_request( $args ) {
 		if ( ! is_array( $args ) ) return false;
+		$purpose = isset( $args['mad4b_oauth_fetch'] ) ? sanitize_key( (string) $args['mad4b_oauth_fetch'] ) : '';
+		if ( ! in_array( $purpose, array( 'discovery', 'jwks' ), true ) ) return false;
 		$timeout = isset( $args['timeout'] ) ? (float) $args['timeout'] : 0.0;
 		$redirection = isset( $args['redirection'] ) ? (int) $args['redirection'] : -1;
 		$accept = '';
