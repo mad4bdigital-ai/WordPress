@@ -469,8 +469,11 @@ final class MAD4B_SCP_Authorization {
 	public static function authority_status() {
 		$schema = class_exists( 'MAD4B_SCP_Schema' ) ? MAD4B_SCP_Schema::status() : array( 'ready' => false );
 		$counts = ! empty( $schema['ready'] ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::counts() : array( 'enabled_agents' => 0, 'enabled_subjects' => 0, 'grants' => 0, 'wildcard_grants' => 0 );
-		$mutation_configured = defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === MAD4B_MCP_MUTATION_ENABLED;
-		$mutation_effective = $mutation_configured ? MAD4B_SCP_Policy::can_mutate() : false;
+		$mutation_gate = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'mutation_gate_status' )
+			? MAD4B_SCP_Policy::mutation_gate_status()
+			: array( 'effective' => false, 'source' => 'unavailable' );
+		$mutation_configured = ! empty( $mutation_gate['effective'] );
+		$mutation_effective = $mutation_configured && MAD4B_SCP_Policy::can_mutate();
 		$peer_governance = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
 		$staging_write = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
 		$blockers = array();
@@ -484,6 +487,8 @@ final class MAD4B_SCP_Authorization {
 			'schema_ready' => ! empty( $schema['ready'] ),
 			'schema_version' => isset( $schema['installed_version'] ) ? (int) $schema['installed_version'] : 0,
 			'mutation_global_enabled' => $mutation_configured,
+			'mutation_gate_source' => isset( $mutation_gate['source'] ) ? (string) $mutation_gate['source'] : 'unknown',
+			'mutation_explicit_kill_switch' => ! empty( $mutation_gate['explicit_kill_switch'] ),
 			'mutation_effective_for_request' => $mutation_effective,
 			'nhi_mutation_required' => true,
 			'enabled_agents' => (int) $counts['enabled_agents'],
