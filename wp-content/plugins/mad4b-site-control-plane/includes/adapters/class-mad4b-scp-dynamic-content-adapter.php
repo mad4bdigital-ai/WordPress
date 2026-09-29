@@ -1207,11 +1207,15 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		foreach($meta_specs as $k=>$spec){
 			if(!current_user_can('edit_post_meta',$id,(string)$k)) return new WP_Error('mad4b_dynamic_meta_edit_denied','Current user cannot edit the requested meta key.',array('meta_key'=>(string)$k,'post_id'=>(int)$id));
 			delete_post_meta($id,(string)$k);
+			if(isset($owned_state['meta'])&&is_array($owned_state['meta'])) $owned_state['meta'][(string)$k]=array('exists'=>false,'values'=>array());
 			if('delete'===(string)$spec['mode']) continue;
 			foreach((array)$spec['values'] as $value){
 				if(false===add_post_meta($id,(string)$k,$value,false)) return new WP_Error('mad4b_dynamic_meta_write_failed','A requested meta value could not be written.',array('meta_key'=>(string)$k));
+				if(isset($owned_state['meta'])&&is_array($owned_state['meta'])){
+					$owned_state['meta'][(string)$k]['exists']=true;
+					$owned_state['meta'][(string)$k]['values'][]=$this->normalize_meta_storage_value($value);
+				}
 			}
-			if(isset($owned_state['meta'])&&is_array($owned_state['meta'])) $owned_state['meta'][(string)$k]=$this->desired_meta_envelope($spec);
 		}
 		foreach(isset($input['taxonomies'])&&is_array($input['taxonomies'])?$input['taxonomies']:array() as $tax=>$refs){
 			$taxonomy=sanitize_key((string)$tax);
@@ -1228,7 +1232,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				if(get_post_type($m)!=='attachment') return new WP_Error('mad4b_dynamic_featured_media_invalid','featured_media_id must reference attachment.');
 				if($current!==$m&&!set_post_thumbnail($id,$m)) return new WP_Error('mad4b_dynamic_featured_media_failed','Featured media write failed.');
 			}elseif($current>0){
-				delete_post_thumbnail($id);
+				if(!delete_post_thumbnail($id)) return new WP_Error('mad4b_dynamic_featured_media_delete_failed','Featured media could not be removed.');
 			}
 		}
 		if(array_key_exists('featured_media_id',$input)) $owned_state['featured_media_id']=absint($input['featured_media_id']);
@@ -1551,7 +1555,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			if('attachment'!==get_post_type($desired_media)) return new WP_Error('mad4b_dynamic_featured_media_restore_invalid','Recorded featured media is no longer an attachment.');
 			if($current_media!==$desired_media&&!set_post_thumbnail($id,$desired_media)) return new WP_Error('mad4b_dynamic_featured_media_restore_failed','Featured media could not be restored.');
 		}elseif($current_media>0){
-			delete_post_thumbnail($id);
+			if(!delete_post_thumbnail($id)) return new WP_Error('mad4b_dynamic_featured_media_restore_failed','Featured media could not be removed while restoring the recorded state.');
 		}
 		$managed=!empty($state['dynamic_managed']);
 		if($managed){
