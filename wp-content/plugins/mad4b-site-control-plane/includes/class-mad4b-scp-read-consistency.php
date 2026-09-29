@@ -466,14 +466,14 @@ final class MAD4B_SCP_Read_Consistency {
 					'retryable_checks' => array(),
 					'skipped_budget_checks' => array( '*' ),
 					'session_termination_count' => $session_termination_count,
-					'check_count' => count( self::bundle_checks( $bundle ) ),
+					'check_count' => count( self::session_safe_bundle_checks( $bundle ) ),
 					'evidence_digest' => self::digest( array( 'bundle' => $bundle, 'state' => 'skipped_budget', 'generation' => $runtime_generation ) ),
 				);
 				continue;
 			}
 
 			$result = MAD4B_SCP_Connector_Resilience::run_checks(
-				self::bundle_checks( $bundle ),
+				self::session_safe_bundle_checks( $bundle ),
 				array(
 					'budget_ms' => min( self::MAX_BUNDLE_BUDGET_MS, max( 1000, $remaining_ms ) ),
 					'retry_transient' => $retry,
@@ -494,7 +494,7 @@ final class MAD4B_SCP_Read_Consistency {
 						'retryable_checks' => array( '*' ),
 						'skipped_budget_checks' => array(),
 						'session_termination_count' => $session_termination_count,
-						'check_count' => count( self::bundle_checks( $remaining_bundle ) ),
+						'check_count' => count( self::session_safe_bundle_checks( $remaining_bundle ) ),
 						'evidence_digest' => self::digest( array( 'bundle' => $remaining_bundle, 'state' => 'skipped_session_breaker', 'generation' => $runtime_generation ) ),
 					);
 				}
@@ -523,6 +523,16 @@ final class MAD4B_SCP_Read_Consistency {
 			'observed_at' => gmdate( 'c' ),
 			'elapsed_ms' => (int) round( ( microtime( true ) - $started ) * 1000 ),
 			'budget_ms' => $budget_ms,
+			'request_metrics' => self::request_metrics(),
+			'deep_checks_deferred' => array(
+				'full_runtime_provenance_hash',
+				'deep_write_authority_scan',
+				'live_skill_filesystem_reconciliation',
+				'live_update_manifest_network_fetch',
+				'staging_certification_sweep',
+				'workflow_provider_runtime_inventory',
+				'write_catalog_runtime_rebuild',
+			),
 			'fixed_bundle_order' => self::bundle_names(),
 			'section_count' => count( $sections ),
 			'sections' => $sections,
@@ -714,16 +724,16 @@ final class MAD4B_SCP_Read_Consistency {
 		if ( 'identity' === $bundle ) {
 			return array(
 				'site_profile' => static function () { return self::profile_projection(); },
-				'build' => static function () { return self::build_projection(); },
+				'build' => static function () { return self::deep_build_projection(); },
 				'connection' => static function () { return self::connection_projection(); },
 				'reconnect' => static function () { return self::reconnect_projection(); },
 			);
 		}
 		if ( 'runtime' === $bundle ) {
 			return array(
-				'write_authority' => static function () { return self::write_authority_projection(); },
-				'skills_runtime' => static function () { return self::skills_projection(); },
-				'update_state' => static function () { return self::update_projection(); },
+				'write_authority' => static function () { return self::deep_write_authority_projection(); },
+				'skills_runtime' => static function () { return self::deep_skills_projection(); },
+				'update_state' => static function () { return self::deep_update_projection(); },
 			);
 		}
 		if ( 'certification' === $bundle ) {
@@ -747,11 +757,65 @@ final class MAD4B_SCP_Read_Consistency {
 		}
 		return array(
 			'workflow_providers' => static function () { return self::workflow_provider_projection(); },
+			'catalog_inventory' => static function () { return self::deep_catalog_projection(); },
+		);
+	}
+
+	private static function session_safe_bundle_checks( $bundle ) {
+		if ( 'identity' === $bundle ) {
+			return array(
+				'site_profile' => static function () { return self::profile_projection(); },
+				'build' => static function () { return self::build_projection(); },
+				'connection' => static function () { return self::connection_projection(); },
+				'reconnect' => static function () { return self::reconnect_projection(); },
+			);
+		}
+		if ( 'runtime' === $bundle ) {
+			return array(
+				'write_authority' => static function () { return self::write_authority_projection(); },
+				'skills_runtime' => static function () { return self::skills_projection(); },
+				'update_state' => static function () { return self::update_projection(); },
+			);
+		}
+		if ( 'certification' === $bundle ) {
+			return array(
+				'deep_certification' => static function () {
+					return array(
+						'state' => 'deferred_explicit_diagnostic',
+						'ready' => false,
+						'deferred_checks' => array( 'staging_certification', 'managed_skills_reconciliation', 'browser_acceptance_receipt' ),
+						'read_only' => true,
+						'mutation_performed' => false,
+					);
+				},
+			);
+		}
+		return array(
 			'catalog_inventory' => static function () { return self::catalog_projection(); },
+			'workflow_provider_runtime' => static function () {
+				return array(
+					'state' => 'deferred_explicit_diagnostic',
+					'ready' => false,
+					'deferred_checks' => array( 'workflow_provider_runtime_inventory' ),
+					'read_only' => true,
+					'mutation_performed' => false,
+				);
+			},
 		);
 	}
 
 	private static function build_projection() {
+		$status = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+		if ( is_wp_error( $status ) ) return $status;
+		$result = self::bounded_keys( $status, array(
+			'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest',
+			'artifact_identity', 'mcp_adapter_version', 'identity_ready', 'identity_mismatch', 'observed_at',
+		) );
+		$result['full_runtime_hash_validation_deferred'] = true;
+		return $result;
+	}
+
+	private static function deep_build_projection() {
 		$status = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
 		if ( is_wp_error( $status ) ) return $status;
 		return self::bounded_keys( $status, array(
@@ -788,6 +852,25 @@ final class MAD4B_SCP_Read_Consistency {
 	}
 
 	private static function catalog_projection() {
+		$registration = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
+		$chatgpt = isset( $registration['mad4b-chatgpt'] ) && is_array( $registration['mad4b-chatgpt'] ) ? $registration['mad4b-chatgpt'] : array();
+		$authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
+		$identity = array(
+			'chatgpt_registered' => ! empty( $chatgpt['registered'] ),
+			'chatgpt_materialized' => ! empty( $chatgpt['materialized'] ),
+			'chatgpt_tool_count' => isset( $chatgpt['tool_count'] ) ? max( 0, (int) $chatgpt['tool_count'] ) : 0,
+			'write_tool_count' => isset( $authority['write_tool_count'] ) ? max( 0, (int) $authority['write_tool_count'] ) : 0,
+			'write_inventory_fingerprint' => isset( $authority['write_inventory_fingerprint'] ) ? strtolower( (string) $authority['write_inventory_fingerprint'] ) : '',
+			'provider_blocked_fingerprint' => isset( $authority['provider_blocked_fingerprint'] ) ? strtolower( (string) $authority['provider_blocked_fingerprint'] ) : '',
+			'authority_source_commit_sha' => isset( $authority['source_commit_sha'] ) ? strtolower( (string) $authority['source_commit_sha'] ) : '',
+		);
+		$identity['provider_inventory_digest'] = self::digest( $identity );
+		$identity['runtime_catalog_rebuild_deferred'] = true;
+		$identity['raw_sql_breakglass_in_write_inventory'] = false;
+		return $identity;
+	}
+
+	private static function deep_catalog_projection() {
 		$chatgpt = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::chatgpt_tools() : array();
 		$write = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::write_tools() : array();
 		$chatgpt = array_values( array_unique( array_map( 'strval', is_array( $chatgpt ) ? $chatgpt : array() ) ) );
@@ -825,6 +908,25 @@ final class MAD4B_SCP_Read_Consistency {
 	}
 
 	private static function write_authority_projection() {
+		$status = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
+		$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
+			: array();
+		if ( is_wp_error( $status ) ) return $status;
+		$result = self::bounded_keys( $status, array(
+			'contract', 'ready', 'state', 'eligible', 'blocker', 'blockers',
+			'write_tool_count', 'write_inventory_fingerprint', 'provider_blocked_fingerprint',
+			'wildcard_grants', 'breakglass_included', 'production_auto_enable', 'breakglass_auto_enable', 'observed_at',
+		) );
+		$result['candidate_binding_required'] = ! empty( $binding['required'] );
+		$result['candidate_binding_match'] = ! empty( $binding['match'] );
+		$result['current_source_commit_sha'] = isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '';
+		$result['candidate_source_commit_sha'] = isset( $status['source_commit_sha'] ) ? (string) $status['source_commit_sha'] : '';
+		$result['deep_authority_scan_deferred'] = true;
+		return $result;
+	}
+
+	private static function deep_write_authority_projection() {
 		$status = class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_authority_status' )
 			? MAD4B_SCP_Live_Truth::current_authority_status()
 			: ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array() );
@@ -839,6 +941,20 @@ final class MAD4B_SCP_Read_Consistency {
 	}
 
 	private static function skills_projection() {
+		$status = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) && method_exists( 'MAD4B_SCP_Skill_Runtime_Certification', 'persisted_status' )
+			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status()
+			: array( 'ready' => false, 'state' => 'unavailable' );
+		if ( is_wp_error( $status ) ) return $status;
+		$result = self::bounded_keys( $status, array(
+			'contract', 'ready', 'state', 'persistence', 'blocker', 'blockers',
+			'provider_count', 'expected_provider_count', 'managed_skill_count',
+			'expected_managed_skill_count', 'observed_at',
+		) );
+		$result['live_skill_evaluation_deferred'] = true;
+		return $result;
+	}
+
+	private static function deep_skills_projection() {
 		$status = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) && method_exists( 'MAD4B_SCP_Skill_Runtime_Certification', 'current_status' )
 			? MAD4B_SCP_Skill_Runtime_Certification::current_status()
 			: array( 'ready' => false, 'state' => 'unavailable' );
@@ -851,6 +967,24 @@ final class MAD4B_SCP_Read_Consistency {
 	}
 
 	private static function update_projection() {
+		$status = class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'cached_status' )
+			? MAD4B_SCP_Self_Update::cached_status( array() )
+			: array();
+		if ( is_wp_error( $status ) ) return $status;
+		$native = isset( $status['native_wordpress_update'] ) && is_array( $status['native_wordpress_update'] ) ? $status['native_wordpress_update'] : array();
+		return array(
+			'contract' => isset( $status['contract'] ) ? (string) $status['contract'] : '',
+			'current' => isset( $status['current'] ) && is_array( $status['current'] ) ? self::bounded_keys( $status['current'], array( 'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) ) : array(),
+			'manifest_state' => isset( $native['manifest_state'] ) ? sanitize_key( (string) $native['manifest_state'] ) : '',
+			'manifest_error' => isset( $native['manifest_error'] ) ? sanitize_key( (string) $native['manifest_error'] ) : '',
+			'target' => isset( $native['target'] ) && is_array( $native['target'] ) ? self::bounded_keys( $native['target'], array( 'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity', 'sha256' ) ) : array(),
+			'native_update_ready' => ! empty( $native['ready'] ),
+			'production_remote_upload_allowed' => ! empty( $status['production_remote_upload_allowed'] ),
+			'mutation_performed' => false,
+		);
+	}
+
+	private static function deep_update_projection() {
 		$status = class_exists( 'MAD4B_SCP_Self_Update' ) ? MAD4B_SCP_Self_Update::status( array() ) : array();
 		if ( is_wp_error( $status ) ) return $status;
 		$native = isset( $status['native_wordpress_update'] ) && is_array( $status['native_wordpress_update'] ) ? $status['native_wordpress_update'] : array();
@@ -941,6 +1075,20 @@ final class MAD4B_SCP_Read_Consistency {
 			'read_only' => true,
 			'mutation_performed' => false,
 			'production_mutation_performed' => false,
+		);
+	}
+
+	private static function request_metrics() {
+		$started = isset( $_SERVER['REQUEST_TIME_FLOAT'] ) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : microtime( true );
+		$elapsed_ms = max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) );
+		return array(
+			'request_elapsed_ms' => $elapsed_ms,
+			'memory_usage_bytes' => function_exists( 'memory_get_usage' ) ? (int) memory_get_usage( true ) : 0,
+			'peak_memory_bytes' => function_exists( 'memory_get_peak_usage' ) ? (int) memory_get_peak_usage( true ) : 0,
+			'included_file_count' => function_exists( 'get_included_files' ) ? count( get_included_files() ) : 0,
+			'db_query_count' => function_exists( 'get_num_queries' ) ? (int) get_num_queries() : 0,
+			'external_network_calls_started_by_report' => 0,
+			'deep_integrity_hashes_started_by_report' => 0,
 		);
 	}
 
