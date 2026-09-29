@@ -384,6 +384,24 @@ final class MAD4B_SCP_Runtime_Convergence {
 
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		$state = is_array( $checkpoint ) && isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
+
+		// A cron run can observe the old runtime during an update boundary and park
+		// the checkpoint here. Do not spin/retry while identity still mismatches.
+		// Once a later request sees the exact target identity, convert the checkpoint
+		// back to a schedulable safe-phase state.
+		if ( 'waiting_for_exact_runtime_restart' === $state && is_array( $checkpoint ) ) {
+			$target = isset( $checkpoint['target_identity'] ) && is_array( $checkpoint['target_identity'] ) ? $checkpoint['target_identity'] : array();
+			$current = self::current_identity();
+			if ( ! self::identity_matches( $target, $current ) ) return;
+			$checkpoint['state'] = 'pending_safe_phases';
+			$checkpoint['restart_identity_now_matches'] = true;
+			$checkpoint['current_identity'] = $current;
+			$checkpoint['updated_at'] = gmdate( 'c' );
+			unset( $checkpoint['resume_blocker'] );
+			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			$state = 'pending_safe_phases';
+		}
+
 		if ( ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'blocked' ), true ) ) {
 			$detected = self::detect_lightweight_runtime_drift();
 			if ( ! empty( $detected['detected'] ) && ! empty( $detected['identity_complete'] ) ) {
