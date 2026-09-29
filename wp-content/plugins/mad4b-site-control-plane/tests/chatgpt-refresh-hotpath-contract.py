@@ -394,3 +394,14 @@ for marker in (
     "deep_integrity_hashes_started_by_report",
 ):
     assert marker in metrics, marker
+
+deep_bundle = read_consistency.split("private static function bundle_checks", 1)[1].split("private static function session_safe_bundle_checks", 1)[0]
+safe_bundle = read_consistency.split("private static function session_safe_bundle_checks", 1)[1].split("private static function build_projection", 1)[0]
+assert "self::connection_projection()" in deep_bundle
+assert "self::reconnect_projection()" in deep_bundle
+assert "self::session_safe_connection_projection()" not in deep_bundle
+assert "self::session_safe_reconnect_projection()" not in deep_bundle
+assert "self::session_safe_connection_projection()" in safe_bundle
+assert "self::session_safe_reconnect_projection()" in safe_bundle
+assert "self::connection_projection()" not in safe_bundle
+assert "self::reconnect_projection()" not in safe_bundle
