@@ -265,3 +265,6 @@ for marker in [
     require(abilities, marker, "durable enrollment mutation reconciliation")
 
 print("mad4b.connector-resilience.contract.v1: PASS")
+
+if "MAD4B_SCP_Staging_Write_Authority::persisted_status()" not in connection:
+    raise SystemExit("compact connector preflight must use persisted authority evidence")
