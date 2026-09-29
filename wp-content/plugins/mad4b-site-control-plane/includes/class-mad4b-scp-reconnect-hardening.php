@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Reconnect_Hardening {
 	const CONTRACT = 'mad4b.reconnect-hardening.v4';
 	const SESSION_SHADOW_TTL = 120;
+	const SESSION_DELETE_TOMBSTONE_TTL = 180;
 	const SESSION_META_KEY = 'mcp_adapter_sessions';
 	const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
 	const CERTIFIED_STATEFUL_ADAPTER_VERSION = '0.6.1';
@@ -118,7 +119,13 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$user_id = absint( $user_id );
 		if ( $user_id < 1 || ! self::valid_adapter_session_id( (string) $session_id ) ) return false;
 		if ( get_transient( self::shadow_tombstone_key( $user_id, $session_id ) ) ) return false;
-		return (bool) set_transient( self::shadow_key( $user_id, $session_id ), $shadow, self::SESSION_SHADOW_TTL );
+		$key = self::shadow_key( $user_id, $session_id );
+		if ( ! set_transient( $key, $shadow, self::SESSION_SHADOW_TTL ) ) return false;
+		if ( get_transient( self::shadow_tombstone_key( $user_id, $session_id ) ) ) {
+			delete_transient( $key );
+			return false;
+		}
+		return true;
 	}
 
 	private static function get_session_shadow( $user_id, $session_id ) {
@@ -131,7 +138,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	private static function forget_session_shadow( $user_id, $session_id ) {
 		$user_id = absint( $user_id );
 		if ( $user_id < 1 ) return;
-		set_transient( self::shadow_tombstone_key( $user_id, $session_id ), 1, self::SESSION_SHADOW_TTL );
+		set_transient( self::shadow_tombstone_key( $user_id, $session_id ), 1, self::SESSION_DELETE_TOMBSTONE_TTL );
 		delete_transient( self::shadow_key( $user_id, $session_id ) );
 	}
 
@@ -427,6 +434,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'shadow_hard_count_bound' => false,
 			'shadow_ttl_bounded' => true,
 			'delete_tombstone_blocks_shadow_resurrection' => true,
+			'delete_tombstone_ttl_seconds' => self::SESSION_DELETE_TOMBSTONE_TTL,
+			'delete_tombstone_outlives_shadow' => self::SESSION_DELETE_TOMBSTONE_TTL > self::SESSION_SHADOW_TTL,
+			'post_shadow_write_tombstone_rechecked' => true,
 			'delete_tombstone_bound_to_site_user_session' => true,
 			'post_cas_delete_tombstone_rechecked' => true,
 			'raw_session_id_persisted_in_shadow' => false,
