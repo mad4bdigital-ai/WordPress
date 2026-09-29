@@ -142,6 +142,18 @@ for marker in [
     "supersede_brand_context_subject",
     "advance_generation_job",
     "approved_tone_of_voice_required_for_editorial_generation",
+    "const CONVERGENCE_PLAN_CONTRACT = 'mad4b.brand-core-convergence-plan.v1'",
+    "public static function convergence_plan(",
+    "'action' => 'create_new'",
+    "'context/brand-draft-create'",
+    "'synthesize_draft'",
+    "'approval_required' => true",
+    "'auto_approval' => false",
+    "public static function create_draft(",
+    "mad4b_brand_draft_quality_gate_failed",
+    "$result['materialization_performed'] = false",
+    "$result['review_performed'] = false",
+
 ]:
     if marker not in builder:
         raise SystemExit(f"missing Brand Context Builder invariant: {marker}")
@@ -352,10 +364,14 @@ if "require_once dirname( __DIR__ ) . '/class-mad4b-scp-brand-context-builder.ph
 
 for marker in [
     "'context/brand-gap-plan'",
+    "'context/brand-core-convergence-plan'",
+
     "'context/brand-draft-preflight'",
     "'context/source-scan-plan'",
     "'context/provider-capabilities'",
     "'context/brand-draft-append'",
+    "'context/brand-draft-create'",
+
     "'context/source-scan-apply'",
     "'context/materialize-brand-draft'",
     "'context/reconcile-brand-materialization'",
@@ -444,3 +460,21 @@ if manifest.get("seed_version") != 13:
     raise SystemExit("Brand Context Builder requires canonical seed version 13")
 
 print("mad4b.brand-context-builder.v5: PASS")
+
+
+# OAuth health must reflect access-token expiry and the last refresh outcome.
+for marker in [
+    "'credential_fresh' => $access_token_valid",
+    "'refresh_required' => $refresh_required",
+    "'refresh_failed' => $refresh_failed",
+    "'refresh_failure_code' => $refresh_failure_code",
+    "'refresh_failure_provider_code' => $refresh_failure_provider_code",
+    "'reconnect_required'",
+    "'health_state' => $health_state",
+    "private static function record_refresh_failure",
+    "google_drive_token_refresh_failed",
+]:
+    if marker not in drive:
+        raise SystemExit("Google OAuth health contract missing marker: " + marker)
+if "'token_healthy' => $connected && ( ! empty( $token['access_token'] ) || ! empty( $token['refresh_token'] ) )" in drive:
+    raise SystemExit("Google OAuth health must not treat an expired access token plus refresh-token presence as healthy")

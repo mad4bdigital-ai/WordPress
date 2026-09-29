@@ -368,7 +368,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'feature_id' => 'staging-write-authority',
 				'capability_tags' => array( 'candidate', 'binding', 'write-authority', 'bootstrap', 'staging' ),
 				'provider' => 'core',
-				'status_ability' => 'mad4b/staging-write-candidate-binding-audit',
+				'status_ability' => 'mad4b/staging-write-candidate-binding-plan',
 				'local_surface' => '',
 				'remote_ability' => 'mad4b/staging-write-candidate-bind',
 				'authority_surface' => 'mad4b-enrollment',
