@@ -189,6 +189,7 @@ final class MAD4B_SCP_Self_Update {
 		$remote_ready = self::environment_allowed( true ) && current_user_can( 'update_plugins' );
 		$ui_state = self::native_update_ui_state( $manifest );
 		$auto_update = self::wordpress_auto_update_state();
+		$environment_resolution = self::environment_resolution();
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -196,6 +197,7 @@ final class MAD4B_SCP_Self_Update {
 			'current' => $current,
 			'native_wordpress_update' => array(
 				'ready' => (bool) $native_ready,
+				'environment_resolution' => $environment_resolution,
 				'surface' => 'wp_admin_plugins_page',
 				'manual_only' => true,
 				'admin_update_capability' => (bool) current_user_can( 'update_plugins' ),
@@ -257,6 +259,7 @@ final class MAD4B_SCP_Self_Update {
 		$remote_ready = self::environment_allowed( true ) && current_user_can( 'update_plugins' );
 		$ui_state = self::native_update_ui_state( $manifest );
 		$auto_update = self::wordpress_auto_update_state();
+		$environment_resolution = self::environment_resolution();
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -266,6 +269,7 @@ final class MAD4B_SCP_Self_Update {
 			'current' => $current,
 			'native_wordpress_update' => array(
 				'ready' => (bool) $native_ready,
+				'environment_resolution' => $environment_resolution,
 				'ui_state' => $ui_state['state'],
 				'ui_blockers' => $ui_state['blockers'],
 				'automatic_update_enabled' => (bool) $auto_update['effective_enabled'],
@@ -737,9 +741,20 @@ final class MAD4B_SCP_Self_Update {
 
 		if ( 'policy_blocked' === $ui['state'] ) {
 			$reason = ! empty( $ui['blockers'] ) ? implode( ', ', $ui['blockers'] ) : 'policy_blocked';
+			$environment_resolution = self::environment_resolution();
+			$environment_help = '';
+			if (
+				in_array( 'native_update_environment_policy_blocked', (array) $ui['blockers'], true )
+				&& 'staging' === (string) ( isset( $environment_resolution['suggested_environment'] ) ? $environment_resolution['suggested_environment'] : '' )
+				&& 'staging' !== (string) ( isset( $environment_resolution['effective_environment'] ) ? $environment_resolution['effective_environment'] : '' )
+			) {
+				$environment_help = ' <a href="' . esc_url( admin_url( 'admin.php?page=mad4b-control-plane-site-profile' ) ) . '">'
+					. esc_html__( 'Bind this exact origin as Staging', 'mad4b-site-control-plane' ) . '</a>'
+					. ' — ' . esc_html__( 'no wp-config.php edit required.', 'mad4b-site-control-plane' );
+			}
 			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
 				. esc_html__( 'MAD4B update is currently blocked by policy.', 'mad4b-site-control-plane' )
-				. ' ' . esc_html( $reason ) . '</p></div></td></tr>';
+				. ' ' . esc_html( $reason ) . $environment_help . '</p></div></td></tr>';
 		}
 	}
 
@@ -1359,8 +1374,28 @@ final class MAD4B_SCP_Self_Update {
 		return trailingslashit( $base ) . wp_generate_uuid4() . '.zip';
 	}
 
+	private static function environment_resolution() {
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && method_exists( 'MAD4B_SCP_Site_Profile', 'environment_resolution' ) ) {
+			$resolution = MAD4B_SCP_Site_Profile::environment_resolution();
+			if ( is_array( $resolution ) && ! empty( $resolution['effective_environment'] ) ) return $resolution;
+		}
+		$wordpress = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		return array(
+			'contract' => 'mad4b.site-profile-environment-resolution.v1',
+			'wordpress_environment' => $wordpress,
+			'profile_environment' => '',
+			'exact_profile_bound' => false,
+			'effective_environment' => $wordpress,
+			'effective_source' => 'wordpress',
+			'suggested_environment' => $wordpress,
+			'wordpress_profile_mismatch' => false,
+			'hostname_hint_used_for_authority' => false,
+		);
+	}
+
 	private static function environment_allowed( $remote ) {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '';
+		$resolution = self::environment_resolution();
+		$environment = sanitize_key( (string) ( isset( $resolution['effective_environment'] ) ? $resolution['effective_environment'] : '' ) );
 		if ( $remote ) {
 			return 'staging' === $environment
 				&& class_exists( 'MAD4B_SCP_Site_Profile' )
