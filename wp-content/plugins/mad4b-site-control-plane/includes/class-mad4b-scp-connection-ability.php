@@ -134,7 +134,9 @@ final class MAD4B_SCP_Connection_Ability {
 				// Compact preflight reports the persisted exact authority plus the
 				// current candidate-binding fingerprint. Deep grant/provider scans
 				// remain explicit diagnostics and mutation authorization concerns.
-				$status = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
+				$status = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persisted_status' )
+					? MAD4B_SCP_Staging_Write_Authority::persisted_status()
+					: array();
 				$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
 					? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
 					: array();
