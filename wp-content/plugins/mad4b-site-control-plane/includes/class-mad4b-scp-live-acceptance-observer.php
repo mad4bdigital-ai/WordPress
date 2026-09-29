@@ -125,6 +125,8 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 
 	private static function record_warning( $event_type, $function_name, $message ) {
 		if ( ! self::staging_capture_allowed() ) return;
+		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return;
 		self::mark_current_request();
 		$trace = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 12 );
 		$classification = self::classify_warning( (string) $event_type, (string) $function_name, (string) $message, $trace );
@@ -225,10 +227,30 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		$message = trim( (string) $message ); return strlen( $message ) > 280 ? substr( $message, 0, 280 ) : $message;
 	}
 	private static function safe_identifier( $value ) { $value = preg_replace( '/[^A-Za-z0-9_\\\\:\-\.]/', '', (string) $value ); return strlen( $value ) > 120 ? substr( $value, 0, 120 ) : $value; }
-	private static function mark_current_request() { if ( self::$request_marked || ! self::staging_capture_allowed() ) return; self::$request_marked = true; $telemetry =& self::telemetry(); $class = self::request_class(); if ( ! isset( $telemetry['request_coverage'][ $class ] ) ) $telemetry['request_coverage'][ $class ] = 0; if ( 'mcp' === $class && (int) $telemetry['request_coverage'][ $class ] > 0 ) return; $telemetry['observed_request_count']++; $telemetry['request_coverage'][ $class ]++; $telemetry['last_observed_at'] = gmdate( 'Y-m-d H:i:s' ); self::$telemetry_dirty = true; }
-	private static function request_class() { $uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : ''; if ( false !== strpos( $uri, '/mcp/' ) || false !== strpos( $uri, '/wp-json/mcp/' ) ) return 'mcp'; if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) return 'rest'; if ( function_exists( 'is_admin' ) && is_admin() ) return 'wp_admin'; return 'frontend'; }
+	private static function mark_current_request() {
+		if ( self::$request_marked || ! self::staging_capture_allowed() ) return;
+		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return;
+		self::$request_marked = true;
+		$telemetry =& self::telemetry();
+		$class = self::request_class();
+		if ( ! isset( $telemetry['request_coverage'][ $class ] ) ) $telemetry['request_coverage'][ $class ] = 0;
+		if ( 'mcp' === $class && (int) $telemetry['request_coverage'][ $class ] > 0 ) return;
+		$telemetry['observed_request_count']++;
+		$telemetry['request_coverage'][ $class ]++;
+		$telemetry['last_observed_at'] = gmdate( 'Y-m-d H:i:s' );
+		self::$telemetry_dirty = true;
+	}
+	private static function request_class() {
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
+		if ( false !== strpos( $uri, '/mcp/' ) || false !== strpos( $uri, '/wp-json/mcp/' ) ) return 'mcp';
+		if ( ( defined( 'DOING_CRON' ) && DOING_CRON ) || ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) ) return 'cron';
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) return 'rest';
+		if ( function_exists( 'is_admin' ) && is_admin() ) return 'wp_admin';
+		return 'frontend';
+	}
 	private static function &telemetry() { if ( null !== self::$telemetry ) return self::$telemetry; $current_build = self::current_build_fingerprint(); $stored = self::staging_capture_allowed() ? get_option( self::TELEMETRY_OPTION, array() ) : array(); $valid = is_array( $stored ) && isset( $stored['build_fingerprint'], $stored['capture_started_at'] ) && hash_equals( (string) $stored['build_fingerprint'], $current_build ); $started = $valid ? strtotime( (string) $stored['capture_started_at'] . ' UTC' ) : false; if ( ! $valid || false === $started || ( time() - $started ) > self::TELEMETRY_TTL ) $stored = self::empty_telemetry( $current_build ); self::$telemetry = $stored; return self::$telemetry; }
-	private static function empty_telemetry( $build ) { return array( 'contract' => self::QUERY_MONITOR_CONTRACT, 'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '', 'build_fingerprint' => (string) $build, 'capture_started_at' => gmdate( 'Y-m-d H:i:s' ), 'last_observed_at' => '', 'observed_request_count' => 0, 'request_coverage' => array( 'mcp' => 0, 'rest' => 0, 'wp_admin' => 0, 'frontend' => 0 ), 'counters' => array( 'mad4b' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'ability_not_found' => 0, 'wp_get_ability_missing' => 0, 'pre_init_abilities_violation' => 0 ), 'third_party' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'fluentform_action_scheduler' => 0 ), 'wordpress_core' => array(), 'unknown' => array() ), 'events' => array(), 'events_by_bucket' => array( 'mad4b' => array(), 'third_party' => array(), 'wordpress_core' => array(), 'unknown' => array() ), 'performance' => array( 'contract' => 'mad4b.frontend-performance-evidence.v1', 'frontend_observed' => false, 'rest_observed' => false, 'samples' => array(), 'last_by_class' => array() ) ); }
+	private static function empty_telemetry( $build ) { return array( 'contract' => self::QUERY_MONITOR_CONTRACT, 'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '', 'build_fingerprint' => (string) $build, 'capture_started_at' => gmdate( 'Y-m-d H:i:s' ), 'last_observed_at' => '', 'observed_request_count' => 0, 'request_coverage' => array( 'mcp' => 0, 'rest' => 0, 'wp_admin' => 0, 'frontend' => 0, 'cron' => 0 ), 'canary_coverage' => array( 'wpml_admin' => 0, 'site_health_rest' => 0, 'wpml_external_rest' => 0, 'generic_cron' => 0 ), 'counters' => array( 'mad4b' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'ability_not_found' => 0, 'wp_get_ability_missing' => 0, 'pre_init_abilities_violation' => 0 ), 'third_party' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'fluentform_action_scheduler' => 0 ), 'wordpress_core' => array(), 'unknown' => array() ), 'events' => array(), 'events_by_bucket' => array( 'mad4b' => array(), 'third_party' => array(), 'wordpress_core' => array(), 'unknown' => array() ), 'performance' => array( 'contract' => 'mad4b.frontend-performance-evidence.v1', 'frontend_observed' => false, 'rest_observed' => false, 'samples' => array(), 'last_by_class' => array() ) ); }
 	public static function flush_observation() { if ( ! self::$telemetry_dirty || ! self::staging_capture_allowed() || ! is_array( self::$telemetry ) ) return; self::$telemetry['events'] = array_slice( isset( self::$telemetry['events'] ) ? self::$telemetry['events'] : array(), -1 * self::MAX_EVENTS ); update_option( self::TELEMETRY_OPTION, self::$telemetry, false ); self::$telemetry_dirty = false; }
 
 
