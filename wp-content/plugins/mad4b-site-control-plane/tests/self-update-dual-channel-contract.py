@@ -123,6 +123,24 @@ for marker in (
 ):
     if marker not in self_update:
         raise SystemExit(f"bootstrap self-update fail-closed authority invariant missing: {marker}")
+native_apply_body = self_update.split("public static function native_apply", 1)[1].split("public static function bootstrap_native_apply", 1)[0]
+for marker in (
+    "public static function native_apply( $input, $bootstrap_revalidate = false )",
+    "if ( $bootstrap_revalidate )",
+    "$bootstrap_access = self::can_bootstrap_native_apply( $input );",
+    "mad4b_self_update_bootstrap_revalidation_failed",
+):
+    if marker not in self_update:
+        raise SystemExit(f"bootstrap self-update pre-mutation revalidation invariant missing: {marker}")
+verify_index = native_apply_body.find("$verified = self::verify_archive( $tmp, $manifest );")
+recheck_index = native_apply_body.find("$bootstrap_access = self::can_bootstrap_native_apply( $input );")
+apply_index = native_apply_body.find("$result = self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected );")
+if min(verify_index, recheck_index, apply_index) < 0 or not (verify_index < recheck_index < apply_index):
+    raise SystemExit("bootstrap authority must be revalidated after archive verification and immediately before filesystem mutation")
+bootstrap_apply_body = self_update.split("public static function bootstrap_native_apply", 1)[1].split("private static function is_control_plane_plugin_file", 1)[0]
+if "\n\t\t\ttrue\n\t\t);" not in bootstrap_apply_body:
+    raise SystemExit("bootstrap self-update must invoke native apply with pre-mutation authority revalidation enabled")
+
 for forbidden in (
     "MAD4B_SCP_Authorization::authorize_mutation(\n\t\t\tself::BOOTSTRAP_APPLY_ABILITY",
     "mad4b/control-plane-bootstrap-upload",
