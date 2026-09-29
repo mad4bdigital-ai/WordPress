@@ -68,6 +68,7 @@ final class MAD4B_SCP_Servers {
 					'mad4b/staging-write-grant-reconcile',
 					'mad4b/staging-write-candidate-bind',
 					'mad4b/staging-write-candidate-binding-audit',
+					'mad4b/runtime-convergence-apply',
 				),
 				class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'enrollment_abilities' )
 					? MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()
