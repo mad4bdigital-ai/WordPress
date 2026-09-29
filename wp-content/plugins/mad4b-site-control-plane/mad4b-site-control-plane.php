@@ -26,6 +26,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-jobs.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-intent-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-artifacts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-content-intelligence-pipeline.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-content-pipeline.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-draft.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-publication-verification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-pack.php';
@@ -179,6 +180,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governance-abilities.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-ability.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-experience.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-settings-persistence.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-content-pipeline-admin.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-admin-ui.php';

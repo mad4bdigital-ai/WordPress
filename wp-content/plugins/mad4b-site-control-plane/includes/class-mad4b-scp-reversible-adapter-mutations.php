@@ -217,11 +217,24 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 	}
 
 	private static function finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, array $before, $before_hash, $error, $error_code ) {
+		$declared_not_started = self::provider_declared_not_started( $error );
 		$observed = $adapter->read_reversible_state( $ability_name, $before['target'] );
-		$after_hash = '';
+		$after_hash = is_array( $observed ) ? self::state_hash( $observed ) : '';
+		$declared_not_started_verified = $declared_not_started
+			&& is_array( $observed )
+			&& hash_equals( (string) $before_hash, (string) $after_hash );
+		if ( $declared_not_started_verified ) {
+			self::update_record( $mutation_id, array(
+				'status' => 'failed',
+				'after_sha256' => $after_hash,
+				'error_code' => (string) $error_code,
+				'verification_code' => 'provider_declared_not_started_verified',
+			) );
+			$evidence = self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, $after_hash, 'failed', false );
+			return self::attach_failure_evidence( $error, $evidence );
+		}
 		$changed = false;
 		if ( is_array( $observed ) ) {
-			$after_hash = self::state_hash( $observed );
 			$changed = ! hash_equals( (string) $before_hash, (string) $after_hash );
 		}
 
@@ -236,13 +249,16 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			$restore_available = true;
 		} else {
 			$mutation_status = is_wp_error( $observed ) ? 'verification_failed' : 'failed';
+			$verification_code = is_wp_error( $observed )
+				? ( $declared_not_started ? 'provider_declared_not_started_readback_unverified' : 'provider_error_readback_failed' )
+				: 'provider_error_no_observed_side_effect';
 			self::update_record( $mutation_id, array(
 				'status' => $mutation_status,
 				'after_sha256' => $after_hash,
 				'error_code' => (string) $error_code,
-				'verification_code' => is_wp_error( $observed ) ? 'provider_error_readback_failed' : 'provider_error_no_observed_side_effect',
+				'verification_code' => $verification_code,
 			) );
-			$restore_available = false;
+			$restore_available = $declared_not_started && is_wp_error( $observed );
 		}
 
 		$evidence = self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, $after_hash, $mutation_status, $restore_available );
@@ -274,6 +290,17 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		$data['mad4b_mutation_evidence'] = $evidence;
 		$error->add_data( $data, $code );
 		return $error;
+	}
+
+	private static function provider_declared_not_started( $error ) {
+		if ( ! is_wp_error( $error ) ) return false;
+		$code = $error->get_error_code();
+		$data = $error->get_error_data( $code );
+		if ( ! is_array( $data ) || ! isset( $data['mad4b_execution_state'] ) || ! is_array( $data['mad4b_execution_state'] ) ) return false;
+		$state = $data['mad4b_execution_state'];
+		return isset( $state['contract'], $state['started'] )
+			&& 'mad4b.execution-state.v1' === (string) $state['contract']
+			&& false === $state['started'];
 	}
 
 	private static function failure_status_from_error( $error ) {

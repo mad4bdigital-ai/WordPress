@@ -14,8 +14,9 @@ def req(key,*needles):
 def deny(key,*needles):
     for n in needles:
         if n in files[key]: raise SystemExit(f'FAIL {key}: forbidden {n!r}')
+reversible=files['reversible']
 req('base','reversible_contract_for','MAD4B_SCP_Reversible_Adapter_Mutations::execute','MAD4B_SCP_Authorization::authorize_mutation')
-req('reversible','before_sha256','after_sha256','mad4b_undo_state_drift','mad4b_undo_verification_failed','restore_reversible_state','read_reversible_state','rollback_payload_sha256')
+req('reversible','before_sha256','after_sha256','mad4b_undo_state_drift','mad4b_undo_verification_failed','restore_reversible_state','read_reversible_state','rollback_payload_sha256','provider_declared_not_started','mad4b.execution-state.v1','provider_declared_not_started')
 req('elementor','mad4b.rollback.elementor-widget-settings.v1','remove_settings','exact_provider_certified','mad4b_elementor_stale_document','mad4b_elementor_widget_not_unique','mad4b_elementor_setting_policy_denied','mad4b_elementor_readback_mismatch','replace_widget_settings')
 req('elementor','elementor/compare-documents','mad4b.elementor-document-comparison.v1','elementor/clone-subtree','elementor/move-element','elementor/delete-element','elementor/set-dynamic-tag','elementor/set-etg-dynamic-tag','mad4b.rollback.elementor-clone-subtree.v1','mad4b.rollback.elementor-move-element.v1','mad4b.rollback.elementor-delete-element.v1','mad4b.rollback.elementor-dynamic-tag.v1','mad4b.rollback.elementor-etg-dynamic-tag.v1')
 req('elementor','expected_source_sha256','expected_target_sha256','mad4b_elementor_clone_id_collision','mad4b_elementor_move_cycle_denied','mad4b_elementor_dynamic_tag_not_allowlisted','mad4b_elementor_dynamic_tag_readback_mismatch','MAX_STRUCTURAL_ROLLBACK_BYTES','document_structural_sha256','raw_elementor_meta_exposed')
@@ -24,4 +25,13 @@ req('jetengine','mad4b.rollback.jetengine-post-meta.v1',"'_listing_data'",'mad4b
 req('jetsmart','mad4b.rollback.jetsmartfilters-filter-meta.v1',"'_query_var'",'mad4b_jetsmartfilters_meta_missing','mad4b_jetsmartfilters_query_var_invalid','mad4b_jetsmartfilters_stale_meta','mad4b_jetsmartfilters_readback_mismatch','restore_reversible_state')
 for key in ('elementor','jetengine','jetsmart'):
     deny(key,'$wpdb->query(', 'eval(', 'shell_exec(', 'exec(', 'system(', 'passthru(')
+
+if "provider_declared_not_started_verified" not in reversible:
+    raise SystemExit("provider not-started exact-readback hardening missing: provider_declared_not_started_verified")
+
+if "provider_declared_not_started_readback_unverified" not in reversible:
+    raise SystemExit("provider not-started exact-readback hardening missing: provider_declared_not_started_readback_unverified")
+
+if "hash_equals( (string) $before_hash, (string) $after_hash )" not in reversible:
+    raise SystemExit("provider not-started exact-readback hardening missing: hash_equals( (string) $before_hash, (string) $after_hash )")
 print('mad4b.provider-bounded-reversible.v1: PASS')
