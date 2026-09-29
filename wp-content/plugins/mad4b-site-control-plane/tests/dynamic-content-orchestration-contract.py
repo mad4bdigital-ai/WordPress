@@ -411,4 +411,22 @@ for marker in [
     if marker not in adapter:
         raise SystemExit(f"binding/session-recovery hardening marker missing: {marker}")
 
+
+# Publication acceptance must be consumed only after the status transition and
+# normalized exact full-state verification have both succeeded.
+guard_pos = mutations.find("dynamic_publication_guard( $post, $input )")
+write_pos = mutations.find("$result = wp_update_post( wp_slash( $update ), true )")
+transition_pos = mutations.find("verify_publication_transition( $id, $dynamic_acceptance_sha256")
+consume_pos = mutations.find("consume_publication_acceptance( $id, $dynamic_acceptance_sha256")
+if min(guard_pos, write_pos, transition_pos, consume_pos) < 0:
+    raise SystemExit("dynamic publication lifecycle markers missing")
+if not (guard_pos < write_pos < transition_pos < consume_pos):
+    raise SystemExit("dynamic publication must follow verify -> write -> full-state verify -> consume ordering")
+if "rollback_dynamic_publication_transition" not in mutations:
+    raise SystemExit("dynamic publication failures must restore the pre-publication post state")
+if "mad4b_dynamic_publication_state_drift" not in adapter:
+    raise SystemExit("post-publication full-state drift must fail closed")
+if "invalidate_acceptance_after_restore" not in adapter:
+    raise SystemExit("dynamic bundle rollback must invalidate publication acceptance")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
