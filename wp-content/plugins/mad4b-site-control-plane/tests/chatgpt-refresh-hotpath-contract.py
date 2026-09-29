@@ -13,6 +13,8 @@ skill_snapshot = (root / "includes/class-mad4b-scp-skill-snapshot-identity.php")
 skill_runtime = (root / "includes/class-mad4b-scp-skill-runtime-certification.php").read_text(encoding="utf-8")
 finalizer = (root / "includes/class-mad4b-scp-live-acceptance-finalizer.php").read_text(encoding="utf-8")
 live_truth = (root / "includes/class-mad4b-scp-live-truth.php").read_text(encoding="utf-8")
+write_authority = (root / "includes/class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
+provider_contracts = (root / "includes/class-mad4b-scp-provider-contracts.php").read_text(encoding="utf-8")
 oauth_autoconfig = (root / "includes/class-mad4b-scp-staging-oauth-autoconfig.php").read_text(encoding="utf-8")
 audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
 request_scope = (root / "includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
@@ -423,3 +425,22 @@ assert "'live_verification_deferred' => true" in persisted_handshake
 safe_connection = read_consistency.split("private static function session_safe_connection_projection()", 1)[1].split("private static function session_safe_reconnect_projection()", 1)[0]
 assert "persisted_identity_status()" in safe_connection
 assert "MAD4B_SCP_External_Handshake_Evidence::status()" not in safe_connection
+
+# Lightweight authority projections consume persisted runtime evidence only and
+# must not rebuild approval-policy/catalog eligibility.
+assert "public static function persisted_status()" in write_authority
+persisted_authority = write_authority.split("public static function persisted_status()", 1)[1].split("public static function status()", 1)[0]
+assert "self::raw_status()" in persisted_authority
+assert "approval_policy_projection()" not in persisted_authority
+assert "approval_policy_projection_deferred" in persisted_authority
+safe_authority = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function deep_write_authority_projection()", 1)[0]
+assert "persisted_status()" in safe_authority
+assert "MAD4B_SCP_Staging_Write_Authority::status()" not in safe_authority
+
+# Provider header/version inspection is request-local memoized so repeated
+# connection/session-safe projections do not re-read plugin headers.
+assert "private static $installed_version_cache = array();" in provider_contracts
+version_reader = provider_contracts.split("private static function installed_version_for_contract", 1)[1].split("private static function composite_version_string", 1)[0]
+assert "array_key_exists( $file, self::$installed_version_cache )" in version_reader
+assert version_reader.index("array_key_exists( $file, self::$installed_version_cache )") < version_reader.index("get_file_data(")
+assert "self::$installed_version_cache[ $file ] = trim" in version_reader
