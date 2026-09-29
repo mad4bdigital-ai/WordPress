@@ -498,7 +498,12 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function chatgpt_tools() {
-		$cacheable = self::catalog_cacheable();
+		$step_up_bearer = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE );
+		// tools/list becomes request-authority-sensitive when a bearer is active;
+		// never reuse a pre-auth request-local catalog across that boundary.
+		$cacheable = self::catalog_cacheable() && ! ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() );
 		if ( $cacheable && is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
 		$core = self::core_tools( 'mad4b-chatgpt' );
 		$breakglass = self::core_tools( 'mad4b-breakglass' );
@@ -553,7 +558,8 @@ final class MAD4B_SCP_Servers {
 			$full_step_up
 		);
 		$candidates = array_merge( $core, $bootstrap );
-		$step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $full_step_up );
+		$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up );
+		$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );
 		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up ) ) );
 		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
 
