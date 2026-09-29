@@ -145,6 +145,46 @@
       ]
     },
     {
+      "provider_id": "elementor",
+      "kind": "rest",
+      "external_visibility": "suppress_when_isolation_effective",
+      "internal_retention": false,
+      "routes": [
+        {
+          "pattern": "^/elementor-mcp-composer/v[0-9]+(?:\\.[0-9]+){1,3}/?$",
+          "methods": [
+            "GET"
+          ],
+          "class": "mcp_transport"
+        },
+        {
+          "pattern": "^/elementor-mcp-composer/v[0-9]+(?:\\.[0-9]+){1,3}/mcp-settings/?$",
+          "methods": [
+            "GET",
+            "POST"
+          ],
+          "class": "mcp_control_surface"
+        },
+        {
+          "pattern": "^/elementor-mcp-composer/v[0-9]+(?:\\.[0-9]+){1,3}/mcp-credentials/?$",
+          "methods": [
+            "GET",
+            "POST",
+            "DELETE"
+          ],
+          "class": "mcp_credential_control"
+        },
+        {
+          "pattern": "^/elementor/v1/mcp-proxy/?$",
+          "methods": [
+            "GET",
+            "POST"
+          ],
+          "class": "mcp_execution_surface"
+        }
+      ]
+    },
+    {
       "provider_id": "wp-media",
       "kind": "mcp_server",
       "server_id": "mcp-oauth-server",
