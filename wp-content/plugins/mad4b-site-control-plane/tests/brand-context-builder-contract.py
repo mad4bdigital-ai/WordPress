@@ -142,6 +142,18 @@ for marker in [
     "supersede_brand_context_subject",
     "advance_generation_job",
     "approved_tone_of_voice_required_for_editorial_generation",
+    "const CONVERGENCE_PLAN_CONTRACT = 'mad4b.brand-core-convergence-plan.v1'",
+    "public static function convergence_plan(",
+    "'action' => 'create_new'",
+    "'context/brand-draft-create'",
+    "'synthesize_draft'",
+    "'approval_required' => true",
+    "'auto_approval' => false",
+    "public static function create_draft(",
+    "mad4b_brand_draft_quality_gate_failed",
+    "'materialization_performed' => false",
+    "'review_performed' => false",
+
 ]:
     if marker not in builder:
         raise SystemExit(f"missing Brand Context Builder invariant: {marker}")
@@ -352,10 +364,14 @@ if "require_once dirname( __DIR__ ) . '/class-mad4b-scp-brand-context-builder.ph
 
 for marker in [
     "'context/brand-gap-plan'",
+    "'context/brand-core-convergence-plan'",
+
     "'context/brand-draft-preflight'",
     "'context/source-scan-plan'",
     "'context/provider-capabilities'",
     "'context/brand-draft-append'",
+    "'context/brand-draft-create'",
+
     "'context/source-scan-apply'",
     "'context/materialize-brand-draft'",
     "'context/reconcile-brand-materialization'",
