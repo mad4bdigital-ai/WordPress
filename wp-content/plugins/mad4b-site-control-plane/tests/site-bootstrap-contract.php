@@ -36,6 +36,9 @@ $base = array(
 	'artifacts_created' => false,
 	'mutation_performed' => false,
 	'authorizing' => false,
+	'item_errors' => array(),
+	'item_error_count' => 0,
+	'item_errors_truncated' => false,
 );
 
 $items = array(
@@ -105,6 +108,15 @@ $partial = MAD4B_SCP_Site_Bootstrap::finalize_snapshot( $base, array_slice( $ite
 $check( false === $partial['complete'], 'partial bounded inventory became complete' );
 $check( in_array( 'inventory_bound_exceeded_or_incomplete', $partial['blocking_reasons'], true ), 'partial inventory omitted blocker reason' );
 
+# Per-item discovery failures are bounded partial evidence, not total snapshot failure.
+$base_with_error = $base;
+$base_with_error['item_errors'] = array( array( 'object_id' => 4, 'code' => 'synthetic_unreadable_item' ) );
+$base_with_error['item_error_count'] = 1;
+$partial_error = MAD4B_SCP_Site_Bootstrap::finalize_snapshot( $base_with_error, array_slice( $items, 0, 3 ), 4, 10 );
+$check( false === $partial_error['complete'], 'item-level read failure was hidden as complete' );
+$check( in_array( 'inventory_items_partially_unreadable', $partial_error['blocking_reasons'], true ), 'item-level read failure omitted bounded blocker' );
+$check( 1 === $partial_error['item_error_count'], 'item error count drifted' );
+
 $check( '' === MAD4B_SCP_Site_Bootstrap::normalize_url( 'javascript:alert(1)' ), 'unsafe non-http URL was retained' );
 $check( 'https://example.test/path' === MAD4B_SCP_Site_Bootstrap::normalize_url( 'HTTPS://Example.Test/path' ), 'URL normalization drifted' );
 
@@ -120,6 +132,8 @@ foreach ( array(
 	"'intent_claims_created' => false",
 	"'artifacts_created' => false",
 	"'cross_locale_shared_canonical_is_automatic_conflict' => false",
+	"'inventory_items_partially_unreadable'",
+	"'mad4b_bootstrap_item_exception'",
 ) as $marker ) {
 	$check( false !== strpos( $source, $marker ), 'bootstrap contract marker missing: ' . $marker );
 }
