@@ -32,6 +32,12 @@ final class MAD4B_SCP_Plugin {
 		if ( self::$booted ) return;
 		self::$booted = true;
 
+		// Admin navigation is presentation-only and must stay visible on every
+		// wp-admin screen, including zero-touch third-party/plugin pages. Register
+		// menu hooks before the heavy-runtime zero-touch gate; render callbacks stay
+		// lazy and no authority/provider reconciliation is performed here.
+		if ( is_admin() ) self::boot_admin_navigation();
+
 		// Unrelated Core/provider REST and generic wp-cron.php are infrastructure
 		// hotpaths, not Control Plane operator lifecycles. Their owning scheduled
 		// hooks are registered before init; skip admin, authority, OAuth and
@@ -92,14 +98,8 @@ final class MAD4B_SCP_Plugin {
 		}
 		if ( is_wp_error( self::$schema_error ) ) add_action( 'admin_notices', array( __CLASS__, 'schema_notice' ) );
 
-		MAD4B_SCP_Admin_UI::boot();
-		MAD4B_SCP_Context_Admin_UI::boot();
-		MAD4B_SCP_Connection_Admin_UI::boot();
-		MAD4B_SCP_ChatGPT_Connection_Admin_UI::boot();
-		MAD4B_SCP_Adapter_Coverage_Admin_UI::boot();
-		MAD4B_SCP_Runtime_Components_Admin_UI::boot();
+		self::boot_admin_navigation();
 		MAD4B_SCP_Skill_Resource_Writer::boot();
-		MAD4B_SCP_Skills_Admin_UI::boot();
 		MAD4B_SCP_Local_OAuth_Browser_Canary::boot();
 
 		if ( ! function_exists( 'wp_register_ability' ) ) {
@@ -142,6 +142,17 @@ final class MAD4B_SCP_Plugin {
 		} else {
 			add_action( 'admin_notices', array( __CLASS__, 'mcp_notice' ) );
 		}
+	}
+
+	private static function boot_admin_navigation() {
+		if ( ! is_admin() ) return;
+		MAD4B_SCP_Admin_UI::boot();
+		MAD4B_SCP_Context_Admin_UI::boot();
+		MAD4B_SCP_Connection_Admin_UI::boot();
+		MAD4B_SCP_ChatGPT_Connection_Admin_UI::boot();
+		MAD4B_SCP_Adapter_Coverage_Admin_UI::boot();
+		MAD4B_SCP_Runtime_Components_Admin_UI::boot();
+		MAD4B_SCP_Skills_Admin_UI::boot();
 	}
 
 	public static function boot_oauth_transport_if_effective() {
