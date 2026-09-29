@@ -18,7 +18,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	const CERTIFIED_STATEFUL_ADAPTER_VERSION = '0.6.1';
 	private static $booted = false;
 	private static $session_repair_state = 'not_attempted';
-	private static $chatgpt_request_active = false;
+	private static $initialize_started_with_empty_store = false;
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -55,12 +55,12 @@ final class MAD4B_SCP_Reconnect_Hardening {
 
 
 	public static function reset_session_policy_scope( $result, $server, $request ) {
-		self::$chatgpt_request_active = false;
+		self::$initialize_started_with_empty_store = false;
 		return $result;
 	}
 
 	public static function clear_session_policy_scope( $response, $server, $request ) {
-		self::$chatgpt_request_active = false;
+		self::$initialize_started_with_empty_store = false;
 		return $response;
 	}
 
@@ -132,7 +132,13 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$user_id = absint( $user_id );
 		if ( $user_id < 1 || get_transient( self::shadow_tombstone_key( $user_id, $session_id ) ) ) return array();
 		$shadow = get_transient( self::shadow_key( $user_id, $session_id ) );
-		return is_array( $shadow ) ? $shadow : array();
+		if ( ! is_array( $shadow ) ) return array();
+		$captured_at = isset( $shadow['captured_at'] ) ? (int) $shadow['captured_at'] : 0;
+		if ( $captured_at < time() - self::SESSION_SHADOW_TTL || $captured_at > time() + 30 ) {
+			delete_transient( self::shadow_key( $user_id, $session_id ) );
+			return array();
+		}
+		return $shadow;
 	}
 
 	private static function forget_session_shadow( $user_id, $session_id ) {
@@ -206,6 +212,19 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$created = (int) $session['created_at'];
 		$activity = (int) $session['last_activity'];
 		return $created > 0 && $activity >= $created && $activity <= time() + 300;
+	}
+
+
+	private static function session_store_is_empty_for_first_initialize( $user_id ) {
+		$user_id = absint( $user_id );
+		if ( $user_id < 1 ) return false;
+		wp_cache_delete( $user_id, 'user_meta' );
+		$rows = get_user_meta( $user_id, self::session_meta_key(), false );
+		if ( ! is_array( $rows ) || empty( $rows ) ) return true;
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) || ! empty( $row ) ) return false;
+		}
+		return true;
 	}
 
 	private static function canonical_session_rows( $user_id ) {
@@ -350,10 +369,14 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( '/mcp/mad4b-chatgpt' !== self::request_route( $request ) ) return $result;
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $result;
 		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID ) ) return $result;
-		self::$chatgpt_request_active = true;
+		$method = method_exists( $request, 'get_method' ) ? strtoupper( (string) $request->get_method() ) : 'POST';
+		$body = 'POST' === $method ? self::request_json( $request ) : array();
+		if ( 'POST' === $method && 'initialize' === ( $body['method'] ?? '' ) ) {
+			self::$initialize_started_with_empty_store = self::session_store_is_empty_for_first_initialize( get_current_user_id() );
+			return $result;
+		}
 		$session_id = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'mcp-session-id' ) ) : '';
 		if ( '' === $session_id || strlen( $session_id ) > 128 ) return $result;
-		$method = method_exists( $request, 'get_method' ) ? strtoupper( (string) $request->get_method() ) : 'POST';
 		if ( 'DELETE' === $method ) {
 			self::forget_session_shadow( get_current_user_id(), $session_id );
 			self::$session_repair_state = 'shadow_forgotten_on_delete';
@@ -363,7 +386,6 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$user_id = get_current_user_id();
 		$shadow = self::get_session_shadow( $user_id, $session_id );
 		if ( empty( $shadow['client_params'] ) || ! is_array( $shadow['client_params'] ) ) return $result;
-		$body = self::request_json( $request );
 		// Mutation requests never enter session repair. The canonical Adapter
 		// validates their existing session and the normal governance path decides
 		// execution; this layer cannot make a mutation request more executable.
@@ -392,6 +414,10 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID ) ) return $response;
 		$body = self::request_json( $request );
 		if ( 'initialize' !== ( $body['method'] ?? '' ) ) return $response;
+		if ( ! self::$initialize_started_with_empty_store ) {
+			self::$session_repair_state = 'initialize_not_first_empty_transition';
+			return $response;
+		}
 		$response_obj = rest_ensure_response( $response );
 		if ( ! ( $response_obj instanceof WP_REST_Response ) || 200 !== (int) $response_obj->get_status() ) return $response;
 		$session_id = self::response_session_id( $response_obj );
@@ -432,6 +458,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'shadow_storage_per_session' => true,
 			'shadow_cross_session_lost_update_possible' => false,
 			'shadow_hard_count_bound' => false,
+			'shadow_admission_first_empty_transition_only' => true,
+			'sequential_reconnect_shadow_growth_possible' => false,
 			'shadow_ttl_bounded' => true,
 			'delete_tombstone_blocks_shadow_resurrection' => true,
 			'delete_tombstone_ttl_seconds' => self::SESSION_DELETE_TOMBSTONE_TTL,
@@ -446,6 +474,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'initialize_client_info_persisted_in_shadow' => false,
 			'initialize_shadow_fields' => array( 'protocolVersion' ),
 			'first_session_race_repair_enabled' => self::governed_nonproduction_transport() && self::session_repair_supported_runtime(),
+			'repair_scope_first_empty_transition_only' => true,
+			'general_expiry_or_eviction_rehydration_enabled' => false,
 			'certified_stateful_adapter_version' => self::CERTIFIED_STATEFUL_ADAPTER_VERSION,
 			'exact_adapter_version_required' => true,
 			'rehydration_read_only' => true,
