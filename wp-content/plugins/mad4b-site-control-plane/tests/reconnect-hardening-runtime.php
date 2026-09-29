@@ -93,7 +93,7 @@ MAD4B_SCP_Local_OAuth_Server::$effective=true;
 MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'chatgpt_registration_failed'); $s=MAD4B_SCP_Reconnect_Hardening::reconnect_status();
 ok(empty($s['ready'])&&in_array('chatgpt_registration_failed',$s['blockers'],true),'exact ChatGPT registration error blocks reconnect'); ok(!in_array('targeted_mad4b_route_count_incomplete',$s['blockers'],true),'global route blocker remains diagnostic context only');
 ok(MAD4B_SCP_Reconnect_Hardening::is_resource_request_path('/mcp/mad4b-chatgpt'),'REST route form recognized'); ok(MAD4B_SCP_Reconnect_Hardening::is_resource_request_path('/wp-json/mcp/mad4b-chatgpt'),'wp-json resource form recognized');
-$request=new class { public function get_route(){return '/mcp/mad4b-chatgpt';} }; $guard=MAD4B_SCP_Reconnect_Hardening::guard_mcp_rest_dispatch(null,null,$request); ok(is_wp_error($guard)&&'mad4b_mcp_reconnect_not_ready'===$guard->get_error_code(),'missing route becomes deterministic reconnect error'); ok(503===($guard->get_error_data()['status']??0),'reconnect error is 503');
+$request=new class { public function get_route(){return '/mcp/mad4b-chatgpt';} }; $guard=MAD4B_SCP_Reconnect_Hardening::guard_mcp_rest_dispatch(null,null,$request); ok(is_wp_error($guard)&&'mad4b_mcp_reconnect_not_ready'===$guard->get_error_code(),'missing route becomes deterministic reconnect error'); ok(503===($guard->get_error_data()['status']??0),'reconnect error is 503'); ok(!array_key_exists('blockers',(array)$guard->get_error_data()),'preauth reconnect error does not expose internal blocker names');
 // Nested request isolation: inner REST lifecycle cannot clear the outer initialize state.
 $outer_request=new class {};
 $inner_request=new class {};
@@ -195,6 +195,9 @@ ok(!empty(priv('get_session_shadow',array(7,sid(1)))),'deleting one session shad
 $transient_count=count($GLOBALS['transients']);
 priv('forget_session_shadow',array(7,'not-a-session'));
 ok(count($GLOBALS['transients'])===$transient_count,'invalid session id cannot allocate a DELETE tombstone');
+$unknown_valid_sid=sid(999999);
+ok(!priv('forget_session_shadow',array(7,$unknown_valid_sid)),'unknown valid UUID without session/shadow does not allocate a DELETE tombstone');
+ok(count($GLOBALS['transients'])===$transient_count,'random valid DELETE cannot grow tombstone storage');
 
 // DELETE preserves the Adapter-visible session until the Adapter handles termination,
 // then post-dispatch cleanup removes only the target from hidden duplicate rows.
