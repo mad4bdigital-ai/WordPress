@@ -11,8 +11,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Reconnect_Hardening {
 	const CONTRACT = 'mad4b.reconnect-hardening.v4';
-	const CHATGPT_SESSION_MAX_PER_USER = 64;
-	const CHATGPT_SESSION_INACTIVITY_TIMEOUT = 604800; // 7 days.
 	const SESSION_SHADOW_TTL = 300;
 	const SESSION_SHADOW_MAX_PER_USER = 16;
 	const SESSION_META_KEY = 'mcp_adapter_sessions';
@@ -36,13 +34,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'reset_session_policy_scope' ), -200, 3 );
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'guard_mcp_rest_dispatch' ), -100, 3 );
 
-		// MCP Adapter 0.6.x uses user-meta backed HTTP sessions. Repeated ChatGPT
-		// reconnects can otherwise evict a still-referenced session at the default
-		// per-user cap, while long-lived connections can expire after one day.
-		// Keep this bounded and non-Production; this changes transport continuity
-		// only and creates no authority or automatic mutation retry.
-		add_filter( 'mcp_adapter_session_max_per_user', array( __CLASS__, 'session_max_per_user' ), 100 );
-		add_filter( 'mcp_adapter_session_inactivity_timeout', array( __CLASS__, 'session_inactivity_timeout' ), 100 );
+		// MCP Adapter 0.6.x uses a user-meta backed session map shared by MCP servers.
+		// Do not override its global capacity/timeout knobs from a ChatGPT-only fix;
+		// bounded recovery below addresses only the proven first-session race.
 		// Run after OAuth subject mapping (priority 2), before the MCP Adapter
 		// callback validates the session. Only verified read requests may use the
 		// bounded shadow to repair a just-lost transport session.
@@ -70,36 +64,16 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		return $response;
 	}
 
-	private static function exact_chatgpt_transport_context() {
-		return self::$chatgpt_request_active
-			&& self::governed_nonproduction_transport()
-			&& self::session_repair_supported_runtime();
-	}
-
-	public static function session_max_per_user( $current ) {
-		$current = max( 1, absint( $current ) );
-		if ( ! self::exact_chatgpt_transport_context() ) return $current;
-		return max( $current, self::CHATGPT_SESSION_MAX_PER_USER );
-	}
-
-	public static function session_inactivity_timeout( $current ) {
-		$current = max( 60, absint( $current ) );
-		if ( ! self::exact_chatgpt_transport_context() ) return $current;
-		return max( $current, self::CHATGPT_SESSION_INACTIVITY_TIMEOUT );
-	}
-
-
 	public static function session_continuity_policy() {
 		return array(
 			'contract' => self::CONTRACT,
 			'governed_nonproduction' => self::governed_nonproduction_transport(),
-			'exact_chatgpt_transport_context' => self::exact_chatgpt_transport_context(),
 			'request_scope_reset_before_reconnect_guard' => true,
 			'request_scope_reset_before_oauth_dispatch' => true,
 			'request_scope_cleared_after_dispatch' => true,
 			'certified_stateful_runtime' => self::session_repair_supported_runtime(),
-			'max_per_user_floor' => self::CHATGPT_SESSION_MAX_PER_USER,
-			'inactivity_timeout_floor_seconds' => self::CHATGPT_SESSION_INACTIVITY_TIMEOUT,
+			'adapter_session_max_modified' => false,
+			'adapter_inactivity_timeout_modified' => false,
 			'activity_update_interval_modified' => false,
 			'stateful_http_session_compatibility' => true,
 			'session_policy_applies_to_sibling_mcp_servers' => false,
@@ -315,7 +289,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 
 	private static function repair_session_capacity() {
 		$effective = (int) apply_filters( 'mcp_adapter_session_max_per_user', 32 );
-		return max( 1, min( self::CHATGPT_SESSION_MAX_PER_USER, $effective ) );
+		return max( 1, min( 32, $effective ) );
 	}
 
 	private static function ensure_session_record( $user_id, $session_id, array $client_params ) {
@@ -490,8 +464,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'mutation_session_rehydration_enabled' => false,
 			'rehydration_respects_session_capacity' => true,
 			'repair_never_evicts_existing_adapter_session' => true,
-			'repair_capacity_ceiling' => self::CHATGPT_SESSION_MAX_PER_USER,
-			'session_capacity_multiplier_over_upstream_default' => 2,
+			'repair_capacity_ceiling' => 32,
+			'repair_uses_upstream_session_capacity' => true,
 			'repair_uses_custom_lock' => false,
 			'empty_only_session_meta_repair_allowed' => false,
 			'empty_duplicate_rows_removed_by_exact_match' => true,
