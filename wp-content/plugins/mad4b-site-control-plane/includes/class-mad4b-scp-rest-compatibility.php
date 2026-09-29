@@ -194,15 +194,30 @@ final class MAD4B_SCP_REST_Compatibility {
 	}
 
 	public static function wpml_probe() {
+		$wpml_active = self::wpml_active();
+		// An inactive WPML runtime has no WPML REST contract to certify. Return the
+		// same not-active truth without materializing WordPress REST/MCP servers.
+		// This keeps generic Production, CLI and unrelated plugin requests out of
+		// expensive REST server construction solely for a negative capability test.
+		if ( ! $wpml_active ) {
+			return array(
+				'ready' => true,
+				'state' => 'wpml_not_active',
+				'wpml_active' => false,
+				'route_registered' => false,
+				'query_parameters_preserved' => true,
+				'control_plane_block_detected' => false,
+				'rest_server_materialized' => false,
+			);
+		}
 		if ( ! function_exists( 'rest_get_server' ) || ! class_exists( 'WP_REST_Request' ) ) {
-			return array( 'ready' => false, 'state' => 'rest_runtime_unavailable', 'wpml_active' => self::wpml_active(), 'route_registered' => false, 'query_parameters_preserved' => false, 'control_plane_block_detected' => false );
+			return array( 'ready' => false, 'state' => 'rest_runtime_unavailable', 'wpml_active' => true, 'route_registered' => false, 'query_parameters_preserved' => false, 'control_plane_block_detected' => false, 'rest_server_materialized' => false );
 		}
 
 		try {
 			$server = rest_get_server();
 			$routes = is_object( $server ) && method_exists( $server, 'get_routes' ) ? $server->get_routes() : array();
 			$registered = is_array( $routes ) && isset( $routes[ self::WPML_ROUTE ] );
-			$wpml_active = self::wpml_active();
 			if ( ! $registered ) {
 				return array(
 					'ready' => ! $wpml_active,
@@ -211,6 +226,7 @@ final class MAD4B_SCP_REST_Compatibility {
 					'route_registered' => false,
 					'query_parameters_preserved' => ! $wpml_active,
 					'control_plane_block_detected' => false,
+					'rest_server_materialized' => true,
 				);
 			}
 
@@ -238,6 +254,7 @@ final class MAD4B_SCP_REST_Compatibility {
 				'get_parameters_field_valid' => $get_valid,
 				'query_parameters_preserved' => $get_valid,
 				'control_plane_block_detected' => $blocked_by_mad4b,
+				'rest_server_materialized' => true,
 				'error_code' => is_array( $data ) && isset( $data['code'] ) ? sanitize_key( (string) $data['code'] ) : '',
 			);
 		} catch ( Throwable $e ) {
@@ -248,6 +265,7 @@ final class MAD4B_SCP_REST_Compatibility {
 				'route_registered' => false,
 				'query_parameters_preserved' => false,
 				'control_plane_block_detected' => false,
+				'rest_server_materialized' => true,
 				'exception_class' => get_class( $e ),
 			);
 		}
