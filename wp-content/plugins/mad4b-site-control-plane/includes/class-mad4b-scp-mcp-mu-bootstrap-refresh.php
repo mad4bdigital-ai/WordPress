@@ -35,6 +35,16 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			self::$status = $status;
 			return $status;
 		}
+
+		if ( ! self::repair_lifecycle_allowed() ) {
+			$status['state'] = 'deferred_request_hotpath';
+			$status['refresh_deferred'] = true;
+			$status['next_request_required'] = false;
+			$status['next_lifecycle_required'] = true;
+			$status['blocker'] = '';
+			self::$status = $status;
+			return $status;
+		}
 		if ( ! defined( 'MAD4B_SCP_DIR' ) || ! defined( 'WPMU_PLUGIN_DIR' ) ) {
 			$status['blocker'] = 'mu_bootstrap_path_unavailable';
 			self::$status = $status;
@@ -159,6 +169,22 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		if ( ! @rename( $temp, $destination ) ) { @unlink( $temp ); return false; }
 		clearstatcache( true, $destination );
 		return true;
+	}
+
+	private static function repair_lifecycle_allowed() {
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
+		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
+		if ( is_admin() ) {
+			global $pagenow;
+			$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
+			$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
+			if ( in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return true;
+			if ( in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true ) ) return true;
+			$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			if ( 'mad4b-control-plane-connection' === $page && 'endpoints' === $tab ) return true;
+		}
+		return false;
 	}
 
 	private static function base_status() {
