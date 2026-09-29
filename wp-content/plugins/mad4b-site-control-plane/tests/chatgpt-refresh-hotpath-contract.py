@@ -242,8 +242,11 @@ assert "if ( ! is_admin() ) return false;" in schema_reconcile
 # Mutations independently re-prove physical schema readiness, so removing
 # request-global schema scans does not weaken fail-closed write safety.
 assert "MAD4B_SCP_Schema::is_ready()" in authorization
+assert "MAD4B_SCP_Schema::critical_ready()" in authorization
 authorize_mutation = authorization.split("public static function authorize_mutation(", 1)[1]
 assert authorize_mutation.index("MAD4B_SCP_Schema::is_ready()") < authorize_mutation.index("MAD4B_SCP_Agent_Registry::exact_grant")
+assert authorize_mutation.index("MAD4B_SCP_Schema::critical_ready()") < authorize_mutation.index("MAD4B_SCP_Agent_Registry::exact_grant")
+assert "MAD4B_SCP_Schema::critical_ready()" in central_boot
 
 # Audit chain integrity must remain fail-closed for mutations without forcing
 # physical table/engine/legacy-chain/head inspection during MCP discovery.
