@@ -75,6 +75,16 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		return array_keys( self::allowed_ability_providers() );
 	}
 
+	public static function retirable_stale_ability_providers() {
+		// Retirement may recognize a strictly broader historical set than grant
+		// creation. This is authority-narrowing only; these legacy pairs are never
+		// eligible for new grant creation.
+		$providers = self::allowed_ability_providers();
+		$providers['elementor/update-widget-settings'] = 'elementor';
+		ksort( $providers, SORT_STRING );
+		return $providers;
+	}
+
 	public static function allowed_transport_ability_providers() {
 		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! method_exists( 'MAD4B_SCP_Servers', 'chatgpt_dispatch_transport_tools' ) ) return array();
 		$providers = array();
@@ -435,6 +445,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			$desired = array();
 			foreach ( $inventory['rows'] as $row ) $desired[ $row['ability'] . "\0" . $row['provider'] ] = $row;
 			$allowed_providers = self::allowed_ability_providers();
+			$retirement_providers = self::retirable_stale_ability_providers();
 			$existing_rows = MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], 'mad4b-write' );
 			$seen_allow = array();
 			$stale_rows = array();
@@ -447,7 +458,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				if ( isset( $seen_allow[ $key ] ) ) return new WP_Error( 'mad4b_grant_reconcile_duplicate_allow_present', 'Duplicate exact mad4b-write allow grant detected.', array( 'ability' => $ability ) );
 				$seen_allow[ $key ] = true;
 				if ( ! isset( $desired[ $key ] ) ) {
-					if ( ! isset( $allowed_providers[ $ability ] ) || sanitize_key( (string) $allowed_providers[ $ability ] ) !== $provider ) {
+					if ( ! isset( $retirement_providers[ $ability ] ) || sanitize_key( (string) $retirement_providers[ $ability ] ) !== $provider ) {
 						return new WP_Error( 'mad4b_grant_reconcile_stale_allow_unreviewed', 'Unexpected stale authority exists outside the reviewed reconciliation universe.', array( 'ability' => $ability, 'provider' => $provider ) );
 					}
 					$stale_rows[] = $grant;
