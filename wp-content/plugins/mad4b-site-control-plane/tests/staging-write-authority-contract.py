@@ -327,7 +327,8 @@ for marker in [
     if marker not in grant_reconcile:
         raise SystemExit(f'missing bounded exact grant-reconciliation invariant: {marker}')
 
-allowlist = grant_reconcile.split('public static function allowed_ability_providers()', 1)[1].split('public static function allowed_transport_ability_providers()', 1)[0]
+allowlist = grant_reconcile.split('public static function allowed_ability_providers()', 1)[1].split('public static function allowed_abilities()', 1)[0]
+retirement_allowlist = grant_reconcile.split('public static function retirable_stale_ability_providers()', 1)[1].split('public static function allowed_transport_ability_providers()', 1)[0]
 transport_allowlist = grant_reconcile.split('public static function allowed_transport_ability_providers()', 1)[1].split('public static function chatgpt_read_tools()', 1)[0]
 if "MAD4B_SCP_Servers::chatgpt_dispatch_transport_tools()" not in transport_allowlist:
     raise SystemExit('ChatGPT mutation transport grant allowlist must derive from the canonical dispatcher inventory')
@@ -347,6 +348,13 @@ for required_pair in [
 ]:
     if required_pair not in allowlist:
         raise SystemExit(f'exact grant-reconciliation provider pair missing: {required_pair}')
+
+if "'elementor/update-widget-settings' => 'elementor'" in allowlist:
+    raise SystemExit('historical Elementor grant leaked back into grant-creation allowlist')
+if "'elementor/update-widget-settings'] = 'elementor'" not in retirement_allowlist:
+    raise SystemExit('historical Elementor stale grant is not explicitly retirement-only')
+if "retirable_stale_ability_providers" not in grant_plan:
+    raise SystemExit('stale grant plan does not use retirement-only historical allowlist')
 
 for forbidden_grant in [
     "'jetengine/import-configuration'",
