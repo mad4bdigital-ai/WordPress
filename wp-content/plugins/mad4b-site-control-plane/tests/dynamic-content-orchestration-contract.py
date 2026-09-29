@@ -469,4 +469,14 @@ for marker in [
     if marker not in adapter:
         raise SystemExit(f"publication handoff marker missing: {marker}")
 
+
+if "failure_with_compensation($validated,$v['mode'],$id,$before);" in adapter:
+    raise SystemExit("validation compensation must be CAS-protected by owned_after")
+for marker in [
+    "acceptance_invalidated",
+    "invalidate_acceptance_after_restore($id)",
+]:
+    if marker not in adapter:
+        raise SystemExit(f"local compensation acceptance invalidation missing: {marker}")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
