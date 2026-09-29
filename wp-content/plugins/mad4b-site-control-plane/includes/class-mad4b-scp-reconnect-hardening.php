@@ -64,7 +64,10 @@ final class MAD4B_SCP_Reconnect_Hardening {
 
 	public static function reset_session_policy_scope( $result, $server, $request ) {
 		$key = self::request_scope_key( $request );
-		if ( '' !== $key ) unset( self::$initialize_empty_requests[ $key ] );
+		if ( '' !== $key ) {
+			unset( self::$initialize_empty_requests[ $key ] );
+			unset( self::$delete_cleanup_requests[ $key ] );
+		}
 		return $result;
 	}
 
@@ -84,6 +87,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'request_scope_reset_before_reconnect_guard' => true,
 			'request_scope_reset_before_oauth_dispatch' => true,
 			'request_scope_cleared_after_dispatch' => true,
+			'request_scope_reset_clears_pending_delete_state' => true,
 			'delete_cleanup_bound_to_exact_request_object' => true,
 			'request_scope_bound_to_exact_request_object' => true,
 			'nested_rest_request_cannot_clear_outer_initialize_state' => true,
@@ -395,6 +399,19 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		return isset( $sessions[ (string) $session_id ] ) && self::valid_session_record( $sessions[ (string) $session_id ] );
 	}
 
+
+	private static function first_empty_race_visible_candidate( $user_id, $captured_at ) {
+		$captured_at = (int) $captured_at;
+		if ( $captured_at < 1 ) return false;
+		$sessions = self::adapter_visible_session_map( $user_id );
+		if ( 1 !== count( $sessions ) || ! self::valid_session_map( $sessions ) ) return false;
+		$winner = reset( $sessions );
+		$created_at = is_array( $winner ) && isset( $winner['created_at'] ) ? (int) $winner['created_at'] : 0;
+		// Concurrent empty-map initializers are created in the same short burst.
+		// Do not use the shadow to recover later eviction/expiry scenarios.
+		return $created_at > 0 && abs( $created_at - $captured_at ) <= 30;
+	}
+
 	private static function readonly_transport_request( array $body ) {
 		$method = isset( $body['method'] ) && is_string( $body['method'] ) ? $body['method'] : '';
 		if ( in_array( $method, array( 'tools/list', 'resources/list', 'resources/templates/list', 'prompts/list', 'ping' ), true ) ) return true;
@@ -426,8 +443,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( 'POST' === $method && 'initialize' === ( $body['method'] ?? '' ) ) {
 			$key = self::request_scope_key( $request );
 			$started_empty = self::session_store_is_empty_for_first_initialize( get_current_user_id() );
-			if ( '' !== $key ) self::$initialize_empty_requests[ $key ] = $started_empty && self::certified_adapter_runtime_integrity_ok();
-			if ( $started_empty && empty( self::$initialize_empty_requests[ $key ] ) ) self::$session_repair_state = 'runtime_integrity_gate_blocked';
+			$eligible = '' !== $key && $started_empty && self::certified_adapter_runtime_integrity_ok();
+			if ( '' !== $key ) self::$initialize_empty_requests[ $key ] = $eligible;
+			if ( $started_empty && ! $eligible ) self::$session_repair_state = 'runtime_integrity_gate_blocked';
 			return $result;
 		}
 		$session_id = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'mcp-session-id' ) ) : '';
@@ -462,6 +480,10 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			$current = isset( $binding[ $key ] ) ? strtolower( (string) $binding[ $key ] ) : '';
 			if ( '' === $expected || '' === $current || ! hash_equals( $expected, $current ) ) return $result;
 		}
+		if ( ! self::first_empty_race_visible_candidate( $user_id, (int) ( $shadow['captured_at'] ?? 0 ) ) ) {
+			self::$session_repair_state = 'not_first_empty_race_shape';
+			return $result;
+		}
 		if ( ! self::certified_adapter_runtime_integrity_ok() ) {
 			self::$session_repair_state = 'runtime_integrity_gate_blocked';
 			return $result;
@@ -482,6 +504,15 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$user_id = isset( $pending['user_id'] ) ? absint( $pending['user_id'] ) : 0;
 		$session_id = isset( $pending['session_id'] ) ? (string) $pending['session_id'] : '';
 		if ( $user_id < 1 || ! self::valid_adapter_session_id( $session_id ) ) return $response;
+		$transport_bound = class_exists( 'MAD4B_SCP_Transport_Context' )
+			&& method_exists( 'MAD4B_SCP_Transport_Context', 'current_server_id' )
+			&& 'mad4b-chatgpt' === MAD4B_SCP_Transport_Context::current_server_id();
+		$response_obj = rest_ensure_response( $response );
+		$adapter_success = $response_obj instanceof WP_REST_Response && 200 === (int) $response_obj->get_status();
+		if ( ! $transport_bound || ! $adapter_success ) {
+			self::$session_repair_state = 'delete_cleanup_skipped_without_adapter_success';
+			return $response;
+		}
 		$cleaned = self::remove_session_from_all_rows( $user_id, $session_id );
 		self::$session_repair_state = $cleaned ? 'delete_finalized_after_adapter' : 'delete_hidden_cleanup_failed';
 		// Preserve the canonical Adapter response verbatim. This callback performs
@@ -526,6 +557,10 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			self::$session_repair_state = 'initialized_session_present';
 			return $response;
 		}
+		if ( ! self::first_empty_race_visible_candidate( $user_id, (int) $shadow['captured_at'] ) ) {
+			self::$session_repair_state = 'initialized_session_missing_outside_first_race_shape';
+			return $response;
+		}
 		self::$session_repair_state = self::ensure_session_record( $user_id, $session_id, $params )
 			? 'initialized_session_race_repaired'
 			: 'initialized_session_race_repair_failed';
@@ -556,9 +591,13 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'initialize_capabilities_persisted_in_shadow' => false,
 			'initialize_client_info_persisted_in_shadow' => false,
 			'initialize_shadow_fields' => array( 'protocolVersion' ),
-			'first_session_race_repair_enabled' => self::governed_nonproduction_transport() && self::session_repair_supported_runtime(),
+			'first_session_race_repair_configured' => self::governed_nonproduction_transport() && self::session_repair_supported_runtime(),
+			'first_session_race_repair_enabled' => true === self::$runtime_integrity_ok,
 			'repair_scope_first_empty_transition_only' => true,
 			'general_expiry_or_eviction_rehydration_enabled' => false,
+			'first_empty_race_visible_map_shape_required' => true,
+			'first_empty_race_visible_map_max_sessions' => 1,
+			'first_empty_race_creation_skew_seconds' => 30,
 			'version_only_repair_authority_allowed' => false,
 			'certified_stateful_adapter_version' => self::CERTIFIED_STATEFUL_ADAPTER_VERSION,
 			'exact_adapter_version_required' => true,
@@ -580,6 +619,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'duplicate_nonempty_rows_union_enabled' => false,
 			'delete_removes_target_from_all_duplicate_rows' => true,
 			'delete_cleanup_runs_after_adapter_dispatch' => true,
+			'delete_cleanup_requires_exact_transport_binding' => true,
+			'delete_cleanup_requires_adapter_http_200' => true,
 			'delete_response_preserved' => true,
 			'delete_pre_dispatch_removes_canonical_session' => false,
 			'repair_readback_verified' => true,
