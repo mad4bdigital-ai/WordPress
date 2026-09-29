@@ -20,6 +20,7 @@ final class MAD4B_SCP_REST_Compatibility {
 	private static $mcp_recovery_scope_evaluated = false;
 	private static $mcp_recovery_request = false;
 	private static $mcp_recovery_callbacks_removed = array();
+	private static $wpml_probe_cache = null;
 
 	public static function boot() {
 		// This runs on plugins_loaded before normal REST bootstrap. If a host/MU
@@ -188,104 +189,74 @@ final class MAD4B_SCP_REST_Compatibility {
 			'external_wpml_acceptance_state' => ! $external_wpml_required ? 'not_required' : ( $external_wpml_verified ? 'verified' : 'pending' ),
 			'external_wpml_acceptance' => self::bounded_external_wpml_receipt( $external_wpml ),
 			'external_http_probe_performed' => false,
+			'provider_probe_mode' => 'passive_snapshot',
+			'provider_self_calls_started' => 0,
+			'internal_rest_dispatch_performed' => false,
+			'automatic_probe_retry_allowed' => false,
 			'external_test_url' => self::wpml_external_test_url(),
-			'note' => 'Local REST isolation remains structural and non-authorizing. The internal WPML probe is diagnostic only; current external acceptance is projected from the separately observed signed/passive receipt without performing HTTP in this status call.',
+			'note' => 'Local REST isolation remains structural and non-authorizing. Local WPML observation is passive-only: status reads never materialize REST, internally dispatch the provider route, or perform loopback HTTP. Behavioral acceptance comes only from the separately observed external receipt.',
 		);
 	}
 
 	public static function wpml_probe() {
+		if ( null !== self::$wpml_probe_cache ) return self::$wpml_probe_cache;
 		$wpml_active = self::wpml_active();
+		$snapshot = class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' )
+			? MAD4B_SCP_Provider_Diagnostic_Policy::rest_route_snapshot( self::WPML_ROUTE )
+			: self::passive_rest_route_snapshot( self::WPML_ROUTE );
+		$route_registered = array_key_exists( 'route_registered', $snapshot ) ? $snapshot['route_registered'] : null;
+		$materialized = ! empty( $snapshot['rest_server_materialized'] );
+
+		if ( ! $wpml_active ) {
+			$state = 'wpml_not_active';
+			$ready = true;
+		} elseif ( null === $route_registered ) {
+			$state = 'passive_route_unobserved';
+			$ready = true;
+		} elseif ( true === $route_registered ) {
+			$state = 'passive_route_observed';
+			$ready = true;
+		} else {
+			$state = 'wpml_route_missing';
+			$ready = false;
+		}
+
+		self::$wpml_probe_cache = array(
+			'ready' => $ready,
+			'state' => $state,
+			'wpml_active' => $wpml_active,
+			'route_registered' => $route_registered,
+			'query_parameters_preserved' => null,
+			'control_plane_block_detected' => false,
+			'rest_server_materialized' => $materialized,
+			'rest_server_materialized_by_probe' => false,
+			'probe_mode' => 'passive_snapshot',
+			'active_probe_performed' => false,
+			'internal_rest_dispatch_performed' => false,
+			'loopback_http_performed' => false,
+			'provider_self_calls_started' => 0,
+			'automatic_retry_allowed' => false,
+		);
+		return self::$wpml_probe_cache;
+	}
+
+	private static function passive_rest_route_snapshot( $route ) {
 		global $wp_rest_server;
 		$server = isset( $wp_rest_server ) && is_object( $wp_rest_server ) && method_exists( $wp_rest_server, 'get_routes' )
 			? $wp_rest_server
 			: null;
-		$materialized_by_probe = false;
-
-		// When WPML is absent and WordPress has not already materialized REST, a
-		// negative capability check must not construct the entire REST/MCP server.
-		// If another component already materialized REST, inspect that existing
-		// server: a compatible /wpml/v1/rest/status route must still prove query
-		// parameter pass-through even without the SitePress class being loaded.
-		if ( ! $wpml_active && ! is_object( $server ) ) {
-			return array(
-				'ready' => true,
-				'state' => 'wpml_not_active',
-				'wpml_active' => false,
-				'route_registered' => false,
-				'query_parameters_preserved' => true,
-				'control_plane_block_detected' => false,
-				'rest_server_materialized' => false,
-				'rest_server_materialized_by_probe' => false,
-			);
-		}
-		if ( ! is_object( $server ) ) {
-			if ( ! function_exists( 'rest_get_server' ) ) {
-				return array( 'ready' => false, 'state' => 'rest_runtime_unavailable', 'wpml_active' => $wpml_active, 'route_registered' => false, 'query_parameters_preserved' => false, 'control_plane_block_detected' => false, 'rest_server_materialized' => false, 'rest_server_materialized_by_probe' => false );
-			}
-			$server = rest_get_server();
-			$materialized_by_probe = true;
-		}
-		if ( ! class_exists( 'WP_REST_Request' ) ) {
-			return array( 'ready' => false, 'state' => 'rest_runtime_unavailable', 'wpml_active' => $wpml_active, 'route_registered' => false, 'query_parameters_preserved' => false, 'control_plane_block_detected' => false, 'rest_server_materialized' => is_object( $server ), 'rest_server_materialized_by_probe' => $materialized_by_probe );
-		}
-
+		$out = array(
+			'rest_server_materialized' => is_object( $server ),
+			'route_registered' => null,
+		);
+		if ( ! is_object( $server ) ) return $out;
 		try {
-			$routes = is_object( $server ) && method_exists( $server, 'get_routes' ) ? $server->get_routes() : array();
-			$registered = is_array( $routes ) && isset( $routes[ self::WPML_ROUTE ] );
-			if ( ! $registered ) {
-				return array(
-					'ready' => ! $wpml_active,
-					'state' => $wpml_active ? 'wpml_route_missing' : 'wpml_not_active',
-					'wpml_active' => $wpml_active,
-					'route_registered' => false,
-					'query_parameters_preserved' => ! $wpml_active,
-					'control_plane_block_detected' => false,
-					'rest_server_materialized' => true,
-					'rest_server_materialized_by_probe' => $materialized_by_probe,
-				);
-			}
-
-			$request = new WP_REST_Request( 'GET', self::WPML_ROUTE );
-			$request->set_query_params( array(
-				'test_get_parameter' => '1',
-				'cachebuster' => (string) time(),
-			) );
-			$response = rest_do_request( $request );
-			$status = is_object( $response ) && method_exists( $response, 'get_status' ) ? (int) $response->get_status() : 0;
-			$data = is_object( $response ) && method_exists( $response, 'get_data' ) ? $response->get_data() : null;
-			$status_valid = is_array( $data ) && isset( $data['status'] ) && 'valid' === (string) $data['status'];
-			$get_valid = is_array( $data ) && isset( $data['get_parameters'] ) && 'valid' === (string) $data['get_parameters'];
-			$blocked_by_mad4b = is_array( $data ) && (
-				( isset( $data['error'] ) && 0 === strpos( (string) $data['error'], 'mad4b_' ) ) ||
-				( isset( $data['code'] ) && 0 === strpos( (string) $data['code'], 'mad4b_' ) )
-			);
-			return array(
-				'ready' => 200 === $status && $status_valid && $get_valid && ! $blocked_by_mad4b,
-				'state' => 200 === $status && $status_valid && $get_valid ? 'valid' : 'invalid_response',
-				'wpml_active' => $wpml_active,
-				'route_registered' => true,
-				'http_status' => $status,
-				'status_field_valid' => $status_valid,
-				'get_parameters_field_valid' => $get_valid,
-				'query_parameters_preserved' => $get_valid,
-				'control_plane_block_detected' => $blocked_by_mad4b,
-				'rest_server_materialized' => true,
-				'rest_server_materialized_by_probe' => $materialized_by_probe,
-				'error_code' => is_array( $data ) && isset( $data['code'] ) ? sanitize_key( (string) $data['code'] ) : '',
-			);
+			$routes = $server->get_routes();
+			if ( is_array( $routes ) ) $out['route_registered'] = array_key_exists( '/' . ltrim( rtrim( (string) $route, '/' ), '/' ), $routes );
 		} catch ( Throwable $e ) {
-			return array(
-				'ready' => false,
-				'state' => 'probe_exception',
-				'wpml_active' => self::wpml_active(),
-				'route_registered' => false,
-				'query_parameters_preserved' => false,
-				'control_plane_block_detected' => false,
-				'rest_server_materialized' => true,
-				'rest_server_materialized_by_probe' => $materialized_by_probe,
-				'exception_class' => get_class( $e ),
-			);
+			$out['route_registered'] = null;
 		}
+		return $out;
 	}
 
 	private static function bounded_external_wpml_receipt( $receipt ) {
