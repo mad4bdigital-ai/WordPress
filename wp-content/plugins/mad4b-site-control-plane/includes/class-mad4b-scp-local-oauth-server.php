@@ -1120,7 +1120,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function effective_for_protocol() {
-		$status = self::status();
+		$status = self::runtime_identity_status();
 		return ! empty( $status['effective'] );
 	}
 
