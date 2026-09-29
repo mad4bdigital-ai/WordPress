@@ -1,0 +1,87 @@
+name: MAD4B Spec 008 Runtime Hardening
+
+on:
+  pull_request:
+    paths:
+      - 'specs/008-dynamic-content-runtime-hardening/**'
+      - '.github/workflows/mad4b-spec008-runtime-hardening.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-spec008-runtime-hardening-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Spec 008 runtime-hardening contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate Feature 008 runtime hardening implementation contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-runtime-hardening-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/dynamic-canonicalization-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-canonicalization.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-context.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-metrics.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dynamic-content-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-ttl-policy.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-diff.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-provider-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-recovery.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dynamic-recovery-adapter.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/dynamic-hardening-pure-runtime.php
+
+      - name: Validate Spec 008 structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=specs/008-dynamic-content-runtime-hardening
+          required=(
+            README.md spec.md plan.md tasks.md research.md data-model.md constitution.md
+            traceability.md runbook.md quickstart.md quality-model.md feature.json gate-graph.json
+            architecture-decisions.md security-privacy.md storage-retention.md migration-upgrade.md
+            performance-slo.md canary-matrix.md
+            contracts/runtime-hardening.json contracts/identity-binding.json
+            contracts/operation-journal.json contracts/provider-manifest.json
+            contracts/telemetry.json contracts/canonicalization.json
+            checklists/requirements.md
+          )
+          for f in "${required[@]}"; do test -s "$base/$f"; done
+          python3 - <<'PY'
+          import json, pathlib
+          base=pathlib.Path("specs/008-dynamic-content-runtime-hardening")
+          feature=json.loads((base/"feature.json").read_text())
+          graph=json.loads((base/"gate-graph.json").read_text())
+          umbrella=json.loads((base/"contracts/runtime-hardening.json").read_text())
+          identity=json.loads((base/"contracts/identity-binding.json").read_text())
+          journal=json.loads((base/"contracts/operation-journal.json").read_text())
+          provider=json.loads((base/"contracts/provider-manifest.json").read_text())
+          telemetry=json.loads((base/"contracts/telemetry.json").read_text())
+          canonical=json.loads((base/"contracts/canonicalization.json").read_text())
+          assert feature["feature_id"]=="008"
+          assert feature["status"]=="implementation"
+          assert feature["implementation_boundary_policy"]["contract"]=="mad4b.feature-boundary-binding.v2"
+          assert feature["implementation_branch_policy"]["contract"]=="mad4b.feature-implementation-branch-policy.v2"
+          assert feature["cross_feature_contract_dependencies"]==[]
+          ids={g["id"] for g in graph["gates"]}
+          assert set(feature["required_gates"]) <= ids
+          assert umbrella["invariants"]["cache_never_authorizes_mutation"] is True
+          assert umbrella["invariants"]["ai_approval_default_deny"] is True
+          assert identity["invariants"]["operation_id_not_operation_key"] is True
+          assert journal["storage"]["engine"]=="custom_table"
+          assert journal["tamper_evidence"]["enabled"] is True
+          assert provider["side_effect_model"]["dimensions"]==["effect_scope","ownership","reversibility","compensation_support","externality"]
+          assert telemetry["privacy"]["unregistered_meta_default"]=="redact"
+          assert canonical["domain_separation"]["required"] is True
+          print("Spec 008 hardened contract: PASS")
+          PY

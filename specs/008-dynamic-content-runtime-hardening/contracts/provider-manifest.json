@@ -1,0 +1,52 @@
+{
+  "contract": "mad4b.dynamic-provider-manifest.v1",
+  "authority_model": "extends_existing_trusted_provider_registration",
+  "manifest_presence_authorizes": false,
+  "fields": [
+    "provider_id",
+    "implementation_version",
+    "existing_registry_identity",
+    "supports",
+    "preconditions",
+    "validation_capabilities",
+    "repair_capabilities",
+    "verifier_capabilities",
+    "side_effects",
+    "soft_elapsed_budget_ms",
+    "enforceable_deadline_supported"
+  ],
+  "side_effect_model": {
+    "dimensions": [
+      "effect_scope",
+      "ownership",
+      "reversibility",
+      "compensation_support",
+      "externality"
+    ],
+    "ownership": [
+      "core",
+      "provider",
+      "external",
+      "shared"
+    ],
+    "reversibility": [
+      "reversible",
+      "irreversible",
+      "unknown"
+    ],
+    "compensation_support": [
+      "none",
+      "best_effort",
+      "verified"
+    ],
+    "externality": [
+      "local",
+      "remote",
+      "external_system"
+    ]
+  },
+  "timeout_semantics": {
+    "in_process_budget": "soft",
+    "hard_timeout_requires_enforceable_transport": true
+  }
+}

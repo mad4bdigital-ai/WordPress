@@ -181,12 +181,12 @@ for label, path in implementation_files.items():
     if not path.is_file(): raise SystemExit(f'FAIL implementation-file-{label}: missing {path.relative_to(REPO)}')
 impl = {name: read(path) for name, path in implementation_files.items()}
 
-require(impl['schema'], 'const VERSION = 11;', 'implementation-schema-v11')
+require(impl['schema'], 'const VERSION = 12;', 'implementation-schema-v12')
 require(impl['schema'], "'budget_windows'", 'implementation-budget-windows')
 require(impl['schema'], "'audit_events'", 'implementation-audit-events')
 require(impl['schema'], "'audit_heads'", 'implementation-audit-heads')
-for marker in ("'content_jobs'", "'content_job_events'", "'artifacts'", "'artifact_edges'", "'work_leases'", "'idempotency'", "'outbox'", "'inbox'", "private static function required_durable_columns()", "'missing_durable_columns'"):
-    require(impl['schema'], marker, 'implementation-durable-schema-v11')
+for marker in ("'content_jobs'", "'content_job_events'", "'artifacts'", "'artifact_edges'", "'work_leases'", "'idempotency'", "'outbox'", "'inbox'", "'operation_events'", "'operation_heads'", "private static function required_durable_columns()", "'missing_durable_columns'"):
+    require(impl['schema'], marker, 'implementation-durable-schema-v12')
 for marker in (
     'candidate_binding_contract', 'candidate_sha char(40)', 'build_fingerprint char(64)',
     'binding_environment', 'binding_host', 'site_uuid char(36)',
@@ -198,7 +198,7 @@ for marker in (
     'public static function physical_integrity_status()',
     'claim_epoch bigint(20) unsigned', 'reconciliation_ref varchar(191)',
     'private static function required_durable_indexes()', "'missing_durable_indexes'",
-): require(impl['schema'], marker, 'implementation-schema-v11-approval-guard')
+): require(impl['schema'], marker, 'implementation-schema-v12-approval-guard')
 for marker in (
     'const CONTRACT = \'mad4b.site-profile.v2\'',
     'public static function origin_enrolled()', 'public static function site_uuid()',

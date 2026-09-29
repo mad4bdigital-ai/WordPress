@@ -1,0 +1,157 @@
+{
+  "feature": "008-dynamic-content-runtime-hardening",
+  "gates": [
+    {
+      "id": "spec_contract",
+      "depends_on": []
+    },
+    {
+      "id": "repository_spec_consistency",
+      "depends_on": [
+        "spec_contract"
+      ]
+    },
+    {
+      "id": "rc83_characterization",
+      "depends_on": [
+        "repository_spec_consistency"
+      ]
+    },
+    {
+      "id": "canonical_identity",
+      "depends_on": [
+        "rc83_characterization"
+      ]
+    },
+    {
+      "id": "telemetry_privacy_security",
+      "depends_on": [
+        "canonical_identity"
+      ]
+    },
+    {
+      "id": "minimal_operation_journal",
+      "depends_on": [
+        "telemetry_privacy_security"
+      ]
+    },
+    {
+      "id": "decomposition",
+      "depends_on": [
+        "minimal_operation_journal"
+      ]
+    },
+    {
+      "id": "compatibility_verification",
+      "depends_on": [
+        "decomposition"
+      ]
+    },
+    {
+      "id": "discovery_scale",
+      "depends_on": [
+        "compatibility_verification"
+      ]
+    },
+    {
+      "id": "provider_contract_bridge",
+      "depends_on": [
+        "compatibility_verification"
+      ]
+    },
+    {
+      "id": "ttl_lock_policy",
+      "depends_on": [
+        "minimal_operation_journal"
+      ]
+    },
+    {
+      "id": "simulation_semantic_diff",
+      "depends_on": [
+        "compatibility_verification",
+        "telemetry_privacy_security"
+      ]
+    },
+    {
+      "id": "side_effect_policy",
+      "depends_on": [
+        "provider_contract_bridge"
+      ]
+    },
+    {
+      "id": "approval_policy",
+      "depends_on": [
+        "side_effect_policy",
+        "canonical_identity"
+      ]
+    },
+    {
+      "id": "recovery_model",
+      "depends_on": [
+        "minimal_operation_journal",
+        "side_effect_policy",
+        "ttl_lock_policy"
+      ]
+    },
+    {
+      "id": "recovery_runtime",
+      "depends_on": [
+        "recovery_model",
+        "approval_policy"
+      ]
+    },
+    {
+      "id": "concurrency",
+      "depends_on": [
+        "recovery_runtime",
+        "simulation_semantic_diff"
+      ]
+    },
+    {
+      "id": "fault_injection",
+      "depends_on": [
+        "concurrency",
+        "side_effect_policy",
+        "ttl_lock_policy"
+      ]
+    },
+    {
+      "id": "upgrade_migration",
+      "depends_on": [
+        "minimal_operation_journal"
+      ]
+    },
+    {
+      "id": "performance_soak",
+      "depends_on": [
+        "discovery_scale",
+        "concurrency",
+        "upgrade_migration"
+      ]
+    },
+    {
+      "id": "docs_visualizer",
+      "depends_on": [
+        "telemetry_privacy_security",
+        "provider_contract_bridge"
+      ]
+    },
+    {
+      "id": "staging_canary",
+      "depends_on": [
+        "fault_injection",
+        "performance_soak",
+        "approval_policy",
+        "simulation_semantic_diff",
+        "upgrade_migration"
+      ]
+    },
+    {
+      "id": "release_verdict",
+      "depends_on": [
+        "staging_canary",
+        "repository_spec_consistency"
+      ]
+    }
+  ]
+}

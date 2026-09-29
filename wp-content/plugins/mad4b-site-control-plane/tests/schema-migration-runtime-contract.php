@@ -1,9 +1,9 @@
 <?php
 /**
- * Runtime acceptance for the declared Feature 007 Schema v11 migration.
+ * Runtime acceptance for the current additive MAD4B schema migration, preserving Feature 007 invariants and Feature 008 runtime tables.
  *
  * This harness executes the real MAD4B_SCP_Schema migration service against a
- * bounded WordPress-like DB/options fixture. It verifies migration lifecycle
+ * bounded WordPress-like DB/options fixture. It verifies current migration lifecycle
  * semantics without touching a real WordPress database.
  */
 
@@ -92,6 +92,13 @@ final class MAD4B_Test_Schema_WPDB {
 			'relation_id', 'locale', 'market', 'intent_id', 'content_id', 'role', 'confidence',
 			'evidence_json', 'analysis_signals_json', 'source', 'revision', 'valid_from', 'valid_to',
 			'current_relation_key', 'owner_scope_key', 'relation_sha256',
+			'operation_id', 'operation_key', 'operation_binding_sha256', 'checkpoint', 'lifecycle_state',
+			'terminal_outcome', 'safe_metadata_json', 'previous_event_sha256', 'event_sha256',
+			'latest_sequence', 'latest_event_sha256', 'lock_expires_at', 'stale_after', 'hard_deadline_at',
+			'recovery_id', 'journal_head_sha256', 'current_state_sha256', 'provider_state_digest',
+			'pipeline_settings_sha256', 'policy_sha256', 'environment', 'plan_json', 'generated_at',
+			'verified_at', 'closed_at', 'bucket_key', 'metric_name', 'bucket_start',
+			'count_value', 'sum_value', 'min_value', 'max_value',
 		);
 	}
 	public function get_results( $query, $output = null ) {
@@ -101,6 +108,7 @@ final class MAD4B_Test_Schema_WPDB {
 			'outbox_id', 'provider_idempotency', 'provider_event',
 			'artifact_id', 'job_type_version', 'edge_id', 'artifact_relation',
 			'relation_revision', 'current_relation_key', 'owner_scope_key',
+			'operation_sequence', 'event_sha256', 'operation_plan',
 		) as $name ) {
 			$rows[] = array( 'Key_name' => $name, 'Non_unique' => 0 );
 		}

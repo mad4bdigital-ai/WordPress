@@ -1,0 +1,18 @@
+{
+  "contract": "mad4b.dynamic-canonicalization.v1",
+  "json": {
+    "object_keys": "utf8_lexicographic_sorted",
+    "arrays": "order_preserved_unless_contract_declares_set_semantics",
+    "unicode": "utf8_preserved_no_locale_transform",
+    "booleans": "json_boolean",
+    "integers": "base10_json_integer",
+    "floats": "prohibited_in_security_binding_unless_field_contract_defines_normalization",
+    "omitted_vs_null": "distinct",
+    "empty_string_vs_absent": "distinct"
+  },
+  "domain_separation": {
+    "required": true,
+    "format": "mad4b:<contract>:<version>\\n<canonical-json>"
+  },
+  "digest": "sha256"
+}

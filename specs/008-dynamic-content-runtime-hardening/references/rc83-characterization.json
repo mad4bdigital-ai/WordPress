@@ -1,0 +1,26 @@
+{
+  "contract": "mad4b.rc83.dynamic-content-characterization.v1",
+  "baseline_version": "0.4.0-rc.83",
+  "public_abilities": [
+    "mad4b/content-model-discover",
+    "mad4b/content-bundle-readback",
+    "mad4b/content-orchestration-plan",
+    "mad4b/content-apply-bundle",
+    "mad4b/content-pipeline-status",
+    "mad4b/content-pipeline-settings-update"
+  ],
+  "rollback_contracts": [
+    "mad4b.rollback.dynamic-content-bundle.v1",
+    "mad4b.rollback.dynamic-content-pipeline-settings.v1"
+  ],
+  "mandatory_invariants": [
+    "runtime_discovery",
+    "exact_bundle_hash",
+    "exact_pipeline_hash",
+    "exact_state_hash",
+    "mutation_lock",
+    "cas_safe_compensation",
+    "terminal_acceptance",
+    "acceptance_bound_publication"
+  ]
+}

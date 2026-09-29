@@ -14,6 +14,13 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 	const DEFAULT_UNDO_TTL = 259200;
 	const MAX_UNDO_TTL = 604800;
 	const MAX_ROLLBACK_BYTES = 262144;
+	private static $execution_context_stack = array();
+
+	public static function current_mutation_context() {
+		if ( empty( self::$execution_context_stack ) ) return array();
+		$current = end( self::$execution_context_stack );
+		return is_array( $current ) ? $current : array();
+	}
 
 	public static function execute( $adapter, $ability_name, $method, $input ) {
 		global $wpdb;
@@ -94,14 +101,27 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		if ( false === $inserted ) return new WP_Error( 'mad4b_mutation_record_failed', 'Unable to persist reversible adapter mutation evidence before provider execution.', array( 'db_error' => $wpdb->last_error ) );
 		self::update_record( $mutation_id, array( 'status' => 'executing' ) );
 
+		self::$execution_context_stack[] = array(
+			'contract' => 'mad4b.reversible-execution-context.v1',
+			'mutation_id' => $mutation_id,
+			'ability' => $ability_name,
+			'adapter_id' => $adapter->id(),
+			'provider' => $provider,
+			'target_type' => (string) $before['target_type'],
+			'target_id' => (string) $before['target_id'],
+			'before_sha256' => $before_hash,
+			'undo_expires_at' => gmdate( 'c', time() + $ttl ),
+		);
 		try {
 			$result = call_user_func( array( $adapter, $method ), $input );
 		} catch ( Throwable $e ) {
+			array_pop( self::$execution_context_stack );
 			$error = new WP_Error( 'mad4b_reversible_provider_exception', 'Adapter mutation threw before successful verification.' );
 			$failure = self::finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, $before, $before_hash, $error, 'provider_exception' );
 			MAD4B_SCP_Audit::record( 'mad4b/reversible-adapter-failed', array( 'mutation_id' => $mutation_id, 'ability' => $ability_name, 'adapter' => $adapter->id(), 'error_type' => get_class( $e ), 'mutation_status' => self::failure_status_from_error( $failure ) ), 'failure' );
 			return $failure;
 		}
+		array_pop( self::$execution_context_stack );
 		if ( is_wp_error( $result ) ) {
 			return self::finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, $before, $before_hash, $result, $result->get_error_code() );
 		}

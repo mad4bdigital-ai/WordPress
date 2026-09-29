@@ -375,8 +375,10 @@ for marker in [
 
 
 
-if "'heartbeat'=>function() use ($lock)" not in adapter:
-    raise SystemExit("dynamic content loop must carry a request-local mutation lock heartbeat")
+if "'heartbeat'=>function() use ($lock,$operation)" not in adapter:
+    raise SystemExit("dynamic content loop must carry request-local lock + operation-journal heartbeat context")
+if "journal_heartbeat($operation,$lock)" not in adapter:
+    raise SystemExit("dynamic content loop heartbeat must refresh the operation journal alongside the mutation lock")
 if "isset($current['heartbeat'])&&is_callable($current['heartbeat'])" not in pipeline:
     raise SystemExit("dynamic pipeline must refresh request-local heartbeat before configured stages")
 

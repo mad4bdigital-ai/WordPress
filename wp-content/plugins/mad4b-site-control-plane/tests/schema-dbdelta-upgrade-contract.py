@@ -241,6 +241,10 @@ def main():
         "work_leases": ("lease_epoch", "expires_at", "reconciliation_ref"),
         "outbox": ("workflow_plan_sha256", "idempotency_key", "request_sha256"),
         "inbox": ("provider_event_id", "job_id", "payload_sha256"),
+        "operation_events": ("operation_id", "operation_key", "operation_binding_sha256", "sequence", "previous_event_sha256", "event_sha256"),
+        "operation_heads": ("operation_id", "operation_key", "operation_binding_sha256", "latest_sequence", "latest_event_sha256", "heartbeat_at", "stale_after", "hard_deadline_at"),
+        "recovery_cases": ("recovery_id", "operation_id", "journal_head_sha256", "current_state_sha256", "plan_sha256", "expires_at"),
+        "metric_buckets": ("bucket_key", "metric_name", "bucket_start", "count_value", "sum_value"),
     }
     for table, required in durable_required.items():
         fields, _ = visible_dbdelta_tokens(table_body(table))
@@ -250,10 +254,10 @@ def main():
                 f"{table}: durable execution fields hidden from dbDelta: {','.join(hidden)}"
             )
 
-    if "const VERSION = 11;" not in SCHEMA:
-        raise AssertionError("Intent Authority requires schema version 11")
-    if "mad4b_scp_schema_integrity_v11" not in SCHEMA:
-        raise AssertionError("Intent Authority schema integrity token was not versioned")
+    if "const VERSION = 12;" not in SCHEMA:
+        raise AssertionError("Feature 008 requires additive schema version 12")
+    if "mad4b_scp_schema_integrity_v12" not in SCHEMA:
+        raise AssertionError("Feature 008 schema integrity token was not versioned")
     intent_body = table_body("intent_relations")
     if "UNIQUE KEY current_owner_scope" in intent_body:
         raise AssertionError("Intent Authority must not encode false single-owner exclusivity")
@@ -263,9 +267,9 @@ def main():
     # fail-closed persistence. dbDelta visibility alone is not enough.
     migration_markers = (
         "const MIGRATION_CONTRACT = 'mad4b.schema-migration.v1';",
-        "const MIGRATION_ID = '20260925-feature007-intent-authority-v11';",
-        "const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v11';",
-        "'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9, 10, 11 )",
+        "const MIGRATION_ID = '20260929-feature008-operation-journal-v12';",
+        "const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v12';",
+        "'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9, 10, 11, 12 )",
         "'forward_operation' => 'dbdelta_additive_mad4b_tables_columns_and_indexes'",
         "'rollback_or_forward_fix' => 'forward_fix_only_preserve_additive_schema_old_code_ignores_new_surfaces'",
         "'destructive' => false",
@@ -288,7 +292,7 @@ def main():
     )
     for marker in migration_markers:
         if marker not in SCHEMA:
-            raise AssertionError(f"Schema v11 migration contract marker missing: {marker}")
+            raise AssertionError(f"Schema v12 migration contract marker missing: {marker}")
 
     physical_pos = SCHEMA.find("$physical = self::physical_integrity_status();")
     physical_guard_pos = SCHEMA.find("if ( empty( $physical['ready'] ) )", physical_pos)
@@ -298,15 +302,15 @@ def main():
     final_receipt_pos = SCHEMA.find("$final_receipt = self::migration_receipt", integrity_commit_pos)
     ready_pos = SCHEMA.find("self::$critical_ready_cache = true;", final_receipt_pos)
     if min(physical_pos, physical_guard_pos, first_receipt_pos, version_commit_pos, integrity_commit_pos, final_receipt_pos, ready_pos) < 0:
-        raise AssertionError("Schema v11 migration evidence ordering markers are incomplete")
+        raise AssertionError("Schema v12 migration evidence ordering markers are incomplete")
     if not (physical_pos < physical_guard_pos < first_receipt_pos < version_commit_pos < integrity_commit_pos < final_receipt_pos < ready_pos):
-        raise AssertionError("Schema v11 readiness may advance before deep verification/final receipt")
+        raise AssertionError("Schema v12 readiness may advance before deep verification/final receipt")
 
     is_ready_pos = SCHEMA.find("public static function is_ready()")
     critical_ready_pos = SCHEMA.find("public static function critical_ready()", is_ready_pos)
     is_ready_body = SCHEMA[is_ready_pos:critical_ready_pos]
     if "self::migration_receipt_valid()" not in is_ready_body:
-        raise AssertionError("Schema v11 readiness must require a valid finalized migration receipt")
+        raise AssertionError("Schema v12 readiness must require a valid finalized migration receipt")
 
     print("mad4b.schema-dbdelta-upgrade.v3: PASS")
 

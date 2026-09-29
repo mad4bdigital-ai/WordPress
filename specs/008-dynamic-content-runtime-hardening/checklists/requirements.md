@@ -1,0 +1,29 @@
+# Requirements Checklist
+
+- [x] Workflow exact-head/concurrency hygiene corrected.
+- [x] operation_key / operation_id / binding separated.
+- [x] Journal append-oriented; lifecycle/outcome separated.
+- [x] Dedicated storage and bounded retention specified.
+- [x] Telemetry privacy/security and tamper evidence are release gates.
+- [x] Cache can never authorize mutation.
+- [x] summary/expanded modes expose truncation/limits.
+- [x] Performance budgets cover query/time/memory/results.
+- [x] Provider SDK extends existing authority rather than duplicating it.
+- [x] In-process timeout is labeled soft.
+- [x] Side-effect dimensions separated.
+- [x] impact level/flags separated.
+- [x] AI approval default deny.
+- [x] Recovery close bookkeeping-only.
+- [x] Recovery plan exact-bound and expiring.
+- [x] Orphan detection defined.
+- [x] Deterministic TTL tiers and safe interruption boundaries defined.
+- [x] Fault injection excluded from Production package.
+- [x] Semantic diff privacy defaults to redact.
+- [x] Simulation exposes uncertainty and apply-time revalidation.
+- [x] Visualizer explicitly non-authoritative.
+- [x] Recovery depends on side-effect policy.
+- [x] Migration/decommission covered.
+- [x] Expanded crash/concurrency/soak canaries covered.
+- [ ] Runtime implementation complete.
+- [ ] Exact-head CI green.
+- [ ] Staging certification complete.

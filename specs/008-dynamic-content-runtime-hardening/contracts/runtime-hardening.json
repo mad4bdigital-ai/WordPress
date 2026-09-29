@@ -1,0 +1,48 @@
+{
+  "contract": "mad4b.dynamic-content-runtime-hardening.v2",
+  "identities": [
+    "operation_key",
+    "operation_id",
+    "operation_binding_sha256"
+  ],
+  "planner_modes": [
+    "plan",
+    "simulate",
+    "explain",
+    "diff"
+  ],
+  "impact": {
+    "levels": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "flags": [
+      "publication",
+      "schema_change",
+      "external_side_effect",
+      "irreversible",
+      "recovery",
+      "provider_mutation"
+    ]
+  },
+  "ttl_tiers": [
+    "short",
+    "standard",
+    "long"
+  ],
+  "invariants": {
+    "no_generic_write_scope": true,
+    "no_wildcard_grants": true,
+    "no_raw_sql": true,
+    "no_breakglass_enablement": true,
+    "production_fault_injection": false,
+    "simulation_is_read_only": true,
+    "visualizer_is_read_only": true,
+    "recovery_apply_requires_exact_plan": true,
+    "recovery_close_content_mutation": false,
+    "cache_never_authorizes_mutation": true,
+    "ai_approval_default_deny": true,
+    "provider_manifest_never_authorizes": true
+  }
+}

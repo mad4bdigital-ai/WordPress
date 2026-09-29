@@ -1,0 +1,27 @@
+{
+  "contract": "mad4b.dynamic-operation-binding.v1",
+  "fields": {
+    "operation_key": "stable intent/idempotency identity",
+    "operation_id": "unique execution attempt identity",
+    "operation_binding_sha256": "domain-separated digest of canonical exact execution facts"
+  },
+  "binding_basis": [
+    "operation_key",
+    "mode",
+    "environment",
+    "scope",
+    "post_type",
+    "post_id_or_zero",
+    "bundle_sha256",
+    "expected_state_sha256",
+    "pipeline_settings_sha256",
+    "policy_sha256",
+    "provider_state_digest"
+  ],
+  "invariants": {
+    "operation_id_not_operation_key": true,
+    "operation_binding_immutable": true,
+    "retry_may_reuse_operation_key": true,
+    "retry_must_use_new_operation_id": true
+  }
+}
