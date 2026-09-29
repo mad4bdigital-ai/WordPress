@@ -67,4 +67,12 @@ assert "'automatic_apply' => false" in runtime
 
 assert "'blind_retry_allowed' => false" in runtime
 
+assert "pending_manual_resume" in runtime
+
+assert "wp_cron_disabled" in runtime
+
+assert "checkpoint_persist_failed" in runtime
+
+assert "wp_schedule_single_event" in runtime
+
 print("runtime convergence contract: PASS")
