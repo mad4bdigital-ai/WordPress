@@ -78,6 +78,9 @@ assert "wp_schedule_single_event" in runtime
 assert "lightweight_runtime_drift_detector" in runtime
 assert "detect_lightweight_runtime_drift" in runtime
 assert "'option_reads_only' => true" in runtime
+assert "'option_reads_only' => false" in runtime
+assert "'bounded_provenance_file_read' => true" in runtime
+assert "'bounded_provenance_file_read' => false" in runtime
 assert "'filesystem_scan_performed' => false" in runtime
 assert "'database_schema_probe_performed' => false" in runtime
 
@@ -87,5 +90,6 @@ assert "MAD4B_SCP_Schema::status" not in detector
 assert "MAD4B_SCP_Schema::install_or_upgrade" not in detector
 assert "hash_file(" not in detector
 assert "rest_get_server(" not in detector
+assert detector.index("if ( empty( $reasons ) )") < detector.index("$identity = self::current_identity();")
 
 print("runtime convergence contract: PASS")
