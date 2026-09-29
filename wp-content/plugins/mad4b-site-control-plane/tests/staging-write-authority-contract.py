@@ -452,13 +452,13 @@ if "'mad4b/reconcile-managed-skills'" in core_write:
 bootstrap_body = write.split("public static function candidate_bootstrap_status", 1)[1].split("public static function candidate_bootstrap_allowed", 1)[0]
 for marker in [
     "self::CANDIDATE_BOOTSTRAP_ABILITY !== $ability_name",
-    "array( 'staging', 'production' )",
-    "mad4b_candidate_bind_environment_denied",
-    "PRODUCTION_CONFIRMATION",
+    "'staging' !== MAD4B_SCP_Site_Profile::current_environment()",
+    "environment_not_staging",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
     "MAD4B_SCP_Site_Profile::write_enabled()",
-    "MAD4B_MCP_MUTATION_ENABLED",
+    "MAD4B_SCP_Policy::mutation_gate_status()",
+    "mutation_gate_disabled",
     "'candidate_already_bound'",
     "'wildcard_grants_detected'",
     "'breakglass_enabled'",
