@@ -35,6 +35,7 @@ authz = read('includes/class-mad4b-scp-authorization.php')
 servers = read('includes/class-mad4b-scp-servers.php')
 bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
+provider_contracts = read('includes/class-mad4b-scp-provider-contracts.php')
 
 require(status, "mad4b.connection-readiness.v4", 'connection-contract')
 for marker in (
@@ -408,3 +409,16 @@ require(local_blocker_section, "if ( ! $protocol_hotpath && ! empty( $peer['bloc
 require(status, "'deferred_checks' => $protocol_hotpath ? array( 'route_permission_validation', 'mcp_peer_inventory', 'write_catalog_inventory' ) : array()", 'connection-deferred-checks-explicit')
 require(status, "'route_registered' => $protocol_hotpath ? null", 'write-surface-deferred-route-tristate')
 require(status, "'permission_callback_match' => $protocol_hotpath ? null", 'write-surface-deferred-permission-tristate')
+
+# Protocol connection readiness uses a hash-free provider identity projection.
+# Deep critical-file hashing remains mandatory for runtime_status/mutation_guard.
+require(status, "MAD4B_SCP_Provider_Contracts::runtime_identity_status( 'mcp_adapter', $adapter_available )", 'connection-provider-identity-fastpath')
+provider_branch = status.split("$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' )", 1)[1].split("$provider_ok =", 1)[0]
+require(provider_branch, "$protocol_hotpath", 'provider-identity-hotpath-branch')
+require(provider_contracts, "public static function runtime_identity_status( $provider, $available = null )", 'provider-identity-projection')
+identity_projection = provider_contracts.split("public static function runtime_identity_status( $provider, $available = null )", 1)[1].split("public static function runtime_status( $provider, $available = null )", 1)[0]
+forbid(identity_projection, "hash_file(", 'provider-identity-no-byte-hashing')
+require(identity_projection, "'runtime_integrity_verification_deferred' => true", 'provider-identity-deferred-integrity-explicit')
+require(identity_projection, "'mutation_certified' => false", 'provider-identity-never-mutation-certifies')
+mutation_guard = provider_contracts.split("public static function mutation_guard(", 1)[1]
+require(mutation_guard, "self::runtime_status( $provider, $available )", 'mutation-still-deep-provider-certification')
