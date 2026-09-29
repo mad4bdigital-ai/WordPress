@@ -1137,6 +1137,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 			$accepted=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('accept',$validated);
 			if(is_wp_error($accepted)) return $this->failure_with_compensation($accepted,$v['mode'],$id,$before,$owned_after);
+			$findings=isset($accepted['findings'])&&is_array($accepted['findings'])?array_values($accepted['findings']):$findings;
 			$acceptance=isset($accepted['acceptance_status'])?(string)$accepted['acceptance_status']:($findings?'review_required':'accepted');
 		}else{
 			$findings=$this->structural_findings($final,$input,count($history)+1);
