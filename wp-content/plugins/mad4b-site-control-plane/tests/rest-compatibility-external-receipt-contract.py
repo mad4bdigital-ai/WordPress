@@ -24,6 +24,8 @@ assert "'provider_self_calls_started' => 0" in rest
 assert "'external_wpml_acceptance_verified' => false" not in rest
 
 assert "external_wpml_acceptance_verified" in runtime
+assert "if ( ! $wpml_active && ! $route_registered )" in rest
+assert "'wpml_active' => (bool) $wpml_active" in rest
 assert "external_wpml_acceptance_required" in runtime
 assert "MAD4B_SCP_External_WPML_Acceptance_Finalizer::" not in runtime
 
