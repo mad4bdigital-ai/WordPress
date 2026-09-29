@@ -138,7 +138,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 
 	private static function get_session_shadow( $user_id, $session_id ) {
 		$user_id = absint( $user_id );
-		if ( $user_id < 1 || get_transient( self::shadow_tombstone_key( $user_id, $session_id ) ) ) return array();
+		if ( $user_id < 1 || ! self::valid_adapter_session_id( (string) $session_id ) || get_transient( self::shadow_tombstone_key( $user_id, $session_id ) ) ) return array();
 		$shadow = get_transient( self::shadow_key( $user_id, $session_id ) );
 		if ( ! is_array( $shadow ) ) return array();
 		$captured_at = isset( $shadow['captured_at'] ) ? (int) $shadow['captured_at'] : 0;
@@ -151,7 +151,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 
 	private static function forget_session_shadow( $user_id, $session_id ) {
 		$user_id = absint( $user_id );
-		if ( $user_id < 1 ) return;
+		if ( $user_id < 1 || ! self::valid_adapter_session_id( (string) $session_id ) ) return;
 		set_transient( self::shadow_tombstone_key( $user_id, $session_id ), 1, self::SESSION_DELETE_TOMBSTONE_TTL );
 		delete_transient( self::shadow_key( $user_id, $session_id ) );
 	}
@@ -223,78 +223,73 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	}
 
 
-	private static function session_store_is_empty_for_first_initialize( $user_id ) {
+	private static function adapter_visible_session_map( $user_id ) {
 		$user_id = absint( $user_id );
-		if ( $user_id < 1 ) return false;
+		if ( $user_id < 1 ) return array();
 		wp_cache_delete( $user_id, 'user_meta' );
-		$rows = get_user_meta( $user_id, self::session_meta_key(), false );
-		if ( ! is_array( $rows ) || empty( $rows ) ) return true;
-		foreach ( $rows as $row ) {
-			if ( ! is_array( $row ) || ! empty( $row ) ) return false;
+		$visible = get_user_meta( $user_id, self::session_meta_key(), true );
+		return is_array( $visible ) ? $visible : array();
+	}
+
+	private static function session_store_is_empty_for_first_initialize( $user_id ) {
+		// Match Adapter 0.6.1 exactly: get_all_user_sessions() reads single=true.
+		// Hidden duplicate rows must not make MAD4B disagree with the Adapter about
+		// whether this request started from an empty visible session map.
+		return empty( self::adapter_visible_session_map( $user_id ) );
+	}
+
+	private static function valid_session_map( array $sessions ) {
+		foreach ( $sessions as $session_id => $session ) {
+			if ( ! self::valid_adapter_session_id( $session_id ) || ! self::valid_session_record( $session ) ) return false;
 		}
 		return true;
 	}
 
-	private static function canonical_session_rows( $user_id ) {
-		$user_id = absint( $user_id );
-		if ( $user_id < 1 ) return array();
-		wp_cache_delete( $user_id, 'user_meta' );
-		$rows = get_user_meta( $user_id, self::session_meta_key(), false );
-		if ( ! is_array( $rows ) || empty( $rows ) ) return array();
-		$nonempty = array();
-		$has_empty = false;
-		foreach ( $rows as $row ) {
-			if ( ! is_array( $row ) ) return array();
-			if ( empty( $row ) ) { $has_empty = true; continue; }
-			$nonempty[] = $row;
-		}
-		if ( empty( $nonempty ) ) return array();
-		if ( $has_empty ) {
-			// Exact-value delete is safe here: it cannot delete a concurrent non-empty
-			// session map and removes only ambiguous empty duplicate rows.
-			delete_user_meta( $user_id, self::session_meta_key(), array() );
-		}
-		return $nonempty;
-	}
-
-	private static function merge_session_rows( array $rows ) {
-		$merged = array();
-		foreach ( $rows as $row ) {
-			foreach ( $row as $session_id => $session ) {
-				if ( ! self::valid_adapter_session_id( $session_id ) || ! self::valid_session_record( $session ) ) return false;
-				if ( ! isset( $merged[ $session_id ] ) ) { $merged[ $session_id ] = $session; continue; }
-				$current_activity = (int) $merged[ $session_id ]['last_activity'];
-				$candidate_activity = (int) $session['last_activity'];
-				if ( $candidate_activity > $current_activity ) $merged[ $session_id ] = $session;
-			}
-		}
-		return $merged;
-	}
-
-	private static function mutate_session_map( $user_id, $callback ) {
+	private static function mutate_visible_session_map( $user_id, $callback ) {
 		$user_id = absint( $user_id );
 		if ( $user_id < 1 || ! is_callable( $callback ) ) return false;
 		$key = self::session_meta_key();
 		for ( $attempt = 0; $attempt < 5; $attempt++ ) {
-			$rows = self::canonical_session_rows( $user_id );
-			if ( empty( $rows ) ) return false;
-			$previous = self::merge_session_rows( $rows );
-			if ( ! is_array( $previous ) || empty( $previous ) ) return false;
+			$previous = self::adapter_visible_session_map( $user_id );
+			// Recovery never invents the first canonical map. Upstream initialize owns
+			// that transition; MAD4B only repairs a session lost by its documented race.
+			if ( empty( $previous ) || ! self::valid_session_map( $previous ) ) return false;
 			$updated = call_user_func( $callback, $previous );
-			if ( ! is_array( $updated ) ) return false;
+			if ( ! is_array( $updated ) || ! self::valid_session_map( $updated ) ) return false;
 			if ( $updated === $previous ) return true;
+			$stored = update_user_meta( $user_id, $key, $updated, $previous );
+			if ( false === $stored ) continue;
+			wp_cache_delete( $user_id, 'user_meta' );
+			$readback = get_user_meta( $user_id, $key, true );
+			if ( is_array( $readback ) && $readback === $updated ) return true;
+		}
+		return false;
+	}
+
+	private static function remove_session_from_all_rows( $user_id, $session_id ) {
+		$user_id = absint( $user_id );
+		if ( $user_id < 1 || ! self::valid_adapter_session_id( (string) $session_id ) ) return false;
+		$key = self::session_meta_key();
+		for ( $attempt = 0; $attempt < 5; $attempt++ ) {
+			wp_cache_delete( $user_id, 'user_meta' );
+			$rows = get_user_meta( $user_id, $key, false );
+			if ( ! is_array( $rows ) ) return false;
+			$found = false;
 			foreach ( $rows as $row ) {
-				if ( empty( $row ) || $row === $updated ) continue;
+				if ( ! is_array( $row ) || ! isset( $row[ $session_id ] ) ) continue;
+				$found = true;
+				$updated = $row;
+				unset( $updated[ $session_id ] );
 				update_user_meta( $user_id, $key, $updated, $row );
 			}
+			if ( ! $found ) return true;
 			wp_cache_delete( $user_id, 'user_meta' );
-			$readback_rows = get_user_meta( $user_id, $key, false );
-			if ( ! is_array( $readback_rows ) || empty( $readback_rows ) ) continue;
-			$all_match = true;
-			foreach ( $readback_rows as $row ) {
-				if ( ! is_array( $row ) || $row !== $updated ) { $all_match = false; break; }
+			$remaining = get_user_meta( $user_id, $key, false );
+			$still_present = false;
+			foreach ( is_array( $remaining ) ? $remaining : array() as $row ) {
+				if ( is_array( $row ) && isset( $row[ $session_id ] ) ) { $still_present = true; break; }
 			}
-			if ( $all_match ) return true;
+			if ( ! $still_present ) return true;
 		}
 		return false;
 	}
@@ -310,7 +305,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$now = time();
 		$max_sessions = self::repair_session_capacity();
 		$capacity_denied = false;
-		$stored = self::mutate_session_map( $user_id, static function ( array $sessions ) use ( $session_id, $client_params, $now, $max_sessions, &$capacity_denied ) {
+		$stored = self::mutate_visible_session_map( $user_id, static function ( array $sessions ) use ( $session_id, $client_params, $now, $max_sessions, &$capacity_denied ) {
 			if ( isset( $sessions[ $session_id ] ) ) return $sessions;
 			// Never evict or expire another Adapter session from the recovery layer.
 			// The canonical SessionManager owns lifecycle cleanup. Repair is additive
@@ -335,20 +330,14 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	}
 
 	private static function remove_session_record( $user_id, $session_id ) {
-		return self::mutate_session_map( $user_id, static function ( array $sessions ) use ( $session_id ) {
-			unset( $sessions[ $session_id ] );
-			return $sessions;
-		} );
+		return self::remove_session_from_all_rows( $user_id, $session_id );
 	}
 
 	private static function session_exists( $user_id, $session_id ) {
 		$user_id = absint( $user_id );
 		if ( $user_id < 1 || ! self::valid_adapter_session_id( (string) $session_id ) ) return false;
-		wp_cache_delete( $user_id, 'user_meta' );
-		$rows = get_user_meta( $user_id, self::session_meta_key(), false );
-		if ( ! is_array( $rows ) ) return false;
-		foreach ( $rows as $row ) if ( is_array( $row ) && isset( $row[ (string) $session_id ] ) && self::valid_session_record( $row[ (string) $session_id ] ) ) return true;
-		return false;
+		$sessions = self::adapter_visible_session_map( $user_id );
+		return isset( $sessions[ (string) $session_id ] ) && self::valid_session_record( $sessions[ (string) $session_id ] );
 	}
 
 	private static function readonly_transport_request( array $body ) {
@@ -387,7 +376,10 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$session_id = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'mcp-session-id' ) ) : '';
 		if ( '' === $session_id || strlen( $session_id ) > 128 ) return $result;
 		if ( 'DELETE' === $method ) {
-			self::forget_session_shadow( get_current_user_id(), $session_id );
+			$user_id = get_current_user_id();
+			if ( ! self::valid_adapter_session_id( $session_id ) ) return $result;
+			self::forget_session_shadow( $user_id, $session_id );
+			self::remove_session_from_all_rows( $user_id, $session_id );
 			self::$session_repair_state = 'shadow_forgotten_on_delete';
 			return $result;
 		}
@@ -499,12 +491,13 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'repair_uses_upstream_session_capacity' => true,
 			'repair_uses_custom_lock' => false,
 			'empty_only_session_meta_repair_allowed' => false,
-			'empty_duplicate_rows_removed_by_exact_match' => true,
-			'duplicate_nonempty_rows_converged_by_cas' => true,
+			'repair_matches_adapter_single_meta_visibility' => true,
+			'duplicate_nonempty_rows_union_enabled' => false,
+			'delete_removes_target_from_all_duplicate_rows' => true,
 			'repair_readback_verified' => true,
 			'session_id_shape_pinned_to_adapter_uuid_v4' => true,
 			'existing_session_records_shape_validated' => true,
-			'session_exists_scans_all_meta_rows' => true,
+			'session_exists_matches_adapter_visible_meta_row' => true,
 			'steady_state_user_meta_read_after_shadow_expiry' => false,
 			'delete_forgets_shadow' => true,
 			'oauth_client_bound' => true,
