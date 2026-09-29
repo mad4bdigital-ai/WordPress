@@ -28,13 +28,13 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline {
 			'no_progress_limit'=>1,
 			'default_repair_mode'=>'safe_only',
 			'stages'=>array(
-				array('id'=>'structural','enabled'=>true,'order'=>100,'phase'=>'validate','conditions'=>array(),'policy'=>array('severity'=>'error','required'=>true,'on_error'=>'stop')),
+				array('id'=>'structural','enabled'=>true,'order'=>0,'phase'=>'validate','conditions'=>array(),'policy'=>array('severity'=>'error','required'=>true,'on_error'=>'stop')),
 				array('id'=>'source_fidelity','enabled'=>false,'order'=>140,'phase'=>'validate','conditions'=>array(),'policy'=>array('required'=>false,'on_error'=>'finding')),
 				array('id'=>'site_policy','enabled'=>true,'order'=>200,'phase'=>'validate','conditions'=>array(),'policy'=>array('severity'=>'error','required'=>false,'on_error'=>'finding')),
 				array('id'=>'seo_validation','enabled'=>false,'order'=>220,'phase'=>'validate','conditions'=>array(),'policy'=>array('required'=>false,'on_error'=>'finding')),
 				array('id'=>'frontend_validation','enabled'=>false,'order'=>240,'phase'=>'validate','conditions'=>array(),'policy'=>array('required'=>false,'on_error'=>'finding')),
 				array('id'=>'safe_repair','enabled'=>true,'order'=>300,'phase'=>'repair','conditions'=>array(),'policy'=>array('max_repairs_per_iteration'=>200,'required'=>true,'on_error'=>'stop')),
-				array('id'=>'acceptance','enabled'=>true,'order'=>400,'phase'=>'accept','conditions'=>array(),'policy'=>array('require_zero_findings'=>true,'required'=>true,'on_error'=>'stop')),
+				array('id'=>'acceptance','enabled'=>true,'order'=>10000,'phase'=>'accept','conditions'=>array(),'policy'=>array('require_zero_findings'=>true,'required'=>true,'on_error'=>'stop')),
 			),
 		);
 	}
