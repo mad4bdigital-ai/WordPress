@@ -174,7 +174,8 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 							'type' => 'string',
 							'minLength' => 40,
 							'maxLength' => 191,
-							'pattern' => '^mad4b-site-control-plane-[A-Za-z0-9._-]+-[A-Fa-f0-9]{40}
+							'pattern' => '^mad4b-site-control-plane-[A-Za-z0-9._-]+-[A-Fa-f0-9]{40}$',
+						),
 						'expected_agent_public_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' ),
 						'expected_write_tool_count' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 200 ),
 						'expected_write_inventory_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
