@@ -588,7 +588,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 						'grant_id' => $grant_id,
 						'ability' => (string) $stale['ability_name'],
 						'provider' => sanitize_key( (string) $stale['provider'] ),
-						'environment' => 'staging',
+						'environment' => $environment,
 						'authority_change' => 'narrowing',
 						'production_mutation' => 'production' === $environment,
 					), 'ok' );
@@ -692,7 +692,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			$created_transport_abilities = array();
 			foreach ( $transport_missing as $ability ) {
 				$provider = $transport_providers[ $ability ];
-				$created = MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-chatgpt', $ability, $provider, array(), 'allow', 'staging' );
+				$created = MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-chatgpt', $ability, $provider, array(), 'allow', $environment );
 				if ( is_wp_error( $created ) ) {
 					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint, $created_transport_ids, empty( $revoked_stale_ids ) );
 					return new WP_Error( 'mad4b_grant_reconcile_transport_create_failed', 'Exact enrollment transport grant creation failed; newly-created grants were rolled back.', array( 'ability' => $ability, 'code' => $created->get_error_code(), 'rollback_errors' => $rollback ) );
