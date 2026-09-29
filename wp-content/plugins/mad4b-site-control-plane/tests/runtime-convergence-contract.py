@@ -59,4 +59,12 @@ assert "remove_filter( 'wp_register_ability_args'" in runtime
 assert "mad4b_runtime_convergence_phase_cycle" in runtime
 assert "mad4b_runtime_convergence_phase_dependency_missing" in runtime
 
+assert "mad4b/admin-query-performance-reconcile" in runtime
+
+assert "mad4b/admin-query-performance-apply" in runtime
+
+assert "'automatic_apply' => false" in runtime
+
+assert "'blind_retry_allowed' => false" in runtime
+
 print("runtime convergence contract: PASS")
