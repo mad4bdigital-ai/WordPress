@@ -175,6 +175,25 @@ $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(array(sid(70)=>srec(
 ok(!priv('first_empty_race_visible_candidate',array(7,$now)),'old visible session cannot be treated as same initialize burst');
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array();
 
+// Bounded multi-way first-empty race candidates may converge, but only inside
+// the same short creation burst and below the explicit recovery bound.
+$captured=time();
+$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(array(
+    sid(701)=>srec($captured),
+    sid(702)=>srec($captured+1),
+    sid(703)=>srec($captured-1),
+));
+ok(priv('first_empty_race_visible_candidate',array(7,$captured)),'same-burst multiway visible map remains repair-eligible');
+$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(array(
+    sid(704)=>srec($captured),
+    sid(705)=>srec($captured+31),
+));
+ok(!priv('first_empty_race_visible_candidate',array(7,$captured)),'visible session outside creation-skew window blocks repair');
+$too_many=array(); for($i=1;$i<=9;$i++)$too_many[sid(800+$i)]=srec($captured);
+$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array($too_many);
+ok(!priv('first_empty_race_visible_candidate',array(7,$captured)),'more than eight visible burst sessions blocks recovery');
+$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array();
+
 // Static read allowlist is insufficient: runtime readonly annotation is mandatory.
 $GLOBALS['abilities']['mad4b/site-info']=new class { public function get_meta(){return array('annotations'=>array('readonly'=>false));} };
 $call=array('method'=>'tools/call','params'=>array('name'=>'mad4b-site-info'));
