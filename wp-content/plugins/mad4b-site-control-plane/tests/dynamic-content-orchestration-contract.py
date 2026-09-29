@@ -496,4 +496,22 @@ for marker in [
     if marker not in adapter:
         raise SystemExit(f"acceptance modified-time binding missing: {marker}")
 
+
+for marker in [
+    "$created_owned=$this->snapshot($id,$input)",
+    "'create',$id,null,$created_owned",
+    "$expected_after_post=$before",
+    "$v['mode'],$id,$before,$expected_after_post",
+]:
+    if marker not in adapter:
+        raise SystemExit(f"deterministic pre-meta ownership marker missing: {marker}")
+
+managed_failure_start = adapter.find("mad4b_dynamic_managed_marker_write_failed")
+managed_failure_end = adapter.find("if($v['mode']==='create') $owned_after", managed_failure_start)
+if managed_failure_start < 0 or managed_failure_end < 0:
+    raise SystemExit("managed-marker failure block missing")
+managed_failure = adapter[managed_failure_start:managed_failure_end]
+if "$this->snapshot($id,$input)" in managed_failure:
+    raise SystemExit("managed-marker failure must not trust a post-error live snapshot")
+
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
