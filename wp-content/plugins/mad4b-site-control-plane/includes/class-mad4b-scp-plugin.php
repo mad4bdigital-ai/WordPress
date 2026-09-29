@@ -135,7 +135,9 @@ final class MAD4B_SCP_Plugin {
 		if ( defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) && true === constant( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) ) {
 			if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy' ) || ! MAD4B_SCP_Local_OAuth_Key_Path_Policy::transport_ready() ) return;
 		}
-		$status = MAD4B_SCP_OAuth_Resource_Bridge::status();
+		$status = method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'runtime_identity_status' )
+			? MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()
+			: MAD4B_SCP_OAuth_Resource_Bridge::status();
 		if ( ! is_array( $status ) || empty( $status['effective'] ) ) return;
 		MAD4B_SCP_OAuth_Request_Context_Guard::boot();
 		MAD4B_SCP_OAuth_JWT_Header_Guard::boot();
