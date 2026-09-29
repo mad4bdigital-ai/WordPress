@@ -10,8 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * prove the clean runtime-eligible grant snapshot, then bind the exact current
  * four-part package candidate as the final commit point. It cannot create
  * wildcard grants, touch Production, enable Developer/Developer Breakglass,
- * grant import/export, create/replace agents or subjects, or revoke pre-existing
- * grants except grants created by the same failed invocation before commit.
+ * grant import/export or create/replace agents or subjects. Reviewed stale exact
+ * Staging grants may be retired as monotonic authority narrowing. Unknown stale
+ * authority remains fail-closed and retired stale authority is never restored.
  */
 final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 	const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v3';
@@ -122,7 +123,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		try {
 			wp_register_ability( self::ABILITY, array(
 				'label' => 'Converge Exact Staging Write Authority',
-				'description' => 'Create only reviewed exact missing Staging grants, prove the clean governed-write snapshot, and bind the exact current package candidate without enabling Developer, Breakglass, or Production authority.',
+				'description' => 'Converge reviewed exact Staging authority by creating exact missing grants and retiring reviewed stale exact grants, then prove the clean governed-write snapshot and bind the exact current package candidate without enabling Developer, Breakglass, or Production authority.',
 				'category' => 'mad4b-governance',
 				'execute_callback' => array( __CLASS__, 'reconcile' ),
 				'permission_callback' => array( __CLASS__, 'can_execute' ),
@@ -204,6 +205,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 						'surface' => 'enrollment',
 						'mad4b_grant_reconciliation_authority' => self::CONTRACT,
 						'creates_exact_staging_grants_only' => true,
+						'retires_reviewed_stale_staging_grants' => true,
+						'stale_retirement_is_authority_narrowing' => true,
 						'binds_exact_package_candidate' => true,
 						'candidate_binding_is_commit_point' => true,
 						'enables_developer_authority' => false,
