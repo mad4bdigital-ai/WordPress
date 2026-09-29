@@ -79,7 +79,7 @@ final class MAD4B_SCP_Local_OAuth_Consent_UI {
 			. '<div><span>Generic raw-SQL Breakglass</span><strong>Not included</strong></div>'
 			. '</div>'
 			. '<p><code>offline_access</code> keeps the approved connection active without repeatedly asking you to sign in; it does not add mutation authority.</p>'
-			. ( $step_up_requested ? '<p><code>mad4b:authority:step-up</code> is request permission for exact environment-bound governance operations, including policy-eligible bootstrap Control Plane self-update. It is not a write grant and cannot bypass exact plan matching, enrolled administrator identity, environment-specific confirmation, one-time Production approval, audit readiness, or fail-closed governance.</p>' : '' )
+			. ( $step_up_requested ? '<p><code>mad4b:authority:step-up</code> is a request permission for exact environment-bound governance operations, including policy-eligible bootstrap Control Plane self-update. It is not a write grant and cannot bypass exact plan matching, enrolled administrator identity, environment-specific confirmation, one-time Production approval, audit readiness, or fail-closed governance.</p>' : '' )
 			. '</section>';
 		$authority_summary = '<section class="mad4b-authority-summary" aria-label="Current governed authority">'
 			. '<h2>Current ' . $environment_label . ' authority</h2>'
