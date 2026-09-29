@@ -428,3 +428,11 @@ require(mutation_guard, "self::runtime_status( $provider, $available )", 'mutati
 require(status, "public static function status( $force_deep = false )", 'connection-explicit-deep-signature')
 require(status, "$protocol_hotpath = ! $force_deep", 'connection-deep-bypasses-hotpath-projection')
 require(status, "'explicit_deep_validation' => (bool) $force_deep", 'connection-deep-mode-observable')
+
+# Protocol connection status consumes persisted handshake evidence only. Live
+# build/tool revalidation remains available through explicit deep diagnostics.
+status_method = status.split("public static function status( $force_deep = false )", 1)[1].split("private static function bounded_mcp_registration_lifecycle()", 1)[0]
+require(status_method, "MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()", 'connection-persisted-handshake-hotpath')
+require(status_method, "MAD4B_SCP_External_Handshake_Evidence::status()", 'connection-live-handshake-deep-path')
+require(status_method, "'live_handshake_revalidation'", 'connection-deferred-live-handshake-marker')
+require(status_method, "'provider_runtime_integrity'", 'connection-deferred-provider-integrity-marker')
