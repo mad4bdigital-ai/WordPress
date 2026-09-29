@@ -16,6 +16,7 @@ live_truth = (root / "includes/class-mad4b-scp-live-truth.php").read_text(encodi
 oauth_autoconfig = (root / "includes/class-mad4b-scp-staging-oauth-autoconfig.php").read_text(encoding="utf-8")
 audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
 request_scope = (root / "includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
+query_monitor = (root / "includes/class-mad4b-scp-query-monitor-evidence-bridge.php").read_text(encoding="utf-8")
 mu_refresh = (root / "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php").read_text(encoding="utf-8")
 runtime_conflict = (root / "includes/class-mad4b-scp-mcp-runtime-conflict-guard.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
@@ -277,3 +278,24 @@ assert "$status['repair_deferred'] = true;" in conflict_bootstrap
 assert conflict_bootstrap.index("current_request_is_protocol_hotpath()") < conflict_bootstrap.index("get_option( 'active_plugins'")
 assert conflict_bootstrap.index("current_request_is_protocol_hotpath()") < conflict_bootstrap.index("update_option( 'active_plugins'")
 assert conflict_bootstrap.index("current_request_is_protocol_hotpath()") < conflict_bootstrap.index("MAD4B_SCP_Audit::record(")
+
+# Query Monitor telemetry bootstrap needs only packaged identity. Full runtime
+# hashing remains explicit/final acceptance and must not execute on every request.
+qm_pin = query_monitor.split("private static function pin_request_build_fingerprint()", 1)[1].split("private static function request_build_fingerprint()", 1)[0]
+assert "build_provenance_identity_status()" in qm_pin
+assert "build_provenance_status()" not in qm_pin
+assert "hash_file(" not in qm_pin
+
+qm_flush = query_monitor.split("public static function capture_and_flush()", 1)[1].split("/** @internal Pure seam", 1)[0]
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in qm_flush
+protocol_branch = qm_flush.split("if ( $protocol_hotpath )", 1)[1].split("$telemetry['observed_request_count']", 2)[0]
+assert "query_monitor_events()" not in protocol_branch
+assert "performance_sample(" not in protocol_branch
+assert "(int) $telemetry['request_coverage']['mcp'] > 0" in qm_flush
+assert qm_flush.index("if ( $protocol_hotpath )") < qm_flush.index("$sample = self::performance_sample( $class )")
+assert qm_flush.index("if ( $protocol_hotpath )") < qm_flush.index("foreach ( self::query_monitor_events()")
+
+qm_db_bootstrap = query_monitor.split("public static function maybe_enable_db_attribution()", 1)[1].split("private static function bounded_loader_contents()", 1)[0]
+assert "0 !== strpos( $page, 'mad4b-control-plane' )" in qm_db_bootstrap
+assert qm_db_bootstrap.index("0 !== strpos( $page, 'mad4b-control-plane' )") < qm_db_bootstrap.index("@symlink(")
+assert qm_db_bootstrap.index("0 !== strpos( $page, 'mad4b-control-plane' )") < qm_db_bootstrap.index("@fopen(")
