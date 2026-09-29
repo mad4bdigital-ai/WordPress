@@ -243,9 +243,19 @@ for marker in [
 for marker in [
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
-    "MAD4B_SCP_Live_Truth::current_authority_status()",
+    "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()",
+    "MAD4B_SCP_Staging_Write_Authority::status()",
+    "MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()",
+    "'full_runtime_hash_validation_deferred' => true",
+    "'deep_authority_scan_deferred' => true",
 ]:
-    require(connection, marker, "authoritative compact preflight truth")
+    require(connection, marker, "bounded compact preflight truth")
+
+preflight_body = connection.split("public static function preflight(", 1)[1]
+if "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status()" in preflight_body:
+    raise SystemExit("compact preflight must not perform full package provenance hashing")
+if "MAD4B_SCP_Live_Truth::current_authority_status()" in preflight_body:
+    raise SystemExit("compact preflight must not perform deep authority/grant scans")
 
 for marker in [
     "MAD4B_SCP_Remote_Operation_Parity::reconciliation_status( $operation_id )",
