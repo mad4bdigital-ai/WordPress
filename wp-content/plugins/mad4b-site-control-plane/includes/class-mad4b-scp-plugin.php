@@ -50,7 +50,9 @@ final class MAD4B_SCP_Plugin {
 		// every side effect, so ordinary frontend/REST/Admin reads stay lightweight
 		// without weakening fail-closed mutation safety.
 		if ( ! $plugin_lifecycle && ! $protocol_hotpath && $schema_reconciliation
-			&& ( (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION || ! MAD4B_SCP_Schema::is_ready() ) ) {
+			&& ( (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION
+				|| ! MAD4B_SCP_Schema::is_ready()
+				|| ! MAD4B_SCP_Schema::critical_ready() ) ) {
 			$schema = MAD4B_SCP_Schema::install_or_upgrade();
 			if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
 		}
