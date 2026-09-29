@@ -260,9 +260,14 @@ final class MAD4B_SCP_Plugin {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
-		// REST/Abilities initialization is a deep diagnostic. Restrict it to the
-		// exact MCP Endpoints workspace instead of every MAD4B admin page.
-		if ( 'mad4b-control-plane-connection' !== $page || 'endpoints' !== $tab ) return;
+		// REST/Abilities initialization is a deep diagnostic. The platform-wide
+		// provider diagnostic policy owns the only request-serving surface allowed
+		// to materialize REST; provider endpoints are still never internally dispatched.
+		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' ) ) {
+			if ( ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed() ) return;
+		} elseif ( 'mad4b-control-plane-connection' !== $page || 'endpoints' !== $tab ) {
+			return;
+		}
 		if ( ! function_exists( 'rest_get_server' ) ) return;
 		try {
 			rest_get_server();
