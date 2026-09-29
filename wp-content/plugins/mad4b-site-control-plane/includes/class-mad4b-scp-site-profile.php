@@ -114,30 +114,51 @@ final class MAD4B_SCP_Site_Profile {
 		return function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
 	}
 
+	public static function wordpress_environment_explicit() {
+		$explicit = defined( 'WP_ENVIRONMENT_TYPE' );
+		if ( ! $explicit && function_exists( 'getenv' ) ) {
+			$raw = getenv( 'WP_ENVIRONMENT_TYPE' );
+			$raw = false === $raw ? '' : sanitize_key( (string) $raw );
+			$explicit = in_array( $raw, array( 'local', 'development', 'staging', 'production' ), true );
+		}
+		return function_exists( 'apply_filters' )
+			? (bool) apply_filters( 'mad4b_scp_wordpress_environment_explicit', $explicit, self::wordpress_environment() )
+			: (bool) $explicit;
+	}
+
 	/**
 	 * MAD4B effective environment.
 	 *
 	 * WordPress defaults to "production" when WP_ENVIRONMENT_TYPE is absent.
-	 * An exact-origin Site Profile is an explicit administrator enrollment and
-	 * therefore becomes the MAD4B environment authority for that exact origin.
-	 * A copied/foreign profile can never influence this value.
+	 * An exact-origin Site Profile may replace only that implicit default. An
+	 * explicitly configured WordPress environment remains authoritative and any
+	 * disagreement fails closed. Copied/foreign profiles never influence it.
 	 */
 	public static function current_environment() {
+		$wordpress = self::wordpress_environment();
 		$bound = self::exact_stored_profile();
-		if ( ! empty( $bound['environment'] ) ) return sanitize_key( (string) $bound['environment'] );
-		return self::wordpress_environment();
+		if ( empty( $bound['environment'] ) ) return $wordpress;
+		$profile_environment = sanitize_key( (string) $bound['environment'] );
+		if ( hash_equals( $profile_environment, $wordpress ) ) return $profile_environment;
+		if ( 'production' === $wordpress && ! self::wordpress_environment_explicit() ) return $profile_environment;
+		return $wordpress;
 	}
 
 	/**
 	 * Advisory enrollment default only. Hostname hints never grant authority.
 	 */
 	public static function suggested_environment() {
-		$bound = self::exact_stored_profile();
-		if ( ! empty( $bound['environment'] ) ) return sanitize_key( (string) $bound['environment'] );
-
 		$wordpress = self::wordpress_environment();
+		$bound = self::exact_stored_profile();
+		if ( ! empty( $bound['environment'] ) ) {
+			$profile_environment = sanitize_key( (string) $bound['environment'] );
+			if ( hash_equals( $profile_environment, $wordpress ) ) return $profile_environment;
+			if ( 'production' === $wordpress && ! self::wordpress_environment_explicit() ) return $profile_environment;
+			return $wordpress;
+		}
+
 		if ( in_array( $wordpress, array( 'local', 'development', 'staging' ), true ) ) return $wordpress;
-		if ( 'production' !== $wordpress ) return $wordpress;
+		if ( 'production' !== $wordpress || self::wordpress_environment_explicit() ) return $wordpress;
 
 		$host = self::current_host();
 		if ( '' === $host ) return $wordpress;
@@ -155,18 +176,27 @@ final class MAD4B_SCP_Site_Profile {
 
 	public static function environment_resolution() {
 		$wordpress = self::wordpress_environment();
+		$wordpress_explicit = self::wordpress_environment_explicit();
 		$bound = self::exact_stored_profile();
 		$profile_environment = ! empty( $bound['environment'] ) ? sanitize_key( (string) $bound['environment'] ) : '';
-		$effective = '' !== $profile_environment ? $profile_environment : $wordpress;
+		$profile_matches_wordpress = '' !== $profile_environment && hash_equals( $profile_environment, $wordpress );
+		$profile_default_override = '' !== $profile_environment && ! $profile_matches_wordpress && 'production' === $wordpress && ! $wordpress_explicit;
+		$profile_authoritative = $profile_matches_wordpress || $profile_default_override;
+		$effective = $profile_authoritative ? $profile_environment : $wordpress;
+		$source = $profile_default_override
+			? 'exact_site_profile_default_override'
+			: ( $profile_matches_wordpress ? 'exact_site_profile' : ( $wordpress_explicit ? 'wordpress_explicit' : 'wordpress_default' ) );
 		return array(
 			'contract' => 'mad4b.site-profile-environment-resolution.v1',
 			'wordpress_environment' => $wordpress,
+			'wordpress_environment_explicit' => $wordpress_explicit,
 			'profile_environment' => $profile_environment,
 			'exact_profile_bound' => '' !== $profile_environment,
+			'profile_environment_authoritative' => $profile_authoritative,
 			'effective_environment' => $effective,
-			'effective_source' => '' !== $profile_environment ? 'exact_site_profile' : 'wordpress',
+			'effective_source' => $source,
 			'suggested_environment' => self::suggested_environment(),
-			'wordpress_profile_mismatch' => '' !== $profile_environment && ! hash_equals( $profile_environment, $wordpress ),
+			'wordpress_profile_mismatch' => '' !== $profile_environment && ! $profile_matches_wordpress,
 			'hostname_hint_used_for_authority' => false,
 		);
 	}
@@ -380,6 +410,9 @@ final class MAD4B_SCP_Site_Profile {
 		$environment = '' !== $requested_environment ? $requested_environment : self::suggested_environment();
 		$origin = self::current_origin();
 		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) return new WP_Error( 'mad4b_site_profile_environment_invalid', 'Selected MAD4B environment is not supported for site enrollment.' );
+		if ( self::wordpress_environment_explicit() && ! hash_equals( $environment, $wordpress_environment ) ) {
+			return new WP_Error( 'mad4b_site_profile_environment_conflicts_explicit_wordpress', 'Selected MAD4B environment conflicts with an explicitly configured WordPress environment.' );
+		}
 		if ( '' === $origin ) return new WP_Error( 'mad4b_site_profile_origin_invalid', 'A canonical WordPress home origin is required for site enrollment.' );
 		if ( 'local' !== $environment && 'https' !== strtolower( (string) wp_parse_url( $origin, PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_site_profile_https_required', 'Non-local governed sites require HTTPS.' );
 
@@ -466,6 +499,7 @@ final class MAD4B_SCP_Site_Profile {
 				'profile_digest' => self::profile_digest(),
 				'environment' => $environment,
 				'wordpress_environment' => $wordpress_environment,
+				'wordpress_environment_explicit' => self::wordpress_environment_explicit(),
 				'environment_source' => '' !== $requested_environment ? 'explicit_site_profile' : ( $environment === $wordpress_environment ? 'wordpress' : 'suggested_enrollment' ),
 				'canonical_origin' => $origin,
 				'identity_rebound' => $identity_rebound,
@@ -586,6 +620,8 @@ final class MAD4B_SCP_Site_Profile {
 			'profile_digest' => $configured ? self::digest_record( $profile ) : '',
 			'environment' => $environment,
 			'wordpress_environment' => (string) $resolution['wordpress_environment'],
+			'wordpress_environment_explicit' => ! empty( $resolution['wordpress_environment_explicit'] ),
+			'profile_environment_authoritative' => ! empty( $resolution['profile_environment_authoritative'] ),
 			'effective_environment_source' => (string) $resolution['effective_source'],
 			'suggested_environment' => (string) $resolution['suggested_environment'],
 			'wordpress_profile_mismatch' => ! empty( $resolution['wordpress_profile_mismatch'] ),
