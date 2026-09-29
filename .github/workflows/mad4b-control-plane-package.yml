@@ -1011,7 +1011,19 @@ jobs:
           stage='/tmp/mad4b-install-kit'
           test -n "$ARTIFACT_ID"
           test -n "$ARTIFACT_DIGEST"
-          api="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID")"
+          api=''
+          for attempt in 1 2 3 4 5 6; do
+            if api="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID" 2>/tmp/mad4b-artifact-api.err)"; then
+              break
+            fi
+            if [ "$attempt" -eq 6 ]; then
+              cat /tmp/mad4b-artifact-api.err >&2 || true
+              echo "GitHub artifact metadata was not visible after bounded retries for artifact $ARTIFACT_ID" >&2
+              exit 1
+            fi
+            sleep $((attempt * 2))
+          done
+          test -n "$api"
           api_digest="$(jq -r '.digest // ""' <<<"$api")"
           expected_digest="$ARTIFACT_DIGEST"
           expected_digest="${expected_digest#sha256:}"
