@@ -38,7 +38,9 @@ prime = method_body(
 # Ordinary MAD4B admin rendering must never be treated as lifecycle repair.
 assert "mad4b-control-plane" not in schema_route
 assert "return false;" in schema_route
-assert "mad4b-control-plane" not in skill_route
+assert "0 === strpos( $page, 'mad4b-control-plane' )" in skill_route
+assert "return 0 === strpos" not in skill_route
+assert skill_route.count("return true;") == 1  # WP_CLI only
 assert "return false;" in skill_route
 
 # REST/Abilities priming is allowed only on the exact MCP Endpoints diagnostic tab.
