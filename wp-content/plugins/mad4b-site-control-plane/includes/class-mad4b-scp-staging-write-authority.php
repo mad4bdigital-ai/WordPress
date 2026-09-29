@@ -135,6 +135,9 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'approval_policy_scope' => $resolved ? 'effective_runtime' : 'capability_definition',
 			'approval_policy_effective_state_resolved' => $resolved,
 			'normal_remote_writes_require_exact_approval' => true,
+			'all_remote_writes_require_exact_approval' => false,
+			'remote_write_approval_policy' => 'exact_approval_with_bounded_standing_exceptions',
+			'production_exact_approval_only' => $production,
 			'candidate_bootstrap_exception_defined' => true,
 			'candidate_bootstrap_contract' => self::CANDIDATE_BOOTSTRAP_CONTRACT,
 			'ai_review_standing_delegation_defined' => true,
@@ -153,7 +156,6 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		}
 		$policy['remote_write_prior_approval_exceptions'][] = $ai_approval_ability;
 		$policy['environment'] = $environment;
-		$policy['production_exact_approval_only'] = $production;
 		if ( $production ) {
 			$policy['remote_write_prior_approval_exceptions'] = array();
 		}
