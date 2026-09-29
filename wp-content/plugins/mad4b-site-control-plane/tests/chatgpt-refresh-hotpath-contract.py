@@ -16,6 +16,7 @@ live_truth = (root / "includes/class-mad4b-scp-live-truth.php").read_text(encodi
 oauth_autoconfig = (root / "includes/class-mad4b-scp-staging-oauth-autoconfig.php").read_text(encoding="utf-8")
 audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
 request_scope = (root / "includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
+read_consistency = (root / "includes/class-mad4b-scp-read-consistency.php").read_text(encoding="utf-8")
 query_monitor = (root / "includes/class-mad4b-scp-query-monitor-evidence-bridge.php").read_text(encoding="utf-8")
 mu_refresh = (root / "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php").read_text(encoding="utf-8")
 runtime_conflict = (root / "includes/class-mad4b-scp-mcp-runtime-conflict-guard.php").read_text(encoding="utf-8")
@@ -317,3 +318,79 @@ upgrade_preboot = upgrade_continuity.split("public static function pre_boot()", 
 assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in upgrade_preboot
 assert "'deferred_protocol_hotpath'" in upgrade_preboot
 assert upgrade_preboot.index("current_request_is_protocol_hotpath()") < upgrade_preboot.index("recover_verified_read_continuity()")
+
+# The direct ChatGPT "session-safe" report must remain genuinely bounded:
+# no full package hashing, deep authority scan, live Skill reconciliation,
+# network-capable self-update status, or runtime write-catalog rebuild.
+session_safe = read_consistency.split("public static function session_safe_diagnostics", 1)[1].split("private static function compact_bundle_result", 1)[0]
+assert "self::session_safe_bundle_checks( $bundle )" in session_safe
+assert "self::request_metrics()" in session_safe
+for marker in (
+    "full_runtime_provenance_hash",
+    "deep_write_authority_scan",
+    "live_skill_filesystem_reconciliation",
+    "live_update_manifest_network_fetch",
+    "write_catalog_runtime_rebuild",
+):
+    assert marker in session_safe, marker
+
+safe_checks = read_consistency.split("private static function session_safe_bundle_checks", 1)[1].split("private static function build_projection", 1)[0]
+for forbidden in (
+    "MAD4B_SCP_Staging_Certification::status",
+    "workflow_provider_projection()",
+    "deep_build_projection()",
+    "deep_write_authority_projection()",
+    "deep_skills_projection()",
+    "deep_update_projection()",
+    "deep_catalog_projection()",
+):
+    assert forbidden not in safe_checks, forbidden
+
+snapshot_build = read_consistency.split("private static function build_projection()", 1)[1].split("private static function deep_build_projection()", 1)[0]
+assert "build_provenance_identity_status()" in snapshot_build
+assert "build_provenance_status()" not in snapshot_build
+assert "full_runtime_hash_validation_deferred" in snapshot_build
+
+snapshot_catalog = read_consistency.split("private static function catalog_projection()", 1)[1].split("private static function deep_catalog_projection()", 1)[0]
+assert "MAD4B_SCP_Servers::registration_status()" in snapshot_catalog
+assert "MAD4B_SCP_Staging_Write_Authority::status()" in snapshot_catalog
+assert "MAD4B_SCP_Servers::write_tools()" not in snapshot_catalog
+assert "MAD4B_SCP_Servers::chatgpt_tools()" not in snapshot_catalog
+assert "runtime_catalog_rebuild_deferred" in snapshot_catalog
+
+safe_authority = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function deep_write_authority_projection()", 1)[0]
+assert "MAD4B_SCP_Staging_Write_Authority::status()" in safe_authority
+assert "candidate_binding_status()" in safe_authority
+assert "MAD4B_SCP_Live_Truth::current_authority_status()" not in safe_authority
+assert "deep_authority_scan_deferred" in safe_authority
+
+safe_skills = read_consistency.split("private static function skills_projection()", 1)[1].split("private static function deep_skills_projection()", 1)[0]
+assert "persisted_status()" in safe_skills
+assert "current_status()" not in safe_skills
+
+safe_update = read_consistency.split("private static function update_projection()", 1)[1].split("private static function deep_update_projection()", 1)[0]
+assert "MAD4B_SCP_Self_Update::cached_status" in safe_update
+assert "MAD4B_SCP_Self_Update::status(" not in safe_update
+
+# Deep explicit bundles retain full integrity/certification semantics.
+deep_bundle = read_consistency.split("private static function bundle_checks", 1)[1].split("private static function session_safe_bundle_checks", 1)[0]
+for marker in (
+    "deep_build_projection()",
+    "deep_write_authority_projection()",
+    "deep_skills_projection()",
+    "deep_update_projection()",
+    "MAD4B_SCP_Staging_Certification::status",
+    "deep_catalog_projection()",
+):
+    assert marker in deep_bundle, marker
+
+metrics = read_consistency.split("private static function request_metrics()", 1)[1].split("private static function transaction_id", 1)[0]
+for marker in (
+    "memory_get_usage",
+    "memory_get_peak_usage",
+    "get_included_files",
+    "get_num_queries",
+    "external_network_calls_started_by_report",
+    "deep_integrity_hashes_started_by_report",
+):
+    assert marker in metrics, marker
