@@ -28,6 +28,9 @@ final class MAD4B_SCP_Self_Update {
 	const APPLY_CONTRACT        = 'mad4b.control-plane-upload-apply.v1';
 	const NATIVE_PLAN_CONTRACT  = 'mad4b.control-plane-native-plan.v1';
 	const NATIVE_APPLY_CONTRACT = 'mad4b.control-plane-native-apply.v1';
+	const BOOTSTRAP_APPLY_CONTRACT = 'mad4b.control-plane-bootstrap-apply.v1';
+	const BOOTSTRAP_APPLY_ABILITY  = 'mad4b/control-plane-bootstrap-apply';
+	const BOOTSTRAP_CONFIRMATION   = 'APPLY EXACT STAGING CONTROL PLANE BOOTSTRAP UPDATE';
 	const MANIFEST_CONTRACT     = 'mad4b.control-plane-update-channel.v1';
 	const POINTER_CONTRACT      = 'mad4b.control-plane-update-pointer.v1';
 	const RELEASE_TAG           = 'mad4b-site-control-plane-update-channel';
@@ -116,10 +119,33 @@ final class MAD4B_SCP_Self_Update {
 			false,
 			array( __CLASS__, 'can_native_apply' )
 		);
+
+		self::register_ability(
+			self::BOOTSTRAP_APPLY_ABILITY,
+			'Bootstrap Exact MAD4B Control Plane Update',
+			'bootstrap_native_apply',
+			self::bootstrap_apply_schema(),
+			false,
+			array( __CLASS__, 'can_bootstrap_native_apply' ),
+			'enrollment',
+			array(
+				'mad4b_control_plane_bootstrap' => self::BOOTSTRAP_APPLY_CONTRACT,
+				'bootstrap_only' => true,
+				'normal_write_authority_required' => false,
+				'authority_mutation_allowed' => false,
+				'production_allowed' => false,
+				'generic_raw_sql_breakglass_included' => false,
+			)
+		);
 	}
 
-	private static function register_ability( $name, $label, $method, $schema, $readonly, $permission ) {
+	private static function register_ability( $name, $label, $method, $schema, $readonly, $permission, $surface = '', array $extra_mcp = array() ) {
 		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) return;
+		$surface = '' !== (string) $surface ? sanitize_key( (string) $surface ) : ( $readonly ? 'read' : 'admin' );
+		$mcp = array_merge(
+			array( 'public' => false, 'type' => 'tool', 'surface' => $surface ),
+			$extra_mcp
+		);
 		wp_register_ability(
 			$name,
 			array(
@@ -133,7 +159,7 @@ final class MAD4B_SCP_Self_Update {
 				'meta' => array(
 					'public' => false,
 					'show_in_rest' => false,
-					'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => $readonly ? 'read' : 'admin' ),
+					'mcp' => $mcp,
 					'annotations' => array(
 						'readonly' => (bool) $readonly,
 						'destructive' => ! $readonly,
@@ -178,6 +204,79 @@ final class MAD4B_SCP_Self_Update {
 			'core',
 			is_array( $input ) ? $input : array()
 		);
+	}
+
+	/**
+	 * Project only the bootstrap self-update mutation onto the ChatGPT step-up
+	 * scope while normal Write Authority is fail-closed on candidate drift.
+	 * Catalog construction is network-free and performs no mutation.
+	 */
+	public static function chatgpt_step_up_tools() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return array();
+		if ( 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
+		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) return array();
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() ) return array();
+		return array( self::BOOTSTRAP_APPLY_ABILITY );
+	}
+
+	public static function can_bootstrap_native_apply( $input = null ) {
+		$admin = MAD4B_SCP_Policy::can_admin();
+		if ( is_wp_error( $admin ) || ! $admin ) return $admin;
+		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled.' );
+		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_self_update_bootstrap_staging_only', 'Bootstrap Control Plane self-update is Staging-only.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_profile_not_exact', 'Bootstrap Control Plane self-update requires the exact enrolled Staging Site Profile.' );
+		}
+		$user_id = get_current_user_id();
+		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_subject_not_enrolled', 'Bootstrap Control Plane self-update requires the enrolled administrator.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_bearer_required', 'Bootstrap Control Plane self-update requires a verified OAuth bearer.' );
+		}
+		if ( ! defined( 'MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE' )
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_step_up_scope_required', 'Bootstrap Control Plane self-update requires the dedicated Staging authority step-up scope.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_chatgpt_client_required', 'Bootstrap Control Plane self-update requires OAuth attribution to the exact ChatGPT CIMD client.' );
+		}
+		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_breakglass_denied', 'Generic raw-SQL Breakglass must remain disabled during bootstrap self-update.' );
+		}
+		if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_breakglass_active', 'Bootstrap Control Plane self-update is unavailable while generic Breakglass is active.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_authority_runtime_missing', 'Write Authority runtime is unavailable.' );
+		}
+		if ( MAD4B_SCP_Staging_Write_Authority::effective() ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_not_required', 'Write Authority is already effective; use the normal governed Control Plane update path.' );
+		}
+		$authority_plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+		if ( is_wp_error( $authority_plan ) || ! is_array( $authority_plan ) ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_authority_plan_unavailable', 'A clean read-only Write Authority reconciliation plan is required before bootstrap self-update.' );
+		}
+		$unsafe = array();
+		if ( empty( $authority_plan['eligible'] ) || empty( $authority_plan['current_ready'] ) ) $unsafe[] = 'write_grants_not_clean';
+		foreach ( array( 'exact_grants_missing_count', 'stale_allow_grants_count', 'broad_environment_grants_count', 'duplicate_exact_allow_grants_count', 'current_agent_wildcard_grants', 'global_registry_wildcard_grants' ) as $field ) {
+			$value = isset( $authority_plan[ $field ] ) ? $authority_plan[ $field ] : 0;
+			$count = is_array( $value ) ? count( $value ) : (int) $value;
+			if ( $count > 0 ) $unsafe[] = $field;
+		}
+		if ( ! empty( $authority_plan['grant_blockers'] ) ) $unsafe[] = 'grant_blockers_present';
+		$binding = isset( $authority_plan['candidate_binding'] ) && is_array( $authority_plan['candidate_binding'] ) ? $authority_plan['candidate_binding'] : array();
+		if ( empty( $binding['required'] ) || ! empty( $binding['match'] ) ) $unsafe[] = 'candidate_drift_not_the_bootstrap_blocker';
+		if ( $unsafe ) {
+			return new WP_Error(
+				'mad4b_self_update_bootstrap_authority_not_clean',
+				'Bootstrap self-update is allowed only for clean exact grants plus stale candidate binding.',
+				array( 'blockers' => array_values( array_unique( $unsafe ) ) )
+			);
+		}
+		return true;
 	}
 
 	public static function status( $input = array() ) {
@@ -470,6 +569,33 @@ final class MAD4B_SCP_Self_Update {
 
 		$result = self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected );
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		return $result;
+	}
+
+	public static function bootstrap_native_apply( $input ) {
+		$input = is_array( $input ) ? $input : array();
+		$access = self::can_bootstrap_native_apply( $input );
+		if ( is_wp_error( $access ) || ! $access ) return $access;
+		$confirmation = isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '';
+		if ( ! hash_equals( self::BOOTSTRAP_CONFIRMATION, $confirmation ) ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_confirmation_required', 'Exact bootstrap self-update confirmation is required.' );
+		}
+		$result = self::native_apply(
+			array(
+				'reason' => isset( $input['reason'] ) ? (string) $input['reason'] : '',
+				'expected_plan_sha256' => isset( $input['expected_plan_sha256'] ) ? (string) $input['expected_plan_sha256'] : '',
+			)
+		);
+		if ( is_wp_error( $result ) ) return $result;
+		if ( is_array( $result ) ) {
+			$result['bootstrap_contract'] = self::BOOTSTRAP_APPLY_CONTRACT;
+			$result['bootstrap_only'] = true;
+			$result['authority_mutation_performed'] = false;
+			$result['grant_mutation_performed'] = false;
+			$result['developer_authority_mutation_performed'] = false;
+			$result['developer_breakglass_mutation_performed'] = false;
+			$result['production_mutation_performed'] = false;
+		}
 		return $result;
 	}
 
@@ -1417,8 +1543,56 @@ final class MAD4B_SCP_Self_Update {
 
 	private static function native_apply_schema() {
 		$schema = self::native_plan_schema();
+		$schema['properties']['expected_plan_sha256'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}
+
+	private static function plan_schema() {
+		return array(
+			'type' => 'object',
+			'properties' => array(
+				'version' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64 ),
+				'source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
+				'archive_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+				'build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+				'package_manifest_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+				'size_bytes' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_UPLOAD_BYTES ),
+				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+			),
+			'required' => array( 'version', 'source_commit_sha', 'archive_sha256', 'build_fingerprint', 'package_manifest_digest', 'size_bytes', 'reason' ),
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function apply_schema() {
+		$schema = self::plan_schema();
 		$schema['properties']['expected_plan_sha256'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' );
+		$schema['properties']['package_base64'] = array( 'type' => 'string', 'minLength' => 16, 'maxLength' => (int) ceil( self::MAX_UPLOAD_BYTES * 4 / 3 ) + 16 );
 		$schema['required'][] = 'expected_plan_sha256';
+		$schema['required'][] = 'package_base64';
+		return $schema;
+	}
+
+	private static function digest( $value ) {
+		$encoded = wp_json_encode( self::canonicalize( $value ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+	}
+
+	private static function canonicalize( $value ) {
+		if ( ! is_array( $value ) ) return $value;
+		$is_list = empty( $value ) || array_keys( $value ) === range( 0, count( $value ) - 1 );
+		if ( ! $is_list ) ksort( $value, SORT_STRING );
+		foreach ( $value as $key => $item ) $value[ $key ] = self::canonicalize( $item );
+		return $value;
+	}
+}
+ );
+		$schema['required'][] = 'expected_plan_sha256';
+		return $schema;
+	}
+
+	private static function bootstrap_apply_schema() {
+		$schema = self::native_apply_schema();
+		$schema['properties']['confirmation'] = array( 'type' => 'string', 'enum' => array( self::BOOTSTRAP_CONFIRMATION ) );
+		$schema['required'][] = 'confirmation';
 		return $schema;
 	}
 
