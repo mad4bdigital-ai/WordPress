@@ -1034,7 +1034,12 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'mad4b_operation_binding_drift','Operation execution binding changed after planning.',
 			array('expected_operation_binding_sha256'=>$expected_operation_binding,'actual_operation_binding_sha256'=>$operation['operation_binding_sha256'])
 		));
-		$journal=MAD4B_SCP_Operation_Journal::begin($operation,'planned',array('mode'=>$pre['mode'],'post_type'=>$pre['post_type'],'post_id'=>$pre['post_id']));
+		$reversible_context=class_exists('MAD4B_SCP_Reversible_Adapter_Mutations')?MAD4B_SCP_Reversible_Adapter_Mutations::current_mutation_context():array();
+		$journal=MAD4B_SCP_Operation_Journal::begin($operation,'planned',array(
+			'mode'=>$pre['mode'],'post_type'=>$pre['post_type'],'post_id'=>$pre['post_id'],
+			'mutation_id'=>isset($reversible_context['mutation_id'])?(string)$reversible_context['mutation_id']:'',
+			'mutation_before_sha256'=>isset($reversible_context['before_sha256'])?(string)$reversible_context['before_sha256']:'',
+		));
 		if(is_wp_error($journal)) return $this->not_started_error($journal);
 
 		$binding=$this->binding($pre['post_type'],$pre['operation_key']);
