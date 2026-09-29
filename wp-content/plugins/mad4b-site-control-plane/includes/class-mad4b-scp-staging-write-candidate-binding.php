@@ -36,6 +36,17 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		return 'production' === self::current_environment() ? self::PRODUCTION_CONFIRMATION : self::CONFIRMATION;
 	}
 
+	public static function chatgpt_step_up_tools() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return array();
+		if ( ! in_array( self::current_environment(), array( 'staging', 'production' ), true ) ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) return array();
+		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) return array();
+		$plan = self::plan();
+		if ( ! is_array( $plan ) || empty( $plan['eligible'] ) ) return array();
+		return array( self::ABILITY );
+	}
+
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
 		self::$booted = true;
@@ -49,7 +60,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::PLAN_ABILITY ) ) return;
 		wp_register_ability( self::PLAN_ABILITY, array(
 			'label' => 'Plan Exact Governed Write Candidate Binding',
-			'description' => 'Build a read-only exact-input plan for the narrow candidate-binding operation. This never creates grants, approves execution, or enables Developer/Breakglass.'
+			'description' => 'Build a read-only exact-input plan for the narrow candidate-binding operation. This never creates grants, approves execution, or enables Developer/Breakglass.',
 			'category' => 'mad4b-read',
 			'execute_callback' => array( __CLASS__, 'plan' ),
 			'permission_callback' => class_exists( 'MAD4B_SCP_Policy' ) ? array( 'MAD4B_SCP_Policy', 'can_read' ) : '__return_false',
@@ -217,6 +228,8 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 						'type' => 'tool',
 						'surface' => 'enrollment',
 						'mad4b_candidate_binding_authority' => self::CONTRACT,
+					'production_mutation_allowed' => true,
+					'production_exact_confirmation_required' => true,
 						'binding_only' => true,
 						'grant_mutation_allowed' => false,
 						'subject_mutation_allowed' => false,
