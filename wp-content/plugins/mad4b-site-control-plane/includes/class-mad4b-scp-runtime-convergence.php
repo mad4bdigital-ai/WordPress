@@ -106,7 +106,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 		$environment = isset( $profile['environment'] ) ? sanitize_key( (string) $profile['environment'] ) : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$identity = self::current_identity();
-		$update = class_exists( 'MAD4B_SCP_Self_Update' ) ? MAD4B_SCP_Self_Update::status() : array();
+		$update = class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'cached_status' ) ? MAD4B_SCP_Self_Update::cached_status() : array();
 		$schema = class_exists( 'MAD4B_SCP_Schema' ) ? MAD4B_SCP_Schema::status( true ) : array();
 		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
 		$authority = class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::status() : array();
@@ -124,10 +124,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$skills_enabled = ! empty( $profile['skills_enabled'] );
 		$acceptance_enabled = ! empty( $profile['acceptance_enabled'] );
 		$wpml_required = $acceptance_enabled && ( ! empty( $rest['wpml']['wpml_active'] ) || ! empty( $wpml['observed'] ) );
-		$authority_ready = ! $write_enabled || ( ! empty( $authority['write_ready'] ) && empty( $authority['candidate_binding_required'] ) || ! empty( $authority['candidate_binding_match'] ) );
-		if ( $write_enabled && isset( $authority['candidate_binding'] ) && is_array( $authority['candidate_binding'] ) ) {
-			$authority_ready = ! empty( $authority['candidate_binding']['match'] ) && ! empty( $authority['write_ready'] );
-		}
+		$binding_required = ! empty( $authority['candidate_binding_required'] ) || ( isset( $authority['candidate_binding']['required'] ) && ! empty( $authority['candidate_binding']['required'] ) );
+		$binding_match = ! empty( $authority['candidate_binding_match'] ) || ( isset( $authority['candidate_binding']['match'] ) && ! empty( $authority['candidate_binding']['match'] ) );
+		$authority_ready = ! $write_enabled || ( ! empty( $authority['write_ready'] ) && ( ! $binding_required || $binding_match ) );
 
 		$phases = array(
 			'deployment' => self::phase( 'deployment', $deployment_state, true, array(), false, array(
@@ -173,8 +172,10 @@ final class MAD4B_SCP_Runtime_Convergence {
 		);
 		$phases = apply_filters( 'mad4b_scp_runtime_convergence_phases', $phases, $context );
 		$phases = self::normalize_phases( $phases );
-		$order = self::topological_order( $phases );
-		$required_blockers = array();
+		$order_result = self::topological_order( $phases );
+		$graph_valid = ! is_wp_error( $order_result );
+		$order = $graph_valid ? $order_result : array_keys( $phases );
+		$required_blockers = $graph_valid ? array() : array( 'phase_graph:cycle_or_invalid_dependency' );
 		foreach ( $order as $phase_id ) {
 			$phase = $phases[ $phase_id ];
 			if ( empty( $phase['required'] ) ) continue;
@@ -191,6 +192,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'arbitrary_operations' => false,
 			'current_identity' => $identity,
 			'phase_order' => $order,
+			'phase_graph_valid' => $graph_valid,
+			'phase_graph_error' => $graph_valid ? '' : $order_result->get_error_code(),
 			'phases' => $phases,
 			'required_blockers' => $required_blockers,
 			'checkpoint' => is_array( $checkpoint ) ? $checkpoint : array(),
@@ -483,9 +486,12 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$order = array();
 		$temporary = array();
 		$permanent = array();
-		$visit = function ( $id ) use ( &$visit, &$order, &$temporary, &$permanent, $phases ) {
-			if ( isset( $permanent[ $id ] ) || ! isset( $phases[ $id ] ) ) return;
-			if ( isset( $temporary[ $id ] ) ) return;
+		$cycle = false;
+		$invalid_dependency = false;
+		$visit = function ( $id ) use ( &$visit, &$order, &$temporary, &$permanent, &$cycle, &$invalid_dependency, $phases ) {
+			if ( isset( $permanent[ $id ] ) ) return;
+			if ( ! isset( $phases[ $id ] ) ) { $invalid_dependency = true; return; }
+			if ( isset( $temporary[ $id ] ) ) { $cycle = true; return; }
 			$temporary[ $id ] = true;
 			foreach ( $phases[ $id ]['dependencies'] as $dep ) $visit( $dep );
 			unset( $temporary[ $id ] );
@@ -493,6 +499,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$order[] = $id;
 		};
 		foreach ( array_keys( $phases ) as $id ) $visit( $id );
+		if ( $cycle ) return new WP_Error( 'mad4b_runtime_convergence_phase_cycle', 'Runtime convergence phase graph contains a dependency cycle.' );
+		if ( $invalid_dependency ) return new WP_Error( 'mad4b_runtime_convergence_phase_dependency_missing', 'Runtime convergence phase graph references a missing dependency.' );
 		return array_values( array_unique( $order ) );
 	}
 
