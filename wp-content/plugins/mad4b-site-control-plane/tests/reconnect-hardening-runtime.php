@@ -171,6 +171,30 @@ $transient_count=count($GLOBALS['transients']);
 priv('forget_session_shadow',array(7,'not-a-session'));
 ok(count($GLOBALS['transients'])===$transient_count,'invalid session id cannot allocate a DELETE tombstone');
 
+// DELETE preserves the Adapter-visible session until the Adapter handles termination,
+// then post-dispatch cleanup removes only the target from hidden duplicate rows.
+$delete_sid=sid(40);
+$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(
+    array($delete_sid=>srec(time()),sid(41)=>srec(time())),
+    array($delete_sid=>srec(time()),sid(42)=>srec(time())),
+);
+$delete_request=new class($delete_sid) {
+    private $sid;
+    public function __construct($sid){$this->sid=$sid;}
+    public function get_route(){return '/mcp/mad4b-chatgpt';}
+    public function get_method(){return 'DELETE';}
+    public function get_header($name){return strtolower((string)$name)==='mcp-session-id'?$this->sid:'';}
+};
+MAD4B_SCP_Reconnect_Hardening::repair_or_forget_session(null,null,$delete_request);
+$rows=$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'];
+ok(isset($rows[0][$delete_sid]),'pre-dispatch DELETE leaves canonical session for Adapter termination');
+$adapter_response=(object)array('status'=>200);
+$returned=MAD4B_SCP_Reconnect_Hardening::finalize_deleted_session($adapter_response,null,$delete_request);
+ok($returned===$adapter_response,'post-dispatch DELETE cleanup preserves Adapter response verbatim');
+$rows=$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'];
+ok(!isset($rows[0][$delete_sid])&&!isset($rows[1][$delete_sid]),'post-dispatch cleanup removes terminated session from all duplicate rows');
+ok(isset($rows[0][sid(41)])&&isset($rows[1][sid(42)]),'post-dispatch cleanup preserves sibling sessions');
+
 // Duplicate rows: match Adapter single=true visibility instead of unioning hidden state.
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(
     array(sid(101)=>srec(1000)),
