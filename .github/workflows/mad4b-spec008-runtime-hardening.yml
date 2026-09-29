@@ -1,0 +1,41 @@
+name: MAD4B Spec 008 Runtime Hardening
+
+on:
+  pull_request:
+    paths:
+      - 'specs/008-dynamic-content-runtime-hardening/**'
+      - '.specify/feature.json'
+      - '.github/workflows/mad4b-spec008-runtime-hardening.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Spec 008 structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=specs/008-dynamic-content-runtime-hardening
+          for f in README.md spec.md plan.md tasks.md research.md data-model.md constitution.md traceability.md runbook.md quickstart.md quality-model.md feature.json gate-graph.json contracts/runtime-hardening.json checklists/requirements.md; do
+            test -s "$base/$f"
+          done
+          python3 - <<'PY'
+          import json, pathlib
+          base=pathlib.Path("specs/008-dynamic-content-runtime-hardening")
+          feature=json.loads((base/"feature.json").read_text())
+          graph=json.loads((base/"gate-graph.json").read_text())
+          contract=json.loads((base/"contracts/runtime-hardening.json").read_text())
+          pointer=json.loads(pathlib.Path(".specify/feature.json").read_text())
+          assert feature["feature_id"]=="008"
+          assert pointer["feature_directory"]==str(base)
+          ids={g["id"] for g in graph["gates"]}
+          assert set(feature["required_gates"]) <= ids
+          assert contract["invariants"]["no_generic_write_scope"] is True
+          assert contract["invariants"]["production_fault_injection"] is False
+          print("Spec 008 contract: PASS")
+          PY
