@@ -38,8 +38,16 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance-ui.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-query-monitor-evidence-bridge.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-hotpath-isolation-contract.py
 
       - name: Prove expensive governance work is scoped
         shell: python
@@ -127,7 +135,7 @@ jobs:
               "'mad4b/write-runtime-certification' !== (string) $name",
               "array( 'MAD4B_SCP_Live_Truth', 'current_write_certification' )",
               "'mad4b-control-plane-connection' !== $page || 'certification' !== $tab",
-              "MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );",
+              "MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_endpoints_prime' );",
           ]
           missing = [item for item in required if item not in plugin]
           if missing:
@@ -288,7 +296,7 @@ jobs:
               raise SystemExit('Readonly Skill certification must not persist or audit through forced observe')
 
           prime = plugin.index('rest_get_server();', plugin.index('public static function prime_admin_mcp_runtime'))
-          rescue = plugin.index("MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );", prime)
+          rescue = plugin.index("MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_endpoints_prime' );", prime)
           if rescue <= prime:
               raise SystemExit('Readiness rescue must run after REST priming and before page rendering')
 
@@ -308,4 +316,4 @@ jobs:
           if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', versions[0]):
               raise SystemExit('Control Plane version format invalid: ' + versions[0])
 
-          print('mad4b-admin-performance.v9: PASS')
+          print('mad4b-admin-performance.v10: PASS')
