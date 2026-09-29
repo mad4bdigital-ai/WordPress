@@ -996,17 +996,22 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			$arr['meta_input']=array(self::BINDING=>$binding,self::MANAGED_META=>'1');
 			$id=wp_insert_post(wp_slash($arr),true);
 			if(is_wp_error($id)) return $id;
+			$created_owned=$this->snapshot($id,$input);
 			$binding_read=(string)get_post_meta($id,self::BINDING,true);
 			if(!hash_equals((string)$binding,$binding_read)){
 				update_post_meta($id,self::BINDING,$binding);
 				$binding_read=(string)get_post_meta($id,self::BINDING,true);
 				if(!hash_equals((string)$binding,$binding_read)) return $this->failure_with_compensation(
 					new WP_Error('mad4b_dynamic_binding_write_failed','Created post could not be bound to its stable operation identity.'),
-					'create',$id,null
+					'create',$id,null,$created_owned
 				);
 			}
 		}else{
 			$arr=array_merge(array('ID'=>$id,'post_type'=>$v['post_type']),$this->post_fields($input['post']));
+			$expected_after_post=$before;
+			foreach($this->post_fields($input['post']) as $field=>$value){
+				if(isset($expected_after_post['post'])&&is_array($expected_after_post['post'])) $expected_after_post['post'][$field]=$value;
+			}
 			$u=wp_update_post(wp_slash($arr),true);
 			if(is_wp_error($u)) return $u;
 			$current_managed=get_post_meta($id,self::MANAGED_META,true);
@@ -1014,12 +1019,14 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				$managed_written=update_post_meta($id,self::MANAGED_META,'1');
 				if(false===$managed_written&&'1'!==(string)get_post_meta($id,self::MANAGED_META,true)) return $this->failure_with_compensation(
 					new WP_Error('mad4b_dynamic_managed_marker_write_failed','Existing post could not be adopted into the dynamic governance lifecycle.'),
-					$v['mode'],$id,$before,$this->snapshot($id,$input)
+					$v['mode'],$id,$before,$expected_after_post
 				);
 			}
+			$expected_after_post['dynamic_managed']=true;
+			$owned_after=$expected_after_post;
 		}
 
-		$owned_after=$this->snapshot($id,$input);
+		if($v['mode']==='create') $owned_after=$created_owned;
 		$a=$this->apply_desired($id,$input,$owned_after);
 		if(is_wp_error($a)) return $this->failure_with_compensation($a,$v['mode'],$id,$before,$owned_after);
 
