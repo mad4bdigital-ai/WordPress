@@ -139,7 +139,7 @@ assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_tools
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_tools
 assert "$step_up = array_merge( $narrow_step_up, $full_step_up, $self_update_step_up )" in chatgpt_tools
 assert "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in chatgpt_tools
-assert "mad4b/control-plane-bootstrap-apply" not in full_authority
+assert "mad4b/control-plane-bootstrap-apply" not in full
 
 assert "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in chatgpt_map
 assert "$candidates = array_merge( $core, $bootstrap )" in chatgpt_tools
