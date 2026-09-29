@@ -149,7 +149,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		try {
 			wp_register_ability( self::ABILITY, array(
 				'label' => 'Converge Exact Governed Write Authority',
-				'description' => 'Converge reviewed exact current-environment authority by creating exact missing grants and retiring reviewed stale exact grants, then prove the clean governed-write snapshot and bind the exact current package candidate without enabling Developer or Breakglass authority.'
+				'description' => 'Converge reviewed exact current-environment authority by creating exact missing grants and retiring reviewed stale exact grants, then prove the clean governed-write snapshot and bind the exact current package candidate without enabling Developer or Breakglass authority.',
 				'category' => 'mad4b-governance',
 				'execute_callback' => array( __CLASS__, 'reconcile' ),
 				'permission_callback' => array( __CLASS__, 'can_execute' ),
