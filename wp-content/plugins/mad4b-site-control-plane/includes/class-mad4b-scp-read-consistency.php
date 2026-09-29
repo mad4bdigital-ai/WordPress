@@ -859,7 +859,9 @@ final class MAD4B_SCP_Read_Consistency {
 	private static function catalog_projection() {
 		$registration = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
 		$chatgpt = isset( $registration['mad4b-chatgpt'] ) && is_array( $registration['mad4b-chatgpt'] ) ? $registration['mad4b-chatgpt'] : array();
-		$authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
+		$authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persisted_status' )
+			? MAD4B_SCP_Staging_Write_Authority::persisted_status()
+			: array();
 		$identity = array(
 			'chatgpt_registered' => ! empty( $chatgpt['registered'] ),
 			'chatgpt_materialized' => ! empty( $chatgpt['materialized'] ),
@@ -979,7 +981,9 @@ final class MAD4B_SCP_Read_Consistency {
 	}
 
 	private static function write_authority_projection() {
-		$status = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
+		$status = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persisted_status' )
+			? MAD4B_SCP_Staging_Write_Authority::persisted_status()
+			: array();
 		$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
 			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
 			: array();
