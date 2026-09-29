@@ -99,6 +99,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'session_policy_applies_to_sibling_mcp_servers' => false,
 			'preauth_guard_delegates_oauth_effectiveness_to_resource_bridge' => true,
 			'preauth_guard_calls_full_reconnect_status' => false,
+			'preauth_response_exposes_internal_blockers' => false,
 			'reinitialize_required_without_valid_repair_shadow' => true,
 			'blind_read_replay_after_transport_reinitialize' => false,
 			'original_read_request_continues_after_verified_repair' => true,
@@ -208,11 +209,27 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		return $shadow;
 	}
 
+
+	private static function session_present_in_any_row( $user_id, $session_id ) {
+		$user_id = absint( $user_id );
+		if ( $user_id < 1 || ! self::valid_adapter_session_id( (string) $session_id ) ) return false;
+		wp_cache_delete( $user_id, 'user_meta' );
+		$rows = get_user_meta( $user_id, self::session_meta_key(), false );
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			if ( is_array( $row ) && isset( $row[ $session_id ] ) ) return true;
+		}
+		return false;
+	}
+
 	private static function forget_session_shadow( $user_id, $session_id ) {
 		$user_id = absint( $user_id );
-		if ( $user_id < 1 || ! self::valid_adapter_session_id( (string) $session_id ) ) return;
+		if ( $user_id < 1 || ! self::valid_adapter_session_id( (string) $session_id ) ) return false;
+		$shadow_key = self::shadow_key( $user_id, $session_id );
+		$has_shadow = is_array( get_transient( $shadow_key ) );
+		if ( ! $has_shadow && ! self::session_present_in_any_row( $user_id, $session_id ) ) return false;
 		set_transient( self::shadow_tombstone_key( $user_id, $session_id ), 1, self::SESSION_DELETE_TOMBSTONE_TTL );
-		delete_transient( self::shadow_key( $user_id, $session_id ) );
+		delete_transient( $shadow_key );
+		return true;
 	}
 
 	private static function request_route( $request ) {
@@ -453,13 +470,13 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( 'DELETE' === $method ) {
 			$user_id = get_current_user_id();
 			if ( ! self::valid_adapter_session_id( $session_id ) ) return $result;
-			self::forget_session_shadow( $user_id, $session_id );
+			$tracked = self::forget_session_shadow( $user_id, $session_id );
 			$key = self::request_scope_key( $request );
-			if ( '' !== $key ) self::$delete_cleanup_requests[ $key ] = array(
+			if ( $tracked && '' !== $key ) self::$delete_cleanup_requests[ $key ] = array(
 				'user_id' => $user_id,
 				'session_id' => $session_id,
 			);
-			self::$session_repair_state = 'delete_tombstoned_pending_adapter';
+			self::$session_repair_state = $tracked ? 'delete_tombstoned_pending_adapter' : 'delete_without_recovery_state';
 			return $result;
 		}
 		if ( 'POST' !== $method ) return $result;
@@ -580,6 +597,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'sequential_reconnect_shadow_growth_possible' => false,
 			'shadow_ttl_bounded' => true,
 			'delete_tombstone_blocks_shadow_resurrection' => true,
+			'delete_tombstone_requires_existing_session_or_shadow' => true,
+			'random_delete_tombstone_allocation_enabled' => false,
 			'delete_tombstone_ttl_seconds' => self::SESSION_DELETE_TOMBSTONE_TTL,
 			'delete_tombstone_outlives_shadow' => self::SESSION_DELETE_TOMBSTONE_TTL > self::SESSION_SHADOW_TTL,
 			'post_shadow_write_tombstone_rechecked' => true,
@@ -744,9 +763,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( empty( $blockers ) ) return $result;
 		return new WP_Error( 'mad4b_mcp_reconnect_not_ready', 'MAD4B MCP reconnect is not ready.', array(
 			'status' => 503,
-			'blockers' => $blockers,
 			'contract' => self::CONTRACT,
 			'resource' => self::resource_identifier(),
+			'retryable' => true,
 		) );
 	}
 
