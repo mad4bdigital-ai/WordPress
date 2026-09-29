@@ -20,6 +20,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	private static $session_repair_state = 'not_attempted';
 	private static $initialize_empty_requests = array();
 	private static $delete_cleanup_requests = array();
+	private static $shadow_retire_requests = array();
 	private static $runtime_integrity_ok = null;
 	private static $runtime_integrity_state = 'not_checked';
 
@@ -45,6 +46,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		// bounded shadow to repair a just-lost transport session.
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'repair_or_forget_session' ), 3, 3 );
 		add_filter( 'rest_post_dispatch', array( __CLASS__, 'capture_initialized_session' ), 900, 3 );
+		add_filter( 'rest_post_dispatch', array( __CLASS__, 'finalize_session_shadow' ), 925, 3 );
 		add_filter( 'rest_post_dispatch', array( __CLASS__, 'finalize_deleted_session' ), 950, 3 );
 		add_filter( 'rest_post_dispatch', array( __CLASS__, 'clear_session_policy_scope' ), PHP_INT_MAX, 3 );
 	}
@@ -67,6 +69,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( '' !== $key ) {
 			unset( self::$initialize_empty_requests[ $key ] );
 			unset( self::$delete_cleanup_requests[ $key ] );
+			unset( self::$shadow_retire_requests[ $key ] );
 		}
 		return $result;
 	}
@@ -88,6 +91,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'request_scope_reset_before_oauth_dispatch' => true,
 			'request_scope_cleared_after_dispatch' => true,
 			'request_scope_reset_clears_pending_delete_state' => true,
+			'request_scope_reset_clears_pending_shadow_retirement' => true,
 			'delete_cleanup_bound_to_exact_request_object' => true,
 			'request_scope_bound_to_exact_request_object' => true,
 			'nested_rest_request_cannot_clear_outer_initialize_state' => true,
@@ -489,19 +493,24 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( ! self::readonly_transport_request( $body ) ) return $result;
 		$binding = self::current_subject_binding();
 		$bound_user_id = isset( $binding['wp_user_id'] ) ? absint( $binding['wp_user_id'] ) : 0;
-		if ( $bound_user_id !== $user_id ) return $result;
-		if ( $user_id < 1 || self::session_exists( $user_id, $session_id ) ) return $result;
+		if ( $bound_user_id !== $user_id || $user_id < 1 ) return $result;
 		if ( (int) ( $shadow['wp_user_id'] ?? 0 ) !== $user_id ) return $result;
 		foreach ( array( 'subject_fingerprint', 'site_profile_digest', 'client_fingerprint' ) as $key ) {
 			$expected = isset( $shadow[ $key ] ) ? strtolower( (string) $shadow[ $key ] ) : '';
 			$current = isset( $binding[ $key ] ) ? strtolower( (string) $binding[ $key ] ) : '';
 			if ( '' === $expected || '' === $current || ! hash_equals( $expected, $current ) ) return $result;
 		}
+		if ( self::session_exists( $user_id, $session_id ) ) {
+			self::schedule_shadow_retirement( $request, $user_id, $session_id );
+			return $result;
+		}
 		if ( ! self::first_empty_race_visible_candidate( $user_id, (int) ( $shadow['captured_at'] ?? 0 ) ) ) {
+			delete_transient( self::shadow_key( $user_id, $session_id ) );
 			self::$session_repair_state = 'not_first_empty_race_shape';
 			return $result;
 		}
 		if ( ! self::certified_adapter_runtime_integrity_ok() ) {
+			delete_transient( self::shadow_key( $user_id, $session_id ) );
 			self::$session_repair_state = 'runtime_integrity_gate_blocked';
 			return $result;
 		}
@@ -509,8 +518,39 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			self::$session_repair_state = 'rehydration_failed';
 			return $result;
 		}
+		self::schedule_shadow_retirement( $request, $user_id, $session_id );
 		self::$session_repair_state = 'rehydrated_read_session';
 		return $result;
+	}
+
+
+	private static function schedule_shadow_retirement( $request, $user_id, $session_id ) {
+		$key = self::request_scope_key( $request );
+		if ( '' === $key || absint( $user_id ) < 1 || ! self::valid_adapter_session_id( (string) $session_id ) ) return;
+		self::$shadow_retire_requests[ $key ] = array(
+			'user_id' => absint( $user_id ),
+			'session_id' => (string) $session_id,
+		);
+	}
+
+	public static function finalize_session_shadow( $response, $server, $request ) {
+		$key = self::request_scope_key( $request );
+		if ( '' === $key || empty( self::$shadow_retire_requests[ $key ] ) || ! is_array( self::$shadow_retire_requests[ $key ] ) ) return $response;
+		$pending = self::$shadow_retire_requests[ $key ];
+		unset( self::$shadow_retire_requests[ $key ] );
+		$user_id = isset( $pending['user_id'] ) ? absint( $pending['user_id'] ) : 0;
+		$session_id = isset( $pending['session_id'] ) ? (string) $pending['session_id'] : '';
+		if ( $user_id < 1 || ! self::valid_adapter_session_id( $session_id ) ) return $response;
+		$transport_bound = class_exists( 'MAD4B_SCP_Transport_Context' )
+			&& method_exists( 'MAD4B_SCP_Transport_Context', 'current_server_id' )
+			&& 'mad4b-chatgpt' === MAD4B_SCP_Transport_Context::current_server_id();
+		$response_obj = rest_ensure_response( $response );
+		$adapter_success = $response_obj instanceof WP_REST_Response && 200 === (int) $response_obj->get_status();
+		if ( $transport_bound && $adapter_success ) {
+			delete_transient( self::shadow_key( $user_id, $session_id ) );
+			self::$session_repair_state = 'first_read_confirmed_shadow_retired';
+		}
+		return $response;
 	}
 
 	public static function finalize_deleted_session( $response, $server, $request ) {
@@ -575,6 +615,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			return $response;
 		}
 		if ( ! self::first_empty_race_visible_candidate( $user_id, (int) $shadow['captured_at'] ) ) {
+			delete_transient( self::shadow_key( $user_id, $session_id ) );
 			self::$session_repair_state = 'initialized_session_missing_outside_first_race_shape';
 			return $response;
 		}
@@ -596,6 +637,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'shadow_admission_first_empty_transition_only' => true,
 			'sequential_reconnect_shadow_growth_possible' => false,
 			'shadow_ttl_bounded' => true,
+			'shadow_retired_after_first_adapter_success' => true,
+			'shadow_retained_after_failed_first_read' => true,
+			'shadow_discarded_outside_first_race_shape' => true,
 			'delete_tombstone_blocks_shadow_resurrection' => true,
 			'delete_tombstone_requires_existing_session_or_shadow' => true,
 			'random_delete_tombstone_allocation_enabled' => false,
