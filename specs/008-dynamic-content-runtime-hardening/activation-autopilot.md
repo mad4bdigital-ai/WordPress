@@ -70,6 +70,8 @@ Retry count is capped. Exhaustion becomes an explicit operator gate.
 
 Cron scheduling is postcondition-based: if another request wins the scheduling race, the presence of the scheduled hook counts as success.
 
+Activation checkpoint persistence is verified by readback before scheduling. If the checkpoint cannot be proven durable, Autopilot reports `checkpoint_persist_failed` and does not claim scheduled progress. A `pending_manual_resume` checkpoint with a concrete resume blocker projects `autopilot_state=gated`, never `bootstrapping` or `converging`.
+
 ## MCP peer truth
 
 Write-runtime certification and mutation authorization must consume the same peer-governance truth.
