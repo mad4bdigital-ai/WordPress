@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import runpy
 
 root = Path(__file__).resolve().parents[1]
 inc = root / "includes"
@@ -175,5 +176,10 @@ for marker in [
 ]:
     assert marker in oauth, marker
 assert 'class="mad4b-settings-ajax-form"' in chatgpt_ui
+
+# The Control Plane contract-guard fan-in also owns cross-surface truth
+# consistency. Keep this plugin-local so repository-root workflow governance is
+# unchanged and Feature 007 staging-certification work can evolve independently.
+runpy.run_path(str(root / "tests/truth-projection-invariants.py"), run_name="__main__")
 
 print("mad4b.admin-settings-persistence.v7: PASS")
