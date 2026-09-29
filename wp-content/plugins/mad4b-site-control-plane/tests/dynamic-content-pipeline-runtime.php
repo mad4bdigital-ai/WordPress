@@ -59,8 +59,9 @@ final class MAD4B_Test_Dynamic_Adapter {
 $defaults=MAD4B_SCP_Dynamic_Content_Pipeline::defaults();
 check($defaults['max_iterations']===3,'default max_iterations');
 check(count($defaults['stages'])>=7,'advanced default stage catalog');
-check($defaults['stages'][0]['id']==='structural','structural first');
+check($defaults['stages'][0]['id']==='structural' && $defaults['stages'][0]['order']===0,'structural is mandatory first validate stage');
 check($defaults['stages'][1]['id']==='source_fidelity','source fidelity registered in defaults');
+check($defaults['stages'][count($defaults['stages'])-1]['id']==='acceptance' && $defaults['stages'][count($defaults['stages'])-1]['order']===10000,'acceptance is mandatory terminal stage');
 
 $conditions=MAD4B_SCP_Dynamic_Content_Pipeline::condition_registry();
 foreach(array('mode','environment','post_type','post_status','has_meta','has_taxonomy','finding_code') as $id){
@@ -78,7 +79,10 @@ $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array
 $effective=MAD4B_SCP_Dynamic_Content_Pipeline::effective();
 check($effective['max_iterations']===5,'max_iterations clamped');
 check($effective['no_progress_limit']===3,'no_progress_limit clamped');
-check($effective['stages'][0]['id']==='structural','stages sorted by order');
+check($effective['stages'][0]['id']==='structural' && $effective['stages'][0]['order']===0,'effective config restores structural safety position');
+check(empty($effective['stages'][0]['conditions']),'effective config strips structural conditions');
+$effective_last=$effective['stages'][count($effective['stages'])-1];
+check($effective_last['id']==='acceptance' && $effective_last['order']===10000,'effective config restores terminal acceptance position');
 
 $adapter=new MAD4B_Test_Dynamic_Adapter();
 $context=array(
@@ -95,13 +99,13 @@ $context=array(
 	'repair_allowed'=>true,
 );
 $result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$context);
-check(!is_wp_error($result),'mode-mismatch validation does not fail');
-check(empty($result['findings']),'mode-mismatch skips structural stage');
+check(!is_wp_error($result),'mandatory structural validation remains executable');
+check(count($result['findings'])===1 && $result['findings'][0]['code']==='forced','configured conditions cannot bypass mandatory structural validation');
 
 
 $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array(
 	'stages'=>array(
-		array('id'=>'structural','enabled'=>true,'order'=>1,'phase'=>'validate','conditions'=>array('missing_condition'=>array('x')),'policy'=>array('required'=>true,'on_error'=>'stop')),
+		array('id'=>'source_fidelity','enabled'=>true,'order'=>140,'phase'=>'validate','conditions'=>array('missing_condition'=>array('x')),'policy'=>array('required'=>true,'on_error'=>'stop')),
 	)
 );
 $result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$context);
@@ -109,7 +113,7 @@ check(is_wp_error($result) && $result->get_error_code()==='mad4b_dynamic_pipelin
 
 $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array(
 	'stages'=>array(
-		array('id'=>'structural','enabled'=>true,'order'=>1,'phase'=>'validate','conditions'=>array('missing_condition'=>array('x')),'policy'=>array('required'=>false,'on_error'=>'stop')),
+		array('id'=>'source_fidelity','enabled'=>true,'order'=>140,'phase'=>'validate','conditions'=>array('missing_condition'=>array('x')),'policy'=>array('required'=>false,'on_error'=>'stop')),
 	)
 );
 $result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$context);
@@ -123,6 +127,11 @@ $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array
 );
 $result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$context);
 check(is_wp_error($result) && $result->get_error_code()==='mad4b_dynamic_pipeline_required_stage_unavailable','required missing stage fails closed');
+
+$clean_context=array_merge($context,array(
+	'input'=>array('force_finding'=>false,'meta'=>array(),'taxonomies'=>array()),
+	'findings'=>array(),
+));
 
 add_filter('mad4b_scp_dynamic_content_pipeline_registry',function($registry){
 	$registry['failing_validator']=array(
@@ -153,7 +162,7 @@ $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array
 		array('id'=>'failing_validator','enabled'=>true,'order'=>1,'phase'=>'validate','conditions'=>array(),'policy'=>array('required'=>false,'on_error'=>'finding')),
 	)
 );
-$result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$context);
+$result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$clean_context);
 check(!is_wp_error($result),'validator on_error=finding continues');
 check(count($result['findings'])===1 && $result['findings'][0]['code']==='pipeline_stage_error','validator error converted to finding');
 
@@ -163,7 +172,7 @@ $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array
 		array('id'=>'failing_validator','enabled'=>true,'order'=>1,'phase'=>'validate','conditions'=>array(),'policy'=>array('required'=>true,'on_error'=>'skip')),
 	)
 );
-$result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$context);
+$result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$clean_context);
 check(is_wp_error($result) && $result->get_error_code()==='validator_boom','required validator errors cannot be bypassed with on_error=skip');
 
 $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array(
@@ -171,7 +180,7 @@ $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array
 		array('id'=>'source_fidelity','enabled'=>true,'order'=>1,'phase'=>'validate','conditions'=>array(),'policy'=>array('required'=>false,'on_error'=>'finding')),
 	)
 );
-$result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$context);
+$result=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('validate',$clean_context);
 check(!is_wp_error($result),'optional missing validator follows configured on_error policy');
 check(
 	count($result['findings'])===1
@@ -204,11 +213,11 @@ check(is_wp_error($result) && $result->get_error_code()==='repair_boom','repair 
 
 $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array(
 	'stages'=>array(
-		array('id'=>'acceptance','enabled'=>true,'order'=>1,'phase'=>'accept','conditions'=>array(),'policy'=>array('required'=>true,'on_error'=>'stop')),
+		array('id'=>'acceptance','enabled'=>false,'order'=>1,'phase'=>'validate','conditions'=>array('mode'=>array('never')),'policy'=>array('required'=>false,'on_error'=>'skip')),
 	)
 );
 $accept=MAD4B_SCP_Dynamic_Content_Pipeline::run_phase('accept',array_merge($context,array('findings'=>array())));
-check(!is_wp_error($accept) && !empty($accept['accepted']) && $accept['acceptance_status']==='accepted','acceptance stage accepts zero findings');
+check(!is_wp_error($accept) && !empty($accept['accepted']) && $accept['acceptance_status']==='accepted','effective config restores non-bypassable terminal acceptance');
 
 
 
@@ -243,6 +252,11 @@ check(is_wp_error($missing_revision) && $missing_revision->get_error_code()==='m
 
 $stale=MAD4B_SCP_Dynamic_Content_Pipeline::persist(array('expected_revision'=>3,'max_iterations'=>4));
 check(is_wp_error($stale) && $stale->get_error_code()==='mad4b_dynamic_pipeline_stale','stale pipeline settings update rejected');
+
+$unsafe_stages=MAD4B_SCP_Dynamic_Content_Pipeline::defaults()['stages'];
+$unsafe_stages[0]['enabled']=false;
+$unsafe=MAD4B_SCP_Dynamic_Content_Pipeline::persist(array('expected_revision'=>4,'stages'=>$unsafe_stages));
+check(is_wp_error($unsafe) && $unsafe->get_error_code()==='mad4b_dynamic_pipeline_mandatory_stage_disabled','persist rejects disabling mandatory structural validation');
 
 $saved=MAD4B_SCP_Dynamic_Content_Pipeline::persist(array('expected_revision'=>4,'max_iterations'=>4));
 check(!is_wp_error($saved),'matching revision pipeline settings update succeeds');
