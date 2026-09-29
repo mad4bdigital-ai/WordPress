@@ -60,6 +60,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-approval-tickets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-budgets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-provider-isolation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-request-scope.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-diagnostic-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-peer-governance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-store.php';
