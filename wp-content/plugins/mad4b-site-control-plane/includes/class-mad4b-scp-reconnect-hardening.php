@@ -11,8 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Reconnect_Hardening {
 	const CONTRACT = 'mad4b.reconnect-hardening.v4';
-	const SESSION_SHADOW_TTL = 300;
-	const SESSION_SHADOW_MAX_PER_USER = 16;
+	const SESSION_SHADOW_TTL = 120;
 	const SESSION_META_KEY = 'mcp_adapter_sessions';
 	const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
 	const CERTIFIED_STATEFUL_ADAPTER_VERSION = '0.6.1';
@@ -105,9 +104,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		return hash( 'sha256', (string) $session_id );
 	}
 
-	private static function shadow_store_key( $user_id ) {
+	private static function shadow_key( $user_id, $session_id ) {
 		$blog_id = is_multisite() ? max( 0, (int) get_current_blog_id() ) : 0;
-		return 'mad4b_mcp_session_shadows_' . $blog_id . '_' . absint( $user_id );
+		return 'mad4b_mcp_session_shadow_' . $blog_id . '_' . absint( $user_id ) . '_' . self::shadow_fingerprint( $session_id );
 	}
 
 	private static function shadow_tombstone_key( $user_id, $session_id ) {
@@ -117,44 +116,23 @@ final class MAD4B_SCP_Reconnect_Hardening {
 
 	private static function store_session_shadow( $user_id, $session_id, array $shadow ) {
 		$user_id = absint( $user_id );
-		$fingerprint = self::shadow_fingerprint( $session_id );
-		if ( $user_id < 1 || 1 !== preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return false;
-		$now = time();
-		$key = self::shadow_store_key( $user_id );
-		$map = get_transient( $key );
-		$map = is_array( $map ) ? $map : array();
-		foreach ( $map as $stored_fingerprint => $entry ) {
-			$captured_at = is_array( $entry ) && isset( $entry['captured_at'] ) ? (int) $entry['captured_at'] : 0;
-			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $stored_fingerprint ) || $captured_at < $now - self::SESSION_SHADOW_TTL ) unset( $map[ $stored_fingerprint ] );
-		}
-		$map[ $fingerprint ] = $shadow;
-		uasort( $map, static function ( $a, $b ) {
-			return (int) ( $a['captured_at'] ?? 0 ) <=> (int) ( $b['captured_at'] ?? 0 );
-		} );
-		while ( count( $map ) > self::SESSION_SHADOW_MAX_PER_USER ) array_shift( $map );
-		return (bool) set_transient( $key, $map, self::SESSION_SHADOW_TTL );
+		if ( $user_id < 1 || ! self::valid_adapter_session_id( (string) $session_id ) ) return false;
+		if ( get_transient( self::shadow_tombstone_key( $user_id, $session_id ) ) ) return false;
+		return (bool) set_transient( self::shadow_key( $user_id, $session_id ), $shadow, self::SESSION_SHADOW_TTL );
 	}
 
 	private static function get_session_shadow( $user_id, $session_id ) {
 		$user_id = absint( $user_id );
 		if ( $user_id < 1 || get_transient( self::shadow_tombstone_key( $user_id, $session_id ) ) ) return array();
-		$map = get_transient( self::shadow_store_key( $user_id ) );
-		$fingerprint = self::shadow_fingerprint( $session_id );
-		return is_array( $map ) && isset( $map[ $fingerprint ] ) && is_array( $map[ $fingerprint ] ) ? $map[ $fingerprint ] : array();
+		$shadow = get_transient( self::shadow_key( $user_id, $session_id ) );
+		return is_array( $shadow ) ? $shadow : array();
 	}
 
 	private static function forget_session_shadow( $user_id, $session_id ) {
 		$user_id = absint( $user_id );
 		if ( $user_id < 1 ) return;
 		set_transient( self::shadow_tombstone_key( $user_id, $session_id ), 1, self::SESSION_SHADOW_TTL );
-		$key = self::shadow_store_key( $user_id );
-		$map = get_transient( $key );
-		if ( ! is_array( $map ) ) return;
-		$fingerprint = self::shadow_fingerprint( $session_id );
-		if ( ! array_key_exists( $fingerprint, $map ) ) return;
-		unset( $map[ $fingerprint ] );
-		if ( empty( $map ) ) delete_transient( $key );
-		else set_transient( $key, $map, self::SESSION_SHADOW_TTL );
+		delete_transient( self::shadow_key( $user_id, $session_id ) );
 	}
 
 	private static function request_route( $request ) {
@@ -443,9 +421,11 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'contract' => self::CONTRACT,
 			'state' => self::$session_repair_state,
 			'shadow_ttl_seconds' => self::SESSION_SHADOW_TTL,
-			'shadow_max_per_user' => self::SESSION_SHADOW_MAX_PER_USER,
-			'shadow_store_contains_session_fingerprint_only' => true,
-			'shadow_store_single_bounded_map_per_user' => true,
+			'shadow_key_contains_session_fingerprint_only' => true,
+			'shadow_storage_per_session' => true,
+			'shadow_cross_session_lost_update_possible' => false,
+			'shadow_hard_count_bound' => false,
+			'shadow_ttl_bounded' => true,
 			'delete_tombstone_blocks_shadow_resurrection' => true,
 			'delete_tombstone_bound_to_site_user_session' => true,
 			'post_cas_delete_tombstone_rechecked' => true,
