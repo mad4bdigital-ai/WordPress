@@ -108,6 +108,12 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return empty( $binding['required'] ) || ! empty( $binding['match'] );
 	}
 
+	public static function persisted_status() {
+		$status = self::raw_status();
+		$status['approval_policy_projection_deferred'] = true;
+		return $status;
+	}
+
 	public static function status() {
 		$status = self::raw_status();
 		return array_merge( $status, self::approval_policy_projection() );
