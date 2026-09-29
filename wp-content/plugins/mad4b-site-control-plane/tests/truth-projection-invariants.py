@@ -115,6 +115,7 @@ for marker in (
     "'mad4b_context_save_profile'",
     "'mad4b_enable_production_readonly_oauth'",
     "'mad4b_disable_production_readonly_oauth'",
+    "'mad4b_oauth_grant_projection'",
 ):
     require(policy, marker, "admin AJAX zero-touch classifier")
 foreign_admin = policy.split("public static function current_request_is_foreign_wp_admin()", 1)[1].split("public static function current_request_is_zero_touch_surface()", 1)[0]
