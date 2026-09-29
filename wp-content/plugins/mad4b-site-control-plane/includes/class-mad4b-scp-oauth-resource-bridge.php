@@ -234,6 +234,11 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	}
 
 	public static function authority_step_up_scope_available() {
+		$feature_reenrollment = false;
+		if ( class_exists( 'MAD4B_SCP_Site_Profile_Enrollment' ) && method_exists( 'MAD4B_SCP_Site_Profile_Enrollment', 'chatgpt_step_up_tools' ) ) {
+			$tools = MAD4B_SCP_Site_Profile_Enrollment::chatgpt_step_up_tools();
+			$feature_reenrollment = is_array( $tools ) && in_array( MAD4B_SCP_Site_Profile_Enrollment::ABILITY, $tools, true );
+		}
 		$write_enablement = false;
 		if ( class_exists( 'MAD4B_SCP_Site_Profile_Write_Enablement' ) && method_exists( 'MAD4B_SCP_Site_Profile_Write_Enablement', 'chatgpt_step_up_tools' ) ) {
 			$tools = MAD4B_SCP_Site_Profile_Write_Enablement::chatgpt_step_up_tools();
@@ -259,7 +264,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			$tools = MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools();
 			$enrollment_dispatch = is_array( $tools ) && in_array( MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY, $tools, true );
 		}
-		return $write_enablement || $write_reconciliation || $candidate_binding || $full_authority || $enrollment_dispatch;
+		return $feature_reenrollment || $write_enablement || $write_reconciliation || $candidate_binding || $full_authority || $enrollment_dispatch;
 	}
 
 	public static function resource_identifier( $server_id = 'mad4b-chatgpt' ) {
