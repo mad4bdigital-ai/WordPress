@@ -242,8 +242,10 @@ final class MAD4B_SCP_Runtime_Convergence {
 			if ( ! empty( $phase['auto_safe'] ) ) $auto_pending = true;
 			else $gated_pending = true;
 		}
+		$manual_resume_gate = 'pending_manual_resume' === $checkpoint_state && is_array( $checkpoint ) && ! empty( $checkpoint['resume_blocker'] );
 		if ( empty( $required_blockers ) ) $autopilot_state = 'ready';
 		elseif ( ! $graph_valid || 'blocked' === $checkpoint_state ) $autopilot_state = 'blocked';
+		elseif ( $manual_resume_gate ) $autopilot_state = 'gated';
 		elseif ( $auto_pending && 'plugin_activation' === $checkpoint_source ) $autopilot_state = 'bootstrapping';
 		elseif ( $auto_pending || in_array( $checkpoint_state, array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true ) ) $autopilot_state = 'converging';
 		elseif ( $gated_pending ) $autopilot_state = 'gated';
@@ -380,6 +382,11 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'production_mutation' => false,
 		);
 		update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+		$stored = get_option( self::CHECKPOINT_OPTION, array() );
+		$stored_source = is_array( $stored ) && isset( $stored['source'] ) ? sanitize_key( (string) $stored['source'] ) : '';
+		if ( ! is_array( $stored ) || 'plugin_activation' !== $stored_source || empty( $stored['target_identity'] ) || ! self::identity_matches( $checkpoint['target_identity'], $stored['target_identity'] ) ) {
+			return array( 'scheduled' => false, 'state' => 'checkpoint_persist_failed', 'target_identity' => $checkpoint['target_identity'], 'production_mutation' => false );
+		}
 		$scheduled = self::schedule_resume();
 		if ( ! $scheduled ) {
 			$checkpoint['state'] = 'pending_manual_resume';
