@@ -104,7 +104,7 @@ required_server = [
     "'exact_grant_present'",
     "Live governed write authority",
     "Authority step-up:",
-    "This OAuth scope only permits ChatGPT to request the composite Full Staging Authority operation.",
+    "This OAuth scope only permits ChatGPT to request bounded governed Staging step-up operations: composite Full Staging Authority convergence or bootstrap Control Plane self-update.",
     "live governance evidence, not an OAuth permission request",
     "wp_ajax_mad4b_oauth_grant_projection",
     "public static function ajax_grant_projection()",

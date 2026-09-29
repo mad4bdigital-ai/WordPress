@@ -175,6 +175,7 @@ require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in 
 require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in SERVERS, "bounded Write Authority apply must be conditionally projectable as a single-app step-up tool")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in SERVERS, "full staging read diagnostics must be projectable on enrolled Staging")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in SERVERS, "full staging apply must be conditionally projectable as a single-app step-up tool")
+require("MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in SERVERS, "bootstrap Control Plane self-update must be conditionally projectable as a bounded single-app step-up tool")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" not in core_chatgpt, "non-Staging core ChatGPT catalog must not expose Staging authority diagnostics")
 require("mad4b/full-staging-authority-apply" not in core_chatgpt, "full staging apply must never be statically mounted in the core ChatGPT catalog")
 
@@ -188,7 +189,7 @@ for forbidden in [
     "self::core_tools( 'mad4b-admin' )",
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
-require("$step_up = array_merge( $narrow_step_up, $full_step_up )" in chatgpt_body, "bounded and full authority step-ups must be composed explicitly")
+require("$step_up = array_merge( $narrow_step_up, $full_step_up, $self_update_step_up )" in chatgpt_body, "bounded, full, and bootstrap self-update step-ups must be composed explicitly")
 require("'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in core_chatgpt, "bounded Enrollment dispatcher must remain in the canonical compact ChatGPT core catalog")
 require("$candidates = array_merge( $core, $bootstrap )" in chatgpt_body, "runtime ChatGPT tools/list must start from the canonical compact core catalog")
 dispatcher_helper = SERVERS.split("public static function chatgpt_dispatch_transport_tools()", 1)[1].split("public static function chatgpt_tools()", 1)[0]
@@ -199,6 +200,7 @@ require("sort( $tools, SORT_STRING )" in dispatcher_helper, "canonical ChatGPT m
 require("array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )" in chatgpt_body, "normal governed mutation dispatch plus guarded authority step-ups must derive from the canonical dispatcher inventory")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_body, "unified enrolled Staging tools/list must include read-only full authority diagnostics")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_body, "unified enrolled Staging tools/list must project the composite apply only through the guarded step-up method")
+require("MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in chatgpt_body, "unified enrolled Staging tools/list must project bootstrap self-update only through the guarded step-up method")
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
@@ -224,6 +226,7 @@ require("'mad4b/database-raw-query'" in full and "array_diff" in full, "Raw SQL 
 require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in full, "logical discovery must include the bounded Write Authority plan")
 require("MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in full, "logical discovery must include the bounded Write Authority step-up when eligible")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in full, "logical discovery must include the guarded full-authority composite step-up when it is eligible")
+require("MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in full, "logical discovery must include the guarded bootstrap Control Plane self-update step-up when it is eligible")
 
 internal_enrollment = SERVERS.split("private static function chatgpt_internal_enrollment_mutations()", 1)[1].split("private static function chatgpt_enrollment_candidates()", 1)[0]
 for low_level in [
