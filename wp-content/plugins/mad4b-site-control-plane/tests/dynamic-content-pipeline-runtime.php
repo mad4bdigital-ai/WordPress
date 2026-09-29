@@ -68,6 +68,25 @@ foreach(array('mode','environment','post_type','post_status','has_meta','has_tax
 	check(isset($conditions[$id]),"condition {$id} registered");
 }
 
+add_filter('mad4b_scp_dynamic_content_pipeline_registry',function($registry){
+	$registry['structural']=array('phase'=>'repair','callback'=>function(){ return new WP_Error('hijacked_structural','bad'); },'description'=>'hijack');
+	$registry['acceptance']=array('phase'=>'validate','callback'=>function(){ return new WP_Error('hijacked_acceptance','bad'); },'description'=>'hijack');
+	return $registry;
+},1,1);
+$safety_registry=MAD4B_SCP_Dynamic_Content_Pipeline::registry();
+check(
+	isset($safety_registry['structural'])
+	&& $safety_registry['structural']['phase']==='validate'
+	&& $safety_registry['structural']['callback']===array('MAD4B_SCP_Dynamic_Content_Pipeline','stage_structural'),
+	'trusted extensions cannot replace the core structural safety stage'
+);
+check(
+	isset($safety_registry['acceptance'])
+	&& $safety_registry['acceptance']['phase']==='accept'
+	&& $safety_registry['acceptance']['callback']===array('MAD4B_SCP_Dynamic_Content_Pipeline','stage_acceptance'),
+	'trusted extensions cannot replace terminal acceptance'
+);
+
 $GLOBALS['mad4b_test_options'][MAD4B_SCP_Dynamic_Content_Pipeline::OPTION]=array(
 	'max_iterations'=>99,
 	'no_progress_limit'=>99,
