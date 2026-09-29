@@ -111,6 +111,10 @@ for marker in [
     "private static function compact_gate( array $gate )",
     "'connector_error'",
     "'connector_read_failed:'",
+    "'certification_blockers'",
+    "! $ready && empty( $blockers )",
+    "$state_blocker = sanitize_key( (string) $evidence['state'] )",
+
 ]:
     require(cert, marker, "staging certification invariant")
 for marker in [
