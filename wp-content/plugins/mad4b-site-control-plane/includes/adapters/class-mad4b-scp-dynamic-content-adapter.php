@@ -1019,9 +1019,9 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			}
 		}
 
-		$a=$this->apply_desired($id,$input);
-		if(is_wp_error($a)) return $this->failure_with_compensation($a,$v['mode'],$id,$before);
 		$owned_after=$this->snapshot($id,$input);
+		$a=$this->apply_desired($id,$input,$owned_after);
+		if(is_wp_error($a)) return $this->failure_with_compensation($a,$v['mode'],$id,$before,$owned_after);
 
 		$pipeline=isset($v['pipeline_config'])&&is_array($v['pipeline_config'])
 			? $v['pipeline_config']
@@ -1200,9 +1200,10 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function repair_desired_state($id,array $input){ return $this->apply_desired($id,$input); }
 
-	private function apply_desired($id,array $input){
+	private function apply_desired($id,array $input,&$owned_state=null){
 		$meta_specs=$this->desired_meta_specs($input);
 		if(is_wp_error($meta_specs)) return $meta_specs;
+		if(!is_array($owned_state)||empty($owned_state['post'])) $owned_state=$this->snapshot($id,$input);
 		foreach($meta_specs as $k=>$spec){
 			if(!current_user_can('edit_post_meta',$id,(string)$k)) return new WP_Error('mad4b_dynamic_meta_edit_denied','Current user cannot edit the requested meta key.',array('meta_key'=>(string)$k,'post_id'=>(int)$id));
 			delete_post_meta($id,(string)$k);
@@ -1210,8 +1211,16 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			foreach((array)$spec['values'] as $value){
 				if(false===add_post_meta($id,(string)$k,$value,false)) return new WP_Error('mad4b_dynamic_meta_write_failed','A requested meta value could not be written.',array('meta_key'=>(string)$k));
 			}
+			if(isset($owned_state['meta'])&&is_array($owned_state['meta'])) $owned_state['meta'][(string)$k]=$this->desired_meta_envelope($spec);
 		}
-		foreach(isset($input['taxonomies'])&&is_array($input['taxonomies'])?$input['taxonomies']:array() as $tax=>$refs){ $ids=$this->resolve_terms(sanitize_key((string)$tax),(array)$refs); if(is_wp_error($ids)) return $ids; $r=wp_set_object_terms($id,$ids,sanitize_key((string)$tax),false); if(is_wp_error($r)) return $r; }
+		foreach(isset($input['taxonomies'])&&is_array($input['taxonomies'])?$input['taxonomies']:array() as $tax=>$refs){
+			$taxonomy=sanitize_key((string)$tax);
+			$ids=$this->resolve_terms($taxonomy,(array)$refs);
+			if(is_wp_error($ids)) return $ids;
+			$r=wp_set_object_terms($id,$ids,$taxonomy,false);
+			if(is_wp_error($r)) return $r;
+			if(isset($owned_state['taxonomies'])&&is_array($owned_state['taxonomies'])) $owned_state['taxonomies'][$taxonomy]=array_values($ids);
+		}
 		if(array_key_exists('featured_media_id',$input)){
 			$m=absint($input['featured_media_id']);
 			$current=(int)get_post_thumbnail_id($id);
@@ -1222,6 +1231,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				delete_post_thumbnail($id);
 			}
 		}
+		if(array_key_exists('featured_media_id',$input)) $owned_state['featured_media_id']=absint($input['featured_media_id']);
 		clean_post_cache($id); return true;
 	}
 
