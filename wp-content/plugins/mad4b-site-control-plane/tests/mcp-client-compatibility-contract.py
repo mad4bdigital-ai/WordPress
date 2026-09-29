@@ -101,7 +101,7 @@ for marker in required_registry:
 # original governed WP_Ability contracts.
 for marker in [
     'chatgpt_unified_catalog_enabled',
-    "'staging' === MAD4B_SCP_Site_Profile::current_environment()",
+    "in_array( sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ), array( 'staging', 'production' ), true )",
     'MAD4B_SCP_Site_Profile::origin_enrolled()',
     'MAD4B_SCP_Site_Profile::site_urls_match_enrollment()',
     'public static function chatgpt_full_catalog_candidates()',
