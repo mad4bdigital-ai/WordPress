@@ -58,11 +58,21 @@ MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'
 ok(empty($s['ready'])&&in_array('chatgpt_registration_failed',$s['blockers'],true),'exact ChatGPT registration error blocks reconnect'); ok(!in_array('targeted_mad4b_route_count_incomplete',$s['blockers'],true),'global route blocker remains diagnostic context only');
 ok(MAD4B_SCP_Reconnect_Hardening::is_resource_request_path('/mcp/mad4b-chatgpt'),'REST route form recognized'); ok(MAD4B_SCP_Reconnect_Hardening::is_resource_request_path('/wp-json/mcp/mad4b-chatgpt'),'wp-json resource form recognized');
 $request=new class { public function get_route(){return '/mcp/mad4b-chatgpt';} }; $guard=MAD4B_SCP_Reconnect_Hardening::guard_mcp_rest_dispatch(null,null,$request); ok(is_wp_error($guard)&&'mad4b_mcp_reconnect_not_ready'===$guard->get_error_code(),'missing route becomes deterministic reconnect error'); ok(503===($guard->get_error_data()['status']??0),'reconnect error is 503');
-// Nested request isolation: stale ChatGPT request scope is reset before the reconnect guard.
-set_priv('initialize_started_with_empty_store',true);
-MAD4B_SCP_Reconnect_Hardening::reset_session_policy_scope(null,null,null);
-$rp=new ReflectionProperty('MAD4B_SCP_Reconnect_Hardening','initialize_started_with_empty_store'); $rp->setAccessible(true);
-ok(false===$rp->getValue(),'nested REST request cannot inherit prior first-initialize repair scope');
+// Nested request isolation: inner REST lifecycle cannot clear the outer initialize state.
+$outer_request=new class {};
+$inner_request=new class {};
+$outer_key=priv('request_scope_key',array($outer_request));
+$inner_key=priv('request_scope_key',array($inner_request));
+set_priv('initialize_empty_requests',array($outer_key=>true));
+MAD4B_SCP_Reconnect_Hardening::reset_session_policy_scope(null,null,$inner_request);
+$rp=new ReflectionProperty('MAD4B_SCP_Reconnect_Hardening','initialize_empty_requests'); $rp->setAccessible(true);
+$scope=$rp->getValue();
+ok(!empty($scope[$outer_key])&&!isset($scope[$inner_key]),'nested REST reset preserves exact outer initialize scope');
+MAD4B_SCP_Reconnect_Hardening::clear_session_policy_scope(null,null,$inner_request);
+$scope=$rp->getValue();
+ok(!empty($scope[$outer_key]),'nested REST clear cannot erase outer initialize scope');
+MAD4B_SCP_Reconnect_Hardening::clear_session_policy_scope(null,null,$outer_request);
+ok(empty($rp->getValue()),'outer REST clear removes only its exact initialize scope');
 // Preserve the exact bootstrap failure when runtime initialization knows more than a derived status snapshot.
 MAD4B_SCP_Audit::$storage=array('ready'=>false,'schema_ready'=>true,'schema_physical_ready'=>true,'tables_ready'=>true,'transactional'=>true,'legacy_chain_valid'=>true,'head_initialized'=>false,'head_consistent'=>false,'legacy_anchor_match'=>true);
 $bootstrap_error=new ReflectionProperty('MAD4B_SCP_Plugin','schema_error');
@@ -121,7 +131,6 @@ $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(
     array(sid(101)=>srec(1000)),
     array(sid(102)=>srec(1001)),
 );
-set_priv('initialize_started_with_empty_store',true);
 ok(priv('ensure_session_record',array(7,sid(103),$minimal)),'CAS repair converges duplicate non-empty session rows');
 $rows=$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'];
 ok(count($rows)===2 && $rows[0]===$rows[1],'duplicate rows converge to the same canonical map');
@@ -151,6 +160,5 @@ $GLOBALS['after_user_meta_update']=static function()use($target){
 ok(!priv('ensure_session_record',array(7,$target,$minimal)),'post-CAS DELETE tombstone converts repair to failure');
 $merged=$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'][0];
 ok(!isset($merged[$target]),'post-CAS DELETE race removes the repaired session');
-set_priv('initialize_started_with_empty_store',false);
 
 fwrite(STDOUT,"mad4b.reconnect-hardening.runtime.v1: PASS\n");
