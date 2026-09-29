@@ -57,7 +57,19 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		$current = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
 		$has_current = null !== $current && false !== $current;
 		if ( ! self::valid_v2_migration_pending_record( $current ) ) {
-			if ( $has_current ) return self::recovery_result( 'blocked', false, 'current_site_profile_invalid' );
+			if ( $has_current ) {
+				// A normal valid v2 profile is not a continuity-recovery candidate. Treat it
+				// as not applicable rather than misclassifying it as corrupt; Site Profile
+				// binding logic remains the authority source for exact vs foreign origins.
+				$profile_status = MAD4B_SCP_Site_Profile::status();
+				if ( ! empty( $profile_status['configured'] ) ) {
+					return self::recovery_result( 'not_applicable', false, '', array(
+						'current_profile_present' => true,
+						'current_profile_binding_state' => isset( $profile_status['binding_state'] ) ? sanitize_key( (string) $profile_status['binding_state'] ) : '',
+					) );
+				}
+				return self::recovery_result( 'blocked', false, 'current_site_profile_invalid' );
+			}
 			return self::recover_snapshot_only_read_continuity();
 		}
 
