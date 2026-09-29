@@ -45,7 +45,7 @@ assert "return false;" in skill_route
 assert "'mad4b-control-plane-connection' !== $page" in prime
 assert "'endpoints' !== $tab" in prime
 assert "rest_get_server()" in prime
-assert "admin_connection_endpoints_prime" in prime
+assert "admin_connection_prime" in prime
 
 # Main governance UI is tab scoped and no longer runs deep provider/peer scans
 # simply to render Overview.
