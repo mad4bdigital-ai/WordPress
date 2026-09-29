@@ -386,3 +386,16 @@ for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_
     forbid(peer, bypass, 'foreign-mcp-no-bypass')
 
 print('mad4b.site-control-plane.connection-readiness-contract.v10: PASS')
+
+# Connection status is callable over MCP, so deep peer inventory must fail-soft
+# on protocol hotpaths instead of scanning all servers/tools/routes inline.
+for marker in (
+    "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()",
+    "'mcp_peer_inventory_deferred_protocol_hotpath'",
+    "'deep_inventory_performed' => false",
+):
+    require(status, marker, 'connection-protocol-hotpath-peer-deferral')
+peer_call_pos = status.index("MAD4B_SCP_MCP_Peer_Governance::status()")
+hotpath_pos = status.index("current_request_is_protocol_hotpath()")
+if hotpath_pos > peer_call_pos:
+    raise SystemExit('FAIL connection-peer-deferral-order: hotpath decision must precede deep peer inventory')
