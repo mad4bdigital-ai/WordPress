@@ -26,7 +26,19 @@ final class MAD4B_SCP_Connection_Status {
 		foreach ( $servers as $server ) {
 			if ( empty( $server['registered'] ) || empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) { $server_ok = false; break; }
 		}
-		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
+		$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
+		$peer = $protocol_hotpath
+			? array(
+				'inventory_ready' => false,
+				'write_side_channel_detected' => false,
+				'blockers' => array( 'mcp_peer_inventory_deferred_protocol_hotpath' ),
+				'state' => 'deferred_protocol_hotpath',
+				'deep_inventory_performed' => false,
+			)
+			: ( class_exists( 'MAD4B_SCP_MCP_Peer_Governance' )
+				? MAD4B_SCP_MCP_Peer_Governance::status()
+				: array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) ) );
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_identity_context_unavailable', 'Identity context is unavailable.' );
 		$isolation = class_exists( 'MAD4B_SCP_MCP_Provider_Isolation' ) ? MAD4B_SCP_MCP_Provider_Isolation::status() : array( 'configured' => false, 'effective' => false );
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array( 'available' => false );
