@@ -14,6 +14,8 @@ assert "MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_stat
 assert "MAD4B_SCP_External_WPML_Acceptance_Finalizer::external_wpml_receipt_status()" not in rest
 assert "public static function external_wpml_receipt_status_from_local_wpml( $wpml )" in external_finalizer
 assert "MAD4B_SCP_Live_Acceptance_Finalizer::external_wpml_receipt_status_from_local_wpml( $wpml )" in external_finalizer
+assert "method_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer', 'external_wpml_receipt_status' )" in external_finalizer
+assert "MAD4B_SCP_Live_Acceptance_Finalizer::external_wpml_receipt_status()" in external_finalizer
 assert "self::authoritative_external_receipt()" in external_finalizer
 assert "bounded_external_wpml_receipt" in rest
 assert "'external_wpml_acceptance_required' => $external_wpml_required" in rest
