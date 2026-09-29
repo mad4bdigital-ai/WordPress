@@ -177,6 +177,14 @@ final class MAD4B_SCP_Plugin {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime() ) return false;
 
+		// Keep the historical MAD4B admin classification explicit for compatibility,
+		// but invert its authority: rendering a MAD4B page is also read-serving work
+		// and therefore cannot trigger reconciliation.
+		if ( is_admin() ) {
+			$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+			if ( 0 === strpos( $page, 'mad4b-control-plane' ) ) return false;
+		}
+
 		// Seed/provider reconciliation performs filesystem and provider discovery.
 		// It is owned by activation, explicit Skills reconciliation, or Runtime
 		// Convergence after a deployment. Read-only admin rendering never owns it.
