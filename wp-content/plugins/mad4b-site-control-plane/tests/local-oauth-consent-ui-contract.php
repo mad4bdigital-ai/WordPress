@@ -4,6 +4,9 @@ define( 'ABSPATH', __DIR__ );
 if ( ! function_exists( 'wp_get_environment_type' ) ) {
 	function wp_get_environment_type() { return 'staging'; }
 }
+if ( ! function_exists( 'sanitize_key' ) ) {
+	function sanitize_key( $key ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/', '', (string) $key ) ); }
+}
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-local-oauth-consent-ui.php';
 
 $fail = static function ( $message ) {
