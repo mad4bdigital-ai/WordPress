@@ -151,6 +151,14 @@ if "return 'staging' === $environment" not in self_update:
     raise SystemExit("governed upload is not explicitly Staging-bound")
 if "defined( 'MAD4B_SCP_PRODUCTION_SELF_UPDATE_ENABLED' )" not in self_update:
     raise SystemExit("Production native self-update opt-in gate missing")
+for marker in (
+    "private static function environment_resolution()",
+    "MAD4B_SCP_Site_Profile::environment_resolution()",
+    "'environment_resolution' => $environment_resolution",
+    "'hostname_hint_used_for_authority' => false",
+):
+    if marker not in self_update:
+        raise SystemExit(f"dynamic self-update environment invariant missing: {marker}")
 for forbidden_hook in (
     "pre_set_site_transient_update_plugins",
     "site_transient_update_plugins",
