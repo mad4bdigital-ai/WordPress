@@ -15,6 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 	const CONTRACT = 'mad4b.staging-write-candidate-binding.v2';
+	const PLAN_CONTRACT = 'mad4b.staging-write-candidate-binding-plan.v1';
+	const PLAN_ABILITY = 'mad4b/staging-write-candidate-binding-plan';
 	const ABILITY = 'mad4b/staging-write-candidate-bind';
 	const AUDIT_ABILITY = 'mad4b/staging-write-candidate-binding-audit';
 	const SERVER_ID = 'mad4b-enrollment';
@@ -26,8 +28,121 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
 		self::$booted = true;
+		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_plan_ability' ), 11 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 12 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_audit_ability' ), 13 );
+	}
+
+	public static function register_plan_ability() {
+		if ( ! function_exists( 'wp_register_ability' ) ) return;
+		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::PLAN_ABILITY ) ) return;
+		wp_register_ability( self::PLAN_ABILITY, array(
+			'label' => 'Plan Exact Staging Write Candidate Binding',
+			'description' => 'Build a read-only exact-input plan for the narrow candidate-binding operation. This never creates grants, binds authority, approves execution, enables Developer/Breakglass, or mutates Production.',
+			'category' => 'mad4b-read',
+			'execute_callback' => array( __CLASS__, 'plan' ),
+			'permission_callback' => class_exists( 'MAD4B_SCP_Policy' ) ? array( 'MAD4B_SCP_Policy', 'can_read' ) : '__return_false',
+			'input_schema' => array( 'type' => 'object', 'additionalProperties' => false ),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array(
+				'public' => false,
+				'show_in_rest' => false,
+				'mcp' => array(
+					'public' => false,
+					'type' => 'tool',
+					'surface' => 'read',
+					'non_authorizing' => true,
+					'candidate_binding_plan_only' => true,
+					'production_mutation_allowed' => false,
+				),
+				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			),
+		) );
+	}
+
+	public static function plan( $input = array() ) {
+		$blockers = array();
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
+			$blockers[] = 'write_authority_runtime_unavailable';
+			$authority_plan = array();
+			$binding = array();
+		} else {
+			$authority_plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+			$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) $blockers[] = 'site_profile_unconfigured';
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) $blockers[] = 'staging_required';
+		if ( is_array( $authority_plan ) ) {
+			if ( empty( $authority_plan['eligible'] ) ) $blockers[] = 'write_authority_not_eligible';
+			if ( empty( $authority_plan['current_ready'] ) ) $blockers[] = 'persisted_write_authority_not_ready';
+			if ( empty( $authority_plan['agent_present'] ) ) $blockers[] = 'governed_write_agent_missing';
+			if ( ! empty( $authority_plan['exact_grants_missing_count'] ) ) $blockers[] = 'exact_write_grants_missing';
+			if ( ! empty( $authority_plan['stale_allow_grants_count'] ) ) $blockers[] = 'stale_write_grants_present';
+			if ( ! empty( $authority_plan['broad_environment_grants_count'] ) ) $blockers[] = 'broad_environment_grants_present';
+			if ( ! empty( $authority_plan['duplicate_exact_allow_grants_count'] ) ) $blockers[] = 'duplicate_exact_grants_present';
+			if ( ! empty( $authority_plan['current_agent_wildcard_grants'] ) || ! empty( $authority_plan['global_registry_wildcard_grants'] ) ) $blockers[] = 'wildcard_grants_present';
+			if ( ! empty( $authority_plan['breakglass_included'] ) ) $blockers[] = 'breakglass_leak';
+		}
+		if ( empty( $binding['required'] ) ) $blockers[] = 'candidate_binding_not_required';
+		if ( ! empty( $binding['match'] ) ) $blockers[] = 'candidate_binding_already_current';
+
+		$revision = class_exists( 'MAD4B_SCP_Site_Profile' ) ? (int) MAD4B_SCP_Site_Profile::revision() : 0;
+		$profile_digest = class_exists( 'MAD4B_SCP_Site_Profile' ) ? strtolower( (string) MAD4B_SCP_Site_Profile::profile_digest() ) : '';
+		$bind_input = array(
+			'expected_revision' => $revision,
+			'expected_profile_digest' => $profile_digest,
+			'expected_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
+			'expected_build_fingerprint' => isset( $binding['current_build_fingerprint'] ) ? (string) $binding['current_build_fingerprint'] : '',
+			'expected_package_manifest_digest' => isset( $binding['current_package_manifest_digest'] ) ? (string) $binding['current_package_manifest_digest'] : '',
+			'expected_artifact_identity' => isset( $binding['current_artifact_identity'] ) ? (string) $binding['current_artifact_identity'] : '',
+			'expected_agent_public_id' => isset( $authority_plan['agent_public_id'] ) ? (string) $authority_plan['agent_public_id'] : '',
+			'expected_write_tool_count' => isset( $authority_plan['write_tool_count'] ) ? (int) $authority_plan['write_tool_count'] : 0,
+			'expected_write_inventory_fingerprint' => isset( $authority_plan['write_inventory_fingerprint'] ) ? (string) $authority_plan['write_inventory_fingerprint'] : '',
+			'expected_grant_rows_fingerprint' => isset( $authority_plan['grant_rows_fingerprint'] ) ? (string) $authority_plan['grant_rows_fingerprint'] : '',
+			'confirmation' => self::CONFIRMATION,
+		);
+		foreach ( array(
+			'expected_profile_digest' => 64,
+			'expected_build_fingerprint' => 64,
+			'expected_package_manifest_digest' => 64,
+			'expected_write_inventory_fingerprint' => 64,
+			'expected_grant_rows_fingerprint' => 64,
+		) as $field => $length ) {
+			if ( strlen( (string) $bind_input[ $field ] ) !== $length ) $blockers[] = 'invalid_plan_field:' . $field;
+		}
+		if ( 40 !== strlen( (string) $bind_input['expected_source_commit_sha'] ) ) $blockers[] = 'invalid_plan_field:expected_source_commit_sha';
+		if ( 36 !== strlen( (string) $bind_input['expected_agent_public_id'] ) ) $blockers[] = 'invalid_plan_field:expected_agent_public_id';
+		if ( $bind_input['expected_write_tool_count'] < 1 ) $blockers[] = 'invalid_plan_field:expected_write_tool_count';
+		if ( ! preg_match( '/^mad4b-site-control-plane-[A-Za-z0-9._-]+-[A-Fa-f0-9]{40}$/', (string) $bind_input['expected_artifact_identity'] ) ) $blockers[] = 'invalid_plan_field:expected_artifact_identity';
+
+		$blockers = array_values( array_unique( $blockers ) );
+		$execution_eligible = empty( $blockers );
+		$basis = array(
+			'contract' => self::PLAN_CONTRACT,
+			'non_authorizing' => true,
+			'read_only' => true,
+			'mutation_performed' => false,
+			'production_mutation' => false,
+			'breakglass_included' => false,
+			'execution_eligible' => $execution_eligible,
+			'apply_required' => $execution_eligible,
+			'blockers' => $blockers,
+			'apply_ability' => self::ABILITY,
+			'required_confirmation' => self::CONFIRMATION,
+			'bind_input' => $bind_input,
+			'candidate_binding' => $binding,
+			'write_snapshot' => array(
+				'write_tool_count' => isset( $authority_plan['write_tool_count'] ) ? (int) $authority_plan['write_tool_count'] : 0,
+				'exact_grants_existing' => isset( $authority_plan['exact_grants_existing'] ) ? (int) $authority_plan['exact_grants_existing'] : 0,
+				'exact_grants_missing_count' => isset( $authority_plan['exact_grants_missing_count'] ) ? (int) $authority_plan['exact_grants_missing_count'] : 0,
+				'stale_allow_grants_count' => isset( $authority_plan['stale_allow_grants_count'] ) ? (int) $authority_plan['stale_allow_grants_count'] : 0,
+				'write_inventory_fingerprint' => isset( $authority_plan['write_inventory_fingerprint'] ) ? (string) $authority_plan['write_inventory_fingerprint'] : '',
+				'grant_rows_fingerprint' => isset( $authority_plan['grant_rows_fingerprint'] ) ? (string) $authority_plan['grant_rows_fingerprint'] : '',
+			),
+		);
+		$encoded = wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$basis['plan_sha256'] = false === $encoded ? '' : hash( 'sha256', $encoded );
+		return $basis;
 	}
 
 	public static function register_ability() {
@@ -59,7 +174,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 							'type' => 'string',
 							'minLength' => 40,
 							'maxLength' => 191,
-							'pattern' => '^mad4b-site-control-plane-general-distribution-kit-[A-Fa-f0-9]{40}$',
+							'pattern' => '^mad4b-site-control-plane-[A-Za-z0-9._-]+-[A-Fa-f0-9]{40}$',
 						),
 						'expected_agent_public_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36, 'pattern' => '^[A-Fa-f0-9-]{36}$' ),
 						'expected_write_tool_count' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 200 ),

@@ -100,6 +100,8 @@ class MAD4B_SCP_Brand_Context_Builder {
 	const ROLLBACK_CONTRACT = 'mad4b.rollback.google-drive-brand-context-create.v1';
 	const MAX_DRAFT_BYTES = 120000;
 	public static function gap_plan() { return array(); }
+	public static function convergence_plan() { return array(); }
+	public static function create_draft() { return array(); }
 	public static function append_draft() { return array(); }
 	public static function source_scan_plan() { return array(); }
 	public static function source_scan_apply() { return array(); }

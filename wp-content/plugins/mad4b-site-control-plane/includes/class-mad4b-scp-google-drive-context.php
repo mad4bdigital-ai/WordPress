@@ -434,8 +434,31 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$connected = ! $token_unreadable && is_array( $token ) && ! empty( $token['refresh_token'] );
 		$revocation_pending = $connected && ! empty( $token['revocation_pending'] );
 		$scope = $connected && isset( $token['scope'] ) ? trim( (string) $token['scope'] ) : '';
-		$read_available = $connected && ! $revocation_pending && self::scope_allows_read( $scope );
-		$write_available = $connected && ! $revocation_pending && self::scope_allows_write( $scope );
+		$expires_at = $connected && isset( $token['expires_at'] ) ? (int) $token['expires_at'] : 0;
+		$access_token_present = $connected && ! empty( $token['access_token'] );
+		$access_token_valid = $access_token_present && $expires_at > time() + 90;
+		$refresh_required = $connected && ! $access_token_valid;
+		$refresh_failure_code = $connected && isset( $token['refresh_failure_code'] ) ? sanitize_key( (string) $token['refresh_failure_code'] ) : '';
+		$refresh_failure_provider_code = $connected && isset( $token['refresh_failure_provider_code'] ) ? sanitize_key( (string) $token['refresh_failure_provider_code'] ) : '';
+		$refresh_failure_http_status = $connected && isset( $token['refresh_failure_http_status'] ) ? absint( $token['refresh_failure_http_status'] ) : 0;
+		$refresh_failure_at = $connected && isset( $token['refresh_failure_at'] ) ? sanitize_text_field( (string) $token['refresh_failure_at'] ) : '';
+		$refresh_failed = '' !== $refresh_failure_code;
+		$transport_usable = $connected && ! $revocation_pending && ! $refresh_failed;
+		$read_available = $transport_usable && self::scope_allows_read( $scope );
+		$write_available = $transport_usable && self::scope_allows_write( $scope );
+		$health_state = ! $connected
+			? ( $token_unreadable ? 'token_unreadable' : 'disconnected' )
+			: ( $revocation_pending
+				? 'revocation_pending'
+				: ( $refresh_failed ? 'refresh_failed' : ( $refresh_required ? 'refresh_required' : 'healthy' ) ) );
+		$blockers = self::connection_blockers( $credentials, $token );
+		$write_blockers = array();
+		if ( ! $write_available ) {
+			if ( $refresh_failed ) $write_blockers[] = 'google_drive_token_refresh_failed';
+			elseif ( ! self::scope_allows_write( $scope ) ) $write_blockers[] = 'google_drive_write_scope_not_granted';
+			elseif ( $revocation_pending ) $write_blockers[] = 'google_drive_revocation_pending';
+			elseif ( ! $connected ) $write_blockers[] = 'google_drive_not_connected';
+		}
 		return array(
 			'contract' => self::CONTRACT,
 			'auth_mode' => self::auth_mode(),
@@ -444,7 +467,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'connected' => $connected,
 			'read_available' => $read_available,
 			'write_available' => $write_available,
-			'read_only' => $connected && ! $write_available,
+			'read_only' => $connected && ! $write_available && self::scope_allows_read( $scope ),
 			'access_mode' => $token_unreadable ? 'token_unreadable' : ( $revocation_pending ? 'revocation_pending' : ( $write_available ? 'read_write' : 'read_only' ) ),
 			'revocation_pending' => $revocation_pending,
 			'token_unreadable' => $token_unreadable,
@@ -454,11 +477,20 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'account_email' => $connected && isset( $token['account_email'] ) ? sanitize_email( (string) $token['account_email'] ) : '',
 			'account_name' => $connected && isset( $token['account_name'] ) ? sanitize_text_field( (string) $token['account_name'] ) : '',
 			'permission_id' => $connected && isset( $token['permission_id'] ) ? sanitize_text_field( (string) $token['permission_id'] ) : '',
-			'expires_at' => $connected && isset( $token['expires_at'] ) ? (int) $token['expires_at'] : 0,
-			'token_healthy' => $connected && ( ! empty( $token['access_token'] ) || ! empty( $token['refresh_token'] ) ),
+			'expires_at' => $expires_at,
+			'credential_fresh' => $access_token_valid,
+			'refresh_required' => $refresh_required,
+			'refresh_failed' => $refresh_failed,
+			'refresh_failure_code' => $refresh_failure_code,
+			'refresh_failure_provider_code' => $refresh_failure_provider_code,
+			'refresh_failure_http_status' => $refresh_failure_http_status,
+			'refresh_failure_at' => $refresh_failure_at,
+			'reconnect_required' => $refresh_failed && in_array( $refresh_failure_provider_code, array( 'invalid_grant', 'invalid_client', 'unauthorized_client' ), true ),
+			'health_state' => $health_state,
+			'token_healthy' => 'healthy' === $health_state,
 			'last_verified_at' => $connected && isset( $token['last_verified_at'] ) ? sanitize_text_field( (string) $token['last_verified_at'] ) : '',
-			'blockers' => self::connection_blockers( $credentials, $token ),
-			'write_blockers' => $write_available ? array() : array( 'google_drive_write_scope_not_granted' ),
+			'blockers' => $blockers,
+			'write_blockers' => array_values( array_unique( $write_blockers ) ),
 		);
 	}
 
@@ -479,6 +511,15 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'revocation_error' => isset( $status['revocation_error'] ) ? (string) $status['revocation_error'] : '',
 			'revocation_attempted_at' => isset( $status['revocation_attempted_at'] ) ? (string) $status['revocation_attempted_at'] : '',
 			'expires_at' => isset( $status['expires_at'] ) ? (int) $status['expires_at'] : 0,
+			'credential_fresh' => ! empty( $status['credential_fresh'] ),
+			'refresh_required' => ! empty( $status['refresh_required'] ),
+			'refresh_failed' => ! empty( $status['refresh_failed'] ),
+			'refresh_failure_code' => isset( $status['refresh_failure_code'] ) ? (string) $status['refresh_failure_code'] : '',
+			'refresh_failure_provider_code' => isset( $status['refresh_failure_provider_code'] ) ? (string) $status['refresh_failure_provider_code'] : '',
+			'refresh_failure_http_status' => isset( $status['refresh_failure_http_status'] ) ? (int) $status['refresh_failure_http_status'] : 0,
+			'refresh_failure_at' => isset( $status['refresh_failure_at'] ) ? (string) $status['refresh_failure_at'] : '',
+			'reconnect_required' => ! empty( $status['reconnect_required'] ),
+			'health_state' => isset( $status['health_state'] ) ? (string) $status['health_state'] : 'unknown',
 			'token_healthy' => ! empty( $status['token_healthy'] ),
 			'last_verified_at' => isset( $status['last_verified_at'] ) ? (string) $status['last_verified_at'] : '',
 			'blockers' => isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? array_values( $status['blockers'] ) : array(),
@@ -2662,9 +2703,16 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! empty( $record['revocation_pending'] ) ) return new WP_Error( 'mad4b_google_drive_revocation_pending', 'Google Drive access is disabled while remote revocation is pending.' );
 		if ( ! empty( $record['access_token'] ) && ! empty( $record['expires_at'] ) && (int) $record['expires_at'] > time() + 90 ) return (string) $record['access_token'];
 		$record_mode = isset( $record['auth_mode'] ) ? sanitize_key( (string) $record['auth_mode'] ) : self::AUTH_MODE_CUSTOM;
-		if ( self::AUTH_MODE_MANAGED === $record_mode ) return self::refresh_managed_access_token( $record );
+		if ( self::AUTH_MODE_MANAGED === $record_mode ) {
+			$managed = self::refresh_managed_access_token( $record );
+			if ( is_wp_error( $managed ) ) self::record_refresh_failure( $record, $managed );
+			return $managed;
+		}
 		$credentials = self::credentials( $record_mode );
-		if ( is_wp_error( $credentials ) ) return $credentials;
+		if ( is_wp_error( $credentials ) ) {
+			self::record_refresh_failure( $record, $credentials );
+			return $credentials;
+		}
 		$response = wp_remote_post(
 			self::TOKEN_ENDPOINT,
 			array(
@@ -2679,8 +2727,15 @@ final class MAD4B_SCP_Google_Drive_Context {
 			)
 		);
 		$tokens = self::decode_json_response( $response, 'mad4b_google_drive_token_refresh_failed' );
-		if ( is_wp_error( $tokens ) ) return $tokens;
-		if ( empty( $tokens['access_token'] ) ) return new WP_Error( 'mad4b_google_drive_refreshed_token_missing', 'Google token refresh did not return an access token.' );
+		if ( is_wp_error( $tokens ) ) {
+			self::record_refresh_failure( $record, $tokens );
+			return $tokens;
+		}
+		if ( empty( $tokens['access_token'] ) ) {
+			$error = new WP_Error( 'mad4b_google_drive_refreshed_token_missing', 'Google token refresh did not return an access token.' );
+			self::record_refresh_failure( $record, $error );
+			return $error;
+		}
 		$persisted = self::persist_tokens(
 			(string) $tokens['access_token'],
 			(string) $record['refresh_token'],
@@ -2726,6 +2781,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$record['auth_mode'] = $auth_mode;
 		$grant_status = self::workspace_grants_status();
 		$record['workspace_grant_sha256'] = isset( $grant_status['grant_sha256'] ) ? (string) $grant_status['grant_sha256'] : '';
+		unset( $record['refresh_failure_code'], $record['refresh_failure_provider_code'], $record['refresh_failure_http_status'], $record['refresh_failure_at'] );
 		$record['updated_at'] = gmdate( 'c' );
 		$sealed = self::seal_token_record( $record );
 		if ( is_wp_error( $sealed ) ) return $sealed;
@@ -3186,7 +3242,21 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( $stored_present && ( ! is_array( $token ) || empty( $token['refresh_token'] ) ) ) $blockers[] = 'google_drive_token_unreadable';
 		elseif ( ! is_array( $token ) || empty( $token['refresh_token'] ) ) $blockers[] = 'google_drive_not_connected';
 		elseif ( ! empty( $token['revocation_pending'] ) ) $blockers[] = 'google_drive_revocation_pending';
+		elseif ( ! empty( $token['refresh_failure_code'] ) ) $blockers[] = 'google_drive_token_refresh_failed';
 		return $blockers;
+	}
+
+	private static function record_refresh_failure( array $record, $error ) {
+		if ( ! is_wp_error( $error ) ) return false;
+		$data = $error->get_error_data();
+		$data = is_array( $data ) ? $data : array();
+		$record['refresh_failure_code'] = sanitize_key( (string) $error->get_error_code() );
+		$record['refresh_failure_provider_code'] = isset( $data['provider_code'] ) ? sanitize_key( (string) $data['provider_code'] ) : '';
+		$record['refresh_failure_http_status'] = isset( $data['status'] ) ? absint( $data['status'] ) : 0;
+		$record['refresh_failure_at'] = gmdate( 'c' );
+		$sealed = self::seal_token_record( $record );
+		if ( is_wp_error( $sealed ) ) return false;
+		return self::write_option( self::TOKEN_OPTION, $sealed );
 	}
 
 	private static function bounded_drive_id( $value ) {

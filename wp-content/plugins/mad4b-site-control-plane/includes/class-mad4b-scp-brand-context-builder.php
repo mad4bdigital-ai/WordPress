@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Brand_Context_Builder {
 	const CONTRACT = 'mad4b.brand-context-builder.v1';
 	const PLAN_CONTRACT = 'mad4b.brand-gap-plan.v1';
+	const CONVERGENCE_PLAN_CONTRACT = 'mad4b.brand-core-convergence-plan.v1';
 	const DRAFT_CONTRACT = 'mad4b.brand-context-draft.v1';
 	const SCAN_PLAN_CONTRACT = 'mad4b.context-source-scan-plan.v1';
 	const MATERIALIZE_CONTRACT = 'mad4b.brand-context-materialization.v1';
@@ -122,6 +123,116 @@ final class MAD4B_SCP_Brand_Context_Builder {
 
 	public static function generatable_categories() {
 		return array( 'tone_of_voice', 'editorial_guidelines' );
+	}
+
+	/**
+	 * Build an actionable, non-authorizing plan that closes Brand Core gaps.
+	 * Missing generatable categories are routed through evidence-bound creation;
+	 * non-generatable or conflicting authority remains human-review gated.
+	 */
+	public static function convergence_plan( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return new WP_Error( 'mad4b_brand_convergence_context_unavailable', 'Context Authority is unavailable.' );
+		$coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
+		$gap = self::gap_plan( array(
+			'include_authoritative_content' => ! array_key_exists( 'include_authoritative_content', $input ) || ! empty( $input['include_authoritative_content'] ),
+			'include_rendered_frontend' => ! empty( $input['include_rendered_frontend'] ),
+		) );
+		if ( is_wp_error( $gap ) ) return $gap;
+
+		$writable_sources = array();
+		foreach ( MAD4B_SCP_Context_Authority::sources() as $source_id => $source ) {
+			if ( ! MAD4B_SCP_Context_Authority::source_allows_write( $source_id, 'create' ) ) continue;
+			$root = isset( $source['external_root_id'] ) ? (string) $source['external_root_id'] : '';
+			if ( '' === $root || 'root' === strtolower( $root ) ) continue;
+			$writable_sources[] = array(
+				'source_id' => (string) $source_id,
+				'label' => isset( $source['label'] ) ? (string) $source['label'] : '',
+				'provider' => isset( $source['provider'] ) ? (string) $source['provider'] : '',
+				'write_policy' => isset( $source['write_policy'] ) ? (string) $source['write_policy'] : '',
+			);
+		}
+		usort( $writable_sources, static function ( $a, $b ) { return strcmp( (string) $a['source_id'], (string) $b['source_id'] ); } );
+
+		$draft_map = array();
+		foreach ( isset( $gap['drafts'] ) && is_array( $gap['drafts'] ) ? $gap['drafts'] : array() as $draft ) {
+			if ( is_array( $draft ) && ! empty( $draft['category'] ) ) $draft_map[ (string) $draft['category'] ] = $draft;
+		}
+		$review_policy = method_exists( 'MAD4B_SCP_Context_Authority', 'ai_review_policy_status' )
+			? MAD4B_SCP_Context_Authority::ai_review_policy_status()
+			: array();
+
+		$actions = array();
+		foreach ( self::expected_categories() as $category => $label ) {
+			$row = isset( $coverage['coverage'][ $category ] ) && is_array( $coverage['coverage'][ $category ] ) ? $coverage['coverage'][ $category ] : array();
+			if ( ! empty( $row['ready'] ) ) {
+				$actions[] = array( 'category' => $category, 'label' => $label, 'state' => 'ready', 'action' => 'none', 'human_decision_required' => false, 'blockers' => array() );
+				continue;
+			}
+			if ( ! empty( $row['conflict'] ) ) {
+				$actions[] = array(
+					'category' => $category,
+					'label' => $label,
+					'state' => 'blocked',
+					'action' => 'resolve_existing_authority_conflict',
+					'human_decision_required' => true,
+					'blockers' => array( 'brand_authority_conflict_requires_review' ),
+					'next_read_ability' => 'context/review-queue',
+				);
+				continue;
+			}
+			if ( ! in_array( $category, self::generatable_categories(), true ) ) {
+				$actions[] = array(
+					'category' => $category,
+					'label' => $label,
+					'state' => 'blocked',
+					'action' => 'supply_or_approve_authoritative_source',
+					'human_decision_required' => true,
+					'blockers' => array( 'non_generatable_brand_authority_missing' ),
+					'next_read_ability' => 'context/review-queue',
+				);
+				continue;
+			}
+			$draft = isset( $draft_map[ $category ] ) ? $draft_map[ $category ] : array();
+			$blockers = isset( $draft['blockers'] ) && is_array( $draft['blockers'] ) ? array_values( $draft['blockers'] ) : array( 'generation_plan_unavailable' );
+			$ready_to_generate = ! empty( $draft['ready_to_generate'] );
+			$actions[] = array(
+				'category' => $category,
+				'label' => $label,
+				'state' => $ready_to_generate ? 'ready_to_create' : 'blocked',
+				'action' => 'create_new',
+				'generation_evidence_digest' => isset( $draft['generation_evidence_digest'] ) ? (string) $draft['generation_evidence_digest'] : '',
+				'suggested_name' => isset( $draft['suggested_name'] ) ? (string) $draft['suggested_name'] : self::suggested_name( $category ),
+				'writable_source_count' => count( $writable_sources ),
+				'human_decision_required' => true,
+				'blockers' => $ready_to_generate ? ( empty( $writable_sources ) ? array( 'writable_brand_context_source_required' ) : array() ) : $blockers,
+				'pipeline' => array(
+					array( 'step' => 'collect_evidence', 'ability' => 'context/brand-gap-plan', 'mutation' => false ),
+					array( 'step' => 'synthesize_draft', 'executor' => 'managed_skill_or_agent', 'mutation' => false, 'authority_created' => false ),
+					array( 'step' => 'persist_draft', 'ability' => 'context/brand-draft-create', 'mutation' => true, 'approval_required' => true ),
+					array( 'step' => 'materialize', 'ability' => 'context/materialize-brand-draft', 'mutation' => true, 'approval_required' => true ),
+					array( 'step' => 'readback', 'ability' => 'context/source-scan-plan', 'mutation' => false ),
+					array( 'step' => 'review', 'ability' => ! empty( $review_policy['ready'] ) ? 'mad4b/context-ai-review' : 'context/review-queue', 'mutation' => ! empty( $review_policy['ready'] ), 'approval_required' => true ),
+					array( 'step' => 'coverage_readback', 'ability' => 'context/brand-core-coverage', 'mutation' => false ),
+				),
+			);
+		}
+		$basis = array(
+			'contract' => self::CONVERGENCE_PLAN_CONTRACT,
+			'read_only' => true,
+			'mutation_performed' => false,
+			'coverage_ready' => ! empty( $coverage['ready'] ),
+			'registry_revision' => isset( $coverage['registry_revision'] ) ? (int) $coverage['registry_revision'] : 0,
+			'authority_manifest_fingerprint' => isset( $coverage['authority_manifest_fingerprint'] ) ? (string) $coverage['authority_manifest_fingerprint'] : '',
+			'gap_plan_sha256' => isset( $gap['plan_sha256'] ) ? (string) $gap['plan_sha256'] : '',
+			'writable_sources' => $writable_sources,
+			'review_policy' => $review_policy,
+			'actions' => $actions,
+			'auto_approval' => false,
+			'production_mutation' => false,
+		);
+		$basis['plan_sha256'] = hash( 'sha256', self::stable_json( $basis ) );
+		return $basis;
 	}
 
 	private static function site_uuid() {
@@ -1180,6 +1291,25 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			);
 		}
 		return $error;
+	}
+
+	public static function create_draft( $input ) {
+		$input = is_array( $input ) ? $input : array();
+		$preflight = self::draft_preflight( $input );
+		if ( is_wp_error( $preflight ) ) return $preflight;
+		if ( empty( $preflight['quality_gate_pass'] ) ) {
+			return new WP_Error( 'mad4b_brand_draft_quality_gate_failed', 'Generated Brand Context draft did not pass evidence-bound structural preflight.', array( 'preflight' => $preflight ) );
+		}
+		$input['draft_preflight_sha256'] = (string) $preflight['draft_preflight_sha256'];
+		$result = self::append_draft( $input );
+		if ( is_array( $result ) ) {
+			$result['creation_contract'] = 'mad4b.brand-context-create.v1';
+			$result['preflight'] = $preflight;
+			$result['materialization_performed'] = false;
+			$result['review_performed'] = false;
+			$result['brand_core_ready'] = false;
+		}
+		return $result;
 	}
 
 	public static function append_draft( $input ) {

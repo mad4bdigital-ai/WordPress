@@ -11,14 +11,15 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Staging_Certification {
 	const CONTRACT = 'mad4b.staging-certification-status.v1';
 	const ROLLBACK_CONTRACT = 'mad4b.rollback-candidate.v1';
+	const CONVERGENCE_CONTRACT = 'mad4b.staging-convergence-plan.v1';
 
 	public static function boot() {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 39 );
 	}
 
 	public static function register_ability() {
-		if ( ! function_exists( 'wp_register_ability' ) || wp_has_ability( 'mad4b/staging-certification-status' ) ) return;
-		wp_register_ability( 'mad4b/staging-certification-status', array(
+		if ( ! function_exists( 'wp_register_ability' ) ) return;
+		if ( ! wp_has_ability( 'mad4b/staging-certification-status' ) ) wp_register_ability( 'mad4b/staging-certification-status', array(
 			'label' => 'Get Staging Certification Status',
 			'description' => 'Read the exact post-deployment Staging gates and remaining human/external remediation without mutation.',
 			'category' => 'mad4b-read',
@@ -39,6 +40,28 @@ final class MAD4B_SCP_Staging_Certification {
 				'public' => false,
 				'show_in_rest' => false,
 				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			),
+		) );
+		if ( ! wp_has_ability( 'mad4b/staging-convergence-plan' ) ) wp_register_ability( 'mad4b/staging-convergence-plan', array(
+			'label' => 'Plan Staging Convergence',
+			'description' => 'Return an ordered, non-authorizing remediation DAG for every current Staging blocker, including Brand Core creation, authority reconciliation, external evidence, browser acceptance and performance sampling.',
+			'category' => 'mad4b-read',
+			'execute_callback' => array( __CLASS__, 'convergence_plan' ),
+			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+			'input_schema' => array(
+				'type' => 'object',
+				'properties' => array(
+					'include_authoritative_content' => array( 'type' => 'boolean', 'default' => true ),
+					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
+				),
+				'additionalProperties' => false,
+			),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array(
+				'public' => false,
+				'show_in_rest' => false,
+				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read', 'non_authorizing' => true ),
 				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			),
 		) );
@@ -218,6 +241,178 @@ final class MAD4B_SCP_Staging_Certification {
 		);
 	}
 
+	public static function convergence_plan( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$status = self::status( array( 'compact' => false ) );
+		$blocking = isset( $status['blocking_gates'] ) && is_array( $status['blocking_gates'] ) ? array_values( $status['blocking_gates'] ) : array();
+		$actions = array();
+		$seen = array();
+		$append = static function ( &$actions, &$seen, $id, array $row ) {
+			if ( isset( $seen[ $id ] ) ) return;
+			$seen[ $id ] = true;
+			$actions[] = array_merge( array( 'action_id' => $id ), $row );
+		};
+
+		if ( in_array( 'safe_boot', $blocking, true ) ) {
+			$append( $actions, $seen, 'external_mcp_handshake_refresh', array(
+				'kind' => 'external_evidence',
+				'executor' => 'external_mcp_client',
+				'human_decision_required' => false,
+				'automatic_execution_allowed' => false,
+				'instruction' => 'Re-establish a real OAuth MCP session and complete initialize plus tools/list on mad4b-chatgpt.',
+				'readback_ability' => 'mad4b/connection-status',
+			) );
+		}
+		if ( in_array( 'brand_core_context_coverage', $blocking, true ) ) {
+			$google_connection = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && method_exists( 'MAD4B_SCP_Google_Drive_Context', 'public_connection_status' )
+				? MAD4B_SCP_Google_Drive_Context::public_connection_status()
+				: array();
+			if ( ! empty( $google_connection['refresh_failed'] ) || ! empty( $google_connection['reconnect_required'] ) ) {
+				$append( $actions, $seen, 'google_drive_reconnect', array(
+					'kind' => 'external_oauth_reauthorization',
+					'executor' => 'site_owner',
+					'human_decision_required' => true,
+					'automatic_execution_allowed' => false,
+					'instruction' => 'Reconnect the governed Google Drive source with the already-selected access mode, then require a fresh provider readback before Brand generation continues.',
+					'health_state' => isset( $google_connection['health_state'] ) ? (string) $google_connection['health_state'] : '',
+					'refresh_failure_code' => isset( $google_connection['refresh_failure_code'] ) ? (string) $google_connection['refresh_failure_code'] : '',
+					'refresh_failure_provider_code' => isset( $google_connection['refresh_failure_provider_code'] ) ? (string) $google_connection['refresh_failure_provider_code'] : '',
+					'readback_ability' => 'context/google-drive-status',
+					'production_policy' => 'same_site_profile_only',
+				) );
+			}
+			$brand_plan = class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) && method_exists( 'MAD4B_SCP_Brand_Context_Builder', 'convergence_plan' )
+				? MAD4B_SCP_Brand_Context_Builder::convergence_plan( $input )
+				: new WP_Error( 'mad4b_brand_convergence_plan_unavailable', 'Brand Core convergence planner is unavailable.' );
+			$depends_on = array();
+			if ( ! empty( $google_connection['refresh_failed'] ) || ! empty( $google_connection['reconnect_required'] ) ) $depends_on[] = 'google_drive_reconnect';
+			$append( $actions, $seen, 'brand_core_convergence', array(
+				'kind' => 'hybrid_creation',
+				'executor' => 'managed_skill_or_agent_plus_wordpress',
+				'human_decision_required' => true,
+				'automatic_execution_allowed' => false,
+				'depends_on' => $depends_on,
+				'plan_ability' => 'context/brand-core-convergence-plan',
+				'plan' => is_wp_error( $brand_plan ) ? array( 'error_code' => $brand_plan->get_error_code() ) : $brand_plan,
+				'readback_ability' => 'context/brand-core-coverage',
+			) );
+		}
+		if ( in_array( 'external_skill_snapshot', $blocking, true ) ) {
+			$append( $actions, $seen, 'external_snapshot_refresh', array(
+				'kind' => 'external_evidence',
+				'executor' => 'external_mcp_client',
+				'human_decision_required' => false,
+				'automatic_execution_allowed' => false,
+				'depends_on' => array( 'external_mcp_handshake_refresh' ),
+				'instruction' => 'Export a fresh exact-build snapshot token and finalize it from the same verified external subject/session after tools/list.',
+				'readback_ability' => 'mad4b/live-acceptance-status',
+			) );
+		}
+		if ( in_array( 'write_authority', $blocking, true ) || in_array( 'write_runtime', $blocking, true ) ) {
+			$grant_plan = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan' )
+				? MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan()
+				: array();
+			$grant_plan_error = is_wp_error( $grant_plan );
+			$missing_write = ! $grant_plan_error && isset( $grant_plan['expected_missing_abilities'] ) && is_array( $grant_plan['expected_missing_abilities'] ) ? $grant_plan['expected_missing_abilities'] : array();
+			$stale_grants = ! $grant_plan_error && isset( $grant_plan['expected_stale_grant_ids'] ) && is_array( $grant_plan['expected_stale_grant_ids'] ) ? $grant_plan['expected_stale_grant_ids'] : array();
+			$missing_transport = ! $grant_plan_error && isset( $grant_plan['expected_missing_transport_abilities'] ) && is_array( $grant_plan['expected_missing_transport_abilities'] ) ? $grant_plan['expected_missing_transport_abilities'] : array();
+			$requires_grant_reconcile = ! $grant_plan_error && ( ! empty( $missing_write ) || ! empty( $stale_grants ) || ! empty( $missing_transport ) );
+			if ( $grant_plan_error ) {
+				$append( $actions, $seen, 'write_authority_plan_blocked', array(
+					'kind' => 'read_only_blocker',
+					'executor' => 'wordpress_native',
+					'human_decision_required' => false,
+					'automatic_execution_allowed' => false,
+					'plan_ability' => 'mad4b/staging-write-grant-reconciliation-plan',
+					'error_code' => $grant_plan->get_error_code(),
+					'instruction' => 'Repair the read-only exact authority planning preconditions before any authority mutation is considered.',
+					'production_policy' => 'deny',
+				) );
+			}
+			if ( $grant_plan_error ) {
+				// The blocker action above is intentionally terminal for this authority lane.
+			} elseif ( $requires_grant_reconcile ) {
+				$append( $actions, $seen, 'write_authority_reconcile', array(
+					'kind' => 'governed_mutation',
+					'executor' => 'wordpress_native',
+					'human_decision_required' => true,
+					'automatic_execution_allowed' => false,
+					'plan_ability' => 'mad4b/staging-write-grant-reconciliation-plan',
+					'apply_ability' => 'mad4b/staging-write-grant-reconcile',
+					'plan_sha256' => isset( $grant_plan['plan_sha256'] ) ? (string) $grant_plan['plan_sha256'] : '',
+					'expected_missing_abilities' => array_values( $missing_write ),
+					'expected_stale_grant_ids' => array_values( $stale_grants ),
+					'expected_missing_transport_abilities' => array_values( $missing_transport ),
+					'readback_ability' => 'mad4b/write-runtime-certification',
+					'production_policy' => 'deny',
+					'breakglass' => false,
+				) );
+			} else {
+				$candidate_plan = class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'plan' )
+					? MAD4B_SCP_Staging_Write_Candidate_Binding::plan()
+					: array();
+				$append( $actions, $seen, 'candidate_binding_only', array(
+					'kind' => 'governed_mutation',
+					'executor' => 'wordpress_native',
+					'human_decision_required' => true,
+					'automatic_execution_allowed' => false,
+					'plan_ability' => 'mad4b/staging-write-candidate-binding-plan',
+					'apply_ability' => 'mad4b/staging-write-candidate-bind',
+					'plan' => $candidate_plan,
+					'readback_ability' => 'mad4b/write-runtime-certification',
+					'grant_mutation_allowed' => false,
+					'production_policy' => 'deny',
+					'breakglass' => false,
+				) );
+			}
+		}
+		if ( in_array( 'browser_runtime', $blocking, true ) ) {
+			$append( $actions, $seen, 'browser_acceptance', array(
+				'kind' => 'external_executor_job',
+				'executor' => 'external_browser_agent',
+				'human_decision_required' => false,
+				'automatic_execution_allowed' => true,
+				'operation_id' => 'browser_acceptance_execution',
+				'apply_ability' => 'mad4b/browser-acceptance-run',
+				'readback_ability' => 'mad4b/browser-acceptance-result',
+			) );
+		}
+		if ( in_array( 'performance_budget', $blocking, true ) ) {
+			$append( $actions, $seen, 'frontend_performance_sampling', array(
+				'kind' => 'external_executor_job',
+				'executor' => 'external_browser_agent',
+				'human_decision_required' => false,
+				'automatic_execution_allowed' => true,
+				'operation_id' => 'frontend_performance_sampling',
+				'apply_ability' => 'mad4b/frontend-performance-sample-run',
+				'readback_ability' => 'mad4b/frontend-performance-status',
+				'minimum_samples' => 3,
+			) );
+		}
+		$append( $actions, $seen, 'provider_closure_review', array(
+			'kind' => 'read_only_followup',
+			'executor' => 'wordpress_native',
+			'human_decision_required' => false,
+			'automatic_execution_allowed' => true,
+			'plan_ability' => 'mad4b/provider-closure-matrix',
+			'instruction' => 'Keep uncertified provider writes fail-closed; route each item to adapter/catalog reconciliation, behavioral recertification, artifact authority, or owner-governed canary.',
+		) );
+
+		$basis = array(
+			'contract' => self::CONVERGENCE_CONTRACT,
+			'read_only' => true,
+			'mutation_performed' => false,
+			'production_mutation_performed' => false,
+			'current_ready' => ! empty( $status['ready'] ),
+			'blocking_gates' => $blocking,
+			'actions' => $actions,
+			'principle' => 'automate_evidence_and_planning_never_self_certify_or_auto_approve_authority',
+		);
+		$encoded = wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$basis['plan_sha256'] = false === $encoded ? '' : hash( 'sha256', $encoded );
+		return $basis;
+	}
+
 	private static function safe_read( $name, $callback ) {
 		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) {
 			return array(
@@ -298,12 +493,16 @@ final class MAD4B_SCP_Staging_Certification {
 
 	private static function gate( $ready, $source, array $evidence, $owner ) {
 		$blockers = array();
-		foreach ( array( 'blockers', 'blocking_reasons', 'incomplete_evidence', 'provenance_mismatch', 'budget_failures' ) as $key ) {
+		foreach ( array( 'blockers', 'blocking_reasons', 'incomplete_evidence', 'provenance_mismatch', 'budget_failures', 'certification_blockers' ) as $key ) {
 			if ( isset( $evidence[ $key ] ) && is_array( $evidence[ $key ] ) ) {
 				foreach ( $evidence[ $key ] as $item ) if ( is_scalar( $item ) && '' !== (string) $item ) $blockers[] = (string) $item;
 			}
 		}
 		if ( isset( $evidence['blocker'] ) && is_scalar( $evidence['blocker'] ) && '' !== (string) $evidence['blocker'] ) $blockers[] = (string) $evidence['blocker'];
+		if ( ! $ready && empty( $blockers ) && isset( $evidence['state'] ) && is_scalar( $evidence['state'] ) ) {
+			$state_blocker = sanitize_key( (string) $evidence['state'] );
+			if ( '' !== $state_blocker && ! in_array( $state_blocker, array( 'ready', 'ok', 'not_applicable' ), true ) ) $blockers[] = $state_blocker;
+		}
 		return array(
 			'ready' => (bool) $ready,
 			'state' => $ready ? 'ready' : 'pending_or_blocked',
