@@ -6,7 +6,7 @@ $GLOBALS['transients']=array(); $GLOBALS['user_meta_rows']=array(); $GLOBALS['ab
 class WP_Error { private $c; private $d; public function __construct($c,$m='',$d=null){$this->c=$c;$this->d=$d;} public function get_error_code(){return $this->c;} public function get_error_data(){return $this->d;} }
 function is_wp_error($v){return $v instanceof WP_Error;} function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/','',(string)$v));} function sanitize_text_field($v){return trim((string)$v);} function absint($v){return abs((int)$v);} function wp_parse_url($u,$c=-1){return parse_url($u,$c);} function wp_json_encode($v,$f=0){return json_encode($v,$f);} function trailingslashit($v){return rtrim((string)$v,'/\\').'/';} function untrailingslashit($v){return rtrim((string)$v,'/\\');}
 function home_url($p=''){return rtrim($GLOBALS['home'],'/').(''===$p?'':'/'.ltrim($p,'/'));} function rest_url($p=''){return rtrim($GLOBALS['home'],'/').'/wp-json/'.ltrim($p,'/');} function wp_get_environment_type(){return $GLOBALS['env'];} function get_option($k,$d=false){return array_key_exists($k,$GLOBALS['opts'])?$GLOBALS['opts'][$k]:$d;} function update_option($k,$v,$a=null){$GLOBALS['opts'][$k]=$v;return true;} function delete_option($k){unset($GLOBALS['opts'][$k]);return true;} function get_userdata($id){return (int)$id===7?(object)array('ID'=>7):false;} function user_can($u,$c){return is_object($u)&&$u->ID===7&&$c==='manage_options';} function current_user_can($c){return true;} function get_current_user_id(){return 7;} function wp_generate_uuid4(){return 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';} function get_bloginfo($k){return 'Test';}
-function add_action(){return true;} function remove_action(){return true;} function add_filter(){return true;} function apply_filters($hook,$value){return $hook==='mcp_adapter_session_max_per_user'?64:$value;} function is_admin(){return false;} function wp_unslash($v){return $v;} function esc_html($v){return $v;} function esc_html__($v){return $v;} function wp_register_ability_category(){} function wp_register_ability(){}
+function add_action(){return true;} function remove_action(){return true;} function add_filter(){return true;} function apply_filters($hook,$value){return $value;} function is_admin(){return false;} function wp_unslash($v){return $v;} function esc_html($v){return $v;} function esc_html__($v){return $v;} function wp_register_ability_category(){} function wp_register_ability(){}
 function wp_has_ability($name){return isset($GLOBALS['abilities'][$name]);} function wp_get_ability($name){return $GLOBALS['abilities'][$name]??null;}
 function is_multisite(){return false;} function get_current_blog_id(){return 1;} function wp_cache_delete(){return true;}
 function set_transient($k,$v,$ttl){$GLOBALS['transients'][$k]=$v;return true;} function get_transient($k){return array_key_exists($k,$GLOBALS['transients'])?$GLOBALS['transients'][$k]:false;} function delete_transient($k){unset($GLOBALS['transients'][$k]);return true;}
@@ -61,7 +61,8 @@ $request=new class { public function get_route(){return '/mcp/mad4b-chatgpt';} }
 // Nested request isolation: stale ChatGPT request scope is reset before the reconnect guard.
 set_priv('chatgpt_request_active',true);
 MAD4B_SCP_Reconnect_Hardening::reset_session_policy_scope(null,null,null);
-ok(32===MAD4B_SCP_Reconnect_Hardening::session_max_per_user(32),'nested REST request cannot inherit prior ChatGPT session policy');
+$rp=new ReflectionProperty('MAD4B_SCP_Reconnect_Hardening','chatgpt_request_active'); $rp->setAccessible(true);
+ok(false===$rp->getValue(),'nested REST request cannot inherit prior ChatGPT repair scope');
 // Preserve the exact bootstrap failure when runtime initialization knows more than a derived status snapshot.
 MAD4B_SCP_Audit::$storage=array('ready'=>false,'schema_ready'=>true,'schema_physical_ready'=>true,'tables_ready'=>true,'transactional'=>true,'legacy_chain_valid'=>true,'head_initialized'=>false,'head_consistent'=>false,'legacy_anchor_match'=>true);
 $bootstrap_error=new ReflectionProperty('MAD4B_SCP_Plugin','schema_error');
@@ -75,14 +76,9 @@ ok('mad4b_audit_head_missing'===$g['blocker_code'],'derived audit blocker remain
 MAD4B_SCP_Audit::$storage=array('ready'=>true);
 
 
-// Session policy stays request-local and exact.
-set_priv('chatgpt_request_active',false);
-ok(32===MAD4B_SCP_Reconnect_Hardening::session_max_per_user(32),'session cap unchanged outside exact ChatGPT request scope');
-ok(86400===MAD4B_SCP_Reconnect_Hardening::session_inactivity_timeout(86400),'session timeout unchanged outside exact ChatGPT request scope');
-set_priv('chatgpt_request_active',true);
-ok(64===MAD4B_SCP_Reconnect_Hardening::session_max_per_user(32),'exact ChatGPT request receives bounded session floor');
-ok(604800===MAD4B_SCP_Reconnect_Hardening::session_inactivity_timeout(86400),'exact ChatGPT request receives bounded inactivity floor');
-set_priv('chatgpt_request_active',false);
+// ChatGPT recovery must not modify Adapter-global session capacity or timeout.
+$policy=MAD4B_SCP_Reconnect_Hardening::session_continuity_policy();
+ok(empty($policy['adapter_session_max_modified'])&&empty($policy['adapter_inactivity_timeout_modified'])&&empty($policy['activity_update_interval_modified']),'ChatGPT repair leaves Adapter-global session policy unchanged');
 
 // Initialize shadow keeps only protocol/client metadata.
 $minimal=priv('minimal_initialize_params',array(array(
@@ -132,10 +128,10 @@ ok(!priv('ensure_session_record',array(7,sid(105),$minimal)),'corrupt existing s
 ok($before===$GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'],'corrupt state remains untouched');
 
 // Capacity is fail-closed and never evicts an existing session.
-$full=array(); for($i=1;$i<=64;$i++)$full[sid(1000+$i)]=srec(1000+$i);
+$full=array(); for($i=1;$i<=32;$i++)$full[sid(1000+$i)]=srec(1000+$i);
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array($full);
 ok(!priv('ensure_session_record',array(7,sid(5000),$minimal)),'repair refuses when bounded capacity is full');
-ok(count($GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'][0])===64,'capacity refusal does not evict an existing session');
+ok(count($GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions'][0])===32,'capacity refusal does not evict an existing session');
 
 // DELETE racing after CAS forces rollback of the repaired session.
 $GLOBALS['user_meta_rows'][7]['mcp_adapter_sessions']=array(array(sid(201)=>srec(1000)));
