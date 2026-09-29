@@ -29,7 +29,8 @@ function get_bloginfo($k){return 'Test';}
 function add_action(){}
 function add_filter(){}
 function remove_action(){}
-function is_admin(){return false;}
+function is_admin(){return ! empty($GLOBALS['admin_mode']);}
+function wp_unslash($v){return $v;}
 function esc_html($v){return $v;}
 function esc_html__($v){return $v;}
 function nocache_headers(){}
@@ -223,10 +224,18 @@ MAD4B_SCP_Plugin::$data=array(
 $governance=MAD4B_SCP_Upgrade_Continuity::governance_status();
 ok(!array_key_exists('bootstrap_error_data',$governance),'governance read status must not expose raw schema bootstrap error data');
 ok(false===strpos(wp_json_encode($governance),'Duplicate entry for key'),'governance read status must not expose database-engine error details');
+$GLOBALS['admin_mode']=true;
+$_GET['page']='sitepress-multilingual-cms/menu/support.php';
+ob_start();
+MAD4B_SCP_Upgrade_Continuity::replace_ambiguous_governance_notice();
+$foreign_notice=ob_get_clean();
+ok(''===$foreign_notice,'third-party admin page must not run deep governance notice diagnostics');
+
+$_GET['page']='mad4b-control-plane';
 ob_start();
 MAD4B_SCP_Upgrade_Continuity::replace_ambiguous_governance_notice();
 $notice=ob_get_clean();
-ok(false!==strpos($notice,'mad4b_governance_schema_unavailable'),'admin notice preserves exact schema blocker code');
+ok(false!==strpos($notice,'mad4b_governance_schema_unavailable'),'MAD4B admin notice preserves exact schema blocker code');
 ok(false!==strpos($notice,'schema=6→9'),'admin notice identifies migration origin and target');
 ok(false!==strpos($notice,'missing_durable_columns=idempotency.claim_epoch'),'admin notice exposes missing durable columns');
 ok(false!==strpos($notice,'missing_durable_indexes=outbox.provider_idempotency'),'admin notice exposes missing durable indexes');
