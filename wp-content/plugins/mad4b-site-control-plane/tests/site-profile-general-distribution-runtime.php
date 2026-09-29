@@ -80,6 +80,41 @@ ok(empty($s['configured']),'different origin cannot inherit legacy identity');
 ok(!isset($GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::OPTION]),'failed legacy match does not create v2 option');
 ok(!MAD4B_SCP_Site_Profile::write_enabled(),'different origin remains zero-authority');
 
+// A valid v2 profile cloned onto another tenant is quarantined. Explicit enrollment
+// creates a fresh site identity instead of reusing the source tenant UUID/revision.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://site-a.test/';
+$site_a=MAD4B_SCP_Site_Profile::save_current_site(array(
+    'expected_revision'=>0,
+    'display_name'=>'Site A',
+    'oauth_user_ids'=>array(7),
+    'oauth_enabled'=>true,
+    'skills_enabled'=>false,
+    'write_enabled'=>false,
+));
+ok(!is_wp_error($site_a)&&!empty($site_a['configured']),'source tenant profile created');
+$site_a_uuid=$site_a['site_uuid'];$site_a_revision=(int)$site_a['revision'];
+$GLOBALS['mad4b_test_home']='https://site-b.test/';
+MAD4B_SCP_Site_Profile::reset_cache();
+$foreign=MAD4B_SCP_Site_Profile::status();
+ok(!empty($foreign['configured'])&&'foreign_origin'===($foreign['binding_state']??''),'cloned profile is classified as foreign origin');
+ok(!empty($foreign['foreign_profile_detected'])&&!empty($foreign['profile_authority_quarantined']),'foreign profile authority is quarantined');
+ok(empty($foreign['oauth_enabled'])&&empty($foreign['write_enabled'])&&empty($foreign['skills_enabled']),'foreign profile carries no authority to the new tenant');
+$site_b=MAD4B_SCP_Site_Profile::save_current_site(array(
+    'expected_revision'=>$site_a_revision,
+    'display_name'=>'Site B',
+    'oauth_user_ids'=>array(7),
+    'oauth_enabled'=>true,
+    'skills_enabled'=>false,
+    'write_enabled'=>false,
+));
+ok(!is_wp_error($site_b),'explicit current-site enrollment replaces foreign binding');
+ok('exact'===($site_b['binding_state']??'')&&!empty($site_b['origin_match'])&&!empty($site_b['environment_match']),'new tenant enrollment binds exactly');
+ok($site_a_uuid!==$site_b['site_uuid'],'new tenant receives a fresh site UUID');
+ok(1===(int)$site_b['revision'],'new tenant identity starts at revision one');
+ok('https://site-b.test'===$site_b['canonical_origin'],'new tenant canonical origin is derived from current home URL');
+ok(empty($site_b['write_enabled'])&&!empty($site_b['oauth_enabled']),'only explicitly requested authority is enabled on rebound identity');
+
 // Invalid v2 record takes precedence and fails closed; it must not fall back to valid legacy authority.
 reset_state();
 $GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://legacy.client.test/subdir/';
