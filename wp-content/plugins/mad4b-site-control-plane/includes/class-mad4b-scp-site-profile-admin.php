@@ -32,6 +32,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 	public static function handle_save() {
 		self::require_save_request();
 		$input = array(
+			'environment' => isset( $_POST['environment'] ) ? wp_unslash( $_POST['environment'] ) : '',
 			'display_name' => isset( $_POST['display_name'] ) ? wp_unslash( $_POST['display_name'] ) : '',
 			'chatgpt_app_id' => isset( $_POST['chatgpt_app_id'] ) ? wp_unslash( $_POST['chatgpt_app_id'] ) : '',
 			'oauth_user_ids' => isset( $_POST['oauth_user_ids'] ) ? wp_unslash( $_POST['oauth_user_ids'] ) : '',
@@ -121,6 +122,11 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		if ( ! current_user_can( 'manage_options' ) ) return;
 		$status = MAD4B_SCP_Site_Profile::status();
 		$profile = MAD4B_SCP_Site_Profile::profile();
+		$resolution = MAD4B_SCP_Site_Profile::environment_resolution();
+		$suggested_environment = isset( $resolution['suggested_environment'] ) ? sanitize_key( (string) $resolution['suggested_environment'] ) : 'production';
+		$selected_environment = ! empty( $status['origin_match'] ) && ! empty( $status['configured_environment'] )
+			? sanitize_key( (string) $status['configured_environment'] )
+			: $suggested_environment;
 		$features = isset( $profile['features'] ) && is_array( $profile['features'] ) ? $profile['features'] : array();
 		$related = isset( $profile['related_origins'] ) && is_array( $profile['related_origins'] ) ? $profile['related_origins'] : array();
 		$users = MAD4B_SCP_Site_Profile::oauth_user_ids();
@@ -132,7 +138,9 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			<?php if ( '' !== $state ) : ?><div class="notice notice-info"><p><?php echo esc_html( $state ); ?></p></div><?php endif; ?>
 			<table class="widefat striped" style="max-width:1000px;margin:1em 0">
 				<tbody>
-				<tr><th><?php esc_html_e( 'Environment', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( (string) $status['environment'] ); ?></code></td></tr>
+				<tr><th><?php esc_html_e( 'WordPress environment', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( (string) $resolution['wordpress_environment'] ); ?></code></td></tr>
+				<tr><th><?php esc_html_e( 'MAD4B effective environment', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( (string) $status['environment'] ); ?></code> <small>(<?php echo esc_html( (string) $resolution['effective_source'] ); ?>)</small></td></tr>
+				<tr><th><?php esc_html_e( 'Suggested enrollment environment', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( $suggested_environment ); ?></code><br /><span class="description"><?php esc_html_e( 'Hostname classification is advisory only. It never grants OAuth, Write, Skills, or Breakglass authority.', 'mad4b-site-control-plane' ); ?></span></td></tr>
 				<tr><th><?php esc_html_e( 'Observed origin', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( (string) $status['current_origin'] ); ?></code></td></tr>
 				<tr><th><?php esc_html_e( 'Enrolled origin', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( (string) $status['canonical_origin'] ); ?></code></td></tr>
 				<tr><th><?php esc_html_e( 'Site UUID', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( (string) $status['site_uuid'] ); ?></code></td></tr>
@@ -146,6 +154,14 @@ final class MAD4B_SCP_Site_Profile_Admin {
 				<input type="hidden" name="expected_revision" value="<?php echo esc_attr( (string) ( isset( $status['revision'] ) ? absint( $status['revision'] ) : 0 ) ); ?>" />
 				<?php wp_nonce_field( self::ACTION_SAVE ); ?>
 				<table class="form-table" role="presentation">
+					<tr><th><label for="mad4b-environment"><?php esc_html_e( 'MAD4B environment', 'mad4b-site-control-plane' ); ?></label></th><td>
+						<select id="mad4b-environment" name="environment">
+						<?php foreach ( array( 'local', 'development', 'staging', 'production' ) as $environment_option ) : ?>
+							<option value="<?php echo esc_attr( $environment_option ); ?>" <?php echo $selected_environment === $environment_option ? 'selected' : ''; ?>><?php echo esc_html( ucfirst( $environment_option ) ); ?></option>
+						<?php endforeach; ?>
+						</select>
+						<p class="description"><?php esc_html_e( 'No wp-config.php edit is required. Saving binds this environment to this exact WordPress origin; copied profiles remain quarantined.', 'mad4b-site-control-plane' ); ?></p>
+					</td></tr>
 					<tr><th><label for="mad4b-display-name"><?php esc_html_e( 'Display name', 'mad4b-site-control-plane' ); ?></label></th><td><input class="regular-text" id="mad4b-display-name" name="display_name" value="<?php echo esc_attr( isset( $profile['display_name'] ) ? $profile['display_name'] : get_bloginfo( 'name' ) ); ?>" /></td></tr>
 					<tr><th><label for="mad4b-app-id"><?php esc_html_e( 'ChatGPT App ID', 'mad4b-site-control-plane' ); ?></label></th><td><input class="regular-text" id="mad4b-app-id" name="chatgpt_app_id" value="<?php echo esc_attr( MAD4B_SCP_Site_Profile::chatgpt_app_id() ); ?>" placeholder="plugin_asdk_app_..." /></td></tr>
 					<tr><th><label for="mad4b-users"><?php esc_html_e( 'OAuth WordPress user IDs', 'mad4b-site-control-plane' ); ?></label></th><td><input class="regular-text" id="mad4b-users" name="oauth_user_ids" value="<?php echo esc_attr( implode( ',', $users ) ); ?>" /><p class="description"><?php esc_html_e( 'Comma-separated existing users. Each token subject remains bound to its own WordPress user and permissions.', 'mad4b-site-control-plane' ); ?></p></td></tr>
