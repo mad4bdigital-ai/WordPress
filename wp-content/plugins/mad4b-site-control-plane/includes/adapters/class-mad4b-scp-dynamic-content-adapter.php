@@ -832,6 +832,11 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$registered_meta=function_exists('get_registered_meta_keys')?get_registered_meta_keys('post',$pt):array();
 		$meta_total_bytes=0;
 		foreach($meta_specs as $mk=>$spec){
+			if(in_array((string)$mk,array(self::BINDING,self::ACCEPTANCE_META),true)) return new WP_Error(
+				'mad4b_dynamic_reserved_meta_denied',
+				'Dynamic content control metadata is reserved and cannot be supplied by bundle input.',
+				array('meta_key'=>(string)$mk)
+			);
 			if(isset($registered_meta[$mk])&&is_array($registered_meta[$mk])&&!empty($registered_meta[$mk]['single'])&&'multi'===(string)$spec['mode']) return new WP_Error(
 				'mad4b_dynamic_registered_meta_single_violation',
 				'Registered single-value meta cannot be written through multi mode.',
@@ -939,7 +944,8 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	private function binding($pt,$key){ return hash('sha256',self::CONTRACT.'|'.$pt.'|'.$key); }
 	private function bound_post($pt,$binding){
-		$ids=get_posts(array('post_type'=>$pt,'post_status'=>'any','posts_per_page'=>2,'fields'=>'ids','meta_key'=>self::BINDING,'meta_value'=>$binding,'orderby'=>'ID','order'=>'ASC','no_found_rows'=>true));
+		$statuses=function_exists('get_post_stati')?array_keys((array)get_post_stati()):'any';
+		$ids=get_posts(array('post_type'=>$pt,'post_status'=>$statuses,'posts_per_page'=>2,'fields'=>'ids','meta_key'=>self::BINDING,'meta_value'=>$binding,'orderby'=>'ID','order'=>'ASC','no_found_rows'=>true));
 		if(count($ids)>1) return new WP_Error('mad4b_dynamic_binding_duplicate','Operation binding resolves to multiple posts.');
 		return empty($ids)?0:(int)$ids[0];
 	}
@@ -989,6 +995,15 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			$arr['meta_input']=array(self::BINDING=>$binding);
 			$id=wp_insert_post(wp_slash($arr),true);
 			if(is_wp_error($id)) return $id;
+			$binding_read=(string)get_post_meta($id,self::BINDING,true);
+			if(!hash_equals((string)$binding,$binding_read)){
+				update_post_meta($id,self::BINDING,$binding);
+				$binding_read=(string)get_post_meta($id,self::BINDING,true);
+				if(!hash_equals((string)$binding,$binding_read)) return $this->failure_with_compensation(
+					new WP_Error('mad4b_dynamic_binding_write_failed','Created post could not be bound to its stable operation identity.'),
+					'create',$id,null
+				);
+			}
 		}else{
 			$arr=array_merge(array('ID'=>$id,'post_type'=>$v['post_type']),$this->post_fields($input['post']));
 			$u=wp_update_post(wp_slash($arr),true);
@@ -1308,6 +1323,35 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		return $verified;
 	}
 
+	private function publication_acceptance_status($post_id){
+		$post_id=absint($post_id);
+		$receipt=$this->acceptance_meta_state($post_id);
+		if(empty($receipt)||self::ACCEPTANCE_CONTRACT!==(isset($receipt['contract'])?(string)$receipt['contract']:'')) return array(
+			'exists'=>false,
+			'ready'=>false,
+			'receipt_sha256'=>'',
+			'reason_code'=>'acceptance_receipt_missing',
+		);
+		$sha=$this->acceptance_receipt_hash($receipt);
+		$verified=$this->verify_publication_acceptance($post_id,$sha);
+		if(is_wp_error($verified)) return array(
+			'exists'=>true,
+			'ready'=>false,
+			'receipt_sha256'=>$sha,
+			'accepted_at'=>isset($receipt['accepted_at'])?(string)$receipt['accepted_at']:'',
+			'reason_code'=>(string)$verified->get_error_code(),
+		);
+		return array(
+			'exists'=>true,
+			'ready'=>true,
+			'receipt_sha256'=>$sha,
+			'accepted_at'=>isset($verified['accepted_at'])?(string)$verified['accepted_at']:'',
+			'state_sha256'=>isset($verified['state_sha256'])?(string)$verified['state_sha256']:'',
+			'pipeline_settings_sha256'=>isset($verified['pipeline_settings_sha256'])?(string)$verified['pipeline_settings_sha256']:'',
+			'reason_code'=>'',
+		);
+	}
+
 	public function readback($input=array()){
 		$input=is_array($input)?$input:array();
 		$id=isset($input['post_id'])?absint($input['post_id']):0;
@@ -1329,7 +1373,14 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			if(!apply_filters('mad4b_scp_dynamic_content_taxonomy_readable',$default_readable,$tax,$post_type,$id)) return new WP_Error('mad4b_dynamic_taxonomy_read_denied','Requested taxonomy is not readable through the dynamic content surface.',array('taxonomy'=>$taxonomy,'post_type'=>$post_type));
 		}
 		$model=array('meta_keys'=>$meta_keys,'taxonomies'=>array_fill_keys($requested_taxonomies,array()));
-		$s=$this->snapshot($id,$model);return array('contract'=>self::CONTRACT,'state'=>$s,'state_sha256'=>$this->state_sha256($s),'read_only'=>true,'mutation_performed'=>false);
+		$s=$this->snapshot($id,$model);return array(
+			'contract'=>self::CONTRACT,
+			'state'=>$s,
+			'state_sha256'=>$this->state_sha256($s),
+			'publication_acceptance'=>$this->publication_acceptance_status($id),
+			'read_only'=>true,
+			'mutation_performed'=>false
+		);
 	}
 	private function state_scope_from_input(array $input){
 		$meta_keys=array();
