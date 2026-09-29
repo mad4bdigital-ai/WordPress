@@ -298,12 +298,16 @@ final class MAD4B_SCP_Staging_Certification {
 
 	private static function gate( $ready, $source, array $evidence, $owner ) {
 		$blockers = array();
-		foreach ( array( 'blockers', 'blocking_reasons', 'incomplete_evidence', 'provenance_mismatch', 'budget_failures' ) as $key ) {
+		foreach ( array( 'blockers', 'blocking_reasons', 'incomplete_evidence', 'provenance_mismatch', 'budget_failures', 'certification_blockers' ) as $key ) {
 			if ( isset( $evidence[ $key ] ) && is_array( $evidence[ $key ] ) ) {
 				foreach ( $evidence[ $key ] as $item ) if ( is_scalar( $item ) && '' !== (string) $item ) $blockers[] = (string) $item;
 			}
 		}
 		if ( isset( $evidence['blocker'] ) && is_scalar( $evidence['blocker'] ) && '' !== (string) $evidence['blocker'] ) $blockers[] = (string) $evidence['blocker'];
+		if ( ! $ready && empty( $blockers ) && isset( $evidence['state'] ) && is_scalar( $evidence['state'] ) ) {
+			$state_blocker = sanitize_key( (string) $evidence['state'] );
+			if ( '' !== $state_blocker && ! in_array( $state_blocker, array( 'ready', 'ok', 'not_applicable' ), true ) ) $blockers[] = $state_blocker;
+		}
 		return array(
 			'ready' => (bool) $ready,
 			'state' => $ready ? 'ready' : 'pending_or_blocked',
