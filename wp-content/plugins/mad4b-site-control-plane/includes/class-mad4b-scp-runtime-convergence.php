@@ -34,33 +34,82 @@ final class MAD4B_SCP_Runtime_Convergence {
 
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
-		self::register_read( self::STATUS_ABILITY, 'Get Runtime Convergence Status', 'Inspect the generic post-deploy runtime convergence graph without mutation.', 'status', array( 'type' => 'object', 'additionalProperties' => false ) );
-		self::register_read( self::PLAN_ABILITY, 'Plan Runtime Convergence', 'Build an exact dependency-ordered runtime convergence plan. Release update, owner authority and provider-write gates remain explicit.', 'plan', array(
-			'type' => 'object',
-			'properties' => array( 'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ) ),
-			'required' => array( 'reason' ),
-			'additionalProperties' => false,
-		) );
+		self::register_read(
+			self::STATUS_ABILITY,
+			'Get Runtime Convergence Status',
+			'Inspect the generic post-deploy runtime convergence graph without mutation.',
+			'status',
+			array( 'type' => 'object', 'additionalProperties' => false )
+		);
+		self::register_read(
+			self::PLAN_ABILITY,
+			'Plan Runtime Convergence',
+			'Build an exact dependency-ordered runtime convergence plan. Release update, owner authority and provider-write gates remain explicit.',
+			'plan',
+			array(
+				'type' => 'object',
+				'properties' => array(
+					'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+				),
+				'required' => array( 'reason' ),
+				'additionalProperties' => false,
+			)
+		);
 		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::APPLY_ABILITY ) ) return;
-		// Enrollment maintenance must stay callable when ordinary governed-write
-		// candidate binding is exactly the thing being diagnosed as stale. Mirror
-		// Remote Operation Parity and temporarily remove the write augmenter while
-		// registering this bounded, Staging-only maintenance ability.
+
+		// Enrollment maintenance must remain callable when ordinary governed-write
+		// candidate binding is the stale component being diagnosed. This mirrors
+		// Remote Operation Parity: the ability is still Staging-only, exact-plan
+		// bound and OAuth-enrolled, but is not mounted behind the stale write gate.
 		$augment = array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' );
 		$priority = function_exists( 'has_filter' ) ? has_filter( 'wp_register_ability_args', $augment ) : false;
 		if ( false !== $priority ) remove_filter( 'wp_register_ability_args', $augment, (int) $priority );
 		try {
-			wp_register_ability( self::APPLY_ABILITY, array(
-				'label' => 'Converge Staging Runtime',
-				'description' => 'Apply only exact-plan, idempotent Staging runtime convergence phases. Production, candidate binding and provider write certification are never auto-applied.',
-				'category' => 'mad4b-governance',
-				'execute_callback' => array( __CLASS__, 'apply' ),
-				'permission_callback' => array( __CLASS__, 'can_apply' ),
-				'input_schema' => array(
-					'type' => 'object',
-					'properties' => array(
-						'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
-						'expected_plan_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}
+			wp_register_ability(
+				self::APPLY_ABILITY,
+				array(
+					'label' => 'Converge Staging Runtime',
+					'description' => 'Apply only exact-plan, idempotent Staging runtime convergence phases. Production, candidate binding and provider write certification are never auto-applied.',
+					'category' => 'mad4b-governance',
+					'execute_callback' => array( __CLASS__, 'apply' ),
+					'permission_callback' => array( __CLASS__, 'can_apply' ),
+					'input_schema' => array(
+						'type' => 'object',
+						'properties' => array(
+							'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+							'expected_plan_sha256' => array(
+								'type' => 'string',
+								'minLength' => 64,
+								'maxLength' => 64,
+								'pattern' => '^[A-Fa-f0-9]{64}$',
+							),
+							'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRMATION ) ),
+						),
+						'required' => array( 'reason', 'expected_plan_sha256', 'confirmation' ),
+						'additionalProperties' => false,
+					),
+					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+					'meta' => array(
+						'public' => false,
+						'show_in_rest' => false,
+						'mcp' => array(
+							'public' => false,
+							'type' => 'tool',
+							'surface' => 'enrollment',
+							'generic_remote_admin' => false,
+							'production_mutation_allowed' => false,
+						),
+						'annotations' => array(
+							'readonly' => false,
+							'destructive' => false,
+							'idempotent' => true,
+						),
+					),
+				)
+			);
+		} finally {
+			if ( false !== $priority ) add_filter( 'wp_register_ability_args', $augment, (int) $priority, 2 );
+		}
 	}
 
 	private static function register_read( $name, $label, $description, $method, array $schema ) {
