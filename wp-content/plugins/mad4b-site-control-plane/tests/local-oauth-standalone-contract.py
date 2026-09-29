@@ -412,3 +412,9 @@ for forbidden in (
 ):
     if forbidden in runtime_identity:
         raise SystemExit(f"Local OAuth identity readiness must remain hotpath-safe: {forbidden}")
+
+effective_for_protocol = server.split("private static function effective_for_protocol()", 1)[1].split("private static function request_is_schema_migration_hotpath()", 1)[0]
+if "self::runtime_identity_status()" not in effective_for_protocol:
+    raise SystemExit("Local OAuth protocol readiness must use runtime_identity_status()")
+if "self::status()" in effective_for_protocol:
+    raise SystemExit("Local OAuth protocol readiness must not invoke deep status()")
