@@ -115,4 +115,12 @@ assert "'mad4b-approval-decisions' === $page" in runtime
 
 assert "'plugins.php'" in runtime
 
+assert "REST_REQUEST" in runtime
+
+assert "$_GET['rest_route']" in runtime
+
+assert "$_SERVER['REQUEST_URI']" in runtime
+
+assert "rest_get_url_prefix()" in runtime
+
 print("runtime convergence contract: PASS")
