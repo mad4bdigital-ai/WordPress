@@ -74,10 +74,25 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return $response;
 	}
 
+	private static function current_environment() {
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			: ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+	}
+
+	private static function production_approved() {
+		if ( defined( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED' ) && true === constant( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED' ) ) return true;
+		return 'production' === self::current_environment()
+			&& class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			&& MAD4B_SCP_Site_Profile::oauth_enabled();
+	}
+
 	public static function runtime_identity_status() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = self::current_environment();
 		$enabled = self::enabled();
-		$production_approved = defined( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED' ) && true === MAD4B_MCP_OAUTH_PRODUCTION_APPROVED;
+		$production_approved = self::production_approved();
 		$mode = self::authority_mode();
 		$authorities = self::authority_registry( true );
 		$issuers = array_keys( $authorities );
@@ -113,9 +128,9 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	}
 
 	public static function status() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = self::current_environment();
 		$enabled = self::enabled();
-		$production_approved = defined( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED' ) && true === MAD4B_MCP_OAUTH_PRODUCTION_APPROVED;
+		$production_approved = self::production_approved();
 		$mode = self::authority_mode();
 		$authorities = self::authority_registry();
 		$issuers = array_keys( $authorities );
@@ -150,6 +165,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'effective' => (bool) $effective,
 			'environment' => $environment,
 			'production_approved' => $production_approved,
+			'production_approval_source' => $production_approved && class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() ? 'exact_site_profile_or_explicit_override' : 'not_approved',
 			'environment_allowed' => (bool) $environment_allowed,
 			'authority_mode' => $mode,
 			'authority_count' => count( $authorities ),
@@ -218,6 +234,21 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	}
 
 	public static function authority_step_up_scope_available() {
+		$write_enablement = false;
+		if ( class_exists( 'MAD4B_SCP_Site_Profile_Write_Enablement' ) && method_exists( 'MAD4B_SCP_Site_Profile_Write_Enablement', 'chatgpt_step_up_tools' ) ) {
+			$tools = MAD4B_SCP_Site_Profile_Write_Enablement::chatgpt_step_up_tools();
+			$write_enablement = is_array( $tools ) && in_array( MAD4B_SCP_Site_Profile_Write_Enablement::ABILITY, $tools, true );
+		}
+		$write_reconciliation = false;
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) && method_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation', 'chatgpt_step_up_tools' ) ) {
+			$tools = MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools();
+			$write_reconciliation = is_array( $tools ) && in_array( MAD4B_SCP_Staging_Write_Grant_Reconciliation::ABILITY, $tools, true );
+		}
+		$candidate_binding = false;
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'chatgpt_step_up_tools' ) ) {
+			$tools = MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools();
+			$candidate_binding = is_array( $tools ) && in_array( MAD4B_SCP_Staging_Write_Candidate_Binding::BIND_ABILITY, $tools, true );
+		}
 		$full_authority = false;
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) && method_exists( 'MAD4B_SCP_Full_Staging_Authority', 'chatgpt_step_up_tools' ) ) {
 			$tools = MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools();
@@ -228,7 +259,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			$tools = MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools();
 			$enrollment_dispatch = is_array( $tools ) && in_array( MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY, $tools, true );
 		}
-		return $full_authority || $enrollment_dispatch;
+		return $write_enablement || $write_reconciliation || $candidate_binding || $full_authority || $enrollment_dispatch;
 	}
 
 	public static function resource_identifier( $server_id = 'mad4b-chatgpt' ) {
@@ -930,7 +961,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 	private static function valid_local_http_loopback_url( $url ) {
 		if ( ! is_string( $url ) || '' === $url || strlen( $url ) > self::MAX_URI_BYTES ) return false;
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = self::current_environment();
 		if ( 'local' !== $environment ) return false;
 		$parts = wp_parse_url( $url );
 		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return false;
