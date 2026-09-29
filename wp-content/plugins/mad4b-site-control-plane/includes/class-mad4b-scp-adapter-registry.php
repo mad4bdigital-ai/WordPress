@@ -3,6 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 require_once __DIR__ . '/adapters/class-mad4b-scp-core-content-modeling-adapter.php';
+require_once __DIR__ . '/adapters/class-mad4b-scp-dynamic-content-adapter.php';
 
 final class MAD4B_SCP_Adapter_Registry {
 	private static $instance;
@@ -12,7 +13,7 @@ final class MAD4B_SCP_Adapter_Registry {
 	public static function instance() { if ( ! self::$instance ) self::$instance = new self(); return self::$instance; }
 	public function register_defaults() {
 		if ( $this->defaults_registered ) return; $this->defaults_registered = true;
-		$classes = array( 'MAD4B_SCP_Core_Content_Modeling_Adapter', 'MAD4B_SCP_Context_Adapter', 'MAD4B_SCP_Elementor_Adapter', 'MAD4B_SCP_JetEngine_Adapter', 'MAD4B_SCP_JetSmartFilters_Adapter', 'MAD4B_SCP_BitFlows_Adapter', 'MAD4B_SCP_Media_Adapter', 'MAD4B_SCP_SEO_Adapter', 'MAD4B_SCP_WooCommerce_Adapter', 'MAD4B_SCP_Polylang_Adapter', 'MAD4B_SCP_LiteSpeed_Adapter', 'MAD4B_SCP_JetFormBuilder_Adapter', 'MAD4B_SCP_FluentForms_Adapter', 'MAD4B_SCP_WP_Import_Export_Adapter' );
+		$classes = array( 'MAD4B_SCP_Core_Content_Modeling_Adapter', 'MAD4B_SCP_Dynamic_Content_Adapter', 'MAD4B_SCP_Context_Adapter', 'MAD4B_SCP_Elementor_Adapter', 'MAD4B_SCP_JetEngine_Adapter', 'MAD4B_SCP_JetSmartFilters_Adapter', 'MAD4B_SCP_BitFlows_Adapter', 'MAD4B_SCP_Media_Adapter', 'MAD4B_SCP_SEO_Adapter', 'MAD4B_SCP_WooCommerce_Adapter', 'MAD4B_SCP_Polylang_Adapter', 'MAD4B_SCP_LiteSpeed_Adapter', 'MAD4B_SCP_JetFormBuilder_Adapter', 'MAD4B_SCP_FluentForms_Adapter', 'MAD4B_SCP_WP_Import_Export_Adapter' );
 		foreach ( $classes as $class ) if ( class_exists( $class ) ) $this->register( new $class() );
 		do_action( 'mad4b_scp_register_adapters', $this );
 	}

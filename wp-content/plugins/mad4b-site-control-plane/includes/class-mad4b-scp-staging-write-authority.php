@@ -1014,6 +1014,18 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			return ! is_wp_error( $guard );
 		}
 
+		// Exact nested write-dispatch scope delegation is transport-only. Once
+		// write-execute has bound a specific target/schema request-locally, allow
+		// that target to cross the OAuth scope boundary without requiring its
+		// approval ticket to exist first. NHI, approval, budget, policy and commit
+		// guards still execute independently inside the target authorization path.
+		if ( 'mad4b-write' === $server_id
+			&& class_exists( 'MAD4B_SCP_Transport_Context' )
+			&& method_exists( 'MAD4B_SCP_Transport_Context', 'bounded_write_dispatch_active_for' )
+			&& MAD4B_SCP_Transport_Context::bounded_write_dispatch_active_for( $ability_name ) ) {
+			return self::effective() && self::is_write_ability( $ability_name );
+		}
+
 		if ( 'mad4b-write' !== $server_id ) return false;
 		if ( $bootstrap ) return true;
 		if ( self::ai_review_delegation_allowed( $ability_name, $input, $identity ) ) return true;
