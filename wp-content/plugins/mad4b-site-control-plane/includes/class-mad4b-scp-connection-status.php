@@ -7,7 +7,7 @@ final class MAD4B_SCP_Connection_Status {
 	const CONTRACT = 'mad4b.connection-readiness.v4';
 	const PREVIOUS_CONTRACT = 'mad4b.connection-readiness.v3';
 
-	public static function status() {
+	public static function status( $force_deep = false ) {
 		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
 		$https = function_exists( 'wp_is_using_https' ) ? wp_is_using_https() : ( 'https' === wp_parse_url( home_url(), PHP_URL_SCHEME ) );
 		$adapter_available = class_exists( '\\WP\\MCP\\Core\\McpAdapter' );
@@ -17,7 +17,8 @@ final class MAD4B_SCP_Connection_Status {
 		} elseif ( $adapter_available && defined( 'WP\\MCP\\Core\\McpAdapter::VERSION' ) ) {
 			$adapter_version = (string) \WP\MCP\Core\McpAdapter::VERSION;
 		}
-		$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+		$protocol_hotpath = ! $force_deep
+			&& class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
 		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' )
 			? ( $protocol_hotpath
@@ -100,6 +101,7 @@ final class MAD4B_SCP_Connection_Status {
 			'certification_blockers' => $certification_blockers,
 			'servers' => $servers,
 			'transport_deep_validation_deferred' => $protocol_hotpath,
+			'explicit_deep_validation' => (bool) $force_deep,
 			'deferred_checks' => $protocol_hotpath ? array( 'route_permission_validation', 'mcp_peer_inventory', 'write_catalog_inventory' ) : array(),
 			'write_surface' => self::write_surface_summary( $servers, $protocol_hotpath ),
 			'provider_mcp_isolation' => self::bounded_isolation_status( $isolation ),
