@@ -360,13 +360,16 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array();
 		$checks['peer_inventory_ready'] = ! empty( $peer['inventory_ready'] );
 		$checks['peer_write_side_channel_absent'] = $checks['peer_inventory_ready'] && empty( $peer['write_side_channel_detected'] );
-		$checks['peer_governance_safe'] = $checks['peer_inventory_ready'] && $checks['peer_write_side_channel_absent'];
+		$checks['peer_foreign_transport_reviewed'] = $checks['peer_inventory_ready'] && empty( $peer['foreign_transport_unreviewed'] );
+		$checks['peer_governance_safe'] = $checks['peer_inventory_ready'] && $checks['peer_write_side_channel_absent'] && $checks['peer_foreign_transport_reviewed'];
 		if ( ! $checks['peer_inventory_ready'] ) $blockers[] = 'mcp_peer_inventory_unavailable';
 		elseif ( ! $checks['peer_write_side_channel_absent'] ) $blockers[] = 'mcp_write_side_channel_detected';
+		elseif ( ! $checks['peer_foreign_transport_reviewed'] ) $blockers[] = 'mcp_foreign_transport_unreviewed';
 		$peer_summary = array(
 			'contract' => isset( $peer['contract'] ) ? (string) $peer['contract'] : '',
 			'inventory_ready' => $checks['peer_inventory_ready'],
 			'write_side_channel_detected' => ! empty( $peer['write_side_channel_detected'] ),
+			'foreign_transport_unreviewed' => ! empty( $peer['foreign_transport_unreviewed'] ),
 			'external_peer_count' => isset( $peer['external_peer_count'] ) ? (int) $peer['external_peer_count'] : 0,
 			'public_write_ability_count' => isset( $peer['public_write_ability_count'] ) ? (int) $peer['public_write_ability_count'] : 0,
 			'risk_count' => isset( $peer['risk_count'] ) ? (int) $peer['risk_count'] : 0,
