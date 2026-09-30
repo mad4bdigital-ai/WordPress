@@ -20,6 +20,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 	const CHATGPT_CREATE_URL = 'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins';
 
 	private static $booted = false;
+	private static $status_cache = null;
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -40,11 +41,16 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 	}
 
 	public static function status() {
+		if ( is_array( self::$status_cache ) ) return self::$status_cache;
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) );
 		$profile = class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' ) ? MAD4B_SCP_Staging_OAuth_Autoconfig::status() : array();
 		$portable = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) ? MAD4B_SCP_Portable_Readonly_Connection::status() : array();
-		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? MAD4B_SCP_Local_OAuth_Server::status() : array();
-		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
+		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'runtime_identity_status' )
+			? MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()
+			: array();
+		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'runtime_identity_status' )
+			? MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()
+			: array();
 		$server_url = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() : untrailingslashit( rest_url( 'mcp/mad4b-chatgpt' ) );
 		$cimd_ready = ! empty( $local['client_id_metadata_document_supported'] )
 			&& isset( $local['cimd_chatgpt_client_id'] )
@@ -66,7 +72,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 		$scopes = $step_up_available ? array( 'mad4b:read', 'mad4b:authority:step-up', 'offline_access' ) : array( 'mad4b:read', 'offline_access' );
 		$ready = $environment_ready && ! empty( $local['effective'] ) && ! empty( $bridge['effective'] ) && $cimd_ready && $gateway_registered;
 
-		return array(
+		self::$status_cache = array(
 			'contract' => self::CONTRACT,
 			'environment' => $environment,
 			'staging_only_initially' => false,
@@ -107,7 +113,10 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'generic_filesystem_exposed' => false,
 			'generic_database_exposed' => false,
 			'write_admin_breakglass_exposed' => false,
+			'admin_status_projection' => 'runtime_identity',
+			'deep_oauth_status_deferred' => true,
 		);
+		return self::$status_cache;
 	}
 
 	public static function enqueue_assets() {

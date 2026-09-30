@@ -17,12 +17,17 @@ $endpoint_matches_route = static function ( $endpoint, $server_id ) {
 $render_tab = static function ( $tab ) {
     $had_tab = array_key_exists( 'tab', $_GET );
     $previous_tab = $had_tab ? $_GET['tab'] : null;
+    $had_page = array_key_exists( 'page', $_GET );
+    $previous_page = $had_page ? $_GET['page'] : null;
+    $_GET['page'] = 'mad4b-control-plane-connection';
     $_GET['tab'] = $tab;
     ob_start();
     MAD4B_SCP_Connection_Admin_UI::render_page();
     $html = ob_get_clean();
     if ( $had_tab ) $_GET['tab'] = $previous_tab;
     else unset( $_GET['tab'] );
+    if ( $had_page ) $_GET['page'] = $previous_page;
+    else unset( $_GET['page'] );
     return $html;
 };
 
@@ -50,6 +55,88 @@ $check( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', 'mad4b/read-me
 $check( MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( 'mad4b/read-snapshot-header' ), 'Read snapshot header is not reachable through governed read dispatch.' );
 $check( MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( 'mad4b/read-diagnostic-bundle' ), 'Read diagnostic bundle is not reachable through governed read dispatch.' );
 $check( MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( 'mad4b/read-metadata-envelope' ), 'Read metadata envelope is not reachable through governed read dispatch.' );
+
+/*
+ * Behavioral proof for the real 504 incident surface. These guards observe the
+ * actual WordPress query/HTTP hooks while Connection and ChatGPT admin status is
+ * evaluated; source-marker coverage alone is not sufficient for this regression.
+ */
+$hotpath_previous_page_exists = array_key_exists( 'page', $_GET );
+$hotpath_previous_page = $hotpath_previous_page_exists ? $_GET['page'] : null;
+$hotpath_had_current_screen = isset( $GLOBALS['current_screen'] );
+$hotpath_previous_screen = $hotpath_had_current_screen ? $GLOBALS['current_screen'] : null;
+if ( ! function_exists( 'set_current_screen' ) ) require_once ABSPATH . 'wp-admin/includes/screen.php';
+set_current_screen( 'dashboard' );
+$check( is_admin(), '504 hotpath runtime proof could not establish WordPress admin context.' );
+$hotpath_oauth_table_queries = array();
+$hotpath_cimd_fetches = 0;
+$hotpath_query_watch = static function ( $sql ) use ( &$hotpath_oauth_table_queries ) {
+    $sql_text = (string) $sql;
+    if ( false !== stripos( $sql_text, 'SHOW TABLES' )
+        && ( false !== stripos( $sql_text, 'mad4b_scp_oauth_codes' )
+            || false !== stripos( $sql_text, 'mad4b_scp_oauth_refresh_tokens' ) ) ) {
+        $hotpath_oauth_table_queries[] = $sql_text;
+    }
+    return $sql;
+};
+$hotpath_http_watch = static function ( $preempt, $args, $url ) use ( &$hotpath_cimd_fetches ) {
+    unset( $args );
+    if ( 'https://chatgpt.com/oauth/client.json' === untrailingslashit( (string) $url ) ) {
+        $hotpath_cimd_fetches++;
+        return new WP_Error( 'mad4b_test_unexpected_cimd_fetch', 'CIMD fetch is forbidden on admin hotpath.' );
+    }
+    return $preempt;
+};
+add_filter( 'query', $hotpath_query_watch, PHP_INT_MAX, 1 );
+add_filter( 'pre_http_request', $hotpath_http_watch, PHP_INT_MIN, 3 );
+
+$_GET['page'] = 'mad4b-control-plane-connection';
+$admin_shallow = MAD4B_SCP_Connection_Status::status();
+$check( is_array( $admin_shallow ) && 'admin_shallow' === ( isset( $admin_shallow['status_mode'] ) ? $admin_shallow['status_mode'] : '' ), 'Connection admin status did not select admin_shallow mode.' );
+$check( ! empty( $admin_shallow['transport_deep_validation_deferred'] ), 'Connection admin status unexpectedly performed deep transport validation.' );
+$check( in_array( 'provider_runtime_integrity', isset( $admin_shallow['deferred_checks'] ) ? (array) $admin_shallow['deferred_checks'] : array(), true ), 'Connection admin status did not defer provider runtime integrity.' );
+$check( isset( $admin_shallow['mcp_adapter_certification']['runtime_integrity_verification_deferred'] ) && ! empty( $admin_shallow['mcp_adapter_certification']['runtime_integrity_verification_deferred'] ), 'Connection admin status did not use the identity-only provider projection.' );
+$peer_admin = isset( $admin_shallow['mcp_peer_governance'] ) && is_array( $admin_shallow['mcp_peer_governance'] ) ? $admin_shallow['mcp_peer_governance'] : array();
+$check( 'deferred_admin_hotpath' === ( isset( $peer_admin['state'] ) ? $peer_admin['state'] : '' ), 'Connection admin status did not defer peer inventory.' );
+$check( empty( $peer_admin['deep_inventory_performed'] ), 'Connection admin status performed deep peer inventory.' );
+
+$admin_convergence_gate = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'admin_page_convergence_allowed' );
+$admin_convergence_gate->setAccessible( true );
+$check(
+    false === $admin_convergence_gate->invoke( null, 'mad4b-control-plane-connection', 'admin.php', '' ),
+    'Connection admin page remained a Runtime Convergence trigger.'
+);
+
+$_GET['page'] = 'mad4b-control-plane-chatgpt';
+if ( class_exists( 'MAD4B_SCP_ChatGPT_Connection_Admin_UI' ) ) {
+    $chatgpt_cache = new ReflectionProperty( 'MAD4B_SCP_ChatGPT_Connection_Admin_UI', 'status_cache' );
+    $chatgpt_cache->setAccessible( true );
+    $chatgpt_cache->setValue( null, null );
+    $chatgpt_admin = MAD4B_SCP_ChatGPT_Connection_Admin_UI::status();
+    $check( 'runtime_identity' === ( isset( $chatgpt_admin['admin_status_projection'] ) ? $chatgpt_admin['admin_status_projection'] : '' ), 'ChatGPT admin status did not use the runtime identity projection.' );
+    $check( ! empty( $chatgpt_admin['deep_oauth_status_deferred'] ), 'ChatGPT admin status did not defer deep OAuth diagnostics.' );
+}
+$check(
+    false === $admin_convergence_gate->invoke( null, 'mad4b-control-plane-chatgpt', 'admin.php', '' ),
+    'ChatGPT admin page remained a Runtime Convergence trigger.'
+);
+
+if ( class_exists( 'MAD4B_SCP_Reconnect_Hardening' ) ) {
+    $reconnect_admin = MAD4B_SCP_Reconnect_Hardening::reconnect_status();
+    $check( 'runtime_identity' === ( isset( $reconnect_admin['reconnect_status_projection'] ) ? $reconnect_admin['reconnect_status_projection'] : '' ), 'Reconnect readiness did not use the runtime identity projection.' );
+    $check( ! empty( $reconnect_admin['deep_oauth_status_deferred'] ), 'Reconnect readiness did not defer deep OAuth status.' );
+}
+
+remove_filter( 'query', $hotpath_query_watch, PHP_INT_MAX );
+remove_filter( 'pre_http_request', $hotpath_http_watch, PHP_INT_MIN );
+if ( $hotpath_previous_page_exists ) $_GET['page'] = $hotpath_previous_page;
+else unset( $_GET['page'] );
+if ( $hotpath_had_current_screen ) $GLOBALS['current_screen'] = $hotpath_previous_screen;
+else unset( $GLOBALS['current_screen'] );
+
+$check( empty( $hotpath_oauth_table_queries ), 'Connection/ChatGPT admin hotpath executed physical OAuth SHOW TABLES probes: ' . wp_json_encode( $hotpath_oauth_table_queries ) );
+$check( 0 === $hotpath_cimd_fetches, 'Connection/ChatGPT admin hotpath attempted ChatGPT CIMD network discovery.' );
+
 $snapshot = MAD4B_SCP_Read_Consistency::snapshot_header( array() );
 $check( isset( $snapshot['contract'] ) && 'mad4b.read-consistency.v1' === $snapshot['contract'], 'Read snapshot contract drifted.' );
 $check( isset( $snapshot['runtime_generation'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $snapshot['runtime_generation'] ), 'Read snapshot runtime generation missing.' );

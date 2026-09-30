@@ -28,7 +28,8 @@ final class MAD4B_SCP_Admin_Settings_Persistence {
 
 		$asset_path = MAD4B_SCP_DIR . 'assets/admin-settings-persistence.js';
 		$asset_version = MAD4B_SCP_VERSION;
-		if ( is_readable( $asset_path ) ) {
+		$connection_hotpath = in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true );
+		if ( ! $connection_hotpath && is_readable( $asset_path ) ) {
 			$content_sha = hash_file( 'sha256', $asset_path );
 			if ( is_string( $content_sha ) && preg_match( '/^[a-f0-9]{64}$/', $content_sha ) ) {
 				$asset_version .= '-' . substr( $content_sha, 0, 12 );

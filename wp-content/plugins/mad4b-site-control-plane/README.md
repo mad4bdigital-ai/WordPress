@@ -4,7 +4,13 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.85**.
+Current plugin version: **0.4.0-rc.86**.
+
+### rc.86 Connection / ChatGPT admin 504 hotpath hardening
+
+rc.86 keeps the normal Connection and Connect-to-ChatGPT wp-admin screens inside the read-hotpath budget. Ordinary rendering now uses identity-only provider/OAuth projections, persisted handshake evidence and request-local memoization instead of provider integrity hashing, REST route inventory, physical OAuth-store probes or repeated deep reconnect status. The explicit MCP Endpoints diagnostic tab retains deep verification.
+
+Connection and ChatGPT status pages are also excluded from Runtime Convergence trigger detection: opening a read-only status screen can no longer revive or schedule post-update convergence work. MCP/OAuth protocol requests keep their existing fail-fast restart/maintenance guards. No Write, Production, Developer, Breakglass, raw-SQL or credential authority is widened.
 
 ### rc.85 post-update reconnect bottleneck hardening
 

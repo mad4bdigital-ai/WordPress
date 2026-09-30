@@ -33,6 +33,10 @@ required_ui = [
     "'staging_only_initially' => false",
     'MAD4B_SCP_Staging_OAuth_Autoconfig::status()',
     'MAD4B_SCP_Portable_Readonly_Connection::status()',
+    'MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()',
+    'MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()',
+    "'admin_status_projection' => 'runtime_identity'",
+    "'deep_oauth_status_deferred' => true",
     "'portable_readonly_ready' => (bool) $portable_ready",
     "'portable_profile_binding_state' => isset( $portable['profile_binding_state'] )",
     "'foreign_profile_quarantined' => ! empty( $portable['foreign_profile_quarantined'] )",
@@ -57,6 +61,16 @@ required_ui = [
 for marker in required_ui:
     if marker not in ui:
         raise SystemExit(f'missing ChatGPT connection UI marker: {marker}')
+
+status_method = ui.split('public static function status()', 1)[1].split('public static function enqueue_assets()', 1)[0]
+for forbidden_status_call in [
+    'MAD4B_SCP_Local_OAuth_Server::status()',
+    'MAD4B_SCP_OAuth_Resource_Bridge::status()',
+]:
+    if forbidden_status_call in status_method:
+        raise SystemExit(f'deep OAuth status call leaked into ChatGPT admin render: {forbidden_status_call}')
+if "private static $status_cache = null;" not in ui or "if ( is_array( self::$status_cache ) ) return self::$status_cache;" not in status_method:
+    raise SystemExit('ChatGPT admin status must be request-local memoized')
 
 for forbidden in [
     'update_option(', 'add_option(', 'delete_option(', '$wpdb->',

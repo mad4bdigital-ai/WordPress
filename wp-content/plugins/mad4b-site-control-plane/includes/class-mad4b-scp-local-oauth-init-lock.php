@@ -26,6 +26,11 @@ final class MAD4B_SCP_Local_OAuth_Init_Lock {
 
 	public static function acquire() {
 		if ( ! self::enabled() || is_resource( self::$handle ) ) return;
+		// Connection/ChatGPT page loads are request-serving status hotpaths. The
+		// Local OAuth server already defers first-boot key generation there, so
+		// acquiring/creating the filesystem init lock would add latency without any
+		// work that can legally proceed in the same request.
+		if ( self::connection_admin_hotpath() ) return;
 		$key_path = self::key_path();
 		if ( '' === $key_path || is_file( $key_path ) ) return;
 		$dir = dirname( $key_path );
@@ -68,6 +73,12 @@ final class MAD4B_SCP_Local_OAuth_Init_Lock {
 			'first_boot_serialized' => true,
 			'lock_contains_secret_material' => false,
 		);
+	}
+
+	private static function connection_admin_hotpath() {
+		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- request classification only.
+		return in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true );
 	}
 
 	private static function enabled() {

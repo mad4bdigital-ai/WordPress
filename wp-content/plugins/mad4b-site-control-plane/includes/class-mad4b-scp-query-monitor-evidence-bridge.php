@@ -127,6 +127,12 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		// Guard before touching db.php, Query Monitor source paths or filesystem
 		// ownership evidence. Foreign wp-admin pages are never instrumentation jobs.
 		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) ) return array( 'state' => 'deferred_foreign_admin_surface', 'mutation_performed' => false );
+		// Connection and ChatGPT are request-serving read/status surfaces, not
+		// instrumentation bootstrap jobs. Do not inspect/create db.php, read Query
+		// Monitor loader files or persist attribution bootstrap state before render.
+		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) {
+			return array( 'state' => 'deferred_connection_admin_hotpath', 'mutation_performed' => false );
+		}
 		return self::enable_db_attribution_explicit();
 	}
 
@@ -970,6 +976,11 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	private static function current_request_is_mad4b_admin_surface() {
 		if ( ! is_admin() ) return false;
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : '';
+		// Connection and ChatGPT are latency-sensitive request-serving surfaces.
+		// Their ordinary page loads must not pay shutdown Query Monitor collection,
+		// event normalization or telemetry persistence. A signed acceptance canary
+		// bypasses this classifier earlier in capture_and_flush().
+		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return false;
 		return 0 === strpos( $page, 'mad4b-control-plane' );
 	}
 

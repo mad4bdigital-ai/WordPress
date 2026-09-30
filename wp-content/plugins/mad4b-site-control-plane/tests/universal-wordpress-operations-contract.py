@@ -26,7 +26,13 @@ transport_registry = (PLUGIN / "includes/class-mad4b-scp-provider-transport-regi
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 all_php = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in (PLUGIN / "includes").rglob("*.php"))
 
-assert "Version: 0.4.0-rc.85" in main
+build = (PLUGIN / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
+release_lines = [line.strip() for line in build.splitlines() if line.strip().startswith("release=")]
+assert len(release_lines) == 1, release_lines
+release = release_lines[0].split("=", 1)[1].strip()
+assert release.startswith("0.4.0-rc."), release
+assert f"Version: {release}" in main
+assert f"define( 'MAD4B_SCP_VERSION', '{release}' );" in main
 for boot in (
     "MAD4B_SCP_Operation_Registry::boot();",
     "MAD4B_SCP_Operation_Pipeline::boot();",

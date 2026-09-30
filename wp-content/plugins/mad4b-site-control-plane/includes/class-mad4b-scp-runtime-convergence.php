@@ -688,6 +688,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 	}
 
 	private static function convergence_trigger_allowed() {
+		// Passive Connection/ChatGPT admin surfaces must remain passive even when
+		// WordPress is executed through a CLI harness (for example runtime CI).
+		// Ordinary CLI commands do not carry these admin page slugs and therefore
+		// retain convergence authority below.
+		if ( function_exists( 'is_admin' ) && is_admin() ) {
+			$passive_page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
+			if ( in_array( $passive_page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return false;
+		}
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
 		// The dedicated CRON_HOOK executes resume_safe_phases() directly. The
 		// generic wp-cron.php request must not run init-time drift detection or
@@ -709,6 +717,18 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
 		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
+		return self::admin_page_convergence_allowed( $page, $screen, $action );
+	}
+
+	private static function admin_page_convergence_allowed( $page, $screen, $action ) {
+		$page = sanitize_key( (string) $page );
+		$screen = sanitize_key( (string) $screen );
+		$action = sanitize_key( (string) $action );
+		// Connection and ChatGPT admin pages are request-serving status surfaces.
+		// Never let opening them become the event that detects drift, mutates a
+		// convergence checkpoint, or schedules post-update maintenance. CLI remains
+		// an explicit lifecycle owner and is handled before this browser-admin router.
+		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return false;
 		if ( 0 === strpos( $page, 'mad4b-control-plane' ) || 'mad4b-approval-decisions' === $page ) return true;
 		if ( in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return true;
 		return in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );

@@ -91,7 +91,10 @@ for marker in (
     require(status, marker, 'connection-mcp-registration-lifecycle')
 
 lifecycle_start = status.index('private static function bounded_mcp_registration_lifecycle()')
-lifecycle_end = status.index('private static function oauth_preflight_blockers', lifecycle_start)
+# Bound this proof to the lifecycle projection helpers themselves. The following
+# admin-hotpath classifier contains a PHPCS NonceVerification annotation but no
+# secret material and must not be folded into the lifecycle diagnostic contract.
+lifecycle_end = status.index('private static function admin_shallow_surface()', lifecycle_start)
 lifecycle = status[lifecycle_start:lifecycle_end]
 for forbidden in (
     'rest_get_server(', 'rest_do_request(', 'register_routes(', 'register_rest_route(',
@@ -579,9 +582,9 @@ if hotpath_pos > peer_call_pos:
 # Deferred deep verification on an already-running MCP request is informational,
 # not evidence that local transport is broken.
 local_blocker_section = status.split("$local_blockers = array();", 1)[1].split("$remote_preflight_blockers", 1)[0]
-require(local_blocker_section, "if ( ! $protocol_hotpath && empty( $peer['inventory_ready'] ) )", 'deferred-peer-neutral-readiness')
-require(local_blocker_section, "if ( ! $protocol_hotpath && ! empty( $peer['blockers'] )", 'deferred-peer-blockers-not-promoted')
-require(status, "'deferred_checks' => $protocol_hotpath ? array( 'route_permission_validation', 'mcp_peer_inventory', 'write_catalog_inventory', 'live_handshake_revalidation', 'provider_runtime_integrity' ) : array()", 'connection-deferred-checks-explicit')
+require(local_blocker_section, "if ( ! $lightweight && empty( $peer['inventory_ready'] ) )", 'deferred-peer-neutral-readiness')
+require(local_blocker_section, "if ( ! $lightweight && ! empty( $peer['blockers'] )", 'deferred-peer-blockers-not-promoted')
+require(status, "'deferred_checks' => $lightweight ? array( 'route_permission_validation', 'mcp_peer_inventory', 'write_catalog_inventory', 'live_handshake_revalidation', 'provider_runtime_integrity' ) : array()", 'connection-deferred-checks-explicit')
 require(status, "'route_registered' => $protocol_hotpath ? null", 'write-surface-deferred-route-tristate')
 require(status, "'permission_callback_match' => $protocol_hotpath ? null", 'write-surface-deferred-permission-tristate')
 
@@ -589,7 +592,7 @@ require(status, "'permission_callback_match' => $protocol_hotpath ? null", 'writ
 # Deep critical-file hashing remains mandatory for runtime_status/mutation_guard.
 require(status, "MAD4B_SCP_Provider_Contracts::runtime_identity_status( 'mcp_adapter', $adapter_available )", 'connection-provider-identity-fastpath')
 provider_branch = status.split("$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' )", 1)[1].split("$provider_ok =", 1)[0]
-require(provider_branch, "$protocol_hotpath", 'provider-identity-hotpath-branch')
+require(provider_branch, "$lightweight", 'provider-identity-lightweight-branch')
 require(provider_contracts, "public static function runtime_identity_status( $provider, $available = null )", 'provider-identity-projection')
 identity_projection = provider_contracts.split("public static function runtime_identity_status( $provider, $available = null )", 1)[1].split("public static function runtime_status( $provider, $available = null )", 1)[0]
 forbid(identity_projection, "hash_file(", 'provider-identity-no-byte-hashing')
@@ -603,6 +606,31 @@ require(mutation_guard, "self::runtime_status( $provider, $available )", 'mutati
 require(status, "public static function status( $force_deep = false )", 'connection-explicit-deep-signature')
 require(status, "$protocol_hotpath = ! $force_deep", 'connection-deep-bypasses-hotpath-projection')
 require(status, "'explicit_deep_validation' => (bool) $force_deep", 'connection-deep-mode-observable')
+
+# Ordinary Connection/ChatGPT wp-admin rendering is a first-class shallow mode.
+# It must reuse the same hash-free identity projection as protocol hotpaths while
+# leaving explicit Endpoints diagnostics capable of performing deep verification.
+for marker in (
+    "self::admin_shallow_surface()",
+    "$lightweight = $protocol_hotpath || $admin_shallow",
+    "'mcp_peer_inventory_deferred_admin_hotpath'",
+    "'state' => $protocol_hotpath ? 'deferred_protocol_hotpath' : 'deferred_admin_hotpath'",
+    "'deep_connection_diagnostics_deferred'",
+    "'status_mode' => $force_deep ? 'deep_explicit'",
+    "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()",
+    "'deep_status_deferred' =>",
+):
+    require(status, marker, 'connection-admin-shallow-mode')
+
+admin_surface = status.split("private static function admin_shallow_surface()", 1)[1].split("private static function oauth_preflight_blockers", 1)[0]
+require(admin_surface, "'mad4b-control-plane-connection'", 'connection-admin-shallow-route')
+require(admin_surface, "'mad4b-control-plane-chatgpt'", 'chatgpt-admin-shallow-route')
+
+require(ui, "public static function snapshot( $force_deep = false )", 'connection-ui-shallow-snapshot')
+require(ui, "self::snapshot( 'endpoints' === $tab )", 'connection-ui-endpoints-only-deep')
+require(ui, "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()", 'connection-ui-oauth-identity-projection')
+require(ui, "'endpoints' === $tab", 'connection-ui-deep-tab-gate')
+require(ui, "MAD4B_SCP_Local_OAuth_Server::status()", 'connection-ui-explicit-deep-oauth-remains')
 
 # Protocol connection status consumes persisted handshake evidence only. Live
 # build/tool revalidation remains available through explicit deep diagnostics.

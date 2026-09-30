@@ -20,25 +20,27 @@ final class MAD4B_SCP_Connection_Status {
 		$protocol_hotpath = ! $force_deep
 			&& class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
+		$admin_shallow = ! $force_deep && self::admin_shallow_surface();
+		$lightweight = $protocol_hotpath || $admin_shallow;
 		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' )
-			? ( $protocol_hotpath
+			? ( $lightweight
 				? MAD4B_SCP_Provider_Contracts::runtime_identity_status( 'mcp_adapter', $adapter_available )
 				: MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $adapter_available ) )
 			: array( 'status' => 'unavailable', 'runtime_contract_ok' => false, 'identity_contract_ok' => false );
-		$provider_ok = $protocol_hotpath ? ! empty( $provider['identity_contract_ok'] ) : ! empty( $provider['runtime_contract_ok'] );
-		$servers = self::server_status( $protocol_hotpath );
+		$provider_ok = $lightweight ? ! empty( $provider['identity_contract_ok'] ) : ! empty( $provider['runtime_contract_ok'] );
+		$servers = self::server_status( $lightweight );
 		$expected_count = class_exists( 'MAD4B_SCP_Servers' ) ? count( MAD4B_SCP_Servers::expected_server_ids() ) : 7;
 		$server_ok = count( $servers ) === $expected_count;
 		foreach ( $servers as $server ) {
 			if ( empty( $server['registered'] ) ) { $server_ok = false; break; }
 			if ( ! $protocol_hotpath && empty( $server['deep_route_validation_deferred'] ) && ( empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) ) { $server_ok = false; break; }
 		}
-		$peer = $protocol_hotpath
+		$peer = $lightweight
 			? array(
 				'inventory_ready' => false,
 				'write_side_channel_detected' => false,
-				'blockers' => array( 'mcp_peer_inventory_deferred_protocol_hotpath' ),
-				'state' => 'deferred_protocol_hotpath',
+				'blockers' => array( $protocol_hotpath ? 'mcp_peer_inventory_deferred_protocol_hotpath' : 'mcp_peer_inventory_deferred_admin_hotpath' ),
+				'state' => $protocol_hotpath ? 'deferred_protocol_hotpath' : 'deferred_admin_hotpath',
 				'deep_inventory_performed' => false,
 			)
 			: ( class_exists( 'MAD4B_SCP_MCP_Peer_Governance' )
@@ -46,9 +48,13 @@ final class MAD4B_SCP_Connection_Status {
 				: array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) ) );
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_identity_context_unavailable', 'Identity context is unavailable.' );
 		$isolation = class_exists( 'MAD4B_SCP_MCP_Provider_Isolation' ) ? MAD4B_SCP_MCP_Provider_Isolation::status() : array( 'configured' => false, 'effective' => false );
-		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array( 'available' => false );
+		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+			? ( $lightweight && method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'runtime_identity_status' )
+				? MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()
+				: MAD4B_SCP_OAuth_Resource_Bridge::status() )
+			: array( 'available' => false );
 		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' )
-			? ( $protocol_hotpath && method_exists( 'MAD4B_SCP_External_Handshake_Evidence', 'persisted_identity_status' )
+			? ( $lightweight && method_exists( 'MAD4B_SCP_External_Handshake_Evidence', 'persisted_identity_status' )
 				? MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()
 				: MAD4B_SCP_External_Handshake_Evidence::status() )
 			: array( 'verified' => false, 'status' => 'evidence_component_unavailable' );
@@ -59,9 +65,9 @@ final class MAD4B_SCP_Connection_Status {
 		if ( ! $adapter_available ) $local_blockers[] = 'mcp_adapter_unavailable';
 		if ( $adapter_available && ! $provider_ok ) $local_blockers[] = 'mcp_adapter_not_certified';
 		if ( ! $server_ok ) $local_blockers[] = 'mad4b_transport_registration_incomplete';
-		if ( ! $protocol_hotpath && empty( $peer['inventory_ready'] ) ) $local_blockers[] = 'mcp_peer_inventory_unavailable';
+		if ( ! $lightweight && empty( $peer['inventory_ready'] ) ) $local_blockers[] = 'mcp_peer_inventory_unavailable';
 		if ( ! empty( $peer['write_side_channel_detected'] ) ) $local_blockers[] = 'mcp_write_side_channel_detected';
-		if ( ! $protocol_hotpath && ! empty( $peer['blockers'] ) && is_array( $peer['blockers'] ) ) $local_blockers = array_merge( $local_blockers, $peer['blockers'] );
+		if ( ! $lightweight && ! empty( $peer['blockers'] ) && is_array( $peer['blockers'] ) ) $local_blockers = array_merge( $local_blockers, $peer['blockers'] );
 		$local_blockers = array_values( array_unique( array_map( 'sanitize_key', $local_blockers ) ) );
 
 		$remote_preflight_blockers = array_merge( $local_blockers, $oauth_blockers );
@@ -69,6 +75,7 @@ final class MAD4B_SCP_Connection_Status {
 		$remote_preflight_blockers = array_values( array_unique( array_map( 'sanitize_key', $remote_preflight_blockers ) ) );
 
 		$certification_blockers = $remote_preflight_blockers;
+		if ( $admin_shallow ) $certification_blockers[] = 'deep_connection_diagnostics_deferred';
 		if ( empty( $handshake['verified'] ) ) {
 			$handshake_status = isset( $handshake['status'] ) ? sanitize_key( (string) $handshake['status'] ) : 'unverified';
 			$certification_blockers[] = in_array( $handshake_status, array( 'stale_build_evidence', 'stale_tool_inventory_evidence', 'stale_time_evidence' ), true ) ? 'external_handshake_stale' : 'external_handshake_unverified';
@@ -108,10 +115,11 @@ final class MAD4B_SCP_Connection_Status {
 			'connection_certified' => $connection_certified,
 			'certification_blockers' => $certification_blockers,
 			'servers' => $servers,
-			'transport_deep_validation_deferred' => $protocol_hotpath || self::route_validation_deferred( $servers ),
+			'transport_deep_validation_deferred' => $lightweight || self::route_validation_deferred( $servers ),
 			'explicit_deep_validation' => (bool) $force_deep,
-			'deferred_checks' => $protocol_hotpath ? array( 'route_permission_validation', 'mcp_peer_inventory', 'write_catalog_inventory', 'live_handshake_revalidation', 'provider_runtime_integrity' ) : array(),
-			'write_surface' => self::write_surface_summary( $servers, $protocol_hotpath ),
+			'status_mode' => $force_deep ? 'deep_explicit' : ( $protocol_hotpath ? 'protocol_identity' : ( $admin_shallow ? 'admin_shallow' : 'standard' ) ),
+			'deferred_checks' => $lightweight ? array( 'route_permission_validation', 'mcp_peer_inventory', 'write_catalog_inventory', 'live_handshake_revalidation', 'provider_runtime_integrity' ) : array(),
+			'write_surface' => self::write_surface_summary( $servers, $lightweight ),
 			'provider_mcp_isolation' => self::bounded_isolation_status( $isolation ),
 			'oauth_resource_server' => self::bounded_oauth_status( $oauth, $oauth_blockers ),
 			'authentication' => array(
@@ -176,6 +184,12 @@ final class MAD4B_SCP_Connection_Status {
 		return $result;
 	}
 
+	private static function admin_shallow_surface() {
+		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only request classification.
+		return in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true );
+	}
+
 	private static function oauth_preflight_blockers( $oauth ) {
 		if ( ! is_array( $oauth ) || isset( $oauth['available'] ) && false === $oauth['available'] ) return array( 'oauth_resource_bridge_unavailable' );
 		$blockers = array();
@@ -218,6 +232,7 @@ final class MAD4B_SCP_Connection_Status {
 			'jwks_x5c_required' => ! empty( $oauth['jwks_x5c_required'] ),
 			'jwks_rsa_ne_supported' => ! empty( $oauth['jwks_rsa_ne_supported'] ),
 			'outbound_discovery_on_admin' => false,
+			'deep_status_deferred' => isset( $oauth['projection'] ) && 'runtime_identity' === sanitize_key( (string) $oauth['projection'] ),
 			'stores_bearer_tokens' => ! empty( $oauth['stores_bearer_tokens'] ),
 			'creates_credentials' => ! empty( $oauth['creates_credentials'] ),
 			'write_surfaces_enabled' => ! empty( $oauth['write_surfaces_enabled'] ),
@@ -403,7 +418,7 @@ final class MAD4B_SCP_Connection_Status {
 	}
 
 	private static function bounded_peer_summary( $peer ) {
-		if ( ! is_array( $peer ) ) return array( 'inventory_ready' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
+		if ( ! is_array( $peer ) ) return array( 'inventory_ready' => false, 'state' => 'unavailable', 'deep_inventory_performed' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
 		$foreign = isset( $peer['foreign_transport_inventory'] ) && is_array( $peer['foreign_transport_inventory'] ) ? $peer['foreign_transport_inventory'] : array();
 		$peers = array();
 		foreach ( isset( $peer['peers'] ) && is_array( $peer['peers'] ) ? array_slice( $peer['peers'], 0, 100 ) : array() as $item ) {
@@ -413,6 +428,8 @@ final class MAD4B_SCP_Connection_Status {
 		}
 		return array(
 			'inventory_ready' => ! empty( $peer['inventory_ready'] ),
+			'state' => isset( $peer['state'] ) ? sanitize_key( (string) $peer['state'] ) : ( ! empty( $peer['inventory_ready'] ) ? 'ready' : 'unknown' ),
+			'deep_inventory_performed' => ! empty( $peer['deep_inventory_performed'] ),
 			'write_side_channel_detected' => ! empty( $peer['write_side_channel_detected'] ),
 			'server_count' => isset( $peer['server_count'] ) ? (int) $peer['server_count'] : 0,
 			'external_peer_count' => isset( $peer['external_peer_count'] ) ? (int) $peer['external_peer_count'] : 0,

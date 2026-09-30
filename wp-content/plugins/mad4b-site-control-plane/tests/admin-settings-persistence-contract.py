@@ -35,11 +35,15 @@ for marker in [
 for marker in [
     "$asset_path = MAD4B_SCP_DIR . 'assets/admin-settings-persistence.js';",
     "$asset_version = MAD4B_SCP_VERSION;",
+    "$connection_hotpath = in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true );",
+    "if ( ! $connection_hotpath && is_readable( $asset_path ) )",
     "hash_file( 'sha256', $asset_path )",
     "substr( $content_sha, 0, 12 )",
     "filemtime( $asset_path )",
 ]:
     assert marker in persistence, marker
+asset_hash_guard = persistence.index("if ( ! $connection_hotpath && is_readable( $asset_path ) )")
+assert asset_hash_guard < persistence.index("hash_file( 'sha256', $asset_path )")
 
 for marker in [
     ".mad4b-settings-ajax-form",

@@ -62,6 +62,14 @@ mad4b_qm_assert( ! file_exists( WP_CONTENT_DIR . '/db.php' ), 'WPML/foreign wp-a
 mad4b_qm_assert( 'deferred_foreign_admin_surface' === $ordinary_admin['state'], 'foreign admin guard must exit before filesystem attribution status' );
 mad4b_qm_assert( empty( $ordinary_admin['mutation_performed'] ), 'foreign admin guard must remain mutation-free' );
 
+foreach ( array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ) as $hotpath_page ) {
+	$_GET['page'] = $hotpath_page;
+	$hotpath = MAD4B_SCP_Query_Monitor_Evidence_Bridge::maybe_enable_db_attribution();
+	mad4b_qm_assert( 'deferred_connection_admin_hotpath' === $hotpath['state'], $hotpath_page . ' must defer Query Monitor attribution bootstrap' );
+	mad4b_qm_assert( empty( $hotpath['mutation_performed'] ), $hotpath_page . ' attribution guard must remain mutation-free' );
+	mad4b_qm_assert( ! file_exists( WP_CONTENT_DIR . '/db.php' ), $hotpath_page . ' must never create Query Monitor db.php attribution during page load' );
+}
+
 $GLOBALS['mad4b_qm_admin'] = false;
 $remote_enabled = MAD4B_SCP_Query_Monitor_Evidence_Bridge::enable_db_attribution_explicit();
 mad4b_qm_assert( file_exists( WP_CONTENT_DIR . '/db.php' ), 'governed remote bootstrap must create the same bounded Query Monitor attribution loader on Staging' );

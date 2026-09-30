@@ -28,9 +28,11 @@ function remove_action( $hook, $callback, $priority = 10 ) {
 }
 function sanitize_key( $v ) { return strtolower( preg_replace('/[^a-z0-9_\-]/i','',(string)$v) ); }
 function sanitize_text_field( $v ) { return trim( (string) $v ); }
+function wp_unslash( $v ) { return $v; }
 function get_option( $k, $d = false ) { if ( MAD4B_SCP_Remote_Operation_Parity::BROWSER_REQUEST_OPTION === $k ) return $GLOBALS['browser_request']; return $GLOBALS['option'] ?: $d; }
 function update_option( $k, $v, $autoload = null ) { $GLOBALS['option'] = $v; return true; }
-function is_admin() { return false; }
+$GLOBALS['mad4b_qm_test_admin'] = false;
+function is_admin() { return ! empty( $GLOBALS['mad4b_qm_test_admin'] ); }
 function get_num_queries() { return 37; }
 $_SERVER['REQUEST_TIME_FLOAT'] = microtime(true) - 0.125;
 $_GET['mad4b_frontend_probe'] = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
@@ -108,6 +110,19 @@ if ( empty($GLOBALS['actions']['shutdown'][8]) ) { fwrite(STDERR,"FAIL: bridge s
 
 $check = function($c,$m){ if(!$c){fwrite(STDERR,"FAIL: $m\n");exit(1);} };
 $check(str_repeat('a',64) === MAD4B_SCP_Query_Monitor_Evidence_Bridge::request_build_fingerprint_for_test(), 'request build fingerprint must pin at request bootstrap');
+
+$admin_surface_method = new ReflectionMethod('MAD4B_SCP_Query_Monitor_Evidence_Bridge', 'current_request_is_mad4b_admin_surface');
+$admin_surface_method->setAccessible(true);
+$GLOBALS['mad4b_qm_test_admin'] = true;
+foreach ( array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ) as $hotpath_page ) {
+    $_GET['page'] = $hotpath_page;
+    $check(false === $admin_surface_method->invoke(null), $hotpath_page . ' must stay outside shutdown Query Monitor telemetry capture');
+}
+$_GET['page'] = 'mad4b-control-plane-diagnostics';
+$check(true === $admin_surface_method->invoke(null), 'explicit MAD4B diagnostics page must remain eligible for Query Monitor telemetry capture');
+$GLOBALS['mad4b_qm_test_admin'] = false;
+unset($_GET['page']);
+
 $probe_method = new ReflectionMethod('MAD4B_SCP_Query_Monitor_Evidence_Bridge', 'request_frontend_probe_hash');
 $probe_method->setAccessible(true);
 $_GET['mad4b_frontend_probe'] = '11111111-2222-4333-8444-555555555555';

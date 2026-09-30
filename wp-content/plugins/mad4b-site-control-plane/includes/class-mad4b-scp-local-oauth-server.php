@@ -115,13 +115,28 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'configured' => self::enabled(),
 			'effective' => (bool) $effective,
 			'environment' => self::current_environment(),
+			'production_approved' => self::production_approved(),
 			'issuer' => self::issuer(),
 			'issuer_configuration_valid' => $issuer_valid,
 			'issuer_transport_allowed' => $transport_allowed,
 			'private_key_present' => $key_ready,
+			'private_key_exposed' => false,
+			'private_key_stored_in_database' => false,
 			'oauth_store_ready' => $store_ready,
 			'oauth_store_version' => $installed_store_version,
+			'authorization_endpoint' => self::authorize_url(),
+			'token_endpoint' => self::token_url(),
+			'jwks_uri' => self::jwks_url(),
+			'revocation_endpoint' => self::revocation_url(),
+			'client_registration_mode' => 'cimd_or_pre_registered',
+			'client_count' => count( $clients ),
+			'pkce_methods_supported' => array( 'S256' ),
+			'access_token_signing_alg' => 'RS256',
 			'client_policy_ready' => $client_policy_ready,
+			'client_id_metadata_document_supported' => true,
+			'cimd_policy_client_count' => 1,
+			'cimd_chatgpt_client_id' => self::CHATGPT_CIMD_CLIENT_ID,
+			'cimd_fetch_on_admin_status' => false,
 			'deep_key_validation_deferred' => true,
 			'physical_store_introspection_deferred' => true,
 			'runtime_error' => is_wp_error( self::$runtime_error ) ? self::$runtime_error->get_error_code() : ( is_wp_error( $issuer_validation ) ? $issuer_validation->get_error_code() : '' ),
@@ -1142,7 +1157,13 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return true;
 		if ( ! is_admin() ) return false;
 		$pagenow = isset( $GLOBALS['pagenow'] ) ? sanitize_key( (string) $GLOBALS['pagenow'] ) : '';
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only request classification.
 		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
+		// Connection and ChatGPT are read/status pages. Never let their first byte
+		// depend on dbDelta, SHOW TABLES verification or RSA key generation. If
+		// runtime bootstrap is incomplete they report the deferred blocker and the
+		// governed lifecycle worker repairs it outside the interactive request.
+		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return true;
 		if ( in_array( $pagenow, array( 'plugins.php', 'update.php', 'update-core.php', 'plugin-install.php' ), true ) ) return true;
 		return in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
 	}

@@ -289,7 +289,9 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		$path = self::normalize_path( $path );
 
 		if ( self::is_known_oauth_protocol_path( $path ) ) {
-			$status = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? MAD4B_SCP_Local_OAuth_Server::status() : array();
+			$status = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'runtime_identity_status' )
+				? MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()
+				: array();
 			if ( ! empty( $status['effective'] ) ) return;
 			$blocker = self::oauth_blocker( $status );
 			self::send_json( array(
@@ -333,8 +335,12 @@ final class MAD4B_SCP_Upgrade_Continuity {
 
 	public static function reconnect_status() {
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
-		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? MAD4B_SCP_Local_OAuth_Server::status() : array();
-		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
+		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'runtime_identity_status' )
+			? MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()
+			: array();
+		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'runtime_identity_status' )
+			? MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()
+			: array();
 		$registration = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ? MAD4B_SCP_MCP_Registration_Bridge::status() : array();
 		$blockers = self::profile_reconnect_blockers();
 		if ( empty( $local['effective'] ) ) $blockers[] = self::oauth_blocker( $local );
@@ -395,6 +401,11 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		// Deep schema/audit diagnostics belong to the Control Plane. Third-party
 		// admin pages must not pay physical-schema or append-only-audit inspection.
 		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) && 'mad4b-approval-decisions' !== $page ) return;
+		// Connection and ChatGPT must remain request-serving status surfaces. Do not
+		// run Schema::status(true) / append-only audit physical verification from a
+		// global notice before these pages can render. Their protocol/reconnect paths
+		// remain fail-closed independently of this diagnostic notice.
+		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return;
 		remove_action( 'admin_notices', array( 'MAD4B_SCP_Plugin', 'schema_notice' ) );
 		$status = self::governance_status();
 		if ( ! empty( $status['ready'] ) ) return;

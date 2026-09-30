@@ -14,3 +14,13 @@ for marker in (
 ):
     assert marker in src, marker
 print('mad4b.upgrade-continuity-implicit-staging.v1: PASS')
+
+guard=src.split("public static function guard_reconnect_paths()",1)[1].split("public static function is_known_oauth_protocol_path",1)[0]
+assert "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()" in guard
+assert "MAD4B_SCP_Local_OAuth_Server::status()" not in guard
+
+reconnect=src.split("public static function reconnect_status()",1)[1].split("public static function governance_status()",1)[0]
+assert "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()" in reconnect
+assert "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()" in reconnect
+assert "MAD4B_SCP_Local_OAuth_Server::status()" not in reconnect
+assert "MAD4B_SCP_OAuth_Resource_Bridge::status()" not in reconnect
