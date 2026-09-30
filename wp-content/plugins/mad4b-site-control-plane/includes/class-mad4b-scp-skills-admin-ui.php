@@ -116,7 +116,9 @@ final class MAD4B_SCP_Skills_Admin_UI {
 
 	private static function render_status( array $status ) {
 		$identity = class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ? MAD4B_SCP_Skill_Snapshot_Identity::build() : array();
-		$cert = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::status() : array();
+		$cert = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status()
+			: array();
 
 		echo '<h2>' . esc_html__( 'Skill registry', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<table class="widefat striped" style="max-width:1000px"><tbody>';
@@ -296,7 +298,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 			return new WP_Error( 'mad4b_skill_provider_reconcile_failed', 'Provider Skill reconciliation did not reach ready state.' );
 		}
 
-		if ( class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ) MAD4B_SCP_Skill_Runtime_Certification::observe();
+		if ( class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ) MAD4B_SCP_Skill_Runtime_Certification::observe( true );
 		return __( 'Managed Skill seed and provider reconciliation completed with audit evidence.', 'mad4b-site-control-plane' );
 	}
 
