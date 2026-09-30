@@ -312,6 +312,25 @@ managed_apply = self_update.split("private static function apply_verified_archiv
 for marker in ("backup_current()", "verify_installed_identity", "rollback(", "restore_activation_state"):
     if marker not in managed_apply:
         raise SystemExit(f"managed upload rollback/readback invariant missing: {marker}")
+for marker in (
+    "catch ( Throwable $throwable )",
+    "mad4b_self_update_install_exception",
+    "self::rollback( $backup, $before, $runtime_php_files )",
+):
+    if marker not in managed_apply:
+        raise SystemExit(f"managed apply exception/rollback safety invariant missing: {marker}")
+try_index = managed_apply.find("try {")
+catch_index = managed_apply.find("catch ( Throwable $throwable )")
+finally_index = managed_apply.find("finally {")
+clear_index = managed_apply.find("self::$managed_apply = false;", finally_index)
+if min(try_index, catch_index, finally_index, clear_index) < 0 or not (try_index < catch_index < finally_index < clear_index):
+    raise SystemExit("managed apply flag must clear even if Plugin_Upgrader throws")
+rollback_body = self_update.split("private static function rollback(", 1)[1].split("private static function activation_state()", 1)[0]
+copy_index = rollback_body.find("copy_dir( $backup['backup_path'], $root )")
+invalidate_index = rollback_body.find("self::invalidate_runtime_caches( $runtime_php_files );")
+restore_index = rollback_body.find("self::restore_activation_state( $before )")
+if min(copy_index, invalidate_index, restore_index) < 0 or not (copy_index < invalidate_index < restore_index):
+    raise SystemExit("rollback must invalidate restored runtime paths before reactivation")
 
 # A verified replacement is not successful until the durable post-update
 # convergence checkpoint is established. Failure must rollback before any success audit.
