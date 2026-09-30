@@ -17,8 +17,19 @@ final class MAD4B_SCP_Schema_Lifecycle {
 
 	public static function package_identity() {
 		if ( '' !== self::$package_identity ) return self::$package_identity;
-		$sha = defined( 'MAD4B_SCP_FILE' ) && is_file( MAD4B_SCP_FILE ) ? hash_file( 'sha256', MAD4B_SCP_FILE ) : '';
-		self::$package_identity = hash( 'sha256', self::CONTRACT . "\0" . ( defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '' ) . "\0" . (string) $sha . "\0" . MAD4B_SCP_Schema::MIGRATION_ID );
+		$main_sha = defined( 'MAD4B_SCP_FILE' ) && is_file( MAD4B_SCP_FILE ) ? hash_file( 'sha256', MAD4B_SCP_FILE ) : '';
+		$schema_file = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema.php' : '';
+		$schema_sha = '' !== $schema_file && is_file( $schema_file ) ? hash_file( 'sha256', $schema_file ) : '';
+		$build_file = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'MAD4B-RUNTIME-BUILD.txt' : '';
+		$build_sha = '' !== $build_file && is_file( $build_file ) ? hash_file( 'sha256', $build_file ) : '';
+		self::$package_identity = hash( 'sha256', implode( "\0", array(
+			self::CONTRACT,
+			defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '',
+			(string) $main_sha,
+			(string) $schema_sha,
+			(string) $build_sha,
+			MAD4B_SCP_Schema::MIGRATION_ID,
+		) ) );
 		return self::$package_identity;
 	}
 
