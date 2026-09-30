@@ -250,9 +250,8 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		self::$telemetry_dirty = true;
 	}
 	private static function connection_admin_hotpath() {
-		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- request classification only.
-		return in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true );
+		return class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
 	}
 	private static function request_class() {
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
