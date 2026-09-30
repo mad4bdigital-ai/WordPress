@@ -4,7 +4,11 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.86**.
+Current plugin version: **0.4.0-rc.87**.
+
+### rc.87 REST hotpath pre-registration isolation
+
+rc.87 prevents reviewed JetEngine MCP REST registration callbacks from executing on ordinary REST/MAD4B protocol bootstrap when provider isolation is effective. The callbacks are retained request-locally and may be materialized only by the governed internal JetEngine handoff, while unknown provider callbacks/routes remain visible and fail-closed. This removes provider MCP route-construction cost before dispatch without disabling JetEngine or weakening provider authority boundaries.
 
 ### rc.86 Connection / ChatGPT admin 504 hotpath hardening
 
