@@ -65,9 +65,17 @@ $GLOBALS['mad4b_test_options'][ $legacy_option ] = array(
 	'owner' => 'legacy_runtime',
 	'expires_at' => time() - 1,
 );
+$legacy_status = MAD4B_SCP_Runtime_Maintenance_Lease::status();
+ok( ! empty( $legacy_status['active'] ), 'legacy-only maintenance fence must be visible to transport status' );
+ok( ! empty( $legacy_status['legacy_only_fence'] ), 'legacy-only maintenance fence must be classified explicitly' );
+ok( $legacy_option === $legacy_status['fence_source'], 'legacy-only status must expose the active fence source' );
+ok( ! empty( $legacy_status['legacy_expiry_grace_applied'] ), 'legacy-only status must report bounded expiry grace' );
+
 $legacy_busy = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'schema_lifecycle' );
 ok( is_wp_error( $legacy_busy ) && 'mad4b_runtime_maintenance_busy' === $legacy_busy->get_error_code(), 'recently expired legacy lease must receive bounded overrun fencing' );
 $GLOBALS['mad4b_test_options'][ $legacy_option ]['expires_at'] = time() - MAD4B_SCP_Runtime_Maintenance_Lease::LEGACY_EXPIRY_GRACE - 1;
+$legacy_expired_status = MAD4B_SCP_Runtime_Maintenance_Lease::status();
+ok( empty( $legacy_expired_status['active'] ), 'legacy-only fence must stop blocking transport after bounded overrun grace' );
 $after_grace = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'schema_lifecycle' );
 ok( is_string( $after_grace ) && '' !== $after_grace, 'legacy lease may be reclaimed only after overrun grace expires' );
 MAD4B_SCP_Runtime_Maintenance_Lease::release( $after_grace, 'schema_lifecycle' );
