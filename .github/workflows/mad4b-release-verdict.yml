@@ -38,6 +38,92 @@ jobs:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
 
+      - name: Verify exact-head action-job event scoping
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import importlib.util
+          from pathlib import Path
+
+          module_path = Path("tools/capture_exact_head_action_jobs.py")
+          spec = importlib.util.spec_from_file_location("mad4b_capture_exact_head_action_jobs", module_path)
+          if spec is None or spec.loader is None:
+              raise SystemExit("unable to load capture_exact_head_action_jobs.py")
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+
+          sha = "a" * 40
+
+          def row(event, branch="master", prs=None):
+              return {
+                  "head_sha": sha,
+                  "head_branch": branch,
+                  "event": event,
+                  "pull_requests": [] if prs is None else [{"number": n} for n in prs],
+              }
+
+          def matches(run, *, branch="master", pr=0, event="push"):
+              return module.run_matches_scope(
+                  run,
+                  head_sha=sha,
+                  head_branch=branch,
+                  pr_number=pr,
+                  event_name=event,
+              )
+
+          assert module.canonical_evidence_events(event_name="push", pr_number=0) == ("push",)
+          assert module.canonical_evidence_events(event_name="workflow_dispatch", pr_number=0) == ("push",)
+          assert module.canonical_evidence_events(event_name="pull_request", pr_number=198) == (
+              "pull_request",
+              "pull_request_target",
+          )
+
+          assert matches(row("push"))
+          assert not matches(row("pull_request"))
+          assert not matches(row("pull_request_target"))
+          assert not matches(row("workflow_dispatch"))
+          assert not matches(row("push", branch="feature"))
+
+          assert matches(row("push"), event="workflow_dispatch")
+          assert not matches(row("workflow_dispatch"), event="workflow_dispatch")
+
+          assert matches(
+              row("pull_request", branch="gov/release-verdict-event-scope-20260930"),
+              branch="gov/release-verdict-event-scope-20260930",
+              pr=198,
+              event="pull_request",
+          )
+          assert matches(
+              row("pull_request_target", branch="gov/release-verdict-event-scope-20260930"),
+              branch="gov/release-verdict-event-scope-20260930",
+              pr=198,
+              event="pull_request",
+          )
+          assert not matches(
+              row("push", branch="gov/release-verdict-event-scope-20260930"),
+              branch="gov/release-verdict-event-scope-20260930",
+              pr=198,
+              event="pull_request",
+          )
+          assert not matches(
+              row("pull_request", branch="gov/release-verdict-event-scope-20260930", prs=[199]),
+              branch="gov/release-verdict-event-scope-20260930",
+              pr=198,
+              event="pull_request",
+          )
+          assert matches(
+              row("pull_request_target", branch="gov/release-verdict-event-scope-20260930", prs=[198]),
+              branch="gov/release-verdict-event-scope-20260930",
+              pr=198,
+              event="pull_request",
+          )
+
+          # Compatibility for explicit non-Actions callers that provide no event.
+          assert matches(row("pull_request"), event="")
+          print("mad4b.exact-head-action-jobs.v2: PASS")
+          PY
+
       - name: Verify exact-head owner attestation
         if: github.event_name == 'pull_request'
         env:
