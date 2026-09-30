@@ -130,6 +130,7 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane/tests'
           python3 "$root/effective-environment-authority-contract.py"
+          php "$root/effective-environment-runtime.php"
           python3 "$root/schema-lifecycle-same-version-contract.py"
           python3 "$root/mcp-peer-semantic-risk-contract.py"
           python3 "$root/portable-readonly-reconnect-contract.py"
