@@ -150,6 +150,62 @@ jobs:
 
           # Missing invocation event must fail closed rather than widening to SHA-only.
           assert not matches(row("pull_request", branch=branch, prs=[199]), branch=branch, pr=199, event="")
+
+          # Transient GitHub 5xx responses are retried with bounded exponential
+          # backoff; permanent API failures remain fail-closed without retry.
+          class Completed:
+              def __init__(self, returncode, stdout="", stderr=""):
+                  self.returncode = returncode
+                  self.stdout = stdout
+                  self.stderr = stderr
+
+          original_run = module.subprocess.run
+          original_sleep = module.time.sleep
+          calls = []
+          sleeps = []
+          responses = [
+              Completed(1, stderr="gh: Server Error (HTTP 502)"),
+              Completed(1, stderr="gh: Server Error (HTTP 503)"),
+              Completed(0, stdout='{"ok": true}'),
+          ]
+          try:
+              def fake_run(*args, **kwargs):
+                  calls.append((args, kwargs))
+                  return responses.pop(0)
+
+              module.subprocess.run = fake_run
+              module.time.sleep = lambda seconds: sleeps.append(seconds)
+              assert module.gh_json("repos/example/repo/actions/runs") == {"ok": True}
+              assert len(calls) == 3
+              assert sleeps == [2, 4]
+          finally:
+              module.subprocess.run = original_run
+              module.time.sleep = original_sleep
+
+          calls = []
+          sleeps = []
+          try:
+              module.subprocess.run = lambda *args, **kwargs: (
+                  calls.append((args, kwargs))
+                  or Completed(1, stderr="gh: Not Found (HTTP 404)")
+              )
+              module.time.sleep = lambda seconds: sleeps.append(seconds)
+              try:
+                  module.gh_json("repos/example/repo/actions/runs/404/jobs")
+              except module.subprocess.CalledProcessError:
+                  pass
+              else:
+                  raise AssertionError("permanent GitHub API failure must fail closed")
+              assert len(calls) == 1
+              assert sleeps == []
+          finally:
+              module.subprocess.run = original_run
+              module.time.sleep = original_sleep
+
+          assert module.gh_api_failure_is_transient("gh: Server Error (HTTP 502)")
+          assert module.gh_api_failure_is_transient("gh: API rate limit exceeded (HTTP 403)")
+          assert not module.gh_api_failure_is_transient("gh: Forbidden (HTTP 403)")
+          assert not module.gh_api_failure_is_transient("gh: Not Found (HTTP 404)")
           print("mad4b.exact-head-action-jobs.v2: PASS")
           PY
 
