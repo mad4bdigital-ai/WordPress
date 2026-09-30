@@ -19,12 +19,12 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		if ( 'mad4b-control-plane-connection' !== $page || 'endpoints' !== $tab ) return;
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ) return;
 
-		// The MCP Adapter intentionally initializes lazily on rest_api_init. Prime
-		// WordPress' canonical in-process REST lifecycle before reading counters so
-		// this notice does not permanently report the pre-initialization snapshot.
-		// If REST was already primed before MAD4B loaded, the bridge's bounded init
-		// recovery has already run by the time admin_notices renders.
-		if ( function_exists( 'rest_get_server' ) ) rest_get_server();
+		// This notice is observational only. Deep REST materialization is owned by
+		// the explicit nonce-bound Connection > Endpoints POST action and runs at
+		// admin_init before this notice. Never prime REST from admin_notices.
+		$deep_requested = isset( $_POST['mad4b_connection_action'] )
+			&& 'deep_endpoints' === sanitize_key( wp_unslash( (string) $_POST['mad4b_connection_action'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- owning page verifies nonce.
+		if ( ! $deep_requested ) return;
 
 		$status = MAD4B_SCP_MCP_Registration_Bridge::status();
 		$refresh = class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh' ) ? MAD4B_SCP_MCP_MU_Bootstrap_Refresh::status() : array();
