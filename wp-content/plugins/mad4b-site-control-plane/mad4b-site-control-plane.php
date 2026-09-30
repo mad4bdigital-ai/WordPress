@@ -45,6 +45,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cli.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-host-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identity-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-agent-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-runtime-gates.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connector-resilience.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-read-consistency.php';
@@ -228,6 +229,8 @@ if ( ! empty( $mad4b_upgrade_continuity['recovered'] ) ) {
 MAD4B_SCP_Portable_Readonly_Connection::bootstrap();
 unset( $mad4b_upgrade_continuity );
 MAD4B_SCP_Site_Profile::boot();
+MAD4B_SCP_Governed_Runtime_Gates::boot();
+MAD4B_SCP_Governed_Runtime_Gates::bootstrap_runtime();
 MAD4B_SCP_Upgrade_Continuity::boot();
 MAD4B_SCP_Reconnect_Hardening::boot();
 MAD4B_SCP_Dependency_Manager::boot();
