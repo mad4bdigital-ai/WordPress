@@ -136,7 +136,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 	public static function status( $input = array() ) {
 		unset( $input );
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
-		$environment = isset( $profile['environment'] ) ? sanitize_key( (string) $profile['environment'] ) : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$environment = isset( $profile['environment'] ) ? sanitize_key( (string) $profile['environment'] ) : ( class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) );
 		$identity = self::current_identity();
 		$update = class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'cached_status' ) ? MAD4B_SCP_Self_Update::cached_status() : array();
 		$schema = class_exists( 'MAD4B_SCP_Schema' ) ? MAD4B_SCP_Schema::status( true ) : array();
@@ -365,7 +365,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 	}
 
 	public static function mark_activation_pending() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		if ( 'staging' !== $environment ) return array( 'scheduled' => false, 'state' => 'observe_only_non_staging', 'environment' => $environment );
 		$identity = self::current_identity();
 		$identity_complete = ! empty( $identity['source_commit_sha'] ) && ! empty( $identity['build_fingerprint'] ) && ! empty( $identity['package_manifest_digest'] );
@@ -403,7 +403,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 	}
 
 	public static function mark_post_update_pending( array $target, $channel = '', $plan_sha256 = '' ) {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		if ( 'staging' !== $environment ) return array( 'scheduled' => false, 'state' => 'ignored_non_staging' );
 		$checkpoint = array(
 			'contract' => self::CONTRACT,
@@ -438,7 +438,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 
 	public static function maybe_schedule_pending() {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' );
 		if ( 'staging' !== $environment ) return;
 		// Third-party wp-admin pages are pure request-serving surfaces. They must
 		// never inspect build provenance, mutate checkpoints, schedule convergence,
@@ -594,7 +594,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 	public static function resume_safe_phases() {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		if ( ! is_array( $checkpoint ) || empty( $checkpoint ) ) return;
-		if ( 'staging' !== ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' ) ) return;
+		if ( 'staging' !== ( class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' ) ) ) return;
 		$target = isset( $checkpoint['target_identity'] ) && is_array( $checkpoint['target_identity'] ) ? $checkpoint['target_identity'] : array();
 		$current = self::current_identity();
 		if ( ! self::identity_matches( $target, $current ) ) {
