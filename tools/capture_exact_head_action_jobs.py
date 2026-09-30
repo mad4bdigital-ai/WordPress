@@ -45,6 +45,19 @@ def pull_request_numbers(run: dict) -> list[int]:
     return sorted(set(numbers))
 
 
+def canonical_evidence_event(*, event_name: str, pr_number: int) -> str:
+    event_name = event_name.strip()
+    if pr_number > 0:
+        return event_name
+    # A manual verdict is a re-evaluation of the canonical branch push, not a
+    # new source of runtime/release evidence. Binding workflow_dispatch to
+    # workflow_dispatch would make all ordinary push-produced critical checks
+    # invisible and would turn manual re-evaluation into a guaranteed timeout.
+    if event_name == "workflow_dispatch":
+        return "push"
+    return event_name
+
+
 def run_matches_scope(
     run: dict,
     *,
@@ -60,12 +73,16 @@ def run_matches_scope(
     run_branch = str(run.get("head_branch") or "").strip()
     run_event = str(run.get("event") or "").strip()
     associated_prs = pull_request_numbers(run)
+    evidence_event = canonical_evidence_event(
+        event_name=event_name,
+        pr_number=pr_number,
+    )
 
     # Exact-head evidence is event-bound as well as SHA/branch-bound. Without
     # this guard, a later pull_request run whose synthetic merge SHA equals the
     # current master SHA can overwrite canonical push evidence for the same job
     # name when the verdict selects the newest check-run id.
-    if event_name and run_event != event_name:
+    if evidence_event and run_event != evidence_event:
         return False
 
     if pr_number > 0:
@@ -176,6 +193,10 @@ def main() -> int:
         "head_sha": head_sha,
         "head_branch": head_branch,
         "event_name": event_name,
+        "evidence_event": canonical_evidence_event(
+            event_name=event_name,
+            pr_number=pr_number,
+        ),
         "pull_request": pr_number,
         "scope_mode": (
             "pull_request+event"
