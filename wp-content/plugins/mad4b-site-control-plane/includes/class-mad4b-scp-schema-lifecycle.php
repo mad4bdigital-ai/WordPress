@@ -98,6 +98,13 @@ final class MAD4B_SCP_Schema_Lifecycle {
 	}
 
 	public static function reconcile( $source = 'scheduled' ) {
+		$source = sanitize_key( (string) $source );
+		if ( 'scheduled' === $source && ! self::retry_due() ) {
+			$state = get_option( self::STATE_OPTION, array() );
+			$next = is_array( $state ) && isset( $state['next_attempt_at'] ) ? absint( $state['next_attempt_at'] ) : 0;
+			if ( $next > time() && false === wp_next_scheduled( self::CRON_HOOK ) ) wp_schedule_single_event( $next, self::CRON_HOOK );
+			return false;
+		}
 		$result = MAD4B_SCP_Schema::install_or_upgrade();
 		$state = get_option( self::STATE_OPTION, array() );
 		if ( ! is_array( $state ) ) $state = array();
@@ -113,7 +120,8 @@ final class MAD4B_SCP_Schema_Lifecycle {
 			$delay = min( HOUR_IN_SECONDS, max( MINUTE_IN_SECONDS, MINUTE_IN_SECONDS * ( 1 << min( 5, $state['attempts'] - 1 ) ) ) );
 			$state['next_attempt_at'] = time() + $delay;
 			update_option( self::STATE_OPTION, $state, false );
-			if ( false === wp_next_scheduled( self::CRON_HOOK ) ) wp_schedule_single_event( $state['next_attempt_at'], self::CRON_HOOK );
+			wp_clear_scheduled_hook( self::CRON_HOOK );
+			wp_schedule_single_event( $state['next_attempt_at'], self::CRON_HOOK );
 			return $result;
 		}
 		$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::ensure_head_initialized() : true;
@@ -124,7 +132,8 @@ final class MAD4B_SCP_Schema_Lifecycle {
 			$delay = min( HOUR_IN_SECONDS, max( MINUTE_IN_SECONDS, MINUTE_IN_SECONDS * ( 1 << min( 5, $state['attempts'] - 1 ) ) ) );
 			$state['next_attempt_at'] = time() + $delay;
 			update_option( self::STATE_OPTION, $state, false );
-			if ( false === wp_next_scheduled( self::CRON_HOOK ) ) wp_schedule_single_event( $state['next_attempt_at'], self::CRON_HOOK );
+			wp_clear_scheduled_hook( self::CRON_HOOK );
+			wp_schedule_single_event( $state['next_attempt_at'], self::CRON_HOOK );
 			return $audit;
 		}
 		$state['state'] = 'ready';
@@ -134,6 +143,7 @@ final class MAD4B_SCP_Schema_Lifecycle {
 		$state['applied_package_identity'] = self::package_identity();
 		$state['completed_at'] = gmdate( 'c' );
 		update_option( self::STATE_OPTION, $state, false );
+		wp_clear_scheduled_hook( self::CRON_HOOK );
 		if ( class_exists( 'MAD4B_SCP_Runtime_Convergence' ) && method_exists( 'MAD4B_SCP_Runtime_Convergence', 'mark_activation_pending' ) ) MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
 		return true;
 	}
