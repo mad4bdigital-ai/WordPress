@@ -5,29 +5,90 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
+import sys
+import time
 from pathlib import Path
 
 CONTRACT = "mad4b.exact-head-action-jobs.v2"
 MAX_RUN_PAGES = 5
 MAX_JOB_PAGES = 5
+GH_API_MAX_ATTEMPTS = 6
+GH_API_RETRY_BASE_SECONDS = 2
+GH_API_RETRY_MAX_SECONDS = 20
+GH_API_TRANSIENT_HTTP_STATUSES = frozenset({429, 500, 502, 503, 504})
+GH_API_TRANSIENT_ERROR_MARKERS = (
+    "server error",
+    "timeout",
+    "timed out",
+    "connection reset",
+    "connection refused",
+    "tls handshake timeout",
+    "temporary failure",
+    "unexpected eof",
+    "secondary rate limit",
+    "rate limit exceeded",
+)
 TRUSTED_PULL_REQUEST_TARGET_WORKFLOWS = (
     ".github/workflows/mad4b-feature-boundary-root.yml",
 )
 
 
+def gh_api_failure_is_transient(stderr: str) -> bool:
+    """Retry only bounded GitHub/network failures; permanent API errors fail closed."""
+    normalized = (stderr or "").strip().lower()
+    status_match = re.search(r"\bhttp\s+(\d{3})\b", normalized)
+    status = int(status_match.group(1)) if status_match else None
+    if status in GH_API_TRANSIENT_HTTP_STATUSES:
+        return True
+    return any(marker in normalized for marker in GH_API_TRANSIENT_ERROR_MARKERS)
+
+
 def gh_json(endpoint: str):
-    raw = subprocess.check_output(
-        [
-            "gh",
-            "api",
-            "-H",
-            "Accept: application/vnd.github+json",
-            endpoint,
-        ],
-        text=True,
-    )
-    return json.loads(raw)
+    """Fetch JSON from GitHub with bounded retry for transient infrastructure failures."""
+    command = [
+        "gh",
+        "api",
+        "-H",
+        "Accept: application/vnd.github+json",
+        endpoint,
+    ]
+    for attempt in range(1, GH_API_MAX_ATTEMPTS + 1):
+        completed = subprocess.run(
+            command,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode == 0:
+            return json.loads(completed.stdout)
+
+        stderr = completed.stderr or ""
+        if (
+            attempt >= GH_API_MAX_ATTEMPTS
+            or not gh_api_failure_is_transient(stderr)
+        ):
+            raise subprocess.CalledProcessError(
+                completed.returncode,
+                command,
+                output=completed.stdout,
+                stderr=stderr,
+            )
+
+        delay = min(
+            GH_API_RETRY_BASE_SECONDS * (2 ** (attempt - 1)),
+            GH_API_RETRY_MAX_SECONDS,
+        )
+        print(
+            "GitHub API transient failure; retrying "
+            f"attempt={attempt + 1}/{GH_API_MAX_ATTEMPTS} delay_seconds={delay}: "
+            f"{stderr.strip()}",
+            file=sys.stderr,
+        )
+        time.sleep(delay)
+
+    raise AssertionError("unreachable GitHub API retry state")
 
 
 def pull_request_numbers(run: dict) -> list[int]:
