@@ -26,7 +26,7 @@ transport_registry = (PLUGIN / "includes/class-mad4b-scp-provider-transport-regi
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 all_php = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in (PLUGIN / "includes").rglob("*.php"))
 
-assert "Version: 0.4.0-rc.83" in main
+assert "Version: 0.4.0-rc.84" in main
 for boot in (
     "MAD4B_SCP_Operation_Registry::boot();",
     "MAD4B_SCP_Operation_Pipeline::boot();",
