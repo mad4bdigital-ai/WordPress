@@ -426,6 +426,14 @@ recovery_run = self_update.split("public static function run_recovery_update()",
 recovery_ineligible = recovery_run.split("$status['eligible'] = true;", 1)[0]
 assert "self::persist_recovery_status( $status );" not in recovery_ineligible
 assert "return $status;" in recovery_ineligible
+recovery_eligible = self_update.split("private static function recovery_update_eligible()", 1)[1].split("private static function persist_recovery_status", 1)[0]
+for marker in (
+    "self::environment_allowed( true )",
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
+    "'staging' === sanitize_key",
+):
+    assert marker in recovery_eligible, marker
 
 # PRs may report deployment drift as inconclusive, but post-merge/manual live
 # acceptance must fail closed until the exact published runtime is loaded.
