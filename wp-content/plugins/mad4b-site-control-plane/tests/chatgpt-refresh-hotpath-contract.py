@@ -28,6 +28,12 @@ query_monitor = (root / "includes/class-mad4b-scp-query-monitor-evidence-bridge.
 mu_refresh = (root / "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php").read_text(encoding="utf-8")
 runtime_conflict = (root / "includes/class-mad4b-scp-mcp-runtime-conflict-guard.php").read_text(encoding="utf-8")
 upgrade_continuity = (root / "includes/class-mad4b-scp-upgrade-continuity.php").read_text(encoding="utf-8")
+reconnect = (root / "includes/class-mad4b-scp-reconnect-hardening.php").read_text(encoding="utf-8")
+provider_policy = (root / "includes/class-mad4b-scp-provider-diagnostic-policy.php").read_text(encoding="utf-8")
+skills_ui = (root / "includes/class-mad4b-scp-skills-admin-ui.php").read_text(encoding="utf-8")
+oauth_canary = (root / "includes/class-mad4b-scp-local-oauth-browser-canary.php").read_text(encoding="utf-8")
+plugin_discovery = (root / "includes/class-mad4b-scp-plugin-discovery.php").read_text(encoding="utf-8")
+runtime_components = (root / "includes/adapters/class-mad4b-scp-runtime-component-adapters.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
@@ -51,6 +57,58 @@ first_full_runtime_require = entry.index("require_once MAD4B_SCP_DIR . 'includes
 assert early_gate < first_full_runtime_require
 early_return_block = entry.split("if ( '' !== $mad4b_scp_early_zero_touch_reason ) {", 1)[1].split("require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-profile.php';", 2)[1]
 assert "return;" in early_return_block
+
+
+# Every ordinary Control Plane GET/HEAD screen is request-serving by default.
+# Only Connection > Endpoints remains an explicit browser deep-diagnostic route;
+# POST/admin-post actions never enter the read-only classifier.
+passive_router = request_scope.split("private static function passive_admin_route(", 1)[1].split("/** @internal Pure regression seam", 1)[0]
+for page in (
+    "mad4b-control-plane",
+    "mad4b-control-plane-connection",
+    "mad4b-control-plane-chatgpt",
+    "mad4b-control-plane-context",
+    "mad4b-control-plane-site-profile",
+    "mad4b-control-plane-skills",
+    "mad4b-control-plane-performance",
+    "mad4b-control-plane-content-pipeline",
+    "mad4b-adapter-coverage",
+    "mad4b-runtime-components",
+    "mad4b-approval-decisions",
+):
+    assert page in passive_router or "0 === strpos( $page, 'mad4b-control-plane-' )" in passive_router, page
+assert "'endpoints' !== $tab" in passive_router
+assert "current_admin_request_method_is_read_only()" in request_scope
+assert "array( 'GET', 'HEAD' )" in request_scope
+
+# Passive MAD4B admin is part of zero-touch policy, so Plugin::boot() returns
+# after navigation registration and before authority/OAuth/provider lifecycle.
+assert "public static function current_request_is_passive_mad4b_admin()" in provider_policy
+zero_touch = provider_policy.split("public static function current_request_is_zero_touch_surface()", 1)[1].split("public static function zero_touch_reason()", 1)[0]
+assert "self::current_request_is_passive_mad4b_admin()" in zero_touch
+
+# The entrypoint must also avoid registering heavy global lifecycle observers
+# before Plugin::boot() gets a chance to return. Navigation/render methods stay
+# available; lifecycle work remains for explicit action/protocol/deep surfaces.
+assert "$mad4b_passive_admin_read = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )" in entry
+assert "if ( ! $mad4b_passive_admin_read ) {" in entry
+passive_gate_pos = entry.index("$mad4b_passive_admin_read =")
+for heavy in (
+    "MAD4B_SCP_Live_Acceptance_Observer::boot_early();",
+    "MAD4B_SCP_Query_Monitor_Evidence_Bridge::boot_early();",
+    "MAD4B_SCP_Staging_Certification::boot();",
+    "MAD4B_SCP_Context_Authority::boot();",
+    "MAD4B_SCP_Provider_Autopilot::boot();",
+    "MAD4B_SCP_Plugin_Lifecycle::boot();",
+    "MAD4B_SCP_Self_Update::boot();",
+    "MAD4B_SCP_Workflow_Providers::boot();",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::boot();",
+    "MAD4B_SCP_Skill_Autoconfig::bootstrap();",
+):
+    assert heavy in entry, heavy
+    assert passive_gate_pos < entry.index(heavy), heavy
+assert "MAD4B_SCP_Skill_Runtime_Certification::observe();" not in entry
+assert "Registration/transport hooks are cheap and request-local" in entry
 
 # Upstream 0.6.1 eagerly materializes Ability -> Tool DTOs while each server is
 # constructed during mcp_adapter_init. This is the structural reason shrinking
@@ -452,7 +510,7 @@ for marker in (
 ):
     assert marker in external_diagnostic_workflow, marker
 
-print("mad4b.chatgpt-refresh-hotpath.v16: PASS")
+print("mad4b.chatgpt-refresh-hotpath.v17: PASS")
 
 # Post-update MU reconciliation must never execute filesystem mutation/audit work
 # before an MCP/OAuth protocol request can be served.
@@ -530,7 +588,61 @@ assert "performance_sample(" not in foreign_prefix
 upgrade_preboot = upgrade_continuity.split("public static function pre_boot()", 1)[1].split("public static function boot()", 1)[0]
 assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in upgrade_preboot
 assert "'deferred_protocol_hotpath'" in upgrade_preboot
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()" in upgrade_preboot
+assert "'deferred_passive_admin_hotpath'" in upgrade_preboot
 assert upgrade_preboot.index("current_request_is_protocol_hotpath()") < upgrade_preboot.index("recover_verified_read_continuity()")
+assert upgrade_preboot.index("current_request_is_passive_admin_hotpath()") < upgrade_preboot.index("recover_verified_read_continuity()")
+
+
+# OAuth discovery must remain reachable even while authenticated MCP execution is
+# fenced by restart grace/maintenance. The unauthenticated remote resource probe
+# flows through to OAuth Resource Bridge so it can emit the standards 401
+# WWW-Authenticate challenge; bearer/local-admin requests remain fenced.
+guard = reconnect.split("public static function guard_mcp_rest_dispatch(", 1)[1].split("public static function connection_admin_notice()", 1)[0]
+assert "$remote_preauth_probe" in guard
+assert "get_header( 'authorization' )" in guard
+assert "is_user_logged_in()" in guard
+assert guard.index("if ( $remote_preauth_probe ) return $result;") < guard.index("$restart_grace = self::restart_grace_status();")
+assert guard.index("if ( $remote_preauth_probe ) return $result;") < guard.index("$maintenance_lease = self::maintenance_lease_status();")
+
+# Passive admin readiness must not report a false not_registered merely because
+# the MCP Adapter registry is intentionally not materialized on that PHP request.
+registration_projection = reconnect.split("private static function chatgpt_registration_projection()", 1)[1].split("private static function preauth_reconnect_blockers()", 1)[0]
+for marker in (
+    "MAD4B_SCP_Servers::expected_server_ids()",
+    "has_action( 'mcp_adapter_init'",
+    "expected_hook_bound_deferred_materialization",
+    "'observed' => $observed",
+):
+    assert marker in registration_projection, marker
+reconnect_status = reconnect.split("public static function reconnect_status()", 1)[1].split("private static function chatgpt_registration_projection()", 1)[0]
+assert "self::chatgpt_registration_projection()" in reconnect_status
+assert "'chatgpt_registration_observed'" in reconnect_status
+assert "'chatgpt_registration_projection'" in reconnect_status
+
+# Skills and OAuth Canary render from persisted/runtime-identity evidence. Fresh
+# certification or deep OAuth inspection happens only after an explicit action.
+skills_render = skills_ui.split("private static function render_status(", 1)[1].split("private static function render_snapshot_note()", 1)[0]
+assert "MAD4B_SCP_Skill_Runtime_Certification::persisted_status()" in skills_render
+assert "MAD4B_SCP_Skill_Runtime_Certification::status()" not in skills_render
+assert "MAD4B_SCP_Skill_Runtime_Certification::observe( true )" in skills_ui
+
+canary_status = oauth_canary.split("public static function status()", 1)[1].split("public static function enqueue_assets()", 1)[0]
+assert "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()" in canary_status
+assert "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()" in canary_status
+assert "MAD4B_SCP_Local_OAuth_Server::status()" not in canary_status
+assert "MAD4B_SCP_OAuth_Resource_Bridge::status()" not in canary_status
+
+# Local inventory pages may still do bounded filesystem/plugin enumeration, but
+# repeated projections inside one page request must reuse the same snapshot.
+assert "private static $coverage = null;" in plugin_discovery
+coverage_body = plugin_discovery.split("public static function coverage()", 1)[1].split("private static function functional_state_counts", 1)[0]
+assert "if ( null !== self::$coverage ) return self::$coverage;" in coverage_body
+assert "return self::$coverage;" in coverage_body
+assert "private static $inventory = null;" in runtime_components
+inventory_body = runtime_components.split("public static function inventory()", 1)[1].split("public function inventory()", 1)[0]
+assert "if ( null !== self::$inventory ) return self::$inventory;" in inventory_body
+assert "return self::$inventory;" in inventory_body
 
 # The direct ChatGPT "session-safe" report must remain genuinely bounded:
 # no full package hashing, deep authority scan, live Skill reconciliation,
