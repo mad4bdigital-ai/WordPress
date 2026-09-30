@@ -178,7 +178,7 @@ final class MAD4B_SCP_Authorization {
 		}
 		$operating_mode = MAD4B_SCP_Policy_Resolution::current_operating_mode();
 		if ( is_wp_error( $operating_mode ) ) return $operating_mode;
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$base_policy_facts = array(
 			'hard_deny' => false,
 			'kill_switch_active' => false,
