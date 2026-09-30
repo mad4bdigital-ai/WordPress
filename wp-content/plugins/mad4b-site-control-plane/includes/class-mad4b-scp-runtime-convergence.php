@@ -53,51 +53,40 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$not_before = self::maintenance_not_before();
 		$source = is_array( $checkpoint ) && isset( $checkpoint['source'] ) ? sanitize_key( (string) $checkpoint['source'] ) : '';
 		$state = is_array( $checkpoint ) && isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
-		$active = 'self_update' === $source && $not_before > $now && in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'waiting_for_exact_runtime_restart' ), true );
+		$pending_states = array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart', 'pending_manual_resume' );
+		$target = is_array( $checkpoint ) && isset( $checkpoint['target_identity'] ) && is_array( $checkpoint['target_identity'] )
+			? self::bounded_identity( $checkpoint['target_identity'] )
+			: array();
+		$current = ! empty( $target ) ? self::current_identity() : array();
+		$identity_match = ! empty( $target ) && self::identity_matches( $target, $current );
+		$convergence_pending = 'self_update' === $source && in_array( $state, $pending_states, true );
+		$quiet_period_active = $convergence_pending && $not_before > $now;
+		$manual_resume_required = $convergence_pending && 'pending_manual_resume' === $state;
+
+		// The quiet period is only the minimum delay. The actual protocol barrier is
+		// identity/convergence bound and remains active until the self-update
+		// checkpoint leaves every pending state. This prevents MCP reconnect from
+		// racing schema/provider convergence at T+21 merely because a timer expired.
+		$active = $convergence_pending;
+		$retryable = $active && ! $manual_resume_required;
+		$retry_after = $retryable ? ( $quiet_period_active ? max( 1, $not_before - $now ) : 5 ) : 0;
 		return array(
-			'contract' => 'mad4b.runtime-restart-grace.v1',
+			'contract' => 'mad4b.runtime-restart-grace.v2',
 			'active' => $active,
 			'state' => $state,
-			'retry_after_seconds' => $active ? max( 1, $not_before - $now ) : 0,
+			'convergence_pending' => $convergence_pending,
+			'quiet_period_active' => $quiet_period_active,
+			'exact_runtime_identity_match' => $identity_match,
+			'current_identity' => self::bounded_identity( $current ),
+			'retryable' => $retryable,
+			'retry_after_seconds' => $retry_after,
+			'client_action' => $manual_resume_required ? 'operator_resume_runtime_convergence' : 'retry_after_runtime_convergence',
 			'resume_not_before' => $not_before,
-			'target_identity' => is_array( $checkpoint ) && isset( $checkpoint['target_identity'] ) && is_array( $checkpoint['target_identity'] ) ? self::bounded_identity( $checkpoint['target_identity'] ) : array(),
+			'target_identity' => $target,
 			'background_maintenance_deferred' => $active,
 			'read_only' => true,
 			'mutation_performed' => false,
 			'production_mutation' => false,
-		);
-	}
-
-	public static function maintenance_lease_status() {
-		$now = time();
-		$candidates = array_merge( array( self::LOCK_OPTION ), self::legacy_lock_options() );
-		foreach ( array_values( array_unique( $candidates ) ) as $option ) {
-			$lease = get_option( $option, array() );
-			$expires = is_array( $lease ) && isset( $lease['expires_at'] ) ? absint( $lease['expires_at'] ) : 0;
-			if ( $expires <= $now || empty( $lease['token'] ) ) continue;
-			$owner = isset( $lease['owner'] ) ? sanitize_key( (string) $lease['owner'] ) : ( self::LOCK_OPTION === $option ? 'runtime_maintenance' : 'legacy_runtime_maintenance' );
-			return array(
-				'contract' => 'mad4b.runtime-maintenance-lease.v1',
-				'active' => true,
-				'owner' => $owner,
-				'lock_option' => sanitize_key( (string) $option ),
-				'expires_at' => $expires,
-				'retry_after_seconds' => max( 1, min( 5, $expires - $now ) ),
-				'cross_version_fence' => self::LOCK_OPTION !== $option,
-				'read_only' => true,
-				'mutation_performed' => false,
-			);
-		}
-		return array(
-			'contract' => 'mad4b.runtime-maintenance-lease.v1',
-			'active' => false,
-			'owner' => '',
-			'lock_option' => '',
-			'expires_at' => 0,
-			'retry_after_seconds' => 0,
-			'cross_version_fence' => false,
-			'read_only' => true,
-			'mutation_performed' => false,
 		);
 	}
 
