@@ -188,7 +188,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 	}
 
 	private static function policy_environment() {
-		$effective = self::policy_environment();
+		$effective = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() ) return $effective;
 		$portable = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
 		if ( $portable && class_exists( 'MAD4B_SCP_Site_Profile' ) && ! MAD4B_SCP_Site_Profile::wordpress_environment_explicit() ) {
