@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit( 1 ); }
 
 // Historical evidence marker for Spec Kit migration tracking only:
 // mad4b.site-control-plane.runtime-mcp-provider-isolation.v1
+// mad4b.site-control-plane.runtime-mcp-provider-isolation.v4
 
 function mad4b_isolation_fail( $message, $data = null ) {
 	fwrite( STDERR, 'FAIL: ' . $message . ( null !== $data ? ' ' . wp_json_encode( $data ) : '' ) . PHP_EOL );
@@ -27,7 +28,7 @@ require_once __DIR__ . '/fixtures/provider-mcp-registration-callbacks.php';
 
 $hostinger = new \Hostinger\AiAssistant\Mcp\McpServer();
 $elementskit = new \ElementsKit_Lite\Mcp\Server();
-$jetengine_rest = new \Jet_Engine\MCP_Tools\Registry();
+$jetengine_rest = new \Jet_Engine\MCP_Tools\MAD4B_Test_REST_Registration();
 $unknown = new MAD4B_Isolation_Unknown_Server_Callback();
 add_action( 'rest_api_init', array( $jetengine_rest, 'register_features_api' ), 10, 1 );
 add_action( 'mcp_adapter_init', array( $hostinger, 'create_server' ), 10 );
