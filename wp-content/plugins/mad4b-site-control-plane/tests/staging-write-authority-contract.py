@@ -409,7 +409,7 @@ if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_tr
     raise SystemExit('single-app Full Staging Authority step-up projection is missing')
 if "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" not in chatgpt_transport:
     raise SystemExit('bootstrap Control Plane self-update step-up projection is missing')
-if "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );" not in chatgpt_transport:
+if "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );" not in chatgpt_transport:
     raise SystemExit('bounded authority step-ups must be composed explicitly')
 if "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );" not in chatgpt_transport:
     raise SystemExit('bounded authority step-ups must require the dedicated bearer while Full Staging remains separately projected')
@@ -640,7 +640,8 @@ for marker in [
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
     "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()",
-    "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );",
+    "MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()",
+    "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );",
     "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );",
     "public static function chatgpt_dispatch_transport_tools()",
     "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )",
