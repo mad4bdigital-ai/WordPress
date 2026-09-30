@@ -18,6 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_MCP_Request_Scope {
 	const CONTRACT = 'mad4b.mcp-request-scope.v1';
+	const MAX_PROTOCOL_REST_CALLBACK_SCAN = 512;
+	const MAX_PROTOCOL_REST_CALLBACK_EVIDENCE = 100;
 
 	private static $booted = false;
 	private static $eligible = false;
@@ -34,6 +36,8 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	private static $protocol_core_rest_callbacks_removed = array();
 	private static $protocol_external_rest_isolation_evaluated = false;
 	private static $protocol_external_rest_callbacks_removed = array();
+	private static $protocol_external_rest_callbacks_removed_count = 0;
+	private static $protocol_external_rest_scan_truncated = false;
 	private static $protocol_external_rest_callbacks_preserved = array();
 
 	public static function bootstrap() {
@@ -183,85 +187,113 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		$callbacks = $wp_filter['rest_api_init']->callbacks;
 		if ( ! is_array( $callbacks ) ) return;
 
+		$scanned = 0;
 		foreach ( $callbacks as $priority => $entries ) {
 			if ( ! is_array( $entries ) ) continue;
 			foreach ( $entries as $entry ) {
-				$callback = isset( $entry['function'] ) ? $entry['function'] : null;
-				$descriptor = self::protocol_rest_callback_descriptor( $callback );
-				if ( ! is_array( $descriptor ) ) continue;
-				if ( empty( $descriptor['external_plugin'] ) ) {
-					if ( ! empty( $descriptor['source'] ) ) self::$protocol_external_rest_callbacks_preserved[] = $descriptor['source'];
-					continue;
+				++$scanned;
+				if ( $scanned > self::MAX_PROTOCOL_REST_CALLBACK_SCAN ) {
+					self::$protocol_external_rest_scan_truncated = true;
+					break 2;
 				}
+
+				$callback = is_array( $entry ) && array_key_exists( 'function', $entry ) ? $entry['function'] : null;
+				$descriptor = self::protocol_external_rest_callback_descriptor( $callback );
+				if ( ! is_array( $descriptor ) ) continue;
 				if ( ! remove_action( 'rest_api_init', $callback, (int) $priority ) ) continue;
-				self::$protocol_external_rest_callbacks_removed[] = array(
-					'priority' => (int) $priority,
-					'source' => isset( $descriptor['source'] ) ? sanitize_text_field( (string) $descriptor['source'] ) : '',
-					'callback' => isset( $descriptor['callback'] ) ? sanitize_text_field( (string) $descriptor['callback'] ) : '',
-				);
+
+				++self::$protocol_external_rest_callbacks_removed_count;
+				if ( count( self::$protocol_external_rest_callbacks_removed ) < self::MAX_PROTOCOL_REST_CALLBACK_EVIDENCE ) {
+					self::$protocol_external_rest_callbacks_removed[] = array(
+						'source_plugin' => sanitize_key( (string) $descriptor['source_plugin'] ),
+						'callback_kind' => sanitize_key( (string) $descriptor['callback_kind'] ),
+						'callback_class' => sanitize_text_field( (string) $descriptor['callback_class'] ),
+						'callback_method' => sanitize_text_field( (string) $descriptor['callback_method'] ),
+						'callback_name' => sanitize_text_field( (string) $descriptor['callback_name'] ),
+						'priority' => (int) $priority,
+					);
+				}
 			}
 		}
-		self::$protocol_external_rest_callbacks_preserved = array_values( array_unique( self::$protocol_external_rest_callbacks_preserved ) );
 	}
 
-	private static function protocol_rest_callback_descriptor( $callback ) {
+	/**
+	 * Return a bounded descriptor only when callback provenance is provably an
+	 * ordinary third-party plugin file. Realpath escapes/symlinks, Core, MU
+	 * plugins, MAD4B, the official Adapter and unreflectable callbacks fail open.
+	 */
+	private static function protocol_external_rest_callback_descriptor( $callback ) {
 		$file = '';
-		$label = '';
+		$class = '';
+		$method = '';
+		$name = '';
+		$kind = '';
+
 		try {
 			if ( is_array( $callback ) && 2 === count( $callback ) ) {
-				$left = $callback[0];
-				$class = is_object( $left ) ? get_class( $left ) : ( is_string( $left ) ? ltrim( $left, '\\' ) : '' );
+				$class = is_object( $callback[0] ) ? get_class( $callback[0] ) : ( is_string( $callback[0] ) ? ltrim( $callback[0], '\\' ) : '' );
 				$method = is_string( $callback[1] ) ? $callback[1] : '';
-				$label = $class . ( '' !== $method ? '::' . $method : '' );
-				if ( '' !== $class && '' !== $method && method_exists( $class, $method ) ) {
-					$file = (string) ( new ReflectionMethod( $class, $method ) )->getFileName();
-				}
+				if ( '' === $class || '' === $method ) return null;
+				if ( ! is_object( $callback[0] ) && ! class_exists( $class, false ) ) return null;
+				$reflection = new ReflectionMethod( $callback[0], $method );
+				$file = (string) $reflection->getFileName();
+				$kind = 'method';
 			} elseif ( $callback instanceof Closure ) {
 				$reflection = new ReflectionFunction( $callback );
 				$file = (string) $reflection->getFileName();
-				$label = 'Closure';
+				$kind = 'closure';
+				$name = 'Closure';
 			} elseif ( is_string( $callback ) && '' !== $callback ) {
-				$label = $callback;
+				$name = $callback;
 				if ( false !== strpos( $callback, '::' ) ) {
 					list( $class, $method ) = array_map( 'strval', explode( '::', $callback, 2 ) );
 					$class = ltrim( $class, '\\' );
-					if ( '' !== $class && '' !== $method && method_exists( $class, $method ) ) {
-						$file = (string) ( new ReflectionMethod( $class, $method ) )->getFileName();
-					}
-				} elseif ( function_exists( $callback ) ) {
-					$file = (string) ( new ReflectionFunction( $callback ) )->getFileName();
+					if ( '' === $class || '' === $method || ! class_exists( $class, false ) ) return null;
+					$reflection = new ReflectionMethod( $class, $method );
+					$file = (string) $reflection->getFileName();
+					$kind = 'static_method';
+				} else {
+					if ( ! function_exists( $callback ) ) return null;
+					$reflection = new ReflectionFunction( $callback );
+					$file = (string) $reflection->getFileName();
+					$kind = 'function';
 				}
+			} elseif ( is_object( $callback ) && method_exists( $callback, '__invoke' ) ) {
+				$class = get_class( $callback );
+				$method = '__invoke';
+				$reflection = new ReflectionMethod( $callback, '__invoke' );
+				$file = (string) $reflection->getFileName();
+				$kind = 'invokable';
 			}
 		} catch ( Throwable $e ) {
 			return null;
 		}
-		if ( '' === $file || ! defined( 'WP_PLUGIN_DIR' ) ) return null;
 
+		if ( '' === $file || ! defined( 'WP_PLUGIN_DIR' ) ) return null;
 		$resolved = realpath( $file );
 		$plugin_root = realpath( WP_PLUGIN_DIR );
-		if ( ! $resolved || ! $plugin_root ) return null;
-		$normalized = wp_normalize_path( $resolved );
-		$plugins = rtrim( wp_normalize_path( $plugin_root ), '/' ) . '/';
-		if ( 0 !== strpos( $normalized, $plugins ) ) return array(
-			'external_plugin' => false,
-			'source' => 'wordpress-or-outside-plugin-dir',
-			'callback' => $label,
-		);
+		if ( false === $resolved || false === $plugin_root ) return null;
 
-		$relative = ltrim( substr( $normalized, strlen( $plugins ) ), '/' );
-		foreach ( array( 'mad4b-site-control-plane/', 'mcp-adapter/' ) as $allowed_prefix ) {
-			if ( 0 === strpos( $relative, $allowed_prefix ) ) return array(
-				'external_plugin' => false,
-				'source' => $relative,
-				'callback' => $label,
-			);
-		}
+		$normalized = wp_normalize_path( $resolved );
+		$plugin_prefix = rtrim( wp_normalize_path( $plugin_root ), '/' ) . '/';
+		if ( 0 !== strpos( strtolower( $normalized ), strtolower( $plugin_prefix ) ) ) return null;
+
+		$relative = ltrim( substr( $normalized, strlen( $plugin_prefix ) ), '/' );
+		if ( '' === $relative || false !== strpos( $relative, '../' ) ) return null;
+		$parts = explode( '/', $relative );
+		$source_plugin = isset( $parts[0] ) ? preg_replace( '/\.php$/i', '', (string) $parts[0] ) : '';
+		$source_plugin = sanitize_key( (string) $source_plugin );
+		if ( '' === $source_plugin || in_array( $source_plugin, array( 'mad4b-site-control-plane', 'mcp-adapter' ), true ) ) return null;
+
 		return array(
-			'external_plugin' => true,
-			'source' => $relative,
-			'callback' => $label,
+			'source_plugin' => $source_plugin,
+			'callback_kind' => $kind,
+			'callback_class' => $class,
+			'callback_method' => $method,
+			'callback_name' => $name,
 		);
 	}
+
 
 	/**
 	 * Return the exact addressed MAD4B MCP server id, or an empty string for
@@ -446,8 +478,13 @@ final class MAD4B_SCP_MCP_Request_Scope {
 			'protocol_core_rest_isolation_evaluated' => self::$protocol_core_rest_isolation_evaluated,
 			'protocol_core_rest_callbacks_removed' => self::$protocol_core_rest_callbacks_removed,
 			'protocol_external_rest_isolation_evaluated' => self::$protocol_external_rest_isolation_evaluated,
-			'protocol_external_rest_callbacks_removed' => self::$protocol_external_rest_callbacks_removed,
-			'protocol_external_rest_callbacks_preserved' => self::$protocol_external_rest_callbacks_preserved,
+			'protocol_external_rest_callbacks_removed_count' => (int) self::$protocol_external_rest_callbacks_removed_count,
+			'protocol_external_rest_callbacks_removed' => array_values( self::$protocol_external_rest_callbacks_removed ),
+			'protocol_external_rest_callbacks_preserved' => array_values( self::$protocol_external_rest_callbacks_preserved ),
+			'protocol_external_rest_scan_limit' => self::MAX_PROTOCOL_REST_CALLBACK_SCAN,
+			'protocol_external_rest_scan_truncated' => self::$protocol_external_rest_scan_truncated,
+			'protocol_external_rest_unknown_callbacks_preserved' => true,
+			'protocol_external_rest_mu_plugin_callbacks_preserved' => true,
 			'current_request_mcp_server_id' => self::current_request_mcp_server_id(),
 			'protocol_core_rest_isolation_request_local_only' => true,
 			'protocol_external_rest_isolation_request_local_only' => true,
