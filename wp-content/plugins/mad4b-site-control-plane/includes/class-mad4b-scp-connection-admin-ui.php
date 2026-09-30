@@ -25,15 +25,14 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		);
 	}
 
-	public static function snapshot() {
+	public static function snapshot( $force_deep = false ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_connection_ui_capability_denied', 'Administrator capability is required to inspect connection readiness.' );
 		if ( ! class_exists( 'MAD4B_SCP_Connection_Status' ) ) return new WP_Error( 'mad4b_connection_status_unavailable', 'MAD4B connection readiness service is unavailable.' );
-		return MAD4B_SCP_Connection_Status::status();
+		return MAD4B_SCP_Connection_Status::status( (bool) $force_deep );
 	}
 
 	public static function render_page() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'You do not have permission to inspect MAD4B connection readiness.', 'mad4b-site-control-plane' ) );
-		$status = self::snapshot();
 		$tabs = array(
 			'readiness' => __( 'Readiness', 'mad4b-site-control-plane' ),
 			'oauth' => __( 'OAuth & Identity', 'mad4b-site-control-plane' ),
@@ -44,6 +43,11 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'readiness'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'readiness';
 
+		// Ordinary Connection tabs are request-serving admin surfaces and must stay
+		// within the wp-admin latency budget. Only the explicit MCP Endpoints
+		// diagnostic tab may request deep provider integrity / REST route inventory.
+		$status = self::snapshot( 'endpoints' === $tab );
+
 		MAD4B_SCP_Admin_Experience::styles();
 		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'MAD4B Connection', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p class="description">' . esc_html__( 'Read-only connection workspace. It organizes environment, MCP transport, OAuth authority, isolation and external certification without creating credentials, connecting a client, enabling mutation, granting authority or making outbound discovery requests.', 'mad4b-site-control-plane' ) . '</p>';
@@ -53,7 +57,11 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		}
 
 		$oauth = isset( $status['oauth_resource_server'] ) && is_array( $status['oauth_resource_server'] ) ? $status['oauth_resource_server'] : array();
-		$local_oauth = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? MAD4B_SCP_Local_OAuth_Server::status() : array();
+		$local_oauth = class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			? ( 'endpoints' === $tab
+				? MAD4B_SCP_Local_OAuth_Server::status()
+				: MAD4B_SCP_Local_OAuth_Server::runtime_identity_status() )
+			: array();
 		MAD4B_SCP_Admin_Experience::stages( self::connection_stages( $status, $oauth ) );
 		MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
 

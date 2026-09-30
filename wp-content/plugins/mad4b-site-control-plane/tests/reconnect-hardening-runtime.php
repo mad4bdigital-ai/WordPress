@@ -32,8 +32,19 @@ final class MAD4B_SCP_Schema {
     public static $status=array('ready'=>true,'physical_integrity'=>array('ready'=>true));
     public static function status($deep=false){return self::$status;}
 }
-final class MAD4B_SCP_Local_OAuth_Server { public static $effective=true; public static function status(){return array('configured'=>true,'effective'=>self::$effective,'issuer_configuration_valid'=>true,'private_key_present'=>true,'oauth_store_ready'=>true,'runtime_error'=>'');} }
-final class MAD4B_SCP_OAuth_Resource_Bridge { public static $effective=true; public static function status(){return array('effective'=>self::$effective);} public static function resource_identifier(){return rest_url('mcp/mad4b-chatgpt');} public static function verified_bearer_active(){return true;} public static function verified_bearer_client_is($id){return $id==='https://chatgpt.com/oauth/client.json';} }
+final class MAD4B_SCP_Local_OAuth_Server {
+    public static $effective=true;
+    public static function runtime_identity_status(){return array('projection'=>'runtime_identity','configured'=>true,'effective'=>self::$effective,'issuer_configuration_valid'=>true,'private_key_present'=>true,'oauth_store_ready'=>true,'runtime_error'=>'','deep_key_validation_deferred'=>true,'physical_store_introspection_deferred'=>true);}
+    public static function status(){return array('configured'=>true,'effective'=>self::$effective,'issuer_configuration_valid'=>true,'private_key_present'=>true,'oauth_store_ready'=>true,'runtime_error'=>'');}
+}
+final class MAD4B_SCP_OAuth_Resource_Bridge {
+    public static $effective=true;
+    public static function runtime_identity_status(){return array('projection'=>'runtime_identity','configured'=>true,'effective'=>self::$effective,'deep_local_oauth_status_deferred'=>true,'outbound_discovery_performed'=>false);}
+    public static function status(){return array('effective'=>self::$effective);}
+    public static function resource_identifier(){return rest_url('mcp/mad4b-chatgpt');}
+    public static function verified_bearer_active(){return true;}
+    public static function verified_bearer_client_is($id){return $id==='https://chatgpt.com/oauth/client.json';}
+}
 final class MAD4B_SCP_MCP_Registration_Bridge { public static $status=array(); public static function status(){return self::$status;} }
 final class MAD4B_SCP_Runtime_Convergence {
     public static $restart=array('active'=>false,'retry_after_seconds'=>0,'state'=>'');
@@ -95,6 +106,7 @@ ok(MAD4B_SCP_Site_Profile::oauth_enabled(),'OAuth is effective after cache refre
 MAD4B_SCP_Servers::$status=array('mad4b-chatgpt'=>array('registered'=>true,'error'=>''),'mad4b-admin'=>array('registered'=>false,'error'=>'admin_registration_failed'));
 MAD4B_SCP_MCP_Registration_Bridge::$status=array('missed_rest_recovery_state'=>'blocked','missed_rest_recovery_blocker'=>'targeted_mad4b_route_count_incomplete');
 $s=MAD4B_SCP_Reconnect_Hardening::reconnect_status(); ok(!empty($s['ready']),'unrelated server/global recovery failure must not block exact ChatGPT reconnect');
+ok('runtime_identity'===($s['reconnect_status_projection']??''),'reconnect readiness must use identity-only OAuth projection');
 MAD4B_SCP_Local_OAuth_Server::$effective=false; MAD4B_SCP_OAuth_Resource_Bridge::$effective=true; $s=MAD4B_SCP_Reconnect_Hardening::reconnect_status();
 ok(!empty($s['ready'])&&empty($s['local_oauth_required_for_reconnect']),'effective OAuth resource bridge must not require local OAuth authority');
 MAD4B_SCP_Local_OAuth_Server::$effective=true;

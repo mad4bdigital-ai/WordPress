@@ -282,6 +282,12 @@ required_lock = [
 for marker in required_lock:
     if marker not in init_lock:
         raise SystemExit(f'missing local OAuth init-lock structural guard: {marker}')
+for marker in ("private static function connection_admin_hotpath()", "'mad4b-control-plane-connection'", "'mad4b-control-plane-chatgpt'"):
+    if marker not in init_lock:
+        raise SystemExit(f'missing local OAuth connection-hotpath lock deferral: {marker}')
+lock_acquire = init_lock.split("public static function acquire()", 1)[1].split("public static function release()", 1)[0]
+if lock_acquire.index("self::connection_admin_hotpath()") > lock_acquire.index("$key_path = self::key_path();"):
+    raise SystemExit("Local OAuth init-lock hotpath guard must run before key-path/filesystem work")
 for forbidden in ['file_put_contents(', 'openssl_pkey_new(', 'openssl_sign(', 'update_option(', 'add_option(']:
     if forbidden in init_lock:
         raise SystemExit(f'init lock must not own credentials or persistent authority: {forbidden}')
@@ -380,6 +386,8 @@ for marker in (
     "'update.php'",
     "'update-core.php'",
     "'plugin-install.php'",
+    "'mad4b-control-plane-connection'",
+    "'mad4b-control-plane-chatgpt'",
 ):
     if marker not in migration_hotpath:
         raise SystemExit(f"Local OAuth schema migration hotpath classification missing: {marker}")
@@ -417,6 +425,8 @@ for forbidden in (
     "MAD4B_SCP_Local_OAuth_Store::is_ready()",
     "openssl_pkey_get_private(",
     "openssl_pkey_get_details(",
+    "fetch_cimd_client(",
+    "wp_safe_remote_get(",
 ):
     if forbidden in runtime_identity:
         raise SystemExit(f"Local OAuth identity readiness must remain hotpath-safe: {forbidden}")

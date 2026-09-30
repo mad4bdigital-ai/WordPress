@@ -269,10 +269,16 @@ for forbidden in [
 ]:
     forbid(reconciliation, forbidden, "grant reconciliation wildcard/dynamic extension")
 
-for marker in ["0.4.0-rc.85"]:
-    require(plugin, marker, "plugin release identity")
-    require(readme, marker, "readme release identity")
-    require(build, marker, "runtime build identity")
+release_lines = [line.strip() for line in build.splitlines() if line.strip().startswith("release=")]
+if len(release_lines) != 1:
+    raise SystemExit(f"runtime build must expose exactly one release identity: {release_lines!r}")
+release = release_lines[0].split("=", 1)[1].strip()
+if not release.startswith("0.4.0-rc."):
+    raise SystemExit(f"unexpected Control Plane release identity: {release}")
+require(plugin, f"Version: {release}", "plugin header release identity")
+require(plugin, f"define( 'MAD4B_SCP_VERSION', '{release}' );", "plugin constant release identity")
+require(readme, f"Current plugin version: **{release}**.", "readme release identity")
+require(build, f"release={release}", "runtime build identity")
 
 planner_start = adapter.find("public function orchestration_plan")
 planner_end = adapter.find("public function pipeline_status", planner_start)

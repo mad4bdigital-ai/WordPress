@@ -790,8 +790,12 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 		$portable = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) ? MAD4B_SCP_Portable_Readonly_Connection::status() : array();
 		$portable_ready = ! empty( $portable['effective'] );
-		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? MAD4B_SCP_Local_OAuth_Server::status() : array();
-		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
+		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'runtime_identity_status' )
+			? MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()
+			: array();
+		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'runtime_identity_status' )
+			? MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()
+			: array();
 		$registrations = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
 		$chatgpt = isset( $registrations['mad4b-chatgpt'] ) && is_array( $registrations['mad4b-chatgpt'] ) ? $registrations['mad4b-chatgpt'] : array();
 		$bridge_registration = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ? MAD4B_SCP_MCP_Registration_Bridge::status() : array();
@@ -837,6 +841,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'write_auto_enabled' => false,
 			'production_authority_auto_enabled' => false,
 			'breakglass_auto_enabled' => false,
+			'reconnect_status_projection' => 'runtime_identity',
+			'deep_oauth_status_deferred' => true,
 		);
 	}
 

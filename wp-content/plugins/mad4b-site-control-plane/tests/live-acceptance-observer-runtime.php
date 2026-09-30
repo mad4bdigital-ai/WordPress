@@ -13,6 +13,8 @@ namespace {
 	$GLOBALS['mad4b_test_home'] = 'https://staging.egypttourgates.com';
 	$GLOBALS['mad4b_test_init'] = 0;
 	$GLOBALS['mad4b_test_options'] = array();
+	$GLOBALS['mad4b_test_admin'] = false;
+	$GLOBALS['mad4b_test_update_count'] = 0;
 
 	class WP_Error {
 		private $code;
@@ -26,7 +28,8 @@ namespace {
 	function wp_get_environment_type() { return $GLOBALS['mad4b_test_env']; }
 	function home_url( $path = '/' ) { return rtrim( $GLOBALS['mad4b_test_home'], '/' ) . '/' . ltrim( $path, '/' ); }
 	function wp_parse_url( $url, $component = -1 ) { return parse_url( $url, $component ); }
-	function is_admin() { return false; }
+	function is_admin() { return ! empty( $GLOBALS['mad4b_test_admin'] ); }
+	function wp_unslash( $value ) { return $value; }
 	function is_wp_error( $value ) { return $value instanceof WP_Error; }
 	function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 	function untrailingslashit( $value ) { return rtrim( (string) $value, '/' ); }
@@ -34,7 +37,7 @@ namespace {
 	function add_action() {}
 	function add_filter() {}
 	function get_option( $key, $default = false ) { return array_key_exists( $key, $GLOBALS['mad4b_test_options'] ) ? $GLOBALS['mad4b_test_options'][ $key ] : $default; }
-	function update_option( $key, $value, $autoload = false ) { $GLOBALS['mad4b_test_options'][ $key ] = $value; return true; }
+	function update_option( $key, $value, $autoload = false ) { $GLOBALS['mad4b_test_update_count']++; $GLOBALS['mad4b_test_options'][ $key ] = $value; return true; }
 	function set_transient() { return true; }
 	function get_transient() { return false; }
 	function delete_transient() { return true; }
@@ -145,6 +148,53 @@ namespace {
 	foreach ( $wpml_classes as $expected => $result ) mad4b_assert( $expected === $result['classification'], 'WPML normalized classification failed for ' . $expected );
 
 	$observer_reflection = new ReflectionClass( 'MAD4B_SCP_Live_Acceptance_Observer' );
+
+	// The real Connection/ChatGPT 504 incident surfaces must not initialize or
+	// persist passive Live Acceptance telemetry during an ordinary page load.
+	$hotpath_method = $observer_reflection->getMethod( 'connection_admin_hotpath' );
+	$hotpath_method->setAccessible( true );
+	$mark_method = $observer_reflection->getMethod( 'mark_current_request' );
+	$mark_method->setAccessible( true );
+	$warning_method = $observer_reflection->getMethod( 'record_warning' );
+	$warning_method->setAccessible( true );
+	$request_marked_property = $observer_reflection->getProperty( 'request_marked' );
+	$request_marked_property->setAccessible( true );
+	$telemetry_property = $observer_reflection->getProperty( 'telemetry' );
+	$telemetry_property->setAccessible( true );
+	$telemetry_dirty_property = $observer_reflection->getProperty( 'telemetry_dirty' );
+	$telemetry_dirty_property->setAccessible( true );
+
+	$GLOBALS['mad4b_test_admin'] = true;
+	foreach ( array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ) as $hotpath_page ) {
+		$_GET['page'] = $hotpath_page;
+		mad4b_assert( true === $hotpath_method->invoke( null ), $hotpath_page . ' must classify as a Live Acceptance telemetry hotpath.' );
+
+		$request_marked_property->setValue( null, false );
+		$telemetry_property->setValue( null, null );
+		$telemetry_dirty_property->setValue( null, false );
+		$updates_before = (int) $GLOBALS['mad4b_test_update_count'];
+		$mark_method->invoke( null );
+		mad4b_assert( false === $request_marked_property->getValue(), $hotpath_page . ' must not mark passive request coverage.' );
+		mad4b_assert( null === $telemetry_property->getValue(), $hotpath_page . ' must not initialize build/telemetry state.' );
+		mad4b_assert( false === $telemetry_dirty_property->getValue(), $hotpath_page . ' must not dirty passive telemetry.' );
+
+		$warning_method->invoke( null, 'doing_it_wrong', 'MAD4B_Test', 'synthetic hotpath warning' );
+		mad4b_assert( null === $telemetry_property->getValue(), $hotpath_page . ' warning capture must not initialize telemetry.' );
+		mad4b_assert( false === $telemetry_dirty_property->getValue(), $hotpath_page . ' warning capture must remain persistence-free.' );
+
+		$sentinel = array( 'events' => array(), 'sentinel' => $hotpath_page );
+		$telemetry_property->setValue( null, $sentinel );
+		$telemetry_dirty_property->setValue( null, true );
+		MAD4B_SCP_Live_Acceptance_Observer::flush_observation();
+		mad4b_assert( $updates_before === (int) $GLOBALS['mad4b_test_update_count'], $hotpath_page . ' shutdown must not persist Live Acceptance telemetry.' );
+
+		$request_marked_property->setValue( null, false );
+		$telemetry_property->setValue( null, null );
+		$telemetry_dirty_property->setValue( null, false );
+	}
+	$GLOBALS['mad4b_test_admin'] = false;
+	unset( $_GET['page'] );
+
 	$current_build_method = $observer_reflection->getMethod( 'current_build_fingerprint' );
 	$current_build_method->setAccessible( true );
 	$current_build = (string) $current_build_method->invoke( null );

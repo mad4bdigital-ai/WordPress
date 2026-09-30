@@ -158,6 +158,11 @@ final class MAD4B_SCP_Dependency_Manager {
 		// Dependency inventory hashes archives and reads the plugin catalog. Never
 		// perform that work while rendering WPML or any third-party wp-admin page.
 		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) ) return;
+		// Connection and ChatGPT are latency-sensitive status surfaces. Their own
+		// readiness projections report Adapter/transport blockers without re-running
+		// deep dependency integrity, archive hashing or provider inventory in the
+		// global admin-notice phase before the page emits its first byte.
+		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return;
 		$status = self::status();
 		if ( ! empty( $status['ready'] ) ) return;
 		$mcp = isset( $status['mcp_adapter'] ) && is_array( $status['mcp_adapter'] ) ? $status['mcp_adapter'] : array();
