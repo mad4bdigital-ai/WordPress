@@ -593,6 +593,19 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$checkpoint['resume_blocker'] = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'wp_cron_disabled' : 'wp_cron_unavailable';
 			$checkpoint['updated_at'] = gmdate( 'c' );
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			$stored = get_option( self::CHECKPOINT_OPTION, array() );
+			if ( ! self::post_update_checkpoint_matches( $checkpoint, $stored ) ) {
+				$checkpoint_restore_ok = self::restore_checkpoint_snapshot( $previous_checkpoint );
+				return array(
+					'scheduled' => false,
+					'state' => 'checkpoint_persist_failed',
+					'persist_phase' => 'pending_manual_resume',
+					'checkpoint_restore_ok' => $checkpoint_restore_ok,
+					'resume_blocker' => $checkpoint['resume_blocker'],
+					'target_identity' => $checkpoint['target_identity'],
+					'production_mutation' => false,
+				);
+			}
 		}
 		return array(
 			'scheduled' => (bool) $scheduled,
