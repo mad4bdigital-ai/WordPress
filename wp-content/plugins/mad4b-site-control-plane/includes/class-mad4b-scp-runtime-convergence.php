@@ -68,6 +68,39 @@ final class MAD4B_SCP_Runtime_Convergence {
 		);
 	}
 
+	public static function maintenance_lease_status() {
+		$now = time();
+		$candidates = array_merge( array( self::LOCK_OPTION ), self::legacy_lock_options() );
+		foreach ( array_values( array_unique( $candidates ) ) as $option ) {
+			$lease = get_option( $option, array() );
+			$expires = is_array( $lease ) && isset( $lease['expires_at'] ) ? absint( $lease['expires_at'] ) : 0;
+			if ( $expires <= $now || empty( $lease['token'] ) ) continue;
+			$owner = isset( $lease['owner'] ) ? sanitize_key( (string) $lease['owner'] ) : ( self::LOCK_OPTION === $option ? 'runtime_maintenance' : 'legacy_runtime_maintenance' );
+			return array(
+				'contract' => 'mad4b.runtime-maintenance-lease.v1',
+				'active' => true,
+				'owner' => $owner,
+				'lock_option' => sanitize_key( (string) $option ),
+				'expires_at' => $expires,
+				'retry_after_seconds' => max( 1, min( 5, $expires - $now ) ),
+				'cross_version_fence' => self::LOCK_OPTION !== $option,
+				'read_only' => true,
+				'mutation_performed' => false,
+			);
+		}
+		return array(
+			'contract' => 'mad4b.runtime-maintenance-lease.v1',
+			'active' => false,
+			'owner' => '',
+			'lock_option' => '',
+			'expires_at' => 0,
+			'retry_after_seconds' => 0,
+			'cross_version_fence' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
@@ -698,7 +731,11 @@ final class MAD4B_SCP_Runtime_Convergence {
 	private static function run_safe_phases( $source, array $plan ) {
 		$lock = self::acquire_lock();
 		if ( is_wp_error( $lock ) ) return $lock;
-		$changed = array();
+		$existing_checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+		$changed = is_array( $existing_checkpoint ) && isset( $existing_checkpoint['changed_safe_phases'] ) && is_array( $existing_checkpoint['changed_safe_phases'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $existing_checkpoint['changed_safe_phases'] ) ) )
+			: array();
+		$schema_changed_this_slice = false;
 		try {
 			$schema = class_exists( 'MAD4B_SCP_Schema' ) ? MAD4B_SCP_Schema::status( true ) : array();
 			if ( empty( $schema['ready'] ) ) {
@@ -706,15 +743,22 @@ final class MAD4B_SCP_Runtime_Convergence {
 				if ( is_wp_error( $result ) ) return $result;
 				$schema = MAD4B_SCP_Schema::status( true );
 				if ( empty( $schema['ready'] ) ) return new WP_Error( 'mad4b_runtime_convergence_schema_readback_failed', 'Schema convergence completed without a ready physical readback.' );
+				$schema_changed_this_slice = true;
 				$changed[] = 'schema';
+				$changed = array_values( array_unique( $changed ) );
 			}
 			if ( class_exists( 'MAD4B_SCP_Schema_Lifecycle' ) && method_exists( 'MAD4B_SCP_Schema_Lifecycle', 'mark_current_package_applied' ) ) {
 				MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_convergence' );
 			}
 			$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+			$skills_pending = false;
 			if ( ! empty( $profile['skills_enabled'] ) && class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ) {
 				$skills = MAD4B_SCP_Skill_Runtime_Certification::current_status();
-				if ( empty( $skills['ready'] ) ) {
+				$skills_pending = empty( $skills['ready'] );
+				if ( $schema_changed_this_slice && 'post_update_cron' === sanitize_key( (string) $source ) && $skills_pending ) {
+					return self::yield_safe_phases( $source, $changed, 'managed_skills' );
+				}
+				if ( $skills_pending ) {
 					if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) MAD4B_SCP_Adapter_Registry::instance()->register_defaults();
 					$seed = MAD4B_SCP_Skill_Seeder::reconcile();
 					if ( is_wp_error( $seed ) ) return $seed;
@@ -723,6 +767,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 					$skills = MAD4B_SCP_Skill_Runtime_Certification::current_status();
 					if ( empty( $skills['ready'] ) ) return new WP_Error( 'mad4b_runtime_convergence_skills_readback_failed', 'Managed Skill convergence did not reach ready readback.', array( 'blockers' => isset( $skills['blockers'] ) ? $skills['blockers'] : array() ) );
 					$changed[] = 'managed_skills';
+					$changed = array_values( array_unique( $changed ) );
 				}
 			}
 			$status = self::status();
@@ -759,6 +804,33 @@ final class MAD4B_SCP_Runtime_Convergence {
 		} finally {
 			self::release_lock( $lock );
 		}
+	}
+
+	private static function yield_safe_phases( $source, array $changed, $next_phase ) {
+		$current = self::current_identity();
+		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+		if ( ! is_array( $checkpoint ) ) $checkpoint = array();
+		$checkpoint['contract'] = self::CONTRACT;
+		$checkpoint['state'] = 'pending_safe_phases';
+		$checkpoint['source'] = sanitize_key( (string) $source );
+		$checkpoint['target_identity'] = $current;
+		$checkpoint['current_identity'] = $current;
+		$checkpoint['changed_safe_phases'] = array_values( array_unique( array_map( 'sanitize_key', $changed ) ) );
+		$checkpoint['next_safe_phase'] = sanitize_key( (string) $next_phase );
+		$checkpoint['maintenance_sliced'] = true;
+		$checkpoint['updated_at'] = gmdate( 'c' );
+		$checkpoint['production_mutation'] = false;
+		update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+		$scheduled = self::schedule_resume( time() + 5 );
+		return array(
+			'contract' => 'mad4b.runtime-convergence-apply.v1',
+			'state' => 'pending_safe_phases',
+			'changed_safe_phases' => $checkpoint['changed_safe_phases'],
+			'next_safe_phase' => $checkpoint['next_safe_phase'],
+			'maintenance_sliced' => true,
+			'scheduled' => (bool) $scheduled,
+			'checkpoint' => $checkpoint,
+		);
 	}
 
 	private static function legacy_lock_options() {
