@@ -43,6 +43,7 @@ required_gates = [
     "mad4b_runtime_gates_audit_rollback_failed",
     "Runtime gate policy changed after plan validation and before persistence.",
     "Runtime gate plan changed immediately before persistence.",
+    "'effective_before' => array(",
     "production_oauth_opt_in_effective",
     "self::restore_exact( $before_exists, $before_raw, $next )",
     "option_value = %s WHERE option_name = %s AND option_value = %s",
