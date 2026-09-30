@@ -863,7 +863,13 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( ! is_array( $checkpoint ) ) $checkpoint = array();
 		$checkpoint['contract'] = self::CONTRACT;
 		$checkpoint['state'] = 'pending_safe_phases';
-		$checkpoint['source'] = sanitize_key( (string) $source );
+		$prior_source = isset( $checkpoint['source'] ) ? sanitize_key( (string) $checkpoint['source'] ) : '';
+		$execution_source = sanitize_key( (string) $source );
+		// Keep the lifecycle provenance stable across sliced post-update work.
+		// Restart gating keys off source=self_update; replacing it with the Cron
+		// execution source would reopen MCP between two still-pending safe phases.
+		$checkpoint['source'] = 'self_update' === $prior_source ? 'self_update' : $execution_source;
+		$checkpoint['last_execution_source'] = $execution_source;
 		$checkpoint['target_identity'] = $current;
 		$checkpoint['current_identity'] = $current;
 		$checkpoint['changed_safe_phases'] = array_values( array_unique( array_map( 'sanitize_key', $changed ) ) );
