@@ -32,6 +32,7 @@ assert "POST_UPDATE_QUIET_SECONDS = 20" in runtime
 assert "'resume_not_before' => time() + self::POST_UPDATE_QUIET_SECONDS" in runtime
 assert "public static function restart_grace_status()" in runtime
 assert "self::schedule_resume( $not_before )" in runtime
+assert "$not_before = self::maintenance_not_before();" in runtime
 assert "max( time() + 5, absint( $not_before ), self::maintenance_not_before() )" in runtime
 assert "'self_update_checkpoint_preserved'" in runtime
 assert "Backward-compatible barrier" in runtime
@@ -56,6 +57,8 @@ assert "'automatic_retry_allowed' => false" in reconnect
 assert "'client_action' => 'retry_after_restart_grace'" in reconnect
 assert "$response->header( 'Retry-After'" in reconnect
 assert "$response->header( 'Cache-Control', 'no-store' )" in reconnect
+assert "current_request_is_http_mcp_transport()" in reconnect
+assert "if ( ! $is_chatgpt_resource ) return $result;" in reconnect
 
 # Shared connector policy understands this as a bounded runtime transition,
 # not a generic timeout that should be retried immediately.
