@@ -12,10 +12,14 @@ critical=[
 'class-mad4b-scp-impact-policy.php','class-mad4b-scp-staging-write-authority.php','class-mad4b-scp-local-oauth-server.php',
 'class-mad4b-scp-local-oauth-consent-ui.php','class-mad4b-scp-chatgpt-connection-admin-ui.php',
 'class-mad4b-scp-external-handshake-evidence.php','class-mad4b-scp-query-monitor-evidence-bridge.php',
-'class-mad4b-scp-upgrade-continuity.php']
+'class-mad4b-scp-upgrade-continuity.php','class-mad4b-scp-admin-query-performance.php',
+'class-mad4b-scp-live-acceptance-observer.php','class-mad4b-scp-live-truth.php','class-mad4b-scp-google-drive-context.php',
+'class-mad4b-scp-site-bootstrap.php']
 for name in critical:
     txt=(ROOT/'includes'/name).read_text(encoding='utf-8')
     assert 'MAD4B_SCP_Environment::effective()' in txt, name
+dynamic=(ROOT/'includes/adapters/class-mad4b-scp-dynamic-content-adapter.php').read_text(encoding='utf-8')
+assert 'MAD4B_SCP_Environment' in dynamic and 'effective()' in dynamic
 connection=(ROOT/'includes/class-mad4b-scp-connection-status.php').read_text(encoding='utf-8')
 for marker in ("'wordpress_environment'", "'wordpress_environment_explicit'", "'effective_environment'", "'environment_resolution'"):
     assert marker in connection
