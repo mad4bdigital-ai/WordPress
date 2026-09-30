@@ -9,6 +9,7 @@ $GLOBALS['mad4b_test_is_admin'] = true;
 $GLOBALS['mad4b_test_audit_ready'] = true;
 $GLOBALS['mad4b_test_audit_fail'] = false;
 $GLOBALS['mad4b_test_audit_events'] = array();
+$GLOBALS['mad4b_test_explicit_environment_filter'] = null;
 
 class WP_Error { private $code; private $message; private $data; public function __construct($c,$m='',$d=null){$this->code=$c;$this->message=$m;$this->data=$d;} public function get_error_code(){return $this->code;} public function get_error_message(){return $this->message;} public function get_error_data(){return $this->data;} }
 function is_wp_error($v){return $v instanceof WP_Error;}
@@ -20,6 +21,10 @@ function wp_json_encode($v,$f=0){return json_encode($v,$f);}
 function trailingslashit($v){return rtrim((string)$v,'/\\').'/';}
 function home_url($p=''){return rtrim($GLOBALS['mad4b_test_home'],'/').(''===$p?'':'/'.ltrim($p,'/'));}
 function wp_get_environment_type(){return $GLOBALS['mad4b_test_environment'];}
+function apply_filters($tag,$value,...$args){
+	if('mad4b_scp_wordpress_environment_explicit'===$tag && null!==$GLOBALS['mad4b_test_explicit_environment_filter']) return (bool)$GLOBALS['mad4b_test_explicit_environment_filter'];
+	return $value;
+}
 function current_user_can($c){return 'manage_options'===$c ? !empty($GLOBALS['mad4b_test_is_admin']) : false;}
 function get_current_user_id(){return (int)$GLOBALS['mad4b_test_user_id'];}
 function get_option($k,$d=false){return array_key_exists($k,$GLOBALS['mad4b_test_options'])?$GLOBALS['mad4b_test_options'][$k]:$d;}
@@ -34,8 +39,21 @@ final class MAD4B_SCP_Audit { public static function storage_status(){return arr
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-site-profile.php';
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-environment.php';
 function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL: {$m}\n");exit(1);}}
-function reset_state(){ $GLOBALS['mad4b_test_options']=array();$GLOBALS['mad4b_test_audit_events']=array();$GLOBALS['mad4b_test_audit_ready']=true;$GLOBALS['mad4b_test_audit_fail']=false;$GLOBALS['mad4b_test_is_admin']=true;MAD4B_SCP_Site_Profile::reset_cache(); }
+function reset_state(){ $GLOBALS['mad4b_test_options']=array();$GLOBALS['mad4b_test_audit_events']=array();$GLOBALS['mad4b_test_audit_ready']=true;$GLOBALS['mad4b_test_audit_fail']=false;$GLOBALS['mad4b_test_is_admin']=true;$GLOBALS['mad4b_test_explicit_environment_filter']=null;putenv('WP_ENVIRONMENT_TYPE');MAD4B_SCP_Site_Profile::reset_cache(); }
 function legacy_record($env,$origin,$revision=4){return array('contract'=>MAD4B_SCP_Site_Profile::LEGACY_CONTRACT,'version'=>MAD4B_SCP_Site_Profile::LEGACY_VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>$revision,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Legacy Client','chatgpt_app_id'=>'plugin_asdk_app_legacy123','oauth_user_ids'=>array(7,8),'related_origins'=>array($env=>$origin),'features'=>array('oauth'=>true,'skills'=>true,'write'=>true,'production_write_confirmed'=>true,'provider_isolation'=>true,'managed_runtime'=>true,'acceptance'=>true),'legacy_agent_slug'=>'legacy-agent','legacy_zero_touch'=>true,'created_at'=>'2026-01-01T00:00:00Z','updated_at'=>'2026-01-01T00:00:00Z');}
+
+
+// Explicit WordPress environment is a monotonic safety fact. Filters may harden
+// an implicit default, but may never downgrade an actual host declaration.
+reset_state();
+$GLOBALS['mad4b_test_environment']='production';
+putenv('WP_ENVIRONMENT_TYPE=production');
+$GLOBALS['mad4b_test_explicit_environment_filter']=false;
+ok(true===MAD4B_SCP_Site_Profile::wordpress_environment_explicit(),'filter cannot downgrade explicit WP environment evidence');
+putenv('WP_ENVIRONMENT_TYPE');
+$GLOBALS['mad4b_test_explicit_environment_filter']=true;
+ok(true===MAD4B_SCP_Site_Profile::wordpress_environment_explicit(),'filter may harden an implicit WordPress environment');
+$GLOBALS['mad4b_test_explicit_environment_filter']=null;
 
 // Fresh arbitrary install is unconfigured and zero-authority.
 reset_state();
