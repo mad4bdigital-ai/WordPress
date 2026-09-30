@@ -44,7 +44,7 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 	}
 
 	public static function current_candidate() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$host = self::home_host();
 		$base = array(
 			'ready' => false,
@@ -157,7 +157,7 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 		$candidate = self::current_candidate();
 		$agent = ! empty( $ticket['agent_id'] ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::get_agent_by_id( (int) $ticket['agent_id'] ) : null;
 		$is_approver = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'can_approve_mutations' ) ? MAD4B_SCP_Policy::can_approve_mutations() : current_user_can( 'manage_options' );
-		$validated = self::validate_decision_for_test( $request, $ticket, is_array( $binding ) ? $binding : array(), $candidate, is_array( $agent ) ? $agent : array(), $is_approver, function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown', self::home_host(), time() );
+		$validated = self::validate_decision_for_test( $request, $ticket, is_array( $binding ) ? $binding : array(), $candidate, is_array( $agent ) ? $agent : array(), $is_approver, class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ), self::home_host(), time() );
 		if ( is_wp_error( $validated ) ) return $validated;
 		$runtime = self::prepare_authority_runtime_after_validation();
 		if ( is_wp_error( $runtime ) ) return $runtime;
