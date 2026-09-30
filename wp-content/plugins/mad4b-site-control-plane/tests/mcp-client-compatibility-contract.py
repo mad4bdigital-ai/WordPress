@@ -160,8 +160,9 @@ assert 'self::chatgpt_internal_enrollment_mutations()' in logical_enrollment
 assert 'if ( ! self::chatgpt_unified_catalog_enabled() )' in servers
 fallback = servers.split('if ( ! self::chatgpt_unified_catalog_enabled() )', 1)[1].split("$narrow_read = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )", 1)[0]
 for marker in [
-    "$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools() )",
-    "$tools = array_values( array_intersect( $core, $direct_allowlist ) )",
+    "$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up )",
+    "$fallback_candidates = array_merge( $core, $runtime_gate_step_up )",
+    "$tools = array_values( array_intersect( $fallback_candidates, $direct_allowlist ) )",
     "$tools = array_values( array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) ) )",
     "array_unique( array_map( 'strval', $tools ) )",
     "sort( $tools, SORT_STRING )",
