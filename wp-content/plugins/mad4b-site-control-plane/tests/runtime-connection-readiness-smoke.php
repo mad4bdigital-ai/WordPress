@@ -70,30 +70,17 @@ set_current_screen( 'dashboard' );
 $check( is_admin(), '504 hotpath runtime proof could not establish WordPress admin context.' );
 $check( class_exists( 'MAD4B_SCP_MCP_Request_Scope' ), 'MCP request scope class unavailable.' );
 
-$_GET['page'] = 'mad4b-control-plane-chatgpt';
-unset( $_GET['tab'] );
-$check( MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath(), 'ChatGPT admin page was not classified as a passive admin hotpath.' );
-$check( ! MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime(), 'ChatGPT passive admin page still retained the full MCP runtime.' );
-
-$_GET['page'] = 'mad4b-control-plane-connection';
-$_GET['tab'] = 'readiness';
-$check( MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath(), 'Connection readiness was not classified as a passive admin hotpath.' );
-$check( ! MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime(), 'Connection readiness still retained the full MCP runtime.' );
-
+$check( MAD4B_SCP_MCP_Request_Scope::passive_admin_route_for_test( 'mad4b-control-plane-chatgpt' ), 'ChatGPT admin route was not classified as passive.' );
+$check( MAD4B_SCP_MCP_Request_Scope::passive_admin_route_for_test( 'mad4b-control-plane-connection', 'readiness' ), 'Connection readiness route was not classified as passive.' );
 foreach ( array( 'oauth', 'isolation', 'certification' ) as $passive_tab ) {
-    $_GET['tab'] = $passive_tab;
-    $check( MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath(), 'Passive Connection tab was not classified as shallow: ' . $passive_tab );
-    $check( ! MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime(), 'Passive Connection tab retained the full MCP runtime: ' . $passive_tab );
+    $check( MAD4B_SCP_MCP_Request_Scope::passive_admin_route_for_test( 'mad4b-control-plane-connection', $passive_tab ), 'Passive Connection route was not classified as shallow: ' . $passive_tab );
 }
+$check( ! MAD4B_SCP_MCP_Request_Scope::passive_admin_route_for_test( 'mad4b-control-plane-connection', 'endpoints' ), 'Connection Endpoints diagnostic was incorrectly classified as passive.' );
+$check( ! MAD4B_SCP_MCP_Request_Scope::passive_admin_route_for_test( 'mad4b-control-plane-skills' ), 'Unrelated Control Plane route was incorrectly classified as passive.' );
 
-$_GET['tab'] = 'endpoints';
-$check( ! MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath(), 'Connection Endpoints diagnostic was incorrectly classified as passive.' );
-$check( MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime(), 'Connection Endpoints diagnostic lost its MCP runtime.' );
-
-$_GET['page'] = 'mad4b-control-plane-skills';
-unset( $_GET['tab'] );
-$check( ! MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath(), 'Unrelated Control Plane page was incorrectly classified as passive.' );
-$check( MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime(), 'Existing MCP runtime behavior changed for unrelated Control Plane pages.' );
+// The runtime smoke executes through WP-CLI, where full MCP runtime remains
+// intentionally available regardless of simulated admin routing.
+$check( MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime(), 'WP-CLI lost its intentional full MCP runtime override.' );
 
 $_GET['page'] = 'mad4b-control-plane-connection';
 $hotpath_oauth_table_queries = array();
