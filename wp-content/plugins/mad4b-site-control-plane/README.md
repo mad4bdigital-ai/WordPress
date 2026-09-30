@@ -4,7 +4,13 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.86**.
+Current plugin version: **0.4.0-rc.87**.
+
+### rc.87 MCP/OAuth protocol REST bootstrap isolation
+
+rc.87 addresses the remaining live origin bottleneck proven by the external diagnostic on matching rc.86: Core REST type, WPML REST and the REST index all spent roughly 10–11 seconds upstream before dispatch, while static and non-REST OAuth metadata stayed near one second. Exact MAD4B MCP/OAuth protocol REST requests now keep WordPress REST default filters, MAD4B transport registration, the official MCP Adapter and all provider/plugin REST callbacks, but skip the two WordPress Core callbacks that materialize global settings and the full Core REST route catalog for an unrelated request.
+
+The optimization is request-local only. It does not deactivate plugins, alter provider settings, remove provider REST callbacks, widen authority, or change Production state. Non-MAD4B REST requests retain the full WordPress route registry unchanged.
 
 ### rc.86 Connection / ChatGPT admin 504 hotpath hardening
 
