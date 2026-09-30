@@ -151,7 +151,7 @@ final class MAD4B_SCP_Upgrade_Continuity {
 			return self::recovery_result( 'blocked', false, 'snapshot_recovery_already_consumed' );
 		}
 
-		$environment = self::current_environment();
+		$environment = self::current_environment( $snapshot );
 		if ( ! in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) return self::recovery_result( 'blocked', false, 'nonproduction_only' );
 		$origin = self::current_origin();
 		if ( '' === $origin ) return self::recovery_result( 'blocked', false, 'current_origin_unavailable' );
@@ -610,8 +610,22 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		exit;
 	}
 
-	private static function current_environment() {
-		return function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+	private static function current_environment( array $snapshot = array() ) {
+		$effective = class_exists( 'MAD4B_SCP_Environment' )
+			? MAD4B_SCP_Environment::effective()
+			: ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) );
+		if ( 'production' !== $effective ) return $effective;
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::wordpress_environment_explicit() ) return $effective;
+		if ( empty( $snapshot ) ) return $effective;
+		$snapshot_environment = isset( $snapshot['environment'] ) ? sanitize_key( (string) $snapshot['environment'] ) : '';
+		$snapshot_origin = isset( $snapshot['canonical_origin'] ) ? self::normalize_origin( $snapshot['canonical_origin'] ) : '';
+		$snapshot_issuer = isset( $snapshot['issuer'] ) ? untrailingslashit( trim( (string) $snapshot['issuer'] ) ) : '';
+		$current_origin = self::current_origin();
+		$expected_issuer = untrailingslashit( home_url( '/oauth/mcp' ) );
+		if ( in_array( $snapshot_environment, array( 'local', 'development', 'staging' ), true )
+			&& '' !== $snapshot_origin && '' !== $current_origin && hash_equals( $current_origin, $snapshot_origin )
+			&& '' !== $snapshot_issuer && hash_equals( $expected_issuer, $snapshot_issuer ) ) return $snapshot_environment;
+		return $effective;
 	}
 
 	private static function current_origin() {
