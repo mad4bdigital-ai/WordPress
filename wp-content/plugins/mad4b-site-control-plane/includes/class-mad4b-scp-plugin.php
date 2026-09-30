@@ -64,14 +64,17 @@ final class MAD4B_SCP_Plugin {
 		$plugin_lifecycle = self::request_is_wordpress_plugin_lifecycle();
 		$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
+		$passive_admin_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
 		$schema_reconciliation = self::request_requires_schema_reconciliation();
 
-		// The protocol kernel already bound the canonical ability/server hooks from
-		// the entrypoint. Do not continue through admin navigation, resource writers,
-		// browser canaries or lifecycle reconciliation merely to serve MCP/OAuth.
-		// Keep only the lightweight ability annotations whose hooks are still needed
-		// when wp_get_abilities() materializes the compact transport catalog.
-		if ( $protocol_hotpath ) {
+		// The protocol kernel and passive ChatGPT/Connection admin views already
+		// have their canonical hooks bound from the entrypoint. Do not continue
+		// through resource writers, browser canaries or lifecycle reconciliation
+		// merely to serve a protocol request or render a cached/read-only admin view.
+		// Keep only the lightweight ability annotations needed by catalog/status
+		// projections. Connection > Endpoints is intentionally not passive.
+		if ( $protocol_hotpath || $passive_admin_hotpath ) {
 			MAD4B_SCP_Staging_Write_Authority::boot();
 			MAD4B_SCP_Write_Runtime_Certification::boot();
 			MAD4B_SCP_Skill_Runtime_Certification::boot();
