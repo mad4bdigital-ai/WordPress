@@ -26,20 +26,23 @@ if ( false !== apply_filters( 'wpmedia_mcp_oauth_server_enabled', true ) ) {
 
 require_once __DIR__ . '/fixtures/provider-mcp-registration-callbacks.php';
 
-$hostinger = new \Hostinger\AiAssistant\Mcp\McpServer();
-$elementskit = new \ElementsKit_Lite\Mcp\Server();
+$hostinger_callback = array( 'Hostinger\\AiAssistant\\Mcp\\McpServer', 'create_server' );
+$elementskit_callback = array( 'ElementsKit_Lite\\Mcp\\Server', 'register_server' );
 $jetengine_rest = new \Jet_Engine\MCP_Tools\MAD4B_Test_REST_Registration();
 $unknown = new MAD4B_Isolation_Unknown_Server_Callback();
 add_action( 'rest_api_init', array( $jetengine_rest, 'register_features_api' ), 10, 1 );
-add_action( 'mcp_adapter_init', array( $hostinger, 'create_server' ), 10 );
-add_action( 'mcp_adapter_init', array( $elementskit, 'register_server' ), 10 );
+// WordPress hooks accept callback identities before provider classes are loaded.
+// This proves exact deny-only matching without requiring unrelated provider
+// implementations in the disposable Connection runtime.
+add_action( 'mcp_adapter_init', $hostinger_callback, 10 );
+add_action( 'mcp_adapter_init', $elementskit_callback, 10 );
 add_action( 'mcp_adapter_init', array( $unknown, 'register_server' ), 10 );
 
 MAD4B_SCP_MCP_Provider_Isolation::suppress_provider_server_registrations();
-if ( false !== has_action( 'mcp_adapter_init', array( $hostinger, 'create_server' ) ) ) {
+if ( false !== has_action( 'mcp_adapter_init', $hostinger_callback ) ) {
 	mad4b_isolation_fail( 'Hostinger MCP server registration callback was not suppressed.' );
 }
-if ( false !== has_action( 'mcp_adapter_init', array( $elementskit, 'register_server' ) ) ) {
+if ( false !== has_action( 'mcp_adapter_init', $elementskit_callback ) ) {
 	mad4b_isolation_fail( 'ElementsKit MCP server registration callback was not suppressed.' );
 }
 if ( false === has_action( 'mcp_adapter_init', array( $unknown, 'register_server' ) ) ) {
