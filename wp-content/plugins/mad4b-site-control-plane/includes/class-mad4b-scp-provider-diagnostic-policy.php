@@ -56,9 +56,14 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 	public static function explicit_rest_materialization_allowed() {
 		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
 		if ( function_exists( 'current_user_can' ) && ! current_user_can( 'manage_options' ) ) return false;
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( trim( (string) $_SERVER['REQUEST_METHOD'] ) ) : 'GET'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- method classification only.
+		if ( 'POST' !== $method ) return false;
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
-		return 'mad4b-control-plane-connection' === $page && 'endpoints' === $tab;
+		$action = isset( $_POST['mad4b_connection_action'] ) ? sanitize_key( wp_unslash( (string) $_POST['mad4b_connection_action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce is verified by the owning admin surface before output.
+		return 'mad4b-control-plane-connection' === $page
+			&& 'endpoints' === $tab
+			&& 'deep_endpoints' === $action;
 	}
 
 	/**
