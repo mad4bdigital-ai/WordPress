@@ -717,10 +717,17 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
 		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
+		return self::admin_page_convergence_allowed( $page, $screen, $action );
+	}
+
+	private static function admin_page_convergence_allowed( $page, $screen, $action ) {
+		$page = sanitize_key( (string) $page );
+		$screen = sanitize_key( (string) $screen );
+		$action = sanitize_key( (string) $action );
 		// Connection and ChatGPT admin pages are request-serving status surfaces.
 		// Never let opening them become the event that detects drift, mutates a
-		// convergence checkpoint, or schedules post-update maintenance. Self-update,
-		// plugin lifecycle, Cron/CLI and dedicated maintenance actions own that work.
+		// convergence checkpoint, or schedules post-update maintenance. CLI remains
+		// an explicit lifecycle owner and is handled before this browser-admin router.
 		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return false;
 		if ( 0 === strpos( $page, 'mad4b-control-plane' ) || 'mad4b-approval-decisions' === $page ) return true;
 		if ( in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return true;
