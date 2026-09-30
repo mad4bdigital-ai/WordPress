@@ -137,7 +137,10 @@ final class MAD4B_SCP_Policy {
 		if ( ! class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) || ! MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled() ) return false;
 		if ( ! current_user_can( 'manage_options' ) ) return false;
 		if ( ! self::can_mutate() ) return false;
-		return (bool) apply_filters( 'mad4b_mcp_breakglass_permission', false, get_current_user_id() );
+		// The database-backed runtime gate is the positive authority source.
+		// This filter remains a final deny/constraint hook, not a second hidden
+		// code-level enable switch.
+		return (bool) apply_filters( 'mad4b_mcp_breakglass_permission', true, get_current_user_id() );
 	}
 
 	public static function roots() {
