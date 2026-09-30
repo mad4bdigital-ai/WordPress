@@ -56,6 +56,11 @@ assert "'operator_resume_runtime_convergence'" in runtime
 assert "'retry_after_runtime_convergence'" in runtime
 assert "$not_before = self::maintenance_not_before();" in runtime
 assert "self::schedule_resume( $not_before )" in runtime
+# Sliced post-update work must retain lifecycle provenance so the transport
+# barrier cannot reopen between schema and managed-skills slices.
+assert "$prior_source = isset( $checkpoint['source'] )" in runtime
+assert "$checkpoint['source'] = 'self_update' === $prior_source ? 'self_update' : $execution_source;" in runtime
+assert "$checkpoint['last_execution_source'] = $execution_source;" in runtime
 
 # Protocol hotpaths are classified before runtime/recovery bootstrap.
 scope = "MAD4B_SCP_MCP_Request_Scope::bootstrap();"
