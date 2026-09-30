@@ -50,33 +50,95 @@ jobs:
             --policy .github/mad4b-repository-governance-policy.json \
             --output /tmp/mad4b-owner-attestation.json
 
-          run_id="$(
-            gh api -H 'Accept: application/vnd.github+json' \
-              "repos/$GITHUB_REPOSITORY/actions/workflows/mad4b-release-verdict.yml/runs?event=pull_request&per_page=100" \
-            | jq -r --arg sha "$head_sha" '
-                [.workflow_runs[]
-                 | select(.head_sha == $sha)
-                 | select(.status == "completed")]
-                | sort_by(.id)
-                | last
-                | .id // empty
-              '
-          )"
-          test -n "$run_id"
-          gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/rerun"
-          echo "RELEASE_VERDICT_RERUN_REQUESTED run_id=$run_id head_sha=$head_sha comment_id=$COMMENT_ID"
+          head_branch="$(jq -r '.head.ref' <<<"$pr")"
 
-          boundary="$(
-            gh api -H 'Accept: application/vnd.github+json' \
-              "repos/$GITHUB_REPOSITORY/actions/workflows/mad4b-feature-boundary-root.yml/runs?event=pull_request_target&per_page=100" \
-            | jq -c --argjson pr "$PR_NUMBER" '
-                [.workflow_runs[]
-                 | select(any(.pull_requests[]?; .number == $pr))
-                 | select(.status == "completed")]
-                | sort_by(.id)
-                | last // empty
-              '
-          )"
+          release_run=""
+          for attempt in $(seq 1 24); do
+            release_runs="$(
+              gh api -H 'Accept: application/vnd.github+json' \
+                "repos/$GITHUB_REPOSITORY/actions/workflows/mad4b-release-verdict.yml/runs?event=pull_request&per_page=100"
+            )"
+            release_run="$(
+              jq -c \
+                --arg sha "$head_sha" \
+                --arg branch "$head_branch" \
+                --argjson pr "$PR_NUMBER" '
+                  [
+                    .workflow_runs[]
+                    | select(.head_sha == $sha)
+                    | select(.head_branch == $branch)
+                    | select(any(.pull_requests[]?; .number == $pr))
+                  ]
+                  | sort_by(.id)
+                  | last // empty
+                ' <<<"$release_runs"
+            )"
+
+            if [ -z "$release_run" ]; then
+              echo "Exact Release Verdict run is not visible yet (attempt $attempt/24); retrying."
+            else
+              release_status="$(jq -r '.status // ""' <<<"$release_run")"
+              if [ "$release_status" = completed ]; then
+                break
+              fi
+              echo "Exact Release Verdict run is $release_status (attempt $attempt/24); retrying."
+            fi
+
+            if [ "$attempt" -eq 24 ]; then
+              echo "Timed out waiting for exact Release Verdict run discovery/completion." >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+          run_id="$(jq -r '.id // empty' <<<"$release_run")"
+          run_conclusion="$(jq -r '.conclusion // empty' <<<"$release_run")"
+          test -n "$run_id"
+          if [ "$run_conclusion" != success ]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/rerun"
+            echo "RELEASE_VERDICT_RERUN_REQUESTED run_id=$run_id head_sha=$head_sha comment_id=$COMMENT_ID"
+          else
+            echo "RELEASE_VERDICT_ALREADY_SUCCESS run_id=$run_id head_sha=$head_sha"
+          fi
+
+          boundary=""
+          for attempt in $(seq 1 12); do
+            boundary_runs="$(
+              gh api -H 'Accept: application/vnd.github+json' \
+                "repos/$GITHUB_REPOSITORY/actions/workflows/mad4b-feature-boundary-root.yml/runs?event=pull_request_target&per_page=100"
+            )"
+            boundary="$(
+              jq -c \
+                --arg branch "$head_branch" \
+                --argjson pr "$PR_NUMBER" '
+                  [
+                    .workflow_runs[]
+                    | select(.head_branch == $branch)
+                    | select(any(.pull_requests[]?; .number == $pr))
+                  ]
+                  | sort_by(.id)
+                  | last // empty
+                ' <<<"$boundary_runs"
+            )"
+
+            if [ -z "$boundary" ]; then
+              echo "Feature Boundary run is not visible yet (attempt $attempt/12); retrying."
+            else
+              boundary_status="$(jq -r '.status // ""' <<<"$boundary")"
+              if [ "$boundary_status" = completed ]; then
+                break
+              fi
+              echo "Feature Boundary run is $boundary_status (attempt $attempt/12); retrying."
+            fi
+
+            if [ "$attempt" -eq 12 ]; then
+              echo "FEATURE_BOUNDARY_RUN_NOT_FOUND_OR_ACTIVE pr=$PR_NUMBER after bounded retries; Release Verdict handling completed."
+              boundary=""
+              break
+            fi
+            sleep 5
+          done
+
           if [ -n "$boundary" ]; then
             boundary_run_id="$(jq -r '.id // empty' <<<"$boundary")"
             boundary_conclusion="$(jq -r '.conclusion // empty' <<<"$boundary")"
@@ -87,6 +149,4 @@ jobs:
             else
               echo "FEATURE_BOUNDARY_ALREADY_SUCCESS run_id=$boundary_run_id pr=$PR_NUMBER"
             fi
-          else
-            echo "FEATURE_BOUNDARY_RUN_NOT_FOUND pr=$PR_NUMBER; release verdict rerun was still requested"
           fi
