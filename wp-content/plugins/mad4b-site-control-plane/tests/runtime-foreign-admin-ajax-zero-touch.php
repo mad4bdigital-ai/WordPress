@@ -49,7 +49,7 @@ $scope = MAD4B_SCP_MCP_Request_Scope::status();
 if ( empty( $scope['eligible'] ) ) $fail( 'request scope is not eligible on exact Staging', $scope );
 if ( ! empty( $scope['current_request_requires_mcp_runtime'] ) ) $fail( 'foreign admin-AJAX was misclassified as MCP runtime', $scope );
 
-$adapter = \\WP\\MCP\\Core\\McpAdapter::instance();
+$adapter = \WP\MCP\Core\McpAdapter::instance();
 if ( ! empty( $scope['adapter_runtime_from_official_plugin'] )
 	&& false !== has_action( 'rest_api_init', array( $adapter, 'init' ) ) ) {
 	$fail( 'official MCP Adapter rest_api_init remained armed on foreign admin-AJAX', $scope );
