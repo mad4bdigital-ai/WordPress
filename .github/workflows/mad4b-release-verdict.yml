@@ -1351,12 +1351,18 @@ jobs:
         run: |
           set -euo pipefail
           package_run_id="$(
-            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/mad4b-control-plane-package.yml/runs?branch=master&status=success&per_page=50" \
-              --jq ".workflow_runs[] | select(.head_sha == \"$SOURCE_SHA\") | .id" | head -n1
+            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/mad4b-control-plane-package.yml/runs?branch=master&event=push&status=success&per_page=50" \
+              --jq ".workflow_runs[]
+                | select(.head_sha == \"$SOURCE_SHA\")
+                | select(.head_branch == \"master\")
+                | select(.event == \"push\")
+                | .id" | head -n1
           )"
           test -n "$package_run_id"
           package_run="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$package_run_id")"
           test "$(jq -r '.head_sha' <<<"$package_run")" = "$SOURCE_SHA"
+          test "$(jq -r '.head_branch' <<<"$package_run")" = "master"
+          test "$(jq -r '.event' <<<"$package_run")" = "push"
           test "$(jq -r '.status' <<<"$package_run")" = "completed"
           test "$(jq -r '.conclusion' <<<"$package_run")" = "success"
           echo "PACKAGE_RUN_ID=$package_run_id" >> "$GITHUB_ENV"
