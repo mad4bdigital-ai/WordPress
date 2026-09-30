@@ -45,6 +45,27 @@ final class MAD4B_SCP_Schema_Lifecycle {
 		return self::$package_identity;
 	}
 
+	public static function mark_current_package_applied( $source = 'lifecycle' ) {
+		if ( ! MAD4B_SCP_Schema::is_ready() || ! MAD4B_SCP_Schema::critical_ready() ) return false;
+		$state = get_option( self::STATE_OPTION, array() );
+		if ( ! is_array( $state ) ) $state = array();
+		$now = gmdate( 'c' );
+		$state['contract'] = self::CONTRACT;
+		$state['state'] = 'ready';
+		$state['error_code'] = '';
+		$state['attempts'] = 0;
+		$state['next_attempt_at'] = 0;
+		$state['schema_version'] = MAD4B_SCP_Schema::VERSION;
+		$state['package_identity'] = self::package_identity();
+		$state['applied_package_identity'] = self::package_identity();
+		$state['source'] = sanitize_key( (string) $source );
+		$state['attempted_at'] = isset( $state['attempted_at'] ) ? $state['attempted_at'] : $now;
+		$state['completed_at'] = $now;
+		update_option( self::STATE_OPTION, $state, false );
+		wp_clear_scheduled_hook( self::CRON_HOOK );
+		return true;
+	}
+
 	public static function needs_reconciliation() {
 		$state = get_option( self::STATE_OPTION, array() );
 		$applied = is_array( $state ) && isset( $state['applied_package_identity'] ) ? strtolower( (string) $state['applied_package_identity'] ) : '';
