@@ -752,6 +752,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 
 	public static function reconnect_status() {
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		$portable = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) ? MAD4B_SCP_Portable_Readonly_Connection::status() : array();
+		$portable_ready = ! empty( $portable['effective'] );
 		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? MAD4B_SCP_Local_OAuth_Server::status() : array();
 		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
 		$registrations = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
@@ -759,11 +761,13 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$bridge_registration = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ? MAD4B_SCP_MCP_Registration_Bridge::status() : array();
 		$blockers = array();
 
-		if ( empty( $profile['configured'] ) ) $blockers[] = 'site_profile_unconfigured';
-		if ( empty( $profile['environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
-		if ( empty( $profile['origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $blockers[] = 'site_profile_oauth_disabled';
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) $blockers[] = 'site_profile_managed_runtime_disabled';
+		if ( ! $portable_ready ) {
+			if ( empty( $profile['configured'] ) ) $blockers[] = 'site_profile_unconfigured';
+			if ( empty( $profile['environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
+			if ( empty( $profile['origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
+			if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $blockers[] = 'site_profile_oauth_disabled';
+			if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) $blockers[] = 'site_profile_managed_runtime_disabled';
+		}
 		if ( empty( $bridge['effective'] ) ) $blockers[] = 'oauth_resource_bridge_not_effective';
 		if ( empty( $chatgpt['registered'] ) ) $blockers[] = ! empty( $chatgpt['error'] ) ? sanitize_key( (string) $chatgpt['error'] ) : 'mcp_chatgpt_not_registered';
 		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
@@ -775,6 +779,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'resource' => self::resource_identifier(),
 			'oauth_authorize_url' => ! empty( $local['effective'] ) ? untrailingslashit( home_url( '/oauth/mcp/authorize' ) ) : '',
 			'site_profile' => self::bounded_profile( $profile ),
+			'connection_mode' => $portable_ready ? 'portable_readonly' : 'site_profile',
+			'portable_readonly_effective' => $portable_ready,
 			'local_oauth_effective' => ! empty( $local['effective'] ),
 			'oauth_authority_mode' => isset( $bridge['authority_mode'] ) ? sanitize_key( (string) $bridge['authority_mode'] ) : '',
 			'oauth_resource_bridge_effective' => ! empty( $bridge['effective'] ),
@@ -796,11 +802,14 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	private static function preauth_reconnect_blockers() {
 		$blockers = array();
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
-		if ( empty( $profile['configured'] ) ) $blockers[] = 'site_profile_unconfigured';
-		if ( empty( $profile['environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
-		if ( empty( $profile['origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $blockers[] = 'site_profile_oauth_disabled';
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) $blockers[] = 'site_profile_managed_runtime_disabled';
+		$portable_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
+		if ( ! $portable_ready ) {
+			if ( empty( $profile['configured'] ) ) $blockers[] = 'site_profile_unconfigured';
+			if ( empty( $profile['environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
+			if ( empty( $profile['origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
+			if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $blockers[] = 'site_profile_oauth_disabled';
+			if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) $blockers[] = 'site_profile_managed_runtime_disabled';
+		}
 		$registrations = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
 		$chatgpt = isset( $registrations['mad4b-chatgpt'] ) && is_array( $registrations['mad4b-chatgpt'] ) ? $registrations['mad4b-chatgpt'] : array();
 		if ( empty( $chatgpt['registered'] ) ) $blockers[] = ! empty( $chatgpt['error'] ) ? sanitize_key( (string) $chatgpt['error'] ) : 'mcp_chatgpt_not_registered';
