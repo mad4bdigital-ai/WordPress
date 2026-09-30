@@ -66,6 +66,19 @@ final class MAD4B_SCP_Plugin {
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
 		$schema_reconciliation = self::request_requires_schema_reconciliation();
 
+		// The protocol kernel already bound the canonical ability/server hooks from
+		// the entrypoint. Do not continue through admin navigation, resource writers,
+		// browser canaries or lifecycle reconciliation merely to serve MCP/OAuth.
+		// Keep only the lightweight ability annotations whose hooks are still needed
+		// when wp_get_abilities() materializes the compact transport catalog.
+		if ( $protocol_hotpath ) {
+			MAD4B_SCP_Staging_Write_Authority::boot();
+			MAD4B_SCP_Write_Runtime_Certification::boot();
+			MAD4B_SCP_Skill_Runtime_Certification::boot();
+			MAD4B_SCP_MCP_Registration_Bridge::boot_early();
+			return;
+		}
+
 		// Governance schema repair is lifecycle work, never request-serving work.
 		// Activation performs the normal install. After an update, only explicit
 		// Control Plane/CLI lifecycle may run physical readiness probes or dbDelta.
