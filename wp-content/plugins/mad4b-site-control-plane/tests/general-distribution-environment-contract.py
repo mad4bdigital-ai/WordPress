@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess
 root=Path(__file__).resolve().parents[1]
 read=lambda rel:(root/rel).read_text(encoding='utf-8')
-server=read('includes/class-mad4b-scp-local-oauth-server.php'); bridge=read('includes/class-mad4b-scp-oauth-resource-bridge.php'); compat=read('includes/class-mad4b-scp-mcp-client-compatibility.php'); handshake=read('includes/class-mad4b-scp-external-handshake-evidence.php'); connection_ui=read('includes/class-mad4b-scp-chatgpt-connection-admin-ui.php'); acceptance=read('includes/class-mad4b-scp-live-acceptance-observer.php'); request_scope=read('includes/class-mad4b-scp-mcp-request-scope.php'); metadata=read('includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php'); transport=read('includes/class-mad4b-scp-transport-context.php'); skills_ui=read('includes/class-mad4b-scp-skills-admin-ui.php'); upgrade=read('includes/class-mad4b-scp-upgrade-continuity.php'); hardening=read('includes/class-mad4b-scp-reconnect-hardening.php'); main=read('mad4b-site-control-plane.php')
+server=read('includes/class-mad4b-scp-local-oauth-server.php'); bridge=read('includes/class-mad4b-scp-oauth-resource-bridge.php'); compat=read('includes/class-mad4b-scp-mcp-client-compatibility.php'); handshake=read('includes/class-mad4b-scp-external-handshake-evidence.php'); connection_ui=read('includes/class-mad4b-scp-chatgpt-connection-admin-ui.php'); acceptance=read('includes/class-mad4b-scp-live-acceptance-observer.php'); request_scope=read('includes/class-mad4b-scp-mcp-request-scope.php'); metadata=read('includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php'); transport=read('includes/class-mad4b-scp-transport-context.php'); skills_ui=read('includes/class-mad4b-scp-skills-admin-ui.php'); upgrade=read('includes/class-mad4b-scp-upgrade-continuity.php'); hardening=read('includes/class-mad4b-scp-reconnect-hardening.php'); profile=read('includes/class-mad4b-scp-site-profile.php'); profile_admin=read('includes/class-mad4b-scp-site-profile-admin.php'); self_update=read('includes/class-mad4b-scp-self-update.php'); main=read('mad4b-site-control-plane.php')
 for label,text in [('local OAuth server',server),('OAuth resource bridge',bridge),('external handshake',handshake),('ChatGPT connection UI',connection_ui)]:
     for marker in ["MAD4B_SCP_Site_Profile::origin_enrolled()","MAD4B_SCP_Site_Profile::oauth_enabled()"]:
         if marker not in text: raise SystemExit(f'{label} is not bound to Site Profile OAuth enrollment: {marker}')
@@ -16,6 +16,12 @@ if "'environment' => 'staging'" in handshake or "return 'staging' === $environme
 if "'environment' => 'staging'" in acceptance or 'not_exact_staging_origin' in acceptance: raise SystemExit('live acceptance retained deployment-specific identity')
 if "MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' )" not in connection_ui: raise SystemExit('ChatGPT UI does not consume Site Profile truth')
 if "$environment_ready = 'staging' === $environment" in connection_ui: raise SystemExit('ChatGPT UI still hardcodes Staging readiness')
+for marker in ["public static function wordpress_environment_explicit()", "exact_site_profile_default_override", "hostname_hint_used_for_authority", "mad4b_site_profile_environment_conflicts_explicit_wordpress"]:
+    if marker not in profile: raise SystemExit(f'dynamic Site Profile environment resolver missing invariant: {marker}')
+for marker in ["name=\"environment\"", "No wp-config.php edit is required", "Suggested enrollment environment"]:
+    if marker not in profile_admin: raise SystemExit(f'zero-config environment enrollment UI missing invariant: {marker}')
+for marker in ["private static function environment_resolution()", "MAD4B_SCP_Site_Profile::environment_resolution()", "'environment_resolution' => $environment_resolution"]:
+    if marker not in self_update: raise SystemExit(f'self-update is not consuming effective MAD4B environment: {marker}')
 for label,text in [('request scope',request_scope),('metadata bridge',metadata),('transport context',transport),('skills UI',skills_ui)]:
     for forbidden in ['Exact-Staging request scope','governed MAD4B Staging MCP runtime','Staging ChatGPT exposes a stable registered write catalog','governed Staging App mapping']:
         if forbidden in text: raise SystemExit(f'{label} retained generalized-runtime Staging wording: {forbidden}')

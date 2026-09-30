@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Exact Staging-only candidate binding bootstrap.
+ * Exact environment-bound candidate binding bootstrap for Staging or Production.
  *
  * This surface is intentionally narrower than grant reconciliation:
  * - it never creates/revokes grants;
@@ -21,9 +21,31 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 	const AUDIT_ABILITY = 'mad4b/staging-write-candidate-binding-audit';
 	const SERVER_ID = 'mad4b-enrollment';
 	const CONFIRMATION = 'BIND EXACT CURRENT STAGING WRITE CANDIDATE';
+	const PRODUCTION_CONFIRMATION = 'BIND EXACT CURRENT PRODUCTION WRITE CANDIDATE';
 
 	private static $booted = false;
 	private static $running = false;
+
+	public static function current_environment() {
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			: 'unknown';
+	}
+
+	public static function required_confirmation() {
+		return 'production' === self::current_environment() ? self::PRODUCTION_CONFIRMATION : self::CONFIRMATION;
+	}
+
+	public static function chatgpt_step_up_tools() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return array();
+		if ( ! in_array( self::current_environment(), array( 'staging', 'production' ), true ) ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) return array();
+		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) return array();
+		$plan = self::plan();
+		if ( ! is_array( $plan ) || empty( $plan['eligible'] ) ) return array();
+		return array( self::ABILITY );
+	}
 
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
@@ -37,8 +59,8 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::PLAN_ABILITY ) ) return;
 		wp_register_ability( self::PLAN_ABILITY, array(
-			'label' => 'Plan Exact Staging Write Candidate Binding',
-			'description' => 'Build a read-only exact-input plan for the narrow candidate-binding operation. This never creates grants, binds authority, approves execution, enables Developer/Breakglass, or mutates Production.',
+			'label' => 'Plan Exact Governed Write Candidate Binding',
+			'description' => 'Build a read-only exact-input plan for the narrow candidate-binding operation. This never creates grants, approves execution, or enables Developer/Breakglass.',
 			'category' => 'mad4b-read',
 			'execute_callback' => array( __CLASS__, 'plan' ),
 			'permission_callback' => class_exists( 'MAD4B_SCP_Policy' ) ? array( 'MAD4B_SCP_Policy', 'can_read' ) : '__return_false',
@@ -53,7 +75,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 					'surface' => 'read',
 					'non_authorizing' => true,
 					'candidate_binding_plan_only' => true,
-					'production_mutation_allowed' => false,
+					'production_mutation_allowed' => true,
 				),
 				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			),
@@ -71,7 +93,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 			$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
 		}
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) $blockers[] = 'site_profile_unconfigured';
-		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) $blockers[] = 'staging_required';
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && ! in_array( self::current_environment(), array( 'staging', 'production' ), true ) ) $blockers[] = 'supported_environment_required';
 		if ( is_array( $authority_plan ) ) {
 			if ( empty( $authority_plan['eligible'] ) ) $blockers[] = 'write_authority_not_eligible';
 			if ( empty( $authority_plan['current_ready'] ) ) $blockers[] = 'persisted_write_authority_not_ready';
@@ -99,7 +121,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 			'expected_write_tool_count' => isset( $authority_plan['write_tool_count'] ) ? (int) $authority_plan['write_tool_count'] : 0,
 			'expected_write_inventory_fingerprint' => isset( $authority_plan['write_inventory_fingerprint'] ) ? (string) $authority_plan['write_inventory_fingerprint'] : '',
 			'expected_grant_rows_fingerprint' => isset( $authority_plan['grant_rows_fingerprint'] ) ? (string) $authority_plan['grant_rows_fingerprint'] : '',
-			'confirmation' => self::CONFIRMATION,
+			'confirmation' => self::required_confirmation(),
 		);
 		foreach ( array(
 			'expected_profile_digest' => 64,
@@ -122,13 +144,13 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 			'non_authorizing' => true,
 			'read_only' => true,
 			'mutation_performed' => false,
-			'production_mutation' => false,
+			'production_mutation' => 'production' === self::current_environment(),
 			'breakglass_included' => false,
 			'execution_eligible' => $execution_eligible,
 			'apply_required' => $execution_eligible,
 			'blockers' => $blockers,
 			'apply_ability' => self::ABILITY,
-			'required_confirmation' => self::CONFIRMATION,
+			'required_confirmation' => self::required_confirmation(),
 			'bind_input' => $bind_input,
 			'candidate_binding' => $binding,
 			'write_snapshot' => array(
@@ -157,8 +179,8 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 
 		try {
 			wp_register_ability( self::ABILITY, array(
-				'label' => 'Bind Exact Staging Write Candidate',
-				'description' => 'Bind an already-clean governed-write authority snapshot to the exact current Staging package candidate without reconciling grants, subjects or agents.',
+				'label' => 'Bind Exact Governed Write Candidate',
+				'description' => 'Bind an already-clean governed-write authority snapshot to the exact current Staging or Production package candidate without reconciling grants, subjects or agents.',
 				'category' => 'mad4b-governance',
 				'execute_callback' => array( __CLASS__, 'bind' ),
 				'permission_callback' => array( __CLASS__, 'can_execute' ),
@@ -180,7 +202,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 						'expected_write_tool_count' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 200 ),
 						'expected_write_inventory_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 						'expected_grant_rows_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
-						'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRMATION ) ),
+						'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRMATION, self::PRODUCTION_CONFIRMATION ) ),
 					),
 					'required' => array(
 						'expected_revision',
@@ -206,6 +228,8 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 						'type' => 'tool',
 						'surface' => 'enrollment',
 						'mad4b_candidate_binding_authority' => self::CONTRACT,
+					'production_mutation_allowed' => true,
+					'production_exact_confirmation_required' => true,
 						'binding_only' => true,
 						'grant_mutation_allowed' => false,
 						'subject_mutation_allowed' => false,
@@ -252,7 +276,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 	public static function can_read_audit( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_candidate_binding_audit_admin_required', 'Administrator capability is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return new WP_Error( 'mad4b_candidate_binding_audit_bearer_required', 'Verified OAuth bearer identity is required.' );
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() || 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_candidate_binding_audit_staging_required', 'Binding audit lookup is limited to the enrolled Staging Site Profile.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() || ! in_array( self::current_environment(), array( 'staging', 'production' ), true ) ) return new WP_Error( 'mad4b_candidate_binding_audit_environment_required', 'Binding audit lookup is limited to an enrolled Staging or Production Site Profile.' );
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_candidate_binding_audit_subject_not_enrolled', 'The authenticated administrator is not enrolled in this Site Profile.' );
 		return true;
@@ -266,8 +290,10 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 	public static function can_execute( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_candidate_bind_admin_required', 'Administrator capability is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return new WP_Error( 'mad4b_candidate_bind_bearer_required', 'Verified OAuth bearer identity is required.' );
+		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) return new WP_Error( 'mad4b_candidate_bind_step_up_scope_required', 'Dedicated authority step-up scope is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return new WP_Error( 'mad4b_candidate_bind_profile_missing', 'An enrolled Site Profile is required.' );
-		if ( 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_candidate_bind_staging_only', 'Candidate binding is Staging-only.' );
+		$environment = self::current_environment();
+		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) ) return new WP_Error( 'mad4b_candidate_bind_environment_denied', 'Candidate binding is limited to Staging or Production.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_candidate_bind_profile_not_exact', 'Current origin and URLs must exactly match the enrolled Site Profile.' );
 		if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_candidate_bind_write_disabled', 'Governed write must already be enabled.' );
 		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) || true !== constant( 'MAD4B_MCP_MUTATION_ENABLED' ) ) return new WP_Error( 'mad4b_candidate_bind_mutation_gate_disabled', 'The governed mutation master gate must already be enabled.' );
@@ -286,9 +312,10 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		if ( empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return new WP_Error( 'mad4b_candidate_bind_oauth_identity_required', 'Verified OAuth bearer governance identity is required.' );
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 		if ( is_wp_error( $agent ) ) return $agent;
+		$environment = self::current_environment();
 		if ( 'chatgpt-governed-write' !== ( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' )
 			|| 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' )
-			|| 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) return new WP_Error( 'mad4b_candidate_bind_agent_invalid', 'Resolved governance identity is not the canonical enabled Staging governed-write agent.' );
+			|| $environment !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) return new WP_Error( 'mad4b_candidate_bind_agent_invalid', 'Resolved governance identity is not the canonical enabled current-environment governed-write agent.' );
 		if ( (int) ( isset( $agent['wp_user_id'] ) ? $agent['wp_user_id'] : 0 ) !== get_current_user_id() ) return new WP_Error( 'mad4b_candidate_bind_agent_user_mismatch', 'Resolved governed-write agent belongs to another WordPress user.' );
 		return $agent;
 	}
@@ -376,7 +403,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		);
 	}
 
-	public static function operation_context( array $plan, array $binding, $current_revision, $current_digest, $confirmation = self::CONFIRMATION, $authorization_source = 'binding_only_mcp', $authorization_contract = self::CONTRACT, $reviewed_previous_binding = null ) {
+	public static function operation_context( array $plan, array $binding, $current_revision, $current_digest, $confirmation = '', $authorization_source = 'binding_only_mcp', $authorization_contract = self::CONTRACT, $reviewed_previous_binding = null ) {
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) ) return new WP_Error( 'mad4b_candidate_bind_identity_unavailable', 'Governance identity context is unavailable.' );
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;
@@ -399,18 +426,21 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		if ( ! in_array( $transport, array( 'mad4b-chatgpt', 'mad4b-enrollment' ), true ) ) return new WP_Error( 'mad4b_candidate_bind_transport_context_invalid', 'Candidate binding requires the bounded ChatGPT or enrollment MCP transport.' );
 		$authorization_source = sanitize_key( (string) $authorization_source );
 		$authorization_contract = trim( (string) $authorization_contract );
-		$confirmation = (string) $confirmation;
+		$confirmation = '' === (string) $confirmation ? self::required_confirmation() : (string) $confirmation;
 		$grant_reconciliation_contract = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
 			? (string) MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONTRACT
 			: '';
 		$grant_reconciliation_confirmation = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
-			? (string) MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONFIRMATION
+			? ( method_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation', 'required_confirmation' )
+				? (string) MAD4B_SCP_Staging_Write_Grant_Reconciliation::required_confirmation()
+				: (string) MAD4B_SCP_Staging_Write_Grant_Reconciliation::CONFIRMATION )
 			: '';
-		$authorization_valid = ( 'binding_only_mcp' === $authorization_source && self::CONTRACT === $authorization_contract && self::CONFIRMATION === $confirmation )
+		$required_confirmation = self::required_confirmation();
+		$authorization_valid = ( 'binding_only_mcp' === $authorization_source && self::CONTRACT === $authorization_contract && hash_equals( $required_confirmation, $confirmation ) )
 			|| ( 'grant_reconciliation' === $authorization_source
 				&& '' !== $grant_reconciliation_contract
-				&& $grant_reconciliation_contract === $authorization_contract
-				&& $grant_reconciliation_confirmation === $confirmation );
+				&& hash_equals( $grant_reconciliation_contract, $authorization_contract )
+				&& hash_equals( $grant_reconciliation_confirmation, $confirmation ) );
 		if ( ! $authorization_valid ) return new WP_Error( 'mad4b_candidate_bind_authorization_source_invalid', 'Candidate binding authorization source is invalid.' );
 		$pre_bind_persisted_binding = self::audit_binding_snapshot( $binding );
 		$reviewed_previous_binding = is_array( $reviewed_previous_binding )
@@ -469,7 +499,8 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		$permission = self::can_execute( $input );
 		if ( is_wp_error( $permission ) || ! $permission ) return $permission;
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_candidate_bind_input_invalid', 'Input must be an object.' );
-		if ( self::CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_candidate_bind_confirmation_required', 'Exact candidate binding confirmation is required.' );
+		$required_confirmation = self::required_confirmation();
+		if ( ! hash_equals( $required_confirmation, isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) return new WP_Error( 'mad4b_candidate_bind_confirmation_required', 'Exact environment-specific candidate binding confirmation is required.' );
 
 		self::$running = true;
 		try {
@@ -498,7 +529,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 			if ( ! hash_equals( $expected_manifest, $current_manifest ) ) return new WP_Error( 'mad4b_candidate_bind_manifest_mismatch', 'Package manifest digest does not match the exact current package.' );
 			if ( ! hash_equals( $expected_artifact, $current_artifact ) ) return new WP_Error( 'mad4b_candidate_bind_artifact_mismatch', 'Artifact identity does not match the exact current package.' );
 
-			$operation_context = self::operation_context( $plan, $binding, $current_revision, $current_digest, self::CONFIRMATION, 'binding_only_mcp', self::CONTRACT, $reviewed_previous_binding );
+			$operation_context = self::operation_context( $plan, $binding, $current_revision, $current_digest, $required_confirmation, 'binding_only_mcp', self::CONTRACT, $reviewed_previous_binding );
 			if ( is_wp_error( $operation_context ) ) return $operation_context;
 			$result = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $current_sha, $current_build, $operation_context );
 			if ( is_wp_error( $result ) ) return $result;

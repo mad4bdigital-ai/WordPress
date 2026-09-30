@@ -111,8 +111,13 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 		if ( is_wp_error( $kill_switch ) ) return $kill_switch;
 		if ( ! empty( $kill_switch['active'] ) ) return self::error( 'KILL_SWITCHED', 'Execution kill switch is active.' );
 
+		$mutation_gate = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'mutation_gate_status' )
+			? MAD4B_SCP_Policy::mutation_gate_status()
+			: array( 'effective' => false, 'source' => 'unavailable' );
 		$policy = array(
-			'mutation_global_enabled' => defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === MAD4B_MCP_MUTATION_ENABLED,
+			'mutation_gate_effective' => ! empty( $mutation_gate['effective'] ),
+			'mutation_gate_source' => isset( $mutation_gate['source'] ) ? (string) $mutation_gate['source'] : 'unknown',
+			'mutation_global_enabled' => ! empty( $mutation_gate['effective'] ),
 			'can_mutate' => class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_mutate(),
 			'developer_allowed' => 'mad4b-developer' === $server_id ? MAD4B_SCP_Policy::can_developer() : null,
 			'developer_breakglass_allowed' => 'mad4b-developer-breakglass' === $server_id ? MAD4B_SCP_Policy::can_developer_breakglass() : null,
@@ -121,7 +126,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 				? MAD4B_SCP_Site_Profile::write_enabled()
 				: null,
 		);
-		if ( empty( $policy['mutation_global_enabled'] ) || empty( $policy['can_mutate'] ) ) {
+		if ( empty( $policy['mutation_gate_effective'] ) || empty( $policy['can_mutate'] ) ) {
 			return self::error( 'REAPPROVAL_REQUIRED', 'Mutation policy is no longer effective at commit guard.' );
 		}
 		foreach ( array( 'developer_allowed', 'developer_breakglass_allowed', 'breakglass_allowed' ) as $special ) {
@@ -295,10 +300,13 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 	}
 
 	private static function kill_switch_material( $ability, $provider, array $claim, $input ) {
+		$gate = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'mutation_gate_status' )
+			? MAD4B_SCP_Policy::mutation_gate_status()
+			: array( 'effective' => false, 'source' => 'unavailable' );
 		$default = array(
-			'active' => ! ( defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === MAD4B_MCP_MUTATION_ENABLED ),
-			'revision' => 'global-mutation-switch:v1:' . ( ( defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === MAD4B_MCP_MUTATION_ENABLED ) ? 'enabled' : 'disabled' ),
-			'source' => 'MAD4B_MCP_MUTATION_ENABLED',
+			'active' => empty( $gate['effective'] ),
+			'revision' => 'governed-mutation-gate:v2:' . ( empty( $gate['effective'] ) ? 'disabled' : 'enabled' ) . ':' . ( isset( $gate['source'] ) ? sanitize_key( (string) $gate['source'] ) : 'unknown' ),
+			'source' => isset( $gate['source'] ) ? (string) $gate['source'] : 'unknown',
 		);
 		$value = apply_filters( 'mad4b_scp_execution_kill_switch_state', $default, $ability, $provider, $claim, $input );
 		if ( ! is_array( $value ) || ! array_key_exists( 'active', $value ) || empty( $value['revision'] ) ) {

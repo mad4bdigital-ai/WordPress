@@ -3,8 +3,8 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Exact Staging-only transition that enables governed write on an already
- * enrolled Site Profile without exposing the generic Site Profile save path.
+ * Exact environment-bound transition that enables governed write on an already
+ * enrolled Staging or Production Site Profile without exposing the generic Site Profile save path.
  *
  * The initial bootstrap transition deliberately stops after the Site Profile
  * change. If write is already enabled but the canonical profile-owned authority
@@ -16,7 +16,19 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 	const CONTRACT = 'mad4b.site-profile-write-enablement.v1';
 	const ABILITY = 'mad4b/site-profile-write-enable';
 	const CONFIRMATION = 'ENABLE GOVERNED STAGING WRITE';
+	const PRODUCTION_CONFIRMATION = 'ENABLE GOVERNED PRODUCTION WRITE';
 	private static $booted = false;
+
+	public static function chatgpt_step_up_tools() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return array();
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::oauth_enabled() || ! MAD4B_SCP_Site_Profile::acceptance_enabled() || ! MAD4B_SCP_Site_Profile::skills_enabled() ) return array();
+		if ( MAD4B_SCP_Site_Profile::write_enabled() ) return array();
+		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) return array();
+		return array( self::ABILITY );
+	}
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -35,7 +47,7 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		try {
 			wp_register_ability( self::ABILITY, array(
 				'label' => 'Enable Governed Write for Exact Site Profile',
-				'description' => 'Enable governed write on one exact Staging Site Profile after App Mapping, Acceptance and Skills are enabled. If Write is already enabled, repair only an exact legacy OAuth subject binding into the canonical profile-owned authority when all current exact grants are already ready.',
+				'description' => 'Enable governed write on one exact Staging or Production Site Profile after App Mapping, Acceptance and Skills are enabled. Production requires its distinct literal confirmation and remains exact-approval-only.',
 				'category' => 'mad4b-governance',
 				'execute_callback' => array( __CLASS__, 'enable_write' ),
 				'permission_callback' => array( __CLASS__, 'can_execute' ),
@@ -46,7 +58,7 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 						'expected_profile_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 						'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
 						'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
-						'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRMATION ) ),
+						'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRMATION, self::PRODUCTION_CONFIRMATION ) ),
 					),
 					'required' => array( 'expected_revision', 'expected_profile_digest', 'expected_source_commit_sha', 'expected_build_fingerprint', 'confirmation' ),
 					'additionalProperties' => false,
@@ -55,7 +67,15 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 				'meta' => array(
 					'public' => false,
 					'show_in_rest' => false,
-					'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'enrollment', 'mad4b_write_enablement_authority' => self::CONTRACT ),
+					'mcp' => array(
+						'public' => false,
+						'type' => 'tool',
+						'surface' => 'enrollment',
+						'mad4b_write_enablement_authority' => self::CONTRACT,
+						'generic_remote_admin' => false,
+						'production_mutation_allowed' => true,
+						'production_exact_confirmation_required' => true,
+					),
 					'annotations' => array( 'readonly' => false, 'destructive' => false, 'idempotent' => false ),
 				),
 			) );
@@ -67,10 +87,12 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 	public static function can_execute( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_write_enable_admin_required', 'Administrator capability is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return new WP_Error( 'mad4b_site_profile_write_enable_bearer_required', 'Verified OAuth bearer identity is required.' );
+		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) return new WP_Error( 'mad4b_site_profile_write_enable_step_up_scope_required', 'Dedicated authority step-up scope is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return new WP_Error( 'mad4b_site_profile_write_enable_profile_missing', 'An enrolled Site Profile is required.' );
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_site_profile_write_enable_subject_not_enrolled', 'The authenticated WordPress administrator is not enrolled in this Site Profile.' );
-		if ( 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_site_profile_write_enable_staging_only', 'Remote governed write enablement is Staging-only.' );
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) ) return new WP_Error( 'mad4b_site_profile_write_enable_environment_denied', 'Remote governed write enablement is limited to Staging or Production.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_site_profile_write_enable_profile_not_exact', 'The current origin, environment, home URL and site URL must exactly match the enrolled Site Profile.' );
 		if ( 'https' !== strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_site_profile_write_enable_https_required', 'Remote governed write enablement requires HTTPS.' );
 		return true;
@@ -81,7 +103,9 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		if ( is_wp_error( $permission ) || ! $permission ) return $permission;
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_site_profile_write_enable_input_invalid', 'Input must be an object.' );
 		if ( ! isset( $input['expected_revision'], $input['expected_profile_digest'], $input['expected_source_commit_sha'], $input['expected_build_fingerprint'], $input['confirmation'] ) ) return new WP_Error( 'mad4b_site_profile_write_enable_binding_required', 'Exact revision, profile digest, build binding and literal confirmation are required.' );
-		if ( self::CONFIRMATION !== (string) $input['confirmation'] ) return new WP_Error( 'mad4b_site_profile_write_enable_confirmation_required', 'Exact confirmation "ENABLE GOVERNED STAGING WRITE" is required.' );
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+		$required_confirmation = 'production' === $environment ? self::PRODUCTION_CONFIRMATION : self::CONFIRMATION;
+		if ( ! hash_equals( $required_confirmation, (string) $input['confirmation'] ) ) return new WP_Error( 'mad4b_site_profile_write_enable_confirmation_required', 'Exact environment-specific governed-write confirmation is required.' );
 
 		$current_revision = MAD4B_SCP_Site_Profile::revision();
 		$expected_revision = absint( $input['expected_revision'] );
@@ -115,7 +139,7 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		$next = $before;
 		$next['revision'] = $current_revision + 1;
 		$next['features']['write'] = true;
-		$next['features']['production_write_confirmed'] = false;
+		$next['features']['production_write_confirmed'] = 'production' === $environment;
 		$next['updated_at'] = gmdate( 'c' );
 		if ( ! MAD4B_SCP_Site_Profile::persist_record_exact( $next ) ) return new WP_Error( 'mad4b_site_profile_write_enable_save_failed', 'Governed write enablement could not be persisted and verified by readback.' );
 
@@ -125,11 +149,11 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 			&& isset( $after['revision'] ) && (int) $after['revision'] === $current_revision + 1
 			&& ! empty( $status['configured'] ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
 			&& MAD4B_SCP_Site_Profile::oauth_enabled() && MAD4B_SCP_Site_Profile::acceptance_enabled() && MAD4B_SCP_Site_Profile::skills_enabled() && MAD4B_SCP_Site_Profile::write_enabled()
-			&& empty( $after['features']['production_write_confirmed'] );
+			&& ( 'production' === $environment ? ! empty( $after['features']['production_write_confirmed'] ) : empty( $after['features']['production_write_confirmed'] ) );
 		$expected_after = $before;
 		$expected_after['revision'] = $current_revision + 1;
 		$expected_after['features']['write'] = true;
-		$expected_after['features']['production_write_confirmed'] = false;
+		$expected_after['features']['production_write_confirmed'] = 'production' === $environment;
 		unset( $expected_after['updated_at'], $after['updated_at'] );
 		$post_ok = $post_ok && $expected_after === $after;
 		if ( ! $post_ok ) {
@@ -150,7 +174,8 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 			'acceptance_enabled' => true,
 			'skills_enabled' => true,
 			'write_enabled' => true,
-			'production_write_confirmed' => false,
+			'production_write_confirmed' => 'production' === $environment,
+			'production_mutation_authorized' => 'production' === $environment,
 			'source_commit_sha' => $current_sha,
 			'build_fingerprint' => $current_fingerprint,
 			'authority_reconciliation_deferred' => true,
@@ -172,7 +197,8 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 			'acceptance_enabled' => true,
 			'skills_enabled' => true,
 			'write_enabled' => true,
-			'production_write_confirmed' => false,
+			'production_write_confirmed' => 'production' === $environment,
+			'production_mutation_authorized' => 'production' === $environment,
 			'source_commit_sha' => $current_sha,
 			'build_fingerprint' => $current_fingerprint,
 			'authority_reconciliation_deferred' => true,
@@ -193,12 +219,12 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		$user_id = get_current_user_id();
 		$environment = MAD4B_SCP_Site_Profile::current_environment();
 		$canonical_slug = sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() );
-		if ( 'staging' !== $environment || '' === $canonical_slug ) return new WP_Error( 'mad4b_site_profile_write_repair_scope_invalid', 'Authority repair is limited to the exact governed Staging profile.' );
+		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) || '' === $canonical_slug ) return new WP_Error( 'mad4b_site_profile_write_repair_scope_invalid', 'Authority repair is limited to an exact governed Staging or Production profile.' );
 
 		$t = MAD4B_SCP_Schema::tables();
 		$target = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['agents']} WHERE slug=%s LIMIT 1", $canonical_slug ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( ! $target ) return new WP_Error( 'mad4b_site_profile_write_repair_target_missing', 'Canonical profile-owned write agent does not exist.' );
-		if ( 'enabled' !== (string) $target['status'] || (int) $target['wp_user_id'] !== $user_id || $environment !== (string) $target['environment'] ) return new WP_Error( 'mad4b_site_profile_write_repair_target_invalid', 'Canonical write agent does not exactly match the enrolled Staging administrator and environment.' );
+		if ( 'enabled' !== (string) $target['status'] || (int) $target['wp_user_id'] !== $user_id || $environment !== (string) $target['environment'] ) return new WP_Error( 'mad4b_site_profile_write_repair_target_invalid', 'Canonical write agent does not exactly match the enrolled administrator and environment.' );
 
 		$issuer = rtrim( (string) MAD4B_SCP_Local_OAuth_Server::issuer(), '/' );
 		if ( '' === $issuer ) return new WP_Error( 'mad4b_site_profile_write_repair_issuer_unavailable', 'Local OAuth issuer is unavailable.' );

@@ -10,10 +10,13 @@ required = [
     "const CONTRACT = 'mad4b.site-profile-write-enablement.v1'",
     "const ABILITY = 'mad4b/site-profile-write-enable'",
     "const CONFIRMATION = 'ENABLE GOVERNED STAGING WRITE'",
+    "const PRODUCTION_CONFIRMATION = 'ENABLE GOVERNED PRODUCTION WRITE'",
     "'additionalProperties' => false",
     "'required' => array( 'expected_revision', 'expected_profile_digest', 'expected_source_commit_sha', 'expected_build_fingerprint', 'confirmation' )",
-    "self::CONFIRMATION !== (string) $input['confirmation']",
-    "'staging' !== MAD4B_SCP_Site_Profile::current_environment()",
+    "hash_equals( $required_confirmation, (string) $input['confirmation'] )",
+    "array( 'staging', 'production' )",
+    "MAD4B_SCP_Site_Profile::current_environment()",
+    "mad4b_site_profile_write_enable_environment_denied",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
@@ -23,7 +26,8 @@ required = [
     "MAD4B_SCP_Site_Profile::skills_enabled()",
     "MAD4B_SCP_Audit::storage_status()",
     "$next['features']['write'] = true",
-    "$next['features']['production_write_confirmed'] = false",
+    "$next['features']['production_write_confirmed'] = 'production' === $environment",
+    "'production_mutation_authorized' => 'production' === $environment",
     "$expected_after === $after",
     "mad4b/site-profile-write-enabled",
     "self::restore_profile( $before )",
@@ -105,14 +109,14 @@ if 'mad4b/site-profile-write-enable' in core_write:
 chatgpt_transport = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
 if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_transport:
     raise SystemExit('single-app Full Staging Authority step-up projection is missing')
-for bootstrap_ability in (
-    "'mad4b/site-profile-feature-reenroll'",
-    "'mad4b/site-profile-write-enable'",
-    "'mad4b/staging-write-grant-reconcile'",
-    "'mad4b/staging-write-candidate-bind'",
+for marker in (
+    "MAD4B_SCP_Site_Profile_Enrollment::chatgpt_step_up_tools()",
+    "MAD4B_SCP_Site_Profile_Write_Enablement::chatgpt_step_up_tools()",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
+    "MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools()",
 ):
-    if bootstrap_ability in chatgpt_transport:
-        raise SystemExit('low-level bootstrap mutation leaked into direct ChatGPT transport: ' + bootstrap_ability)
+    if marker not in chatgpt_transport:
+        raise SystemExit('bounded environment-specific step-up projection missing: ' + marker)
 
 internal_enrollment = servers.split('private static function chatgpt_internal_enrollment_mutations()', 1)[1].split('private static function chatgpt_enrollment_candidates()', 1)[0]
 for bootstrap_ability in (

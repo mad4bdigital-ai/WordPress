@@ -190,7 +190,12 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$checks['write_feature_enabled'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::write_enabled();
 		$checks['write_authority_eligible'] = ! empty( $authority['eligible'] );
 		$checks['authority_ready'] = ! empty( $authority['ready'] );
-		$checks['mutation_gate_enabled'] = defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === constant( 'MAD4B_MCP_MUTATION_ENABLED' );
+		$mutation_gate = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'mutation_gate_status' )
+			? MAD4B_SCP_Policy::mutation_gate_status()
+			: array( 'effective' => false, 'source' => 'unavailable' );
+		$checks['mutation_gate_enabled'] = ! empty( $mutation_gate['effective'] );
+		$checks['mutation_gate_source'] = isset( $mutation_gate['source'] ) ? (string) $mutation_gate['source'] : 'unknown';
+		$checks['mutation_explicit_kill_switch_absent'] = empty( $mutation_gate['explicit_kill_switch'] );
 		$checks['production_auto_enable_absent'] = empty( $authority['production_auto_enable'] );
 		$checks['breakglass_auto_enable_absent'] = empty( $authority['breakglass_auto_enable'] );
 		$checks['breakglass_not_included'] = empty( $authority['breakglass_included'] );

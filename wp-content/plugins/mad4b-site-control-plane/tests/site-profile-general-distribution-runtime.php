@@ -44,6 +44,45 @@ ok(empty($s['configured']),'fresh arbitrary site is not auto-enrolled');
 ok(!MAD4B_SCP_Site_Profile::write_enabled(),'fresh arbitrary site has zero write authority');
 ok(!MAD4B_SCP_Site_Profile::oauth_enabled(),'fresh arbitrary site has zero OAuth authority');
 
+// WordPress defaults to Production when WP_ENVIRONMENT_TYPE is absent. MAD4B
+// may suggest Staging from an exact hostname label, but the hint is advisory
+// until an administrator explicitly enrolls the exact current origin.
+reset_state();
+$GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']='https://staging.dynamic-client.test/';
+ok('production'===MAD4B_SCP_Site_Profile::wordpress_environment(),'raw WordPress environment remains production');
+ok('production'===MAD4B_SCP_Site_Profile::current_environment(),'hostname hint never changes authority before enrollment');
+ok('staging'===MAD4B_SCP_Site_Profile::suggested_environment(),'staging hostname produces advisory staging enrollment default');
+$dynamic=MAD4B_SCP_Site_Profile::save_current_site(array(
+    'expected_revision'=>0,
+    'display_name'=>'Dynamic Staging',
+    'oauth_user_ids'=>array(7),
+    'oauth_enabled'=>false,
+    'skills_enabled'=>false,
+    'write_enabled'=>false,
+));
+ok(!is_wp_error($dynamic),'explicit site enrollment can use advisory environment without wp-config edit');
+ok('staging'===MAD4B_SCP_Site_Profile::current_environment(),'exact Site Profile becomes MAD4B environment authority');
+ok('staging'===($dynamic['environment']??'')&&'production'===($dynamic['wordpress_environment']??''),'status separates effective MAD4B environment from raw WordPress environment');
+ok('exact_site_profile_default_override'===($dynamic['effective_environment_source']??''),'implicit WordPress Production default is replaced only by exact Site Profile enrollment');
+ok(!empty($dynamic['wordpress_profile_mismatch']),'raw WordPress/default mismatch is explicit diagnostics');
+ok(empty($dynamic['hostname_hint_used_for_authority']),'hostname hint never becomes authority by itself');
+$GLOBALS['mad4b_test_home']='https://dynamic-client.test/';
+MAD4B_SCP_Site_Profile::reset_cache();
+ok('production'===MAD4B_SCP_Site_Profile::current_environment(),'foreign copied profile cannot override environment on another origin');
+$foreign_env=MAD4B_SCP_Site_Profile::status();
+ok('foreign_origin'===($foreign_env['binding_state']??'')&&!empty($foreign_env['profile_authority_quarantined']),'environment override is origin-bound and foreign profile is quarantined');
+
+// Exact legacy Staging identity can migrate when WordPress is only reporting its
+// implicit Production default. This never restores legacy feature authority.
+reset_state();
+$origin='https://staging.legacy-default.test';
+$GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']=$origin.'/';
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::LEGACY_OPTION]=legacy_record('staging',$origin,2);
+$legacy_default=MAD4B_SCP_Site_Profile::status();
+ok(!empty($legacy_default['configured'])&&'legacy_v1_migrated'===($legacy_default['source']??''),'exact legacy staging identity migrates across implicit WordPress Production default');
+ok('staging'===($legacy_default['environment']??'')&&'production'===($legacy_default['wordpress_environment']??''),'legacy migration resolves effective Staging without wp-config edit');
+ok(empty($legacy_default['write_enabled'])&&empty($legacy_default['oauth_enabled'])&&empty($legacy_default['skills_enabled']),'legacy environment continuity restores no authority');
+
 // Exact v1 record migrates only as identity; every authority-bearing field fails closed.
 reset_state();
 $origin='https://legacy.client.test/subdir';$GLOBALS['mad4b_test_home']=$origin.'/';$GLOBALS['mad4b_test_environment']='staging';

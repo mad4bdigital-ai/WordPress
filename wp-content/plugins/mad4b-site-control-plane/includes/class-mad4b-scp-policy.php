@@ -41,9 +41,36 @@ final class MAD4B_SCP_Policy {
 		return current_user_can( 'manage_options' );
 	}
 
+	public static function mutation_gate_status() {
+		$explicit_gate_defined = defined( 'MAD4B_MCP_MUTATION_ENABLED' );
+		$explicit_gate_enabled = $explicit_gate_defined && true === MAD4B_MCP_MUTATION_ENABLED;
+		$profile_configured = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured();
+		$profile_ready = $profile_configured && MAD4B_SCP_Site_Profile::governed_write_ready();
+		$hard_kill = $explicit_gate_defined && true !== MAD4B_MCP_MUTATION_ENABLED;
+		if ( $hard_kill ) {
+			$effective = false;
+			$source = 'explicit_constant_kill_switch';
+		} elseif ( $profile_configured ) {
+			$effective = $profile_ready;
+			$source = 'exact_site_profile';
+		} else {
+			$effective = $explicit_gate_enabled;
+			$source = $explicit_gate_enabled ? 'legacy_explicit_constant' : 'disabled';
+		}
+		return array(
+			'effective' => (bool) $effective,
+			'source' => $source,
+			'explicit_constant_defined' => (bool) $explicit_gate_defined,
+			'explicit_constant_enabled' => (bool) $explicit_gate_enabled,
+			'explicit_kill_switch' => (bool) $hard_kill,
+			'site_profile_configured' => (bool) $profile_configured,
+			'site_profile_governed_write_ready' => (bool) $profile_ready,
+		);
+	}
+
 	public static function can_mutate() {
-		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) || true !== MAD4B_MCP_MUTATION_ENABLED ) return false;
-		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured() && ! MAD4B_SCP_Site_Profile::governed_write_ready() ) return false;
+		$gate = self::mutation_gate_status();
+		if ( empty( $gate['effective'] ) ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
 		$identity = MAD4B_SCP_Identity_Context::current();

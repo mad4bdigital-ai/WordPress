@@ -64,7 +64,9 @@ final class MAD4B_SCP_Agent_Registry {
 }
 
 final class MAD4B_SCP_OAuth_Resource_Bridge {
+	const AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up';
 	public static function verified_bearer_active() { return true; }
+	public static function verified_bearer_has_scope( $scope ) { return self::AUTHORITY_STEP_UP_SCOPE === $scope; }
 }
 
 final class MAD4B_SCP_Transport_Context {

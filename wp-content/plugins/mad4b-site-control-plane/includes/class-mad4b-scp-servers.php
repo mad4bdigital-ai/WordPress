@@ -452,7 +452,7 @@ final class MAD4B_SCP_Servers {
 	private static function chatgpt_unified_catalog_enabled() {
 		return class_exists( 'MAD4B_SCP_Site_Profile' )
 			&& MAD4B_SCP_Site_Profile::configured()
-			&& 'staging' === MAD4B_SCP_Site_Profile::current_environment()
+			&& in_array( sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ), array( 'staging', 'production' ), true )
 			&& MAD4B_SCP_Site_Profile::origin_enrolled()
 			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
 	}
@@ -498,7 +498,12 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function chatgpt_tools() {
-		$cacheable = self::catalog_cacheable();
+		$step_up_bearer = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE );
+		// tools/list becomes request-authority-sensitive when a bearer is active;
+		// never reuse a pre-auth request-local catalog across that boundary.
+		$cacheable = self::catalog_cacheable() && ! ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() );
 		if ( $cacheable && is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
 		$core = self::core_tools( 'mad4b-chatgpt' );
 		$breakglass = self::core_tools( 'mad4b-breakglass' );
@@ -521,10 +526,21 @@ final class MAD4B_SCP_Servers {
 		$narrow_read = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
 			? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()
 			: array();
+		$feature_step_up = class_exists( 'MAD4B_SCP_Site_Profile_Enrollment' ) && method_exists( 'MAD4B_SCP_Site_Profile_Enrollment', 'chatgpt_step_up_tools' )
+			? MAD4B_SCP_Site_Profile_Enrollment::chatgpt_step_up_tools()
+			: array();
+		$write_enable_step_up = class_exists( 'MAD4B_SCP_Site_Profile_Write_Enablement' ) && method_exists( 'MAD4B_SCP_Site_Profile_Write_Enablement', 'chatgpt_step_up_tools' )
+			? MAD4B_SCP_Site_Profile_Write_Enablement::chatgpt_step_up_tools()
+			: array();
 		$narrow_step_up = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
 			? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()
 			: array();
+		$candidate_step_up = class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'chatgpt_step_up_tools' )
+			? MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools()
+			: array();
 		$full_read = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
+			&& class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
 			? MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()
 			: array();
 		$full_step_up = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
@@ -542,14 +558,18 @@ final class MAD4B_SCP_Servers {
 				'mad4b/staging-write-candidate-binding-audit',
 			),
 			$narrow_read,
+			$feature_step_up,
+			$write_enable_step_up,
 			$narrow_step_up,
+			$candidate_step_up,
 			$full_read,
 			$full_step_up,
 			$self_update_step_up,
 			$semantic_step_up
 		);
 		$candidates = array_merge( $core, $bootstrap );
-		$step_up = array_merge( $narrow_step_up, $full_step_up, $self_update_step_up );
+		$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );
+		$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );
 		$step_up = array_merge( $step_up, $semantic_step_up );
 		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up ) ) );
 		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
@@ -594,13 +614,23 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function chatgpt_full_catalog_candidates() {
+		$full_staging_catalog = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
+			&& class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			? array_merge(
+				MAD4B_SCP_Full_Staging_Authority::chatgpt_catalog_read_tools(),
+				MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()
+			)
+			: array();
 		$candidates = array_merge(
 			self::core_tools( 'mad4b-read' ),
 			self::core_tools( 'mad4b-chatgpt' ),
+			class_exists( 'MAD4B_SCP_Site_Profile_Enrollment' ) && method_exists( 'MAD4B_SCP_Site_Profile_Enrollment', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Site_Profile_Enrollment::chatgpt_step_up_tools() : array(),
+			class_exists( 'MAD4B_SCP_Site_Profile_Write_Enablement' ) && method_exists( 'MAD4B_SCP_Site_Profile_Write_Enablement', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Site_Profile_Write_Enablement::chatgpt_step_up_tools() : array(),
 			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools() : array(),
 			class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' ) ? MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools() : array(),
-			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_catalog_read_tools() : array(),
-			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools() : array(),
+			class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools() : array(),
+			$full_staging_catalog,
 			class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Self_Update::chatgpt_step_up_tools() : array(),
 			self::chatgpt_enrollment_candidates(),
 			self::core_tools( 'mad4b-content' ),
@@ -613,7 +643,7 @@ final class MAD4B_SCP_Servers {
 			foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface ) $candidates = array_merge( $candidates, $registry->ability_names( $surface ) );
 		}
 		$candidates = array_values( array_unique( array_map( 'strval', $candidates ) ) );
-		$candidates = array_values( array_diff( $candidates, array( 'mad4b/database-raw-query' ) ) );
+		$candidates = array_values( array_diff( $candidates, self::chatgpt_internal_enrollment_mutations(), array( 'mad4b/database-raw-query' ) ) );
 		sort( $candidates, SORT_STRING );
 		return $candidates;
 	}
@@ -823,14 +853,14 @@ final class MAD4B_SCP_Servers {
 
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
 		if ( self::chatgpt_unified_catalog_enabled() ) {
-			$chatgpt_description = 'Exact enrolled Staging governed gateway with one compact app catalog. Read/write universes remain available through governed discovery/info/dispatch. Normal Developer operations are available through an exact-schema, request-local derived-identity dispatcher that preserves isolated Developer Agent authority and excludes Breakglass. Bounded Remote Operation Parity enrollment operations remain available through the dedicated allowlisted enrollment dispatcher; explicitly reviewed semantic step-up operations may also be projected as narrow direct tools with exact schemas so compatible MCP clients do not need a generic operation_id envelope. Low-level enrollment mutations stay internal. Write Authority convergence and Full Staging Authority apply remain guarded plan-bound step-up tools. Breakglass and Raw SQL remain excluded.';
+			$chatgpt_description = 'Exact enrolled Staging or Production governed gateway with one compact app catalog. Read/write universes remain available through governed discovery/info/dispatch. Normal Developer operations are available through an exact-schema, request-local derived-identity dispatcher that preserves isolated Developer Agent authority and excludes Breakglass. Bounded Remote Operation Parity enrollment operations remain available through the dedicated allowlisted enrollment dispatcher; explicitly reviewed semantic step-up operations may also be projected as narrow direct tools with exact schemas so compatible MCP clients do not need a generic operation_id envelope. Low-level enrollment mutations stay internal. Write Authority convergence is available on exact Staging or Production profiles; Full Staging Authority remains Staging-only. All Production writes require exact one-time approval. Breakglass and Raw SQL remain excluded.';
 		} else {
 			$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT governed gateway with compact read/write discovery transports. Provider writes remain fail-closed until runtime eligible, exactly granted and approved. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
 		}
 
 		$this->create( $adapter, 'mad4b-read', 'MAD4B Read MCP', 'Read-only discovery and diagnostics for WordPress, plugin adapters, files and database.', $read_tools, array( __CLASS__, 'can_read_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-read', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-chatgpt', 'MAD4B ChatGPT MCP', $chatgpt_description, $chatgpt_tools, array( __CLASS__, 'can_chatgpt_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-chatgpt', $target_server_id ) );
-		$this->create( $adapter, 'mad4b-enrollment', 'MAD4B Enrollment MCP', 'Bounded Staging-only Site Profile feature/App/write bootstrap. Administrative bootstrap authority is separate from normal governed write authority.', $enrollment_tools, array( __CLASS__, 'can_enrollment_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-enrollment', $target_server_id ) );
+		$this->create( $adapter, 'mad4b-enrollment', 'MAD4B Enrollment MCP', 'Bounded exact Site Profile feature/App/write bootstrap for Staging or Production. Production mutation requires explicit profile confirmation and exact one-time approvals; Developer and Breakglass remain non-Production.', $enrollment_tools, array( __CLASS__, 'can_enrollment_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-enrollment', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', $content_tools, array( __CLASS__, 'can_content_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-content', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every runtime-eligible registered content/admin/write mutation explicitly annotated non-readonly. Cataloged provider mutations are projected per ability from capability certification; adapter-native runtime capability checks are hard mount gates; legacy providers retain exact runtime certification; breakglass is excluded.', $write_tools, array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-write', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative governance, repair, mutation evidence and governed recovery abilities.', $admin_tools, array( __CLASS__, 'can_admin_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-admin', $target_server_id ) );

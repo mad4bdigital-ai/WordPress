@@ -2,13 +2,24 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-/** Staging-only administrative bootstrap for Site Profile Phase A. */
+/** Exact Staging/Production administrative bootstrap for Site Profile Phase A. */
 final class MAD4B_SCP_Site_Profile_Enrollment {
 	const CONTRACT = 'mad4b.site-profile-feature-reenrollment.v1';
 	const APP_MAPPING_CONTRACT = 'mad4b.site-profile-app-mapping.v1';
 	const ABILITY = 'mad4b/site-profile-feature-reenroll';
 	const SERVER_ID = 'mad4b-enrollment';
+	const LEGACY_STAGING_ONLY_ERROR = 'site_profile_feature_reenroll_staging_only';
 	private static $booted = false;
+
+	public static function chatgpt_step_up_tools() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return array();
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
+		if ( MAD4B_SCP_Site_Profile::write_enabled() ) return array();
+		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) return array();
+		return array( self::ABILITY );
+	}
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -53,7 +64,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		try {
 			wp_register_ability( self::ABILITY, array(
 				'label' => 'Re-enroll Site Profile Bootstrap State',
-				'description' => 'Bind one exact ChatGPT App ID or enable Acceptance and Skills on one exact Staging Site Profile while governed write remains disabled.',
+				'description' => 'Bind one exact ChatGPT App ID or enable Acceptance and Skills on one exact Staging or Production Site Profile while governed write remains disabled.',
 				'category' => 'mad4b-governance',
 				'execute_callback' => array( __CLASS__, 'reenroll_features' ),
 				'permission_callback' => array( __CLASS__, 'can_execute' ),
@@ -75,7 +86,15 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 				'meta' => array(
 					'public' => false,
 					'show_in_rest' => false,
-					'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'enrollment', 'mad4b_enrollment_authority' => self::CONTRACT ),
+					'mcp' => array(
+						'public' => false,
+						'type' => 'tool',
+						'surface' => 'enrollment',
+						'mad4b_enrollment_authority' => self::CONTRACT,
+						'generic_remote_admin' => false,
+						'production_mutation_allowed' => true,
+						'write_authority_created' => false,
+					),
 					'annotations' => array( 'readonly' => false, 'destructive' => false, 'idempotent' => false ),
 				),
 			) );
@@ -89,10 +108,12 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 	public static function can_execute( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_admin_required', 'Administrator capability is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_bearer_required', 'Verified OAuth bearer identity is required.' );
+		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_step_up_scope_required', 'Dedicated authority step-up scope is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_profile_missing', 'An enrolled Site Profile is required.' );
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_subject_not_enrolled', 'The authenticated WordPress administrator is not enrolled in this Site Profile.' );
-		if ( 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_staging_only', 'Remote Site Profile enrollment is Staging-only.' );
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_environment_denied', 'Remote Site Profile enrollment is limited to Staging or Production.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_profile_not_exact', 'The current origin, environment, home URL and site URL must exactly match the enrolled Site Profile.' );
 		if ( 'https' !== strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_https_required', 'Remote Site Profile enrollment requires HTTPS.' );
 		return true;
@@ -165,6 +186,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		}
 
 		$after_digest = MAD4B_SCP_Site_Profile::profile_digest();
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
 		$audit = MAD4B_SCP_Audit::record( 'mad4b/site-profile-feature-reenrolled', array(
 			'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
 			'previous_revision' => $current_revision,
@@ -176,6 +198,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 			'acceptance_enabled' => true,
 			'skills_enabled' => true,
 			'write_enabled' => false,
+			'production_mutation' => 'production' === $environment,
 			'source_commit_sha' => $current_sha,
 			'build_fingerprint' => $current_fingerprint,
 		), 'ok' );

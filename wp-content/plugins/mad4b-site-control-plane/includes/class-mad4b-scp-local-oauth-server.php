@@ -114,7 +114,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'contract' => self::CONTRACT,
 			'configured' => self::enabled(),
 			'effective' => (bool) $effective,
-			'environment' => function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown',
+			'environment' => self::current_environment(),
 			'issuer' => self::issuer(),
 			'issuer_configuration_valid' => $issuer_valid,
 			'issuer_transport_allowed' => $transport_allowed,
@@ -142,7 +142,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'contract' => self::CONTRACT,
 			'configured' => self::enabled(),
 			'effective' => (bool) $effective,
-			'environment' => function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown',
+			'environment' => self::current_environment(),
 			'production_approved' => self::production_approved(),
 			'issuer' => self::issuer(),
 			'issuer_same_origin_required' => true,
@@ -657,7 +657,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		echo '<h1>' . esc_html__( 'Authorize MCP access', 'mad4b-site-control-plane' ) . '</h1>';
 		$step_up_requested = in_array( 'mad4b:authority:step-up', $validated['scopes'], true );
 		echo '<p><strong>' . esc_html( $client_name ) . '</strong> ' . esc_html( $step_up_requested
-			? __( 'is requesting read access plus a governed Staging authority step-up scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
+			? __( 'is requesting read access plus a governed authority step-up scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
 			: __( 'is requesting read access to this WordPress MCP resource.', 'mad4b-site-control-plane' )
 		) . '</p>';
 		$user_identity = self::consent_user_identity( $user_id );
@@ -665,7 +665,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		echo '<p>' . esc_html__( 'OAuth scopes:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( implode( ' ', $validated['scopes'] ) ) . '</code></p>';
 		if ( $step_up_requested ) {
 			echo '<p><strong>' . esc_html__( 'Authority step-up:', 'mad4b-site-control-plane' ) . '</strong> ' .
-				esc_html__( 'This OAuth scope only permits ChatGPT to request bounded governed Staging step-up operations: composite Full Staging Authority convergence or bootstrap Control Plane self-update. It does not itself create write grants, Developer authority, Developer Breakglass authority, Production authority, or raw-SQL Breakglass authority. Every operation still requires its exact current plan, enrolled administrator identity, explicit confirmation, and all fail-closed governance gates.', 'mad4b-site-control-plane' ) .
+				esc_html__( 'This OAuth scope permits ChatGPT to request exact environment-bound governance bootstrap and convergence operations, including bootstrap Control Plane self-update only where the current environment policy permits it. It does not itself create write grants, Developer authority, Developer Breakglass authority, or raw-SQL Breakglass authority. Production writes require an exact Production Site Profile, environment-specific confirmation, exact grants, one-time approval, matching build/site digests, enrolled administrator identity, audit readiness, and all fail-closed governance gates. Full Staging Authority remains Staging-only.', 'mad4b-site-control-plane' ) .
 				'</p>';
 		}
 		$grant_projection = self::consent_grant_projection();
@@ -934,7 +934,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			if ( $has_step_up ) {
 				if ( ! hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is reserved for the exact ChatGPT CIMD client.' );
 				if ( ! hash_equals( $chatgpt, $resource ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is valid only for the canonical ChatGPT resource.' );
-				if ( ! MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available() ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is unavailable outside exact eligible Staging.' );
+				if ( ! MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available() ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is unavailable outside an exact eligible governed environment.' );
 			}
 
 			if ( hash_equals( $developer, $resource ) ) {
@@ -1106,12 +1106,23 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		return defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) && true === constant( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' );
 	}
 
+	private static function current_environment() {
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			: ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+	}
+
 	private static function production_approved() {
-		return defined( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) && true === constant( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' );
+		if ( defined( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) && true === constant( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) ) return true;
+		return 'production' === self::current_environment()
+			&& class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			&& MAD4B_SCP_Site_Profile::oauth_enabled();
 	}
 
 	private static function environment_allowed() {
-		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$environment = self::current_environment();
 		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$portable_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
 		if ( ! $profile_ready && ! $portable_ready ) return false;

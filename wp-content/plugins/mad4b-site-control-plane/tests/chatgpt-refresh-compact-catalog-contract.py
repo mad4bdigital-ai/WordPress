@@ -189,7 +189,10 @@ for forbidden in [
     "self::core_tools( 'mad4b-admin' )",
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
-require("$step_up = array_merge( $narrow_step_up, $full_step_up, $self_update_step_up )" in chatgpt_body, "bounded, full, and bootstrap self-update step-ups must be composed explicitly")
+require("MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in chatgpt_body, "bootstrap Control Plane self-update step-up projection is missing")
+require("$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );" in chatgpt_body, "bounded authority step-ups must be composed explicitly")
+require("$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );" in chatgpt_body, "bounded step-ups must require the dedicated bearer while the Full Staging composite remains lifecycle-stable")
+require("verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )" in chatgpt_body, "bounded step-up projection is not bound to the dedicated OAuth scope")
 require("MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_tools()" in chatgpt_body, "reviewed semantic enrollment step-up projection missing from compact ChatGPT catalog")
 require("$step_up = array_merge( $step_up, $semantic_step_up );" in chatgpt_body, "semantic enrollment step-ups must join the direct mutation transport only after catalog validation")
 require("'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in core_chatgpt, "bounded Enrollment dispatcher must remain in the canonical compact ChatGPT core catalog")

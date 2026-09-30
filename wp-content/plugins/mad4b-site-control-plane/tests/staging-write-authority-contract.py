@@ -85,15 +85,19 @@ for marker in [
     "define( 'MAD4B_MCP_MUTATION_ENABLED', true )",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Site_Profile::write_enabled()",
+    "MAD4B_SCP_Site_Profile::current_environment()",
     "MAD4B_SCP_Site_Profile::agent_slug()",
     "site_profile_unconfigured",
     "site_profile_write_disabled",
     "'production_auto_enable' => false",
     "'breakglass_auto_enable' => false",
-    "'all_remote_writes_require_exact_approval' => false",
+    "$policy['production_exact_approval_only'] = $production;",
+    "'all_remote_writes_require_exact_approval' => 'production' === $environment",
     "'normal_remote_writes_require_exact_approval' => true",
     "exact_approval_with_bounded_standing_exceptions",
-    "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' )",
+    "exact_approval_required",
+    "'remote_write_prior_approval_exceptions' => 'production' === $environment ? array() : array(",
+    "if ( 'production' === self::current_environment() ) return self::effective() ? true : $required;",
     "$policy['remote_write_prior_approval_exceptions'][] = $ai_approval_ability",
     "public static function approval_policy_projection( $candidate_bootstrap_exception_active = null )",
     "'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v2'",
@@ -221,7 +225,7 @@ for marker in [
     "'expected_transport_inventory_fingerprint'",
     "'expected_missing_transport_abilities'",
     "duplicate_transport_allow:",
-    "non_staging_transport_allow:",
+    "non_current_environment_transport_allow:",
 ]:
     if marker not in grant_plan:
         raise SystemExit(f'missing exact transport grant planning invariant: {marker}')
@@ -272,6 +276,8 @@ for marker in [
     "const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v3'",
     "const ABILITY = 'mad4b/staging-write-grant-reconcile'",
     "const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE AUTHORITY'",
+    "const PRODUCTION_CONFIRMATION = 'RECONCILE EXACT PRODUCTION WRITE AUTHORITY'",
+    "public static function required_confirmation()",
     "'jetengine/create-cct'",
     "'jetengine/create-cpt'",
     "'jetengine/create-glossary'",
@@ -342,8 +348,9 @@ for marker in [
     "expected_agent_public_id",
     "Breakglass/raw SQL must never enter governed grant reconciliation",
     "'native-provider'",
-    "'staging'",
-    "'production_mutation' => false",
+    "array( 'staging', 'production' )",
+    "'production_mutation' => 'production' === $environment",
+    "'production_allowed' => true",
     "'breakglass_included' => false",
     "mad4b/staging-write-grant-reconciliation-authorized",
     "mad4b/exact-staging-write-grant-reconciled",
@@ -400,8 +407,10 @@ if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_tr
     raise SystemExit('single-app Full Staging Authority step-up projection is missing')
 if "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" not in chatgpt_transport:
     raise SystemExit('bootstrap Control Plane self-update step-up projection is missing')
-if "$step_up = array_merge( $narrow_step_up, $full_step_up, $self_update_step_up )" not in chatgpt_transport:
-    raise SystemExit('bounded, full, and bootstrap self-update step-ups must be composed explicitly')
+if "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );" not in chatgpt_transport:
+    raise SystemExit('bounded authority step-ups must be composed explicitly')
+if "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );" not in chatgpt_transport:
+    raise SystemExit('bounded authority step-ups must require the dedicated bearer while Full Staging remains separately projected')
 dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_tools()', 1)[0]
 for dispatcher in ("'mad4b/write-execute'", "'mad4b/enrollment-execute'"):
     if dispatcher not in dispatcher_helper:
@@ -450,10 +459,12 @@ bootstrap_body = write.split("public static function candidate_bootstrap_status"
 for marker in [
     "self::CANDIDATE_BOOTSTRAP_ABILITY !== $ability_name",
     "'staging' !== MAD4B_SCP_Site_Profile::current_environment()",
+    "environment_not_staging",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
     "MAD4B_SCP_Site_Profile::write_enabled()",
-    "MAD4B_MCP_MUTATION_ENABLED",
+    "MAD4B_SCP_Policy::mutation_gate_status()",
+    "mutation_gate_disabled",
     "'candidate_already_bound'",
     "'wildcard_grants_detected'",
     "'breakglass_enabled'",
@@ -477,8 +488,10 @@ for forbidden in [
         raise SystemExit(f'candidate bootstrap guard must remain read-only: {forbidden}')
 
 scope_body = write.split("public static function remote_scope_delegation_allowed", 1)[1].split("public static function force_remote_write_approval", 1)[0]
-if "if ( $bootstrap ) return true;" not in scope_body:
-    raise SystemExit('candidate bootstrap must have one explicit no-prior-ticket scope delegation branch')
+if "if ( ! $production && $bootstrap ) return true;" not in scope_body:
+    raise SystemExit('candidate bootstrap must have one explicit non-Production no-prior-ticket scope delegation branch')
+if "$production = 'production' === self::current_environment();" not in scope_body:
+    raise SystemExit('candidate bootstrap scope delegation must fail closed for Production')
 if "mad4b:read" not in scope_body or "oauth2_bearer" not in scope_body:
     raise SystemExit('candidate bootstrap scope delegation must retain verified OAuth read identity')
 
@@ -557,8 +570,10 @@ for marker in [
     if marker not in transport_resolver:
         raise SystemExit('transport resolver lost governed ChatGPT write delegation invariant: ' + marker)
 
-if "if ( self::ai_review_delegation_allowed( $ability_name, $input, $identity ) ) return true;" not in scope_body:
-    raise SystemExit('AI review standing delegation must have one exact request-time scope branch')
+if "if ( ! $production && self::ai_review_delegation_allowed( $ability_name, $input, $identity ) ) return true;" not in scope_body:
+    raise SystemExit('AI review standing delegation must have one exact non-Production request-time scope branch')
+if "$production = 'production' === self::current_environment();" not in scope_body:
+    raise SystemExit('AI review standing delegation must fail closed in Production')
 
 ai_status_body = write.split("public static function ai_review_delegation_status", 1)[1].split("public static function ai_review_delegation_allowed", 1)[0]
 for marker in [
@@ -622,7 +637,9 @@ for marker in [
     "$registry->ability_names( 'admin' )",
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
-    "$step_up = array_merge( $narrow_step_up, $full_step_up, $self_update_step_up )",
+    "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()",
+    "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );",
+    "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );",
     "public static function chatgpt_dispatch_transport_tools()",
     "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )",
     "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'",

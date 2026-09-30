@@ -101,7 +101,7 @@ for marker in required_registry:
 # original governed WP_Ability contracts.
 for marker in [
     'chatgpt_unified_catalog_enabled',
-    "'staging' === MAD4B_SCP_Site_Profile::current_environment()",
+    "in_array( sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ), array( 'staging', 'production' ), true )",
     'MAD4B_SCP_Site_Profile::origin_enrolled()',
     'MAD4B_SCP_Site_Profile::site_urls_match_enrollment()',
     'public static function chatgpt_full_catalog_candidates()',
@@ -112,7 +112,9 @@ for marker in [
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
     "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
     "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()",
-    "$step_up = array_merge( $narrow_step_up, $full_step_up, $self_update_step_up )",
+    "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );",
+    "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );",
+    "verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )",
     "public static function chatgpt_direct_read_transport_tools()",
     "'mad4b/session-safe-diagnostics'",
     "$direct_read_transport = self::chatgpt_direct_read_transport_tools()",
@@ -127,8 +129,9 @@ for marker in [
 ]:
     assert marker in servers, f'missing minimal ChatGPT transport/logical catalog marker: {marker}'
 
-# Low-level enrollment mutations remain present only as internal primitives and
-# must be removed from both direct ChatGPT tools/list and logical user discovery.
+# Low-level environment-bound mutations remain hidden from ordinary read-only
+# tools/list. They may join the direct catalog only for the dedicated step-up
+# bearer, while logical user discovery continues to exclude the internal names.
 chatgpt_tools_body = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in chatgpt_tools_body, 'bounded convergence step-up projection is missing from ChatGPT transport'
 assert "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in chatgpt_tools_body, 'bootstrap Control Plane self-update step-up projection is missing from ChatGPT transport'
