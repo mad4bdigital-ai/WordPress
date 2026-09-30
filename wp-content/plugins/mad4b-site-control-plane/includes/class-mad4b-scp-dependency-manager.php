@@ -88,7 +88,6 @@ final class MAD4B_SCP_Dependency_Manager {
 		elseif ( ! $version_match ) $hard_blockers[] = 'mcp_adapter_version_drift';
 		elseif ( ! $runtime_loaded ) $hard_blockers[] = 'mcp_adapter_runtime_unavailable';
 		elseif ( ! $runtime_certified ) $hard_blockers[] = 'mcp_adapter_runtime_not_certified';
-		elseif ( ! $active && ! $runtime_certified ) $hard_blockers[] = 'mcp_adapter_inactive';
 
 		$oauth_enabled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$key_policy = class_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy' ) ? MAD4B_SCP_Local_OAuth_Key_Path_Policy::status() : array();
