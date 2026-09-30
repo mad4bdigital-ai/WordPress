@@ -160,7 +160,21 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		if ( ! function_exists( 'is_admin' ) || ! is_admin() || ! self::current_admin_request_method_is_read_only() ) return false;
 		$page = isset( $_GET['page'] ) ? wp_unslash( (string) $_GET['page'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		$tab = isset( $_GET['tab'] ) ? wp_unslash( (string) $_GET['tab'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		if ( self::signed_deep_endpoint_diagnostic_requested( $page, $tab ) ) return false;
 		return self::passive_admin_route( $page, $tab );
+	}
+
+	private static function signed_deep_endpoint_diagnostic_requested( $page, $tab ) {
+		$page = sanitize_key( (string) $page );
+		$tab = sanitize_key( (string) $tab );
+		if ( 'mad4b-control-plane-connection' !== $page || 'endpoints' !== $tab ) return false;
+		if ( function_exists( 'current_user_can' ) && ! current_user_can( 'manage_options' ) ) return false;
+		$action = isset( $_GET['mad4b_connection_action'] ) ? sanitize_key( wp_unslash( (string) $_GET['mad4b_connection_action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only diagnostic routing.
+		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['_wpnonce'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- verified immediately.
+		return 'deep_endpoints' === $action
+			&& '' !== $nonce
+			&& function_exists( 'wp_verify_nonce' )
+			&& false !== wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' );
 	}
 
 	public static function isolate_protocol_core_rest_bootstrap() {
