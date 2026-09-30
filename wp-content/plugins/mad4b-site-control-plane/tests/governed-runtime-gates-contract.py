@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 GATES = (ROOT / "includes/class-mad4b-scp-governed-runtime-gates.php").read_text()
 POLICY = (ROOT / "includes/class-mad4b-scp-policy.php").read_text()
+ABILITIES = (ROOT / "includes/class-mad4b-scp-abilities.php").read_text()
 WRITE = (ROOT / "includes/class-mad4b-scp-staging-write-authority.php").read_text()
 FULL = (ROOT / "includes/class-mad4b-scp-full-staging-authority.php").read_text()
 ENROLLMENT = (ROOT / "includes/class-mad4b-scp-enrollment-dispatch.php").read_text()
@@ -22,6 +23,10 @@ required_gates = [
     "ENABLE GOVERNED HIGH RISK RUNTIME GATES",
     "UPDATE GOVERNED RUNTIME GATES",
     "'raw_sql_breakglass_enabled'",
+    "'raw_sql_write_enabled'",
+    "'raw_sql_ddl_enabled'",
+    "raw_sql_write_requires_breakglass",
+    "raw_sql_ddl_requires_write",
     "'production_mutation_enabled'",
     "'production_auto_enable'",
     "'database_authoritative' => true",
@@ -62,9 +67,21 @@ if "MAD4B_MCP_BREAKGLASS_ENABLED" in GATES:
 for marker in [
     "MAD4B_SCP_Governed_Runtime_Gates::production_mutation_enabled()",
     "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled()",
+    "apply_filters( 'mad4b_mcp_breakglass_permission', true",
 ]:
     if marker not in POLICY:
         raise SystemExit("policy hot path is not database-backed: " + marker)
+
+for marker in [
+    "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_write_enabled()",
+    "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_ddl_enabled()",
+]:
+    if marker not in ABILITIES:
+        raise SystemExit("raw SQL execution mode is not database-backed: " + marker)
+
+for forbidden in ["MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED", "MAD4B_MCP_BREAKGLASS_DDL_ENABLED"]:
+    if forbidden in ABILITIES:
+        raise SystemExit("raw SQL execution still depends on hardcoded mode constant: " + forbidden)
 
 for marker in [
     "MAD4B_SCP_Governed_Runtime_Gates::production_mutation_enabled()",
