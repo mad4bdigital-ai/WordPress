@@ -118,14 +118,17 @@ assert "convergence_trigger_allowed" in runtime
 
 assert "MAX_TRANSIENT_RETRIES = 5" in runtime
 assert "POST_UPDATE_QUIET_SECONDS = 20" in runtime
-assert "mad4b_scp_runtime_maintenance_lock_v1" in runtime
+lease = (PLUGIN / "includes/class-mad4b-scp-runtime-maintenance-lease.php").read_text(encoding="utf-8")
+assert "mad4b_scp_runtime_maintenance_lock_v1" in lease
 assert "public static function restart_grace_status()" in runtime
 assert "'resume_not_before' => time() + self::POST_UPDATE_QUIET_SECONDS" in runtime
 assert "'self_update_checkpoint_preserved'" in runtime
 assert "self::schedule_resume( $not_before )" in runtime
 assert "MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_convergence' )" in runtime
 assert "public static function maintenance_lease_status()" in runtime
-assert "mad4b.runtime-maintenance-lease.v1" in runtime
+assert "mad4b.runtime-maintenance-lease.v1" in lease
+assert "MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'runtime_convergence' )" in runtime
+assert "MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $token, 'runtime_convergence' )" in runtime
 assert "private static function yield_safe_phases" in runtime
 assert "'maintenance_sliced' => true" in runtime
 assert "'next_safe_phase' => sanitize_key" in runtime
