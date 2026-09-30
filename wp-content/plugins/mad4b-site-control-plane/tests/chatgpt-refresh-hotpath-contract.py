@@ -34,6 +34,8 @@ skills_ui = (root / "includes/class-mad4b-scp-skills-admin-ui.php").read_text(en
 oauth_canary = (root / "includes/class-mad4b-scp-local-oauth-browser-canary.php").read_text(encoding="utf-8")
 plugin_discovery = (root / "includes/class-mad4b-scp-plugin-discovery.php").read_text(encoding="utf-8")
 runtime_components = (root / "includes/adapters/class-mad4b-scp-runtime-component-adapters.php").read_text(encoding="utf-8")
+google_drive = (root / "includes/class-mad4b-scp-google-drive-context.php").read_text(encoding="utf-8")
+context_ui = (root / "includes/class-mad4b-scp-context-admin-ui.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
@@ -643,6 +645,34 @@ assert "private static $inventory = null;" in runtime_components
 inventory_body = runtime_components.split("public static function inventory()", 1)[1].split("public function inventory()", 1)[0]
 assert "if ( null !== self::$inventory ) return self::$inventory;" in inventory_body
 assert "return self::$inventory;" in inventory_body
+
+# Context > Google Drive folder navigation is an explicit provider read, but the
+# wp-admin GET path must not refresh/persist OAuth tokens or inherit the 20-second
+# provider timeout. The preview is at most two 3-second read calls and fails
+# closed with refresh_required when the cached access token is stale.
+assert "public static function admin_folder_preview(" in google_drive
+assert "public static function admin_list_folders_preview(" in google_drive
+preview = google_drive.split("private static function passive_admin_api_get(", 1)[1].split("public static function get_folder(", 1)[0]
+for token in (
+    "token_refresh_suppressed",
+    "network_request_suppressed",
+    "self::provider_timeout( 3 )",
+    "'timeout' => min( 3.0",
+    "'redirection' => 0",
+):
+    assert token in preview, token
+for forbidden in (
+    "self::access_token()",
+    "wp_remote_post(",
+    "persist_tokens(",
+    "record_refresh_failure(",
+):
+    assert forbidden not in preview, forbidden
+folder_render = context_ui.split("private static function render_folder_browser()", 1)[1].split("private static function render_sources()", 1)[0]
+assert "MAD4B_SCP_Google_Drive_Context::admin_folder_preview( $folder_id )" in folder_render
+assert "MAD4B_SCP_Google_Drive_Context::admin_list_folders_preview( $folder_id )" in folder_render
+assert "MAD4B_SCP_Google_Drive_Context::get_folder( $folder_id )" not in folder_render
+assert "MAD4B_SCP_Google_Drive_Context::list_folders( $folder_id )" not in folder_render
 
 # The direct ChatGPT "session-safe" report must remain genuinely bounded:
 # no full package hashing, deep authority scan, live Skill reconciliation,
