@@ -779,8 +779,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$code = is_array( $data ) && isset( $data['code'] ) ? sanitize_key( (string) $data['code'] ) : '';
 		if ( ! in_array( $code, array( 'mad4b_mcp_runtime_restart_grace', 'mad4b_mcp_runtime_maintenance_busy' ), true ) ) return $response;
 		$details = is_array( $data ) && isset( $data['data'] ) && is_array( $data['data'] ) ? $data['data'] : array();
-		$retry = isset( $details['retry_after_seconds'] ) ? max( 1, min( 120, absint( $details['retry_after_seconds'] ) ) ) : 1;
-		$response->header( 'Retry-After', (string) $retry );
+		$retryable = ! array_key_exists( 'retryable', $details ) || ! empty( $details['retryable'] );
+		$retry = isset( $details['retry_after_seconds'] ) ? min( 120, absint( $details['retry_after_seconds'] ) ) : 0;
+		if ( $retryable && $retry > 0 ) $response->header( 'Retry-After', (string) $retry );
 		$response->header( 'Cache-Control', 'no-store' );
 		return $response;
 	}
