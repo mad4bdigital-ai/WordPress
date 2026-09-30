@@ -625,6 +625,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				if(!empty($tax_desc['has_more_terms'])) $truncated[]='taxonomy_terms:'.(isset($tax_desc['name'])?(string)$tax_desc['name']:'unknown');
 			}
 		}
+		$environment_evidence=$this->environment_evidence();
 		return array(
 			'contract'=>self::CONTRACT,'wordpress_runtime_dynamic'=>true,'hard_coded_post_types'=>false,'hard_coded_taxonomies'=>false,
 			'detail'=>$detail,'complete'=>empty($truncated),'truncated_sections'=>array_values(array_unique($truncated)),
@@ -1337,8 +1338,12 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'readback_sha256'=>$this->state_sha256($final),
 			'rollback_available'=>true,
 			'compensation_on_error'=>true,
-			'environment'=>class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():(function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown'),
-			'production_mutation'=>'production'===(class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():(function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown')),
+			'environment'=>$environment_evidence['effective_environment'],
+			'effective_environment'=>$environment_evidence['effective_environment'],
+			'wordpress_environment'=>$environment_evidence['wordpress_environment'],
+			'wordpress_environment_explicit'=>$environment_evidence['wordpress_environment_explicit'],
+			'effective_environment_source'=>$environment_evidence['effective_environment_source'],
+			'production_mutation'=>'production'===$environment_evidence['effective_environment'],
 		);
 	}
 
@@ -1399,6 +1404,27 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		return is_array($value)?$value:array();
 	}
 
+	private function environment_evidence(){
+		if(class_exists('MAD4B_SCP_Environment')){
+			$snapshot=MAD4B_SCP_Environment::snapshot();
+			return array(
+				'environment'=>isset($snapshot['effective_environment'])?sanitize_key((string)$snapshot['effective_environment']):MAD4B_SCP_Environment::effective(),
+				'effective_environment'=>isset($snapshot['effective_environment'])?sanitize_key((string)$snapshot['effective_environment']):MAD4B_SCP_Environment::effective(),
+				'wordpress_environment'=>isset($snapshot['wordpress_environment'])?sanitize_key((string)$snapshot['wordpress_environment']):MAD4B_SCP_Environment::wordpress(),
+				'wordpress_environment_explicit'=>!empty($snapshot['wordpress_environment_explicit']),
+				'effective_environment_source'=>isset($snapshot['effective_source'])?sanitize_key((string)$snapshot['effective_source']):'',
+			);
+		}
+		$wordpress=function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown';
+		return array(
+			'environment'=>$wordpress,
+			'effective_environment'=>$wordpress,
+			'wordpress_environment'=>$wordpress,
+			'wordpress_environment_explicit'=>defined('WP_ENVIRONMENT_TYPE'),
+			'effective_environment_source'=>'wordpress_fallback',
+		);
+	}
+
 	private function acceptance_receipt_hash(array $receipt){ return $this->state_sha256($receipt); }
 
 	private function persist_acceptance_receipt($id,array $final,array $input,array $pipeline,$bundle_sha){
@@ -1430,6 +1456,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			? MAD4B_SCP_Dynamic_TTL_Policy::decide('acceptance',array('impact_level'=>'low','impact_flags'=>array()))
 			: array('tier'=>'long','selected_seconds'=>self::DEFAULT_ACCEPTANCE_TTL,'policy_sha256'=>'');
 		if(is_wp_error($acceptance_ttl_policy)) return $acceptance_ttl_policy;
+		$environment_evidence=$this->environment_evidence();
 		$receipt=array(
 			'contract'=>self::ACCEPTANCE_CONTRACT,
 			'post_id'=>absint($id),
@@ -1439,7 +1466,11 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'state_sha256'=>$this->state_sha256($accepted_state),
 			'bundle_sha256'=>(string)$bundle_sha,
 			'pipeline_settings_sha256'=>isset($pipeline['settings_sha256'])?(string)$pipeline['settings_sha256']:'',
-			'environment'=>class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():(function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown'),
+			'environment'=>$environment_evidence['effective_environment'],
+			'effective_environment'=>$environment_evidence['effective_environment'],
+			'wordpress_environment'=>$environment_evidence['wordpress_environment'],
+			'wordpress_environment_explicit'=>$environment_evidence['wordpress_environment_explicit'],
+			'effective_environment_source'=>$environment_evidence['effective_environment_source'],
 			'scope'=>$scope,
 			'accepted_at'=>gmdate('c'),
 			'acceptance_ttl_policy'=>$acceptance_ttl_policy,
