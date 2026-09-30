@@ -791,6 +791,7 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import json
+          import os
           from pathlib import Path
 
           path = Path('/tmp/mad4b-wpml-external/mcp-hotpath/diagnostic.json')
