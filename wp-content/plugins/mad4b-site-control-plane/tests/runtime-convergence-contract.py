@@ -124,6 +124,11 @@ assert "'resume_not_before' => time() + self::POST_UPDATE_QUIET_SECONDS" in runt
 assert "'self_update_checkpoint_preserved'" in runtime
 assert "self::schedule_resume( $not_before )" in runtime
 assert "MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_convergence' )" in runtime
+assert "public static function maintenance_lease_status()" in runtime
+assert "mad4b.runtime-maintenance-lease.v1" in runtime
+assert "private static function yield_safe_phases" in runtime
+assert "'maintenance_sliced' => true" in runtime
+assert "'next_safe_phase' => sanitize_key" in runtime
 assert "mark_activation_pending" in runtime
 assert "'plugin_activation' !== $stored_source" in runtime
 assert "'checkpoint_persist_failed'" in runtime
