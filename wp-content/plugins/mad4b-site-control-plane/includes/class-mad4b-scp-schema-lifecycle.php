@@ -19,29 +19,15 @@ final class MAD4B_SCP_Schema_Lifecycle {
 
 	public static function package_identity() {
 		if ( '' !== self::$package_identity ) return self::$package_identity;
-		$files = array(
-			defined( 'MAD4B_SCP_FILE' ) ? MAD4B_SCP_FILE : '',
-			defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema.php' : '',
-			defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'MAD4B-RUNTIME-BUILD.txt' : '',
-		);
-		$metadata = array();
-		foreach ( $files as $file ) {
-			if ( '' === $file ) { $metadata[] = 'missing'; continue; }
-			$stat = @lstat( $file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- bounded metadata-only package identity.
-			if ( ! is_array( $stat ) ) { $metadata[] = 'unavailable'; continue; }
-			$metadata[] = implode( ':', array(
-				isset( $stat['size'] ) ? (string) $stat['size'] : '0',
-				isset( $stat['mtime'] ) ? (string) $stat['mtime'] : '0',
-				isset( $stat['ctime'] ) ? (string) $stat['ctime'] : '0',
-				isset( $stat['ino'] ) ? (string) $stat['ino'] : '0',
-			) );
-		}
-		self::$package_identity = hash( 'sha256', implode( "\0", array_merge( array(
+		// Schema convergence is keyed only by release/schema identity. A code-only
+		// same-version package replacement does not require database migration.
+		// Missing/incomplete schema remains independently fail-closed via is_ready().
+		self::$package_identity = hash( 'sha256', implode( "\0", array(
 			self::CONTRACT,
 			defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '',
 			(string) MAD4B_SCP_Schema::VERSION,
 			(string) MAD4B_SCP_Schema::MIGRATION_ID,
-		), $metadata ) ) );
+		) ) );
 		return self::$package_identity;
 	}
 
