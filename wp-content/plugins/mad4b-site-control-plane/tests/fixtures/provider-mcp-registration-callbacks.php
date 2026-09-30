@@ -25,6 +25,17 @@ namespace ElementsKit_Lite\Mcp {
 	}
 }
 
+namespace Jet_Engine\MCP_Tools {
+	if ( ! class_exists( __NAMESPACE__ . '\\Registry', false ) ) {
+		class Registry {
+			public function register_features_api( $server = null ) {
+				unset( $server );
+				$GLOBALS['mad4b_jetengine_rest_registration_callback_hit'] = true;
+			}
+		}
+	}
+}
+
 namespace {
 	if ( ! class_exists( 'MAD4B_Isolation_Unknown_Server_Callback', false ) ) {
 		class MAD4B_Isolation_Unknown_Server_Callback {
