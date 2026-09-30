@@ -260,6 +260,7 @@ jobs:
             printf '%s\n' "$metrics" > "$out/$name.metrics"
           }
 
+          probe runtime-build "$origin/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt?mad4b_probe=$SOURCE_SHA"
           probe rest-index "$origin/wp-json/?mad4b_probe=$SOURCE_SHA"
           probe mcp-chatgpt "$origin/wp-json/mcp/mad4b-chatgpt?mad4b_probe=$SOURCE_SHA"
           probe oauth-protected-resource "$origin/wp-json/mad4b/v1/oauth-protected-resource?mad4b_probe=$SOURCE_SHA"
@@ -275,6 +276,7 @@ jobs:
           root = Path('/tmp/mad4b-wpml-external/mcp-hotpath')
           origin = 'https://staging.egypttourgates.com'
           targets = {
+              'runtime-build': origin + '/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt',
               'rest-index': origin + '/wp-json/',
               'mcp-chatgpt': origin + '/wp-json/mcp/mad4b-chatgpt',
               'oauth-protected-resource': origin + '/wp-json/mad4b/v1/oauth-protected-resource',
@@ -623,6 +625,7 @@ jobs:
 
           targets = evidence.get('targets') or {}
           expected = {
+              'runtime-build': {200},
               'rest-index': {200},
               'mcp-chatgpt': {200, 400, 401, 405},
               'oauth-protected-resource': {200},
@@ -643,6 +646,18 @@ jobs:
                   failures.append(f'{name}:hcdn_browser_challenge')
               if total is None or float(total) > 8.0:
                   failures.append(f'{name}:total_seconds={total}')
+
+          runtime_build_path = Path('/tmp/mad4b-wpml-external/mcp-hotpath/runtime-build.body')
+          runtime_build = runtime_build_path.read_text(encoding='utf-8', errors='replace') if runtime_build_path.is_file() else ''
+          runtime_fields = {}
+          for line in runtime_build.splitlines():
+              if '=' in line:
+                  key, value = line.split('=', 1)
+                  runtime_fields[key.strip()] = value.strip()
+          if runtime_fields.get('release') != '0.4.0-rc.86':
+              failures.append('runtime-build:release=' + repr(runtime_fields.get('release')))
+          if runtime_fields.get('contract') != 'mad4b.runtime-build-evidence.v1':
+              failures.append('runtime-build:contract=' + repr(runtime_fields.get('contract')))
 
           resource = (targets.get('oauth-protected-resource') or {}).get('json_payload')
           if not isinstance(resource, dict):
