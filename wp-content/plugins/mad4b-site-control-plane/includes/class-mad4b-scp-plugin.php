@@ -18,6 +18,9 @@ final class MAD4B_SCP_Plugin {
 			$audit = MAD4B_SCP_Audit::ensure_head_initialized();
 			if ( is_wp_error( $audit ) ) self::$schema_error = $audit;
 		}
+		if ( ! is_wp_error( self::$schema_error ) && class_exists( 'MAD4B_SCP_Schema_Lifecycle' ) ) {
+			MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'activation' );
+		}
 		if ( ! is_wp_error( self::$schema_error ) ) MAD4B_SCP_Skill_Seeder::bootstrap();
 		// Activation is the start of the safe autopilot lifecycle. It schedules
 		// bounded post-activation convergence after schema/audit bootstrap instead
