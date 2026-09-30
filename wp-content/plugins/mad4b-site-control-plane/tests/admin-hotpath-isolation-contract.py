@@ -357,6 +357,22 @@ assert "current_request_is_zero_touch_surface()" in plugin_boot
 assert "defined( 'WP_CLI' ) && WP_CLI" in plugin_boot
 assert plugin_boot.index("self::boot_admin_navigation()") < plugin_boot.index("current_request_is_zero_touch_surface()")
 assert plugin_boot.index("current_request_is_zero_touch_surface()") < plugin_boot.index("MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap()")
+assert "current_request_is_passive_admin_hotpath()" in plugin_boot
+assert "if ( $protocol_hotpath || $passive_admin_hotpath ) {" in plugin_boot
+passive_kernel = plugin_boot.split("if ( $protocol_hotpath || $passive_admin_hotpath ) {", 1)[1].split("// Governance schema repair", 1)[0]
+for marker in (
+    "MAD4B_SCP_Staging_Write_Authority::boot();",
+    "MAD4B_SCP_Write_Runtime_Certification::boot();",
+    "MAD4B_SCP_Skill_Runtime_Certification::boot();",
+    "return;",
+):
+    assert marker in passive_kernel, marker
+for forbidden in (
+    "MAD4B_SCP_Skill_Resource_Writer::boot();",
+    "MAD4B_SCP_Local_OAuth_Browser_Canary::boot();",
+    "MAD4B_SCP_Schema::install_or_upgrade()",
+):
+    assert forbidden not in passive_kernel, forbidden
 
 admin_navigation = method_body(
     plugin,
