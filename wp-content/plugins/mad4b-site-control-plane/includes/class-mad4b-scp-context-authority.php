@@ -617,17 +617,51 @@ final class MAD4B_SCP_Context_Authority {
 				// Phase 1: normalize every observed record we intend to represent.
 				// No absence state is minted until this phase proves representability.
 				$normalized_assets = array();
+				$reused_asset_count = 0;
 				foreach ( array_slice( $assets, 0, self::MAX_ASSETS ) as $asset ) {
 					if ( ! is_array( $asset ) ) {
 						$scan_complete = false;
 						$truncation_reasons[] = 'asset_record_invalid';
 						continue;
 					}
-					$normalized = self::normalize_asset( $source, $asset );
-					if ( is_wp_error( $normalized ) ) {
-						$scan_complete = false;
-						$truncation_reasons[] = 'asset_normalization_failed';
-						continue;
+
+					$file_id = isset( $asset['file_id'] ) ? self::bounded_external_id( $asset['file_id'] ) : '';
+					$candidate_asset_id = '' !== $file_id ? hash( 'sha256', $source_id . '|' . $file_id ) : '';
+					$reuse_prior = ! empty( $asset['reuse_existing'] ) && '' !== $candidate_asset_id && isset( $previous[ $candidate_asset_id ] )
+						? $previous[ $candidate_asset_id ]
+						: array();
+					$reuse_exact = ! empty( $reuse_prior )
+						&& ! empty( $reuse_prior['content_complete'] )
+						&& ! empty( $reuse_prior['content_hash'] )
+						&& isset( $asset['content_hash'] )
+						&& preg_match( '/^[a-f0-9]{64}$/', (string) $asset['content_hash'] )
+						&& hash_equals( (string) $reuse_prior['content_hash'], strtolower( (string) $asset['content_hash'] ) )
+						&& isset( $asset['modifiedTime'], $reuse_prior['version'] )
+						&& '' !== (string) $asset['modifiedTime']
+						&& hash_equals( (string) $reuse_prior['version'], (string) $asset['modifiedTime'] );
+
+					if ( $reuse_exact ) {
+						$normalized = $reuse_prior;
+						$normalized['parent_folder_id'] = isset( $asset['parent_folder_id'] ) ? self::bounded_external_id( $asset['parent_folder_id'] ) : ( isset( $normalized['parent_folder_id'] ) ? (string) $normalized['parent_folder_id'] : '' );
+						$normalized['title'] = isset( $asset['title'] ) && '' !== trim( (string) $asset['title'] ) ? trim( sanitize_text_field( (string) $asset['title'] ) ) : ( isset( $normalized['title'] ) ? (string) $normalized['title'] : 'Untitled' );
+						$normalized['path'] = isset( $asset['path'] ) ? substr( sanitize_text_field( (string) $asset['path'] ), 0, 500 ) : ( isset( $normalized['path'] ) ? (string) $normalized['path'] : '' );
+						$normalized['mime_type'] = isset( $asset['mimeType'] ) ? substr( sanitize_text_field( (string) $asset['mimeType'] ), 0, 191 ) : ( isset( $normalized['mime_type'] ) ? (string) $normalized['mime_type'] : '' );
+						$normalized['version'] = (string) $asset['modifiedTime'];
+						$normalized['content_hash'] = (string) $reuse_prior['content_hash'];
+						$normalized['content_complete'] = true;
+						$normalized['content_bytes'] = isset( $reuse_prior['content_bytes'] ) ? (int) $reuse_prior['content_bytes'] : 0;
+						$normalized['normalization_status'] = 'reused';
+						$normalized['normalization_reason'] = 'unchanged_provider_version';
+						$normalized['status'] = 'ready';
+						$normalized['last_synced_at'] = $scan_completed_at;
+						++$reused_asset_count;
+					} else {
+						$normalized = self::normalize_asset( $source, $asset );
+						if ( is_wp_error( $normalized ) ) {
+							$scan_complete = false;
+							$truncation_reasons[] = 'asset_normalization_failed';
+							continue;
+						}
 					}
 					$prior = isset( $previous[ $normalized['asset_id'] ] ) ? $previous[ $normalized['asset_id'] ] : array();
 					$prior_classification_source = isset( $prior['classification_source'] ) ? (string) $prior['classification_source'] : '';
@@ -775,6 +809,7 @@ final class MAD4B_SCP_Context_Authority {
 					'asset_count' => $source_asset_count,
 					'observed_asset_count' => count( $normalized_assets ),
 					'represented_asset_count' => count( $selected_assets ),
+					'reused_asset_count' => $reused_asset_count,
 					'scan_complete' => (bool) $scan_complete,
 					'scan_generation' => $scan_generation,
 					'truncation_reasons' => $truncation_reasons,
@@ -792,6 +827,7 @@ final class MAD4B_SCP_Context_Authority {
 						'scan_complete' => (bool) $scan_complete,
 						'observed_asset_count' => count( $normalized_assets ),
 						'represented_asset_count' => count( $selected_assets ),
+						'reused_asset_count' => $reused_asset_count,
 						'truncation_reasons' => $truncation_reasons,
 					),
 					$scan_complete ? 'ok' : 'partial'
