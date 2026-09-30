@@ -7,10 +7,12 @@ final class MAD4B_SCP_Schema_Lifecycle {
 	const CONTRACT = 'mad4b.schema-lifecycle.v1';
 	const STATE_OPTION = 'mad4b_scp_schema_lifecycle_v1';
 	const CRON_HOOK = 'mad4b_scp_schema_lifecycle_reconcile';
+	const LOCK_OPTION = 'mad4b_scp_schema_lifecycle_lock_v1';
 	private static $package_identity = '';
 
 	public static function boot() {
 		add_action( 'init', array( __CLASS__, 'maybe_schedule' ), 2 );
+		add_action( 'admin_init', array( __CLASS__, 'maybe_reconcile_admin_lifecycle' ), 2 );
 		add_action( self::CRON_HOOK, array( __CLASS__, 'reconcile' ) );
 		add_action( 'upgrader_process_complete', array( __CLASS__, 'after_upgrade' ), 20, 2 );
 	}
@@ -41,9 +43,47 @@ final class MAD4B_SCP_Schema_Lifecycle {
 
 	public static function maybe_schedule() {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
-		if ( ! self::needs_reconciliation() ) return;
+		if ( ! self::needs_reconciliation() || ! self::retry_due() ) return;
 		if ( false !== wp_next_scheduled( self::CRON_HOOK ) ) return;
 		wp_schedule_single_event( time() + 5, self::CRON_HOOK );
+	}
+
+	public static function maybe_reconcile_admin_lifecycle() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+		if ( defined( 'DOING_AJAX' ) && DOING_AJAX ) return;
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) return;
+		if ( defined( 'DOING_CRON' ) && DOING_CRON ) return;
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
+		if ( ! self::needs_reconciliation() || ! self::retry_due() ) return;
+		$lock = self::acquire_lock();
+		if ( '' === $lock ) return;
+		try {
+			self::reconcile( 'admin_package_lifecycle' );
+		} finally {
+			self::release_lock( $lock );
+		}
+	}
+
+	private static function retry_due() {
+		$state = get_option( self::STATE_OPTION, array() );
+		$next = is_array( $state ) && isset( $state['next_attempt_at'] ) ? absint( $state['next_attempt_at'] ) : 0;
+		return 0 === $next || time() >= $next;
+	}
+
+	private static function acquire_lock() {
+		$now = time();
+		$current = get_option( self::LOCK_OPTION, array() );
+		if ( is_array( $current ) && ! empty( $current['expires_at'] ) && absint( $current['expires_at'] ) > $now ) return '';
+		if ( is_array( $current ) && ! empty( $current ) ) delete_option( self::LOCK_OPTION );
+		$token = hash( 'sha256', self::package_identity() . "\0" . microtime( true ) . "\0" . wp_rand() );
+		$record = array( 'token' => $token, 'expires_at' => $now + 120 );
+		if ( ! add_option( self::LOCK_OPTION, $record, '', false ) ) return '';
+		return $token;
+	}
+
+	private static function release_lock( $token ) {
+		$current = get_option( self::LOCK_OPTION, array() );
+		if ( is_array( $current ) && isset( $current['token'] ) && is_string( $current['token'] ) && hash_equals( $current['token'], (string) $token ) ) delete_option( self::LOCK_OPTION );
 	}
 
 	public static function after_upgrade( $upgrader, $hook_extra ) {
@@ -57,7 +97,7 @@ final class MAD4B_SCP_Schema_Lifecycle {
 		if ( false === wp_next_scheduled( self::CRON_HOOK ) ) wp_schedule_single_event( time() + 1, self::CRON_HOOK );
 	}
 
-	public static function reconcile() {
+	public static function reconcile( $source = 'scheduled' ) {
 		$result = MAD4B_SCP_Schema::install_or_upgrade();
 		$state = get_option( self::STATE_OPTION, array() );
 		if ( ! is_array( $state ) ) $state = array();
@@ -65,13 +105,15 @@ final class MAD4B_SCP_Schema_Lifecycle {
 		$state['package_identity'] = self::package_identity();
 		$state['attempted_at'] = gmdate( 'c' );
 		$state['schema_version'] = MAD4B_SCP_Schema::VERSION;
+		$state['source'] = sanitize_key( (string) $source );
 		if ( is_wp_error( $result ) ) {
 			$state['state'] = 'blocked';
 			$state['error_code'] = sanitize_key( (string) $result->get_error_code() );
 			$state['attempts'] = min( 10, 1 + ( isset( $state['attempts'] ) ? absint( $state['attempts'] ) : 0 ) );
-			update_option( self::STATE_OPTION, $state, false );
 			$delay = min( HOUR_IN_SECONDS, max( MINUTE_IN_SECONDS, MINUTE_IN_SECONDS * ( 1 << min( 5, $state['attempts'] - 1 ) ) ) );
-			if ( false === wp_next_scheduled( self::CRON_HOOK ) ) wp_schedule_single_event( time() + $delay, self::CRON_HOOK );
+			$state['next_attempt_at'] = time() + $delay;
+			update_option( self::STATE_OPTION, $state, false );
+			if ( false === wp_next_scheduled( self::CRON_HOOK ) ) wp_schedule_single_event( $state['next_attempt_at'], self::CRON_HOOK );
 			return $result;
 		}
 		$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::ensure_head_initialized() : true;
@@ -79,14 +121,16 @@ final class MAD4B_SCP_Schema_Lifecycle {
 			$state['state'] = 'audit_blocked';
 			$state['error_code'] = sanitize_key( (string) $audit->get_error_code() );
 			$state['attempts'] = min( 10, 1 + ( isset( $state['attempts'] ) ? absint( $state['attempts'] ) : 0 ) );
-			update_option( self::STATE_OPTION, $state, false );
 			$delay = min( HOUR_IN_SECONDS, max( MINUTE_IN_SECONDS, MINUTE_IN_SECONDS * ( 1 << min( 5, $state['attempts'] - 1 ) ) ) );
-			if ( false === wp_next_scheduled( self::CRON_HOOK ) ) wp_schedule_single_event( time() + $delay, self::CRON_HOOK );
+			$state['next_attempt_at'] = time() + $delay;
+			update_option( self::STATE_OPTION, $state, false );
+			if ( false === wp_next_scheduled( self::CRON_HOOK ) ) wp_schedule_single_event( $state['next_attempt_at'], self::CRON_HOOK );
 			return $audit;
 		}
 		$state['state'] = 'ready';
 		$state['error_code'] = '';
 		$state['attempts'] = 0;
+		$state['next_attempt_at'] = 0;
 		$state['applied_package_identity'] = self::package_identity();
 		$state['completed_at'] = gmdate( 'c' );
 		update_option( self::STATE_OPTION, $state, false );
