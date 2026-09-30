@@ -17,6 +17,7 @@ def forbid(text, needle, label):
 peer = read('includes/class-mad4b-scp-mcp-peer-governance.php')
 authz = read('includes/class-mad4b-scp-authorization.php')
 adapter_registry = read('includes/class-mad4b-scp-adapter-registry.php')
+write_cert = read('includes/class-mad4b-scp-write-runtime-certification.php')
 bootstrap = read('mad4b-site-control-plane.php')
 runtime_baseline = read('tests/runtime-mcp-side-channel-baseline.php')
 runtime_blocker = read('tests/runtime-mcp-side-channel-blocker.php')
@@ -74,6 +75,8 @@ if authz.index('MAD4B_SCP_MCP_Peer_Governance::mutation_guard()') > authz.index(
 require(adapter_registry, 'MAD4B_SCP_MCP_Peer_Governance::status()', 'self-test-peer-status')
 require(adapter_registry, "'mcp_peer_governance_ok'", 'self-test-peer-verdict')
 require(adapter_registry, "foreign_transport_unreviewed", 'self-test-foreign-transport-verdict')
+require(write_cert, "'peer_foreign_transport_reviewed'", 'write-cert-foreign-transport-check')
+require(write_cert, "'mcp_foreign_transport_unreviewed'", 'write-cert-foreign-transport-blocker')
 require(adapter_registry, "'mcp_peer_governance'", 'self-test-peer-evidence')
 
 # Bootstrap must load detector before authorization can call it.
