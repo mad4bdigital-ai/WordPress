@@ -44,7 +44,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		// derive the same quiet window from the checkpoint timestamp on first boot.
 		$stamp = isset( $checkpoint['updated_at'] ) ? strtotime( (string) $checkpoint['updated_at'] ) : false;
 		if ( false === $stamp && isset( $checkpoint['created_at'] ) ) $stamp = strtotime( (string) $checkpoint['created_at'] );
-		return false === $stamp ? time() + self::POST_UPDATE_QUIET_SECONDS : max( 0, (int) $stamp + self::POST_UPDATE_QUIET_SECONDS );
+		return false === $stamp ? 0 : max( 0, (int) $stamp + self::POST_UPDATE_QUIET_SECONDS );
 	}
 
 	public static function restart_grace_status() {
