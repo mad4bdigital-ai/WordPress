@@ -114,6 +114,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'post_update_restart_grace' => true,
 			'restart_grace_immediate_retry_allowed' => false,
 			'restart_grace_retry_after_header' => true,
+			'runtime_maintenance_fail_fast' => true,
+			'runtime_maintenance_immediate_retry_allowed' => false,
 			'authority_created' => false,
 			'production_widened' => false,
 		);
@@ -762,12 +764,20 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		return is_array( $status ) ? $status : array( 'active' => false, 'retry_after_seconds' => 0, 'state' => '' );
 	}
 
+	private static function maintenance_lease_status() {
+		if ( ! class_exists( 'MAD4B_SCP_Runtime_Convergence' ) || ! method_exists( 'MAD4B_SCP_Runtime_Convergence', 'maintenance_lease_status' ) ) {
+			return array( 'active' => false, 'retry_after_seconds' => 0, 'owner' => '' );
+		}
+		$status = MAD4B_SCP_Runtime_Convergence::maintenance_lease_status();
+		return is_array( $status ) ? $status : array( 'active' => false, 'retry_after_seconds' => 0, 'owner' => '' );
+	}
+
 	public static function add_restart_retry_header( $response, $server, $request ) {
 		unset( $server, $request );
 		if ( ! is_object( $response ) || ! method_exists( $response, 'get_data' ) || ! method_exists( $response, 'header' ) ) return $response;
 		$data = $response->get_data();
 		$code = is_array( $data ) && isset( $data['code'] ) ? sanitize_key( (string) $data['code'] ) : '';
-		if ( 'mad4b_mcp_runtime_restart_grace' !== $code ) return $response;
+		if ( ! in_array( $code, array( 'mad4b_mcp_runtime_restart_grace', 'mad4b_mcp_runtime_maintenance_busy' ), true ) ) return $response;
 		$details = is_array( $data ) && isset( $data['data'] ) && is_array( $data['data'] ) ? $data['data'] : array();
 		$retry = isset( $details['retry_after_seconds'] ) ? max( 1, min( 120, absint( $details['retry_after_seconds'] ) ) ) : 1;
 		$response->header( 'Retry-After', (string) $retry );
@@ -787,6 +797,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$blockers = array();
 		$restart_grace = self::restart_grace_status();
 		if ( ! empty( $restart_grace['active'] ) ) $blockers[] = 'runtime_restart_grace';
+		$maintenance_lease = self::maintenance_lease_status();
+		if ( ! empty( $maintenance_lease['active'] ) ) $blockers[] = 'runtime_maintenance_busy';
 
 		if ( ! $portable_ready ) {
 			if ( empty( $profile['configured'] ) ) $blockers[] = 'site_profile_unconfigured';
@@ -818,6 +830,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'missed_rest_recovery_blocker' => isset( $bridge_registration['missed_rest_recovery_blocker'] ) ? sanitize_key( (string) $bridge_registration['missed_rest_recovery_blocker'] ) : '',
 			'session_continuity' => self::session_continuity_policy(),
 			'restart_grace' => $restart_grace,
+			'runtime_maintenance' => $maintenance_lease,
 			'session_repair' => self::session_repair_status(),
 			'upgrade_recovery' => class_exists( 'MAD4B_SCP_Upgrade_Continuity' ) ? MAD4B_SCP_Upgrade_Continuity::recovery_status() : array(),
 			'write_auto_enabled' => false,
@@ -862,6 +875,21 @@ final class MAD4B_SCP_Reconnect_Hardening {
 				'automatic_retry_allowed' => false,
 				'retry_after_seconds' => $retry,
 				'client_action' => 'retry_after_restart_grace',
+				'mutation_performed' => false,
+			) );
+		}
+		$maintenance_lease = self::maintenance_lease_status();
+		if ( ! empty( $maintenance_lease['active'] ) ) {
+			$retry = isset( $maintenance_lease['retry_after_seconds'] ) ? max( 1, min( 30, absint( $maintenance_lease['retry_after_seconds'] ) ) ) : 2;
+			return new WP_Error( 'mad4b_mcp_runtime_maintenance_busy', 'MAD4B runtime maintenance is active and request-serving MCP work is temporarily deferred.', array(
+				'status' => 503,
+				'contract' => self::CONTRACT,
+				'resource' => self::resource_identifier(),
+				'retryable' => true,
+				'automatic_retry_allowed' => false,
+				'retry_after_seconds' => $retry,
+				'client_action' => 'retry_after_runtime_maintenance',
+				'maintenance_owner' => isset( $maintenance_lease['owner'] ) ? sanitize_key( (string) $maintenance_lease['owner'] ) : '',
 				'mutation_performed' => false,
 			) );
 		}
