@@ -390,7 +390,23 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		self::$missed_rest_recovery_state = 'missed_rest_lifecycle_recovered';
 	}
 
+	private static function request_needs_adapter_registry() {
+		$server_id = '';
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) ) {
+			// Passive ChatGPT/Connection admin views and OAuth protocol endpoints are
+			// compact identity/catalog surfaces. If they happen to materialize the
+			// Abilities registry, do not silently re-instantiate every provider adapter.
+			if ( MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) return false;
+			$protocol_hotpath = MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
+			$server_id = MAD4B_SCP_MCP_Request_Scope::current_request_mcp_server_id();
+			if ( $protocol_hotpath && '' === $server_id ) return false;
+		}
+		if ( '' === $server_id ) return true;
+		return in_array( $server_id, array( 'mad4b-read', 'mad4b-content', 'mad4b-write', 'mad4b-admin' ), true );
+	}
+
 	private static function prepare_registry() {
+		if ( ! self::request_needs_adapter_registry() ) return;
 		if ( ! self::$registry ) self::$registry = MAD4B_SCP_Adapter_Registry::instance();
 		self::$registry->register_defaults();
 	}
@@ -400,6 +416,7 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 	}
 
 	public static function register_registry_categories() {
+		if ( ! self::request_needs_adapter_registry() ) return;
 		self::prepare_registry();
 		if ( self::$registry ) self::$registry->register_categories();
 	}
@@ -409,6 +426,7 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 	}
 
 	public static function register_registry_abilities() {
+		if ( ! self::request_needs_adapter_registry() ) return;
 		self::prepare_registry();
 		if ( self::$registry ) self::$registry->register_abilities();
 	}
@@ -421,7 +439,11 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		// do not exist yet. wp_get_abilities() is idempotent and fires the normal
 		// wp_abilities_api_init lifecycle; it does not create grants or authority.
 		if ( function_exists( 'wp_get_abilities' ) && did_action( 'wp_abilities_api_init' ) < 1 ) wp_get_abilities();
-		self::prepare_registry();
+		// Adapter registration is required only by the provider-backed read/content/
+		// write/admin planes. ChatGPT, enrollment and Developer protocol requests use
+		// core governed abilities and must not instantiate every provider adapter
+		// before initialize/tools-list can complete.
+		if ( self::request_needs_adapter_registry() ) self::prepare_registry();
 		if ( ! self::$servers ) self::$servers = new MAD4B_SCP_Servers();
 		self::$servers->register_servers( $adapter );
 	}

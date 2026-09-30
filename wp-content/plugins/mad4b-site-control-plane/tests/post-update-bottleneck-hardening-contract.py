@@ -71,11 +71,18 @@ assert "$prior_source = isset( $checkpoint['source'] )" in runtime
 assert "$checkpoint['source'] = 'self_update' === $prior_source ? 'self_update' : $execution_source;" in runtime
 assert "$checkpoint['last_execution_source'] = $execution_source;" in runtime
 
-# Protocol hotpaths are classified before runtime/recovery bootstrap.
+# Protocol/request scope is deliberately available in two mutually exclusive
+# entry paths: the early zero-touch kernel and the full Control Plane bootstrap.
+# Foreign REST/admin-AJAX returns immediately after the first call; MAD4B-owned
+# requests reach the second call. Both must precede runtime/recovery work.
 scope = "MAD4B_SCP_MCP_Request_Scope::bootstrap();"
-assert main.count(scope) == 1
-assert main.index(scope) < main.index("MAD4B_SCP_Reconnect_Hardening::boot();")
-assert main.index(scope) < main.index("MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();")
+assert main.count(scope) == 2
+first_scope = main.index(scope)
+second_scope = main.index(scope, first_scope + len(scope))
+early_return = main.index("return;", first_scope)
+assert first_scope < early_return < second_scope
+assert second_scope < main.index("MAD4B_SCP_Reconnect_Hardening::boot();")
+assert second_scope < main.index("MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();")
 
 # Every MAD4B MCP transport fails fast while convergence/maintenance owns the lane.
 assert "mad4b_mcp_runtime_restart_grace" in reconnect

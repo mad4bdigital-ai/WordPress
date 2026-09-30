@@ -37,6 +37,12 @@ $fail = static function ( $message, $data = null ) {
 };
 
 if ( ! class_exists( 'MAD4B_SCP_MCP_Request_Scope' ) ) $fail( 'request-scope class unavailable' );
+if ( ! defined( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON' ) || 'foreign_rest' !== MAD4B_SCP_EARLY_ZERO_TOUCH_REASON ) {
+	$fail( 'foreign REST request did not enter the early zero-touch kernel', defined( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON' ) ? MAD4B_SCP_EARLY_ZERO_TOUCH_REASON : 'undefined' );
+}
+foreach ( array( 'MAD4B_SCP_Schema', 'MAD4B_SCP_Plugin', 'MAD4B_SCP_Adapter_Registry', 'MAD4B_SCP_Self_Update' ) as $forbidden_class ) {
+	if ( class_exists( $forbidden_class, false ) ) $fail( 'foreign REST request loaded full Control Plane class: ' . $forbidden_class );
+}
 if ( ! class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ) $fail( 'MCP Adapter runtime unavailable after normal active-plugin bootstrap' );
 
 $mu = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) && is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] )
@@ -122,4 +128,4 @@ if ( ! empty( $scope['production_changed'] ) || ! empty( $scope['provider_settin
 	$fail( 'request scope reported forbidden side effects', $scope );
 }
 
-echo 'mad4b.site-control-plane.non-mcp-rest-isolation.v5: PASS' . PHP_EOL;
+echo 'mad4b.site-control-plane.non-mcp-rest-isolation.v6: PASS' . PHP_EOL;

@@ -19,6 +19,10 @@ oauth_autoconfig = (root / "includes/class-mad4b-scp-staging-oauth-autoconfig.ph
 audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
 authorization = (root / "includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 request_scope = (root / "includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
+registration_bridge = (root / "includes/class-mad4b-scp-mcp-registration-bridge.php").read_text(encoding="utf-8")
+self_update = (root / "includes/class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
+repo_root = root.parents[2]
+external_diagnostic_workflow = (repo_root / ".github/workflows/mad4b-wpml-external-diagnostic.yml").read_text(encoding="utf-8")
 read_consistency = (root / "includes/class-mad4b-scp-read-consistency.php").read_text(encoding="utf-8")
 query_monitor = (root / "includes/class-mad4b-scp-query-monitor-evidence-bridge.php").read_text(encoding="utf-8")
 mu_refresh = (root / "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php").read_text(encoding="utf-8")
@@ -27,6 +31,26 @@ upgrade_continuity = (root / "includes/class-mad4b-scp-upgrade-continuity.php").
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
+
+# Unrelated REST/AJAX must exit before the full 5+ MiB Control Plane include
+# surface is parsed. Keep only Site Profile + request scope so the official MCP
+# Adapter can still be disarmed on the exact governed site.
+for marker in (
+    "MAD4B_SCP_EARLY_ZERO_TOUCH_REASON",
+    "'foreign_rest'",
+    "'foreign_admin_ajax'",
+    "0 === strpos( $mad4b_scp_early_rest_path, '/mcp/mad4b-' )",
+    "0 === strpos( $mad4b_scp_early_rest_path, '/mad4b/' )",
+    "class-mad4b-scp-site-profile.php",
+    "class-mad4b-scp-mcp-request-scope.php",
+    "MAD4B_SCP_MCP_Request_Scope::bootstrap();",
+):
+    assert marker in entry, marker
+early_gate = entry.index("$mad4b_scp_early_zero_touch_reason = '';")
+first_full_runtime_require = entry.index("require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-environment.php';")
+assert early_gate < first_full_runtime_require
+early_return_block = entry.split("if ( '' !== $mad4b_scp_early_zero_touch_reason ) {", 1)[1].split("require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-profile.php';", 2)[1]
+assert "return;" in early_return_block
 
 # Upstream 0.6.1 eagerly materializes Ability -> Tool DTOs while each server is
 # constructed during mcp_adapter_init. This is the structural reason shrinking
@@ -224,7 +248,9 @@ assert oauth_nonprod.index("$existing_semantic !== $record") < oauth_nonprod.ind
 # physical-schema readiness, dbDelta migration, or legacy audit option creation.
 central_boot = plugin.split("public static function boot()", 1)[1].split("public static function boot_oauth_transport_if_effective()", 1)[0]
 assert "$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )" in central_boot
+assert "$passive_admin_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )" in central_boot
 assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in central_boot
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()" in central_boot
 schema_guard_pos = central_boot.index("$protocol_hotpath =")
 assert schema_guard_pos < central_boot.index("MAD4B_SCP_Schema::is_ready()")
 assert schema_guard_pos < central_boot.index("MAD4B_SCP_Schema::install_or_upgrade()")
@@ -294,13 +320,15 @@ for route in [
 ]:
     assert route in protocol_hotpath, route
 
-# Protocol REST isolation must remain narrowly scoped to the two WordPress Core
-# materializers. Provider/plugin callbacks and REST default filters are not part
-# of the pruning contract.
+# Protocol REST isolation has two bounded layers: remove the two expensive
+# WordPress Core materializers, then remove only callbacks whose reflected file
+# provenance proves they belong to an unrelated plugin. Core, MAD4B and the
+# official MCP Adapter remain available and unknown provenance fails open.
 scope_bootstrap = request_scope.split("public static function bootstrap()", 1)[1].split("public static function enforce()", 1)[0]
 assert "self::current_request_is_protocol_hotpath()" in scope_bootstrap
 assert "isolate_protocol_core_rest_bootstrap" in scope_bootstrap
-protocol_core_isolation = request_scope.split("public static function isolate_protocol_core_rest_bootstrap()", 1)[1].split("public static function current_request_requires_mcp_runtime()", 1)[0]
+assert "isolate_protocol_external_rest_bootstrap" in scope_bootstrap
+protocol_core_isolation = request_scope.split("public static function isolate_protocol_core_rest_bootstrap()", 1)[1].split("public static function isolate_protocol_external_rest_bootstrap()", 1)[0]
 for callback in (
     "register_initial_settings",
     "create_initial_rest_routes",
@@ -315,9 +343,116 @@ for forbidden in (
     "ReflectionMethod",
 ):
     assert forbidden not in protocol_core_isolation, forbidden
-assert "protocol_core_rest_isolation_request_local_only" in request_scope
 
-print("mad4b.chatgpt-refresh-hotpath.v15: PASS")
+external_isolation = request_scope.split("public static function isolate_protocol_external_rest_bootstrap()", 1)[1].split("public static function current_request_mcp_server_id()", 1)[0]
+for marker in (
+    "MAX_PROTOCOL_REST_CALLBACK_SCAN",
+    "MAX_PROTOCOL_REST_CALLBACK_EVIDENCE",
+    "protocol_external_rest_callback_descriptor",
+    "class_exists( $class, false )",
+    "WP_PLUGIN_DIR",
+    "mad4b-site-control-plane",
+    "mcp-adapter",
+    "ReflectionFunction",
+    "ReflectionMethod",
+    "remove_action( 'rest_api_init'",
+    "source_plugin",
+    "protocol_external_rest_scan_truncated",
+):
+    assert marker in external_isolation or marker in request_scope, marker
+assert "return null;" in external_isolation  # unresolved provenance fails open
+assert "'source' => $relative" not in external_isolation
+assert "method_exists( $class, $method )" not in external_isolation
+for marker in (
+    "protocol_external_rest_isolation_request_local_only",
+    "protocol_external_rest_unknown_callbacks_preserved",
+    "protocol_external_rest_mu_plugin_callbacks_preserved",
+    "protocol_external_rest_scan_limit",
+):
+    assert marker in request_scope, marker
+
+# Compact protocol planes must not instantiate every provider adapter merely to
+# create the addressed server. Provider-backed read/content/write/admin retain
+# the full registry.
+for marker in (
+    "private static function request_needs_adapter_registry()",
+    "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()",
+    "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()",
+    "MAD4B_SCP_MCP_Request_Scope::current_request_mcp_server_id()",
+    "if ( $protocol_hotpath && '' === $server_id ) return false;",
+    "'mad4b-read', 'mad4b-content', 'mad4b-write', 'mad4b-admin'",
+    "if ( ! self::request_needs_adapter_registry() ) return;",
+    "if ( self::request_needs_adapter_registry() ) self::prepare_registry();",
+):
+    assert marker in registration_bridge, marker
+registry_gate = registration_bridge.split("private static function request_needs_adapter_registry()", 1)[1].split("private static function prepare_registry()", 1)[0]
+assert registry_gate.index("current_request_is_passive_admin_hotpath()") < registry_gate.index("if ( '' === $server_id ) return true;")
+assert registry_gate.index("if ( $protocol_hotpath && '' === $server_id ) return false;") < registry_gate.index("if ( '' === $server_id ) return true;")
+
+# The central init boot must terminate at the protocol-kernel boundary before
+# admin/resource/lifecycle-only work while retaining the three lightweight
+# ability annotations needed for tools/list.
+protocol_fast_return = central_boot.split("if ( $protocol_hotpath || $passive_admin_hotpath ) {", 1)[1].split("// Governance schema repair", 1)[0]
+for marker in (
+    "MAD4B_SCP_Staging_Write_Authority::boot();",
+    "MAD4B_SCP_Write_Runtime_Certification::boot();",
+    "MAD4B_SCP_Skill_Runtime_Certification::boot();",
+    "MAD4B_SCP_MCP_Registration_Bridge::boot_early();",
+    "return;",
+):
+    assert marker in protocol_fast_return, marker
+for forbidden in (
+    "MAD4B_SCP_Skill_Resource_Writer::boot();",
+    "MAD4B_SCP_Local_OAuth_Browser_Canary::boot();",
+    "MAD4B_SCP_Schema::install_or_upgrade()",
+):
+    assert forbidden not in protocol_fast_return, forbidden
+
+# Staging managed-runtime recovery must have an execution path independent from
+# MCP and interactive wp-admin. It remains exact-origin, signed-manifest and
+# non-Production only, and never schedules from a protocol request.
+for marker in (
+    "const RECOVERY_CRON_HOOK",
+    "ensure_recovery_update_schedule",
+    "run_recovery_update",
+    "recovery_update_eligible",
+    "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
+    "'staging' === sanitize_key",
+    "download_governed_release_to_protected_storage",
+    "verify_archive",
+    "apply_verified_archive",
+    "'governed_staging_recovery_cron'",
+    "production_mutation_performed",
+):
+    assert marker in self_update, marker
+recovery_schedule = self_update.split("public static function ensure_recovery_update_schedule()", 1)[1].split("public static function run_recovery_update()", 1)[0]
+assert "current_request_is_protocol_hotpath()" in recovery_schedule
+assert "current_request_is_passive_admin_hotpath()" in recovery_schedule
+recovery_run = self_update.split("public static function run_recovery_update()", 1)[1].split("private static function recovery_update_eligible()", 1)[0]
+recovery_ineligible = recovery_run.split("$status['eligible'] = true;", 1)[0]
+assert "self::persist_recovery_status( $status );" not in recovery_ineligible
+assert "return $status;" in recovery_ineligible
+recovery_eligible = self_update.split("private static function recovery_update_eligible()", 1)[1].split("private static function persist_recovery_status", 1)[0]
+for marker in (
+    "self::environment_allowed( true )",
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
+    "'staging' === sanitize_key",
+):
+    assert marker in recovery_eligible, marker
+
+# PRs may report deployment drift as inconclusive, but post-merge/manual live
+# acceptance must fail closed until the exact published runtime is loaded.
+for marker in (
+    "push:",
+    "branches:",
+    "master",
+    "MAD4B_REQUIRE_RUNTIME_IDENTITY",
+    "deployment_drift",
+):
+    assert marker in external_diagnostic_workflow, marker
+
+print("mad4b.chatgpt-refresh-hotpath.v16: PASS")
 
 # Post-update MU reconciliation must never execute filesystem mutation/audit work
 # before an MCP/OAuth protocol request can be served.

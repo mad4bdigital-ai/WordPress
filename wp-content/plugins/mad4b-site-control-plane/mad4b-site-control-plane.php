@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.87
+ * Version: 0.4.0-rc.88
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Author: MAD4B
@@ -13,9 +13,72 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.87' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.88' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
+
+/*
+ * Early zero-touch kernel for unrelated REST/admin-AJAX requests.
+ *
+ * The full Control Plane is intentionally large and must not be parsed merely
+ * because WordPress is serving WP Core, WPML, WooCommerce, Elementor or another
+ * provider's REST/AJAX endpoint. Keep only Site Profile + request-scope so the
+ * official MCP Adapter can still be disarmed on exact governed sites. MAD4B's
+ * own REST/MCP surfaces always continue into the full bootstrap.
+ */
+$mad4b_scp_early_zero_touch_reason = '';
+if ( ! ( defined( 'MAD4B_SCP_FORCE_FULL_BOOT' ) && true === constant( 'MAD4B_SCP_FORCE_FULL_BOOT' ) ) ) {
+	$mad4b_scp_early_route = isset( $_GET['rest_route'] ) ? (string) wp_unslash( $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$mad4b_scp_early_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	$mad4b_scp_early_rest_path = '';
+
+	if ( '' !== trim( $mad4b_scp_early_route ) ) {
+		$mad4b_scp_early_rest_path = '/' . ltrim( rtrim( $mad4b_scp_early_route, '/' ), '/' );
+	} elseif ( '' !== $mad4b_scp_early_uri ) {
+		$mad4b_scp_early_path = wp_parse_url( $mad4b_scp_early_uri, PHP_URL_PATH );
+		if ( is_string( $mad4b_scp_early_path ) && '' !== $mad4b_scp_early_path ) {
+			$mad4b_scp_early_path = '/' . ltrim( rawurldecode( $mad4b_scp_early_path ), '/' );
+			$mad4b_scp_early_prefix = function_exists( 'rest_get_url_prefix' ) ? trim( (string) rest_get_url_prefix(), '/' ) : 'wp-json';
+			$mad4b_scp_early_needle = '/' . $mad4b_scp_early_prefix . '/';
+			$mad4b_scp_early_offset = strpos( $mad4b_scp_early_path, $mad4b_scp_early_needle );
+			if ( false !== $mad4b_scp_early_offset ) {
+				$mad4b_scp_early_rest_path = '/' . ltrim( substr( $mad4b_scp_early_path, $mad4b_scp_early_offset + strlen( $mad4b_scp_early_needle ) ), '/' );
+				$mad4b_scp_early_rest_path = '/' . ltrim( rtrim( $mad4b_scp_early_rest_path, '/' ), '/' );
+			}
+		}
+	}
+
+	if ( '' !== $mad4b_scp_early_rest_path ) {
+		$mad4b_scp_early_owned = 0 === strpos( $mad4b_scp_early_rest_path, '/mcp/mad4b-' )
+			|| 0 === strpos( $mad4b_scp_early_rest_path, '/mad4b/' );
+		if ( ! $mad4b_scp_early_owned ) $mad4b_scp_early_zero_touch_reason = 'foreign_rest';
+	} elseif ( defined( 'DOING_AJAX' ) && DOING_AJAX ) {
+		$mad4b_scp_early_action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$mad4b_scp_early_owned = 0 === strpos( $mad4b_scp_early_action, 'mad4b_' ) || 0 === strpos( $mad4b_scp_early_action, 'mad4b-' );
+		if ( ! $mad4b_scp_early_owned ) $mad4b_scp_early_zero_touch_reason = 'foreign_admin_ajax';
+	}
+}
+
+if ( '' !== $mad4b_scp_early_zero_touch_reason ) {
+	if ( ! defined( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON' ) ) define( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON', $mad4b_scp_early_zero_touch_reason );
+	require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-profile.php';
+	require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-request-scope.php';
+	MAD4B_SCP_MCP_Request_Scope::bootstrap();
+	unset(
+		$mad4b_scp_early_route,
+		$mad4b_scp_early_uri,
+		$mad4b_scp_early_rest_path,
+		$mad4b_scp_early_path,
+		$mad4b_scp_early_prefix,
+		$mad4b_scp_early_needle,
+		$mad4b_scp_early_offset,
+		$mad4b_scp_early_owned,
+		$mad4b_scp_early_action,
+		$mad4b_scp_early_zero_touch_reason
+	);
+	return;
+}
+unset( $mad4b_scp_early_zero_touch_reason );
 
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-profile.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-environment.php';

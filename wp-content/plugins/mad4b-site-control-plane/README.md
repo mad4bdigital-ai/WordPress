@@ -4,7 +4,17 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.87**.
+Current plugin version: **0.4.0-rc.88**.
+
+### rc.88 protocol bootstrap, recovery and live-acceptance hardening
+
+rc.88 moves unrelated REST and admin-AJAX traffic onto an entry-point zero-touch kernel before the full Control Plane class graph is loaded. Exact MAD4B MCP/OAuth requests keep WordPress REST defaults, MAD4B and the official MCP Adapter, but prune proven third-party plugin REST registrars request-locally with bounded callback/evidence limits and fail-open handling for unknown, Core or MU-plugin provenance. Compact ChatGPT/enrollment/Developer transports also avoid instantiating the full provider Adapter Registry.
+
+Protocol and passive ChatGPT/Connection admin requests return through a reduced Control Plane boot after the minimum identity/OAuth/catalog hooks are bound. Normal provider, mutation, schema, filesystem and browser-canary lifecycles remain available on their owning surfaces.
+
+Exact enrolled Staging sites with Write + managed-runtime enabled gain a governed WP-Cron recovery update lane that resolves only the signed immutable release channel, verifies the package, uses the shared maintenance lease, exact readback and rollback, and performs no persistence at all when the recovery lane is ineligible (including Production). The external ETG diagnostic now runs on master pushes and requires exact deployed runtime identity plus the existing 8-second hotpath ceilings; pull-request deployment drift remains diagnostic-only.
+
+The recovery cron exists only after rc.88 is loaded. The first upgrade from an older runtime that cannot serve MCP still uses the existing governed WordPress admin updater or an external one-time package deployment; subsequent governed Staging releases no longer depend on a healthy MCP transport for recovery.
 
 ### rc.87 shared REST / MCP / passive-admin hotpath hardening
 
