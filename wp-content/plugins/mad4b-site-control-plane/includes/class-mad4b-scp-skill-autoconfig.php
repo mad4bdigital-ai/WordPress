@@ -21,7 +21,7 @@ final class MAD4B_SCP_Skill_Autoconfig {
 		if ( self::$bootstrapped ) return self::$status;
 		self::$bootstrapped = true;
 
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$host = self::current_host();
 		$profile_configured = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured();
 		$profile = $profile_configured ? MAD4B_SCP_Site_Profile::status() : array();
