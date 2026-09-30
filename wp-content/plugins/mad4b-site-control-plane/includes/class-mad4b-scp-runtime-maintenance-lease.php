@@ -17,6 +17,7 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease {
 	const OPTION = 'mad4b_scp_runtime_maintenance_lock_v1';
 	const LEASE_TTL = 300;
 	const HARD_TTL = 1200;
+	const LEGACY_EXPIRY_GRACE = 300;
 
 	public static function legacy_options() {
 		return array(
@@ -35,12 +36,16 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease {
 				if ( is_array( $current ) && ! empty( $current ) ) delete_option( $option );
 				continue;
 			}
-			$hard = isset( $current['hard_expires_at'] ) ? absint( $current['hard_expires_at'] ) : absint( isset( $current['expires_at'] ) ? $current['expires_at'] : 0 );
+			$soft = absint( isset( $current['expires_at'] ) ? $current['expires_at'] : 0 );
+			$hard = isset( $current['hard_expires_at'] )
+				? absint( $current['hard_expires_at'] )
+				: ( $soft > 0 ? $soft + self::LEGACY_EXPIRY_GRACE : 0 );
 			if ( $hard > $now ) {
 				return new WP_Error( 'mad4b_runtime_maintenance_busy', 'Runtime maintenance already has an active fenced lease.', array(
 					'owner' => isset( $current['owner'] ) ? sanitize_key( (string) $current['owner'] ) : '',
-					'expires_at' => isset( $current['expires_at'] ) ? absint( $current['expires_at'] ) : 0,
+					'expires_at' => $soft,
 					'hard_expires_at' => $hard,
+					'legacy_expiry_grace_applied' => ! isset( $current['hard_expires_at'] ),
 				) );
 			}
 			delete_option( $option );
