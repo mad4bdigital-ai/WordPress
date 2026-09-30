@@ -337,7 +337,7 @@ if min(copy_index, invalidate_index, restore_index) < 0 or not (copy_index < inv
 managed_apply = self_update.split("private static function apply_verified_archive(", 1)[1].split("private static function download_governed_release_to_protected_storage", 1)[0]
 mark_index = managed_apply.find("MAD4B_SCP_Runtime_Convergence::mark_post_update_pending")
 checkpoint_fail_index = managed_apply.find("'checkpoint_persist_failed' === $convergence_state")
-rollback_index = managed_apply.find("$rollback = self::rollback( $backup, $before );", checkpoint_fail_index)
+rollback_index = managed_apply.find("$rollback = self::rollback( $backup, $before", checkpoint_fail_index)
 success_audit_index = managed_apply.find("self::audit( $channel, $target, true", checkpoint_fail_index)
 if min(mark_index, checkpoint_fail_index, rollback_index, success_audit_index) < 0 or not (mark_index < checkpoint_fail_index <= rollback_index < success_audit_index):
     raise SystemExit("post-update convergence checkpoint failure must rollback before success audit")
