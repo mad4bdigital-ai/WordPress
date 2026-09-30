@@ -1015,12 +1015,21 @@ final class MAD4B_SCP_Self_Update {
 		self::$managed_apply = true;
 		$skin = new Automatic_Upgrader_Skin();
 		$upgrader = new Plugin_Upgrader( $skin );
-		$installed = $upgrader->install( $path, array( 'overwrite_package' => true ) );
-		self::$managed_apply = false;
+		try {
+			$installed = $upgrader->install( $path, array( 'overwrite_package' => true ) );
+		} catch ( Throwable $throwable ) {
+			$installed = new WP_Error(
+				'mad4b_self_update_install_exception',
+				'Control Plane installer raised an unexpected exception.',
+				array( 'error_class' => get_class( $throwable ) )
+			);
+		} finally {
+			self::$managed_apply = false;
+		}
 
 		if ( is_wp_error( $installed ) || true !== $installed ) {
 			$error = is_wp_error( $installed ) ? $installed : ( method_exists( $skin, 'get_errors' ) ? $skin->get_errors() : null );
-			$rollback = self::rollback( $backup, $before );
+			$rollback = self::rollback( $backup, $before, $runtime_php_files );
 			self::audit( $channel, $target, false, array(
 				'plan_sha256' => $plan_sha256,
 				'failure_phase' => 'install',
@@ -1034,7 +1043,7 @@ final class MAD4B_SCP_Self_Update {
 		$activation = self::restore_activation_state( $before );
 		$readback = is_wp_error( $activation ) ? $activation : self::verify_installed_identity( $target );
 		if ( is_wp_error( $readback ) ) {
-			$rollback = self::rollback( $backup, $before );
+			$rollback = self::rollback( $backup, $before, $runtime_php_files );
 			self::audit( $channel, $target, false, array(
 				'plan_sha256' => $plan_sha256,
 				'failure_phase' => 'readback',
@@ -1053,7 +1062,7 @@ final class MAD4B_SCP_Self_Update {
 		}
 		$convergence_state = is_array( $convergence ) && isset( $convergence['state'] ) ? sanitize_key( (string) $convergence['state'] ) : '';
 		if ( 'checkpoint_persist_failed' === $convergence_state ) {
-			$rollback = self::rollback( $backup, $before );
+			$rollback = self::rollback( $backup, $before, $runtime_php_files );
 			self::audit( $channel, $target, false, array(
 				'plan_sha256' => $plan_sha256,
 				'failure_phase' => 'post_update_convergence_checkpoint',
@@ -1580,7 +1589,7 @@ final class MAD4B_SCP_Self_Update {
 		return array( 'created' => true, 'backup_path' => $destination, 'backup_id' => basename( $destination ) );
 	}
 
-	private static function rollback( array $backup, array $before ) {
+	private static function rollback( array $backup, array $before, array $runtime_php_files ) {
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		if ( empty( $backup['backup_path'] ) || ! is_dir( $backup['backup_path'] ) ) return new WP_Error( 'mad4b_self_update_rollback_backup_missing', 'Control Plane rollback backup is missing.' );
@@ -1592,6 +1601,10 @@ final class MAD4B_SCP_Self_Update {
 		$copy = copy_dir( $backup['backup_path'], $root );
 		if ( is_wp_error( $copy ) ) return $copy;
 		wp_clean_plugins_cache( true );
+		// Target PHP may have been compiled after its first invalidation (for
+		// example during activation/readback). Invalidate overlapping paths again
+		// after old bytes are restored and before the old plugin is reactivated.
+		self::invalidate_runtime_caches( $runtime_php_files );
 		return self::restore_activation_state( $before );
 	}
 
