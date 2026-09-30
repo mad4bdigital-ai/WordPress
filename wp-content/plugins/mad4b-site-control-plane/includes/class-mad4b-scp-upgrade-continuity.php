@@ -473,6 +473,7 @@ final class MAD4B_SCP_Upgrade_Continuity {
 	}
 
 	private static function profile_reconnect_blockers() {
+		if ( class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective() ) return array();
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return array( 'site_profile_unavailable' );
 		$status = MAD4B_SCP_Site_Profile::status();
 		$blockers = isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? $status['blockers'] : array();
