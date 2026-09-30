@@ -30,6 +30,8 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	private static $rescue_tail_removed = false;
 	private static $rescue_pre_dispatch_removed = false;
 	private static $deferred_recovery_removed = false;
+	private static $protocol_core_rest_isolation_evaluated = false;
+	private static $protocol_core_rest_callbacks_removed = array();
 
 	public static function bootstrap() {
 		if ( self::$booted ) return;
@@ -38,6 +40,16 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		if ( ! self::$eligible ) return;
 
 		self::$current_request_requires_mcp = self::current_request_requires_mcp_runtime();
+
+		// Exact MAD4B MCP/OAuth protocol requests need the REST dispatcher and
+		// transport-specific routes, but not WordPress' full Core/settings route
+		// materialization. Remove only those two Core registrars request-locally
+		// before they execute; all REST filters and provider/plugin callbacks stay
+		// untouched.
+		if ( self::current_request_is_protocol_hotpath() ) {
+			add_action( 'rest_api_init', array( __CLASS__, 'isolate_protocol_core_rest_bootstrap' ), PHP_INT_MIN );
+		}
+
 		if ( self::$current_request_requires_mcp ) return;
 
 		// Enforce immediately during normal plugin loading, again after every
@@ -131,6 +143,21 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		$page = isset( $_GET['page'] ) ? wp_unslash( (string) $_GET['page'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		$tab = isset( $_GET['tab'] ) ? wp_unslash( (string) $_GET['tab'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		return self::passive_admin_route( $page, $tab );
+	}
+
+	public static function isolate_protocol_core_rest_bootstrap() {
+		if ( self::$protocol_core_rest_isolation_evaluated ) return;
+		self::$protocol_core_rest_isolation_evaluated = true;
+		if ( ! self::$eligible || ! self::current_request_is_protocol_hotpath() ) return;
+
+		foreach ( array( 'register_initial_settings', 'create_initial_rest_routes' ) as $callback ) {
+			$priority = has_action( 'rest_api_init', $callback );
+			if ( false === $priority ) continue;
+			if ( remove_action( 'rest_api_init', $callback, (int) $priority ) ) {
+				self::$protocol_core_rest_callbacks_removed[] = $callback;
+			}
+		}
+		self::$protocol_core_rest_callbacks_removed = array_values( array_unique( self::$protocol_core_rest_callbacks_removed ) );
 	}
 
 	public static function current_request_requires_mcp_runtime() {
@@ -271,6 +298,9 @@ final class MAD4B_SCP_MCP_Request_Scope {
 			'rescue_tail_removed_for_unrelated_request' => self::$rescue_tail_removed,
 			'rescue_pre_dispatch_removed_for_unrelated_request' => self::$rescue_pre_dispatch_removed,
 			'deferred_recovery_removed_for_unrelated_request' => self::$deferred_recovery_removed,
+			'protocol_core_rest_isolation_evaluated' => self::$protocol_core_rest_isolation_evaluated,
+			'protocol_core_rest_callbacks_removed' => self::$protocol_core_rest_callbacks_removed,
+			'protocol_core_rest_isolation_request_local_only' => true,
 			'production_changed' => false,
 			'provider_settings_changed' => false,
 			'wordpress_rest_routes_changed' => false,
