@@ -19,6 +19,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const BROWSER_ACCEPTANCE_ABILITY = 'mad4b/browser-acceptance-run';
 	const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';
 	const PERFORMANCE_RECONCILE_ABILITY = 'mad4b/admin-query-performance-reconcile';
+	const QUERY_MONITOR_ATTRIBUTION_ABILITY = 'mad4b/query-monitor-db-attribution-bootstrap';
 	const WORK_QUEUE_ABILITY = 'mad4b/remote-operation-work-queue';
 	const WORK_CLAIM_ABILITY = 'mad4b/remote-operation-work-claim';
 	const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';
@@ -33,6 +34,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	const BROWSER_ACCEPTANCE_CONFIRMATION = 'RUN BROWSER ACCEPTANCE';
 	const PERFORMANCE_CONFIRMATION = 'APPLY STAGING PERFORMANCE INDEXES';
 	const PERFORMANCE_RECONCILE_CONFIRMATION = 'RECONCILE STALE STAGING PERFORMANCE INDEXES';
+	const QUERY_MONITOR_ATTRIBUTION_CONFIRMATION = 'ENABLE STAGING QUERY MONITOR DB ATTRIBUTION';
 
 	private static $booted = false;
 	private static $running = array();
@@ -51,6 +53,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			self::BROWSER_ACCEPTANCE_ABILITY,
 			self::PERFORMANCE_INDEX_ABILITY,
 			self::PERFORMANCE_RECONCILE_ABILITY,
+			self::QUERY_MONITOR_ATTRIBUTION_ABILITY,
 			self::WORK_CLAIM_ABILITY,
 			self::WORK_COMPLETE_ABILITY,
 		);
@@ -185,6 +188,16 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'Finalize stale Staging performance maintenance only from independently observed index postconditions; never retries uncertain DDL automatically.',
 			self::operation_schema( self::PERFORMANCE_RECONCILE_CONFIRMATION ),
 			array( __CLASS__, 'reconcile_performance_indexes' ),
+			true
+		);
+
+		self::register_remote_operation(
+			self::QUERY_MONITOR_ATTRIBUTION_ABILITY,
+			'Enable Staging Query Monitor DB Attribution',
+			'Bootstrap only the bounded Query Monitor db.php attribution loader on exact Staging builds when no foreign database drop-in exists.',
+			self::operation_schema( self::QUERY_MONITOR_ATTRIBUTION_CONFIRMATION ),
+			array( __CLASS__, 'bootstrap_query_monitor_db_attribution' ),
+			true,
 			true
 		);
 
@@ -338,6 +351,21 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'remote_caller_role' => 'system',
 				'production_policy' => 'governed_source_policy',
 				'human_decision_required' => false,
+			),
+			'query_monitor_db_attribution_bootstrap' => array(
+				'feature_id' => 'live-acceptance-performance',
+				'capability_tags' => array( 'query-monitor', 'database', 'attribution', 'observability', 'bootstrap' ),
+				'provider' => 'query-monitor',
+				'status_ability' => 'mad4b/query-monitor-db-attribution-status',
+				'local_surface' => 'wp-admin:MAD4B/Diagnostics',
+				'remote_ability' => self::QUERY_MONITOR_ATTRIBUTION_ABILITY,
+				'authority_surface' => 'mad4b-enrollment',
+				'executor' => 'wordpress_native',
+				'remote_mode' => 'exact_staging_instrumentation_bootstrap',
+				'remote_caller_role' => 'operator',
+				'production_policy' => 'deny',
+				'human_decision_required' => false,
+				'chatgpt_direct_step_up' => true,
 			),
 			'admin_query_performance_indexes' => array(
 				'feature_id' => 'admin-query-performance',
@@ -1872,6 +1900,40 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'plan' => $plan,
 			'manual_interaction_required' => false,
 			'production_mutation' => false,
+		);
+	}
+
+	public static function bootstrap_query_monitor_db_attribution( $input ) {
+		if ( self::QUERY_MONITOR_ATTRIBUTION_CONFIRMATION !== ( isset( $input['confirmation'] ) ? (string) $input['confirmation'] : '' ) ) {
+			return new WP_Error( 'mad4b_qm_db_attribution_confirmation_required', 'Exact Query Monitor DB attribution confirmation is required.' );
+		}
+		$provenance = self::assert_exact_build( $input );
+		if ( is_wp_error( $provenance ) ) return $provenance;
+		if ( ! class_exists( 'MAD4B_SCP_Query_Monitor_Evidence_Bridge' )
+			|| ! method_exists( 'MAD4B_SCP_Query_Monitor_Evidence_Bridge', 'enable_db_attribution_explicit' ) ) {
+			return new WP_Error( 'mad4b_qm_db_attribution_service_unavailable', 'Query Monitor DB attribution bootstrap service is unavailable.' );
+		}
+		$result = MAD4B_SCP_Query_Monitor_Evidence_Bridge::enable_db_attribution_explicit();
+		if ( is_wp_error( $result ) ) return $result;
+		$created = ! empty( $result['bootstrap']['created'] );
+		$audit = self::audit( self::QUERY_MONITOR_ATTRIBUTION_ABILITY, array(
+			'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+			'attribution_state' => isset( $result['state'] ) ? sanitize_key( (string) $result['state'] ) : '',
+			'bootstrap_created' => $created,
+			'foreign_dropin_replaced' => false,
+		) );
+		if ( is_wp_error( $audit ) ) return $audit;
+		return array(
+			'contract' => 'mad4b.remote-query-monitor-db-attribution-bootstrap.v1',
+			'state' => isset( $result['state'] ) ? (string) $result['state'] : 'unknown',
+			'ready' => ! empty( $result['ready'] ),
+			'reload_required' => ! empty( $result['bootstrap']['reload_required'] ),
+			'bootstrap_created' => $created,
+			'attribution' => $result,
+			'mutation_performed' => $created,
+			'remote_operation' => true,
+			'production_mutation' => false,
+			'foreign_dropin_replaced' => false,
 		);
 	}
 
