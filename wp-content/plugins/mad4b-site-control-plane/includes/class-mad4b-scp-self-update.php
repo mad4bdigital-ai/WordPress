@@ -997,7 +997,13 @@ final class MAD4B_SCP_Self_Update {
 		return true;
 	}
 
-	private static function apply_verified_archive( $path, array $target, $channel, $plan_sha256, array $verified_archive = array() ) {
+	private static function apply_verified_archive( $path, array $target, $channel, $plan_sha256, array $verified_archive ) {
+		$runtime_php_files = isset( $verified_archive['runtime_php_files'] ) && is_array( $verified_archive['runtime_php_files'] )
+			? array_values( array_filter( array_map( 'strval', $verified_archive['runtime_php_files'] ) ) )
+			: array();
+		if ( empty( $runtime_php_files ) ) {
+			return new WP_Error( 'mad4b_self_update_verified_runtime_index_missing', 'Verified Control Plane archive is missing the bounded PHP runtime index.' );
+		}
 		$before = self::activation_state();
 		$backup = self::backup_current();
 		if ( is_wp_error( $backup ) ) return $backup;
@@ -1024,7 +1030,7 @@ final class MAD4B_SCP_Self_Update {
 			return new WP_Error( 'mad4b_self_update_install_failed', 'Control Plane installation failed and rollback was attempted.', array( 'rollback_ok' => ! is_wp_error( $rollback ) ) );
 		}
 
-		$runtime_cache = self::invalidate_runtime_caches( isset( $verified_archive['runtime_php_files'] ) && is_array( $verified_archive['runtime_php_files'] ) ? $verified_archive['runtime_php_files'] : array() );
+		$runtime_cache = self::invalidate_runtime_caches( $runtime_php_files );
 		$activation = self::restore_activation_state( $before );
 		$readback = is_wp_error( $activation ) ? $activation : self::verify_installed_identity( $target );
 		if ( is_wp_error( $readback ) ) {
