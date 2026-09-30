@@ -17,7 +17,7 @@ def require(text, marker, label):
         raise SystemExit(f"missing {label}: {marker}")
 
 for marker in [
-    "const CONTRACT = 'mad4b.connector-resilience.v1'",
+    "const CONTRACT = 'mad4b.connector-resilience.v2'",
     "const DEFAULT_READ_ATTEMPTS = 2",
     "const DEFAULT_REQUEST_BUDGET_MS = 12000",
     "public static function safe_read(",
@@ -32,6 +32,10 @@ for marker in [
     "public static function run_checks(",
     "public static function client_guidance()",
     "public static function classify_exception( Throwable $e )",
+    "'category' => 'runtime_restart'",
+    "'client_action' => 'retry_after_restart_grace'",
+    "'runtime_restart_honors_retry_after' => true",
+    "'runtime_restart_immediate_auto_retry_allowed' => false",
     "'category' => 'rate_limit'",
     "'category' => 'timeout'",
     "'category' => 'transport'",
@@ -40,7 +44,7 @@ for marker in [
     "'category' => 'contract_or_validation'",
     "'category' => 'request_budget'",
     "'client_action' => 'reduce_scope_then_retry_preflight'",
-    "'supported_error_categories' => array( 'rate_limit', 'timeout', 'session_terminated', 'transport', 'upstream_unavailable', 'authorization', 'contract_or_validation', 'request_budget', 'internal', 'unknown' )",
+    "'supported_error_categories' => array( 'runtime_restart', 'rate_limit', 'timeout', 'session_terminated', 'transport', 'upstream_unavailable', 'authorization', 'contract_or_validation', 'request_budget', 'internal', 'unknown' )",
     "const SESSION_TERMINATION_BUDGET = 2",
     "'category' => 'session_terminated'",
     "'client_action' => 'reconnect_snapshot_then_resume'",
@@ -264,7 +268,7 @@ for marker in [
 ]:
     require(abilities, marker, "durable enrollment mutation reconciliation")
 
-print("mad4b.connector-resilience.contract.v1: PASS")
+print("mad4b.connector-resilience.contract.v2: PASS")
 
 if "MAD4B_SCP_Staging_Write_Authority::persisted_status()" not in connection:
     raise SystemExit("compact connector preflight must use persisted authority evidence")
