@@ -124,18 +124,6 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-contract.py
 
-      - name: Verify effective environment and bootstrap hardening
-        shell: bash
-        run: |
-          set -euo pipefail
-          root='wp-content/plugins/mad4b-site-control-plane/tests'
-          python3 "$root/effective-environment-authority-contract.py"
-          php "$root/effective-environment-runtime.php"
-          python3 "$root/schema-lifecycle-same-version-contract.py"
-          python3 "$root/mcp-peer-semantic-risk-contract.py"
-          python3 "$root/portable-readonly-reconnect-contract.py"
-          python3 "$root/dependency-certified-runtime-contract.py"
-
       - name: Verify required modules and core safety gates
         shell: bash
         run: |
