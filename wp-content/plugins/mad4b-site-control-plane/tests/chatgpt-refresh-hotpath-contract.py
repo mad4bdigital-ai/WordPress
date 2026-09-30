@@ -294,30 +294,64 @@ for route in [
 ]:
     assert route in protocol_hotpath, route
 
-# Protocol REST isolation must remain narrowly scoped to the two WordPress Core
-# materializers. Provider/plugin callbacks and REST default filters are not part
-# of the pruning contract.
+# Protocol REST isolation is two-stage and request-local. Core materializers
+# are removed at the earliest priority; reviewed provider isolation gets the
+# same earliest priority so it can retain internal JetEngine MCP callbacks; the
+# ordinary-plugin fanout sweep runs one priority later. It may remove only
+# callbacks whose real source is provably under WP_PLUGIN_DIR, while preserving
+# the Control Plane, official mcp-adapter, Core/MU and unclassifiable callbacks.
 scope_bootstrap = request_scope.split("public static function bootstrap()", 1)[1].split("public static function enforce()", 1)[0]
 assert "self::current_request_is_protocol_hotpath()" in scope_bootstrap
 assert "isolate_protocol_core_rest_bootstrap" in scope_bootstrap
-protocol_core_isolation = request_scope.split("public static function isolate_protocol_core_rest_bootstrap()", 1)[1].split("public static function current_request_requires_mcp_runtime()", 1)[0]
+assert "isolate_protocol_plugin_rest_bootstrap" in scope_bootstrap
+assert "PHP_INT_MIN + 1" in scope_bootstrap
+
+protocol_core_isolation = request_scope.split("public static function isolate_protocol_core_rest_bootstrap()", 1)[1].split("public static function isolate_protocol_plugin_rest_bootstrap()", 1)[0]
 for callback in (
     "register_initial_settings",
     "create_initial_rest_routes",
 ):
     assert callback in protocol_core_isolation, callback
 assert "rest_api_default_filters" not in protocol_core_isolation
-for forbidden in (
-    "Jet_Engine",
-    "WP\\MCP\\Core\\McpAdapter",
-    "wp_filter['rest_api_init']->callbacks",
+
+protocol_plugin_isolation = request_scope.split("public static function isolate_protocol_plugin_rest_bootstrap()", 1)[1].split("private static function protocol_plugin_rest_callback_descriptor", 1)[0]
+for marker in (
+    "self::MAX_PROTOCOL_REST_CALLBACK_SCAN",
+    "$wp_filter['rest_api_init']->callbacks",
+    "self::protocol_plugin_rest_callback_descriptor( $callback )",
+    "remove_action( 'rest_api_init', $callback, (int) $priority )",
+    "protocol_plugin_rest_callbacks_removed_count",
+):
+    assert marker in protocol_plugin_isolation, marker
+
+protocol_plugin_descriptor = request_scope.split("private static function protocol_plugin_rest_callback_descriptor", 1)[1].split("public static function current_request_requires_mcp_runtime()", 1)[0]
+for marker in (
     "ReflectionFunction",
     "ReflectionMethod",
+    "class_exists( $class, false )",
+    "realpath( WP_PLUGIN_DIR )",
+    "wp_normalize_path",
+    "'mad4b-site-control-plane'",
+    "'mcp-adapter'",
 ):
-    assert forbidden not in protocol_core_isolation, forbidden
-assert "protocol_core_rest_isolation_request_local_only" in request_scope
+    assert marker in protocol_plugin_descriptor, marker
+for forbidden in (
+    "WPMU_PLUGIN_DIR",
+    "remove_all_actions",
+    "remove_all_filters",
+):
+    assert forbidden not in protocol_plugin_descriptor, forbidden
 
-print("mad4b.chatgpt-refresh-hotpath.v15: PASS")
+for marker in (
+    "protocol_core_rest_isolation_request_local_only",
+    "protocol_plugin_rest_isolation_request_local_only",
+    "protocol_plugin_rest_unknown_callbacks_preserved",
+    "protocol_plugin_rest_mu_plugin_callbacks_preserved",
+    "protocol_plugin_rest_scan_truncated",
+):
+    assert marker in request_scope, marker
+
+print("mad4b.chatgpt-refresh-hotpath.v16: PASS")
 
 # Post-update MU reconciliation must never execute filesystem mutation/audit work
 # before an MCP/OAuth protocol request can be served.
