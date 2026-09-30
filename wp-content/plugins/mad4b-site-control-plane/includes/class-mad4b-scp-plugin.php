@@ -306,16 +306,13 @@ final class MAD4B_SCP_Plugin {
 
 	public static function prime_admin_mcp_runtime() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
-		// REST/Abilities initialization is a deep diagnostic. The platform-wide
-		// provider diagnostic policy owns the only request-serving surface allowed
-		// to materialize REST; provider endpoints are still never internally dispatched.
-		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' ) ) {
-			if ( ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed() ) return;
-		} elseif ( 'mad4b-control-plane-connection' !== $page || 'endpoints' !== $tab ) {
-			return;
-		}
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
+		if ( 'mad4b-control-plane-connection' !== $page || 'endpoints' !== $tab ) return;
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' )
+			|| ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed() ) return;
+		$nonce = isset( $_POST['mad4b_connection_deep_nonce'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['mad4b_connection_deep_nonce'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- explicit diagnostic gate.
+		if ( '' === $nonce || ! wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' ) ) return;
 		if ( ! function_exists( 'rest_get_server' ) ) return;
 		try {
 			rest_get_server();
