@@ -23,6 +23,7 @@ assert "legacy_expiry_grace_applied" in lease
 assert "'legacy_only_fence' =>" in lease
 assert "'fence_source' =>" in lease
 assert "'fence_token_conflict' =>" in lease
+assert "'active_fence_count' => count( $active_fences )" in lease
 assert "public static function refresh(" in lease
 assert "'fence_token' => $token" in lease
 assert "mad4b_scp_runtime_convergence_lock_v1" in lease
