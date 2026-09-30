@@ -1350,14 +1350,51 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          package_run_id="$(
-            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/mad4b-control-plane-package.yml/runs?branch=master&event=push&status=success&per_page=50" \
-              --jq ".workflow_runs[]
-                | select(.head_sha == \"$SOURCE_SHA\")
-                | select(.head_branch == \"master\")
-                | select(.event == \"push\")
-                | .id" | head -n1
-          )"
+          package_run_id=""
+          for attempt in $(seq 1 36); do
+            package_runs="$(
+              gh api "repos/$GITHUB_REPOSITORY/actions/workflows/mad4b-control-plane-package.yml/runs?branch=master&event=push&per_page=100"
+            )"
+            package_run="$(
+              jq -c --arg sha "$SOURCE_SHA" '
+                [
+                  .workflow_runs[]
+                  | select(.head_sha == $sha)
+                  | select(.head_branch == "master")
+                  | select(.event == "push")
+                ]
+                | sort_by(.id)
+                | last // empty
+              ' <<<"$package_runs"
+            )"
+
+            if [ -z "$package_run" ]; then
+              echo "Package run for exact master SHA is not visible yet (attempt $attempt/36); retrying."
+            else
+              package_status="$(jq -r '.status // ""' <<<"$package_run")"
+              package_conclusion="$(jq -r '.conclusion // ""' <<<"$package_run")"
+              candidate_run_id="$(jq -r '.id // ""' <<<"$package_run")"
+
+              if [ "$package_status" = "completed" ] && [ "$package_conclusion" = "success" ]; then
+                package_run_id="$candidate_run_id"
+                break
+              fi
+
+              if [ "$package_status" = "completed" ]; then
+                echo "Exact Control Plane package run reached a non-success terminal state: id=$candidate_run_id conclusion=$package_conclusion" >&2
+                exit 1
+              fi
+
+              echo "Exact Control Plane package run is $package_status (id=$candidate_run_id, attempt $attempt/36); retrying."
+            fi
+
+            if [ "$attempt" -eq 36 ]; then
+              echo "Timed out waiting for the exact successful Control Plane package run to become visible." >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
           test -n "$package_run_id"
           package_run="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$package_run_id")"
           test "$(jq -r '.head_sha' <<<"$package_run")" = "$SOURCE_SHA"
