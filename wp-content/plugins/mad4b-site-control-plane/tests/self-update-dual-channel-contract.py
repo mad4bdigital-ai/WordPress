@@ -205,9 +205,10 @@ for marker in (
 # Verified archive evidence is carried through the exact mutation boundary so
 # OPcache invalidation can use the trusted ZIP member index without a post-install tree walk.
 for marker in (
-    "array $verified_archive = array()",
+    "array $verified_archive",
     "isset( $verified_archive['runtime_php_files'] )",
-    "invalidate_runtime_caches( isset( $verified_archive['runtime_php_files'] )",
+    "mad4b_self_update_verified_runtime_index_missing",
+    "invalidate_runtime_caches( $runtime_php_files )",
 ):
     if marker not in self_update:
         raise SystemExit(f"verified archive runtime index is not propagated through managed apply: {marker}")
