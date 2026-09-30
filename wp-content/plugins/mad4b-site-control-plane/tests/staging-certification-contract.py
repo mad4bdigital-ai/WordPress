@@ -305,6 +305,7 @@ runpy.run_path(str(ROOT / "tests/universal-wordpress-operations-contract.py"), r
 for regression_contract in (
     "effective-environment-authority-contract.py",
     "schema-lifecycle-same-version-contract.py",
+    "post-update-bottleneck-hardening-contract.py",
     "mcp-peer-semantic-risk-contract.py",
     "portable-readonly-reconnect-contract.py",
     "dependency-certified-runtime-contract.py",
