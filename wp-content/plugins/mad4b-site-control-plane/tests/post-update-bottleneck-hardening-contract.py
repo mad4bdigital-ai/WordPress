@@ -36,6 +36,8 @@ assert "$not_before = self::maintenance_not_before();" in runtime
 assert "max( time() + 5, absint( $not_before ), self::maintenance_not_before() )" in runtime
 assert "'self_update_checkpoint_preserved'" in runtime
 assert "Backward-compatible barrier" in runtime
+assert "pending_manual_resume" in runtime
+assert "return false === $stamp ? 0" in runtime
 assert "mad4b_scp_runtime_convergence_lock_v1" in runtime
 assert "mad4b_scp_schema_lifecycle_lock_v1" in runtime
 assert "cross-version runtime maintenance fence" in runtime
