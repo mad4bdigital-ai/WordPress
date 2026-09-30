@@ -472,6 +472,22 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<div class="notice notice-success inline"><p><strong>' . esc_html__( 'Google is connected.', 'mad4b-site-control-plane' ) . '</strong>';
 			if ( ! empty( $connection['account_email'] ) ) echo ' · ' . esc_html( $connection['account_email'] );
 			echo '</p></div>';
+
+			if ( ! empty( $grants['incremental_consent_required'] ) ) {
+				$pending_scope_count = isset( $grants['missing_scope_count'] ) ? (int) $grants['missing_scope_count'] : 0;
+				echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Additional Google permission is ready to authorize.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( sprintf( _n( '%d newly selected scope still needs Google consent. Existing granted access stays active.', '%d newly selected scopes still need Google consent. Existing granted access stays active.', max( 1, $pending_scope_count ), 'mad4b-site-control-plane' ), max( 1, $pending_scope_count ) ) ) . '</p></div>';
+				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="mad4b-google-incremental-consent-form">';
+				wp_nonce_field( self::ACTION_CONNECT_GOOGLE );
+				echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_CONNECT_GOOGLE ) . '">';
+				echo '<input type="hidden" name="access_mode" value="' . esc_attr( $managed_access_mode ) . '">';
+				if ( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $auth_mode ) echo '<input type="hidden" name="managed_signin" value="1">';
+				echo '<button type="submit" class="button button-primary">' . esc_html__( 'Authorize added Google access', 'mad4b-site-control-plane' ) . '</button>';
+				echo '</form>';
+				echo '<p class="description">' . esc_html__( 'This opens incremental Google consent only for the expanded governed scope set. Previously granted scopes are preserved.', 'mad4b-site-control-plane' ) . '</p>';
+			}
+			if ( ! empty( $grants['scope_reduction_requires_revoke'] ) ) {
+				echo '<div class="notice notice-info inline"><p><strong>' . esc_html__( 'A narrower Google scope selection needs revoke first.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Google grants cannot be proven reduced in place. Disconnect & Revoke, then reconnect with the narrower selection.', 'mad4b-site-control-plane' ) . '</p></div>';
+			}
 		} elseif ( $managed_ready ) {
 			echo '<p>' . esc_html__( 'Use your Google account. MAD4B handles the OAuth application centrally, so this WordPress site does not need a Google Client ID or Client Secret.', 'mad4b-site-control-plane' ) . '</p>';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="mad4b-google-primary-signin-form">';
