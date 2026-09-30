@@ -346,17 +346,30 @@ for forbidden in (
 
 external_isolation = request_scope.split("public static function isolate_protocol_external_rest_bootstrap()", 1)[1].split("public static function current_request_mcp_server_id()", 1)[0]
 for marker in (
+    "MAX_PROTOCOL_REST_CALLBACK_SCAN",
+    "MAX_PROTOCOL_REST_CALLBACK_EVIDENCE",
+    "protocol_external_rest_callback_descriptor",
+    "class_exists( $class, false )",
     "WP_PLUGIN_DIR",
-    "mad4b-site-control-plane/",
-    "mcp-adapter/",
+    "mad4b-site-control-plane",
+    "mcp-adapter",
     "ReflectionFunction",
     "ReflectionMethod",
     "remove_action( 'rest_api_init'",
-    "external_plugin",
+    "source_plugin",
+    "protocol_external_rest_scan_truncated",
 ):
-    assert marker in external_isolation, marker
+    assert marker in external_isolation or marker in request_scope, marker
 assert "return null;" in external_isolation  # unresolved provenance fails open
-assert "protocol_external_rest_isolation_request_local_only" in request_scope
+assert "'source' => $relative" not in external_isolation
+assert "method_exists( $class, $method )" not in external_isolation
+for marker in (
+    "protocol_external_rest_isolation_request_local_only",
+    "protocol_external_rest_unknown_callbacks_preserved",
+    "protocol_external_rest_mu_plugin_callbacks_preserved",
+    "protocol_external_rest_scan_limit",
+):
+    assert marker in request_scope, marker
 
 # Compact protocol planes must not instantiate every provider adapter merely to
 # create the addressed server. Provider-backed read/content/write/admin retain
