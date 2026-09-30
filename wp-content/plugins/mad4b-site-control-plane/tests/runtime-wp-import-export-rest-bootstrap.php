@@ -13,7 +13,9 @@ if ( ! is_string( $root ) || '' === trim( $root ) ) {
 $root = rtrim( $root, "/\\" );
 $_SERVER['HTTP_HOST'] = 'bulk-io.test';
 $_SERVER['REQUEST_METHOD'] = 'GET';
-$_SERVER['REQUEST_URI'] = '/wp-json/mad4b-ci/wp-import-export';
+// This is a MAD4B-owned read bootstrap. Unrelated provider REST is intentionally
+// zero-touch and must not load the adapter registry at all.
+$_SERVER['REQUEST_URI'] = '/wp-json/mad4b/v1/ci/wp-import-export';
 require $root . '/wp-load.php';
 if ( ! defined( 'REST_REQUEST' ) ) define( 'REST_REQUEST', true );
 
