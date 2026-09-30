@@ -108,6 +108,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 	private static function desired_schema() {
 		return self::schema( array(
 			'raw_sql_breakglass_enabled' => array( 'type' => 'boolean' ),
+			'raw_sql_write_enabled' => array( 'type' => 'boolean' ),
+			'raw_sql_ddl_enabled' => array( 'type' => 'boolean' ),
 			'production_mutation_enabled' => array( 'type' => 'boolean' ),
 			'production_auto_enable' => array( 'type' => 'boolean' ),
 		) );
@@ -127,7 +129,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 		return self::schema(
 			$properties,
 			array(
-				'raw_sql_breakglass_enabled', 'production_mutation_enabled', 'production_auto_enable',
+				'raw_sql_breakglass_enabled', 'raw_sql_write_enabled', 'raw_sql_ddl_enabled',
+				'production_mutation_enabled', 'production_auto_enable',
 				'expected_plan_sha256', 'expected_policy_revision', 'expected_policy_digest',
 				'expected_site_uuid', 'expected_profile_revision', 'expected_profile_digest',
 				'expected_source_commit_sha', 'expected_build_fingerprint', 'confirmation',
@@ -178,6 +181,16 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 		return ! empty( $status['raw_sql_breakglass_enabled'] );
 	}
 
+	public static function raw_sql_write_enabled() {
+		$status = self::effective_status();
+		return ! empty( $status['raw_sql_write_enabled'] );
+	}
+
+	public static function raw_sql_ddl_enabled() {
+		$status = self::effective_status();
+		return ! empty( $status['raw_sql_ddl_enabled'] );
+	}
+
 	public static function production_mutation_enabled() {
 		$status = self::effective_status();
 		return ! empty( $status['production_mutation_enabled'] );
@@ -218,6 +231,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 		$environment = self::environment();
 		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) ) $blockers[] = 'unsupported_environment';
 		if ( ( $desired['production_mutation_enabled'] || $desired['production_auto_enable'] ) && 'production' !== $environment ) $blockers[] = 'production_environment_required';
+		if ( $desired['raw_sql_write_enabled'] && ! $desired['raw_sql_breakglass_enabled'] ) $blockers[] = 'raw_sql_write_requires_breakglass';
+		if ( $desired['raw_sql_ddl_enabled'] && ! $desired['raw_sql_write_enabled'] ) $blockers[] = 'raw_sql_ddl_requires_write';
 		if ( $desired['production_auto_enable'] && ! $desired['production_mutation_enabled'] ) $blockers[] = 'production_auto_enable_requires_mutation';
 		if ( 'production' === $environment && $desired['production_mutation_enabled'] && ! MAD4B_SCP_Site_Profile::write_enabled() ) $blockers[] = 'production_profile_write_confirmation_required';
 		if ( 'production' === $environment && $desired['production_mutation_enabled']
@@ -230,6 +245,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 		$before = self::record_flags( $record );
 		$effective_before = self::effective_status( $record );
 		$enabling = ( $desired['raw_sql_breakglass_enabled'] && empty( $effective_before['raw_sql_breakglass_enabled'] ) )
+			|| ( $desired['raw_sql_write_enabled'] && empty( $effective_before['raw_sql_write_enabled'] ) )
+			|| ( $desired['raw_sql_ddl_enabled'] && empty( $effective_before['raw_sql_ddl_enabled'] ) )
 			|| ( $desired['production_mutation_enabled'] && empty( $effective_before['production_mutation_enabled'] ) )
 			|| ( $desired['production_auto_enable'] && empty( $effective_before['production_auto_enable'] ) );
 		$confirmation = $enabling ? self::CONFIRM_ENABLE : self::CONFIRM_UPDATE;
@@ -248,6 +265,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			'before' => $before,
 			'effective_before' => array(
 				'raw_sql_breakglass_enabled' => ! empty( $effective_before['raw_sql_breakglass_enabled'] ),
+				'raw_sql_write_enabled' => ! empty( $effective_before['raw_sql_write_enabled'] ),
+				'raw_sql_ddl_enabled' => ! empty( $effective_before['raw_sql_ddl_enabled'] ),
 				'production_mutation_enabled' => ! empty( $effective_before['production_mutation_enabled'] ),
 				'production_auto_enable' => ! empty( $effective_before['production_auto_enable'] ),
 			),
@@ -257,6 +276,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			'ready_to_apply' => empty( $blockers ),
 			'production_mutation_requested' => (bool) $desired['production_mutation_enabled'],
 			'raw_sql_breakglass_requested' => (bool) $desired['raw_sql_breakglass_enabled'],
+			'raw_sql_write_requested' => (bool) $desired['raw_sql_write_enabled'],
+			'raw_sql_ddl_requested' => (bool) $desired['raw_sql_ddl_enabled'],
 			'database_authoritative' => true,
 		);
 		$plan['plan_sha256'] = self::plan_sha256( $plan );
@@ -278,6 +299,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			'requested' => $plan['after'],
 			'exact_apply' => array(
 				'raw_sql_breakglass_enabled' => (bool) $plan['after']['raw_sql_breakglass_enabled'],
+				'raw_sql_write_enabled' => (bool) $plan['after']['raw_sql_write_enabled'],
+				'raw_sql_ddl_enabled' => (bool) $plan['after']['raw_sql_ddl_enabled'],
 				'production_mutation_enabled' => (bool) $plan['after']['production_mutation_enabled'],
 				'production_auto_enable' => (bool) $plan['after']['production_auto_enable'],
 				'expected_plan_sha256' => $plan['plan_sha256'],
@@ -327,6 +350,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			'profile_revision' => (int) $plan['site_profile_revision'],
 			'profile_digest' => $plan['site_profile_digest'],
 			'raw_sql_breakglass_enabled' => (bool) $plan['after']['raw_sql_breakglass_enabled'],
+			'raw_sql_write_enabled' => (bool) $plan['after']['raw_sql_write_enabled'],
+			'raw_sql_ddl_enabled' => (bool) $plan['after']['raw_sql_ddl_enabled'],
 			'production_mutation_enabled' => (bool) $plan['after']['production_mutation_enabled'],
 			'production_auto_enable' => (bool) $plan['after']['production_auto_enable'],
 			'updated_at' => gmdate( 'c' ),
@@ -345,6 +370,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			'source_commit_sha' => $plan['source_commit_sha'],
 			'build_fingerprint' => $plan['build_fingerprint'],
 			'raw_sql_breakglass_enabled' => $next['raw_sql_breakglass_enabled'],
+			'raw_sql_write_enabled' => $next['raw_sql_write_enabled'],
+			'raw_sql_ddl_enabled' => $next['raw_sql_ddl_enabled'],
 			'production_mutation_enabled' => $next['production_mutation_enabled'],
 			'production_auto_enable' => $next['production_auto_enable'],
 			'database_authoritative' => true,
@@ -365,6 +392,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			'revision' => (int) $next['revision'],
 			'policy_digest' => self::record_digest( $next ),
 			'raw_sql_breakglass_enabled' => ! empty( $after['raw_sql_breakglass_enabled'] ),
+			'raw_sql_write_enabled' => ! empty( $after['raw_sql_write_enabled'] ),
+			'raw_sql_ddl_enabled' => ! empty( $after['raw_sql_ddl_enabled'] ),
 			'production_mutation_enabled' => ! empty( $after['production_mutation_enabled'] ),
 			'production_auto_enable' => ! empty( $after['production_auto_enable'] ),
 			'database_authoritative' => true,
@@ -406,6 +435,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			'profile_revision' => self::profile_revision(),
 			'profile_digest' => self::profile_digest(),
 			'raw_sql_breakglass_enabled' => false,
+			'raw_sql_write_enabled' => false,
+			'raw_sql_ddl_enabled' => false,
 			'production_mutation_enabled' => false,
 			'production_auto_enable' => false,
 			'updated_at' => '',
@@ -421,7 +452,7 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 		$record['profile_revision'] = max( 0, (int) $record['profile_revision'] );
 		$record['site_uuid'] = strtolower( trim( (string) $record['site_uuid'] ) );
 		$record['profile_digest'] = strtolower( trim( (string) $record['profile_digest'] ) );
-		foreach ( array( 'raw_sql_breakglass_enabled', 'production_mutation_enabled', 'production_auto_enable' ) as $key ) $record[ $key ] = ! empty( $record[ $key ] );
+		foreach ( array( 'raw_sql_breakglass_enabled', 'raw_sql_write_enabled', 'raw_sql_ddl_enabled', 'production_mutation_enabled', 'production_auto_enable' ) as $key ) $record[ $key ] = ! empty( $record[ $key ] );
 		$record['updated_at'] = (string) $record['updated_at'];
 		return $record;
 	}
@@ -445,18 +476,24 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			&& $profile_write_enabled
 			&& $production_oauth_enabled;
 		$raw = $binding_match && ! empty( $record['raw_sql_breakglass_enabled'] ) && ( 'production' !== $environment || $production );
+		$raw_write = $raw && ! empty( $record['raw_sql_write_enabled'] );
+		$raw_ddl = $raw_write && ! empty( $record['raw_sql_ddl_enabled'] );
 		$auto = $production && ! empty( $record['production_auto_enable'] );
 		$blockers = array();
-		if ( ( ! empty( $record['raw_sql_breakglass_enabled'] ) || ! empty( $record['production_mutation_enabled'] ) || ! empty( $record['production_auto_enable'] ) ) && ! $binding_match ) $blockers[] = 'runtime_gate_profile_binding_stale';
+		if ( ( ! empty( $record['raw_sql_breakglass_enabled'] ) || ! empty( $record['raw_sql_write_enabled'] ) || ! empty( $record['raw_sql_ddl_enabled'] ) || ! empty( $record['production_mutation_enabled'] ) || ! empty( $record['production_auto_enable'] ) ) && ! $binding_match ) $blockers[] = 'runtime_gate_profile_binding_stale';
 		if ( ! empty( $record['production_mutation_enabled'] ) && 'production' !== $environment ) $blockers[] = 'production_environment_required';
 		if ( 'production' === $environment && ! empty( $record['production_mutation_enabled'] ) && ! $profile_write_enabled ) $blockers[] = 'production_profile_write_confirmation_required';
 		if ( 'production' === $environment && ! empty( $record['production_mutation_enabled'] ) && ! $production_oauth_enabled ) $blockers[] = 'production_oauth_opt_in_required';
 		if ( 'production' === $environment && ! empty( $record['raw_sql_breakglass_enabled'] ) && ! $production ) $blockers[] = 'production_breakglass_requires_effective_mutation';
+		if ( ! empty( $record['raw_sql_write_enabled'] ) && empty( $record['raw_sql_breakglass_enabled'] ) ) $blockers[] = 'raw_sql_write_requires_breakglass';
+		if ( ! empty( $record['raw_sql_ddl_enabled'] ) && empty( $record['raw_sql_write_enabled'] ) ) $blockers[] = 'raw_sql_ddl_requires_write';
 		if ( ! empty( $record['production_auto_enable'] ) && empty( $record['production_mutation_enabled'] ) ) $blockers[] = 'production_auto_enable_requires_mutation';
 		return array(
 			'profile_binding_match' => $binding_match,
 			'production_oauth_opt_in_effective' => (bool) $production_oauth_enabled,
 			'raw_sql_breakglass_enabled' => $raw,
+			'raw_sql_write_enabled' => $raw_write,
+			'raw_sql_ddl_enabled' => $raw_ddl,
 			'production_mutation_enabled' => $production,
 			'production_auto_enable' => $auto,
 			'blockers' => array_values( array_unique( $blockers ) ),
@@ -467,6 +504,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 	private static function record_flags( array $record ) {
 		return array(
 			'raw_sql_breakglass_enabled' => ! empty( $record['raw_sql_breakglass_enabled'] ),
+			'raw_sql_write_enabled' => ! empty( $record['raw_sql_write_enabled'] ),
+			'raw_sql_ddl_enabled' => ! empty( $record['raw_sql_ddl_enabled'] ),
 			'production_mutation_enabled' => ! empty( $record['production_mutation_enabled'] ),
 			'production_auto_enable' => ! empty( $record['production_auto_enable'] ),
 		);
@@ -519,7 +558,7 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 		}
 		if ( (int) $plan['policy_revision'] !== (int) ( isset( $input['expected_policy_revision'] ) ? $input['expected_policy_revision'] : -1 ) ) return new WP_Error( 'mad4b_runtime_gates_plan_stale', 'Runtime gate policy revision changed before apply.', array( 'field' => 'policy_revision' ) );
 		if ( (int) $plan['site_profile_revision'] !== (int) ( isset( $input['expected_profile_revision'] ) ? $input['expected_profile_revision'] : -1 ) ) return new WP_Error( 'mad4b_runtime_gates_plan_stale', 'Site Profile revision changed before apply.', array( 'field' => 'site_profile_revision' ) );
-		foreach ( array( 'raw_sql_breakglass_enabled', 'production_mutation_enabled', 'production_auto_enable' ) as $key ) {
+		foreach ( array( 'raw_sql_breakglass_enabled', 'raw_sql_write_enabled', 'raw_sql_ddl_enabled', 'production_mutation_enabled', 'production_auto_enable' ) as $key ) {
 			if ( ! array_key_exists( $key, $input ) || (bool) $plan['after'][ $key ] !== (bool) $input[ $key ] ) return new WP_Error( 'mad4b_runtime_gates_plan_stale', 'Requested runtime gate state changed before apply.', array( 'field' => $key ) );
 		}
 		return true;
