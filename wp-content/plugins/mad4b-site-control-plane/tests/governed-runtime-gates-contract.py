@@ -48,7 +48,7 @@ required_gates = [
     "self::restore_exact( $before_exists, $before_raw, $next )",
     "option_value = %s WHERE option_name = %s AND option_value = %s",
     "MAD4B_SCP_Audit::record( 'mad4b/runtime-gates-applied'",
-    "self::restore( $before_exists, $before )",
+    "self::restore_exact( $before_exists, $before_raw, $next )",
     "MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE",
     "MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID",
 ]
