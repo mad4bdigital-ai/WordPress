@@ -106,6 +106,103 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] 
 	),
 );
 
+// Unchanged provider versions must reuse the previously normalized governed
+// asset instead of forcing another provider download/normalization round-trip.
+$reuse_source_id = str_repeat( 'd', 64 );
+$reuse_file_id = 'reuse-file-fixture';
+$reuse_asset_id = hash( 'sha256', $reuse_source_id . '|' . $reuse_file_id );
+$reuse_version = '2026-09-29T18:00:00Z';
+$reuse_hash = hash( 'sha256', 'previous normalized provider content' );
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ][ $reuse_source_id ] = array(
+	'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
+	'source_id' => $reuse_source_id,
+	'site_uuid' => $site_uuid,
+	'brand_id' => 'brand-fixture',
+	'provider' => 'google_drive',
+	'mode' => 'governed',
+	'external_root_id' => 'reuse-folder-fixture',
+	'label' => 'Reuse Fixture',
+	'task_scope' => '',
+	'write_policy' => 'read_only',
+	'recursive' => true,
+	'status' => 'ready',
+	'last_scan_complete' => true,
+	'last_scan_generation' => str_repeat( '7', 64 ),
+	'last_complete_scan_generation' => str_repeat( '7', 64 ),
+	'last_complete_scan_at' => gmdate( 'c' ),
+	'last_scan_truncation_reasons' => array(),
+	'last_synced_at' => gmdate( 'c' ),
+	'asset_count' => 1,
+);
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $reuse_asset_id ] = array(
+	'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
+	'asset_id' => $reuse_asset_id,
+	'site_uuid' => $site_uuid,
+	'brand_id' => 'brand-fixture',
+	'source_id' => $reuse_source_id,
+	'source_mode' => 'governed',
+	'provider' => 'google_drive',
+	'file_id' => $reuse_file_id,
+	'parent_folder_id' => 'reuse-folder-fixture',
+	'title' => 'Reusable Brand Context',
+	'path' => 'Reuse Fixture/Reusable Brand Context',
+	'mime_type' => 'text/plain',
+	'version' => $reuse_version,
+	'content_hash' => $reuse_hash,
+	'content_complete' => true,
+	'content_bytes' => 36,
+	'content_available' => true,
+	'content_excerpt' => 'previous normalized provider content',
+	'category' => 'brand_strategy',
+	'classification_confidence' => 1.0,
+	'classification_source' => 'human',
+	'authority_class' => 'brand_authority',
+	'required' => true,
+	'priority' => 100,
+	'reviewed_by' => 1,
+	'reviewed_at' => gmdate( 'c' ),
+	'review_status' => 'approved',
+	'reviewed_content_hash' => $reuse_hash,
+	'review_decision' => 'approve',
+	'review_note' => 'Preserve exact review on unchanged provider version.',
+	'status' => 'ready',
+);
+$reuse_result = MAD4B_SCP_Context_Authority::replace_source_assets(
+	$reuse_source_id,
+	array(
+		array(
+			'file_id' => $reuse_file_id,
+			'parent_folder_id' => 'reuse-folder-fixture',
+			'title' => 'Reusable Brand Context',
+			'path' => 'Reuse Fixture/Reusable Brand Context',
+			'mimeType' => 'text/plain',
+			'modifiedTime' => $reuse_version,
+			'content_hash' => $reuse_hash,
+			'content_complete' => true,
+			'content_bytes' => 36,
+			'normalization_status' => 'reused',
+			'normalization_reason' => 'unchanged_provider_version',
+			'reuse_existing' => true,
+		),
+	),
+	array(
+		'complete' => true,
+		'scan_generation' => str_repeat( '8', 64 ),
+		'started_at' => gmdate( 'c' ),
+		'completed_at' => gmdate( 'c' ),
+		'truncation_reasons' => array(),
+	)
+);
+mad4b_scan_assert( ! is_wp_error( $reuse_result ), 'Unchanged provider asset reuse must commit.', $reuse_result );
+mad4b_scan_assert( 1 === (int) $reuse_result['reused_asset_count'], 'Reuse result must expose exactly one reused asset.', $reuse_result );
+$reused_assets = MAD4B_SCP_Context_Authority::assets();
+mad4b_scan_assert( isset( $reused_assets[ $reuse_asset_id ] ), 'Reused asset must remain registered.', $reused_assets );
+mad4b_scan_assert( $reuse_hash === $reused_assets[ $reuse_asset_id ]['content_hash'], 'Reused asset must preserve exact content hash.', $reused_assets[ $reuse_asset_id ] );
+mad4b_scan_assert( 'approved' === $reused_assets[ $reuse_asset_id ]['review_status'], 'Reused asset must preserve exact review evidence.', $reused_assets[ $reuse_asset_id ] );
+mad4b_scan_assert( 'reused' === $reused_assets[ $reuse_asset_id ]['normalization_status'], 'Reused asset must expose reuse normalization state.', $reused_assets[ $reuse_asset_id ] );
+unset( $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $reuse_asset_id ] );
+unset( $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ][ $reuse_source_id ] );
+
 $partial = MAD4B_SCP_Context_Authority::replace_source_assets(
 	$source_id,
 	array(),
