@@ -136,7 +136,7 @@ for marker in (
         raise SystemExit(f"bootstrap self-update pre-mutation revalidation invariant missing: {marker}")
 verify_index = native_apply_body.find("$verified = self::verify_archive( $tmp, $manifest );")
 recheck_index = native_apply_body.find("$bootstrap_access = self::can_bootstrap_native_apply( $input );")
-apply_index = native_apply_body.find("$result = self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected );")
+apply_index = native_apply_body.find("$result = self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected, $verified );")
 if min(verify_index, recheck_index, apply_index) < 0 or not (verify_index < recheck_index < apply_index):
     raise SystemExit("bootstrap authority must be revalidated after archive verification and immediately before filesystem mutation")
 bootstrap_apply_body = self_update.split("public static function bootstrap_native_apply", 1)[1].split("private static function is_control_plane_plugin_file", 1)[0]
@@ -196,11 +196,21 @@ for marker in (
     "'limit_response_size' => self::MAX_UPLOAD_BYTES + 1",
     "self::temp_archive_path()",
     "self::verify_archive( $tmp, $manifest )",
-    "self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected )",
+    "self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected, $verified )",
     "'governed_native_release_pull' === (string) $channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT",
 ):
     if marker not in self_update:
         raise SystemExit(f"governed native release pull invariant missing: {marker}")
+
+# Verified archive evidence is carried through the exact mutation boundary so
+# OPcache invalidation can use the trusted ZIP member index without a post-install tree walk.
+for marker in (
+    "array $verified_archive = array()",
+    "isset( $verified_archive['runtime_php_files'] )",
+    "invalidate_runtime_caches( isset( $verified_archive['runtime_php_files'] )",
+):
+    if marker not in self_update:
+        raise SystemExit(f"verified archive runtime index is not propagated through managed apply: {marker}")
 
 # Remote upload remains bounded file input only; no caller URL/path input is accepted.
 plan_schema = self_update.split("private static function plan_schema()", 1)[1].split("private static function apply_schema()", 1)[0]
