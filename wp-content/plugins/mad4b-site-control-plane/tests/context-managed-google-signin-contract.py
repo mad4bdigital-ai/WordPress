@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 drive = (ROOT / "includes/class-mad4b-scp-google-drive-context.php").read_text(encoding="utf-8")
 ui = (ROOT / "includes/class-mad4b-scp-context-admin-ui.php").read_text(encoding="utf-8")
+live_truth = (ROOT / "includes/class-mad4b-scp-live-truth.php").read_text(encoding="utf-8")
 
 def require(text: str, needle: str, label: str) -> None:
     assert needle in text, f"missing {label}: {needle}"
@@ -67,5 +68,9 @@ require(drive, "Recovery path only", "cache-wide flush recovery-only path")
 require(ui, "mad4b-google-incremental-consent-form", "incremental consent CTA form")
 require(ui, "Authorize added Google access", "incremental consent CTA label")
 require(ui, "Existing granted access stays active", "incremental consent continuity message")
+require(live_truth, "private static $request_authority_status = null;", "request-local authority truth memo")
+require(live_truth, "public static function request_cached_authority_status()", "request-local authority truth API")
+require(live_truth, "self::request_cached_authority_status();", "operator recovery reuses request-local authority truth")
+require(ui, "MAD4B_SCP_Live_Truth::request_cached_authority_status()", "Google admin reuses request-local authority truth")
 
 print("MAD4B natural Managed Google Sign-In contract PASS")
