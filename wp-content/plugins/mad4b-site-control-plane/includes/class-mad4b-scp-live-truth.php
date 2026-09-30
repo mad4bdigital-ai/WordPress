@@ -80,7 +80,7 @@ final class MAD4B_SCP_Live_Truth {
 
 	public static function current_authority_status() {
 		$profile_available = class_exists( 'MAD4B_SCP_Site_Profile' );
-		$environment = $profile_available ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( $profile_available ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) );
 		$origin = $profile_available ? MAD4B_SCP_Site_Profile::current_origin() : ( function_exists( 'home_url' ) ? untrailingslashit( (string) home_url( '/' ) ) : '' );
 		$parts = '' !== $origin && function_exists( 'wp_parse_url' ) ? wp_parse_url( $origin ) : parse_url( $origin );
 		$host = is_array( $parts ) && ! empty( $parts['host'] ) ? strtolower( rtrim( (string) $parts['host'], '.' ) ) : '';
