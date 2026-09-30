@@ -33,13 +33,24 @@ final class MAD4B_SCP_Runtime_Convergence {
 
 	public static function maintenance_not_before() {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
-		return is_array( $checkpoint ) && isset( $checkpoint['resume_not_before'] ) ? absint( $checkpoint['resume_not_before'] ) : 0;
+		if ( ! is_array( $checkpoint ) ) return 0;
+		$explicit = isset( $checkpoint['resume_not_before'] ) ? absint( $checkpoint['resume_not_before'] ) : 0;
+		if ( $explicit > 0 ) return $explicit;
+		$source = isset( $checkpoint['source'] ) ? sanitize_key( (string) $checkpoint['source'] ) : '';
+		$state = isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
+		if ( 'self_update' !== $source || ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true ) ) return 0;
+		// Backward-compatible barrier: the update request runs the previously loaded
+		// plugin code. Older builds therefore cannot persist resume_not_before, so
+		// derive the same quiet window from the checkpoint timestamp on first boot.
+		$stamp = isset( $checkpoint['updated_at'] ) ? strtotime( (string) $checkpoint['updated_at'] ) : false;
+		if ( false === $stamp && isset( $checkpoint['created_at'] ) ) $stamp = strtotime( (string) $checkpoint['created_at'] );
+		return false === $stamp ? time() + self::POST_UPDATE_QUIET_SECONDS : max( 0, (int) $stamp + self::POST_UPDATE_QUIET_SECONDS );
 	}
 
 	public static function restart_grace_status() {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		$now = time();
-		$not_before = is_array( $checkpoint ) && isset( $checkpoint['resume_not_before'] ) ? absint( $checkpoint['resume_not_before'] ) : 0;
+		$not_before = self::maintenance_not_before();
 		$source = is_array( $checkpoint ) && isset( $checkpoint['source'] ) ? sanitize_key( (string) $checkpoint['source'] ) : '';
 		$state = is_array( $checkpoint ) && isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
 		$active = 'self_update' === $source && $not_before > $now && in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true );
@@ -750,22 +761,45 @@ final class MAD4B_SCP_Runtime_Convergence {
 		}
 	}
 
+	private static function legacy_lock_options() {
+		return array(
+			'mad4b_scp_runtime_convergence_lock_v1',
+			'mad4b_scp_schema_lifecycle_lock_v1',
+		);
+	}
+
 	private static function acquire_lock() {
 		$now = time();
+		foreach ( self::legacy_lock_options() as $legacy_option ) {
+			$legacy = get_option( $legacy_option, array() );
+			if ( is_array( $legacy ) && ! empty( $legacy['token'] ) && isset( $legacy['expires_at'] ) && (int) $legacy['expires_at'] > $now ) {
+				return new WP_Error( 'mad4b_runtime_convergence_busy', 'Legacy runtime maintenance already has an active lease.' );
+			}
+			if ( is_array( $legacy ) && ! empty( $legacy ) ) delete_option( $legacy_option );
+		}
 		$current = get_option( self::LOCK_OPTION, array() );
 		if ( is_array( $current ) && ! empty( $current['token'] ) && isset( $current['expires_at'] ) && (int) $current['expires_at'] > $now ) {
-			return new WP_Error( 'mad4b_runtime_convergence_busy', 'Runtime convergence already has an active lease.' );
+			return new WP_Error( 'mad4b_runtime_convergence_busy', 'Runtime maintenance already has an active lease.' );
 		}
 		if ( is_array( $current ) && ! empty( $current ) ) delete_option( self::LOCK_OPTION );
 		$token = strtolower( wp_generate_uuid4() );
 		$lock = array( 'token' => $token, 'owner' => 'runtime_convergence', 'expires_at' => $now + self::LOCK_TTL, 'acquired_at' => gmdate( 'c' ) );
-		if ( ! add_option( self::LOCK_OPTION, $lock, '', false ) ) return new WP_Error( 'mad4b_runtime_convergence_lock_failed', 'Unable to acquire the runtime convergence lease.' );
+		if ( ! add_option( self::LOCK_OPTION, $lock, '', false ) ) return new WP_Error( 'mad4b_runtime_convergence_lock_failed', 'Unable to acquire the runtime maintenance lease.' );
+		foreach ( self::legacy_lock_options() as $legacy_option ) {
+			if ( add_option( $legacy_option, $lock, '', false ) ) continue;
+			self::release_lock( $token );
+			return new WP_Error( 'mad4b_runtime_convergence_lock_failed', 'Unable to establish the cross-version runtime maintenance fence.' );
+		}
 		return $token;
 	}
 
 	private static function release_lock( $token ) {
 		$current = get_option( self::LOCK_OPTION, array() );
 		if ( is_array( $current ) && isset( $current['token'] ) && hash_equals( (string) $current['token'], (string) $token ) ) delete_option( self::LOCK_OPTION );
+		foreach ( self::legacy_lock_options() as $legacy_option ) {
+			$legacy = get_option( $legacy_option, array() );
+			if ( is_array( $legacy ) && isset( $legacy['token'] ) && hash_equals( (string) $legacy['token'], (string) $token ) ) delete_option( $legacy_option );
+		}
 	}
 
 	private static function current_identity() {
