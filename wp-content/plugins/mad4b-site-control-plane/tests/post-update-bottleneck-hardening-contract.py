@@ -17,6 +17,11 @@ assert SHARED_LOCK in runtime
 assert SHARED_LOCK in schema
 assert "public static function managed_apply_in_progress()" in self_update
 assert "MAD4B_SCP_Self_Update::managed_apply_in_progress()" in schema
+assert "mad4b.self-update-runtime-cache-invalidation.v1" in self_update
+assert "wp_opcache_invalidate" in self_update
+assert "opcache_invalidate" in self_update
+assert "'global_opcache_reset_used' => false" in self_update
+assert "'bounded_file_limit' => 1000" in self_update
 after_upgrade = schema.split("public static function after_upgrade", 1)[1].split("public static function reconcile", 1)[0]
 assert after_upgrade.index("managed_apply_in_progress") < after_upgrade.index("wp_schedule_single_event")
 assert "MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_convergence' )" in runtime
