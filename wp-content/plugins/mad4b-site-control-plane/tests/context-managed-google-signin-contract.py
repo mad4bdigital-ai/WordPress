@@ -49,4 +49,23 @@ assert "Save Connection Method" not in ui, "Save Connection Method must be remov
 require(ui, "set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED )", "one-click managed mode selection")
 require(ui, "managed_authorization_url", "managed authorization redirect")
 
+# Dynamic Google consent and bottleneck controls stay explicit in the runtime contract.
+require(drive, "'include_granted_scopes' => 'true'", "incremental Google OAuth consent")
+require(drive, "REFRESH_FAILURE_COOLDOWN_SECONDS", "Google refresh retry cooldown")
+require(drive, "mad4b_google_drive_reconnect_required", "terminal refresh fail-fast")
+require(drive, "network_retry_suppressed", "refresh retry suppression evidence")
+require(drive, "isset( $data['error']['details']['provider_code'] )", "nested broker provider error propagation")
+require(drive, "'missing_requested_scopes'", "granular consent missing-scope persistence")
+require(drive, "'complete_scope_grant'", "granular consent completeness state")
+require(drive, "MAX_SCAN_WALL_SECONDS", "bounded source scan wall clock")
+require(drive, "'reuse_existing' => $reuse_existing", "unchanged Drive asset reuse")
+require(drive, "'reused_asset_count'", "scan reuse evidence")
+require(drive, "mad4b_google_workspace_grants_reduction_requires_revoke", "scope reduction revoke gate")
+require(drive, "incremental_consent_required", "incremental consent state")
+require(drive, "scope_covers", "semantic Google scope implication")
+require(drive, "Recovery path only", "cache-wide flush recovery-only path")
+require(ui, "mad4b-google-incremental-consent-form", "incremental consent CTA form")
+require(ui, "Authorize added Google access", "incremental consent CTA label")
+require(ui, "Existing granted access stays active", "incremental consent continuity message")
+
 print("MAD4B natural Managed Google Sign-In contract PASS")
