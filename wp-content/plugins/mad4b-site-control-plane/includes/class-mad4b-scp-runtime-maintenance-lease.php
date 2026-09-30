@@ -113,19 +113,70 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease {
 	}
 
 	public static function status() {
-		$current = get_option( self::OPTION, array() );
 		$now = time();
-		$soft = is_array( $current ) && isset( $current['expires_at'] ) ? absint( $current['expires_at'] ) : 0;
-		$hard = is_array( $current ) && isset( $current['hard_expires_at'] ) ? absint( $current['hard_expires_at'] ) : 0;
-		$active = is_array( $current ) && ! empty( $current['token'] ) && $hard > $now;
+		$active_fences = array();
+		$shared_active = false;
+
+		foreach ( array_merge( array( self::OPTION ), self::legacy_options() ) as $option ) {
+			$current = get_option( $option, array() );
+			if ( ! is_array( $current ) || empty( $current['token'] ) ) continue;
+
+			$soft = absint( isset( $current['expires_at'] ) ? $current['expires_at'] : 0 );
+			$legacy_grace = ! isset( $current['hard_expires_at'] ) && $soft > 0;
+			$hard = isset( $current['hard_expires_at'] )
+				? absint( $current['hard_expires_at'] )
+				: ( $legacy_grace ? $soft + self::LEGACY_EXPIRY_GRACE : 0 );
+			if ( $hard <= $now ) continue;
+
+			if ( self::OPTION === $option ) $shared_active = true;
+			$active_fences[] = array(
+				'option' => $option,
+				'token' => (string) $current['token'],
+				'owner' => isset( $current['owner'] ) ? sanitize_key( (string) $current['owner'] ) : '',
+				'expires_at' => $soft,
+				'hard_expires_at' => $hard,
+				'legacy_expiry_grace_applied' => $legacy_grace,
+			);
+		}
+
+		$active = ! empty( $active_fences );
+		$primary = array(
+			'option' => '',
+			'token' => '',
+			'owner' => '',
+			'expires_at' => 0,
+			'hard_expires_at' => 0,
+			'legacy_expiry_grace_applied' => false,
+		);
+		if ( $active ) {
+			usort( $active_fences, static function ( $left, $right ) {
+				$left_shared = self::OPTION === ( isset( $left['option'] ) ? (string) $left['option'] : '' );
+				$right_shared = self::OPTION === ( isset( $right['option'] ) ? (string) $right['option'] : '' );
+				if ( $left_shared !== $right_shared ) return $left_shared ? -1 : 1;
+				return (int) $right['hard_expires_at'] <=> (int) $left['hard_expires_at'];
+			} );
+			$primary = $active_fences[0];
+		}
+
+		$tokens = array();
+		foreach ( $active_fences as $fence ) $tokens[] = isset( $fence['token'] ) ? (string) $fence['token'] : '';
+		$tokens = array_values( array_unique( array_filter( $tokens, 'strlen' ) ) );
+		$soft = isset( $primary['expires_at'] ) ? absint( $primary['expires_at'] ) : 0;
+		$hard = isset( $primary['hard_expires_at'] ) ? absint( $primary['hard_expires_at'] ) : 0;
+
 		return array(
 			'contract' => self::CONTRACT,
 			'active' => $active,
-			'owner' => is_array( $current ) && isset( $current['owner'] ) ? sanitize_key( (string) $current['owner'] ) : '',
+			'owner' => isset( $primary['owner'] ) ? sanitize_key( (string) $primary['owner'] ) : '',
 			'expires_at' => $soft,
 			'hard_expires_at' => $hard,
 			'soft_lease_expired' => $active && $soft <= $now,
 			'retry_after_seconds' => $active ? max( 1, min( 30, ( $soft > $now ? $soft : $hard ) - $now ) ) : 0,
+			'fence_source' => isset( $primary['option'] ) ? (string) $primary['option'] : '',
+			'active_fence_count' => count( $active_fences ),
+			'legacy_only_fence' => $active && ! $shared_active,
+			'legacy_expiry_grace_applied' => $active && ! empty( $primary['legacy_expiry_grace_applied'] ),
+			'fence_token_conflict' => count( $tokens ) > 1,
 			'read_only' => true,
 		);
 	}
