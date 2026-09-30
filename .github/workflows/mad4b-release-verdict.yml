@@ -38,6 +38,52 @@ jobs:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
 
+      - name: Verify exact-head action-job event scoping
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import importlib.util
+          from pathlib import Path
+
+          path = Path("tools/capture_exact_head_action_jobs.py")
+          spec = importlib.util.spec_from_file_location("mad4b_capture_exact_head_action_jobs", path)
+          if spec is None or spec.loader is None:
+              raise SystemExit("unable to load exact-head action-job capture helper")
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+
+          sha = "a" * 40
+          def row(event, branch="master", prs=None):
+              return {
+                  "head_sha": sha,
+                  "head_branch": branch,
+                  "event": event,
+                  "pull_requests": [] if prs is None else [{"number": n} for n in prs],
+              }
+
+          def matches(value, *, branch="master", pr=0, event="push"):
+              return module.run_matches_scope(
+                  value,
+                  head_sha=sha,
+                  head_branch=branch,
+                  pr_number=pr,
+                  event_name=event,
+              )
+
+          assert matches(row("push"))
+          assert not matches(row("pull_request"))
+          assert not matches(row("workflow_dispatch"))
+          assert not matches(row("push", branch="feature"))
+          assert matches(row("workflow_dispatch"), event="workflow_dispatch")
+          assert matches(row("pull_request", branch="feature", prs=[195]), branch="feature", pr=195, event="pull_request")
+          assert not matches(row("push", branch="feature", prs=[195]), branch="feature", pr=195, event="pull_request")
+          assert not matches(row("pull_request", branch="feature", prs=[196]), branch="feature", pr=195, event="pull_request")
+          assert matches(row("pull_request", branch="feature"), branch="feature", pr=195, event="pull_request")
+          assert matches(row("pull_request"), event="")
+          print("mad4b.exact-head-action-jobs.v2: PASS")
+          PY
+
       - name: Verify exact-head owner attestation
         if: github.event_name == 'pull_request'
         env:
