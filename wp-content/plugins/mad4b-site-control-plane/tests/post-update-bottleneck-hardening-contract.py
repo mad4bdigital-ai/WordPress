@@ -50,6 +50,7 @@ assert "'waiting_for_exact_runtime_restart'" in runtime
 assert "'pending_manual_resume'" in runtime
 assert "'blocked'" in runtime
 assert "'operator_repair_runtime_convergence'" in runtime
+assert "'self_update_blocked_checkpoint_preserved'" in runtime
 assert "$operator_action_required" in runtime
 assert "'exact_runtime_identity_match' => $identity_match" in runtime
 assert "'operator_resume_runtime_convergence'" in runtime
