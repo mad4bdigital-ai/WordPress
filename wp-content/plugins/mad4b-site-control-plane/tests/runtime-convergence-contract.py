@@ -100,7 +100,7 @@ assert "'bounded_provenance_file_read' => false" in runtime
 assert "'filesystem_scan_performed' => false" in runtime
 assert "'database_schema_probe_performed' => false" in runtime
 
-detector = runtime.split("private static function detect_lightweight_runtime_drift()", 1)[1].split("private static function schedule_resume()", 1)[0]
+detector = runtime.split("private static function detect_lightweight_runtime_drift()", 1)[1].split("private static function schedule_resume(", 1)[0]
 assert "get_option(" in detector
 assert "MAD4B_SCP_Schema::status" not in detector
 assert "MAD4B_SCP_Schema::install_or_upgrade" not in detector
