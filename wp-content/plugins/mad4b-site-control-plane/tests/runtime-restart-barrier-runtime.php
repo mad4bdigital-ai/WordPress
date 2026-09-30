@@ -89,6 +89,10 @@ ok( ! empty( $status['active'] ), 'failed self-update safe convergence must keep
 ok( empty( $status['retryable'] ), 'blocked convergence must not create an automatic retry loop' );
 ok( 0 === $status['retry_after_seconds'], 'blocked convergence must not advertise time-only recovery' );
 ok( 'operator_repair_runtime_convergence' === $status['client_action'], 'blocked convergence must require explicit operator repair' );
+$activation = MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
+ok( 'self_update_blocked_checkpoint_preserved' === $activation['state'], 'plugin activation must preserve blocked self-update checkpoint' );
+ok( empty( $activation['scheduled'] ), 'blocked self-update checkpoint must not be retried automatically by activation' );
+ok( 'blocked' === $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION ]['state'], 'activation must not overwrite blocked self-update checkpoint' );
 
 $base['state'] = 'completed';
 $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION ] = $base;
