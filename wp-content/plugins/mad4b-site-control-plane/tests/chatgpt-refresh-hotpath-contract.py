@@ -19,6 +19,10 @@ oauth_autoconfig = (root / "includes/class-mad4b-scp-staging-oauth-autoconfig.ph
 audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
 authorization = (root / "includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 request_scope = (root / "includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
+registration_bridge = (root / "includes/class-mad4b-scp-mcp-registration-bridge.php").read_text(encoding="utf-8")
+self_update = (root / "includes/class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
+repo_root = root.parents[2]
+external_diagnostic_workflow = (repo_root / ".github/workflows/mad4b-wpml-external-diagnostic.yml").read_text(encoding="utf-8")
 read_consistency = (root / "includes/class-mad4b-scp-read-consistency.php").read_text(encoding="utf-8")
 query_monitor = (root / "includes/class-mad4b-scp-query-monitor-evidence-bridge.php").read_text(encoding="utf-8")
 mu_refresh = (root / "includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php").read_text(encoding="utf-8")
@@ -294,13 +298,15 @@ for route in [
 ]:
     assert route in protocol_hotpath, route
 
-# Protocol REST isolation must remain narrowly scoped to the two WordPress Core
-# materializers. Provider/plugin callbacks and REST default filters are not part
-# of the pruning contract.
+# Protocol REST isolation has two bounded layers: remove the two expensive
+# WordPress Core materializers, then remove only callbacks whose reflected file
+# provenance proves they belong to an unrelated plugin. Core, MAD4B and the
+# official MCP Adapter remain available and unknown provenance fails open.
 scope_bootstrap = request_scope.split("public static function bootstrap()", 1)[1].split("public static function enforce()", 1)[0]
 assert "self::current_request_is_protocol_hotpath()" in scope_bootstrap
 assert "isolate_protocol_core_rest_bootstrap" in scope_bootstrap
-protocol_core_isolation = request_scope.split("public static function isolate_protocol_core_rest_bootstrap()", 1)[1].split("public static function current_request_requires_mcp_runtime()", 1)[0]
+assert "isolate_protocol_external_rest_bootstrap" in scope_bootstrap
+protocol_core_isolation = request_scope.split("public static function isolate_protocol_core_rest_bootstrap()", 1)[1].split("public static function isolate_protocol_external_rest_bootstrap()", 1)[0]
 for callback in (
     "register_initial_settings",
     "create_initial_rest_routes",
@@ -315,9 +321,84 @@ for forbidden in (
     "ReflectionMethod",
 ):
     assert forbidden not in protocol_core_isolation, forbidden
-assert "protocol_core_rest_isolation_request_local_only" in request_scope
 
-print("mad4b.chatgpt-refresh-hotpath.v15: PASS")
+external_isolation = request_scope.split("public static function isolate_protocol_external_rest_bootstrap()", 1)[1].split("public static function current_request_mcp_server_id()", 1)[0]
+for marker in (
+    "WP_PLUGIN_DIR",
+    "mad4b-site-control-plane/",
+    "mcp-adapter/",
+    "ReflectionFunction",
+    "ReflectionMethod",
+    "remove_action( 'rest_api_init'",
+    "external_plugin",
+):
+    assert marker in external_isolation, marker
+assert "return null;" in external_isolation  # unresolved provenance fails open
+assert "protocol_external_rest_isolation_request_local_only" in request_scope
+
+# Compact protocol planes must not instantiate every provider adapter merely to
+# create the addressed server. Provider-backed read/content/write/admin retain
+# the full registry.
+for marker in (
+    "private static function request_needs_adapter_registry()",
+    "MAD4B_SCP_MCP_Request_Scope::current_request_mcp_server_id()",
+    "'mad4b-read', 'mad4b-content', 'mad4b-write', 'mad4b-admin'",
+    "if ( ! self::request_needs_adapter_registry() ) return;",
+    "if ( self::request_needs_adapter_registry() ) self::prepare_registry();",
+):
+    assert marker in registration_bridge, marker
+
+# The central init boot must terminate at the protocol-kernel boundary before
+# admin/resource/lifecycle-only work while retaining the three lightweight
+# ability annotations needed for tools/list.
+protocol_fast_return = central_boot.split("if ( $protocol_hotpath ) {", 1)[1].split("// Governance schema repair", 1)[0]
+for marker in (
+    "MAD4B_SCP_Staging_Write_Authority::boot();",
+    "MAD4B_SCP_Write_Runtime_Certification::boot();",
+    "MAD4B_SCP_Skill_Runtime_Certification::boot();",
+    "MAD4B_SCP_MCP_Registration_Bridge::boot_early();",
+    "return;",
+):
+    assert marker in protocol_fast_return, marker
+for forbidden in (
+    "MAD4B_SCP_Skill_Resource_Writer::boot();",
+    "MAD4B_SCP_Local_OAuth_Browser_Canary::boot();",
+    "MAD4B_SCP_Schema::install_or_upgrade()",
+):
+    assert forbidden not in protocol_fast_return, forbidden
+
+# Staging managed-runtime recovery must have an execution path independent from
+# MCP and interactive wp-admin. It remains exact-origin, signed-manifest and
+# non-Production only, and never schedules from a protocol request.
+for marker in (
+    "const RECOVERY_CRON_HOOK",
+    "ensure_recovery_update_schedule",
+    "run_recovery_update",
+    "recovery_update_eligible",
+    "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
+    "'staging' === sanitize_key",
+    "download_governed_release_to_protected_storage",
+    "verify_archive",
+    "apply_verified_archive",
+    "'governed_staging_recovery_cron'",
+    "production_mutation_performed",
+):
+    assert marker in self_update, marker
+recovery_schedule = self_update.split("public static function ensure_recovery_update_schedule()", 1)[1].split("public static function run_recovery_update()", 1)[0]
+assert "current_request_is_protocol_hotpath()" in recovery_schedule
+
+# PRs may report deployment drift as inconclusive, but post-merge/manual live
+# acceptance must fail closed until the exact published runtime is loaded.
+for marker in (
+    "push:",
+    "branches:",
+    "master",
+    "MAD4B_REQUIRE_RUNTIME_IDENTITY",
+    "deployment_drift",
+):
+    assert marker in external_diagnostic_workflow, marker
+
+print("mad4b.chatgpt-refresh-hotpath.v16: PASS")
 
 # Post-update MU reconciliation must never execute filesystem mutation/audit work
 # before an MCP/OAuth protocol request can be served.
