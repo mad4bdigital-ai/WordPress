@@ -79,9 +79,30 @@ for page in (
     "mad4b-approval-decisions",
 ):
     assert page in passive_router or "0 === strpos( $page, 'mad4b-control-plane-' )" in passive_router, page
-assert "'endpoints' !== $tab" in passive_router
+assert "if ( 'mad4b-control-plane-connection' === $page ) return true;" in passive_router
 assert "current_admin_request_method_is_read_only()" in request_scope
 assert "array( 'GET', 'HEAD' )" in request_scope
+
+# Connection > Endpoints deep route materialization is a nonce-bound POST, never
+# an incidental GET page load.
+assert "public static function explicit_rest_materialization_allowed()" in provider_policy
+explicit_rest = provider_policy.split("public static function explicit_rest_materialization_allowed()", 1)[1].split("/**", 1)[0]
+for marker in (
+    "'POST' !== $method",
+    "'mad4b-control-plane-connection' === $page",
+    "'endpoints' === $tab",
+    "'deep_endpoints' === $action",
+):
+    assert marker in explicit_rest, marker
+connection_ui = (root / "includes/class-mad4b-scp-connection-admin-ui.php").read_text(encoding="utf-8")
+assert "mad4b_connection_deep_endpoints" in connection_ui
+assert "mad4b_connection_deep_nonce" in connection_ui
+assert "Run Deep Endpoint Diagnostic" in connection_ui
+assert "self::snapshot( $deep_endpoints )" in connection_ui
+prime = plugin.split("public static function prime_admin_mcp_runtime()", 1)[1].split("public static function governance_bootstrap_error_code()", 1)[0]
+assert "explicit_rest_materialization_allowed()" in prime
+assert "wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' )" in prime
+assert prime.index("wp_verify_nonce") < prime.index("rest_get_server();")
 
 # Passive MAD4B admin is part of zero-touch policy, so Plugin::boot() returns
 # after navigation registration and before authority/OAuth/provider lifecycle.
