@@ -30,6 +30,8 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	private static $rescue_tail_removed = false;
 	private static $rescue_pre_dispatch_removed = false;
 	private static $deferred_recovery_removed = false;
+	private static $protocol_core_rest_isolation_evaluated = false;
+	private static $protocol_core_rest_callbacks_removed = array();
 
 	public static function bootstrap() {
 		if ( self::$booted ) return;
@@ -38,6 +40,16 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		if ( ! self::$eligible ) return;
 
 		self::$current_request_requires_mcp = self::current_request_requires_mcp_runtime();
+
+		// Exact MAD4B MCP/OAuth protocol requests need the REST dispatcher and
+		// transport-specific routes, but not WordPress' full Core/settings route
+		// materialization. Remove only those two Core registrars request-locally
+		// before they execute; all REST filters and provider/plugin callbacks stay
+		// untouched.
+		if ( self::current_request_is_protocol_hotpath() ) {
+			add_action( 'rest_api_init', array( __CLASS__, 'isolate_protocol_core_rest_bootstrap' ), PHP_INT_MIN );
+		}
+
 		if ( self::$current_request_requires_mcp ) return;
 
 		// Enforce immediately during normal plugin loading, again after every
@@ -106,10 +118,53 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		}
 	}
 
+	/**
+	 * Passive Connection/ChatGPT admin pages are request-serving read surfaces.
+	 * They consume cached/runtime-identity projections and must not retain the
+	 * MCP Adapter merely because they live under the Control Plane menu. The
+	 * explicit Connection > Endpoints tab remains the deep runtime diagnostic.
+	 */
+	private static function passive_admin_route( $page, $tab = '' ) {
+		$page = sanitize_key( (string) $page );
+		$tab = sanitize_key( (string) $tab );
+		if ( 'mad4b-control-plane-chatgpt' === $page ) return true;
+		if ( 'mad4b-control-plane-connection' !== $page ) return false;
+		if ( '' === $tab ) $tab = 'readiness';
+		return 'endpoints' !== $tab;
+	}
+
+	/** @internal Pure regression seam; does not inspect request globals or WP_CLI. */
+	public static function passive_admin_route_for_test( $page, $tab = '' ) {
+		return self::passive_admin_route( $page, $tab );
+	}
+
+	public static function current_request_is_passive_admin_hotpath() {
+		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
+		$page = isset( $_GET['page'] ) ? wp_unslash( (string) $_GET['page'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$tab = isset( $_GET['tab'] ) ? wp_unslash( (string) $_GET['tab'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		return self::passive_admin_route( $page, $tab );
+	}
+
+	public static function isolate_protocol_core_rest_bootstrap() {
+		if ( self::$protocol_core_rest_isolation_evaluated ) return;
+		self::$protocol_core_rest_isolation_evaluated = true;
+		if ( ! self::$eligible || ! self::current_request_is_protocol_hotpath() ) return;
+
+		foreach ( array( 'register_initial_settings', 'create_initial_rest_routes' ) as $callback ) {
+			$priority = has_action( 'rest_api_init', $callback );
+			if ( false === $priority ) continue;
+			if ( remove_action( 'rest_api_init', $callback, (int) $priority ) ) {
+				self::$protocol_core_rest_callbacks_removed[] = $callback;
+			}
+		}
+		self::$protocol_core_rest_callbacks_removed = array_values( array_unique( self::$protocol_core_rest_callbacks_removed ) );
+	}
+
 	public static function current_request_requires_mcp_runtime() {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		if ( self::current_request_is_passive_admin_hotpath() ) return false;
 		if ( '' !== $page && 0 === strpos( $page, 'mad4b-control-plane' ) ) return true;
 
 		$route = '';
@@ -143,8 +198,9 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	/**
 	 * True only for an actual HTTP MAD4B MCP transport request.
 	 *
-	 * WP-CLI and Control Plane admin pages still require the MCP runtime for
-	 * diagnostics/certification, but they are not client Refresh hot paths and
+	 * WP-CLI and explicit deep Control Plane diagnostics still require the MCP
+	 * runtime, but passive Connection/ChatGPT pages do not. None of these admin
+	 * surfaces are client Refresh hot paths and
 	 * must never inherit transport-only short circuits.
 	 */
 	public static function current_request_is_http_mcp_transport() {
@@ -231,6 +287,7 @@ final class MAD4B_SCP_MCP_Request_Scope {
 			'contract' => self::CONTRACT,
 			'eligible' => self::$eligible,
 			'current_request_requires_mcp_runtime' => self::$current_request_requires_mcp,
+			'current_request_is_passive_admin_hotpath' => self::current_request_is_passive_admin_hotpath(),
 			'current_request_is_http_mcp_transport' => self::current_request_is_http_mcp_transport(),
 			'current_request_is_protocol_hotpath' => self::current_request_is_protocol_hotpath(),
 			'adapter_init_removed_for_unrelated_request' => self::$adapter_init_removed,
@@ -241,6 +298,9 @@ final class MAD4B_SCP_MCP_Request_Scope {
 			'rescue_tail_removed_for_unrelated_request' => self::$rescue_tail_removed,
 			'rescue_pre_dispatch_removed_for_unrelated_request' => self::$rescue_pre_dispatch_removed,
 			'deferred_recovery_removed_for_unrelated_request' => self::$deferred_recovery_removed,
+			'protocol_core_rest_isolation_evaluated' => self::$protocol_core_rest_isolation_evaluated,
+			'protocol_core_rest_callbacks_removed' => self::$protocol_core_rest_callbacks_removed,
+			'protocol_core_rest_isolation_request_local_only' => true,
 			'production_changed' => false,
 			'provider_settings_changed' => false,
 			'wordpress_rest_routes_changed' => false,

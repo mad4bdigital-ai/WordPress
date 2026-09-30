@@ -262,6 +262,8 @@ jobs:
 
           probe runtime-build "$origin/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt?mad4b_probe=$SOURCE_SHA"
           probe rest-index "$origin/wp-json/?mad4b_probe=$SOURCE_SHA"
+          probe rest-core-types "$origin/wp-json/wp/v2/types/post?context=view&mad4b_probe=$SOURCE_SHA"
+          probe rest-wpml "$origin/wp-json/wpml/v1/rest/status?test_get_parameter=1&mad4b_probe=$SOURCE_SHA&mad4b_hotpath=1"
           probe mcp-chatgpt "$origin/wp-json/mcp/mad4b-chatgpt?mad4b_probe=$SOURCE_SHA"
           probe oauth-protected-resource "$origin/wp-json/mad4b/v1/oauth-protected-resource?mad4b_probe=$SOURCE_SHA"
           probe oauth-authorization-server "$origin/.well-known/oauth-authorization-server/oauth/mcp?mad4b_probe=$SOURCE_SHA"
@@ -278,6 +280,8 @@ jobs:
           targets = {
               'runtime-build': origin + '/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt',
               'rest-index': origin + '/wp-json/',
+              'rest-core-types': origin + '/wp-json/wp/v2/types/post',
+              'rest-wpml': origin + '/wp-json/wpml/v1/rest/status?test_get_parameter=1',
               'mcp-chatgpt': origin + '/wp-json/mcp/mad4b-chatgpt',
               'oauth-protected-resource': origin + '/wp-json/mad4b/v1/oauth-protected-resource',
               'oauth-authorization-server': origin + '/.well-known/oauth-authorization-server/oauth/mcp',
@@ -324,9 +328,16 @@ jobs:
                   except Exception as exc:
                       json_parse_error = f'{type(exc).__name__}: {exc}'
               www_authenticate = ''
+              upstream_seconds = None
               for line in headers.splitlines():
-                  if line.lower().startswith('www-authenticate:'):
+                  lower = line.lower()
+                  if lower.startswith('www-authenticate:'):
                       www_authenticate = line.split(':', 1)[1].strip()
+                  if lower.startswith('x-hcdn-upstream-rt:'):
+                      try:
+                          upstream_seconds = float(line.split(':', 1)[1].strip())
+                      except Exception:
+                          upstream_seconds = None
               rows[name] = {
                   'url': url,
                   'curl_exit': curl_exit,
@@ -335,6 +346,7 @@ jobs:
                   'connect_seconds': as_float(parts[2]),
                   'ttfb_seconds': as_float(parts[3]),
                   'total_seconds': as_float(parts[4]),
+                  'origin_upstream_seconds': upstream_seconds,
                   'size_download': int(float(parts[5])) if parts[5] else 0,
                   'hcdn_challenge': hcdn_challenge,
                   'www_authenticate': www_authenticate,
@@ -362,6 +374,7 @@ jobs:
                   'http_status': row['http_status'],
                   'ttfb_seconds': row['ttfb_seconds'],
                   'total_seconds': row['total_seconds'],
+                  'origin_upstream_seconds': row['origin_upstream_seconds'],
                   'hcdn_challenge': row['hcdn_challenge'],
               }
               for name, row in rows.items()
@@ -599,6 +612,8 @@ jobs:
           expected_status = {
               'runtime-build': {200},
               'rest-index': {200},
+              'rest-core-types': {200},
+              'rest-wpml': {200},
               'mcp-chatgpt': {200, 400, 401, 405},
               'oauth-protected-resource': {200},
               'oauth-authorization-server': {200},
@@ -650,7 +665,39 @@ jobs:
           )
           deployment_drift = not runtime_identity_match
 
+          rest_controls = ['rest-core-types', 'rest-wpml']
+          rest_control_rows = [targets.get(name) or {} for name in rest_controls]
+          rest_control_totals = [
+              float(row['total_seconds'])
+              for row in rest_control_rows
+              if row.get('total_seconds') is not None
+          ]
+          rest_baseline_seconds = min(rest_control_totals) if rest_control_totals else None
+          rest_stack_degraded = any(
+              int(row.get('curl_exit', -1)) != 0
+              or row.get('total_seconds') is None
+              or float(row.get('total_seconds')) > 8.0
+              for row in rest_control_rows
+          )
+          mcp_row = targets.get('mcp-chatgpt') or {}
+          mcp_specific_suspected = (
+              not rest_stack_degraded
+              and (
+                  int(mcp_row.get('curl_exit', -1)) != 0
+                  or mcp_row.get('total_seconds') is None
+                  or float(mcp_row.get('total_seconds')) > 8.0
+              )
+          )
+
           evidence.update({
+              'rest_baseline_seconds': rest_baseline_seconds,
+              'rest_stack_degraded': rest_stack_degraded,
+              'mcp_specific_suspected': mcp_specific_suspected,
+              'bottleneck_classification': (
+                  'general_rest_stack'
+                  if rest_stack_degraded
+                  else ('mcp_specific' if mcp_specific_suspected else 'no_hotpath_bottleneck_observed')
+              ),
               'live_runtime_build': {
                   'contract': live_build.get('contract', ''),
                   'release': live_build.get('release', ''),
@@ -682,6 +729,10 @@ jobs:
               'live_release': live_build.get('release', ''),
               'expected_release': expected_build.get('release', ''),
               'diagnostic_outcome': evidence['diagnostic_outcome'],
+              'bottleneck_classification': evidence['bottleneck_classification'],
+              'rest_baseline_seconds': evidence['rest_baseline_seconds'],
+              'rest_stack_degraded': evidence['rest_stack_degraded'],
+              'mcp_specific_suspected': evidence['mcp_specific_suspected'],
               'validation_failures': failures,
           }, indent=2, sort_keys=True))
           PY

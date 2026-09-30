@@ -294,7 +294,30 @@ for route in [
 ]:
     assert route in protocol_hotpath, route
 
-print("mad4b.chatgpt-refresh-hotpath.v14: PASS")
+# Protocol REST isolation must remain narrowly scoped to the two WordPress Core
+# materializers. Provider/plugin callbacks and REST default filters are not part
+# of the pruning contract.
+scope_bootstrap = request_scope.split("public static function bootstrap()", 1)[1].split("public static function enforce()", 1)[0]
+assert "self::current_request_is_protocol_hotpath()" in scope_bootstrap
+assert "isolate_protocol_core_rest_bootstrap" in scope_bootstrap
+protocol_core_isolation = request_scope.split("public static function isolate_protocol_core_rest_bootstrap()", 1)[1].split("public static function current_request_requires_mcp_runtime()", 1)[0]
+for callback in (
+    "register_initial_settings",
+    "create_initial_rest_routes",
+):
+    assert callback in protocol_core_isolation, callback
+assert "rest_api_default_filters" not in protocol_core_isolation
+for forbidden in (
+    "Jet_Engine",
+    "WP\\MCP\\Core\\McpAdapter",
+    "wp_filter['rest_api_init']->callbacks",
+    "ReflectionFunction",
+    "ReflectionMethod",
+):
+    assert forbidden not in protocol_core_isolation, forbidden
+assert "protocol_core_rest_isolation_request_local_only" in request_scope
+
+print("mad4b.chatgpt-refresh-hotpath.v15: PASS")
 
 # Post-update MU reconciliation must never execute filesystem mutation/audit work
 # before an MCP/OAuth protocol request can be served.

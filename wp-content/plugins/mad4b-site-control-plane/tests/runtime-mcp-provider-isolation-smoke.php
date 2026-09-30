@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit( 1 ); }
 
 // Historical evidence marker for Spec Kit migration tracking only:
 // mad4b.site-control-plane.runtime-mcp-provider-isolation.v1
+// mad4b.site-control-plane.runtime-mcp-provider-isolation.v4
 
 function mad4b_isolation_fail( $message, $data = null ) {
 	fwrite( STDERR, 'FAIL: ' . $message . ( null !== $data ? ' ' . wp_json_encode( $data ) : '' ) . PHP_EOL );
@@ -25,18 +26,23 @@ if ( false !== apply_filters( 'wpmedia_mcp_oauth_server_enabled', true ) ) {
 
 require_once __DIR__ . '/fixtures/provider-mcp-registration-callbacks.php';
 
-$hostinger = new \Hostinger\AiAssistant\Mcp\McpServer();
-$elementskit = new \ElementsKit_Lite\Mcp\Server();
+$hostinger_callback = array( 'Hostinger\\AiAssistant\\Mcp\\McpServer', 'create_server' );
+$elementskit_callback = array( 'ElementsKit_Lite\\Mcp\\Server', 'register_server' );
+$jetengine_rest = new \Jet_Engine\MCP_Tools\MAD4B_Test_REST_Registration();
 $unknown = new MAD4B_Isolation_Unknown_Server_Callback();
-add_action( 'mcp_adapter_init', array( $hostinger, 'create_server' ), 10 );
-add_action( 'mcp_adapter_init', array( $elementskit, 'register_server' ), 10 );
+add_action( 'rest_api_init', array( $jetengine_rest, 'register_features_api' ), 10, 1 );
+// WordPress hooks accept callback identities before provider classes are loaded.
+// This proves exact deny-only matching without requiring unrelated provider
+// implementations in the disposable Connection runtime.
+add_action( 'mcp_adapter_init', $hostinger_callback, 10 );
+add_action( 'mcp_adapter_init', $elementskit_callback, 10 );
 add_action( 'mcp_adapter_init', array( $unknown, 'register_server' ), 10 );
 
 MAD4B_SCP_MCP_Provider_Isolation::suppress_provider_server_registrations();
-if ( false !== has_action( 'mcp_adapter_init', array( $hostinger, 'create_server' ) ) ) {
+if ( false !== has_action( 'mcp_adapter_init', $hostinger_callback ) ) {
 	mad4b_isolation_fail( 'Hostinger MCP server registration callback was not suppressed.' );
 }
-if ( false !== has_action( 'mcp_adapter_init', array( $elementskit, 'register_server' ) ) ) {
+if ( false !== has_action( 'mcp_adapter_init', $elementskit_callback ) ) {
 	mad4b_isolation_fail( 'ElementsKit MCP server registration callback was not suppressed.' );
 }
 if ( false === has_action( 'mcp_adapter_init', array( $unknown, 'register_server' ) ) ) {
@@ -151,6 +157,12 @@ if ( function_exists( 'did_action' ) && 0 === did_action( 'rest_api_init' ) && c
 }
 
 $rest = rest_get_server();
+if ( ! empty( $GLOBALS['mad4b_jetengine_rest_registration_callback_hit'] ) ) {
+	mad4b_isolation_fail( 'Reviewed JetEngine MCP REST registration callback executed before dispatch.' );
+}
+if ( false !== has_action( 'rest_api_init', array( $jetengine_rest, 'register_features_api' ) ) ) {
+	mad4b_isolation_fail( 'Reviewed JetEngine MCP REST registration callback remained armed.' );
+}
 $routes = $rest->get_routes();
 
 foreach ( array(
@@ -274,6 +286,16 @@ if ( empty( $status['effective'] ) || empty( $status['default_server_suppressed'
 if ( empty( $status['server_registration_suppression_attempted'] ) ) {
 	mad4b_isolation_fail( 'Server-registration suppression was not attempted.', $status );
 }
+if ( empty( $status['rest_registration_suppression_attempted'] ) || (int) $status['suppressed_rest_callback_count'] < 1 ) {
+	mad4b_isolation_fail( 'Reviewed provider REST registration suppression was not applied.', $status );
+}
+$rest_callback_providers = array();
+foreach ( isset( $status['suppressed_rest_callbacks'] ) && is_array( $status['suppressed_rest_callbacks'] ) ? $status['suppressed_rest_callbacks'] : array() as $item ) {
+	if ( isset( $item['provider'] ) ) $rest_callback_providers[] = (string) $item['provider'];
+}
+if ( ! in_array( 'jetengine', $rest_callback_providers, true ) ) {
+	mad4b_isolation_fail( 'JetEngine REST callback suppression evidence is missing.', $status );
+}
 if ( (int) $status['suppressed_server_count'] < 2 ) {
 	mad4b_isolation_fail( 'Expected exact provider server callbacks were not recorded as suppressed.', $status );
 }
@@ -331,4 +353,4 @@ if ( ! is_wp_error( $guard ) || 'mcp_foreign_transport_unreviewed' !== $guard->g
 	mad4b_isolation_fail( 'Unknown MCP route did not preserve exact fail-closed mutation semantics.', $guard );
 }
 
-fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v4: PASS' . PHP_EOL );
+fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v5: PASS' . PHP_EOL );
