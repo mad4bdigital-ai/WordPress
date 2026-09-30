@@ -220,6 +220,10 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 		if ( ( $desired['production_mutation_enabled'] || $desired['production_auto_enable'] ) && 'production' !== $environment ) $blockers[] = 'production_environment_required';
 		if ( $desired['production_auto_enable'] && ! $desired['production_mutation_enabled'] ) $blockers[] = 'production_auto_enable_requires_mutation';
 		if ( 'production' === $environment && $desired['production_mutation_enabled'] && ! MAD4B_SCP_Site_Profile::write_enabled() ) $blockers[] = 'production_profile_write_confirmation_required';
+		if ( 'production' === $environment && $desired['production_mutation_enabled']
+			&& ( ! class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' ) || ! MAD4B_SCP_Staging_OAuth_Autoconfig::production_profile_enabled() ) ) {
+			$blockers[] = 'production_oauth_opt_in_required';
+		}
 		if ( 'production' === $environment && $desired['raw_sql_breakglass_enabled'] && ! $desired['production_mutation_enabled'] ) $blockers[] = 'production_breakglass_requires_mutation';
 		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) ) $blockers[] = 'audit_storage_not_ready';
 
@@ -296,7 +300,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 		if ( is_wp_error( $match ) ) return $match;
 		if ( ! hash_equals( (string) $plan['required_confirmation'], (string) $input['confirmation'] ) ) return new WP_Error( 'mad4b_runtime_gates_confirmation_required', 'Exact runtime gate confirmation is required.' );
 
-		$before_exists = false !== get_option( self::OPTION, false );
+		$before_raw = get_option( self::OPTION, false );
+		$before_exists = false !== $before_raw;
 		$before = self::record();
 		$next = array(
 			'contract' => self::CONTRACT,
@@ -311,7 +316,7 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			'updated_at' => gmdate( 'c' ),
 		);
 
-		if ( ! self::persist_exact( $next ) ) return new WP_Error( 'mad4b_runtime_gates_persist_failed', 'Runtime gate policy could not be persisted and verified.' );
+		if ( ! self::persist_exact( $next, $before_exists, $before_raw ) ) return new WP_Error( 'mad4b_runtime_gates_persist_conflict', 'Runtime gate policy changed concurrently or could not be persisted and verified.' );
 		$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::record( 'mad4b/runtime-gates-applied', array(
 			'previous_revision' => (int) $plan['policy_revision'],
 			'revision' => (int) $next['revision'],
@@ -330,7 +335,10 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 		), 'ok' ) : new WP_Error( 'mad4b_runtime_gates_audit_unavailable' );
 
 		if ( is_wp_error( $audit ) ) {
-			self::restore( $before_exists, $before );
+			$rolled_back = self::restore_exact( $before_exists, $before_raw, $next );
+			if ( ! $rolled_back ) {
+				return new WP_Error( 'mad4b_runtime_gates_audit_rollback_failed', 'Audit evidence failed and the runtime gate policy could not be safely rolled back because the stored value changed concurrently.' );
+			}
 			return new WP_Error( 'mad4b_runtime_gates_audit_failed', 'Runtime gate policy was rolled back because append-only audit evidence could not be committed.' );
 		}
 		self::bootstrap_runtime();
@@ -411,12 +419,15 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			&& '' !== (string) $record['profile_digest']
 			&& hash_equals( self::profile_digest(), (string) $record['profile_digest'] );
 		$environment = self::environment();
-		$raw = $binding_match && ! empty( $record['raw_sql_breakglass_enabled'] );
-		$production = $binding_match && 'production' === $environment && ! empty( $record['production_mutation_enabled'] ) && class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::write_enabled();
+		$profile_write_enabled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::write_enabled();
+		$production = $binding_match && 'production' === $environment && ! empty( $record['production_mutation_enabled'] ) && $profile_write_enabled;
+		$raw = $binding_match && ! empty( $record['raw_sql_breakglass_enabled'] ) && ( 'production' !== $environment || $production );
 		$auto = $production && ! empty( $record['production_auto_enable'] );
 		$blockers = array();
 		if ( ( ! empty( $record['raw_sql_breakglass_enabled'] ) || ! empty( $record['production_mutation_enabled'] ) || ! empty( $record['production_auto_enable'] ) ) && ! $binding_match ) $blockers[] = 'runtime_gate_profile_binding_stale';
 		if ( ! empty( $record['production_mutation_enabled'] ) && 'production' !== $environment ) $blockers[] = 'production_environment_required';
+		if ( 'production' === $environment && ! empty( $record['production_mutation_enabled'] ) && ! $profile_write_enabled ) $blockers[] = 'production_profile_write_confirmation_required';
+		if ( 'production' === $environment && ! empty( $record['raw_sql_breakglass_enabled'] ) && ! $production ) $blockers[] = 'production_breakglass_requires_effective_mutation';
 		if ( ! empty( $record['production_auto_enable'] ) && empty( $record['production_mutation_enabled'] ) ) $blockers[] = 'production_auto_enable_requires_mutation';
 		return array(
 			'profile_binding_match' => $binding_match,
@@ -489,18 +500,58 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 		return true;
 	}
 
-	private static function persist_exact( array $record ) {
-		update_option( self::OPTION, $record, false );
+	private static function clear_option_cache() {
 		wp_cache_delete( self::OPTION, 'options' );
 		wp_cache_delete( 'alloptions', 'options' );
-		$stored = get_option( self::OPTION, false );
-		return is_array( $stored ) && serialize( $stored ) === serialize( $record );
 	}
 
-	private static function restore( $existed, array $record ) {
-		if ( $existed ) update_option( self::OPTION, $record, false );
-		else delete_option( self::OPTION );
-		wp_cache_delete( self::OPTION, 'options' );
-		wp_cache_delete( 'alloptions', 'options' );
+	private static function stored_value_matches( $expected ) {
+		self::clear_option_cache();
+		$stored = get_option( self::OPTION, false );
+		return maybe_serialize( $stored ) === maybe_serialize( $expected );
+	}
+
+	private static function persist_exact( array $record, $existed, $previous_raw ) {
+		global $wpdb;
+		if ( ! $existed ) {
+			$created = add_option( self::OPTION, $record, '', false );
+			return $created && self::stored_value_matches( $record );
+		}
+		$updated = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->prepare(
+				"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
+				maybe_serialize( $record ),
+				self::OPTION,
+				maybe_serialize( $previous_raw )
+			)
+		);
+		if ( 1 !== (int) $updated ) return false;
+		return self::stored_value_matches( $record );
+	}
+
+	private static function restore_exact( $existed, $previous_raw, array $current_record ) {
+		global $wpdb;
+		$current_serialized = maybe_serialize( $current_record );
+		if ( $existed ) {
+			$updated = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+				$wpdb->prepare(
+					"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
+					maybe_serialize( $previous_raw ),
+					self::OPTION,
+					$current_serialized
+				)
+			);
+			if ( 1 !== (int) $updated ) return false;
+			return self::stored_value_matches( $previous_raw );
+		}
+		$deleted = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s",
+				self::OPTION,
+				$current_serialized
+			)
+		);
+		self::clear_option_cache();
+		return 1 === (int) $deleted && false === get_option( self::OPTION, false );
 	}
 }
