@@ -83,8 +83,8 @@ for marker in (
     assert passive_gate < entry.index(marker), marker
 assert "MAD4B_SCP_Skill_Runtime_Certification::observe();" not in entry
 
-# REST/Abilities priming is allowed only on the exact explicit MCP Endpoints
-# POST action with a valid nonce. Opening the tab itself is passive.
+# REST/Abilities priming is allowed only on the exact signed MCP Endpoints
+# read-only diagnostic GET. Opening the tab itself is passive.
 assert "'mad4b-control-plane-connection' !== $page" in prime
 assert "'endpoints' !== $tab" in prime
 assert "explicit_rest_materialization_allowed()" in prime
@@ -257,8 +257,9 @@ assert admin_convergence_router.index("current_request_is_passive_admin_hotpath(
 assert "public static function snapshot( $force_deep = false )" in connection_ui
 assert "self::snapshot( $deep_endpoints )" in connection_ui
 assert "mad4b_connection_deep_endpoints" in connection_ui
-assert "mad4b_connection_deep_nonce" in connection_ui
+assert "wp_nonce_url(" in connection_ui
 assert "Run Deep Endpoint Diagnostic" in connection_ui
+assert "$_POST" not in connection_ui
 assert "$deep_endpoints" in connection_ui
 assert "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()" in connection_ui
 assert "MAD4B_SCP_Local_OAuth_Server::status()" in connection_ui
