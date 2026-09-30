@@ -1,8 +1,6 @@
 <?php
 
 define( 'ABSPATH', __DIR__ );
-if ( ! function_exists( 'wp_get_environment_type' ) ) { function wp_get_environment_type() { return 'staging'; } }
-if ( ! function_exists( 'sanitize_key' ) ) { function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/', '', (string) $value ) ); } }
 if ( ! function_exists( 'wp_get_environment_type' ) ) {
 	function wp_get_environment_type() { return 'staging'; }
 }
@@ -72,7 +70,7 @@ $step_up_sample = '<!doctype html><html><head><meta charset="utf-8"><title>Autho
 $step_up_enhanced = MAD4B_SCP_Local_OAuth_Consent_UI::enhance_document( $step_up_sample );
 if ( false === strpos( $step_up_enhanced, '<title>Authorize governed MCP access</title>' ) ) $fail( 'Governed step-up consent title is missing.' );
 if ( false === strpos( $step_up_enhanced, '<h1>Authorize governed MCP access</h1>' ) ) $fail( 'Governed step-up consent heading is missing.' );
-if ( false === strpos( $step_up_enhanced, 'Read identity + governed authority step-up' ) ) $fail( 'Step-up access summary is missing.' );
+if ( false === strpos( $step_up_enhanced, 'Read identity + Staging authority step-up' ) ) $fail( 'Step-up access summary is missing.' );
 if ( false === strpos( $step_up_enhanced, '<code>mad4b:authority:step-up</code> is a request permission' ) ) $fail( 'Step-up non-authority explanation is missing.' );
 if ( false === strpos( $step_up_enhanced, '>Approve governed access</button>' ) ) $fail( 'Governed step-up approval label is missing.' );
 if ( false === strpos( $step_up_enhanced, 'does not itself create write grants, Developer authority, Developer Breakglass authority, Production mutation authority, or raw-SQL Breakglass authority' ) ) $fail( 'Step-up authority boundary statement is missing.' );
