@@ -15,6 +15,8 @@ dependency = (PLUGIN / "includes/class-mad4b-scp-dependency-manager.php").read_t
 continuity = (PLUGIN / "includes/class-mad4b-scp-upgrade-continuity.php").read_text(encoding="utf-8")
 runtime_convergence = (PLUGIN / "includes/class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
 provider_policy = (PLUGIN / "includes/class-mad4b-scp-provider-diagnostic-policy.php").read_text(encoding="utf-8")
+request_scope = (PLUGIN / "includes/class-mad4b-scp-mcp-request-scope.php").read_text(encoding="utf-8")
+entry = (PLUGIN / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 connection_status = (PLUGIN / "includes/class-mad4b-scp-connection-status.php").read_text(encoding="utf-8")
 connection_ui = (PLUGIN / "includes/class-mad4b-scp-connection-admin-ui.php").read_text(encoding="utf-8")
 chatgpt_ui = (PLUGIN / "includes/class-mad4b-scp-chatgpt-connection-admin-ui.php").read_text(encoding="utf-8")
@@ -57,10 +59,37 @@ assert "return 0 === strpos" not in skill_route
 assert skill_route.count("return true;") == 1  # WP_CLI only
 assert "return false;" in skill_route
 
-# REST/Abilities priming is allowed only on the exact MCP Endpoints diagnostic tab.
+passive_router = method_body(
+    request_scope,
+    "private static function passive_admin_route(",
+    "/** @internal Pure regression seam",
+)
+assert "if ( 'mad4b-control-plane-connection' === $page ) return true;" in passive_router
+assert "0 === strpos( $page, 'mad4b-control-plane-' )" in passive_router
+for page in ("mad4b-adapter-coverage", "mad4b-runtime-components", "mad4b-approval-decisions"):
+    assert page in passive_router
+assert "array( 'GET', 'HEAD' )" in request_scope
+
+# The entrypoint must stop global lifecycle fan-out before passive page render.
+assert "$mad4b_passive_admin_read" in entry
+passive_gate = entry.index("$mad4b_passive_admin_read")
+for marker in (
+    "MAD4B_SCP_Live_Acceptance_Observer::boot_early();",
+    "MAD4B_SCP_Query_Monitor_Evidence_Bridge::boot_early();",
+    "MAD4B_SCP_Context_Authority::boot();",
+    "MAD4B_SCP_Provider_Autopilot::boot();",
+    "MAD4B_SCP_Self_Update::boot();",
+):
+    assert passive_gate < entry.index(marker), marker
+assert "MAD4B_SCP_Skill_Runtime_Certification::observe();" not in entry
+
+# REST/Abilities priming is allowed only on the exact explicit MCP Endpoints
+# POST action with a valid nonce. Opening the tab itself is passive.
 assert "'mad4b-control-plane-connection' !== $page" in prime
 assert "'endpoints' !== $tab" in prime
-assert "rest_get_server()" in prime
+assert "explicit_rest_materialization_allowed()" in prime
+assert "wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' )" in prime
+assert prime.index("wp_verify_nonce") < prime.index("rest_get_server()")
 assert "admin_connection_endpoints_prime" in prime
 assert "admin_connection_prime" in prime  # legacy source-contract marker only
 
@@ -140,8 +169,7 @@ acceptance_hotpath = method_body(
     "private static function connection_admin_hotpath()",
     "private static function request_class()",
 )
-for page in ("'mad4b-control-plane-connection'", "'mad4b-control-plane-chatgpt'"):
-    assert page in acceptance_hotpath
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()" in acceptance_hotpath
 
 acceptance_warning = method_body(
     live_acceptance,
@@ -222,17 +250,19 @@ assert "'update.php'" in admin_convergence_router
 assert "return true;" in admin_convergence_router
 assert "return false;" in admin_convergence_router
 
-# Connection and ChatGPT are user-facing read/status screens. They must never be
-# the browser request that revives convergence or performs deep provider/OAuth
-# diagnosis. CLI remains a separate explicit lifecycle owner.
-connection_exclusion = "if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return false;"
-assert connection_exclusion in admin_convergence_router
-assert admin_convergence_router.index(connection_exclusion) < admin_convergence_router.index("0 === strpos( $page, 'mad4b-control-plane' )")
+# Every passive Control Plane GET/HEAD page must never revive convergence.
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()" in admin_convergence_router
+assert admin_convergence_router.index("current_request_is_passive_admin_hotpath()") < admin_convergence_router.index("0 === strpos( $page, 'mad4b-control-plane' )")
 
 assert "public static function snapshot( $force_deep = false )" in connection_ui
-assert "self::snapshot( 'endpoints' === $tab )" in connection_ui
+assert "self::snapshot( $deep_endpoints )" in connection_ui
+assert "mad4b_connection_deep_endpoints" in connection_ui
+assert "mad4b_connection_deep_nonce" in connection_ui
+assert "Run Deep Endpoint Diagnostic" in connection_ui
+assert "$deep_endpoints" in connection_ui
 assert "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()" in connection_ui
 assert "MAD4B_SCP_Local_OAuth_Server::status()" in connection_ui
+assert connection_ui.index("$deep_endpoints") < connection_ui.index("MAD4B_SCP_Local_OAuth_Server::status()")
 
 connection_method = method_body(
     connection_status,
@@ -333,7 +363,7 @@ for page in ("'mad4b-control-plane-connection'", "'mad4b-control-plane-chatgpt'"
     assert page in governance_notice
 assert governance_notice.index("'mad4b-control-plane-chatgpt'") < governance_notice.index("$status = self::governance_status();")
 
-print("admin hotpath isolation contract: PASS")
+print("admin hotpath isolation contract v2: PASS")
 
 
 # Core Site Health REST and generic WP-Cron are request-serving zero-touch
