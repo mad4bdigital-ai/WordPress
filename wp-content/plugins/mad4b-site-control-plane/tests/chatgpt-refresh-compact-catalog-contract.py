@@ -193,6 +193,8 @@ require("MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in chatgpt_body, "boots
 require("$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );" in chatgpt_body, "bounded authority step-ups must be composed explicitly")
 require("$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );" in chatgpt_body, "bounded step-ups must require the dedicated bearer while the Full Staging composite remains lifecycle-stable")
 require("verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )" in chatgpt_body, "bounded step-up projection is not bound to the dedicated OAuth scope")
+require("MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_tools()" in chatgpt_body, "reviewed semantic enrollment step-up projection missing from compact ChatGPT catalog")
+require("$step_up = array_merge( $step_up, $semantic_step_up );" in chatgpt_body, "semantic enrollment step-ups must join the direct mutation transport only after catalog validation")
 require("'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in core_chatgpt, "bounded Enrollment dispatcher must remain in the canonical compact ChatGPT core catalog")
 require("$candidates = array_merge( $core, $bootstrap )" in chatgpt_body, "runtime ChatGPT tools/list must start from the canonical compact core catalog")
 dispatcher_helper = SERVERS.split("public static function chatgpt_dispatch_transport_tools()", 1)[1].split("public static function chatgpt_tools()", 1)[0]

@@ -348,6 +348,30 @@ for marker in [
 if "MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY" not in oauth:
     raise SystemExit('OAuth resource bridge does not advertise authority step-up when enrollment dispatch is available')
 
+for marker in [
+    "public static function chatgpt_direct_step_up_tools()",
+    "public static function can_execute_chatgpt_direct_step_up",
+    "'chatgpt_direct_step_up' => true",
+    "'chatgpt_direct_step_up' => (bool) $chatgpt_direct_step_up",
+    "external_registration_direct_chatgpt_step_up_denied",
+    "MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE",
+    "MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID",
+]:
+    if marker not in parity:
+        raise SystemExit(f'semantic direct ChatGPT step-up invariant missing: {marker}')
+
+semantic_projection = servers.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_internal_enrollment_mutations()", 1)[0]
+for marker in [
+    "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_tools()",
+    "$semantic_step_up",
+    "$step_up = array_merge( $step_up, $semantic_step_up );",
+]:
+    if marker not in semantic_projection:
+        raise SystemExit(f'compact ChatGPT semantic step-up projection missing: {marker}')
+
+if "public static function chatgpt_tools()" not in dispatch:
+    raise SystemExit('Enrollment dispatcher does not explicitly advertise its compatibility transport for OAuth step-up discovery')
+
 enrollment_target = abilities.split("private function governed_enrollment_target(", 1)[1].split("public function can_enrollment_dispatch(", 1)[0]
 if "MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()" not in enrollment_target:
     raise SystemExit("Core Enrollment target allowlist is not sourced from Remote Operation Parity")
