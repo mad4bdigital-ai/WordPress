@@ -88,6 +88,10 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 	private static $removed_routes = array();
 	private static $internal_provider_routes = array();
 	private static $suppression_attempted = false;
+	private static $rest_registration_suppression_attempted = false;
+	private static $suppressed_rest_callbacks = array();
+	private static $internal_rest_materialization_attempted = array();
+	private static $internal_rest_materialization_state = array();
 	private static $suppressed_server_callbacks = array();
 	private static $staging_autoconfig_evaluated = false;
 	private static $staging_autoconfig_applied = false;
@@ -106,6 +110,12 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		// provider server through its documented filter instead of allowlisting it
 		// or mutating the Adapter registry after registration.
 		add_filter( 'wpmedia_mcp_oauth_server_enabled', array( __CLASS__, 'filter_wpmedia_oauth_server_enabled' ), PHP_INT_MIN );
+
+		// Cataloged provider MCP REST callbacks can be expensive before dispatch.
+		// Remove only the reviewed JetEngine MCP callback family before REST
+		// initialization executes it. The callbacks are retained request-locally
+		// and may be replayed only by the governed internal JetEngine handoff.
+		add_action( 'rest_api_init', array( __CLASS__, 'suppress_provider_rest_registrations' ), PHP_INT_MIN );
 	}
 
 	public static function boot() {
@@ -226,6 +236,159 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		return self::effective() ? false : (bool) $enabled;
 	}
 
+
+	public static function suppress_provider_rest_registrations() {
+		if ( ! self::effective() ) return;
+		self::$rest_registration_suppression_attempted = true;
+
+		global $wp_filter;
+		if ( ! isset( $wp_filter['rest_api_init'] ) || ! ( $wp_filter['rest_api_init'] instanceof WP_Hook ) ) return;
+		$callbacks = $wp_filter['rest_api_init']->callbacks;
+		if ( ! is_array( $callbacks ) ) return;
+
+		foreach ( $callbacks as $priority => $entries ) {
+			if ( ! is_array( $entries ) ) continue;
+			foreach ( $entries as $entry ) {
+				$callback = isset( $entry['function'] ) ? $entry['function'] : null;
+				$descriptor = self::descriptor_for_rest_registration_callback( $callback );
+				if ( ! is_array( $descriptor ) ) continue;
+				if ( ! remove_action( 'rest_api_init', $callback, (int) $priority ) ) continue;
+
+				self::$suppressed_rest_callbacks[] = array(
+					'provider' => sanitize_key( (string) $descriptor['provider'] ),
+					'callback' => $callback,
+					'callback_class' => isset( $descriptor['callback_class'] ) ? sanitize_text_field( (string) $descriptor['callback_class'] ) : '',
+					'callback_method' => isset( $descriptor['callback_method'] ) ? sanitize_text_field( (string) $descriptor['callback_method'] ) : '',
+					'priority' => (int) $priority,
+					'accepted_args' => isset( $entry['accepted_args'] ) ? max( 0, (int) $entry['accepted_args'] ) : 1,
+					'source' => isset( $descriptor['source'] ) ? sanitize_key( (string) $descriptor['source'] ) : 'reviewed_provider_mcp_rest_callback',
+				);
+			}
+		}
+	}
+
+	private static function descriptor_for_rest_registration_callback( $callback ) {
+		$owner = '';
+		$method = '';
+		$file = '';
+
+		try {
+			if ( is_array( $callback ) && 2 === count( $callback ) ) {
+				$owner = is_object( $callback[0] ) ? get_class( $callback[0] ) : ( is_string( $callback[0] ) ? ltrim( $callback[0], '\\' ) : '' );
+				$method = is_string( $callback[1] ) ? $callback[1] : '';
+				if ( '' !== $owner && '' !== $method && method_exists( $owner, $method ) ) {
+					$reflection = new ReflectionMethod( $owner, $method );
+					$file = (string) $reflection->getFileName();
+				}
+			} elseif ( $callback instanceof Closure ) {
+				$reflection = new ReflectionFunction( $callback );
+				$file = (string) $reflection->getFileName();
+			} elseif ( is_string( $callback ) && '' !== $callback ) {
+				if ( false !== strpos( $callback, '::' ) ) {
+					list( $owner, $method ) = array_map( 'strval', explode( '::', $callback, 2 ) );
+					$owner = ltrim( $owner, '\\' );
+					if ( '' !== $owner && '' !== $method && method_exists( $owner, $method ) ) {
+						$reflection = new ReflectionMethod( $owner, $method );
+						$file = (string) $reflection->getFileName();
+					}
+				} elseif ( function_exists( $callback ) ) {
+					$reflection = new ReflectionFunction( $callback );
+					$file = (string) $reflection->getFileName();
+				}
+			}
+		} catch ( Throwable $e ) {
+			return null;
+		}
+
+		$owner = ltrim( (string) $owner, '\\' );
+		$jetengine_namespace_match = 0 === strpos( $owner, 'Jet_Engine\\MCP_Tools\\' );
+		if ( ! $jetengine_namespace_match ) {
+			foreach ( array(
+				'Jet_Engine\\Post_Types\\MCP\\',
+				'Jet_Engine\\Taxonomies\\MCP\\',
+				'Jet_Engine\\Meta_Boxes\\MCP\\',
+				'Jet_Engine\\Query_Builder\\MCP\\',
+				'Jet_Engine\\Listings\\MCP\\',
+			) as $prefix ) {
+				if ( 0 === strpos( $owner, $prefix ) ) {
+					$jetengine_namespace_match = true;
+					break;
+				}
+			}
+		}
+
+		$jetengine_source_match = false;
+		if ( '' !== $file && defined( 'WP_PLUGIN_DIR' ) ) {
+			$resolved = realpath( $file );
+			$root = realpath( trailingslashit( WP_PLUGIN_DIR ) . 'jet-engine' );
+			if ( $resolved && $root ) {
+				$normalized = strtolower( wp_normalize_path( $resolved ) );
+				$prefix = rtrim( strtolower( wp_normalize_path( $root ) ), '/' ) . '/';
+				if ( 0 === strpos( $normalized, $prefix ) ) {
+					$relative = substr( $normalized, strlen( $prefix ) );
+					$jetengine_source_match = false !== strpos( $relative, 'mcp-tools/' )
+						|| false !== strpos( $relative, 'mcp_tools/' )
+						|| false !== strpos( $relative, '/mcp/' )
+						|| 0 === strpos( $relative, 'mcp/' );
+				}
+			}
+		}
+
+		if ( ! $jetengine_namespace_match && ! $jetengine_source_match ) return null;
+		return array(
+			'provider' => 'jetengine',
+			'callback_class' => $owner,
+			'callback_method' => $method,
+			'source' => $jetengine_namespace_match ? 'reviewed_jetengine_mcp_namespace' : 'reviewed_jetengine_mcp_source',
+		);
+	}
+
+	private static function materialize_internal_provider_routes( $provider ) {
+		$provider = sanitize_key( (string) $provider );
+		if ( 'jetengine' !== $provider ) return false;
+		if ( isset( self::$internal_rest_materialization_attempted[ $provider ] ) ) {
+			$status = self::internal_provider_transport_status( $provider );
+			return ! empty( $status['registry_available'] ) && ! empty( $status['run_available'] );
+		}
+		self::$internal_rest_materialization_attempted[ $provider ] = true;
+
+		global $wp_rest_server;
+		if ( ! is_object( $wp_rest_server ) || ! method_exists( $wp_rest_server, 'get_routes' ) ) {
+			self::$internal_rest_materialization_state[ $provider ] = 'rest_server_unavailable';
+			return false;
+		}
+
+		$executed = 0;
+		foreach ( self::$suppressed_rest_callbacks as $entry ) {
+			if ( $provider !== ( isset( $entry['provider'] ) ? sanitize_key( (string) $entry['provider'] ) : '' ) ) continue;
+			$callback = isset( $entry['callback'] ) ? $entry['callback'] : null;
+			if ( ! is_callable( $callback ) ) continue;
+			try {
+				$accepted_args = isset( $entry['accepted_args'] ) ? (int) $entry['accepted_args'] : 1;
+				if ( $accepted_args > 0 ) call_user_func( $callback, $wp_rest_server );
+				else call_user_func( $callback );
+				$executed++;
+			} catch ( Throwable $e ) {
+				self::$internal_rest_materialization_state[ $provider ] = 'reviewed_callback_failed';
+				return false;
+			}
+		}
+
+		if ( $executed < 1 ) {
+			self::$internal_rest_materialization_state[ $provider ] = 'reviewed_callback_unavailable';
+			return false;
+		}
+
+		// get_routes() applies rest_endpoints; the existing isolation filter keeps
+		// raw provider routes hidden while retaining only cataloged internal
+		// registry/execute definitions for the governed handoff below.
+		$wp_rest_server->get_routes();
+		$status = self::internal_provider_transport_status( $provider );
+		$ready = ! empty( $status['registry_available'] ) && ! empty( $status['run_available'] );
+		self::$internal_rest_materialization_state[ $provider ] = $ready ? 'materialized_internal_only' : 'materialization_incomplete';
+		return $ready;
+	}
+
 	public static function suppress_provider_server_registrations() {
 		if ( ! self::effective() ) return;
 		self::$suppression_attempted = true;
@@ -337,6 +500,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 
 		$actual_route = '/' . ltrim( (string) $request->get_route(), '/' );
 		$matched = self::retained_route_match( $actual_route );
+		if ( ! is_array( $matched ) && self::materialize_internal_provider_routes( $provider ) ) $matched = self::retained_route_match( $actual_route );
 		if ( ! is_array( $matched ) ) return new WP_Error( 'mad4b_internal_provider_route_unavailable', 'The isolated provider route was not retained for internal governed use.' );
 		$descriptor = isset( $matched['descriptor'] ) && is_array( $matched['descriptor'] ) ? $matched['descriptor'] : array();
 		if ( $provider !== sanitize_key( isset( $descriptor['provider'] ) ? (string) $descriptor['provider'] : '' ) || empty( $descriptor['internal_retention'] ) ) {
@@ -406,6 +570,16 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		$server_descriptors = array();
 		foreach ( self::server_callback_descriptors() as $descriptor ) $server_descriptors[] = array( 'provider' => sanitize_key( $descriptor['provider'] ), 'server_id' => sanitize_text_field( $descriptor['server_id'] ), 'callback' => sanitize_text_field( $descriptor['callback_class'] . '::' . $descriptor['callback_method'] ) );
 		$suppressed = array_values( self::$suppressed_server_callbacks );
+		$rest_suppressed = array();
+		foreach ( self::$suppressed_rest_callbacks as $item ) {
+			$rest_suppressed[] = array(
+				'provider' => isset( $item['provider'] ) ? sanitize_key( (string) $item['provider'] ) : '',
+				'callback_class' => isset( $item['callback_class'] ) ? sanitize_text_field( (string) $item['callback_class'] ) : '',
+				'callback_method' => isset( $item['callback_method'] ) ? sanitize_text_field( (string) $item['callback_method'] ) : '',
+				'priority' => isset( $item['priority'] ) ? (int) $item['priority'] : 0,
+				'source' => isset( $item['source'] ) ? sanitize_key( (string) $item['source'] ) : '',
+			);
+		}
 		$server_ids = array();
 		foreach ( $suppressed as $item ) if ( isset( $item['server_id'] ) ) $server_ids[] = sanitize_text_field( $item['server_id'] );
 
@@ -429,6 +603,10 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 			'default_server_suppressed' => self::effective(),
 			'wpmedia_oauth_server_suppressed' => self::effective(),
 			'server_registration_suppression_attempted' => (bool) self::$suppression_attempted,
+			'rest_registration_suppression_attempted' => (bool) self::$rest_registration_suppression_attempted,
+			'suppressed_rest_callback_count' => count( $rest_suppressed ),
+			'suppressed_rest_callbacks' => array_slice( $rest_suppressed, 0, 100 ),
+			'internal_rest_materialization_state' => self::$internal_rest_materialization_state,
 			'suppressed_server_count' => count( $suppressed ),
 			'suppressed_server_ids' => array_values( array_unique( $server_ids ) ),
 			'suppressed_server_callbacks' => array_slice( $suppressed, 0, 100 ),
