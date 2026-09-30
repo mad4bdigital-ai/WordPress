@@ -61,6 +61,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	const MAX_SCAN_FILES = 500;
 	const MAX_SCAN_FOLDERS = 120;
+	const MAX_SCAN_WALL_SECONDS = 15;
+	const REFRESH_FAILURE_COOLDOWN_SECONDS = 60;
 	const MAX_TEXT_BYTES = 262144;
 	const MAX_BINARY_BYTES = 16777216;
 	const MAX_WRITE_BYTES = 1048576;
@@ -250,15 +252,17 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	public static function full_suite_grant_selection() {
-		return array(
-			'drive' => 'full',
-			'docs' => 'full',
-			'sheets' => 'full',
-			'apps_script' => 'full',
-			'gemini' => 'api',
-			'gmail' => 'full',
-			'calendar' => 'full',
-		);
+		$selection = array();
+		foreach ( self::workspace_grant_catalog() as $app => $definition ) {
+			$selected = '';
+			foreach ( isset( $definition['modes'] ) && is_array( $definition['modes'] ) ? $definition['modes'] : array() as $mode => $mode_definition ) {
+				if ( 'off' === (string) $mode ) continue;
+				$selected = sanitize_key( (string) $mode );
+			}
+			if ( '' === $selected ) $selected = isset( $definition['default'] ) ? sanitize_key( (string) $definition['default'] ) : 'off';
+			$selection[ $app ] = $selected;
+		}
+		return $selection;
 	}
 
 	public static function workspace_grants_status() {
@@ -275,6 +279,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 		}
 		$scopes = self::scopes_for_workspace_grants( $selection );
 		$full = self::full_suite_grant_selection();
+		$token = self::token_record();
+		$granted_scopes = is_array( $token ) && ! empty( $token['refresh_token'] ) ? self::scope_items( isset( $token['scope'] ) ? $token['scope'] : '' ) : array();
+		$missing_scopes = self::uncovered_scopes( $scopes, $granted_scopes );
+		$extra_granted_scopes = self::uncovered_scopes( $granted_scopes, $scopes );
 		return array(
 			'contract' => self::WORKSPACE_GRANTS_CONTRACT,
 			'configured' => $configured,
@@ -283,13 +291,17 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'scope_count' => count( $scopes ),
 			'full_suite_selected' => $selection === $full,
 			'grant_sha256' => hash( 'sha256', wp_json_encode( $selection, JSON_UNESCAPED_SLASHES ) ),
+			'connected_grant_present' => ! empty( $granted_scopes ),
+			'granted_scope_count' => count( $granted_scopes ),
+			'missing_scope_count' => count( $missing_scopes ),
+			'extra_granted_scope_count' => count( $extra_granted_scopes ),
+			'incremental_consent_required' => ! empty( $granted_scopes ) && ! empty( $missing_scopes ),
+			'scope_reduction_requires_revoke' => ! empty( $granted_scopes ) && ! empty( $extra_granted_scopes ),
 			'catalog' => $catalog,
 		);
 	}
 
 	public static function save_workspace_grants( $selection ) {
-		$stored_token = get_option( self::TOKEN_OPTION, array() );
-		if ( is_array( $stored_token ) && self::CONTRACT === ( isset( $stored_token['contract'] ) ? (string) $stored_token['contract'] : '' ) ) return new WP_Error( 'mad4b_google_workspace_grants_change_requires_disconnect', 'Disconnect and revoke the current Google grant before changing Workspace app grants.' );
 		$catalog = self::workspace_grant_catalog();
 		$selection = is_array( $selection ) ? $selection : array();
 		foreach ( array_keys( $selection ) as $app ) if ( ! isset( $catalog[ $app ] ) ) return new WP_Error( 'mad4b_google_workspace_grant_app_invalid', 'Unknown Google Workspace grant application.' );
@@ -300,10 +312,34 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$normalized[ $app ] = $mode;
 		}
 		if ( ! in_array( $normalized['drive'], array( 'read', 'full' ), true ) ) return new WP_Error( 'mad4b_google_workspace_drive_grant_required', 'Google Drive must remain at least read-only for Context Authority.' );
+
+		$requested_scopes = self::scopes_for_workspace_grants( $normalized );
+		$stored_token = get_option( self::TOKEN_OPTION, array() );
+		$stored_token_present = is_array( $stored_token ) && self::CONTRACT === ( isset( $stored_token['contract'] ) ? (string) $stored_token['contract'] : '' );
+		$current_token = $stored_token_present ? self::token_record() : array();
+		if ( $stored_token_present && ( ! is_array( $current_token ) || empty( $current_token['refresh_token'] ) ) ) {
+			return new WP_Error( 'mad4b_google_workspace_grants_change_requires_disconnect', 'Stored Google authorization is unreadable. Disconnect and revoke before changing Workspace app grants.' );
+		}
+		$granted_scopes = is_array( $current_token ) && ! empty( $current_token['refresh_token'] ) ? self::scope_items( isset( $current_token['scope'] ) ? $current_token['scope'] : '' ) : array();
+		$removed_grants = self::uncovered_scopes( $granted_scopes, $requested_scopes );
+		if ( ! empty( $removed_grants ) ) {
+			return new WP_Error(
+				'mad4b_google_workspace_grants_reduction_requires_revoke',
+				'Reducing an existing Google grant requires disconnect and provider revocation so least privilege can be proven.',
+				array(
+					'removed_scope_count' => count( $removed_grants ),
+					'incremental_expansion_allowed' => true,
+					'revocation_required' => true,
+				)
+			);
+		}
+		$missing_scopes = self::uncovered_scopes( $requested_scopes, $granted_scopes );
 		$record = array(
 			'contract' => self::WORKSPACE_GRANTS_CONTRACT,
 			'selection' => $normalized,
 			'grant_sha256' => hash( 'sha256', wp_json_encode( $normalized, JSON_UNESCAPED_SLASHES ) ),
+			'incremental_consent_required' => ! empty( $granted_scopes ) && ! empty( $missing_scopes ),
+			'pending_scope_count' => count( $missing_scopes ),
 			'updated_at' => gmdate( 'c' ),
 		);
 		if ( ! self::write_option( self::WORKSPACE_GRANTS_OPTION, $record ) ) return new WP_Error( 'mad4b_google_workspace_grants_persist_failed', 'Google Workspace grant selection could not be persisted.' );
@@ -632,7 +668,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'response_type' => 'code',
 				'scope' => $requested_scope,
 				'access_type' => 'offline',
-				'include_granted_scopes' => 'false',
+				'include_granted_scopes' => 'true',
 				'prompt' => 'consent',
 				'code_challenge' => $pkce_challenge,
 				'code_challenge_method' => 'S256',
@@ -953,6 +989,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	public static function scan_folder( $folder_id, $recursive = true ) {
+		$scan_clock_started = microtime( true );
+		$deadline = $scan_clock_started + self::MAX_SCAN_WALL_SECONDS;
 		$folder = self::get_folder( $folder_id );
 		if ( is_wp_error( $folder ) ) return $folder;
 		$started_at = gmdate( 'c' );
@@ -962,8 +1000,23 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$visited = array();
 		$complete = true;
 		$truncation_reasons = array();
+		$reused_asset_count = 0;
+		$fetched_asset_count = 0;
+		$prior_assets = array();
+		if ( class_exists( 'MAD4B_SCP_Context_Authority' ) && method_exists( 'MAD4B_SCP_Context_Authority', 'assets' ) ) {
+			foreach ( MAD4B_SCP_Context_Authority::assets() as $prior_asset ) {
+				if ( ! is_array( $prior_asset ) || 'google_drive' !== ( isset( $prior_asset['provider'] ) ? (string) $prior_asset['provider'] : '' ) ) continue;
+				$file_id = isset( $prior_asset['file_id'] ) ? (string) $prior_asset['file_id'] : '';
+				if ( '' !== $file_id ) $prior_assets[ $file_id ] = $prior_asset;
+			}
+		}
 
 		while ( $queue ) {
+			if ( microtime( true ) >= $deadline ) {
+				$complete = false;
+				$truncation_reasons[] = 'scan_time_budget';
+				break;
+			}
 			if ( count( $assets ) >= self::MAX_SCAN_FILES ) {
 				$complete = false;
 				$truncation_reasons[] = 'scan_file_limit';
@@ -1016,21 +1069,53 @@ final class MAD4B_SCP_Google_Drive_Context {
 					break;
 				}
 
-				$content_record = self::fetch_text_content_record( $child );
-				if ( is_wp_error( $content_record ) ) {
+				if ( microtime( true ) >= $deadline ) {
+					$complete = false;
+					$truncation_reasons[] = 'scan_time_budget';
+					break;
+				}
+
+				$child_id = isset( $child['id'] ) ? (string) $child['id'] : '';
+				$child_version = isset( $child['modifiedTime'] ) ? (string) $child['modifiedTime'] : '';
+				$prior = '' !== $child_id && isset( $prior_assets[ $child_id ] ) ? $prior_assets[ $child_id ] : array();
+				$reuse_existing = ! empty( $prior )
+					&& ! empty( $prior['content_complete'] )
+					&& ! empty( $prior['content_hash'] )
+					&& '' !== $child_version
+					&& isset( $prior['version'] )
+					&& hash_equals( (string) $prior['version'], $child_version );
+
+				if ( $reuse_existing ) {
 					$content_record = array(
 						'content' => '',
-						'complete' => false,
-						'bytes' => 0,
-						'normalization_status' => 'error',
-						'normalization_reason' => $content_record->get_error_code(),
+						'complete' => true,
+						'bytes' => isset( $prior['content_bytes'] ) ? (int) $prior['content_bytes'] : 0,
+						'normalization_status' => 'reused',
+						'normalization_reason' => 'unchanged_provider_version',
+						'content_hash' => (string) $prior['content_hash'],
 					);
+					++$reused_asset_count;
+				} else {
+					$content_record = self::fetch_text_content_record( $child );
+					++$fetched_asset_count;
+					if ( is_wp_error( $content_record ) ) {
+						$content_record = array(
+							'content' => '',
+							'complete' => false,
+							'bytes' => 0,
+							'normalization_status' => 'error',
+							'normalization_reason' => $content_record->get_error_code(),
+						);
+					}
 				}
 				$content_complete = ! empty( $content_record['complete'] );
 				$text = $content_complete && isset( $content_record['content'] ) ? (string) $content_record['content'] : '';
 				$basis = '' !== $text
 					? $text
 					: ( isset( $child['md5Checksum'] ) && $child['md5Checksum'] ? (string) $child['md5Checksum'] : (string) $child['id'] . '|' . ( isset( $child['modifiedTime'] ) ? $child['modifiedTime'] : '' ) );
+				$content_hash = isset( $content_record['content_hash'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $content_record['content_hash'] )
+					? strtolower( (string) $content_record['content_hash'] )
+					: hash( 'sha256', $basis );
 
 				$assets[] = array(
 					'file_id' => isset( $child['id'] ) ? (string) $child['id'] : '',
@@ -1047,7 +1132,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 					'content_bytes' => isset( $content_record['bytes'] ) ? (int) $content_record['bytes'] : strlen( $text ),
 					'normalization_status' => isset( $content_record['normalization_status'] ) ? sanitize_key( (string) $content_record['normalization_status'] ) : ( $content_complete ? 'ready' : 'incomplete' ),
 					'normalization_reason' => isset( $content_record['normalization_reason'] ) ? sanitize_key( (string) $content_record['normalization_reason'] ) : '',
-					'content_hash' => hash( 'sha256', $basis ),
+					'content_hash' => $content_hash,
+					'reuse_existing' => $reuse_existing,
 				);
 			}
 		}
@@ -1066,6 +1152,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'recursive' => (bool) $recursive,
 			'asset_count' => count( $assets ),
 			'folder_count' => count( $visited ),
+			'reused_asset_count' => $reused_asset_count,
+			'fetched_asset_count' => $fetched_asset_count,
+			'elapsed_ms' => (int) round( ( microtime( true ) - $scan_clock_started ) * 1000 ),
+			'time_budget_seconds' => self::MAX_SCAN_WALL_SECONDS,
 			'complete' => (bool) $complete,
 			'truncated' => ! $complete,
 			'truncation_reasons' => $truncation_reasons,
@@ -2702,6 +2792,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! is_array( $record ) || empty( $record['refresh_token'] ) ) return new WP_Error( 'mad4b_google_drive_not_connected', 'Google Drive is not connected.' );
 		if ( ! empty( $record['revocation_pending'] ) ) return new WP_Error( 'mad4b_google_drive_revocation_pending', 'Google Drive access is disabled while remote revocation is pending.' );
 		if ( ! empty( $record['access_token'] ) && ! empty( $record['expires_at'] ) && (int) $record['expires_at'] > time() + 90 ) return (string) $record['access_token'];
+		$retry_blocker = self::refresh_retry_blocker( $record );
+		if ( is_wp_error( $retry_blocker ) ) return $retry_blocker;
 		$record_mode = isset( $record['auth_mode'] ) ? sanitize_key( (string) $record['auth_mode'] ) : self::AUTH_MODE_CUSTOM;
 		if ( self::AUTH_MODE_MANAGED === $record_mode ) {
 			$managed = self::refresh_managed_access_token( $record );
@@ -2754,9 +2846,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$scope = trim( (string) $scope );
 		$expected_scope = trim( (string) $expected_scope );
 
+		$requested_items = self::scope_items( $expected_scope );
+		$granted_items = self::scope_items( $scope );
 		if ( '' !== $expected_scope ) {
 			if ( ! self::workspace_scope_is_allowed( $scope ) ) return new WP_Error( 'mad4b_google_workspace_scope_not_allowed', 'Google granted a scope outside the governed Workspace grant catalog.' );
-			if ( ! self::scope_sets_equal( $scope, $expected_scope ) ) return new WP_Error( 'mad4b_google_workspace_scope_set_not_exact', 'Google returned a scope set that does not exactly match the reviewed Workspace grant request.' );
+			foreach ( $requested_items as $requested_item ) {
+				if ( ! in_array( $requested_item, self::allowed_scope_items(), true ) ) return new WP_Error( 'mad4b_google_workspace_requested_scope_not_allowed', 'Requested Google scope is outside the governed Workspace grant catalog.' );
+			}
 		} elseif ( ! self::scope_is_allowed( $scope ) ) {
 			return new WP_Error( 'mad4b_google_drive_scope_not_allowed', 'Google granted a scope set outside the governed Drive read/read-write contracts.' );
 		}
@@ -2773,7 +2869,11 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$record['access_token'] = trim( (string) $access_token );
 		$record['refresh_token'] = trim( (string) $refresh_token );
 		$record['expires_at'] = time() + max( 60, absint( $expires_in ) );
-		$record['scope'] = $scope;
+		$record['scope'] = implode( ' ', $granted_items );
+		$record['requested_scope'] = '' !== $expected_scope ? implode( ' ', $requested_items ) : $record['scope'];
+		$record['missing_requested_scopes'] = '' !== $expected_scope ? array_values( array_diff( $requested_items, $granted_items ) ) : array();
+		$record['previously_granted_scopes'] = '' !== $expected_scope ? array_values( array_diff( $granted_items, $requested_items ) ) : array();
+		$record['complete_scope_grant'] = empty( $record['missing_requested_scopes'] );
 		$record['access_mode'] = self::scope_allows_write( $scope ) ? 'read_write' : 'read_only';
 		$auth_mode = sanitize_key( (string) $auth_mode );
 		if ( '' === $auth_mode ) $auth_mode = isset( $record['auth_mode'] ) ? sanitize_key( (string) $record['auth_mode'] ) : self::auth_mode();
@@ -2884,6 +2984,38 @@ final class MAD4B_SCP_Google_Drive_Context {
 		sort( $b, SORT_STRING );
 		return $a === $b;
 	}
+	private static function scope_covers( $holder_scope, $required_scope ) {
+		$holder_scope = trim( (string) $holder_scope );
+		$required_scope = trim( (string) $required_scope );
+		if ( '' === $holder_scope || '' === $required_scope ) return false;
+		if ( hash_equals( $holder_scope, $required_scope ) ) return true;
+		$implications = array(
+			self::WRITE_SCOPE => array( self::READ_SCOPE ),
+			self::DOCS_WRITE_SCOPE => array( self::DOCS_READ_SCOPE ),
+			self::SHEETS_WRITE_SCOPE => array( self::SHEETS_READ_SCOPE ),
+			self::CALENDAR_FULL_SCOPE => array( self::CALENDAR_READ_SCOPE ),
+			self::GMAIL_FULL_SCOPE => array( self::GMAIL_READ_SCOPE ),
+			self::SCRIPT_DEPLOYMENTS_WRITE_SCOPE => array( self::SCRIPT_DEPLOYMENTS_READ_SCOPE ),
+			self::SCRIPT_PROJECTS_WRITE_SCOPE => array( self::SCRIPT_PROJECTS_READ_SCOPE ),
+		);
+		return isset( $implications[ $holder_scope ] ) && in_array( $required_scope, $implications[ $holder_scope ], true );
+	}
+
+	private static function uncovered_scopes( array $required_scopes, array $holder_scopes ) {
+		$uncovered = array();
+		foreach ( array_values( array_unique( $required_scopes ) ) as $required_scope ) {
+			$covered = false;
+			foreach ( array_values( array_unique( $holder_scopes ) ) as $holder_scope ) {
+				if ( self::scope_covers( $holder_scope, $required_scope ) ) {
+					$covered = true;
+					break;
+				}
+			}
+			if ( ! $covered ) $uncovered[] = (string) $required_scope;
+		}
+		return array_values( array_unique( $uncovered ) );
+	}
+
 
 	private static function scope_allows_read( $scope ) {
 		$items = self::scope_items( $scope );
@@ -2898,7 +3030,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$items = self::scope_items( $scope );
 		$requested_mode = sanitize_key( (string) $requested_mode );
 		if ( 'read_only' === $requested_mode ) return in_array( self::READ_SCOPE, $items, true ) && ! in_array( self::WRITE_SCOPE, $items, true );
-		if ( 'read_write' === $requested_mode ) return in_array( self::WRITE_SCOPE, $items, true ) && ! in_array( self::READ_SCOPE, $items, true );
+		if ( 'read_write' === $requested_mode ) return in_array( self::WRITE_SCOPE, $items, true );
 		return false;
 	}
 
@@ -3018,7 +3150,15 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		$data = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 		if ( $status < 200 || $status >= 300 ) {
-			$provider_code = is_array( $data ) && isset( $data['error'] ) ? sanitize_key( is_array( $data['error'] ) && isset( $data['error']['code'] ) ? (string) $data['error']['code'] : (string) $data['error'] ) : '';
+			$provider_code = '';
+			if ( is_array( $data ) && isset( $data['error'] ) ) {
+				if ( is_array( $data['error'] ) ) {
+					if ( isset( $data['error']['details']['provider_code'] ) ) $provider_code = sanitize_key( (string) $data['error']['details']['provider_code'] );
+					elseif ( isset( $data['error']['code'] ) ) $provider_code = sanitize_key( (string) $data['error']['code'] );
+				} elseif ( is_string( $data['error'] ) ) {
+					$provider_code = sanitize_key( $data['error'] );
+				}
+			}
 			return new WP_Error( $error_code, 'Managed Google Sign-In broker returned a non-success status.', array( 'status' => $status, 'provider_code' => $provider_code ) );
 		}
 		if ( ! is_array( $data ) ) return new WP_Error( $error_code, 'Managed Google Sign-In broker returned invalid JSON.', array( 'status' => $status ) );
@@ -3246,6 +3386,40 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return $blockers;
 	}
 
+	private static function refresh_retry_blocker( array $record ) {
+		$failure_code = isset( $record['refresh_failure_code'] ) ? sanitize_key( (string) $record['refresh_failure_code'] ) : '';
+		if ( '' === $failure_code ) return true;
+		$provider_code = isset( $record['refresh_failure_provider_code'] ) ? sanitize_key( (string) $record['refresh_failure_provider_code'] ) : '';
+		$failure_at = isset( $record['refresh_failure_at'] ) ? strtotime( (string) $record['refresh_failure_at'] ) : false;
+		if ( in_array( $provider_code, array( 'invalid_grant', 'invalid_client', 'unauthorized_client' ), true ) ) {
+			return new WP_Error(
+				'mad4b_google_drive_reconnect_required',
+				'Google authorization is no longer refreshable. Reconnect Google before another provider request is attempted.',
+				array(
+					'provider_code' => $provider_code,
+					'refresh_failure_code' => $failure_code,
+					'refresh_failure_at' => isset( $record['refresh_failure_at'] ) ? (string) $record['refresh_failure_at'] : '',
+					'network_retry_suppressed' => true,
+				)
+			);
+		}
+		if ( false !== $failure_at ) {
+			$age = max( 0, time() - (int) $failure_at );
+			if ( $age < self::REFRESH_FAILURE_COOLDOWN_SECONDS ) {
+				return new WP_Error(
+					'mad4b_google_drive_refresh_cooldown_active',
+					'Google token refresh is temporarily cooling down after a failed provider request.',
+					array(
+						'provider_code' => $provider_code,
+						'retry_after_seconds' => max( 1, self::REFRESH_FAILURE_COOLDOWN_SECONDS - $age ),
+						'network_retry_suppressed' => true,
+					)
+				);
+			}
+		}
+		return true;
+	}
+
 	private static function record_refresh_failure( array $record, $error ) {
 		if ( ! is_wp_error( $error ) ) return false;
 		$data = $error->get_error_data();
@@ -3298,10 +3472,11 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	private static function write_option( $name, $value ) {
-		// Invalidate before the first read. The previous implementation made its
-		// add-vs-update decision from a potentially stale notoptions/alloptions
-		// entry and only repaired cache state after the first failed write.
-		self::clear_option_read_cache( $name, true );
+		// Fast path: invalidate only the affected option/notoptions/alloptions keys.
+		// Avoid flushing the entire persistent Options cache group on every normal
+		// OAuth/context write; that cache-wide flush can amplify the following
+		// wp-admin request into a large DB read burst.
+		self::clear_option_read_cache( $name );
 		$current = get_option( $name, false );
 		if ( false !== $current && self::option_values_equal( $current, $value ) ) return true;
 
@@ -3313,15 +3488,15 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$readback = get_option( $name, false );
 		if ( self::option_values_equal( $readback, $value ) ) return true;
 
-		// A concurrent insert or a cache drop-in may have changed existence after
-		// the first attempt. Re-resolve existence from a freshly flushed Options
-		// group, retry through the public Options API, then require exact readback.
+		// Recovery path only: some persistent-cache drop-ins can retain a stale
+		// negative/options index despite point deletion. Escalate to a group flush
+		// only after exact readback proves targeted invalidation was insufficient.
 		self::clear_option_read_cache( $name, true );
 		$current = get_option( $name, false );
 		if ( false === $current ) add_option( $name, $value, '', 'no' );
 		else update_option( $name, $value );
 
-		self::clear_option_read_cache( $name, true );
+		self::clear_option_read_cache( $name );
 		return self::option_values_equal( get_option( $name, false ), $value );
 	}
 
