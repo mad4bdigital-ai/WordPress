@@ -2,9 +2,11 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 life=(ROOT/'includes/class-mad4b-scp-schema-lifecycle.php').read_text(encoding='utf-8')
 main=(ROOT/'mad4b-site-control-plane.php').read_text(encoding='utf-8')
-for marker in ('package_identity()', 'MAD4B_SCP_Schema::is_ready()', 'wp_schedule_single_event', 'maybe_reconcile_admin_lifecycle', 'reconcile_scheduled', 'LOCK_OPTION', 'retry_due()', 'admin_package_lifecycle', 'next_attempt_at', 'MAD4B_SCP_Schema::install_or_upgrade()', 'applied_package_identity', 'wp_clear_scheduled_hook'):
+for marker in ('package_identity()', 'MAD4B_SCP_Schema::is_ready()', 'wp_schedule_single_event', 'maybe_reconcile_admin_lifecycle', 'reconcile_scheduled', 'mark_current_package_applied', 'LOCK_OPTION', 'retry_due()', 'admin_package_lifecycle', 'next_attempt_at', 'MAD4B_SCP_Schema::install_or_upgrade()', 'applied_package_identity', 'wp_clear_scheduled_hook'):
     assert marker in life, marker
 assert "MAD4B_SCP_Schema_Lifecycle::boot();" in main
+plugin=(ROOT/'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+assert "MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'activation' )" in plugin
 assert '0.4.0-rc.84' in main
 assert 'hash_file' not in life
 assert 'lstat(' not in life
