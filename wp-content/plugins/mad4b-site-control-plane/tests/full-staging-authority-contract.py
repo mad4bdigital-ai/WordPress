@@ -42,7 +42,7 @@ required = [
     "mad4b_full_authority_developer_plan_blocked",
     "mad4b_full_authority_developer_breakglass_plan_blocked",
     "generic_raw_sql_breakglass_gate_enabled",
-    "MAD4B_MCP_BREAKGLASS_ENABLED",
+    "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled()",
     "mad4b_full_authority_raw_sql_breakglass_denied",
     "public static function can_apply( $input = null )",
     "AUTHORITY_STEP_UP_SCOPE",
