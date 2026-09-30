@@ -32,6 +32,26 @@ entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
 
+# Unrelated REST/AJAX must exit before the full 5+ MiB Control Plane include
+# surface is parsed. Keep only Site Profile + request scope so the official MCP
+# Adapter can still be disarmed on the exact governed site.
+for marker in (
+    "MAD4B_SCP_EARLY_ZERO_TOUCH_REASON",
+    "'foreign_rest'",
+    "'foreign_admin_ajax'",
+    "0 === strpos( $mad4b_scp_early_rest_path, '/mcp/mad4b-' )",
+    "0 === strpos( $mad4b_scp_early_rest_path, '/mad4b/' )",
+    "class-mad4b-scp-site-profile.php",
+    "class-mad4b-scp-mcp-request-scope.php",
+    "MAD4B_SCP_MCP_Request_Scope::bootstrap();",
+):
+    assert marker in entry, marker
+early_gate = entry.index("$mad4b_scp_early_zero_touch_reason = '';")
+first_full_runtime_require = entry.index("require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-environment.php';")
+assert early_gate < first_full_runtime_require
+early_return_block = entry.split("if ( '' !== $mad4b_scp_early_zero_touch_reason ) {", 1)[1].split("require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-profile.php';", 2)[1]
+assert "return;" in early_return_block
+
 # Upstream 0.6.1 eagerly materializes Ability -> Tool DTOs while each server is
 # constructed during mcp_adapter_init. This is the structural reason shrinking
 # only the mad4b-chatgpt response payload is insufficient.
