@@ -15,6 +15,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 	const MAX_PLUGINS = 500;
 
 	private static $catalog = null;
+	private static $coverage = null;
 
 	public static function catalog() {
 		if ( null !== self::$catalog ) return self::$catalog;
@@ -31,6 +32,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 	}
 
 	public static function coverage() {
+		if ( null !== self::$coverage ) return self::$coverage;
 		// Coverage is a read-only runtime projection, but it depends on the deterministic
 		// in-memory adapter registry being populated. Ordinary wp-admin requests do not
 		// necessarily pass through the MCP/WP-CLI reconciliation path, so initialize the
@@ -87,7 +89,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			if ( ! empty( $item['support_request'] ) ) $requests[] = $item['support_request'];
 		}
 
-		return array(
+		self::$coverage = array(
 			'contract' => self::CONTRACT,
 			'discovery_only' => true,
 			'auto_install' => false,
@@ -108,6 +110,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'functional_family_states' => $functional_family_states,
 			'truncated' => count( $plugins ) > self::MAX_PLUGINS,
 		);
+		return self::$coverage;
 	}
 
 	private static function functional_state_counts( array $states ) {
