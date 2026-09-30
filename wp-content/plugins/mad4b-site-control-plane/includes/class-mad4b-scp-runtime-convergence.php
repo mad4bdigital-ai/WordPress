@@ -38,7 +38,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( $explicit > 0 ) return $explicit;
 		$source = isset( $checkpoint['source'] ) ? sanitize_key( (string) $checkpoint['source'] ) : '';
 		$state = isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
-		if ( 'self_update' !== $source || ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true ) ) return 0;
+		if ( 'self_update' !== $source || ! in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'waiting_for_exact_runtime_restart' ), true ) ) return 0;
 		// Backward-compatible barrier: the update request runs the previously loaded
 		// plugin code. Older builds therefore cannot persist resume_not_before, so
 		// derive the same quiet window from the checkpoint timestamp on first boot.
@@ -53,7 +53,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$not_before = self::maintenance_not_before();
 		$source = is_array( $checkpoint ) && isset( $checkpoint['source'] ) ? sanitize_key( (string) $checkpoint['source'] ) : '';
 		$state = is_array( $checkpoint ) && isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
-		$active = 'self_update' === $source && $not_before > $now && in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true );
+		$active = 'self_update' === $source && $not_before > $now && in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'waiting_for_exact_runtime_restart' ), true );
 		return array(
 			'contract' => 'mad4b.runtime-restart-grace.v1',
 			'active' => $active,
@@ -322,7 +322,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		elseif ( ! $graph_valid || 'blocked' === $checkpoint_state ) $autopilot_state = 'blocked';
 		elseif ( $manual_resume_gate ) $autopilot_state = 'gated';
 		elseif ( $auto_pending && 'plugin_activation' === $checkpoint_source ) $autopilot_state = 'bootstrapping';
-		elseif ( $auto_pending || in_array( $checkpoint_state, array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true ) ) $autopilot_state = 'converging';
+		elseif ( $auto_pending || in_array( $checkpoint_state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'waiting_for_exact_runtime_restart' ), true ) ) $autopilot_state = 'converging';
 		elseif ( $gated_pending ) $autopilot_state = 'gated';
 		else $autopilot_state = 'blocked';
 		return array(
@@ -445,7 +445,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$existing = get_option( self::CHECKPOINT_OPTION, array() );
 		$existing_source = is_array( $existing ) && isset( $existing['source'] ) ? sanitize_key( (string) $existing['source'] ) : '';
 		$existing_state = is_array( $existing ) && isset( $existing['state'] ) ? sanitize_key( (string) $existing['state'] ) : '';
-		if ( 'self_update' === $existing_source && in_array( $existing_state, array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true ) ) {
+		if ( 'self_update' === $existing_source && in_array( $existing_state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'waiting_for_exact_runtime_restart' ), true ) ) {
 			$scheduled = self::schedule_resume( self::maintenance_not_before() );
 			return array(
 				'scheduled' => (bool) $scheduled,
