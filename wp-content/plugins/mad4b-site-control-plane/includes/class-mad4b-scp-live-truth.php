@@ -19,6 +19,7 @@ final class MAD4B_SCP_Live_Truth {
 	private static $full_boot_seen = false;
 	private static $abilities_materialized = false;
 	private static $recovering = false;
+	private static $request_authority_status = null;
 
 	public static function boot_early() {
 		if ( self::$booted ) return;
@@ -74,8 +75,16 @@ final class MAD4B_SCP_Live_Truth {
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return;
 		self::$recovering = true;
 		// Runtime recovery means refreshing truth, never reconciling grants/subjects.
-		self::current_authority_status();
+		// Reuse the same exact read-only projection later in this request so a
+		// MAD4B wp-admin render does not repeat the full agent/grant inventory scan.
+		self::request_cached_authority_status();
 		self::$recovering = false;
+	}
+
+	public static function request_cached_authority_status() {
+		if ( is_array( self::$request_authority_status ) ) return self::$request_authority_status;
+		self::$request_authority_status = self::current_authority_status();
+		return self::$request_authority_status;
 	}
 
 	public static function current_authority_status() {
