@@ -56,6 +56,11 @@ assert "'operator_resume_runtime_convergence'" in runtime
 assert "'retry_after_runtime_convergence'" in runtime
 assert "$not_before = self::maintenance_not_before();" in runtime
 assert "self::schedule_resume( $not_before )" in runtime
+assert "private static function post_update_checkpoint_matches(" in runtime
+for field in ("'contract'", "'state'", "'source'", "'channel'", "'update_plan_sha256'", "'resume_not_before'", "'quiet_period_seconds'"):
+    assert field in runtime
+assert "'persist_phase' => 'pending_restart'" in runtime
+assert "'persist_phase' => 'pending_manual_resume'" in runtime
 # Sliced post-update work must retain lifecycle provenance so the transport
 # barrier cannot reopen between schema and managed-skills slices.
 assert "$prior_source = isset( $checkpoint['source'] )" in runtime
@@ -92,6 +97,14 @@ assert "RecursiveDirectoryIterator" not in self_update
 assert "wp_opcache_invalidate" in self_update
 assert "opcache_invalidate" in self_update
 assert "'global_opcache_reset_used' => false" in self_update
+assert "mad4b_self_update_install_exception" in self_update
+assert "catch ( Throwable $throwable )" in self_update
+assert "finally {" in self_update
+assert "self::$managed_apply = false;" in self_update
+assert "self::rollback( $backup, $before, $runtime_php_files )" in self_update
+rollback_body = self_update.split("private static function rollback(", 1)[1].split("private static function activation_state()", 1)[0]
+assert "self::invalidate_runtime_caches( $runtime_php_files );" in rollback_body
+assert rollback_body.index("copy_dir( $backup['backup_path'], $root )") < rollback_body.index("self::invalidate_runtime_caches( $runtime_php_files );") < rollback_body.index("self::restore_activation_state( $before )")
 
 # Shared connector policy classifies transition/maintenance without blind replay.
 assert "mad4b.connector-resilience.v2" in resilience
