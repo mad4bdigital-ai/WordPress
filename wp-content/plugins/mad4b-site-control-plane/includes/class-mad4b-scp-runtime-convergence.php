@@ -90,6 +90,20 @@ final class MAD4B_SCP_Runtime_Convergence {
 		);
 	}
 
+	public static function maintenance_lease_status() {
+		return class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' )
+			? MAD4B_SCP_Runtime_Maintenance_Lease::status()
+			: array(
+				'contract' => 'mad4b.runtime-maintenance-lease.v1',
+				'active' => false,
+				'owner' => '',
+				'expires_at' => 0,
+				'hard_expires_at' => 0,
+				'read_only' => true,
+				'blocker' => 'maintenance_lease_coordinator_unavailable',
+			);
+	}
+
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
