@@ -1051,6 +1051,27 @@ final class MAD4B_SCP_Self_Update {
 		if ( class_exists( 'MAD4B_SCP_Runtime_Convergence' ) && method_exists( 'MAD4B_SCP_Runtime_Convergence', 'mark_post_update_pending' ) ) {
 			$convergence = MAD4B_SCP_Runtime_Convergence::mark_post_update_pending( $target, $channel, $plan_sha256 );
 		}
+		$convergence_state = is_array( $convergence ) && isset( $convergence['state'] ) ? sanitize_key( (string) $convergence['state'] ) : '';
+		if ( 'checkpoint_persist_failed' === $convergence_state ) {
+			$rollback = self::rollback( $backup, $before );
+			self::audit( $channel, $target, false, array(
+				'plan_sha256' => $plan_sha256,
+				'failure_phase' => 'post_update_convergence_checkpoint',
+				'failure_code' => 'mad4b_self_update_convergence_checkpoint_persist_failed',
+				'readback' => $readback,
+				'runtime_cache_invalidation' => $runtime_cache,
+				'post_update_convergence' => $convergence,
+				'rollback_ok' => ! is_wp_error( $rollback ),
+			) );
+			return new WP_Error(
+				'mad4b_self_update_convergence_checkpoint_persist_failed',
+				'Control Plane replacement could not establish its durable post-update convergence checkpoint; rollback was attempted.',
+				array(
+					'rollback_ok' => ! is_wp_error( $rollback ),
+					'post_update_convergence' => $convergence,
+				)
+			);
+		}
 		self::audit( $channel, $target, true, array( 'plan_sha256' => $plan_sha256, 'readback' => $readback, 'runtime_cache_invalidation' => $runtime_cache, 'post_update_convergence' => $convergence ) );
 		delete_site_transient( 'update_plugins' );
 		// Preserve the already verified release manifest across the immediate
