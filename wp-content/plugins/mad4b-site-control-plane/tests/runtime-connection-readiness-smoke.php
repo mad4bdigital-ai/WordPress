@@ -197,12 +197,16 @@ $check( in_array( 'external_handshake_unverified', $status['certification_blocke
 $check( empty( $status['authentication']['credential_material_exposed'] ), 'Connection status claims credential material is exposed.' );
 $check( empty( $status['authentication']['credential_creation_supported_here'] ), 'Connection status claims credential creation in read-only surface.' );
 $check( isset( $status['provider_mcp_isolation'] ) && is_array( $status['provider_mcp_isolation'] ), 'Provider MCP isolation evidence missing from connection status.' );
+$provider_isolation_runtime = class_exists( 'MAD4B_SCP_MCP_Provider_Isolation' ) ? MAD4B_SCP_MCP_Provider_Isolation::status() : array();
+$check( is_array( $provider_isolation_runtime ) && ! empty( $provider_isolation_runtime['contract'] ), 'Provider MCP isolation runtime evidence is unavailable.' );
+$check( (bool) $status['provider_mcp_isolation']['configured'] === (bool) $provider_isolation_runtime['configured'], 'Connection projection drifted from Provider MCP isolation configured truth.' );
+$check( (bool) $status['provider_mcp_isolation']['effective'] === (bool) $provider_isolation_runtime['effective'], 'Connection projection drifted from Provider MCP isolation effective truth.' );
 if ( $portable_ready && $is_https_target ) {
     $check( ! empty( $status['provider_mcp_isolation']['configured'] ), 'Portable Staging bootstrap did not configure deny-only Provider MCP isolation.' );
     $check( ! empty( $status['provider_mcp_isolation']['effective'] ), 'Portable Staging bootstrap did not make deny-only Provider MCP isolation effective.' );
-    $check( ! empty( $status['provider_mcp_isolation']['runtime_suppression_approved'] ), 'Portable Staging isolation did not synthesize the bounded runtime-suppression gate.' );
-    $check( ! empty( $status['provider_mcp_isolation']['staging_zero_touch_autoconfig_applied'] ), 'Portable Staging isolation did not report zero-touch autoconfiguration.' );
-    $check( 'portable_readonly_bootstrap' === (string) $status['provider_mcp_isolation']['staging_zero_touch_autoconfig_source'], 'Portable Staging isolation reported the wrong autoconfiguration source.' );
+    $check( ! empty( $provider_isolation_runtime['runtime_suppression_approved'] ), 'Portable Staging isolation did not synthesize the bounded runtime-suppression gate.' );
+    $check( ! empty( $provider_isolation_runtime['staging_zero_touch_autoconfig_applied'] ), 'Portable Staging isolation did not report zero-touch autoconfiguration.' );
+    $check( 'portable_readonly_bootstrap' === (string) $provider_isolation_runtime['staging_zero_touch_autoconfig_source'], 'Portable Staging isolation reported the wrong autoconfiguration source.' );
 } else {
     $check( empty( $status['provider_mcp_isolation']['configured'] ), 'Provider MCP isolation unexpectedly configured without an eligible portable Staging bootstrap.' );
     $check( empty( $status['provider_mcp_isolation']['effective'] ), 'Provider MCP isolation unexpectedly became effective without an eligible portable Staging bootstrap.' );
