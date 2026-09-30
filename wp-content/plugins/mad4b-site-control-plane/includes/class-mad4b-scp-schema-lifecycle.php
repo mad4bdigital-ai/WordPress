@@ -13,7 +13,7 @@ final class MAD4B_SCP_Schema_Lifecycle {
 	public static function boot() {
 		add_action( 'init', array( __CLASS__, 'maybe_schedule' ), 2 );
 		add_action( 'admin_init', array( __CLASS__, 'maybe_reconcile_admin_lifecycle' ), 2 );
-		add_action( self::CRON_HOOK, array( __CLASS__, 'reconcile' ) );
+		add_action( self::CRON_HOOK, array( __CLASS__, 'reconcile_scheduled' ) );
 		add_action( 'upgrader_process_complete', array( __CLASS__, 'after_upgrade' ), 20, 2 );
 	}
 
@@ -56,6 +56,17 @@ final class MAD4B_SCP_Schema_Lifecycle {
 		if ( ! self::needs_reconciliation() || ! self::retry_due() ) return;
 		if ( false !== wp_next_scheduled( self::CRON_HOOK ) ) return;
 		wp_schedule_single_event( time() + 5, self::CRON_HOOK );
+	}
+
+	public static function reconcile_scheduled() {
+		if ( ! self::needs_reconciliation() || ! self::retry_due() ) return;
+		$lock = self::acquire_lock();
+		if ( '' === $lock ) return;
+		try {
+			self::reconcile( 'scheduled' );
+		} finally {
+			self::release_lock( $lock );
+		}
 	}
 
 	public static function maybe_reconcile_admin_lifecycle() {
