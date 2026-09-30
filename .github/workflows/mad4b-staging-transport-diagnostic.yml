@@ -60,6 +60,20 @@ jobs:
           probe "runtime-build" "$ORIGIN/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt"
           probe "mcp-discovery-rest-route" "$ORIGIN/?rest_route=/mcp/mad4b-chatgpt"
 
+      - name: Read governed update-channel pointer
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://github.com/mad4bdigital-ai/WordPress/releases/download/mad4b-site-control-plane-update-channel'
+          curl -fsSL --connect-timeout 5 --max-time 20 "$base/mad4b-site-control-plane-update-pointer.json" -o /tmp/update-pointer.json
+          cat /tmp/update-pointer.json
+          manifest_asset="$(jq -r '.manifest_asset' /tmp/update-pointer.json)"
+          test -n "$manifest_asset"
+          curl -fsSL --connect-timeout 5 --max-time 20 "$base/$manifest_asset" -o /tmp/update-manifest.json
+          cat /tmp/update-manifest.json
+          printf '\npointer_sha256=%s\n' "$(sha256sum /tmp/update-pointer.json | awk '{print $1}')"
+          printf 'manifest_sha256=%s\n' "$(sha256sum /tmp/update-manifest.json | awk '{print $1}')"
+
       - name: Probe MCP discovery per resolved edge
         shell: bash
         run: |
