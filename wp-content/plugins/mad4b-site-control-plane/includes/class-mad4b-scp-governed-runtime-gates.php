@@ -228,9 +228,10 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) ) $blockers[] = 'audit_storage_not_ready';
 
 		$before = self::record_flags( $record );
-		$enabling = ( ! $before['raw_sql_breakglass_enabled'] && $desired['raw_sql_breakglass_enabled'] )
-			|| ( ! $before['production_mutation_enabled'] && $desired['production_mutation_enabled'] )
-			|| ( ! $before['production_auto_enable'] && $desired['production_auto_enable'] );
+		$effective_before = self::effective_status( $record );
+		$enabling = ( $desired['raw_sql_breakglass_enabled'] && empty( $effective_before['raw_sql_breakglass_enabled'] ) )
+			|| ( $desired['production_mutation_enabled'] && empty( $effective_before['production_mutation_enabled'] ) )
+			|| ( $desired['production_auto_enable'] && empty( $effective_before['production_auto_enable'] ) );
 		$confirmation = $enabling ? self::CONFIRM_ENABLE : self::CONFIRM_UPDATE;
 
 		$plan = array(
@@ -245,6 +246,11 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			'source_commit_sha' => $provenance['source_commit_sha'],
 			'build_fingerprint' => $provenance['build_fingerprint'],
 			'before' => $before,
+			'effective_before' => array(
+				'raw_sql_breakglass_enabled' => ! empty( $effective_before['raw_sql_breakglass_enabled'] ),
+				'production_mutation_enabled' => ! empty( $effective_before['production_mutation_enabled'] ),
+				'production_auto_enable' => ! empty( $effective_before['production_auto_enable'] ),
+			),
 			'after' => $desired,
 			'required_confirmation' => $confirmation,
 			'hard_blockers' => array_values( array_unique( $blockers ) ),
