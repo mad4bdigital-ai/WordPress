@@ -246,6 +246,14 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	public static function capture_and_flush() {
 		if ( self::$captured ) return;
 		self::$captured = true;
+
+		// Connection and ChatGPT passive admin pages are latency-sensitive status
+		// surfaces. Do not scan Query Monitor collectors, read provenance or persist
+		// acceptance telemetry during their shutdown path. Deep evidence remains
+		// available from explicit acceptance/diagnostic surfaces.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) return;
+
 		$class = self::request_class();
 		$acceptance_canary = self::request_acceptance_canary_kind();
 
