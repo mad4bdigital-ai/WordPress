@@ -124,7 +124,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		if ( self::$staging_autoconfig_evaluated ) return;
 		self::$staging_autoconfig_evaluated = true;
 
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$enable_flag_preexisting = defined( self::ENABLE_FLAG );
 		$runtime_flag_preexisting = defined( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG );
 		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
@@ -201,7 +201,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 
 	public static function effective() {
 		if ( ! self::configured() || ! self::runtime_suppression_approved() ) return false;
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		if ( 'production' === $environment && ! self::production_approved() ) return false;
 		return in_array( $environment, array( 'staging', 'development', 'local', 'production' ), true );
 	}
@@ -388,7 +388,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 	}
 
 	public static function status() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$route_descriptors = array();
 		foreach ( self::descriptors() as $descriptor ) $route_descriptors[] = array( 'provider' => sanitize_key( $descriptor['provider'] ), 'class' => sanitize_key( $descriptor['class'] ), 'pattern' => (string) $descriptor['pattern'] );
 		$server_descriptors = array();
