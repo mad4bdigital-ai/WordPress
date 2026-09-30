@@ -1159,11 +1159,12 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$pagenow = isset( $GLOBALS['pagenow'] ) ? sanitize_key( (string) $GLOBALS['pagenow'] ) : '';
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only request classification.
 		$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
-		// Connection and ChatGPT are read/status pages. Never let their first byte
-		// depend on dbDelta, SHOW TABLES verification or RSA key generation. If
-		// runtime bootstrap is incomplete they report the deferred blocker and the
-		// governed lifecycle worker repairs it outside the interactive request.
-		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return true;
+		// Every passive Control Plane GET/HEAD is a request-serving surface. Never
+		// let its first byte depend on dbDelta, SHOW TABLES verification or RSA key
+		// generation. Explicit POST/lifecycle work and Connection > Endpoints remain
+		// outside this classifier.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) return true;
 		if ( in_array( $pagenow, array( 'plugins.php', 'update.php', 'update-core.php', 'plugin-install.php' ), true ) ) return true;
 		return in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
 	}
