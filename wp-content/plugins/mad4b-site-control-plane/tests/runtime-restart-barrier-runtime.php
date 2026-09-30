@@ -65,6 +65,14 @@ ok( ! empty( $status['active'] ) && empty( $status['retryable'] ), 'manual resum
 ok( 'operator_resume_runtime_convergence' === $status['client_action'], 'manual resume must tell client operator action is required' );
 ok( 0 === $status['retry_after_seconds'], 'manual resume must not advertise a time-only retry' );
 
+$base['state'] = 'blocked';
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION ] = $base;
+$status = MAD4B_SCP_Runtime_Convergence::restart_grace_status();
+ok( ! empty( $status['active'] ), 'failed self-update safe convergence must keep MCP transport closed' );
+ok( empty( $status['retryable'] ), 'blocked convergence must not create an automatic retry loop' );
+ok( 0 === $status['retry_after_seconds'], 'blocked convergence must not advertise time-only recovery' );
+ok( 'operator_repair_runtime_convergence' === $status['client_action'], 'blocked convergence must require explicit operator repair' );
+
 $base['state'] = 'completed';
 $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION ] = $base;
 $status = MAD4B_SCP_Runtime_Convergence::restart_grace_status();
