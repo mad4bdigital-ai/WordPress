@@ -7,5 +7,7 @@ for marker in ('package_identity()', 'MAD4B_SCP_Schema::is_ready()', 'wp_schedul
 assert "MAD4B_SCP_Schema_Lifecycle::boot();" in main
 assert '0.4.0-rc.84' in main
 assert 'hash_file' not in life
+for marker in ("@lstat( $file )", "$stat['size']", "$stat['mtime']", "$stat['ctime']", "$stat['ino']", "MAD4B-RUNTIME-BUILD.txt", "class-mad4b-scp-schema.php"):
+    assert marker in life, marker
 assert 'MAD4B_SCP_Schema::MIGRATION_ID' in life and 'MAD4B_SCP_Schema::VERSION' in life
 print('mad4b.schema-lifecycle-same-version.v1: PASS')
