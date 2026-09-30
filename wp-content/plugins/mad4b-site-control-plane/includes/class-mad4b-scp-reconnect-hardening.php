@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * converts an otherwise ambiguous REST 404 into bounded 503 diagnostics.
  */
 final class MAD4B_SCP_Reconnect_Hardening {
-	const CONTRACT = 'mad4b.reconnect-hardening.v4';
+	const CONTRACT = 'mad4b.reconnect-hardening.v5';
 	const SESSION_SHADOW_TTL = 120;
 	const SESSION_DELETE_TOMBSTONE_TTL = 180;
 	const SESSION_META_KEY = 'mcp_adapter_sessions';
@@ -47,6 +47,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		// callback validates the session. Only verified read requests may use the
 		// bounded shadow to repair a just-lost transport session.
 		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'repair_or_forget_session' ), 3, 3 );
+		add_filter( 'rest_post_dispatch', array( __CLASS__, 'add_restart_retry_header' ), 850, 3 );
 		add_filter( 'rest_post_dispatch', array( __CLASS__, 'capture_initialized_session' ), 900, 3 );
 		add_filter( 'rest_post_dispatch', array( __CLASS__, 'finalize_session_shadow' ), 925, 3 );
 		add_filter( 'rest_post_dispatch', array( __CLASS__, 'finalize_deleted_session' ), 950, 3 );
@@ -110,6 +111,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'blind_read_replay_after_transport_reinitialize' => false,
 			'original_read_request_continues_after_verified_repair' => true,
 			'blind_mutation_replay_after_transport_reinitialize' => false,
+			'post_update_restart_grace' => true,
+			'restart_grace_immediate_retry_allowed' => false,
+			'restart_grace_retry_after_header' => true,
 			'authority_created' => false,
 			'production_widened' => false,
 		);
@@ -750,6 +754,27 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		}
 	}
 
+	private static function restart_grace_status() {
+		if ( ! class_exists( 'MAD4B_SCP_Runtime_Convergence' ) || ! method_exists( 'MAD4B_SCP_Runtime_Convergence', 'restart_grace_status' ) ) {
+			return array( 'active' => false, 'retry_after_seconds' => 0, 'state' => '' );
+		}
+		$status = MAD4B_SCP_Runtime_Convergence::restart_grace_status();
+		return is_array( $status ) ? $status : array( 'active' => false, 'retry_after_seconds' => 0, 'state' => '' );
+	}
+
+	public static function add_restart_retry_header( $response, $server, $request ) {
+		unset( $server, $request );
+		if ( ! is_object( $response ) || ! method_exists( $response, 'get_data' ) || ! method_exists( $response, 'header' ) ) return $response;
+		$data = $response->get_data();
+		$code = is_array( $data ) && isset( $data['code'] ) ? sanitize_key( (string) $data['code'] ) : '';
+		if ( 'mad4b_mcp_runtime_restart_grace' !== $code ) return $response;
+		$details = is_array( $data ) && isset( $data['data'] ) && is_array( $data['data'] ) ? $data['data'] : array();
+		$retry = isset( $details['retry_after_seconds'] ) ? max( 1, min( 120, absint( $details['retry_after_seconds'] ) ) ) : 1;
+		$response->header( 'Retry-After', (string) $retry );
+		$response->header( 'Cache-Control', 'no-store' );
+		return $response;
+	}
+
 	public static function reconnect_status() {
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 		$portable = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) ? MAD4B_SCP_Portable_Readonly_Connection::status() : array();
@@ -760,6 +785,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$chatgpt = isset( $registrations['mad4b-chatgpt'] ) && is_array( $registrations['mad4b-chatgpt'] ) ? $registrations['mad4b-chatgpt'] : array();
 		$bridge_registration = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ? MAD4B_SCP_MCP_Registration_Bridge::status() : array();
 		$blockers = array();
+		$restart_grace = self::restart_grace_status();
+		if ( ! empty( $restart_grace['active'] ) ) $blockers[] = 'runtime_restart_grace';
 
 		if ( ! $portable_ready ) {
 			if ( empty( $profile['configured'] ) ) $blockers[] = 'site_profile_unconfigured';
@@ -790,6 +817,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'missed_rest_recovery_state' => isset( $bridge_registration['missed_rest_recovery_state'] ) ? sanitize_key( (string) $bridge_registration['missed_rest_recovery_state'] ) : '',
 			'missed_rest_recovery_blocker' => isset( $bridge_registration['missed_rest_recovery_blocker'] ) ? sanitize_key( (string) $bridge_registration['missed_rest_recovery_blocker'] ) : '',
 			'session_continuity' => self::session_continuity_policy(),
+			'restart_grace' => $restart_grace,
 			'session_repair' => self::session_repair_status(),
 			'upgrade_recovery' => class_exists( 'MAD4B_SCP_Upgrade_Continuity' ) ? MAD4B_SCP_Upgrade_Continuity::recovery_status() : array(),
 			'write_auto_enabled' => false,
@@ -819,6 +847,20 @@ final class MAD4B_SCP_Reconnect_Hardening {
 	public static function guard_mcp_rest_dispatch( $result, $server, $request ) {
 		if ( null !== $result || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		if ( ! self::is_resource_request_path( (string) $request->get_route() ) ) return $result;
+		$restart_grace = self::restart_grace_status();
+		if ( ! empty( $restart_grace['active'] ) ) {
+			$retry = isset( $restart_grace['retry_after_seconds'] ) ? max( 1, min( 120, absint( $restart_grace['retry_after_seconds'] ) ) ) : 1;
+			return new WP_Error( 'mad4b_mcp_runtime_restart_grace', 'MAD4B runtime is completing a bounded post-update restart grace window.', array(
+				'status' => 503,
+				'contract' => self::CONTRACT,
+				'resource' => self::resource_identifier(),
+				'retryable' => true,
+				'automatic_retry_allowed' => false,
+				'retry_after_seconds' => $retry,
+				'client_action' => 'retry_after_restart_grace',
+				'mutation_performed' => false,
+			) );
+		}
 		$blockers = self::preauth_reconnect_blockers();
 		if ( empty( $blockers ) ) return $result;
 		return new WP_Error( 'mad4b_mcp_reconnect_not_ready', 'MAD4B MCP reconnect is not ready.', array(
