@@ -137,13 +137,11 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		$page = sanitize_key( (string) $page );
 		$tab = sanitize_key( (string) $tab );
 
-		// Every Control Plane GET/HEAD screen is request-serving by default. The
-		// Connection > MCP Endpoints tab is the sole browser deep-diagnostic opt-in;
-		// mutations use POST/admin-post and therefore never enter this classifier.
-		if ( 'mad4b-control-plane-connection' === $page ) {
-			if ( '' === $tab ) $tab = 'readiness';
-			return 'endpoints' !== $tab;
-		}
+		// Every Control Plane GET/HEAD screen is request-serving by default,
+		// including Connection > MCP Endpoints. Deep endpoint materialization is
+		// an explicit POST + nonce action and therefore never enters this read-only
+		// classifier. This keeps opening any tab from becoming a lifecycle job.
+		if ( 'mad4b-control-plane-connection' === $page ) return true;
 		if ( 'mad4b-control-plane' === $page || 0 === strpos( $page, 'mad4b-control-plane-' ) ) return true;
 		return in_array( $page, array( 'mad4b-adapter-coverage', 'mad4b-runtime-components', 'mad4b-approval-decisions' ), true );
 	}
