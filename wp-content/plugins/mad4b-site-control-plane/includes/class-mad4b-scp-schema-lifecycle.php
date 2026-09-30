@@ -9,6 +9,7 @@ final class MAD4B_SCP_Schema_Lifecycle {
 	const CRON_HOOK = 'mad4b_scp_schema_lifecycle_reconcile';
 	const LOCK_OPTION = 'mad4b_scp_runtime_maintenance_lock_v1';
 	private static $package_identity = '';
+	private static $active_lock_token = '';
 
 	public static function boot() {
 		add_action( 'init', array( __CLASS__, 'maybe_schedule' ), 2 );
@@ -116,41 +117,23 @@ final class MAD4B_SCP_Schema_Lifecycle {
 		return 0 === $next || time() >= $next;
 	}
 
-	private static function legacy_lock_options() {
-		return array(
-			'mad4b_scp_runtime_convergence_lock_v1',
-			'mad4b_scp_schema_lifecycle_lock_v1',
-		);
+	private static function acquire_lock() {
+		if ( ! class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ) return '';
+		$lease = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'schema_lifecycle' );
+		if ( is_wp_error( $lease ) ) return '';
+		self::$active_lock_token = (string) $lease;
+		return self::$active_lock_token;
 	}
 
-	private static function acquire_lock() {
-		$now = time();
-		foreach ( self::legacy_lock_options() as $legacy_option ) {
-			$legacy = get_option( $legacy_option, array() );
-			if ( is_array( $legacy ) && ! empty( $legacy['token'] ) && isset( $legacy['expires_at'] ) && absint( $legacy['expires_at'] ) > $now ) return '';
-			if ( is_array( $legacy ) && ! empty( $legacy ) ) delete_option( $legacy_option );
-		}
-		$current = get_option( self::LOCK_OPTION, array() );
-		if ( is_array( $current ) && ! empty( $current['expires_at'] ) && absint( $current['expires_at'] ) > $now ) return '';
-		if ( is_array( $current ) && ! empty( $current ) ) delete_option( self::LOCK_OPTION );
-		$token = hash( 'sha256', self::package_identity() . "\0" . microtime( true ) . "\0" . wp_rand() );
-		$record = array( 'token' => $token, 'owner' => 'schema_lifecycle', 'expires_at' => $now + 120 );
-		if ( ! add_option( self::LOCK_OPTION, $record, '', false ) ) return '';
-		foreach ( self::legacy_lock_options() as $legacy_option ) {
-			if ( add_option( $legacy_option, $record, '', false ) ) continue;
-			self::release_lock( $token );
-			return '';
-		}
-		return $token;
+	private static function refresh_lock( $token ) {
+		return class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' )
+			? MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $token, 'schema_lifecycle' )
+			: new WP_Error( 'mad4b_schema_lifecycle_lock_failed', 'Runtime maintenance lease coordinator is unavailable.' );
 	}
 
 	private static function release_lock( $token ) {
-		$current = get_option( self::LOCK_OPTION, array() );
-		if ( is_array( $current ) && isset( $current['token'] ) && is_string( $current['token'] ) && hash_equals( $current['token'], (string) $token ) ) delete_option( self::LOCK_OPTION );
-		foreach ( self::legacy_lock_options() as $legacy_option ) {
-			$legacy = get_option( $legacy_option, array() );
-			if ( is_array( $legacy ) && isset( $legacy['token'] ) && is_string( $legacy['token'] ) && hash_equals( $legacy['token'], (string) $token ) ) delete_option( $legacy_option );
-		}
+		if ( class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ) MAD4B_SCP_Runtime_Maintenance_Lease::release( $token, 'schema_lifecycle' );
+		if ( hash_equals( (string) self::$active_lock_token, (string) $token ) ) self::$active_lock_token = '';
 	}
 
 	public static function after_upgrade( $upgrader, $hook_extra ) {
@@ -178,6 +161,10 @@ final class MAD4B_SCP_Schema_Lifecycle {
 			if ( $next > time() && false === wp_next_scheduled( self::CRON_HOOK ) ) wp_schedule_single_event( $next, self::CRON_HOOK );
 			return false;
 		}
+		if ( '' !== self::$active_lock_token ) {
+			$lease_refresh = self::refresh_lock( self::$active_lock_token );
+			if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
+		}
 		$result = MAD4B_SCP_Schema::install_or_upgrade();
 		$state = get_option( self::STATE_OPTION, array() );
 		if ( ! is_array( $state ) ) $state = array();
@@ -196,6 +183,10 @@ final class MAD4B_SCP_Schema_Lifecycle {
 			wp_clear_scheduled_hook( self::CRON_HOOK );
 			wp_schedule_single_event( $state['next_attempt_at'], self::CRON_HOOK );
 			return $result;
+		}
+		if ( '' !== self::$active_lock_token ) {
+			$lease_refresh = self::refresh_lock( self::$active_lock_token );
+			if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
 		}
 		$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::ensure_head_initialized() : true;
 		if ( is_wp_error( $audit ) ) {
