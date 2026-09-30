@@ -846,7 +846,11 @@ final class MAD4B_SCP_Reconnect_Hardening {
 
 	public static function guard_mcp_rest_dispatch( $result, $server, $request ) {
 		if ( null !== $result || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
-		if ( ! self::is_resource_request_path( (string) $request->get_route() ) ) return $result;
+		$route = (string) $request->get_route();
+		$is_chatgpt_resource = self::is_resource_request_path( $route );
+		$is_mad4b_transport = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_http_mcp_transport();
+		if ( ! $is_chatgpt_resource && ! $is_mad4b_transport ) return $result;
 		$restart_grace = self::restart_grace_status();
 		if ( ! empty( $restart_grace['active'] ) ) {
 			$retry = isset( $restart_grace['retry_after_seconds'] ) ? max( 1, min( 120, absint( $restart_grace['retry_after_seconds'] ) ) ) : 1;
@@ -861,6 +865,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 				'mutation_performed' => false,
 			) );
 		}
+		if ( ! $is_chatgpt_resource ) return $result;
 		$blockers = self::preauth_reconnect_blockers();
 		if ( empty( $blockers ) ) return $result;
 		return new WP_Error( 'mad4b_mcp_reconnect_not_ready', 'MAD4B MCP reconnect is not ready.', array(
