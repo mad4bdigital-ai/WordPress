@@ -203,7 +203,7 @@ jobs:
           grep -Fq "mcp_adapter_certification" "$registry"
           grep -Fq "provider_certification_ok" "$registry"
 
-          grep -Fq "MAD4B_MCP_BREAKGLASS_ENABLED" "$policy"
+          grep -Fq "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled()" "$policy"
           grep -Fq "MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED" "$abilities"
           grep -Fq "MAD4B_MCP_BREAKGLASS_DDL_ENABLED" "$abilities"
           grep -Fq "LOAD_FILE" "$abilities"
