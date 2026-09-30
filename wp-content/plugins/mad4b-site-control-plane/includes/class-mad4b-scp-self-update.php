@@ -110,7 +110,9 @@ final class MAD4B_SCP_Self_Update {
 		);
 		if ( ! self::recovery_update_eligible() ) {
 			$status['blocker'] = 'governed_staging_managed_runtime_required';
-			self::persist_recovery_status( $status );
+			// A stale cron event may survive a Staging -> Production environment
+			// transition. Fail closed without writing even diagnostic state so this
+			// recovery lane remains literally mutation-free outside eligible Staging.
 			return $status;
 		}
 		$status['eligible'] = true;
