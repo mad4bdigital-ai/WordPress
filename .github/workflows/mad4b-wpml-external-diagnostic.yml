@@ -5,6 +5,12 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
   workflow_dispatch:
 
 permissions:
@@ -21,6 +27,7 @@ jobs:
     timeout-minutes: 12
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      MAD4B_REQUIRE_RUNTIME_IDENTITY: ${{ github.event_name != 'pull_request' }}
       WPML_URL_BASE: https://staging.egypttourgates.com/wp-json/wpml/v1/rest/status?test_get_parameter=1
       REST_INDEX_URL: https://staging.egypttourgates.com/wp-json/
     steps:
@@ -585,6 +592,7 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import json
+          import os
           from pathlib import Path
 
           path = Path('/tmp/mad4b-wpml-external/mcp-hotpath/diagnostic.json')
@@ -801,6 +809,12 @@ jobs:
               live = (evidence.get('live_runtime_build') or {}).get('release', '')
               expected = (evidence.get('expected_runtime_build') or {}).get('release', '')
               failures = evidence.get('validation_failures') or []
+              require_identity = os.environ.get('MAD4B_REQUIRE_RUNTIME_IDENTITY', 'false').strip().lower() == 'true'
+              if require_identity:
+                  raise SystemExit(
+                      'post-merge/live acceptance requires exact deployed runtime identity: '
+                      f'live={live!r} expected={expected!r}; observed_failures={failures!r}'
+                  )
               print(
                   'mad4b.external-mcp-hotpath-diagnostic.v1: '
                   f'INCONCLUSIVE deployment_drift live={live!r} expected={expected!r}; '
