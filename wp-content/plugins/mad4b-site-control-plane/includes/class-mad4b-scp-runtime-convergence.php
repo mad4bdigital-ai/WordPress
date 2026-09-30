@@ -688,6 +688,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 	}
 
 	private static function convergence_trigger_allowed() {
+		// Passive Connection/ChatGPT admin surfaces must remain passive even when
+		// WordPress is executed through a CLI harness (for example runtime CI).
+		// Ordinary CLI commands do not carry these admin page slugs and therefore
+		// retain convergence authority below.
+		if ( function_exists( 'is_admin' ) && is_admin() ) {
+			$passive_page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
+			if ( in_array( $passive_page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return false;
+		}
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
 		// The dedicated CRON_HOOK executes resume_safe_phases() directly. The
 		// generic wp-cron.php request must not run init-time drift detection or
