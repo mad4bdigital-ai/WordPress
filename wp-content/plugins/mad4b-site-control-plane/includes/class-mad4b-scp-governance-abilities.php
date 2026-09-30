@@ -162,7 +162,7 @@ final class MAD4B_SCP_Governance_Abilities {
 		}
 		$server_id = isset( $input['server_id'] ) ? sanitize_key( (string) $input['server_id'] ) : '';
 		$t = MAD4B_SCP_Schema::tables();
-		$current_environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
+		$current_environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown' );
 		$sql = "SELECT id, effect, server_id, ability_name, provider, resource_schema_version, resource_constraints, environment FROM {$t['grants']} WHERE agent_id = %d AND environment IN ('all', %s)";
 		$args = array( (int) $agent['id'], $current_environment );
 		if ( '' !== $server_id ) { $sql .= ' AND server_id = %s'; $args[] = $server_id; }
@@ -239,7 +239,7 @@ final class MAD4B_SCP_Governance_Abilities {
 	public static function approval_plan( $input ) {
 		$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( (string) $input['agent_public_id'] );
 		if ( ! $agent || 'enabled' !== $agent['status'] ) return new WP_Error( 'mad4b_approval_agent_invalid', 'Approval planning requires an enabled agent.' );
-		$current_environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
+		$current_environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown' );
 		if ( ! in_array( $agent['environment'], array( 'all', 'unknown', $current_environment ), true ) ) return new WP_Error( 'mad4b_approval_agent_environment_denied', 'Approval planning agent is not enabled for this environment.' );
 
 		$server_id = sanitize_key( (string) $input['server_id'] );
