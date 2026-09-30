@@ -70,6 +70,11 @@ final class MAD4B_SCP_Live_Truth {
 		if ( is_admin() ) {
 			$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing.
 			if ( 0 !== strpos( $page, 'mad4b-control-plane' ) && 'mad4b-approval-decisions' !== $page ) return;
+			// Context admin pages render bounded persisted/candidate projections.
+			// Passive Abilities bootstrap must not turn an ordinary page load or
+			// OAuth redirect back into a full agent/subject/grant inventory scan.
+			// Explicit status/certification abilities still call current truth.
+			if ( 'mad4b-control-plane-context' === $page ) return;
 		}
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return;
 		self::$recovering = true;
