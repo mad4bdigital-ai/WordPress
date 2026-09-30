@@ -225,7 +225,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 	}
 
 	private static function generic_raw_sql_breakglass_gate_enabled() {
-		return defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' );
+		return class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) && MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled();
 	}
 
 	public static function status() {
