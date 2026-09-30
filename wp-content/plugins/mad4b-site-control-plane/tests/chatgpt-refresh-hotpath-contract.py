@@ -408,6 +408,7 @@ for marker in (
     assert marker in self_update, marker
 recovery_schedule = self_update.split("public static function ensure_recovery_update_schedule()", 1)[1].split("public static function run_recovery_update()", 1)[0]
 assert "current_request_is_protocol_hotpath()" in recovery_schedule
+assert "current_request_is_passive_admin_hotpath()" in recovery_schedule
 
 # PRs may report deployment drift as inconclusive, but post-merge/manual live
 # acceptance must fail closed until the exact published runtime is loaded.
