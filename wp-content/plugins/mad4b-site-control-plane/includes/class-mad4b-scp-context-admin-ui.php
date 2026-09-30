@@ -472,6 +472,22 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<div class="notice notice-success inline"><p><strong>' . esc_html__( 'Google is connected.', 'mad4b-site-control-plane' ) . '</strong>';
 			if ( ! empty( $connection['account_email'] ) ) echo ' · ' . esc_html( $connection['account_email'] );
 			echo '</p></div>';
+
+			if ( ! empty( $grants['incremental_consent_required'] ) ) {
+				$pending_scope_count = isset( $grants['missing_scope_count'] ) ? (int) $grants['missing_scope_count'] : 0;
+				echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Additional Google permission is ready to authorize.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( sprintf( _n( '%d newly selected scope still needs Google consent. Existing granted access stays active.', '%d newly selected scopes still need Google consent. Existing granted access stays active.', max( 1, $pending_scope_count ), 'mad4b-site-control-plane' ), max( 1, $pending_scope_count ) ) ) . '</p></div>';
+				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="mad4b-google-incremental-consent-form">';
+				wp_nonce_field( self::ACTION_CONNECT_GOOGLE );
+				echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_CONNECT_GOOGLE ) . '">';
+				echo '<input type="hidden" name="access_mode" value="' . esc_attr( $managed_access_mode ) . '">';
+				if ( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $auth_mode ) echo '<input type="hidden" name="managed_signin" value="1">';
+				echo '<button type="submit" class="button button-primary">' . esc_html__( 'Authorize added Google access', 'mad4b-site-control-plane' ) . '</button>';
+				echo '</form>';
+				echo '<p class="description">' . esc_html__( 'This opens incremental Google consent only for the expanded governed scope set. Previously granted scopes are preserved.', 'mad4b-site-control-plane' ) . '</p>';
+			}
+			if ( ! empty( $grants['scope_reduction_requires_revoke'] ) ) {
+				echo '<div class="notice notice-info inline"><p><strong>' . esc_html__( 'A narrower Google scope selection needs revoke first.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Google grants cannot be proven reduced in place. Disconnect & Revoke, then reconnect with the narrower selection.', 'mad4b-site-control-plane' ) . '</p></div>';
+			}
 		} elseif ( $managed_ready ) {
 			echo '<p>' . esc_html__( 'Use your Google account. MAD4B handles the OAuth application centrally, so this WordPress site does not need a Google Client ID or Client Secret.', 'mad4b-site-control-plane' ) . '</p>';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="mad4b-google-primary-signin-form">';
@@ -513,9 +529,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '</div>';
 
 		echo '<div class="mad4b-scp-panel" id="mad4b-google-grants"><h2>' . esc_html__( '2. Google Workspace grants', 'mad4b-site-control-plane' ) . '</h2>';
-		echo '<p>' . esc_html__( 'Choose the OAuth grant level for each Google app. The saved grant set is bound to the OAuth request and token fingerprint. Changing grants requires disconnecting and revoking the current Google token first.', 'mad4b-site-control-plane' ) . '</p>';
-		if ( ! empty( $connection['connected'] ) || ! empty( $connection['revocation_pending'] ) || ! empty( $connection['token_unreadable'] ) ) {
-			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Grant selection is locked while a Google token exists. Disconnect and revoke Google access before changing the suite grants.', 'mad4b-site-control-plane' ) . '</p></div>';
+		echo '<p>' . esc_html__( 'Choose the OAuth grant level for each Google app. Expanding a connected grant is saved immediately and then completed through incremental Google consent. Reducing an existing provider grant still requires disconnect + revoke so least privilege can be proven.', 'mad4b-site-control-plane' ) . '</p>';
+		if ( ! empty( $connection['connected'] ) ) {
+			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Google is connected. You can expand the governed scope selection without disconnecting; the next authorization requests only the missing consent. Attempts to reduce currently granted authority remain blocked until provider revocation.', 'mad4b-site-control-plane' ) . '</p></div>';
+		} elseif ( ! empty( $connection['revocation_pending'] ) || ! empty( $connection['token_unreadable'] ) ) {
+			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Grant changes are locked while Google revocation is pending or the stored token is unreadable. Resolve the connection state before changing scopes.', 'mad4b-site-control-plane' ) . '</p></div>';
 		}
 		echo '<form class="mad4b-context-ajax-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION_SAVE_GOOGLE_GRANTS );
@@ -525,7 +543,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			$selected_mode = isset( $grant_selection[ $app ] ) ? (string) $grant_selection[ $app ] : ( isset( $definition['default'] ) ? (string) $definition['default'] : 'off' );
 			$full_mode = isset( $full_suite[ $app ] ) ? (string) $full_suite[ $app ] : $selected_mode;
 			echo '<div class="mad4b-google-grant-card"><label for="mad4b-google-grant-' . esc_attr( $app ) . '"><strong>' . esc_html( isset( $definition['label'] ) ? $definition['label'] : $app ) . '</strong></label>';
-			echo '<select id="mad4b-google-grant-' . esc_attr( $app ) . '" name="grants[' . esc_attr( $app ) . ']" data-full-mode="' . esc_attr( $full_mode ) . '"' . ( ! empty( $connection['connected'] ) || ! empty( $connection['revocation_pending'] ) || ! empty( $connection['token_unreadable'] ) ? ' disabled' : '' ) . '>';
+			echo '<select id="mad4b-google-grant-' . esc_attr( $app ) . '" name="grants[' . esc_attr( $app ) . ']" data-full-mode="' . esc_attr( $full_mode ) . '"' . ( ! empty( $connection['revocation_pending'] ) || ! empty( $connection['token_unreadable'] ) ? ' disabled' : '' ) . '>';
 			foreach ( $definition['modes'] as $mode => $mode_definition ) echo '<option value="' . esc_attr( $mode ) . '" ' . selected( $selected_mode, $mode, false ) . '>' . esc_html( isset( $mode_definition['label'] ) ? $mode_definition['label'] : $mode ) . '</option>';
 			echo '</select>';
 			if ( 'gemini' === $app ) echo '<p class="description">' . esc_html__( 'Gemini uses Google API OAuth scopes (cloud-platform + generative-language retriever); it is not treated as Workspace document authority.', 'mad4b-site-control-plane' ) . '</p>';
@@ -534,9 +552,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '</div>';
 		echo '<p><strong>' . esc_html__( 'Current scope count:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( isset( $grants['scope_count'] ) ? (string) $grants['scope_count'] : '0' ) . ' · <code>' . esc_html( isset( $grants['grant_sha256'] ) ? substr( (string) $grants['grant_sha256'], 0, 16 ) : '' ) . '…</code></p>';
 		echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Full Drive and Gmail access use restricted OAuth scopes and can require Google OAuth verification/security review for public use.', 'mad4b-site-control-plane' ) . '</p></div>';
-		if ( empty( $connection['connected'] ) && empty( $connection['revocation_pending'] ) && empty( $connection['token_unreadable'] ) ) {
+		if ( empty( $connection['revocation_pending'] ) && empty( $connection['token_unreadable'] ) ) {
 			echo '<button type="button" class="button mad4b-select-full-suite">' . esc_html__( 'Select Full Apps Suite', 'mad4b-site-control-plane' ) . '</button> ';
-			submit_button( __( 'Save Grants', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+			submit_button( ! empty( $connection['connected'] ) ? __( 'Save Grant Expansion', 'mad4b-site-control-plane' ) : __( 'Save Grants', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
 		}
 		echo '</form></div>';
 
@@ -666,25 +684,46 @@ final class MAD4B_SCP_Context_Admin_UI {
 			}
 		}
 
-		$truth = class_exists( 'MAD4B_SCP_Live_Truth' ) ? MAD4B_SCP_Live_Truth::current_authority_status() : array();
-		$write_tools = isset( $truth['write_tools'] ) && is_array( $truth['write_tools'] ) ? array_values( array_map( 'strval', $truth['write_tools'] ) ) : array();
-		$mounted = array_values( array_intersect( $abilities, $write_tools ) );
+		// Admin rendering must stay a bounded read path. Full Live Truth walks the
+		// complete write inventory, OAuth subjects and exact grants and is reserved
+		// for explicit status/certification abilities and execution-time checks.
+		// Here we render from persisted authority evidence, then fence it by the
+		// exact current candidate and the two Context mounts this panel actually
+		// needs. No authority is granted or reconciled by this projection.
+		$authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persisted_status' )
+			? MAD4B_SCP_Staging_Write_Authority::persisted_status()
+			: array();
+		$candidate_binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
+			: array( 'required' => true, 'match' => false );
+		$candidate_current = empty( $candidate_binding['required'] ) || ! empty( $candidate_binding['match'] );
+
+		$mounted = array();
+		if ( class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'ability_is_mounted' ) ) {
+			foreach ( $abilities as $ability ) {
+				if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability ) ) $mounted[] = $ability;
+			}
+		}
+
 		$context_grant_blockers = array();
-		foreach ( isset( $truth['grant_blockers'] ) && is_array( $truth['grant_blockers'] ) ? $truth['grant_blockers'] : array() as $blocker ) {
+		foreach ( isset( $authority['grant_blockers'] ) && is_array( $authority['grant_blockers'] ) ? $authority['grant_blockers'] : array() as $blocker ) {
 			$blocker = (string) $blocker;
 			foreach ( $abilities as $ability ) {
 				if ( false !== strpos( $blocker, $ability ) ) { $context_grant_blockers[] = $blocker; break; }
 			}
 		}
+		if ( ! $candidate_current ) $context_grant_blockers[] = 'runtime_authority_candidate_not_reconciled';
 		$context_grant_blockers = array_values( array_unique( $context_grant_blockers ) );
-		$runtime_reconciled = ! empty( $truth['runtime_reconciled'] );
-		$authority_ready = ! empty( $truth['ready'] );
+		$authority_ready = ! empty( $authority['ready'] ) && empty( $authority['blocker'] ) && $candidate_current;
+		$runtime_reconciled = $authority_ready;
 		$desired_write_ops = (int) $policy_ops['update'] + (int) $policy_ops['recreate'];
 		$provider_write_ready = ! empty( $connection['write_available'] );
 		$context_authority_ready = $provider_write_ready && $desired_write_ops > 0 && ! empty( $mounted ) && empty( $context_grant_blockers ) && $runtime_reconciled && $authority_ready;
 
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( '3. Write Governance Readiness', 'mad4b-site-control-plane' ) . '</h2>';
-		echo '<p>' . esc_html__( 'Google OAuth is provider capability only. MAD4B write authority is evaluated separately from the live write inventory and exact grants.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p>' . esc_html__( 'Google OAuth is provider capability only. This admin panel uses bounded persisted authority evidence plus exact candidate and Context-mount readback; execution and certification still evaluate full live authority.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<div class="mad4b-context-governance-grid">';
 		self::governance_cell( 'Google provider access', $provider_write_ready ? 'Read + Write' : ( ! empty( $connection['read_available'] ) ? 'Read-only' : 'Unavailable' ), $provider_write_ready ? 'complete' : 'attention' );
 		self::governance_cell( 'Source policy', sprintf( 'create %d (reserved) · update %d · recreate %d', $policy_ops['create'], $policy_ops['update'], $policy_ops['recreate'] ), $desired_write_ops > 0 ? 'complete' : 'pending' );

@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 drive = (ROOT / "includes/class-mad4b-scp-google-drive-context.php").read_text(encoding="utf-8")
 ui = (ROOT / "includes/class-mad4b-scp-context-admin-ui.php").read_text(encoding="utf-8")
+live_truth = (ROOT / "includes/class-mad4b-scp-live-truth.php").read_text(encoding="utf-8")
 
 def require(text: str, needle: str, label: str) -> None:
     assert needle in text, f"missing {label}: {needle}"
@@ -48,5 +49,47 @@ assert "Save Connection Method" not in ui, "Save Connection Method must be remov
 # One-click sign-in deliberately re-selects managed mode under the existing disconnect guard.
 require(ui, "set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED )", "one-click managed mode selection")
 require(ui, "managed_authorization_url", "managed authorization redirect")
+require(ui, "Save Grant Expansion", "connected incremental grant expansion CTA")
+require(ui, "Attempts to reduce currently granted authority remain blocked until provider revocation.", "connected scope-reduction safety copy")
+assert "Grant selection is locked while a Google token exists." not in ui, "connected Google token must not block monotonic scope expansion in the admin UI"
+assert "(! empty( $connection['connected'] ) || ! empty( $connection['revocation_pending'] ) || ! empty( $connection['token_unreadable'] ) ? ' disabled' : '')" not in ui, "connected state alone must not disable Workspace grant selectors"
+
+
+# Dynamic Google consent and bottleneck controls stay explicit in the runtime contract.
+require(drive, "'include_granted_scopes' => 'true'", "incremental Google OAuth consent")
+require(drive, "REFRESH_FAILURE_COOLDOWN_SECONDS", "Google refresh retry cooldown")
+require(drive, "mad4b_google_drive_reconnect_required", "terminal refresh fail-fast")
+require(drive, "network_retry_suppressed", "refresh retry suppression evidence")
+require(drive, "isset( $data['error']['details']['provider_code'] )", "nested broker provider error propagation")
+require(drive, "'missing_requested_scopes'", "granular consent missing-scope persistence")
+require(drive, "'complete_scope_grant'", "granular consent completeness state")
+require(drive, "'current_granted_scope'", "managed refresh current granted-scope truth")
+require(drive, "'managed_profile_reconsent_required'", "dynamic broker profile re-consent state")
+require(drive, "'managed_profile_missing_scope_count'", "bounded dynamic profile missing-scope evidence")
+require(drive, "MAX_SCAN_WALL_SECONDS", "bounded source scan wall clock")
+require(drive, "'reuse_existing' => $reuse_existing", "unchanged Drive asset reuse")
+require(drive, "'reused_asset_count'", "scan reuse evidence")
+require(drive, "MANAGED_SCOPE_PROFILE_FULL_OWNER = 'full_owner'", "managed dynamic full-owner profile")
+require(drive, "'scope_profile' => $scope_profile", "managed broker profile request")
+require(drive, "'broker_requested_scopes'", "broker scope provenance persistence")
+require(drive, "mad4b_google_managed_scope_projection_invalid", "broker scope projection fail-closed")
+require(drive, "mad4b_google_managed_granted_scope_unproven", "unproven managed scope rejection")
+require(drive, "mad4b_google_workspace_grants_reduction_requires_revoke", "grant reduction revoke gate")
+require(drive, "'incremental_consent_required'", "incremental expansion state")
+require(drive, "mad4b_google_workspace_grants_reduction_requires_revoke", "scope reduction revoke gate")
+require(drive, "incremental_consent_required", "incremental consent state")
+require(drive, "scope_covers", "semantic Google scope implication")
+require(drive, "Recovery path only", "cache-wide flush recovery-only path")
+require(ui, "mad4b-google-incremental-consent-form", "incremental consent CTA form")
+require(ui, "Authorize added Google access", "incremental consent CTA label")
+require(ui, "Existing granted access stays active", "incremental consent continuity message")
+require(ui, "MAD4B_SCP_Staging_Write_Authority::persisted_status()", "bounded persisted authority admin projection")
+require(ui, "MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()", "exact candidate admin fence")
+require(ui, "MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability )", "targeted Context mount readback")
+readiness_block = ui.split("private static function render_write_governance_readiness()", 1)[1].split("private static function governance_cell", 1)[0]
+assert "MAD4B_SCP_Live_Truth::current_authority_status()" not in readiness_block, "Context Google admin render must not execute full Live Truth"
+require(live_truth, "if ( 'mad4b-control-plane-context' === $page ) return;", "Context admin passive live-truth recovery bypass")
+require(live_truth, "Explicit status/certification abilities still call current truth.", "explicit current-truth continuity")
+
 
 print("MAD4B natural Managed Google Sign-In contract PASS")
