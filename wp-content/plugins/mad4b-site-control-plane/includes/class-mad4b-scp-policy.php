@@ -46,10 +46,21 @@ final class MAD4B_SCP_Policy {
 		$explicit_gate_enabled = $explicit_gate_defined && true === MAD4B_MCP_MUTATION_ENABLED;
 		$profile_configured = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured();
 		$profile_ready = $profile_configured && MAD4B_SCP_Site_Profile::governed_write_ready();
+		$environment = $profile_configured
+			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			: ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$production_gate_ready = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
+			&& MAD4B_SCP_Governed_Runtime_Gates::production_mutation_enabled();
+		$production_auto_enable = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
+			&& MAD4B_SCP_Governed_Runtime_Gates::production_auto_enable();
 		$hard_kill = $explicit_gate_defined && true !== MAD4B_MCP_MUTATION_ENABLED;
+
 		if ( $hard_kill ) {
 			$effective = false;
 			$source = 'explicit_constant_kill_switch';
+		} elseif ( 'production' === $environment ) {
+			$effective = $profile_ready && $production_gate_ready;
+			$source = $production_gate_ready ? 'governed_runtime_gates' : 'production_runtime_gate_disabled';
 		} elseif ( $profile_configured ) {
 			$effective = $profile_ready;
 			$source = 'exact_site_profile';
@@ -57,14 +68,19 @@ final class MAD4B_SCP_Policy {
 			$effective = $explicit_gate_enabled;
 			$source = $explicit_gate_enabled ? 'legacy_explicit_constant' : 'disabled';
 		}
+
 		return array(
 			'effective' => (bool) $effective,
 			'source' => $source,
+			'environment' => $environment,
 			'explicit_constant_defined' => (bool) $explicit_gate_defined,
 			'explicit_constant_enabled' => (bool) $explicit_gate_enabled,
 			'explicit_kill_switch' => (bool) $hard_kill,
 			'site_profile_configured' => (bool) $profile_configured,
 			'site_profile_governed_write_ready' => (bool) $profile_ready,
+			'production_mutation_enabled' => (bool) $production_gate_ready,
+			'production_auto_enable' => (bool) $production_auto_enable,
+			'database_authoritative_in_production' => true,
 		);
 	}
 
@@ -118,7 +134,7 @@ final class MAD4B_SCP_Policy {
 	}
 
 	public static function can_breakglass() {
-		if ( ! defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) || true !== MAD4B_MCP_BREAKGLASS_ENABLED ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) || ! MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled() ) return false;
 		if ( ! current_user_can( 'manage_options' ) ) return false;
 		if ( ! self::can_mutate() ) return false;
 		return (bool) apply_filters( 'mad4b_mcp_breakglass_permission', false, get_current_user_id() );
