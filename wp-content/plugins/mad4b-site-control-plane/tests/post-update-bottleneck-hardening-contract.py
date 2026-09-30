@@ -57,7 +57,9 @@ assert "'operator_resume_runtime_convergence'" in runtime
 assert "'retry_after_runtime_convergence'" in runtime
 assert "$not_before = self::maintenance_not_before();" in runtime
 assert "self::schedule_resume( $not_before )" in runtime
+assert "private static function restore_checkpoint_snapshot(" in runtime
 assert "private static function post_update_checkpoint_matches(" in runtime
+assert "'checkpoint_restore_ok' => $checkpoint_restore_ok" in runtime
 for field in ("'contract'", "'state'", "'source'", "'channel'", "'update_plan_sha256'", "'resume_not_before'", "'quiet_period_seconds'"):
     assert field in runtime
 assert "'persist_phase' => 'pending_restart'" in runtime
