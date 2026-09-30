@@ -115,7 +115,7 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 	}
 
 	private static function evaluate() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$blockers = array();
 		$checks = array();
 
