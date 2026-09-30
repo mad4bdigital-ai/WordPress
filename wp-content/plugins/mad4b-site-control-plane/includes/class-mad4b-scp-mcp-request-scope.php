@@ -136,10 +136,16 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	private static function passive_admin_route( $page, $tab = '' ) {
 		$page = sanitize_key( (string) $page );
 		$tab = sanitize_key( (string) $tab );
-		if ( 'mad4b-control-plane-chatgpt' === $page ) return true;
-		if ( 'mad4b-control-plane-connection' !== $page ) return false;
-		if ( '' === $tab ) $tab = 'readiness';
-		return 'endpoints' !== $tab;
+
+		// Every Control Plane GET/HEAD screen is request-serving by default. The
+		// Connection > MCP Endpoints tab is the sole browser deep-diagnostic opt-in;
+		// mutations use POST/admin-post and therefore never enter this classifier.
+		if ( 'mad4b-control-plane-connection' === $page ) {
+			if ( '' === $tab ) $tab = 'readiness';
+			return 'endpoints' !== $tab;
+		}
+		if ( 'mad4b-control-plane' === $page || 0 === strpos( $page, 'mad4b-control-plane-' ) ) return true;
+		return in_array( $page, array( 'mad4b-adapter-coverage', 'mad4b-runtime-components', 'mad4b-approval-decisions' ), true );
 	}
 
 	/** @internal Pure regression seam; does not inspect request globals or WP_CLI. */
@@ -147,8 +153,13 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		return self::passive_admin_route( $page, $tab );
 	}
 
+	private static function current_admin_request_method_is_read_only() {
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( trim( (string) $_SERVER['REQUEST_METHOD'] ) ) : 'GET'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- method classification only.
+		return in_array( $method, array( 'GET', 'HEAD' ), true );
+	}
+
 	public static function current_request_is_passive_admin_hotpath() {
-		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
+		if ( ! function_exists( 'is_admin' ) || ! is_admin() || ! self::current_admin_request_method_is_read_only() ) return false;
 		$page = isset( $_GET['page'] ) ? wp_unslash( (string) $_GET['page'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		$tab = isset( $_GET['tab'] ) ? wp_unslash( (string) $_GET['tab'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		return self::passive_admin_route( $page, $tab );
