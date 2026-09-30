@@ -1024,6 +1024,7 @@ final class MAD4B_SCP_Self_Update {
 			return new WP_Error( 'mad4b_self_update_install_failed', 'Control Plane installation failed and rollback was attempted.', array( 'rollback_ok' => ! is_wp_error( $rollback ) ) );
 		}
 
+		$runtime_cache = self::invalidate_runtime_caches();
 		$activation = self::restore_activation_state( $before );
 		$readback = is_wp_error( $activation ) ? $activation : self::verify_installed_identity( $target );
 		if ( is_wp_error( $readback ) ) {
@@ -1044,7 +1045,7 @@ final class MAD4B_SCP_Self_Update {
 		if ( class_exists( 'MAD4B_SCP_Runtime_Convergence' ) && method_exists( 'MAD4B_SCP_Runtime_Convergence', 'mark_post_update_pending' ) ) {
 			$convergence = MAD4B_SCP_Runtime_Convergence::mark_post_update_pending( $target, $channel, $plan_sha256 );
 		}
-		self::audit( $channel, $target, true, array( 'plan_sha256' => $plan_sha256, 'readback' => $readback, 'post_update_convergence' => $convergence ) );
+		self::audit( $channel, $target, true, array( 'plan_sha256' => $plan_sha256, 'readback' => $readback, 'runtime_cache_invalidation' => $runtime_cache, 'post_update_convergence' => $convergence ) );
 		delete_site_transient( 'update_plugins' );
 		// Preserve the already verified release manifest across the immediate
 		// post-update redirect. Deleting it here forced plugins.php to block on
@@ -1063,6 +1064,7 @@ final class MAD4B_SCP_Self_Update {
 			'plan_sha256' => $plan_sha256,
 			'readback_verified' => true,
 			'rollback_required' => false,
+			'runtime_cache_invalidation' => $runtime_cache,
 			'runtime_reboot_required' => true,
 			'post_update_convergence' => $convergence,
 			'production_mutation_performed' => false,
@@ -1472,6 +1474,46 @@ final class MAD4B_SCP_Self_Update {
 			) );
 		}
 		return $current;
+	}
+
+	private static function invalidate_runtime_caches() {
+		$root = defined( 'MAD4B_SCP_DIR' ) ? realpath( MAD4B_SCP_DIR ) : false;
+		$result = array(
+			'contract' => 'mad4b.self-update-runtime-cache-invalidation.v1',
+			'available' => function_exists( 'wp_opcache_invalidate' ) || function_exists( 'opcache_invalidate' ),
+			'files_considered' => 0,
+			'invalidation_attempts' => 0,
+			'invalidation_successes' => 0,
+			'invalidation_failures' => 0,
+			'bounded_file_limit' => 1000,
+			'global_opcache_reset_used' => false,
+			'shell_used' => false,
+		);
+		clearstatcache( true );
+		if ( false === $root || ! is_dir( $root ) ) return $result;
+		try {
+			$iterator = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator( $root, FilesystemIterator::SKIP_DOTS ),
+				RecursiveIteratorIterator::LEAVES_ONLY
+			);
+			foreach ( $iterator as $file ) {
+				if ( $result['files_considered'] >= $result['bounded_file_limit'] ) break;
+				if ( ! $file->isFile() || 'php' !== strtolower( (string) $file->getExtension() ) ) continue;
+				$path = $file->getPathname();
+				$result['files_considered']++;
+				if ( empty( $result['available'] ) ) continue;
+				$result['invalidation_attempts']++;
+				$ok = function_exists( 'wp_opcache_invalidate' )
+					? wp_opcache_invalidate( $path, true )
+					: opcache_invalidate( $path, true );
+				if ( false === $ok ) $result['invalidation_failures']++;
+				else $result['invalidation_successes']++;
+			}
+		} catch ( Throwable $e ) {
+			$result['scan_interrupted'] = true;
+			$result['error_class'] = get_class( $e );
+		}
+		return $result;
 	}
 
 	private static function backup_current() {
