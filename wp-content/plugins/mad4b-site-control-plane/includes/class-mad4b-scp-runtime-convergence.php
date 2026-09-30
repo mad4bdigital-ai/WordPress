@@ -447,7 +447,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 	public static function mark_activation_pending() {
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		if ( 'staging' !== $environment ) return array( 'scheduled' => false, 'state' => 'observe_only_non_staging', 'environment' => $environment );
-		$existing = get_option( self::CHECKPOINT_OPTION, array() );
+		$previous_checkpoint = get_option( self::CHECKPOINT_OPTION, null );
+		$existing = is_array( $previous_checkpoint ) ? $previous_checkpoint : array();
 		$existing_source = is_array( $existing ) && isset( $existing['source'] ) ? sanitize_key( (string) $existing['source'] ) : '';
 		$existing_state = is_array( $existing ) && isset( $existing['state'] ) ? sanitize_key( (string) $existing['state'] ) : '';
 		if ( 'self_update' === $existing_source && 'blocked' === $existing_state ) {
@@ -486,7 +487,15 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$stored = get_option( self::CHECKPOINT_OPTION, array() );
 		$stored_source = is_array( $stored ) && isset( $stored['source'] ) ? sanitize_key( (string) $stored['source'] ) : '';
 		if ( ! is_array( $stored ) || 'plugin_activation' !== $stored_source || empty( $stored['target_identity'] ) || ! self::identity_matches( $checkpoint['target_identity'], $stored['target_identity'] ) ) {
-			return array( 'scheduled' => false, 'state' => 'checkpoint_persist_failed', 'target_identity' => $checkpoint['target_identity'], 'production_mutation' => false );
+			$checkpoint_restore_ok = self::restore_checkpoint_snapshot( $previous_checkpoint );
+			return array(
+				'scheduled' => false,
+				'state' => 'checkpoint_persist_failed',
+				'persist_phase' => 'pending_safe_phases',
+				'checkpoint_restore_ok' => $checkpoint_restore_ok,
+				'target_identity' => $checkpoint['target_identity'],
+				'production_mutation' => false,
+			);
 		}
 		$scheduled = self::schedule_resume();
 		if ( ! $scheduled ) {
