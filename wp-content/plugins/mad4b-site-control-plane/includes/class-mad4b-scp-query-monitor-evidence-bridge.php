@@ -129,13 +129,24 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		// Guard before touching db.php, Query Monitor source paths or filesystem
 		// ownership evidence. Foreign wp-admin pages are never instrumentation jobs.
 		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) ) return array( 'state' => 'deferred_foreign_admin_surface', 'mutation_performed' => false );
+		return self::enable_db_attribution_explicit();
+	}
+
+	/**
+	 * Explicit governed Staging bootstrap used by both MAD4B wp-admin and the
+	 * semantic remote maintenance surface. Ordinary frontend, REST, MCP and
+	 * foreign wp-admin requests never call this method implicitly.
+	 */
+	public static function enable_db_attribution_explicit() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return new WP_Error( 'mad4b_qm_db_attribution_admin_required', 'Administrator capability is required to bootstrap Query Monitor DB attribution.' );
+		}
+
 		$status = self::db_attribution_status();
 		if ( 'staging' !== (string) $status['environment'] ) return $status;
-
-		// Creating a db.php attribution drop-in is instrumentation mutation and
-		// remains restricted to explicit MAD4B admin surfaces.
 		if ( ! empty( $status['ready'] ) || empty( $status['safe_to_enable'] ) ) return $status;
 		if ( ! defined( 'WP_CONTENT_DIR' ) || ! defined( 'WP_PLUGIN_DIR' ) ) return $status;
+
 		$dropin = trailingslashit( WP_CONTENT_DIR ) . 'db.php';
 		$source = trailingslashit( WP_PLUGIN_DIR ) . 'query-monitor/wp-content/db.php';
 		if ( file_exists( $dropin ) || is_link( $dropin ) || ! is_readable( $source ) ) return self::db_attribution_status();
@@ -163,7 +174,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 
 		clearstatcache( true, $dropin );
 		$record = array(
-			'contract' => 'mad4b.query-monitor-db-attribution-bootstrap.v2',
+			'contract' => 'mad4b.query-monitor-db-attribution-bootstrap.v3',
 			'environment' => 'staging',
 			'created' => (bool) $created,
 			'method' => $method,
@@ -176,6 +187,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		update_option( self::ATTRIBUTION_OPTION, $record, false );
 		$status = self::db_attribution_status();
 		$status['bootstrap'] = $record;
+		$status['mutation_performed'] = (bool) $created;
 		return $status;
 	}
 
