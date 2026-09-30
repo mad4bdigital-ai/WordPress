@@ -90,7 +90,8 @@ final class MAD4B_SCP_Self_Update {
 	public static function ensure_recovery_update_schedule() {
 		if ( ! self::recovery_update_eligible() ) return;
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
-			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
+			&& ( MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()
+				|| MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) ) return;
 		if ( ! function_exists( 'wp_next_scheduled' ) || ! function_exists( 'wp_schedule_event' ) ) return;
 		if ( wp_next_scheduled( self::RECOVERY_CRON_HOOK ) ) return;
 		wp_schedule_event( time() + 300, 'hourly', self::RECOVERY_CRON_HOOK );
