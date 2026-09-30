@@ -224,7 +224,7 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 
 	private static function resource_name( $server_id = 'mad4b-chatgpt' ) {
 		$server_id = sanitize_key( (string) $server_id );
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$label = 'MAD4B WordPress';
 		if ( 'staging' === $environment ) $label .= ' Staging';
 		elseif ( 'production' === $environment ) $label .= ' Production';
