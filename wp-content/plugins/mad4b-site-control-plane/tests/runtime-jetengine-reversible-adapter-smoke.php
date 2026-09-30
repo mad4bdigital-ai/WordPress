@@ -34,7 +34,9 @@ $check( isset( $meta['mcp']['mad4b_reversible_contract'] ) && 'mad4b.rollback.je
 
 $peer = MAD4B_SCP_MCP_Peer_Governance::status();
 $check( ! empty( $peer['inventory_ready'] ), 'MCP peer inventory is unavailable with JetEngine active.' );
-$check( ! empty( $peer['foreign_mcp_detected'] ) && ! empty( $peer['write_side_channel_detected'] ), 'JetEngine native MCP plane was not detected as an unreviewed parallel authority.' );
+$check( ! empty( $peer['foreign_mcp_detected'] ), 'JetEngine native MCP plane was not detected as an unreviewed parallel authority.' );
+$check( empty( $peer['write_side_channel_detected'] ), 'JetEngine native MCP route was incorrectly labeled as a proven write side channel.' );
+$check( ! empty( $peer['foreign_transport_unreviewed'] ), 'JetEngine native MCP plane did not remain fail-closed as unreviewed transport.' );
 $check( in_array( 'mcp_foreign_transport_unreviewed', $peer['blockers'], true ), 'JetEngine native MCP transport did not produce the foreign-transport blocker.' );
 $jetengine_foreign_route = false;
 $foreign = isset( $peer['foreign_transport_inventory'] ) && is_array( $peer['foreign_transport_inventory'] ) ? $peer['foreign_transport_inventory'] : array();
@@ -95,7 +97,7 @@ $t = MAD4B_SCP_Schema::tables();
 global $wpdb;
 $mutations_before = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['mutations']}" );
 $decision = MAD4B_SCP_Authorization::authorize_mutation( 'jetengine/update-post-meta', 'mad4b-content', 'jetengine', $input );
-$check( is_wp_error( $decision ) && 'mcp_write_side_channel_detected' === $decision->get_error_code(), 'Central authorization did not fail closed on JetEngine native MCP.' );
+$check( is_wp_error( $decision ) && 'mcp_foreign_transport_unreviewed' === $decision->get_error_code(), 'Central authorization did not fail closed on JetEngine native MCP.' );
 $ticket_after_direct = MAD4B_SCP_Approval_Tickets::get( $ticket['ticket_id'] );
 $check( is_array( $ticket_after_direct ) && 'approved' === $ticket_after_direct['status'], 'Side-channel denial consumed the single-use approval ticket.' );
 $check( 'before' === get_post_meta( $post_id, $field, true ), 'Central side-channel denial changed provider state.' );
