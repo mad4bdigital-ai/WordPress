@@ -58,6 +58,12 @@ assert "'client_action' => 'retry_after_restart_grace'" in reconnect
 assert "$response->header( 'Retry-After'" in reconnect
 assert "$response->header( 'Cache-Control', 'no-store' )" in reconnect
 assert "current_request_is_http_mcp_transport()" in reconnect
+assert "mad4b_mcp_runtime_maintenance_busy" in reconnect
+assert "'client_action' => 'retry_after_runtime_maintenance'" in reconnect
+assert "public static function maintenance_lease_status()" in runtime
+assert "'maintenance_sliced' => true" in runtime
+assert "yield_safe_phases" in runtime
+assert "'next_safe_phase' => $checkpoint['next_safe_phase']" in runtime
 assert "if ( ! $is_chatgpt_resource ) return $result;" in reconnect
 
 # Shared connector policy understands this as a bounded runtime transition,
@@ -67,6 +73,9 @@ assert "'category' => 'runtime_restart'" in resilience
 assert "'auto_retry' => false" in resilience
 assert "'runtime_restart_honors_retry_after' => true" in resilience
 assert "'runtime_restart_immediate_auto_retry_allowed' => false" in resilience
+assert "'category' => 'runtime_maintenance'" in resilience
+assert "'runtime_maintenance_honors_retry_after' => true" in resilience
+assert "'runtime_maintenance_immediate_auto_retry_allowed' => false" in resilience
 
 # The hardening does not widen mutation authority.
 for text in (runtime, schema, reconnect, resilience):
