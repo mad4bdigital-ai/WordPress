@@ -134,10 +134,14 @@ def main():
     require(seo, "mb_strlen", "Unicode-aware SEO length")
     require(seo, "'UTF-8'", "explicit SEO UTF-8 length")
 
-    # Guard against regression to the exact previously observed unsafe defaults.
+    # Guard against regression to previously observed unsafe defaults and
+    # deployment-constant breakglass authority. The breakglass filter may
+    # default true only after the database-backed authority gate succeeds.
     forbid(bitflows, "mad4b_scp_bitflows_flow_allowed', true", "allow-all Bit Flows policy")
     forbid(jetengine, "mad4b_scp_jetengine_field_write_allowed', true", "allow-all JetEngine field policy")
-    forbid(policy, "mad4b_mcp_breakglass_permission', true", "implicit breakglass approval")
+    forbid(policy, "mad4b_mcp_breakglass_permission', false", "hidden code-level breakglass enable gate")
+    forbid(abilities, "MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED", "hardcoded raw SQL write authority")
+    forbid(abilities, "MAD4B_MCP_BREAKGLASS_DDL_ENABLED", "hardcoded raw SQL DDL authority")
 
     print("mad4b.site-control-plane.pre-install-hardening.v1: PASS")
 
