@@ -2974,7 +2974,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		} elseif ( false !== getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' ) ) {
 			$raw = (string) getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' );
 		} else {
-			$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'production';
+			$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'production' );
 			$raw = in_array( $environment, array( 'local', 'development', 'staging' ), true )
 				? 'https://dev.mad4b.com'
 				: 'https://auth.mad4b.com';
