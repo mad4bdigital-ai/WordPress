@@ -726,8 +726,12 @@ final class MAD4B_SCP_Runtime_Convergence {
 			: array();
 		$schema_changed_this_slice = false;
 		try {
+			$lease_refresh = self::refresh_lock( $lock );
+			if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
 			$schema = class_exists( 'MAD4B_SCP_Schema' ) ? MAD4B_SCP_Schema::status( true ) : array();
 			if ( empty( $schema['ready'] ) ) {
+				$lease_refresh = self::refresh_lock( $lock );
+				if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
 				$result = MAD4B_SCP_Schema::install_or_upgrade();
 				if ( is_wp_error( $result ) ) return $result;
 				$schema = MAD4B_SCP_Schema::status( true );
@@ -759,6 +763,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 					$changed = array_values( array_unique( $changed ) );
 				}
 			}
+			$lease_refresh = self::refresh_lock( $lock );
+			if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
 			$status = self::status();
 			$checkpoint = array(
 				'contract' => self::CONTRACT,
@@ -822,45 +828,23 @@ final class MAD4B_SCP_Runtime_Convergence {
 		);
 	}
 
-	private static function legacy_lock_options() {
-		return array(
-			'mad4b_scp_runtime_convergence_lock_v1',
-			'mad4b_scp_schema_lifecycle_lock_v1',
-		);
+	private static function acquire_lock() {
+		if ( ! class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ) return new WP_Error( 'mad4b_runtime_convergence_lock_failed', 'Runtime maintenance lease coordinator is unavailable.' );
+		$lease = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'runtime_convergence' );
+		if ( ! is_wp_error( $lease ) ) return $lease;
+		$code = sanitize_key( (string) $lease->get_error_code() );
+		if ( 'mad4b_runtime_maintenance_busy' === $code ) return new WP_Error( 'mad4b_runtime_convergence_busy', $lease->get_error_message(), $lease->get_error_data() );
+		return new WP_Error( 'mad4b_runtime_convergence_lock_failed', $lease->get_error_message(), array( 'cause' => $code ) );
 	}
 
-	private static function acquire_lock() {
-		$now = time();
-		foreach ( self::legacy_lock_options() as $legacy_option ) {
-			$legacy = get_option( $legacy_option, array() );
-			if ( is_array( $legacy ) && ! empty( $legacy['token'] ) && isset( $legacy['expires_at'] ) && (int) $legacy['expires_at'] > $now ) {
-				return new WP_Error( 'mad4b_runtime_convergence_busy', 'Legacy runtime maintenance already has an active lease.' );
-			}
-			if ( is_array( $legacy ) && ! empty( $legacy ) ) delete_option( $legacy_option );
-		}
-		$current = get_option( self::LOCK_OPTION, array() );
-		if ( is_array( $current ) && ! empty( $current['token'] ) && isset( $current['expires_at'] ) && (int) $current['expires_at'] > $now ) {
-			return new WP_Error( 'mad4b_runtime_convergence_busy', 'Runtime maintenance already has an active lease.' );
-		}
-		if ( is_array( $current ) && ! empty( $current ) ) delete_option( self::LOCK_OPTION );
-		$token = strtolower( wp_generate_uuid4() );
-		$lock = array( 'token' => $token, 'owner' => 'runtime_convergence', 'expires_at' => $now + self::LOCK_TTL, 'acquired_at' => gmdate( 'c' ) );
-		if ( ! add_option( self::LOCK_OPTION, $lock, '', false ) ) return new WP_Error( 'mad4b_runtime_convergence_lock_failed', 'Unable to acquire the runtime maintenance lease.' );
-		foreach ( self::legacy_lock_options() as $legacy_option ) {
-			if ( add_option( $legacy_option, $lock, '', false ) ) continue;
-			self::release_lock( $token );
-			return new WP_Error( 'mad4b_runtime_convergence_lock_failed', 'Unable to establish the cross-version runtime maintenance fence.' );
-		}
-		return $token;
+	private static function refresh_lock( $token ) {
+		return class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' )
+			? MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $token, 'runtime_convergence' )
+			: new WP_Error( 'mad4b_runtime_convergence_lock_failed', 'Runtime maintenance lease coordinator is unavailable.' );
 	}
 
 	private static function release_lock( $token ) {
-		$current = get_option( self::LOCK_OPTION, array() );
-		if ( is_array( $current ) && isset( $current['token'] ) && hash_equals( (string) $current['token'], (string) $token ) ) delete_option( self::LOCK_OPTION );
-		foreach ( self::legacy_lock_options() as $legacy_option ) {
-			$legacy = get_option( $legacy_option, array() );
-			if ( is_array( $legacy ) && isset( $legacy['token'] ) && hash_equals( (string) $legacy['token'], (string) $token ) ) delete_option( $legacy_option );
-		}
+		if ( class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ) MAD4B_SCP_Runtime_Maintenance_Lease::release( $token, 'runtime_convergence' );
 	}
 
 	private static function current_identity() {
