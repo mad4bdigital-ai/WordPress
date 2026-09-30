@@ -319,6 +319,27 @@ for marker in (
 ):
     if marker not in managed_apply:
         raise SystemExit(f"managed apply exception/rollback safety invariant missing: {marker}")
+
+for marker in (
+    "$lease_owner = 'self_update_replacement';",
+    "MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner )",
+    "MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, $lease_owner )",
+    "$upgrader->maintenance_mode( true );",
+    "$upgrader->maintenance_mode( false );",
+    "MAD4B_SCP_Runtime_Maintenance_Lease::release( $lease_token, $lease_owner );",
+    "'core_maintenance_window_used' => true",
+    "'pre_replacement_runtime_lease' => true",
+):
+    if marker not in managed_apply:
+        raise SystemExit(f"self-update replacement-fence invariant missing: {marker}")
+if not (
+    managed_apply.index("MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner )")
+    < managed_apply.index("self::backup_current()")
+    < managed_apply.index("$upgrader->maintenance_mode( true );")
+    < managed_apply.index("$upgrader->install(")
+    < managed_apply.index("MAD4B_SCP_Runtime_Convergence::mark_post_update_pending")
+):
+    raise SystemExit("self-update replacement window is not continuously fenced")
 try_index = managed_apply.find("try {")
 catch_index = managed_apply.find("catch ( Throwable $throwable )")
 finally_index = managed_apply.find("finally {")
