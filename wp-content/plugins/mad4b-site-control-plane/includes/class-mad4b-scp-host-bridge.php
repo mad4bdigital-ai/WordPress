@@ -576,7 +576,7 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return new WP_Error( 'mad4b_host_site_profile_unavailable', 'Site Profile is unavailable.' );
 		$site_uuid = strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) );
 		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $site_uuid ) ) return new WP_Error( 'mad4b_host_site_identity_invalid', 'Site identity is invalid.' );
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$root = defined( 'ABSPATH' ) ? realpath( ABSPATH ) : false;
 		if ( false === $root ) return new WP_Error( 'mad4b_host_wordpress_root_unavailable', 'WordPress root is unavailable.' );
 		$wp_config = $root . DIRECTORY_SEPARATOR . 'wp-config.php';
