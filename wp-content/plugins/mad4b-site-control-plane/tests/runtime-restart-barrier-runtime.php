@@ -11,6 +11,7 @@ function sanitize_key( $v ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/',
 function sanitize_text_field( $v ) { return trim( strip_tags( (string) $v ) ); }
 function absint( $v ) { return abs( (int) $v ); }
 function get_option( $k, $d = false ) { return array_key_exists( $k, $GLOBALS['mad4b_test_options'] ) ? $GLOBALS['mad4b_test_options'][ $k ] : $d; }
+function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) { return true; }
 
 $actual = array(
 	'contract' => 'mad4b.build-provenance.v1',
