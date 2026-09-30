@@ -169,6 +169,10 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Context_Admin_UI::boot();
 		MAD4B_SCP_Connection_Admin_UI::boot();
 		MAD4B_SCP_ChatGPT_Connection_Admin_UI::boot();
+		// Menu/enqueue registration is presentation-only. Keep OAuth Canary
+		// navigable even when the current Control Plane GET is zero-touch; its
+		// status projection is shallow and the actual canary runs explicitly in JS.
+		MAD4B_SCP_Local_OAuth_Browser_Canary::boot();
 		MAD4B_SCP_Adapter_Coverage_Admin_UI::boot();
 		MAD4B_SCP_Runtime_Components_Admin_UI::boot();
 		MAD4B_SCP_Skills_Admin_UI::boot();
