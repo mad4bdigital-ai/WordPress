@@ -58,7 +58,9 @@ final class MAD4B_SCP_Dependency_Manager {
 		$runtime_contract = class_exists( 'MAD4B_SCP_Provider_Contracts' ) && method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_status' )
 			? MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $runtime_loaded )
 			: array();
-		$runtime_certified = ! empty( $runtime_contract['runtime_contract_ok'] );
+		$runtime_provenance = self::mcp_runtime_provenance();
+		$runtime_from_official_plugin = ! empty( $runtime_provenance['runtime_from_official_plugin'] );
+		$runtime_certified = ! empty( $runtime_contract['runtime_contract_ok'] ) && $runtime_from_official_plugin;
 		$version_match = '' !== $expected_version && '' !== $installed_version && hash_equals( $expected_version, $installed_version );
 		$bundle = self::bundled_archive_status( $expected_sha );
 
@@ -126,8 +128,11 @@ final class MAD4B_SCP_Dependency_Manager {
 				'active' => (bool) $active,
 				'runtime_loaded' => $runtime_loaded,
 				'runtime_certified' => $runtime_certified,
-				'runtime_source' => $active ? 'active_plugin' : ( $runtime_certified ? 'certified_loaded_runtime' : 'inactive_plugin' ),
+				'runtime_from_official_plugin' => $runtime_from_official_plugin,
+				'runtime_source' => isset( $runtime_provenance['runtime_source'] ) ? (string) $runtime_provenance['runtime_source'] : '',
+				'loading_mode' => $active ? 'active_plugin' : ( $runtime_certified ? 'certified_loaded_runtime' : 'inactive_plugin' ),
 				'runtime_contract' => $runtime_contract,
+				'runtime_provenance' => $runtime_provenance,
 				'bundled_archive' => $bundle,
 				'install_requires_explicit_admin_action' => true,
 				'auto_downloads_remote_code' => false,
@@ -221,6 +226,32 @@ final class MAD4B_SCP_Dependency_Manager {
 			'sha256' => $sha,
 			'integrity_match' => $present && 1 === preg_match( '/^[a-f0-9]{64}$/', $expected_sha ) && hash_equals( $expected_sha, $sha ),
 		);
+	}
+
+	private static function mcp_runtime_provenance() {
+		$out = array(
+			'runtime_class_loaded' => false,
+			'runtime_source' => 'unavailable',
+			'runtime_from_official_plugin' => false,
+		);
+		$class = 'WP\\MCP\\Core\\McpAdapter';
+		if ( ! class_exists( $class, false ) ) return $out;
+		$out['runtime_class_loaded'] = true;
+		try {
+			$reflection = new ReflectionClass( $class );
+			$file = $reflection->getFileName();
+			$resolved = $file ? realpath( $file ) : false;
+			$official_root = defined( 'WP_PLUGIN_DIR' ) ? realpath( trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter' ) : false;
+			if ( $resolved ) $out['runtime_source'] = wp_normalize_path( $resolved );
+			if ( $resolved && $official_root ) {
+				$runtime_file = wp_normalize_path( $resolved );
+				$official = rtrim( wp_normalize_path( $official_root ), '/' ) . '/';
+				$out['runtime_from_official_plugin'] = 0 === strpos( $runtime_file, $official );
+			}
+		} catch ( Throwable $e ) {
+			$out['runtime_source'] = 'reflection-unavailable';
+		}
+		return $out;
 	}
 
 	private static function plugins( $refresh = false ) {
