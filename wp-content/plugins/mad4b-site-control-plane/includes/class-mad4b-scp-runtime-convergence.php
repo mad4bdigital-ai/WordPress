@@ -450,6 +450,15 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$existing = get_option( self::CHECKPOINT_OPTION, array() );
 		$existing_source = is_array( $existing ) && isset( $existing['source'] ) ? sanitize_key( (string) $existing['source'] ) : '';
 		$existing_state = is_array( $existing ) && isset( $existing['state'] ) ? sanitize_key( (string) $existing['state'] ) : '';
+		if ( 'self_update' === $existing_source && 'blocked' === $existing_state ) {
+			return array(
+				'scheduled' => false,
+				'state' => 'self_update_blocked_checkpoint_preserved',
+				'last_error_code' => isset( $existing['last_error_code'] ) ? sanitize_key( (string) $existing['last_error_code'] ) : '',
+				'target_identity' => isset( $existing['target_identity'] ) && is_array( $existing['target_identity'] ) ? self::bounded_identity( $existing['target_identity'] ) : array(),
+				'production_mutation' => false,
+			);
+		}
 		if ( 'self_update' === $existing_source && in_array( $existing_state, array( 'pending_restart', 'pending_safe_phases', 'pending_manual_resume', 'waiting_for_exact_runtime_restart' ), true ) ) {
 			$scheduled = self::schedule_resume( self::maintenance_not_before() );
 			return array(
