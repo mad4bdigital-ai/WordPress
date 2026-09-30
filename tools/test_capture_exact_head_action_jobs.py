@@ -39,7 +39,12 @@ assert matches(run(event="push"))
 assert not matches(run(event="pull_request"))
 assert not matches(run(event="workflow_dispatch"))
 assert not matches(run(event="push", branch="feature"))
-assert matches(run(event="workflow_dispatch"), event="workflow_dispatch")
+assert matches(run(event="push"), event="workflow_dispatch")
+assert not matches(run(event="workflow_dispatch"), event="workflow_dispatch")
+assert module.canonical_evidence_event(event_name="workflow_dispatch", pr_number=0) == "push"
+
+assert module.canonical_evidence_event(event_name="push", pr_number=0) == "push"
+assert module.canonical_evidence_event(event_name="pull_request", pr_number=193) == "pull_request"
 
 assert matches(
     run(event="pull_request", branch="feature", prs=[193]),
