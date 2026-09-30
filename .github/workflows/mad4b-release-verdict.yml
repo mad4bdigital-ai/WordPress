@@ -38,6 +38,14 @@ jobs:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
 
+      - name: Verify update-channel scope classifier contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/classify_control_plane_update_scope.py \
+            --workflow .github/workflows/mad4b-control-plane-package.yml \
+            --self-test
+
       - name: Verify exact-head action-job event scoping
         shell: bash
         run: |
@@ -1332,6 +1340,7 @@ jobs:
       actions: read
     env:
       SOURCE_SHA: ${{ github.sha }}
+      BASE_SHA: ${{ github.event.before }}
       UPDATE_TAG: mad4b-site-control-plane-update-channel
 
     steps:
@@ -1344,7 +1353,94 @@ jobs:
           current_master="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" --jq '.object.sha')"
           test "$current_master" = "$SOURCE_SHA"
 
+      - name: Checkout exact master for update scope
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Classify update-channel publication scope
+        id: update_scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${BASE_SHA:-}" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "reason=unknown_base_fail_safe_publish" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git cat-file -e "$BASE_SHA^{commit}"
+          git cat-file -e "$SOURCE_SHA^{commit}"
+          git diff --name-only "$BASE_SHA" "$SOURCE_SHA" > /tmp/mad4b-update-channel-changed-paths.txt
+          python3 tools/classify_control_plane_update_scope.py \
+            --workflow .github/workflows/mad4b-control-plane-package.yml \
+            --changed-paths-file /tmp/mad4b-update-channel-changed-paths.txt \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Verify existing stable update channel on governance-only push
+        if: steps.update_scope.outputs.publish != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/mad4b-update-noop-readback
+          mkdir -p /tmp/mad4b-update-noop-readback
+
+          gh release download "$UPDATE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "mad4b-site-control-plane-update-pointer.json" \
+            --dir /tmp/mad4b-update-noop-readback
+
+          pointer=/tmp/mad4b-update-noop-readback/mad4b-site-control-plane-update-pointer.json
+          test -f "$pointer"
+          manifest_asset="$(jq -r '.manifest_asset // empty' "$pointer")"
+          channel_source="$(jq -r '.source_commit_sha // empty' "$pointer")"
+          test -n "$manifest_asset"
+          test -n "$channel_source"
+
+          gh release download "$UPDATE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "$manifest_asset" \
+            --dir /tmp/mad4b-update-noop-readback
+
+          manifest="/tmp/mad4b-update-noop-readback/$manifest_asset"
+          test -f "$manifest"
+          git merge-base --is-ancestor "$channel_source" "$SOURCE_SHA"
+
+          python3 - "$pointer" "$manifest" "$channel_source" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          pointer_path = Path(sys.argv[1])
+          manifest_path = Path(sys.argv[2])
+          channel_source = sys.argv[3]
+          pointer = json.loads(pointer_path.read_text(encoding='utf-8'))
+          manifest_bytes = manifest_path.read_bytes()
+          manifest = json.loads(manifest_bytes)
+
+          if pointer.get('contract') != 'mad4b.control-plane-update-pointer.v1':
+              raise SystemExit('stable update pointer contract mismatch')
+          if pointer.get('source_commit_sha') != channel_source:
+              raise SystemExit('stable update pointer source mismatch')
+          if pointer.get('manifest_asset') != manifest_path.name:
+              raise SystemExit('stable update pointer manifest asset mismatch')
+          if pointer.get('manifest_sha256') != hashlib.sha256(manifest_bytes).hexdigest():
+              raise SystemExit('stable update pointer manifest digest mismatch')
+          if pointer.get('release_verdict_success') is not True or pointer.get('published_from_master') is not True:
+              raise SystemExit('stable update pointer release evidence missing')
+          if manifest.get('source_commit_sha') != channel_source:
+              raise SystemExit('stable update manifest source mismatch')
+          if manifest.get('release_verdict_success') is not True or manifest.get('published_from_master') is not True:
+              raise SystemExit('stable update manifest release evidence missing')
+          print(f'governance-only update-channel no-op: PASS stable_source={channel_source}')
+          PY
+
       - name: Resolve exact successful canonical package run
+        if: steps.update_scope.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -1405,6 +1501,7 @@ jobs:
           echo "PACKAGE_RUN_ID=$package_run_id" >> "$GITHUB_ENV"
 
       - name: Download exact General Distribution kit
+        if: steps.update_scope.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -1425,6 +1522,7 @@ jobs:
           echo "CONTROL_ZIP=$control_zip" >> "$GITHUB_ENV"
 
       - name: Verify package and build immutable update assets
+        if: steps.update_scope.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -1536,6 +1634,7 @@ jobs:
           PY
 
       - name: Publish exact package and stable update manifest
+        if: steps.update_scope.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -1578,6 +1677,7 @@ jobs:
           gh release upload "$UPDATE_TAG" "$legacy_manifest" --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Read back published assets
+        if: steps.update_scope.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
