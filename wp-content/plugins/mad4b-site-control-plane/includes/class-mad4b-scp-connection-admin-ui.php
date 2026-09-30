@@ -43,10 +43,18 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'readiness'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'readiness';
 
-		// Ordinary Connection tabs are request-serving admin surfaces and must stay
-		// within the wp-admin latency budget. Only the explicit MCP Endpoints
-		// diagnostic tab may request deep provider integrity / REST route inventory.
-		$status = self::snapshot( 'endpoints' === $tab );
+		// Every ordinary Connection page load is request-serving. Even MCP
+		// Endpoints remains shallow until the administrator explicitly submits the
+		// nonce-bound deep diagnostic action.
+		$deep_endpoints = false;
+		if ( 'endpoints' === $tab && isset( $_POST['mad4b_connection_action'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified below.
+			$action = sanitize_key( wp_unslash( (string) $_POST['mad4b_connection_action'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			if ( 'deep_endpoints' === $action ) {
+				check_admin_referer( 'mad4b_connection_deep_endpoints', 'mad4b_connection_deep_nonce' );
+				$deep_endpoints = true;
+			}
+		}
+		$status = self::snapshot( $deep_endpoints );
 
 		MAD4B_SCP_Admin_Experience::styles();
 		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'MAD4B Connection', 'mad4b-site-control-plane' ) . '</h1>';
@@ -67,7 +75,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 
 		if ( 'readiness' === $tab ) self::render_readiness( $status, $oauth, $local_oauth );
 		if ( 'oauth' === $tab ) self::render_oauth( $status, $oauth, $local_oauth );
-		if ( 'endpoints' === $tab ) self::render_endpoints( $status );
+		if ( 'endpoints' === $tab ) self::render_endpoints( $status, $deep_endpoints );
 		if ( 'isolation' === $tab ) self::render_isolation( $status );
 		if ( 'certification' === $tab ) self::render_certification( $status );
 		echo '</div>';
@@ -218,8 +226,18 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		) );
 	}
 
-	private static function render_endpoints( array $status ) {
+	private static function render_endpoints( array $status, $deep_endpoints = false ) {
 		echo '<h2>' . esc_html__( 'MAD4B MCP endpoints', 'mad4b-site-control-plane' ) . '</h2>';
+		if ( ! $deep_endpoints ) {
+			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'This page is using the bounded endpoint snapshot. Deep REST route and provider registration materialization runs only when explicitly requested below.', 'mad4b-site-control-plane' ) . '</p></div>';
+			echo '<form method="post" action="' . esc_url( add_query_arg( array( 'page' => self::PAGE_SLUG, 'tab' => 'endpoints' ), admin_url( 'admin.php' ) ) ) . '" style="margin:12px 0 18px">';
+			wp_nonce_field( 'mad4b_connection_deep_endpoints', 'mad4b_connection_deep_nonce' );
+			echo '<input type="hidden" name="mad4b_connection_action" value="deep_endpoints">';
+			submit_button( __( 'Run Deep Endpoint Diagnostic', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+			echo '</form>';
+		} else {
+			echo '<div class="notice notice-success inline"><p>' . esc_html__( 'Deep endpoint diagnostic was explicitly requested for this response.', 'mad4b-site-control-plane' ) . '</p></div>';
+		}
 		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Inspect the actual registered server surfaces before any client configuration. Permission binding must remain exact for every transport.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Surface</th><th>Server</th><th>Endpoint</th><th>Registered</th><th>REST route</th><th>Permission binding</th></tr></thead><tbody>';
 		foreach ( isset( $status['servers'] ) && is_array( $status['servers'] ) ? $status['servers'] : array() as $server ) {
