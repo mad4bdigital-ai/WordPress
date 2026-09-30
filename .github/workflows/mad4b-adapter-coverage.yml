@@ -135,6 +135,7 @@ jobs:
           mkdir -p "$WP_PATH"
           php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://mad4b-adapter-runtime.test' --title='MAD4B Adapter Runtime' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
 
       - name: Install exact MCP Adapter and control plane
@@ -223,6 +224,7 @@ jobs:
           mkdir -p "$WP_PATH"
           php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://mad4b-jetengine-runtime.test' --title='MAD4B JetEngine Runtime' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
 
       - name: Normalize exact JetEngine package
@@ -323,6 +325,7 @@ jobs:
           mkdir -p "$WP_PATH"
           php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://mad4b-wp-import-export-runtime.test' --title='MAD4B WP Import Export Runtime' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
 
       - name: Install exact WP Import Export packages and control plane
