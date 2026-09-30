@@ -4,7 +4,15 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.87**.
+Current plugin version: **0.4.0-rc.88**.
+
+### rc.88 protocol plugin REST fan-out isolation
+
+Live external evidence on the exact rc.87 Staging runtime still showed a shared WordPress REST bottleneck: the Core type control, WPML health, MAD4B MCP transport and OAuth protected-resource request all exhausted the 12-second probe bound while the static runtime marker remained fast. rc.88 therefore extends request-local protocol isolation beyond the two Core route materializers.
+
+On exact MAD4B MCP/OAuth protocol requests, rc.88 removes only `rest_api_init` callbacks whose Reflection source can be proven to live under the ordinary `WP_PLUGIN_DIR` tree. WordPress Core, MU plugins, unreflectable callbacks, the MAD4B Control Plane and the official `mcp-adapter` remain untouched. Reviewed provider isolation runs first so internally governed JetEngine MCP callbacks can still be retained for explicit internal handoff. The scan is bounded and exposes only plugin/callback labels, never filesystem paths.
+
+This remains request-local and deny-only: no plugin is deactivated, no setting is changed, no Production authority is widened, and ordinary Core/WPML/provider REST requests keep their normal route registration behavior.
 
 ### rc.87 shared REST / MCP / passive-admin hotpath hardening
 
