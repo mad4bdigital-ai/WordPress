@@ -81,9 +81,16 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	}
 
 	private static function production_approved() {
-		return class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' )
+		$profile_approved = class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' )
 			&& method_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig', 'production_profile_enabled' )
 			&& MAD4B_SCP_Staging_OAuth_Autoconfig::production_profile_enabled();
+		if ( $profile_approved ) return true;
+
+		// Portable Production OAuth is read-only and creates no mutation
+		// authority. Keep it independent from the database-backed high-risk
+		// runtime gates so fresh HTTPS installations retain zero-touch reads.
+		return class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' )
+			&& MAD4B_SCP_Portable_Readonly_Connection::effective();
 	}
 
 	public static function runtime_identity_status() {
