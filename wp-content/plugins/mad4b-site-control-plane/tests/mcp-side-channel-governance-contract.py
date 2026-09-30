@@ -32,6 +32,8 @@ require(peer, r'\WP\MCP\Abilities\McpAbilityExposure::is_public', 'effective-pub
 require(peer, "GENERIC_EXECUTE_ABILITY = 'mcp-adapter/execute-ability'", 'generic-execute-detection')
 require(peer, "'generic_execute_reaches_public_write'", 'generic-reachable-write-risk')
 require(peer, "'direct_callable_tool_unreviewed'", 'direct-callable-fail-closed')
+require(peer, "'foreign_transport_unreviewed'", 'foreign-transport-semantic-state')
+require(peer, "'mcp_foreign_transport_unreviewed'", 'foreign-transport-exact-blocker')
 require(peer, "'readonly_annotation_missing'", 'unknown-readonly-fail-closed')
 require(peer, "'mcp_tool_inventory_overflow'", 'bounded-peer-inventory')
 require(peer, "MAX_SERVERS = 100", 'bounded-server-inventory')
