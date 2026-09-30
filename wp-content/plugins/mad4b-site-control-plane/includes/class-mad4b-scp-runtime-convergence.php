@@ -657,7 +657,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		if ( ! is_array( $checkpoint ) || empty( $checkpoint ) ) return;
 		if ( 'staging' !== ( class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' ) ) ) return;
-		$not_before = isset( $checkpoint['resume_not_before'] ) ? absint( $checkpoint['resume_not_before'] ) : 0;
+		$not_before = self::maintenance_not_before();
 		if ( $not_before > time() ) {
 			self::schedule_resume( $not_before );
 			return;
