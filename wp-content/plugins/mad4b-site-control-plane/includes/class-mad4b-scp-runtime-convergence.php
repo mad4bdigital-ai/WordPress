@@ -485,6 +485,17 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$checkpoint['resume_blocker'] = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'wp_cron_disabled' : 'wp_cron_unavailable';
 			$checkpoint['updated_at'] = gmdate( 'c' );
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
+			$stored = get_option( self::CHECKPOINT_OPTION, array() );
+			if ( ! self::post_update_checkpoint_matches( $checkpoint, $stored ) ) {
+				return array(
+					'scheduled' => false,
+					'state' => 'checkpoint_persist_failed',
+					'persist_phase' => 'pending_manual_resume',
+					'resume_blocker' => $checkpoint['resume_blocker'],
+					'target_identity' => $checkpoint['target_identity'],
+					'production_mutation' => false,
+				);
+			}
 		}
 		return array(
 			'scheduled' => (bool) $scheduled,
@@ -492,6 +503,29 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'target_identity' => $checkpoint['target_identity'],
 			'production_mutation' => false,
 		);
+	}
+
+	private static function post_update_checkpoint_matches( array $expected, $stored ) {
+		if ( ! is_array( $stored ) ) return false;
+		foreach ( array( 'contract', 'state', 'source', 'channel', 'update_plan_sha256' ) as $field ) {
+			$left = isset( $expected[ $field ] ) ? (string) $expected[ $field ] : '';
+			$right = isset( $stored[ $field ] ) ? (string) $stored[ $field ] : '';
+			if ( ! hash_equals( $left, $right ) ) return false;
+		}
+		foreach ( array( 'resume_not_before', 'quiet_period_seconds' ) as $field ) {
+			if ( absint( isset( $expected[ $field ] ) ? $expected[ $field ] : 0 ) !== absint( isset( $stored[ $field ] ) ? $stored[ $field ] : 0 ) ) return false;
+		}
+		if ( (bool) ( isset( $expected['production_mutation'] ) ? $expected['production_mutation'] : false )
+			!== (bool) ( isset( $stored['production_mutation'] ) ? $stored['production_mutation'] : false ) ) return false;
+		if ( empty( $expected['target_identity'] ) || ! is_array( $expected['target_identity'] )
+			|| empty( $stored['target_identity'] ) || ! is_array( $stored['target_identity'] )
+			|| ! self::identity_matches( $expected['target_identity'], $stored['target_identity'] ) ) return false;
+		if ( isset( $expected['resume_blocker'] ) ) {
+			$expected_blocker = sanitize_key( (string) $expected['resume_blocker'] );
+			$stored_blocker = isset( $stored['resume_blocker'] ) ? sanitize_key( (string) $stored['resume_blocker'] ) : '';
+			if ( ! hash_equals( $expected_blocker, $stored_blocker ) ) return false;
+		}
+		return true;
 	}
 
 	public static function mark_post_update_pending( array $target, $channel = '', $plan_sha256 = '' ) {
@@ -512,8 +546,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 		);
 		update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 		$stored = get_option( self::CHECKPOINT_OPTION, array() );
-		if ( ! is_array( $stored ) || empty( $stored['target_identity'] ) || ! self::identity_matches( $checkpoint['target_identity'], $stored['target_identity'] ) ) {
-			return array( 'scheduled' => false, 'state' => 'checkpoint_persist_failed', 'target_identity' => $checkpoint['target_identity'] );
+		if ( ! self::post_update_checkpoint_matches( $checkpoint, $stored ) ) {
+			return array(
+				'scheduled' => false,
+				'state' => 'checkpoint_persist_failed',
+				'persist_phase' => 'pending_restart',
+				'target_identity' => $checkpoint['target_identity'],
+				'production_mutation' => false,
+			);
 		}
 		$scheduled = self::schedule_resume( isset( $checkpoint['resume_not_before'] ) ? absint( $checkpoint['resume_not_before'] ) : 0 );
 		if ( ! $scheduled ) {
