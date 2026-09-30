@@ -70,6 +70,19 @@ ok( ! empty( $legacy_status['active'] ), 'legacy-only maintenance fence must be 
 ok( ! empty( $legacy_status['legacy_only_fence'] ), 'legacy-only maintenance fence must be classified explicitly' );
 ok( $legacy_option === $legacy_status['fence_source'], 'legacy-only status must expose the active fence source' );
 ok( ! empty( $legacy_status['legacy_expiry_grace_applied'] ), 'legacy-only status must report bounded expiry grace' );
+ok( empty( $legacy_status['fence_token_conflict'] ), 'one legacy fence must not report a token conflict' );
+
+$other_legacy_option = MAD4B_SCP_Runtime_Maintenance_Lease::legacy_options()[1];
+$GLOBALS['mad4b_test_options'][ $other_legacy_option ] = array(
+	'token' => 'different-legacy-worker-token',
+	'owner' => 'other_legacy_runtime',
+	'expires_at' => time() + 60,
+);
+$conflict_status = MAD4B_SCP_Runtime_Maintenance_Lease::status();
+ok( ! empty( $conflict_status['active'] ), 'conflicting active fences must keep transport closed' );
+ok( ! empty( $conflict_status['fence_token_conflict'] ), 'different active fence tokens must be diagnosed explicitly' );
+ok( 2 === (int) $conflict_status['active_fence_count'], 'conflicting legacy fences must expose their exact active count' );
+unset( $GLOBALS['mad4b_test_options'][ $other_legacy_option ] );
 
 $legacy_busy = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'schema_lifecycle' );
 ok( is_wp_error( $legacy_busy ) && 'mad4b_runtime_maintenance_busy' === $legacy_busy->get_error_code(), 'recently expired legacy lease must receive bounded overrun fencing' );
