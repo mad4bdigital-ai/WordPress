@@ -485,3 +485,17 @@ assert "mad4b_self_update_pointer_fetch_failed" in pointer_fallback
 assert "mad4b_self_update_pointer_http_error" in pointer_fallback
 for forbidden in ("pointer_contract_mismatch", "pointer_digest_invalid", "pointer_asset_invalid", "pointer_trust_invalid"):
     assert forbidden not in pointer_fallback
+
+# Keep post-update bottleneck regressions inside the plugin-owned contract
+# boundary. This contract is already release-critical in both Site Control Plane
+# and Control Plane Package workflows, so no repository-root workflow widening
+# is required to gate these concurrency/restart invariants.
+for command in (
+    ["python3", str(root / "tests" / "post-update-bottleneck-hardening-contract.py")],
+    ["python3", str(root / "tests" / "schema-lifecycle-same-version-contract.py")],
+    ["php", str(root / "tests" / "runtime-restart-barrier-runtime.php")],
+    ["php", str(root / "tests" / "runtime-maintenance-lease-runtime.php")],
+):
+    subprocess.run(command, check=True)
+
+print("mad4b.control-plane-self-update post-update bottleneck regressions: PASS")
