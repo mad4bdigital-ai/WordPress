@@ -202,22 +202,31 @@ assert "automatic_bounded_retry" in maybe_converge
 convergence_gate = method_body(
     runtime_convergence,
     "private static function convergence_trigger_allowed()",
-    "private static function detect_lightweight_runtime_drift()",
+    "private static function admin_page_convergence_allowed",
 )
-assert "mad4b-control-plane" in convergence_gate
-assert "'plugins.php'" in convergence_gate
-assert "'update.php'" in convergence_gate
-assert "return true;" in convergence_gate
+assert "WP_CLI" in convergence_gate
 assert "REST_REQUEST" in convergence_gate
 assert "$_GET['rest_route']" in convergence_gate
 assert "$_SERVER['REQUEST_URI']" in convergence_gate
-assert "return false;" in convergence_gate
+assert "self::admin_page_convergence_allowed( $page, $screen, $action )" in convergence_gate
+
+admin_convergence_router = method_body(
+    runtime_convergence,
+    "private static function admin_page_convergence_allowed",
+    "private static function detect_lightweight_runtime_drift()",
+)
+assert "mad4b-control-plane" in admin_convergence_router
+assert "'plugins.php'" in admin_convergence_router
+assert "'update.php'" in admin_convergence_router
+assert "return true;" in admin_convergence_router
+assert "return false;" in admin_convergence_router
 
 # Connection and ChatGPT are user-facing read/status screens. They must never be
-# the request that revives convergence or performs deep provider/OAuth diagnosis.
+# the browser request that revives convergence or performs deep provider/OAuth
+# diagnosis. CLI remains a separate explicit lifecycle owner.
 connection_exclusion = "if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return false;"
-assert connection_exclusion in convergence_gate
-assert convergence_gate.index(connection_exclusion) < convergence_gate.index("0 === strpos( $page, 'mad4b-control-plane' )")
+assert connection_exclusion in admin_convergence_router
+assert admin_convergence_router.index(connection_exclusion) < admin_convergence_router.index("0 === strpos( $page, 'mad4b-control-plane' )")
 
 assert "public static function snapshot( $force_deep = false )" in connection_ui
 assert "self::snapshot( 'endpoints' === $tab )" in connection_ui
