@@ -48,6 +48,9 @@ assert "mad4b.runtime-restart-grace.v2" in runtime
 assert "$active = $convergence_pending;" in runtime
 assert "'waiting_for_exact_runtime_restart'" in runtime
 assert "'pending_manual_resume'" in runtime
+assert "'blocked'" in runtime
+assert "'operator_repair_runtime_convergence'" in runtime
+assert "$operator_action_required" in runtime
 assert "'exact_runtime_identity_match' => $identity_match" in runtime
 assert "'operator_resume_runtime_convergence'" in runtime
 assert "'retry_after_runtime_convergence'" in runtime
