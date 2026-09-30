@@ -54,12 +54,14 @@ jobs:
           spec.loader.exec_module(module)
 
           sha = "a" * 40
+          trusted_target = ".github/workflows/mad4b-feature-boundary-root.yml"
 
-          def row(event, branch="master", prs=None):
+          def row(event, branch="master", prs=None, path=".github/workflows/example.yml"):
               return {
                   "head_sha": sha,
                   "head_branch": branch,
                   "event": event,
+                  "path": path,
                   "pull_requests": [] if prs is None else [{"number": n} for n in prs],
               }
 
@@ -74,53 +76,78 @@ jobs:
 
           assert module.canonical_evidence_events(event_name="push", pr_number=0) == ("push",)
           assert module.canonical_evidence_events(event_name="workflow_dispatch", pr_number=0) == ("push",)
-          assert module.canonical_evidence_events(event_name="pull_request", pr_number=198) == (
+          assert module.canonical_evidence_events(event_name="pull_request", pr_number=199) == (
               "pull_request",
               "pull_request_target",
           )
+          assert module.canonical_evidence_events(event_name="", pr_number=0) == ()
+          assert module.canonical_evidence_events(event_name="push", pr_number=199) == ()
 
+          # Master push/manual verdicts accept only canonical push evidence.
           assert matches(row("push"))
           assert not matches(row("pull_request"))
-          assert not matches(row("pull_request_target"))
+          assert not matches(row("pull_request_target", path=trusted_target))
           assert not matches(row("workflow_dispatch"))
           assert not matches(row("push", branch="feature"))
-
           assert matches(row("push"), event="workflow_dispatch")
           assert not matches(row("workflow_dispatch"), event="workflow_dispatch")
 
+          # PR evidence requires exact PR association and exact head branch.
+          branch = "gov/release-verdict-event-scope-20260930"
           assert matches(
-              row("pull_request", branch="gov/release-verdict-event-scope-20260930"),
-              branch="gov/release-verdict-event-scope-20260930",
-              pr=198,
-              event="pull_request",
-          )
-          assert matches(
-              row("pull_request_target", branch="gov/release-verdict-event-scope-20260930"),
-              branch="gov/release-verdict-event-scope-20260930",
-              pr=198,
+              row("pull_request", branch=branch, prs=[199]),
+              branch=branch,
+              pr=199,
               event="pull_request",
           )
           assert not matches(
-              row("push", branch="gov/release-verdict-event-scope-20260930"),
-              branch="gov/release-verdict-event-scope-20260930",
-              pr=198,
+              row("pull_request", branch=branch),
+              branch=branch,
+              pr=199,
               event="pull_request",
           )
           assert not matches(
-              row("pull_request", branch="gov/release-verdict-event-scope-20260930", prs=[199]),
-              branch="gov/release-verdict-event-scope-20260930",
-              pr=198,
+              row("pull_request", branch=branch, prs=[198]),
+              branch=branch,
+              pr=199,
               event="pull_request",
           )
-          assert matches(
-              row("pull_request_target", branch="gov/release-verdict-event-scope-20260930", prs=[198]),
-              branch="gov/release-verdict-event-scope-20260930",
-              pr=198,
+          assert not matches(
+              row("pull_request", branch="master", prs=[199]),
+              branch=branch,
+              pr=199,
+              event="pull_request",
+          )
+          assert not matches(
+              row("push", branch=branch, prs=[199]),
+              branch=branch,
+              pr=199,
               event="pull_request",
           )
 
-          # Compatibility for explicit non-Actions callers that provide no event.
-          assert matches(row("pull_request"), event="")
+          # pull_request_target is admitted only for the explicit trusted-base
+          # Feature Boundary workflow and still requires exact PR association.
+          assert matches(
+              row("pull_request_target", branch=branch, prs=[199], path=trusted_target),
+              branch=branch,
+              pr=199,
+              event="pull_request",
+          )
+          assert not matches(
+              row("pull_request_target", branch=branch, prs=[199], path=".github/workflows/other.yml"),
+              branch=branch,
+              pr=199,
+              event="pull_request",
+          )
+          assert not matches(
+              row("pull_request_target", branch=branch, path=trusted_target),
+              branch=branch,
+              pr=199,
+              event="pull_request",
+          )
+
+          # Missing invocation event must fail closed rather than widening to SHA-only.
+          assert not matches(row("pull_request", branch=branch, prs=[199]), branch=branch, pr=199, event="")
           print("mad4b.exact-head-action-jobs.v2: PASS")
           PY
 
@@ -882,6 +909,7 @@ jobs:
             python3 tools/capture_exact_head_action_jobs.py \
               --repository "$GITHUB_REPOSITORY" \
               --head-sha "$SOURCE_SHA" \
+              --event "$GITHUB_EVENT_NAME" \
               --output /tmp/checks-1.json
             printf '{"check_runs":[]}' > /tmp/checks-2.json
             set +e
@@ -931,6 +959,7 @@ jobs:
           python3 tools/capture_exact_head_action_jobs.py \
             --repository "$GITHUB_REPOSITORY" \
             --head-sha "$SOURCE_SHA" \
+            --event "$GITHUB_EVENT_NAME" \
             --output /tmp/checks-1.json
           printf '{"check_runs":[]}' > /tmp/checks-2.json
           artifact_name="mad4b-site-control-plane-general-distribution-kit-$SOURCE_SHA"
