@@ -148,6 +148,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'Reconcile only MAD4B-managed canonical seed Skills and managed provider Skills through the bounded Staging enrollment surface.',
 			self::operation_schema( self::SKILLS_CONFIRMATION ),
 			array( __CLASS__, 'reconcile_managed_skills' ),
+			true,
 			true
 		);
 
@@ -206,7 +207,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		);
 	}
 
-	private static function register_remote_operation( $name, $label, $description, array $schema, $callback, $idempotent ) {
+	private static function register_remote_operation( $name, $label, $description, array $schema, $callback, $idempotent, $chatgpt_direct_step_up = false ) {
 		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) return;
 		$augment = array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' );
 		$priority = function_exists( 'has_filter' ) ? has_filter( 'wp_register_ability_args', $augment ) : false;
@@ -219,10 +220,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 					'description' => $description,
 					'category' => 'mad4b-governance',
 					'execute_callback' => $callback,
-					'permission_callback' => array( __CLASS__, 'can_execute' ),
+					'permission_callback' => $chatgpt_direct_step_up ? array( __CLASS__, 'can_execute_chatgpt_direct_step_up' ) : array( __CLASS__, 'can_execute' ),
 					'input_schema' => $schema,
 					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-					'meta' => self::meta( false, $idempotent ),
+					'meta' => self::meta( false, $idempotent, $chatgpt_direct_step_up ),
 				)
 			);
 		} finally {
@@ -230,7 +231,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		}
 	}
 
-	private static function meta( $readonly, $idempotent ) {
+	private static function meta( $readonly, $idempotent, $chatgpt_direct_step_up = false ) {
 		return array(
 			'public' => false,
 			'show_in_rest' => false,
@@ -241,6 +242,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'mad4b_remote_operation_parity' => self::CONTRACT,
 				'generic_remote_admin' => false,
 				'production_mutation_allowed' => false,
+				'chatgpt_direct_step_up' => (bool) $chatgpt_direct_step_up,
 			),
 			'annotations' => array(
 				'readonly' => (bool) $readonly,
@@ -265,6 +267,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'remote_caller_role' => 'operator',
 				'production_policy' => 'deny',
 				'human_decision_required' => false,
+				'chatgpt_direct_step_up' => true,
 			),
 			'frontend_performance_sampling' => array(
 				'feature_id' => 'live-acceptance-performance',
@@ -469,6 +472,11 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				continue;
 			}
 			$is_builtin = isset( $builtin_operation_ids[ $key ] );
+			if ( ! $is_builtin && ! empty( $row['chatgpt_direct_step_up'] ) ) {
+				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'external_registration_direct_chatgpt_step_up_denied' );
+				continue;
+			}
+			$row['chatgpt_direct_step_up'] = $is_builtin && ! empty( $row['chatgpt_direct_step_up'] );
 			if ( $is_builtin ) {
 				if ( 'core' !== (string) $row['trust_class']
 					|| 'mad4b-core' !== (string) $row['registrar_id']
@@ -548,6 +556,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			'registrar_id' => isset( $row['registrar_id'] ) ? (string) $row['registrar_id'] : '',
 			'source_plugin' => isset( $row['source_plugin'] ) ? (string) $row['source_plugin'] : '',
 			'trust_class' => isset( $row['trust_class'] ) ? (string) $row['trust_class'] : '',
+			'chatgpt_direct_step_up' => ! empty( $row['chatgpt_direct_step_up'] ),
 			'addon_pair_fingerprint' => isset( $row['addon_pair_fingerprint'] ) ? (string) $row['addon_pair_fingerprint'] : '',
 			'addon_certification_fingerprint' => isset( $row['addon_certification_fingerprint'] ) ? (string) $row['addon_certification_fingerprint'] : '',
 			'capability_tags' => isset( $row['capability_tags'] ) && is_array( $row['capability_tags'] ) ? array_values( array_map( 'strval', $row['capability_tags'] ) ) : array(),
@@ -1033,6 +1042,61 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_remote_operation_subject_not_enrolled', 'The authenticated administrator is not enrolled in this Site Profile.' );
 		return true;
+	}
+
+	public static function can_execute_chatgpt_direct_step_up( $input = null ) {
+		$allowed = self::can_execute( $input );
+		if ( is_wp_error( $allowed ) || ! $allowed ) return $allowed;
+		$server_id = class_exists( 'MAD4B_SCP_Transport_Context' ) && method_exists( 'MAD4B_SCP_Transport_Context', 'current_server_id' )
+			? MAD4B_SCP_Transport_Context::current_server_id()
+			: '';
+		if ( 'mad4b-chatgpt' !== $server_id ) return true;
+		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
+			return new WP_Error( 'mad4b_remote_operation_step_up_scope_required', 'Direct ChatGPT enrollment execution requires the dedicated Staging authority step-up scope.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ) {
+			return new WP_Error( 'mad4b_remote_operation_chatgpt_client_required', 'Direct ChatGPT enrollment execution requires OAuth attribution to the exact ChatGPT CIMD client.' );
+		}
+		return true;
+	}
+
+	public static function chatgpt_direct_step_up_tools() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+			|| ! MAD4B_SCP_Site_Profile::configured()
+			|| 'staging' !== MAD4B_SCP_Site_Profile::current_environment()
+			|| ! MAD4B_SCP_Site_Profile::origin_enrolled()
+			|| ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
+
+		$tools = array();
+		foreach ( self::catalog() as $row ) {
+			if ( ! is_array( $row )
+				|| empty( $row['chatgpt_direct_step_up'] )
+				|| 'core' !== ( isset( $row['trust_class'] ) ? (string) $row['trust_class'] : '' )
+				|| 'mad4b-enrollment' !== ( isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '' )
+				|| 'operator' !== ( isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '' )
+				|| 'deny' !== ( isset( $row['production_policy'] ) ? (string) $row['production_policy'] : '' )
+				|| ! empty( $row['human_decision_required'] )
+				|| empty( $row['remote_registered'] )
+				|| empty( $row['execution_eligible'] )
+				|| empty( $row['remote_parity_ready'] ) ) continue;
+			$ability_name = isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '';
+			if ( '' === $ability_name || ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
+			$ability = wp_get_ability( $ability_name );
+			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
+			$meta = $ability->get_meta();
+			$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+			if ( empty( $mcp['chatgpt_direct_step_up'] )
+				|| 'enrollment' !== ( isset( $mcp['surface'] ) ? (string) $mcp['surface'] : '' )
+				|| ! array_key_exists( 'generic_remote_admin', $mcp ) || false !== $mcp['generic_remote_admin']
+				|| ! array_key_exists( 'production_mutation_allowed', $mcp ) || false !== $mcp['production_mutation_allowed']
+				|| ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) continue;
+			$tools[] = $ability_name;
+		}
+		$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
+		sort( $tools, SORT_STRING );
+		return $tools;
 	}
 
 	private static function operation_schema( $confirmation ) {

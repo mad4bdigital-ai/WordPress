@@ -190,6 +190,8 @@ for forbidden in [
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
 require("$step_up = array_merge( $narrow_step_up, $full_step_up, $self_update_step_up )" in chatgpt_body, "bounded, full, and bootstrap self-update step-ups must be composed explicitly")
+require("MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_tools()" in chatgpt_body, "reviewed semantic enrollment step-up projection missing from compact ChatGPT catalog")
+require("$step_up = array_merge( $step_up, $semantic_step_up );" in chatgpt_body, "semantic enrollment step-ups must join the direct mutation transport only after catalog validation")
 require("'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in core_chatgpt, "bounded Enrollment dispatcher must remain in the canonical compact ChatGPT core catalog")
 require("$candidates = array_merge( $core, $bootstrap )" in chatgpt_body, "runtime ChatGPT tools/list must start from the canonical compact core catalog")
 dispatcher_helper = SERVERS.split("public static function chatgpt_dispatch_transport_tools()", 1)[1].split("public static function chatgpt_tools()", 1)[0]
