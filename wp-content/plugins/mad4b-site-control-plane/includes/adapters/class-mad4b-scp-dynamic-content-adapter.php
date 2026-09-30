@@ -320,7 +320,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$live_state_requested=in_array($status,array('publish','private'),true);
 		$publish_cap=$live_state_requested&&$post_object&&isset($post_object->cap->publish_posts)?(string)$post_object->cap->publish_posts:'';
 		$publish_ready=!$live_state_requested;
-		$environment=function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown';
+		$environment=class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():(function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown');
 		$environment_eligible=(bool)apply_filters('mad4b_scp_dynamic_content_environment_mutation_eligible',true,$environment,$mode,$post_type,$input);
 		$post_type_readiness=array(
 			'environment'=>$environment,
@@ -798,7 +798,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if($pt===''||!post_type_exists($pt)) return new WP_Error('mad4b_dynamic_post_type_missing','Requested post type is not registered.');
 		$obj=get_post_type_object($pt); $default_eligible=$obj&&(!empty($obj->show_ui)||!empty($obj->public)||!empty($obj->show_in_rest));
 		if(!apply_filters('mad4b_scp_dynamic_content_post_type_mutation_eligible',$default_eligible,$pt,$obj,$input)) return new WP_Error('mad4b_dynamic_post_type_ineligible','Requested post type is not eligible for dynamic governed mutation.');
-		$environment=function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown';
+		$environment=class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():(function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown');
 		if(!apply_filters('mad4b_scp_dynamic_content_environment_mutation_eligible',true,$environment,$mode,$pt,$input)) return new WP_Error('mad4b_dynamic_environment_mutation_denied','Dynamic content mutation is denied by the current environment policy.',array('environment'=>$environment,'mode'=>$mode,'post_type'=>$pt));
 		$pipeline=class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')?MAD4B_SCP_Dynamic_Content_Pipeline::effective():array();
 		$current_pipeline_sha=isset($pipeline['settings_sha256'])?strtolower((string)$pipeline['settings_sha256']):'';
@@ -1036,7 +1036,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 
 		$metric_started=microtime(true);
 		if(class_exists('MAD4B_SCP_Runtime_Metrics')) MAD4B_SCP_Runtime_Metrics::record('dynamic.apply.attempt',1);
-		$environment=function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown';
+		$environment=class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():(function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown');
 		$mutation_ttl_policy=class_exists('MAD4B_SCP_Dynamic_TTL_Policy')
 			? MAD4B_SCP_Dynamic_TTL_Policy::decide('mutation_lock',array('impact_level'=>'medium','impact_flags'=>array()))
 			: array('selected_seconds'=>self::MUTATION_LOCK_TTL,'hard_deadline_seconds'=>self::MUTATION_LOCK_TTL*2,'policy_sha256'=>'');
@@ -1193,7 +1193,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				'adapter'=>$this,
 				'post_id'=>$id,
 				'mode'=>$v['mode'],
-				'environment'=>function_exists('wp_get_environment_type')?wp_get_environment_type():'unknown',
+				'environment'=>class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():(function_exists('wp_get_environment_type')?wp_get_environment_type():'unknown'),
 				'post_type'=>$v['post_type'],
 				'post_status'=>isset($final['post']['post_status'])?$final['post']['post_status']:'',
 				'input'=>$input,
@@ -1259,7 +1259,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'adapter'=>$this,
 			'post_id'=>$id,
 			'mode'=>$v['mode'],
-			'environment'=>function_exists('wp_get_environment_type')?wp_get_environment_type():'unknown',
+			'environment'=>class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():(function_exists('wp_get_environment_type')?wp_get_environment_type():'unknown'),
 			'post_type'=>$v['post_type'],
 			'post_status'=>isset($final['post']['post_status'])?$final['post']['post_status']:'',
 			'input'=>$input,
@@ -1316,6 +1316,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$final_stage_results=isset($accepted)&&is_array($accepted)&&isset($accepted['stage_results'])?(array)$accepted['stage_results']:(isset($validated)&&is_array($validated)&&isset($validated['stage_results'])?(array)$validated['stage_results']:array());
 		$evidence=isset($input['evidence'])&&is_array($input['evidence'])?$input['evidence']:array();
 		$targets=isset($input['acceptance_targets'])&&is_array($input['acceptance_targets'])?$input['acceptance_targets']:array();
+		$environment_evidence=$this->environment_evidence();
 
 		return array(
 			'contract'=>self::CONTRACT,
@@ -1337,8 +1338,12 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'readback_sha256'=>$this->state_sha256($final),
 			'rollback_available'=>true,
 			'compensation_on_error'=>true,
-			'environment'=>function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown',
-			'production_mutation'=>function_exists('wp_get_environment_type')&&'production'===wp_get_environment_type(),
+			'environment'=>$environment_evidence['effective_environment'],
+			'effective_environment'=>$environment_evidence['effective_environment'],
+			'wordpress_environment'=>$environment_evidence['wordpress_environment'],
+			'wordpress_environment_explicit'=>$environment_evidence['wordpress_environment_explicit'],
+			'effective_environment_source'=>$environment_evidence['effective_environment_source'],
+			'production_mutation'=>'production'===$environment_evidence['effective_environment'],
 		);
 	}
 
@@ -1399,6 +1404,27 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		return is_array($value)?$value:array();
 	}
 
+	private function environment_evidence(){
+		if(class_exists('MAD4B_SCP_Environment')){
+			$snapshot=MAD4B_SCP_Environment::snapshot();
+			return array(
+				'environment'=>isset($snapshot['effective_environment'])?sanitize_key((string)$snapshot['effective_environment']):MAD4B_SCP_Environment::effective(),
+				'effective_environment'=>isset($snapshot['effective_environment'])?sanitize_key((string)$snapshot['effective_environment']):MAD4B_SCP_Environment::effective(),
+				'wordpress_environment'=>isset($snapshot['wordpress_environment'])?sanitize_key((string)$snapshot['wordpress_environment']):MAD4B_SCP_Environment::wordpress(),
+				'wordpress_environment_explicit'=>!empty($snapshot['wordpress_environment_explicit']),
+				'effective_environment_source'=>isset($snapshot['effective_source'])?sanitize_key((string)$snapshot['effective_source']):'',
+			);
+		}
+		$wordpress=function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown';
+		return array(
+			'environment'=>$wordpress,
+			'effective_environment'=>$wordpress,
+			'wordpress_environment'=>$wordpress,
+			'wordpress_environment_explicit'=>defined('WP_ENVIRONMENT_TYPE'),
+			'effective_environment_source'=>'wordpress_fallback',
+		);
+	}
+
 	private function acceptance_receipt_hash(array $receipt){ return $this->state_sha256($receipt); }
 
 	private function persist_acceptance_receipt($id,array $final,array $input,array $pipeline,$bundle_sha){
@@ -1430,6 +1456,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			? MAD4B_SCP_Dynamic_TTL_Policy::decide('acceptance',array('impact_level'=>'low','impact_flags'=>array()))
 			: array('tier'=>'long','selected_seconds'=>self::DEFAULT_ACCEPTANCE_TTL,'policy_sha256'=>'');
 		if(is_wp_error($acceptance_ttl_policy)) return $acceptance_ttl_policy;
+		$environment_evidence=$this->environment_evidence();
 		$receipt=array(
 			'contract'=>self::ACCEPTANCE_CONTRACT,
 			'post_id'=>absint($id),
@@ -1439,7 +1466,11 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'state_sha256'=>$this->state_sha256($accepted_state),
 			'bundle_sha256'=>(string)$bundle_sha,
 			'pipeline_settings_sha256'=>isset($pipeline['settings_sha256'])?(string)$pipeline['settings_sha256']:'',
-			'environment'=>function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown',
+			'environment'=>$environment_evidence['effective_environment'],
+			'effective_environment'=>$environment_evidence['effective_environment'],
+			'wordpress_environment'=>$environment_evidence['wordpress_environment'],
+			'wordpress_environment_explicit'=>$environment_evidence['wordpress_environment_explicit'],
+			'effective_environment_source'=>$environment_evidence['effective_environment_source'],
 			'scope'=>$scope,
 			'accepted_at'=>gmdate('c'),
 			'acceptance_ttl_policy'=>$acceptance_ttl_policy,
@@ -1484,7 +1515,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$ttl=max(60,min(self::MAX_ACCEPTANCE_TTL,$ttl));
 		$accepted_at=isset($receipt['accepted_at'])?strtotime((string)$receipt['accepted_at']):false;
 		if(false===$accepted_at||$accepted_at<time()-$ttl) return new WP_Error('mad4b_dynamic_acceptance_expired','Dynamic acceptance receipt is stale; rerun acceptance before publication.');
-		$environment=function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown';
+		$environment=class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():(function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown');
 		if(!hash_equals((string)(isset($receipt['environment'])?$receipt['environment']:''),$environment)) return new WP_Error('mad4b_dynamic_acceptance_environment_drift','Dynamic acceptance receipt belongs to a different WordPress environment.');
 		$pipeline=class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')?MAD4B_SCP_Dynamic_Content_Pipeline::effective():array();
 		$current_pipeline=isset($pipeline['settings_sha256'])?(string)$pipeline['settings_sha256']:'';
@@ -1520,7 +1551,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$ttl=max(60,min(self::MAX_ACCEPTANCE_TTL,$ttl));
 		$accepted_at=isset($receipt['accepted_at'])?strtotime((string)$receipt['accepted_at']):false;
 		if(false===$accepted_at||$accepted_at<time()-$ttl) return new WP_Error('mad4b_dynamic_acceptance_expired','Dynamic acceptance receipt expired during publication.');
-		$environment=function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown';
+		$environment=class_exists('MAD4B_SCP_Environment')?MAD4B_SCP_Environment::effective():(function_exists('wp_get_environment_type')?sanitize_key((string)wp_get_environment_type()):'unknown');
 		if(!hash_equals((string)(isset($receipt['environment'])?$receipt['environment']:''),$environment)) return new WP_Error('mad4b_dynamic_acceptance_environment_drift','Dynamic acceptance receipt belongs to a different WordPress environment.');
 		$pipeline=class_exists('MAD4B_SCP_Dynamic_Content_Pipeline')?MAD4B_SCP_Dynamic_Content_Pipeline::effective():array();
 		$current_pipeline=isset($pipeline['settings_sha256'])?(string)$pipeline['settings_sha256']:'';

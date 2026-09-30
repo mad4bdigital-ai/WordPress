@@ -178,7 +178,7 @@ final class MAD4B_SCP_Authorization {
 		}
 		$operating_mode = MAD4B_SCP_Policy_Resolution::current_operating_mode();
 		if ( is_wp_error( $operating_mode ) ) return $operating_mode;
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$base_policy_facts = array(
 			'hard_deny' => false,
 			'kill_switch_active' => false,
@@ -482,6 +482,7 @@ final class MAD4B_SCP_Authorization {
 		if ( $mutation_configured && empty( $counts['enabled_agents'] ) ) $blockers[] = 'mutation_enabled_without_nhi';
 		if ( empty( $peer_governance['inventory_ready'] ) ) $blockers[] = 'mcp_peer_inventory_unavailable';
 		if ( ! empty( $peer_governance['write_side_channel_detected'] ) ) $blockers[] = 'mcp_write_side_channel_detected';
+		if ( ! empty( $peer_governance['foreign_transport_unreviewed'] ) ) $blockers[] = 'mcp_foreign_transport_unreviewed';
 		$blockers = array_values( array_unique( $blockers ) );
 		return array(
 			'schema_ready' => ! empty( $schema['ready'] ),

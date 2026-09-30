@@ -302,5 +302,16 @@ for browser_marker in [
 # Keep this chained from the existing baseline-owned workflow instead of widening
 # a release-critical repository workflow from a feature PR.
 runpy.run_path(str(ROOT / "tests/universal-wordpress-operations-contract.py"), run_name="__main__")
+for regression_contract in (
+    "effective-environment-authority-contract.py",
+    "schema-lifecycle-same-version-contract.py",
+    "post-update-bottleneck-hardening-contract.py",
+    "mcp-peer-semantic-risk-contract.py",
+    "portable-readonly-reconnect-contract.py",
+    "dependency-certified-runtime-contract.py",
+    "upgrade-continuity-implicit-staging-contract.py",
+):
+    runpy.run_path(str(ROOT / "tests" / regression_contract), run_name="__main__")
+
 
 print("MAD4B staging post-deployment certification contract PASS")

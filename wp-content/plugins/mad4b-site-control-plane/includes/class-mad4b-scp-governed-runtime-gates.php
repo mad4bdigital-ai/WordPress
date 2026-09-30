@@ -411,7 +411,9 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 	}
 
 	private static function environment() {
-		return class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : 'unknown';
+		return class_exists( 'MAD4B_SCP_Environment' )
+			? MAD4B_SCP_Environment::effective()
+			: ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : 'unknown' );
 	}
 
 	private static function site_uuid() {

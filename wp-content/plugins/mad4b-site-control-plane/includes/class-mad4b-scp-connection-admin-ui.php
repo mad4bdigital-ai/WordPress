@@ -101,7 +101,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 	private static function render_readiness( array $status, array $oauth, array $local_oauth ) {
 		MAD4B_SCP_Admin_Experience::cards(
 			array(
-				array( 'label' => 'Environment', 'value' => isset( $status['environment'] ) ? $status['environment'] : 'unknown', 'state' => ! empty( $status['environment_supported'] ) ? 'complete' : 'attention', 'help' => 'Exact enrolled Site Profile boundary.' ),
+				array( 'label' => 'MAD4B environment', 'value' => isset( $status['effective_environment'] ) ? $status['effective_environment'] : ( isset( $status['environment'] ) ? $status['environment'] : 'unknown' ), 'state' => ! empty( $status['environment_supported'] ) ? 'complete' : 'attention', 'help' => 'Effective Site Profile authority boundary; raw WordPress environment is shown separately below.' ),
 				array( 'label' => 'Local transport', 'value' => ! empty( $status['local_transport_ready'] ) ? 'Ready' : 'Blocked', 'state' => MAD4B_SCP_Admin_Experience::state_from_bool( ! empty( $status['local_transport_ready'] ), ! empty( $status['local_blockers'] ) ), 'help' => 'MCP routes and permission binding.' ),
 				array( 'label' => 'Remote preflight', 'value' => ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'Ready' : 'Pending', 'state' => ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'complete' : 'attention', 'help' => 'HTTPS + OAuth resource binding.' ),
 				array( 'label' => 'Connection certification', 'value' => ! empty( $status['connection_certified'] ) ? 'Certified' : 'Not certified', 'state' => ! empty( $status['connection_certified'] ) ? 'complete' : 'pending', 'help' => 'Requires real external client evidence.' ),
@@ -110,7 +110,9 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		self::render_next_step( $status, $oauth, $local_oauth );
 		echo '<h2>' . esc_html__( 'Connection truth', 'mad4b-site-control-plane' ) . '</h2>';
 		self::kv( array(
-			'Environment' => isset( $status['environment'] ) ? $status['environment'] : '',
+			'MAD4B effective environment' => isset( $status['effective_environment'] ) ? $status['effective_environment'] : ( isset( $status['environment'] ) ? $status['environment'] : '' ),
+			'WordPress environment' => isset( $status['wordpress_environment'] ) ? $status['wordpress_environment'] : '',
+			'WordPress environment explicit' => ! empty( $status['wordpress_environment_explicit'] ),
 			'Site Profile enrolled' => ! empty( $status['site_profile_enrolled'] ),
 			'Environment supported' => ! empty( $status['environment_supported'] ),
 			'Site URL' => isset( $status['site_url'] ) ? $status['site_url'] : '',

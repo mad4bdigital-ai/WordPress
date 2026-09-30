@@ -242,7 +242,7 @@ for marker in (
     require(resilience, marker, 'read-consistency-client-policy')
 
 for marker in (
-    "const CONTRACT = 'mad4b.reconnect-hardening.v4'",
+    "const CONTRACT = 'mad4b.reconnect-hardening.v5'",
     "SESSION_SHADOW_TTL = 120",
     "add_filter( 'rest_pre_dispatch', array( __CLASS__, 'reset_session_policy_scope' ), -200, 3 )",
     "add_filter( 'rest_post_dispatch', array( __CLASS__, 'clear_session_policy_scope' ), PHP_INT_MAX, 3 )",
@@ -260,6 +260,12 @@ for marker in (
     "'preauth_response_exposes_internal_blockers' => false",
     "'local_oauth_required_for_reconnect' => false",
     "'oauth_authority_mode' =>",
+    "'maintenance_fence_token_conflict' => $fence_conflict",
+    "'maintenance_active_fence_count' =>",
+    "'maintenance_fence_source' =>",
+    "'maintenance_legacy_only_fence' =>",
+    "'retryable' => ! $fence_conflict",
+    "'client_action' => $fence_conflict ? 'inspect_runtime_maintenance_fence_conflict' : 'retry_after_runtime_maintenance'",
     "preauth_reconnect_blockers()",
     "'session_policy_applies_to_sibling_mcp_servers' => false",
     "'adapter_session_max_modified' => false",

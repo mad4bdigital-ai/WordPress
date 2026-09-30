@@ -172,13 +172,13 @@ final class MAD4B_SCP_Agent_Registry {
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT a.* FROM {$t['subjects']} s INNER JOIN {$t['agents']} a ON a.id=s.agent_id WHERE s.subject_type=%s AND s.subject_fingerprint=%s AND s.status='enabled' LIMIT 1", $identity['subject_type'], $identity['subject_fingerprint'] ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( ! $row ) return new WP_Error( 'mad4b_nhi_subject_unbound', 'Authenticated subject is not bound to an enabled MAD4B agent.' );
 		if ( 'enabled' !== $row['status'] ) return new WP_Error( 'mad4b_nhi_agent_disabled', 'MAD4B agent is disabled.' );
-		$current = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
+		$current = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown' );
 		if ( ! in_array( $row['environment'], array( 'all', 'unknown', $current ), true ) ) return new WP_Error( 'mad4b_nhi_environment_denied', 'MAD4B agent is not enabled for this environment.' );
 		return $row;
 	}
 
 	public static function exact_grant( $agent_id, $server_id, $ability_name, $provider = 'core' ) {
-		global $wpdb; $t = MAD4B_SCP_Schema::tables(); $current = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
+		global $wpdb; $t = MAD4B_SCP_Schema::tables(); $current = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown' );
 		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['grants']} WHERE agent_id=%d AND server_id=%s AND ability_name=%s AND provider=%s AND environment IN ('all',%s) ORDER BY CASE effect WHEN 'deny' THEN 0 ELSE 1 END,id ASC", absint( $agent_id ), (string) $server_id, (string) $ability_name, (string) $provider, $current ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		foreach ( $rows as $row ) if ( 'deny' === $row['effect'] ) return new WP_Error( 'mad4b_nhi_grant_denied', 'Agent grant explicitly denies this ability.' );
 		foreach ( $rows as $row ) if ( 'allow' === $row['effect'] ) return $row;

@@ -30,7 +30,7 @@ for text in [server,bridge,compat,handshake,connection_ui,acceptance,request_sco
         if forbidden in text: raise SystemExit(f'generalized runtime leaked tenant identity: {forbidden}')
 for marker in ["const CONTRACT = 'mad4b.upgrade-continuity.v1'","const PRIOR_OAUTH_OPTION = 'mad4b_scp_staging_oauth_autoconfig_v1'","'write_restored' => false","'production_authority_restored' => false","'/oauth/mcp/authorize'","'mad4b_mcp_reconnect_not_ready'","'mad4b/reconnect-readiness'"]:
     if marker not in upgrade: raise SystemExit(f'upgrade continuity missing marker: {marker}')
-for marker in ["const CONTRACT = 'mad4b.reconnect-hardening.v4'","rest_pre_dispatch","MAD4B_SCP_Servers::registration_status()","'mad4b-chatgpt'","wp_register_ability_category( 'mad4b-governance'","remove_action( 'wp_abilities_api_init'","public static function is_resource_request_path"]:
+for marker in ["const CONTRACT = 'mad4b.reconnect-hardening.v5'","rest_pre_dispatch","MAD4B_SCP_Servers::registration_status()","'mad4b-chatgpt'","wp_register_ability_category( 'mad4b-governance'","remove_action( 'wp_abilities_api_init'","public static function is_resource_request_path"]:
     if marker not in hardening: raise SystemExit(f'reconnect hardening missing marker: {marker}')
 if "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reconnect-hardening.php';" not in main: raise SystemExit('main does not load reconnect hardening')
 site='MAD4B_SCP_Site_Profile::bootstrap();'; pre='MAD4B_SCP_Upgrade_Continuity::pre_boot();'

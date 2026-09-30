@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *   must be recomputed on the next request.
  */
 final class MAD4B_SCP_Connector_Resilience {
-	const CONTRACT = 'mad4b.connector-resilience.v1';
+	const CONTRACT = 'mad4b.connector-resilience.v2';
 	const DEFAULT_READ_ATTEMPTS = 2;
 	const DEFAULT_REQUEST_BUDGET_MS = 12000;
 	const SESSION_TERMINATION_BUDGET = 2;
@@ -445,7 +445,11 @@ final class MAD4B_SCP_Connector_Resilience {
 			'retry_transient_read_once' => true,
 			'no_immediate_retry_after_automatic_retry_exhausted' => true,
 			'rate_limit_requires_backoff' => true,
-			'supported_error_categories' => array( 'rate_limit', 'timeout', 'session_terminated', 'transport', 'upstream_unavailable', 'authorization', 'contract_or_validation', 'request_budget', 'internal', 'unknown' ),
+			'supported_error_categories' => array( 'runtime_restart', 'runtime_maintenance', 'rate_limit', 'timeout', 'session_terminated', 'transport', 'upstream_unavailable', 'authorization', 'contract_or_validation', 'request_budget', 'internal', 'unknown' ),
+			'runtime_restart_honors_retry_after' => true,
+			'runtime_restart_immediate_auto_retry_allowed' => false,
+			'runtime_maintenance_honors_retry_after' => true,
+			'runtime_maintenance_immediate_auto_retry_allowed' => false,
 			'default_read_attempt_budget' => self::DEFAULT_READ_ATTEMPTS,
 			'default_request_budget_ms' => self::DEFAULT_REQUEST_BUDGET_MS,
 			'automatic_write_retry_allowed' => false,
@@ -461,6 +465,12 @@ final class MAD4B_SCP_Connector_Resilience {
 	public static function classify_exception( Throwable $e ) {
 		$message = strtolower( (string) $e->getMessage() );
 		$class = strtolower( get_class( $e ) );
+		if ( self::contains_any( $message, array( 'runtime restart grace', 'post-update restart grace', 'mad4b_mcp_runtime_restart_grace' ) ) ) {
+			return array( 'category' => 'runtime_restart', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'retry_after_restart_grace' );
+		}
+		if ( self::contains_any( $message, array( 'runtime maintenance', 'maintenance is active', 'mad4b_mcp_runtime_maintenance_busy' ) ) ) {
+			return array( 'category' => 'runtime_maintenance', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'retry_after_runtime_maintenance' );
+		}
 		if ( self::contains_any( $message, array( '429', 'rate limit', 'too many requests' ) ) ) {
 			return array( 'category' => 'rate_limit', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'backoff_then_retry' );
 		}
@@ -489,6 +499,12 @@ final class MAD4B_SCP_Connector_Resilience {
 		$code = strtolower( (string) $error->get_error_code() );
 		$message = strtolower( (string) $error->get_error_message() );
 		$haystack = $code . ' ' . $message;
+		if ( 'mad4b_mcp_runtime_restart_grace' === $code || self::contains_any( $haystack, array( 'runtime_restart_grace', 'runtime restart grace', 'post-update restart grace' ) ) ) {
+			return array( 'category' => 'runtime_restart', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'retry_after_restart_grace' );
+		}
+		if ( 'mad4b_mcp_runtime_maintenance_busy' === $code || self::contains_any( $haystack, array( 'runtime_maintenance_busy', 'runtime maintenance', 'maintenance is active' ) ) ) {
+			return array( 'category' => 'runtime_maintenance', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'retry_after_runtime_maintenance' );
+		}
 		if ( self::contains_any( $haystack, array( '429', 'rate_limit', 'rate limit', 'too many requests' ) ) ) {
 			return array( 'category' => 'rate_limit', 'retryable' => true, 'auto_retry' => false, 'client_action' => 'backoff_then_retry' );
 		}

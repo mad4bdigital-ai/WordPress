@@ -100,7 +100,7 @@ assert "'bounded_provenance_file_read' => false" in runtime
 assert "'filesystem_scan_performed' => false" in runtime
 assert "'database_schema_probe_performed' => false" in runtime
 
-detector = runtime.split("private static function detect_lightweight_runtime_drift()", 1)[1].split("private static function schedule_resume()", 1)[0]
+detector = runtime.split("private static function detect_lightweight_runtime_drift()", 1)[1].split("private static function schedule_resume(", 1)[0]
 assert "get_option(" in detector
 assert "MAD4B_SCP_Schema::status" not in detector
 assert "MAD4B_SCP_Schema::install_or_upgrade" not in detector
@@ -117,7 +117,28 @@ assert "self::identity_matches( $target, $current )" in runtime
 assert "convergence_trigger_allowed" in runtime
 
 assert "MAX_TRANSIENT_RETRIES = 5" in runtime
+assert "POST_UPDATE_QUIET_SECONDS = 20" in runtime
+lease = (PLUGIN / "includes/class-mad4b-scp-runtime-maintenance-lease.php").read_text(encoding="utf-8")
+assert "mad4b_scp_runtime_maintenance_lock_v1" in lease
+assert "public static function restart_grace_status()" in runtime
+assert "'resume_not_before' => time() + self::POST_UPDATE_QUIET_SECONDS" in runtime
+assert "'self_update_checkpoint_preserved'" in runtime
+assert "self::schedule_resume( $not_before )" in runtime
+assert "MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_convergence' )" in runtime
+assert "public static function maintenance_lease_status()" in runtime
+assert "mad4b.runtime-maintenance-lease.v1" in lease
+assert "MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'runtime_convergence' )" in runtime
+assert "MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $token, 'runtime_convergence' )" in runtime
+assert "private static function yield_safe_phases" in runtime
+assert "'maintenance_sliced' => true" in runtime
+assert "$checkpoint['next_safe_phase'] = sanitize_key( (string) $next_phase );" in runtime
 assert "mark_activation_pending" in runtime
+activation_pending = runtime.split("public static function mark_activation_pending()", 1)[1].split("private static function restore_checkpoint_snapshot", 1)[0]
+assert "$previous_checkpoint = get_option( self::CHECKPOINT_OPTION, null );" in activation_pending
+assert activation_pending.count("self::restore_checkpoint_snapshot( $previous_checkpoint )") >= 2
+assert "'persist_phase' => 'pending_safe_phases'" in activation_pending
+assert "'persist_phase' => 'pending_manual_resume'" in activation_pending
+assert "'checkpoint_restore_ok' => $checkpoint_restore_ok" in activation_pending
 assert "'plugin_activation' !== $stored_source" in runtime
 assert "'checkpoint_persist_failed'" in runtime
 assert "$manual_resume_gate" in runtime
@@ -129,7 +150,7 @@ assert "'gated'" in runtime
 assert "plugin_activation" in runtime
 assert "automatic_bounded_retry" in runtime
 assert "mad4b_runtime_convergence_busy" in runtime
-assert "return false !== wp_next_scheduled( self::CRON_HOOK );" in runtime
+assert "return false !== $next && (int) $next >= $minimum;" in runtime
 assert "MAD4B_SCP_Runtime_Convergence::mark_activation_pending();" in plugin
 assert "if ( 'blocked' === $state ) return;" not in runtime
 

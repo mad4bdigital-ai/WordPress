@@ -29,12 +29,13 @@ $rest->register_route(
 
 $status = MAD4B_SCP_MCP_Peer_Governance::status();
 $check( ! empty( $status['inventory_ready'] ), 'Peer inventory failed after namespace-index hijack simulation.' );
-$check( ! empty( $status['write_side_channel_detected'] ), 'Foreign callback hidden behind /mcp namespace index was not detected.' );
+$check( empty( $status['write_side_channel_detected'] ), 'Unknown /mcp callback was incorrectly labeled as a proven write side channel.' );
+$check( ! empty( $status['foreign_transport_unreviewed'] ), 'Foreign callback hidden behind /mcp namespace index was not detected as unreviewed transport.' );
 $check( in_array( 'mcp_foreign_transport_unreviewed', $status['blockers'], true ), 'Foreign transport blocker missing after namespace-index hijack.' );
 $foreign = isset( $status['foreign_transport_inventory'] ) ? $status['foreign_transport_inventory'] : array();
 $check( in_array( '/mcp', isset( $foreign['foreign_routes'] ) ? $foreign['foreign_routes'] : array(), true ), 'Hijacked /mcp route was not reported as foreign.' );
 
 $guard = MAD4B_SCP_MCP_Peer_Governance::mutation_guard();
-$check( is_wp_error( $guard ) && 'mcp_write_side_channel_detected' === $guard->get_error_code(), 'Mutation guard did not fail closed on /mcp namespace-index hijack.' );
+$check( is_wp_error( $guard ) && 'mcp_foreign_transport_unreviewed' === $guard->get_error_code(), 'Mutation guard did not fail closed on /mcp namespace-index hijack.' );
 
 echo "mad4b.site-control-plane.runtime-mcp-namespace-index-hijack-blocker.v1: PASS\n";

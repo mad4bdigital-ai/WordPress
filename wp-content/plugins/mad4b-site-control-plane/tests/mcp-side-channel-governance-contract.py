@@ -17,6 +17,7 @@ def forbid(text, needle, label):
 peer = read('includes/class-mad4b-scp-mcp-peer-governance.php')
 authz = read('includes/class-mad4b-scp-authorization.php')
 adapter_registry = read('includes/class-mad4b-scp-adapter-registry.php')
+write_cert = read('includes/class-mad4b-scp-write-runtime-certification.php')
 bootstrap = read('mad4b-site-control-plane.php')
 runtime_baseline = read('tests/runtime-mcp-side-channel-baseline.php')
 runtime_blocker = read('tests/runtime-mcp-side-channel-blocker.php')
@@ -32,6 +33,8 @@ require(peer, r'\WP\MCP\Abilities\McpAbilityExposure::is_public', 'effective-pub
 require(peer, "GENERIC_EXECUTE_ABILITY = 'mcp-adapter/execute-ability'", 'generic-execute-detection')
 require(peer, "'generic_execute_reaches_public_write'", 'generic-reachable-write-risk')
 require(peer, "'direct_callable_tool_unreviewed'", 'direct-callable-fail-closed')
+require(peer, "'foreign_transport_unreviewed'", 'foreign-transport-semantic-state')
+require(peer, "'mcp_foreign_transport_unreviewed'", 'foreign-transport-exact-blocker')
 require(peer, "'readonly_annotation_missing'", 'unknown-readonly-fail-closed')
 require(peer, "'mcp_tool_inventory_overflow'", 'bounded-peer-inventory')
 require(peer, "MAX_SERVERS = 100", 'bounded-server-inventory')
@@ -61,6 +64,7 @@ for bypass_hook in (
 # Mutation authorization must fail before identity/grant/budget/approval when peer truth is unsafe.
 require(authz, 'MAD4B_SCP_MCP_Peer_Governance::mutation_guard()', 'central-side-channel-guard')
 require(authz, "'mcp_write_side_channel_detected'", 'authority-side-channel-blocker')
+require(authz, "'mcp_foreign_transport_unreviewed'", 'authority-foreign-transport-blocker')
 require(authz, "'mcp_peer_governance'", 'authority-peer-status')
 if authz.index('MAD4B_SCP_MCP_Peer_Governance::mutation_guard()') > authz.index('MAD4B_SCP_Budgets::reserve'):
     raise SystemExit('FAIL side-channel-before-budget: peer blocker must run before budget reservation')
@@ -70,6 +74,9 @@ if authz.index('MAD4B_SCP_MCP_Peer_Governance::mutation_guard()') > authz.index(
 # Runtime self-test must incorporate the same source of truth.
 require(adapter_registry, 'MAD4B_SCP_MCP_Peer_Governance::status()', 'self-test-peer-status')
 require(adapter_registry, "'mcp_peer_governance_ok'", 'self-test-peer-verdict')
+require(adapter_registry, "foreign_transport_unreviewed", 'self-test-foreign-transport-verdict')
+require(write_cert, "'peer_foreign_transport_reviewed'", 'write-cert-foreign-transport-check')
+require(write_cert, "'mcp_foreign_transport_unreviewed'", 'write-cert-foreign-transport-blocker')
 require(adapter_registry, "'mcp_peer_governance'", 'self-test-peer-evidence')
 
 # Bootstrap must load detector before authorization can call it.

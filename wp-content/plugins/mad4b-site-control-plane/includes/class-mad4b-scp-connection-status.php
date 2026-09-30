@@ -8,7 +8,7 @@ final class MAD4B_SCP_Connection_Status {
 	const PREVIOUS_CONTRACT = 'mad4b.connection-readiness.v3';
 
 	public static function status( $force_deep = false ) {
-		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown' );
 		$https = function_exists( 'wp_is_using_https' ) ? wp_is_using_https() : ( 'https' === wp_parse_url( home_url(), PHP_URL_SCHEME ) );
 		$adapter_available = class_exists( '\\WP\\MCP\\Core\\McpAdapter' );
 		$adapter_version = '';
@@ -83,6 +83,10 @@ final class MAD4B_SCP_Connection_Status {
 		return array(
 			'contract' => self::CONTRACT,
 			'environment' => $environment_key,
+			'wordpress_environment' => class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::wordpress() : $environment_key,
+			'wordpress_environment_explicit' => class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::wordpress_explicit() : defined( 'WP_ENVIRONMENT_TYPE' ),
+			'effective_environment' => $environment_key,
+			'environment_resolution' => class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::snapshot() : array(),
 			'environment_supported' => $environment_supported,
 			'site_profile_enrolled' => $profile_enrolled,
 			'portable_readonly_ready' => $portable_readonly_ready,
@@ -320,7 +324,8 @@ final class MAD4B_SCP_Connection_Status {
 			$expected_permission = isset( $expected_permissions[ $id ] ) ? $expected_permissions[ $id ] : array();
 			$out[] = array(
 				'server_id' => $id,
-				'registered' => ! empty( $registration[ $id ]['registered'] ) && is_object( $server ),
+				'registered' => ! empty( $registration[ $id ]['registered'] ),
+				'materialized' => is_object( $server ),
 				'registration_error' => isset( $registration[ $id ]['error'] ) ? sanitize_key( (string) $registration[ $id ]['error'] ) : '',
 				'route_namespace' => $namespace,
 				'route' => $route,

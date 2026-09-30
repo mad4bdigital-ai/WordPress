@@ -55,9 +55,7 @@ final class MAD4B_SCP_Local_OAuth_Consent_UI {
 		if ( false === strpos( $html, '</head>' ) ) return $html;
 
 		$step_up_requested = false !== strpos( $html, 'mad4b:authority:step-up' );
-		$environment = class_exists( 'MAD4B_SCP_Site_Profile' )
-			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
-			: ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) );
 		$environment_label = 'production' === $environment ? 'Production' : ( 'staging' === $environment ? 'Staging' : ucfirst( $environment ) );
 		$legacy_request = 'is requesting read access to this WordPress MCP resource.';
 		$legacy_step_up_request = 'is requesting read access plus a governed authority step-up scope for this WordPress MCP resource.';

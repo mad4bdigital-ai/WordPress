@@ -121,9 +121,14 @@ final class MAD4B_SCP_Site_Profile {
 			$raw = false === $raw ? '' : sanitize_key( (string) $raw );
 			$explicit = in_array( $raw, array( 'local', 'development', 'staging', 'production' ), true );
 		}
+		// Explicit host configuration is a one-way safety fact. Filters may harden
+		// an implicit environment into an explicit one, but must never downgrade a
+		// real WP_ENVIRONMENT_TYPE constant/environment variable and thereby let an
+		// exact Site Profile override an explicitly configured Production runtime.
+		if ( $explicit ) return true;
 		return function_exists( 'apply_filters' )
-			? (bool) apply_filters( 'mad4b_scp_wordpress_environment_explicit', $explicit, self::wordpress_environment() )
-			: (bool) $explicit;
+			? (bool) apply_filters( 'mad4b_scp_wordpress_environment_explicit', false, self::wordpress_environment() )
+			: false;
 	}
 
 	/**

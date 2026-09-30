@@ -518,9 +518,8 @@ final class MAD4B_SCP_Admin_Query_Performance {
 	}
 
 	private static function environment() {
-		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && method_exists( 'MAD4B_SCP_Site_Profile', 'current_environment' ) ) {
-			return sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
-		}
-		return function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		return class_exists( 'MAD4B_SCP_Environment' )
+			? MAD4B_SCP_Environment::effective()
+			: ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) );
 	}
 }

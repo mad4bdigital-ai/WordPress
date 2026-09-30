@@ -36,7 +36,7 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		if ( self::$bootstrapped ) return self::$status;
 		self::$bootstrapped = true;
 
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
 		self::$status = array(
 			'contract' => self::CONTRACT,
@@ -449,7 +449,7 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		$url = untrailingslashit( home_url( '/oauth/mcp' ) );
 		$parts = wp_parse_url( $url );
 		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$scheme = strtolower( (string) $parts['scheme'] );
 		$host = strtolower( (string) $parts['host'] );
 		$local_loopback = 'local' === $environment && 'http' === $scheme && in_array( $host, array( '127.0.0.1', '::1', 'localhost' ), true );

@@ -245,7 +245,9 @@ final class MAD4B_SCP_Adapter_Registry {
 		}
 
 		$mcp_peer_governance = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
-		$mcp_peer_governance_ok = ! empty( $mcp_peer_governance['inventory_ready'] ) && empty( $mcp_peer_governance['write_side_channel_detected'] );
+		$mcp_peer_governance_ok = ! empty( $mcp_peer_governance['inventory_ready'] )
+			&& empty( $mcp_peer_governance['write_side_channel_detected'] )
+			&& empty( $mcp_peer_governance['foreign_transport_unreviewed'] );
 		$support_requests = isset( $plugin_coverage['support_requests'] ) && is_array( $plugin_coverage['support_requests'] ) ? $plugin_coverage['support_requests'] : array();
 		$functional_family_counts = isset( $plugin_coverage['functional_family_counts'] ) && is_array( $plugin_coverage['functional_family_counts'] ) ? $plugin_coverage['functional_family_counts'] : array();
 		$functional_family_states = isset( $plugin_coverage['functional_family_states'] ) && is_array( $plugin_coverage['functional_family_states'] ) ? $plugin_coverage['functional_family_states'] : array();

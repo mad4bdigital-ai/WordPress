@@ -124,7 +124,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		if ( self::$staging_autoconfig_evaluated ) return;
 		self::$staging_autoconfig_evaluated = true;
 
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = self::policy_environment();
 		$enable_flag_preexisting = defined( self::ENABLE_FLAG );
 		$runtime_flag_preexisting = defined( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG );
 		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
@@ -187,6 +187,18 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		self::$staging_autoconfig_blocker = '';
 	}
 
+	private static function policy_environment() {
+		$effective = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() ) return $effective;
+		$portable = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
+		if ( $portable && class_exists( 'MAD4B_SCP_Site_Profile' ) && ! MAD4B_SCP_Site_Profile::wordpress_environment_explicit() ) {
+			$wordpress = MAD4B_SCP_Site_Profile::wordpress_environment();
+			$suggested = MAD4B_SCP_Site_Profile::suggested_environment();
+			if ( 'production' === $wordpress && in_array( $suggested, array( 'local', 'development', 'staging' ), true ) ) return $suggested;
+		}
+		return $effective;
+	}
+
 	public static function configured() {
 		return defined( self::ENABLE_FLAG ) && true === constant( self::ENABLE_FLAG );
 	}
@@ -201,7 +213,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 
 	public static function effective() {
 		if ( ! self::configured() || ! self::runtime_suppression_approved() ) return false;
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = self::policy_environment();
 		if ( 'production' === $environment && ! self::production_approved() ) return false;
 		return in_array( $environment, array( 'staging', 'development', 'local', 'production' ), true );
 	}
@@ -388,7 +400,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 	}
 
 	public static function status() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = self::policy_environment();
 		$route_descriptors = array();
 		foreach ( self::descriptors() as $descriptor ) $route_descriptors[] = array( 'provider' => sanitize_key( $descriptor['provider'] ), 'class' => sanitize_key( $descriptor['class'] ), 'pattern' => (string) $descriptor['pattern'] );
 		$server_descriptors = array();
@@ -403,6 +415,8 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 			'runtime_suppression_approved' => self::runtime_suppression_approved(),
 			'effective' => self::effective(),
 			'environment' => $environment,
+			'wordpress_environment' => class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::wordpress() : $environment,
+			'mad4b_effective_environment' => class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : $environment,
 			'production_approved' => self::production_approved(),
 			'legacy_enable_flag_alone_is_non_mutating' => true,
 			'staging_zero_touch_autoconfig_evaluated' => self::$staging_autoconfig_evaluated,

@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.83
+ * Version: 0.4.0-rc.85
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Author: MAD4B
@@ -13,14 +13,17 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.83' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.85' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-profile.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-environment.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-maintenance-lease.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-portable-readonly-connection.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dependency-manager.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-durable-execution.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-canonicalization.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-context.php';
@@ -228,6 +231,11 @@ if ( ! empty( $mad4b_upgrade_continuity['recovered'] ) ) {
 // constants against stale identity and can mask invalid stored profile state.
 MAD4B_SCP_Portable_Readonly_Connection::bootstrap();
 unset( $mad4b_upgrade_continuity );
+// Classify MCP/OAuth protocol hotpaths before any subsequent runtime bootstrap.
+// The classifier is read-only and request-local; early placement prevents
+// post-update maintenance/recovery hooks from being treated like ordinary
+// request-serving work during the first reconnect after a package replacement.
+MAD4B_SCP_MCP_Request_Scope::bootstrap();
 MAD4B_SCP_Site_Profile::boot();
 MAD4B_SCP_Governed_Runtime_Gates::boot();
 MAD4B_SCP_Governed_Runtime_Gates::bootstrap_runtime();
@@ -285,10 +293,9 @@ MAD4B_SCP_Skills_Adapter::boot();
 MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();
 remove_action( 'plugins_loaded', array( 'MAD4B_SCP_Skill_Provider_Discovery', 'bootstrap' ), 30 );
 
-// Classify the request before any direct Skills/Write bootstrap. Third-party
-// wp-admin, provider/Core REST and generic wp-cron are request-serving hotpaths:
-// they do not need site-profile-driven feature enablement or authority restore.
-MAD4B_SCP_MCP_Request_Scope::bootstrap();
+// The request scope was classified immediately after Site Profile / portable
+// read-only bootstrap. Reuse that request-local classification here before
+// direct Skills/Write bootstrap.
 $mad4b_zero_touch_request = class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
 	&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface();
 if ( ! $mad4b_zero_touch_request ) {
@@ -308,6 +315,7 @@ MAD4B_SCP_ChatGPT_OAuth_Lifecycle::boot();
 MAD4B_SCP_Local_OAuth_Consent_UI::boot();
 MAD4B_SCP_Context_Admin_UI::boot();
 register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );
+MAD4B_SCP_Schema_Lifecycle::boot();
 add_action( 'init', array( 'MAD4B_SCP_Plugin', 'boot' ), -1000000 );
 add_action( 'admin_init', static function () {
 	if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;

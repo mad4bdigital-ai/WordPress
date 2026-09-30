@@ -55,6 +55,13 @@ final class MAD4B_SCP_Dependency_Manager {
 		$installed_version = $installed && isset( $plugins[ self::MCP_PLUGIN_FILE ]['Version'] ) ? trim( (string) $plugins[ self::MCP_PLUGIN_FILE ]['Version'] ) : '';
 		$active = function_exists( 'is_plugin_active' ) ? ( is_plugin_active( self::MCP_PLUGIN_FILE ) || ( function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( self::MCP_PLUGIN_FILE ) ) ) : class_exists( 'WP\\MCP\\Core\\McpAdapter' );
 		$runtime_loaded = class_exists( 'WP\\MCP\\Core\\McpAdapter' );
+		$runtime_contract = class_exists( 'MAD4B_SCP_Provider_Contracts' ) && method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_status' )
+			? MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $runtime_loaded )
+			: array();
+		$runtime_provenance = self::mcp_runtime_provenance();
+		$runtime_from_official_plugin = ! empty( $runtime_provenance['runtime_from_official_plugin'] );
+		$runtime_contract_ok = ! empty( $runtime_contract['runtime_contract_ok'] );
+		$runtime_certified = $runtime_contract_ok && $runtime_from_official_plugin;
 		$version_match = '' !== $expected_version && '' !== $installed_version && hash_equals( $expected_version, $installed_version );
 		$bundle = self::bundled_archive_status( $expected_sha );
 
@@ -82,8 +89,9 @@ final class MAD4B_SCP_Dependency_Manager {
 		foreach ( $core as $key => $check ) if ( empty( $check['ready'] ) ) $hard_blockers[] = 'dependency_' . sanitize_key( $key ) . '_unavailable';
 		if ( ! $installed ) $hard_blockers[] = 'mcp_adapter_missing';
 		elseif ( ! $version_match ) $hard_blockers[] = 'mcp_adapter_version_drift';
-		elseif ( ! $active ) $hard_blockers[] = 'mcp_adapter_inactive';
 		elseif ( ! $runtime_loaded ) $hard_blockers[] = 'mcp_adapter_runtime_unavailable';
+		elseif ( ! $runtime_from_official_plugin ) $hard_blockers[] = 'mcp_adapter_runtime_provenance_mismatch';
+		elseif ( ! $runtime_contract_ok ) $hard_blockers[] = 'mcp_adapter_runtime_not_certified';
 
 		$oauth_enabled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$key_policy = class_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy' ) ? MAD4B_SCP_Local_OAuth_Key_Path_Policy::status() : array();
@@ -121,6 +129,13 @@ final class MAD4B_SCP_Dependency_Manager {
 				'version_match' => $version_match,
 				'active' => (bool) $active,
 				'runtime_loaded' => $runtime_loaded,
+				'runtime_contract_ok' => $runtime_contract_ok,
+				'runtime_certified' => $runtime_certified,
+				'runtime_from_official_plugin' => $runtime_from_official_plugin,
+				'runtime_source' => isset( $runtime_provenance['runtime_source'] ) ? (string) $runtime_provenance['runtime_source'] : '',
+				'loading_mode' => $active ? 'active_plugin' : ( $runtime_certified ? 'certified_loaded_runtime' : 'inactive_plugin' ),
+				'runtime_contract' => $runtime_contract,
+				'runtime_provenance' => $runtime_provenance,
 				'bundled_archive' => $bundle,
 				'install_requires_explicit_admin_action' => true,
 				'auto_downloads_remote_code' => false,
@@ -214,6 +229,32 @@ final class MAD4B_SCP_Dependency_Manager {
 			'sha256' => $sha,
 			'integrity_match' => $present && 1 === preg_match( '/^[a-f0-9]{64}$/', $expected_sha ) && hash_equals( $expected_sha, $sha ),
 		);
+	}
+
+	private static function mcp_runtime_provenance() {
+		$out = array(
+			'runtime_class_loaded' => false,
+			'runtime_source' => 'unavailable',
+			'runtime_from_official_plugin' => false,
+		);
+		$class = 'WP\\MCP\\Core\\McpAdapter';
+		if ( ! class_exists( $class, false ) ) return $out;
+		$out['runtime_class_loaded'] = true;
+		try {
+			$reflection = new ReflectionClass( $class );
+			$file = $reflection->getFileName();
+			$resolved = $file ? realpath( $file ) : false;
+			$official_root = defined( 'WP_PLUGIN_DIR' ) ? realpath( trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter' ) : false;
+			if ( $resolved ) $out['runtime_source'] = wp_normalize_path( $resolved );
+			if ( $resolved && $official_root ) {
+				$runtime_file = wp_normalize_path( $resolved );
+				$official = rtrim( wp_normalize_path( $official_root ), '/' ) . '/';
+				$out['runtime_from_official_plugin'] = 0 === strpos( $runtime_file, $official );
+			}
+		} catch ( Throwable $e ) {
+			$out['runtime_source'] = 'reflection-unavailable';
+		}
+		return $out;
 	}
 
 	private static function plugins( $refresh = false ) {

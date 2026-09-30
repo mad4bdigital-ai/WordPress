@@ -486,7 +486,7 @@ final class MAD4B_SCP_Developer_Runtime {
 	}
 
 	private static function environment() {
-		return function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		return class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 	}
 
 	private static function wp_cli_binary() {

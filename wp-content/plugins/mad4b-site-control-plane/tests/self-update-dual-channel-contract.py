@@ -136,7 +136,7 @@ for marker in (
         raise SystemExit(f"bootstrap self-update pre-mutation revalidation invariant missing: {marker}")
 verify_index = native_apply_body.find("$verified = self::verify_archive( $tmp, $manifest );")
 recheck_index = native_apply_body.find("$bootstrap_access = self::can_bootstrap_native_apply( $input );")
-apply_index = native_apply_body.find("$result = self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected );")
+apply_index = native_apply_body.find("$result = self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected, $verified );")
 if min(verify_index, recheck_index, apply_index) < 0 or not (verify_index < recheck_index < apply_index):
     raise SystemExit("bootstrap authority must be revalidated after archive verification and immediately before filesystem mutation")
 bootstrap_apply_body = self_update.split("public static function bootstrap_native_apply", 1)[1].split("private static function is_control_plane_plugin_file", 1)[0]
@@ -196,11 +196,22 @@ for marker in (
     "'limit_response_size' => self::MAX_UPLOAD_BYTES + 1",
     "self::temp_archive_path()",
     "self::verify_archive( $tmp, $manifest )",
-    "self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected )",
+    "self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected, $verified )",
     "'governed_native_release_pull' === (string) $channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT",
 ):
     if marker not in self_update:
         raise SystemExit(f"governed native release pull invariant missing: {marker}")
+
+# Verified archive evidence is carried through the exact mutation boundary so
+# OPcache invalidation can use the trusted ZIP member index without a post-install tree walk.
+for marker in (
+    "array $verified_archive",
+    "isset( $verified_archive['runtime_php_files'] )",
+    "mad4b_self_update_verified_runtime_index_missing",
+    "invalidate_runtime_caches( $runtime_php_files )",
+):
+    if marker not in self_update:
+        raise SystemExit(f"verified archive runtime index is not propagated through managed apply: {marker}")
 
 # Remote upload remains bounded file input only; no caller URL/path input is accepted.
 plan_schema = self_update.split("private static function plan_schema()", 1)[1].split("private static function apply_schema()", 1)[0]
@@ -301,6 +312,66 @@ managed_apply = self_update.split("private static function apply_verified_archiv
 for marker in ("backup_current()", "verify_installed_identity", "rollback(", "restore_activation_state"):
     if marker not in managed_apply:
         raise SystemExit(f"managed upload rollback/readback invariant missing: {marker}")
+for marker in (
+    "catch ( Throwable $throwable )",
+    "mad4b_self_update_install_exception",
+    "self::rollback( $backup, $before, $runtime_php_files )",
+):
+    if marker not in managed_apply:
+        raise SystemExit(f"managed apply exception/rollback safety invariant missing: {marker}")
+
+for marker in (
+    "$lease_owner = 'self_update_replacement';",
+    "MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner )",
+    "MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, $lease_owner )",
+    "$upgrader->maintenance_mode( true );",
+    "$upgrader->maintenance_mode( false );",
+    "$core_maintenance_open = true;",
+    "MAD4B_SCP_Runtime_Maintenance_Lease::release( $lease_token, $lease_owner );",
+    "'core_maintenance_window_used' => true",
+    "'pre_replacement_runtime_lease' => true",
+):
+    if marker not in managed_apply:
+        raise SystemExit(f"self-update replacement-fence invariant missing: {marker}")
+if not (
+    managed_apply.index("MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner )")
+    < managed_apply.index("self::backup_current()")
+    < managed_apply.index("$core_maintenance_open = true;")
+    < managed_apply.index("$upgrader->maintenance_mode( true );")
+    < managed_apply.index("$upgrader->install(")
+    < managed_apply.index("MAD4B_SCP_Runtime_Convergence::mark_post_update_pending")
+):
+    raise SystemExit("self-update replacement window is not continuously fenced")
+try_index = managed_apply.find("try {")
+catch_index = managed_apply.find("catch ( Throwable $throwable )")
+finally_index = managed_apply.find("finally {")
+clear_index = managed_apply.find("self::$managed_apply = false;", finally_index)
+if min(try_index, catch_index, finally_index, clear_index) < 0 or not (try_index < catch_index < finally_index < clear_index):
+    raise SystemExit("managed apply flag must clear even if Plugin_Upgrader throws")
+rollback_body = self_update.split("private static function rollback(", 1)[1].split("private static function activation_state()", 1)[0]
+copy_index = rollback_body.find("copy_dir( $backup['backup_path'], $root )")
+invalidate_index = rollback_body.find("self::invalidate_runtime_caches( $runtime_php_files );")
+restore_index = rollback_body.find("self::restore_activation_state( $before )")
+if min(copy_index, invalidate_index, restore_index) < 0 or not (copy_index < invalidate_index < restore_index):
+    raise SystemExit("rollback must invalidate restored runtime paths before reactivation")
+
+# A verified replacement is not successful until the durable post-update
+# convergence checkpoint is established. Failure must rollback before any success audit.
+managed_apply = self_update.split("private static function apply_verified_archive(", 1)[1].split("private static function download_governed_release_to_protected_storage", 1)[0]
+mark_index = managed_apply.find("MAD4B_SCP_Runtime_Convergence::mark_post_update_pending")
+checkpoint_fail_index = managed_apply.find("'checkpoint_persist_failed' === $convergence_state")
+rollback_index = managed_apply.find("$rollback = self::rollback( $backup, $before", checkpoint_fail_index)
+success_audit_index = managed_apply.find("self::audit( $channel, $target, true", checkpoint_fail_index)
+if min(mark_index, checkpoint_fail_index, rollback_index, success_audit_index) < 0 or not (mark_index < checkpoint_fail_index <= rollback_index < success_audit_index):
+    raise SystemExit("post-update convergence checkpoint failure must rollback before success audit")
+for marker in (
+    "'failure_phase' => 'post_update_convergence_checkpoint'",
+    "'failure_code' => 'mad4b_self_update_convergence_checkpoint_persist_failed'",
+    "mad4b_self_update_convergence_checkpoint_persist_failed",
+    "'rollback_ok' => ! is_wp_error( $rollback )",
+):
+    if marker not in managed_apply:
+        raise SystemExit(f"post-update convergence rollback invariant missing: {marker}")
 
 # Same-request replacement must verify the new on-disk plugin header and canonical
 # control_plane_version, never the stale MAD4B_SCP_VERSION loaded before replacement.
@@ -474,3 +545,17 @@ assert "mad4b_self_update_pointer_fetch_failed" in pointer_fallback
 assert "mad4b_self_update_pointer_http_error" in pointer_fallback
 for forbidden in ("pointer_contract_mismatch", "pointer_digest_invalid", "pointer_asset_invalid", "pointer_trust_invalid"):
     assert forbidden not in pointer_fallback
+
+# Keep post-update bottleneck regressions inside the plugin-owned contract
+# boundary. This contract is already release-critical in both Site Control Plane
+# and Control Plane Package workflows, so no repository-root workflow widening
+# is required to gate these concurrency/restart invariants.
+for command in (
+    ["python3", str(root / "tests" / "post-update-bottleneck-hardening-contract.py")],
+    ["python3", str(root / "tests" / "schema-lifecycle-same-version-contract.py")],
+    ["php", str(root / "tests" / "runtime-restart-barrier-runtime.php")],
+    ["php", str(root / "tests" / "runtime-maintenance-lease-runtime.php")],
+):
+    subprocess.run(command, check=True)
+
+print("mad4b.control-plane-self-update post-update bottleneck regressions: PASS")
