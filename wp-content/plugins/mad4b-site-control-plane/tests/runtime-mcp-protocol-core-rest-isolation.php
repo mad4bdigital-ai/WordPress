@@ -42,6 +42,26 @@ if ( empty( $scope_before['current_request_requires_mcp_runtime'] ) || empty( $s
 	$fail( 'MCP transport request was not classified as managed protocol hotpath', $scope_before );
 }
 
+$fixture_dir = trailingslashit( WP_PLUGIN_DIR ) . 'mad4b-external-rest-fixture';
+$fixture_file = trailingslashit( $fixture_dir ) . 'fixture.php';
+if ( ! is_dir( $fixture_dir ) && ! wp_mkdir_p( $fixture_dir ) ) $fail( 'could not create external REST fixture directory' );
+$fixture_source = <<<'PHP'
+<?php
+$GLOBALS['mad4b_test_external_rest_calls'] = 0;
+add_action( 'rest_api_init', static function () {
+	++$GLOBALS['mad4b_test_external_rest_calls'];
+	register_rest_route( 'mad4b-external-fixture/v1', '/should-not-load', array(
+		'methods' => 'GET',
+		'permission_callback' => '__return_true',
+		'callback' => static function () {
+			return rest_ensure_response( array( 'external' => 'loaded' ) );
+		},
+	) );
+}, 40 );
+PHP;
+if ( false === file_put_contents( $fixture_file, $fixture_source ) ) $fail( 'could not write external REST fixture' );
+require $fixture_file;
+
 $GLOBALS['mad4b_test_provider_rest_calls'] = 0;
 $provider_callback = static function () {
 	++$GLOBALS['mad4b_test_provider_rest_calls'];
@@ -74,12 +94,19 @@ if ( false === has_action( 'rest_api_init', 'rest_api_default_filters' ) ) {
 if ( 1 !== (int) $GLOBALS['mad4b_test_provider_rest_calls'] ) {
 	$fail( 'provider/plugin REST callback did not remain active', array( 'calls' => $GLOBALS['mad4b_test_provider_rest_calls'] ) );
 }
-if ( ! isset( $routes['/mad4b-test/v1/provider-alive'] ) ) $fail( 'provider/plugin REST route disappeared' );
+if ( ! isset( $routes['/mad4b-test/v1/provider-alive'] ) ) $fail( 'MAD4B-owned REST callback disappeared' );
+if ( ! empty( $GLOBALS['mad4b_test_external_rest_calls'] ) ) {
+	$fail( 'external plugin REST callback executed on exact MCP protocol request', array( 'calls' => $GLOBALS['mad4b_test_external_rest_calls'] ) );
+}
+if ( isset( $routes['/mad4b-external-fixture/v1/should-not-load'] ) ) $fail( 'external plugin REST route materialized on exact MCP protocol request' );
 if ( ! isset( $routes['/mcp/mad4b-chatgpt'] ) ) $fail( 'MAD4B ChatGPT MCP transport route disappeared' );
 if ( isset( $routes['/wp/v2/types/post'] ) ) $fail( 'full Core REST routes were unexpectedly materialized on MCP protocol request' );
 if ( did_action( 'mcp_adapter_init' ) < 1 ) $fail( 'official MCP Adapter did not initialize for MCP protocol request' );
 
 if ( empty( $scope['protocol_core_rest_isolation_request_local_only'] )
+	|| empty( $scope['protocol_external_rest_isolation_request_local_only'] )
+	|| empty( $scope['protocol_external_rest_isolation_evaluated'] )
+	|| empty( $scope['protocol_external_rest_callbacks_removed'] )
 	|| ! empty( $scope['production_changed'] )
 	|| ! empty( $scope['provider_settings_changed'] )
 	|| ! empty( $scope['wordpress_rest_routes_changed'] ) ) {
@@ -87,4 +114,6 @@ if ( empty( $scope['protocol_core_rest_isolation_request_local_only'] )
 }
 
 remove_action( 'rest_api_init', $provider_callback, 40 );
-echo 'mad4b.site-control-plane.mcp-protocol-core-rest-isolation.v1: PASS' . PHP_EOL;
+@unlink( $fixture_file );
+@rmdir( $fixture_dir );
+echo 'mad4b.site-control-plane.mcp-protocol-core-rest-isolation.v2: PASS' . PHP_EOL;
