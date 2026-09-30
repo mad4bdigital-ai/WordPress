@@ -131,7 +131,7 @@ assert "MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'runtime_convergence' )" i
 assert "MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $token, 'runtime_convergence' )" in runtime
 assert "private static function yield_safe_phases" in runtime
 assert "'maintenance_sliced' => true" in runtime
-assert "'next_safe_phase' => sanitize_key" in runtime
+assert "$checkpoint['next_safe_phase'] = sanitize_key( (string) $next_phase );" in runtime
 assert "mark_activation_pending" in runtime
 assert "'plugin_activation' !== $stored_source" in runtime
 assert "'checkpoint_persist_failed'" in runtime
