@@ -303,6 +303,16 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 		$before_raw = get_option( self::OPTION, false );
 		$before_exists = false !== $before_raw;
 		$before = self::record();
+		if ( (int) $before['revision'] !== (int) $plan['policy_revision']
+			|| ! hash_equals( (string) $plan['policy_digest'], self::record_digest( $before ) ) ) {
+			return new WP_Error( 'mad4b_runtime_gates_plan_stale', 'Runtime gate policy changed after plan validation and before persistence.' );
+		}
+		$revalidated = self::plan( $input );
+		if ( is_wp_error( $revalidated ) ) return $revalidated;
+		if ( empty( $revalidated['ready_to_apply'] )
+			|| ! hash_equals( (string) $plan['plan_sha256'], (string) $revalidated['plan_sha256'] ) ) {
+			return new WP_Error( 'mad4b_runtime_gates_plan_stale', 'Runtime gate plan changed immediately before persistence.' );
+		}
 		$next = array(
 			'contract' => self::CONTRACT,
 			'version' => self::VERSION,
