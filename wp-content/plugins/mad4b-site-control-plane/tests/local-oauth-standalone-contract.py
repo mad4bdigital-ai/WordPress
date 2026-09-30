@@ -14,7 +14,7 @@ portable = (root / 'includes' / 'class-mad4b-scp-portable-readonly-connection.ph
 required_server = [
     'mad4b.local-oauth-server.v3',
     'MAD4B_MCP_LOCAL_OAUTH_ENABLED',
-    'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED',
+    'MAD4B_SCP_Staging_OAuth_Autoconfig::production_profile_enabled()',
     'MAD4B_MCP_LOCAL_OAUTH_CLIENTS',
     'MAD4B_MCP_LOCAL_OAUTH_PRIVATE_KEY_PATH',
     "CHATGPT_CIMD_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
