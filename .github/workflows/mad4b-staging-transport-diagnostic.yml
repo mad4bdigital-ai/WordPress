@@ -1,0 +1,59 @@
+name: MAD4B Staging Transport Diagnostic
+
+on:
+  push:
+    branches:
+      - gov/staging-transport-diagnostic-20260930
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: External Staging transport probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ORIGIN: https://staging.egypttourgates.com
+    steps:
+      - name: Checkout exact diagnostic head
+        uses: actions/checkout@v4
+      - name: Record DNS resolution
+        shell: bash
+        run: |
+          set -u
+          echo "DNS:"
+          getent ahostsv4 staging.egypttourgates.com || true
+          echo
+          echo "Resolver:"
+          cat /etc/resolv.conf || true
+      - name: Probe TLS and HTTP surfaces
+        shell: bash
+        run: |
+          set -u
+          probe() {
+            local label="$1"
+            local url="$2"
+            echo "===== $label ====="
+            rm -f /tmp/headers /tmp/body /tmp/curl.err
+            set +e
+            metrics="$(curl               --silent --show-error               --connect-timeout 5               --max-time 20               --max-redirs 0               --output /tmp/body               --dump-header /tmp/headers               --write-out 'http_code=%{http_code} remote_ip=%{remote_ip} dns=%{time_namelookup} connect=%{time_connect} tls=%{time_appconnect} ttfb=%{time_starttransfer} total=%{time_total} size=%{size_download}\n'               "$url" 2>/tmp/curl.err)"
+            rc=$?
+            set -e
+            echo "curl_rc=$rc"
+            printf '%s' "$metrics"
+            echo "--- headers ---"
+            sed -n '1,30p' /tmp/headers 2>/dev/null || true
+            echo "--- curl stderr ---"
+            sed -n '1,40p' /tmp/curl.err 2>/dev/null || true
+            echo "--- body prefix ---"
+            head -c 500 /tmp/body 2>/dev/null | tr '\n' ' ' || true
+            echo
+            echo
+          }
+          set -e
+          probe "origin" "$ORIGIN/"
+          probe "wp-json" "$ORIGIN/wp-json/"
+          probe "mcp-discovery" "$ORIGIN/wp-json/mcp/mad4b-chatgpt"
+          probe "connection-admin-unauthenticated" "$ORIGIN/wp-admin/admin.php?page=mad4b-control-plane-connection"
+          probe "chatgpt-admin-unauthenticated" "$ORIGIN/wp-admin/admin.php?page=mad4b-control-plane-chatgpt"
