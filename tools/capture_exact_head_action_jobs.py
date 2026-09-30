@@ -5,13 +5,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 from pathlib import Path
 
 CONTRACT = "mad4b.exact-head-action-jobs.v2"
 MAX_RUN_PAGES = 5
 MAX_JOB_PAGES = 5
+TRUSTED_PULL_REQUEST_TARGET_WORKFLOWS = (
+    ".github/workflows/mad4b-feature-boundary-root.yml",
+)
 
 
 def gh_json(endpoint: str):
@@ -46,22 +48,21 @@ def pull_request_numbers(run: dict) -> list[int]:
 
 
 def canonical_evidence_events(*, event_name: str, pr_number: int) -> tuple[str, ...]:
+    """Resolve the only run events trusted for this verdict invocation."""
     event_name = event_name.strip()
-    if pr_number > 0:
-        # PR release evidence is intentionally split across the untrusted-head
-        # pull_request workflows and the BASE-owned pull_request_target feature
-        # boundary. Both are exact-head evidence for the same PR, and both must
-        # remain visible to the verdict while unrelated push/manual runs stay out.
-        if event_name == "pull_request":
-            return ("pull_request", "pull_request_target")
-        return (event_name,) if event_name else ()
-    # A manual verdict is a re-evaluation of the canonical branch push, not a
-    # new source of runtime/release evidence. Binding workflow_dispatch to
-    # workflow_dispatch would make all ordinary push-produced critical checks
-    # invisible and would turn manual re-evaluation into a guaranteed timeout.
-    if event_name == "workflow_dispatch":
+    if event_name == "pull_request" and pr_number > 0:
+        # Repository Feature Boundary intentionally runs from the trusted base
+        # under pull_request_target. It is the only target-event evidence that
+        # may join the exact PR's ordinary pull_request evidence.
+        return ("pull_request", "pull_request_target")
+    if event_name == "push" and pr_number == 0:
         return ("push",)
-    return (event_name,) if event_name else ()
+    if event_name == "workflow_dispatch" and pr_number == 0:
+        # Manual verdicts explicitly re-evaluate canonical push evidence for the
+        # selected exact branch/SHA. They do not mix workflow_dispatch jobs into
+        # release evidence.
+        return ("push",)
+    return ()
 
 
 def run_matches_scope(
@@ -78,45 +79,55 @@ def run_matches_scope(
 
     run_branch = str(run.get("head_branch") or "").strip()
     run_event = str(run.get("event") or "").strip()
+    run_path = str(run.get("path") or "").strip()
     associated_prs = pull_request_numbers(run)
     evidence_events = canonical_evidence_events(
         event_name=event_name,
         pr_number=pr_number,
     )
 
-    # Exact-head evidence is event-bound as well as SHA/branch-bound. Without
-    # this guard, a later pull_request run whose synthetic merge SHA equals the
-    # current master SHA can overwrite canonical push evidence for the same job
-    # name when the verdict selects the newest check-run id.
-    if evidence_events and run_event not in evidence_events:
+    # Missing/unsupported invocation provenance is never equivalent to
+    # head-SHA-only scope. Fail closed instead of silently widening evidence.
+    if not evidence_events or run_event not in evidence_events:
         return False
 
     if pr_number > 0:
-        # Prefer GitHub's explicit PR association when it exists. Some
-        # pull_request_target/legacy runs omit pull_requests, so allow those only
-        # when their head branch exactly matches the current PR branch.
-        if associated_prs:
-            return pr_number in associated_prs
-        return bool(head_branch and run_branch == head_branch)
+        # PR evidence must prove the exact PR association. Branch equality alone
+        # is insufficient because GitHub can expose same-SHA pull_request runs
+        # with head_branch=master and no pull_requests association.
+        if pr_number not in associated_prs:
+            return False
+        if head_branch and run_branch != head_branch:
+            return False
+        if run_event == "pull_request_target":
+            return run_path in TRUSTED_PULL_REQUEST_TARGET_WORKFLOWS
+        return run_event == "pull_request"
 
-    # Push/manual verdicts must not ingest same-SHA jobs from a PR branch.
-    if head_branch:
-        return run_branch == head_branch
-    return True
+    # Push/manual replay evidence is canonical push evidence from the exact
+    # selected branch only.
+    if head_branch and run_branch != head_branch:
+        return False
+    return run_event == "push"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repository", required=True)
     parser.add_argument("--head-sha", required=True)
+    parser.add_argument(
+        "--event",
+        required=True,
+        choices=("push", "pull_request", "workflow_dispatch"),
+        help="Release Verdict invocation event; evidence is derived explicitly from this mode.",
+    )
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
 
     repository = args.repository.strip()
     head_sha = args.head_sha.strip().lower()
-    head_branch = os.environ.get("HEAD_BRANCH", "").strip()
-    event_name = os.environ.get("GITHUB_EVENT_NAME", "").strip()
-    raw_pr_number = os.environ.get("PR_NUMBER", "").strip()
+    head_branch = __import__("os").environ.get("HEAD_BRANCH", "").strip()
+    event_name = args.event.strip()
+    raw_pr_number = __import__("os").environ.get("PR_NUMBER", "").strip()
     try:
         pr_number = int(raw_pr_number or "0")
     except ValueError as exc:
@@ -127,6 +138,16 @@ def main() -> int:
         raise SystemExit("repository must use owner/name form")
     if len(head_sha) != 40 or any(ch not in "0123456789abcdef" for ch in head_sha):
         raise SystemExit("head SHA must be an exact 40-character lowercase SHA")
+
+    evidence_events = canonical_evidence_events(
+        event_name=event_name,
+        pr_number=pr_number,
+    )
+    if not evidence_events:
+        raise SystemExit(
+            "unsupported Release Verdict event/PR scope: "
+            f"event={event_name!r} pull_request={pr_number}"
+        )
 
     runs = []
     for page in range(1, MAX_RUN_PAGES + 1):
@@ -159,6 +180,9 @@ def main() -> int:
             continue
         seen_run_ids.add(run_id)
         run_head = str(run.get("head_sha") or "").lower()
+        run_branch = str(run.get("head_branch") or "").strip()
+        run_event = str(run.get("event") or "").strip()
+        associated_prs = pull_request_numbers(run)
 
         for page in range(1, MAX_JOB_PAGES + 1):
             payload = gh_json(
@@ -180,7 +204,9 @@ def main() -> int:
                         "workflow_run_id": run_id,
                         "workflow_name": str(run.get("name") or ""),
                         "workflow_path": str(run.get("path") or ""),
-                        "workflow_event": str(run.get("event") or ""),
+                        "workflow_event": run_event,
+                        "workflow_head_branch": run_branch,
+                        "workflow_pull_requests": associated_prs,
                         "run_attempt": int(run.get("run_attempt") or 1),
                         "head_sha": run_head,
                     }
@@ -193,32 +219,27 @@ def main() -> int:
     jobs = [row for row in jobs if row["id"] > 0 and row["name"]]
     jobs.sort(key=lambda row: row["id"])
 
+    scope_mode = (
+        "exact_pr_event_provenance"
+        if pr_number > 0
+        else (
+            "manual_replay_of_exact_push"
+            if event_name == "workflow_dispatch"
+            else "exact_branch_push_event"
+        )
+    )
     result = {
         "contract": CONTRACT,
         "repository": repository,
         "head_sha": head_sha,
         "head_branch": head_branch,
         "event_name": event_name,
-        "evidence_events": list(
-            canonical_evidence_events(
-                event_name=event_name,
-                pr_number=pr_number,
-            )
+        "evidence_events": list(evidence_events),
+        "trusted_pull_request_target_workflows": list(
+            TRUSTED_PULL_REQUEST_TARGET_WORKFLOWS
         ),
         "pull_request": pr_number,
-        "scope_mode": (
-            "pull_request+event"
-            if pr_number > 0 and event_name
-            else (
-                "pull_request"
-                if pr_number > 0
-                else (
-                    "head_branch+event"
-                    if head_branch and event_name
-                    else ("head_branch" if head_branch else ("event" if event_name else "head_sha_only"))
-                )
-            )
-        ),
+        "scope_mode": scope_mode,
         "workflow_run_count": len(seen_run_ids),
         "job_count": len(jobs),
         # Preserve the legacy key so the release-verdict parser remains unchanged.
@@ -229,7 +250,7 @@ def main() -> int:
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(
         "EXACT_HEAD_ACTION_JOBS: PASS "
-        f"runs={result['workflow_run_count']} jobs={result['job_count']}"
+        f"scope={scope_mode} runs={result['workflow_run_count']} jobs={result['job_count']}"
     )
     return 0
 
