@@ -8,6 +8,7 @@ class WP_Error { private $c; private $d; public function __construct($c,$m='',$d
 class WP_REST_Response {
     private $data; private $status; private $headers=array();
     public function __construct($data=null,$status=200){$this->data=$data;$this->status=(int)$status;}
+    public function get_data(){return $this->data;}
     public function get_status(){return $this->status;}
     public function get_headers(){return $this->headers;}
     public function header($name,$value){$this->headers[$name]=$value;}
@@ -34,6 +35,12 @@ final class MAD4B_SCP_Schema {
 final class MAD4B_SCP_Local_OAuth_Server { public static $effective=true; public static function status(){return array('configured'=>true,'effective'=>self::$effective,'issuer_configuration_valid'=>true,'private_key_present'=>true,'oauth_store_ready'=>true,'runtime_error'=>'');} }
 final class MAD4B_SCP_OAuth_Resource_Bridge { public static $effective=true; public static function status(){return array('effective'=>self::$effective);} public static function resource_identifier(){return rest_url('mcp/mad4b-chatgpt');} public static function verified_bearer_active(){return true;} public static function verified_bearer_client_is($id){return $id==='https://chatgpt.com/oauth/client.json';} }
 final class MAD4B_SCP_MCP_Registration_Bridge { public static $status=array(); public static function status(){return self::$status;} }
+final class MAD4B_SCP_Runtime_Convergence {
+    public static $restart=array('active'=>false,'retry_after_seconds'=>0,'state'=>'');
+    public static $maintenance=array('active'=>false,'retry_after_seconds'=>0,'owner'=>'');
+    public static function restart_grace_status(){return self::$restart;}
+    public static function maintenance_lease_status(){return self::$maintenance;}
+}
 final class MAD4B_SCP_Servers { public static $status=array(); public static function registration_status(){return self::$status;} public static function chatgpt_direct_read_transport_tools(){return array('mad4b/site-info');} }
 final class MAD4B_SCP_Transport_Context { public static $server='mad4b-chatgpt'; public static function current_server_id(){return self::$server;} }
 final class MAD4B_SCP_Provider_Contracts {
@@ -91,6 +98,31 @@ $s=MAD4B_SCP_Reconnect_Hardening::reconnect_status(); ok(!empty($s['ready']),'un
 MAD4B_SCP_Local_OAuth_Server::$effective=false; MAD4B_SCP_OAuth_Resource_Bridge::$effective=true; $s=MAD4B_SCP_Reconnect_Hardening::reconnect_status();
 ok(!empty($s['ready'])&&empty($s['local_oauth_required_for_reconnect']),'effective OAuth resource bridge must not require local OAuth authority');
 MAD4B_SCP_Local_OAuth_Server::$effective=true;
+
+// Conflicting active maintenance fences are not a timer-only retry condition.
+MAD4B_SCP_Runtime_Convergence::$maintenance=array(
+    'active'=>true,
+    'retry_after_seconds'=>5,
+    'owner'=>'legacy_runtime',
+    'fence_source'=>'mad4b_scp_runtime_convergence_lock_v1',
+    'active_fence_count'=>2,
+    'legacy_only_fence'=>true,
+    'fence_token_conflict'=>true,
+);
+$maintenance_request=new class { public function get_route(){return '/mcp/mad4b-chatgpt';} };
+$maintenance_guard=MAD4B_SCP_Reconnect_Hardening::guard_mcp_rest_dispatch(null,null,$maintenance_request);
+ok(is_wp_error($maintenance_guard)&&'mad4b_mcp_runtime_maintenance_busy'===$maintenance_guard->get_error_code(),'maintenance token conflict must fail closed before reconnect work');
+$maintenance_data=(array)$maintenance_guard->get_error_data();
+ok(empty($maintenance_data['retryable'])&&0===($maintenance_data['retry_after_seconds']??-1),'maintenance token conflict must not advertise time-only retry');
+ok('inspect_runtime_maintenance_fence_conflict'===($maintenance_data['client_action']??''),'maintenance token conflict requires explicit inspection action');
+ok(!empty($maintenance_data['maintenance_fence_token_conflict'])&&2===($maintenance_data['maintenance_active_fence_count']??0),'maintenance conflict diagnostics expose exact fence truth');
+$maintenance_response=new WP_REST_Response(array('code'=>'mad4b_mcp_runtime_maintenance_busy','data'=>$maintenance_data),503);
+$maintenance_response=MAD4B_SCP_Reconnect_Hardening::add_restart_retry_header($maintenance_response,null,$maintenance_request);
+$maintenance_headers=$maintenance_response->get_headers();
+ok(!isset($maintenance_headers['Retry-After']),'non-retryable maintenance conflict must omit Retry-After');
+ok('no-store'===($maintenance_headers['Cache-Control']??''),'maintenance conflict response remains non-cacheable');
+MAD4B_SCP_Runtime_Convergence::$maintenance=array('active'=>false,'retry_after_seconds'=>0,'owner'=>'');
+
 MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'chatgpt_registration_failed'); $s=MAD4B_SCP_Reconnect_Hardening::reconnect_status();
 ok(empty($s['ready'])&&in_array('chatgpt_registration_failed',$s['blockers'],true),'exact ChatGPT registration error blocks reconnect'); ok(!in_array('targeted_mad4b_route_count_incomplete',$s['blockers'],true),'global route blocker remains diagnostic context only');
 ok(MAD4B_SCP_Reconnect_Hardening::is_resource_request_path('/mcp/mad4b-chatgpt'),'REST route form recognized'); ok(MAD4B_SCP_Reconnect_Hardening::is_resource_request_path('/wp-json/mcp/mad4b-chatgpt'),'wp-json resource form recognized');
