@@ -45,6 +45,11 @@ final class MAD4B_SCP_Self_Update {
 
 	private static $booted = false;
 	private static $managed_apply = false;
+
+	/** True only while the governed self-update owns WordPress Plugin_Upgrader. */
+	public static function managed_apply_in_progress() {
+		return (bool) self::$managed_apply;
+	}
 	private static $rendered_update_rows = array();
 
 	public static function boot() {
