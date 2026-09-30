@@ -32,7 +32,7 @@ final class MAD4B_SCP_Skill_Registry {
 
 	public static function editor_enabled() {
 		if ( ! defined( 'MAD4B_SKILLS_EDITOR_ENABLED' ) || true !== constant( 'MAD4B_SKILLS_EDITOR_ENABLED' ) ) return false;
-		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production';
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production' );
 		if ( 'production' !== $environment ) return true;
 		return defined( 'MAD4B_SKILLS_PRODUCTION_EDITOR_ENABLED' ) && true === constant( 'MAD4B_SKILLS_PRODUCTION_EDITOR_ENABLED' );
 	}
