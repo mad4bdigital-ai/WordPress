@@ -430,17 +430,26 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			&& hash_equals( self::profile_digest(), (string) $record['profile_digest'] );
 		$environment = self::environment();
 		$profile_write_enabled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::write_enabled();
-		$production = $binding_match && 'production' === $environment && ! empty( $record['production_mutation_enabled'] ) && $profile_write_enabled;
+		$production_oauth_enabled = class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' )
+			&& method_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig', 'production_profile_enabled' )
+			&& MAD4B_SCP_Staging_OAuth_Autoconfig::production_profile_enabled();
+		$production = $binding_match
+			&& 'production' === $environment
+			&& ! empty( $record['production_mutation_enabled'] )
+			&& $profile_write_enabled
+			&& $production_oauth_enabled;
 		$raw = $binding_match && ! empty( $record['raw_sql_breakglass_enabled'] ) && ( 'production' !== $environment || $production );
 		$auto = $production && ! empty( $record['production_auto_enable'] );
 		$blockers = array();
 		if ( ( ! empty( $record['raw_sql_breakglass_enabled'] ) || ! empty( $record['production_mutation_enabled'] ) || ! empty( $record['production_auto_enable'] ) ) && ! $binding_match ) $blockers[] = 'runtime_gate_profile_binding_stale';
 		if ( ! empty( $record['production_mutation_enabled'] ) && 'production' !== $environment ) $blockers[] = 'production_environment_required';
 		if ( 'production' === $environment && ! empty( $record['production_mutation_enabled'] ) && ! $profile_write_enabled ) $blockers[] = 'production_profile_write_confirmation_required';
+		if ( 'production' === $environment && ! empty( $record['production_mutation_enabled'] ) && ! $production_oauth_enabled ) $blockers[] = 'production_oauth_opt_in_required';
 		if ( 'production' === $environment && ! empty( $record['raw_sql_breakglass_enabled'] ) && ! $production ) $blockers[] = 'production_breakglass_requires_effective_mutation';
 		if ( ! empty( $record['production_auto_enable'] ) && empty( $record['production_mutation_enabled'] ) ) $blockers[] = 'production_auto_enable_requires_mutation';
 		return array(
 			'profile_binding_match' => $binding_match,
+			'production_oauth_opt_in_effective' => (bool) $production_oauth_enabled,
 			'raw_sql_breakglass_enabled' => $raw,
 			'production_mutation_enabled' => $production,
 			'production_auto_enable' => $auto,
