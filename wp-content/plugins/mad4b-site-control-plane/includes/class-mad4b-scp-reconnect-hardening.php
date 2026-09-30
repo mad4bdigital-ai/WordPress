@@ -866,15 +866,18 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		if ( ! $is_chatgpt_resource && ! $is_mad4b_transport ) return $result;
 		$restart_grace = self::restart_grace_status();
 		if ( ! empty( $restart_grace['active'] ) ) {
-			$retry = isset( $restart_grace['retry_after_seconds'] ) ? max( 1, min( 120, absint( $restart_grace['retry_after_seconds'] ) ) ) : 1;
-			return new WP_Error( 'mad4b_mcp_runtime_restart_grace', 'MAD4B runtime is completing a bounded post-update restart grace window.', array(
+			$retryable = ! array_key_exists( 'retryable', $restart_grace ) || ! empty( $restart_grace['retryable'] );
+			$retry = isset( $restart_grace['retry_after_seconds'] ) ? min( 120, absint( $restart_grace['retry_after_seconds'] ) ) : 0;
+			return new WP_Error( 'mad4b_mcp_runtime_restart_grace', 'MAD4B runtime is completing governed post-update convergence.', array(
 				'status' => 503,
 				'contract' => self::CONTRACT,
 				'resource' => self::resource_identifier(),
-				'retryable' => true,
+				'retryable' => $retryable,
 				'automatic_retry_allowed' => false,
 				'retry_after_seconds' => $retry,
-				'client_action' => 'retry_after_restart_grace',
+				'client_action' => isset( $restart_grace['client_action'] ) ? sanitize_key( (string) $restart_grace['client_action'] ) : 'retry_after_runtime_convergence',
+				'exact_runtime_identity_match' => ! empty( $restart_grace['exact_runtime_identity_match'] ),
+				'convergence_state' => isset( $restart_grace['state'] ) ? sanitize_key( (string) $restart_grace['state'] ) : '',
 				'mutation_performed' => false,
 			) );
 		}
