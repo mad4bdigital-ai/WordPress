@@ -55,6 +55,10 @@ final class MAD4B_SCP_Dependency_Manager {
 		$installed_version = $installed && isset( $plugins[ self::MCP_PLUGIN_FILE ]['Version'] ) ? trim( (string) $plugins[ self::MCP_PLUGIN_FILE ]['Version'] ) : '';
 		$active = function_exists( 'is_plugin_active' ) ? ( is_plugin_active( self::MCP_PLUGIN_FILE ) || ( function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( self::MCP_PLUGIN_FILE ) ) ) : class_exists( 'WP\\MCP\\Core\\McpAdapter' );
 		$runtime_loaded = class_exists( 'WP\\MCP\\Core\\McpAdapter' );
+		$runtime_contract = class_exists( 'MAD4B_SCP_Provider_Contracts' ) && method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_status' )
+			? MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $runtime_loaded )
+			: array();
+		$runtime_certified = ! empty( $runtime_contract['runtime_contract_ok'] );
 		$version_match = '' !== $expected_version && '' !== $installed_version && hash_equals( $expected_version, $installed_version );
 		$bundle = self::bundled_archive_status( $expected_sha );
 
@@ -82,8 +86,9 @@ final class MAD4B_SCP_Dependency_Manager {
 		foreach ( $core as $key => $check ) if ( empty( $check['ready'] ) ) $hard_blockers[] = 'dependency_' . sanitize_key( $key ) . '_unavailable';
 		if ( ! $installed ) $hard_blockers[] = 'mcp_adapter_missing';
 		elseif ( ! $version_match ) $hard_blockers[] = 'mcp_adapter_version_drift';
-		elseif ( ! $active ) $hard_blockers[] = 'mcp_adapter_inactive';
 		elseif ( ! $runtime_loaded ) $hard_blockers[] = 'mcp_adapter_runtime_unavailable';
+		elseif ( ! $runtime_certified ) $hard_blockers[] = 'mcp_adapter_runtime_not_certified';
+		elseif ( ! $active && ! $runtime_certified ) $hard_blockers[] = 'mcp_adapter_inactive';
 
 		$oauth_enabled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$key_policy = class_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy' ) ? MAD4B_SCP_Local_OAuth_Key_Path_Policy::status() : array();
@@ -121,6 +126,9 @@ final class MAD4B_SCP_Dependency_Manager {
 				'version_match' => $version_match,
 				'active' => (bool) $active,
 				'runtime_loaded' => $runtime_loaded,
+				'runtime_certified' => $runtime_certified,
+				'runtime_source' => $active ? 'active_plugin' : ( $runtime_certified ? 'certified_loaded_runtime' : 'inactive_plugin' ),
+				'runtime_contract' => $runtime_contract,
 				'bundled_archive' => $bundle,
 				'install_requires_explicit_admin_action' => true,
 				'auto_downloads_remote_code' => false,
