@@ -117,6 +117,13 @@ assert "self::identity_matches( $target, $current )" in runtime
 assert "convergence_trigger_allowed" in runtime
 
 assert "MAX_TRANSIENT_RETRIES = 5" in runtime
+assert "POST_UPDATE_QUIET_SECONDS = 20" in runtime
+assert "mad4b_scp_runtime_maintenance_lock_v1" in runtime
+assert "public static function restart_grace_status()" in runtime
+assert "'resume_not_before' => time() + self::POST_UPDATE_QUIET_SECONDS" in runtime
+assert "'self_update_checkpoint_preserved'" in runtime
+assert "self::schedule_resume( $not_before )" in runtime
+assert "MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_convergence' )" in runtime
 assert "mark_activation_pending" in runtime
 assert "'plugin_activation' !== $stored_source" in runtime
 assert "'checkpoint_persist_failed'" in runtime
@@ -129,7 +136,7 @@ assert "'gated'" in runtime
 assert "plugin_activation" in runtime
 assert "automatic_bounded_retry" in runtime
 assert "mad4b_runtime_convergence_busy" in runtime
-assert "return false !== wp_next_scheduled( self::CRON_HOOK );" in runtime
+assert "return false !== $next && (int) $next >= $minimum;" in runtime
 assert "MAD4B_SCP_Runtime_Convergence::mark_activation_pending();" in plugin
 assert "if ( 'blocked' === $state ) return;" not in runtime
 
