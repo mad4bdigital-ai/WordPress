@@ -34,6 +34,13 @@ assert "public static function restart_grace_status()" in runtime
 assert "self::schedule_resume( $not_before )" in runtime
 assert "max( time() + 5, absint( $not_before ), self::maintenance_not_before() )" in runtime
 assert "'self_update_checkpoint_preserved'" in runtime
+assert "Backward-compatible barrier" in runtime
+assert "mad4b_scp_runtime_convergence_lock_v1" in runtime
+assert "mad4b_scp_schema_lifecycle_lock_v1" in runtime
+assert "cross-version runtime maintenance fence" in runtime
+assert "legacy_lock_options()" in schema
+assert "reconcile_scheduled()" in schema
+assert "resume_not_before" in schema
 
 # Protocol hotpaths are classified before runtime/recovery bootstrap.
 scope = "MAD4B_SCP_MCP_Request_Scope::bootstrap();"
