@@ -57,3 +57,29 @@ jobs:
           probe "mcp-discovery" "$ORIGIN/wp-json/mcp/mad4b-chatgpt"
           probe "connection-admin-unauthenticated" "$ORIGIN/wp-admin/admin.php?page=mad4b-control-plane-connection"
           probe "chatgpt-admin-unauthenticated" "$ORIGIN/wp-admin/admin.php?page=mad4b-control-plane-chatgpt"
+          probe "runtime-build" "$ORIGIN/wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt"
+          probe "mcp-discovery-rest-route" "$ORIGIN/?rest_route=/mcp/mad4b-chatgpt"
+
+      - name: Probe MCP discovery per resolved edge
+        shell: bash
+        run: |
+          set -u
+          for ip in 191.101.104.122 212.1.212.203; do
+            echo "===== edge $ip ====="
+            set +e
+            curl \
+              --silent --show-error \
+              --resolve "staging.egypttourgates.com:443:$ip" \
+              --connect-timeout 5 \
+              --max-time 15 \
+              --output /tmp/edge-body \
+              --dump-header /tmp/edge-headers \
+              --write-out 'curl_rc_placeholder http_code=%{http_code} remote_ip=%{remote_ip} dns=%{time_namelookup} connect=%{time_connect} tls=%{time_appconnect} ttfb=%{time_starttransfer} total=%{time_total} size=%{size_download}\n' \
+              "$ORIGIN/wp-json/mcp/mad4b-chatgpt" 2>/tmp/edge-err
+            rc=$?
+            set -e
+            echo "curl_rc=$rc"
+            sed -n '1,20p' /tmp/edge-headers 2>/dev/null || true
+            sed -n '1,20p' /tmp/edge-err 2>/dev/null || true
+            echo
+          done
