@@ -47,12 +47,12 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		// Endpoints remains shallow until the administrator explicitly submits the
 		// nonce-bound deep diagnostic action.
 		$deep_endpoints = false;
-		if ( 'endpoints' === $tab && isset( $_POST['mad4b_connection_action'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified below.
-			$action = sanitize_key( wp_unslash( (string) $_POST['mad4b_connection_action'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			if ( 'deep_endpoints' === $action ) {
-				check_admin_referer( 'mad4b_connection_deep_endpoints', 'mad4b_connection_deep_nonce' );
-				$deep_endpoints = true;
-			}
+		if ( 'endpoints' === $tab ) {
+			$action = isset( $_GET['mad4b_connection_action'] ) ? sanitize_key( wp_unslash( (string) $_GET['mad4b_connection_action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only diagnostic routing.
+			$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['_wpnonce'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- verified below.
+			$deep_endpoints = 'deep_endpoints' === $action
+				&& '' !== $nonce
+				&& false !== wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' );
 		}
 		$status = self::snapshot( $deep_endpoints );
 
@@ -230,11 +230,18 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		echo '<h2>' . esc_html__( 'MAD4B MCP endpoints', 'mad4b-site-control-plane' ) . '</h2>';
 		if ( ! $deep_endpoints ) {
 			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'This page is using the bounded endpoint snapshot. Deep REST route and provider registration materialization runs only when explicitly requested below.', 'mad4b-site-control-plane' ) . '</p></div>';
-			echo '<form method="post" action="' . esc_url( add_query_arg( array( 'page' => self::PAGE_SLUG, 'tab' => 'endpoints' ), admin_url( 'admin.php' ) ) ) . '" style="margin:12px 0 18px">';
-			wp_nonce_field( 'mad4b_connection_deep_endpoints', 'mad4b_connection_deep_nonce' );
-			echo '<input type="hidden" name="mad4b_connection_action" value="deep_endpoints">';
-			submit_button( __( 'Run Deep Endpoint Diagnostic', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
-			echo '</form>';
+			$deep_url = wp_nonce_url(
+				add_query_arg(
+					array(
+						'page' => self::PAGE_SLUG,
+						'tab' => 'endpoints',
+						'mad4b_connection_action' => 'deep_endpoints',
+					),
+					admin_url( 'admin.php' )
+				),
+				'mad4b_connection_deep_endpoints'
+			);
+			echo '<p style="margin:12px 0 18px"><a class="button button-secondary" href="' . esc_url( $deep_url ) . '">' . esc_html__( 'Run Deep Endpoint Diagnostic', 'mad4b-site-control-plane' ) . '</a></p>';
 		} else {
 			echo '<div class="notice notice-success inline"><p>' . esc_html__( 'Deep endpoint diagnostic was explicitly requested for this response.', 'mad4b-site-control-plane' ) . '</p></div>';
 		}
