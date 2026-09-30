@@ -18,6 +18,7 @@ def forbid(source, needle, label):
 
 def main():
     policy = text("includes/class-mad4b-scp-policy.php")
+    gates = text("includes/class-mad4b-scp-governed-runtime-gates.php")
     abilities = text("includes/class-mad4b-scp-abilities.php")
     provider = text("includes/class-mad4b-scp-provider-contracts.php")
     base = text("includes/adapters/class-mad4b-scp-adapter-base.php")
@@ -78,8 +79,15 @@ def main():
     require(abilities, "mad4b_transaction_required", "transaction startup fail-closed")
     require(abilities, "FOR UPDATE", "locked DB mutation preflight")
 
-    # Breakglass requires three gates and bounded SELECT before execution.
-    require(policy, "mad4b_mcp_breakglass_permission', false", "independent breakglass approval gate")
+    # Breakglass positive authority is database-backed and profile-bound.
+    # The legacy filter remains only as a final deny/constraint hook.
+    require(gates, "const OPTION = 'mad4b_scp_governed_runtime_gates_v1';", "database-backed breakglass authority store")
+    require(gates, "'raw_sql_breakglass_enabled'", "database-backed breakglass authority flag")
+    require(policy, "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled()", "database-backed breakglass policy gate")
+    require(policy, "mad4b_mcp_breakglass_permission', true", "breakglass final deny override")
+    forbid(policy, "mad4b_mcp_breakglass_permission', false", "hidden code-level breakglass enable gate")
+    require(abilities, "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_write_enabled()", "database-backed raw SQL write mode")
+    require(abilities, "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_ddl_enabled()", "database-backed raw SQL DDL mode")
     require(abilities, "mad4b_select_limit_required", "raw SELECT execution bound")
     require(abilities, "requested_limit > $max", "raw SELECT max_rows bound")
 
