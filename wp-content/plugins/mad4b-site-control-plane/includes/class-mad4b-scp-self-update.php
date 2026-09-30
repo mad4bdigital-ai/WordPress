@@ -1004,109 +1004,169 @@ final class MAD4B_SCP_Self_Update {
 		if ( empty( $runtime_php_files ) ) {
 			return new WP_Error( 'mad4b_self_update_verified_runtime_index_missing', 'Verified Control Plane archive is missing the bounded PHP runtime index.' );
 		}
-		$before = self::activation_state();
-		$backup = self::backup_current();
-		if ( is_wp_error( $backup ) ) return $backup;
+		if ( ! class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ) {
+			return new WP_Error( 'mad4b_self_update_maintenance_lease_unavailable', 'Control Plane replacement requires the shared runtime maintenance lease.' );
+		}
 
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+		$lease_owner = 'self_update_replacement';
+		$lease_token = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner );
+		if ( is_wp_error( $lease_token ) ) return $lease_token;
 
-		self::$managed_apply = true;
-		$skin = new Automatic_Upgrader_Skin();
-		$upgrader = new Plugin_Upgrader( $skin );
+		$core_maintenance_open = false;
+		$upgrader = null;
 		try {
-			$installed = $upgrader->install( $path, array( 'overwrite_package' => true ) );
-		} catch ( Throwable $throwable ) {
-			$installed = new WP_Error(
-				'mad4b_self_update_install_exception',
-				'Control Plane installer raised an unexpected exception.',
-				array( 'error_class' => get_class( $throwable ) )
-			);
-		} finally {
-			self::$managed_apply = false;
-		}
+			$before = self::activation_state();
+			$backup = self::backup_current();
+			if ( is_wp_error( $backup ) ) return $backup;
 
-		if ( is_wp_error( $installed ) || true !== $installed ) {
-			$error = is_wp_error( $installed ) ? $installed : ( method_exists( $skin, 'get_errors' ) ? $skin->get_errors() : null );
-			$rollback = self::rollback( $backup, $before, $runtime_php_files );
-			self::audit( $channel, $target, false, array(
-				'plan_sha256' => $plan_sha256,
-				'failure_phase' => 'install',
-				'failure_code' => is_wp_error( $error ) ? $error->get_error_code() : 'plugin_upgrader_failed',
-				'rollback_ok' => ! is_wp_error( $rollback ),
-			) );
-			return new WP_Error( 'mad4b_self_update_install_failed', 'Control Plane installation failed and rollback was attempted.', array( 'rollback_ok' => ! is_wp_error( $rollback ) ) );
-		}
+			$lease_refresh = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, $lease_owner );
+			if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
 
-		$runtime_cache = self::invalidate_runtime_caches( $runtime_php_files );
-		$activation = self::restore_activation_state( $before );
-		$readback = is_wp_error( $activation ) ? $activation : self::verify_installed_identity( $target );
-		if ( is_wp_error( $readback ) ) {
-			$rollback = self::rollback( $backup, $before, $runtime_php_files );
-			self::audit( $channel, $target, false, array(
-				'plan_sha256' => $plan_sha256,
-				'failure_phase' => 'readback',
-				'failure_code' => $readback->get_error_code(),
-				'rollback_ok' => ! is_wp_error( $rollback ),
-			) );
-			return new WP_Error( 'mad4b_self_update_readback_failed', 'Control Plane exact build readback failed and rollback was attempted.', array(
-				'cause_code' => $readback->get_error_code(),
-				'rollback_ok' => ! is_wp_error( $rollback ),
-			) );
-		}
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 
-		$convergence = array();
-		if ( class_exists( 'MAD4B_SCP_Runtime_Convergence' ) && method_exists( 'MAD4B_SCP_Runtime_Convergence', 'mark_post_update_pending' ) ) {
-			$convergence = MAD4B_SCP_Runtime_Convergence::mark_post_update_pending( $target, $channel, $plan_sha256 );
-		}
-		$convergence_state = is_array( $convergence ) && isset( $convergence['state'] ) ? sanitize_key( (string) $convergence['state'] ) : '';
-		if ( 'checkpoint_persist_failed' === $convergence_state ) {
-			$rollback = self::rollback( $backup, $before, $runtime_php_files );
-			self::audit( $channel, $target, false, array(
+			self::$managed_apply = true;
+			$skin = new Automatic_Upgrader_Skin();
+			$upgrader = new Plugin_Upgrader( $skin );
+			try {
+				// Plugin_Upgrader::install(overwrite_package=true) clears the destination
+				// but does not enable the active-plugin maintenance hooks used by upgrade().
+				// Hold WordPress' own maintenance window across replacement/readback while
+				// the shared DB lease protects MAD4B request-serving work on both sides.
+				$upgrader->maintenance_mode( true );
+				$core_maintenance_open = true;
+				$installed = $upgrader->install( $path, array( 'overwrite_package' => true ) );
+			} catch ( Throwable $throwable ) {
+				$installed = new WP_Error(
+					'mad4b_self_update_install_exception',
+					'Control Plane installer raised an unexpected exception.',
+					array( 'error_class' => get_class( $throwable ) )
+				);
+			} finally {
+				self::$managed_apply = false;
+			}
+
+			if ( is_wp_error( $installed ) || true !== $installed ) {
+				$error = is_wp_error( $installed ) ? $installed : ( method_exists( $skin, 'get_errors' ) ? $skin->get_errors() : null );
+				$rollback = self::rollback( $backup, $before, $runtime_php_files );
+				self::audit( $channel, $target, false, array(
+					'plan_sha256' => $plan_sha256,
+					'failure_phase' => 'install',
+					'failure_code' => is_wp_error( $error ) ? $error->get_error_code() : 'plugin_upgrader_failed',
+					'core_maintenance_window_used' => true,
+					'rollback_ok' => ! is_wp_error( $rollback ),
+				) );
+				return new WP_Error( 'mad4b_self_update_install_failed', 'Control Plane installation failed and rollback was attempted.', array( 'rollback_ok' => ! is_wp_error( $rollback ) ) );
+			}
+
+			$lease_refresh = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, $lease_owner );
+			if ( is_wp_error( $lease_refresh ) ) {
+				$rollback = self::rollback( $backup, $before, $runtime_php_files );
+				self::audit( $channel, $target, false, array(
+					'plan_sha256' => $plan_sha256,
+					'failure_phase' => 'post_install_maintenance_fence',
+					'failure_code' => $lease_refresh->get_error_code(),
+					'core_maintenance_window_used' => true,
+					'rollback_ok' => ! is_wp_error( $rollback ),
+				) );
+				return new WP_Error( 'mad4b_self_update_maintenance_fence_lost', 'Control Plane replacement lost its runtime maintenance fence after installation; rollback was attempted.', array(
+					'cause_code' => $lease_refresh->get_error_code(),
+					'rollback_ok' => ! is_wp_error( $rollback ),
+				) );
+			}
+
+			$runtime_cache = self::invalidate_runtime_caches( $runtime_php_files );
+			$activation = self::restore_activation_state( $before );
+			$readback = is_wp_error( $activation ) ? $activation : self::verify_installed_identity( $target );
+			if ( is_wp_error( $readback ) ) {
+				$rollback = self::rollback( $backup, $before, $runtime_php_files );
+				self::audit( $channel, $target, false, array(
+					'plan_sha256' => $plan_sha256,
+					'failure_phase' => 'readback',
+					'failure_code' => $readback->get_error_code(),
+					'core_maintenance_window_used' => true,
+					'rollback_ok' => ! is_wp_error( $rollback ),
+				) );
+				return new WP_Error( 'mad4b_self_update_readback_failed', 'Control Plane exact build readback failed and rollback was attempted.', array(
+					'cause_code' => $readback->get_error_code(),
+					'rollback_ok' => ! is_wp_error( $rollback ),
+				) );
+			}
+
+			$convergence = array();
+			if ( class_exists( 'MAD4B_SCP_Runtime_Convergence' ) && method_exists( 'MAD4B_SCP_Runtime_Convergence', 'mark_post_update_pending' ) ) {
+				$convergence = MAD4B_SCP_Runtime_Convergence::mark_post_update_pending( $target, $channel, $plan_sha256 );
+			}
+			$convergence_state = is_array( $convergence ) && isset( $convergence['state'] ) ? sanitize_key( (string) $convergence['state'] ) : '';
+			if ( 'checkpoint_persist_failed' === $convergence_state ) {
+				$rollback = self::rollback( $backup, $before, $runtime_php_files );
+				self::audit( $channel, $target, false, array(
+					'plan_sha256' => $plan_sha256,
+					'failure_phase' => 'post_update_convergence_checkpoint',
+					'failure_code' => 'mad4b_self_update_convergence_checkpoint_persist_failed',
+					'readback' => $readback,
+					'runtime_cache_invalidation' => $runtime_cache,
+					'post_update_convergence' => $convergence,
+					'core_maintenance_window_used' => true,
+					'rollback_ok' => ! is_wp_error( $rollback ),
+				) );
+				return new WP_Error(
+					'mad4b_self_update_convergence_checkpoint_persist_failed',
+					'Control Plane replacement could not establish its durable post-update convergence checkpoint; rollback was attempted.',
+					array(
+						'rollback_ok' => ! is_wp_error( $rollback ),
+						'post_update_convergence' => $convergence,
+					)
+				);
+			}
+
+			self::audit( $channel, $target, true, array(
 				'plan_sha256' => $plan_sha256,
-				'failure_phase' => 'post_update_convergence_checkpoint',
-				'failure_code' => 'mad4b_self_update_convergence_checkpoint_persist_failed',
 				'readback' => $readback,
 				'runtime_cache_invalidation' => $runtime_cache,
 				'post_update_convergence' => $convergence,
-				'rollback_ok' => ! is_wp_error( $rollback ),
+				'core_maintenance_window_used' => true,
+				'pre_replacement_runtime_lease' => true,
 			) );
-			return new WP_Error(
-				'mad4b_self_update_convergence_checkpoint_persist_failed',
-				'Control Plane replacement could not establish its durable post-update convergence checkpoint; rollback was attempted.',
-				array(
-					'rollback_ok' => ! is_wp_error( $rollback ),
-					'post_update_convergence' => $convergence,
-				)
-			);
-		}
-		self::audit( $channel, $target, true, array( 'plan_sha256' => $plan_sha256, 'readback' => $readback, 'runtime_cache_invalidation' => $runtime_cache, 'post_update_convergence' => $convergence ) );
-		delete_site_transient( 'update_plugins' );
-		// Preserve the already verified release manifest across the immediate
-		// post-update redirect. Deleting it here forced plugins.php to block on
-		// a new remote GitHub request and could trip upstream gateway timeouts.
+			delete_site_transient( 'update_plugins' );
+			// Preserve the already verified release manifest across the immediate
+			// post-update redirect. Deleting it here forced plugins.php to block on
+			// a new remote GitHub request and could trip upstream gateway timeouts.
 
-		return array(
-			'contract' => 'governed_native_release_pull' === (string) $channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT,
-			'channel' => $channel,
-			'plugin' => plugin_basename( MAD4B_SCP_FILE ),
-			'before' => $before,
-			'after' => $readback,
-			'archive_sha256' => $target['archive_sha256'],
-			'source_commit_sha' => $target['source_commit_sha'],
-			'build_fingerprint' => $target['build_fingerprint'],
-			'package_manifest_digest' => $target['package_manifest_digest'],
-			'plan_sha256' => $plan_sha256,
-			'readback_verified' => true,
-			'rollback_required' => false,
-			'runtime_cache_invalidation' => $runtime_cache,
-			'runtime_reboot_required' => true,
-			'post_update_convergence' => $convergence,
-			'production_mutation_performed' => false,
-			'authority_created' => false,
-			'authorizing' => false,
-		);
+			return array(
+				'contract' => 'governed_native_release_pull' === (string) $channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT,
+				'channel' => $channel,
+				'plugin' => plugin_basename( MAD4B_SCP_FILE ),
+				'before' => $before,
+				'after' => $readback,
+				'archive_sha256' => $target['archive_sha256'],
+				'source_commit_sha' => $target['source_commit_sha'],
+				'build_fingerprint' => $target['build_fingerprint'],
+				'package_manifest_digest' => $target['package_manifest_digest'],
+				'plan_sha256' => $plan_sha256,
+				'readback_verified' => true,
+				'rollback_required' => false,
+				'runtime_cache_invalidation' => $runtime_cache,
+				'core_maintenance_window_used' => true,
+				'pre_replacement_runtime_lease' => true,
+				'runtime_reboot_required' => true,
+				'post_update_convergence' => $convergence,
+				'production_mutation_performed' => false,
+				'authority_created' => false,
+				'authorizing' => false,
+			);
+		} finally {
+			if ( $core_maintenance_open && is_object( $upgrader ) && method_exists( $upgrader, 'maintenance_mode' ) ) {
+				try {
+					$upgrader->maintenance_mode( false );
+				} catch ( Throwable $maintenance_error ) {
+					// WordPress ignores stale .maintenance after its bounded core window;
+					// never mask the update result with a cleanup-only exception.
+				}
+			}
+			MAD4B_SCP_Runtime_Maintenance_Lease::release( $lease_token, $lease_owner );
+		}
 	}
 
 	private static function download_governed_release_to_protected_storage( array $manifest ) {
