@@ -326,6 +326,7 @@ for marker in (
     "MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, $lease_owner )",
     "$upgrader->maintenance_mode( true );",
     "$upgrader->maintenance_mode( false );",
+    "$core_maintenance_open = true;",
     "MAD4B_SCP_Runtime_Maintenance_Lease::release( $lease_token, $lease_owner );",
     "'core_maintenance_window_used' => true",
     "'pre_replacement_runtime_lease' => true",
@@ -335,6 +336,7 @@ for marker in (
 if not (
     managed_apply.index("MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner )")
     < managed_apply.index("self::backup_current()")
+    < managed_apply.index("$core_maintenance_open = true;")
     < managed_apply.index("$upgrader->maintenance_mode( true );")
     < managed_apply.index("$upgrader->install(")
     < managed_apply.index("MAD4B_SCP_Runtime_Convergence::mark_post_update_pending")
