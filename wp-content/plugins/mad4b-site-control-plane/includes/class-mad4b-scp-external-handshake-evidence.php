@@ -146,7 +146,7 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			'contract' => self::CONTRACT,
 			'verified' => false,
 			'status' => 'unverified',
-			'environment' => function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown',
+			'environment' => class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ),
 			'server_id' => self::SERVER_ID,
 			'client_id' => self::CHATGPT_CLIENT_ID,
 			'resource' => class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? esc_url_raw( MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() ) : '',
@@ -243,7 +243,7 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$base['age_seconds'] = PHP_INT_MAX === $age ? 0 : $age;
 		$base['build_fingerprint_match'] = (bool) $build_match;
 
-		$current_environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$current_environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : ( class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) ) );
 		$current_resource = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() : '';
 		if ( ! self::environment_allowed( $current_environment ) || '' === $environment || ! hash_equals( $current_environment, $environment ) ) { $base['status'] = 'environment_mismatch'; return $base; }
 		if ( self::SERVER_ID !== $server_id || ! hash_equals( self::CHATGPT_CLIENT_ID, $client_id ) ) { $base['status'] = 'client_or_server_mismatch'; return $base; }
@@ -292,7 +292,7 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( '/mcp/' . self::SERVER_ID !== $route ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return false;
 		if ( ! function_exists( 'wp_is_using_https' ) || ! wp_is_using_https() ) return false;
-		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : ( class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) ) );
 		return self::environment_allowed( $environment );
 	}
 
@@ -487,7 +487,7 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( ! hash_equals( self::CHATGPT_CLIENT_ID, $client_id ) ) return null;
 
 		return array(
-			'environment' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ),
+			'environment' => class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : ( class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) ) ),
 			'resource' => $resource,
 			'issuer' => $issuer,
 			'client_id' => $client_id,
