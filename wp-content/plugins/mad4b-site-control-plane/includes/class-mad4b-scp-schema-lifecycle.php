@@ -76,6 +76,12 @@ final class MAD4B_SCP_Schema_Lifecycle {
 	}
 
 	public static function reconcile_scheduled() {
+		$grace = self::restart_grace();
+		if ( ! empty( $grace['active'] ) ) {
+			$not_before = isset( $grace['resume_not_before'] ) ? absint( $grace['resume_not_before'] ) : 0;
+			if ( $not_before > time() && false === wp_next_scheduled( self::CRON_HOOK ) ) wp_schedule_single_event( $not_before, self::CRON_HOOK );
+			return;
+		}
 		if ( ! self::needs_reconciliation() || ! self::retry_due() ) return;
 		$lock = self::acquire_lock();
 		if ( '' === $lock ) return;
@@ -110,20 +116,41 @@ final class MAD4B_SCP_Schema_Lifecycle {
 		return 0 === $next || time() >= $next;
 	}
 
+	private static function legacy_lock_options() {
+		return array(
+			'mad4b_scp_runtime_convergence_lock_v1',
+			'mad4b_scp_schema_lifecycle_lock_v1',
+		);
+	}
+
 	private static function acquire_lock() {
 		$now = time();
+		foreach ( self::legacy_lock_options() as $legacy_option ) {
+			$legacy = get_option( $legacy_option, array() );
+			if ( is_array( $legacy ) && ! empty( $legacy['token'] ) && isset( $legacy['expires_at'] ) && absint( $legacy['expires_at'] ) > $now ) return '';
+			if ( is_array( $legacy ) && ! empty( $legacy ) ) delete_option( $legacy_option );
+		}
 		$current = get_option( self::LOCK_OPTION, array() );
 		if ( is_array( $current ) && ! empty( $current['expires_at'] ) && absint( $current['expires_at'] ) > $now ) return '';
 		if ( is_array( $current ) && ! empty( $current ) ) delete_option( self::LOCK_OPTION );
 		$token = hash( 'sha256', self::package_identity() . "\0" . microtime( true ) . "\0" . wp_rand() );
 		$record = array( 'token' => $token, 'owner' => 'schema_lifecycle', 'expires_at' => $now + 120 );
 		if ( ! add_option( self::LOCK_OPTION, $record, '', false ) ) return '';
+		foreach ( self::legacy_lock_options() as $legacy_option ) {
+			if ( add_option( $legacy_option, $record, '', false ) ) continue;
+			self::release_lock( $token );
+			return '';
+		}
 		return $token;
 	}
 
 	private static function release_lock( $token ) {
 		$current = get_option( self::LOCK_OPTION, array() );
 		if ( is_array( $current ) && isset( $current['token'] ) && is_string( $current['token'] ) && hash_equals( $current['token'], (string) $token ) ) delete_option( self::LOCK_OPTION );
+		foreach ( self::legacy_lock_options() as $legacy_option ) {
+			$legacy = get_option( $legacy_option, array() );
+			if ( is_array( $legacy ) && isset( $legacy['token'] ) && is_string( $legacy['token'] ) && hash_equals( $legacy['token'], (string) $token ) ) delete_option( $legacy_option );
+		}
 	}
 
 	public static function after_upgrade( $upgrader, $hook_extra ) {
