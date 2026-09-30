@@ -38,6 +38,12 @@ jobs:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
 
+      - name: Verify exact-head action-job event scoping
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/test_capture_exact_head_action_jobs.py
+
       - name: Verify exact-head owner attestation
         if: github.event_name == 'pull_request'
         env:
