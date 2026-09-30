@@ -724,11 +724,10 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$page = sanitize_key( (string) $page );
 		$screen = sanitize_key( (string) $screen );
 		$action = sanitize_key( (string) $action );
-		// Connection and ChatGPT admin pages are request-serving status surfaces.
-		// Never let opening them become the event that detects drift, mutates a
-		// convergence checkpoint, or schedules post-update maintenance. CLI remains
-		// an explicit lifecycle owner and is handled before this browser-admin router.
-		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return false;
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) return false;
+		// Passive GET/HEAD Control Plane screens were rejected above. POST/admin-post
+		// lifecycle actions and explicit Connection > Endpoints diagnostics continue.
 		if ( 0 === strpos( $page, 'mad4b-control-plane' ) || 'mad4b-approval-decisions' === $page ) return true;
 		if ( in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return true;
 		return in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
