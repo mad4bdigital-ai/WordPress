@@ -15,10 +15,11 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 	public static function mutation_guard() {
 		$status = self::status();
 		if ( empty( $status['inventory_ready'] ) ) return new WP_Error( 'mcp_peer_inventory_unavailable', 'MCP peer inventory is unavailable; governed mutation fails closed.' );
-		if ( ! empty( $status['write_side_channel_detected'] ) ) {
+		if ( ! empty( $status['write_side_channel_detected'] ) || ! empty( $status['foreign_transport_unreviewed'] ) ) {
+			$code = ! empty( $status['write_side_channel_detected'] ) ? 'mcp_write_side_channel_detected' : 'mcp_foreign_transport_unreviewed';
 			return new WP_Error(
-				'mcp_write_side_channel_detected',
-				'An MCP write-capable or unreviewed MCP peer exists outside the MAD4B governed servers.',
+				$code,
+				! empty( $status['write_side_channel_detected'] ) ? 'An MCP write-capable peer exists outside the MAD4B governed servers.' : 'An unreviewed MCP transport exists outside the MAD4B governed catalog.',
 				array(
 					'external_peer_count' => isset( $status['external_peer_count'] ) ? (int) $status['external_peer_count'] : 0,
 					'risk_count' => isset( $status['risk_count'] ) ? (int) $status['risk_count'] : 0,
@@ -46,6 +47,7 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		$status['foreign_transport_inventory'] = $foreign;
 		$status['foreign_transport_inventory_ready'] = ! empty( $foreign['inventory_ready'] );
 		$status['foreign_mcp_detected'] = ! empty( $foreign['foreign_mcp_detected'] );
+		$status['foreign_transport_unreviewed'] = ! empty( $foreign['foreign_mcp_detected'] );
 		$status['foreign_route_count'] = isset( $foreign['foreign_route_count'] ) ? (int) $foreign['foreign_route_count'] : 0;
 		$status['foreign_plugin_count'] = isset( $foreign['foreign_plugin_count'] ) ? (int) $foreign['foreign_plugin_count'] : 0;
 		if ( empty( $foreign['inventory_ready'] ) ) {
@@ -53,7 +55,6 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 			$status['blockers'][] = 'mcp_foreign_transport_inventory_unavailable';
 		}
 		if ( ! empty( $foreign['foreign_mcp_detected'] ) ) {
-			$status['write_side_channel_detected'] = true;
 			$status['risk_count'] += isset( $foreign['risk_count'] ) ? (int) $foreign['risk_count'] : 1;
 			$status['blockers'][] = 'mcp_foreign_transport_unreviewed';
 		}
