@@ -60,7 +60,8 @@ final class MAD4B_SCP_Dependency_Manager {
 			: array();
 		$runtime_provenance = self::mcp_runtime_provenance();
 		$runtime_from_official_plugin = ! empty( $runtime_provenance['runtime_from_official_plugin'] );
-		$runtime_certified = ! empty( $runtime_contract['runtime_contract_ok'] ) && $runtime_from_official_plugin;
+		$runtime_contract_ok = ! empty( $runtime_contract['runtime_contract_ok'] );
+		$runtime_certified = $runtime_contract_ok && $runtime_from_official_plugin;
 		$version_match = '' !== $expected_version && '' !== $installed_version && hash_equals( $expected_version, $installed_version );
 		$bundle = self::bundled_archive_status( $expected_sha );
 
@@ -89,7 +90,8 @@ final class MAD4B_SCP_Dependency_Manager {
 		if ( ! $installed ) $hard_blockers[] = 'mcp_adapter_missing';
 		elseif ( ! $version_match ) $hard_blockers[] = 'mcp_adapter_version_drift';
 		elseif ( ! $runtime_loaded ) $hard_blockers[] = 'mcp_adapter_runtime_unavailable';
-		elseif ( ! $runtime_certified ) $hard_blockers[] = 'mcp_adapter_runtime_not_certified';
+		elseif ( ! $runtime_from_official_plugin ) $hard_blockers[] = 'mcp_adapter_runtime_provenance_mismatch';
+		elseif ( ! $runtime_contract_ok ) $hard_blockers[] = 'mcp_adapter_runtime_not_certified';
 
 		$oauth_enabled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$key_policy = class_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy' ) ? MAD4B_SCP_Local_OAuth_Key_Path_Policy::status() : array();
@@ -127,6 +129,7 @@ final class MAD4B_SCP_Dependency_Manager {
 				'version_match' => $version_match,
 				'active' => (bool) $active,
 				'runtime_loaded' => $runtime_loaded,
+				'runtime_contract_ok' => $runtime_contract_ok,
 				'runtime_certified' => $runtime_certified,
 				'runtime_from_official_plugin' => $runtime_from_official_plugin,
 				'runtime_source' => isset( $runtime_provenance['runtime_source'] ) ? (string) $runtime_provenance['runtime_source'] : '',
