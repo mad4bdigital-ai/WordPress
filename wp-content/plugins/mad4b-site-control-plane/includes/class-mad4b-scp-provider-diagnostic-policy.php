@@ -57,13 +57,17 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
 		if ( function_exists( 'current_user_can' ) && ! current_user_can( 'manage_options' ) ) return false;
 		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( trim( (string) $_SERVER['REQUEST_METHOD'] ) ) : 'GET'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- method classification only.
-		if ( 'POST' !== $method ) return false;
+		if ( ! in_array( $method, array( 'GET', 'HEAD' ), true ) ) return false;
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
-		$action = isset( $_POST['mad4b_connection_action'] ) ? sanitize_key( wp_unslash( (string) $_POST['mad4b_connection_action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce is verified by the owning admin surface before output.
+		$action = isset( $_GET['mad4b_connection_action'] ) ? sanitize_key( wp_unslash( (string) $_GET['mad4b_connection_action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only diagnostic routing.
+		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['_wpnonce'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- verified below.
 		return 'mad4b-control-plane-connection' === $page
 			&& 'endpoints' === $tab
-			&& 'deep_endpoints' === $action;
+			&& 'deep_endpoints' === $action
+			&& '' !== $nonce
+			&& function_exists( 'wp_verify_nonce' )
+			&& false !== wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' );
 	}
 
 	/**
