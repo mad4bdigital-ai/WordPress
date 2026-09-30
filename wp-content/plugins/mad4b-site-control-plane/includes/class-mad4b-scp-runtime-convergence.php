@@ -496,10 +496,12 @@ final class MAD4B_SCP_Runtime_Convergence {
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 			$stored = get_option( self::CHECKPOINT_OPTION, array() );
 			if ( ! self::post_update_checkpoint_matches( $checkpoint, $stored ) ) {
+				$checkpoint_restore_ok = self::restore_checkpoint_snapshot( $previous_checkpoint );
 				return array(
 					'scheduled' => false,
 					'state' => 'checkpoint_persist_failed',
 					'persist_phase' => 'pending_manual_resume',
+					'checkpoint_restore_ok' => $checkpoint_restore_ok,
 					'resume_blocker' => $checkpoint['resume_blocker'],
 					'target_identity' => $checkpoint['target_identity'],
 					'production_mutation' => false,
@@ -512,6 +514,15 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'target_identity' => $checkpoint['target_identity'],
 			'production_mutation' => false,
 		);
+	}
+
+	private static function restore_checkpoint_snapshot( $snapshot ) {
+		if ( null === $snapshot ) {
+			delete_option( self::CHECKPOINT_OPTION );
+			return null === get_option( self::CHECKPOINT_OPTION, null );
+		}
+		update_option( self::CHECKPOINT_OPTION, $snapshot, false );
+		return serialize( $snapshot ) === serialize( get_option( self::CHECKPOINT_OPTION, null ) );
 	}
 
 	private static function post_update_checkpoint_matches( array $expected, $stored ) {
@@ -540,6 +551,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 	public static function mark_post_update_pending( array $target, $channel = '', $plan_sha256 = '' ) {
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		if ( 'staging' !== $environment ) return array( 'scheduled' => false, 'state' => 'ignored_non_staging' );
+		$previous_checkpoint = get_option( self::CHECKPOINT_OPTION, null );
 		$checkpoint = array(
 			'contract' => self::CONTRACT,
 			'state' => 'pending_restart',
@@ -556,10 +568,12 @@ final class MAD4B_SCP_Runtime_Convergence {
 		update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
 		$stored = get_option( self::CHECKPOINT_OPTION, array() );
 		if ( ! self::post_update_checkpoint_matches( $checkpoint, $stored ) ) {
+			$checkpoint_restore_ok = self::restore_checkpoint_snapshot( $previous_checkpoint );
 			return array(
 				'scheduled' => false,
 				'state' => 'checkpoint_persist_failed',
 				'persist_phase' => 'pending_restart',
+				'checkpoint_restore_ok' => $checkpoint_restore_ok,
 				'target_identity' => $checkpoint['target_identity'],
 				'production_mutation' => false,
 			);
