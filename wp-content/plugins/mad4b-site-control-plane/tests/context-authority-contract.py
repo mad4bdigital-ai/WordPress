@@ -580,7 +580,7 @@ require(admin, "Context Authority never reconciles grants automatically", "no au
 require(admin, "runtime_authority_not_reconciled", "runtime reconciliation blocker UX")
 
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
-require(oauth_runtime, "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v12: PASS", "Managed, Dedicated, dynamic full-owner refresh, Workspace grants, site-HMAC, and persistent-option-cache OAuth lifecycle runtime proof")
+require(oauth_runtime, "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v13: PASS", "Managed, Dedicated, dynamic full-owner refresh, Workspace grants, site-HMAC, and persistent-option-cache OAuth lifecycle runtime proof")
 require(oauth_runtime, "mad4b_context_option_cache", "stale persistent option-cache runtime fixture")
 require(oauth_runtime, "notoptions", "stale negative option-cache regression")
 require(oauth_runtime, "mad4b_assert_managed_site_signature", "Managed broker site-HMAC runtime verification")

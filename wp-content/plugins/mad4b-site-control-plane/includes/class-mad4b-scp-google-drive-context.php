@@ -70,6 +70,22 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const MAX_REVERSIBLE_TEXT_BYTES = 196608;
 	const MAX_PARENT_DEPTH = 16;
 
+	private static $scan_deadline = 0.0;
+
+	private static function provider_timeout( $default_timeout ) {
+		$default_timeout = max( 0.25, (float) $default_timeout );
+		if ( self::$scan_deadline <= 0 ) return $default_timeout;
+		$remaining = self::$scan_deadline - microtime( true );
+		if ( $remaining <= 0.25 ) {
+			return new WP_Error(
+				'mad4b_google_drive_scan_time_budget_exhausted',
+				'Google Drive source scan exhausted its request-time budget before the next provider call.',
+				array( 'network_request_suppressed' => true )
+			);
+		}
+		return max( 0.25, min( $default_timeout, $remaining ) );
+	}
+
 	public static function redirect_uri() {
 		return admin_url( 'admin-post.php?action=mad4b_context_google_callback' );
 	}
@@ -1044,8 +1060,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 	public static function scan_folder( $folder_id, $recursive = true ) {
 		$scan_clock_started = microtime( true );
 		$deadline = $scan_clock_started + self::MAX_SCAN_WALL_SECONDS;
+		$previous_scan_deadline = self::$scan_deadline;
+		self::$scan_deadline = $deadline;
 		$folder = self::get_folder( $folder_id );
-		if ( is_wp_error( $folder ) ) return $folder;
+		if ( is_wp_error( $folder ) ) {
+			self::$scan_deadline = $previous_scan_deadline;
+			return $folder;
+		}
 		$started_at = gmdate( 'c' );
 		$scan_generation = hash( 'sha256', (string) $folder['id'] . '|' . $started_at . '|' . ( function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : uniqid( 'mad4b-', true ) ) );
 		$queue = array( array( 'id' => (string) $folder['id'], 'path' => (string) $folder['name'], 'depth' => 0 ) );
@@ -1087,7 +1108,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$visited[ $id ] = true;
 
 			$children_result = self::list_children( $id, false, true );
-			if ( is_wp_error( $children_result ) ) return $children_result;
+			if ( is_wp_error( $children_result ) ) {
+				self::$scan_deadline = $previous_scan_deadline;
+				return $children_result;
+			}
 			if ( empty( $children_result['complete'] ) ) {
 				$complete = false;
 				foreach ( isset( $children_result['truncation_reasons'] ) && is_array( $children_result['truncation_reasons'] ) ? $children_result['truncation_reasons'] : array( 'child_listing_incomplete' ) as $reason ) {
@@ -1196,7 +1220,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$truncation_reasons[] = 'scan_queue_incomplete';
 		}
 		$truncation_reasons = array_values( array_unique( array_filter( array_map( 'sanitize_key', $truncation_reasons ) ) ) );
-		return array(
+		$result = array(
 			'contract' => 'mad4b.google-drive-folder-scan.v2',
 			'scan_generation' => $scan_generation,
 			'started_at' => $started_at,
@@ -1214,6 +1238,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'truncation_reasons' => $truncation_reasons,
 			'assets' => $assets,
 		);
+		self::$scan_deadline = $previous_scan_deadline;
+		return $result;
 	}
 
 	private static function brand_materialization_properties( array $identity ) {
@@ -2174,9 +2200,11 @@ final class MAD4B_SCP_Google_Drive_Context {
 	private static function authorized_json_request( $method, $url, $body, $content_type, $error_code ) {
 		$token = self::access_token();
 		if ( is_wp_error( $token ) ) return $token;
+		$timeout = self::provider_timeout( 25 );
+		if ( is_wp_error( $timeout ) ) return $timeout;
 		$args = array(
 			'method' => strtoupper( (string) $method ),
-			'timeout' => 25,
+			'timeout' => $timeout,
 			'redirection' => 0,
 			'headers' => array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json' ),
 		);
@@ -2261,10 +2289,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 	private static function fetch_bounded_bytes( $url, $max_bytes, $error_code ) {
 		$token = self::access_token();
 		if ( is_wp_error( $token ) ) return $token;
+		$timeout = self::provider_timeout( 30 );
+		if ( is_wp_error( $timeout ) ) return $timeout;
 		$response = wp_remote_get(
 			$url,
 			array(
-				'timeout' => 30,
+				'timeout' => $timeout,
 				'redirection' => 2,
 				'headers' => array( 'Authorization' => 'Bearer ' . $token ),
 				'limit_response_size' => (int) $max_bytes + 1,
@@ -2296,13 +2326,15 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive file ID is invalid.' );
 		$token = self::access_token();
 		if ( is_wp_error( $token ) ) return $token;
+		$timeout = self::provider_timeout( 20 );
+		if ( is_wp_error( $timeout ) ) return $timeout;
 		$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '/download';
 		if ( '' !== (string) $mime_type ) $url .= '?mimeType=' . rawurlencode( (string) $mime_type );
 		$response = wp_remote_request(
 			$url,
 			array(
 				'method' => 'POST',
-				'timeout' => 20,
+				'timeout' => $timeout,
 				'redirection' => 0,
 				'headers' => array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Length' => '0' ),
 				'body' => '',
@@ -2315,10 +2347,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 		for ( $attempt = 0; $attempt < 4 && empty( $operation['done'] ); ++$attempt ) {
 			$name = isset( $operation['name'] ) ? trim( (string) $operation['name'] ) : '';
 			if ( '' === $name || strlen( $name ) > 512 || ! preg_match( '/^[A-Za-z0-9_\.\-\/]+$/', $name ) ) break;
+			$poll_timeout = self::provider_timeout( 15 );
+			if ( is_wp_error( $poll_timeout ) ) return $poll_timeout;
 			if ( function_exists( 'usleep' ) ) usleep( 200000 * ( $attempt + 1 ) );
+			$poll_timeout = self::provider_timeout( $poll_timeout );
+			if ( is_wp_error( $poll_timeout ) ) return $poll_timeout;
 			$poll = wp_remote_get(
 				'https://www.googleapis.com/drive/v3/operations/' . implode( '/', array_map( 'rawurlencode', explode( '/', $name ) ) ),
-				array( 'timeout' => 15, 'redirection' => 0, 'headers' => array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json' ) )
+				array( 'timeout' => $poll_timeout, 'redirection' => 0, 'headers' => array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json' ) )
 			);
 			if ( is_wp_error( $poll ) ) return $poll;
 			$poll_status = (int) wp_remote_retrieve_response_code( $poll );
@@ -2755,10 +2791,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 			),
 			'generationConfig' => array( 'temperature' => 0, 'maxOutputTokens' => 16384 ),
 		);
+		$timeout = self::provider_timeout( 90 );
+		if ( is_wp_error( $timeout ) ) return $timeout;
 		$response = wp_remote_post(
 			'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode( self::gemini_model() ) . ':generateContent',
 			array(
-				'timeout' => 90,
+				'timeout' => $timeout,
 				'redirection' => 0,
 				'headers' => array(
 					'x-goog-api-key' => trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_API_KEY' ) ),
@@ -2799,10 +2837,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'content_base64' => base64_encode( (string) $binary ),
 			'max_text_bytes' => self::MAX_TEXT_BYTES,
 		);
+		$timeout = self::provider_timeout( 60 );
+		if ( is_wp_error( $timeout ) ) return $timeout;
 		$response = wp_remote_post(
 			$url,
 			array(
-				'timeout' => 60,
+				'timeout' => $timeout,
 				'redirection' => 0,
 				'headers' => array(
 					'Authorization' => 'Bearer ' . $token,
@@ -2826,10 +2866,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 	private static function api_get( $url ) {
 		$token = self::access_token();
 		if ( is_wp_error( $token ) ) return $token;
+		$timeout = self::provider_timeout( 20 );
+		if ( is_wp_error( $timeout ) ) return $timeout;
 		$response = wp_remote_get(
 			esc_url_raw( $url ),
 			array(
-				'timeout' => 20,
+				'timeout' => $timeout,
 				'redirection' => 2,
 				'headers' => array(
 					'Authorization' => 'Bearer ' . $token,
@@ -2858,10 +2900,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 			self::record_refresh_failure( $record, $credentials );
 			return $credentials;
 		}
+		$timeout = self::provider_timeout( 20 );
+		if ( is_wp_error( $timeout ) ) return $timeout;
 		$response = wp_remote_post(
 			self::TOKEN_ENDPOINT,
 			array(
-				'timeout' => 20,
+				'timeout' => $timeout,
 				'redirection' => 0,
 				'body' => array(
 					'client_id' => $credentials['client_id'],
@@ -3230,10 +3274,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $body ) ) return $body;
 		$auth_headers = self::managed_site_request_headers( $operation, $payload );
 		if ( is_wp_error( $auth_headers ) ) return $auth_headers;
+		$timeout = self::provider_timeout( 20 );
+		if ( is_wp_error( $timeout ) ) return $timeout;
 		$response = wp_remote_post(
 			$endpoint,
 			array(
-				'timeout' => 20,
+				'timeout' => $timeout,
 				'redirection' => 0,
 				'headers' => array_merge( array( 'Content-Type' => 'application/json', 'Accept' => 'application/json' ), $auth_headers ),
 				'body' => $body,
