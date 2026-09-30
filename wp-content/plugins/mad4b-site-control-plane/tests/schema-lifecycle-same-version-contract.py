@@ -7,7 +7,7 @@ for marker in ('package_identity()', 'MAD4B_SCP_Schema::is_ready()', 'wp_schedul
 assert "MAD4B_SCP_Schema_Lifecycle::boot();" in main
 plugin=(ROOT/'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 assert "MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'activation' )" in plugin
-assert '0.4.0-rc.84' in main
+assert '0.4.0-rc.85' in main
 assert 'hash_file' not in life
 assert 'lstat(' not in life
 assert 'hash_file' not in life
