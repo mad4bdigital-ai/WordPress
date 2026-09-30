@@ -313,6 +313,24 @@ for marker in ("backup_current()", "verify_installed_identity", "rollback(", "re
     if marker not in managed_apply:
         raise SystemExit(f"managed upload rollback/readback invariant missing: {marker}")
 
+# A verified replacement is not successful until the durable post-update
+# convergence checkpoint is established. Failure must rollback before any success audit.
+managed_apply = self_update.split("private static function apply_verified_archive(", 1)[1].split("private static function download_governed_release_to_protected_storage", 1)[0]
+mark_index = managed_apply.find("MAD4B_SCP_Runtime_Convergence::mark_post_update_pending")
+checkpoint_fail_index = managed_apply.find("'checkpoint_persist_failed' === $convergence_state")
+rollback_index = managed_apply.find("$rollback = self::rollback( $backup, $before );", checkpoint_fail_index)
+success_audit_index = managed_apply.find("self::audit( $channel, $target, true", checkpoint_fail_index)
+if min(mark_index, checkpoint_fail_index, rollback_index, success_audit_index) < 0 or not (mark_index < checkpoint_fail_index <= rollback_index < success_audit_index):
+    raise SystemExit("post-update convergence checkpoint failure must rollback before success audit")
+for marker in (
+    "'failure_phase' => 'post_update_convergence_checkpoint'",
+    "'failure_code' => 'mad4b_self_update_convergence_checkpoint_persist_failed'",
+    "mad4b_self_update_convergence_checkpoint_persist_failed",
+    "'rollback_ok' => ! is_wp_error( $rollback )",
+):
+    if marker not in managed_apply:
+        raise SystemExit(f"post-update convergence rollback invariant missing: {marker}")
+
 # Same-request replacement must verify the new on-disk plugin header and canonical
 # control_plane_version, never the stale MAD4B_SCP_VERSION loaded before replacement.
 if "get_file_data( $path, array( 'Version' => 'Version' ), 'plugin' )" not in self_update:
