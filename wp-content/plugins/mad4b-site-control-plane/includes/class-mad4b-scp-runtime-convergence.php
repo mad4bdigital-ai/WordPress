@@ -53,22 +53,22 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$not_before = self::maintenance_not_before();
 		$source = is_array( $checkpoint ) && isset( $checkpoint['source'] ) ? sanitize_key( (string) $checkpoint['source'] ) : '';
 		$state = is_array( $checkpoint ) && isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
-		$pending_states = array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart', 'pending_manual_resume' );
+		$barrier_states = array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart', 'pending_manual_resume', 'blocked' );
 		$target = is_array( $checkpoint ) && isset( $checkpoint['target_identity'] ) && is_array( $checkpoint['target_identity'] )
 			? self::bounded_identity( $checkpoint['target_identity'] )
 			: array();
 		$current = ! empty( $target ) ? self::current_identity() : array();
 		$identity_match = ! empty( $target ) && self::identity_matches( $target, $current );
-		$convergence_pending = 'self_update' === $source && in_array( $state, $pending_states, true );
+		$convergence_pending = 'self_update' === $source && in_array( $state, $barrier_states, true );
 		$quiet_period_active = $convergence_pending && $not_before > $now;
-		$manual_resume_required = $convergence_pending && 'pending_manual_resume' === $state;
+		$operator_action_required = $convergence_pending && in_array( $state, array( 'pending_manual_resume', 'blocked' ), true );
 
 		// The quiet period is only the minimum delay. The actual protocol barrier is
-		// identity/convergence bound and remains active until the self-update
-		// checkpoint leaves every pending state. This prevents MCP reconnect from
-		// racing schema/provider convergence at T+21 merely because a timer expired.
+		// identity/convergence bound and remains active until self-update safe
+		// convergence leaves every pending/error state. A terminal safe-phase error
+		// must remain fail-closed until an operator repairs/resumes convergence.
 		$active = $convergence_pending;
-		$retryable = $active && ! $manual_resume_required;
+		$retryable = $active && ! $operator_action_required;
 		$retry_after = $retryable ? ( $quiet_period_active ? max( 1, $not_before - $now ) : 5 ) : 0;
 		return array(
 			'contract' => 'mad4b.runtime-restart-grace.v2',
@@ -80,7 +80,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'current_identity' => self::bounded_identity( $current ),
 			'retryable' => $retryable,
 			'retry_after_seconds' => $retry_after,
-			'client_action' => $manual_resume_required ? 'operator_resume_runtime_convergence' : 'retry_after_runtime_convergence',
+			'client_action' => 'blocked' === $state
+				? 'operator_repair_runtime_convergence'
+				: ( $operator_action_required ? 'operator_resume_runtime_convergence' : 'retry_after_runtime_convergence' ),
 			'resume_not_before' => $not_before,
 			'target_identity' => $target,
 			'background_maintenance_deferred' => $active,
