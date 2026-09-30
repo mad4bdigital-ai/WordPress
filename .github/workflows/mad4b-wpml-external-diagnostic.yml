@@ -647,17 +647,32 @@ jobs:
               if total is None or float(total) > 8.0:
                   failures.append(f'{name}:total_seconds={total}')
 
-          runtime_build_path = Path('/tmp/mad4b-wpml-external/mcp-hotpath/runtime-build.body')
-          runtime_build = runtime_build_path.read_text(encoding='utf-8', errors='replace') if runtime_build_path.is_file() else ''
-          runtime_fields = {}
-          for line in runtime_build.splitlines():
-              if '=' in line:
-                  key, value = line.split('=', 1)
-                  runtime_fields[key.strip()] = value.strip()
-          if runtime_fields.get('release') != '0.4.0-rc.86':
-              failures.append('runtime-build:release=' + repr(runtime_fields.get('release')))
-          if runtime_fields.get('contract') != 'mad4b.runtime-build-evidence.v1':
-              failures.append('runtime-build:contract=' + repr(runtime_fields.get('contract')))
+          def parse_build(text):
+              fields = {}
+              for line in text.splitlines():
+                  if '=' in line:
+                      key, value = line.split('=', 1)
+                      fields[key.strip()] = value.strip()
+              return fields
+
+          live_build_path = Path('/tmp/mad4b-wpml-external/mcp-hotpath/runtime-build.body')
+          live_build_text = live_build_path.read_text(encoding='utf-8', errors='replace') if live_build_path.is_file() else ''
+          live_build = parse_build(live_build_text)
+
+          expected_build_path = Path('wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt')
+          expected_build_text = expected_build_path.read_text(encoding='utf-8')
+          expected_build = parse_build(expected_build_text)
+
+          if live_build.get('contract') != expected_build.get('contract'):
+              failures.append(
+                  'runtime-build:contract_mismatch:live=' + repr(live_build.get('contract'))
+                  + ':expected=' + repr(expected_build.get('contract'))
+              )
+          if live_build.get('release') != expected_build.get('release'):
+              failures.append(
+                  'runtime-build:deployment_drift:live=' + repr(live_build.get('release'))
+                  + ':expected=' + repr(expected_build.get('release'))
+              )
 
           resource = (targets.get('oauth-protected-resource') or {}).get('json_payload')
           if not isinstance(resource, dict):
