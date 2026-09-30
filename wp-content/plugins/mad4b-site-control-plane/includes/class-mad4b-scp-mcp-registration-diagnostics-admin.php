@@ -22,8 +22,8 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		// This notice is observational only. Deep REST materialization is owned by
 		// the explicit nonce-bound Connection > Endpoints POST action and runs at
 		// admin_init before this notice. Never prime REST from admin_notices.
-		$deep_requested = isset( $_POST['mad4b_connection_action'] )
-			&& 'deep_endpoints' === sanitize_key( wp_unslash( (string) $_POST['mad4b_connection_action'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- owning page verifies nonce.
+		$deep_requested = class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' )
+			&& MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed();
 		if ( ! $deep_requested ) return;
 
 		$status = MAD4B_SCP_MCP_Registration_Bridge::status();
