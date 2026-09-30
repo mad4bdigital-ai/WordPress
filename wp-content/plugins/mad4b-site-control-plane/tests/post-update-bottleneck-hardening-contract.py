@@ -18,6 +18,8 @@ assert SHARED_LOCK in lease
 assert "mad4b.runtime-maintenance-lease.v1" in lease
 assert "LEASE_TTL = 300" in lease
 assert "HARD_TTL = 1200" in lease
+assert "LEGACY_EXPIRY_GRACE = 300" in lease
+assert "legacy_expiry_grace_applied" in lease
 assert "public static function refresh(" in lease
 assert "'fence_token' => $token" in lease
 assert "mad4b_scp_runtime_convergence_lock_v1" in lease
