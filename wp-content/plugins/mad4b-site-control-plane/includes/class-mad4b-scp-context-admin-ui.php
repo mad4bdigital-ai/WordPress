@@ -682,7 +682,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 			}
 		}
 
-		$truth = class_exists( 'MAD4B_SCP_Live_Truth' ) ? MAD4B_SCP_Live_Truth::current_authority_status() : array();
+		$truth = class_exists( 'MAD4B_SCP_Live_Truth' )
+			? ( method_exists( 'MAD4B_SCP_Live_Truth', 'request_cached_authority_status' )
+				? MAD4B_SCP_Live_Truth::request_cached_authority_status()
+				: MAD4B_SCP_Live_Truth::current_authority_status() )
+			: array();
 		$write_tools = isset( $truth['write_tools'] ) && is_array( $truth['write_tools'] ) ? array_values( array_map( 'strval', $truth['write_tools'] ) ) : array();
 		$mounted = array_values( array_intersect( $abilities, $write_tools ) );
 		$context_grant_blockers = array();
