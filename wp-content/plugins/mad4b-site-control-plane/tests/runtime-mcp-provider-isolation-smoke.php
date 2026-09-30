@@ -323,8 +323,12 @@ foreach ( array(
 if ( ! in_array( '/unknown-provider/v1/mcp-unreviewed', $foreign_routes, true ) ) {
 	mad4b_isolation_fail( 'Unknown MCP route did not remain visible to peer governance.', $peer );
 }
-if ( empty( $peer['write_side_channel_detected'] ) || ! in_array( 'mcp_foreign_transport_unreviewed', isset( $peer['blockers'] ) ? $peer['blockers'] : array(), true ) ) {
-	mad4b_isolation_fail( 'Unknown MCP route must continue to fail closed.', $peer );
+if ( ! empty( $peer['write_side_channel_detected'] ) || empty( $peer['foreign_transport_unreviewed'] ) || ! in_array( 'mcp_foreign_transport_unreviewed', isset( $peer['blockers'] ) ? $peer['blockers'] : array(), true ) ) {
+	mad4b_isolation_fail( 'Unknown MCP route must remain fail-closed without being mislabeled as proven write-capable.', $peer );
+}
+$guard = MAD4B_SCP_MCP_Peer_Governance::mutation_guard();
+if ( ! is_wp_error( $guard ) || 'mcp_foreign_transport_unreviewed' !== $guard->get_error_code() ) {
+	mad4b_isolation_fail( 'Unknown MCP route did not preserve exact fail-closed mutation semantics.', $guard );
 }
 
 fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v4: PASS' . PHP_EOL );
