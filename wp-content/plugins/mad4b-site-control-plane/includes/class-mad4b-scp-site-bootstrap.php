@@ -405,7 +405,7 @@ final class MAD4B_SCP_Site_Bootstrap {
 			: '';
 		return array(
 			'site_uuid' => $site_uuid,
-			'environment' => function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown',
+			'environment' => class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ),
 			'canonical_origin' => $canonical_origin,
 			'site_profile_configured' => (bool) $profile_configured,
 			'site_profile_revision' => $profile_configured ? (int) MAD4B_SCP_Site_Profile::revision() : 0,
