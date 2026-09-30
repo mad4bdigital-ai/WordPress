@@ -87,6 +87,8 @@ for marker in [
     "MAD4B_SCP_Governed_Runtime_Gates::production_mutation_enabled()",
     "MAD4B_SCP_Governed_Runtime_Gates::production_auto_enable()",
     "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled()",
+    "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_write_enabled()",
+    "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_ddl_enabled()",
     "production_mutation_gate_disabled",
     "'configuration_source'] = 'governed_runtime_gates'",
 ]:
