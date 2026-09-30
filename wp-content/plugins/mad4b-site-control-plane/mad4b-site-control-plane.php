@@ -229,6 +229,11 @@ if ( ! empty( $mad4b_upgrade_continuity['recovered'] ) ) {
 // constants against stale identity and can mask invalid stored profile state.
 MAD4B_SCP_Portable_Readonly_Connection::bootstrap();
 unset( $mad4b_upgrade_continuity );
+// Classify MCP/OAuth protocol hotpaths before any subsequent runtime bootstrap.
+// The classifier is read-only and request-local; early placement prevents
+// post-update maintenance/recovery hooks from being treated like ordinary
+// request-serving work during the first reconnect after a package replacement.
+MAD4B_SCP_MCP_Request_Scope::bootstrap();
 MAD4B_SCP_Site_Profile::boot();
 MAD4B_SCP_Upgrade_Continuity::boot();
 MAD4B_SCP_Reconnect_Hardening::boot();
@@ -284,10 +289,9 @@ MAD4B_SCP_Skills_Adapter::boot();
 MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();
 remove_action( 'plugins_loaded', array( 'MAD4B_SCP_Skill_Provider_Discovery', 'bootstrap' ), 30 );
 
-// Classify the request before any direct Skills/Write bootstrap. Third-party
-// wp-admin, provider/Core REST and generic wp-cron are request-serving hotpaths:
-// they do not need site-profile-driven feature enablement or authority restore.
-MAD4B_SCP_MCP_Request_Scope::bootstrap();
+// The request scope was classified immediately after Site Profile / portable
+// read-only bootstrap. Reuse that request-local classification here before
+// direct Skills/Write bootstrap.
 $mad4b_zero_touch_request = class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
 	&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface();
 if ( ! $mad4b_zero_touch_request ) {
