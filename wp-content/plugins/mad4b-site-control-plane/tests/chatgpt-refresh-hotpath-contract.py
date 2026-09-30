@@ -422,6 +422,10 @@ for marker in (
 recovery_schedule = self_update.split("public static function ensure_recovery_update_schedule()", 1)[1].split("public static function run_recovery_update()", 1)[0]
 assert "current_request_is_protocol_hotpath()" in recovery_schedule
 assert "current_request_is_passive_admin_hotpath()" in recovery_schedule
+recovery_run = self_update.split("public static function run_recovery_update()", 1)[1].split("private static function recovery_update_eligible()", 1)[0]
+recovery_ineligible = recovery_run.split("$status['eligible'] = true;", 1)[0]
+assert "self::persist_recovery_status( $status );" not in recovery_ineligible
+assert "return $status;" in recovery_ineligible
 
 # PRs may report deployment drift as inconclusive, but post-merge/manual live
 # acceptance must fail closed until the exact published runtime is loaded.
