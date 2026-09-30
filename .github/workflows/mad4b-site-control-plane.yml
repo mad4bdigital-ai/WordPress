@@ -203,9 +203,15 @@ jobs:
           grep -Fq "mcp_adapter_certification" "$registry"
           grep -Fq "provider_certification_ok" "$registry"
 
-          grep -Fq "MAD4B_MCP_BREAKGLASS_ENABLED" "$policy"
-          grep -Fq "MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED" "$abilities"
-          grep -Fq "MAD4B_MCP_BREAKGLASS_DDL_ENABLED" "$abilities"
+          if grep -Fq "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled()" "$policy"; then
+            grep -Fq "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_write_enabled()" "$abilities"
+            grep -Fq "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_ddl_enabled()" "$abilities"
+            test -f "$root/tests/governed-runtime-gates-contract.py"
+          else
+            grep -Fq "MAD4B_MCP_BREAKGLASS_ENABLED" "$policy"
+            grep -Fq "MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED" "$abilities"
+            grep -Fq "MAD4B_MCP_BREAKGLASS_DDL_ENABLED" "$abilities"
+          fi
           grep -Fq "LOAD_FILE" "$abilities"
           grep -Fq "CREATE\\s+(?:USER|ROLE)" "$abilities"
           grep -Fq "expected_modified_gmt" "$abilities"
@@ -304,6 +310,9 @@ jobs:
           python3 "$root/tests/staging-write-candidate-binding-audit-contract.py"
           python3 "$root/tests/plugin-package-mcp-governance-contract.py"
           python3 "$root/tests/chatgpt-refresh-compact-catalog-contract.py"
+          if [ -f "$root/tests/governed-runtime-gates-contract.py" ]; then
+            python3 "$root/tests/governed-runtime-gates-contract.py"
+          fi
           grep -Fq "all_remote_writes_require_exact_approval" "$write_authority"
           grep -Fq "production_auto_enable" "$write_authority"
           grep -Fq "breakglass_auto_enable" "$write_authority"
