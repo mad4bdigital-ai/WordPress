@@ -884,16 +884,23 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		}
 		$maintenance_lease = self::maintenance_lease_status();
 		if ( ! empty( $maintenance_lease['active'] ) ) {
-			$retry = isset( $maintenance_lease['retry_after_seconds'] ) ? max( 1, min( 30, absint( $maintenance_lease['retry_after_seconds'] ) ) ) : 2;
+			$fence_conflict = ! empty( $maintenance_lease['fence_token_conflict'] );
+			$retry = $fence_conflict
+				? 0
+				: ( isset( $maintenance_lease['retry_after_seconds'] ) ? max( 1, min( 30, absint( $maintenance_lease['retry_after_seconds'] ) ) ) : 2 );
 			return new WP_Error( 'mad4b_mcp_runtime_maintenance_busy', 'MAD4B runtime maintenance is active and request-serving MCP work is temporarily deferred.', array(
 				'status' => 503,
 				'contract' => self::CONTRACT,
 				'resource' => self::resource_identifier(),
-				'retryable' => true,
+				'retryable' => ! $fence_conflict,
 				'automatic_retry_allowed' => false,
 				'retry_after_seconds' => $retry,
-				'client_action' => 'retry_after_runtime_maintenance',
+				'client_action' => $fence_conflict ? 'inspect_runtime_maintenance_fence_conflict' : 'retry_after_runtime_maintenance',
 				'maintenance_owner' => isset( $maintenance_lease['owner'] ) ? sanitize_key( (string) $maintenance_lease['owner'] ) : '',
+				'maintenance_fence_source' => isset( $maintenance_lease['fence_source'] ) ? sanitize_text_field( (string) $maintenance_lease['fence_source'] ) : '',
+				'maintenance_active_fence_count' => isset( $maintenance_lease['active_fence_count'] ) ? absint( $maintenance_lease['active_fence_count'] ) : 0,
+				'maintenance_legacy_only_fence' => ! empty( $maintenance_lease['legacy_only_fence'] ),
+				'maintenance_fence_token_conflict' => $fence_conflict,
 				'mutation_performed' => false,
 			) );
 		}
