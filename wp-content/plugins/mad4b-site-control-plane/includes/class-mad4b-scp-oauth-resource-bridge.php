@@ -81,12 +81,9 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	}
 
 	private static function production_approved() {
-		if ( defined( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED' ) && true === constant( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED' ) ) return true;
-		return 'production' === self::current_environment()
-			&& class_exists( 'MAD4B_SCP_Site_Profile' )
-			&& MAD4B_SCP_Site_Profile::origin_enrolled()
-			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
-			&& MAD4B_SCP_Site_Profile::oauth_enabled();
+		return class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' )
+			&& method_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig', 'production_profile_enabled' )
+			&& MAD4B_SCP_Staging_OAuth_Autoconfig::production_profile_enabled();
 	}
 
 	public static function runtime_identity_status() {
@@ -165,7 +162,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'effective' => (bool) $effective,
 			'environment' => $environment,
 			'production_approved' => $production_approved,
-			'production_approval_source' => $production_approved && class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() ? 'exact_site_profile_or_explicit_override' : 'not_approved',
+			'production_approval_source' => $production_approved ? 'database_bound_production_oauth_opt_in' : 'not_approved',
 			'environment_allowed' => (bool) $environment_allowed,
 			'authority_mode' => $mode,
 			'authority_count' => count( $authorities ),
@@ -264,7 +261,12 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			$tools = MAD4B_SCP_Enrollment_Dispatch::chatgpt_tools();
 			$enrollment_dispatch = is_array( $tools ) && in_array( MAD4B_SCP_Enrollment_Dispatch::EXECUTE_ABILITY, $tools, true );
 		}
-		return $feature_reenrollment || $write_enablement || $write_reconciliation || $candidate_binding || $full_authority || $enrollment_dispatch;
+		$runtime_gates = false;
+		if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) && method_exists( 'MAD4B_SCP_Governed_Runtime_Gates', 'chatgpt_step_up_tools' ) ) {
+			$tools = MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools();
+			$runtime_gates = is_array( $tools ) && in_array( MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY, $tools, true );
+		}
+		return $feature_reenrollment || $write_enablement || $write_reconciliation || $candidate_binding || $full_authority || $enrollment_dispatch || $runtime_gates;
 	}
 
 	public static function resource_identifier( $server_id = 'mad4b-chatgpt' ) {
