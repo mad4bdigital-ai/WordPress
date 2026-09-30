@@ -106,10 +106,30 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		}
 	}
 
+	/**
+	 * Passive Connection/ChatGPT admin pages are request-serving read surfaces.
+	 * They consume cached/runtime-identity projections and must not retain the
+	 * MCP Adapter merely because they live under the Control Plane menu. The
+	 * explicit Connection > Endpoints tab remains the deep runtime diagnostic.
+	 */
+	public static function current_request_is_passive_admin_hotpath() {
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return false;
+		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
+
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		if ( 'mad4b-control-plane-chatgpt' === $page ) return true;
+		if ( 'mad4b-control-plane-connection' !== $page ) return false;
+
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : 'readiness'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		if ( '' === $tab ) $tab = 'readiness';
+		return 'endpoints' !== $tab;
+	}
+
 	public static function current_request_requires_mcp_runtime() {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		if ( self::current_request_is_passive_admin_hotpath() ) return false;
 		if ( '' !== $page && 0 === strpos( $page, 'mad4b-control-plane' ) ) return true;
 
 		$route = '';
@@ -143,8 +163,9 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	/**
 	 * True only for an actual HTTP MAD4B MCP transport request.
 	 *
-	 * WP-CLI and Control Plane admin pages still require the MCP runtime for
-	 * diagnostics/certification, but they are not client Refresh hot paths and
+	 * WP-CLI and explicit deep Control Plane diagnostics still require the MCP
+	 * runtime, but passive Connection/ChatGPT pages do not. None of these admin
+	 * surfaces are client Refresh hot paths and
 	 * must never inherit transport-only short circuits.
 	 */
 	public static function current_request_is_http_mcp_transport() {
@@ -231,6 +252,7 @@ final class MAD4B_SCP_MCP_Request_Scope {
 			'contract' => self::CONTRACT,
 			'eligible' => self::$eligible,
 			'current_request_requires_mcp_runtime' => self::$current_request_requires_mcp,
+			'current_request_is_passive_admin_hotpath' => self::current_request_is_passive_admin_hotpath(),
 			'current_request_is_http_mcp_transport' => self::current_request_is_http_mcp_transport(),
 			'current_request_is_protocol_hotpath' => self::current_request_is_protocol_hotpath(),
 			'adapter_init_removed_for_unrelated_request' => self::$adapter_init_removed,
