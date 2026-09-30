@@ -242,7 +242,7 @@ for marker in (
     require(resilience, marker, 'read-consistency-client-policy')
 
 for marker in (
-    "const CONTRACT = 'mad4b.reconnect-hardening.v4'",
+    "const CONTRACT = 'mad4b.reconnect-hardening.v5'",
     "SESSION_SHADOW_TTL = 120",
     "add_filter( 'rest_pre_dispatch', array( __CLASS__, 'reset_session_policy_scope' ), -200, 3 )",
     "add_filter( 'rest_post_dispatch', array( __CLASS__, 'clear_session_policy_scope' ), PHP_INT_MAX, 3 )",
