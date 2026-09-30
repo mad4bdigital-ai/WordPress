@@ -105,8 +105,9 @@ for marker in required_self_update:
 # itself off once normal Write Authority is effective.
 for marker in (
     "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()",
+    "MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()",
     "$self_update_step_up",
-    "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );",
+    "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );",
     "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );",
 ):
     if marker not in servers:

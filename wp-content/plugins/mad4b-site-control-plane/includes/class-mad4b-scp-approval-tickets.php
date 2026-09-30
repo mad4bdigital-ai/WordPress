@@ -261,6 +261,8 @@ final class MAD4B_SCP_Approval_Tickets {
 		if ( ! self::can_approve() ) return new WP_Error( 'mad4b_approval_admin_required', 'Approval capability is required to approve a ticket.' );
 		$ticket = self::get( $ticket_id );
 		if ( ! $ticket || 'pending' !== (string) $ticket['status'] ) return new WP_Error( 'mad4b_approval_not_approvable', 'Approval ticket is missing, expired, or no longer pending.' );
+		$expires_at = isset( $ticket['expires_at'] ) ? strtotime( (string) $ticket['expires_at'] . ' UTC' ) : false;
+		if ( false === $expires_at || $expires_at < time() ) return new WP_Error( 'mad4b_approval_not_approvable', 'Approval ticket is missing, expired, or no longer pending.' );
 		if ( self::is_governed_remote_mutation( $ticket['ticket_class'], $ticket['server_id'] ) ) {
 			$fresh = self::validate_ticket_candidate_binding( $ticket, (string) $ticket['payload_sha256'] );
 			if ( is_wp_error( $fresh ) ) return $fresh;

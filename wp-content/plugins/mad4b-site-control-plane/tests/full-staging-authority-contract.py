@@ -42,7 +42,7 @@ required = [
     "mad4b_full_authority_developer_plan_blocked",
     "mad4b_full_authority_developer_breakglass_plan_blocked",
     "generic_raw_sql_breakglass_gate_enabled",
-    "MAD4B_MCP_BREAKGLASS_ENABLED",
+    "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled()",
     "mad4b_full_authority_raw_sql_breakglass_denied",
     "public static function can_apply( $input = null )",
     "AUTHORITY_STEP_UP_SCOPE",
@@ -138,7 +138,7 @@ assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" i
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_tools
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_tools
 assert "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in chatgpt_tools
-assert "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );" in chatgpt_tools
+assert "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );" in chatgpt_tools
 assert "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );" in chatgpt_tools
 assert "verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )" in chatgpt_tools
 assert "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in chatgpt_map

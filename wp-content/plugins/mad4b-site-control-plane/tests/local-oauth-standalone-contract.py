@@ -14,7 +14,7 @@ portable = (root / 'includes' / 'class-mad4b-scp-portable-readonly-connection.ph
 required_server = [
     'mad4b.local-oauth-server.v3',
     'MAD4B_MCP_LOCAL_OAUTH_ENABLED',
-    'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED',
+    'MAD4B_SCP_Staging_OAuth_Autoconfig::production_profile_enabled()',
     'MAD4B_MCP_LOCAL_OAUTH_CLIENTS',
     'MAD4B_MCP_LOCAL_OAUTH_PRIVATE_KEY_PATH',
     "CHATGPT_CIMD_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
@@ -104,7 +104,7 @@ required_server = [
     "'exact_grant_present'",
     "Live governed write authority",
     "Authority step-up:",
-    "This OAuth scope permits ChatGPT to request exact environment-bound governance bootstrap and convergence operations, including bootstrap Control Plane self-update only where the current environment policy permits it.",
+    "This OAuth scope permits ChatGPT to request exact environment-bound governance bootstrap and convergence operations, including bootstrap Control Plane self-update and database-backed governed runtime-gate policy changes only where the current environment policy permits them.",
     "Production writes require an exact Production Site Profile",
     "live governance evidence, not an OAuth permission request",
     "wp_ajax_mad4b_oauth_grant_projection",

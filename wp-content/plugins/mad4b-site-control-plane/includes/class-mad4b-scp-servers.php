@@ -8,6 +8,7 @@ require_once __DIR__ . '/class-mad4b-scp-site-profile-write-enablement.php';
 require_once __DIR__ . '/class-mad4b-scp-staging-write-grant-reconciliation.php';
 require_once __DIR__ . '/class-mad4b-scp-developer-authority.php';
 require_once __DIR__ . '/class-mad4b-scp-full-staging-authority.php';
+require_once __DIR__ . '/class-mad4b-scp-governed-runtime-gates.php';
 
 MAD4B_SCP_Site_Profile_Enrollment::boot();
 MAD4B_SCP_Site_Profile_Write_Enablement::boot();
@@ -49,6 +50,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/site-info', 'mad4b/site-profile-status',
 				'mad4b/session-safe-diagnostics',
 				'mad4b/full-staging-authority-handshake',
+				'mad4b/runtime-gates-handshake',
 				'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute',
 				'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute',
 				'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute',
@@ -74,7 +76,8 @@ final class MAD4B_SCP_Servers {
 					? MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()
 					: array(),
 				class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::enrollment_tools() : array(),
-				class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::enrollment_tools() : array()
+				class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::enrollment_tools() : array(),
+				class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::enrollment_tools() : array()
 			) ) ),
 			'mad4b-content' => array(
 				'mad4b/content-get-post', 'mad4b/content-update-post',
@@ -485,6 +488,9 @@ final class MAD4B_SCP_Servers {
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) {
 			$tools[] = MAD4B_SCP_Full_Staging_Authority::HANDSHAKE_ABILITY;
 		}
+		if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ) {
+			$tools = array_merge( $tools, MAD4B_SCP_Governed_Runtime_Gates::chatgpt_read_tools() );
+		}
 		$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
 		sort( $tools, SORT_STRING );
 		return $tools;
@@ -514,8 +520,12 @@ final class MAD4B_SCP_Servers {
 		// write dispatcher. This keeps tools/list small and stable enough for client
 		// refresh without weakening the underlying ability authority contracts.
 		if ( ! self::chatgpt_unified_catalog_enabled() ) {
-			$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools() );
-			$tools = array_values( array_intersect( $core, $direct_allowlist ) );
+			$runtime_gate_step_up = $step_up_bearer && class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
+				? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()
+				: array();
+			$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up );
+			$fallback_candidates = array_merge( $core, $runtime_gate_step_up );
+			$tools = array_values( array_intersect( $fallback_candidates, $direct_allowlist ) );
 			$tools = array_values( array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) ) );
 			$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
 			sort( $tools, SORT_STRING );
@@ -549,6 +559,12 @@ final class MAD4B_SCP_Servers {
 		$self_update_step_up = class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'chatgpt_step_up_tools' )
 			? MAD4B_SCP_Self_Update::chatgpt_step_up_tools()
 			: array();
+		$runtime_gate_read = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
+			? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_read_tools()
+			: array();
+		$runtime_gate_step_up = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
+			? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()
+			: array();
 		$semantic_step_up = class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'chatgpt_direct_step_up_tools' )
 			? MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_tools()
 			: array();
@@ -565,10 +581,12 @@ final class MAD4B_SCP_Servers {
 			$full_read,
 			$full_step_up,
 			$self_update_step_up,
+			$runtime_gate_read,
+			$runtime_gate_step_up,
 			$semantic_step_up
 		);
 		$candidates = array_merge( $core, $bootstrap );
-		$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );
+		$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );
 		$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );
 		$step_up = array_merge( $step_up, $semantic_step_up );
 		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up ) ) );
@@ -610,6 +628,7 @@ final class MAD4B_SCP_Servers {
 		$tools = array_values( array_diff( $tools, self::chatgpt_internal_enrollment_mutations() ) );
 		if ( class_exists( 'MAD4B_SCP_Developer_Authority' ) ) $tools = array_values( array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() ) );
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $tools = array_values( array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools() ) );
+		if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ) $tools = array_values( array_diff( $tools, MAD4B_SCP_Governed_Runtime_Gates::enrollment_tools() ) );
 		return $tools;
 	}
 
@@ -632,6 +651,8 @@ final class MAD4B_SCP_Servers {
 			class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools() : array(),
 			$full_staging_catalog,
 			class_exists( 'MAD4B_SCP_Self_Update' ) && method_exists( 'MAD4B_SCP_Self_Update', 'chatgpt_step_up_tools' ) ? MAD4B_SCP_Self_Update::chatgpt_step_up_tools() : array(),
+			class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_catalog_read_tools() : array(),
+			class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools() : array(),
 			self::chatgpt_enrollment_candidates(),
 			self::core_tools( 'mad4b-content' ),
 			self::core_tools( 'mad4b-admin' ),
@@ -866,7 +887,7 @@ final class MAD4B_SCP_Servers {
 		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative governance, repair, mutation evidence and governed recovery abilities.', $admin_tools, array( __CLASS__, 'can_admin_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-admin', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-developer', 'MAD4B Developer MCP', 'Isolated explicit non-Production Developer Agent plane. It is never mounted on mad4b-chatgpt or mad4b-write; execution requires the exact configured developer agent, exact grant, one-time approval, budget, audit and runtime gate.', $developer_tools, array( __CLASS__, 'can_developer_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-developer', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-developer-breakglass', 'MAD4B Developer Breakglass MCP', 'Exceptional non-Production Developer Agent recovery plane. Disabled by default and separately gated from normal developer execution.', $developer_breakglass_tools, array( __CLASS__, 'can_developer_breakglass_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-developer-breakglass', $target_server_id ) );
-		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled in wp-config.php.', $breakglass_tools, array( __CLASS__, 'can_breakglass_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-breakglass', $target_server_id ) );
+		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled by the database-backed governed runtime gate policy.', $breakglass_tools, array( __CLASS__, 'can_breakglass_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-breakglass', $target_server_id ) );
 	}
 
 	private function create( $adapter, $id, $name, $description, array $tools, $permission, $transport, $error_handler, $observability, $materialized = true ) {

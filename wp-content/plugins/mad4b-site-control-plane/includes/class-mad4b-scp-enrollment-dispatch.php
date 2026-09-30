@@ -74,7 +74,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 	}
 
 	private static function generic_raw_sql_breakglass_enabled() {
-		return defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' );
+		return class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) && MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled();
 	}
 
 	private static function target_ability( $ability_name ) {

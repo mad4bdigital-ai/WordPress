@@ -190,7 +190,7 @@ for forbidden in [
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
 require("MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in chatgpt_body, "bootstrap Control Plane self-update step-up projection is missing")
-require("$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );" in chatgpt_body, "bounded authority step-ups must be composed explicitly")
+require("$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );" in chatgpt_body, "bounded authority step-ups must be composed explicitly")
 require("$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );" in chatgpt_body, "bounded step-ups must require the dedicated bearer while the Full Staging composite remains lifecycle-stable")
 require("verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )" in chatgpt_body, "bounded step-up projection is not bound to the dedicated OAuth scope")
 require("MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_tools()" in chatgpt_body, "reviewed semantic enrollment step-up projection missing from compact ChatGPT catalog")

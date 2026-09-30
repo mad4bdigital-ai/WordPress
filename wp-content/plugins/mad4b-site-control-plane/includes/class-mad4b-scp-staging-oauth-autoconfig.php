@@ -278,8 +278,39 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 	public static function status() { return self::$bootstrapped ? self::$status : self::bootstrap(); }
 
 	public static function production_profile_enabled() {
-		$status = self::status();
-		return 'production' === $status['environment'] && ! empty( $status['production_readonly_enabled'] );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+			|| ! MAD4B_SCP_Site_Profile::configured()
+			|| 'production' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			|| ! MAD4B_SCP_Site_Profile::origin_enrolled()
+			|| ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			|| ! MAD4B_SCP_Site_Profile::oauth_enabled() ) {
+			return false;
+		}
+
+		// Governed Production write is itself an explicit Site Profile authority.
+		// It may project Production OAuth without forcing a read-only opt-in.
+		if ( MAD4B_SCP_Site_Profile::write_enabled() ) return true;
+
+		// Read-only Production OAuth keeps its separate database opt-in. This
+		// probe must remain side-effect free because it is used by early runtime
+		// authority evaluation before pluggable user functions are guaranteed.
+		$record = get_option( self::PRODUCTION_OPTION, array() );
+		if ( ! is_array( $record ) || empty( $record['enabled'] ) ) return false;
+
+		$site_uuid = strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) );
+		$profile_revision = (int) MAD4B_SCP_Site_Profile::revision();
+		$profile_digest = strtolower( trim( (string) MAD4B_SCP_Site_Profile::profile_digest() ) );
+		$record_uuid = isset( $record['site_uuid'] ) ? strtolower( trim( (string) $record['site_uuid'] ) ) : '';
+		$record_revision = isset( $record['profile_revision'] ) ? (int) $record['profile_revision'] : 0;
+		$record_digest = isset( $record['profile_digest'] ) ? strtolower( trim( (string) $record['profile_digest'] ) ) : '';
+
+		return '' !== $site_uuid
+			&& '' !== $profile_digest
+			&& '' !== $record_uuid
+			&& '' !== $record_digest
+			&& hash_equals( $site_uuid, $record_uuid )
+			&& $profile_revision === $record_revision
+			&& hash_equals( $profile_digest, $record_digest );
 	}
 
 	private static function boot_admin_actions() {
