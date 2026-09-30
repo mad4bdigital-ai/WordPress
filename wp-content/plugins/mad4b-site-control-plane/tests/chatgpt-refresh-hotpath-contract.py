@@ -228,7 +228,9 @@ assert oauth_nonprod.index("$existing_semantic !== $record") < oauth_nonprod.ind
 # physical-schema readiness, dbDelta migration, or legacy audit option creation.
 central_boot = plugin.split("public static function boot()", 1)[1].split("public static function boot_oauth_transport_if_effective()", 1)[0]
 assert "$protocol_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )" in central_boot
+assert "$passive_admin_hotpath = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )" in central_boot
 assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in central_boot
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()" in central_boot
 schema_guard_pos = central_boot.index("$protocol_hotpath =")
 assert schema_guard_pos < central_boot.index("MAD4B_SCP_Schema::is_ready()")
 assert schema_guard_pos < central_boot.index("MAD4B_SCP_Schema::install_or_upgrade()")
@@ -351,7 +353,7 @@ for marker in (
 # The central init boot must terminate at the protocol-kernel boundary before
 # admin/resource/lifecycle-only work while retaining the three lightweight
 # ability annotations needed for tools/list.
-protocol_fast_return = central_boot.split("if ( $protocol_hotpath ) {", 1)[1].split("// Governance schema repair", 1)[0]
+protocol_fast_return = central_boot.split("if ( $protocol_hotpath || $passive_admin_hotpath ) {", 1)[1].split("// Governance schema repair", 1)[0]
 for marker in (
     "MAD4B_SCP_Staging_Write_Authority::boot();",
     "MAD4B_SCP_Write_Runtime_Certification::boot();",
