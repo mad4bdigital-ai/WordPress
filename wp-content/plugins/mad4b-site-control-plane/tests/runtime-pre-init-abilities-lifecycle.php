@@ -96,8 +96,10 @@ $_SERVER['HTTP_HOST'] = 'staging.egypttourgates.com';
 $_SERVER['HTTPS'] = 'on';
 $_SERVER['SERVER_PORT'] = '443';
 $_SERVER['REQUEST_METHOD'] = 'GET';
-$_SERVER['REQUEST_URI'] = '/wp-json/wpml/v1/rest/status?test_get_parameter=1&cachebuster=ci';
-$_GET['test_get_parameter'] = '1';
+// This regression deliberately exercises a MAD4B-owned REST lifecycle. Foreign
+// provider REST now exits through the entry-point zero-touch kernel and has its
+// own dedicated regression proof.
+$_SERVER['REQUEST_URI'] = '/wp-json/mad4b/v1/pre-init-abilities-lifecycle?cachebuster=ci';
 $_GET['cachebuster'] = 'ci';
 
 require $wp_path . '/wp-load.php';
