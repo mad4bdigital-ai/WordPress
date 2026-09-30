@@ -66,7 +66,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 
 		$oauth = isset( $status['oauth_resource_server'] ) && is_array( $status['oauth_resource_server'] ) ? $status['oauth_resource_server'] : array();
 		$local_oauth = class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
-			? ( 'endpoints' === $tab
+			? ( $deep_endpoints
 				? MAD4B_SCP_Local_OAuth_Server::status()
 				: MAD4B_SCP_Local_OAuth_Server::runtime_identity_status() )
 			: array();
