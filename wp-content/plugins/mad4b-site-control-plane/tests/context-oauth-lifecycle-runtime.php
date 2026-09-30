@@ -9,7 +9,7 @@ define( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET', 'managed-google-site-signing-s
 if ( ! defined( 'MINUTE_IN_SECONDS' ) ) define( 'MINUTE_IN_SECONDS', 60 );
 
 $GLOBALS['mad4b_context_options'] = array();
-$GLOBALS['mad4b_context_option_cache'] = array( 'notoptions' => array(), 'ignore_point_deletes' => false );
+$GLOBALS['mad4b_context_option_cache'] = array( 'notoptions' => array(), 'ignore_point_deletes' => false, 'group_flush_count' => 0 );
 $GLOBALS['mad4b_context_transients'] = array();
 $GLOBALS['mad4b_context_token_responses'] = array();
 $GLOBALS['mad4b_context_revoke_status'] = 200;
@@ -71,7 +71,10 @@ function wp_cache_delete( $key, $group = '' ) {
 	return true;
 }
 function wp_cache_flush_group( $group ) {
-	if ( 'options' === $group ) $GLOBALS['mad4b_context_option_cache']['notoptions'] = array();
+	if ( 'options' === $group ) {
+		$GLOBALS['mad4b_context_option_cache']['group_flush_count']++;
+		$GLOBALS['mad4b_context_option_cache']['notoptions'] = array();
+	}
 	return true;
 }
 function wp_remote_retrieve_response_code( $response ) { return isset( $response['response']['code'] ) ? (int) $response['response']['code'] : 0; }
@@ -227,6 +230,7 @@ parse_str( (string) parse_url( $url, PHP_URL_QUERY ), $oauth_query );
 mad4b_oauth_assert( isset( $oauth_query['code_challenge_method'] ) && 'S256' === $oauth_query['code_challenge_method'], 'Google OAuth authorization must use PKCE S256.', $oauth_query );
 mad4b_oauth_assert( ! empty( $oauth_query['code_challenge'] ), 'Google OAuth authorization must include a PKCE challenge.', $oauth_query );
 mad4b_oauth_assert( ! isset( $oauth_query['code_verifier'] ), 'PKCE verifier must never be sent in the browser authorization URL.', $oauth_query );
+mad4b_oauth_assert( isset( $oauth_query['include_granted_scopes'] ) && 'true' === $oauth_query['include_granted_scopes'], 'Google OAuth authorization must preserve incremental previously-granted scopes.', $oauth_query );
 $read = MAD4B_SCP_Google_Drive_Context::complete_oauth( 'code-read', 'context-oauth-state' );
 mad4b_oauth_assert( ! empty( $GLOBALS['mad4b_context_last_token_request']['body']['code_verifier'] ), 'OAuth token exchange must include the server-side PKCE verifier.' );
 mad4b_oauth_assert( ! is_wp_error( $read ), 'Read-only OAuth exchange must succeed.', $read );
@@ -362,9 +366,11 @@ mad4b_oauth_assert( ! is_wp_error( $managed_disconnected ) && empty( $managed_di
 // updates it through the Options API, and verifies exact readback.
 $GLOBALS['mad4b_context_option_cache']['notoptions'][ MAD4B_SCP_Google_Drive_Context::AUTH_MODE_OPTION ] = true;
 $GLOBALS['mad4b_context_option_cache']['ignore_point_deletes'] = true;
+$group_flushes_before_recovery = (int) $GLOBALS['mad4b_context_option_cache']['group_flush_count'];
 $dedicated_mode = MAD4B_SCP_Google_Drive_Context::set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED );
 $GLOBALS['mad4b_context_option_cache']['ignore_point_deletes'] = false;
 mad4b_oauth_assert( ! is_wp_error( $dedicated_mode ), 'Authentication mode must switch to Dedicated Site OAuth after managed grant revocation.', $dedicated_mode );
+mad4b_oauth_assert( (int) $GLOBALS['mad4b_context_option_cache']['group_flush_count'] > $group_flushes_before_recovery, 'Cache-wide Options flush must remain available only as stale-cache recovery.', $GLOBALS['mad4b_context_option_cache'] );
 mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $dedicated_mode['mode'], 'Dedicated Site OAuth mode must become active.', $dedicated_mode );
 
 $dedicated_saved = MAD4B_SCP_Google_Drive_Context::save_dedicated_credentials(
@@ -417,11 +423,46 @@ mad4b_oauth_assert( ! is_wp_error( $dedicated_disconnected ) && empty( $dedicate
 $same_dedicated_mode = MAD4B_SCP_Google_Drive_Context::set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED );
 mad4b_oauth_assert( ! is_wp_error( $same_dedicated_mode ) && MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $same_dedicated_mode['mode'], 'Saving the already-effective auth mode must be idempotent instead of reporting persistence failure.', $same_dedicated_mode );
 
+$minimal_grants = MAD4B_SCP_Google_Drive_Context::save_workspace_grants( array( 'drive' => 'read' ) );
+mad4b_oauth_assert( ! is_wp_error( $minimal_grants ), 'Minimal Drive read grant selection must persist before incremental expansion.', $minimal_grants );
+
+$GLOBALS['mad4b_context_token_responses'][] = array(
+	'access_token' => 'incremental-base-access',
+	'refresh_token' => 'incremental-base-refresh',
+	'expires_in' => 3600,
+	'scope' => MAD4B_SCP_Google_Drive_Context::READ_SCOPE,
+);
+$incremental_base_url = MAD4B_SCP_Google_Drive_Context::authorization_url( 'read_only' );
+mad4b_oauth_assert( ! is_wp_error( $incremental_base_url ), 'Incremental-consent base authorization must start from the existing read grant.', $incremental_base_url );
+$incremental_base = MAD4B_SCP_Google_Drive_Context::complete_oauth( 'code-incremental-base', 'context-oauth-state' );
+mad4b_oauth_assert( ! is_wp_error( $incremental_base ) && ! empty( $incremental_base['read_available'] ), 'Incremental-consent base grant must connect successfully.', $incremental_base );
+
 $full_suite_selection = MAD4B_SCP_Google_Drive_Context::full_suite_grant_selection();
+$group_flushes_before_normal_grant_save = (int) $GLOBALS['mad4b_context_option_cache']['group_flush_count'];
 $full_suite = MAD4B_SCP_Google_Drive_Context::save_workspace_grants( $full_suite_selection );
-mad4b_oauth_assert( ! is_wp_error( $full_suite ), 'Full Apps Suite grant selection must persist.', $full_suite );
+mad4b_oauth_assert( ! is_wp_error( $full_suite ), 'Expanding a connected Google grant to Full Apps Suite must persist without disconnect.', $full_suite );
 mad4b_oauth_assert( ! empty( $full_suite['full_suite_selected'] ), 'Full Apps Suite selection must be reported explicitly.', $full_suite );
 mad4b_oauth_assert( 14 === (int) $full_suite['scope_count'], 'Full Apps Suite must resolve to the expected deduplicated OAuth scope count.', $full_suite );
+mad4b_oauth_assert( ! empty( $full_suite['incremental_consent_required'] ) && (int) $full_suite['missing_scope_count'] > 0, 'Connected grant expansion must explicitly require incremental consent for missing scopes.', $full_suite );
+mad4b_oauth_assert( (int) $GLOBALS['mad4b_context_option_cache']['group_flush_count'] === $group_flushes_before_normal_grant_save, 'Normal grant persistence must not flush the entire Options cache group.', $GLOBALS['mad4b_context_option_cache'] );
+
+$refresh_guard = new ReflectionMethod( 'MAD4B_SCP_Google_Drive_Context', 'refresh_retry_blocker' );
+$refresh_guard->setAccessible( true );
+$terminal_refresh = $refresh_guard->invoke( null, array(
+	'refresh_failure_code' => 'mad4b_google_drive_token_refresh_failed',
+	'refresh_failure_provider_code' => 'invalid_grant',
+	'refresh_failure_at' => gmdate( 'c' ),
+) );
+mad4b_oauth_assert( is_wp_error( $terminal_refresh ) && 'mad4b_google_drive_reconnect_required' === $terminal_refresh->get_error_code(), 'Terminal invalid_grant must suppress repeated provider refresh attempts.', $terminal_refresh );
+$terminal_data = $terminal_refresh->get_error_data();
+mad4b_oauth_assert( is_array( $terminal_data ) && ! empty( $terminal_data['network_retry_suppressed'] ), 'Terminal refresh suppression must expose bounded diagnostic evidence.', $terminal_data );
+
+$transient_refresh = $refresh_guard->invoke( null, array(
+	'refresh_failure_code' => 'mad4b_google_drive_token_refresh_failed',
+	'refresh_failure_provider_code' => 'temporarily_unavailable',
+	'refresh_failure_at' => gmdate( 'c' ),
+) );
+mad4b_oauth_assert( is_wp_error( $transient_refresh ) && 'mad4b_google_drive_refresh_cooldown_active' === $transient_refresh->get_error_code(), 'Transient refresh failures must enter a bounded cooldown.', $transient_refresh );
 
 $full_suite_url = MAD4B_SCP_Google_Drive_Context::authorization_url( 'read_write' );
 mad4b_oauth_assert( ! is_wp_error( $full_suite_url ), 'Full Apps Suite OAuth authorization URL must be created.', $full_suite_url );
@@ -447,10 +488,21 @@ foreach ( array(
 	mad4b_oauth_assert( in_array( $required_scope, $full_suite_scopes, true ), 'Full Apps Suite OAuth request is missing required scope: ' . $required_scope, $full_suite_scopes );
 }
 
-update_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION, array( 'contract' => MAD4B_SCP_Google_Drive_Context::CONTRACT, 'refresh_token' => 'sealed-fixture' ), false );
-$blocked_grant_change = MAD4B_SCP_Google_Drive_Context::save_workspace_grants( array( 'drive' => 'read' ) );
-mad4b_oauth_assert( is_wp_error( $blocked_grant_change ) && 'mad4b_google_workspace_grants_change_requires_disconnect' === $blocked_grant_change->get_error_code(), 'Workspace grants must not change while a Google token exists.', $blocked_grant_change );
+$incremental_granted_scope = implode( ' ', array_merge( array( MAD4B_SCP_Google_Drive_Context::READ_SCOPE ), $full_suite['scopes'] ) );
+$GLOBALS['mad4b_context_token_responses'][] = array(
+	'access_token' => 'incremental-expanded-access',
+	'refresh_token' => 'incremental-expanded-refresh',
+	'expires_in' => 3600,
+	'scope' => $incremental_granted_scope,
+);
+$expanded = MAD4B_SCP_Google_Drive_Context::complete_oauth( 'code-incremental-expanded', 'context-oauth-state' );
+mad4b_oauth_assert( ! is_wp_error( $expanded ) && ! empty( $expanded['write_available'] ), 'Incremental Full Apps Suite consent must accept prior allowed read scope plus newly granted scopes.', $expanded );
+$expanded_status = MAD4B_SCP_Google_Drive_Context::workspace_grants_status();
+mad4b_oauth_assert( empty( $expanded_status['incremental_consent_required'] ) && 0 === (int) $expanded_status['missing_scope_count'], 'Completed incremental consent must clear missing-scope state.', $expanded_status );
+
+$blocked_grant_reduction = MAD4B_SCP_Google_Drive_Context::save_workspace_grants( array( 'drive' => 'read' ) );
+mad4b_oauth_assert( is_wp_error( $blocked_grant_reduction ) && 'mad4b_google_workspace_grants_reduction_requires_revoke' === $blocked_grant_reduction->get_error_code(), 'Reducing an existing broad Google grant must still require provider revocation.', $blocked_grant_reduction );
 delete_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION );
 
 mad4b_oauth_assert( count( $GLOBALS['mad4b_managed_site_nonces'] ) >= 3, 'Managed session/redeem/refresh must each use a fresh request nonce.', $GLOBALS['mad4b_managed_site_nonces'] );
-echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v10: PASS\n";
+echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v11: PASS\n";
