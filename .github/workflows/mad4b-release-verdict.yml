@@ -31,6 +31,8 @@ jobs:
     name: Repository release verdict
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    outputs:
+      artifact_required: ${{ steps.emit_verdict.outputs.artifact_required }}
     steps:
       - name: Checkout exact head
         uses: actions/checkout@v4
@@ -951,6 +953,7 @@ jobs:
           done
 
       - name: Emit machine-readable release verdict
+        id: emit_verdict
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -1287,6 +1290,8 @@ jobs:
           open('MAD4B-RELEASE-VERDICT.json','w',encoding='utf-8').write(
               json.dumps(verdict,indent=2,sort_keys=True)+'\n'
           )
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as fh:
+              fh.write('artifact_required=' + ('true' if artifact_required else 'false') + '\n')
           print(json.dumps(verdict,indent=2,sort_keys=True))
           PY
 
@@ -1324,7 +1329,8 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master' &&
-      needs.verdict.result == 'success'
+      needs.verdict.result == 'success' &&
+      needs.verdict.outputs.artifact_required == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
