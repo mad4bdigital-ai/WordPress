@@ -73,8 +73,21 @@ jobs:
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
-          grep -Fq "mad4b_mcp_breakglass_permission', false" "$root/includes/class-mad4b-scp-policy.php"
-          grep -Fq "mad4b_scp_plugin_lifecycle_allowlist', array()" "$root/includes/class-mad4b-scp-policy.php"
+          policy="$root/includes/class-mad4b-scp-policy.php"
+          gates="$root/includes/class-mad4b-scp-governed-runtime-gates.php"
+          abilities="$root/includes/class-mad4b-scp-abilities.php"
+          grep -Fq "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled()" "$policy"
+          grep -Fq "mad4b_mcp_breakglass_permission', true" "$policy"
+          ! grep -Fq "mad4b_mcp_breakglass_permission', false" "$policy"
+          grep -Fq "const OPTION = 'mad4b_scp_governed_runtime_gates_v1';" "$gates"
+          grep -Fq "'raw_sql_breakglass_enabled'" "$gates"
+          grep -Fq "'raw_sql_write_enabled'" "$gates"
+          grep -Fq "'raw_sql_ddl_enabled'" "$gates"
+          grep -Fq "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_write_enabled()" "$abilities"
+          grep -Fq "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_ddl_enabled()" "$abilities"
+          ! grep -Fq "MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED" "$abilities"
+          ! grep -Fq "MAD4B_MCP_BREAKGLASS_DDL_ENABLED" "$abilities"
+          grep -Fq "mad4b_scp_plugin_lifecycle_allowlist', array()" "$policy"
           grep -Fq "mad4b_scp_bitflows_flow_allowed', false" "$root/includes/adapters/class-mad4b-scp-bitflows-adapter.php"
           grep -Fq "MAD4B_MCP_ELEMENTOR_LEGACY_WRITE_ENABLED" "$root/includes/adapters/class-mad4b-scp-elementor-adapter.php"
           grep -Fq "mad4b_scp_jetengine_field_write_allowed', false" "$root/includes/adapters/class-mad4b-scp-jetengine-adapter.php"
