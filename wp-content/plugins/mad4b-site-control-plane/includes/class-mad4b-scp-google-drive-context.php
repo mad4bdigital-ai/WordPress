@@ -3561,6 +3561,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	private static function record_refresh_failure( array $record, $error ) {
 		if ( ! is_wp_error( $error ) ) return false;
+		// A local scan deadline is a scheduling/budget condition, not provider
+		// authentication evidence. Persisting it would create a false OAuth
+		// refresh cooldown on the next request even though credentials are valid.
+		if ( 'mad4b_google_drive_scan_time_budget_exhausted' === (string) $error->get_error_code() ) return false;
 		$data = $error->get_error_data();
 		$data = is_array( $data ) ? $data : array();
 		$record['refresh_failure_code'] = sanitize_key( (string) $error->get_error_code() );

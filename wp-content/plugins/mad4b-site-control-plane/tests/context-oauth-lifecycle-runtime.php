@@ -557,6 +557,12 @@ mad4b_oauth_assert( is_wp_error( $expired_provider_timeout ) && 'mad4b_google_dr
 $scan_deadline->setValue( null, 0.0 );
 $normal_provider_timeout = $provider_timeout->invoke( null, 30 );
 mad4b_oauth_assert( ! is_wp_error( $normal_provider_timeout ) && 30.0 === (float) $normal_provider_timeout, 'Provider timeout outside a source scan must preserve the normal request budget.', $normal_provider_timeout );
+$record_refresh_failure = new ReflectionMethod( 'MAD4B_SCP_Google_Drive_Context', 'record_refresh_failure' );
+$record_refresh_failure->setAccessible( true );
+$token_before_budget_skip = get_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION, array() );
+$budget_failure_recorded = $record_refresh_failure->invoke( null, array( 'refresh_token' => 'budget-fixture' ), new WP_Error( 'mad4b_google_drive_scan_time_budget_exhausted', 'budget exhausted' ) );
+mad4b_oauth_assert( false === $budget_failure_recorded, 'Local scan-budget exhaustion must never be persisted as OAuth refresh-failure evidence.', $budget_failure_recorded );
+mad4b_oauth_assert( $token_before_budget_skip === get_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION, array() ), 'Skipping scan-budget refresh failure must leave the stored OAuth record unchanged.' );
 
 $full_suite_url = MAD4B_SCP_Google_Drive_Context::authorization_url( 'read_write' );
 mad4b_oauth_assert( ! is_wp_error( $full_suite_url ), 'Full Apps Suite OAuth authorization URL must be created.', $full_suite_url );
@@ -599,4 +605,4 @@ mad4b_oauth_assert( is_wp_error( $blocked_grant_reduction ) && 'mad4b_google_wor
 delete_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION );
 
 mad4b_oauth_assert( count( $GLOBALS['mad4b_managed_site_nonces'] ) >= 3, 'Managed session/redeem/refresh must each use a fresh request nonce.', $GLOBALS['mad4b_managed_site_nonces'] );
-echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v13: PASS\n";
+echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v14: PASS\n";
