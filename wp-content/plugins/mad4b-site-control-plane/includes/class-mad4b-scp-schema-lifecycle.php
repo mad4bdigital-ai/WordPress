@@ -28,6 +28,7 @@ final class MAD4B_SCP_Schema_Lifecycle {
 			defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '',
 			(string) MAD4B_SCP_Schema::VERSION,
 			(string) MAD4B_SCP_Schema::MIGRATION_ID,
+			method_exists( 'MAD4B_SCP_Schema', 'migration_contract_sha256' ) ? (string) MAD4B_SCP_Schema::migration_contract_sha256() : '',
 		) ) );
 		return self::$package_identity;
 	}
@@ -154,6 +155,20 @@ final class MAD4B_SCP_Schema_Lifecycle {
 	}
 
 	public static function reconcile( $source = 'scheduled' ) {
+		$owned_here = false;
+		if ( '' === self::$active_lock_token ) {
+			$lock = self::acquire_lock();
+			if ( '' === $lock ) return new WP_Error( 'mad4b_schema_lifecycle_busy', 'Schema reconciliation is waiting for the shared runtime maintenance lease.' );
+			$owned_here = true;
+		}
+		try {
+			return self::reconcile_locked( $source );
+		} finally {
+			if ( $owned_here && '' !== self::$active_lock_token ) self::release_lock( self::$active_lock_token );
+		}
+	}
+
+	private static function reconcile_locked( $source = 'scheduled' ) {
 		$source = sanitize_key( (string) $source );
 		if ( 'scheduled' === $source && ! self::retry_due() ) {
 			$state = get_option( self::STATE_OPTION, array() );
