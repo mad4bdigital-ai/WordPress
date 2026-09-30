@@ -9,6 +9,7 @@ write_authority = (root / 'includes' / 'class-mad4b-scp-staging-write-authority.
 oauth = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 perf = (root / 'includes' / 'class-mad4b-scp-admin-query-performance.php').read_text(encoding='utf-8')
+qm_bridge = (root / 'includes' / 'class-mad4b-scp-query-monitor-evidence-bridge.php').read_text(encoding='utf-8')
 generalization = (root.parents[2] / 'specs' / '007-content-intelligence-workflow-platform' / 'contracts' / 'generalization-rules.md').read_text(encoding='utf-8')
 contract = (root.parents[2] / 'specs' / '007-content-intelligence-workflow-platform' / 'contracts' / 'remote-operation-parity-discoverability.md').read_text(encoding='utf-8')
 
@@ -37,6 +38,12 @@ required_parity_markers = [
     "challenge_expires > ( time() + 120 )",
     "const PERFORMANCE_INDEX_ABILITY = 'mad4b/admin-query-performance-apply';",
     "const PERFORMANCE_RECONCILE_ABILITY = 'mad4b/admin-query-performance-reconcile';",
+    "const QUERY_MONITOR_ATTRIBUTION_ABILITY = 'mad4b/query-monitor-db-attribution-bootstrap';",
+    "const QUERY_MONITOR_ATTRIBUTION_CONFIRMATION = 'ENABLE STAGING QUERY MONITOR DB ATTRIBUTION';",
+    "'query_monitor_db_attribution_bootstrap' => array(",
+    "'remote_mode' => 'exact_staging_instrumentation_bootstrap'",
+    "public static function bootstrap_query_monitor_db_attribution( $input )",
+    "'mad4b.remote-query-monitor-db-attribution-bootstrap.v1'",
     "const WORK_COMPLETE_ABILITY = 'mad4b/remote-operation-work-complete';",
     "'external_executor_work_completion' => array(",
     "'remote_ability' => self::WORK_COMPLETE_ABILITY",
@@ -187,6 +194,7 @@ for ability in [
     'mad4b/browser-acceptance-run',
     'mad4b/admin-query-performance-apply',
     'mad4b/admin-query-performance-reconcile',
+    'mad4b/query-monitor-db-attribution-bootstrap',
     'mad4b/remote-operation-work-claim',
     'mad4b/remote-operation-work-complete',
 ]:
@@ -230,6 +238,7 @@ for ability in [
     'mad4b/browser-acceptance-run',
     'mad4b/admin-query-performance-apply',
     'mad4b/admin-query-performance-reconcile',
+    'mad4b/query-monitor-db-attribution-bootstrap',
     'mad4b/remote-operation-work-claim',
     'mad4b/remote-operation-work-complete',
 ]:
@@ -451,6 +460,29 @@ if "$result = self::apply_indexes();" not in worker:
 
 if "apply_indexes()" in perf.split("public static function reconcile_stale_job(", 1)[1].split("public static function enqueue_explicit(", 1)[0]:
     raise SystemExit("stale performance reconciliation must never execute or retry DDL")
+
+for marker in [
+    "public static function db_attribution_status()",
+    "public static function enable_db_attribution_explicit()",
+    "'conflicting_db_dropin'",
+    "@fopen( $dropin, 'x' )",
+    "'foreign_dropin_replaced' => false",
+    "'staging' !== (string) $status['environment']",
+]:
+    if marker not in qm_bridge:
+        raise SystemExit(f'Query Monitor governed attribution bootstrap invariant missing: {marker}')
+
+remote_qm = parity.split("public static function bootstrap_query_monitor_db_attribution( $input )", 1)[1].split("public static function reconcile_performance_indexes( $input )", 1)[0]
+for marker in [
+    "self::assert_exact_build( $input )",
+    "MAD4B_SCP_Query_Monitor_Evidence_Bridge::enable_db_attribution_explicit()",
+    "'production_mutation' => false",
+    "'foreign_dropin_replaced' => false",
+]:
+    if marker not in remote_qm:
+        raise SystemExit(f'Remote Query Monitor attribution bootstrap lost bounded invariant: {marker}')
+if "file_put_contents(" in remote_qm or "$wpdb" in remote_qm:
+    raise SystemExit("Remote Query Monitor operation must delegate to the bounded bridge instead of implementing generic filesystem/database mutation")
 
 
 if 'One service, many frontends' not in generalization:

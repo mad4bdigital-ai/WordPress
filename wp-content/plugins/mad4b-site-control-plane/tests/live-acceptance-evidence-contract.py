@@ -35,6 +35,8 @@ required_observer = [
     "add_action( 'deprecated_class_run'",
     "add_filter( 'rest_post_dispatch'",
     "'mad4b/query-monitor-regression-status'",
+    "'mad4b/query-monitor-db-attribution-status'",
+    "public static function query_monitor_db_attribution_status()",
     "'mad4b/frontend-performance-status'",
     "'frontend_performance_baseline' => self::gate(",
     "'mad4b.frontend-performance-evidence.v3'",

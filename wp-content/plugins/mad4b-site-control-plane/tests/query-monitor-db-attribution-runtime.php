@@ -62,6 +62,16 @@ mad4b_qm_assert( ! file_exists( WP_CONTENT_DIR . '/db.php' ), 'WPML/foreign wp-a
 mad4b_qm_assert( 'deferred_foreign_admin_surface' === $ordinary_admin['state'], 'foreign admin guard must exit before filesystem attribution status' );
 mad4b_qm_assert( empty( $ordinary_admin['mutation_performed'] ), 'foreign admin guard must remain mutation-free' );
 
+$GLOBALS['mad4b_qm_admin'] = false;
+$remote_enabled = MAD4B_SCP_Query_Monitor_Evidence_Bridge::enable_db_attribution_explicit();
+mad4b_qm_assert( file_exists( WP_CONTENT_DIR . '/db.php' ), 'governed remote bootstrap must create the same bounded Query Monitor attribution loader on Staging' );
+mad4b_qm_assert( 'query_monitor_dropin_reload_required' === $remote_enabled['state'], 'remote bootstrap must require a fresh request before QM_DB becomes active' );
+mad4b_qm_assert( ! empty( $remote_enabled['mutation_performed'] ), 'remote bootstrap must report its bounded filesystem mutation explicitly' );
+mad4b_qm_assert( ! empty( $remote_enabled['bootstrap']['created'] ) && 'mad4b.query-monitor-db-attribution-bootstrap.v3' === $remote_enabled['bootstrap']['contract'], 'remote bootstrap evidence contract missing' );
+mad4b_qm_assert( empty( $remote_enabled['bootstrap']['foreign_dropin_replaced'] ), 'remote bootstrap must never replace a foreign db.php' );
+@unlink( WP_CONTENT_DIR . '/db.php' );
+
+$GLOBALS['mad4b_qm_admin'] = true;
 $_GET['page'] = 'mad4b-control-plane-diagnostics';
 $enabled = MAD4B_SCP_Query_Monitor_Evidence_Bridge::maybe_enable_db_attribution();
 mad4b_qm_assert( file_exists( WP_CONTENT_DIR . '/db.php' ) && ! is_link( WP_CONTENT_DIR . '/db.php' ), 'bounded Query Monitor loader was not created when symlink was unavailable' );
@@ -92,6 +102,10 @@ $GLOBALS['mad4b_qm_env'] = 'production';
 $production = MAD4B_SCP_Query_Monitor_Evidence_Bridge::maybe_enable_db_attribution();
 mad4b_qm_assert( ! is_link( WP_CONTENT_DIR . '/db.php' ) && ! file_exists( WP_CONTENT_DIR . '/db.php' ), 'Production must never create the Query Monitor db.php drop-in' );
 mad4b_qm_assert( empty( $production['production_changed'] ), 'Production status must report unchanged' );
+$GLOBALS['mad4b_qm_admin'] = false;
+$production_remote = MAD4B_SCP_Query_Monitor_Evidence_Bridge::enable_db_attribution_explicit();
+mad4b_qm_assert( ! is_link( WP_CONTENT_DIR . '/db.php' ) && ! file_exists( WP_CONTENT_DIR . '/db.php' ), 'Remote bootstrap must also fail closed outside Staging' );
+mad4b_qm_assert( empty( $production_remote['mutation_performed'] ), 'Production remote bootstrap must remain mutation-free' );
 
 @unlink( WP_CONTENT_DIR . '/db.php' );
 @unlink( $source_dir . '/db.php' );
