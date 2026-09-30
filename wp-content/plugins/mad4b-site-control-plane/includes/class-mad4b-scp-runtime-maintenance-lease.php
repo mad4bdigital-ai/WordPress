@@ -110,12 +110,17 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease {
 	public static function status() {
 		$current = get_option( self::OPTION, array() );
 		$now = time();
+		$soft = is_array( $current ) && isset( $current['expires_at'] ) ? absint( $current['expires_at'] ) : 0;
+		$hard = is_array( $current ) && isset( $current['hard_expires_at'] ) ? absint( $current['hard_expires_at'] ) : 0;
+		$active = is_array( $current ) && ! empty( $current['token'] ) && $hard > $now;
 		return array(
 			'contract' => self::CONTRACT,
-			'active' => is_array( $current ) && ! empty( $current['token'] ) && absint( isset( $current['hard_expires_at'] ) ? $current['hard_expires_at'] : 0 ) > $now,
+			'active' => $active,
 			'owner' => is_array( $current ) && isset( $current['owner'] ) ? sanitize_key( (string) $current['owner'] ) : '',
-			'expires_at' => is_array( $current ) && isset( $current['expires_at'] ) ? absint( $current['expires_at'] ) : 0,
-			'hard_expires_at' => is_array( $current ) && isset( $current['hard_expires_at'] ) ? absint( $current['hard_expires_at'] ) : 0,
+			'expires_at' => $soft,
+			'hard_expires_at' => $hard,
+			'soft_lease_expired' => $active && $soft <= $now,
+			'retry_after_seconds' => $active ? max( 1, min( 30, ( $soft > $now ? $soft : $hard ) - $now ) ) : 0,
 			'read_only' => true,
 		);
 	}
