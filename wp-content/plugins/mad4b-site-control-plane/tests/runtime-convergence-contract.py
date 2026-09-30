@@ -133,6 +133,12 @@ assert "private static function yield_safe_phases" in runtime
 assert "'maintenance_sliced' => true" in runtime
 assert "$checkpoint['next_safe_phase'] = sanitize_key( (string) $next_phase );" in runtime
 assert "mark_activation_pending" in runtime
+activation_pending = runtime.split("public static function mark_activation_pending()", 1)[1].split("private static function restore_checkpoint_snapshot", 1)[0]
+assert "$previous_checkpoint = get_option( self::CHECKPOINT_OPTION, null );" in activation_pending
+assert activation_pending.count("self::restore_checkpoint_snapshot( $previous_checkpoint )") >= 2
+assert "'persist_phase' => 'pending_safe_phases'" in activation_pending
+assert "'persist_phase' => 'pending_manual_resume'" in activation_pending
+assert "'checkpoint_restore_ok' => $checkpoint_restore_ok" in activation_pending
 assert "'plugin_activation' !== $stored_source" in runtime
 assert "'checkpoint_persist_failed'" in runtime
 assert "$manual_resume_gate" in runtime
