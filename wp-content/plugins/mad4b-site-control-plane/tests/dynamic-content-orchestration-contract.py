@@ -517,3 +517,12 @@ if "$this->snapshot($id,$input)" in managed_failure:
     raise SystemExit("managed-marker failure must not trust a post-error live snapshot")
 
 print("mad4b.dynamic-content-orchestration.contract.v1: PASS")
+
+# Raw/effective environment evidence must be captured in the mutation-result scope,
+# not in unrelated discovery/read paths.
+apply_body = adapter.split("public function apply_bundle", 1)[1].split("public function repair_desired_state", 1)[0]
+assert "$environment_evidence=$this->environment_evidence();" in apply_body
+assert "'effective_environment'=>$environment_evidence['effective_environment']" in apply_body
+assert "'wordpress_environment'=>$environment_evidence['wordpress_environment']" in apply_body
+discover_body = adapter.split("public function discover_model", 1)[1].split("private function taxonomy_descriptor", 1)[0]
+assert "$environment_evidence=$this->environment_evidence();" not in discover_body
