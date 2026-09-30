@@ -665,7 +665,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		echo '<p>' . esc_html__( 'OAuth scopes:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( implode( ' ', $validated['scopes'] ) ) . '</code></p>';
 		if ( $step_up_requested ) {
 			echo '<p><strong>' . esc_html__( 'Authority step-up:', 'mad4b-site-control-plane' ) . '</strong> ' .
-				esc_html__( 'This OAuth scope permits ChatGPT to request exact environment-bound governance bootstrap and convergence operations, including bootstrap Control Plane self-update only where the current environment policy permits it. It does not itself create write grants, Developer authority, Developer Breakglass authority, or raw-SQL Breakglass authority. Production writes require an exact Production Site Profile, environment-specific confirmation, exact grants, one-time approval, matching build/site digests, enrolled administrator identity, audit readiness, and all fail-closed governance gates. Full Staging Authority remains Staging-only.', 'mad4b-site-control-plane' ) .
+				esc_html__( 'This OAuth scope permits ChatGPT to request exact environment-bound governance bootstrap and convergence operations, including bootstrap Control Plane self-update and database-backed governed runtime-gate policy changes only where the current environment policy permits them. It does not itself create write grants, Developer authority, Developer Breakglass authority, Production mutation authority, or raw-SQL Breakglass authority. Production writes require an exact Production Site Profile, database-bound Production OAuth opt-in, explicit runtime-gate confirmation, exact grants, one-time approval, matching build/site digests, enrolled administrator identity, audit readiness, and all fail-closed governance gates. Full Staging Authority remains Staging-only.', 'mad4b-site-control-plane' ) .
 				'</p>';
 		}
 		$grant_projection = self::consent_grant_projection();
@@ -1113,12 +1113,16 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function production_approved() {
-		if ( defined( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) && true === constant( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) ) return true;
-		return 'production' === self::current_environment()
-			&& class_exists( 'MAD4B_SCP_Site_Profile' )
-			&& MAD4B_SCP_Site_Profile::origin_enrolled()
-			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
-			&& MAD4B_SCP_Site_Profile::oauth_enabled();
+		$profile_approved = class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' )
+			&& method_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig', 'production_profile_enabled' )
+			&& MAD4B_SCP_Staging_OAuth_Autoconfig::production_profile_enabled();
+		if ( $profile_approved ) return true;
+
+		// Portable Production OAuth is read-only and creates no mutation
+		// authority. Keep it independent from the database-backed high-risk
+		// runtime gates so fresh HTTPS installations retain zero-touch reads.
+		return class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' )
+			&& MAD4B_SCP_Portable_Readonly_Connection::effective();
 	}
 
 	private static function environment_allowed() {

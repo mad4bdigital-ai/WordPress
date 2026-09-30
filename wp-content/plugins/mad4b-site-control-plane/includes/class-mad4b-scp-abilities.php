@@ -1304,8 +1304,8 @@ final class MAD4B_SCP_Abilities {
 		$read = array( 'SELECT', 'SHOW', 'DESCRIBE', 'DESC', 'EXPLAIN' );
 		$write = array( 'INSERT', 'UPDATE', 'DELETE', 'REPLACE' );
 		$ddl = array( 'ALTER', 'CREATE', 'DROP', 'TRUNCATE', 'RENAME' );
-		if ( in_array( $verb, $write, true ) && ( ! defined( 'MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED' ) || true !== MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED ) ) return new WP_Error( 'mad4b_sql_write_disabled', 'Raw SQL writes are disabled.' );
-		if ( in_array( $verb, $ddl, true ) && ( ! defined( 'MAD4B_MCP_BREAKGLASS_DDL_ENABLED' ) || true !== MAD4B_MCP_BREAKGLASS_DDL_ENABLED ) ) return new WP_Error( 'mad4b_sql_ddl_disabled', 'DDL is disabled.' );
+		if ( in_array( $verb, $write, true ) && ( ! class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) || ! MAD4B_SCP_Governed_Runtime_Gates::raw_sql_write_enabled() ) ) return new WP_Error( 'mad4b_sql_write_disabled', 'Raw SQL writes are disabled by the governed database policy.' );
+		if ( in_array( $verb, $ddl, true ) && ( ! class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) || ! MAD4B_SCP_Governed_Runtime_Gates::raw_sql_ddl_enabled() ) ) return new WP_Error( 'mad4b_sql_ddl_disabled', 'DDL is disabled by the governed database policy.' );
 		if ( ! in_array( $verb, array_merge( $read, $write, $ddl ), true ) ) return new WP_Error( 'mad4b_sql_verb_denied', 'SQL verb is not allowed.' );
 
 		$max = isset( $input['max_rows'] ) ? max( 1, min( 500, absint( $input['max_rows'] ) ) ) : 100;

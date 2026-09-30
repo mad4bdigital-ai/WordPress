@@ -370,7 +370,9 @@ if "'mad4b_write_capability_not_eligible'" not in (root / 'includes/class-mad4b-
 
 # Governance invariants requested by the acceptance patch.
 for marker in [
-    "'production_auto_enable' => false",
+    "MAD4B_SCP_Governed_Runtime_Gates::production_mutation_enabled()",
+    "MAD4B_SCP_Governed_Runtime_Gates::production_auto_enable()",
+    "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled()",
     "'breakglass_auto_enable' => false",
     "$policy['production_exact_approval_only'] = $production;",
     "$policy['all_remote_writes_require_exact_approval'] = $production;",

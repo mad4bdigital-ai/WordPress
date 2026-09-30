@@ -48,7 +48,9 @@ jobs:
           php -l "$authz"
 
           grep -Fq "MAD4B_MCP_MUTATION_ENABLED" "$policy"
-          grep -Fq "true !== MAD4B_MCP_MUTATION_ENABLED" "$policy"
+          grep -Fq "true === MAD4B_MCP_MUTATION_ENABLED" "$policy"
+          grep -Fq "MAD4B_SCP_Governed_Runtime_Gates::production_mutation_enabled()" "$policy"
+          grep -Fq "'production' === \$environment" "$policy"
           grep -Fq "MAD4B_SCP_Identity_Context::current()" "$policy"
           grep -Fq "MAD4B_SCP_Agent_Registry::resolve_agent" "$policy"
           grep -Fq "'permission_callback' => \$this->mutation_permission_callback( \$permission, (bool) \$readonly, \$name, \$category )" "$abilities"

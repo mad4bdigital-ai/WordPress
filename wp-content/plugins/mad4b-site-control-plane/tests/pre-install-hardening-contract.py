@@ -18,6 +18,7 @@ def forbid(source, needle, label):
 
 def main():
     policy = text("includes/class-mad4b-scp-policy.php")
+    gates = text("includes/class-mad4b-scp-governed-runtime-gates.php")
     abilities = text("includes/class-mad4b-scp-abilities.php")
     provider = text("includes/class-mad4b-scp-provider-contracts.php")
     base = text("includes/adapters/class-mad4b-scp-adapter-base.php")
@@ -78,8 +79,15 @@ def main():
     require(abilities, "mad4b_transaction_required", "transaction startup fail-closed")
     require(abilities, "FOR UPDATE", "locked DB mutation preflight")
 
-    # Breakglass requires three gates and bounded SELECT before execution.
-    require(policy, "mad4b_mcp_breakglass_permission', false", "independent breakglass approval gate")
+    # Breakglass positive authority is database-backed and profile-bound.
+    # The legacy filter remains only as a final deny/constraint hook.
+    require(gates, "const OPTION = 'mad4b_scp_governed_runtime_gates_v1';", "database-backed breakglass authority store")
+    require(gates, "'raw_sql_breakglass_enabled'", "database-backed breakglass authority flag")
+    require(policy, "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled()", "database-backed breakglass policy gate")
+    require(policy, "mad4b_mcp_breakglass_permission', true", "breakglass final deny override")
+    forbid(policy, "mad4b_mcp_breakglass_permission', false", "hidden code-level breakglass enable gate")
+    require(abilities, "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_write_enabled()", "database-backed raw SQL write mode")
+    require(abilities, "MAD4B_SCP_Governed_Runtime_Gates::raw_sql_ddl_enabled()", "database-backed raw SQL DDL mode")
     require(abilities, "mad4b_select_limit_required", "raw SELECT execution bound")
     require(abilities, "requested_limit > $max", "raw SELECT max_rows bound")
 
@@ -126,10 +134,14 @@ def main():
     require(seo, "mb_strlen", "Unicode-aware SEO length")
     require(seo, "'UTF-8'", "explicit SEO UTF-8 length")
 
-    # Guard against regression to the exact previously observed unsafe defaults.
+    # Guard against regression to previously observed unsafe defaults and
+    # deployment-constant breakglass authority. The breakglass filter may
+    # default true only after the database-backed authority gate succeeds.
     forbid(bitflows, "mad4b_scp_bitflows_flow_allowed', true", "allow-all Bit Flows policy")
     forbid(jetengine, "mad4b_scp_jetengine_field_write_allowed', true", "allow-all JetEngine field policy")
-    forbid(policy, "mad4b_mcp_breakglass_permission', true", "implicit breakglass approval")
+    forbid(policy, "mad4b_mcp_breakglass_permission', false", "hidden code-level breakglass enable gate")
+    forbid(abilities, "MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED", "hardcoded raw SQL write authority")
+    forbid(abilities, "MAD4B_MCP_BREAKGLASS_DDL_ENABLED", "hardcoded raw SQL DDL authority")
 
     print("mad4b.site-control-plane.pre-install-hardening.v1: PASS")
 

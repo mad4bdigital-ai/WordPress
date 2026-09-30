@@ -112,7 +112,8 @@ for marker in [
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
     "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
     "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()",
-    "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up );",
+    "MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()",
+    "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );",
     "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );",
     "verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )",
     "public static function chatgpt_direct_read_transport_tools()",
@@ -159,8 +160,9 @@ assert 'self::chatgpt_internal_enrollment_mutations()' in logical_enrollment
 assert 'if ( ! self::chatgpt_unified_catalog_enabled() )' in servers
 fallback = servers.split('if ( ! self::chatgpt_unified_catalog_enabled() )', 1)[1].split("$narrow_read = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )", 1)[0]
 for marker in [
-    "$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools() )",
-    "$tools = array_values( array_intersect( $core, $direct_allowlist ) )",
+    "$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up )",
+    "$fallback_candidates = array_merge( $core, $runtime_gate_step_up )",
+    "$tools = array_values( array_intersect( $fallback_candidates, $direct_allowlist ) )",
     "$tools = array_values( array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) ) )",
     "array_unique( array_map( 'strval', $tools ) )",
     "sort( $tools, SORT_STRING )",

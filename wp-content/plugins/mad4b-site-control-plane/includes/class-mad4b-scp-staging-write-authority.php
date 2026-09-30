@@ -46,12 +46,30 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			return $status;
 		}
 
-		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) ) {
+		$environment = isset( $status['environment'] ) ? sanitize_key( (string) $status['environment'] ) : self::current_environment();
+		$configuration_source = 'site_profile';
+		if ( 'production' === $environment ) {
+			if ( ! class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) || ! MAD4B_SCP_Governed_Runtime_Gates::production_mutation_enabled() ) {
+				$status['blocker'] = 'production_mutation_gate_disabled';
+				$status['state'] = 'blocked';
+				$status['mutation_gate_configured'] = false;
+				$status['configuration_source'] = 'governed_runtime_gates';
+				self::$status = $status;
+				return $status;
+			}
+			$configuration_source = 'governed_runtime_gates';
+			if ( MAD4B_SCP_Governed_Runtime_Gates::production_auto_enable() && ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) ) {
+				define( 'MAD4B_MCP_MUTATION_ENABLED', true );
+			}
+		} elseif ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) ) {
 			define( 'MAD4B_MCP_MUTATION_ENABLED', true );
 		}
+
 		$status['mutation_gate_configured'] = true;
-		$status['configuration_source'] = 'site_profile';
+		$status['configuration_source'] = $configuration_source;
 		$status = self::restore_persisted_ready_status( $status );
+		$status['mutation_gate_configured'] = true;
+		$status['configuration_source'] = $configuration_source;
 		self::$status = $status;
 		return $status;
 	}
@@ -75,7 +93,9 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			if ( ! array_key_exists( $key, $stored ) || ! array_key_exists( $key, $current ) || (string) $stored[ $key ] !== (string) $current[ $key ] ) return $current;
 		}
 		$stored['mutation_gate_configured'] = true;
-		$stored['configuration_source'] = 'site_profile';
+		foreach ( array( 'production_mutation_enabled', 'production_auto_enable', 'raw_sql_breakglass_enabled', 'raw_sql_write_enabled', 'raw_sql_ddl_enabled', 'breakglass_auto_enable', 'breakglass_included' ) as $projection_key ) {
+			if ( array_key_exists( $projection_key, $current ) ) $stored[ $projection_key ] = $current[ $projection_key ];
+		}
 		$stored['restored_from_persisted_authority'] = true;
 		return $stored;
 	}
@@ -1808,7 +1828,11 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'blocker' => $blocker,
 			'mutation_gate_configured' => false,
 			'configuration_source' => 'none',
-			'production_auto_enable' => false,
+			'production_mutation_enabled' => class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::production_mutation_enabled() : false,
+			'production_auto_enable' => class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::production_auto_enable() : false,
+			'raw_sql_breakglass_enabled' => class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled() : false,
+			'raw_sql_write_enabled' => class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::raw_sql_write_enabled() : false,
+			'raw_sql_ddl_enabled' => class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::raw_sql_ddl_enabled() : false,
 			'production_write_confirmed' => 'production' === $environment && $write_enabled,
 			'breakglass_auto_enable' => false,
 			'breakglass_included' => false,

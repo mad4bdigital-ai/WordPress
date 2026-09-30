@@ -85,7 +85,7 @@ required_consent_semantics = [
     'Generic raw-SQL Breakglass',
     'Current governed authority',
     'Full Staging Authority (Staging only)',
-    'Production writes still require exact Site Profile confirmation and one-time approval',
+    'Production writes still require exact Site Profile confirmation, database-bound Production OAuth opt-in, explicit runtime-gate confirmation, and one-time approval',
 ]
 for marker in required_consent_semantics:
     if marker not in consent_ui:
