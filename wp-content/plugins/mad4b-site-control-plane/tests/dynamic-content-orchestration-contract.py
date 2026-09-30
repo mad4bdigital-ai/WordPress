@@ -269,7 +269,7 @@ for forbidden in [
 ]:
     forbid(reconciliation, forbidden, "grant reconciliation wildcard/dynamic extension")
 
-for marker in ["0.4.0-rc.83"]:
+for marker in ["0.4.0-rc.84"]:
     require(plugin, marker, "plugin release identity")
     require(readme, marker, "readme release identity")
     require(build, marker, "runtime build identity")
