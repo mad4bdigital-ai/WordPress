@@ -625,7 +625,6 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 				if(!empty($tax_desc['has_more_terms'])) $truncated[]='taxonomy_terms:'.(isset($tax_desc['name'])?(string)$tax_desc['name']:'unknown');
 			}
 		}
-		$environment_evidence=$this->environment_evidence();
 		return array(
 			'contract'=>self::CONTRACT,'wordpress_runtime_dynamic'=>true,'hard_coded_post_types'=>false,'hard_coded_taxonomies'=>false,
 			'detail'=>$detail,'complete'=>empty($truncated),'truncated_sections'=>array_values(array_unique($truncated)),
@@ -1317,6 +1316,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		$final_stage_results=isset($accepted)&&is_array($accepted)&&isset($accepted['stage_results'])?(array)$accepted['stage_results']:(isset($validated)&&is_array($validated)&&isset($validated['stage_results'])?(array)$validated['stage_results']:array());
 		$evidence=isset($input['evidence'])&&is_array($input['evidence'])?$input['evidence']:array();
 		$targets=isset($input['acceptance_targets'])&&is_array($input['acceptance_targets'])?$input['acceptance_targets']:array();
+		$environment_evidence=$this->environment_evidence();
 
 		return array(
 			'contract'=>self::CONTRACT,
