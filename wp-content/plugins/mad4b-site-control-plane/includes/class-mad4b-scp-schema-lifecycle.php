@@ -7,7 +7,7 @@ final class MAD4B_SCP_Schema_Lifecycle {
 	const CONTRACT = 'mad4b.schema-lifecycle.v1';
 	const STATE_OPTION = 'mad4b_scp_schema_lifecycle_v1';
 	const CRON_HOOK = 'mad4b_scp_schema_lifecycle_reconcile';
-	const LOCK_OPTION = 'mad4b_scp_schema_lifecycle_lock_v1';
+	const LOCK_OPTION = 'mad4b_scp_runtime_maintenance_lock_v1';
 	private static $package_identity = '';
 
 	public static function boot() {
@@ -58,8 +58,18 @@ final class MAD4B_SCP_Schema_Lifecycle {
 		return ! MAD4B_SCP_Schema::is_ready() || ! hash_equals( self::package_identity(), $applied );
 	}
 
+	private static function restart_grace() {
+		if ( ! class_exists( 'MAD4B_SCP_Runtime_Convergence' ) || ! method_exists( 'MAD4B_SCP_Runtime_Convergence', 'restart_grace_status' ) ) {
+			return array( 'active' => false, 'retry_after_seconds' => 0, 'resume_not_before' => 0 );
+		}
+		$status = MAD4B_SCP_Runtime_Convergence::restart_grace_status();
+		return is_array( $status ) ? $status : array( 'active' => false, 'retry_after_seconds' => 0, 'resume_not_before' => 0 );
+	}
+
 	public static function maybe_schedule() {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
+		$grace = self::restart_grace();
+		if ( ! empty( $grace['active'] ) ) return;
 		if ( ! self::needs_reconciliation() || ! self::retry_due() ) return;
 		if ( false !== wp_next_scheduled( self::CRON_HOOK ) ) return;
 		wp_schedule_single_event( time() + 5, self::CRON_HOOK );
@@ -82,6 +92,8 @@ final class MAD4B_SCP_Schema_Lifecycle {
 		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) return;
 		if ( defined( 'DOING_CRON' ) && DOING_CRON ) return;
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
+		$grace = self::restart_grace();
+		if ( ! empty( $grace['active'] ) ) return;
 		if ( ! self::needs_reconciliation() || ! self::retry_due() ) return;
 		$lock = self::acquire_lock();
 		if ( '' === $lock ) return;
@@ -104,7 +116,7 @@ final class MAD4B_SCP_Schema_Lifecycle {
 		if ( is_array( $current ) && ! empty( $current['expires_at'] ) && absint( $current['expires_at'] ) > $now ) return '';
 		if ( is_array( $current ) && ! empty( $current ) ) delete_option( self::LOCK_OPTION );
 		$token = hash( 'sha256', self::package_identity() . "\0" . microtime( true ) . "\0" . wp_rand() );
-		$record = array( 'token' => $token, 'expires_at' => $now + 120 );
+		$record = array( 'token' => $token, 'owner' => 'schema_lifecycle', 'expires_at' => $now + 120 );
 		if ( ! add_option( self::LOCK_OPTION, $record, '', false ) ) return '';
 		return $token;
 	}
@@ -115,6 +127,12 @@ final class MAD4B_SCP_Schema_Lifecycle {
 	}
 
 	public static function after_upgrade( $upgrader, $hook_extra ) {
+		// Governed self-update owns post-install convergence. Scheduling another
+		// schema job from Plugin_Upgrader here creates a worker/DB race exactly at
+		// the reconnect boundary, so defer that path to Runtime Convergence.
+		if ( class_exists( 'MAD4B_SCP_Self_Update' )
+			&& method_exists( 'MAD4B_SCP_Self_Update', 'managed_apply_in_progress' )
+			&& MAD4B_SCP_Self_Update::managed_apply_in_progress() ) return;
 		if ( ! is_array( $hook_extra ) || 'plugin' !== ( isset( $hook_extra['type'] ) ? (string) $hook_extra['type'] : '' ) ) return;
 		$current = defined( 'MAD4B_SCP_FILE' ) && function_exists( 'plugin_basename' ) ? plugin_basename( MAD4B_SCP_FILE ) : '';
 		$targets = array();
