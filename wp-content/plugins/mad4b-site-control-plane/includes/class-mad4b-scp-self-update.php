@@ -1034,8 +1034,8 @@ final class MAD4B_SCP_Self_Update {
 				// but does not enable the active-plugin maintenance hooks used by upgrade().
 				// Hold WordPress' own maintenance window across replacement/readback while
 				// the shared DB lease protects MAD4B request-serving work on both sides.
-				$upgrader->maintenance_mode( true );
 				$core_maintenance_open = true;
+				$upgrader->maintenance_mode( true );
 				$installed = $upgrader->install( $path, array( 'overwrite_package' => true ) );
 			} catch ( Throwable $throwable ) {
 				$installed = new WP_Error(
