@@ -193,11 +193,18 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 		return true;
 	}
 
+	public static function current_request_is_passive_mad4b_admin() {
+		return class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_is_passive_admin_hotpath' )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
+	}
+
 	public static function current_request_is_zero_touch_surface() {
 		return self::current_request_is_foreign_rest()
 			|| self::current_request_is_wordpress_cron()
 			|| self::current_request_is_foreign_admin_ajax()
-			|| self::current_request_is_foreign_wp_admin();
+			|| self::current_request_is_foreign_wp_admin()
+			|| self::current_request_is_passive_mad4b_admin();
 	}
 
 	public static function zero_touch_reason() {
@@ -205,6 +212,7 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 		if ( self::current_request_is_wordpress_cron() ) return 'wordpress_cron';
 		if ( self::current_request_is_foreign_admin_ajax() ) return 'foreign_admin_ajax';
 		if ( self::current_request_is_foreign_wp_admin() ) return 'foreign_wp_admin';
+		if ( self::current_request_is_passive_mad4b_admin() ) return 'passive_mad4b_admin';
 		return '';
 	}
 
@@ -262,6 +270,7 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 			'wordpress_cron_zero_touch' => true,
 			'foreign_wp_admin_zero_touch' => true,
 			'wp_admin_default_zero_touch' => true,
+			'passive_mad4b_admin_zero_touch' => true,
 			'wordpress_lifecycle_admin_explicit_opt_in' => true,
 			'external_provider_receipt_requires_exact_outer_http_route' => true,
 		);
