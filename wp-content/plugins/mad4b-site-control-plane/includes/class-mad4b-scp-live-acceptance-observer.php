@@ -62,7 +62,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			public function is_available() { return true; }
 			public function ability_names() {
 				return array(
-					'read' => array( 'mad4b/query-monitor-regression-status', 'mad4b/frontend-performance-status', 'mad4b/build-provenance-status', 'mad4b/external-handshake-attestation-status', 'mad4b/external-wpml-receipt-status', 'mad4b/snapshot-verify', 'mad4b/live-acceptance-status' ),
+					'read' => array( 'mad4b/query-monitor-regression-status', 'mad4b/query-monitor-db-attribution-status', 'mad4b/frontend-performance-status', 'mad4b/build-provenance-status', 'mad4b/external-handshake-attestation-status', 'mad4b/external-wpml-receipt-status', 'mad4b/snapshot-verify', 'mad4b/live-acceptance-status' ),
 					'content' => array(), 'admin' => array(),
 				);
 			}
@@ -76,6 +76,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 		self::add_read_ability( 'mad4b/query-monitor-regression-status', 'Get Query Monitor Regression Evidence', array( __CLASS__, 'query_monitor_status' ) );
+		self::add_read_ability( 'mad4b/query-monitor-db-attribution-status', 'Get Query Monitor DB Attribution Status', array( __CLASS__, 'query_monitor_db_attribution_status' ) );
 		self::add_read_ability( 'mad4b/frontend-performance-status', 'Get Front-end Performance Baseline Evidence', array( __CLASS__, 'frontend_performance_status' ) );
 		self::add_read_ability( 'mad4b/build-provenance-status', 'Get Exact Build Provenance', array( __CLASS__, 'build_provenance_status' ) );
 		self::add_read_ability( 'mad4b/external-handshake-attestation-status', 'Get External Tool Inventory Attestation', array( __CLASS__, 'external_handshake_attestation_status' ) );
@@ -318,6 +319,20 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'canaries' => array_merge( array( 'wpml_admin' => 0, 'site_health_rest' => 0, 'wpml_external_rest' => 0, 'generic_cron' => 0 ), $canaries ),
 			'blockers' => array_values( array_unique( $blockers ) ),
 		);
+	}
+
+	public static function query_monitor_db_attribution_status() {
+		if ( ! class_exists( 'MAD4B_SCP_Query_Monitor_Evidence_Bridge' ) || ! method_exists( 'MAD4B_SCP_Query_Monitor_Evidence_Bridge', 'db_attribution_status' ) ) {
+			return array(
+				'contract' => 'mad4b.query-monitor-db-attribution.v1',
+				'ready' => false,
+				'state' => 'query_monitor_attribution_bridge_unavailable',
+				'read_only' => true,
+				'mutation_performed' => false,
+				'production_changed' => false,
+			);
+		}
+		return MAD4B_SCP_Query_Monitor_Evidence_Bridge::db_attribution_status();
 	}
 
 	public static function query_monitor_status() {
