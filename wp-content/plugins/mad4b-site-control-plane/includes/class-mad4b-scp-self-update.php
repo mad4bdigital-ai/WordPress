@@ -42,6 +42,8 @@ final class MAD4B_SCP_Self_Update {
 	const POINTER_TRANSIENT     = 'mad4b_scp_update_pointer_v1';
 	const MANIFEST_TRANSIENT    = 'mad4b_scp_update_manifest_v1'; // Legacy/cache-only compatibility slot.
 	const MANIFEST_TRANSIENT_PREFIX = 'mad4b_scp_update_manifest_sha_';
+	const RECOVERY_CRON_HOOK      = 'mad4b_control_plane_recovery_update';
+	const RECOVERY_STATUS_OPTION  = 'mad4b_scp_recovery_update_status_v1';
 
 	private static $booted = false;
 	private static $managed_apply = false;
@@ -75,6 +77,98 @@ final class MAD4B_SCP_Self_Update {
 		add_action( 'admin_post_mad4b_control_plane_native_update', array( __CLASS__, 'handle_native_update' ) );
 		add_action( 'admin_post_mad4b_control_plane_refresh_update', array( __CLASS__, 'handle_refresh_update' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'native_update_notice' ) );
+
+		// Forward recovery path: exact governed Staging may refresh the signed,
+		// immutable release channel from WP-Cron without depending on a healthy MCP
+		// transport or an interactive wp-admin request. The cron is never scheduled
+		// from an MCP/OAuth protocol hotpath and is never eligible in Production.
+		add_action( self::RECOVERY_CRON_HOOK, array( __CLASS__, 'run_recovery_update' ) );
+		add_action( 'init', array( __CLASS__, 'ensure_recovery_update_schedule' ), 40 );
+	}
+
+
+	public static function ensure_recovery_update_schedule() {
+		if ( ! self::recovery_update_eligible() ) return;
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
+		if ( ! function_exists( 'wp_next_scheduled' ) || ! function_exists( 'wp_schedule_event' ) ) return;
+		if ( wp_next_scheduled( self::RECOVERY_CRON_HOOK ) ) return;
+		wp_schedule_event( time() + 300, 'hourly', self::RECOVERY_CRON_HOOK );
+	}
+
+	public static function run_recovery_update() {
+		$status = array(
+			'contract' => 'mad4b.control-plane-recovery-update.v1',
+			'checked_at' => gmdate( 'c' ),
+			'eligible' => false,
+			'update_available' => false,
+			'applied' => false,
+			'state' => 'ineligible',
+			'blocker' => '',
+			'production_mutation_performed' => false,
+		);
+		if ( ! self::recovery_update_eligible() ) {
+			$status['blocker'] = 'governed_staging_managed_runtime_required';
+			self::persist_recovery_status( $status );
+			return $status;
+		}
+		$status['eligible'] = true;
+
+		$manifest = self::fetch_manifest( true );
+		if ( is_wp_error( $manifest ) ) {
+			$status['state'] = 'manifest_unavailable';
+			$status['blocker'] = $manifest->get_error_code();
+			self::persist_recovery_status( $status );
+			return $status;
+		}
+		if ( ! self::update_available( $manifest ) ) {
+			$status['state'] = 'current';
+			self::persist_recovery_status( $status );
+			return $status;
+		}
+		$status['update_available'] = true;
+		$status['target'] = self::public_manifest( $manifest );
+
+		$tmp = self::download_governed_release_to_protected_storage( $manifest );
+		if ( is_wp_error( $tmp ) ) {
+			$status['state'] = 'download_failed';
+			$status['blocker'] = $tmp->get_error_code();
+			self::persist_recovery_status( $status );
+			return $status;
+		}
+		$verified = self::verify_archive( $tmp, $manifest );
+		if ( is_wp_error( $verified ) ) {
+			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			$status['state'] = 'verification_failed';
+			$status['blocker'] = $verified->get_error_code();
+			self::persist_recovery_status( $status );
+			return $status;
+		}
+
+		$result = self::apply_verified_archive( $tmp, $manifest, 'governed_staging_recovery_cron', '', $verified );
+		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( is_wp_error( $result ) ) {
+			$status['state'] = 'apply_failed';
+			$status['blocker'] = $result->get_error_code();
+			self::persist_recovery_status( $status );
+			return $status;
+		}
+		$status['applied'] = true;
+		$status['state'] = 'updated';
+		self::persist_recovery_status( $status );
+		return $status;
+	}
+
+	private static function recovery_update_eligible() {
+		if ( ! self::environment_allowed( true ) ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return false;
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() ) return false;
+		if ( ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) return false;
+		return 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+	}
+
+	private static function persist_recovery_status( array $status ) {
+		if ( function_exists( 'update_option' ) ) update_option( self::RECOVERY_STATUS_OPTION, $status, false );
 	}
 
 	public static function register_abilities() {
