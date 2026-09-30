@@ -22,6 +22,7 @@ function update_option( $k, $v, $autoload = null ) {
 	$GLOBALS['mad4b_test_options'][ $k ] = $v;
 	return true;
 }
+function delete_option( $k ) { unset( $GLOBALS['mad4b_test_options'][ $k ] ); return true; }
 function wp_next_scheduled( $hook ) { return false; }
 function wp_schedule_single_event( $timestamp, $hook, $args = array(), $wp_error = false ) { return ! empty( $GLOBALS['mad4b_test_schedule_result'] ); }
 function wp_clear_scheduled_hook( $hook ) { return true; }
@@ -124,7 +125,8 @@ $GLOBALS['mad4b_test_schedule_result'] = true;
 $persist = MAD4B_SCP_Runtime_Convergence::mark_post_update_pending( $target, 'governed_native_release_pull', str_repeat( '1', 64 ) );
 ok( 'checkpoint_persist_failed' === $persist['state'], 'stale same-build checkpoint must not satisfy exact post-update persistence' );
 ok( 'pending_restart' === $persist['persist_phase'], 'initial persistence failure must identify pending_restart phase' );
-ok( 'completed' === $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION ]['state'], 'failed write must leave stale checkpoint visible rather than being accepted' );
+ok( 'completed' === $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION ]['state'], 'failed write must restore the prior checkpoint rather than accepting stale identity equality' );
+ok( ! empty( $persist['checkpoint_restore_ok'] ), 'stale checkpoint restoration must verify exact snapshot recovery' );
 
 // Initial pending_restart may persist while Cron scheduling fails. The follow-up
 // pending_manual_resume transition is also durability-critical and must verify.
@@ -134,7 +136,8 @@ $GLOBALS['mad4b_test_schedule_result'] = false;
 $manual = MAD4B_SCP_Runtime_Convergence::mark_post_update_pending( $target, 'governed_native_release_pull', str_repeat( '2', 64 ) );
 ok( 'checkpoint_persist_failed' === $manual['state'], 'unpersisted manual-resume state must fail closed' );
 ok( 'pending_manual_resume' === $manual['persist_phase'], 'manual persistence failure must identify its exact phase' );
-ok( 'pending_restart' === $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION ]['state'], 'failed manual transition must retain durable pending_restart barrier' );
+ok( ! array_key_exists( MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION, $GLOBALS['mad4b_test_options'] ), 'failed manual transition must restore the pre-update checkpoint snapshot' );
+ok( ! empty( $manual['checkpoint_restore_ok'] ), 'manual persistence failure must verify checkpoint snapshot restoration' );
 
 $GLOBALS['mad4b_test_checkpoint_write_mode'] = 'persist';
 $GLOBALS['mad4b_test_schedule_result'] = true;
