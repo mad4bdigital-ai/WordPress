@@ -32,6 +32,7 @@ function get_bloginfo($k){return 'Client Test';}
 function wp_register_ability(){}
 final class MAD4B_SCP_Audit { public static function storage_status(){return array('ready'=>!empty($GLOBALS['mad4b_test_audit_ready']));} public static function record($a,$s,$st){if(!empty($GLOBALS['mad4b_test_audit_fail']))return new WP_Error('audit_failed','forced');$GLOBALS['mad4b_test_audit_events'][]=array($a,$s,$st);return true;} }
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-site-profile.php';
+require_once dirname(__DIR__).'/includes/class-mad4b-scp-environment.php';
 function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL: {$m}\n");exit(1);}}
 function reset_state(){ $GLOBALS['mad4b_test_options']=array();$GLOBALS['mad4b_test_audit_events']=array();$GLOBALS['mad4b_test_audit_ready']=true;$GLOBALS['mad4b_test_audit_fail']=false;$GLOBALS['mad4b_test_is_admin']=true;MAD4B_SCP_Site_Profile::reset_cache(); }
 function legacy_record($env,$origin,$revision=4){return array('contract'=>MAD4B_SCP_Site_Profile::LEGACY_CONTRACT,'version'=>MAD4B_SCP_Site_Profile::LEGACY_VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>$revision,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Legacy Client','chatgpt_app_id'=>'plugin_asdk_app_legacy123','oauth_user_ids'=>array(7,8),'related_origins'=>array($env=>$origin),'features'=>array('oauth'=>true,'skills'=>true,'write'=>true,'production_write_confirmed'=>true,'provider_isolation'=>true,'managed_runtime'=>true,'acceptance'=>true),'legacy_agent_slug'=>'legacy-agent','legacy_zero_touch'=>true,'created_at'=>'2026-01-01T00:00:00Z','updated_at'=>'2026-01-01T00:00:00Z');}
@@ -51,6 +52,8 @@ reset_state();
 $GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']='https://staging.dynamic-client.test/';
 ok('production'===MAD4B_SCP_Site_Profile::wordpress_environment(),'raw WordPress environment remains production');
 ok('production'===MAD4B_SCP_Site_Profile::current_environment(),'hostname hint never changes authority before enrollment');
+ok('production'===MAD4B_SCP_Environment::wordpress(),'central resolver preserves raw WordPress Production evidence before enrollment');
+ok('production'===MAD4B_SCP_Environment::effective(),'central resolver grants no hostname authority before enrollment');
 ok('staging'===MAD4B_SCP_Site_Profile::suggested_environment(),'staging hostname produces advisory staging enrollment default');
 $dynamic=MAD4B_SCP_Site_Profile::save_current_site(array(
     'expected_revision'=>0,
@@ -62,6 +65,11 @@ $dynamic=MAD4B_SCP_Site_Profile::save_current_site(array(
 ));
 ok(!is_wp_error($dynamic),'explicit site enrollment can use advisory environment without wp-config edit');
 ok('staging'===MAD4B_SCP_Site_Profile::current_environment(),'exact Site Profile becomes MAD4B environment authority');
+ok('staging'===MAD4B_SCP_Environment::effective(),'central resolver propagates exact Site Profile Staging authority');
+$environment_snapshot=MAD4B_SCP_Environment::snapshot();
+ok('production'===($environment_snapshot['wordpress_environment']??'')&&'staging'===($environment_snapshot['effective_environment']??''),'central resolver preserves raw/effective split');
+ok(empty($environment_snapshot['wordpress_environment_explicit'])&&!empty($environment_snapshot['profile_environment_authoritative']),'implicit WordPress Production yields to exact profile only');
+ok('exact_site_profile_default_override'===($environment_snapshot['effective_source']??''),'central resolver exposes exact default-override provenance');
 ok('staging'===($dynamic['environment']??'')&&'production'===($dynamic['wordpress_environment']??''),'status separates effective MAD4B environment from raw WordPress environment');
 ok('exact_site_profile_default_override'===($dynamic['effective_environment_source']??''),'implicit WordPress Production default is replaced only by exact Site Profile enrollment');
 ok(!empty($dynamic['wordpress_profile_mismatch']),'raw WordPress/default mismatch is explicit diagnostics');
