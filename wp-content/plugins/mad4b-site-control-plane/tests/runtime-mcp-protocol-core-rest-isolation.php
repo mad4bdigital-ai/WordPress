@@ -107,6 +107,11 @@ if ( empty( $scope['protocol_core_rest_isolation_request_local_only'] )
 	|| empty( $scope['protocol_external_rest_isolation_request_local_only'] )
 	|| empty( $scope['protocol_external_rest_isolation_evaluated'] )
 	|| empty( $scope['protocol_external_rest_callbacks_removed'] )
+	|| (int) ( $scope['protocol_external_rest_callbacks_removed_count'] ?? 0 ) < 1
+	|| 512 !== (int) ( $scope['protocol_external_rest_scan_limit'] ?? 0 )
+	|| empty( $scope['protocol_external_rest_unknown_callbacks_preserved'] )
+	|| empty( $scope['protocol_external_rest_mu_plugin_callbacks_preserved'] )
+	|| ! empty( $scope['protocol_external_rest_scan_truncated'] )
 	|| ! empty( $scope['production_changed'] )
 	|| ! empty( $scope['provider_settings_changed'] )
 	|| ! empty( $scope['wordpress_rest_routes_changed'] ) ) {
