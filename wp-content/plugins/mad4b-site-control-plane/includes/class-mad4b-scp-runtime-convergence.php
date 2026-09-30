@@ -18,13 +18,44 @@ final class MAD4B_SCP_Runtime_Convergence {
 	const APPLY_ABILITY = 'mad4b/runtime-convergence-apply';
 	const CONFIRMATION = 'CONVERGE STAGING RUNTIME';
 	const CHECKPOINT_OPTION = 'mad4b_scp_runtime_convergence_v1';
-	const LOCK_OPTION = 'mad4b_scp_runtime_convergence_lock_v1';
+	const LOCK_OPTION = 'mad4b_scp_runtime_maintenance_lock_v1';
 	const CRON_HOOK = 'mad4b_scp_runtime_convergence_resume';
 	const LOCK_TTL = 300;
 	const MAX_TRANSIENT_RETRIES = 5;
+	const POST_UPDATE_QUIET_SECONDS = 20;
 
 	private static $booted = false;
 	private static $abilities_registered = false;
+
+	public static function post_update_quiet_seconds() {
+		return self::POST_UPDATE_QUIET_SECONDS;
+	}
+
+	public static function maintenance_not_before() {
+		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+		return is_array( $checkpoint ) && isset( $checkpoint['resume_not_before'] ) ? absint( $checkpoint['resume_not_before'] ) : 0;
+	}
+
+	public static function restart_grace_status() {
+		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+		$now = time();
+		$not_before = is_array( $checkpoint ) && isset( $checkpoint['resume_not_before'] ) ? absint( $checkpoint['resume_not_before'] ) : 0;
+		$source = is_array( $checkpoint ) && isset( $checkpoint['source'] ) ? sanitize_key( (string) $checkpoint['source'] ) : '';
+		$state = is_array( $checkpoint ) && isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
+		$active = 'self_update' === $source && $not_before > $now && in_array( $state, array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true );
+		return array(
+			'contract' => 'mad4b.runtime-restart-grace.v1',
+			'active' => $active,
+			'state' => $state,
+			'retry_after_seconds' => $active ? max( 1, $not_before - $now ) : 0,
+			'resume_not_before' => $not_before,
+			'target_identity' => is_array( $checkpoint ) && isset( $checkpoint['target_identity'] ) && is_array( $checkpoint['target_identity'] ) ? self::bounded_identity( $checkpoint['target_identity'] ) : array(),
+			'background_maintenance_deferred' => $active,
+			'read_only' => true,
+			'mutation_performed' => false,
+			'production_mutation' => false,
+		);
+	}
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -367,6 +398,18 @@ final class MAD4B_SCP_Runtime_Convergence {
 	public static function mark_activation_pending() {
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		if ( 'staging' !== $environment ) return array( 'scheduled' => false, 'state' => 'observe_only_non_staging', 'environment' => $environment );
+		$existing = get_option( self::CHECKPOINT_OPTION, array() );
+		$existing_source = is_array( $existing ) && isset( $existing['source'] ) ? sanitize_key( (string) $existing['source'] ) : '';
+		$existing_state = is_array( $existing ) && isset( $existing['state'] ) ? sanitize_key( (string) $existing['state'] ) : '';
+		if ( 'self_update' === $existing_source && in_array( $existing_state, array( 'pending_restart', 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true ) ) {
+			$scheduled = self::schedule_resume( self::maintenance_not_before() );
+			return array(
+				'scheduled' => (bool) $scheduled,
+				'state' => 'self_update_checkpoint_preserved',
+				'target_identity' => isset( $existing['target_identity'] ) && is_array( $existing['target_identity'] ) ? self::bounded_identity( $existing['target_identity'] ) : array(),
+				'production_mutation' => false,
+			);
+		}
 		$identity = self::current_identity();
 		$identity_complete = ! empty( $identity['source_commit_sha'] ) && ! empty( $identity['build_fingerprint'] ) && ! empty( $identity['package_manifest_digest'] );
 		if ( ! $identity_complete ) return array( 'scheduled' => false, 'state' => 'activation_identity_incomplete', 'environment' => $environment );
@@ -410,6 +453,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'state' => 'pending_restart',
 			'source' => 'self_update',
 			'channel' => sanitize_key( (string) $channel ),
+			'resume_not_before' => time() + self::POST_UPDATE_QUIET_SECONDS,
+			'quiet_period_seconds' => self::POST_UPDATE_QUIET_SECONDS,
 			'target_identity' => self::bounded_identity( $target ),
 			'update_plan_sha256' => strtolower( trim( (string) $plan_sha256 ) ),
 			'created_at' => gmdate( 'c' ),
@@ -421,7 +466,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		if ( ! is_array( $stored ) || empty( $stored['target_identity'] ) || ! self::identity_matches( $checkpoint['target_identity'], $stored['target_identity'] ) ) {
 			return array( 'scheduled' => false, 'state' => 'checkpoint_persist_failed', 'target_identity' => $checkpoint['target_identity'] );
 		}
-		$scheduled = self::schedule_resume();
+		$scheduled = self::schedule_resume( isset( $checkpoint['resume_not_before'] ) ? absint( $checkpoint['resume_not_before'] ) : 0 );
 		if ( ! $scheduled ) {
 			$checkpoint['state'] = 'pending_manual_resume';
 			$checkpoint['resume_blocker'] = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'wp_cron_disabled' : 'wp_cron_unavailable';
@@ -448,6 +493,11 @@ final class MAD4B_SCP_Runtime_Convergence {
 
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		$state = is_array( $checkpoint ) && isset( $checkpoint['state'] ) ? sanitize_key( (string) $checkpoint['state'] ) : '';
+		$not_before = is_array( $checkpoint ) && isset( $checkpoint['resume_not_before'] ) ? absint( $checkpoint['resume_not_before'] ) : 0;
+		if ( $not_before > time() ) {
+			self::schedule_resume( $not_before );
+			return;
+		}
 
 		// A cron run can observe the old runtime during an update boundary and park
 		// the checkpoint here. Do not spin/retry while identity still mismatches.
@@ -572,16 +622,17 @@ final class MAD4B_SCP_Runtime_Convergence {
 		);
 	}
 
-	private static function schedule_resume() {
+	private static function schedule_resume( $not_before = 0 ) {
 		if ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ) return false;
 		if ( ! function_exists( 'wp_next_scheduled' ) || ! function_exists( 'wp_schedule_single_event' ) ) return false;
-		if ( false !== wp_next_scheduled( self::CRON_HOOK ) ) return true;
-		$scheduled = wp_schedule_single_event( time() + 5, self::CRON_HOOK, array(), true );
+		$minimum = max( time() + 5, absint( $not_before ), self::maintenance_not_before() );
+		$next = wp_next_scheduled( self::CRON_HOOK );
+		if ( false !== $next && (int) $next >= $minimum ) return true;
+		if ( false !== $next && function_exists( 'wp_clear_scheduled_hook' ) ) wp_clear_scheduled_hook( self::CRON_HOOK );
+		$scheduled = wp_schedule_single_event( $minimum, self::CRON_HOOK, array(), true );
 		if ( ! is_wp_error( $scheduled ) && false !== $scheduled ) return true;
-		// Another request may have won the scheduling race between the first
-		// wp_next_scheduled() read and wp_schedule_single_event(). Treat the
-		// resulting duplicate as success when the postcondition now exists.
-		return false !== wp_next_scheduled( self::CRON_HOOK );
+		$next = wp_next_scheduled( self::CRON_HOOK );
+		return false !== $next && (int) $next >= $minimum;
 	}
 
 	private static function is_transient_error_code( $code ) {
@@ -595,6 +646,11 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
 		if ( ! is_array( $checkpoint ) || empty( $checkpoint ) ) return;
 		if ( 'staging' !== ( class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '' ) ) ) return;
+		$not_before = isset( $checkpoint['resume_not_before'] ) ? absint( $checkpoint['resume_not_before'] ) : 0;
+		if ( $not_before > time() ) {
+			self::schedule_resume( $not_before );
+			return;
+		}
 		$target = isset( $checkpoint['target_identity'] ) && is_array( $checkpoint['target_identity'] ) ? $checkpoint['target_identity'] : array();
 		$current = self::current_identity();
 		if ( ! self::identity_matches( $target, $current ) ) {
@@ -640,6 +696,9 @@ final class MAD4B_SCP_Runtime_Convergence {
 				$schema = MAD4B_SCP_Schema::status( true );
 				if ( empty( $schema['ready'] ) ) return new WP_Error( 'mad4b_runtime_convergence_schema_readback_failed', 'Schema convergence completed without a ready physical readback.' );
 				$changed[] = 'schema';
+			}
+			if ( class_exists( 'MAD4B_SCP_Schema_Lifecycle' ) && method_exists( 'MAD4B_SCP_Schema_Lifecycle', 'mark_current_package_applied' ) ) {
+				MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'runtime_convergence' );
 			}
 			$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 			if ( ! empty( $profile['skills_enabled'] ) && class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ) {
@@ -699,7 +758,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 		}
 		if ( is_array( $current ) && ! empty( $current ) ) delete_option( self::LOCK_OPTION );
 		$token = strtolower( wp_generate_uuid4() );
-		$lock = array( 'token' => $token, 'expires_at' => $now + self::LOCK_TTL, 'acquired_at' => gmdate( 'c' ) );
+		$lock = array( 'token' => $token, 'owner' => 'runtime_convergence', 'expires_at' => $now + self::LOCK_TTL, 'acquired_at' => gmdate( 'c' ) );
 		if ( ! add_option( self::LOCK_OPTION, $lock, '', false ) ) return new WP_Error( 'mad4b_runtime_convergence_lock_failed', 'Unable to acquire the runtime convergence lease.' );
 		return $token;
 	}
