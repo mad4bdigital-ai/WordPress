@@ -67,6 +67,18 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py
 
+      - name: Execute post-update concurrency regressions
+        if: matrix.php == '8.1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php "$root/tests/runtime-restart-barrier-runtime.php"
+          php "$root/tests/runtime-maintenance-lease-runtime.php"
+          python3 "$root/tests/post-update-bottleneck-hardening-contract.py"
+          python3 "$root/tests/runtime-convergence-contract.py"
+          python3 "$root/tests/schema-lifecycle-same-version-contract.py"
+
   packaged-provider-contracts:
     name: Packaged provider contract scan
     runs-on: ubuntu-latest
