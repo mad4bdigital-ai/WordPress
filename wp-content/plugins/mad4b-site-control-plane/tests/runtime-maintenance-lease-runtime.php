@@ -56,4 +56,20 @@ $schema = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'schema_lifecycle' );
 ok( is_string( $schema ) && '' !== $schema, 'next owner must acquire after verified release' );
 MAD4B_SCP_Runtime_Maintenance_Lease::release( $schema, 'schema_lifecycle' );
 
+// A pre-hard-fence runtime may leave only a legacy token with expires_at.
+// New code must not steal it immediately at nominal expiry because the old
+// worker can still be inside a slow dbDelta/filesystem phase.
+$legacy_option = MAD4B_SCP_Runtime_Maintenance_Lease::legacy_options()[0];
+$GLOBALS['mad4b_test_options'][ $legacy_option ] = array(
+	'token' => 'legacy-worker-token',
+	'owner' => 'legacy_runtime',
+	'expires_at' => time() - 1,
+);
+$legacy_busy = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'schema_lifecycle' );
+ok( is_wp_error( $legacy_busy ) && 'mad4b_runtime_maintenance_busy' === $legacy_busy->get_error_code(), 'recently expired legacy lease must receive bounded overrun fencing' );
+$GLOBALS['mad4b_test_options'][ $legacy_option ]['expires_at'] = time() - MAD4B_SCP_Runtime_Maintenance_Lease::LEGACY_EXPIRY_GRACE - 1;
+$after_grace = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'schema_lifecycle' );
+ok( is_string( $after_grace ) && '' !== $after_grace, 'legacy lease may be reclaimed only after overrun grace expires' );
+MAD4B_SCP_Runtime_Maintenance_Lease::release( $after_grace, 'schema_lifecycle' );
+
 echo "mad4b.runtime-maintenance-lease.v1: PASS\n";
