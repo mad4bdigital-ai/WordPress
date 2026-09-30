@@ -100,9 +100,12 @@ $peer_admin = isset( $admin_shallow['mcp_peer_governance'] ) && is_array( $admin
 $check( 'deferred_admin_hotpath' === ( isset( $peer_admin['state'] ) ? $peer_admin['state'] : '' ), 'Connection admin status did not defer peer inventory.' );
 $check( empty( $peer_admin['deep_inventory_performed'] ), 'Connection admin status performed deep peer inventory.' );
 
-$convergence_gate = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'convergence_trigger_allowed' );
-$convergence_gate->setAccessible( true );
-$check( false === $convergence_gate->invoke( null ), 'Connection admin page remained a Runtime Convergence trigger.' );
+$admin_convergence_gate = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'admin_page_convergence_allowed' );
+$admin_convergence_gate->setAccessible( true );
+$check(
+    false === $admin_convergence_gate->invoke( null, 'mad4b-control-plane-connection', 'admin.php', '' ),
+    'Connection admin page remained a Runtime Convergence trigger.'
+);
 
 $_GET['page'] = 'mad4b-control-plane-chatgpt';
 if ( class_exists( 'MAD4B_SCP_ChatGPT_Connection_Admin_UI' ) ) {
@@ -113,7 +116,10 @@ if ( class_exists( 'MAD4B_SCP_ChatGPT_Connection_Admin_UI' ) ) {
     $check( 'runtime_identity' === ( isset( $chatgpt_admin['admin_status_projection'] ) ? $chatgpt_admin['admin_status_projection'] : '' ), 'ChatGPT admin status did not use the runtime identity projection.' );
     $check( ! empty( $chatgpt_admin['deep_oauth_status_deferred'] ), 'ChatGPT admin status did not defer deep OAuth diagnostics.' );
 }
-$check( false === $convergence_gate->invoke( null ), 'ChatGPT admin page remained a Runtime Convergence trigger.' );
+$check(
+    false === $admin_convergence_gate->invoke( null, 'mad4b-control-plane-chatgpt', 'admin.php', '' ),
+    'ChatGPT admin page remained a Runtime Convergence trigger.'
+);
 
 if ( class_exists( 'MAD4B_SCP_Reconnect_Hardening' ) ) {
     $reconnect_admin = MAD4B_SCP_Reconnect_Hardening::reconnect_status();
