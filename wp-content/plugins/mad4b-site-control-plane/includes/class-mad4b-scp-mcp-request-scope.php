@@ -112,17 +112,25 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	 * MCP Adapter merely because they live under the Control Plane menu. The
 	 * explicit Connection > Endpoints tab remains the deep runtime diagnostic.
 	 */
-	public static function current_request_is_passive_admin_hotpath() {
-		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return false;
-		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
-
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+	private static function passive_admin_route( $page, $tab = '' ) {
+		$page = sanitize_key( (string) $page );
+		$tab = sanitize_key( (string) $tab );
 		if ( 'mad4b-control-plane-chatgpt' === $page ) return true;
 		if ( 'mad4b-control-plane-connection' !== $page ) return false;
-
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : 'readiness'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		if ( '' === $tab ) $tab = 'readiness';
 		return 'endpoints' !== $tab;
+	}
+
+	/** @internal Pure regression seam; does not inspect request globals or WP_CLI. */
+	public static function passive_admin_route_for_test( $page, $tab = '' ) {
+		return self::passive_admin_route( $page, $tab );
+	}
+
+	public static function current_request_is_passive_admin_hotpath() {
+		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
+		$page = isset( $_GET['page'] ) ? wp_unslash( (string) $_GET['page'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		$tab = isset( $_GET['tab'] ) ? wp_unslash( (string) $_GET['tab'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		return self::passive_admin_route( $page, $tab );
 	}
 
 	public static function current_request_requires_mcp_runtime() {
