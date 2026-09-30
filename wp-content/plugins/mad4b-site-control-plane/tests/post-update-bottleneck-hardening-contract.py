@@ -105,6 +105,22 @@ assert "catch ( Throwable $throwable )" in self_update
 assert "finally {" in self_update
 assert "self::$managed_apply = false;" in self_update
 assert "self::rollback( $backup, $before, $runtime_php_files )" in self_update
+
+# The filesystem replacement itself is continuously fenced. The shared lease
+# starts before backup/mutation, and WordPress core maintenance covers the
+# clear-destination interval when the plugin directory may be temporarily absent.
+managed_apply = self_update.split("private static function apply_verified_archive(", 1)[1].split("private static function download_governed_release_to_protected_storage", 1)[0]
+assert "$lease_owner = 'self_update_replacement';" in managed_apply
+assert "MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner )" in managed_apply
+assert "MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, $lease_owner )" in managed_apply
+assert "$upgrader->maintenance_mode( true );" in managed_apply
+assert "$upgrader->maintenance_mode( false );" in managed_apply
+assert "MAD4B_SCP_Runtime_Maintenance_Lease::release( $lease_token, $lease_owner );" in managed_apply
+assert "'core_maintenance_window_used' => true" in managed_apply
+assert "'pre_replacement_runtime_lease' => true" in managed_apply
+assert managed_apply.index("MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner )") < managed_apply.index("self::backup_current()")
+assert managed_apply.index("$upgrader->maintenance_mode( true );") < managed_apply.index("$upgrader->install(")
+assert managed_apply.index("$upgrader->install(") < managed_apply.index("MAD4B_SCP_Runtime_Convergence::mark_post_update_pending")
 rollback_body = self_update.split("private static function rollback(", 1)[1].split("private static function activation_state()", 1)[0]
 assert "self::invalidate_runtime_caches( $runtime_php_files );" in rollback_body
 assert rollback_body.index("copy_dir( $backup['backup_path'], $root )") < rollback_body.index("self::invalidate_runtime_caches( $runtime_php_files );") < rollback_body.index("self::restore_activation_state( $before )")
