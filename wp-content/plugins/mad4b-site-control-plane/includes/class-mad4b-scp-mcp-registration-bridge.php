@@ -391,10 +391,16 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 	}
 
 	private static function request_needs_adapter_registry() {
-		$server_id = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
-			&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_mcp_server_id' )
-			? MAD4B_SCP_MCP_Request_Scope::current_request_mcp_server_id()
-			: '';
+		$server_id = '';
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) ) {
+			// Passive ChatGPT/Connection admin views and OAuth protocol endpoints are
+			// compact identity/catalog surfaces. If they happen to materialize the
+			// Abilities registry, do not silently re-instantiate every provider adapter.
+			if ( MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) return false;
+			$protocol_hotpath = MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath();
+			$server_id = MAD4B_SCP_MCP_Request_Scope::current_request_mcp_server_id();
+			if ( $protocol_hotpath && '' === $server_id ) return false;
+		}
 		if ( '' === $server_id ) return true;
 		return in_array( $server_id, array( 'mad4b-read', 'mad4b-content', 'mad4b-write', 'mad4b-admin' ), true );
 	}

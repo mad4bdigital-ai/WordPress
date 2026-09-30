@@ -21,6 +21,7 @@ chatgpt_ui = (PLUGIN / "includes/class-mad4b-scp-chatgpt-connection-admin-ui.php
 local_oauth = (PLUGIN / "includes/class-mad4b-scp-local-oauth-server.php").read_text(encoding="utf-8")
 oauth_bridge = (PLUGIN / "includes/class-mad4b-scp-oauth-resource-bridge.php").read_text(encoding="utf-8")
 reconnect = (PLUGIN / "includes/class-mad4b-scp-reconnect-hardening.php").read_text(encoding="utf-8")
+registration_bridge = (PLUGIN / "includes/class-mad4b-scp-mcp-registration-bridge.php").read_text(encoding="utf-8")
 dependency_manager = (PLUGIN / "includes/class-mad4b-scp-dependency-manager.php").read_text(encoding="utf-8")
 upgrade_continuity = (PLUGIN / "includes/class-mad4b-scp-upgrade-continuity.php").read_text(encoding="utf-8")
 slo = (ROOT / "specs/008-dynamic-content-runtime-hardening/performance-slo.md").read_text(encoding="utf-8")
@@ -373,6 +374,15 @@ for forbidden in (
     "MAD4B_SCP_Schema::install_or_upgrade()",
 ):
     assert forbidden not in passive_kernel, forbidden
+
+registry_gate = method_body(
+    registration_bridge,
+    "private static function request_needs_adapter_registry()",
+    "private static function prepare_registry()",
+)
+assert "current_request_is_passive_admin_hotpath()" in registry_gate
+assert "if ( $protocol_hotpath && '' === $server_id ) return false;" in registry_gate
+assert registry_gate.index("current_request_is_passive_admin_hotpath()") < registry_gate.index("if ( '' === $server_id ) return true;")
 
 admin_navigation = method_body(
     plugin,

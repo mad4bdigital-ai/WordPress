@@ -376,12 +376,18 @@ for marker in (
 # the full registry.
 for marker in (
     "private static function request_needs_adapter_registry()",
+    "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()",
+    "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()",
     "MAD4B_SCP_MCP_Request_Scope::current_request_mcp_server_id()",
+    "if ( $protocol_hotpath && '' === $server_id ) return false;",
     "'mad4b-read', 'mad4b-content', 'mad4b-write', 'mad4b-admin'",
     "if ( ! self::request_needs_adapter_registry() ) return;",
     "if ( self::request_needs_adapter_registry() ) self::prepare_registry();",
 ):
     assert marker in registration_bridge, marker
+registry_gate = registration_bridge.split("private static function request_needs_adapter_registry()", 1)[1].split("private static function prepare_registry()", 1)[0]
+assert registry_gate.index("current_request_is_passive_admin_hotpath()") < registry_gate.index("if ( '' === $server_id ) return true;")
+assert registry_gate.index("if ( $protocol_hotpath && '' === $server_id ) return false;") < registry_gate.index("if ( '' === $server_id ) return true;")
 
 # The central init boot must terminate at the protocol-kernel boundary before
 # admin/resource/lifecycle-only work while retaining the three lightweight
