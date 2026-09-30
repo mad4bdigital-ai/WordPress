@@ -9,7 +9,7 @@ import os
 import subprocess
 from pathlib import Path
 
-CONTRACT = "mad4b.exact-head-action-jobs.v1"
+CONTRACT = "mad4b.exact-head-action-jobs.v2"
 MAX_RUN_PAGES = 5
 MAX_JOB_PAGES = 5
 
@@ -45,19 +45,51 @@ def pull_request_numbers(run: dict) -> list[int]:
     return sorted(set(numbers))
 
 
+def canonical_evidence_events(*, event_name: str, pr_number: int) -> tuple[str, ...]:
+    event_name = event_name.strip()
+    if pr_number > 0:
+        # PR release evidence is intentionally split across the untrusted-head
+        # pull_request workflows and the BASE-owned pull_request_target feature
+        # boundary. Both are exact-head evidence for the same PR, and both must
+        # remain visible to the verdict while unrelated push/manual runs stay out.
+        if event_name == "pull_request":
+            return ("pull_request", "pull_request_target")
+        return (event_name,) if event_name else ()
+    # A manual verdict is a re-evaluation of the canonical branch push, not a
+    # new source of runtime/release evidence. Binding workflow_dispatch to
+    # workflow_dispatch would make all ordinary push-produced critical checks
+    # invisible and would turn manual re-evaluation into a guaranteed timeout.
+    if event_name == "workflow_dispatch":
+        return ("push",)
+    return (event_name,) if event_name else ()
+
+
 def run_matches_scope(
     run: dict,
     *,
     head_sha: str,
     head_branch: str,
     pr_number: int,
+    event_name: str,
 ) -> bool:
     run_head = str(run.get("head_sha") or "").strip().lower()
     if run_head != head_sha:
         return False
 
     run_branch = str(run.get("head_branch") or "").strip()
+    run_event = str(run.get("event") or "").strip()
     associated_prs = pull_request_numbers(run)
+    evidence_events = canonical_evidence_events(
+        event_name=event_name,
+        pr_number=pr_number,
+    )
+
+    # Exact-head evidence is event-bound as well as SHA/branch-bound. Without
+    # this guard, a later pull_request run whose synthetic merge SHA equals the
+    # current master SHA can overwrite canonical push evidence for the same job
+    # name when the verdict selects the newest check-run id.
+    if evidence_events and run_event not in evidence_events:
+        return False
 
     if pr_number > 0:
         # Prefer GitHub's explicit PR association when it exists. Some
@@ -83,6 +115,7 @@ def main() -> int:
     repository = args.repository.strip()
     head_sha = args.head_sha.strip().lower()
     head_branch = os.environ.get("HEAD_BRANCH", "").strip()
+    event_name = os.environ.get("GITHUB_EVENT_NAME", "").strip()
     raw_pr_number = os.environ.get("PR_NUMBER", "").strip()
     try:
         pr_number = int(raw_pr_number or "0")
@@ -121,6 +154,7 @@ def main() -> int:
             head_sha=head_sha,
             head_branch=head_branch,
             pr_number=pr_number,
+            event_name=event_name,
         ):
             continue
         seen_run_ids.add(run_id)
@@ -146,6 +180,7 @@ def main() -> int:
                         "workflow_run_id": run_id,
                         "workflow_name": str(run.get("name") or ""),
                         "workflow_path": str(run.get("path") or ""),
+                        "workflow_event": str(run.get("event") or ""),
                         "run_attempt": int(run.get("run_attempt") or 1),
                         "head_sha": run_head,
                     }
@@ -163,11 +198,26 @@ def main() -> int:
         "repository": repository,
         "head_sha": head_sha,
         "head_branch": head_branch,
+        "event_name": event_name,
+        "evidence_events": list(
+            canonical_evidence_events(
+                event_name=event_name,
+                pr_number=pr_number,
+            )
+        ),
         "pull_request": pr_number,
         "scope_mode": (
-            "pull_request"
-            if pr_number > 0
-            else ("head_branch" if head_branch else "head_sha_only")
+            "pull_request+event"
+            if pr_number > 0 and event_name
+            else (
+                "pull_request"
+                if pr_number > 0
+                else (
+                    "head_branch+event"
+                    if head_branch and event_name
+                    else ("head_branch" if head_branch else ("event" if event_name else "head_sha_only"))
+                )
+            )
         ),
         "workflow_run_count": len(seen_run_ids),
         "job_count": len(jobs),
