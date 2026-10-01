@@ -195,6 +195,25 @@ namespace {
 	$GLOBALS['mad4b_test_admin'] = false;
 	unset( $_GET['page'] );
 
+	// Seed the same exact packaged provenance shape used by production runtime.
+	// The fixture path is intentionally non-existent, so inject the validated
+	// manifest cache rather than weakening current_package_identity_token().
+	$provenance_property = $observer_reflection->getProperty( 'provenance_manifest_cache' );
+	$provenance_property->setAccessible( true );
+	$fixture_source_sha = str_repeat( 'a', 40 );
+	$fixture_build_fingerprint = str_repeat( 'b', 64 );
+	$fixture_manifest_digest = str_repeat( 'c', 64 );
+	$provenance_property->setValue( null, array(
+		'contract' => MAD4B_SCP_Live_Acceptance_Observer::PROVENANCE_CONTRACT,
+		'control_plane_version' => MAD4B_SCP_VERSION,
+		'source_commit_sha' => $fixture_source_sha,
+		'build_fingerprint' => $fixture_build_fingerprint,
+		'package_manifest_digest' => $fixture_manifest_digest,
+		'artifact_identity' => 'mad4b-site-control-plane-test-' . $fixture_source_sha,
+		'mcp_adapter_version' => '0.6.1',
+		'package_files' => array( 'mad4b-site-control-plane.php' => str_repeat( 'd', 64 ) ),
+	) );
+
 	$current_build_method = $observer_reflection->getMethod( 'current_build_fingerprint' );
 	$current_build_method->setAccessible( true );
 	$current_build = (string) $current_build_method->invoke( null );
