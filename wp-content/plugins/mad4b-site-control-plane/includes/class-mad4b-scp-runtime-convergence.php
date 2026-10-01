@@ -560,6 +560,16 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$stored_blocker = isset( $stored['resume_blocker'] ) ? sanitize_key( (string) $stored['resume_blocker'] ) : '';
 			if ( ! hash_equals( $expected_blocker, $stored_blocker ) ) return false;
 		}
+		if ( ! empty( $expected['continuation'] ) ) {
+			if ( empty( $stored['continuation'] ) || ! is_array( $stored['continuation'] ) ) return false;
+			foreach ( array( 'contract', 'permit_id', 'permit_digest', 'classification', 'state' ) as $field ) {
+				$left = isset( $expected['continuation'][ $field ] ) ? (string) $expected['continuation'][ $field ] : '';
+				$right = isset( $stored['continuation'][ $field ] ) ? (string) $stored['continuation'][ $field ] : '';
+				if ( ! hash_equals( $left, $right ) ) return false;
+			}
+			if ( (int) ( isset( $expected['continuation']['generation'] ) ? $expected['continuation']['generation'] : 0 )
+				!== (int) ( isset( $stored['continuation']['generation'] ) ? $stored['continuation']['generation'] : -1 ) ) return false;
+		}
 		return true;
 	}
 
