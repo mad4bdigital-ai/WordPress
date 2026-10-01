@@ -974,11 +974,15 @@ final class MAD4B_SCP_Self_Update {
 				admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
 				'mad4b_control_plane_native_update'
 			);
+			$current = self::installed_identity();
+			$current_display = isset( $current['version'] ) ? (string) $current['version'] : '';
+			if ( ! empty( $current['source_commit_sha'] ) ) $current_display .= '+build.' . substr( (string) $current['source_commit_sha'], 0, 7 );
+			$target_display = isset( $manifest['display_version'] ) ? (string) $manifest['display_version'] : (string) $manifest['version'];
 			$message = sprintf(
-				/* translators: 1: target version, 2: short source commit. */
-				__( 'A governed MAD4B update is available: %1$s (build %2$s).', 'mad4b-site-control-plane' ),
-				$manifest['version'],
-				substr( $manifest['source_commit_sha'], 0, 12 )
+				/* translators: 1: current exact build display, 2: target exact build display. */
+				__( 'A governed MAD4B build update is available: %1$s → %2$s.', 'mad4b-site-control-plane' ),
+				$current_display,
+				$target_display
 			);
 			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
 				. esc_html( $message ) . ' <a href="' . esc_url( $url ) . '">'
