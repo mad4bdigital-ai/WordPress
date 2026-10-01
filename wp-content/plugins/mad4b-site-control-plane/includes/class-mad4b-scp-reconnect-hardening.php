@@ -909,6 +909,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		// logged-in local admin and bearer-bearing execution requests gated.
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
 		$remote_preauth_probe = $is_chatgpt_resource
+			&& method_exists( $request, 'get_header' )
 			&& '' === $authorization
 			&& function_exists( 'is_user_logged_in' )
 			&& ! is_user_logged_in();
