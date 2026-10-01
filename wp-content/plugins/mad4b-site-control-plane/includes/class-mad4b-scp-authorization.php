@@ -124,6 +124,28 @@ final class MAD4B_SCP_Authorization {
 		$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $server_id, $ability_name, $provider );
 		if ( is_wp_error( $grant ) ) return $grant;
 
+		// Persisted authority + exact candidate binding is intentionally a cheap
+		// request-serving predicate. Once a normal governed write reaches mutation
+		// admission, fail closed unless the current bulk grant snapshot is still
+		// zero-drift. The one bounded candidate-bootstrap exception is evaluated by
+		// current_execution_readiness() under its own exact Staging/OAuth/NHI proof.
+		if ( 'mad4b-write' === $server_id
+			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' ) ) {
+			$current_write = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness( $ability_name, $input );
+			if ( ! is_array( $current_write ) || empty( $current_write['ready'] ) ) {
+				return new WP_Error(
+					'mad4b_write_authority_current_drift',
+					'Governed write authority is not current-ready; reconcile current grants before mutation.',
+					array(
+						'blockers' => is_array( $current_write ) && isset( $current_write['blockers'] ) && is_array( $current_write['blockers'] ) ? $current_write['blockers'] : array( 'write_current_readiness_unavailable' ),
+						'candidate_binding_match' => is_array( $current_write ) && ! empty( $current_write['candidate_binding_match'] ),
+						'current_grant_snapshot_ready' => is_array( $current_write ) && ! empty( $current_write['current_grant_snapshot_ready'] ),
+					)
+				);
+			}
+		}
+
 		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input, $ability_name ) : $input;
 		if ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
 			$context_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard( $ability_name, $authorization_input );
