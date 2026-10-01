@@ -215,6 +215,8 @@ assert "'maintenance_preflight' => $maintenance_projection" in self_update
 assert "'continuation_policy' => $continuation_projection" in self_update
 assert "private static function maintenance_status_projection()" in self_update
 assert "private static function continuation_policy_projection()" in self_update
+assert "'state' => 'deferred_cache_only'" in self_update
+assert "'deep_authority_presence_scan_deferred' => true" in self_update
 assert "private static function reconcile_under_runtime_fence()" in authority
 assert "MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner )" in authority
 assert "MAD4B_SCP_Runtime_Maintenance_Lease::release( $lease_token, $lease_owner )" in authority
