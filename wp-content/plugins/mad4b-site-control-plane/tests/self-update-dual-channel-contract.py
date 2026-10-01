@@ -264,6 +264,17 @@ for marker in (
     if marker not in self_update:
         raise SystemExit(f"WordPress auto-update observation invariant missing: {marker}")
 
+# The plugin must opt out of wordpress.org slug-based update discovery. The
+# governed GitHub channel remains the only first-party package source.
+if "* Update URI: https://github.com/mad4bdigital-ai/WordPress" not in bootstrap:
+    raise SystemExit("Control Plane plugin header does not bind updates away from wordpress.org")
+
+render_update = self_update.split("public static function render_update_row(", 1)[1].split("public static function render_update_row_fallback(", 1)[0]
+if "$manifest['display_version']" not in render_update:
+    raise SystemExit("wp-admin update row does not show build-aware display_version")
+if "$manifest['version']" in render_update:
+    raise SystemExit("wp-admin update row regressed to ambiguous semantic-only version display")
+
 # The wp-admin update affordance must survive basename drift without enrolling
 # WordPress core updater transients or bypassing the governed verifier.
 for marker in (
