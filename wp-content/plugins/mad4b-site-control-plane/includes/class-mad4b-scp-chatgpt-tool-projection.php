@@ -254,8 +254,10 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	}
 
 	private static function canonical_plan_payload( array $rows, array $input ) {
+		$current = self::raw_state();
 		$payload = array(
 			'contract' => self::CONTRACT,
+			'projection_revision' => (int) $current['revision'],
 			'environment' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? (string) MAD4B_SCP_Site_Profile::current_environment() : '',
 			'site_uuid' => class_exists( 'MAD4B_SCP_Site_Profile' ) && method_exists( 'MAD4B_SCP_Site_Profile', 'site_uuid' ) ? (string) MAD4B_SCP_Site_Profile::site_uuid() : '',
 			'mode' => isset( $input['mode'] ) ? sanitize_key( (string) $input['mode'] ) : 'replace',
@@ -302,6 +304,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		return array(
 			'contract' => self::CONTRACT,
 			'plan_sha256' => $plan_sha256,
+			'current_revision' => (int) self::raw_state()['revision'],
 			'desired_count' => count( $rows ),
 			'desired_abilities' => array_values( $rows ),
 			'base_tool_count' => count( $base ),
@@ -358,6 +361,15 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		);
 		if ( false === get_option( self::OPTION, false ) ) add_option( self::OPTION, $next, '', false );
 		else update_option( self::OPTION, $next, false );
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record( self::APPLY_ABILITY, array(
+				'projection_revision' => (int) $next['revision'],
+				'projected_ability_count' => count( $abilities ),
+				'plan_sha256' => (string) $plan['plan_sha256'],
+				'authority_widened' => false,
+				'production_mutation' => false,
+			) );
+		}
 		return array_merge( self::status(), array(
 			'applied_plan_sha256' => $plan['plan_sha256'],
 			'mutation_performed' => true,
