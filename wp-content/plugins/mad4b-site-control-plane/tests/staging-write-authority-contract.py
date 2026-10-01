@@ -48,6 +48,22 @@ for marker_text in [
 if "'current_ready' => $persisted_ready" in plan_body:
     raise SystemExit("write reconciliation current_ready must not alias the historical persisted checkpoint")
 
+current_status_body = write.split("public static function current_status()", 1)[1].split("public static function effective()", 1)[0]
+for marker_text in [
+    "self::current_execution_readiness()",
+    "'persisted_ready'",
+    "'checkpoint_ready'",
+    "'current_grant_snapshot_ready'",
+    "'current_readiness_blockers'",
+    "'current_truth' =",
+    "'deep_grant_scan_performed'",
+]:
+    if marker_text not in current_status_body:
+        raise SystemExit("current write-authority status projection missing: " + marker_text)
+status_registration = write.split("public static function register_status_ability()", 1)[1]
+if "'execute_callback' => array( __CLASS__, 'current_status' )" not in status_registration:
+    raise SystemExit("write-authority status ability must expose current truth, not persisted checkpoint status")
+
 reconcile_body = write.split("public static function reconcile()", 1)[1]
 for marker_text in ["$seen_current_exact_allow", "$duplicate_grants_revoked", ":duplicate_grant"]:
     if marker_text not in reconcile_body:
