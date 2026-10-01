@@ -1354,7 +1354,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 
 		// Mirror reconcile() subject admission before any mutation. This lookup is
 		// deliberately read-only and includes disabled subject rows, because
-		// bind_subject() enforces global subject uniqueness regardless of status.
+		// the registry enforces global subject uniqueness regardless of status.
 		$subject_preflight_blockers = array();
 		$issuer = self::oauth_issuer();
 		$user_ids = self::enrolled_user_ids();
