@@ -716,22 +716,21 @@ final class MAD4B_SCP_Context_Admin_UI {
 		}
 		if ( ! $candidate_current ) $context_grant_blockers[] = 'runtime_authority_candidate_not_reconciled';
 		$context_grant_blockers = array_values( array_unique( $context_grant_blockers ) );
-		$authority_ready = ! empty( $authority['ready'] ) && empty( $authority['blocker'] ) && $candidate_current;
-		$runtime_reconciled = $authority_ready;
+		$authority_checkpoint_ready = ! empty( $authority['ready'] ) && empty( $authority['blocker'] ) && $candidate_current;
 		$desired_write_ops = (int) $policy_ops['update'] + (int) $policy_ops['recreate'];
 		$provider_write_ready = ! empty( $connection['write_available'] );
-		$context_authority_ready = $provider_write_ready && $desired_write_ops > 0 && ! empty( $mounted ) && empty( $context_grant_blockers ) && $runtime_reconciled && $authority_ready;
+		$context_checkpoint_ready = $provider_write_ready && $desired_write_ops > 0 && ! empty( $mounted ) && empty( $context_grant_blockers ) && $authority_checkpoint_ready;
 
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( '3. Write Governance Readiness', 'mad4b-site-control-plane' ) . '</h2>';
-		echo '<p>' . esc_html__( 'Google OAuth is provider capability only. This admin panel uses bounded persisted authority evidence plus exact candidate and Context-mount readback; execution and certification still evaluate full live authority.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p>' . esc_html__( 'Google OAuth is provider capability only. This admin panel uses bounded persisted authority evidence plus exact candidate and Context-mount readback. A candidate-bound checkpoint is not a live execution verdict; execution and certification always evaluate the current grant snapshot.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<div class="mad4b-context-governance-grid">';
 		self::governance_cell( 'Google provider access', $provider_write_ready ? 'Read + Write' : ( ! empty( $connection['read_available'] ) ? 'Read-only' : 'Unavailable' ), $provider_write_ready ? 'complete' : 'attention' );
 		self::governance_cell( 'Source policy', sprintf( 'create %d (reserved) · update %d · recreate %d', $policy_ops['create'], $policy_ops['update'], $policy_ops['recreate'] ), $desired_write_ops > 0 ? 'complete' : 'pending' );
 		self::governance_cell( 'mad4b-write mount', count( $mounted ) . '/2 certified Context abilities', count( $mounted ) > 0 ? 'complete' : 'pending' );
-		self::governance_cell( 'Exact authority', $context_authority_ready ? 'Ready' : ( $desired_write_ops > 0 && $provider_write_ready ? 'Reconciliation required' : 'Not requested' ), $context_authority_ready ? 'complete' : ( $desired_write_ops > 0 && $provider_write_ready ? 'attention' : 'pending' ) );
+		self::governance_cell( 'Authority checkpoint', $context_checkpoint_ready ? 'Candidate-bound checkpoint · live grant scan deferred' : ( $desired_write_ops > 0 && $provider_write_ready ? 'Reconciliation required' : 'Not requested' ), $context_checkpoint_ready ? 'complete' : ( $desired_write_ops > 0 && $provider_write_ready ? 'attention' : 'pending' ) );
 		echo '</div>';
 
-		if ( $desired_write_ops > 0 && $provider_write_ready && ! $context_authority_ready ) {
+		if ( $desired_write_ops > 0 && $provider_write_ready && ! $context_checkpoint_ready ) {
 			echo '<div class="mad4b-scp-next-step is-attention"><p><strong>' . esc_html__( 'Provider write access is ready, but governed execution is not fully reconciled yet.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Review the changed mad4b-write inventory, then run the explicit governed write-grant reconciliation flow. Context Authority never reconciles grants automatically.', 'mad4b-site-control-plane' ) . '</p>';
 			if ( ! empty( $context_grant_blockers ) ) {
 				echo '<p><strong>' . esc_html__( 'Context grant blockers', 'mad4b-site-control-plane' ) . '</strong></p><ul>';
