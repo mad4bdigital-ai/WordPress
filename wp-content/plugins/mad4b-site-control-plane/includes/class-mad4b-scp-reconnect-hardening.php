@@ -910,7 +910,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
 		$remote_preauth_probe = $is_chatgpt_resource
 			&& '' === $authorization
-			&& ( ! function_exists( 'is_user_logged_in' ) || ! is_user_logged_in() );
+			&& function_exists( 'is_user_logged_in' )
+			&& ! is_user_logged_in();
 		if ( $remote_preauth_probe ) return $result;
 
 		$restart_grace = self::restart_grace_status();
