@@ -17,11 +17,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * downloaded into protected MAD4B storage, then passed through the same exact
  * archive/provenance verifier.
  *
- * All channels share the same backup/readback/rollback semantics.
- * WordPress automatic-update selection is observed for diagnostics, but this
- * plugin is explicitly denied from WordPress core automatic execution. Updates
- * remain manual/governed so every applied package passes the fixed manifest,
- * exact-build verification, backup, readback and rollback path.
+ * All MAD4B-owned update channels share the same backup/readback/rollback semantics.
+ * WordPress automatic-update state is observed read-only and remains outside this
+ * coordinator's authority. MAD4B never publishes a core update transient/package
+ * offer and never opts itself into core automatic updates; every MAD4B-owned
+ * package action uses the governed manifest, exact-build verification, backup,
+ * readback and rollback path below.
  */
 final class MAD4B_SCP_Self_Update {
 	const CONTRACT              = 'mad4b.control-plane-self-update.v1';
@@ -73,10 +74,6 @@ final class MAD4B_SCP_Self_Update {
 		add_filter( 'plugin_action_links_' . $plugin, array( __CLASS__, 'plugin_action_links' ), 20, 1 );
 		add_filter( 'plugin_action_links', array( __CLASS__, 'plugin_action_links_fallback' ), 20, 4 );
 		add_filter( 'plugin_auto_update_setting_html', array( __CLASS__, 'plugin_auto_update_setting_html' ), 20, 3 );
-		// The deployment contract declares automatic background self-update false.
-		// Deny WordPress core automatic execution for this exact plugin only; this
-		// does not modify update transients/options and does not affect other plugins.
-		add_filter( 'auto_update_plugin', array( __CLASS__, 'block_wordpress_core_auto_update' ), PHP_INT_MAX, 2 );
 		add_action( 'after_plugin_row_' . $plugin, array( __CLASS__, 'render_update_row' ), 10, 3 );
 		add_action( 'after_plugin_row', array( __CLASS__, 'render_update_row_fallback' ), 10, 3 );
 		add_action( 'admin_post_mad4b_control_plane_native_update', array( __CLASS__, 'handle_native_update' ) );
@@ -924,14 +921,6 @@ final class MAD4B_SCP_Self_Update {
 			'mad4b_auto_update_mutation_performed' => false,
 			'blockers' => $blockers,
 		);
-	}
-
-	public static function block_wordpress_core_auto_update( $update, $item ) {
-		$plugin_file = '';
-		if ( is_object( $item ) && isset( $item->plugin ) ) $plugin_file = (string) $item->plugin;
-		elseif ( is_array( $item ) && isset( $item['plugin'] ) ) $plugin_file = (string) $item['plugin'];
-		if ( '' !== $plugin_file && self::is_control_plane_plugin_file( $plugin_file ) ) return false;
-		return $update;
 	}
 
 	public static function plugin_auto_update_setting_html( $html, $plugin_file, $plugin_data = array() ) {
