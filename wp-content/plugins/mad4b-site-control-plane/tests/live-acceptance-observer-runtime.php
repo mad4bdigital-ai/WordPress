@@ -314,11 +314,18 @@ namespace {
 	mad4b_assert( empty( MAD4B_SCP_Live_Acceptance_Observer::snapshot_verify( array( 'client_snapshot_token' => '' ) )['exact_match'] ), 'Empty snapshot token must compare false.' );
 
 	$now = 1789130000;
-	$candidate = array( 'ready' => true, 'source_commit_sha' => str_repeat( 'a', 40 ), 'build_fingerprint' => str_repeat( 'b', 64 ) );
+	$candidate = array(
+		'ready' => true,
+		'source_commit_sha' => str_repeat( 'a', 40 ),
+		'build_fingerprint' => str_repeat( 'b', 64 ),
+		'package_manifest_digest' => str_repeat( 'c', 64 ),
+		'artifact_identity' => 'mad4b-site-control-plane-0.4.0-rc.88-' . str_repeat( 'a', 40 ),
+	);
 	$before = str_repeat( '1', 64 ); $after = str_repeat( '2', 64 );
 	$mutation = array(
 		'contract' => MAD4B_SCP_Live_Acceptance_Finalizer::MUTATION_CONTRACT,
 		'candidate_sha' => $candidate['source_commit_sha'], 'build_fingerprint' => $candidate['build_fingerprint'],
+		'package_manifest_digest' => $candidate['package_manifest_digest'], 'artifact_identity' => $candidate['artifact_identity'],
 		'environment' => 'staging', 'origin' => MAD4B_SCP_Site_Profile::site_origin(),
 		'mutation_id' => '11111111-1111-4111-8111-111111111111', 'approval_ticket_id' => '22222222-2222-4222-8222-222222222222',
 		'ability' => 'mad4b/content-update-post', 'provider' => 'core', 'target_type' => 'post', 'target_id' => '123',
@@ -336,6 +343,8 @@ namespace {
 	mad4b_assert( ! empty( $mutation_gate['ready'] ), 'Valid authoritative mutation receipt must become ready.' );
 	$bad = $mutation; $bad['candidate_sha'] = str_repeat( 'c', 40 ); $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_mutation_receipt( $bad, $candidate, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'candidate_mismatch' ), 'Wrong mutation SHA must fail closed.' );
 	$bad = $mutation; $bad['build_fingerprint'] = str_repeat( 'd', 64 ); $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_mutation_receipt( $bad, $candidate, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'build_fingerprint_mismatch' ), 'Wrong mutation fingerprint must fail closed.' );
+	$bad = $mutation; $bad['package_manifest_digest'] = str_repeat( 'd', 64 ); $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_mutation_receipt( $bad, $candidate, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'package_manifest_digest_mismatch' ), 'Wrong mutation package manifest must fail closed.' );
+	$bad = $mutation; $bad['artifact_identity'] = 'foreign-artifact'; $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_mutation_receipt( $bad, $candidate, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'artifact_identity_mismatch' ), 'Wrong mutation artifact identity must fail closed.' );
 	$bad = $mutation; $bad['observed_at'] = gmdate( 'c', $now - MAD4B_SCP_Live_Acceptance_Finalizer::MUTATION_TTL - 1 ); $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_mutation_receipt( $bad, $candidate, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'stale_evidence' ), 'Stale mutation receipt must fail closed.' );
 	$bad = $mutation; unset( $bad['execution_event_hash'] ); $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_mutation_receipt( $bad, $candidate, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'partial_mutation_evidence' ), 'Partial mutation evidence must fail closed.' );
 	$bad = $mutation; $bad['replay_denied'] = false; $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_mutation_receipt( $bad, $candidate, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'replay_denial_unverified' ), 'Replay not denied must fail closed.' );
@@ -362,6 +371,7 @@ namespace {
 	$production = array(
 		'contract' => MAD4B_SCP_Production_Unchanged_Attestation::CONTRACT,
 		'candidate_sha' => $candidate['source_commit_sha'], 'build_fingerprint' => $candidate['build_fingerprint'],
+		'package_manifest_digest' => $candidate['package_manifest_digest'], 'artifact_identity' => $candidate['artifact_identity'],
 		'target' => 'production', 'origin' => MAD4B_SCP_Site_Profile::related_origin( 'production' ), 'environment' => 'production',
 		'producer' => $producer,
 		'baseline' => array( 'observed_at' => gmdate( 'c', $now - 120 ), 'runtime' => $runtime, 'plugin_inventory_contract' => MAD4B_SCP_Production_Unchanged_Attestation::PLUGIN_CONTRACT, 'plugins' => $plugins ),
@@ -376,7 +386,9 @@ namespace {
 	mad4b_assert( ! empty( $production_gate['producer_verified'] ), 'Production v2 producer must be verified.' );
 	mad4b_assert( MAD4B_SCP_Production_Unchanged_Attestation::plugin_digest( MAD4B_SCP_Production_Unchanged_Attestation::normalize_plugins( $plugins ) ) === MAD4B_SCP_Production_Unchanged_Attestation::plugin_digest( MAD4B_SCP_Production_Unchanged_Attestation::normalize_plugins( array_reverse( $plugins ) ) ), 'Plugin snapshot must be order-invariant after normalization.' );
 
-	$bad = $production; $bad['candidate_sha'] = str_repeat( 'c', 40 ); $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'candidate_mismatch' ), 'Production v2 wrong SHA must fail closed.' );
+	$bad = $production; $bad['candidate_sha'] = str_repeat( 'd', 40 ); $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'candidate_mismatch' ), 'Production v2 wrong SHA must fail closed.' );
+	$bad = $production; $bad['package_manifest_digest'] = str_repeat( 'd', 64 ); $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'package_manifest_digest_mismatch' ), 'Production v2 wrong package manifest must fail closed.' );
+	$bad = $production; $bad['artifact_identity'] = 'foreign-artifact'; $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'artifact_identity_mismatch' ), 'Production v2 wrong artifact identity must fail closed.' );
 	$bad = $production; $bad['producer']['read_only'] = false; $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'untrusted_production_observation_producer' ), 'Writable Production producer must fail closed.' );
 	$bad = $production; $bad['observed']['runtime']['php_version'] = '8.4.0'; $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'production_snapshot_changed' ), 'Production runtime drift must fail closed.' );
 	$bad = $production; $bad['observed']['plugins'][0]['version'] = '9.9.9'; $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'production_plugin_snapshot_changed' ), 'Production plugin drift must fail closed.' );
