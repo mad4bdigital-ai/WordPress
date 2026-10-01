@@ -70,15 +70,24 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 
 	/** Deny-only final filter: never restore tools removed by earlier role/authority filters. */
 	public static function filter_serializable_tools( $tools, $server ) {
-		if ( ! is_array( $tools ) || ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) || 'mad4b-chatgpt' !== $server->get_server_id() || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $tools;
-		$optional = self::optional_projections(); $safe = array();
+		if ( ! is_array( $tools ) || ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) || 'mad4b-chatgpt' !== $server->get_server_id() ) return $tools;
+		$optional = self::optional_projections();
+		$step_up_visible = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )
+			&& class_exists( 'MAD4B_SCP_Local_OAuth_Server', false )
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID );
+		$safe = array();
 		foreach ( $tools as $dto ) {
-			$failure = self::dto_failure( $dto );
-			if ( ! $failure ) { $safe[] = $dto; continue; }
 			$name = is_object( $dto ) && method_exists( $dto, 'getName' ) ? $dto->getName() : '';
 			$bound = $name ? $server->get_mcp_tool( $name ) : null;
-			$meta = $bound ? $bound->get_adapter_meta() : array();
-			$ability = $meta['ability'] ?? '';
+			$meta = is_object( $bound ) && method_exists( $bound, 'get_adapter_meta' ) ? $bound->get_adapter_meta() : array();
+			$ability = is_array( $meta ) && isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
+			// Registration is a stable superset. Bearer scope/client only controls
+			// request-local visibility, never server materialization or authority.
+			if ( in_array( $ability, $optional, true ) && ! $step_up_visible ) continue;
+			$failure = self::dto_failure( $dto );
+			if ( ! $failure ) { $safe[] = $dto; continue; }
 			if ( ! in_array( $ability, $optional, true ) ) throw new RuntimeException( 'mad4b_required_catalog_schema_invalid' );
 			$failure['failing_ability'] = $ability;
 			if ( ! self::$failure_logged ) { self::$failure_logged = true; error_log( '[MAD4B MCP preflight] ' . wp_json_encode( $failure ) ); }
