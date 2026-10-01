@@ -582,7 +582,7 @@ final class MAD4B_SCP_Servers {
 		$runtime_gate_read = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
 			? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_read_tools()
 			: array();
-		$direct_step_up = self::chatgpt_reviewed_direct_step_up_tools();
+		$step_up = self::chatgpt_reviewed_direct_step_up_tools();
 
 		$bootstrap = array_merge(
 			array(
@@ -592,10 +592,10 @@ final class MAD4B_SCP_Servers {
 			$narrow_read,
 			$full_read,
 			$runtime_gate_read,
-			$direct_step_up
+			$step_up
 		);
 		$candidates = array_merge( $core, $bootstrap );
-		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $direct_step_up ) ) );
+		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up ) ) );
 		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
 
 		$tools = array();

@@ -116,8 +116,8 @@ for marker in (
 for marker in (
     "public static function chatgpt_reviewed_direct_step_up_tools()",
     "MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY",
-    "$direct_step_up = self::chatgpt_reviewed_direct_step_up_tools();",
-    "array_merge( self::chatgpt_dispatch_transport_tools(), $direct_step_up )",
+    "$step_up = self::chatgpt_reviewed_direct_step_up_tools();",
+    "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )",
 ):
     if marker not in servers:
         raise SystemExit(f"bootstrap self-update stable registration invariant missing: {marker}")

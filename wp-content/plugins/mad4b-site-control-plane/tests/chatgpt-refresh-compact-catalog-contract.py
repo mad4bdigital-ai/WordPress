@@ -190,7 +190,7 @@ for forbidden in [
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
 # Stable materialization precedes bearer verification. Visibility is gated later.
-require("$direct_step_up = self::chatgpt_reviewed_direct_step_up_tools();" in chatgpt_body, "reviewed stable step-up registration missing")
+require("$step_up = self::chatgpt_reviewed_direct_step_up_tools();" in chatgpt_body, "reviewed stable step-up registration missing")
 require("verified_bearer_has_scope" not in chatgpt_body, "registration cannot depend on a not-yet-verified bearer")
 reviewed = SERVERS.split("public static function chatgpt_reviewed_direct_step_up_tools()", 1)[1].split("public static function is_chatgpt_direct_step_up_tool", 1)[0]
 for marker in ("MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY", "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY", "MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY", "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()"):
@@ -204,7 +204,7 @@ for dispatcher in ("'mad4b/write-execute'", "'mad4b/developer-execute'", "'mad4b
     require(dispatcher in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory is incomplete: " + dispatcher)
 require("array_values( array_unique( array_map( 'strval', $tools ) ) )" in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory must remain deduplicated")
 require("sort( $tools, SORT_STRING )" in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory must remain deterministic")
-require("array_merge( self::chatgpt_dispatch_transport_tools(), $direct_step_up )" in chatgpt_body, "normal governed mutation dispatch plus guarded authority step-ups must derive from the canonical dispatcher inventory")
+require("array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )" in chatgpt_body, "normal governed mutation dispatch plus guarded authority step-ups must derive from the canonical dispatcher inventory")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_body, "unified enrolled Staging tools/list must include read-only full authority diagnostics")
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",
