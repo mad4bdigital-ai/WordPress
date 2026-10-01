@@ -246,15 +246,20 @@ for forbidden_hook in (
     if forbidden_hook in self_update:
         raise SystemExit(f"self-update must not alter WordPress updater routine: {forbidden_hook}")
 for forbidden_registration in (
-    "add_filter( 'auto_update_plugin'",
-    'add_filter( "auto_update_plugin"',
     "add_action( 'auto_update_plugin'",
     'add_action( "auto_update_plugin"',
 ):
     if forbidden_registration in self_update:
-        raise SystemExit("self-update must observe but never register the auto_update_plugin policy hook")
-if "'automatic_update_enabled' => false" in self_update:
-    raise SystemExit("automatic update state is still hard-coded instead of observed from WordPress")
+        raise SystemExit("automatic update policy must be an exact filter, never an action side effect")
+for marker in (
+    "add_filter( 'auto_update_plugin', array( __CLASS__, 'block_wordpress_core_auto_update' ), PHP_INT_MAX, 2 )",
+    "public static function block_wordpress_core_auto_update( $update, $item )",
+    "self::is_control_plane_plugin_file( $plugin_file )",
+):
+    if marker not in self_update:
+        raise SystemExit("governed manual-update policy invariant missing: " + marker)
+if "Update URI: https://mad4b.digital/plugins/mad4b-site-control-plane" not in bootstrap:
+    raise SystemExit("Control Plane must reserve a non-WordPress.org Update URI")
 for marker in (
     "'automatic_update_enabled' => (bool) $auto_update['effective_enabled']",
     "'current_offer_auto_update_eligible' =>",
@@ -534,8 +539,8 @@ for marker in (
     "self::is_control_plane_plugin_file( $plugin_file )",
     "self::wordpress_auto_update_state()",
     "mad4b-auto-update-state",
-    "Auto-updates enabled",
-    "Auto-updates disabled",
+    "WordPress auto-update selected · governed update remains manual",
+    "Governed updates only · automatic update disabled",
 ):
     if marker not in column_body:
         raise SystemExit(f"native auto-update column invariant missing: {marker}")
