@@ -1004,8 +1004,19 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		// Actual execution eligibility additionally proves the same OAuth/NHI and
 		// exact ability/provider grant that central authorization will re-check.
 		// Policy projection without an input remains read-only and does not require
-		// an active bearer identity.
+		// an active bearer identity or a deep grant scan.
 		if ( is_array( $input ) ) {
+			// Candidate bootstrap is allowed to run before candidate binding and before
+			// reconcilable grant cleanup, but it must never bypass unknown/stale
+			// authority that the Full Staging composite classifies as non-reconcilable.
+			// One bulk reconciliation snapshot keeps this execution-only exception
+			// aligned with the canonical current grant truth.
+			$bootstrap_write_plan = self::reconciliation_plan();
+			if ( ! is_array( $bootstrap_write_plan ) ) {
+				$blockers[] = 'bootstrap_write_reconciliation_unavailable';
+			} elseif ( ! empty( $bootstrap_write_plan['unreviewed_stale_allow_grants_count'] ) ) {
+				$blockers[] = 'bootstrap_unreviewed_stale_write_authority';
+			}
 			if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
 				$blockers[] = 'bootstrap_identity_registry_unavailable';
 			} else {
