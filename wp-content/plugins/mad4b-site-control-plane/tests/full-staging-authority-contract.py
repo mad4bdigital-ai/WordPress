@@ -88,10 +88,15 @@ for marker in [
     "'deep_status_direct_projection' => false",
     "'deep_plan_direct_projection' => false",
     "'deep_reads_available_via_governed_dispatch' => true",
+    "'write_grants_ready' => ! empty( $write['grant_set_converged'] )",
+    "'write_grants_persisted_ready'",
+    "'write_grants_drift_present'",
+    "'write_effective_converged'",
     "'exact_apply' => array(",
     "'client_action' => ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_handshake' : 'repair_blockers_then_request_fresh_handshake'",
 ]:
     assert marker in full, marker
+assert "'write_grants_ready' => ! empty( $write['current_ready'] )" not in full, "handshake must not equate persisted write status with converged grants"
 assert "public static function chatgpt_step_up_tools()" in full
 step_up = full.split("public static function chatgpt_step_up_tools()", 1)[1].split("public static function register_category()", 1)[0]
 for marker in [
