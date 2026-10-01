@@ -58,10 +58,11 @@ required_ui = [
     'Enable Production read-only OAuth',
     'Disable Production read-only OAuth',
     'Portable mode is read-only.',
-    "'production_governed_write_enabled' => (bool) $production_profile_write_enabled",
+    "'production_governed_write_enabled' => (bool) $production_write_authority_effective",
     "'production_profile_write_enabled' => (bool) $production_profile_write_enabled",
+    "'production_write_authority_effective' => (bool) $production_write_authority_effective",
     "'production_write_runtime_authority_deferred'",
-    "'production_write_runtime_authority_claimed' => false",
+    "'production_write_runtime_authority_claimed' => (bool) $production_write_authority_effective",
     "'production_write_policy' => 'production' === $environment ? 'exact_profile_plus_exact_one_time_approval' : 'not_applicable'",
     "'authority_step_up_available' => (bool) $step_up_available",
     'every Production write remains bound to exact grants and a one-time approval',
@@ -95,6 +96,17 @@ for marker in [
         raise SystemExit(f'missing truthful lightweight ChatGPT projection: {marker}')
 if "in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true )" in status_method:
     raise SystemExit('expected server membership must not be labeled actual ChatGPT registration')
+
+for marker in [
+    "$external_previous_session = ! empty( $external_handshake['previously_verified_external_session'] )",
+    "'external_connection_previously_verified' => $external_previous_session",
+    "'external_connection_certification_deferred' => $external_previous_session",
+    "'external_connection_certification_state' => $external_certification_state",
+    "$production_write_authority_effective = $production_profile_write_enabled",
+    "MAD4B_SCP_Staging_Write_Authority::effective()",
+]:
+    if marker not in status_method:
+        raise SystemExit(f'missing reconciled ChatGPT truth marker: {marker}')
 
 
 for forbidden in [

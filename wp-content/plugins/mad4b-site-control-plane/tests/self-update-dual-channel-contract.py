@@ -13,6 +13,8 @@ impact = (root / "includes" / "class-mad4b-scp-impact-policy.php").read_text(enc
 commit_guard = (root / "includes" / "class-mad4b-scp-execution-commit-guard.php").read_text(encoding="utf-8")
 governance = (root / "includes" / "class-mad4b-scp-governance-abilities.php").read_text(encoding="utf-8")
 bootstrap = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
+if "Update URI: https://github.com/mad4bdigital-ai/WordPress" not in bootstrap:
+    raise SystemExit("control-plane plugin header must opt out of WordPress.org slug update resolution")
 readback_runtime = (root / "tests" / "self-update-readback-runtime.php").read_text(encoding="utf-8")
 handoff = json.loads((root / "config" / "staging-deployment-handoff.json").read_text(encoding="utf-8"))
 
@@ -528,6 +530,16 @@ assert "self::cached_manifest()" in cached_status
 assert "'outbound_network_performed' => false" in cached_status
 assert "self::fetch_manifest(" not in cached_status
 assert "wp_safe_remote_get(" not in cached_status
+
+status_body = self_update.split("public static function status( $input = array() )", 1)[1].split("public static function cached_status", 1)[0]
+for marker in (
+    "'manual_only_scope' => 'mad4b_governed_native_action'",
+    "'governed_action_manual_only' => true",
+    "'wordpress_core_auto_update_observed' => (bool) $auto_update['effective_enabled']",
+    "'wordpress_core_auto_update_governed' => false",
+):
+    assert marker in status_body, f"governed/core auto-update distinction missing from live status: {marker}"
+    assert marker in cached_status, f"governed/core auto-update distinction missing from cached status: {marker}"
 
 # MAD4B auto-update observation must render in WordPress' native Auto-updates
 # column, not as a plugin action-link that visually diverges from core plugins.

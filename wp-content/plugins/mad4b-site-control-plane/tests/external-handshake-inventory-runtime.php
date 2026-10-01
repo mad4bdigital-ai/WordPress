@@ -102,6 +102,20 @@ mad4b_assert( count( $core_writes ) === (int) $status['eligible_write_tool_count
 mad4b_assert( 1 === (int) $status['provider_gated_write_tool_count'], 'status read must project current provider-gated write count' );
 mad4b_assert( in_array( mad4b_tool_name( $gated_provider ), $status['provider_gated_write_tools'], true ), 'status read must identify the gated provider write' );
 
+$persisted = MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status();
+mad4b_assert( ! empty( $persisted['evidence_present'] ), 'persisted handshake identity evidence was not exposed' );
+mad4b_assert( ! empty( $persisted['previously_verified_external_session'] ), 'validated initialize/tools-list evidence was not projected as a previously verified external session' );
+mad4b_assert( 'previously_verified_revalidation_deferred' === $persisted['certification_projection_state'], 'persisted certification projection state drifted' );
+mad4b_assert( 'persisted_verified_identity' === $persisted['state'], 'persisted verified identity state drifted' );
+mad4b_assert( ! empty( $persisted['package_identity_complete'] ), 'persisted verified identity must retain exact package identity' );
+mad4b_assert( ! empty( $persisted['live_verification_deferred'] ), 'persisted identity projection must defer present-tense live certification' );
+$valid_persisted_snapshot = $GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ];
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ]['write_transport_ready'] = false;
+$invalid_persisted = MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status();
+mad4b_assert( empty( $invalid_persisted['previously_verified_external_session'] ), 'malformed persisted handshake evidence was promoted to previously verified' );
+mad4b_assert( 'persisted_evidence_invalid' === $invalid_persisted['certification_projection_state'], 'invalid persisted evidence did not fail closed' );
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ] = $valid_persisted_snapshot;
+
 // Certification transition changes runtime eligibility only; it must not change
 // either the external transport identity or the stable logical write catalog.
 $before_transport_fp = $status['expected_tool_inventory_fingerprint'];

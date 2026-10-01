@@ -405,6 +405,10 @@ final class MAD4B_SCP_Self_Update {
 				'environment_resolution' => $environment_resolution,
 				'surface' => 'wp_admin_plugins_page',
 				'manual_only' => true,
+				'manual_only_scope' => 'mad4b_governed_native_action',
+				'governed_action_manual_only' => true,
+				'wordpress_core_auto_update_observed' => (bool) $auto_update['effective_enabled'],
+				'wordpress_core_auto_update_governed' => false,
 				'admin_update_capability' => (bool) current_user_can( 'update_plugins' ),
 				'ui_hook_mode' => 'exact_hook_plus_realpath_fallback',
 				'ui_state' => $ui_state['state'],
@@ -489,6 +493,11 @@ final class MAD4B_SCP_Self_Update {
 			'native_wordpress_update' => array(
 				'ready' => (bool) $native_ready,
 				'environment_resolution' => $environment_resolution,
+				'manual_only' => true,
+				'manual_only_scope' => 'mad4b_governed_native_action',
+				'governed_action_manual_only' => true,
+				'wordpress_core_auto_update_observed' => (bool) $auto_update['effective_enabled'],
+				'wordpress_core_auto_update_governed' => false,
 				'ui_state' => $ui_state['state'],
 				'ui_blockers' => $ui_state['blockers'],
 				'automatic_update_enabled' => (bool) $auto_update['effective_enabled'],
@@ -930,7 +939,7 @@ final class MAD4B_SCP_Self_Update {
 		$state = self::wordpress_auto_update_state();
 		$title = ! empty( $state['blockers'] )
 			? implode( ', ', $state['blockers'] )
-			: __( 'WordPress automatic updates are enabled for this plugin.', 'mad4b-site-control-plane' );
+			: __( 'WordPress core automatic-update policy is enabled; it is separate from the MAD4B governed release verifier.', 'mad4b-site-control-plane' );
 
 		if ( ! empty( $state['selected_in_site_option'] ) || ! empty( $state['effective_enabled'] ) ) {
 			$text = __( 'WordPress auto-update selected · governed update remains manual', 'mad4b-site-control-plane' );

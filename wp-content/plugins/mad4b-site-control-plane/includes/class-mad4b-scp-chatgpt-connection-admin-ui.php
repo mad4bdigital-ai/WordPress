@@ -66,6 +66,10 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			? MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()
 			: array();
 		$external_evidence_present = ! empty( $external_handshake['evidence_present'] );
+		$external_previous_session = ! empty( $external_handshake['previously_verified_external_session'] );
+		$external_certification_state = $external_previous_session
+			? ( isset( $external_handshake['certification_projection_state'] ) ? sanitize_key( (string) $external_handshake['certification_projection_state'] ) : 'previously_verified_revalidation_deferred' )
+			: ( $external_evidence_present ? 'persisted_evidence_invalid' : 'unverified' );
 		$portable_ready = ! empty( $portable['effective'] );
 		$production_readonly_enabled = 'production' === $environment && ( ! empty( $profile['production_readonly_enabled'] ) || $portable_ready );
 		$production_readonly_auto_enabled = 'production' === $environment && $portable_ready;
@@ -75,6 +79,9 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 				: ( MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' ) && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() )
 		);
 		$production_profile_write_enabled = 'production' === $environment && $profile_oauth_ready && MAD4B_SCP_Site_Profile::write_enabled();
+		$production_write_authority_effective = $production_profile_write_enabled
+			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			&& MAD4B_SCP_Staging_Write_Authority::effective();
 		$environment_ready = $portable_ready || $profile_oauth_ready;
 		$oauth_canary_available = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$step_up_available = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available();
@@ -90,10 +97,11 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'production_readonly_auto_enabled' => $production_readonly_auto_enabled,
 			'production_readonly_opt_in_required' => 'production' === $environment && ! $production_readonly_enabled && ! $production_profile_write_enabled,
 			'production_readonly_write_enabled' => false,
-			'production_governed_write_enabled' => (bool) $production_profile_write_enabled,
+			'production_governed_write_enabled' => (bool) $production_write_authority_effective,
 			'production_profile_write_enabled' => (bool) $production_profile_write_enabled,
-			'production_write_runtime_authority_deferred' => 'production' === $environment && $production_profile_write_enabled,
-			'production_write_runtime_authority_claimed' => false,
+			'production_write_authority_effective' => (bool) $production_write_authority_effective,
+			'production_write_runtime_authority_deferred' => 'production' === $environment && $production_profile_write_enabled && ! $production_write_authority_effective,
+			'production_write_runtime_authority_claimed' => (bool) $production_write_authority_effective,
 			'production_write_policy' => 'production' === $environment ? 'exact_profile_plus_exact_one_time_approval' : 'not_applicable',
 			'authority_step_up_available' => (bool) $step_up_available,
 			'production_readonly_breakglass_enabled' => false,
@@ -126,7 +134,10 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'stores_chatgpt_credentials' => false,
 			'external_connection_certified' => false,
 			'external_connection_evidence_present' => $external_evidence_present,
-			'external_connection_state' => $external_evidence_present ? 'persisted_identity_deep_revalidation_deferred' : 'unverified',
+			'external_connection_previously_verified' => $external_previous_session,
+			'external_connection_certification_deferred' => $external_previous_session,
+			'external_connection_certification_state' => $external_certification_state,
+			'external_connection_state' => $external_certification_state,
 			'external_connection_deep_check_deferred' => true,
 			'generic_filesystem_exposed' => false,
 			'generic_database_exposed' => false,
