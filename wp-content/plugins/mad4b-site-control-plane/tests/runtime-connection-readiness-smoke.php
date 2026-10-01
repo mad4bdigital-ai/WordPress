@@ -114,6 +114,11 @@ $check( isset( $admin_shallow['mcp_adapter_certification']['runtime_integrity_ve
 $peer_admin = isset( $admin_shallow['mcp_peer_governance'] ) && is_array( $admin_shallow['mcp_peer_governance'] ) ? $admin_shallow['mcp_peer_governance'] : array();
 $check( 'deferred_admin_hotpath' === ( isset( $peer_admin['state'] ) ? $peer_admin['state'] : '' ), 'Connection admin status did not defer peer inventory.' );
 $check( empty( $peer_admin['deep_inventory_performed'] ), 'Connection admin status performed deep peer inventory.' );
+$check( ! empty( $admin_shallow['connection_certification_deferred'] ), 'Connection admin shallow status did not expose deferred certification.' );
+$check( 'deferred' === ( isset( $admin_shallow['connection_certification_state'] ) ? $admin_shallow['connection_certification_state'] : '' ), 'Connection admin shallow certification state was not tri-stated as deferred.' );
+$readiness_html = $render_tab( 'readiness' );
+$check( false !== strpos( $readiness_html, 'Deferred' ), 'Connection readiness UI did not render deferred certification state.' );
+$check( false !== strpos( $readiness_html, 'Run deep diagnostics' ), 'Connection readiness UI did not route deferred certification to deep diagnostics.' );
 
 // Deferred MCP materialization on passive admin must not be reported as a real
 // transport-registration failure. Preserve literal registered=false while using
