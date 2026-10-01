@@ -985,11 +985,15 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	private static function current_request_is_mad4b_admin_surface() {
 		if ( ! is_admin() ) return false;
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : '';
-		// Passive MAD4B admin views must not pay shutdown Query Monitor collection,
-		// event normalization or telemetry persistence. Signed acceptance canaries
-		// bypass the zero-touch gate earlier in capture_and_flush().
+		// Passive MAD4B admin GET/HEAD views must not pay shutdown Query Monitor
+		// collection even when Request_Scope is unavailable in an isolated runtime.
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) return false;
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( trim( (string) $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+		if ( in_array( $method, array( 'GET', 'HEAD' ), true )
+			&& ( 'mad4b-control-plane' === $page
+				|| 0 === strpos( $page, 'mad4b-control-plane-' )
+				|| in_array( $page, array( 'mad4b-adapter-coverage', 'mad4b-runtime-components', 'mad4b-approval-decisions' ), true ) ) ) return false;
 		return 0 === strpos( $page, 'mad4b-control-plane' );
 	}
 
