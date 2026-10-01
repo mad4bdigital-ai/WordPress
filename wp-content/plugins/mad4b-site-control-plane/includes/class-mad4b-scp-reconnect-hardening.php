@@ -856,7 +856,9 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$observed = ! empty( $entry['registered'] );
 		$error = isset( $entry['error'] ) ? sanitize_key( (string) $entry['error'] ) : '';
 		$expected = class_exists( 'MAD4B_SCP_Servers' )
-			&& in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true );
+			&& ( ( method_exists( 'MAD4B_SCP_Servers', 'expected_server_ids' )
+					&& in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true ) )
+				|| isset( $registrations['mad4b-chatgpt'] ) );
 		$hook_bound = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' )
 			&& false !== has_action( 'mcp_adapter_init', array( 'MAD4B_SCP_MCP_Registration_Bridge', 'register_servers' ) );
 		$deferred_only = ! $observed && in_array( $error, array( '', 'not_registered' ), true );
