@@ -24,6 +24,22 @@ qm_bridge = read("includes/class-mad4b-scp-query-monitor-evidence-bridge.php")
 family = read("includes/adapters/class-mad4b-scp-repository-family-adapter.php")
 catalog = json.loads(read("config/repository-plugin-artifacts.json"))
 
+# 0. Registration readiness is reduced by the canonical Truth Projection.
+registration_bridge = read("includes/class-mad4b-scp-mcp-registration-bridge.php")
+for marker in (
+    "public static function mcp_registration_identity( array $fact )",
+    "'deferred_identity_ready'",
+    "'registration_error'",
+    "'blocking_registration_error'",
+    "'deep_registration_deferred'",
+):
+    require(projection, marker, "canonical MCP registration truth projection")
+registration_fact = registration_bridge.split("public static function server_registration_identity_status( $server_id )", 1)[1].split("public static function status()", 1)[0]
+require(registration_fact, "MAD4B_SCP_Truth_Projection::mcp_registration_identity( $fact )", "registration source delegates projection")
+for forbidden in ("$identity_ready =", "$blocking_error =", "'deferred_identity_ready'"):
+    if forbidden in registration_fact:
+        raise SystemExit("registration source class re-derived projected readiness instead of delegating Truth Projection")
+
 # 1. One canonical owner for external WPML truth.
 require(bootstrap, "class-mad4b-scp-truth-projection.php", "truth projection loader")
 for marker in (
