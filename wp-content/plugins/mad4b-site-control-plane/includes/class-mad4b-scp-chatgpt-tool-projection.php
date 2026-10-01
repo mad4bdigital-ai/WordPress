@@ -306,7 +306,8 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$optional = array_keys( $rows );
 		$requested_tools = array_values( array_unique( array_merge( $base, $optional ) ) );
 		$base_optional = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() : array();
-		$all_optional = array_values( array_unique( array_merge( $base_optional, $optional ) ) );
+		$required_base = array_diff( $base, $base_optional );
+		$all_optional = array_values( array_diff( array_unique( array_merge( $base_optional, $optional ) ), $required_base ) );
 		$budget = class_exists( 'MAD4B_SCP_MCP_Catalog_Diagnostics' )
 			? MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $requested_tools, $all_optional )
 			: array( 'ready' => false, 'blocker' => 'mcp_catalog_budget_unavailable' );
@@ -404,7 +405,9 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 
 	public static function effective_projection_rows() {
 		$rows = array();
+		$required_base = class_exists( 'MAD4B_SCP_Servers' ) ? array_diff( MAD4B_SCP_Servers::chatgpt_base_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() ) : array();
 		foreach ( self::raw_state()['abilities'] as $ability_name => $stored ) {
+			if ( in_array( $ability_name, $required_base, true ) ) continue;
 			if ( ! is_array( $stored ) ) continue;
 			$current = self::ability_row( $ability_name );
 			if ( is_wp_error( $current ) ) continue;

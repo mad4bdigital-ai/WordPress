@@ -121,6 +121,15 @@ try {
 		$fail( 'Dynamic projection did not survive exact MCP preflight.', $preflight );
 	}
 
+	// Selecting a required base tool cannot turn it into an optional eviction candidate.
+	$base_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array( 'ability_names' => array( 'mad4b/site-info' ) ) );
+	if ( is_wp_error( $base_plan ) ) $fail( 'Required base projection plan failed.' );
+	$overlap = $fixture_state;
+	$overlap['abilities']['mad4b/site-info'] = $base_plan['desired_abilities'][0];
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $overlap, false );
+	if ( in_array( 'mad4b/site-info', MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( MAD4B_SCP_Servers::chatgpt_tools() ), true ) ) $fail( 'Required base tool became optional through projection overlap.' );
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
+
 	// Plans are bound to the registry revision, even when the desired set is unchanged.
 	$reviewed = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array( 'ability_names' => array( 'mad4b/diagnostics-health' ) ) );
 	$next_fixture = $fixture_state;
