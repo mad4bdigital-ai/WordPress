@@ -9,6 +9,8 @@ main = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 observer = (ROOT / "includes/class-mad4b-scp-live-acceptance-observer.php").read_text(encoding="utf-8")
 authority = (ROOT / "includes/class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
 cert = (ROOT / "includes/class-mad4b-scp-staging-certification.php").read_text(encoding="utf-8")
+plugin_runtime = (ROOT / "includes/class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
+rest_compat = (ROOT / "includes/class-mad4b-scp-rest-compatibility.php").read_text(encoding="utf-8")
 rollback = json.loads((ROOT / "MAD4B-ROLLBACK-CANDIDATE.json").read_text(encoding="utf-8"))
 certified_providers = json.loads((ROOT / "config/certified-providers.json").read_text(encoding="utf-8"))
 runtime_build = (ROOT / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
@@ -27,6 +29,24 @@ if not re.fullmatch(r"0\.4\.0-rc\.\d+", runtime_release):
     raise SystemExit(f"unexpected release-candidate version format: {runtime_release!r}")
 require(main, "class-mad4b-scp-staging-certification.php", "staging certification include")
 require(main, "MAD4B_SCP_Staging_Certification::boot();", "staging certification boot")
+
+# REST compatibility scope must be initialized before protocol/passive fast
+# returns. Otherwise the read ability can report mcp_recovery_scope_evaluated
+# as false even though structural local isolation is ready.
+plugin_boot = plugin_runtime.split("public static function boot()", 1)[1].split("private static function boot_admin_navigation", 1)[0]
+zero_touch = plugin_boot.index("MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface()")
+zero_touch_return = plugin_boot.index(") return;", zero_touch)
+rest_scope_boot = plugin_boot.index("MAD4B_SCP_REST_Compatibility::boot();")
+protocol_fast_return = plugin_boot.index("if ( $protocol_hotpath || $passive_admin_hotpath )")
+if not (zero_touch_return < rest_scope_boot < protocol_fast_return):
+    raise SystemExit("REST compatibility scope must run after zero-touch denial and before protocol/passive fast return")
+if plugin_boot.count("MAD4B_SCP_REST_Compatibility::boot();") != 1:
+    raise SystemExit("REST compatibility scope boot must have one canonical placement in plugin boot")
+rest_boot = rest_compat.split("public static function boot()", 1)[1].split("private static function scope_mcp_recovery_to_current_http_request", 1)[0]
+require(rest_boot, "self::scope_mcp_recovery_to_current_http_request();", "REST recovery scope evaluation")
+rest_scope = rest_compat.split("private static function scope_mcp_recovery_to_current_http_request()", 1)[1].split("private static function current_http_request_targets_mad4b_mcp", 1)[0]
+require(rest_scope, "if ( self::$mcp_recovery_request ) return;", "MAD4B MCP route no-removal fast path")
+require(rest_compat, "'mcp_recovery_scope_evaluated' => self::$mcp_recovery_scope_evaluated", "REST scope readiness evidence")
 
 # Aggregate live acceptance must use the same direct live authority truth as
 # mad4b/write-authority-status instead of a stale cached projection.
