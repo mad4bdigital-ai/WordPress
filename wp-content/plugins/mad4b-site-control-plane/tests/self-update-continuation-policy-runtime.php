@@ -23,11 +23,11 @@ final class MAD4B_SCP_Site_Profile {
 final class MAD4B_SCP_Post_Update_Continuation {}
 final class MAD4B_SCP_Staging_Write_Authority {
 	public static $checkpoint = array();
-	public static $plan = array();
+	public static $presence = array();
 	public static $binding = array();
 	public static $effective = false;
 	public static function persistence_checkpoint() { return self::$checkpoint; }
-	public static function reconciliation_plan() { return self::$plan; }
+	public static function authority_presence_status() { return self::$presence; }
 	public static function candidate_binding_status() { return self::$binding; }
 	public static function effective() { return self::$effective; }
 }
@@ -51,11 +51,16 @@ MAD4B_SCP_Staging_Write_Authority::$checkpoint = array(
 	'exists' => false,
 	'status' => array(),
 );
-MAD4B_SCP_Staging_Write_Authority::$plan = array(
-	'agent_present' => false,
-	'exact_grants_existing' => 0,
-	'persisted_ready' => false,
-	'effective_ready' => false,
+MAD4B_SCP_Staging_Write_Authority::$presence = array(
+	'contract' => 'mad4b.governed-write-authority-presence.v1',
+	'checkpoint_exists' => false,
+	'checkpoint_ready' => false,
+	'managed_agent_present' => false,
+	'managed_grant_count' => 0,
+	'authority_residue_without_checkpoint' => false,
+	'fresh_bootstrap_candidate' => true,
+	'read_only' => true,
+	'mutation_performed' => false,
 );
 MAD4B_SCP_Staging_Write_Authority::$binding = array( 'required' => true, 'match' => false );
 MAD4B_SCP_Staging_Write_Authority::$effective = false;
@@ -65,11 +70,15 @@ check( empty( $bootstrap['required'] ), 'fresh bootstrap must not require contin
 check( ! empty( $bootstrap['bootstrap_without_authority'] ), 'fresh bootstrap marker missing' );
 check( 'bootstrap_no_prior_authority' === $bootstrap['mode'], 'fresh bootstrap mode mismatch' );
 
-MAD4B_SCP_Staging_Write_Authority::$plan['agent_present'] = true;
+MAD4B_SCP_Staging_Write_Authority::$presence['managed_agent_present'] = true;
+MAD4B_SCP_Staging_Write_Authority::$presence['authority_residue_without_checkpoint'] = true;
+MAD4B_SCP_Staging_Write_Authority::$presence['fresh_bootstrap_candidate'] = false;
 $residue = classify();
 check( is_wp_error( $residue ), 'orphaned managed authority must fail closed' );
 check( 'mad4b_self_update_continuation_bootstrap_authority_residue' === $residue->get_error_code(), 'authority residue blocker mismatch' );
-MAD4B_SCP_Staging_Write_Authority::$plan['agent_present'] = false;
+MAD4B_SCP_Staging_Write_Authority::$presence['managed_agent_present'] = false;
+MAD4B_SCP_Staging_Write_Authority::$presence['authority_residue_without_checkpoint'] = false;
+MAD4B_SCP_Staging_Write_Authority::$presence['fresh_bootstrap_candidate'] = true;
 
 $ready_status = array(
 	'ready' => true,
@@ -88,6 +97,23 @@ $carry = classify();
 check( ! is_wp_error( $carry ), 'effective prior authority must be classifiable' );
 check( ! empty( $carry['required'] ), 'effective prior authority must require continuation' );
 check( 'carry_forward_effective_authority' === $carry['mode'], 'carry-forward mode mismatch' );
+
+$malformed_ready = $ready_status;
+$malformed_ready['write_inventory_fingerprint'] = 'not-a-sha256';
+MAD4B_SCP_Staging_Write_Authority::$checkpoint = array(
+	'contract' => 'mad4b.governed-write-authority-persistence-checkpoint.v1',
+	'exists' => true,
+	'status' => $malformed_ready,
+);
+$malformed = classify();
+check( is_wp_error( $malformed ), 'malformed persisted write fingerprint must fail closed' );
+check( 'mad4b_self_update_continuation_prior_authority_not_effective' === $malformed->get_error_code(), 'malformed fingerprint blocker mismatch' );
+
+MAD4B_SCP_Staging_Write_Authority::$checkpoint = array(
+	'contract' => 'mad4b.governed-write-authority-persistence-checkpoint.v1',
+	'exists' => true,
+	'status' => $ready_status,
+);
 
 MAD4B_SCP_Staging_Write_Authority::$checkpoint = array(
 	'contract' => 'mad4b.governed-write-authority-persistence-checkpoint.v1',
