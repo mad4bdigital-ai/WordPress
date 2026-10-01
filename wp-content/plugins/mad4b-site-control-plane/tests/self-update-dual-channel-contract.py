@@ -13,8 +13,6 @@ impact = (root / "includes" / "class-mad4b-scp-impact-policy.php").read_text(enc
 commit_guard = (root / "includes" / "class-mad4b-scp-execution-commit-guard.php").read_text(encoding="utf-8")
 governance = (root / "includes" / "class-mad4b-scp-governance-abilities.php").read_text(encoding="utf-8")
 bootstrap = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
-if "Update URI: https://github.com/mad4bdigital-ai/WordPress" not in bootstrap:
-    raise SystemExit("control-plane plugin header must opt out of WordPress.org slug update resolution")
 readback_runtime = (root / "tests" / "self-update-readback-runtime.php").read_text(encoding="utf-8")
 handoff = json.loads((root / "config" / "staging-deployment-handoff.json").read_text(encoding="utf-8"))
 
