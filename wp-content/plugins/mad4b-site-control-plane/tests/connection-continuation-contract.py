@@ -43,6 +43,19 @@ for marker in (
 assert "class-mad4b-scp-connection-identity-resolver.php" in loader
 assert "class-mad4b-scp-connection-doctor.php" in loader
 
+# Canonical identity must preserve the independent Portable read-only source
+# instead of turning an intentionally unconfigured Site Profile into an OAuth blocker.
+for marker in (
+    "'exact_site_profile'",
+    "'portable_readonly'",
+    "MAD4B_SCP_Portable_Readonly_Connection::status()",
+    "MAD4B_SCP_Portable_Readonly_Connection::connection_uuid()",
+    "MAD4B_SCP_Portable_Readonly_Connection::connection_digest()",
+    "'profile_authority_inherited' => false",
+    "'portable_readonly' => $portable_effective",
+):
+    assert marker in resolver, marker
+
 # Tier-0 identity projection must precede the zero-touch short-circuit.
 kernel_idx = plugin.index("MAD4B_SCP_Connection_Identity_Resolver::kernel();")
 zero_touch_idx = plugin.index("current_request_is_zero_touch_surface()")
