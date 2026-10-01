@@ -32,7 +32,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 	}
 
 	public static function coverage() {
-		if ( null !== self::$coverage ) return self::$coverage;
+		$cacheable = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
+		if ( $cacheable && null !== self::$coverage ) return self::$coverage;
 		// Coverage is a read-only runtime projection, but it depends on the deterministic
 		// in-memory adapter registry being populated. Ordinary wp-admin requests do not
 		// necessarily pass through the MCP/WP-CLI reconciliation path, so initialize the
