@@ -640,6 +640,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'live_skill_evaluation_deferred', 'runtime_catalog_rebuild_deferred',
 			'recorded_ready', 'current_candidate_match', 'effective_skill_ready', 'recorded_source_commit_sha', 'recorded_build_fingerprint',
 			'persisted_authority_ready', 'effective_authority_ready',
+			'current_grant_snapshot_performed', 'current_grant_snapshot_ready',
 			'deep_route_validation_deferred', 'deep_peer_inventory_deferred',
 			'deep_oauth_validation_deferred', 'provider_runtime_hash_validation_deferred',
 			'deep_local_oauth_status_deferred', 'deep_oauth_bridge_status_deferred',
@@ -651,7 +652,7 @@ final class MAD4B_SCP_Read_Consistency {
 			$value = $data[ $key ];
 			if ( is_scalar( $value ) || null === $value ) $out[ $key ] = $value;
 		}
-		foreach ( array( 'blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch', 'deferred_checks' ) as $key ) {
+		foreach ( array( 'blockers', 'current_readiness_blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch', 'deferred_checks' ) as $key ) {
 			if ( array_key_exists( $key, $data ) ) $out[ $key ] = self::bounded_scalar_list( $data[ $key ], 12 );
 		}
 		foreach ( array( 'current', 'target', 'build', 'connection', 'write_authority' ) as $nested_key ) {
@@ -823,7 +824,7 @@ final class MAD4B_SCP_Read_Consistency {
 		}
 		if ( 'runtime' === $bundle ) {
 			return array(
-				'write_authority' => static function () { return self::write_authority_projection(); },
+				'write_authority' => static function () { return self::session_safe_write_authority_projection(); },
 				'skills_runtime' => static function () { return self::skills_projection(); },
 				'update_state' => static function () { return self::update_projection(); },
 			);
@@ -1065,6 +1066,43 @@ final class MAD4B_SCP_Read_Consistency {
 		$result['blockers'] = isset( $projection['blockers'] ) && is_array( $projection['blockers'] ) ? $projection['blockers'] : array();
 		$result['current_source_commit_sha'] = isset( $projection['current_source_commit_sha'] ) ? (string) $projection['current_source_commit_sha'] : '';
 		$result['candidate_source_commit_sha'] = isset( $projection['candidate_source_commit_sha'] ) ? (string) $projection['candidate_source_commit_sha'] : '';
+		$result['deep_authority_scan_deferred'] = true;
+		return $result;
+	}
+
+	/**
+	 * Session-safe subject truth is stronger than the generic compact preflight:
+	 * keep full Live Truth/certification deferred, but perform the single bulk
+	 * managed-agent grant snapshot used by mutation authorization. This prevents
+	 * persisted checkpoint + candidate binding from being reported as current
+	 * subject readiness while broad/stale live grant drift would block mutation.
+	 */
+	private static function session_safe_write_authority_projection() {
+		$result = self::write_authority_projection();
+		if ( is_wp_error( $result ) ) return $result;
+		$current = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
+			? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()
+			: array();
+
+		$result['current_grant_snapshot_performed'] = true;
+		$result['current_grant_snapshot_ready'] = is_array( $current ) && ! empty( $current['current_grant_snapshot_ready'] );
+		$result['current_readiness_blockers'] = is_array( $current ) && isset( $current['blockers'] ) && is_array( $current['blockers'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $current['blockers'] ) ) )
+			: array( 'write_current_readiness_unavailable' );
+		$current_ready = is_array( $current ) && ! empty( $current['ready'] );
+		$result['effective_authority_ready'] = ! empty( $result['effective_authority_ready'] ) && $current_ready;
+		$result['ready'] = (bool) $result['effective_authority_ready'];
+
+		if ( ! $result['ready'] ) {
+			$result['state'] = is_array( $current ) && ! empty( $current['state'] )
+				? sanitize_key( (string) $current['state'] )
+				: 'blocked_current_drift';
+			$existing = isset( $result['blockers'] ) && is_array( $result['blockers'] ) ? $result['blockers'] : array();
+			$result['blockers'] = array_values( array_unique( array_merge( $existing, $result['current_readiness_blockers'] ) ) );
+		}
+		// Full Live Truth, write certification and provider canaries remain outside
+		// this session-safe request even though the current grant snapshot is live.
 		$result['deep_authority_scan_deferred'] = true;
 		return $result;
 	}
