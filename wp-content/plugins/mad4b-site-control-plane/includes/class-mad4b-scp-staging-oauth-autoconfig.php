@@ -229,6 +229,10 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			$configured_issuer = rtrim( trim( (string) constant( 'MAD4B_MCP_OAUTH_ISSUER' ) ), '/' );
 			if ( '' !== $configured_issuer && ! hash_equals( $issuer, $configured_issuer ) ) return new WP_Error( 'explicit_external_oauth_issuer', 'Explicit OAuth issuer conflicts with the enrolled local issuer.' );
 		}
+		if ( defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) {
+			$configured_local_issuer = rtrim( trim( (string) constant( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ), '/' );
+			if ( '' !== $configured_local_issuer && ! hash_equals( $issuer, $configured_local_issuer ) ) return new WP_Error( 'explicit_local_oauth_issuer_conflict', 'Explicit local OAuth issuer conflicts with the enrolled Site Profile issuer.' );
+		}
 
 		$user_ids = MAD4B_SCP_Site_Profile::oauth_user_ids();
 		$user_ids = array_values( array_unique( array_filter( array_map( 'absint', $user_ids ) ) ) );
@@ -252,6 +256,18 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			foreach ( $subjects as $subject ) if ( ! self::binding_allows( constant( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS' ), $issuer, $subject ) ) return new WP_Error( 'explicit_subject_binding_conflict', 'Explicit issuer/subject binding omits an enrolled Site Profile user.' );
 		}
 		if ( defined( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) && absint( constant( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) ) !== $primary_user_id ) return new WP_Error( 'explicit_wp_user_conflict', 'Legacy primary OAuth user conflicts with the Site Profile trust owner.' );
+		if ( defined( 'MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER' ) ) {
+			$mapping = constant( 'MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER' );
+			$mapped_user = 0;
+			if ( is_array( $mapping ) ) {
+				foreach ( $mapping as $bound_issuer => $user_id ) {
+					if ( ! is_string( $bound_issuer ) || ! hash_equals( $issuer, rtrim( trim( $bound_issuer ), '/' ) ) ) continue;
+					$mapped_user = absint( $user_id );
+					break;
+				}
+			}
+			if ( $mapped_user !== $primary_user_id ) return new WP_Error( 'explicit_wp_user_conflict', 'Per-issuer OAuth user mapping conflicts with the Site Profile trust owner.' );
+		}
 
 		// Site Profile OAuth means the HTTP protected-resource bridge must be
 		// available as well as the local authorization server. Honor an explicit
