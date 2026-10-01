@@ -552,8 +552,11 @@ assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstra
 assert mu_bootstrap.index("current_request_is_protocol_hotpath()") < mu_bootstrap.index("MAD4B_SCP_Audit::record(")
 
 scope_boot_pos = entry.index("MAD4B_SCP_MCP_Request_Scope::bootstrap();")
-mu_boot_pos = entry.index("MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();")
-assert scope_boot_pos < mu_boot_pos, "request scope must be classified before MU refresh bootstrap"
+mu_hook = "add_action( 'init', array( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', 'bootstrap' ), 20 );"
+assert mu_hook in entry, "MU refresh must be deferred to lifecycle init"
+mu_boot_pos = entry.index(mu_hook)
+assert scope_boot_pos < mu_boot_pos, "request scope must be classified before MU refresh scheduling"
+assert "MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();" not in entry, "MU refresh must not mutate during plugin include"
 
 # Runtime conflict repair is also a mutation/recovery transaction and must be
 # deferred on protocol hotpaths before active_plugins or MU/audit repair work.
