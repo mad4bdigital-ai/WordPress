@@ -104,8 +104,12 @@ for marker in (
     "'chatgpt_registration_deep_check_deferred'",
     "'external_handshake_evidence_present'",
     "'external_handshake_live_verification_deferred'",
+    "'identity_ready'",
+    "'identity_mismatch'",
+    "'manifest_present'",
+    "'manifest_valid'",
 ):
-    require(compact_status, marker, "compact diagnostics preserves connection truth dimension")
+    require(compact_status, marker, "compact diagnostics preserves identity truth dimension")
 
 # 1. One canonical owner for external WPML truth.
 require(bootstrap, "class-mad4b-scp-truth-projection.php", "truth projection loader")
@@ -190,6 +194,27 @@ for marker in (
     "'subject_not_ready'",
 ):
     require(read_consistency, marker, "session-safe effective-state semantics")
+
+session_report = read_consistency.split("public static function session_safe_diagnostics( $input = array() )", 1)[1].split("private static function compact_bundle_result", 1)[0]
+for marker in (
+    "$identity_checks = isset( $sections['identity']['checks'] )",
+    "array( 'site_profile', 'build', 'connection', 'reconnect' )",
+    "$check_name . '_not_ready'",
+    "'write_authority' => 'effective_authority_ready'",
+    "'skills_runtime' => 'effective_skill_ready'",
+):
+    require(session_report, marker, "merge readiness covers identity plus effective runtime subjects")
+if session_report.index("$identity_checks =") > session_report.index("$valid_for_merge ="):
+    raise SystemExit("identity readiness must be evaluated before valid_for_merge")
+if "'deep_certification' =>" in session_report.split("$subject_blockers = array();", 1)[1].split("$valid_for_merge =", 1)[0]:
+    raise SystemExit("deferred deep certification must not be coerced into a merge blocker")
+
+build_projection = read_consistency.split("private static function build_projection()", 1)[1].split("private static function deep_build_projection()", 1)[0]
+for marker in ("'ready' =>", "'identity_ready'", "'identity_not_ready'"):
+    require(build_projection, marker, "lightweight build readiness alias")
+profile_projection = read_consistency.split("private static function profile_projection()", 1)[1].split("private static function candidate_projection()", 1)[0]
+for marker in ("'ready' => $ready", "'exact_profile_bound'", "'profile_not_exact'"):
+    require(profile_projection, marker, "profile readiness alias")
 authority_projection = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function skills_projection()", 1)[0]
 require(authority_projection, "MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready", "effective authority canonical projection")
 skills_projection = read_consistency.split("private static function skills_projection()", 1)[1].split("private static function update_projection()", 1)[0]
