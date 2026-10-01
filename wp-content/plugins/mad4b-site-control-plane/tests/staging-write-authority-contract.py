@@ -48,6 +48,22 @@ for marker_text in [
 if "'current_ready' => $persisted_ready" in plan_body:
     raise SystemExit("write reconciliation current_ready must not alias the historical persisted checkpoint")
 
+# Exact current-environment authority and a simultaneous broad environment=all
+# allow can coexist because environment participates in the DB uniqueness key.
+# The read-only plan must expose that broad row even when the exact row wins
+# execution lookup, otherwise current readiness and explicit reconcile disagree.
+if "} elseif ( ! empty( $allow_current[ $key ] ) ) {" not in plan_body or "} elseif ( ! empty( $allow_all[ $key ] ) ) {" not in plan_body:
+    raise SystemExit("write reconciliation allow-current/allow-all branches are unavailable")
+exact_allow_branch = plan_body.split("} elseif ( ! empty( $allow_current[ $key ] ) ) {", 1)[1].split("} elseif ( ! empty( $allow_all[ $key ] ) ) {", 1)[0]
+for marker_text in (
+    "if ( ! empty( $allow_all[ $key ] ) )",
+    "foreach ( $allow_all[ $key ] as $broad_grant )",
+    "$broad_environment[] = array(",
+    "'environment' => 'all'",
+):
+    if marker_text not in exact_allow_branch:
+        raise SystemExit("exact+broad coexistence drift is not projected into current write truth: " + marker_text)
+
 current_status_body = write.split("public static function current_status()", 1)[1].split("public static function effective()", 1)[0]
 for marker_text in [
     "self::current_execution_readiness()",
