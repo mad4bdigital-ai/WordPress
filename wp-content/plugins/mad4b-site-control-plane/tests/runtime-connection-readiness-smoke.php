@@ -159,6 +159,10 @@ if ( class_exists( 'MAD4B_SCP_ChatGPT_Connection_Admin_UI' ) ) {
     $chatgpt_admin = MAD4B_SCP_ChatGPT_Connection_Admin_UI::status();
     $check( 'runtime_identity' === ( isset( $chatgpt_admin['admin_status_projection'] ) ? $chatgpt_admin['admin_status_projection'] : '' ), 'ChatGPT admin status did not use the runtime identity projection.' );
     $check( ! empty( $chatgpt_admin['deep_oauth_status_deferred'] ), 'ChatGPT admin status did not defer deep OAuth diagnostics.' );
+    $check( array_key_exists( 'gateway_registered', $chatgpt_admin ) && array_key_exists( 'gateway_registration_identity_ready', $chatgpt_admin ), 'ChatGPT admin did not separate actual gateway registration from identity readiness.' );
+    $check( ! empty( $chatgpt_admin['gateway_registration_identity_ready'] ), 'ChatGPT admin gateway identity was not ready on the governed runtime.' );
+    $check( isset( $chatgpt_admin['gateway_registration_state'] ) && '' !== (string) $chatgpt_admin['gateway_registration_state'], 'ChatGPT admin gateway registration state missing.' );
+    $check( array_key_exists( 'production_write_profile_enabled', $chatgpt_admin ) && array_key_exists( 'production_write_authority_effective', $chatgpt_admin ), 'ChatGPT admin did not separate Production write preference from effective authority.' );
 }
 $check(
     false === $admin_convergence_gate->invoke( null, 'mad4b-control-plane-chatgpt', 'admin.php', '' ),
