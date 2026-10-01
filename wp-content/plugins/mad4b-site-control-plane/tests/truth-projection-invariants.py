@@ -176,7 +176,12 @@ for marker in (
     "'current_candidate_match'",
     "'effective_skill_ready'",
     "'subject_blockers'",
-    "'valid_for_merge' => $valid_for_merge",
+    "'valid_for_merge' => $valid_for_session_evidence_merge",
+    "'valid_for_session_evidence_merge' => $valid_for_session_evidence_merge",
+    "'valid_for_release_merge' => false",
+    "'merge_scope' => 'session_safe_subject_evidence_only'",
+    "'deep_acceptance_required' => true",
+    "'release_acceptance_deferred_checks' => $deep_checks_deferred",
     "'subject_not_ready'",
 ):
     require(read_consistency, marker, "session-safe effective-state semantics")
