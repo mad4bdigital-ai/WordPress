@@ -130,6 +130,73 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return empty( $binding['required'] ) || ! empty( $binding['match'] );
 	}
 
+
+	/**
+	 * Deep mutation-bound authority truth.
+	 *
+	 * effective() intentionally remains a cheap persisted/candidate predicate for
+	 * request-serving hotpaths. Explicit planning and mutation admission can afford
+	 * one bulk grant snapshot and must fail closed when the live grant inventory
+	 * has drifted after candidate binding.
+	 */
+	public static function current_execution_readiness( $ability_name = '', $input = null ) {
+		$ability_name = trim( (string) $ability_name );
+		if ( self::CANDIDATE_BOOTSTRAP_ABILITY === $ability_name && self::candidate_bootstrap_allowed( $ability_name, $input ) ) {
+			return array(
+				'contract' => 'mad4b.governed-write-current-execution-readiness.v1',
+				'ready' => true,
+				'state' => 'candidate_bootstrap_exception',
+				'candidate_bootstrap_exception' => true,
+				'current_grant_snapshot_ready' => null,
+				'candidate_binding_match' => false,
+				'blockers' => array(),
+				'read_only' => true,
+				'mutation_performed' => false,
+			);
+		}
+
+		$binding = self::candidate_binding_status();
+		$cheap_effective = self::effective();
+		$plan = self::reconciliation_plan();
+		if ( ! is_array( $plan ) ) {
+			return array(
+				'contract' => 'mad4b.governed-write-current-execution-readiness.v1',
+				'ready' => false,
+				'state' => 'unavailable',
+				'candidate_bootstrap_exception' => false,
+				'cheap_effective' => $cheap_effective,
+				'current_grant_snapshot_ready' => false,
+				'candidate_binding_match' => ! empty( $binding['match'] ),
+				'blockers' => array( 'write_reconciliation_plan_unavailable' ),
+				'read_only' => true,
+				'mutation_performed' => false,
+			);
+		}
+
+		$blockers = isset( $plan['current_readiness_blockers'] ) && is_array( $plan['current_readiness_blockers'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $plan['current_readiness_blockers'] ) ) )
+			: array();
+		if ( ! $cheap_effective || ( ! empty( $binding['required'] ) && empty( $binding['match'] ) ) ) $blockers[] = 'runtime_authority_candidate_not_reconciled';
+		$blockers = array_values( array_unique( $blockers ) );
+		$ready = $cheap_effective && ! empty( $plan['current_ready'] ) && empty( $blockers );
+
+		return array(
+			'contract' => 'mad4b.governed-write-current-execution-readiness.v1',
+			'ready' => (bool) $ready,
+			'state' => $ready ? 'ready' : 'blocked_current_drift',
+			'candidate_bootstrap_exception' => false,
+			'cheap_effective' => (bool) $cheap_effective,
+			'persisted_ready' => ! empty( $plan['persisted_ready'] ),
+			'current_grant_snapshot_ready' => ! empty( $plan['current_ready'] ),
+			'candidate_binding_required' => ! empty( $binding['required'] ),
+			'candidate_binding_match' => ! empty( $binding['match'] ),
+			'grant_rows_fingerprint' => isset( $plan['grant_rows_fingerprint'] ) ? (string) $plan['grant_rows_fingerprint'] : '',
+			'blockers' => $blockers,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
 	public static function persisted_status() {
 		$status = self::raw_status();
 		$status['approval_policy_projection_deferred'] = true;
