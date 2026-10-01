@@ -139,6 +139,12 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			}
 		}
 
+		// Preserve the immutable outcome that was actually certified. Freshness is
+		// a separate current-build question; downgrading current ready must not erase
+		// the historical result that produced the persisted evidence.
+		$stored['historical_ready'] = array_key_exists( 'historical_ready', $stored )
+			? ! empty( $stored['historical_ready'] )
+			: ! empty( $stored['ready'] );
 		$stored['historical_evidence_only'] = true;
 		$stored['build_identity_current'] = empty( $stale_reasons );
 		$stored['stale_reasons'] = array_values( array_unique( $stale_reasons ) );
