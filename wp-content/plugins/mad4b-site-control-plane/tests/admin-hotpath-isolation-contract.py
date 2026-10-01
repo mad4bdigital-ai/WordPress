@@ -284,7 +284,8 @@ for marker in (
     "'certification_deferred_checks'",
 ):
     assert marker in connection_method, marker
-assert "$connection_certified = ! $admin_shallow && empty( $certification_blockers )" in connection_method
+assert "$connection_certified = ! $lightweight && empty( $certification_blockers )" in connection_method
+assert "$persisted_external_evidence = $lightweight && ! empty( $handshake['evidence_present'] )" in connection_method
 
 local_identity = method_body(
     local_oauth,
