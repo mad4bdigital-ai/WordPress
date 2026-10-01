@@ -1044,7 +1044,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 	}
 
 	private static function current_identity() {
-		$identity = array( 'version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '', 'source_commit_sha' => '', 'build_fingerprint' => '', 'package_manifest_digest' => '' );
+		$identity = array( 'version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '', 'source_commit_sha' => '', 'build_fingerprint' => '', 'package_manifest_digest' => '', 'artifact_identity' => '' );
 		$path = defined( 'MAD4B_SCP_DIR' ) ? rtrim( (string) MAD4B_SCP_DIR, "/\\" ) . '/MAD4B-BUILD-PROVENANCE.json' : '';
 		if ( '' !== $path && is_file( $path ) && is_readable( $path ) && ! is_link( $path ) ) {
 			$raw = file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
@@ -1052,6 +1052,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			if ( is_array( $row ) ) {
 				if ( isset( $row['control_plane_version'] ) && '' !== trim( (string) $row['control_plane_version'] ) ) $identity['version'] = trim( (string) $row['control_plane_version'] );
 				foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $field ) if ( isset( $row[ $field ] ) ) $identity[ $field ] = strtolower( trim( (string) $row[ $field ] ) );
+				if ( isset( $row['artifact_identity'] ) ) $identity['artifact_identity'] = trim( (string) $row['artifact_identity'] );
 			}
 		}
 		return self::bounded_identity( $identity );
@@ -1063,12 +1064,16 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'source_commit_sha' => isset( $identity['source_commit_sha'] ) && preg_match( '/^[a-f0-9]{40}$/', strtolower( trim( (string) $identity['source_commit_sha'] ) ) ) ? strtolower( trim( (string) $identity['source_commit_sha'] ) ) : '',
 			'build_fingerprint' => isset( $identity['build_fingerprint'] ) && preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) $identity['build_fingerprint'] ) ) ) ? strtolower( trim( (string) $identity['build_fingerprint'] ) ) : '',
 			'package_manifest_digest' => isset( $identity['package_manifest_digest'] ) && preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) $identity['package_manifest_digest'] ) ) ) ? strtolower( trim( (string) $identity['package_manifest_digest'] ) ) : '',
+			'artifact_identity' => isset( $identity['artifact_identity'] ) ? substr( sanitize_text_field( trim( (string) $identity['artifact_identity'] ) ), 0, 255 ) : '',
 		);
 	}
 
 	private static function identity_matches( array $expected, array $actual ) {
 		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
 			if ( empty( $expected[ $field ] ) || empty( $actual[ $field ] ) || ! hash_equals( (string) $expected[ $field ], (string) $actual[ $field ] ) ) return false;
+		}
+		if ( ! empty( $expected['artifact_identity'] ) ) {
+			if ( empty( $actual['artifact_identity'] ) || ! hash_equals( (string) $expected['artifact_identity'], (string) $actual['artifact_identity'] ) ) return false;
 		}
 		return true;
 	}
