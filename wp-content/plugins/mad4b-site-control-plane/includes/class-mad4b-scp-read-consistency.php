@@ -555,6 +555,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'merge_scope' => 'session_safe_subject_evidence_only',
 			'deep_acceptance_required' => true,
 			'subject_blockers' => $subject_blockers,
+			'subject_live_validation_deferred' => array( 'skills_runtime' ),
 			'projection_freshness' => 'live',
 			'observed_at' => gmdate( 'c' ),
 			'elapsed_ms' => (int) round( ( microtime( true ) - $started ) * 1000 ),
@@ -638,7 +639,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'blind_retry_allowed', 'next_action', 'candidate_match', 'build_fingerprint_match',
 			'full_runtime_hash_validation_deferred', 'deep_authority_scan_deferred',
 			'live_skill_evaluation_deferred', 'runtime_catalog_rebuild_deferred',
-			'recorded_ready', 'current_candidate_match', 'effective_skill_ready', 'recorded_source_commit_sha', 'recorded_build_fingerprint',
+			'recorded_ready', 'current_candidate_match', 'effective_skill_ready', 'effective_skill_ready_scope', 'candidate_identity_bound_ready', 'live_skill_ready', 'recorded_source_commit_sha', 'recorded_build_fingerprint',
 			'persisted_authority_ready', 'effective_authority_ready',
 			'current_grant_snapshot_performed', 'current_grant_snapshot_ready',
 			'deep_route_validation_deferred', 'deep_peer_inventory_deferred',
@@ -1150,9 +1151,17 @@ final class MAD4B_SCP_Read_Consistency {
 		$result['current_package_manifest_digest'] = isset( $projection['current_package_manifest_digest'] ) ? (string) $projection['current_package_manifest_digest'] : '';
 		$result['current_artifact_identity'] = isset( $projection['current_artifact_identity'] ) ? (string) $projection['current_artifact_identity'] : '';
 		$result['current_candidate_match'] = ! empty( $projection['current_candidate_match'] );
+		// Backward-compatible evidence readiness: this proves only that the stored
+		// certification was ready for the exact current four-part package identity.
+		// It is not a live registry/filesystem/provider certification.
 		$result['effective_skill_ready'] = ! empty( $projection['effective_ready'] );
-		$result['ready'] = ! empty( $projection['effective_ready'] );
-		$result['state'] = isset( $projection['state'] ) ? sanitize_key( (string) $projection['state'] ) : 'unavailable';
+		$result['effective_skill_ready_scope'] = 'candidate_identity_bound_checkpoint_only';
+		$result['candidate_identity_bound_ready'] = ! empty( $projection['effective_ready'] );
+		$result['live_skill_ready'] = null;
+		$result['ready'] = null;
+		$result['state'] = ! empty( $projection['effective_ready'] )
+			? 'candidate_identity_bound_live_validation_deferred'
+			: ( isset( $projection['state'] ) ? sanitize_key( (string) $projection['state'] ) : 'unavailable' );
 		$result['blockers'] = isset( $projection['blockers'] ) && is_array( $projection['blockers'] ) ? $projection['blockers'] : array();
 		$result['live_skill_evaluation_deferred'] = true;
 		return $result;
