@@ -55,7 +55,7 @@ for marker_text in [
     "'checkpoint_ready'",
     "'current_grant_snapshot_ready'",
     "'current_readiness_blockers'",
-    "'current_truth' =",
+    "$checkpoint['current_truth'] = true;",
     "'deep_grant_scan_performed'",
 ]:
     if marker_text not in current_status_body:
