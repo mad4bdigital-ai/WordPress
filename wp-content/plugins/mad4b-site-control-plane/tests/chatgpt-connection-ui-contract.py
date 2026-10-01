@@ -7,6 +7,7 @@ consent_ui = (root / 'includes' / 'class-mad4b-scp-local-oauth-consent-ui.php').
 js = (root / 'assets' / 'chatgpt-connection.js').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+external_evidence = (root / 'includes' / 'class-mad4b-scp-external-handshake-evidence.php').read_text(encoding='utf-8')
 
 required_ui = [
     'mad4b.chatgpt-connection-ui.v3',
@@ -26,6 +27,16 @@ required_ui = [
     "'creates_chatgpt_connector' => false",
     "'stores_chatgpt_credentials' => false",
     "'external_connection_certified' => false",
+    "'external_connection_certification_deferred' => $external_evidence_present",
+    "'external_connection_certification_state' => $external_certification_state",
+    "'external_connection_evidence_present' => $external_evidence_present",
+    "'external_connection_last_verified_at'",
+    "'external_connection_evidence_projection' => 'persisted_identity'",
+    "MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()",
+    "'previously_verified_external_session'",
+    "'certification_projection_state'",
+    "previously verified · deep revalidation deferred",
+    "Last verified external session",
     "'production_readonly_profile_supported' => true",
     "'production_readonly_write_enabled' => false",
     "'production_readonly_breakglass_enabled' => false",
@@ -66,11 +77,23 @@ status_method = ui.split('public static function status()', 1)[1].split('public 
 for forbidden_status_call in [
     'MAD4B_SCP_Local_OAuth_Server::status()',
     'MAD4B_SCP_OAuth_Resource_Bridge::status()',
+    'MAD4B_SCP_External_Handshake_Evidence::status()',
 ]:
     if forbidden_status_call in status_method:
         raise SystemExit(f'deep OAuth status call leaked into ChatGPT admin render: {forbidden_status_call}')
 if "private static $status_cache = null;" not in ui or "if ( is_array( self::$status_cache ) ) return self::$status_cache;" not in status_method:
     raise SystemExit('ChatGPT admin status must be request-local memoized')
+if "<tr><th>External ChatGPT connection certified</th><td>no</td></tr>" in ui:
+    raise SystemExit('ChatGPT admin UI still hard-codes external certification to no')
+for marker in (
+    "'previously_verified_external_session' => false",
+    "'certification_projection_state' => 'unverified'",
+    "'previously_verified_external_session' => $previously_verified",
+    "'certification_projection_state' => $previously_verified ? 'previously_verified_revalidation_deferred' : 'persisted_evidence_invalid'",
+    "'live_verification_deferred' => true",
+):
+    if marker not in external_evidence:
+        raise SystemExit(f'canonical persisted external evidence projection missing: {marker}')
 
 for forbidden in [
     'update_option(', 'add_option(', 'delete_option(', '$wpdb->',
