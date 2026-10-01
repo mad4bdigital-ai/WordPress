@@ -113,6 +113,20 @@ for marker in [
     "'client_action' => ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_handshake' : 'repair_blockers_then_request_fresh_handshake'",
 ]:
     assert marker in full, marker
+handshake_body = full.split("public static function handshake()", 1)[1].split("private static function compact_string_list", 1)[0]
+for marker in (
+    "$write_checkpoint_ready = ! empty( $write['effective_ready'] );",
+    "$write_grant_snapshot_ready = ! empty( $write['current_ready'] );",
+    "$write_ready = $write_checkpoint_ready && $write_grant_snapshot_ready;",
+    "'write_ready' => $write_ready",
+    "'write_checkpoint_ready' => $write_checkpoint_ready",
+    "'write_grants_ready' => $write_grant_snapshot_ready",
+    "'write_current_grant_snapshot_ready' => $write_grant_snapshot_ready",
+    "'write_reconciliation_required' => ! $write_ready",
+    "'write_current_readiness_blockers'",
+):
+    assert marker in handshake_body, marker
+assert "MAD4B_SCP_Staging_Write_Authority::effective()" not in handshake_body, "compact handshake must consume the reviewed write-plan snapshot instead of recomputing checkpoint-only readiness"
 assert "public static function chatgpt_step_up_tools()" in full
 step_up = full.split("public static function chatgpt_step_up_tools()", 1)[1].split("public static function register_category()", 1)[0]
 for marker in [
