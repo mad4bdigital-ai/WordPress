@@ -9,19 +9,16 @@ class FixtureTool { public $name; public $ability; function __construct( $name, 
 class FixtureServer { public $tools; function __construct( $tools ) { $this->tools = $tools; } function get_tools() { return $this->tools; } function get_mcp_tool( $name ) { return $this->tools[$name]; } }
 class FixtureRequest { public $method = 'tools/list'; public $route = '/mcp/mad4b-chatgpt'; function get_route() { return $this->route; } function get_method() { return 'POST'; } function get_json_params() { return array( 'method' => $this->method, 'params' => array( 'secret' => 'DO_NOT_COPY' ) ); } function get_header( $key ) { return 'DO_NOT_COPY'; } }
 class FixtureResponse { public $data; public $headers = array(); public $status = 200; function __construct( $data ) { $this->data = $data; } function get_data() { return $this->data; } function get_status() { return $this->status; } function header( $key, $value ) { $this->headers[$key] = $value; } }
-$required_over_budget = array();
-for ( $i = 0; $i < 37; $i++ ) $required_over_budget[] = 'mad4b/required-' . $i;
-$budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $required_over_budget, array() );
-check( empty( $budget['ready'] ) && 'mcp_required_catalog_budget_exceeded' === $budget['blocker'], 'required transport budget overflow must fail closed' );
-
-$required = array();
-for ( $i = 0; $i < 34; $i++ ) $required[] = 'mad4b/required-' . $i;
-$optional = array( 'mad4b/optional-critical', 'mad4b/optional-secondary', 'mad4b/optional-overflow' );
+// Provider growth may shed reviewed optional projections, never core transport.
+$required = array_map( static function ( $i ) { return 'required/tool-' . $i; }, range( 1, 30 ) );
+$optional = array_map( static function ( $i ) { return 'optional/tool-' . $i; }, range( 1, 100 ) );
 $budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array_merge( $required, $optional ), $optional );
-check( ! empty( $budget['ready'] ) && 36 === count( $budget['selected'] ), 'optional overflow must retain a bounded ready catalog' );
-check( array( 'mad4b/optional-overflow' ) === $budget['excluded_optional'], 'optional overflow must degrade in deterministic priority order' );
-check( in_array( 'mad4b/optional-critical', $budget['selected'], true ) && in_array( 'mad4b/optional-secondary', $budget['selected'], true ), 'higher-priority optional tools must survive budget degradation' );
-
+check( $budget['ready'] && 36 === count( $budget['selected'] ) && ! array_diff( $required, $budget['selected'] ) && 94 === count( $budget['excluded_optional'] ), 'rich optional catalog preserves core and bounded priority' );
+check( $budget === MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array_merge( $required, $optional ), $optional ), 'budget selection deterministic' );
+$over = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array_merge( $required, array_slice( $optional, 0, 7 ) ), array() );
+check( ! $over['ready'] && 'mcp_required_catalog_budget_exceeded' === $over['blocker'], 'required overflow fails closed' );
+$duplicate = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( array( 'core/tool', 'core/tool' ), array() );
+check( ! $duplicate['ready'], 'duplicate identity cannot degrade' );
 $one = new FixtureTool( 'mad4b-site-info', 'mad4b/site-info' );
 $server = new FixtureServer( array( $one->name => $one ) );
 $expected = array( 'mad4b/site-info' );

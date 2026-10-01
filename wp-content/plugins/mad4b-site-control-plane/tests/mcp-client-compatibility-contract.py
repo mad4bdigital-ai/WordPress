@@ -133,7 +133,9 @@ for marker in [
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
     "verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )",
     "verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )",
-    "self::ability_is_direct_step_up( $ability )",
+    "$direct_step_up = $captured['direct_step_up'];",
+    "mad4b_catalog_classification_unavailable",
+    "public static function capture_classification",
     "if ( $direct_step_up && ! $step_up_visible ) continue;",
     "mad4b_required_catalog_schema_invalid",
 ]:

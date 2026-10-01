@@ -7,6 +7,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	const MAX_TOOLS = 36;
 	private static $booted = false;
 	private static $failure_logged = false;
+	private static $registered_classification = array();
+	private static $classification_server = ''; 
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -113,6 +115,24 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		} catch ( Throwable $error ) { return array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_tool_serialization_invalid', 'schema_fingerprint' => $fingerprint ); }
 	}
 
+	/** Freeze reviewed identity/classification once, at server materialization, before OAuth. */
+	public static function capture_classification( $server, array $expected ) {
+		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) ) throw new RuntimeException( 'mad4b_catalog_capture_unavailable' );
+		$reviewed = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
+		$captured = array();
+		foreach ( $server->get_tools() as $name => $dto ) {
+			$bound = $server->get_mcp_tool( $name ); $meta = $bound ? $bound->get_adapter_meta() : array();
+			$ability = $meta['ability'] ?? '';
+			if ( ! in_array( $ability, $expected, true ) || $name !== $dto->getName() ) throw new RuntimeException( 'mad4b_catalog_capture_identity_invalid' );
+			$captured[$name] = array( 'ability' => $ability, 'direct_step_up' => in_array( $ability, $reviewed, true ), 'exact_chatgpt_client_required' => in_array( $ability, $reviewed, true ) );
+		}
+		if ( ! empty( self::$registered_classification ) && self::$registered_classification !== $captured ) throw new RuntimeException( 'mad4b_catalog_classification_changed' );
+		self::$registered_classification = $captured;
+		self::$classification_server = spl_object_hash( $server );
+	}
+
+	public static function classification_snapshot() { return self::$registered_classification; }
+
 	/** Deny-only final filter: never restore tools removed by earlier role/authority filters. */
 	private static function ability_is_direct_step_up( $ability_name ) {
 		$ability_name = (string) $ability_name;
@@ -143,7 +163,9 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			$bound = $name ? $server->get_mcp_tool( $name ) : null;
 			$meta = is_object( $bound ) && method_exists( $bound, 'get_adapter_meta' ) ? $bound->get_adapter_meta() : array();
 			$ability = is_array( $meta ) && isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
-			$direct_step_up = self::ability_is_direct_step_up( $ability );
+			$captured = isset( self::$registered_classification[$name] ) ? self::$registered_classification[$name] : null;
+			if ( spl_object_hash( $server ) !== self::$classification_server || ! is_array( $captured ) || $ability !== $captured['ability'] ) throw new RuntimeException( 'mad4b_catalog_classification_unavailable' );
+			$direct_step_up = $captured['direct_step_up'];
 			// Registration is a stable reviewed superset. Visibility is request-local
 			// and can only remove direct step-up tools after bearer verification.
 			if ( $direct_step_up && ! $step_up_visible ) continue;
@@ -159,12 +181,15 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	public static function optional_projections( array $abilities = array() ) {
 		// Required read/dispatch tools never degrade. Only abilities explicitly
 		// marked as reviewed direct step-up projections may be isolated.
-		if ( empty( $abilities ) && class_exists( 'MAD4B_SCP_Servers', false ) && method_exists( 'MAD4B_SCP_Servers', 'chatgpt_reviewed_direct_step_up_tools' ) ) {
+		if ( empty( $abilities ) && ! empty( self::$registered_classification ) ) $abilities = array_column( self::$registered_classification, 'ability' );
+		elseif ( empty( $abilities ) && class_exists( 'MAD4B_SCP_Servers', false ) && method_exists( 'MAD4B_SCP_Servers', 'chatgpt_reviewed_direct_step_up_tools' ) ) {
 			$abilities = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
 		}
 		$optional = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $abilities ) ) ) as $ability_name ) {
-			if ( self::ability_is_direct_step_up( $ability_name ) ) $optional[] = $ability_name;
+			if ( ! empty( self::$registered_classification ) ) {
+				foreach ( self::$registered_classification as $captured ) if ( $ability_name === $captured['ability'] && $captured['direct_step_up'] ) $optional[] = $ability_name;
+			} elseif ( self::ability_is_direct_step_up( $ability_name ) ) $optional[] = $ability_name;
 		}
 		return $optional;
 	}

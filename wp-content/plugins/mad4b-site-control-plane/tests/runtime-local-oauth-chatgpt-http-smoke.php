@@ -199,6 +199,49 @@ foreach ( $reviewed_step_up_names as $hidden_step_up ) {
 	}
 }
 
+// Every registered direct mutation is execution-gated, even when the caller knows its hidden name.
+$classification = MAD4B_SCP_MCP_Catalog_Diagnostics::classification_snapshot();
+$registered_step_names = array_keys( array_filter( $classification, static function ( $row ) { return ! empty( $row['direct_step_up'] ); } ) );
+if ( empty( $registered_step_names ) || count( $preauth_names ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS ) $fail( 'Reviewed registered catalog must remain nonempty and within its budget.' );
+foreach ( array( 'mad4b-site-profile-feature-reenroll', 'mad4b-site-profile-write-enable', 'mad4b-staging-write-grant-reconcile', 'mad4b-staging-write-candidate-bind' ) as $internal ) if ( in_array( $internal, $preauth_names, true ) ) $fail( 'Internal primitive must never enter the registered direct superset.', $internal );
+$assert_direct_denied = static function ( $bearer, $session, $client_kind ) use ( $dispatch, $fail, $normalize, $classification, $registered_step_names ) {
+	foreach ( $registered_step_names as $index => $tool_name ) {
+		$response = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 800 + $index, 'method' => 'tools/call', 'params' => array( 'name' => $tool_name, 'arguments' => array() ) ), $bearer, $session );
+		$value = $normalize( $response->get_data() );
+		if ( empty( $value['result']['isError'] ) && ! isset( $value['error'] ) ) $fail( 'Known hidden step-up tool was executable.', array( 'tool' => $tool_name, 'client_kind' => $client_kind ) );
+		$bound = \WP\MCP\Core\McpAdapter::instance()->get_server( 'mad4b-chatgpt' )->get_mcp_tool( $tool_name );
+		$denial = $bound->check_permission( array() );
+		if ( ! is_wp_error( $denial ) ) $fail( 'Every direct step-up permission callback must independently deny this actor.', $tool_name );
+		$code = $denial->get_error_code();
+		if ( ! preg_match( '/scope|step_up|client/', $code ) ) $fail( 'Direct step-up denial must enforce scope/client before input or plan.', array( 'tool' => $tool_name, 'code' => $code ) );
+	}
+};
+$assert_direct_denied( $token, $session_id, 'read_only' );
+// A request-local metadata/state change cannot declassify a tool already registered as step-up.
+$meta_property = new ReflectionProperty( 'WP_Ability', 'meta' ); $meta_property->setAccessible( true );
+$full_ability = wp_get_ability( 'mad4b/full-staging-authority-apply' ); $saved_meta = $meta_property->getValue( $full_ability );
+try {
+	$changed_meta = $saved_meta; $changed_meta['mcp']['chatgpt_direct_step_up'] = false; $changed_meta['mcp']['exact_chatgpt_client_required'] = false;
+	$meta_property->setValue( $full_ability, $changed_meta );
+	$transition = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 899, 'method' => 'tools/list', 'params' => array() ), $token, $session_id );
+	$transition_data = $normalize( $transition->get_data() );
+	if ( in_array( 'mad4b-full-staging-authority-apply', array_column( $transition_data['result']['tools'] ?? array(), 'name' ), true ) || $classification !== MAD4B_SCP_MCP_Catalog_Diagnostics::classification_snapshot() || ! in_array( 'mad4b/full-staging-authority-apply', MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections(), true ) ) $fail( 'Immutable registration classification failed across state transition.' );
+} finally { $meta_property->setValue( $full_ability, $saved_meta ); }
+// Rich provider registries cannot auto-enroll arbitrary abilities into the compact direct catalog.
+$registry = WP_Abilities_Registry::get_instance();
+$registry_property = new ReflectionProperty( 'WP_Abilities_Registry', 'registered_abilities' ); $registry_property->setAccessible( true );
+$baseline_catalog = MAD4B_SCP_Servers::chatgpt_tools();
+$catalog_cache = new ReflectionProperty( 'MAD4B_SCP_Servers', 'chatgpt_tools_cache' ); $catalog_cache->setAccessible( true );
+$saved_registry = $registry_property->getValue( $registry ); $rich_registry = $saved_registry;
+$ability_name_property = new ReflectionProperty( 'WP_Ability', 'name' ); $ability_name_property->setAccessible( true );
+try {
+	for ( $i = 0; $i < 100; $i++ ) { $copy = clone $full_ability; $name = 'provider/rich-step-' . $i; $ability_name_property->setValue( $copy, $name ); $rich_registry[$name] = $copy; }
+	$registry_property->setValue( $registry, $rich_registry );
+	$catalog_cache->setValue( null, null ); $preflight_catalog = MAD4B_SCP_Servers::chatgpt_tools();
+	if ( $baseline_catalog !== $preflight_catalog ) $fail( 'Rich provider registration must not change the reviewed direct catalog.' );
+	if ( count( $preflight_catalog ) > 36 || array_filter( $preflight_catalog, static function ( $name ) { return 0 === strpos( $name, 'provider/rich-step-' ); } ) ) $fail( 'Provider growth must not widen the reviewed direct catalog or exhaust its budget.' );
+} finally { $registry_property->setValue( $registry, $saved_registry ); }
+
 // Large normal reads/writes and low-level enrollment mutations must remain
 // behind their governed/internal transports. Only explicitly reviewed composite
 // direct step-up projections may be materialized on the ChatGPT server.
@@ -493,6 +536,11 @@ foreach ( $foreign_tools as $tool ) if ( is_array( $tool ) && isset( $tool['name
 foreach ( $reviewed_step_up_names as $hidden_step_up ) {
 	if ( in_array( $hidden_step_up, $foreign_names, true ) ) $fail( 'Foreign OAuth client received a reviewed ChatGPT direct step-up projection.', $hidden_step_up );
 }
+
+$assert_direct_denied( $foreign_step_token, $foreign_session_id, 'foreign_step_up' );
+$foreign_list = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 900, 'method' => 'tools/list', 'params' => array() ), $foreign_step_token, $foreign_session_id );
+$foreign_data = $normalize( $foreign_list->get_data() );
+if ( array_intersect( $registered_step_names, array_column( $foreign_data['result']['tools'] ?? array(), 'name' ) ) ) $fail( 'Foreign-client step-up bearer must not discover any reviewed direct mutation.' );
 
 $foreign_apply = $dispatch(
 	array(

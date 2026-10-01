@@ -918,6 +918,7 @@ final class MAD4B_SCP_Servers {
 		if ( 'mad4b-chatgpt' === $id && $materialized ) {
 			$server = method_exists( $adapter, 'get_server' ) ? $adapter->get_server( $id ) : null;
 			$evidence = MAD4B_SCP_MCP_Catalog_Diagnostics::inspect( $server, $tools );
+			if ( ! empty( $evidence['ready'] ) ) MAD4B_SCP_MCP_Catalog_Diagnostics::capture_classification( $server, $tools );
 			self::$registrations[ $id ]['requested_tool_count'] = count( $requested_tools );
 			self::$registrations[ $id ]['preflight'] = $preflight;
 			if ( empty( $preflight['ready'] ) ) { $evidence['ready'] = false; $evidence['blocker'] = $preflight['blocker']; }
