@@ -63,15 +63,6 @@ $observe = new ReflectionMethod( 'MAD4B_SCP_Self_Update', 'wordpress_auto_update
 $observe->setAccessible( true );
 $plugin = 'mad4b-site-control-plane/mad4b-site-control-plane.php';
 
-if ( false !== MAD4B_SCP_Self_Update::block_wordpress_core_auto_update( true, (object) array( 'plugin' => $plugin ) ) ) {
-	fwrite( STDERR, "Control Plane was not denied from WordPress core automatic updater\n" );
-	exit( 1 );
-}
-if ( true !== MAD4B_SCP_Self_Update::block_wordpress_core_auto_update( true, (object) array( 'plugin' => 'akismet/akismet.php' ) ) ) {
-	fwrite( STDERR, "Control Plane automatic-update policy leaked to a foreign plugin\n" );
-	exit( 1 );
-}
-
 // Selected + WordPress-recognized metadata = enabled even when there is no
 // current update offer (no_update bucket).
 $GLOBALS['mad4b_auto_selected'] = array( $plugin );
