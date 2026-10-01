@@ -921,11 +921,56 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		) );
 	}
 
+	/**
+	 * The ChatGPT admin page is deliberately a passive hotpath and therefore does
+	 * not materialize the MCP Adapter/REST server registry. Treating the resulting
+	 * synthetic not_registered entry as a real reconnect failure makes the UI lie
+	 * while the live transport is healthy. On this one inspection-only surface,
+	 * project registration intent from the already-bound lightweight bridge hooks.
+	 *
+	 * Real MCP requests still use reconnect_status()/preauth_reconnect_blockers()
+	 * and therefore continue to require an actual registered transport.
+	 */
+	private static function passive_admin_notice_status( array $status ) {
+		$passive_admin = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_is_passive_admin_hotpath' )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
+		if ( ! $passive_admin ) return $status;
+
+		$error = isset( $status['chatgpt_error'] ) ? sanitize_key( (string) $status['chatgpt_error'] ) : '';
+		if ( '' !== $error && 'not_registered' !== $error && 'mcp_chatgpt_not_registered' !== $error ) return $status;
+
+		$expected = class_exists( 'MAD4B_SCP_Servers' )
+			&& method_exists( 'MAD4B_SCP_Servers', 'expected_server_ids' )
+			&& in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true );
+		$bridge = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) && method_exists( 'MAD4B_SCP_MCP_Registration_Bridge', 'status' )
+			? MAD4B_SCP_MCP_Registration_Bridge::status()
+			: array();
+		$bridge_ready = ! empty( $bridge['bridge_booted'] )
+			&& ! empty( $bridge['server_hook_bound'] )
+			&& ! empty( $bridge['core_ability_hook_bound'] )
+			&& ! empty( $bridge['core_category_hook_bound'] );
+		if ( ! $expected || ! $bridge_ready ) return $status;
+
+		$blockers = isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? $status['blockers'] : array();
+		$blockers = array_values( array_filter( $blockers, static function ( $blocker ) {
+			$blocker = sanitize_key( (string) $blocker );
+			return ! in_array( $blocker, array( 'not_registered', 'mcp_chatgpt_not_registered' ), true );
+		} ) );
+		$status['blockers'] = $blockers;
+		$status['ready'] = empty( $blockers );
+		$status['chatgpt_registered'] = true;
+		$status['chatgpt_error'] = '';
+		$status['chatgpt_registration_projection'] = 'passive_admin_deferred_identity';
+		$status['chatgpt_registration_deep_check_deferred'] = true;
+		return $status;
+	}
+
 	public static function connection_admin_notice() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only page routing.
 		if ( 'mad4b-control-plane-chatgpt' !== $page ) return;
-		$status = self::reconnect_status();
+		$status = self::passive_admin_notice_status( self::reconnect_status() );
 		$recovery = class_exists( 'MAD4B_SCP_Upgrade_Continuity' ) ? MAD4B_SCP_Upgrade_Continuity::recovery_status() : array();
 		if ( ! empty( $recovery['recovered'] ) ) echo '<div class="notice notice-success inline"><p>' . esc_html__( 'MAD4B recovered the previously verified read/OAuth connection for this exact non-Production Site Profile. Write authority remains disabled and requires explicit administrator re-enrollment.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( ! empty( $status['ready'] ) ) return;
