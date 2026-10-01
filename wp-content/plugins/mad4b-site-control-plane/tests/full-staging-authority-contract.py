@@ -67,6 +67,23 @@ required = [
 for marker in required:
     assert marker in full, marker
 
+for marker in (
+    "private static function developer_execution_projection( array $developer_status )",
+    "'authority_ready' => $normal_ready",
+    "'ready_semantics' => 'authority_and_runtime_flags_only'",
+    "'process_backend_ready' => $process_ready",
+    "'normal_no_network_execution_ready' => $normal_no_network_ready",
+    "'execution_ready' => $process_ready && $normal_no_network_ready",
+    "'developer_authority_ready' => $normal_ready",
+    "'developer_breakglass_authority_ready' => $breakglass_ready",
+    "'developer_execution' => $developer_execution",
+):
+    assert marker in full, marker
+developer_projection = full.split("private static function developer_execution_projection", 1)[1].split("private static function compact_string_list", 1)[0]
+for source in ("process_backend_blockers", "normal_no_network_execution_blockers"):
+    assert source in developer_projection, source
+assert "ready_to_apply" not in developer_projection, "host execution projection must remain diagnostic and must not silently redefine authority apply eligibility"
+
 fixable = full.split("'fixable_write_drift' => array(", 1)[1].split("),", 1)[0]
 assert "'unreviewed_stale_allow_grants_count'" not in fixable, "unreviewed stale authority must never be classified as auto-fixable"
 for marker in (
