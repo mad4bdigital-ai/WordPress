@@ -269,6 +269,35 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			if ( $mapped_user !== $primary_user_id ) return new WP_Error( 'explicit_wp_user_conflict', 'Per-issuer OAuth user mapping conflicts with the Site Profile trust owner.' );
 		}
 
+		if ( defined( 'MAD4B_MCP_OAUTH_ADVERTISED_ISSUERS' ) ) {
+			$raw = constant( 'MAD4B_MCP_OAUTH_ADVERTISED_ISSUERS' );
+			$items = is_array( $raw ) ? $raw : preg_split( '/[\s,]+/', (string) $raw );
+			$advertised = array();
+			foreach ( is_array( $items ) ? array_slice( $items, 0, 32 ) : array() as $candidate ) {
+				if ( ! is_string( $candidate ) ) continue;
+				$candidate = rtrim( trim( $candidate ), '/' );
+				if ( '' !== $candidate ) $advertised[] = $candidate;
+			}
+			if ( ! in_array( $issuer, array_values( array_unique( $advertised ) ), true ) ) return new WP_Error( 'explicit_advertised_issuer_conflict', 'Explicit advertised OAuth issuers omit the enrolled local issuer.' );
+		}
+		if ( defined( 'MAD4B_MCP_OAUTH_RESOURCE_POLICY_BY_ISSUER' ) ) {
+			$policies = constant( 'MAD4B_MCP_OAUTH_RESOURCE_POLICY_BY_ISSUER' );
+			if ( is_array( $policies ) ) {
+				foreach ( $policies as $bound_issuer => $resources ) {
+					if ( ! is_string( $bound_issuer ) || ! hash_equals( $issuer, rtrim( trim( $bound_issuer ), '/' ) ) ) continue;
+					$items = is_array( $resources ) ? $resources : preg_split( '/[\s,]+/', (string) $resources );
+					$allowed = array();
+					foreach ( is_array( $items ) ? array_slice( $items, 0, 16 ) : array() as $server_id ) {
+						if ( ! is_string( $server_id ) ) continue;
+						$server_id = sanitize_key( $server_id );
+						if ( '' !== $server_id ) $allowed[] = $server_id;
+					}
+					if ( ! in_array( 'mad4b-chatgpt', array_values( array_unique( $allowed ) ), true ) ) return new WP_Error( 'explicit_resource_policy_conflict', 'Explicit OAuth resource policy excludes the ChatGPT MCP resource.' );
+					break;
+				}
+			}
+		}
+
 		// Site Profile OAuth means the HTTP protected-resource bridge must be
 		// available as well as the local authorization server. Honor an explicit
 		// operator disable instead of silently overriding it.
