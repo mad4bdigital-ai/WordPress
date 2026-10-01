@@ -32,7 +32,12 @@ final class MAD4B_SCP_Connection_Status {
 		$expected_count = class_exists( 'MAD4B_SCP_Servers' ) ? count( MAD4B_SCP_Servers::expected_server_ids() ) : 7;
 		$server_ok = count( $servers ) === $expected_count;
 		foreach ( $servers as $server ) {
-			if ( empty( $server['registered'] ) ) { $server_ok = false; break; }
+			if ( $lightweight ) {
+				if ( empty( $server['registration_identity_ready'] ) ) { $server_ok = false; break; }
+			} elseif ( empty( $server['registered'] ) ) {
+				$server_ok = false;
+				break;
+			}
 			if ( ! $protocol_hotpath && empty( $server['deep_route_validation_deferred'] ) && ( empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) ) { $server_ok = false; break; }
 		}
 		$peer = $lightweight
@@ -279,10 +284,19 @@ final class MAD4B_SCP_Connection_Status {
 			$out = array();
 			foreach ( $ids as $id ) {
 				$row = isset( $registration[ $id ] ) && is_array( $registration[ $id ] ) ? $registration[ $id ] : array();
+				$identity = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) && method_exists( 'MAD4B_SCP_MCP_Registration_Bridge', 'server_registration_identity_status' )
+					? MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( $id )
+					: array();
+				$actual_registered = ! empty( $row['registered'] );
+				$identity_ready = ! empty( $identity ) ? ! empty( $identity['identity_ready'] ) : $actual_registered;
 				$out[] = array(
 					'server_id' => $id,
-					'registered' => ! empty( $row['registered'] ),
-					'registration_error' => isset( $row['error'] ) ? sanitize_key( (string) $row['error'] ) : '',
+					'registered' => $actual_registered,
+					'registration_identity_ready' => $identity_ready,
+					'registration_state' => isset( $identity['state'] ) ? sanitize_key( (string) $identity['state'] ) : ( $actual_registered ? 'registered' : 'not_ready' ),
+					'registration_error' => isset( $identity['blocking_registration_error'] ) ? sanitize_key( (string) $identity['blocking_registration_error'] ) : ( isset( $row['error'] ) ? sanitize_key( (string) $row['error'] ) : '' ),
+					'observed_registration_error' => isset( $identity['observed_registration_error'] ) ? sanitize_key( (string) $identity['observed_registration_error'] ) : ( isset( $row['error'] ) ? sanitize_key( (string) $row['error'] ) : '' ),
+					'deep_registration_deferred' => ! empty( $identity['deep_registration_deferred'] ),
 					'materialized' => ! empty( $row['materialized'] ),
 					'tool_count' => isset( $row['tool_count'] ) ? max( 0, (int) $row['tool_count'] ) : 0,
 					'route_registered' => null,
@@ -372,6 +386,8 @@ final class MAD4B_SCP_Connection_Status {
 		return array(
 			'server_id' => 'mad4b-write',
 			'registered' => ! empty( $server['registered'] ),
+			'registration_identity_ready' => ! empty( $server['registration_identity_ready'] ) || ! empty( $server['registered'] ),
+			'transport_ready_for_projection' => $protocol_hotpath ? ( ! empty( $server['registration_identity_ready'] ) || ! empty( $server['registered'] ) ) : ! empty( $server['registered'] ),
 			'route_registered' => $protocol_hotpath ? null : ! empty( $server['route_registered'] ),
 			'permission_callback_match' => $protocol_hotpath ? null : ! empty( $server['permission_callback_match'] ),
 			'endpoint' => isset( $server['endpoint'] ) ? esc_url_raw( $server['endpoint'] ) : esc_url_raw( rest_url( 'mcp/mad4b-write' ) ),
