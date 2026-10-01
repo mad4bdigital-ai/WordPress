@@ -63,7 +63,12 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			&& isset( $local['cimd_chatgpt_client_id'] )
 			&& is_string( $local['cimd_chatgpt_client_id'] )
 			&& hash_equals( self::CHATGPT_CLIENT_ID, $local['cimd_chatgpt_client_id'] );
-		$gateway_registered = class_exists( 'MAD4B_SCP_Servers' ) && in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true );
+		$gateway_expected = class_exists( 'MAD4B_SCP_Servers' ) && in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true );
+		$gateway_registration = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) && method_exists( 'MAD4B_SCP_MCP_Registration_Bridge', 'server_registration_identity_status' )
+			? MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( 'mad4b-chatgpt' )
+			: array();
+		$gateway_registered = ! empty( $gateway_registration['actual_registered'] );
+		$gateway_identity_ready = ! empty( $gateway_registration['identity_ready'] );
 		$portable_ready = ! empty( $portable['effective'] );
 		$production_readonly_enabled = 'production' === $environment && ( ! empty( $profile['production_readonly_enabled'] ) || $portable_ready );
 		$production_readonly_auto_enabled = 'production' === $environment && $portable_ready;
@@ -72,12 +77,16 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 				? ( MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() && MAD4B_SCP_Site_Profile::oauth_enabled() )
 				: ( MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' ) && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() )
 		);
-		$production_governed_write_enabled = 'production' === $environment && $profile_oauth_ready && MAD4B_SCP_Site_Profile::write_enabled();
+		$production_write_profile_enabled = 'production' === $environment && $profile_oauth_ready && MAD4B_SCP_Site_Profile::write_enabled();
+		$production_write_authority_effective = $production_write_profile_enabled
+			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			&& MAD4B_SCP_Staging_Write_Authority::effective();
+		$production_governed_write_enabled = $production_write_authority_effective;
 		$environment_ready = $portable_ready || $profile_oauth_ready;
 		$oauth_canary_available = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$step_up_available = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available();
 		$scopes = $step_up_available ? array( 'mad4b:read', 'mad4b:authority:step-up', 'offline_access' ) : array( 'mad4b:read', 'offline_access' );
-		$ready = $environment_ready && ! empty( $local['effective'] ) && ! empty( $bridge['effective'] ) && $cimd_ready && $gateway_registered;
+		$ready = $environment_ready && ! empty( $local['effective'] ) && ! empty( $bridge['effective'] ) && $cimd_ready && $gateway_identity_ready;
 
 		self::$status_cache = array(
 			'contract' => self::CONTRACT,
@@ -86,8 +95,12 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'production_readonly_profile_supported' => true,
 			'production_readonly_enabled' => $production_readonly_enabled,
 			'production_readonly_auto_enabled' => $production_readonly_auto_enabled,
-			'production_readonly_opt_in_required' => 'production' === $environment && ! $production_readonly_enabled && ! $production_governed_write_enabled,
+			'production_readonly_opt_in_required' => 'production' === $environment && ! $production_readonly_enabled && ! $production_write_profile_enabled,
 			'production_readonly_write_enabled' => false,
+			'production_write_profile_enabled' => (bool) $production_write_profile_enabled,
+			'production_write_authority_effective' => (bool) $production_write_authority_effective,
+			// Backward-compatible alias now reflects effective authority, not merely
+			// a Site Profile write preference.
 			'production_governed_write_enabled' => (bool) $production_governed_write_enabled,
 			'production_write_policy' => 'production' === $environment ? 'exact_profile_plus_exact_one_time_approval' : 'not_applicable',
 			'authority_step_up_available' => (bool) $step_up_available,
@@ -108,7 +121,11 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'token_endpoint_auth_method' => 'none',
 			'scopes' => $scopes,
 			'gateway_server_id' => 'mad4b-chatgpt',
+			'gateway_expected' => $gateway_expected,
 			'gateway_registered' => $gateway_registered,
+			'gateway_registration_identity_ready' => $gateway_identity_ready,
+			'gateway_registration_state' => isset( $gateway_registration['state'] ) ? sanitize_key( (string) $gateway_registration['state'] ) : ( $gateway_registered ? 'registered' : 'not_ready' ),
+			'gateway_deep_registration_deferred' => ! empty( $gateway_registration['deep_registration_deferred'] ),
 			'local_oauth_effective' => ! empty( $local['effective'] ),
 			'bridge_effective' => ! empty( $bridge['effective'] ),
 			'cimd_supported' => ! empty( $local['client_id_metadata_document_supported'] ),
@@ -167,15 +184,20 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			<?php endif; ?>
 
 			<?php if ( 'production' === $status['environment'] ) : ?>
-				<?php $production_governed = ! empty( $status['production_governed_write_enabled'] ); ?>
+				<?php
+				$production_governed = ! empty( $status['production_write_authority_effective'] );
+				$production_write_requested = ! empty( $status['production_write_profile_enabled'] );
+				?>
 				<div class="notice notice-<?php echo ( $production_governed || ! empty( $status['production_readonly_enabled'] ) ) ? 'success' : 'warning'; ?> inline"><p>
 					<strong><?php
 						echo esc_html(
 							$production_governed
-								? __( 'Production governed OAuth and write authority are enabled.', 'mad4b-site-control-plane' )
-								: ( ! empty( $status['production_readonly_enabled'] )
-									? __( 'Production read-only OAuth profile is enabled.', 'mad4b-site-control-plane' )
-									: __( 'Production read-only OAuth requires explicit administrator opt-in.', 'mad4b-site-control-plane' ) )
+								? __( 'Production governed OAuth and write authority are effective.', 'mad4b-site-control-plane' )
+								: ( $production_write_requested
+									? __( 'Production write is enabled in the Site Profile, but runtime write authority is not effective yet.', 'mad4b-site-control-plane' )
+									: ( ! empty( $status['production_readonly_enabled'] )
+										? __( 'Production read-only OAuth profile is enabled.', 'mad4b-site-control-plane' )
+										: __( 'Production read-only OAuth requires explicit administrator opt-in.', 'mad4b-site-control-plane' ) ) )
 						);
 					?></strong>
 					<?php echo esc_html__( ' Portable mode is read-only. An exact enrolled Production Site Profile with explicit Production write confirmation may bootstrap governed OAuth directly; every Production write remains bound to exact grants and a one-time approval. Developer and Breakglass remain unavailable.', 'mad4b-site-control-plane' ); ?>
@@ -239,9 +261,10 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 					<tr><th>Foreign profile quarantined</th><td><?php echo ! empty( $status['foreign_profile_quarantined'] ) ? 'yes' : 'no'; ?></td></tr>
 					<?php if ( 'production' === $status['environment'] ) : ?>
 					<tr><th>Production read-only profile</th><td><?php echo ! empty( $status['production_readonly_enabled'] ) ? 'enabled' : 'disabled'; ?></td></tr>
-					<tr><th>Production governed write</th><td><?php echo ! empty( $status['production_governed_write_enabled'] ) ? 'enabled · exact approval required' : 'disabled'; ?></td></tr>
+					<tr><th>Production write requested in Site Profile</th><td><?php echo ! empty( $status['production_write_profile_enabled'] ) ? 'yes' : 'no'; ?></td></tr>
+					<tr><th>Production write authority</th><td><?php echo ! empty( $status['production_write_authority_effective'] ) ? 'effective · exact approval required' : 'not effective'; ?></td></tr>
 					<?php endif; ?>
-					<tr><th>ChatGPT gateway registered</th><td><?php echo ! empty( $status['gateway_registered'] ) ? 'yes' : 'no'; ?></td></tr>
+					<tr><th>ChatGPT gateway registration</th><td><?php echo esc_html( ! empty( $status['gateway_registered'] ) ? 'registered' : ( ! empty( $status['gateway_registration_identity_ready'] ) ? 'deferred · identity ready' : 'not ready' ) ); ?></td></tr>
 					<tr><th>Local OAuth effective</th><td><?php echo ! empty( $status['local_oauth_effective'] ) ? 'yes' : 'no'; ?></td></tr>
 					<tr><th>OAuth resource bridge effective</th><td><?php echo ! empty( $status['bridge_effective'] ) ? 'yes' : 'no'; ?></td></tr>
 					<tr><th>CIMD advertised</th><td><?php echo ! empty( $status['cimd_supported'] ) ? 'yes' : 'no'; ?></td></tr>
