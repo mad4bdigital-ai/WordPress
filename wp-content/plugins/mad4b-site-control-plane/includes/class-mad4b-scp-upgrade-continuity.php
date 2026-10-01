@@ -24,10 +24,17 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		if ( self::$pre_booted ) return self::$recovery;
 		self::$pre_booted = true;
 		// Upgrade migrations may inspect users and persist recovered profile state.
-		// Never perform that recovery transaction on MCP/OAuth protocol hotpaths.
+		// Never perform that recovery transaction on request-serving MCP/OAuth or
+		// ordinary Control Plane GET/HEAD pages. Passive admin rendering must not
+		// become an implicit post-update recovery transaction.
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) {
 			self::$recovery = self::recovery_result( 'deferred_protocol_hotpath', false, '' );
+			return self::$recovery;
+		}
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) {
+			self::$recovery = self::recovery_result( 'deferred_passive_admin_hotpath', false, '' );
 			return self::$recovery;
 		}
 		self::$recovery = self::recover_verified_read_continuity();
@@ -401,11 +408,12 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		// Deep schema/audit diagnostics belong to the Control Plane. Third-party
 		// admin pages must not pay physical-schema or append-only-audit inspection.
 		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) && 'mad4b-approval-decisions' !== $page ) return;
-		// Connection and ChatGPT must remain request-serving status surfaces. Do not
-		// run Schema::status(true) / append-only audit physical verification from a
-		// global notice before these pages can render. Their protocol/reconnect paths
-		// remain fail-closed independently of this diagnostic notice.
-		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return;
+		// Every passive Control Plane GET/HEAD must remain a request-serving status
+		// surface. Do not run Schema::status(true) / append-only audit physical
+		// verification from a global notice before these pages can render. Explicit
+		// POST/lifecycle actions and deep diagnostics remain outside this classifier.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) return;
 		remove_action( 'admin_notices', array( 'MAD4B_SCP_Plugin', 'schema_notice' ) );
 		$status = self::governance_status();
 		if ( ! empty( $status['ready'] ) ) return;

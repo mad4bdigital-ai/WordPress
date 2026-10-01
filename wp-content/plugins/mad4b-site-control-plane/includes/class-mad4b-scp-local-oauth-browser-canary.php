@@ -50,8 +50,12 @@ final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 
 	public static function status() {
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
-		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? MAD4B_SCP_Local_OAuth_Server::status() : array();
-		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
+		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			? MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()
+			: array();
+		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+			? MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()
+			: array();
 		$client_ready = self::client_registered();
 		$target_eligible = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' ) && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
 		$can_run = $target_eligible && current_user_can( 'manage_options' ) && $client_ready && ! empty( $local['effective'] ) && ! empty( $bridge['effective'] );
@@ -85,7 +89,9 @@ final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 
 		$status = self::status();
 		if ( empty( $status['target_eligible'] ) ) return;
-		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? MAD4B_SCP_Local_OAuth_Server::status() : array();
+		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			? MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()
+			: array();
 		wp_enqueue_script(
 			'mad4b-scp-local-oauth-canary',
 			plugins_url( 'assets/local-oauth-canary.js', MAD4B_SCP_FILE ),

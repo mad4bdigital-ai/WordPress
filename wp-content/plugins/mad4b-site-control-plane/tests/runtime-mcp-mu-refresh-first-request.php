@@ -1,5 +1,5 @@
 <?php
-/** First non-WPCLI request after installing a newer Control Plane over stale managed MU state. */
+/** First governed lifecycle request after installing a newer Control Plane over stale managed MU state. */
 
 $wp_path = getenv( 'MAD4B_TEST_WP_PATH' );
 if ( ! is_string( $wp_path ) || '' === trim( $wp_path ) ) {
@@ -7,16 +7,12 @@ if ( ! is_string( $wp_path ) || '' === trim( $wp_path ) ) {
 	exit( 1 );
 }
 $wp_path = rtrim( $wp_path, '/\\' );
-if ( ! defined( 'WP_ADMIN' ) ) define( 'WP_ADMIN', true );
-$_SERVER['HTTP_HOST'] = 'staging.egypttourgates.com';
+if ( ! defined( 'DOING_CRON' ) ) define( 'DOING_CRON', true );
+$_SERVER['HTTP_HOST'] = 'mad4b-web.test';
 $_SERVER['HTTPS'] = 'on';
 $_SERVER['SERVER_PORT'] = '443';
-$_SERVER['REQUEST_METHOD'] = 'GET';
-$_SERVER['REQUEST_URI'] = '/wp-admin/admin.php?page=mad4b-control-plane-connection&tab=endpoints';
-$_GET['page'] = 'mad4b-control-plane-connection';
-$_GET['tab'] = 'endpoints';
-$_REQUEST['page'] = $_GET['page'];
-$_REQUEST['tab'] = $_GET['tab'];
+$_SERVER['REQUEST_METHOD'] = 'POST';
+$_SERVER['REQUEST_URI'] = '/wp-cron.php';
 require $wp_path . '/wp-load.php';
 
 $fail = static function ( $message ) {
@@ -27,7 +23,7 @@ $fail = static function ( $message ) {
 if ( defined( 'WP_CLI' ) && WP_CLI ) $fail( 'process unexpectedly entered WP-CLI mode' );
 if ( ! class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh' ) ) $fail( 'MU refresh service unavailable' );
 $status = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::status();
-if ( empty( $status['eligible'] ) ) $fail( 'refresh must be eligible on exact Staging origin' );
+if ( empty( $status['eligible'] ) ) $fail( 'refresh must be eligible on the exact enrolled Staging origin' );
 if ( empty( $status['present'] ) ) $fail( 'stale managed MU file was not observed' );
 if ( empty( $status['managed'] ) ) $fail( 'stale MU file must be recognized as MAD4B-managed' );
 if ( empty( $status['refresh_applied'] ) ) $fail( 'stale managed MU file was not refreshed' );

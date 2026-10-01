@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 if ( ! defined( 'MAD4B_SCP_DIR' ) ) define( 'MAD4B_SCP_DIR', rtrim( dirname( __DIR__ ), '/\\' ) . '/' );
 $GLOBALS['opts']=array(); $GLOBALS['env']='staging'; $GLOBALS['home']='https://staging.example.test';
-$GLOBALS['transients']=array(); $GLOBALS['user_meta_rows']=array(); $GLOBALS['abilities']=array(); $GLOBALS['after_user_meta_update']=null;
+$GLOBALS['transients']=array(); $GLOBALS['user_meta_rows']=array(); $GLOBALS['abilities']=array(); $GLOBALS['after_user_meta_update']=null; $GLOBALS['mad4b_test_logged_in']=false;
 class WP_Error { private $c; private $d; public function __construct($c,$m='',$d=null){$this->c=$c;$this->d=$d;} public function get_error_code(){return $this->c;} public function get_error_data(){return $this->d;} }
 class WP_REST_Response {
     private $data; private $status; private $headers=array();
@@ -16,7 +16,7 @@ class WP_REST_Response {
 function rest_ensure_response($v){return $v instanceof WP_REST_Response?$v:new WP_REST_Response($v,200);}
 function is_wp_error($v){return $v instanceof WP_Error;} function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/','',(string)$v));} function sanitize_text_field($v){return trim((string)$v);} function absint($v){return abs((int)$v);} function wp_parse_url($u,$c=-1){return parse_url($u,$c);} function wp_json_encode($v,$f=0){return json_encode($v,$f);} function trailingslashit($v){return rtrim((string)$v,'/\\').'/';} function untrailingslashit($v){return rtrim((string)$v,'/\\');}
 function home_url($p=''){return rtrim($GLOBALS['home'],'/').(''===$p?'':'/'.ltrim($p,'/'));} function rest_url($p=''){return rtrim($GLOBALS['home'],'/').'/wp-json/'.ltrim($p,'/');} function wp_get_environment_type(){return $GLOBALS['env'];} function get_option($k,$d=false){return array_key_exists($k,$GLOBALS['opts'])?$GLOBALS['opts'][$k]:$d;} function update_option($k,$v,$a=null){$GLOBALS['opts'][$k]=$v;return true;} function delete_option($k){unset($GLOBALS['opts'][$k]);return true;} function get_userdata($id){return (int)$id===7?(object)array('ID'=>7):false;} function user_can($u,$c){return is_object($u)&&$u->ID===7&&$c==='manage_options';} function current_user_can($c){return true;} function get_current_user_id(){return 7;} function wp_generate_uuid4(){return 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';} function get_bloginfo($k){return 'Test';}
-function add_action(){return true;} function remove_action(){return true;} function add_filter(){return true;} function apply_filters($hook,$value){return $value;} function is_admin(){return false;} function wp_unslash($v){return $v;} function esc_html($v){return $v;} function esc_html__($v){return $v;} function wp_register_ability_category(){} function wp_register_ability(){}
+function add_action(){return true;} function remove_action(){return true;} function add_filter(){return true;} function apply_filters($hook,$value){return $value;} function is_admin(){return false;} function is_user_logged_in(){return !empty($GLOBALS['mad4b_test_logged_in']);} function wp_unslash($v){return $v;} function esc_html($v){return $v;} function esc_html__($v){return $v;} function wp_register_ability_category(){} function wp_register_ability(){}
 function wp_has_ability($name){return isset($GLOBALS['abilities'][$name]);} function wp_get_ability($name){return $GLOBALS['abilities'][$name]??null;}
 function is_multisite(){return false;} function get_current_blog_id(){return 1;} function wp_cache_delete(){return true;}
 function set_transient($k,$v,$ttl){$GLOBALS['transients'][$k]=$v;return true;} function get_transient($k){return array_key_exists($k,$GLOBALS['transients'])?$GLOBALS['transients'][$k]:false;} function delete_transient($k){unset($GLOBALS['transients'][$k]);return true;}
@@ -133,6 +133,23 @@ $maintenance_response=MAD4B_SCP_Reconnect_Hardening::add_restart_retry_header($m
 $maintenance_headers=$maintenance_response->get_headers();
 ok(!isset($maintenance_headers['Retry-After']),'non-retryable maintenance conflict must omit Retry-After');
 ok('no-store'===($maintenance_headers['Cache-Control']??''),'maintenance conflict response remains non-cacheable');
+
+// OAuth discovery is the sole maintenance bypass: a real REST request with no
+// Authorization header and no logged-in WordPress user must pass through so the
+// OAuth Resource Bridge can emit its 401 WWW-Authenticate challenge. Bearer or
+// structurally incomplete requests remain fenced.
+$preauth_request=new class {
+    public function get_route(){return '/mcp/mad4b-chatgpt';}
+    public function get_header($name){return '';}
+};
+$preauth_guard=MAD4B_SCP_Reconnect_Hardening::guard_mcp_rest_dispatch(null,null,$preauth_request);
+ok(null===$preauth_guard,'unauthenticated ChatGPT REST probe must reach OAuth challenge during maintenance');
+$bearer_request=new class {
+    public function get_route(){return '/mcp/mad4b-chatgpt';}
+    public function get_header($name){return 'authorization'===strtolower((string)$name)?'Bearer test-token':'';}
+};
+$bearer_guard=MAD4B_SCP_Reconnect_Hardening::guard_mcp_rest_dispatch(null,null,$bearer_request);
+ok(is_wp_error($bearer_guard)&&'mad4b_mcp_runtime_maintenance_busy'===$bearer_guard->get_error_code(),'bearer MCP execution must remain fenced during maintenance');
 MAD4B_SCP_Runtime_Convergence::$maintenance=array('active'=>false,'retry_after_seconds'=>0,'owner'=>'');
 
 MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'chatgpt_registration_failed'); $s=MAD4B_SCP_Reconnect_Hardening::reconnect_status();

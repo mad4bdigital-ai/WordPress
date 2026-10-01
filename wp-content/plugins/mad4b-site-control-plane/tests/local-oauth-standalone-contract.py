@@ -382,12 +382,14 @@ for marker in (
 migration_hotpath = server.split("private static function request_is_schema_migration_hotpath()", 1)[1].split("private static function ensure_signing_key()", 1)[0]
 for marker in (
     "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()",
+    "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()",
+    "'GET'",
+    "'HEAD'",
+    "0 === strpos( $page, 'mad4b-control-plane-' )",
     "'plugins.php'",
     "'update.php'",
     "'update-core.php'",
     "'plugin-install.php'",
-    "'mad4b-control-plane-connection'",
-    "'mad4b-control-plane-chatgpt'",
 ):
     if marker not in migration_hotpath:
         raise SystemExit(f"Local OAuth schema migration hotpath classification missing: {marker}")

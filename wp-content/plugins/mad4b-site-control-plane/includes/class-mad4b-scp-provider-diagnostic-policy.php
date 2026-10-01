@@ -56,9 +56,20 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 	public static function explicit_rest_materialization_allowed() {
 		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
 		if ( function_exists( 'current_user_can' ) && ! current_user_can( 'manage_options' ) ) return false;
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( trim( (string) $_SERVER['REQUEST_METHOD'] ) ) : 'GET'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- method classification only.
+		if ( 'POST' !== $method ) return false;
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
-		return 'mad4b-control-plane-connection' === $page && 'endpoints' === $tab;
+		$raw_action = filter_input( INPUT_POST, 'mad4b_connection_action', FILTER_UNSAFE_RAW );
+		$raw_nonce = filter_input( INPUT_POST, 'mad4b_connection_nonce', FILTER_UNSAFE_RAW );
+		$action = is_string( $raw_action ) ? sanitize_key( wp_unslash( $raw_action ) ) : '';
+		$nonce = is_string( $raw_nonce ) ? sanitize_text_field( wp_unslash( $raw_nonce ) ) : '';
+		return 'mad4b-control-plane-connection' === $page
+			&& 'endpoints' === $tab
+			&& 'deep_endpoints' === $action
+			&& '' !== $nonce
+			&& function_exists( 'wp_verify_nonce' )
+			&& false !== wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' );
 	}
 
 	/**
@@ -193,11 +204,18 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 		return true;
 	}
 
+	public static function current_request_is_passive_mad4b_admin() {
+		return class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_is_passive_admin_hotpath' )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
+	}
+
 	public static function current_request_is_zero_touch_surface() {
 		return self::current_request_is_foreign_rest()
 			|| self::current_request_is_wordpress_cron()
 			|| self::current_request_is_foreign_admin_ajax()
-			|| self::current_request_is_foreign_wp_admin();
+			|| self::current_request_is_foreign_wp_admin()
+			|| self::current_request_is_passive_mad4b_admin();
 	}
 
 	public static function zero_touch_reason() {
@@ -205,6 +223,7 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 		if ( self::current_request_is_wordpress_cron() ) return 'wordpress_cron';
 		if ( self::current_request_is_foreign_admin_ajax() ) return 'foreign_admin_ajax';
 		if ( self::current_request_is_foreign_wp_admin() ) return 'foreign_wp_admin';
+		if ( self::current_request_is_passive_mad4b_admin() ) return 'passive_mad4b_admin';
 		return '';
 	}
 
@@ -262,6 +281,7 @@ final class MAD4B_SCP_Provider_Diagnostic_Policy {
 			'wordpress_cron_zero_touch' => true,
 			'foreign_wp_admin_zero_touch' => true,
 			'wp_admin_default_zero_touch' => true,
+			'passive_mad4b_admin_zero_touch' => true,
 			'wordpress_lifecycle_admin_explicit_opt_in' => true,
 			'external_provider_receipt_requires_exact_outer_http_route' => true,
 		);

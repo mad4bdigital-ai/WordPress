@@ -250,9 +250,15 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		self::$telemetry_dirty = true;
 	}
 	private static function connection_admin_hotpath() {
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) return true;
 		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- request classification only.
-		return in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true );
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( trim( (string) $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+		if ( ! in_array( $method, array( 'GET', 'HEAD' ), true ) ) return false;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : '';
+		return 'mad4b-control-plane' === $page
+			|| 0 === strpos( $page, 'mad4b-control-plane-' )
+			|| in_array( $page, array( 'mad4b-adapter-coverage', 'mad4b-runtime-components', 'mad4b-approval-decisions' ), true );
 	}
 	private static function request_class() {
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';

@@ -112,13 +112,20 @@ for forbidden in (
     forbid(refresh, forbidden, 'mu-refresh-bounded')
 
 require(bootstrap, "class-mad4b-scp-mcp-mu-bootstrap-refresh.php", 'bootstrap-load-refresh')
-require(bootstrap, 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();', 'bootstrap-run-refresh')
+require(bootstrap, "add_action( 'init', array( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', 'bootstrap' ), 20 );", 'bootstrap-schedule-refresh')
 require(bootstrap, "class-mad4b-scp-mcp-runtime-conflict-guard.php", 'bootstrap-load-guard')
-require(bootstrap, 'MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();', 'bootstrap-run-guard')
-if bootstrap.index('MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();') > bootstrap.index('MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();'):
+require(bootstrap, "add_action( 'init', array( 'MAD4B_SCP_MCP_Runtime_Conflict_Guard', 'bootstrap' ), 21 );", 'bootstrap-schedule-guard')
+for forbidden in (
+    'MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();',
+    'MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();',
+):
+    forbid(bootstrap, forbidden, 'no-plugin-include-repair')
+refresh_hook = bootstrap.index("add_action( 'init', array( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', 'bootstrap' ), 20 );")
+guard_hook = bootstrap.index("add_action( 'init', array( 'MAD4B_SCP_MCP_Runtime_Conflict_Guard', 'bootstrap' ), 21 );")
+if refresh_hook > guard_hook:
     raise SystemExit('FAIL bootstrap-order: stale managed MU refresh must run before conflict guard')
-if bootstrap.index('MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();') > bootstrap.index('MAD4B_SCP_MCP_Registration_Bridge::boot_early();'):
-    raise SystemExit('FAIL bootstrap-order: conflict guard must run before registration bridge')
+if guard_hook > bootstrap.index('MAD4B_SCP_MCP_Registration_Bridge::boot_early();'):
+    raise SystemExit('FAIL bootstrap-order: repair hooks must be scheduled before registration bridge')
 
 for marker in (
     'REST API init count',

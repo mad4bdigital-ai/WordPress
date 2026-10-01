@@ -162,7 +162,8 @@ final class MAD4B_SCP_Dependency_Manager {
 		// readiness projections report Adapter/transport blockers without re-running
 		// deep dependency integrity, archive hashing or provider inventory in the
 		// global admin-notice phase before the page emits its first byte.
-		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return;
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) return;
 		$status = self::status();
 		if ( ! empty( $status['ready'] ) ) return;
 		$mcp = isset( $status['mcp_adapter'] ) && is_array( $status['mcp_adapter'] ) ? $status['mcp_adapter'] : array();

@@ -10,6 +10,7 @@ final class MAD4B_SCP_Runtime_Component_Catalog {
 	const CONTRACT = 'mad4b.runtime-components.v1';
 	const REPOSITORY_CONTRACT = 'mad4b.repository-runtime-components.v1';
 	private static $repository_manifest = null;
+	private static $inventory = null;
 
 	public static function repository_manifest() {
 		if ( null !== self::$repository_manifest ) return self::$repository_manifest;
@@ -356,6 +357,9 @@ final class MAD4B_SCP_Runtime_Component_Catalog {
 	}
 
 	public static function inventory() {
+		$cacheable = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
+		if ( $cacheable && null !== self::$inventory ) return self::$inventory;
 		$plugin_coverage = class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ? MAD4B_SCP_Plugin_Discovery::coverage() : array();
 		$plugin_counts = isset( $plugin_coverage['counts'] ) && is_array( $plugin_coverage['counts'] ) ? $plugin_coverage['counts'] : array();
 		$mu = self::mu_plugins();
@@ -363,7 +367,7 @@ final class MAD4B_SCP_Runtime_Component_Catalog {
 		$themes = self::themes();
 		$astra = self::astra_status();
 		$astra_children = self::astra_children();
-		return array(
+		self::$inventory = array(
 			'contract' => self::CONTRACT,
 			'authority_mode' => 'read_only_non_authorizing',
 			'authorizing' => false,
@@ -389,6 +393,7 @@ final class MAD4B_SCP_Runtime_Component_Catalog {
 			'astra_children' => $astra_children,
 			'repository_manifest' => self::repository_manifest(),
 		);
+		return self::$inventory;
 	}
 }
 

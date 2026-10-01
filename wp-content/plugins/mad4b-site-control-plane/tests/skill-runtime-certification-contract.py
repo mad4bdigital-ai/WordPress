@@ -18,6 +18,7 @@ live_truth = (wp / 'includes' / 'class-mad4b-scp-live-truth.php').read_text(enco
 write_authority = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
 write_cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
 request_scope = (wp / 'includes' / 'class-mad4b-scp-mcp-request-scope.php').read_text(encoding='utf-8')
+skills_admin = (wp / 'includes' / 'class-mad4b-scp-skills-admin-ui.php').read_text(encoding='utf-8')
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-autoconfig.v2'",
@@ -290,15 +291,16 @@ for marker in [
     if marker not in main:
         raise SystemExit(f'main plugin does not load {marker}')
 
-for marker in [
-    "add_action( 'admin_init', static function () {",
-    "current_user_can( 'manage_options' )",
-    "'mad4b-control-plane-skills' !== $page",
-    "MAD4B_SCP_Skill_Runtime_Certification::observe();",
-    '}, 110 );',
-]:
-    if marker not in main:
-        raise SystemExit(f'missing page-scoped Skill certification refresh: {marker}')
+# Opening the Skills screen is read-only and must consume persisted evidence;
+# fresh certification is explicit reconciliation work, never an admin_init side effect.
+if "MAD4B_SCP_Skill_Runtime_Certification::observe();" in main:
+    raise SystemExit('Skills admin GET must not auto-refresh runtime certification')
+for marker in (
+    "MAD4B_SCP_Skill_Runtime_Certification::persisted_status()",
+    "MAD4B_SCP_Skill_Runtime_Certification::observe( true )",
+):
+    if marker not in skills_admin:
+        raise SystemExit(f'missing explicit/persisted Skills admin certification invariant: {marker}')
 
 if "add_action( 'admin_init', array( __CLASS__, 'observe' )" in cert:
     raise SystemExit('global admin runtime-certification observer must remain disabled')

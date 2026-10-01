@@ -1031,6 +1031,78 @@ final class MAD4B_SCP_Google_Drive_Context {
 		);
 	}
 
+	public static function admin_folder_preview( $folder_id ) {
+		$folder_id = self::bounded_drive_id( $folder_id );
+		if ( '' === $folder_id ) return new WP_Error( 'mad4b_google_drive_folder_id_invalid', 'Google Drive folder ID is invalid.' );
+		if ( 'root' === strtolower( $folder_id ) ) return array( 'id' => 'root', 'name' => 'My Drive', 'mimeType' => 'application/vnd.google-apps.folder', 'parents' => array() );
+
+		$url = self::DRIVE_API . '/files/' . rawurlencode( $folder_id ) . '?' . http_build_query(
+			array(
+				'fields' => 'id,name,mimeType,parents,driveId,webViewLink,capabilities(canAddChildren)',
+				'supportsAllDrives' => 'true',
+			),
+			'',
+			'&',
+			PHP_QUERY_RFC3986
+		);
+		$file = self::passive_admin_api_get( $url );
+		if ( is_wp_error( $file ) ) return $file;
+		if ( 'application/vnd.google-apps.folder' !== ( isset( $file['mimeType'] ) ? (string) $file['mimeType'] : '' ) ) return new WP_Error( 'mad4b_google_drive_not_folder', 'Selected Google Drive item is not a folder.' );
+		return $file;
+	}
+
+	public static function admin_list_folders_preview( $parent_id = 'root' ) {
+		$parent_id = self::bounded_drive_id( $parent_id );
+		if ( '' === $parent_id ) return new WP_Error( 'mad4b_google_drive_parent_id_invalid', 'Google Drive parent folder ID is invalid.' );
+		$q = "'" . str_replace( "'", "\\'", $parent_id ) . "' in parents and trashed = false and mimeType = 'application/vnd.google-apps.folder'";
+		$url = self::DRIVE_API . '/files?' . http_build_query(
+			array(
+				'q' => $q,
+				'pageSize' => 100,
+				'fields' => 'files(id,name,mimeType,parents,driveId,webViewLink)',
+				'spaces' => 'drive',
+				'supportsAllDrives' => 'true',
+				'includeItemsFromAllDrives' => 'true',
+			),
+			'',
+			'&',
+			PHP_QUERY_RFC3986
+		);
+		$data = self::passive_admin_api_get( $url );
+		if ( is_wp_error( $data ) ) return $data;
+		$items = isset( $data['files'] ) && is_array( $data['files'] ) ? $data['files'] : array();
+		usort( $items, static function ( $a, $b ) { return strcasecmp( isset( $a['name'] ) ? $a['name'] : '', isset( $b['name'] ) ? $b['name'] : '' ); } );
+		return $items;
+	}
+
+	private static function passive_admin_api_get( $url ) {
+		$record = self::token_record();
+		if ( ! is_array( $record ) || empty( $record['refresh_token'] ) ) return new WP_Error( 'mad4b_google_drive_not_connected', 'Google Drive is not connected.' );
+		if ( ! empty( $record['revocation_pending'] ) ) return new WP_Error( 'mad4b_google_drive_revocation_pending', 'Google Drive access is disabled while remote revocation is pending.' );
+		$expires_at = isset( $record['expires_at'] ) ? (int) $record['expires_at'] : 0;
+		if ( empty( $record['access_token'] ) || $expires_at <= time() + 30 ) {
+			return new WP_Error(
+				'mad4b_google_drive_admin_preview_refresh_required',
+				'Google Drive access token refresh is required. Passive folder browsing never refreshes or persists OAuth tokens during page rendering.',
+				array( 'network_request_suppressed' => true, 'token_refresh_suppressed' => true )
+			);
+		}
+		$timeout = self::provider_timeout( 3 );
+		if ( is_wp_error( $timeout ) ) return $timeout;
+		$response = wp_remote_get(
+			esc_url_raw( $url ),
+			array(
+				'timeout' => min( 3.0, (float) $timeout ),
+				'redirection' => 0,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . (string) $record['access_token'],
+					'Accept' => 'application/json',
+				),
+			)
+		);
+		return self::decode_json_response( $response, 'mad4b_google_drive_admin_preview_failed' );
+	}
+
 	public static function get_folder( $folder_id ) {
 		$folder_id = self::bounded_drive_id( $folder_id );
 		if ( '' === $folder_id ) return new WP_Error( 'mad4b_google_drive_folder_id_invalid', 'Google Drive folder ID is invalid.' );

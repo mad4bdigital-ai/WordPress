@@ -756,12 +756,12 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( empty( $connection['connected'] ) ) return;
 		$folder_id = isset( $_GET['folder'] ) ? sanitize_text_field( wp_unslash( $_GET['folder'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only folder navigation.
 		if ( '' === $folder_id ) return;
-		$folder = MAD4B_SCP_Google_Drive_Context::get_folder( $folder_id );
+		$folder = MAD4B_SCP_Google_Drive_Context::admin_folder_preview( $folder_id );
 		if ( is_wp_error( $folder ) ) {
 			echo '<div class="notice notice-error inline"><p>' . esc_html( $folder->get_error_message() ) . '</p></div>';
 			return;
 		}
-		$children = MAD4B_SCP_Google_Drive_Context::list_folders( $folder_id );
+		$children = MAD4B_SCP_Google_Drive_Context::admin_list_folders_preview( $folder_id );
 		if ( is_wp_error( $children ) ) {
 			echo '<div class="notice notice-error inline"><p>' . esc_html( $children->get_error_message() ) . '</p></div>';
 			return;

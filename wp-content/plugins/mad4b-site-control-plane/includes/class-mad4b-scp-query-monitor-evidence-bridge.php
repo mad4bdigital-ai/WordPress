@@ -127,11 +127,20 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		// Guard before touching db.php, Query Monitor source paths or filesystem
 		// ownership evidence. Foreign wp-admin pages are never instrumentation jobs.
 		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) ) return array( 'state' => 'deferred_foreign_admin_surface', 'mutation_performed' => false );
-		// Connection and ChatGPT are request-serving read/status surfaces, not
+		// Passive Control Plane GET/HEAD pages are request-serving views, not
 		// instrumentation bootstrap jobs. Do not inspect/create db.php, read Query
 		// Monitor loader files or persist attribution bootstrap state before render.
-		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) {
-			return array( 'state' => 'deferred_connection_admin_hotpath', 'mutation_performed' => false );
+		$passive_admin = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
+		if ( ! $passive_admin ) {
+			$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( trim( (string) $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+			$passive_admin = in_array( $method, array( 'GET', 'HEAD' ), true )
+				&& ( 'mad4b-control-plane' === $page
+					|| 0 === strpos( $page, 'mad4b-control-plane-' )
+					|| in_array( $page, array( 'mad4b-adapter-coverage', 'mad4b-runtime-components', 'mad4b-approval-decisions' ), true ) );
+		}
+		if ( $passive_admin ) {
+			return array( 'state' => 'deferred_passive_mad4b_admin', 'mutation_performed' => false );
 		}
 		return self::enable_db_attribution_explicit();
 	}
@@ -984,11 +993,15 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	private static function current_request_is_mad4b_admin_surface() {
 		if ( ! is_admin() ) return false;
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : '';
-		// Connection and ChatGPT are latency-sensitive request-serving surfaces.
-		// Their ordinary page loads must not pay shutdown Query Monitor collection,
-		// event normalization or telemetry persistence. A signed acceptance canary
-		// bypasses this classifier earlier in capture_and_flush().
-		if ( in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true ) ) return false;
+		// Passive MAD4B admin GET/HEAD views must not pay shutdown Query Monitor
+		// collection even when Request_Scope is unavailable in an isolated runtime.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) return false;
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( trim( (string) $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+		if ( in_array( $method, array( 'GET', 'HEAD' ), true )
+			&& ( 'mad4b-control-plane' === $page
+				|| 0 === strpos( $page, 'mad4b-control-plane-' )
+				|| in_array( $page, array( 'mad4b-adapter-coverage', 'mad4b-runtime-components', 'mad4b-approval-decisions' ), true ) ) ) return false;
 		return 0 === strpos( $page, 'mad4b-control-plane' );
 	}
 

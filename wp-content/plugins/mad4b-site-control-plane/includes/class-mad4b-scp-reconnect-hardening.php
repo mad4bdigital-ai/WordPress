@@ -796,8 +796,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'runtime_identity_status' )
 			? MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()
 			: array();
-		$registrations = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
-		$chatgpt = isset( $registrations['mad4b-chatgpt'] ) && is_array( $registrations['mad4b-chatgpt'] ) ? $registrations['mad4b-chatgpt'] : array();
+		$chatgpt = self::chatgpt_registration_projection();
 		$bridge_registration = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ? MAD4B_SCP_MCP_Registration_Bridge::status() : array();
 		$blockers = array();
 		$restart_grace = self::restart_grace_status();
@@ -830,6 +829,8 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'oauth_resource_bridge_effective' => ! empty( $bridge['effective'] ),
 			'local_oauth_required_for_reconnect' => false,
 			'chatgpt_registered' => ! empty( $chatgpt['registered'] ),
+			'chatgpt_registration_observed' => ! empty( $chatgpt['observed'] ),
+			'chatgpt_registration_projection' => isset( $chatgpt['projection'] ) ? sanitize_key( (string) $chatgpt['projection'] ) : '',
 			'chatgpt_error' => isset( $chatgpt['error'] ) ? sanitize_key( (string) $chatgpt['error'] ) : '',
 			'missed_rest_recovery_state' => isset( $bridge_registration['missed_rest_recovery_state'] ) ? sanitize_key( (string) $bridge_registration['missed_rest_recovery_state'] ) : '',
 			'missed_rest_recovery_blocker' => isset( $bridge_registration['missed_rest_recovery_blocker'] ) ? sanitize_key( (string) $bridge_registration['missed_rest_recovery_blocker'] ) : '',
@@ -843,6 +844,35 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'breakglass_auto_enabled' => false,
 			'reconnect_status_projection' => 'runtime_identity',
 			'deep_oauth_status_deferred' => true,
+		);
+	}
+
+
+	private static function chatgpt_registration_projection() {
+		$registrations = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
+		$entry = isset( $registrations['mad4b-chatgpt'] ) && is_array( $registrations['mad4b-chatgpt'] )
+			? $registrations['mad4b-chatgpt']
+			: array( 'registered' => false, 'error' => 'not_registered' );
+		$observed = ! empty( $entry['registered'] );
+		$error = isset( $entry['error'] ) ? sanitize_key( (string) $entry['error'] ) : '';
+		$expected = class_exists( 'MAD4B_SCP_Servers' )
+			&& ( ( method_exists( 'MAD4B_SCP_Servers', 'expected_server_ids' )
+					&& in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true ) )
+				|| isset( $registrations['mad4b-chatgpt'] ) );
+		$hook_bound = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' )
+			&& method_exists( 'MAD4B_SCP_MCP_Registration_Bridge', 'register_servers' )
+			&& ( ! function_exists( 'has_action' )
+				|| false !== has_action( 'mcp_adapter_init', array( 'MAD4B_SCP_MCP_Registration_Bridge', 'register_servers' ) ) );
+		$deferred_only = ! $observed && in_array( $error, array( '', 'not_registered' ), true );
+		$projected = $observed || ( $expected && $hook_bound && $deferred_only );
+
+		return array(
+			'registered' => $projected,
+			'observed' => $observed,
+			'expected' => $expected,
+			'server_hook_bound' => $hook_bound,
+			'projection' => $observed ? 'observed_runtime_registration' : ( $projected ? 'expected_hook_bound_deferred_materialization' : 'not_ready' ),
+			'error' => $projected ? '' : $error,
 		);
 	}
 
@@ -871,6 +901,20 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		$is_mad4b_transport = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_http_mcp_transport();
 		if ( ! $is_chatgpt_resource && ! $is_mad4b_transport ) return $result;
+
+		// ChatGPT discovers OAuth by making an unauthenticated request to the
+		// resource. Reconnect/maintenance barriers protect authenticated MCP work,
+		// but must not preempt the OAuth Resource Bridge's standards-compliant 401
+		// challenge. Let the later OAuth filter emit WWW-Authenticate while keeping
+		// logged-in local admin and bearer-bearing execution requests gated.
+		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
+		$remote_preauth_probe = $is_chatgpt_resource
+			&& method_exists( $request, 'get_header' )
+			&& '' === $authorization
+			&& function_exists( 'is_user_logged_in' )
+			&& ! is_user_logged_in();
+		if ( $remote_preauth_probe ) return $result;
+
 		$restart_grace = self::restart_grace_status();
 		if ( ! empty( $restart_grace['active'] ) ) {
 			$retryable = ! array_key_exists( 'retryable', $restart_grace ) || ! empty( $restart_grace['retryable'] );

@@ -46,13 +46,14 @@ assert "wp_doing_cron() ) return false" in gate
 assert "wp_doing_cron() ) return true" not in gate
 
 
-# Request classification and zero-touch fencing must happen before the two
-# direct pre-init bootstraps that can read Site Profile/authority state.
+# Request classification must happen before direct pre-init lifecycle bootstraps.
+# Ordinary Control Plane GET/HEAD uses the narrower passive-admin fence so Cron
+# and other lifecycle owners retain their separately registered hooks.
 assert "MAD4B_SCP_MCP_Request_Scope::bootstrap();" in main
-assert "$mad4b_zero_touch_request" in main
-assert "MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface()" in main
-assert main.index("MAD4B_SCP_MCP_Request_Scope::bootstrap();") < main.index("MAD4B_SCP_Skill_Autoconfig::bootstrap();")
-assert main.index("$mad4b_zero_touch_request") < main.index("MAD4B_SCP_Skill_Autoconfig::bootstrap();")
-assert main.index("$mad4b_zero_touch_request") < main.index("MAD4B_SCP_Staging_Write_Authority::bootstrap();")
+assert "$mad4b_passive_admin_read" in main
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()" in main
+assert main.index("MAD4B_SCP_MCP_Request_Scope::bootstrap();") < main.index("$mad4b_passive_admin_read")
+assert main.index("$mad4b_passive_admin_read") < main.index("MAD4B_SCP_Skill_Autoconfig::bootstrap();")
+assert main.index("$mad4b_passive_admin_read") < main.index("MAD4B_SCP_Staging_Write_Authority::bootstrap();")
 
 print("request-serving zero-touch contract: PASS")
