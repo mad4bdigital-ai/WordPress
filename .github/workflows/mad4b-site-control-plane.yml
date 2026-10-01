@@ -124,6 +124,13 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-contract.py
 
+      - name: Verify connection and post-update continuation contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/connection-continuation-contract.py
+          node --check tools/connection-edge-acceptance.mjs
+
       - name: Verify required modules and core safety gates
         shell: bash
         run: |
