@@ -948,6 +948,32 @@ if "candidate_binding_status()" not in effective_body:
 if "current_authority_status()" in effective_body:
     raise SystemExit('authority effective() may not recursively rebuild Live Truth/write inventory')
 
+current_execution_body = write.split("public static function current_execution_readiness(", 1)[1].split("public static function persisted_status()", 1)[0]
+for marker in [
+    "self::reconciliation_plan()",
+    "'current_grant_snapshot_ready'",
+    "'runtime_authority_candidate_not_reconciled'",
+    "self::CANDIDATE_BOOTSTRAP_ABILITY === $ability_name",
+    "self::candidate_bootstrap_allowed( $ability_name, $input )",
+]:
+    if marker not in current_execution_body:
+        raise SystemExit('mutation-bound current execution readiness invariant missing: ' + marker)
+if "MAD4B_SCP_Live_Truth::current_authority_status()" in current_execution_body:
+    raise SystemExit('mutation-bound readiness must consume canonical reconciliation snapshot directly, not recurse through Live Truth')
+
+planning_validate = planning.split("public static function validate_remote_plan_input", 1)[1]
+if "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness" not in planning_validate:
+    raise SystemExit('remote approval planning does not fail closed on current write drift')
+
+authorize_mutation = auth.split("public static function authorize_mutation", 1)[1].split("public static function claim_mutation", 1)[0]
+for marker in [
+    "'mad4b-write' === $server_id",
+    "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness",
+    "'mad4b_write_authority_current_drift'",
+]:
+    if marker not in authorize_mutation:
+        raise SystemExit('central mutation authorization lost current write-drift gate: ' + marker)
+
 current_authority_body = live_truth.split("public static function current_authority_status()", 1)[1].split("public static function current_write_certification()", 1)[0]
 for marker in [
     "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()",
