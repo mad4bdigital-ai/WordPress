@@ -345,7 +345,7 @@ foreach ( $catalog_server->get_tools() as $dto ) {
 	if ( $failure ) $fail( 'Actual packaged Adapter tool failed serialization preflight.', $failure );
 	$catalog_names[] = $dto->getName();
 }
-$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( MAD4B_SCP_Servers::chatgpt_tools() ) );
+$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() );
 if ( empty( $preflight['ready'] ) || ! empty( $preflight['failures'] ) ) $fail( 'Official ability-to-DTO preflight failed.', $preflight );
 $step_list = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 726, 'method' => 'tools/list', 'params' => array() ), $step_up_token, $step_session_id );
 $step_wire = json_decode( json_encode( $step_list->get_data(), JSON_THROW_ON_ERROR ) );
@@ -370,20 +370,20 @@ $optional_ability = wp_get_ability( 'mad4b/full-staging-authority-apply' );
 $original_description = $ability_description->getValue( $optional_ability );
 try {
 	$ability_description->setValue( $optional_ability, "\xB1\x31" );
-	$isolated = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( MAD4B_SCP_Servers::chatgpt_tools() ) );
+	$isolated = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() );
 	if ( empty( $isolated['ready'] ) || empty( $isolated['degraded'] ) || 1 !== count( $isolated['failures'] ) || 'mad4b/full-staging-authority-apply' !== $isolated['failures'][0]['failing_ability'] || 64 !== strlen( $isolated['failures'][0]['source_schema_fingerprint'] ) || in_array( 'mad4b/full-staging-authority-apply', $isolated['tools'], true ) || ! in_array( 'mad4b/read-execute', $isolated['tools'], true ) ) $fail( 'Official preflight did not isolate invalid optional ability.', $isolated );
 } finally { $ability_description->setValue( $optional_ability, $original_description ); }
 $ability_schema = new ReflectionProperty( 'WP_Ability', 'input_schema' ); $ability_schema->setAccessible( true );
 $original_schema = $ability_schema->getValue( $optional_ability );
 try {
 	$ability_schema->setValue( $optional_ability, array( 'type' => 'object', 'properties' => 'INVALID_PROPERTIES' ) );
-	$isolated_schema = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( MAD4B_SCP_Servers::chatgpt_tools() ) );
+	$isolated_schema = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() );
 	if ( empty( $isolated_schema['ready'] ) || empty( $isolated_schema['degraded'] ) || 1 !== count( $isolated_schema['failures'] ) || 'mad4b/full-staging-authority-apply' !== $isolated_schema['failures'][0]['failing_ability'] || 64 !== strlen( $isolated_schema['failures'][0]['source_schema_fingerprint'] ) ) $fail( 'Malformed real ability schema must be isolated by official conversion.', $isolated_schema );
 } finally { $ability_schema->setValue( $optional_ability, $original_schema ); }
 $required_ability = wp_get_ability( 'mad4b/site-info' ); $original_description = $ability_description->getValue( $required_ability );
 try {
 	$ability_description->setValue( $required_ability, "\xB1\x31" );
-	$isolated = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( MAD4B_SCP_Servers::chatgpt_tools() ) );
+	$isolated = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() );
 	if ( ! empty( $isolated['ready'] ) || 'mcp_required_tool_preflight_failed' !== $isolated['blocker'] ) $fail( 'Required preflight failure must not degrade.', $isolated );
 } finally { $ability_description->setValue( $required_ability, $original_description ); }
 // Inject malformed UTF-8 into a real official Tool DTO at the last filter seam.
