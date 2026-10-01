@@ -46,7 +46,19 @@ async function request(url, { expectJson = false, allow = [200] } = {}) {
     if (/timeout|aborted/i.test(message) || code === "ETIMEDOUT") fail("edge_timeout", { url, network_code: code });
     fail("edge_network_unreachable", { url, network_code: code });
   }
-  const text = await res.text();
+  const reader = res.body?.getReader();
+  const chunks = [];
+  let bytes = 0;
+  if (reader) {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > 262144) { await reader.cancel(); fail("edge_response_budget_exceeded", { url }); }
+      chunks.push(Buffer.from(value));
+    }
+  }
+  const text = Buffer.concat(chunks).toString("utf8");
   const location = res.headers.get("location") || "";
   const auth = res.headers.get("www-authenticate") || "";
   if (res.status >= 300 && res.status < 400) fail("edge_unexpected_redirect", { url, status: res.status, location });
@@ -61,8 +73,9 @@ async function request(url, { expectJson = false, allow = [200] } = {}) {
   return { res, text, json, auth };
 }
 
+if (!/^[a-f0-9]{64}$/.test(expectedFingerprint)) fail("edge_expected_fingerprint_required");
 const base = canonicalBase(baseArg);
-const origin = base.origin + base.pathname;
+const origin = base.origin + base.pathname.replace(/\/+$/, "");
 const resource = origin + "/wp-json/mcp/mad4b-chatgpt";
 const issuer = origin + "/oauth/mcp";
 const protectedMetadata = origin + "/.well-known/oauth-protected-resource/wp-json/mcp/mad4b-chatgpt";
@@ -81,15 +94,23 @@ const a = asResult.json;
 if (a.issuer !== issuer) fail("edge_issuer_mismatch", { expected: issuer, observed: a.issuer || "" });
 if (!a.jwks_uri || !sameOrigin(a.jwks_uri, issuer) || a.jwks_uri !== jwks) fail("edge_jwks_uri_mismatch", { expected: jwks, observed: a.jwks_uri || "" });
 if (!Array.isArray(a.code_challenge_methods_supported) || !a.code_challenge_methods_supported.includes("S256")) fail("edge_pkce_s256_missing");
-if (!a.token_endpoint || !sameOrigin(a.token_endpoint, issuer)) fail("edge_token_endpoint_invalid", { observed: a.token_endpoint || "" });
+if (a.token_endpoint !== issuer + "/token") fail("edge_token_endpoint_invalid", { observed: a.token_endpoint || "" });
+
+if (a.authorization_endpoint !== issuer + "/authorize") fail("edge_authorization_endpoint_invalid");
 
 const jwksResult = await request(jwks, { expectJson: true });
 if (!Array.isArray(jwksResult.json.keys) || jwksResult.json.keys.length < 1) fail("edge_jwks_empty");
+for (const key of jwksResult.json.keys) {
+  if (!key || key.kty !== "RSA" || !key.n || !key.e || ["d", "p", "q", "dp", "dq", "qi", "oth"].some(field => field in key)) fail("edge_jwks_public_key_invalid");
+}
 
-const mcpResult = await request(resource, { expectJson: false, allow: [200, 400, 401, 405] });
-if (mcpResult.res.status === 401 && !/^Bearer\b/i.test(mcpResult.auth.trim())) {
+const mcpResult = await request(resource, { expectJson: false, allow: [401] });
+if (!/^Bearer\b/i.test(mcpResult.auth.trim())) {
   fail("edge_mcp_bearer_challenge_missing", { status: mcpResult.res.status, challenge: mcpResult.auth });
 }
+
+const metadataChallenge = /(?:^|[,\s])resource_metadata="([^"]+)"/.exec(mcpResult.auth);
+if (!metadataChallenge || metadataChallenge[1] !== protectedMetadata) fail("edge_mcp_resource_metadata_challenge_mismatch");
 
 const fpValues = [
   p.mad4b_connection_fingerprint || "",

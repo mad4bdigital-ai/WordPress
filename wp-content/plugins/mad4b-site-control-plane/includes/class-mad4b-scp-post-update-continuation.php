@@ -181,6 +181,9 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			return self::transition_terminal( $permit, $terminal, $classification['classification'], $classification['reasons'], $classification );
 		}
 
+		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
+		if ( empty( $skills['ready'] ) || empty( $skills['build_identity_current'] ) || ! self::identity_matches( $permit['target_identity'], $skills ) ) return new WP_Error( 'mad4b_post_update_continuation_skills_certification_required', 'Exact current-build persisted Skill certification is required before claiming continuation.' );
+
 		$claimed = self::transition( $permit, array(
 			'state' => 'executing',
 			'claimed' => true,

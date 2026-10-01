@@ -60,12 +60,6 @@ jobs:
           set -euo pipefail
           find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 | xargs -0 -n1 php -l
 
-      - name: Verify post-update continuation authorization guards
-        shell: bash
-        run: |
-          set -euo pipefail
-          php wp-content/plugins/mad4b-site-control-plane/tests/post-update-continuation-guards-runtime.php
-
       - name: Verify pointer-first self-update contract
         if: matrix.php == '8.1'
         shell: bash
@@ -129,13 +123,6 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-contract.py
-
-      - name: Verify connection and post-update continuation contracts
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/connection-continuation-contract.py
-          node --check tools/connection-edge-acceptance.mjs
 
       - name: Verify required modules and core safety gates
         shell: bash

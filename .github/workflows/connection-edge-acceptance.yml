@@ -8,8 +8,8 @@ on:
         required: true
         type: string
       expected_connection_fingerprint:
-        description: Optional expected 64-hex canonical connection fingerprint
-        required: false
+        description: Exact expected 64-hex canonical connection fingerprint
+        required: true
         type: string
   workflow_call:
     inputs:
@@ -17,7 +17,7 @@ on:
         required: true
         type: string
       expected_connection_fingerprint:
-        required: false
+        required: true
         type: string
 
 permissions:
@@ -40,9 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$BASE_URL" =~ ^https://[^[:space:]]+$ ]]
-          if [[ -n "$EXPECTED_FP" ]]; then
-            [[ "$EXPECTED_FP" =~ ^[A-Fa-f0-9]{64}$ ]]
-          fi
+          [[ "$EXPECTED_FP" =~ ^[A-Fa-f0-9]{64}$ ]]
 
       - name: Probe public discovery edge
         shell: bash
@@ -62,3 +60,4 @@ jobs:
           path: connection-edge-acceptance.json
           if-no-files-found: ignore
           retention-days: 7
+

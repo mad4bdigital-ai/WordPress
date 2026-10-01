@@ -1,0 +1,43 @@
+name: MAD4B Post Update Continuation Guards
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'tools/connection-edge-acceptance.mjs'
+      - '.github/workflows/connection-edge-acceptance.yml'
+      - '.github/workflows/mad4b-post-update-continuation-guards.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-post-update-continuation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guards:
+    name: Continuation authorization guards (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.1', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify delegated authority and atomic consumption
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/post-update-continuation-guards-runtime.php
+      - name: Verify canonical identity and lifecycle contracts
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/connection-continuation-contract.py
+      - name: Verify external discovery acceptance failures
+        run: node wp-content/plugins/mad4b-site-control-plane/tests/connection-edge-acceptance-runtime.mjs

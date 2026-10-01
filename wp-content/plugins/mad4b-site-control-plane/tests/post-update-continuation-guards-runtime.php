@@ -40,6 +40,7 @@ final class MAD4B_SCP_Servers { public static function expected_server_ids() { r
 final class MAD4B_SCP_MCP_Peer_Governance { public static $tools = 'stable'; public static function status() { return array( 'inventory_ready' => true, 'blockers' => array(), 'transport_inventory_fingerprint' => hash( 'sha256', self::$tools ), 'foreign_transport_inventory' => array() ); } }
 final class MAD4B_SCP_Identity_Context { public static function current() { return array( 'authenticated' => true, 'auth_method' => 'oauth2_bearer', 'wp_user_id' => 1, 'subject_fingerprint' => str_repeat( 'a', 64 ), 'issuer_fingerprint' => str_repeat( 'b', 64 ), 'client_fingerprint' => str_repeat( 'c', 64 ), 'session_fingerprint' => str_repeat( 'd', 64 ) ); } }
 final class MAD4B_SCP_Live_Acceptance_Observer { public static $identity; public static function build_provenance_identity_status() { return array_merge( self::$identity, array( 'identity_ready' => true ) ); } }
+final class MAD4B_SCP_Skill_Runtime_Certification { public static $current = true; public static function persisted_status() { return array_merge( MAD4B_SCP_Live_Acceptance_Observer::$identity, array( 'ready' => true, 'build_identity_current' => self::$current ) ); } }
 final class MAD4B_SCP_Audit { public static $fail_consumption = false; public static function record( $ability, $row, $status, $join = false ) { if ( strpos( $ability, '-consumed' ) !== false ) { if ( ! $join || ! $GLOBALS['wpdb']->in_transaction ) throw new RuntimeException( 'Consumption audit must join candidate transaction' ); if ( self::$fail_consumption ) return new WP_Error( 'audit_failed' ); } return true; } }
 final class MAD4B_SCP_Staging_Write_Candidate_Binding { public static function audit_binding_snapshot( array $binding ) { $out = array(); foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) $out[ $key ] = $binding['stored_' . $key]; return $out; } }
 final class MAD4B_SCP_Staging_Write_Authority {
@@ -65,7 +66,7 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-post-update-continuation
 function check( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); }
 function setup_fixture() {
 	$GLOBALS['wpdb']->value = null; $GLOBALS['wpdb']->reject_cas = false; $GLOBALS['actor_revoked'] = false;
-	MAD4B_SCP_Runtime_Maintenance_Lease::$lost = false; MAD4B_SCP_MCP_Peer_Governance::$tools = 'stable'; MAD4B_SCP_Site_Profile::$environment = 'staging'; MAD4B_SCP_Site_Profile::$revision = 2; MAD4B_SCP_Site_Profile::$uuid = 'site'; MAD4B_SCP_Audit::$fail_consumption = false; MAD4B_SCP_Staging_Write_Authority::$injected_drift = '';
+	MAD4B_SCP_Runtime_Maintenance_Lease::$lost = false; MAD4B_SCP_MCP_Peer_Governance::$tools = 'stable'; MAD4B_SCP_Site_Profile::$environment = 'staging'; MAD4B_SCP_Site_Profile::$revision = 2; MAD4B_SCP_Site_Profile::$uuid = 'site'; MAD4B_SCP_Audit::$fail_consumption = false; MAD4B_SCP_Skill_Runtime_Certification::$current = true; MAD4B_SCP_Staging_Write_Authority::$injected_drift = '';
 	$plan = array( 'eligible' => true, 'current_ready' => true, 'agent_present' => true, 'read_only' => true, 'agent_public_id' => 'agent', 'write_tool_count' => 2, 'exact_grants_existing' => 2, 'write_inventory_fingerprint' => str_repeat( 'e', 64 ), 'grant_rows_fingerprint' => str_repeat( 'f', 64 ), 'persisted_grant_records_fingerprint' => str_repeat( 'b', 64 ) );
 	foreach ( array( 'exact_grants_missing_count', 'stale_allow_grants_count', 'unreviewed_stale_allow_grants_count', 'broad_environment_grants_count', 'duplicate_exact_allow_grants_count', 'current_agent_wildcard_grants', 'global_registry_wildcard_grants' ) as $key ) $plan[ $key ] = 0;
 	MAD4B_SCP_Staging_Write_Authority::$plan = $plan;
@@ -85,7 +86,7 @@ $target = setup_fixture(); $permit = prepare_fixture( $target ); check( is_array
 $result = MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind( 'lease' ); check( ! is_wp_error( $result ) && $result['state'] === 'completed', 'build-only update must auto-rebind' );
 check( unserialize( $GLOBALS['wpdb']->value )['state'] === 'consumed', 'atomic consumed marker' );
 $calls = MAD4B_SCP_Staging_Write_Authority::$calls; check( is_wp_error( MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind( 'lease' ) ), 'permit replay rejected' ); check( $calls === MAD4B_SCP_Staging_Write_Authority::$calls, 'replay never reaches primitive' );
-foreach ( array( 'grant', 'missing', 'wildcard', 'profile', 'transport', 'package', 'production', 'previous', 'site_uuid', 'actor', 'cas', 'tamper', 'audit', 'toctou' ) as $case ) {
+foreach ( array( 'grant', 'missing', 'wildcard', 'profile', 'transport', 'package', 'production', 'previous', 'site_uuid', 'actor', 'skills', 'cas', 'tamper', 'audit', 'toctou' ) as $case ) {
 	$target = setup_fixture(); $permit = prepare_fixture( $target ); check( is_array( $permit ), 'prepare ' . $case ); restart_fixture( $target );
 	if ( 'grant' === $case ) MAD4B_SCP_Staging_Write_Authority::$plan['persisted_grant_records_fingerprint'] = 'changed';
 	if ( 'missing' === $case ) { MAD4B_SCP_Staging_Write_Authority::$plan['exact_grants_missing_count'] = 1; MAD4B_SCP_Staging_Write_Authority::$plan['grant_rows_fingerprint'] = 'changed-desired-catalog'; }
@@ -97,6 +98,7 @@ foreach ( array( 'grant', 'missing', 'wildcard', 'profile', 'transport', 'packag
 	if ( 'previous' === $case ) MAD4B_SCP_Staging_Write_Authority::$binding['stored_artifact_identity'] = 'foreign-binding';
 	if ( 'site_uuid' === $case ) MAD4B_SCP_Site_Profile::$uuid = 'foreign-site';
 	if ( 'actor' === $case ) $GLOBALS['actor_revoked'] = true;
+	if ( 'skills' === $case ) MAD4B_SCP_Skill_Runtime_Certification::$current = false;
 	if ( 'cas' === $case ) $GLOBALS['wpdb']->reject_cas = true;
 	if ( 'tamper' === $case ) { $p = unserialize( $GLOBALS['wpdb']->value ); $p['expires_at']++; $GLOBALS['wpdb']->value = serialize( $p ); }
 	if ( 'audit' === $case ) MAD4B_SCP_Audit::$fail_consumption = true;
