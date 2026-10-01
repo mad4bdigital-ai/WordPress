@@ -1141,6 +1141,7 @@ final class MAD4B_SCP_Self_Update {
 		if ( ! class_exists( 'MAD4B_SCP_Post_Update_Continuation' )
 			|| ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persistence_checkpoint' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'reconciliation_plan' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'effective' ) ) {
 			return new WP_Error(
@@ -1160,6 +1161,26 @@ final class MAD4B_SCP_Self_Update {
 
 		$out['authority_checkpoint_exists'] = ! empty( $checkpoint['exists'] );
 		if ( empty( $checkpoint['exists'] ) ) {
+			// A missing checkpoint is only a clean bootstrap when no managed write
+			// agent/grants already exist. This prevents orphaned authority residue
+			// from being silently reclassified as a brand-new site.
+			$plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+			if ( ! is_array( $plan ) ) {
+				return new WP_Error(
+					'mad4b_self_update_continuation_bootstrap_snapshot_unavailable',
+					'Unable to prove that this Staging site has no prior governed-write authority.'
+				);
+			}
+			$authority_residue = ! empty( $plan['agent_present'] )
+				|| ! empty( $plan['exact_grants_existing'] )
+				|| ! empty( $plan['persisted_ready'] )
+				|| ! empty( $plan['effective_ready'] );
+			if ( $authority_residue ) {
+				return new WP_Error(
+					'mad4b_self_update_continuation_bootstrap_authority_residue',
+					'Governed-write authority residue exists without a durable checkpoint; repair authority state before updating.'
+				);
+			}
 			$out['mode'] = 'bootstrap_no_prior_authority';
 			$out['bootstrap_without_authority'] = true;
 			return $out;
