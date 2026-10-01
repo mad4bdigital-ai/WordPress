@@ -812,7 +812,7 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) $blockers[] = 'site_profile_managed_runtime_disabled';
 		}
 		if ( empty( $bridge['effective'] ) ) $blockers[] = 'oauth_resource_bridge_not_effective';
-		if ( empty( $chatgpt['registered'] ) ) $blockers[] = ! empty( $chatgpt['error'] ) ? sanitize_key( (string) $chatgpt['error'] ) : 'mcp_chatgpt_not_registered';
+		if ( empty( $chatgpt['identity_ready'] ) ) $blockers[] = ! empty( $chatgpt['blocking_registration_error'] ) ? sanitize_key( (string) $chatgpt['blocking_registration_error'] ) : 'mcp_chatgpt_not_registered';
 		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 
 		return array(
@@ -828,10 +828,12 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			'oauth_authority_mode' => isset( $bridge['authority_mode'] ) ? sanitize_key( (string) $bridge['authority_mode'] ) : '',
 			'oauth_resource_bridge_effective' => ! empty( $bridge['effective'] ),
 			'local_oauth_required_for_reconnect' => false,
-			'chatgpt_registered' => ! empty( $chatgpt['registered'] ),
-			'chatgpt_registration_observed' => ! empty( $chatgpt['observed'] ),
-			'chatgpt_registration_projection' => isset( $chatgpt['projection'] ) ? sanitize_key( (string) $chatgpt['projection'] ) : '',
-			'chatgpt_error' => isset( $chatgpt['error'] ) ? sanitize_key( (string) $chatgpt['error'] ) : '',
+			'chatgpt_registered' => ! empty( $chatgpt['actual_registered'] ),
+			'chatgpt_registration_identity_ready' => ! empty( $chatgpt['identity_ready'] ),
+			'chatgpt_registration_observed' => ! empty( $chatgpt['actual_registered'] ),
+			'chatgpt_registration_projection' => isset( $chatgpt['state'] ) ? sanitize_key( (string) $chatgpt['state'] ) : '',
+			'chatgpt_registration_deep_check_deferred' => ! empty( $chatgpt['deep_registration_deferred'] ),
+			'chatgpt_error' => isset( $chatgpt['blocking_registration_error'] ) ? sanitize_key( (string) $chatgpt['blocking_registration_error'] ) : '',
 			'missed_rest_recovery_state' => isset( $bridge_registration['missed_rest_recovery_state'] ) ? sanitize_key( (string) $bridge_registration['missed_rest_recovery_state'] ) : '',
 			'missed_rest_recovery_blocker' => isset( $bridge_registration['missed_rest_recovery_blocker'] ) ? sanitize_key( (string) $bridge_registration['missed_rest_recovery_blocker'] ) : '',
 			'session_continuity' => self::session_continuity_policy(),
@@ -849,30 +851,25 @@ final class MAD4B_SCP_Reconnect_Hardening {
 
 
 	private static function chatgpt_registration_projection() {
+		if ( class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' )
+			&& method_exists( 'MAD4B_SCP_MCP_Registration_Bridge', 'server_registration_identity_status' ) ) {
+			$status = MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( 'mad4b-chatgpt' );
+			return is_array( $status ) ? $status : array();
+		}
+
+		// Fail closed if the canonical registration projection is unavailable.
 		$registrations = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
 		$entry = isset( $registrations['mad4b-chatgpt'] ) && is_array( $registrations['mad4b-chatgpt'] )
 			? $registrations['mad4b-chatgpt']
 			: array( 'registered' => false, 'error' => 'not_registered' );
-		$observed = ! empty( $entry['registered'] );
+		$registered = ! empty( $entry['registered'] );
 		$error = isset( $entry['error'] ) ? sanitize_key( (string) $entry['error'] ) : '';
-		$expected = class_exists( 'MAD4B_SCP_Servers' )
-			&& ( ( method_exists( 'MAD4B_SCP_Servers', 'expected_server_ids' )
-					&& in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true ) )
-				|| isset( $registrations['mad4b-chatgpt'] ) );
-		$hook_bound = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' )
-			&& method_exists( 'MAD4B_SCP_MCP_Registration_Bridge', 'register_servers' )
-			&& ( ! function_exists( 'has_action' )
-				|| false !== has_action( 'mcp_adapter_init', array( 'MAD4B_SCP_MCP_Registration_Bridge', 'register_servers' ) ) );
-		$deferred_only = ! $observed && in_array( $error, array( '', 'not_registered' ), true );
-		$projected = $observed || ( $expected && $hook_bound && $deferred_only );
-
 		return array(
-			'registered' => $projected,
-			'observed' => $observed,
-			'expected' => $expected,
-			'server_hook_bound' => $hook_bound,
-			'projection' => $observed ? 'observed_runtime_registration' : ( $projected ? 'expected_hook_bound_deferred_materialization' : 'not_ready' ),
-			'error' => $projected ? '' : $error,
+			'actual_registered' => $registered,
+			'identity_ready' => $registered,
+			'deep_registration_deferred' => false,
+			'state' => $registered ? 'registered' : 'not_ready',
+			'blocking_registration_error' => $registered ? '' : ( '' !== $error ? $error : 'mcp_chatgpt_not_registered' ),
 		);
 	}
 
