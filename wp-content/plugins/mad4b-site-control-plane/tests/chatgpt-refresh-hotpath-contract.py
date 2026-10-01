@@ -612,7 +612,7 @@ assert qm_flush.index("$acceptance_canary = self::request_acceptance_canary_kind
 assert qm_flush.index(zero_touch_guard) < guard_pos
 assert guard_pos < qm_flush.index("MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed()")
 assert guard_pos < qm_flush.index("self::request_build_fingerprint()")
-assert guard_pos < qm_flush.index("self::load_telemetry( $build )")
+assert guard_pos < qm_flush.index("self::load_telemetry( $build, $package_identity_token )")
 assert guard_pos < qm_flush.index("$sample = self::performance_sample( $class )")
 assert guard_pos < qm_flush.index("foreach ( self::query_monitor_events()")
 foreign_prefix = qm_flush[:guard_pos]
