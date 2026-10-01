@@ -499,6 +499,13 @@ assert "self::fetch_manifest(" not in action_link_body
 render_body = self_update.split("public static function render_update_row(", 1)[1].split("public static function render_update_row_fallback", 1)[0]
 assert "self::cached_manifest()" in render_body
 assert "self::fetch_manifest(" not in render_body
+for marker in (
+    "self::installed_identity()",
+    "$manifest['display_version']",
+    "'+build.'",
+    "A governed MAD4B build update is available: %1$s → %2$s.",
+):
+    assert marker in render_body, f"exact build transition UI invariant missing: {marker}"
 
 refresh_body = self_update.split("public static function handle_refresh_update()", 1)[1].split("public static function handle_native_update()", 1)[0]
 assert "self::fetch_manifest( true )" in refresh_body
