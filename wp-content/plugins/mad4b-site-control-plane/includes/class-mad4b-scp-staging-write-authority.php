@@ -1326,13 +1326,31 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$persisted_ready = ! empty( $persisted_status['ready'] );
 		$effective_ready = self::effective();
 		$grant_rows_fingerprint = hash( 'sha256', wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$grant_truth = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'governed_write_grant_snapshot' )
+			? MAD4B_SCP_Truth_Projection::governed_write_grant_snapshot( array(
+				'persisted_ready' => $persisted_ready,
+				'eligible' => ! empty( $status['eligible'] ),
+				'agent_present' => is_array( $agent ) && ! empty( $agent['id'] ),
+				'write_tool_count' => count( $tools ),
+				'exact_grants_existing' => $existing_count,
+				'exact_grants_missing_count' => count( $missing ),
+				'stale_allow_grants_count' => count( $stale ),
+				'unreviewed_stale_allow_grants_count' => count( $unreviewed_stale ),
+				'broad_environment_grants_count' => count( $broad_environment ),
+				'duplicate_exact_allow_grants_count' => $duplicate_excess,
+				'current_agent_wildcard_grants' => $current_agent_wildcards,
+				'global_registry_wildcard_grants' => $global_wildcards,
+				'breakglass_included' => in_array( 'mad4b/database-raw-query', $tools, true ),
+			) )
+			: array( 'current_ready' => false, 'blockers' => array( 'truth_projection_unavailable' ) );
 
 		return array(
 			'contract' => 'mad4b.governed-write-authority-reconciliation-plan.v2',
 			'read_only' => true,
 			'mutation_performed' => false,
 			'eligible' => ! empty( $status['eligible'] ),
-			'current_ready' => $persisted_ready,
+			'current_ready' => ! empty( $grant_truth['current_ready'] ),
+			'current_readiness_blockers' => isset( $grant_truth['blockers'] ) && is_array( $grant_truth['blockers'] ) ? $grant_truth['blockers'] : array(),
 			'persisted_ready' => $persisted_ready,
 			'effective_ready' => $effective_ready,
 			'environment' => $environment,

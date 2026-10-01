@@ -38,6 +38,16 @@ if "MAD4B_SCP_Agent_Registry::exact_grant(" in plan_body:
     raise SystemExit("read-only reconciliation plan regressed to N+1 exact_grant lookups")
 if plan_body.count("MAD4B_SCP_Agent_Registry::grants_for_agent") != 1:
     raise SystemExit("read-only reconciliation plan must use one bulk agent grant snapshot")
+for marker_text in [
+    "MAD4B_SCP_Truth_Projection::governed_write_grant_snapshot",
+    "'current_readiness_blockers'",
+    "'persisted_ready' => $persisted_ready",
+]:
+    if marker_text not in plan_body:
+        raise SystemExit("write reconciliation current/persisted readiness split missing: " + marker_text)
+if "'current_ready' => $persisted_ready" in plan_body:
+    raise SystemExit("write reconciliation current_ready must not alias the historical persisted checkpoint")
+
 reconcile_body = write.split("public static function reconcile()", 1)[1]
 for marker_text in ["$seen_current_exact_allow", "$duplicate_grants_revoked", ":duplicate_grant"]:
     if marker_text not in reconcile_body:

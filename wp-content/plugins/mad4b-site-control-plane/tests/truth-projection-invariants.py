@@ -64,6 +64,21 @@ for forbidden in ("$effective_ready = $persisted_ready &&", "$binding_match = ! 
     if forbidden in write_projection:
         raise SystemExit("Read Consistency re-derived write candidate readiness")
 
+# 0bb. Governed Write current readiness is live grant-snapshot truth, not the persisted checkpoint.
+for marker in (
+    "public static function governed_write_grant_snapshot( array $fact )",
+    "'persisted_write_authority_not_ready'",
+    "'unreviewed_stale_write_authority'",
+    "'current_ready' => empty( $blockers )",
+):
+    require(projection, marker, "canonical governed-write grant snapshot truth")
+write_authority_source = read("includes/class-mad4b-scp-staging-write-authority.php")
+write_plan = write_authority_source.split("public static function reconciliation_plan()", 1)[1].split("public static function reconcile()", 1)[0]
+require(write_plan, "MAD4B_SCP_Truth_Projection::governed_write_grant_snapshot", "write reconciliation delegates current readiness")
+if "'current_ready' => $persisted_ready" in write_plan:
+    raise SystemExit("write reconciliation still aliases current_ready to persisted_ready")
+require(write_plan, "'current_readiness_blockers'", "write reconciliation exposes current readiness blockers")
+
 # 0c. Session-safe identity truth remains strict and deferred readiness stays tri-state.
 for marker in (
     "public static function session_connection_identity( array $fact )",
@@ -117,6 +132,17 @@ if "'external_wpml_acceptance_verified' => false" in write_projection:
 observer_write = observer.split("public static function write_runtime_certification_status()", 1)[1].split("public static function observe_doing_it_wrong", 1)[0]
 require(observer_write, "MAD4B_SCP_Truth_Projection::external_wpml( true )", "observer Write Runtime canonical projection")
 require(observer, "MAD4B_SCP_WPML_Response_Contract::receipt_status()", "observer normalized WPML source")
+
+# 1b. Lightweight and full provenance share the same artifact/source identity validator.
+for marker in (
+    "private static function artifact_identity_matches_source( $artifact_identity, $source_commit_sha )",
+    "artifact_identity_invalid",
+):
+    require(observer, marker, "shared artifact identity validation")
+identity_provenance = observer.split("public static function build_provenance_identity_status()", 1)[1].split("public static function build_provenance_status()", 1)[0]
+full_provenance = observer.split("public static function build_provenance_status()", 1)[1].split("private static function provenance_manifest()", 1)[0]
+require(identity_provenance, "self::artifact_identity_matches_source", "lightweight provenance artifact validation")
+require(full_provenance, "self::artifact_identity_matches_source", "full provenance artifact validation")
 
 # 2. Passive tri-state is never collapsed with !empty().
 rest_status = rest.split("public static function status()", 1)[1]

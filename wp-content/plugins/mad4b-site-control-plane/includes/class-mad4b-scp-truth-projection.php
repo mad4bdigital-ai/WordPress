@@ -89,6 +89,44 @@ final class MAD4B_SCP_Truth_Projection {
 		);
 	}
 
+	public static function governed_write_grant_snapshot( array $fact ) {
+		$persisted_ready = ! empty( $fact['persisted_ready'] );
+		$eligible = ! empty( $fact['eligible'] );
+		$agent_present = ! empty( $fact['agent_present'] );
+		$write_tool_count = isset( $fact['write_tool_count'] ) ? max( 0, (int) $fact['write_tool_count'] ) : 0;
+		$exact_existing = isset( $fact['exact_grants_existing'] ) ? max( 0, (int) $fact['exact_grants_existing'] ) : 0;
+		$blockers = array();
+
+		if ( ! $persisted_ready ) $blockers[] = 'persisted_write_authority_not_ready';
+		if ( ! $eligible ) $blockers[] = 'write_authority_not_eligible';
+		if ( ! $agent_present ) $blockers[] = 'governed_write_agent_missing';
+		if ( $write_tool_count < 1 ) $blockers[] = 'write_inventory_empty';
+		if ( $write_tool_count > 0 && $exact_existing !== $write_tool_count ) $blockers[] = 'exact_write_grants_incomplete';
+
+		$zero_drift = array(
+			'exact_grants_missing_count' => 'exact_write_grants_missing',
+			'stale_allow_grants_count' => 'stale_write_grants_present',
+			'unreviewed_stale_allow_grants_count' => 'unreviewed_stale_write_authority',
+			'broad_environment_grants_count' => 'broad_environment_grants_present',
+			'duplicate_exact_allow_grants_count' => 'duplicate_exact_grants_present',
+			'current_agent_wildcard_grants' => 'current_agent_wildcard_grants',
+			'global_registry_wildcard_grants' => 'global_registry_wildcard_grants',
+		);
+		foreach ( $zero_drift as $key => $blocker ) {
+			if ( ! array_key_exists( $key, $fact ) || 0 !== (int) $fact[ $key ] ) $blockers[] = $blocker;
+		}
+		if ( ! empty( $fact['breakglass_included'] ) ) $blockers[] = 'breakglass_leak';
+
+		$blockers = array_values( array_unique( array_map( 'sanitize_key', $blockers ) ) );
+		return array(
+			'projection_contract' => self::CONTRACT,
+			'persisted_ready' => $persisted_ready,
+			'current_ready' => empty( $blockers ),
+			'state' => empty( $blockers ) ? 'ready' : ( $eligible ? 'blocked' : 'ineligible' ),
+			'blockers' => $blockers,
+		);
+	}
+
 	public static function candidate_binding_bound_ready( array $persisted, array $binding, $mismatch_blocker = 'runtime_authority_candidate_not_reconciled' ) {
 		$persisted_ready = ! empty( $persisted['ready'] );
 		$binding_required = ! empty( $binding['required'] );

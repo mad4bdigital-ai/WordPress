@@ -507,6 +507,17 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		);
 	}
 
+	private static function artifact_identity_matches_source( $artifact_identity, $source_commit_sha ) {
+		$artifact_identity = trim( (string) $artifact_identity );
+		$source_commit_sha = strtolower( trim( (string) $source_commit_sha ) );
+		return '' !== $artifact_identity
+			&& strlen( $artifact_identity ) <= 191
+			&& 1 === preg_match( '/^[A-Za-z0-9._-]+$/', $artifact_identity )
+			&& 0 === strpos( $artifact_identity, 'mad4b-site-control-plane-' )
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/', $source_commit_sha )
+			&& 1 === preg_match( '/-' . preg_quote( $source_commit_sha, '/' ) . '$/', $artifact_identity );
+	}
+
 	/**
 	 * Lightweight exact-build identity for latency-sensitive MCP response finalizers.
 	 * This validates the signed/packaged manifest fields but deliberately does not
@@ -554,13 +565,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			$base[ $key ] = isset( $data[ $key ] ) ? sanitize_text_field( (string) $data[ $key ] ) : '';
 		}
 		$mismatch = array();
-		$artifact_identity = (string) $base['artifact_identity'];
-		$artifact_valid = '' !== $artifact_identity
-			&& strlen( $artifact_identity ) <= 191
-			&& 1 === preg_match( '/^[A-Za-z0-9._-]+$/', $artifact_identity )
-			&& 0 === strpos( $artifact_identity, 'mad4b-site-control-plane-' )
-			&& 1 === preg_match( '/-' . preg_quote( (string) $base['source_commit_sha'], '/' ) . '$/', $artifact_identity );
-		if ( ! $artifact_valid ) $mismatch[] = 'artifact_identity_invalid';
+		if ( ! self::artifact_identity_matches_source( $base['artifact_identity'], $base['source_commit_sha'] ) ) $mismatch[] = 'artifact_identity_invalid';
 		if ( (string) $base['version'] !== (string) ( isset( $data['control_plane_version'] ) ? $data['control_plane_version'] : '' ) ) $mismatch[] = 'control_plane_version_mismatch';
 		$base['identity_ready'] = empty( $mismatch );
 		$base['identity_mismatch'] = array_values( array_unique( $mismatch ) );
@@ -576,7 +581,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		if ( empty( $data['source_commit_sha'] ) || ! preg_match( '/^[a-f0-9]{40}$/', (string) $data['source_commit_sha'] ) || empty( $data['package_files'] ) || ! is_array( $data['package_files'] ) ) { $base['provenance_mismatch'] = array( 'manifest_fields_invalid' ); return $base; }
 		$base['manifest_valid'] = true; foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'build_workflow', 'build_run_id', 'artifact_identity', 'mcp_adapter_version' ) as $key ) $base[ $key ] = isset( $data[ $key ] ) ? sanitize_text_field( (string) $data[ $key ] ) : '';
 		$lines = array(); $mismatch = array(); foreach ( $data['package_files'] as $entry ) { if ( ! is_array( $entry ) || empty( $entry['path'] ) || false !== strpos( (string) $entry['path'], '..' ) || ! isset( $entry['bytes'], $entry['sha256'] ) || ! preg_match( '/^[a-f0-9]{64}$/', (string) $entry['sha256'] ) ) { $mismatch[] = 'package_entry_invalid'; continue; } $relative = ltrim( wp_normalize_path( (string) $entry['path'] ), '/' ); $file = MAD4B_SCP_DIR . $relative; if ( ! is_readable( $file ) || (int) filesize( $file ) !== (int) $entry['bytes'] || ! hash_equals( (string) $entry['sha256'], (string) hash_file( 'sha256', $file ) ) ) { $mismatch[] = 'runtime_file_mismatch:' . self::safe_identifier( $relative ); continue; } $lines[] = $relative . "\0" . (int) $entry['bytes'] . "\0" . strtolower( (string) $entry['sha256'] ) . "\n"; }
-		sort( $lines, SORT_STRING ); $digest = hash( 'sha256', implode( '', $lines ) ); if ( ! hash_equals( (string) $data['package_manifest_digest'], $digest ) ) $mismatch[] = 'package_manifest_digest_mismatch'; if ( (string) $base['version'] !== (string) ( isset( $data['control_plane_version'] ) ? $data['control_plane_version'] : '' ) ) $mismatch[] = 'control_plane_version_mismatch'; $base['runtime_manifest_match'] = empty( $mismatch ); $base['stale'] = ! $base['runtime_manifest_match']; $base['provenance_mismatch'] = array_values( array_unique( $mismatch ) ); return $base;
+		sort( $lines, SORT_STRING ); $digest = hash( 'sha256', implode( '', $lines ) ); if ( ! hash_equals( (string) $data['package_manifest_digest'], $digest ) ) $mismatch[] = 'package_manifest_digest_mismatch'; if ( ! self::artifact_identity_matches_source( $base['artifact_identity'], $base['source_commit_sha'] ) ) $mismatch[] = 'artifact_identity_invalid'; if ( (string) $base['version'] !== (string) ( isset( $data['control_plane_version'] ) ? $data['control_plane_version'] : '' ) ) $mismatch[] = 'control_plane_version_mismatch'; $base['runtime_manifest_match'] = empty( $mismatch ); $base['stale'] = ! $base['runtime_manifest_match']; $base['provenance_mismatch'] = array_values( array_unique( $mismatch ) ); return $base;
 	}
 	private static function provenance_manifest() { if ( is_array( self::$provenance_manifest_cache ) ) return self::$provenance_manifest_cache; $path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' : ''; if ( '' === $path || ! is_readable( $path ) ) return array(); $data = json_decode( (string) file_get_contents( $path ), true ); if ( is_array( $data ) ) self::$provenance_manifest_cache = $data; return is_array( $data ) ? $data : array(); }
 	private static function current_build_fingerprint() { $manifest = self::provenance_manifest(); if ( isset( $manifest['build_fingerprint'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $manifest['build_fingerprint'] ) ) return strtolower( (string) $manifest['build_fingerprint'] ); $legacy = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? MAD4B_SCP_External_Handshake_Evidence::build_fingerprint() : ''; $self_hash = is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : ''; return hash( 'sha256', self::CONTRACT . "\n" . ( defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '' ) . "\n" . $legacy . "\n" . $self_hash ); }
