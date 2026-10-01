@@ -450,15 +450,39 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		return $out;
 	}
 
+	private static function pin_request_identity() {
+		if (
+			preg_match( '/^[a-f0-9]{64}$/', self::$request_build_fingerprint )
+			&& preg_match( '/^[a-f0-9]{64}$/', self::$request_package_identity_token )
+		) {
+			return array(
+				'build_fingerprint' => self::$request_build_fingerprint,
+				'package_identity_token' => self::$request_package_identity_token,
+			);
+		}
+
+		// Pin build + exact package identity from one provenance snapshot. Never
+		// combine a request-start build hash with a later package identity.
+		$identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status();
+		$build = isset( $identity['build_fingerprint'] ) ? strtolower( trim( (string) $identity['build_fingerprint'] ) ) : '';
+		if ( empty( $identity['identity_ready'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $build ) ) return array();
+
+		$parts = array();
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) {
+			if ( empty( $identity[ $key ] ) ) return array();
+			$parts[] = (string) $identity[ $key ];
+		}
+		self::$request_build_fingerprint = $build;
+		self::$request_package_identity_token = hash( 'sha256', implode( "\n", $parts ) );
+		return array(
+			'build_fingerprint' => self::$request_build_fingerprint,
+			'package_identity_token' => self::$request_package_identity_token,
+		);
+	}
+
 	private static function pin_request_build_fingerprint() {
-		if ( preg_match( '/^[a-f0-9]{64}$/', self::$request_build_fingerprint ) ) return self::$request_build_fingerprint;
-		// Telemetry grouping needs only the signed/packaged build identity.
-		// Full byte-for-byte runtime hashing belongs to explicit/final acceptance,
-		// never to every request bootstrap.
-		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status();
-		$build = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
-		if ( preg_match( '/^[a-f0-9]{64}$/', $build ) ) self::$request_build_fingerprint = $build;
-		return self::$request_build_fingerprint;
+		$identity = self::pin_request_identity();
+		return isset( $identity['build_fingerprint'] ) ? (string) $identity['build_fingerprint'] : '';
 	}
 
 	private static function request_build_fingerprint() {
@@ -467,16 +491,9 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	}
 
 	private static function request_package_identity_token() {
-		if ( preg_match( '/^[a-f0-9]{64}$/', self::$request_package_identity_token ) ) return self::$request_package_identity_token;
-		$identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status();
-		if ( empty( $identity['identity_ready'] ) ) return '';
-		$parts = array();
-		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) {
-			if ( empty( $identity[ $key ] ) ) return '';
-			$parts[] = (string) $identity[ $key ];
-		}
-		self::$request_package_identity_token = hash( 'sha256', implode( "\n", $parts ) );
-		return self::$request_package_identity_token;
+		$identity = self::pin_request_identity();
+		$token = isset( $identity['package_identity_token'] ) ? (string) $identity['package_identity_token'] : '';
+		return preg_match( '/^[a-f0-9]{64}$/', $token ) ? $token : '';
 	}
 
 	/** @internal Pure seam for runtime regressions. */
