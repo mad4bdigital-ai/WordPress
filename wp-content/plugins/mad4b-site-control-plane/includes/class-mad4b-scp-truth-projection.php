@@ -102,6 +102,40 @@ final class MAD4B_SCP_Truth_Projection {
 		);
 	}
 
+	public static function session_connection_identity( array $fact ) {
+		$blockers = array();
+		if ( empty( $fact['profile_configured'] ) ) $blockers[] = 'site_profile_unconfigured';
+		if ( empty( $fact['profile_environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
+		if ( empty( $fact['profile_origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
+		if ( empty( $fact['adapter_available'] ) ) $blockers[] = 'mcp_adapter_unavailable';
+		if ( ! empty( $fact['adapter_available'] ) && empty( $fact['adapter_identity_ok'] ) ) $blockers[] = 'mcp_adapter_identity_not_certified';
+		// Session-safe diagnostics execute through the real MCP transport. Unlike
+		// passive admin projections, actual registration is mandatory here.
+		if ( empty( $fact['chatgpt_actual_registered'] ) ) $blockers[] = 'mcp_chatgpt_not_registered';
+		$blockers = array_values( array_unique( array_map( 'sanitize_key', $blockers ) ) );
+		return array(
+			'projection_contract' => self::CONTRACT,
+			'ready' => empty( $blockers ),
+			'state' => empty( $blockers ) ? 'ready_identity' : 'blocked_identity',
+			'blockers' => $blockers,
+		);
+	}
+
+	public static function session_reconnect_identity( array $fact ) {
+		$blockers = array();
+		if ( empty( $fact['profile_configured'] ) ) $blockers[] = 'site_profile_unconfigured';
+		if ( empty( $fact['profile_origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
+		if ( empty( $fact['profile_environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
+		if ( empty( $fact['chatgpt_actual_registered'] ) ) $blockers[] = 'mcp_chatgpt_not_registered';
+		$blockers = array_values( array_unique( array_map( 'sanitize_key', $blockers ) ) );
+		return array(
+			'projection_contract' => self::CONTRACT,
+			'ready' => empty( $blockers ),
+			'state' => empty( $blockers ) ? 'ready_identity' : 'blocked_identity',
+			'blockers' => $blockers,
+		);
+	}
+
 	public static function canonical_external_wpml_receipt() {
 		if ( class_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer' )
 			&& method_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer', 'external_wpml_receipt_status' ) ) {
