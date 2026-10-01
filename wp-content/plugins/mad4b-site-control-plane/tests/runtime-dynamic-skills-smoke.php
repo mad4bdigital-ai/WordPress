@@ -487,9 +487,10 @@ $write_authority = MAD4B_SCP_Staging_Write_Authority::status();
 if ( true !== MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $valid_plan ) ) $fail( 'Valid self-agent mad4b-write approval plan was denied after exact candidate binding.' );
 
 // Prove that the cheap persisted/candidate predicate is never treated as
-// current mutation truth. Inject one duplicate exact allow after binding: the
-// historical checkpoint remains effective, while the mutation-bound live
-// snapshot must fail closed until the drift is removed.
+// current mutation truth. The schema now prevents duplicate exact grants, so
+// inject a real, representable drift row: a broad environment=all allow beside
+// the already-correct exact Staging allow. The historical checkpoint remains
+// effective, while mutation-bound live truth must fail closed until cleanup.
 $write_agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( $write_authority['agent_public_id'] );
 if ( ! is_array( $write_agent ) || empty( $write_agent['id'] ) ) $fail( 'Governed write agent is unavailable for drift-injection proof.' );
 $before_grants = MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $write_agent['id'], 'mad4b-write' );
@@ -497,16 +498,16 @@ $before_ids = array();
 foreach ( $before_grants as $grant_row ) {
 	if ( is_array( $grant_row ) && isset( $grant_row['id'] ) ) $before_ids[] = (int) $grant_row['id'];
 }
-$duplicate = MAD4B_SCP_Agent_Registry::grant_ability(
+$broad = MAD4B_SCP_Agent_Registry::grant_ability(
 	$write_authority['agent_public_id'],
 	'mad4b-write',
 	'mad4b/content-update-post',
 	'core',
 	array(),
 	'allow',
-	'staging'
+	'all'
 );
-if ( is_wp_error( $duplicate ) || true !== $duplicate ) $fail( 'Unable to inject duplicate exact grant for current-drift proof.', is_wp_error( $duplicate ) ? $duplicate->get_error_code() : $duplicate );
+if ( is_wp_error( $broad ) || true !== $broad ) $fail( 'Unable to inject broad environment grant for current-drift proof.', is_wp_error( $broad ) ? $broad->get_error_code() : $broad );
 
 $after_grants = MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $write_agent['id'], 'mad4b-write' );
 $injected_id = 0;
@@ -516,16 +517,24 @@ foreach ( $after_grants as $grant_row ) {
 	if ( in_array( $id, $before_ids, true ) ) continue;
 	if ( 'mad4b/content-update-post' !== ( isset( $grant_row['ability_name'] ) ? (string) $grant_row['ability_name'] : '' ) ) continue;
 	if ( 'core' !== ( isset( $grant_row['provider'] ) ? (string) $grant_row['provider'] : '' ) ) continue;
-	if ( 'staging' !== ( isset( $grant_row['environment'] ) ? (string) $grant_row['environment'] : '' ) ) continue;
+	if ( 'all' !== ( isset( $grant_row['environment'] ) ? (string) $grant_row['environment'] : '' ) ) continue;
 	$injected_id = $id;
 	break;
 }
-if ( $injected_id < 1 ) $fail( 'Injected duplicate exact grant could not be identified for cleanup.' );
-if ( ! MAD4B_SCP_Staging_Write_Authority::effective() ) $fail( 'Cheap persisted/candidate authority unexpectedly changed during duplicate drift proof.' );
+if ( $injected_id < 1 ) $fail( 'Injected broad environment grant could not be identified for cleanup.' );
+if ( ! MAD4B_SCP_Staging_Write_Authority::effective() ) $fail( 'Cheap persisted/candidate authority unexpectedly changed during broad-grant drift proof.' );
 
+$drift_plan_snapshot = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+if (
+	! is_array( $drift_plan_snapshot )
+	|| (int) ( $drift_plan_snapshot['broad_environment_grants_count'] ?? 0 ) < 1
+	|| empty( $drift_plan_snapshot['broad_environment_grants'] )
+) {
+	$fail( 'Read-only reconciliation plan did not expose broad grant drift beside the exact grant.', $drift_plan_snapshot );
+}
 $drift_readiness = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness( MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY, $valid_plan );
-if ( ! is_array( $drift_readiness ) || ! empty( $drift_readiness['ready'] ) || ! in_array( 'duplicate_exact_grants_present', (array) ( $drift_readiness['blockers'] ?? array() ), true ) ) {
-	$fail( 'Mutation-bound current authority did not fail closed on duplicate exact-grant drift.', $drift_readiness );
+if ( ! is_array( $drift_readiness ) || ! empty( $drift_readiness['ready'] ) || ! in_array( 'broad_environment_grants_present', (array) ( $drift_readiness['blockers'] ?? array() ), true ) ) {
+	$fail( 'Mutation-bound current authority did not fail closed on broad environment-grant drift.', $drift_readiness );
 }
 $drift_plan = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $valid_plan );
 if ( ! is_wp_error( $drift_plan ) || 'mad4b_remote_plan_authority_not_ready' !== $drift_plan->get_error_code() ) {
@@ -533,10 +542,10 @@ if ( ! is_wp_error( $drift_plan ) || 'mad4b_remote_plan_authority_not_ready' !==
 }
 
 $revoked = MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id( $write_authority['agent_public_id'], $injected_id, 'mad4b-write' );
-if ( is_wp_error( $revoked ) || true !== $revoked ) $fail( 'Injected duplicate exact grant cleanup failed.', is_wp_error( $revoked ) ? $revoked->get_error_code() : $revoked );
+if ( is_wp_error( $revoked ) || true !== $revoked ) $fail( 'Injected broad environment grant cleanup failed.', is_wp_error( $revoked ) ? $revoked->get_error_code() : $revoked );
 $clean_readiness = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness( MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY, $valid_plan );
 if ( ! is_array( $clean_readiness ) || empty( $clean_readiness['ready'] ) || ! empty( $clean_readiness['blockers'] ) ) {
-	$fail( 'Mutation-bound current authority did not recover after duplicate drift cleanup.', $clean_readiness );
+	$fail( 'Mutation-bound current authority did not recover after broad-grant drift cleanup.', $clean_readiness );
 }
 if ( true !== MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $valid_plan ) ) $fail( 'Approval planner did not recover after current grant drift cleanup.' );
 
