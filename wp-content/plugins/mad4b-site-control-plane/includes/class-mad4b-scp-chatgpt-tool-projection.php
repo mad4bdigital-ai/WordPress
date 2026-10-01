@@ -173,9 +173,13 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		}
 		$meta = $ability->get_meta();
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-		if ( ! array_key_exists( 'readonly', $annotations ) || ! is_bool( $annotations['readonly'] ) ) {
-			return new WP_Error( 'mad4b_chatgpt_projection_readonly_classification_required', 'Requested Ability must explicitly declare annotations.readonly.', array( 'ability_name' => $ability_name ) );
-		}
+		$readonly_declared = array_key_exists( 'readonly', $annotations ) && is_bool( $annotations['readonly'] );
+		// Third-party WordPress Abilities are allowed into the projection universe
+		// even when they do not declare MAD4B-style readonly metadata. Unknown
+		// classification is never treated as read-safe: it is conservatively gated
+		// as a mutation projection and still executes only through the Ability's
+		// original permission callback / authorization path.
+		$readonly = $readonly_declared && true === $annotations['readonly'];
 		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 		$lane = isset( $mcp['surface'] ) ? (string) $mcp['surface'] : ( true === $annotations['readonly'] ? 'read' : 'write' );
 		$classification_json = wp_json_encode( array( 'meta' => $meta, 'category' => method_exists( $ability, 'get_category' ) ? $ability->get_category() : '', 'output_schema' => method_exists( $ability, 'get_output_schema' ) ? $ability->get_output_schema() : null ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
@@ -189,7 +193,9 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'input_schema_sha256' => self::schema_sha256( $ability ),
 			'classification_sha256' => hash( 'sha256', $classification_json ),
 			'lane' => $lane,
-			'readonly' => true === $annotations['readonly'],
+			'readonly' => (bool) $readonly,
+			'readonly_declared' => (bool) $readonly_declared,
+			'conservative_mutation' => ! $readonly_declared,
 			'breakglass' => (bool) $breakglass,
 			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
 		);
