@@ -244,6 +244,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		$breakglass_ready = $normal_ready
 			&& ! empty( $developer['breakglass_enabled'] )
 			&& ! empty( $developer['breakglass_authority']['ready'] );
+		$developer_execution = self::developer_execution_projection( $developer );
 		return array(
 			'contract' => self::CONTRACT,
 			'read_only' => true,
@@ -260,11 +261,20 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				'plan' => is_array( $write_plan ) ? $write_plan : array(),
 			),
 			'developer' => array(
+				// Legacy ready means authority/grants + runtime flags, not host process
+				// operability. Keep it for compatibility and expose execution truth
+				// separately so callers never infer prlimit/sandbox readiness from grants.
 				'ready' => $normal_ready,
+				'authority_ready' => $normal_ready,
+				'ready_semantics' => 'authority_and_runtime_flags_only',
+				'execution' => $developer_execution,
 				'status' => $developer,
 			),
 			'developer_breakglass' => array(
 				'ready' => $breakglass_ready,
+				'authority_ready' => $breakglass_ready,
+				'ready_semantics' => 'authority_and_runtime_flags_only',
+				'execution' => $developer_execution,
 				'status' => $developer,
 			),
 			'ready' => $write_ready && $normal_ready && $breakglass_ready,
@@ -294,6 +304,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				$breakglass_ready = $normal_ready
 					&& ! empty( $developer_status['breakglass_enabled'] )
 					&& ! empty( $developer_status['breakglass_authority']['ready'] );
+				$developer_execution = self::developer_execution_projection( $developer_status );
 				$write_checkpoint_ready = ! empty( $write['effective_ready'] );
 				$write_grant_snapshot_ready = ! empty( $write['current_ready'] );
 				$write_ready = $write_checkpoint_ready && $write_grant_snapshot_ready;
@@ -319,7 +330,11 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'write_reconciliation_required' => ! $write_ready,
 					'write_current_readiness_blockers' => isset( $write['current_readiness_blockers'] ) && is_array( $write['current_readiness_blockers'] ) ? self::compact_string_list( $write['current_readiness_blockers'], 16 ) : array( 'write_reconciliation_plan_unavailable' ),
 					'developer_ready' => $normal_ready,
+					'developer_authority_ready' => $normal_ready,
+					'developer_ready_semantics' => 'authority_and_runtime_flags_only',
 					'developer_breakglass_ready' => $breakglass_ready,
+					'developer_breakglass_authority_ready' => $breakglass_ready,
+					'developer_execution' => $developer_execution,
 					'candidate_binding' => array(
 						'required' => ! empty( $binding['required'] ),
 						'match' => ! empty( $binding['match'] ),
@@ -344,6 +359,27 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				);
 			},
 			8192
+		);
+	}
+
+	private static function developer_execution_projection( array $developer_status ) {
+		$runtime = isset( $developer_status['runtime'] ) && is_array( $developer_status['runtime'] ) ? $developer_status['runtime'] : array();
+		$execution = isset( $runtime['execution_readiness'] ) && is_array( $runtime['execution_readiness'] ) ? $runtime['execution_readiness'] : array();
+		$process_ready = ! empty( $execution['process_backend_ready'] );
+		$normal_no_network_ready = ! empty( $execution['normal_no_network_execution_ready'] );
+		$blockers = array();
+		foreach ( array( 'process_backend_blockers', 'normal_no_network_execution_blockers' ) as $key ) {
+			if ( ! isset( $execution[ $key ] ) || ! is_array( $execution[ $key ] ) ) continue;
+			$blockers = array_merge( $blockers, $execution[ $key ] );
+		}
+		return array(
+			'host_capabilities_observed' => ! empty( $runtime ),
+			'process_backend_ready' => $process_ready,
+			'normal_no_network_execution_ready' => $normal_no_network_ready,
+			'execution_ready' => $process_ready && $normal_no_network_ready,
+			'blockers' => self::compact_string_list( $blockers, 16 ),
+			'authorizing' => false,
+			'mutation_performed' => false,
 		);
 	}
 
