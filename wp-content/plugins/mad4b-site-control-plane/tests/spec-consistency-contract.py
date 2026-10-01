@@ -269,7 +269,9 @@ require(impl['transport'], 'mad4b_write_authority_mount_missing', 'implementatio
 require(impl['connection'], 'mad4b.connection-readiness.v4', 'implementation-connection-readiness')
 forbid(impl['connection'], "'connection_certified' => false", 'implementation-no-permanent-false')
 require(impl['connection'], 'MAD4B_SCP_External_Handshake_Evidence::status()', 'implementation-external-evidence-readback')
-require(impl['connection'], '$connection_certified = empty( $certification_blockers )', 'implementation-certified-from-bounded-blockers')
+require(impl['connection'], '$connection_certified = ! $admin_shallow && empty( $certification_blockers )', 'implementation-certified-only-after-deep-bounded-blockers')
+require(impl['connection'], "'connection_certification_state' => $certification_state", 'implementation-certification-tristate')
+require(impl['connection'], "'certification_deferred_checks' => $certification_deferred_checks", 'implementation-certification-deferred-not-blocked')
 require(impl['connection'], "'external_handshake_unverified'", 'implementation-unverified-handshake-blocker')
 require(impl['connection'], "'external_handshake_stale'", 'implementation-stale-handshake-blocker')
 for marker in (
