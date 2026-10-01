@@ -127,7 +127,7 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 			if ( ! is_array( $gate ) ) return false;
 			$effective = class_exists( 'MAD4B_SCP_Truth_Projection' )
 				? MAD4B_SCP_Truth_Projection::gate_effective_ready( $gate )
-				: ( ! empty( $gate['ready'] ) && ( ! array_key_exists( 'fresh', $gate ) || ! empty( $gate['fresh'] ) ) );
+				: ( ! empty( $gate['ready'] ) && empty( $gate['blockers'] ) && ( ! array_key_exists( 'fresh', $gate ) || ! empty( $gate['fresh'] ) ) );
 			if ( ! $effective ) return false;
 		}
 		return true;
@@ -587,7 +587,7 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 			'ready' => (bool) $ready,
 			'fresh' => (bool) $fresh,
 			'freshness_required' => true,
-			'effective_ready' => (bool) $ready && (bool) $fresh,
+			'effective_ready' => (bool) $ready && (bool) $fresh && empty( $blockers ),
 			'source_contract' => (string) $contract,
 			'blockers' => array_values( array_unique( array_filter( array_map( 'strval', $blockers ) ) ) ),
 			'observed_at' => '' !== (string) $observed_at ? (string) $observed_at : gmdate( 'c' ),

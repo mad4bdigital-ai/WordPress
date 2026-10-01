@@ -248,7 +248,11 @@ final class MAD4B_SCP_Truth_Projection {
 		$freshness_required = array_key_exists( 'freshness_required', $gate )
 			? ! empty( $gate['freshness_required'] )
 			: array_key_exists( 'fresh', $gate );
+		$blockers = isset( $gate['blockers'] ) && is_array( $gate['blockers'] )
+			? array_values( array_filter( array_map( 'strval', $gate['blockers'] ) ) )
+			: array();
 		return ! empty( $gate['ready'] )
+			&& empty( $blockers )
 			&& ( ! $freshness_required || ! empty( $gate['fresh'] ) );
 	}
 

@@ -174,6 +174,11 @@ for marker in (
     ": array_key_exists( 'fresh', $gate )",
 ):
     require(projection, marker, "truth gate contract")
+require(projection, "&& empty( $blockers )", "truth gate blocker consistency")
+if "empty( $gate['blockers'] )" not in finalizer:
+    raise SystemExit("live acceptance finalizer fallback may not ignore blockers")
+if "empty( $gate['blockers'] )" not in observer:
+    raise SystemExit("live acceptance observer fallback may not ignore blockers")
 aggregate = finalizer.split("public static function aggregate_ready", 1)[1].split("public static function production_receipt_status", 1)[0]
 require(aggregate, "MAD4B_SCP_Truth_Projection::gate_effective_ready", "freshness-aware aggregate reducer")
 observer_reducer = observer.split("$all_ready = true;", 1)[1].split("return array( 'contract' => self::AGGREGATE_CONTRACT", 1)[0]
