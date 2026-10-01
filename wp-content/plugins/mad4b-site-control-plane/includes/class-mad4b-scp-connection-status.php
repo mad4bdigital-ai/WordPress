@@ -87,6 +87,8 @@ final class MAD4B_SCP_Connection_Status {
 		}
 		$certification_blockers = array_values( array_unique( array_map( 'sanitize_key', $certification_blockers ) ) );
 		$connection_certified = empty( $certification_blockers );
+		$connection_certification_deferred = $admin_shallow && in_array( 'deep_connection_diagnostics_deferred', $certification_blockers, true );
+		$connection_certification_state = $connection_certified ? 'certified' : ( $connection_certification_deferred ? 'deferred' : 'not_certified' );
 		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
 		$portable_readonly_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
 		$environment_key = sanitize_key( (string) $environment );
@@ -118,6 +120,8 @@ final class MAD4B_SCP_Connection_Status {
 			'remote_endpoint_preflight_ready' => empty( $remote_preflight_blockers ),
 			'remote_preflight_blockers' => $remote_preflight_blockers,
 			'connection_certified' => $connection_certified,
+			'connection_certification_deferred' => $connection_certification_deferred,
+			'connection_certification_state' => $connection_certification_state,
 			'certification_blockers' => $certification_blockers,
 			'servers' => $servers,
 			'transport_deep_validation_deferred' => $lightweight || self::route_validation_deferred( $servers ),
