@@ -293,6 +293,51 @@ if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAu
 	$fail( 'Step-up bearer identity did not retain the dedicated authority scope.' );
 }
 
+// Exercise the real step-up bearer catalog, official per-ability builder and wire DTO serialization.
+$catalog_server = \WP\MCP\Core\McpAdapter::instance()->get_server( 'mad4b-chatgpt' );
+$catalog_names = array();
+foreach ( $catalog_server->get_tools() as $dto ) {
+	$failure = MAD4B_SCP_MCP_Catalog_Diagnostics::dto_failure( $dto );
+	if ( $failure ) $fail( 'Actual packaged Adapter tool failed serialization preflight.', $failure );
+	$catalog_names[] = $dto->getName();
+}
+$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections() );
+if ( empty( $preflight['ready'] ) || ! empty( $preflight['failures'] ) ) $fail( 'Official ability-to-DTO preflight failed.', $preflight );
+$step_list = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 726, 'method' => 'tools/list', 'params' => array() ), $step_up_token, $step_session_id );
+$step_wire = json_decode( json_encode( $step_list->get_data(), JSON_THROW_ON_ERROR ) );
+if ( 200 !== $step_list->get_status() || ! isset( $step_wire->result->tools ) || count( $step_wire->result->tools ) !== count( $catalog_names ) ) $fail( 'Step-up bearer serialized inventory mismatch.' );
+foreach ( $step_wire->result->tools as $dto ) {
+	if ( ! isset( $dto->inputSchema->properties ) || ! is_object( $dto->inputSchema->properties ) ) $fail( 'Actual wire input properties must remain a JSON object.', $dto->name );
+}
+// Inject malformed UTF-8 into a real official Tool DTO at the last filter seam.
+// The production filter must remove only the known optional projection and preserve prior role reductions.
+$bad_projection = static function ( $list, $server ) {
+	if ( 'mad4b-chatgpt' !== $server->get_server_id() ) return $list;
+	foreach ( $list as $key => $dto ) {
+		if ( 'mad4b-full-staging-authority-apply' !== $dto->getName() ) continue;
+		$data = $dto->toArray(); $data['description'] = "\xB1\x31";
+		$list[$key] = \WP\McpSchema\Server\Tools\DTO\Tool::fromArray( $data );
+	}
+	return $list;
+};
+add_filter( 'mcp_adapter_tools_list', $bad_projection, 999, 2 );
+$degraded = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 727, 'method' => 'tools/list', 'params' => array() ), $step_up_token, $step_session_id );
+remove_filter( 'mcp_adapter_tools_list', $bad_projection, 999 );
+$degraded_wire = json_decode( json_encode( $degraded->get_data(), JSON_THROW_ON_ERROR ), true );
+$degraded_names = array_column( $degraded_wire['result']['tools'] ?? array(), 'name' );
+if ( 200 !== $degraded->get_status() || count( $degraded_names ) !== count( $catalog_names ) - 1 || in_array( 'mad4b-full-staging-authority-apply', $degraded_names, true ) || ! in_array( 'mad4b-read-execute', $degraded_names, true ) ) $fail( 'Optional malformed DTO must degrade without losing stable read discovery.' );
+// Failure in a required core read must stay fail-closed rather than masquerading as a ready subset.
+$bad_core = static function ( $list, $server ) {
+	if ( 'mad4b-chatgpt' !== $server->get_server_id() ) return $list;
+	foreach ( $list as $key => $dto ) if ( 'mad4b-site-info' === $dto->getName() ) { $data = $dto->toArray(); $data['description'] = "\xB1\x31"; $list[$key] = \WP\McpSchema\Server\Tools\DTO\Tool::fromArray( $data ); }
+	return $list;
+};
+add_filter( 'mcp_adapter_tools_list', $bad_core, 999, 2 );
+$core_failed = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 728, 'method' => 'tools/list', 'params' => array() ), $step_up_token, $step_session_id );
+remove_filter( 'mcp_adapter_tools_list', $bad_core, 999 );
+$core_wire = $normalize( $core_failed->get_data() );
+if ( ! isset( $core_wire['error'] ) ) $fail( 'Malformed required read tool must fail closed.' );
+
 $step_apply = $dispatch(
 	array(
 		'jsonrpc' => '2.0',
@@ -507,3 +552,4 @@ fwrite(
 		JSON_UNESCAPED_SLASHES
 	) . PHP_EOL
 );
+

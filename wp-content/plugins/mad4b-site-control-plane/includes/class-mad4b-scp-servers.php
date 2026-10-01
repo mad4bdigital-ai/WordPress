@@ -899,13 +899,21 @@ final class MAD4B_SCP_Servers {
 	}
 
 	private function create( $adapter, $id, $name, $description, array $tools, $permission, $transport, $error_handler, $observability, $materialized = true ) {
+		$preflight = null;
+		$requested_tools = $tools;
+		if ( 'mad4b-chatgpt' === $id && $materialized ) {
+			$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $tools, MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections() );
+			if ( ! empty( $preflight['ready'] ) ) $tools = $preflight['tools'];
+		}
 		$result = $adapter->create_server( $id, 'mcp', $id, $name, $description, MAD4B_SCP_VERSION, array( $transport ), $error_handler, $observability, $tools, array(), array(), $permission );
 		if ( is_wp_error( $result ) ) { self::$registrations[ $id ] = array( 'registered' => false, 'error' => $result->get_error_code(), 'materialized' => false, 'tool_count' => 0 ); error_log( '[MAD4B SCP] Failed creating ' . $id . ': ' . $result->get_error_message() ); return; }
 		self::$registrations[ $id ] = array( 'registered' => true, 'error' => '', 'materialized' => (bool) $materialized, 'tool_count' => count( $tools ) );
 		if ( 'mad4b-chatgpt' === $id && $materialized ) {
 			$server = method_exists( $adapter, 'get_server' ) ? $adapter->get_server( $id ) : null;
 			$evidence = MAD4B_SCP_MCP_Catalog_Diagnostics::inspect( $server, $tools );
-			self::$registrations[ $id ]['requested_tool_count'] = count( $tools );
+			self::$registrations[ $id ]['requested_tool_count'] = count( $requested_tools );
+			self::$registrations[ $id ]['preflight'] = $preflight;
+			if ( empty( $preflight['ready'] ) ) { $evidence['ready'] = false; $evidence['blocker'] = $preflight['blocker']; }
 			self::$registrations[ $id ]['tool_count'] = $evidence['tool_count'];
 			self::$registrations[ $id ]['catalog_evidence'] = $evidence;
 			self::$registrations[ $id ]['materialized'] = ! empty( $evidence['observed'] );
