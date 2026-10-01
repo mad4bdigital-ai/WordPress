@@ -299,7 +299,10 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'ready_to_apply' => ! empty( $plan['ready_to_apply'] ),
 					'hard_blockers' => self::compact_string_list( isset( $plan['hard_blockers'] ) ? $plan['hard_blockers'] : array(), 16 ),
 					'write_ready' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective(),
-					'write_grants_ready' => ! empty( $write['current_ready'] ),
+					'write_grants_ready' => ! empty( $write['grant_set_converged'] ),
+					'write_grants_persisted_ready' => ! empty( $write['persisted_ready'] ) || ! empty( $write['current_ready'] ),
+					'write_grants_drift_present' => isset( $write['drift_present'] ) ? (bool) $write['drift_present'] : ! empty( $plan['fixable_write_drift'] ),
+					'write_effective_converged' => ! empty( $write['effective_converged'] ),
 					'developer_ready' => $normal_ready,
 					'developer_breakglass_ready' => $breakglass_ready,
 					'candidate_binding' => array(
