@@ -401,7 +401,10 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		$exact_missing_total = isset( $write_plan['exact_grants_missing_count'] ) ? max( 0, (int) $write_plan['exact_grants_missing_count'] ) : 0;
 		$stale_allow_total = isset( $write_plan['stale_allow_grants_count'] ) ? max( 0, (int) $write_plan['stale_allow_grants_count'] ) : 0;
 		$reconcilable_missing_count = max( 0, $exact_missing_total - $nonreconcilable_missing_count );
-		$reviewed_stale_count = max( 0, $stale_allow_total - $unreviewed_stale_count );
+		// reconciliation_plan() already separates reviewed stale grants from
+		// unreviewed_stale_allow_grants. Do not subtract the unreviewed count a
+		// second time or the compact Full Authority plan under-reports fixable drift.
+		$reviewed_stale_count = $stale_allow_total;
 		if ( ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $hard_blockers[] = 'oauth_disabled';
 		if ( ! MAD4B_SCP_Site_Profile::acceptance_enabled() ) $hard_blockers[] = 'acceptance_disabled';
 		if ( ! MAD4B_SCP_Site_Profile::skills_enabled() ) $hard_blockers[] = 'skills_disabled';
