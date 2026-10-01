@@ -37,6 +37,8 @@ jobs:
           node-version: '24'
       - name: Verify delegated authority and atomic consumption
         run: php wp-content/plugins/mad4b-site-control-plane/tests/post-update-continuation-guards-runtime.php
+      - name: Verify bootstrap self-update continuation classification
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/self-update-continuation-policy-runtime.php
       - name: Verify actual MCP catalog and credential-free discovery evidence
         run: php wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-evidence-runtime.php
       - name: Verify canonical identity and lifecycle contracts
