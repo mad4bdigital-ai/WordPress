@@ -74,7 +74,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 				? ( MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() && MAD4B_SCP_Site_Profile::oauth_enabled() )
 				: ( MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' ) && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() )
 		);
-		$production_governed_write_enabled = 'production' === $environment && $profile_oauth_ready && MAD4B_SCP_Site_Profile::write_enabled();
+		$production_profile_write_enabled = 'production' === $environment && $profile_oauth_ready && MAD4B_SCP_Site_Profile::write_enabled();
 		$environment_ready = $portable_ready || $profile_oauth_ready;
 		$oauth_canary_available = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$step_up_available = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available();
@@ -88,9 +88,12 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'production_readonly_profile_supported' => true,
 			'production_readonly_enabled' => $production_readonly_enabled,
 			'production_readonly_auto_enabled' => $production_readonly_auto_enabled,
-			'production_readonly_opt_in_required' => 'production' === $environment && ! $production_readonly_enabled && ! $production_governed_write_enabled,
+			'production_readonly_opt_in_required' => 'production' === $environment && ! $production_readonly_enabled && ! $production_profile_write_enabled,
 			'production_readonly_write_enabled' => false,
-			'production_governed_write_enabled' => (bool) $production_governed_write_enabled,
+			'production_governed_write_enabled' => (bool) $production_profile_write_enabled,
+			'production_profile_write_enabled' => (bool) $production_profile_write_enabled,
+			'production_write_runtime_authority_deferred' => 'production' === $environment && $production_profile_write_enabled,
+			'production_write_runtime_authority_claimed' => false,
 			'production_write_policy' => 'production' === $environment ? 'exact_profile_plus_exact_one_time_approval' : 'not_applicable',
 			'authority_step_up_available' => (bool) $step_up_available,
 			'production_readonly_breakglass_enabled' => false,
@@ -166,12 +169,12 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			<?php endif; ?>
 
 			<?php if ( 'production' === $status['environment'] ) : ?>
-				<?php $production_governed = ! empty( $status['production_governed_write_enabled'] ); ?>
-				<div class="notice notice-<?php echo ( $production_governed || ! empty( $status['production_readonly_enabled'] ) ) ? 'success' : 'warning'; ?> inline"><p>
+				<?php $production_profile_write = ! empty( $status['production_profile_write_enabled'] ); ?>
+				<div class="notice notice-<?php echo ( $production_profile_write || ! empty( $status['production_readonly_enabled'] ) ) ? 'success' : 'warning'; ?> inline"><p>
 					<strong><?php
 						echo esc_html(
-							$production_governed
-								? __( 'Production governed OAuth and write authority are enabled.', 'mad4b-site-control-plane' )
+							$production_profile_write
+								? __( 'Production governed OAuth and write profile are configured.', 'mad4b-site-control-plane' )
 								: ( ! empty( $status['production_readonly_enabled'] )
 									? __( 'Production read-only OAuth profile is enabled.', 'mad4b-site-control-plane' )
 									: __( 'Production read-only OAuth requires explicit administrator opt-in.', 'mad4b-site-control-plane' ) )
@@ -179,8 +182,8 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 					?></strong>
 					<?php echo esc_html__( ' Portable mode is read-only. An exact enrolled Production Site Profile with explicit Production write confirmation may bootstrap governed OAuth directly; every Production write remains bound to exact grants and a one-time approval. Developer and Breakglass remain unavailable.', 'mad4b-site-control-plane' ); ?>
 				</p></div>
-				<?php if ( $production_governed ) : ?>
-					<p><strong><?php echo esc_html__( 'Exact Production Site Profile governance is active.', 'mad4b-site-control-plane' ); ?></strong> <?php echo esc_html__( 'Governed writes remain exact-grant and one-time-approval bound; Developer and Breakglass remain unavailable.', 'mad4b-site-control-plane' ); ?></p>
+				<?php if ( $production_profile_write ) : ?>
+					<p><strong><?php echo esc_html__( 'Exact Production Site Profile write intent is active.', 'mad4b-site-control-plane' ); ?></strong> <?php echo esc_html__( 'This does not certify runtime write authority. Every Production mutation still requires exact grants, candidate/runtime gates and a one-time approval; Developer and Breakglass remain unavailable.', 'mad4b-site-control-plane' ); ?></p>
 				<?php elseif ( ! empty( $status['production_readonly_auto_enabled'] ) ) : ?>
 					<p><strong><?php echo esc_html__( 'Portable read-only auto-connect is active for this site.', 'mad4b-site-control-plane' ); ?></strong> <?php echo esc_html__( 'Write authority remains disabled until an exact Production Site Profile explicitly enables governed writes.', 'mad4b-site-control-plane' ); ?></p>
 				<?php else : ?>
@@ -240,7 +243,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 					<tr><th>Foreign profile quarantined</th><td><?php echo ! empty( $status['foreign_profile_quarantined'] ) ? 'yes' : 'no'; ?></td></tr>
 					<?php if ( 'production' === $status['environment'] ) : ?>
 					<tr><th>Production read-only profile</th><td><?php echo ! empty( $status['production_readonly_enabled'] ) ? 'enabled' : 'disabled'; ?></td></tr>
-					<tr><th>Production governed write</th><td><?php echo ! empty( $status['production_governed_write_enabled'] ) ? 'enabled · exact approval required' : 'disabled'; ?></td></tr>
+					<tr><th>Production write profile</th><td><?php echo ! empty( $status['production_profile_write_enabled'] ) ? 'configured · runtime authority deferred' : 'disabled'; ?></td></tr>
 					<?php endif; ?>
 					<tr><th>ChatGPT gateway registration</th><td><?php echo esc_html( ! empty( $status['gateway_registered'] ) ? 'registered' : ( ! empty( $status['gateway_registration_identity_ready'] ) ? 'identity ready · deep registration deferred' : ( isset( $status['gateway_registration_state'] ) ? $status['gateway_registration_state'] : 'not ready' ) ) ); ?></td></tr>
 					<tr><th>Local OAuth effective</th><td><?php echo ! empty( $status['local_oauth_effective'] ) ? 'yes' : 'no'; ?></td></tr>
