@@ -91,6 +91,90 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		return self::bootstrap_enrolled_nonproduction();
 	}
 
+	/**
+	 * Project exact Site Profile OAuth identity into request-local constants only.
+	 *
+	 * This is the Tier-0 identity projection used before passive/zero-touch
+	 * classification. It deliberately performs no option writes, schema work,
+	 * provider discovery, key generation or outbound I/O.
+	 */
+	public static function project_request_identity() {
+		$environment = class_exists( 'MAD4B_SCP_Environment' )
+			? MAD4B_SCP_Environment::effective()
+			: ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$result = array(
+			'contract' => 'mad4b.oauth-request-identity-projection.v1',
+			'projected' => false,
+			'effective' => false,
+			'source' => 'exact_site_profile',
+			'environment' => sanitize_key( (string) $environment ),
+			'issuer' => '',
+			'wp_user_id' => 0,
+			'oauth_user_ids' => array(),
+			'blocker' => '',
+			'request_local_only' => true,
+			'durable_mutation_performed' => false,
+			'outbound_io_performed' => false,
+			'provider_discovery_performed' => false,
+		);
+
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) {
+			$result['blocker'] = 'site_profile_unconfigured';
+			return $result;
+		}
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) {
+			$result['blocker'] = 'site_profile_not_enrolled';
+			return $result;
+		}
+		if ( ! MAD4B_SCP_Site_Profile::oauth_enabled() ) {
+			$result['blocker'] = 'site_profile_oauth_disabled';
+			return $result;
+		}
+		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) {
+			$result['blocker'] = 'environment_not_supported';
+			return $result;
+		}
+
+		$production = 'production' === $environment;
+		if ( $production && ! self::production_profile_enabled() ) {
+			$result['blocker'] = 'production_readonly_opt_in_required';
+			return $result;
+		}
+		if ( $production ) {
+			if ( defined( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) && true !== constant( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) ) {
+				$result['blocker'] = 'explicit_local_oauth_production_disabled';
+				return $result;
+			}
+			if ( defined( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED' ) && true !== constant( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED' ) ) {
+				$result['blocker'] = 'explicit_resource_oauth_production_disabled';
+				return $result;
+			}
+		}
+
+		$prepared = self::prepare_profile_subjects();
+		if ( is_wp_error( $prepared ) ) {
+			$result['blocker'] = sanitize_key( (string) $prepared->get_error_code() );
+			return $result;
+		}
+		$configured = self::apply_local_oauth_configuration(
+			$prepared['issuer'],
+			$prepared['user_ids'],
+			$prepared['owner_user_id'],
+			$production
+		);
+		if ( is_wp_error( $configured ) ) {
+			$result['blocker'] = sanitize_key( (string) $configured->get_error_code() );
+			return $result;
+		}
+
+		$result['projected'] = true;
+		$result['effective'] = true;
+		$result['issuer'] = (string) $prepared['issuer'];
+		$result['wp_user_id'] = (int) $prepared['owner_user_id'];
+		$result['oauth_user_ids'] = array_values( array_map( 'absint', $prepared['user_ids'] ) );
+		return $result;
+	}
+
 	private static function bootstrap_enrolled_nonproduction() {
 		$prepared = self::prepare_profile_subjects();
 		if ( is_wp_error( $prepared ) ) {
