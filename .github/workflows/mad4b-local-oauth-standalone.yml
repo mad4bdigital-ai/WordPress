@@ -184,6 +184,18 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
+      - name: Prove dynamic projection admission through real OAuth and tools/call
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests"
+          mkdir -p /tmp/mad4b-wordpress/wp-content/mu-plugins
+          cp "$root/runtime-chatgpt-projection-fixtures.php" /tmp/mad4b-wordpress/wp-content/mu-plugins/mad4b-projection-ci.php
+          php /tmp/wp-cli.phar eval-file "$root/runtime-chatgpt-projection-http-seed.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$root/runtime-chatgpt-projection-http.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar option delete mad4b_scp_chatgpt_tool_projection_v1 --path=/tmp/mad4b-wordpress
+          rm /tmp/mad4b-wordpress/wp-content/mu-plugins/mad4b-projection-ci.php
+
       - name: Prove live authority dashboard in a real browser
         if: matrix.wordpress == 'latest'
         shell: bash

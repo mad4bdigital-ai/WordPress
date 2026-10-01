@@ -65,8 +65,10 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		}
 
 		if ( ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! class_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
-		$names = array();
-		foreach ( $abilities as $name ) {
+		$names = array(); $catalog_bytes = 32;
+		// Validate required tools before optional projections; size is evidence, not schema validity.
+		$ordered = array_merge( array_values( array_diff( $abilities, $optional ) ), array_values( array_intersect( $abilities, $optional ) ) );
+		foreach ( $ordered as $name ) {
 			if ( ! isset( $budget_allow[ $name ] ) ) continue;
 			$stage = 'ability_lookup'; $failure = null; $source_fingerprint = '';
 			try {
@@ -78,8 +80,9 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				if ( is_wp_error( $built ) ) { $failure = array( 'stage' => $stage, 'error_class' => 'WP_Error', 'error_code' => sanitize_key( $built->get_error_code() ), 'schema_fingerprint' => '' ); }
 				else {
 					$failure = self::dto_failure( $built['tool'] );
+					$tool_bytes = strlen( json_encode( $built['tool']->toArray(), JSON_THROW_ON_ERROR ) ) + 1;
 					if ( ! $failure && ( ! isset( $built['adapter_meta']['ability'] ) || $name !== $built['adapter_meta']['ability'] || isset( $names[ $built['tool']->getName() ] ) ) ) $failure = array( 'stage' => 'identity', 'error_class' => 'Contract', 'error_code' => 'mcp_identity_collision', 'schema_fingerprint' => '' );
-					if ( ! $failure ) $names[ $built['tool']->getName() ] = true;
+					if ( ! $failure ) { $names[ $built['tool']->getName() ] = true; $catalog_bytes += $tool_bytes; }
 				}
 			} catch ( Throwable $error ) { $failure = array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_preflight_exception', 'schema_fingerprint' => '' ); }
 			if ( $failure ) {
@@ -89,6 +92,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				if ( ! in_array( $name, $optional, true ) || 'identity' === $failure['stage'] ) $out['blocker'] = 'mcp_required_tool_preflight_failed';
 			} else $out['tools'][] = $name;
 		}
+		$out['serialized_tool_bytes'] = max( 0, $catalog_bytes - 32 );
+		$out['size_policy'] = 'measured_without_fixed_byte_rejection';
 		$out['degraded'] = ! empty( $out['failures'] ) && '' === $out['blocker'];
 		$out['ready'] = '' === $out['blocker'] && ! empty( $out['tools'] );
 		if ( ! $out['ready'] && '' === $out['blocker'] ) $out['blocker'] = 'mcp_catalog_empty';
@@ -184,6 +189,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			$dynamic = ! empty( $captured['dynamic_projection'] );
 			$dynamic_readonly = ! empty( $captured['dynamic_readonly'] );
 			$dynamic_breakglass = ! empty( $captured['dynamic_breakglass'] );
+			if ( $dynamic && ( ! class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) || ! MAD4B_SCP_ChatGPT_Tool_Projection::is_projected( $ability ) ) ) continue;
 
 			// Dynamic projection changes discoverability only. Mutating projections
 			// require the exact ChatGPT step-up bearer for visibility; the original
@@ -218,11 +224,6 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			: array();
 		$optional = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $abilities ) ) ) as $ability_name ) {
-			// The persisted dynamic projection registry can change after an MCP
-			// registration snapshot was captured in the same request. Treat the
-			// live, schema-pinned effective projection as authoritative for
-			// optional isolation; required-base overlap is already excluded by
-			// effective_projection_rows().
 			if ( isset( $dynamic[ $ability_name ] ) ) {
 				$optional[] = $ability_name;
 				continue;

@@ -24,6 +24,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
 		self::$booted = true;
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 34 );
+		add_filter( 'mcp_adapter_pre_tool_call', array( __CLASS__, 'guard_tool_call' ), PHP_INT_MAX, 4 );
 	}
 
 	public static function register_abilities() {
@@ -52,9 +53,16 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				'input_schema' => array(
 					'type' => 'object',
 					'properties' => array(
+						'transport_action' => array( 'type' => 'string', 'enum' => array( 'manifest', 'schema', 'chunk' ) ),
+						'cursor' => array( 'type' => 'string' ),
+						'snapshot' => array( 'type' => 'string' ),
+						'known_snapshot' => array( 'type' => 'string' ),
+						'schema_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+						'chunk_index' => array( 'type' => 'integer', 'minimum' => 0 ),
+						'chunk_bytes' => array( 'type' => 'integer', 'minimum' => 1024, 'maximum' => 1048576 ),
 						'query' => array( 'type' => 'string', 'default' => '', 'maxLength' => 160 ),
 						'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 50 ),
-						'offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 5000, 'default' => 0 ),
+						'offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 2147483647, 'default' => 0 ),
 					),
 					'additionalProperties' => false,
 				),
@@ -108,7 +116,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'annotations' => array(
 				'readonly' => (bool) $readonly,
 				'destructive' => false,
-				'idempotent' => true,
+				'idempotent' => (bool) $readonly,
 			),
 		);
 	}
@@ -152,17 +160,23 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		}
 		$state['revision'] = isset( $state['revision'] ) ? max( 0, (int) $state['revision'] ) : 0;
 		$state['abilities'] = isset( $state['abilities'] ) && is_array( $state['abilities'] ) ? $state['abilities'] : array();
+		if ( count( $state['abilities'] ) > self::MAX_SELECTED ) { $state['abilities'] = array(); $state['quarantine_reason'] = 'registry_size_exceeded'; }
 		return $state;
 	}
 
 	private static function schema_sha256( $ability ) {
 		$schema = is_object( $ability ) && method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
 		$json = wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		if ( false === $json ) $json = 'null';
+		if ( false === $json ) return '';
 		return hash( 'sha256', $json );
 	}
 
 	private static function ability_row( $ability_name ) {
+		try { return self::inspect_ability_row( $ability_name ); }
+		catch ( Throwable $error ) { return new WP_Error( 'mad4b_chatgpt_projection_ability_inspection_failed', 'Ability inspection failed; this projection is unavailable.' ); }
+	}
+
+	private static function inspect_ability_row( $ability_name ) {
 		$ability_name = trim( (string) $ability_name );
 		if ( '' === $ability_name || ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) {
 			return new WP_Error( 'mad4b_chatgpt_projection_ability_unavailable', 'Requested Ability is not registered in the current site runtime.', array( 'ability_name' => $ability_name ) );
@@ -193,6 +207,9 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 
 		$readonly = 'read' === $lane && $readonly_declared && true === $annotations['readonly'];
 		$known = 'unclassified' !== $lane;
+		$schema_digest = self::schema_sha256( $ability );
+		if ( '' === $schema_digest ) return new WP_Error( 'mad4b_chatgpt_projection_schema_invalid', 'Ability schema cannot be serialized.' );
+		$provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-' . $lane, $ability_name ) : null;
 		$breakglass = in_array( $lane, array( 'breakglass', 'developer-breakglass' ), true ) || in_array( $ability_name, array_merge(
 			class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::core_tools( 'mad4b-breakglass' ) : array(),
 			class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::core_tools( 'mad4b-developer-breakglass' ) : array()
@@ -210,6 +227,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				'meta' => $meta,
 				'category' => $category,
 				'output_schema' => method_exists( $ability, 'get_output_schema' ) ? $ability->get_output_schema() : null,
+				'execution_provider' => $provider,
 				'classification' => $lane,
 				'known' => $known,
 				'projection_eligible' => $projection_eligible,
@@ -222,7 +240,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 
 		return array(
 			'ability_name' => $ability_name,
-			'input_schema_sha256' => self::schema_sha256( $ability ),
+			'input_schema_sha256' => $schema_digest,
 			'classification_sha256' => hash( 'sha256', $classification_json ),
 			'classification' => $lane,
 			'known' => (bool) $known,
@@ -231,12 +249,75 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'readonly_declared' => (bool) $readonly_declared,
 			'conservative_mutation' => ! $readonly_declared,
 			'breakglass' => (bool) $breakglass,
-			'category' => $category,
+			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
+			'execution_boundary' => isset( $mcp['mad4b_execution_boundary'] ) ? (string) $mcp['mad4b_execution_boundary'] : '',
+			'execution_provider' => null === $provider ? '' : (string) $provider,
+			'execution_blocker' => $readonly ? '' : ( empty( $mcp['mad4b_execution_boundary'] ) ? 'governed_execution_boundary_required' : ( null === $provider ? 'original_lane_not_mounted' : '' ) ),
+			'label' => method_exists( $ability, 'get_label' ) ? substr( (string) $ability->get_label(), 0, 160 ) : '',
+			'description' => method_exists( $ability, 'get_description' ) ? substr( (string) $ability->get_description(), 0, 2048 ) : '',
 			'projection_eligible' => (bool) $projection_eligible,
 			'execution_eligible' => (bool) $execution_eligible,
 			'execution_lane' => $execution_lane,
 			'projection_blockers' => $projection_blockers,
 		);
+	}
+
+	public static function current_binding() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return array();
+		return array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(), 'origin' => MAD4B_SCP_Site_Profile::current_origin(), 'environment' => MAD4B_SCP_Site_Profile::current_environment(), 'profile_revision' => MAD4B_SCP_Site_Profile::revision() );
+	}
+
+	private static function binding_matches( array $state ) {
+		return class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured()
+			&& 'staging' === MAD4B_SCP_Site_Profile::current_environment()
+			&& MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			&& isset( $state['binding'] ) && $state['binding'] === self::current_binding();
+	}
+
+	/** Execution admission is independent of tools/list visibility and grants no authority. */
+	public static function guard_tool_call( $args, $tool_name, $tool, $server ) {
+		unset( $tool_name );
+		if ( is_wp_error( $args ) ) return $args;
+		if ( ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) || 'mad4b-chatgpt' !== $server->get_server_id() ) return $args;
+		$meta = is_object( $tool ) && method_exists( $tool, 'get_adapter_meta' ) ? $tool->get_adapter_meta() : array();
+		$name = isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
+		// Existing base tools retain their independent permission and execution contracts.
+		if ( in_array( $name, MAD4B_SCP_Servers::chatgpt_base_tools(), true ) ) return $args;
+		$state = self::raw_state();
+		if ( ! self::binding_matches( $state ) ) return new WP_Error( 'mad4b_projection_binding_mismatch', 'Dynamic projection is not bound to this enrolled Staging runtime.' );
+		$row = self::effective_row( $name, $state );
+		if ( is_wp_error( $row ) ) return $row;
+		if ( empty( $row['readonly'] ) ) {
+			$step_up = self::can_apply();
+			if ( is_wp_error( $step_up ) ) return $step_up;
+			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) || MAD4B_SCP_Authorization::EXECUTION_BOUNDARY_CONTRACT !== $row['execution_boundary'] ) return new WP_Error( 'mad4b_projection_execution_boundary_required', 'Mutating or unclassified Ability requires a governed execution boundary before remote execution.' );
+			$lane = self::execution_server( $name );
+			if ( is_wp_error( $lane ) ) return $lane;
+		}
+		return $args;
+	}
+
+	public static function execution_server( $name ) {
+		$state = self::raw_state();
+		if ( ! self::binding_matches( $state ) ) return new WP_Error( 'mad4b_projection_binding_mismatch', 'Projection binding is unavailable.' );
+		$row = self::effective_row( $name, $state );
+		if ( is_wp_error( $row ) ) return $row;
+		$server = 'mad4b-' . $row['lane'];
+		if ( ! MAD4B_SCP_Servers::ability_is_mounted( $server, $name ) ) return new WP_Error( 'mad4b_projection_original_lane_unmounted', 'Ability is not mounted on its original governed execution lane.' );
+		return $server;
+	}
+
+	private static function effective_row( $name, array $state ) {
+		$stored = isset( $state['abilities'][ $name ] ) ? $state['abilities'][ $name ] : null;
+		if ( ! is_array( $stored ) ) return new WP_Error( 'mad4b_projection_not_selected', 'Ability is not selected for dynamic projection.' );
+		$current = self::ability_row( $name );
+		if ( is_wp_error( $current ) ) return $current;
+		if ( empty( $current['projection_eligible'] ) ) return new WP_Error( 'mad4b_chatgpt_projection_policy_blocked', 'Ability classification does not permit projection.' );
+		foreach ( array( 'input_schema_sha256', 'classification_sha256' ) as $pin ) {
+			if ( empty( $stored[ $pin ] ) || ! hash_equals( (string) $stored[ $pin ], $current[ $pin ] ) ) return new WP_Error( 'mad4b_projection_identity_drift', 'Ability schema or authority classification changed after projection review.' );
+		}
+		if ( $current['breakglass'] && ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_breakglass() ) ) return new WP_Error( 'mad4b_projection_breakglass_disabled', 'Breakglass is not currently authorized.' );
+		return $current;
 	}
 
 	public static function all_site_ability_names() {
@@ -252,6 +333,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	}
 
 	public static function discover( $input = array() ) {
+		if ( is_array( $input ) && isset( $input['transport_action'] ) ) return MAD4B_SCP_Ability_Catalog_Transport::handle( $input );
 		$input = is_array( $input ) ? $input : array();
 		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
 		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
@@ -259,21 +341,24 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$projected = array_fill_keys( self::projected_ability_names(), true );
 		$items = array();
 		$matched = 0;
+		$has_more = false;
 		foreach ( self::all_site_ability_names() as $ability_name ) {
 			$row = self::ability_row( $ability_name );
-			if ( is_wp_error( $row ) ) continue;
-			$ability = wp_get_ability( $ability_name );
-			$label = method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '';
-			$description = method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '';
+			$blocked = is_wp_error( $row );
+			if ( $blocked ) $row = array( 'ability_name' => $ability_name, 'category' => '', 'label' => '', 'description' => '', 'projection_blocker' => $row->get_error_code() );
+			$label = $row['label'];
+			$description = $row['description'];
 			$haystack = strtolower( $ability_name . ' ' . $label . ' ' . $description . ' ' . $row['category'] );
 			if ( '' !== $query && false === strpos( $haystack, $query ) ) continue;
 			if ( $matched++ < $offset ) continue;
+			if ( count( $items ) >= $limit ) { $has_more = true; break; }
 			$items[] = array_merge( $row, array(
 				'label' => $label,
 				'description' => $description,
 				'currently_projected' => isset( $projected[ $ability_name ] ),
+				'classification_available' => ! $blocked,
+				'execution_governed' => ! $blocked && ( ! empty( $row['readonly'] ) || ! empty( $row['execution_boundary'] ) ),
 			) );
-			if ( count( $items ) >= $limit ) break;
 		}
 		return array(
 			'contract' => self::CONTRACT,
@@ -282,6 +367,8 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'limit' => $limit,
 			'items' => $items,
 			'count' => count( $items ),
+			'has_more' => $has_more,
+			'next_offset' => $has_more ? $offset + count( $items ) : null,
 			'universe_count' => count( self::all_site_ability_names() ),
 			'read_only' => true,
 			'mutation_performed' => false,
@@ -308,6 +395,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$payload = array(
 			'contract' => self::CONTRACT,
 			'projection_revision' => (int) $current['revision'],
+			'binding' => self::current_binding(),
 			'environment' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? (string) MAD4B_SCP_Site_Profile::current_environment() : '',
 			'site_uuid' => class_exists( 'MAD4B_SCP_Site_Profile' ) && method_exists( 'MAD4B_SCP_Site_Profile', 'site_uuid' ) ? (string) MAD4B_SCP_Site_Profile::site_uuid() : '',
 			'mode' => isset( $input['mode'] ) ? sanitize_key( (string) $input['mode'] ) : 'replace',
@@ -400,6 +488,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	public static function apply( $input = array() ) {
 		$permission = self::can_apply( $input );
 		if ( is_wp_error( $permission ) ) return $permission;
+		$original_option = get_option( self::OPTION, false );
 		$input = is_array( $input ) ? $input : array();
 		if ( ! isset( $input['confirmation'] ) || self::CONFIRMATION !== (string) $input['confirmation'] ) return new WP_Error( 'mad4b_chatgpt_projection_confirmation_required', 'Exact projection confirmation is required.' );
 		$plan = self::plan( $input );
@@ -433,10 +522,11 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'abilities' => $abilities,
 			'updated_at' => gmdate( 'c' ),
 			'last_plan_sha256' => (string) $plan['plan_sha256'],
+			'binding' => $plan['payload']['binding'],
 		);
-		if ( false === get_option( self::OPTION, false ) ) add_option( self::OPTION, $next, '', false );
-		else update_option( self::OPTION, $next, false );
-		if ( self::raw_state() !== $next ) return new WP_Error( 'mad4b_chatgpt_projection_persistence_failed', 'Projection persistence could not be verified.' );
+		if ( $plan['payload']['binding'] !== self::current_binding() ) return new WP_Error( 'mad4b_projection_binding_changed', 'Site enrollment changed during plan application.' );
+		$persisted = self::persist_compare_and_swap( $original_option, $next );
+		if ( is_wp_error( $persisted ) ) return $persisted;
 		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 			MAD4B_SCP_Audit::record( self::APPLY_ABILITY, array(
 				'projection_revision' => (int) $next['revision'],
@@ -452,22 +542,38 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'mutation_performed' => true,
 			'production_mutation' => false,
 			'authority_widened' => false,
+			'catalog_refresh_required' => true,
+			'catalog_refresh_action' => 'Request tools/list again; refresh the client connection if it caches tool definitions.',
 		) );
+	}
+
+	/** The database predicate, not a cached readback, fences concurrent plans. */
+	private static function persist_compare_and_swap( $original, array $next ) {
+		if ( false === $original ) {
+			if ( ! add_option( self::OPTION, $next, '', false ) ) return new WP_Error( 'mad4b_projection_concurrent_update', 'Another projection update won; review a new plan.' );
+		} else {
+			global $wpdb;
+			$result = $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s", maybe_serialize( $next ), self::OPTION, maybe_serialize( $original ) ) );
+			if ( false === $result ) return new WP_Error( 'mad4b_projection_storage_failed', 'Projection storage failed.' );
+			if ( 1 !== $result ) return new WP_Error( 'mad4b_projection_concurrent_update', 'Projection changed during apply; review a new plan.' );
+		}
+		wp_cache_delete( self::OPTION, 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
+		if ( get_option( self::OPTION, false ) !== $next ) return new WP_Error( 'mad4b_chatgpt_projection_persistence_failed', 'Projection persistence could not be verified.' );
+		return true;
 	}
 
 	public static function effective_projection_rows() {
 		$rows = array();
+		$state = self::raw_state();
+		if ( ! self::binding_matches( $state ) ) return $rows;
 		$required_base = class_exists( 'MAD4B_SCP_Servers' ) ? array_diff( MAD4B_SCP_Servers::chatgpt_base_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() ) : array();
-		foreach ( self::raw_state()['abilities'] as $ability_name => $stored ) {
+		foreach ( $state['abilities'] as $ability_name => $stored ) {
 			if ( in_array( $ability_name, $required_base, true ) ) continue;
 			if ( ! is_array( $stored ) ) continue;
-			$current = self::ability_row( $ability_name );
+			$current = self::effective_row( $ability_name, $state );
 			if ( is_wp_error( $current ) ) continue;
-			$expected = isset( $stored['input_schema_sha256'] ) ? strtolower( (string) $stored['input_schema_sha256'] ) : '';
-			if ( '' === $expected || ! hash_equals( $expected, strtolower( (string) $current['input_schema_sha256'] ) ) ) continue;
-			if ( empty( $stored['classification_sha256'] ) || ! hash_equals( (string) $stored['classification_sha256'], $current['classification_sha256'] ) ) continue;
-			if ( empty( $current['projection_eligible'] ) ) continue;
-			if ( ! empty( $current['breakglass'] ) && ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_breakglass() ) ) continue;
 			$rows[ $ability_name ] = $current;
 		}
 		ksort( $rows, SORT_STRING );
@@ -479,13 +585,17 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	}
 
 	public static function is_projected( $ability_name ) {
-		return isset( self::effective_projection_rows()[ (string) $ability_name ] );
+		$state = self::raw_state();
+		$required_base = array_diff( MAD4B_SCP_Servers::chatgpt_base_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() );
+		return ! in_array( (string) $ability_name, $required_base, true ) && self::binding_matches( $state ) && ! is_wp_error( self::effective_row( (string) $ability_name, $state ) );
 	}
 
 	public static function status( $input = null ) {
 		unset( $input );
 		$state = self::raw_state();
 		$effective = self::effective_projection_rows();
+		$catalog = array_values( array_unique( array_merge( MAD4B_SCP_Servers::chatgpt_base_tools(), array_keys( $effective ) ) ) );
+		$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $catalog, MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $catalog ) );
 		$stored = array();
 		foreach ( $state['abilities'] as $ability_name => $row ) {
 			$current = self::ability_row( $ability_name );
@@ -502,6 +612,9 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				'projection_blockers' => ! is_wp_error( $current ) && isset( $current['projection_blockers'] ) && is_array( $current['projection_blockers'] ) ? $current['projection_blockers'] : array(),
 				'effective' => isset( $effective[ $ability_name ] ),
 				'stale' => (bool) $stale,
+				'lane' => is_array( $row ) && isset( $row['lane'] ) ? $row['lane'] : '',
+				'inactive_reason' => isset( $effective[ $ability_name ] ) ? '' : ( ! self::binding_matches( $state ) ? 'site_binding_mismatch' : ( $stale ? 'ability_identity_drift' : 'base_tool_or_authority_unavailable' ) ),
+				'catalog_selected' => in_array( $ability_name, $preflight['tools'] ?? array(), true ),
 			);
 		}
 		return array(
@@ -510,6 +623,10 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'stored_count' => count( $state['abilities'] ),
 			'effective_count' => count( $effective ),
 			'universe_count' => count( self::all_site_ability_names() ),
+			'binding_match' => self::binding_matches( $state ),
+			'catalog_preflight' => $preflight,
+			'budgets' => array( 'max_selected' => self::MAX_SELECTED, 'max_tools' => MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS, 'schema_size_policy' => 'full_schema_without_fixed_byte_rejection' ),
+			'catalog_refresh_action' => 'Request tools/list after a projection change.',
 			'abilities' => $stored,
 			'projection_changes_authority' => false,
 			'read_only' => true,

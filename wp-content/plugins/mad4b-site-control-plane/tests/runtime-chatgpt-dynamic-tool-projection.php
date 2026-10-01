@@ -9,23 +9,6 @@ if ( ! class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) $fail( 'Dynamic Cha
 if ( ! class_exists( 'MAD4B_SCP_Servers' ) ) $fail( 'MCP server registry is unavailable.' );
 if ( ! class_exists( 'MAD4B_SCP_MCP_Catalog_Diagnostics' ) ) $fail( 'MCP catalog diagnostics are unavailable.' );
 
-if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
-	$registry = class_exists( 'WP_Abilities_Registry' ) ? WP_Abilities_Registry::get_instance() : null;
-	if ( ! is_object( $registry ) || ! method_exists( $registry, 'register' ) ) $fail( 'WordPress Ability registry is unavailable for the runtime fixture.' );
-	$registered_fixture = $registry->register( 'mad4b-ci/unclassified-projection-fixture', array(
-		'label' => 'Unclassified Projection Fixture',
-		'description' => 'CI fixture proving a registered third-party-style Ability without annotations.readonly can still be projected conservatively.',
-		'category' => 'mad4b-read',
-		'execute_callback' => static function ( $input = null ) { unset( $input ); return array( 'ok' => true ); },
-		'permission_callback' => static function () { return true; },
-		'input_schema' => array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ),
-		'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-		'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ) ),
-	) );
-	if ( ! is_object( $registered_fixture ) || ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
-		$fail( 'Unclassified projection fixture could not be registered.' );
-	}
-}
 
 foreach ( array(
 	MAD4B_SCP_ChatGPT_Tool_Projection::STATUS_ABILITY,
@@ -107,6 +90,11 @@ if ( in_array( 'mad4b-ci/unclassified-projection-fixture', $unclassified_plan['m
 	$fail( 'Unclassified Ability leaked into the MCP preflight candidate set.', $unclassified_plan );
 }
 
+$manifest = MAD4B_SCP_ChatGPT_Tool_Projection::discover( array( 'transport_action' => 'manifest', 'limit' => 1 ) );
+if ( is_wp_error( $manifest ) || empty( $manifest['snapshot'] ) || empty( $manifest['items'][0]['schema_sha256'] ) ) $fail( 'Central manifest failed in real WordPress.' );
+$schema = MAD4B_SCP_ChatGPT_Tool_Projection::discover( array( 'transport_action' => 'schema', 'snapshot' => $manifest['snapshot'], 'schema_sha256' => $manifest['items'][0]['schema_sha256'] ) );
+if ( is_wp_error( $schema ) || ! isset( $schema['schema']['inputSchema'] ) ) $fail( 'Central schema retrieval failed in real WordPress.' );
+
 $raw_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
 	'mode' => 'replace',
 	'ability_names' => array( 'mad4b/database-raw-query' ),
@@ -124,6 +112,7 @@ $fixture_state = array(
 	'abilities' => array( 'mad4b/diagnostics-health' => $read_row ),
 	'updated_at' => gmdate( 'c' ),
 	'last_plan_sha256' => (string) $plan['plan_sha256'],
+	'binding' => MAD4B_SCP_ChatGPT_Tool_Projection::current_binding(),
 );
 update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
 
@@ -143,6 +132,33 @@ try {
 	if ( empty( $preflight['ready'] ) || ! in_array( 'mad4b/diagnostics-health', $preflight['tools'], true ) ) {
 		$fail( 'Dynamic projection did not survive exact MCP preflight.', $preflight );
 	}
+
+	// A cached tool must lose admission after demotion or site binding drift.
+	$server_fixture = new class { public function get_server_id() { return 'mad4b-chatgpt'; } };
+	$read_tool = \WP\MCP\Domain\Tools\McpTool::fromAbility( wp_get_ability( 'mad4b/diagnostics-health' ) );
+	if ( is_wp_error( $read_tool ) ) $fail( 'Official read tool fixture failed.' );
+	$allowed = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( array(), '', $read_tool, $server_fixture );
+	if ( is_wp_error( $allowed ) ) $fail( 'Read projection admission unexpectedly denied.', $allowed->get_error_code() );
+	$copied = $fixture_state;
+	$copied['binding']['origin'] = 'https://different.invalid';
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $copied, false );
+	$denied = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( array(), '', $read_tool, $server_fixture );
+	if ( ! is_wp_error( $denied ) || 'mad4b_projection_binding_mismatch' !== $denied->get_error_code() ) $fail( 'Copied-site binding did not block a cached tool call.' );
+	if ( MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() ) $fail( 'Copied-site registry remained effective.' );
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
+
+	// The database CAS rejects a second writer using the same original state.
+	$cas = new ReflectionMethod( 'MAD4B_SCP_ChatGPT_Tool_Projection', 'persist_compare_and_swap' );
+	$cas->setAccessible( true );
+	$winner = $fixture_state;
+	$winner['revision']++;
+	if ( true !== $cas->invoke( null, $fixture_state, $winner ) ) $fail( 'First exact CAS writer failed.' );
+	$loser = $winner;
+	$loser['abilities'] = array();
+	$raced = $cas->invoke( null, $fixture_state, $loser );
+	if ( ! is_wp_error( $raced ) || 'mad4b_projection_concurrent_update' !== $raced->get_error_code() ) $fail( 'Stale writer overwrote the winning projection.' );
+	if ( get_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION ) !== $winner ) $fail( 'CAS loser changed stored state.' );
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
 
 	// Selecting a required base tool cannot turn it into an optional eviction candidate.
 	$base_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array( 'ability_names' => array( 'mad4b/site-info' ) ) );

@@ -31,6 +31,8 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-mcp-client-profile-registry.php"
           php -l "$root/includes/class-mad4b-scp-mcp-client-compatibility.php"
           php -l "$root/includes/class-mad4b-scp-chatgpt-tool-projection.php"
+          php -l "$root/includes/class-mad4b-scp-ability-catalog-transport.php"
+          php "$root/tests/catalog-transport-runtime.php"
           php -l "$root/tests/runtime-mcp-client-compatibility-smoke.php"
           php -l "$root/tests/runtime-chatgpt-tool-inventory-smoke.php"
           php -l "$root/tests/runtime-chatgpt-dynamic-tool-projection.php"
@@ -109,6 +111,8 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cp "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-fixtures.php" "$WP_PATH/wp-content/mu-plugins/mad4b-projection-ci.php"
 
       - name: Prove dynamic vendor-neutral RFC 9728 discovery
         shell: bash
