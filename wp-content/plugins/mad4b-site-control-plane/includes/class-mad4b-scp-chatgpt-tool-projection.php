@@ -177,9 +177,18 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$category = method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
 		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 		$surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
-		$known_lanes = array( 'read', 'write', 'developer', 'enrollment', 'internal', 'breakglass', 'developer-breakglass' );
-		$lane = in_array( $surface, $known_lanes, true ) ? $surface : '';
-		if ( '' === $lane && $readonly_declared ) $lane = true === $annotations['readonly'] ? 'read' : 'write';
+		$mutation_lanes = array( 'write', 'developer', 'enrollment', 'internal', 'breakglass', 'developer-breakglass' );
+		$lane = '';
+		if ( $readonly_declared ) {
+			if ( true === $annotations['readonly'] ) $lane = 'read';
+			elseif ( in_array( $surface, $mutation_lanes, true ) ) $lane = $surface;
+			else $lane = 'write';
+		} elseif ( in_array( $surface, $mutation_lanes, true ) ) {
+			// A declared mutation/sensitive surface is safe to classify conservatively.
+			$lane = $surface;
+		}
+		// A claimed read surface without annotations.readonly=true is not enough
+		// to establish read safety. Keep it visible in the universe but fail closed.
 		if ( '' === $lane ) $lane = 'unclassified';
 
 		$readonly = 'read' === $lane && $readonly_declared && true === $annotations['readonly'];
