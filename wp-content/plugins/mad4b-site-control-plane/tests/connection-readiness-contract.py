@@ -136,7 +136,7 @@ require(observer, "relative_wordpress_path", 'first-rest-trace-relative-paths')
 
 if status.index('$oauth_blockers = self::oauth_preflight_blockers') > status.index('$remote_preflight_blockers = array_merge'):
     raise SystemExit('FAIL oauth-before-remote-preflight: OAuth blockers must be resolved before remote readiness is claimed')
-if status.index('$remote_preflight_blockers = array_merge') > status.index('$connection_certified = empty( $certification_blockers )'):
+if status.index('$remote_preflight_blockers = array_merge') > status.index('$connection_certified = ! $admin_shallow && empty( $certification_blockers )'):
     raise SystemExit('FAIL preflight-before-certification: remote blockers must be assembled before final certification')
 
 for marker in (
@@ -622,6 +622,15 @@ for marker in (
     "'deep_status_deferred' =>",
 ):
     require(status, marker, 'connection-admin-shallow-mode')
+
+for marker in (
+    "'local_transport_validation_state'",
+    "'remote_endpoint_preflight_state'",
+    "'connection_certification_state'",
+    "'certification_deferred_checks'",
+    "$connection_certified = ! $admin_shallow && empty( $certification_blockers )",
+):
+    require(status, marker, 'connection-admin-shallow-truth-state')
 
 admin_surface = status.split("private static function admin_shallow_surface()", 1)[1].split("private static function oauth_preflight_blockers", 1)[0]
 require(admin_surface, "'mad4b-control-plane-connection'", 'connection-admin-shallow-route')
