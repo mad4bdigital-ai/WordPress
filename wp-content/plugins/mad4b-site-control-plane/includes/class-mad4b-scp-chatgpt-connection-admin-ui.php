@@ -51,6 +51,14 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'runtime_identity_status' )
 			? MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()
 			: array();
+		$external_evidence = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) && method_exists( 'MAD4B_SCP_External_Handshake_Evidence', 'persisted_identity_status' )
+			? MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()
+			: array();
+		$external_evidence_present = ! empty( $external_evidence['evidence_present'] )
+			&& ! empty( $external_evidence['verified_at'] )
+			&& 'mad4b-chatgpt' === ( isset( $external_evidence['server_id'] ) ? sanitize_key( (string) $external_evidence['server_id'] ) : '' )
+			&& 'oauth2_bearer' === ( isset( $external_evidence['auth_method'] ) ? sanitize_key( (string) $external_evidence['auth_method'] ) : '' );
+		$external_certification_state = $external_evidence_present ? 'previously_verified_revalidation_deferred' : 'not_certified';
 		$server_url = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() : untrailingslashit( rest_url( 'mcp/mad4b-chatgpt' ) );
 		$cimd_ready = ! empty( $local['client_id_metadata_document_supported'] )
 			&& isset( $local['cimd_chatgpt_client_id'] )
@@ -109,7 +117,16 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'ready_for_chatgpt_draft' => (bool) $ready,
 			'creates_chatgpt_connector' => false,
 			'stores_chatgpt_credentials' => false,
+			// Passive admin never performs the deep current-build/catalog revalidation
+			// required to claim present-tense certification. Preserve the stronger
+			// persisted fact separately: a previous real external ChatGPT OAuth/MCP
+			// session completed initialize + exact tools/list on this site.
 			'external_connection_certified' => false,
+			'external_connection_certification_deferred' => $external_evidence_present,
+			'external_connection_certification_state' => $external_certification_state,
+			'external_connection_evidence_present' => $external_evidence_present,
+			'external_connection_last_verified_at' => isset( $external_evidence['verified_at'] ) ? sanitize_text_field( (string) $external_evidence['verified_at'] ) : '',
+			'external_connection_evidence_projection' => 'persisted_identity',
 			'generic_filesystem_exposed' => false,
 			'generic_database_exposed' => false,
 			'write_admin_breakglass_exposed' => false,
@@ -230,7 +247,10 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 					<tr><th>OAuth resource bridge effective</th><td><?php echo ! empty( $status['bridge_effective'] ) ? 'yes' : 'no'; ?></td></tr>
 					<tr><th>CIMD advertised</th><td><?php echo ! empty( $status['cimd_supported'] ) ? 'yes' : 'no'; ?></td></tr>
 					<tr><th>ChatGPT CIMD policy ready</th><td><?php echo ! empty( $status['chatgpt_cimd_policy_ready'] ) ? 'yes' : 'no'; ?></td></tr>
-					<tr><th>External ChatGPT connection certified</th><td>no</td></tr>
+					<tr><th>External ChatGPT connection certification</th><td><?php echo esc_html( ! empty( $status['external_connection_certified'] ) ? 'certified' : ( ! empty( $status['external_connection_certification_deferred'] ) ? 'previously verified · deep revalidation deferred' : 'not certified' ) ); ?></td></tr>
+					<?php if ( ! empty( $status['external_connection_last_verified_at'] ) ) : ?>
+					<tr><th>Last verified external session</th><td><?php echo esc_html( $status['external_connection_last_verified_at'] ); ?></td></tr>
+					<?php endif; ?>
 				</tbody>
 			</table>
 		</div>
