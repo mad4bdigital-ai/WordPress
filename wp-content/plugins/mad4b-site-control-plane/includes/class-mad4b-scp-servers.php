@@ -9,6 +9,7 @@ require_once __DIR__ . '/class-mad4b-scp-staging-write-grant-reconciliation.php'
 require_once __DIR__ . '/class-mad4b-scp-developer-authority.php';
 require_once __DIR__ . '/class-mad4b-scp-full-staging-authority.php';
 require_once __DIR__ . '/class-mad4b-scp-governed-runtime-gates.php';
+require_once __DIR__ . '/class-mad4b-scp-mcp-catalog-diagnostics.php';
 
 MAD4B_SCP_Site_Profile_Enrollment::boot();
 MAD4B_SCP_Site_Profile_Write_Enablement::boot();
@@ -782,7 +783,14 @@ final class MAD4B_SCP_Servers {
 		$status = array(); foreach ( self::expected_server_ids() as $id ) $status[ $id ] = isset( self::$registrations[ $id ] ) ? self::$registrations[ $id ] : array( 'registered' => false, 'error' => 'not_registered' ); return $status;
 	}
 	public static function can_read_transport( $request = null ) { return self::transport_permission( 'mad4b-read', $request, array( 'MAD4B_SCP_Policy', 'can_read' ) ); }
-	public static function can_chatgpt_transport( $request = null ) { return self::transport_permission( 'mad4b-chatgpt', $request, array( 'MAD4B_SCP_Policy', 'can_read' ) ); }
+	public static function can_chatgpt_transport( $request = null ) {
+		$permission = self::transport_permission( 'mad4b-chatgpt', $request, array( 'MAD4B_SCP_Policy', 'can_read' ) );
+		if ( true !== $permission ) return $permission;
+		$registered = isset( self::$registrations['mad4b-chatgpt'] ) ? self::$registrations['mad4b-chatgpt'] : array();
+		$catalog = isset( $registered['catalog_evidence'] ) ? $registered['catalog_evidence'] : array();
+		if ( empty( $catalog['ready'] ) ) return new WP_Error( 'mad4b_mcp_catalog_not_ready', 'The materialized MCP catalog does not match the exact requested ability inventory.', array( 'status' => 503, 'blocker' => isset( $catalog['blocker'] ) ? $catalog['blocker'] : 'mcp_catalog_not_observed' ) );
+		return true;
+	}
 	public static function can_enrollment_transport( $request = null ) { return self::transport_permission( 'mad4b-enrollment', $request, array( 'MAD4B_SCP_Site_Profile_Enrollment', 'can_access_transport' ) ); }
 	public static function can_content_transport( $request = null ) { return self::transport_permission( 'mad4b-content', $request, array( 'MAD4B_SCP_Policy', 'can_content' ) ); }
 	public static function can_write_transport( $request = null ) { return self::transport_permission( 'mad4b-write', $request, array( 'MAD4B_SCP_Policy', 'can_admin' ) ); }
@@ -894,6 +902,15 @@ final class MAD4B_SCP_Servers {
 		$result = $adapter->create_server( $id, 'mcp', $id, $name, $description, MAD4B_SCP_VERSION, array( $transport ), $error_handler, $observability, $tools, array(), array(), $permission );
 		if ( is_wp_error( $result ) ) { self::$registrations[ $id ] = array( 'registered' => false, 'error' => $result->get_error_code(), 'materialized' => false, 'tool_count' => 0 ); error_log( '[MAD4B SCP] Failed creating ' . $id . ': ' . $result->get_error_message() ); return; }
 		self::$registrations[ $id ] = array( 'registered' => true, 'error' => '', 'materialized' => (bool) $materialized, 'tool_count' => count( $tools ) );
+		if ( 'mad4b-chatgpt' === $id && $materialized ) {
+			$server = method_exists( $adapter, 'get_server' ) ? $adapter->get_server( $id ) : null;
+			$evidence = MAD4B_SCP_MCP_Catalog_Diagnostics::inspect( $server, $tools );
+			self::$registrations[ $id ]['requested_tool_count'] = count( $tools );
+			self::$registrations[ $id ]['tool_count'] = $evidence['tool_count'];
+			self::$registrations[ $id ]['catalog_evidence'] = $evidence;
+			self::$registrations[ $id ]['materialized'] = ! empty( $evidence['observed'] );
+			if ( empty( $evidence['ready'] ) ) self::$registrations[ $id ]['error'] = $evidence['blocker'];
+		}
 	}
 }
 
