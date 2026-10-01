@@ -367,7 +367,10 @@ if ( ! $mad4b_passive_admin_read ) {
 
 	MAD4B_SCP_Skill_Autoconfig::bootstrap();
 	MAD4B_SCP_Staging_Write_Authority::bootstrap();
-	MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();
+	// Managed MU reconciliation mutates filesystem state and therefore never runs
+	// during plugin include. Defer it until init, where lifecycle/auth context is
+	// complete; passive Control Plane GET/HEAD never reaches this branch.
+	add_action( 'init', array( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', 'bootstrap' ), 20 );
 	MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();
 	MAD4B_SCP_MCP_Registration_Rescue::boot();
 	MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();
