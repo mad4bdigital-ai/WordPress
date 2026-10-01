@@ -140,6 +140,8 @@ for marker in (
     'private static function project_persisted_freshness( array $stored )',
     "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()",
     "'persisted_build_identity_stale'",
+    "'historical_ready'",
+    "array_key_exists( 'historical_ready', $stored )",
     "'historical_evidence_only'",
     "'build_identity_current'",
     "'stale_reasons'",
