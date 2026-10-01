@@ -137,6 +137,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		$method = is_array( $body ) && isset( $body['method'] ) && is_string( $body['method'] ) ? $body['method'] : '';
 		if ( ! in_array( $method, array( 'initialize', 'tools/list' ), true ) || ! is_object( $response ) || ! method_exists( $response, 'get_data' ) || ! method_exists( $response, 'header' ) ) return $response;
 		$data = $response->get_data();
+		if ( $data instanceof stdClass ) $data = (array) $data;
 		if ( is_object( $data ) && method_exists( $data, 'toArray' ) ) {
 			try { $data = $data->toArray(); } catch ( Throwable $error ) { $data = null; }
 		}
@@ -144,8 +145,13 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		if ( is_array( $data ) && isset( $data['result'] ) && is_object( $data['result'] ) && method_exists( $data['result'], 'toArray' ) ) {
 			try { $data['result'] = $data['result']->toArray(); } catch ( Throwable $error ) { $data['result'] = null; }
 		}
+		if ( is_array( $data ) && isset( $data['result'] ) && $data['result'] instanceof stdClass ) $data['result'] = (array) $data['result'];
 		$status = (int) $response->get_status();
 		$outcome = $status >= 400 ? 'http_error' : ( ! is_array( $data ) || isset( $data['error'] ) || ! isset( $data['result'] ) || ! is_array( $data['result'] ) ? 'rpc_error' : 'ready' );
+		if ( 'ready' === $outcome && 'initialize' === $method ) {
+			$result = $data['result'];
+			if ( ! isset( $result['protocolVersion'], $result['serverInfo'], $result['capabilities'] ) || ! is_string( $result['protocolVersion'] ) ) $outcome = 'rpc_error';
+		}
 		$count = null;
 		if ( 'ready' === $outcome && 'tools/list' === $method ) {
 			$listed = isset( $data['result']['tools'] ) ? $data['result']['tools'] : null;

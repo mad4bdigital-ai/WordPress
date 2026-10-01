@@ -101,6 +101,7 @@ if ( empty( $initialize_data['result']['serverInfo']['name'] ) || 'MAD4B ChatGPT
 	$fail( 'Initialize returned an unexpected MCP server identity.', $initialize_data );
 }
 $headers = $initialize->get_headers();
+if ( 'ready' !== ( $headers['X-MAD4B-MCP-Outcome'] ?? '' ) ) $fail( 'Successful initialize must not emit a false diagnostic failure.', array( 'data_type' => gettype( $initialize->get_data() ), 'data_class' => is_object( $initialize->get_data() ) ? get_class( $initialize->get_data() ) : '', 'result_type' => gettype( $initialize_data['result'] ?? null ), 'outcome' => $headers['X-MAD4B-MCP-Outcome'] ?? '' ) );
 $session_id = '';
 foreach ( $headers as $name => $value ) {
 	if ( 'mcp-session-id' === strtolower( (string) $name ) ) {
