@@ -42,6 +42,66 @@ final class MAD4B_SCP_Truth_Projection {
 		) );
 	}
 
+	public static function candidate_identity_bound_ready( array $persisted, array $current, $mismatch_blocker = 'candidate_identity_unproven', $historical_state = 'historical_evidence' ) {
+		$recorded_ready = ! empty( $persisted['ready'] );
+		$recorded_sha = isset( $persisted['source_commit_sha'] ) ? strtolower( trim( (string) $persisted['source_commit_sha'] ) ) : '';
+		$recorded_fingerprint = isset( $persisted['build_fingerprint'] ) ? strtolower( trim( (string) $persisted['build_fingerprint'] ) ) : '';
+		$current_sha = isset( $current['source_commit_sha'] ) ? strtolower( trim( (string) $current['source_commit_sha'] ) ) : '';
+		$current_fingerprint = isset( $current['build_fingerprint'] ) ? strtolower( trim( (string) $current['build_fingerprint'] ) ) : '';
+		$candidate_match = 1 === preg_match( '/^[a-f0-9]{40}$/', $recorded_sha )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $recorded_fingerprint )
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/', $current_sha )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $current_fingerprint )
+			&& hash_equals( $recorded_sha, $current_sha )
+			&& hash_equals( $recorded_fingerprint, $current_fingerprint );
+		$effective_ready = $recorded_ready && $candidate_match;
+		$blockers = isset( $persisted['blockers'] ) && is_array( $persisted['blockers'] ) ? array_values( array_unique( array_map( 'strval', $persisted['blockers'] ) ) ) : array();
+		if ( $recorded_ready && ! $candidate_match ) $blockers[] = sanitize_key( (string) $mismatch_blocker );
+		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
+		$state = isset( $persisted['state'] ) ? sanitize_key( (string) $persisted['state'] ) : 'not_ready';
+		if ( $recorded_ready && ! $candidate_match ) $state = sanitize_key( (string) $historical_state );
+		elseif ( $effective_ready ) $state = 'ready';
+		return array(
+			'projection_contract' => self::CONTRACT,
+			'recorded_ready' => $recorded_ready,
+			'recorded_source_commit_sha' => $recorded_sha,
+			'recorded_build_fingerprint' => $recorded_fingerprint,
+			'current_source_commit_sha' => $current_sha,
+			'current_build_fingerprint' => $current_fingerprint,
+			'current_candidate_match' => $candidate_match,
+			'effective_ready' => $effective_ready,
+			'state' => $state,
+			'blockers' => $blockers,
+		);
+	}
+
+	public static function candidate_binding_bound_ready( array $persisted, array $binding, $mismatch_blocker = 'runtime_authority_candidate_not_reconciled' ) {
+		$persisted_ready = ! empty( $persisted['ready'] );
+		$binding_required = ! empty( $binding['required'] );
+		$binding_match = ! empty( $binding['match'] );
+		$effective_ready = $persisted_ready && ( ! $binding_required || $binding_match );
+		$blockers = isset( $persisted['blockers'] ) && is_array( $persisted['blockers'] ) ? array_values( array_unique( array_map( 'strval', $persisted['blockers'] ) ) ) : array();
+		$blocker = isset( $persisted['blocker'] ) ? sanitize_key( (string) $persisted['blocker'] ) : '';
+		if ( $binding_required && ! $binding_match ) {
+			$blocker = sanitize_key( (string) $mismatch_blocker );
+			$blockers[] = $blocker;
+		}
+		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
+		$eligible = ! empty( $persisted['eligible'] );
+		return array(
+			'projection_contract' => self::CONTRACT,
+			'persisted_ready' => $persisted_ready,
+			'candidate_binding_required' => $binding_required,
+			'candidate_binding_match' => $binding_match,
+			'effective_ready' => $effective_ready,
+			'state' => $effective_ready ? 'ready' : ( $eligible ? 'blocked' : 'ineligible' ),
+			'blocker' => $effective_ready ? '' : $blocker,
+			'blockers' => $blockers,
+			'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? strtolower( (string) $binding['current_source_commit_sha'] ) : '',
+			'candidate_source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? strtolower( (string) $binding['stored_source_commit_sha'] ) : ( isset( $persisted['source_commit_sha'] ) ? strtolower( (string) $persisted['source_commit_sha'] ) : '' ),
+		);
+	}
+
 	public static function canonical_external_wpml_receipt() {
 		if ( class_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer' )
 			&& method_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer', 'external_wpml_receipt_status' ) ) {
