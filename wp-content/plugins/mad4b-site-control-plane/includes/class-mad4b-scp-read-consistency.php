@@ -606,7 +606,9 @@ final class MAD4B_SCP_Read_Consistency {
 			'profile_digest', 'exact_profile_bound', 'write_enabled', 'skills_enabled',
 			'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest',
 			'artifact_identity', 'mcp_adapter_version', 'runtime_manifest_match', 'stale',
-			'local_transport_ready', 'remote_endpoint_preflight_ready', 'connection_certified',
+			'local_transport_ready', 'local_transport_validation_state', 'local_transport_deep_validation_ready',
+			'remote_endpoint_preflight_ready', 'remote_endpoint_preflight_state', 'remote_endpoint_deep_preflight_ready',
+			'connection_certified', 'connection_certification_state',
 			'resource', 'local_oauth_effective', 'oauth_resource_bridge_effective', 'chatgpt_registered',
 			'missed_rest_recovery_state', 'write_auto_enabled', 'production_authority_auto_enabled',
 			'breakglass_auto_enabled', 'eligible', 'runtime_reconciled', 'candidate_binding_required',
@@ -984,8 +986,10 @@ final class MAD4B_SCP_Read_Consistency {
 		if ( is_wp_error( $status ) ) return $status;
 		return self::bounded_keys( $status, array(
 			'contract', 'environment', 'control_plane_version', 'mcp_adapter_version',
-			'local_transport_ready', 'remote_endpoint_preflight_ready', 'connection_certified',
-			'local_blockers', 'remote_preflight_blockers', 'certification_blockers',
+			'local_transport_ready', 'local_transport_validation_state', 'local_transport_deep_validation_ready',
+			'remote_endpoint_preflight_ready', 'remote_endpoint_preflight_state', 'remote_endpoint_deep_preflight_ready',
+			'connection_certified', 'connection_certification_state',
+			'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'certification_deferred_checks',
 		) );
 	}
 
