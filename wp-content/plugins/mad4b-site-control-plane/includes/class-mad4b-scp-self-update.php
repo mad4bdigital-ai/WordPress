@@ -263,6 +263,8 @@ final class MAD4B_SCP_Self_Update {
 				'authority_mutation_allowed' => false,
 				'production_allowed' => false,
 				'generic_raw_sql_breakglass_included' => false,
+				'chatgpt_direct_step_up' => true,
+				'exact_chatgpt_client_required' => true,
 			)
 		);
 	}
