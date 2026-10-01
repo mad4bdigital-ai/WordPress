@@ -514,8 +514,13 @@ for marker in (
 for marker in (
     'MAD4B MCP registration diagnostics', 'Adapter runtime from official plugin',
     'Adapter init happened before bridge boot', 'Registration error:',
+    'ChatGPT preflight ready', 'ChatGPT preflight blocker', 'ChatGPT preflight failure count',
+    'failing_ability', 'source_schema_fingerprint', 'schema_fingerprint',
+    'Foreign MCP transport detected', 'Foreign MCP route count', 'Foreign MCP plugin count',
 ):
     require(diagnostics, marker, 'mcp-registration-diagnostics')
+for forbidden in ('access_token', 'refresh_token', 'client_secret', 'authorization_header', 'raw_token'):
+    forbid(diagnostics.lower(), forbidden, 'mcp-registration-diagnostics-no-secrets')
 
 for marker in (
     "const CONTRACT = 'mad4b.mcp-provider-isolation.v3'",
