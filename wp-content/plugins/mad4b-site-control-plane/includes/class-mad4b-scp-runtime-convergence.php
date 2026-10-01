@@ -923,7 +923,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 				}
 				$continuation_status = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ? MAD4B_SCP_Post_Update_Continuation::status() : array();
 				$continuation_target = isset( $continuation_status['target_identity'] ) && is_array( $continuation_status['target_identity'] ) ? $continuation_status['target_identity'] : array();
-				if ( ! empty( $continuation_target ) ) {
+				if ( ! empty( $continuation_status['active'] ) && ! empty( $continuation_target ) ) {
 					foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $field ) {
 						if ( empty( $skills_persisted[ $field ] ) || empty( $continuation_target[ $field ] ) || ! hash_equals( (string) $continuation_target[ $field ], (string) $skills_persisted[ $field ] ) ) {
 							return new WP_Error( 'mad4b_runtime_convergence_skills_target_identity_mismatch', 'Persisted Skill certification does not match the continuation target.', array( 'field' => $field ) );
@@ -937,7 +937,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$continuation_result = array();
 			$continuation_status = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ? MAD4B_SCP_Post_Update_Continuation::status() : array();
 			if ( ! empty( $continuation_status['active'] ) && in_array( isset( $continuation_status['state'] ) ? (string) $continuation_status['state'] : '', array( 'exact_readback_verified', 'pending_convergence' ), true ) ) {
-				$continuation_result = MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind();
+				$continuation_result = MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind( $lock );
 				if ( is_wp_error( $continuation_result ) ) return $continuation_result;
 				$changed[] = 'post_update_continuation';
 				$changed = array_values( array_unique( $changed ) );

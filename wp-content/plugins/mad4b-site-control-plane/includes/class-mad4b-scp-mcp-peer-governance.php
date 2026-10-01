@@ -42,7 +42,26 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		}
 		if ( ! is_array( $servers ) ) return self::unavailable( 'mcp_server_registry_invalid' );
 
+		// Bind tool identities, not only counts. Renaming a tool at the same count
+		// must still cross the continuation Owner Gate.
+		$transport_inventory = array();
+		try { foreach ( $servers as $server ) {
+			if ( ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) || ! method_exists( $server, 'get_tools' ) || ! method_exists( $server, 'get_mcp_tool' ) ) return self::unavailable( 'mcp_transport_identity_unavailable' );
+			$tools = $server->get_tools();
+			if ( ! is_array( $tools ) ) return self::unavailable( 'mcp_tool_identity_unavailable' );
+			$entries = array();
+			foreach ( array_keys( $tools ) as $name ) {
+				$tool = $server->get_mcp_tool( $name );
+				if ( ! is_object( $tool ) || ! method_exists( $tool, 'get_adapter_meta' ) ) return self::unavailable( 'mcp_tool_identity_unavailable' );
+				$entries[ (string) $name ] = $tool->get_adapter_meta();
+			}
+			ksort( $entries, SORT_STRING );
+			$transport_inventory[ (string) $server->get_server_id() ] = $entries;
+		}
+		} catch ( Throwable $error ) { return self::unavailable( 'mcp_transport_identity_exception' ); }
+		ksort( $transport_inventory, SORT_STRING );
 		$status = self::analyze_servers( $servers );
+		$status['transport_inventory_fingerprint'] = class_exists( 'MAD4B_SCP_Connection_Resolver' ) ? MAD4B_SCP_Connection_Resolver::digest( $transport_inventory ) : hash( 'sha256', wp_json_encode( $transport_inventory ) );
 		$foreign = self::foreign_transport_inventory( $servers );
 		$status['foreign_transport_inventory'] = $foreign;
 		$status['foreign_transport_inventory_ready'] = ! empty( $foreign['inventory_ready'] );
@@ -326,3 +345,4 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		);
 	}
 }
+

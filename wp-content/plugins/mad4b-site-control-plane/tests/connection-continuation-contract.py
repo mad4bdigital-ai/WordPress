@@ -155,7 +155,7 @@ for text in (self_update, convergence):
 # Current-build Skill certification is persisted before candidate continuation.
 run_safe = convergence.split("private static function run_safe_phases", 1)[1]
 observe_idx = run_safe.index("MAD4B_SCP_Skill_Runtime_Certification::observe( true )")
-continue_idx = run_safe.index("MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind()")
+continue_idx = run_safe.index("MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind( $lock )")
 assert observe_idx < continue_idx
 assert "build_identity_current" in run_safe
 assert "candidate_binding_auto_refresh_policy" in convergence
@@ -173,7 +173,7 @@ for marker in (
 for marker in (
     "/.well-known/oauth-protected-resource/wp-json/mcp/mad4b-chatgpt",
     "/.well-known/oauth-authorization-server/oauth/mcp",
-    "/oauth/mcp/jwks",
+    'const jwks = issuer + "/jwks";',
     "/wp-json/mcp/mad4b-chatgpt",
     "edge_unexpected_redirect",
     "edge_private_basic_auth_gate",
@@ -187,4 +187,10 @@ for marker in (
 assert "workflow_dispatch:" in edge_workflow
 assert "actions/upload-artifact@v4" in edge_workflow
 
+assert "permit_seal" in continuation and "hash_hmac" in continuation
+assert "self::$executing_context_digest" in continuation
+assert "consume_binding_context" in authority
+assert "persisted_grant_records_fingerprint" in continuation
+assert "transport_inventory_fingerprint" in continuation
+assert "captured_actor_authority_revoked" in continuation
 print("connection + post-update continuation contract: PASS")

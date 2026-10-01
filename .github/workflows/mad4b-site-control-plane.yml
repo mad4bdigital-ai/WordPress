@@ -60,6 +60,12 @@ jobs:
           set -euo pipefail
           find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 | xargs -0 -n1 php -l
 
+      - name: Verify post-update continuation authorization guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/post-update-continuation-guards-runtime.php
+
       - name: Verify pointer-first self-update contract
         if: matrix.php == '8.1'
         shell: bash

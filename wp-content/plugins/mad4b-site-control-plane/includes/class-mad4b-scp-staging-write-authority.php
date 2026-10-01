@@ -672,6 +672,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				return new WP_Error( 'mad4b_write_authority_not_ready_for_candidate_binding', 'Write authority must be reconciled before binding the exact package candidate.' );
 			}
 
+			if ( 'self_update_continuation' === ( $context['operation_basis']['source'] ?? '' ) ) {
+				$verified = MAD4B_SCP_Post_Update_Continuation::validate_binding_context( $context, $current );
+				if ( is_wp_error( $verified ) ) { self::rollback_candidate_binding_transaction( $before, $context, 'continuation_fence_lost' ); $transaction_open = false; return $verified; }
+			}
 			$before_binding = self::candidate_binding_snapshot( $locked );
 			$binding = self::candidate_binding_status();
 			$write_snapshot = $context['write_snapshot'];
@@ -729,6 +733,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 					$transaction_open = false;
 					return new WP_Error( 'mad4b_candidate_binding_noop_audit_failed', 'Idempotent candidate-binding evidence could not be committed.', $rollback );
 				}
+			if ( 'self_update_continuation' === ( $context['operation_basis']['source'] ?? '' ) ) {
+				$consumed = MAD4B_SCP_Post_Update_Continuation::consume_binding_context( $context );
+				if ( is_wp_error( $consumed ) ) { self::rollback_candidate_binding_transaction( $before, $context, 'continuation_consume_failed' ); $transaction_open = false; return $consumed; }
+			}
 				$commit = self::commit_candidate_binding_transaction( $before );
 				if ( is_wp_error( $commit ) ) {
 					$rollback = self::rollback_candidate_binding_transaction( $before, $context, 'noop_commit_failed', array( 'previous_binding' => $before_binding ) );
@@ -819,6 +827,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				return new WP_Error( 'mad4b_candidate_binding_primitive_postcondition_failed', 'Candidate-binding primitive postconditions failed; database transaction was rolled back.', $rollback );
 			}
 
+			if ( 'self_update_continuation' === ( $context['operation_basis']['source'] ?? '' ) ) {
+				$consumed = MAD4B_SCP_Post_Update_Continuation::consume_binding_context( $context );
+				if ( is_wp_error( $consumed ) ) { self::rollback_candidate_binding_transaction( $before, $context, 'continuation_consume_failed' ); $transaction_open = false; return $consumed; }
+			}
 			$new_binding = self::candidate_binding_snapshot( $stored );
 			$completion = self::candidate_binding_audit( 'mad4b/staging-write-candidate-binding-complete', $context, array(
 				'state' => 'bound',
@@ -1544,6 +1556,8 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$persisted_ready = ! empty( $persisted_status['ready'] );
 		$effective_ready = self::effective();
 		$grant_rows_fingerprint = hash( 'sha256', wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$grant_records = $grants; usort( $grant_records, static function ( $a, $b ) { return (int) ( $a['id'] ?? 0 ) <=> (int) ( $b['id'] ?? 0 ); } );
+		$persisted_grant_records_fingerprint = hash( 'sha256', wp_json_encode( $grant_records, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 		$grant_truth = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'governed_write_grant_snapshot' )
 			? MAD4B_SCP_Truth_Projection::governed_write_grant_snapshot( array(
 				'persisted_ready' => $persisted_ready,
@@ -1586,6 +1600,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'write_tool_count' => count( $tools ),
 			'write_inventory_fingerprint' => isset( $persisted_status['write_inventory_fingerprint'] ) ? (string) $persisted_status['write_inventory_fingerprint'] : '',
 			'grant_rows_fingerprint' => $grant_rows_fingerprint,
+			'persisted_grant_records_fingerprint' => $persisted_grant_records_fingerprint,
 			'exact_grants_existing' => $existing_count,
 			'exact_grants_missing_count' => count( $missing ),
 			'exact_grants_missing' => $missing,
@@ -2186,3 +2201,4 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		);
 	}
 }
+

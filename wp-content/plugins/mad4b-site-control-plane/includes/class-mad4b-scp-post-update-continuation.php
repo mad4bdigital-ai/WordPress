@@ -17,6 +17,7 @@ final class MAD4B_SCP_Post_Update_Continuation {
 	const CLASS_ZERO = 'ZERO_DELTA_CONTINUATION';
 	const CLASS_REVIEW = 'REVIEW_REQUIRED_DELTA';
 	const CLASS_HARD = 'HARD_BLOCK_DELTA';
+	private static $executing_context_digest = null;
 
 	private static function clean_fields() {
 		return array(
@@ -31,7 +32,7 @@ final class MAD4B_SCP_Post_Update_Continuation {
 	}
 
 	public static function status() {
-		$permit = get_option( self::OPTION, array() );
+		$permit = self::read_permit();
 		if ( ! is_array( $permit ) || self::CONTRACT !== ( isset( $permit['contract'] ) ? (string) $permit['contract'] : '' ) ) {
 			return array(
 				'contract' => self::CONTRACT,
@@ -47,7 +48,9 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		return $permit;
 	}
 
-	public static function prepare( array $target, $channel, $update_plan_sha256 = '' ) {
+	public static function prepare( array $target, $channel, $update_plan_sha256 = '', $lease_token = '' ) {
+		$fence = class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ? MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, 'self_update_replacement' ) : new WP_Error( 'mad4b_post_update_continuation_lease_required', 'Replacement maintenance lease is required.' );
+		if ( is_wp_error( $fence ) ) return $fence;
 		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : '';
 		if ( 'staging' !== $environment ) return new WP_Error( 'mad4b_post_update_continuation_staging_only', 'Post-update continuation is Staging-only.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::write_enabled() ) {
@@ -67,12 +70,14 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			? MAD4B_SCP_Staging_Write_Candidate_Binding::audit_binding_snapshot( is_array( $binding ) ? $binding : array() )
 			: self::bounded_binding( is_array( $binding ) ? $binding : array() );
 
+		if ( empty( $plan['eligible'] ) || empty( $plan['current_ready'] ) || empty( $plan['agent_present'] ) || empty( $binding['match'] ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) return new WP_Error( 'mad4b_post_update_continuation_previous_authority_required', 'Continuation requires an already effective exact previous candidate binding.' );
 		$profile_revision = MAD4B_SCP_Site_Profile::revision();
 		$profile_digest = strtolower( (string) MAD4B_SCP_Site_Profile::profile_digest() );
 		$site_uuid = strtolower( (string) MAD4B_SCP_Site_Profile::site_uuid() );
 		$origin = untrailingslashit( (string) MAD4B_SCP_Site_Profile::current_origin() );
 		$actor = self::capture_actor();
 		$transport = self::transport_snapshot();
+		if ( empty( $transport['inventory_ready'] ) ) return new WP_Error( 'mad4b_post_update_continuation_transport_unavailable', 'Verified live transport inventory is required before update continuation.' );
 		$write_snapshot = self::write_snapshot( $plan );
 		$update_plan_sha256 = strtolower( trim( (string) $update_plan_sha256 ) );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $update_plan_sha256 ) ) {
@@ -102,9 +107,9 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			$reasons[] = 'breakglass_excluded';
 		}
 
-		$current = get_option( self::OPTION, array() );
+		$current = self::read_permit();
 		$current_generation = is_array( $current ) && isset( $current['generation'] ) ? absint( $current['generation'] ) : 0;
-		if ( self::permit_active( $current ) ) return new WP_Error( 'mad4b_post_update_continuation_active_permit_exists', 'Another unconsumed post-update continuation is already active.' );
+		if ( self::permit_active( $current, true ) || ( is_array( $current ) && 'executing' === ( $current['state'] ?? '' ) ) ) return new WP_Error( 'mad4b_post_update_continuation_active_permit_exists', 'Another unconsumed post-update continuation is already active.' );
 
 		$permit = array(
 			'contract' => self::CONTRACT,
@@ -140,9 +145,11 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			'ttl_seconds' => self::TTL,
 		);
 		$permit['permit_digest'] = self::permit_digest( $permit );
+		$permit['permit_seal'] = self::permit_seal( $permit );
 		$saved = self::replace_permit( $current, $permit );
 		if ( is_wp_error( $saved ) ) return $saved;
-		self::audit( 'prepared', $permit, array( 'mutation_performed' => false ) );
+		$audit = self::audit( 'prepared', $permit, array( 'mutation_performed' => false ) );
+		if ( is_wp_error( $audit ) ) { self::cancel( 'prepare_audit_failed' ); return $audit; }
 		return $permit;
 	}
 
@@ -159,7 +166,9 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		) );
 	}
 
-	public static function evaluate_and_rebind() {
+	public static function evaluate_and_rebind( $lease_token = '' ) {
+		$fence = class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ? MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, 'runtime_convergence' ) : new WP_Error( 'mad4b_post_update_continuation_lease_required', 'Convergence maintenance lease is required.' );
+		if ( is_wp_error( $fence ) ) return $fence;
 		$permit = self::active_permit_or_error();
 		if ( is_wp_error( $permit ) ) return $permit;
 		if ( ! in_array( isset( $permit['state'] ) ? (string) $permit['state'] : '', array( 'exact_readback_verified', 'pending_convergence' ), true ) ) {
@@ -188,11 +197,14 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		$context = self::binding_context( $permit, $plan, $binding );
 		if ( is_wp_error( $context ) ) return self::execution_failed( $permit, $context->get_error_code() );
 
+		self::$executing_context_digest = self::digest( $context );
+		try {
 		$result = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity(
 			(string) $permit['target_identity']['source_commit_sha'],
 			(string) $permit['target_identity']['build_fingerprint'],
 			$context
 		);
+		} finally { self::$executing_context_digest = null; }
 		if ( is_wp_error( $result ) ) return self::execution_failed( $permit, $result->get_error_code() );
 
 		$post = self::classify_current_delta( $permit, true );
@@ -201,20 +213,8 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			return self::execution_failed( $permit, 'post_update_continuation_postcondition_failed', $post );
 		}
 
-		$consumed = self::transition( $permit, array(
-			'state' => 'consumed',
-			'consumed' => true,
-			'consumed_at' => gmdate( 'c' ),
-			'classification' => self::CLASS_ZERO,
-			'candidate_binding_match' => true,
-		) );
-		if ( is_wp_error( $consumed ) ) return $consumed;
-		self::audit( 'consumed', $consumed, array(
-			'mutation_performed' => true,
-			'binding_mutation_performed' => empty( $result['idempotent'] ),
-			'grant_mutation_performed' => false,
-			'production_mutation' => false,
-		) );
+		$consumed = self::read_permit();
+		if ( ! is_array( $consumed ) || empty( $consumed['consumed'] ) || 'consumed' !== $consumed['state'] || $consumed['permit_id'] !== $permit['permit_id'] ) return self::execution_failed( $permit, 'atomic_consume_readback_failed' );
 		return array(
 			'contract' => self::CONTRACT,
 			'state' => 'completed',
@@ -229,7 +229,8 @@ final class MAD4B_SCP_Post_Update_Continuation {
 	}
 
 	public static function validate_binding_context( array $context, array $current_identity ) {
-		$permit = get_option( self::OPTION, array() );
+		if ( null === self::$executing_context_digest || ! hash_equals( self::$executing_context_digest, self::digest( $context ) ) ) return new WP_Error( 'mad4b_post_update_continuation_request_proof_required', 'Continuation binding can only execute within the claimed lifecycle request.' );
+		$permit = self::read_permit();
 		if ( ! is_array( $permit ) || self::CONTRACT !== ( isset( $permit['contract'] ) ? (string) $permit['contract'] : '' ) ) {
 			return new WP_Error( 'mad4b_post_update_continuation_permit_missing', 'Post-update continuation permit is unavailable.' );
 		}
@@ -237,6 +238,9 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			return new WP_Error( 'mad4b_post_update_continuation_not_claimed', 'Post-update continuation must be atomically claimed before candidate binding.' );
 		}
 		if ( ! self::permit_active( $permit, true ) ) return new WP_Error( 'mad4b_post_update_continuation_expired', 'Post-update continuation is expired or terminal.' );
+		if ( ! self::integrity_valid( $permit ) ) return new WP_Error( 'mad4b_post_update_continuation_integrity_failed', 'Claimed continuation permit integrity failed.' );
+		$delta = self::classify_current_delta( $permit );
+		if ( self::CLASS_ZERO !== $delta['classification'] ) return new WP_Error( 'mad4b_post_update_continuation_live_delta_changed', 'Continuation authority changed before candidate binding.' );
 		$ctx = isset( $context['continuation_permit'] ) && is_array( $context['continuation_permit'] ) ? $context['continuation_permit'] : array();
 		if ( empty( $ctx['permit_id'] ) || empty( $ctx['permit_digest'] )
 			|| ! hash_equals( (string) $permit['permit_id'], (string) $ctx['permit_id'] )
@@ -251,11 +255,24 @@ final class MAD4B_SCP_Post_Update_Continuation {
 				return new WP_Error( 'mad4b_post_update_continuation_actor_mismatch', 'Captured OAuth actor attribution does not match the continuation permit.', array( 'field' => $field ) );
 			}
 		}
+		if ( (int) ( $actor['wp_user_id'] ?? 0 ) !== (int) ( $stored_actor['wp_user_id'] ?? -1 ) ) return new WP_Error( 'mad4b_post_update_continuation_actor_user_mismatch', 'Continuation WordPress actor changed.' );
 		return true;
 	}
 
+	public static function consume_binding_context( array $context ) {
+		if ( null === self::$executing_context_digest || ! hash_equals( self::$executing_context_digest, self::digest( $context ) ) ) return new WP_Error( 'mad4b_post_update_continuation_request_proof_required', 'Atomic consume requires the claimed lifecycle request.' );
+		$permit = self::read_permit();
+		if ( ! is_array( $permit ) || ! self::integrity_valid( $permit ) || ! self::permit_active( $permit, true ) || 'executing' !== $permit['state'] || (int) $permit['generation'] !== (int) ( $context['continuation_permit']['generation'] ?? -1 ) ) return new WP_Error( 'mad4b_post_update_continuation_consume_fence_lost', 'Continuation claim changed inside candidate transaction.' );
+		$delta = self::classify_current_delta( $permit, true );
+		if ( self::CLASS_ZERO !== $delta['classification'] ) return new WP_Error( 'mad4b_post_update_continuation_postcondition_drift', 'Continuation postconditions changed inside candidate transaction.' );
+		$consumed = self::transition( $permit, array( 'state' => 'consumed', 'consumed' => true, 'consumed_at' => gmdate( 'c' ), 'classification' => self::CLASS_ZERO, 'candidate_binding_match' => true ) );
+		if ( is_wp_error( $consumed ) ) return $consumed;
+		$audit = self::audit( 'consumed', $consumed, array( 'binding_mutation_performed' => true, 'grant_mutation_performed' => false ), true );
+		return is_wp_error( $audit ) ? $audit : $consumed;
+	}
+
 	public static function cancel( $reason = 'cancelled', $target_identity = array() ) {
-		$permit = get_option( self::OPTION, array() );
+		$permit = self::read_permit();
 		if ( ! is_array( $permit ) || self::CONTRACT !== ( isset( $permit['contract'] ) ? (string) $permit['contract'] : '' ) ) return true;
 		if ( ! empty( $target_identity ) && isset( $permit['target_identity'] ) && is_array( $permit['target_identity'] ) ) {
 			$target = self::target_identity( $target_identity );
@@ -281,9 +298,7 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		if ( self::breakglass_enabled() ) $hard[] = 'breakglass_excluded';
 
 		$current_identity_result = self::current_identity();
-		$current_identity = is_wp_error( $current_identity_result )
-			? array( 'available' => false, 'blocker' => sanitize_key( (string) $current_identity_result->get_error_code() ) )
-			: $current_identity_result;
+		$current_identity = is_wp_error( $current_identity_result ) ? array( 'available' => false ) : $current_identity_result;
 		if ( is_wp_error( $current_identity_result ) || ! self::identity_matches( $permit['target_identity'], $current_identity_result ) ) $hard[] = 'package_identity_mismatch';
 		if ( ! self::release_trusted( isset( $permit['release'] ) ? $permit['release'] : array() ) ) $hard[] = 'release_trust_invalid';
 
@@ -295,9 +310,15 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			|| empty( $site['profile_digest'] ) || ! hash_equals( (string) $site['profile_digest'], $current_digest )
 			|| empty( $site['origin'] ) || ! hash_equals( (string) $site['origin'], $current_origin ) ) $review[] = 'site_profile_changed';
 
+		if ( empty( $site['site_uuid'] ) || ! hash_equals( (string) $site['site_uuid'], strtolower( (string) MAD4B_SCP_Site_Profile::site_uuid() ) ) ) $hard[] = 'site_uuid_changed';
+		$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+		$expected_previous = $post_bind ? $permit['target_identity'] : $permit['previous_binding'];
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $field ) {
+			if ( empty( $expected_previous[ $field ] ) || ! hash_equals( (string) $expected_previous[ $field ], (string) ( $binding[ 'stored_' . $field ] ?? '' ) ) ) $hard[] = 'previous_binding_changed';
+		}
 		$transport = self::transport_snapshot();
 		$pre_transport = isset( $permit['transport_snapshot']['fingerprint'] ) ? (string) $permit['transport_snapshot']['fingerprint'] : '';
-		if ( '' === $pre_transport || empty( $transport['fingerprint'] ) || ! hash_equals( $pre_transport, (string) $transport['fingerprint'] ) ) $review[] = 'transport_inventory_changed';
+		if ( empty( $transport['inventory_ready'] ) || '' === $pre_transport || empty( $transport['fingerprint'] ) || ! hash_equals( $pre_transport, (string) $transport['fingerprint'] ) ) $review[] = 'transport_inventory_changed';
 
 		$plan = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::reconciliation_plan() : array();
 		if ( ! is_array( $plan ) ) $hard[] = 'write_reconciliation_plan_unavailable';
@@ -312,16 +333,22 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			if ( (int) ( isset( $post['write_tool_count'] ) ? $post['write_tool_count'] : -1 ) !== (int) ( isset( $pre['write_tool_count'] ) ? $pre['write_tool_count'] : -2 )
 				|| empty( $post['write_inventory_fingerprint'] ) || empty( $pre['write_inventory_fingerprint'] )
 				|| ! hash_equals( (string) $pre['write_inventory_fingerprint'], (string) $post['write_inventory_fingerprint'] ) ) $review[] = 'write_inventory_changed';
+			if ( empty( $pre['persisted_grant_records_fingerprint'] ) || empty( $post['persisted_grant_records_fingerprint'] ) || ! hash_equals( (string) $pre['persisted_grant_records_fingerprint'], (string) $post['persisted_grant_records_fingerprint'] ) ) $hard[] = 'persisted_grant_records_changed';
+			if ( empty( $pre['agent_public_id'] ) || $pre['agent_public_id'] !== $post['agent_public_id'] ) $hard[] = 'authority_agent_changed';
 			if ( ! empty( $post['exact_grants_missing_count'] ) ) $review[] = 'exact_grants_changed';
 			if ( empty( $post['grant_rows_fingerprint'] ) || empty( $pre['grant_rows_fingerprint'] )
 				|| ! hash_equals( (string) $pre['grant_rows_fingerprint'], (string) $post['grant_rows_fingerprint'] ) ) {
-				// Any pre-claim grant fingerprint delta requires owner review. A
-				// fingerprint change after the one-time claim is a TOCTOU hard block.
+				// Clean shape + changed row fingerprint means a bounded authority
+				// delta and requires owner review. An unexplained same-shape TOCTOU
+				// after binding claim is treated as hard.
 				if ( $post_bind ) $hard[] = 'grant_rows_fingerprint_changed';
 				else $review[] = 'grant_rows_fingerprint_changed';
 			}
 		}
 		if ( empty( $permit['actor']['oauth_attribution_complete'] ) ) $review[] = 'oauth_actor_attribution_unavailable';
+		$actor_user_id = (int) ( $permit['actor']['wp_user_id'] ?? 0 );
+		$actor_user = $actor_user_id > 0 ? get_userdata( $actor_user_id ) : false;
+		if ( ! $actor_user || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $actor_user_id ) || ! user_can( $actor_user, 'manage_options' ) ) $hard[] = 'captured_actor_authority_revoked';
 
 		$hard = array_values( array_unique( array_map( 'sanitize_key', $hard ) ) );
 		$review = array_values( array_unique( array_map( 'sanitize_key', $review ) ) );
@@ -415,6 +442,10 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			'issuer' => isset( $kernel['oauth']['issuer'] ) ? (string) $kernel['oauth']['issuer'] : '',
 			'resource' => isset( $kernel['resource']['url'] ) ? (string) $kernel['resource']['url'] : '',
 		);
+		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array();
+		$snapshot['inventory_ready'] = ! empty( $peer['inventory_ready'] ) && empty( $peer['blockers'] ) && ! empty( $peer['transport_inventory_fingerprint'] );
+		$snapshot['tool_inventory_fingerprint'] = isset( $peer['transport_inventory_fingerprint'] ) ? (string) $peer['transport_inventory_fingerprint'] : '';
+		$snapshot['foreign_transport_inventory'] = isset( $peer['foreign_transport_inventory'] ) ? $peer['foreign_transport_inventory'] : array();
 		$snapshot['fingerprint'] = self::digest( $snapshot );
 		return $snapshot;
 	}
@@ -425,14 +456,17 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			'exact_grants_existing' => isset( $plan['exact_grants_existing'] ) ? (int) $plan['exact_grants_existing'] : 0,
 			'write_inventory_fingerprint' => isset( $plan['write_inventory_fingerprint'] ) ? strtolower( (string) $plan['write_inventory_fingerprint'] ) : '',
 			'grant_rows_fingerprint' => isset( $plan['grant_rows_fingerprint'] ) ? strtolower( (string) $plan['grant_rows_fingerprint'] ) : '',
+			'persisted_grant_records_fingerprint' => isset( $plan['persisted_grant_records_fingerprint'] ) ? (string) $plan['persisted_grant_records_fingerprint'] : '',
+			'agent_public_id' => isset( $plan['agent_public_id'] ) ? (string) $plan['agent_public_id'] : '',
 			'breakglass_included' => ! empty( $plan['breakglass_included'] ),
 		);
-		foreach ( self::clean_fields() as $field ) $out[ $field ] = isset( $plan[ $field ] ) ? (int) $plan[ $field ] : 0;
+		foreach ( self::clean_fields() as $field ) $out[ $field ] = isset( $plan[ $field ] ) ? (int) $plan[ $field ] : -1;
 		return $out;
 	}
 
 	private static function snapshot_clean( array $snapshot ) {
 		if ( empty( $snapshot['write_tool_count'] ) || empty( $snapshot['write_inventory_fingerprint'] ) || empty( $snapshot['grant_rows_fingerprint'] ) || ! empty( $snapshot['breakglass_included'] ) ) return false;
+		if ( (int) $snapshot['exact_grants_existing'] !== (int) $snapshot['write_tool_count'] || empty( $snapshot['persisted_grant_records_fingerprint'] ) || empty( $snapshot['agent_public_id'] ) ) return false;
 		foreach ( self::clean_fields() as $field ) if ( ! array_key_exists( $field, $snapshot ) || 0 !== (int) $snapshot[ $field ] ) return false;
 		return true;
 	}
@@ -520,20 +554,20 @@ final class MAD4B_SCP_Post_Update_Continuation {
 	}
 
 	private static function active_permit_or_error() {
-		$permit = get_option( self::OPTION, array() );
+		$permit = self::read_permit();
 		if ( ! self::permit_active( $permit ) ) {
 			$state = is_array( $permit ) && isset( $permit['state'] ) ? sanitize_key( (string) $permit['state'] ) : 'absent';
 			$code = ! empty( $permit['consumed'] ) ? 'mad4b_post_update_continuation_replay_denied' : 'mad4b_post_update_continuation_unavailable';
 			return new WP_Error( $code, 'No active one-time post-update continuation permit is available.', array( 'state' => $state ) );
 		}
-		if ( empty( $permit['permit_digest'] ) || ! hash_equals( (string) $permit['permit_digest'], self::permit_digest( $permit ) ) ) {
+		if ( ! self::integrity_valid( $permit ) ) {
 			return new WP_Error( 'mad4b_post_update_continuation_integrity_failed', 'Continuation permit integrity check failed.' );
 		}
 		return $permit;
 	}
 
 	private static function transition( array $permit, array $changes ) {
-		$current = get_option( self::OPTION, array() );
+		$current = self::read_permit();
 		if ( ! is_array( $current ) || empty( $current['permit_id'] ) || ! hash_equals( (string) $permit['permit_id'], (string) $current['permit_id'] )
 			|| (int) $permit['generation'] !== (int) ( isset( $current['generation'] ) ? $current['generation'] : -1 ) ) {
 			return new WP_Error( 'mad4b_post_update_continuation_generation_conflict', 'Continuation permit generation changed concurrently.' );
@@ -542,6 +576,7 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		$next['generation'] = (int) $current['generation'] + 1;
 		$next['updated_at'] = gmdate( 'c' );
 		$next['permit_digest'] = self::permit_digest( $next );
+		$next['permit_seal'] = self::permit_seal( $next );
 		return self::replace_permit( $current, $next );
 	}
 
@@ -571,7 +606,8 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		if ( ! $expected_exists ) {
 			$added = add_option( self::OPTION, $next, '', false );
 			if ( ! $added ) return new WP_Error( 'mad4b_post_update_continuation_cas_conflict', 'Continuation permit was created concurrently.' );
-			return get_option( self::OPTION, $next );
+			$stored = self::read_permit();
+			return $stored === $next ? $stored : new WP_Error( 'mad4b_post_update_continuation_persist_readback_failed', 'New continuation permit did not read back exactly.' );
 		}
 		$old = maybe_serialize( $expected );
 		$new = maybe_serialize( $next );
@@ -584,23 +620,33 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_post_update_continuation_cas_conflict', 'Continuation permit changed concurrently.' );
 		wp_cache_delete( self::OPTION, 'options' );
 		wp_cache_delete( 'alloptions', 'options' );
-		$stored = get_option( self::OPTION, array() );
-		if ( ! is_array( $stored ) || empty( $stored['permit_id'] ) || ! hash_equals( (string) $next['permit_id'], (string) $stored['permit_id'] )
+		$stored = self::read_permit();
+		if ( $stored !== $next || ! is_array( $stored ) || empty( $stored['permit_id'] ) || ! hash_equals( (string) $next['permit_id'], (string) $stored['permit_id'] )
 			|| (int) $next['generation'] !== (int) ( isset( $stored['generation'] ) ? $stored['generation'] : -1 ) ) {
 			return new WP_Error( 'mad4b_post_update_continuation_persist_readback_failed', 'Continuation permit CAS write did not read back exactly.' );
 		}
 		return $stored;
 	}
 
+	private static function read_permit() {
+		global $wpdb;
+		$raw = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", self::OPTION ) );
+		return is_string( $raw ) ? maybe_unserialize( $raw ) : array();
+	}
+	private static function permit_seal( array $permit ) { return hash_hmac( 'sha256', self::permit_digest( $permit ), wp_salt( 'auth' ) ); }
+	private static function integrity_valid( array $permit ) {
+		return ! empty( $permit['permit_digest'] ) && ! empty( $permit['permit_seal'] ) && hash_equals( (string) $permit['permit_digest'], self::permit_digest( $permit ) ) && hash_equals( (string) $permit['permit_seal'], self::permit_seal( $permit ) );
+	}
+
 	private static function permit_digest( array $permit ) {
 		$copy = $permit;
-		unset( $copy['permit_digest'], $copy['active'], $copy['expired'], $copy['mutation_performed'] );
+		unset( $copy['permit_digest'], $copy['permit_seal'], $copy['active'], $copy['expired'], $copy['mutation_performed'] );
 		return self::digest( $copy );
 	}
 
-	private static function audit( $event, array $permit, array $extra = array() ) {
-		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return;
-		MAD4B_SCP_Audit::record( 'mad4b/post-update-continuation-' . sanitize_key( (string) $event ), array_merge( array(
+	private static function audit( $event, array $permit, array $extra = array(), $join_transaction = false ) {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return new WP_Error( 'mad4b_post_update_continuation_audit_required', 'Continuation audit is unavailable.' );
+		return MAD4B_SCP_Audit::record( 'mad4b/post-update-continuation-' . sanitize_key( (string) $event ), array_merge( array(
 			'contract' => self::CONTRACT,
 			'permit_id' => isset( $permit['permit_id'] ) ? (string) $permit['permit_id'] : '',
 			'permit_digest' => isset( $permit['permit_digest'] ) ? (string) $permit['permit_digest'] : '',
@@ -610,7 +656,7 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			'target_identity' => isset( $permit['target_identity'] ) ? $permit['target_identity'] : array(),
 			'production_mutation' => false,
 			'breakglass' => false,
-		), $extra ), 'blocked' === ( isset( $permit['state'] ) ? (string) $permit['state'] : '' ) ? 'error' : 'ok' );
+		), $extra ), 'blocked' === ( isset( $permit['state'] ) ? (string) $permit['state'] : '' ) ? 'error' : 'ok', (bool) $join_transaction );
 	}
 
 	private static function digest( $value ) {
@@ -626,3 +672,4 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		return $value;
 	}
 }
+

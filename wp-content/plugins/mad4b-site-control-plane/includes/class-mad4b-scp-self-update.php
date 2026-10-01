@@ -1141,7 +1141,7 @@ final class MAD4B_SCP_Self_Update {
 				$continuation_target = $target;
 				$provenance = isset( $verified_archive['provenance'] ) && is_array( $verified_archive['provenance'] ) ? $verified_archive['provenance'] : array();
 				if ( isset( $provenance['artifact_identity'] ) ) $continuation_target['artifact_identity'] = (string) $provenance['artifact_identity'];
-				$continuation = MAD4B_SCP_Post_Update_Continuation::prepare( $continuation_target, $channel, $plan_sha256 );
+				$continuation = MAD4B_SCP_Post_Update_Continuation::prepare( $continuation_target, $channel, $plan_sha256, $lease_token );
 				if ( is_wp_error( $continuation ) ) return $continuation;
 				if ( isset( $continuation['classification'] ) && MAD4B_SCP_Post_Update_Continuation::CLASS_HARD === (string) $continuation['classification'] ) {
 					MAD4B_SCP_Post_Update_Continuation::cancel( 'pre_update_hard_block', $continuation_target );
