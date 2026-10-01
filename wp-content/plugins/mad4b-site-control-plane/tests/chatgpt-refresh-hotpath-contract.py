@@ -666,11 +666,15 @@ assert "MAD4B_SCP_OAuth_Resource_Bridge::status()" not in canary_status
 # repeated projections inside one page request must reuse the same snapshot.
 assert "private static $coverage = null;" in plugin_discovery
 coverage_body = plugin_discovery.split("public static function coverage()", 1)[1].split("private static function functional_state_counts", 1)[0]
-assert "if ( null !== self::$coverage ) return self::$coverage;" in coverage_body
+assert "$cacheable = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )" in coverage_body
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()" in coverage_body
+assert "if ( $cacheable && null !== self::$coverage ) return self::$coverage;" in coverage_body
 assert "return self::$coverage;" in coverage_body
 assert "private static $inventory = null;" in runtime_components
 inventory_body = runtime_components.split("public static function inventory()", 1)[1].split("public function inventory()", 1)[0]
-assert "if ( null !== self::$inventory ) return self::$inventory;" in inventory_body
+assert "$cacheable = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )" in inventory_body
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()" in inventory_body
+assert "if ( $cacheable && null !== self::$inventory ) return self::$inventory;" in inventory_body
 assert "return self::$inventory;" in inventory_body
 
 # Context > Google Drive folder navigation is an explicit provider read, but the
