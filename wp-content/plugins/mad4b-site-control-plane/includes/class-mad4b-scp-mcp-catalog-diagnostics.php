@@ -22,10 +22,11 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		if ( ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
 		$names = array();
 		foreach ( $abilities as $name ) {
-			$stage = 'ability_lookup'; $failure = null;
+			$stage = 'ability_lookup'; $failure = null; $source_fingerprint = ''; 
 			try {
 				$ability = wp_get_ability( $name );
 				if ( ! $ability ) throw new RuntimeException( 'ability_missing' );
+				$source_fingerprint = hash( 'sha256', serialize( array( $ability->get_input_schema(), $ability->get_output_schema() ) ) );
 				$stage = 'official_dto_build';
 				$built = \WP\MCP\Domain\Tools\RegisterAbilityAsMcpTool::build( $ability );
 				if ( is_wp_error( $built ) ) { $failure = array( 'stage' => $stage, 'error_class' => 'WP_Error', 'error_code' => sanitize_key( $built->get_error_code() ), 'schema_fingerprint' => '' ); }
@@ -36,7 +37,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				}
 			} catch ( Throwable $error ) { $failure = array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_preflight_exception', 'schema_fingerprint' => '' ); }
 			if ( $failure ) {
-				$failure['failing_ability'] = $name; $out['failures'][] = $failure;
+				$failure['failing_ability'] = $name; $failure['source_schema_fingerprint'] = $source_fingerprint; $out['failures'][] = $failure;
 				// Only explicitly enumerated optional projections may be removed. Identity conflicts never degrade.
 				if ( ! in_array( $name, $optional, true ) || 'identity' === $failure['stage'] ) $out['blocker'] = 'mcp_required_tool_preflight_failed';
 			} else $out['tools'][] = $name;
@@ -53,8 +54,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		try {
 			if ( ! is_object( $dto ) || ! method_exists( $dto, 'toArray' ) ) throw new RuntimeException( 'dto_unavailable' );
 			$data = $dto->toArray();
+			$fingerprint = hash( 'sha256', serialize( array( $data['inputSchema'] ?? null, $data['outputSchema'] ?? null ) ) );
 			$json = json_encode( $data, JSON_THROW_ON_ERROR );
-			$fingerprint = hash( 'sha256', json_encode( array( $data['inputSchema'] ?? null, $data['outputSchema'] ?? null ), JSON_THROW_ON_ERROR ) );
 			$stage = 'official_schema_validation';
 			if ( class_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' ) ) {
 				$valid = \WP\MCP\Domain\Tools\McpToolValidator::validate_tool_dto( $dto );
