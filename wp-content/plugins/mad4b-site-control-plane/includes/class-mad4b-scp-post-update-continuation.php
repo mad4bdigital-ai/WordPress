@@ -412,10 +412,13 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			);
 		}
 		usort( $rows, static function ( $a, $b ) { return strcmp( $a['server_id'], $b['server_id'] ); } );
+		$kernel = class_exists( 'MAD4B_SCP_Connection_Identity_Resolver' ) ? MAD4B_SCP_Connection_Identity_Resolver::kernel() : array();
 		$snapshot = array(
 			'adapter_version' => defined( 'WP_MCP_VERSION' ) ? (string) WP_MCP_VERSION : '',
 			'servers' => $rows,
-			'connection_fingerprint' => class_exists( 'MAD4B_SCP_Connection_Identity_Resolver' ) ? MAD4B_SCP_Connection_Identity_Resolver::fingerprint() : '',
+			'connection_kernel_fingerprint' => isset( $kernel['kernel_fingerprint'] ) ? (string) $kernel['kernel_fingerprint'] : '',
+			'issuer' => isset( $kernel['oauth']['issuer'] ) ? (string) $kernel['oauth']['issuer'] : '',
+			'resource' => isset( $kernel['resource']['url'] ) ? (string) $kernel['resource']['url'] : '',
 		);
 		$snapshot['fingerprint'] = self::digest( $snapshot );
 		return $snapshot;
