@@ -49,7 +49,6 @@ required_ui = [
     'A Site Profile from another tenant is quarantined.',
     'No write, Skills, Developer or Breakglass authority is inherited.',
     'Portable read-only auto-connect is active for this site.',
-    'Exact Production Site Profile governance is active.',
     'identity ready · deep registration deferred',
     'persisted external evidence · deep revalidation deferred',
     'Governed WordPress MCP access: read-by-default with authority- and approval-bound mutations through the MAD4B ChatGPT gateway.',
