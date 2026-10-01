@@ -612,7 +612,11 @@ final class MAD4B_SCP_Self_Update {
 			return $verified;
 		}
 
-		$result = self::apply_verified_archive( $tmp, $plan['target'], 'governed_file_upload', $expected, $verified );
+		$apply_target = array_merge(
+			$plan['target'],
+			isset( $plan['release_channel'] ) && is_array( $plan['release_channel'] ) ? $plan['release_channel'] : array()
+		);
+		$result = self::apply_verified_archive( $tmp, $apply_target, 'governed_file_upload', $expected, $verified );
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return $result;
 	}
@@ -1128,6 +1132,25 @@ final class MAD4B_SCP_Self_Update {
 			$lease_refresh = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, $lease_owner );
 			if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
 
+			$continuation = array();
+			$continuation_required = class_exists( 'MAD4B_SCP_Post_Update_Continuation' )
+				&& class_exists( 'MAD4B_SCP_Site_Profile' )
+				&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+				&& MAD4B_SCP_Site_Profile::write_enabled();
+			if ( $continuation_required ) {
+				$continuation_target = $target;
+				$provenance = isset( $verified_archive['provenance'] ) && is_array( $verified_archive['provenance'] ) ? $verified_archive['provenance'] : array();
+				if ( isset( $provenance['artifact_identity'] ) ) $continuation_target['artifact_identity'] = (string) $provenance['artifact_identity'];
+				$continuation = MAD4B_SCP_Post_Update_Continuation::prepare( $continuation_target, $channel, $plan_sha256 );
+				if ( is_wp_error( $continuation ) ) return $continuation;
+				if ( isset( $continuation['classification'] ) && MAD4B_SCP_Post_Update_Continuation::CLASS_HARD === (string) $continuation['classification'] ) {
+					MAD4B_SCP_Post_Update_Continuation::cancel( 'pre_update_hard_block', $continuation_target );
+					return new WP_Error( 'mad4b_self_update_continuation_hard_blocked', 'Control Plane update is blocked by a high-risk post-update continuation delta.', array(
+						'reasons' => isset( $continuation['classification_reasons'] ) ? $continuation['classification_reasons'] : array(),
+					) );
+				}
+			}
+
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 			require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
@@ -1156,6 +1179,7 @@ final class MAD4B_SCP_Self_Update {
 			if ( is_wp_error( $installed ) || true !== $installed ) {
 				$error = is_wp_error( $installed ) ? $installed : ( method_exists( $skin, 'get_errors' ) ? $skin->get_errors() : null );
 				$rollback = self::rollback( $backup, $before, $runtime_php_files );
+				if ( ! empty( $continuation ) && class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ) MAD4B_SCP_Post_Update_Continuation::cancel( 'install_failed', isset( $continuation['target_identity'] ) ? $continuation['target_identity'] : array() );
 				self::audit( $channel, $target, false, array(
 					'plan_sha256' => $plan_sha256,
 					'failure_phase' => 'install',
@@ -1169,6 +1193,7 @@ final class MAD4B_SCP_Self_Update {
 			$lease_refresh = MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lease_token, $lease_owner );
 			if ( is_wp_error( $lease_refresh ) ) {
 				$rollback = self::rollback( $backup, $before, $runtime_php_files );
+				if ( ! empty( $continuation ) && class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ) MAD4B_SCP_Post_Update_Continuation::cancel( 'maintenance_fence_lost', isset( $continuation['target_identity'] ) ? $continuation['target_identity'] : array() );
 				self::audit( $channel, $target, false, array(
 					'plan_sha256' => $plan_sha256,
 					'failure_phase' => 'post_install_maintenance_fence',
@@ -1187,6 +1212,7 @@ final class MAD4B_SCP_Self_Update {
 			$readback = is_wp_error( $activation ) ? $activation : self::verify_installed_identity( $target );
 			if ( is_wp_error( $readback ) ) {
 				$rollback = self::rollback( $backup, $before, $runtime_php_files );
+				if ( ! empty( $continuation ) && class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ) MAD4B_SCP_Post_Update_Continuation::cancel( 'readback_failed', isset( $continuation['target_identity'] ) ? $continuation['target_identity'] : array() );
 				self::audit( $channel, $target, false, array(
 					'plan_sha256' => $plan_sha256,
 					'failure_phase' => 'readback',
@@ -1200,13 +1226,27 @@ final class MAD4B_SCP_Self_Update {
 				) );
 			}
 
+			$continuation_readback = array();
+			if ( ! empty( $continuation ) && class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ) {
+				$continuation_readback = MAD4B_SCP_Post_Update_Continuation::mark_readback_verified( isset( $continuation['target_identity'] ) ? $continuation['target_identity'] : array() );
+				if ( is_wp_error( $continuation_readback ) ) {
+					$rollback = self::rollback( $backup, $before, $runtime_php_files );
+					MAD4B_SCP_Post_Update_Continuation::cancel( 'continuation_readback_failed', isset( $continuation['target_identity'] ) ? $continuation['target_identity'] : array() );
+					return new WP_Error( 'mad4b_self_update_continuation_readback_failed', 'Exact package readback passed but the one-time continuation permit could not be bound to it; rollback was attempted.', array(
+						'rollback_ok' => ! is_wp_error( $rollback ),
+					) );
+				}
+				$continuation = $continuation_readback;
+			}
+
 			$convergence = array();
 			if ( class_exists( 'MAD4B_SCP_Runtime_Convergence' ) && method_exists( 'MAD4B_SCP_Runtime_Convergence', 'mark_post_update_pending' ) ) {
-				$convergence = MAD4B_SCP_Runtime_Convergence::mark_post_update_pending( $target, $channel, $plan_sha256 );
+				$convergence = MAD4B_SCP_Runtime_Convergence::mark_post_update_pending( $target, $channel, $plan_sha256, $continuation );
 			}
 			$convergence_state = is_array( $convergence ) && isset( $convergence['state'] ) ? sanitize_key( (string) $convergence['state'] ) : '';
 			if ( 'checkpoint_persist_failed' === $convergence_state ) {
 				$rollback = self::rollback( $backup, $before, $runtime_php_files );
+				if ( ! empty( $continuation ) && class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ) MAD4B_SCP_Post_Update_Continuation::cancel( 'convergence_checkpoint_failed', isset( $continuation['target_identity'] ) ? $continuation['target_identity'] : array() );
 				self::audit( $channel, $target, false, array(
 					'plan_sha256' => $plan_sha256,
 					'failure_phase' => 'post_update_convergence_checkpoint',
@@ -1232,6 +1272,7 @@ final class MAD4B_SCP_Self_Update {
 				'readback' => $readback,
 				'runtime_cache_invalidation' => $runtime_cache,
 				'post_update_convergence' => $convergence,
+				'post_update_continuation' => $continuation,
 				'core_maintenance_window_used' => true,
 				'pre_replacement_runtime_lease' => true,
 			) );
@@ -1258,6 +1299,7 @@ final class MAD4B_SCP_Self_Update {
 				'pre_replacement_runtime_lease' => true,
 				'runtime_reboot_required' => true,
 				'post_update_convergence' => $convergence,
+				'post_update_continuation' => $continuation,
 				'production_mutation_performed' => false,
 				'authority_created' => false,
 				'authorizing' => false,
@@ -1853,7 +1895,10 @@ final class MAD4B_SCP_Self_Update {
 			'build_fingerprint' => $manifest['build_fingerprint'],
 			'package_manifest_digest' => $manifest['package_manifest_digest'],
 			'size_bytes' => $manifest['size_bytes'],
+			'release_verdict_run_id' => isset( $manifest['release_verdict_run_id'] ) ? absint( $manifest['release_verdict_run_id'] ) : 0,
 			'release_verdict_success' => true,
+			'release_root_trust_verified' => ! empty( $manifest['release_root_trust_verified'] ),
+			'published_from_master' => ! empty( $manifest['published_from_master'] ),
 		);
 	}
 
