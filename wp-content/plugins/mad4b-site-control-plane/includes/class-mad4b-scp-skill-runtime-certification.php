@@ -206,6 +206,14 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			: array();
 		$source_commit_sha = isset( $build_identity['source_commit_sha'] ) ? strtolower( (string) $build_identity['source_commit_sha'] ) : '';
 		$build_fingerprint = isset( $build_identity['build_fingerprint'] ) ? strtolower( (string) $build_identity['build_fingerprint'] ) : '';
+		$package_manifest_digest = isset( $build_identity['package_manifest_digest'] ) ? strtolower( (string) $build_identity['package_manifest_digest'] ) : '';
+		$artifact_identity = isset( $build_identity['artifact_identity'] ) ? trim( (string) $build_identity['artifact_identity'] ) : '';
+		$checks['build_provenance_identity_ready'] = ! empty( $build_identity['identity_ready'] )
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/', $source_commit_sha )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $build_fingerprint )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $package_manifest_digest )
+			&& '' !== $artifact_identity;
+		if ( ! $checks['build_provenance_identity_ready'] ) $blockers[] = 'build_provenance_identity_unavailable';
 		$evidence = array(
 			'environment' => $environment,
 			'checks' => $checks,
@@ -220,6 +228,8 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'snapshot_identity_token' => $identity_token,
 			'source_commit_sha' => $source_commit_sha,
 			'build_fingerprint' => $build_fingerprint,
+			'package_manifest_digest' => $package_manifest_digest,
+			'artifact_identity' => $artifact_identity,
 		);
 		$digest = hash( 'sha256', wp_json_encode( $evidence, JSON_UNESCAPED_SLASHES ) );
 
@@ -240,6 +250,8 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'snapshot_digest' => isset( $snapshot_identity['snapshot_digest'] ) ? (string) $snapshot_identity['snapshot_digest'] : '',
 			'source_commit_sha' => $source_commit_sha,
 			'build_fingerprint' => $build_fingerprint,
+			'package_manifest_digest' => $package_manifest_digest,
+			'artifact_identity' => $artifact_identity,
 			'app_mapping_source' => isset( $autoconfig['app_mapping_source'] ) ? $autoconfig['app_mapping_source'] : '',
 			'evidence_digest' => $digest,
 			'observed_at' => gmdate( 'c' ),

@@ -24,6 +24,79 @@ qm_bridge = read("includes/class-mad4b-scp-query-monitor-evidence-bridge.php")
 family = read("includes/adapters/class-mad4b-scp-repository-family-adapter.php")
 catalog = json.loads(read("config/repository-plugin-artifacts.json"))
 
+# 0. Registration readiness is reduced by the canonical Truth Projection.
+registration_bridge = read("includes/class-mad4b-scp-mcp-registration-bridge.php")
+for marker in (
+    "public static function mcp_registration_identity( array $fact )",
+    "'deferred_identity_ready'",
+    "'registration_error'",
+    "'blocking_registration_error'",
+    "'deep_registration_deferred'",
+):
+    require(projection, marker, "canonical MCP registration truth projection")
+registration_fact = registration_bridge.split("public static function server_registration_identity_status( $server_id )", 1)[1].split("public static function status()", 1)[0]
+require(registration_fact, "MAD4B_SCP_Truth_Projection::mcp_registration_identity( $fact )", "registration source delegates projection")
+for forbidden in ("$identity_ready =", "$blocking_error =", "'deferred_identity_ready'"):
+    if forbidden in registration_fact:
+        raise SystemExit("registration source class re-derived projected readiness instead of delegating Truth Projection")
+
+# 0b. Candidate-bound persisted truth is reduced canonically.
+for marker in (
+    "public static function candidate_identity_bound_ready( array $persisted, array $current",
+    "public static function candidate_binding_bound_ready( array $persisted, array $binding",
+    "'current_candidate_match'",
+    "'effective_ready'",
+    "'recorded_package_manifest_digest'",
+    "'recorded_artifact_identity'",
+    "'current_package_manifest_digest'",
+    "'current_artifact_identity'",
+):
+    require(projection, marker, "canonical candidate-bound truth projection")
+read_consistency = read("includes/class-mad4b-scp-read-consistency.php")
+skills_projection = read_consistency.split("private static function skills_projection()", 1)[1].split("private static function deep_skills_projection()", 1)[0]
+write_projection = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function deep_write_authority_projection()", 1)[0]
+require(skills_projection, "MAD4B_SCP_Truth_Projection::candidate_identity_bound_ready", "skills projection delegates candidate truth")
+require(write_projection, "MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready", "write projection delegates candidate truth")
+for forbidden in ("hash_equals( $recorded_sha", "$effective_ready = $recorded_ready && $candidate_match"):
+    if forbidden in skills_projection:
+        raise SystemExit("Read Consistency re-derived Skills candidate readiness")
+for forbidden in ("$effective_ready = $persisted_ready &&", "$binding_match = ! empty"):
+    if forbidden in write_projection:
+        raise SystemExit("Read Consistency re-derived write candidate readiness")
+
+# 0bb. Governed Write current readiness is live grant-snapshot truth, not the persisted checkpoint.
+for marker in (
+    "public static function governed_write_grant_snapshot( array $fact )",
+    "'persisted_write_authority_not_ready'",
+    "'unreviewed_stale_write_authority'",
+    "'current_ready' => empty( $blockers )",
+):
+    require(projection, marker, "canonical governed-write grant snapshot truth")
+write_authority_source = read("includes/class-mad4b-scp-staging-write-authority.php")
+write_plan = write_authority_source.split("public static function reconciliation_plan()", 1)[1].split("public static function reconcile()", 1)[0]
+require(write_plan, "MAD4B_SCP_Truth_Projection::governed_write_grant_snapshot", "write reconciliation delegates current readiness")
+if "'current_ready' => $persisted_ready" in write_plan:
+    raise SystemExit("write reconciliation still aliases current_ready to persisted_ready")
+require(write_plan, "'current_readiness_blockers'", "write reconciliation exposes current readiness blockers")
+
+# 0c. Session-safe identity truth remains strict and deferred readiness stays tri-state.
+for marker in (
+    "public static function session_connection_identity( array $fact )",
+    "public static function session_reconnect_identity( array $fact )",
+    "'chatgpt_actual_registered'",
+    "'mcp_chatgpt_not_registered'",
+):
+    require(projection, marker, "canonical session-safe identity truth")
+read_consistency = read("includes/class-mad4b-scp-read-consistency.php")
+session_connection = read_consistency.split("private static function session_safe_connection_projection()", 1)[1].split("private static function session_safe_reconnect_projection()", 1)[0]
+session_reconnect = read_consistency.split("private static function session_safe_reconnect_projection()", 1)[1].split("private static function connection_projection()", 1)[0]
+require(session_connection, "MAD4B_SCP_Truth_Projection::session_connection_identity( $fact )", "session connection delegates truth")
+require(session_reconnect, "MAD4B_SCP_Truth_Projection::session_reconnect_identity( $fact )", "session reconnect delegates truth")
+if "'ready' => null" not in read_consistency:
+    raise SystemExit("deferred diagnostic checks must preserve unknown readiness as null")
+if "MAD4B_SCP_Truth_Projection::tri_state( $summary, 'ready' )" not in read_consistency:
+    raise SystemExit("compact diagnostics must preserve tri-state readiness without boolean coercion")
+
 # 1. One canonical owner for external WPML truth.
 require(bootstrap, "class-mad4b-scp-truth-projection.php", "truth projection loader")
 for marker in (
@@ -59,6 +132,17 @@ if "'external_wpml_acceptance_verified' => false" in write_projection:
 observer_write = observer.split("public static function write_runtime_certification_status()", 1)[1].split("public static function observe_doing_it_wrong", 1)[0]
 require(observer_write, "MAD4B_SCP_Truth_Projection::external_wpml( true )", "observer Write Runtime canonical projection")
 require(observer, "MAD4B_SCP_WPML_Response_Contract::receipt_status()", "observer normalized WPML source")
+
+# 1b. Lightweight and full provenance share the same artifact/source identity validator.
+for marker in (
+    "private static function artifact_identity_matches_source( $artifact_identity, $source_commit_sha )",
+    "artifact_identity_invalid",
+):
+    require(observer, marker, "shared artifact identity validation")
+identity_provenance = observer.split("public static function build_provenance_identity_status()", 1)[1].split("public static function build_provenance_status()", 1)[0]
+full_provenance = observer.split("public static function build_provenance_status()", 1)[1].split("private static function provenance_manifest()", 1)[0]
+require(identity_provenance, "self::artifact_identity_matches_source", "lightweight provenance artifact validation")
+require(full_provenance, "self::artifact_identity_matches_source", "full provenance artifact validation")
 
 # 2. Passive tri-state is never collapsed with !empty().
 rest_status = rest.split("public static function status()", 1)[1]
@@ -97,12 +181,36 @@ for marker in (
 ):
     require(read_consistency, marker, "session-safe effective-state semantics")
 authority_projection = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function skills_projection()", 1)[0]
-require(authority_projection, "$effective_ready = $persisted_ready && ( ! $binding_required || $binding_match )", "effective authority formula")
+require(authority_projection, "MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready", "effective authority canonical projection")
 skills_projection = read_consistency.split("private static function skills_projection()", 1)[1].split("private static function update_projection()", 1)[0]
-require(skills_projection, "'historical_evidence'", "historical Skills state")
-require(skills_projection, "$effective_ready = $recorded_ready && $candidate_match", "effective Skills formula")
-for marker in ("'source_commit_sha' => $source_commit_sha", "'build_fingerprint' => $build_fingerprint"):
-    require(skills, marker, "persisted Skills exact-build identity")
+require(skills_projection, "MAD4B_SCP_Truth_Projection::candidate_identity_bound_ready", "effective Skills canonical projection")
+require(projection, "$effective_ready = $persisted_ready && ( ! $binding_required || $binding_match )", "effective authority formula owner")
+require(projection, "$effective_ready = $recorded_ready && $candidate_match", "effective Skills formula owner")
+require(projection, "historical_evidence", "historical Skills state owner")
+for marker in (
+    "'source_commit_sha' => $source_commit_sha",
+    "'build_fingerprint' => $build_fingerprint",
+    "'package_manifest_digest' => $package_manifest_digest",
+    "'artifact_identity' => $artifact_identity",
+    "'build_provenance_identity_ready'",
+    "'build_provenance_identity_unavailable'",
+):
+    require(skills, marker, "persisted Skills exact-package identity")
+for marker in (
+    "'package_manifest_digest', 'artifact_identity'",
+    "'recorded_package_manifest_digest'",
+    "'recorded_artifact_identity'",
+    "'current_package_manifest_digest'",
+    "'current_artifact_identity'",
+):
+    require(read_consistency, marker, "Skills read-consistency four-part candidate identity")
+
+# 4b. Deep Write Live Truth consumes the same canonical grant snapshot as reconciliation.
+current_authority_truth = live_truth.split("public static function current_authority_status()", 1)[1].split("public static function current_write_certification()", 1)[0]
+require(current_authority_truth, "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()", "Live Truth canonical grant snapshot")
+require(current_authority_truth, "'grant_snapshot_current_ready'", "Live Truth grant readiness evidence")
+if "MAD4B_SCP_Agent_Registry::exact_grant(" in current_authority_truth:
+    raise SystemExit("Live Truth must not maintain a parallel exact-grant readiness reducer")
 
 # 5. Third-party admin AJAX is zero-touch; owned MAD4B actions use exact registry.
 for marker in (

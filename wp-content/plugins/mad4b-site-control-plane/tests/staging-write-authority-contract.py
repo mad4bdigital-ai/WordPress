@@ -38,10 +38,38 @@ if "MAD4B_SCP_Agent_Registry::exact_grant(" in plan_body:
     raise SystemExit("read-only reconciliation plan regressed to N+1 exact_grant lookups")
 if plan_body.count("MAD4B_SCP_Agent_Registry::grants_for_agent") != 1:
     raise SystemExit("read-only reconciliation plan must use one bulk agent grant snapshot")
+for marker_text in [
+    "MAD4B_SCP_Truth_Projection::governed_write_grant_snapshot",
+    "'current_readiness_blockers'",
+    "'persisted_ready' => $persisted_ready",
+]:
+    if marker_text not in plan_body:
+        raise SystemExit("write reconciliation current/persisted readiness split missing: " + marker_text)
+if "'current_ready' => $persisted_ready" in plan_body:
+    raise SystemExit("write reconciliation current_ready must not alias the historical persisted checkpoint")
+
 reconcile_body = write.split("public static function reconcile()", 1)[1]
 for marker_text in ["$seen_current_exact_allow", "$duplicate_grants_revoked", ":duplicate_grant"]:
     if marker_text not in reconcile_body:
         raise SystemExit("explicit reconcile lost deterministic duplicate-grant cleanup: " + marker_text)
+for marker_text in [
+    "$preflight_plan = self::reconciliation_plan();",
+    "'unreviewed_stale_allow_grants_count'",
+    "self::fail_closed_persisted_authority( 'unreviewed_stale_write_authority' )",
+]:
+    if marker_text not in reconcile_body:
+        raise SystemExit("unknown stale authority pre-mutation guard missing: " + marker_text)
+preflight_pos = reconcile_body.index("$preflight_plan = self::reconciliation_plan();")
+for mutation_marker in [
+    "MAD4B_SCP_Agent_Registry::create_agent",
+    "MAD4B_SCP_Agent_Registry::update_agent",
+    "MAD4B_SCP_Agent_Registry::bind_subject",
+    "MAD4B_SCP_Agent_Registry::set_subject_status",
+    "MAD4B_SCP_Agent_Registry::grant_ability",
+    "MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id",
+]:
+    if mutation_marker in reconcile_body and preflight_pos > reconcile_body.index(mutation_marker):
+        raise SystemExit("unknown stale authority guard runs after authority mutation: " + mutation_marker)
 
 if not write.rstrip().endswith('}'):
     raise SystemExit('write authority file must end at the canonical class closing brace')
@@ -388,6 +416,18 @@ if "'elementor/update-widget-settings'] = 'elementor'" not in retirement_allowli
     raise SystemExit('historical Elementor stale grant is not explicitly retirement-only')
 if "retirable_stale_ability_providers" not in grant_plan:
     raise SystemExit('stale grant plan does not use retirement-only historical allowlist')
+
+for marker in [
+    "'unreviewed_stale_allow_grants_count'",
+    "'unknown_stale_authority_fail_closed' => true",
+    "'stale_allow_unreviewed:'",
+    "'non_current_environment_allow:'",
+    "$reviewed_stale_grants_revoked",
+    "$broad_environment_grants_revoked",
+]:
+    if marker not in write:
+        raise SystemExit('governed write authority does not fail closed on unknown stale authority: ' + marker)
+
 
 for forbidden_grant in [
     "'jetengine/import-configuration'",
@@ -907,6 +947,20 @@ if "candidate_binding_status()" not in effective_body:
     raise SystemExit('authority effective() must fail closed on an exact packaged candidate mismatch')
 if "current_authority_status()" in effective_body:
     raise SystemExit('authority effective() may not recursively rebuild Live Truth/write inventory')
+
+current_authority_body = live_truth.split("public static function current_authority_status()", 1)[1].split("public static function current_write_certification()", 1)[0]
+for marker in [
+    "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()",
+    "'grant_snapshot_current_ready'",
+    "'grant_snapshot_blockers'",
+    "'unreviewed_stale_allow_grants_count'",
+]:
+    if marker not in current_authority_body:
+        raise SystemExit(f'Live Truth does not consume canonical current grant snapshot: {marker}')
+if "MAD4B_SCP_Agent_Registry::exact_grant(" in current_authority_body:
+    raise SystemExit('Live Truth regressed to a parallel N+1 grant-readiness interpretation')
+if "$grant_snapshot_ready" not in current_authority_body or "'grant_reconciliation_incomplete'" not in current_authority_body:
+    raise SystemExit('Live Truth must fail closed when canonical grant snapshot is not current-ready')
 
 for marker in [
     "runtime_authority_candidate_not_reconciled",

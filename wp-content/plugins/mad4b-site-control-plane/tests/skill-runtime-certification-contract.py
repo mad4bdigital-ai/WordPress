@@ -118,6 +118,10 @@ for marker in [
     "snapshot_identity_unavailable",
     "snapshot_identity_count_mismatch",
     "snapshot_identity_token",
+    "build_provenance_identity_ready",
+    "build_provenance_identity_unavailable",
+    "package_manifest_digest",
+    "artifact_identity",
     "external_client_snapshot_verified",
     "local_runtime_only",
     "MAD4B_SCP_Audit::record",
@@ -129,6 +133,23 @@ for marker in [
 status_section = cert[cert.index('public static function status()'):cert.index('public static function persisted_status()')]
 if 'update_option(' in status_section or 'MAD4B_SCP_Audit::record' in status_section:
     raise SystemExit('Skill current status must remain read-only and must not persist or audit')
+
+persisted_section = cert[cert.index('public static function persisted_status()'):cert.index('private static function evaluate()')]
+for marker in (
+    'self::project_persisted_freshness( $stored )',
+    'private static function project_persisted_freshness( array $stored )',
+    "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()",
+    "'persisted_build_identity_stale'",
+    "'historical_evidence_only'",
+    "'build_identity_current'",
+    "'stale_reasons'",
+):
+    if marker not in persisted_section:
+        raise SystemExit(f'missing persisted Skill build-freshness invariant: {marker}')
+if 'build_provenance_status()' in persisted_section:
+    raise SystemExit('persisted Skill freshness must not trigger full runtime provenance hashing')
+if 'update_option(' in persisted_section or 'MAD4B_SCP_Audit::record' in persisted_section:
+    raise SystemExit('persisted Skill freshness projection must remain read-only')
 
 observe_section = cert[cert.index('public static function observe( $force_explicit = false )'):cert.index('public static function current_status()')]
 if "current_request_is_protocol_hotpath()" not in observe_section:

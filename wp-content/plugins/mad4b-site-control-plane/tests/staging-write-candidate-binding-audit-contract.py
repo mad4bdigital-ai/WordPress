@@ -18,6 +18,8 @@ for marker in [
     "'bind_input' => $bind_input",
     "'expected_grant_rows_fingerprint'",
     "'candidate_binding_plan_only' => true",
+    "'unreviewed_stale_allow_grants_count'",
+    "'unreviewed_stale_write_authority'",
 
     "mad4b/staging-write-candidate-binding-audit",
     "operation_context",
@@ -75,6 +77,9 @@ for marker in [
     "artifact_identity",
     "grant_rows_fingerprint",
     "write_inventory_fingerprint",
+    "unreviewed_stale_allow_grants_count",
+    "mad4b_candidate_binding_write_snapshot_not_clean",
+    "$clean_snapshot",
 ]:
     assert marker in primitive, f'candidate-binding primitive lacks mandatory guard: {marker}'
 

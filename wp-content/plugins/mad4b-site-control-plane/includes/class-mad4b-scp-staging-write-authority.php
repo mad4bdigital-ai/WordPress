@@ -361,6 +361,19 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			|| empty( $write['grant_rows_fingerprint'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $write['grant_rows_fingerprint'] ) ) {
 			return new WP_Error( 'mad4b_candidate_binding_write_snapshot_invalid', 'Candidate binding write snapshot is invalid.' );
 		}
+		foreach ( array(
+			'exact_grants_missing_count',
+			'stale_allow_grants_count',
+			'unreviewed_stale_allow_grants_count',
+			'broad_environment_grants_count',
+			'duplicate_exact_allow_grants_count',
+			'current_agent_wildcard_grants',
+			'global_registry_wildcard_grants',
+		) as $clean_field ) {
+			if ( ! array_key_exists( $clean_field, $write ) || 0 !== (int) $write[ $clean_field ] ) {
+				return new WP_Error( 'mad4b_candidate_binding_write_snapshot_not_clean', 'Candidate binding requires a zero-drift reviewed write snapshot.', array( 'field' => $clean_field, 'value' => isset( $write[ $clean_field ] ) ? $write[ $clean_field ] : null ) );
+			}
+		}
 		$operation_basis = isset( $context['operation_basis'] ) && is_array( $context['operation_basis'] ) ? $context['operation_basis'] : array();
 		$authorization_source = isset( $operation_basis['source'] ) ? sanitize_key( (string) $operation_basis['source'] ) : '';
 		$authorization_contract = isset( $operation_basis['contract'] ) ? trim( (string) $operation_basis['contract'] ) : '';
@@ -509,7 +522,28 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			$binding = self::candidate_binding_status();
 			$write_snapshot = $context['write_snapshot'];
 			$plan_before = self::reconciliation_plan();
-			if ( ! is_array( $plan_before )
+			$clean_fields = array(
+				'exact_grants_missing_count',
+				'stale_allow_grants_count',
+				'unreviewed_stale_allow_grants_count',
+				'broad_environment_grants_count',
+				'duplicate_exact_allow_grants_count',
+				'current_agent_wildcard_grants',
+				'global_registry_wildcard_grants',
+			);
+			$clean_snapshot = is_array( $plan_before );
+			if ( $clean_snapshot ) {
+				foreach ( $clean_fields as $clean_field ) {
+					if ( ! array_key_exists( $clean_field, $write_snapshot )
+						|| ! array_key_exists( $clean_field, $plan_before )
+						|| 0 !== (int) $write_snapshot[ $clean_field ]
+						|| 0 !== (int) $plan_before[ $clean_field ] ) {
+						$clean_snapshot = false;
+						break;
+					}
+				}
+			}
+			if ( ! $clean_snapshot
 				|| (int) $plan_before['write_tool_count'] !== (int) $write_snapshot['write_tool_count']
 				|| ! hash_equals( (string) $plan_before['write_inventory_fingerprint'], (string) $write_snapshot['write_inventory_fingerprint'] )
 				|| ! hash_equals( (string) $plan_before['grant_rows_fingerprint'], (string) $write_snapshot['grant_rows_fingerprint'] ) ) {
@@ -617,6 +651,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				&& (int) $after_plan['exact_grants_existing'] === (int) $write_snapshot['write_tool_count']
 				&& 0 === (int) $after_plan['exact_grants_missing_count']
 				&& 0 === (int) $after_plan['stale_allow_grants_count']
+				&& 0 === (int) $after_plan['unreviewed_stale_allow_grants_count']
 				&& 0 === (int) $after_plan['broad_environment_grants_count']
 				&& 0 === (int) $after_plan['duplicate_exact_allow_grants_count']
 				&& 0 === (int) $after_plan['current_agent_wildcard_grants']
@@ -1157,6 +1192,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$rows = array();
 		$missing = array();
 		$stale = array();
+		$unreviewed_stale = array();
 		$duplicates = array();
 		$broad_environment = array();
 		$existing_count = 0;
@@ -1242,19 +1278,42 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			$rows[] = $row;
 		}
 
+		$retirement_providers = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
+			? MAD4B_SCP_Staging_Write_Grant_Reconciliation::retirable_stale_ability_providers()
+			: array();
 		foreach ( $grants as $grant ) {
 			if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) ) continue;
-			$key = ( isset( $grant['ability_name'] ) ? (string) $grant['ability_name'] : '' ) . "\0" . ( isset( $grant['provider'] ) ? (string) $grant['provider'] : '' );
+			$ability = isset( $grant['ability_name'] ) ? (string) $grant['ability_name'] : '';
+			$provider = isset( $grant['provider'] ) ? sanitize_key( (string) $grant['provider'] ) : '';
+			$key = $ability . "\0" . $provider;
 			$grant_environment = isset( $grant['environment'] ) ? (string) $grant['environment'] : '';
-			if ( isset( $desired[ $key ] ) && 'all' === $grant_environment ) continue;
-			if ( ! isset( $desired[ $key ] ) || $environment !== $grant_environment ) {
-				$stale[] = array(
+			if ( isset( $desired[ $key ] ) && in_array( $grant_environment, array( $environment, 'all' ), true ) ) continue;
+			if ( isset( $desired[ $key ] ) && $environment !== $grant_environment ) {
+				$unreviewed_stale[] = array(
 					'id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,
-					'ability' => isset( $grant['ability_name'] ) ? (string) $grant['ability_name'] : '',
-					'provider' => isset( $grant['provider'] ) ? (string) $grant['provider'] : '',
+					'ability' => $ability,
+					'provider' => $provider,
+					'environment' => $grant_environment,
+					'reason' => 'non_current_environment_allow',
+				);
+				continue;
+			}
+			if ( ! isset( $desired[ $key ] ) ) {
+				$row = array(
+					'id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,
+					'ability' => $ability,
+					'provider' => $provider,
 					'environment' => $grant_environment,
 					'reason' => 'not_in_current_runtime_inventory',
 				);
+				$reviewed_retirement = $environment === $grant_environment
+					&& isset( $retirement_providers[ $ability ] )
+					&& sanitize_key( (string) $retirement_providers[ $ability ] ) === $provider;
+				if ( $reviewed_retirement ) $stale[] = $row;
+				else {
+					$row['reason'] = 'stale_allow_unreviewed';
+					$unreviewed_stale[] = $row;
+				}
 			}
 		}
 
@@ -1267,13 +1326,31 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$persisted_ready = ! empty( $persisted_status['ready'] );
 		$effective_ready = self::effective();
 		$grant_rows_fingerprint = hash( 'sha256', wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$grant_truth = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'governed_write_grant_snapshot' )
+			? MAD4B_SCP_Truth_Projection::governed_write_grant_snapshot( array(
+				'persisted_ready' => $persisted_ready,
+				'eligible' => ! empty( $status['eligible'] ),
+				'agent_present' => is_array( $agent ) && ! empty( $agent['id'] ),
+				'write_tool_count' => count( $tools ),
+				'exact_grants_existing' => $existing_count,
+				'exact_grants_missing_count' => count( $missing ),
+				'stale_allow_grants_count' => count( $stale ),
+				'unreviewed_stale_allow_grants_count' => count( $unreviewed_stale ),
+				'broad_environment_grants_count' => count( $broad_environment ),
+				'duplicate_exact_allow_grants_count' => $duplicate_excess,
+				'current_agent_wildcard_grants' => $current_agent_wildcards,
+				'global_registry_wildcard_grants' => $global_wildcards,
+				'breakglass_included' => in_array( 'mad4b/database-raw-query', $tools, true ),
+			) )
+			: array( 'current_ready' => false, 'blockers' => array( 'truth_projection_unavailable' ) );
 
 		return array(
 			'contract' => 'mad4b.governed-write-authority-reconciliation-plan.v2',
 			'read_only' => true,
 			'mutation_performed' => false,
 			'eligible' => ! empty( $status['eligible'] ),
-			'current_ready' => $persisted_ready,
+			'current_ready' => ! empty( $grant_truth['current_ready'] ),
+			'current_readiness_blockers' => isset( $grant_truth['blockers'] ) && is_array( $grant_truth['blockers'] ) ? $grant_truth['blockers'] : array(),
 			'persisted_ready' => $persisted_ready,
 			'effective_ready' => $effective_ready,
 			'environment' => $environment,
@@ -1287,6 +1364,9 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'exact_grants_missing' => $missing,
 			'stale_allow_grants_count' => count( $stale ),
 			'stale_allow_grants' => $stale,
+			'unreviewed_stale_allow_grants_count' => count( $unreviewed_stale ),
+			'unreviewed_stale_allow_grants' => $unreviewed_stale,
+			'unknown_stale_authority_fail_closed' => true,
 			'broad_environment_grants_count' => count( $broad_environment ),
 			'broad_environment_grants' => $broad_environment,
 			'duplicate_exact_allow_grants_count' => $duplicate_excess,
@@ -1375,6 +1455,18 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			}
 		}
 
+		// Unknown stale authority is not a reconciliation target. Detect it from the
+		// read-only bulk grant snapshot before creating/updating agents, subjects or
+		// grants. The only allowed mutation here is authority narrowing: invalidate
+		// the persisted ready checkpoint so ordinary write hotpaths fail closed.
+		$preflight_plan = self::reconciliation_plan();
+		if ( ! is_array( $preflight_plan ) ) return self::finish_blocked( $status, 'write_reconciliation_preflight_unavailable' );
+		if ( ! empty( $preflight_plan['unreviewed_stale_allow_grants_count'] ) ) {
+			$invalidated = self::fail_closed_persisted_authority( 'unreviewed_stale_write_authority' );
+			if ( is_wp_error( $invalidated ) ) return self::finish_blocked( $status, 'unreviewed_stale_authority_invalidation_failed' );
+			return self::finish_blocked( $status, 'unreviewed_stale_write_authority' );
+		}
+
 		$environment = self::current_environment();
 		$agent_slug = self::agent_slug();
 		$agent = self::agent_by_slug( $agent_slug );
@@ -1461,25 +1553,45 @@ final class MAD4B_SCP_Staging_Write_Authority {
 
 		$grants_revoked = 0;
 		$duplicate_grants_revoked = 0;
+		$broad_environment_grants_revoked = 0;
+		$reviewed_stale_grants_revoked = 0;
+		$retirement_providers = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )
+			? MAD4B_SCP_Staging_Write_Grant_Reconciliation::retirable_stale_ability_providers()
+			: array();
 		$existing_grants = MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], 'mad4b-write' );
 		$seen_current_exact_allow = array();
 		foreach ( $existing_grants as $grant ) {
 			if ( 'allow' !== (string) $grant['effect'] ) continue;
-			$key = (string) $grant['ability_name'] . "\0" . (string) $grant['provider'];
+			$ability = (string) $grant['ability_name'];
+			$provider = sanitize_key( (string) $grant['provider'] );
+			$key = $ability . "\0" . $provider;
 			$grant_environment = isset( $grant['environment'] ) ? (string) $grant['environment'] : '';
-			$stale = ! isset( $desired_grants[ $key ] ) || $environment !== $grant_environment;
+			$desired_pair = isset( $desired_grants[ $key ] );
 			$duplicate = false;
-			if ( ! $stale ) {
+			if ( $desired_pair && $environment === $grant_environment ) {
 				if ( isset( $seen_current_exact_allow[ $key ] ) ) $duplicate = true;
 				else $seen_current_exact_allow[ $key ] = true;
 			}
-			if ( ! $stale && ! $duplicate ) continue;
+			$broad_current = $desired_pair && 'all' === $grant_environment;
+			$reviewed_stale = ! $desired_pair
+				&& $environment === $grant_environment
+				&& isset( $retirement_providers[ $ability ] )
+				&& sanitize_key( (string) $retirement_providers[ $ability ] ) === $provider;
+			$unsafe_stale = ( ! $desired_pair || ( $desired_pair && ! in_array( $grant_environment, array( $environment, 'all' ), true ) ) )
+				&& ! $reviewed_stale;
+			if ( $unsafe_stale ) {
+				$grant_blockers[] = ( $desired_pair ? 'non_current_environment_allow:' : 'stale_allow_unreviewed:' ) . $ability;
+				continue;
+			}
+			if ( ! $duplicate && ! $broad_current && ! $reviewed_stale ) continue;
 			$revoked = MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id( $agent['public_id'], (int) $grant['id'], 'mad4b-write' );
 			if ( is_wp_error( $revoked ) ) {
-				$grant_blockers[] = $revoked->get_error_code() . ( $duplicate ? ':duplicate_grant' : ':stale_grant' );
+				$grant_blockers[] = $revoked->get_error_code() . ( $duplicate ? ':duplicate_grant' : ( $broad_current ? ':broad_environment_grant' : ':reviewed_stale_grant' ) );
 			} else {
 				++$grants_revoked;
 				if ( $duplicate ) ++$duplicate_grants_revoked;
+				elseif ( $broad_current ) ++$broad_environment_grants_revoked;
+				elseif ( $reviewed_stale ) ++$reviewed_stale_grants_revoked;
 			}
 		}
 
@@ -1515,8 +1627,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$status['write_inventory_fingerprint'] = hash( 'sha256', wp_json_encode( $inventory_rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 		$status['exact_grants_existing'] = $existing;
 		$status['exact_grants_created'] = $granted;
-		$status['stale_allow_grants_revoked'] = max( 0, $grants_revoked - $duplicate_grants_revoked );
+		$status['stale_allow_grants_revoked'] = $reviewed_stale_grants_revoked;
+		$status['broad_environment_grants_revoked'] = $broad_environment_grants_revoked;
 		$status['duplicate_exact_allow_grants_revoked'] = $duplicate_grants_revoked;
+		$status['unknown_stale_authority_fail_closed'] = true;
 		$status['grant_blockers'] = $all_blockers;
 		$status['all_remote_writes_require_exact_approval'] = 'production' === $environment;
 		$status['normal_remote_writes_require_exact_approval'] = true;
