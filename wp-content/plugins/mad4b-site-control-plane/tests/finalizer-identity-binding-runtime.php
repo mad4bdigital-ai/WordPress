@@ -19,6 +19,12 @@ $observed_at = '2026-09-11 13:00:00';
 $verified_at = '2026-09-11 13:00:03';
 $issuer = 'https://auth.mad4b.com';
 $resource = 'https://staging.egypttourgates.com/wp-json/mcp/mad4b-chatgpt';
+$package = array(
+	'source_commit_sha' => str_repeat( '1', 40 ),
+	'package_build_fingerprint' => str_repeat( '2', 64 ),
+	'package_manifest_digest' => str_repeat( '3', 64 ),
+	'artifact_identity' => 'mad4b-site-control-plane-test-' . str_repeat( '1', 40 ),
+);
 
 $attestation = array(
 	'real_external_session' => true,
@@ -27,6 +33,10 @@ $attestation = array(
 	'external_tool_inventory_fingerprint' => $inventory,
 	'external_tool_count' => 12,
 	'external_write_tool_count' => 4,
+	'source_commit_sha' => $package['source_commit_sha'],
+	'package_build_fingerprint' => $package['package_build_fingerprint'],
+	'package_manifest_digest' => $package['package_manifest_digest'],
+	'artifact_identity' => $package['artifact_identity'],
 	'observed_at' => $observed_at,
 );
 
@@ -44,6 +54,10 @@ $handshake = array(
 	'tool_count' => 12,
 	'write_tool_count' => 4,
 	'mcp_session_fingerprint' => str_repeat( 'c', 64 ),
+	'source_commit_sha' => $package['source_commit_sha'],
+	'package_build_fingerprint' => $package['package_build_fingerprint'],
+	'package_manifest_digest' => $package['package_manifest_digest'],
+	'artifact_identity' => $package['artifact_identity'],
 	'verified_at' => $verified_at,
 );
 
@@ -59,8 +73,24 @@ $oauth = array( 'issuer' => $issuer, 'resource' => $resource );
 
 mad4b_finalizer_assert(
 	MAD4B_SCP_External_Handshake_Evidence::observer_attestation_matches_finalizer_context( $attestation, $handshake, $identity, $oauth ),
-	'Exact current subject, OAuth authority, ChatGPT client and same tools/list evidence must bind.'
+	'Exact current subject, OAuth authority, ChatGPT client, tools/list evidence and package identity must bind.'
 );
+
+$bad = $handshake;
+$bad['source_commit_sha'] = str_repeat( '4', 40 );
+mad4b_finalizer_assert( ! MAD4B_SCP_External_Handshake_Evidence::observer_attestation_matches_finalizer_context( $attestation, $bad, $identity, $oauth ), 'Different source commit must fail closed.' );
+
+$bad = $handshake;
+$bad['package_build_fingerprint'] = str_repeat( '5', 64 );
+mad4b_finalizer_assert( ! MAD4B_SCP_External_Handshake_Evidence::observer_attestation_matches_finalizer_context( $attestation, $bad, $identity, $oauth ), 'Different package build fingerprint must fail closed.' );
+
+$bad = $handshake;
+$bad['package_manifest_digest'] = str_repeat( '6', 64 );
+mad4b_finalizer_assert( ! MAD4B_SCP_External_Handshake_Evidence::observer_attestation_matches_finalizer_context( $attestation, $bad, $identity, $oauth ), 'Different package manifest digest must fail closed.' );
+
+$bad = $handshake;
+$bad['artifact_identity'] = 'different-artifact';
+mad4b_finalizer_assert( ! MAD4B_SCP_External_Handshake_Evidence::observer_attestation_matches_finalizer_context( $attestation, $bad, $identity, $oauth ), 'Different artifact identity must fail closed.' );
 
 $bad = $identity;
 $bad['subject_fingerprint'] = str_repeat( 'd', 64 );

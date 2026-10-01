@@ -281,7 +281,7 @@ for marker in (
     "defined( 'REST_REQUEST' )", "defined( 'WP_CLI' ) && WP_CLI",
     'verified_bearer_active()', "'initialize'", "'tools/list'",
     "hash( 'sha256', $session_id )", "update_option( self::OPTION, $evidence, false )",
-    "'credential_material_stored' => false", "'stale_build_evidence'", "'stale_tool_inventory_evidence'", 'build_fingerprint()',
+    "'credential_material_stored' => false", "'stale_package_identity_evidence'", "'stale_runtime_surface_evidence'", "'stale_tool_inventory_evidence'", 'build_fingerprint()',
     "'tool_inventory_fingerprint'", "'expected_tool_inventory_fingerprint'", "'tool_inventory_match'",
     "'write_catalog_fingerprint'", "'write_transport_ready'", "'direct_write_schema_leaks'",
     'expected_tool_names()', 'expected_write_tool_names()', 'blocked_write_tool_names()', 'breakglass_tool_names()',
