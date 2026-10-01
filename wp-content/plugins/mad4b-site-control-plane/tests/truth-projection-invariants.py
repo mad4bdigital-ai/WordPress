@@ -60,6 +60,24 @@ for forbidden in ("$effective_ready = $persisted_ready &&", "$binding_match = ! 
     if forbidden in write_projection:
         raise SystemExit("Read Consistency re-derived write candidate readiness")
 
+# 0c. Session-safe identity truth remains strict and deferred readiness stays tri-state.
+for marker in (
+    "public static function session_connection_identity( array $fact )",
+    "public static function session_reconnect_identity( array $fact )",
+    "'chatgpt_actual_registered'",
+    "'mcp_chatgpt_not_registered'",
+):
+    require(projection, marker, "canonical session-safe identity truth")
+read_consistency = read("includes/class-mad4b-scp-read-consistency.php")
+session_connection = read_consistency.split("private static function session_safe_connection_projection()", 1)[1].split("private static function session_safe_reconnect_projection()", 1)[0]
+session_reconnect = read_consistency.split("private static function session_safe_reconnect_projection()", 1)[1].split("private static function connection_projection()", 1)[0]
+require(session_connection, "MAD4B_SCP_Truth_Projection::session_connection_identity( $fact )", "session connection delegates truth")
+require(session_reconnect, "MAD4B_SCP_Truth_Projection::session_reconnect_identity( $fact )", "session reconnect delegates truth")
+if "'ready' => null" not in read_consistency:
+    raise SystemExit("deferred diagnostic checks must preserve unknown readiness as null")
+if "MAD4B_SCP_Truth_Projection::tri_state( $summary, 'ready' )" not in read_consistency:
+    raise SystemExit("compact diagnostics must preserve tri-state readiness without boolean coercion")
+
 # 1. One canonical owner for external WPML truth.
 require(bootstrap, "class-mad4b-scp-truth-projection.php", "truth projection loader")
 for marker in (
