@@ -906,7 +906,7 @@ final class MAD4B_SCP_Servers {
 		$preflight = null;
 		$requested_tools = $tools;
 		if ( 'mad4b-chatgpt' === $id && $materialized ) {
-			$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $tools, MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections() );
+			$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $tools, MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $tools ) );
 			if ( ! empty( $preflight['ready'] ) ) $tools = $preflight['tools'];
 		}
 		$result = $adapter->create_server( $id, 'mcp', $id, $name, $description, MAD4B_SCP_VERSION, array( $transport ), $error_handler, $observability, $tools, array(), array(), $permission );
