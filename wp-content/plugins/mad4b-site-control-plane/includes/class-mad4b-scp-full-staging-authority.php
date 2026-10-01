@@ -358,6 +358,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		$hard_blockers = array();
 		if ( isset( $write_plan['global_registry_wildcard_grants'] ) && (int) $write_plan['global_registry_wildcard_grants'] > 0 ) $hard_blockers[] = 'global_registry_wildcard_grants';
 		if ( isset( $write_plan['current_agent_wildcard_grants'] ) && (int) $write_plan['current_agent_wildcard_grants'] > 0 ) $hard_blockers[] = 'current_agent_wildcard_grants';
+		if ( isset( $write_plan['unreviewed_stale_allow_grants_count'] ) && (int) $write_plan['unreviewed_stale_allow_grants_count'] > 0 ) $hard_blockers[] = 'unreviewed_stale_write_authority';
 		if ( ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $hard_blockers[] = 'oauth_disabled';
 		if ( ! MAD4B_SCP_Site_Profile::acceptance_enabled() ) $hard_blockers[] = 'acceptance_disabled';
 		if ( ! MAD4B_SCP_Site_Profile::skills_enabled() ) $hard_blockers[] = 'skills_disabled';
@@ -394,6 +395,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'fixable_write_drift' => array(
 				'exact_grants_missing_count' => isset( $write_plan['exact_grants_missing_count'] ) ? (int) $write_plan['exact_grants_missing_count'] : 0,
 				'stale_allow_grants_count' => isset( $write_plan['stale_allow_grants_count'] ) ? (int) $write_plan['stale_allow_grants_count'] : 0,
+				'unreviewed_stale_allow_grants_count' => isset( $write_plan['unreviewed_stale_allow_grants_count'] ) ? (int) $write_plan['unreviewed_stale_allow_grants_count'] : 0,
 				'broad_environment_grants_count' => isset( $write_plan['broad_environment_grants_count'] ) ? (int) $write_plan['broad_environment_grants_count'] : 0,
 				'duplicate_exact_allow_grants_count' => isset( $write_plan['duplicate_exact_allow_grants_count'] ) ? (int) $write_plan['duplicate_exact_allow_grants_count'] : 0,
 				'candidate_binding_match' => ! empty( $write_plan['candidate_binding']['match'] ),
