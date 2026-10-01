@@ -21,6 +21,13 @@ required_ui = [
     "'token_endpoint_auth_method' => 'none'",
     "array( 'mad4b:read', 'offline_access' )",
     "'gateway_server_id' => 'mad4b-chatgpt'",
+    "MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( 'mad4b-chatgpt' )",
+    "'gateway_expected' => $gateway_expected",
+    "'gateway_registered' => $gateway_registered",
+    "'gateway_registration_identity_ready' => $gateway_identity_ready",
+    "'gateway_registration_state'",
+    "'gateway_deep_registration_deferred'",
+    "$ready = $environment_ready && ! empty( $local['effective'] ) && ! empty( $bridge['effective'] ) && $cimd_ready && $gateway_identity_ready;",
     "'generic_filesystem_exposed' => false",
     "'generic_database_exposed' => false",
     "'write_admin_breakglass_exposed' => false",
@@ -61,10 +68,18 @@ required_ui = [
     'Enable Production read-only OAuth',
     'Disable Production read-only OAuth',
     'Portable mode is read-only.',
+    "'production_write_profile_enabled' => (bool) $production_write_profile_enabled",
+    "'production_write_authority_effective' => (bool) $production_write_authority_effective",
     "'production_governed_write_enabled' => (bool) $production_governed_write_enabled",
+    "MAD4B_SCP_Staging_Write_Authority::effective()",
     "'production_write_policy' => 'production' === $environment ? 'exact_profile_plus_exact_one_time_approval' : 'not_applicable'",
     "'authority_step_up_available' => (bool) $step_up_available",
     'every Production write remains bound to exact grants and a one-time approval',
+    'Production write is enabled in the Site Profile, but runtime write authority is not effective yet.',
+    'Production governed OAuth and write authority are effective.',
+    'Production write requested in Site Profile',
+    'Production write authority',
+    'deferred · identity ready',
     'CIMD / ChatGPT managed',
     'Open ChatGPT Plugin Builder',
     'Run OAuth Canary',
@@ -83,6 +98,10 @@ for forbidden_status_call in [
         raise SystemExit(f'deep OAuth status call leaked into ChatGPT admin render: {forbidden_status_call}')
 if "private static $status_cache = null;" not in ui or "if ( is_array( self::$status_cache ) ) return self::$status_cache;" not in status_method:
     raise SystemExit('ChatGPT admin status must be request-local memoized')
+if "$gateway_registered = class_exists( 'MAD4B_SCP_Servers' ) && in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true );" in status_method:
+    raise SystemExit('ChatGPT admin must not equate expected gateway catalog membership with actual registration')
+if "$production_governed_write_enabled = 'production' === $environment && $profile_oauth_ready && MAD4B_SCP_Site_Profile::write_enabled();" in status_method:
+    raise SystemExit('ChatGPT admin must not equate Site Profile write preference with effective Production authority')
 if "<tr><th>External ChatGPT connection certified</th><td>no</td></tr>" in ui:
     raise SystemExit('ChatGPT admin UI still hard-codes external certification to no')
 for marker in (
