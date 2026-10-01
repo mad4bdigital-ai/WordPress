@@ -11,10 +11,26 @@ define( 'MAD4B_SCP_DIR', $fixture_dir . DIRECTORY_SEPARATOR );
 define( 'MAD4B_SCP_VERSION', '0.4.0-rc.59' );
 define( 'QM_VERSION', '4.0.7' );
 
+$source_sha = str_repeat( 'a', 40 );
 $build = str_repeat( 'b', 64 );
+$manifest_digest = str_repeat( 'c', 64 );
+$artifact_identity = 'mad4b-site-control-plane-test-' . $source_sha;
 file_put_contents(
     MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json',
-    json_encode( array( 'build_fingerprint' => $build ) )
+    json_encode(
+        array(
+            'contract' => 'mad4b.build-provenance.v1',
+            'control_plane_version' => MAD4B_SCP_VERSION,
+            'source_commit_sha' => $source_sha,
+            'build_fingerprint' => $build,
+            'package_manifest_digest' => $manifest_digest,
+            'artifact_identity' => $artifact_identity,
+            'mcp_adapter_version' => '0.6.1',
+            'package_files' => array(
+                'mad4b-site-control-plane.php' => str_repeat( 'd', 64 ),
+            ),
+        )
+    )
 );
 
 $GLOBALS['mad4b_test_options'] = array();
@@ -48,6 +64,21 @@ $reset_telemetry_cache = function () {
     $property->setValue( null, null );
 };
 
+$package_identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status();
+$check( ! empty( $package_identity['identity_ready'] ), 'fixture package identity must be ready' );
+$package_identity_token = hash(
+    'sha256',
+    implode(
+        "\n",
+        array(
+            $package_identity['source_commit_sha'],
+            $package_identity['build_fingerprint'],
+            $package_identity['package_manifest_digest'],
+            $package_identity['artifact_identity'],
+        )
+    )
+);
+
 $event = function ( $classification, $type ) use ( $build ) {
     return array(
         'type' => $type,
@@ -69,6 +100,7 @@ $base = array(
     'contract' => MAD4B_SCP_Live_Acceptance_Observer::QUERY_MONITOR_CONTRACT,
     'control_plane_version' => MAD4B_SCP_VERSION,
     'build_fingerprint' => $build,
+    'package_identity_token' => $package_identity_token,
     'capture_started_at' => gmdate( 'Y-m-d H:i:s' ),
     'last_observed_at' => gmdate( 'Y-m-d H:i:s' ),
     'observed_request_count' => 4,
