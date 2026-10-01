@@ -40,6 +40,26 @@ for forbidden in ("$identity_ready =", "$blocking_error =", "'deferred_identity_
     if forbidden in registration_fact:
         raise SystemExit("registration source class re-derived projected readiness instead of delegating Truth Projection")
 
+# 0b. Candidate-bound persisted truth is reduced canonically.
+for marker in (
+    "public static function candidate_identity_bound_ready( array $persisted, array $current",
+    "public static function candidate_binding_bound_ready( array $persisted, array $binding",
+    "'current_candidate_match'",
+    "'effective_ready'",
+):
+    require(projection, marker, "canonical candidate-bound truth projection")
+read_consistency = read("includes/class-mad4b-scp-read-consistency.php")
+skills_projection = read_consistency.split("private static function skills_projection()", 1)[1].split("private static function deep_skills_projection()", 1)[0]
+write_projection = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function deep_write_authority_projection()", 1)[0]
+require(skills_projection, "MAD4B_SCP_Truth_Projection::candidate_identity_bound_ready", "skills projection delegates candidate truth")
+require(write_projection, "MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready", "write projection delegates candidate truth")
+for forbidden in ("hash_equals( $recorded_sha", "$effective_ready = $recorded_ready && $candidate_match"):
+    if forbidden in skills_projection:
+        raise SystemExit("Read Consistency re-derived Skills candidate readiness")
+for forbidden in ("$effective_ready = $persisted_ready &&", "$binding_match = ! empty"):
+    if forbidden in write_projection:
+        raise SystemExit("Read Consistency re-derived write candidate readiness")
+
 # 1. One canonical owner for external WPML truth.
 require(bootstrap, "class-mad4b-scp-truth-projection.php", "truth projection loader")
 for marker in (
