@@ -66,6 +66,8 @@ final class MAD4B_SCP_Connection_Doctor {
 		$registration = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' )
 			? MAD4B_SCP_MCP_Registration_Bridge::status()
 			: array();
+		$servers = class_exists( 'MAD4B_SCP_Servers', false ) ? MAD4B_SCP_Servers::registration_status() : array();
+		$chatgpt = isset( $servers['mad4b-chatgpt'] ) ? $servers['mad4b-chatgpt'] : array();
 		return array(
 			'contract' => self::CONTRACT,
 			'connection' => $connection,
@@ -73,6 +75,7 @@ final class MAD4B_SCP_Connection_Doctor {
 				'adapter_version' => isset( $connection['runtime_projection']['adapter_version'] ) ? (string) $connection['runtime_projection']['adapter_version'] : '',
 				'bridge_booted' => ! empty( $registration['bridge_booted'] ),
 				'registration_errors' => isset( $registration['registration_errors'] ) && is_array( $registration['registration_errors'] ) ? $registration['registration_errors'] : array(),
+				'chatgpt_registration' => $chatgpt,
 			),
 			'external_acceptance' => array(
 				'performed' => false,
