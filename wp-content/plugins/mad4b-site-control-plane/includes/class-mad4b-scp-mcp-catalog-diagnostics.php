@@ -166,7 +166,6 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		foreach ( array_values( array_unique( array_map( 'strval', $abilities ) ) ) as $ability_name ) {
 			if ( self::ability_is_direct_step_up( $ability_name ) ) $optional[] = $ability_name;
 		}
-		sort( $optional, SORT_STRING );
 		return $optional;
 	}
 
