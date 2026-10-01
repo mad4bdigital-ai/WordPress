@@ -60,6 +60,13 @@ for marker_text in [
         raise SystemExit("write reconciliation subject preflight missing: " + marker_text)
 if "MAD4B_SCP_Agent_Registry::bind_subject(" in plan_body:
     raise SystemExit("read-only reconciliation plan may not mutate subject bindings")
+for marker_text in [
+    "$current_readiness_blockers = isset( $grant_truth['blockers'] )",
+    "array_merge( $current_readiness_blockers, $subject_preflight_blockers )",
+    "'current_readiness_blockers' => $current_readiness_blockers",
+]:
+    if marker_text not in plan_body:
+        raise SystemExit("write current readiness must explain subject preflight blockers: " + marker_text)
 
 # Exact current-environment authority and a simultaneous broad environment=all
 # allow can coexist because environment participates in the DB uniqueness key.

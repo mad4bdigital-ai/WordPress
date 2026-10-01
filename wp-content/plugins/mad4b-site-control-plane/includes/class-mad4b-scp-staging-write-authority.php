@@ -1543,6 +1543,13 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				'breakglass_included' => in_array( 'mad4b/database-raw-query', $tools, true ),
 			) )
 			: array( 'current_ready' => false, 'blockers' => array( 'truth_projection_unavailable' ) );
+		$current_readiness_blockers = isset( $grant_truth['blockers'] ) && is_array( $grant_truth['blockers'] )
+			? $grant_truth['blockers']
+			: array();
+		$current_readiness_blockers = array_values( array_unique( array_filter( array_map(
+			'sanitize_key',
+			array_merge( $current_readiness_blockers, $subject_preflight_blockers )
+		) ) ) );
 
 		return array(
 			'contract' => 'mad4b.governed-write-authority-reconciliation-plan.v2',
@@ -1552,7 +1559,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'subject_preflight_ready' => empty( $subject_preflight_blockers ),
 			'subject_preflight_blockers' => $subject_preflight_blockers,
 			'current_ready' => ! empty( $grant_truth['current_ready'] ) && empty( $subject_preflight_blockers ),
-			'current_readiness_blockers' => isset( $grant_truth['blockers'] ) && is_array( $grant_truth['blockers'] ) ? $grant_truth['blockers'] : array(),
+			'current_readiness_blockers' => $current_readiness_blockers,
 			'persisted_ready' => $persisted_ready,
 			'effective_ready' => $effective_ready,
 			'environment' => $environment,
