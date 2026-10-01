@@ -208,6 +208,34 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return array_merge( $status, self::approval_policy_projection() );
 	}
 
+
+	/**
+	 * Explicit deep read surface for current authority truth.
+	 *
+	 * status()/persisted_status() remain bounded checkpoint reads for hotpaths and
+	 * admin projections. Remote status consumers must not confuse that historical
+	 * checkpoint with current zero-drift execution readiness.
+	 */
+	public static function current_status() {
+		$checkpoint = self::status();
+		$current = self::current_execution_readiness();
+		$checkpoint_ready = ! empty( $checkpoint['ready'] );
+		$current_ready = is_array( $current ) && ! empty( $current['ready'] );
+
+		$checkpoint['persisted_ready'] = $checkpoint_ready;
+		$checkpoint['checkpoint_ready'] = $checkpoint_ready;
+		$checkpoint['ready'] = $current_ready;
+		$checkpoint['state'] = $current_ready ? 'ready' : 'blocked_current_truth';
+		$checkpoint['current_grant_snapshot_ready'] = is_array( $current ) && ! empty( $current['current_grant_snapshot_ready'] );
+		$checkpoint['candidate_binding_required'] = is_array( $current ) && ! empty( $current['candidate_binding_required'] );
+		$checkpoint['candidate_binding_match'] = is_array( $current ) && ! empty( $current['candidate_binding_match'] );
+		$checkpoint['current_readiness_blockers'] = is_array( $current ) && isset( $current['blockers'] ) && is_array( $current['blockers'] ) ? $current['blockers'] : array( 'write_current_readiness_unavailable' );
+		$checkpoint['current_truth'] = true;
+		$checkpoint['deep_grant_scan_performed'] = true;
+		$checkpoint['mutation_performed'] = false;
+		return $checkpoint;
+	}
+
 	public static function approval_policy_projection( $candidate_bootstrap_exception_active = null ) {
 		$resolved = is_bool( $candidate_bootstrap_exception_active );
 		$active = true === $candidate_bootstrap_exception_active;
@@ -1854,9 +1882,9 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 		if ( ! wp_has_ability( 'mad4b/write-authority-status' ) ) wp_register_ability( 'mad4b/write-authority-status', array(
 			'label' => 'Get Governed Write Authority Status',
-			'description' => 'Read the site-profile-bound NHI/grant/approval status for governed writes.',
+			'description' => 'Read current candidate-bound, zero-drift NHI/grant/approval truth for governed writes; persisted checkpoint readiness is reported separately.',
 			'category' => 'mad4b-read',
-			'execute_callback' => array( __CLASS__, 'status' ),
+			'execute_callback' => array( __CLASS__, 'current_status' ),
 			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'meta' => array(
