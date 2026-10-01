@@ -82,6 +82,21 @@ mad4b_assert( 3 === (int) $evidence['write_transport_tool_count'], 'write transp
 mad4b_assert( ! empty( $evidence['write_transport_ready'] ), 'write transport must be ready' );
 mad4b_assert( empty( $evidence['direct_write_schema_leaks'] ), 'underlying write schemas must not be direct' );
 mad4b_assert( 0 === (int) $evidence['provider_gated_write_tool_count'], 'raw tools/list evidence must not execute provider gate projection' );
+
+$persisted = MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status();
+mad4b_assert( ! empty( $persisted['evidence_present'] ), 'persisted handshake identity evidence was not exposed' );
+mad4b_assert( ! empty( $persisted['previously_verified_external_session'] ), 'validated initialize/tools-list evidence was not projected as a previously verified external session' );
+mad4b_assert( 'previously_verified_revalidation_deferred' === $persisted['certification_projection_state'], 'persisted certification projection state drifted' );
+mad4b_assert( 'persisted_verified_identity' === $persisted['state'], 'persisted verified identity state drifted' );
+mad4b_assert( ! empty( $persisted['live_verification_deferred'] ), 'persisted identity projection must defer present-tense live certification' );
+
+$valid_evidence_snapshot = $GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ];
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ]['write_transport_ready'] = false;
+$invalid_persisted = MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status();
+mad4b_assert( empty( $invalid_persisted['previously_verified_external_session'] ), 'malformed persisted handshake evidence was promoted to previously verified' );
+mad4b_assert( 'persisted_evidence_invalid' === $invalid_persisted['certification_projection_state'], 'invalid persisted evidence did not fail closed' );
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ] = $valid_evidence_snapshot;
+
 $status = MAD4B_SCP_External_Handshake_Evidence::status();
 mad4b_assert( ! empty( $status['verified'] ), 'minimal transport plus logical write catalog should verify' );
 mad4b_assert( ! empty( $status['tool_inventory_match'] ), 'minimal transport fingerprint should match' );
