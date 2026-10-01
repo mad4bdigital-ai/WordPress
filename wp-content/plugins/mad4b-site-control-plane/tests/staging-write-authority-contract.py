@@ -1039,6 +1039,11 @@ for marker in [
 planning_validate = planning.split("public static function validate_remote_plan_input", 1)[1]
 if "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness" not in planning_validate:
     raise SystemExit('remote approval planning does not fail closed on current write drift')
+if "array( 'ready' => MAD4B_SCP_Staging_Write_Authority::effective(), 'blockers' => array() )" in planning_validate:
+    raise SystemExit('remote approval planning must never downgrade missing current-readiness support to persisted effective authority')
+for marker in ("'ready' => false", "'write_current_readiness_unavailable'"):
+    if marker not in planning_validate:
+        raise SystemExit('remote approval planning missing fail-closed current-readiness fallback: ' + marker)
 
 authorize_mutation = auth.split("public static function authorize_mutation", 1)[1].split("public static function claim_mutation", 1)[0]
 for marker in [
