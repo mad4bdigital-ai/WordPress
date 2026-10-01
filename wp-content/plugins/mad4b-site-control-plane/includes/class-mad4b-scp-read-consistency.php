@@ -520,32 +520,41 @@ final class MAD4B_SCP_Read_Consistency {
 			if ( empty( $summary[ $effective_key ] ) ) $subject_blockers[] = $check_name . '_not_effective';
 		}
 		$subject_blockers = array_values( array_unique( $subject_blockers ) );
-		$valid_for_merge = ! $partial && empty( $subject_blockers );
+		$valid_for_session_evidence_merge = ! $partial && empty( $subject_blockers );
+		$deep_checks_deferred = array(
+			'full_runtime_provenance_hash',
+			'deep_write_authority_scan',
+			'live_skill_filesystem_reconciliation',
+			'live_update_manifest_network_fetch',
+			'staging_certification_sweep',
+			'workflow_provider_runtime_inventory',
+			'write_catalog_runtime_rebuild',
+		);
 
 		$report = array(
 			'contract' => 'mad4b.session-safe-diagnostics.v1',
-			'state' => $partial ? 'partial' : ( $valid_for_merge ? 'ready' : 'subject_not_ready' ),
+			'state' => $partial ? 'partial' : ( $valid_for_session_evidence_merge ? 'ready' : 'subject_not_ready' ),
 			'partial' => $partial,
 			'read_transaction_id' => $transaction_id,
 			'snapshot_id' => isset( $after['snapshot_id'] ) ? (string) $after['snapshot_id'] : '',
 			'runtime_generation' => $runtime_generation,
 			'generation_match' => true,
-			'valid_for_merge' => $valid_for_merge,
+			// Backward-compatible alias: this proves only that the bounded session
+			// evidence can be merged into one coherent report. It is not a release,
+			// PR or deployment acceptance verdict.
+			'valid_for_merge' => $valid_for_session_evidence_merge,
+			'valid_for_session_evidence_merge' => $valid_for_session_evidence_merge,
+			'valid_for_release_merge' => false,
+			'merge_scope' => 'session_safe_subject_evidence_only',
+			'deep_acceptance_required' => true,
 			'subject_blockers' => $subject_blockers,
 			'projection_freshness' => 'live',
 			'observed_at' => gmdate( 'c' ),
 			'elapsed_ms' => (int) round( ( microtime( true ) - $started ) * 1000 ),
 			'budget_ms' => $budget_ms,
 			'request_metrics' => self::request_metrics(),
-			'deep_checks_deferred' => array(
-				'full_runtime_provenance_hash',
-				'deep_write_authority_scan',
-				'live_skill_filesystem_reconciliation',
-				'live_update_manifest_network_fetch',
-				'staging_certification_sweep',
-				'workflow_provider_runtime_inventory',
-				'write_catalog_runtime_rebuild',
-			),
+			'deep_checks_deferred' => $deep_checks_deferred,
+			'release_acceptance_deferred_checks' => $deep_checks_deferred,
 			'fixed_bundle_order' => self::bundle_names(),
 			'section_count' => count( $sections ),
 			'sections' => $sections,
