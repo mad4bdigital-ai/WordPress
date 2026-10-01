@@ -519,16 +519,17 @@ for dispatcher in ("'mad4b/write-execute'", "'mad4b/enrollment-execute'"):
 core_chatgpt = servers.split("'mad4b-chatgpt' => array_merge( array(", 1)[1].split("), $governed_status", 1)[0]
 if "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" not in core_chatgpt:
     raise SystemExit('bounded Enrollment discover/info/execute projection is missing from the canonical compact ChatGPT core catalog')
-if "$candidates = array_merge( $core, $bootstrap )" not in chatgpt_transport:
-    raise SystemExit('runtime ChatGPT transport no longer starts from the canonical compact core catalog')
+if "$candidates = array_merge( $core, $bootstrap )" not in chatgpt_base:
+    raise SystemExit('required ChatGPT base catalog no longer starts from the canonical compact core catalog')
+runtime_direct_surface = chatgpt_base + "\n" + chatgpt_transport
 for bootstrap_ability in (
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
     "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
 ):
-    if bootstrap_ability in chatgpt_transport:
-        raise SystemExit('low-level enrollment mutation leaked into minimal ChatGPT transport: ' + bootstrap_ability)
+    if bootstrap_ability in runtime_direct_surface:
+        raise SystemExit('low-level enrollment mutation leaked into required/dynamic ChatGPT direct transport: ' + bootstrap_ability)
 internal_enrollment = servers.split('private static function chatgpt_internal_enrollment_mutations()', 1)[1].split('private static function chatgpt_enrollment_candidates()', 1)[0]
 for bootstrap_ability in (
     "'mad4b/site-profile-feature-reenroll'",
@@ -751,7 +752,7 @@ for marker in [
 ]:
     if marker not in servers:
         raise SystemExit(f'missing logical write inventory/minimal transport invariant: {marker}')
-logical_direct = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
+logical_direct = chatgpt_base + "\n" + servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
 for forbidden_direct in (
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
