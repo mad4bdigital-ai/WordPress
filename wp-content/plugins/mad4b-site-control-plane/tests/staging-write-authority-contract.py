@@ -389,6 +389,18 @@ if "'elementor/update-widget-settings'] = 'elementor'" not in retirement_allowli
 if "retirable_stale_ability_providers" not in grant_plan:
     raise SystemExit('stale grant plan does not use retirement-only historical allowlist')
 
+for marker in [
+    "'unreviewed_stale_allow_grants_count'",
+    "'unknown_stale_authority_fail_closed' => true",
+    "'stale_allow_unreviewed:'",
+    "'non_current_environment_allow:'",
+    "$reviewed_stale_grants_revoked",
+    "$broad_environment_grants_revoked",
+]:
+    if marker not in write:
+        raise SystemExit('governed write authority does not fail closed on unknown stale authority: ' + marker)
+
+
 for forbidden_grant in [
     "'jetengine/import-configuration'",
     "'jetengine/export-configuration'",
