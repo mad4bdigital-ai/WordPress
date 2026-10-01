@@ -170,6 +170,50 @@ assert "'error'" not in transport
 assert "if ( $post_bind ) $hard[] = 'grant_rows_fingerprint_changed';" in continuation
 assert "else $review[] = 'grant_rows_fingerprint_changed';" in continuation
 
+# Bootstrap/no-prior-authority updates must be classified without rebuilding the
+# full provider inventory, and orphaned authority residue must remain fail-closed.
+for marker in (
+    "mad4b.governed-write-authority-presence.v1",
+    "authority_presence_status()",
+    "fresh_bootstrap_candidate",
+    "authority_residue_without_checkpoint",
+):
+    assert marker in authority, marker
+for marker in (
+    "mad4b.self-update-continuation-policy.v1",
+    "bootstrap_no_prior_authority",
+    "mad4b_self_update_continuation_bootstrap_authority_residue",
+    "mad4b_self_update_continuation_prior_authority_drift",
+    "preg_match( '/^[a-f0-9]{64}$/', strtolower( (string) $status['write_inventory_fingerprint'] ) )",
+):
+    assert marker in self_update, marker
+
+# Self-update and governed-write reconciliation share one runtime maintenance lane.
+lease = (inc / "class-mad4b-scp-runtime-maintenance-lease.php").read_text(encoding="utf-8")
+for marker in (
+    "mad4b.runtime-maintenance-preflight.v1",
+    "'ACTIVE_RETRYABLE'",
+    "'LEGACY_GRACE'",
+    "'FENCE_CONFLICT'",
+    "'STALE_RECLAIMABLE'",
+    "'STALE_REPAIR_REQUIRED'",
+    "'automatic_mutation_retry_allowed' => false",
+    "'operator_action_required'",
+):
+    assert marker in lease, marker
+assert "$maintenance_preflight = self::maintenance_preflight( $lease_owner );" in self_update
+assert self_update.index("$maintenance_preflight = self::maintenance_preflight( $lease_owner );") < self_update.index("MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner )")
+assert "'pre_update_maintenance'" in self_update
+assert "'pre_update_maintenance_race'" in self_update
+assert "'pre_replacement_bootstrap_revalidation'" in self_update
+assert "mad4b_self_update_bootstrap_authority_changed_before_replacement" in self_update
+assert "'automatic_mutation_retry_allowed' => false" in self_update
+assert "'preflight_recheck_allowed' => true" in self_update
+assert "'operator_action_required'" in self_update
+assert "private static function reconcile_under_runtime_fence()" in authority
+assert "MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner )" in authority
+assert "MAD4B_SCP_Runtime_Maintenance_Lease::release( $lease_token, $lease_owner )" in authority
+
 # Permit is prepared before the filesystem replacement and cancelled on rollback paths.
 apply_body = self_update.split("private static function apply_verified_archive", 1)[1]
 prepare_idx = apply_body.index("MAD4B_SCP_Post_Update_Continuation::prepare")
