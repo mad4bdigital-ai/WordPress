@@ -48,6 +48,12 @@ final class MAD4B_SCP_Plugin {
 		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
 			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return;
 
+		// REST recovery scope is request-local and must be classified before the
+		// protocol/passive fast return below. On MAD4B MCP routes this records the
+		// scoped request without removing callbacks; on unrelated admin reads it
+		// disarms only MAD4B recovery callbacks for the current request.
+		MAD4B_SCP_REST_Compatibility::boot();
+
 		MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap();
 		MAD4B_SCP_Skill_Autoconfig::bootstrap();
 		MAD4B_SCP_Staging_Write_Authority::bootstrap();
@@ -139,7 +145,6 @@ final class MAD4B_SCP_Plugin {
 		remove_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 95 );
 
 		MAD4B_SCP_Staging_Write_Planning_Guard::boot();
-		MAD4B_SCP_REST_Compatibility::boot();
 
 		// Explicit persistence remains an admin/runtime lifecycle concern. The
 		// public read ability is rebound earlier by MAD4B_SCP_Live_Truth to a
