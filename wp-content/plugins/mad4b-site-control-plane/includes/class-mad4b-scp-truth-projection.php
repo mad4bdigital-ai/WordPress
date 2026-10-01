@@ -72,9 +72,13 @@ final class MAD4B_SCP_Truth_Projection {
 		$blockers = isset( $persisted['blockers'] ) && is_array( $persisted['blockers'] ) ? array_values( array_unique( array_map( 'strval', $persisted['blockers'] ) ) ) : array();
 		if ( $recorded_ready && ! $candidate_match ) $blockers[] = sanitize_key( (string) $mismatch_blocker );
 		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
+		// A persisted record that claims ready while retaining blockers is internally
+		// contradictory. Fail closed instead of projecting ready + blockers.
+		$effective_ready = $effective_ready && empty( $blockers );
 		$state = isset( $persisted['state'] ) ? sanitize_key( (string) $persisted['state'] ) : 'not_ready';
 		if ( $recorded_ready && ! $candidate_match ) $state = sanitize_key( (string) $historical_state );
 		elseif ( $effective_ready ) $state = 'ready';
+		elseif ( ! empty( $blockers ) ) $state = 'blocked';
 		return array(
 			'projection_contract' => self::CONTRACT,
 			'recorded_ready' => $recorded_ready,
@@ -138,11 +142,18 @@ final class MAD4B_SCP_Truth_Projection {
 		$effective_ready = $persisted_ready && ( ! $binding_required || $binding_match );
 		$blockers = isset( $persisted['blockers'] ) && is_array( $persisted['blockers'] ) ? array_values( array_unique( array_map( 'strval', $persisted['blockers'] ) ) ) : array();
 		$blocker = isset( $persisted['blocker'] ) ? sanitize_key( (string) $persisted['blocker'] ) : '';
+		if ( '' !== $blocker ) $blockers[] = $blocker;
+		if ( ! $persisted_ready && empty( $blockers ) ) {
+			$blocker = 'persisted_authority_not_ready';
+			$blockers[] = $blocker;
+		}
 		if ( $binding_required && ! $binding_match ) {
 			$blocker = sanitize_key( (string) $mismatch_blocker );
 			$blockers[] = $blocker;
 		}
 		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
+		$effective_ready = $effective_ready && empty( $blockers );
+		if ( ! $effective_ready && '' === $blocker && ! empty( $blockers ) ) $blocker = (string) reset( $blockers );
 		$eligible = ! empty( $persisted['eligible'] );
 		return array(
 			'projection_contract' => self::CONTRACT,

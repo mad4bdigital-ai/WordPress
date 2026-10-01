@@ -210,6 +210,9 @@ skills_projection = read_consistency.split("private static function skills_proje
 require(skills_projection, "MAD4B_SCP_Truth_Projection::candidate_identity_bound_ready", "effective Skills canonical projection")
 require(projection, "$effective_ready = $persisted_ready && ( ! $binding_required || $binding_match )", "effective authority formula owner")
 require(projection, "$effective_ready = $recorded_ready && $candidate_match", "effective Skills formula owner")
+require(projection, "$effective_ready = $effective_ready && empty( $blockers );", "effective readiness blocker consistency")
+require(projection, "'persisted_authority_not_ready'", "blocked persisted authority canonical reason")
+require(projection, "elseif ( ! empty( $blockers ) ) $state = 'blocked';", "candidate identity ready/blocker consistency")
 require(projection, "historical_evidence", "historical Skills state owner")
 for marker in (
     "'source_commit_sha' => $source_commit_sha",
