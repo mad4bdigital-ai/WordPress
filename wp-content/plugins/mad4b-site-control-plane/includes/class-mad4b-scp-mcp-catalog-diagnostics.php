@@ -18,11 +18,36 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	/** Convert each requested ability using the same official builder as registration. No execution. */
 	public static function preflight( array $abilities, array $optional ) {
 		$out = array( 'ready' => false, 'degraded' => false, 'tools' => array(), 'failures' => array(), 'blocker' => '' );
-		if ( count( $abilities ) > self::MAX_TOOLS || count( array_unique( $abilities ) ) !== count( $abilities ) ) { $out['blocker'] = 'mcp_catalog_budget_or_duplicate'; return $out; }
+		$abilities = array_values( array_map( 'strval', $abilities ) );
+		$optional = array_values( array_unique( array_map( 'strval', $optional ) ) );
+		if ( count( array_unique( $abilities ) ) !== count( $abilities ) ) { $out['blocker'] = 'mcp_catalog_duplicate_ability'; return $out; }
+
+		// Required transport tools are never sacrificed to fit the client refresh
+		// budget. Reviewed direct step-ups are optional projections and may be
+		// deterministically omitted when a provider-rich site would exceed MAX_TOOLS.
+		$required = array_values( array_diff( $abilities, $optional ) );
+		if ( count( $required ) > self::MAX_TOOLS ) { $out['blocker'] = 'mcp_required_catalog_budget_exceeded'; return $out; }
+		$optional_capacity = max( 0, self::MAX_TOOLS - count( $required ) );
+		$optional_requested = array_values( array_intersect( $optional, $abilities ) );
+		$optional_kept = array_slice( $optional_requested, 0, $optional_capacity );
+		$optional_excluded = array_slice( $optional_requested, $optional_capacity );
+		$budget_allow = array_fill_keys( array_merge( $required, $optional_kept ), true );
+		foreach ( $optional_excluded as $name ) {
+			$out['failures'][] = array(
+				'stage' => 'catalog_budget',
+				'error_class' => 'Budget',
+				'error_code' => 'mcp_optional_catalog_budget_excluded',
+				'schema_fingerprint' => '',
+				'source_schema_fingerprint' => '',
+				'failing_ability' => $name,
+			);
+		}
+
 		if ( ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! class_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
 		$names = array();
 		foreach ( $abilities as $name ) {
-			$stage = 'ability_lookup'; $failure = null; $source_fingerprint = ''; 
+			if ( ! isset( $budget_allow[ $name ] ) ) continue;
+			$stage = 'ability_lookup'; $failure = null; $source_fingerprint = '';
 			try {
 				$ability = wp_get_ability( $name );
 				if ( ! $ability ) throw new RuntimeException( 'ability_missing' );
@@ -38,7 +63,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			} catch ( Throwable $error ) { $failure = array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_preflight_exception', 'schema_fingerprint' => '' ); }
 			if ( $failure ) {
 				$failure['failing_ability'] = $name; $failure['source_schema_fingerprint'] = $source_fingerprint; $out['failures'][] = $failure;
-				// Only explicitly enumerated optional projections may be removed. Identity conflicts never degrade.
+				// Only explicitly classified reviewed direct step-ups may degrade.
+				// Identity conflicts never degrade because they make routing ambiguous.
 				if ( ! in_array( $name, $optional, true ) || 'identity' === $failure['stage'] ) $out['blocker'] = 'mcp_required_tool_preflight_failed';
 			} else $out['tools'][] = $name;
 		}
