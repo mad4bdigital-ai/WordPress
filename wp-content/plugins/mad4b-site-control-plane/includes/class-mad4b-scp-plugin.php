@@ -45,7 +45,7 @@ final class MAD4B_SCP_Plugin {
 		// decision. This is request-local/read-only: no provider discovery, schema
 		// repair, key generation, persistence or outbound I/O is allowed here.
 		if ( class_exists( 'MAD4B_SCP_Connection_Identity_Resolver', false ) ) {
-			MAD4B_SCP_Connection_Identity_Resolver::kernel();
+			MAD4B_SCP_Connection_Identity_Resolver::project_runtime_identity();
 		}
 
 		// Unrelated Core/provider REST and generic wp-cron.php are infrastructure
