@@ -81,17 +81,24 @@ final class MAD4B_SCP_Connection_Status {
 
 		$certification_blockers = $remote_preflight_blockers;
 		$certification_deferred_checks = array();
-		$persisted_external_evidence = $admin_shallow && ! empty( $handshake['evidence_present'] );
-		if ( $admin_shallow ) {
+		$persisted_external_evidence = $lightweight && ! empty( $handshake['evidence_present'] );
+		if ( $lightweight ) {
 			$certification_deferred_checks = array( 'deep_connection_diagnostics', 'live_handshake_revalidation', 'current_catalog_revalidation' );
+			// Lightweight admin/protocol identity surfaces cannot prove live
+			// certification. Preserve persisted evidence as evidence, not as a
+			// certification claim; absence remains a blocker.
 			if ( ! $persisted_external_evidence ) $certification_blockers[] = 'external_handshake_unverified';
 		} elseif ( empty( $handshake['verified'] ) ) {
 			$handshake_status = isset( $handshake['status'] ) ? sanitize_key( (string) $handshake['status'] ) : 'unverified';
 			$certification_blockers[] = in_array( $handshake_status, array( 'stale_build_evidence', 'stale_tool_inventory_evidence', 'stale_time_evidence' ), true ) ? 'external_handshake_stale' : 'external_handshake_unverified';
 		}
 		$certification_blockers = array_values( array_unique( array_map( 'sanitize_key', $certification_blockers ) ) );
-		$connection_certified = ! $admin_shallow && empty( $certification_blockers );
-		$certification_state = $connection_certified ? 'certified' : ( $admin_shallow ? ( $persisted_external_evidence ? 'persisted_external_evidence_deep_revalidation_deferred' : 'deep_validation_deferred' ) : 'not_certified' );
+		$connection_certified = ! $lightweight && empty( $certification_blockers );
+		$certification_state = $connection_certified
+			? 'certified'
+			: ( $lightweight
+				? ( $persisted_external_evidence ? 'persisted_external_evidence_deep_revalidation_deferred' : 'deep_validation_deferred' )
+				: 'not_certified' );
 		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
 		$portable_readonly_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
 		$environment_key = sanitize_key( (string) $environment );
