@@ -419,6 +419,9 @@ final class MAD4B_SCP_Self_Update {
 		$environment_resolution = self::environment_resolution();
 		$normal_write_effective = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
 		$bootstrap_step_up_available = in_array( self::BOOTSTRAP_APPLY_ABILITY, self::chatgpt_step_up_tools(), true );
+		$maintenance_projection = self::maintenance_status_projection();
+		$continuation_projection = self::continuation_policy_projection();
+		$apply_preflight_ready = ! empty( $maintenance_projection['safe_to_acquire'] ) && empty( $continuation_projection['blocked'] );
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -437,6 +440,9 @@ final class MAD4B_SCP_Self_Update {
 				'ui_hook_mode' => 'exact_hook_plus_realpath_fallback',
 				'ui_state' => $ui_state['state'],
 				'ui_blockers' => $ui_state['blockers'],
+				'apply_preflight_ready' => (bool) $apply_preflight_ready,
+				'maintenance_preflight' => $maintenance_projection,
+				'continuation_policy' => $continuation_projection,
 				'modifies_core_update_transients' => false,
 				'automatic_update_enabled' => (bool) $auto_update['effective_enabled'],
 				'automatic_update_observation' => $auto_update,
@@ -507,6 +513,9 @@ final class MAD4B_SCP_Self_Update {
 		$ui_state = self::native_update_ui_state( $manifest );
 		$auto_update = self::wordpress_auto_update_state();
 		$environment_resolution = self::environment_resolution();
+		$maintenance_projection = self::maintenance_status_projection();
+		$continuation_projection = self::continuation_policy_projection();
+		$apply_preflight_ready = ! empty( $maintenance_projection['safe_to_acquire'] ) && empty( $continuation_projection['blocked'] );
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -524,6 +533,9 @@ final class MAD4B_SCP_Self_Update {
 				'wordpress_core_auto_update_governed' => false,
 				'ui_state' => $ui_state['state'],
 				'ui_blockers' => $ui_state['blockers'],
+				'apply_preflight_ready' => (bool) $apply_preflight_ready,
+				'maintenance_preflight' => $maintenance_projection,
+				'continuation_policy' => $continuation_projection,
 				'automatic_update_enabled' => (bool) $auto_update['effective_enabled'],
 				'automatic_update_observation' => $auto_update,
 				'pointer_url' => self::POINTER_URL,
@@ -1153,6 +1165,74 @@ final class MAD4B_SCP_Self_Update {
 		if ( ! empty( $current['source_commit_sha'] ) && hash_equals( $current['source_commit_sha'], $manifest['source_commit_sha'] ) ) return false;
 		if ( ! empty( $current['version'] ) && version_compare( $current['version'], $manifest['version'], '>' ) ) return false;
 		return true;
+	}
+
+	private static function maintenance_status_projection() {
+		if ( ! class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' )
+			|| ! method_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease', 'preflight' ) ) {
+			return array(
+				'contract' => 'mad4b.runtime-maintenance-preflight.v1',
+				'classification' => 'UNAVAILABLE',
+				'safe_to_acquire' => false,
+				'retryable' => false,
+				'operator_action_required' => true,
+				'automatic_mutation_retry_allowed' => false,
+				'preflight_recheck_allowed' => true,
+				'read_only' => true,
+				'mutation_performed' => false,
+			);
+		}
+		$status = MAD4B_SCP_Runtime_Maintenance_Lease::preflight( 'self_update_status' );
+		if ( ! is_array( $status ) ) return array(
+			'contract' => 'mad4b.runtime-maintenance-preflight.v1',
+			'classification' => 'INVALID',
+			'safe_to_acquire' => false,
+			'retryable' => false,
+			'operator_action_required' => true,
+			'automatic_mutation_retry_allowed' => false,
+			'preflight_recheck_allowed' => true,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+		$out = self::bounded_maintenance_evidence( $status );
+		$out['classification'] = isset( $status['classification'] ) ? sanitize_key( (string) $status['classification'] ) : '';
+		$out['safe_to_acquire'] = ! empty( $status['safe_to_acquire'] );
+		$out['read_only'] = true;
+		return $out;
+	}
+
+	private static function continuation_policy_projection() {
+		$policy = self::post_update_continuation_policy();
+		if ( is_wp_error( $policy ) ) {
+			return array(
+				'contract' => 'mad4b.self-update-continuation-policy.v1',
+				'blocked' => true,
+				'blocker' => sanitize_key( (string) $policy->get_error_code() ),
+				'required' => null,
+				'mode' => 'blocked',
+				'bootstrap_without_authority' => false,
+				'production_mutation_allowed' => false,
+				'authority_created' => false,
+				'read_only' => true,
+				'mutation_performed' => false,
+			);
+		}
+		return array(
+			'contract' => 'mad4b.self-update-continuation-policy.v1',
+			'blocked' => false,
+			'blocker' => '',
+			'required' => ! empty( $policy['required'] ),
+			'mode' => isset( $policy['mode'] ) ? sanitize_key( (string) $policy['mode'] ) : '',
+			'write_profile_enabled' => ! empty( $policy['write_profile_enabled'] ),
+			'authority_checkpoint_exists' => ! empty( $policy['authority_checkpoint_exists'] ),
+			'prior_authority_effective' => ! empty( $policy['prior_authority_effective'] ),
+			'candidate_binding_match' => ! empty( $policy['candidate_binding_match'] ),
+			'bootstrap_without_authority' => ! empty( $policy['bootstrap_without_authority'] ),
+			'production_mutation_allowed' => false,
+			'authority_created' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
 	}
 
 	private static function bounded_maintenance_evidence( $status ) {
