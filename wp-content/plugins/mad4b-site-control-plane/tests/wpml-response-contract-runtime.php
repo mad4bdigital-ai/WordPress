@@ -2,6 +2,19 @@
 
 define( 'ABSPATH', '/srv/wordpress/' );
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
+$GLOBALS['mad4b_wpml_receipt'] = array();
+$GLOBALS['mad4b_wpml_identity'] = array(
+	'identity_ready' => true,
+	'source_commit_sha' => str_repeat( 'a', 40 ),
+	'build_fingerprint' => str_repeat( 'b', 64 ),
+	'package_manifest_digest' => str_repeat( 'c', 64 ),
+	'artifact_identity' => 'mad4b-site-control-plane-test-' . str_repeat( 'a', 40 ),
+);
+function get_option( $key, $default = false ) { return 'mad4b_scp_external_wpml_response_contract_v1' === $key ? $GLOBALS['mad4b_wpml_receipt'] : $default; }
+class MAD4B_SCP_Live_Acceptance_Observer {
+	public static function staging_passive_receipt_allowed() { return true; }
+	public static function build_provenance_identity_status() { return $GLOBALS['mad4b_wpml_identity']; }
+}
 
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-wpml-response-contract.php';
 
@@ -56,5 +69,34 @@ mad4b_wpml_assert( 'non_json_response' === $non_json['classification'], 'Non-JSO
 
 $redirect = MAD4B_SCP_WPML_Response_Contract::evaluate_response( true, 302, array(), '', true );
 mad4b_wpml_assert( 'redirect_response' === $redirect['classification'], 'Redirect response must not count as WPML success.' );
+
+// Persisted WPML evidence is valid only for the exact four-part package identity.
+$GLOBALS['mad4b_wpml_receipt'] = array(
+	'contract' => MAD4B_SCP_WPML_Response_Contract::CONTRACT,
+	'observed' => true,
+	'observed_at' => gmdate( 'c' ),
+	'build_fingerprint' => $GLOBALS['mad4b_wpml_identity']['build_fingerprint'],
+	'source_commit_sha' => $GLOBALS['mad4b_wpml_identity']['source_commit_sha'],
+	'package_manifest_digest' => $GLOBALS['mad4b_wpml_identity']['package_manifest_digest'],
+	'artifact_identity' => $GLOBALS['mad4b_wpml_identity']['artifact_identity'],
+	'request_route' => '/wpml/v1/rest/status',
+	'test_get_parameter_present' => true,
+	'classification' => 'success',
+	'status' => 'valid',
+	'get_parameters' => 'valid',
+);
+$status = MAD4B_SCP_WPML_Response_Contract::receipt_status();
+mad4b_wpml_assert( ! empty( $status['verified'] ) && ! empty( $status['package_identity_match'] ), 'Exact package-bound WPML receipt must verify.' );
+
+$GLOBALS['mad4b_wpml_identity']['artifact_identity'] = 'different-artifact';
+$status = MAD4B_SCP_WPML_Response_Contract::receipt_status();
+mad4b_wpml_assert( empty( $status['verified'] ) && 'stale_package_identity_evidence' === $status['state'], 'WPML receipt must stale on artifact identity drift even when build fingerprint is unchanged.' );
+$GLOBALS['mad4b_wpml_identity']['artifact_identity'] = $GLOBALS['mad4b_wpml_receipt']['artifact_identity'];
+
+$legacy = $GLOBALS['mad4b_wpml_receipt'];
+unset( $legacy['source_commit_sha'], $legacy['package_manifest_digest'], $legacy['artifact_identity'] );
+$GLOBALS['mad4b_wpml_receipt'] = $legacy;
+$status = MAD4B_SCP_WPML_Response_Contract::receipt_status();
+mad4b_wpml_assert( empty( $status['verified'] ) && 'stale_package_identity_evidence' === $status['state'], 'Legacy fingerprint-only WPML evidence must fail closed.' );
 
 echo "mad4b.wpml-response-contract.runtime.v1: PASS\n";
