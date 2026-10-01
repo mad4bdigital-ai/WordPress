@@ -63,9 +63,9 @@ require(skills_projection, "'stale_reasons'", "skills projection exposes persist
 for marker in (
     "'effective_skill_ready_scope' => 'candidate_identity_bound_checkpoint_only'",
     "'candidate_identity_bound_ready'",
-    "'live_skill_ready' = null",
-    "'ready' = null",
-    "'live_skill_evaluation_deferred' = true",
+    "$result['live_skill_ready'] = null;",
+    "$result['ready'] = null;",
+    "$result['live_skill_evaluation_deferred'] = true;",
 ):
     if marker not in skills_projection:
         raise SystemExit("session-safe Skills projection must distinguish candidate-bound checkpoint evidence from live readiness: " + marker)
