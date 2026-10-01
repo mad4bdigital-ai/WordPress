@@ -353,14 +353,6 @@ final class MAD4B_SCP_Self_Update {
 	public static function can_bootstrap_native_apply( $input = null ) {
 		$admin = MAD4B_SCP_Policy::can_admin();
 		if ( is_wp_error( $admin ) || ! $admin ) return $admin;
-		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_self_update_bootstrap_staging_only', 'Bootstrap Control Plane self-update is Staging-only.' );
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) {
-			return new WP_Error( 'mad4b_self_update_bootstrap_profile_not_exact', 'Bootstrap Control Plane self-update requires the exact enrolled Staging Site Profile.' );
-		}
-		$user_id = get_current_user_id();
-		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) {
-			return new WP_Error( 'mad4b_self_update_bootstrap_subject_not_enrolled', 'Bootstrap Control Plane self-update requires the enrolled administrator.' );
-		}
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) {
 			return new WP_Error( 'mad4b_self_update_bootstrap_bearer_required', 'Bootstrap Control Plane self-update requires a verified OAuth bearer.' );
 		}
@@ -371,6 +363,14 @@ final class MAD4B_SCP_Self_Update {
 		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
 			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ) {
 			return new WP_Error( 'mad4b_self_update_bootstrap_chatgpt_client_required', 'Bootstrap Control Plane self-update requires OAuth attribution to the exact ChatGPT CIMD client.' );
+		}
+		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_self_update_bootstrap_staging_only', 'Bootstrap Control Plane self-update is Staging-only.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_profile_not_exact', 'Bootstrap Control Plane self-update requires the exact enrolled Staging Site Profile.' );
+		}
+		$user_id = get_current_user_id();
+		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_subject_not_enrolled', 'Bootstrap Control Plane self-update requires the enrolled administrator.' );
 		}
 		// Authentication/scope/client admission precedes runtime eligibility; both remain mandatory.
 		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled.' );
