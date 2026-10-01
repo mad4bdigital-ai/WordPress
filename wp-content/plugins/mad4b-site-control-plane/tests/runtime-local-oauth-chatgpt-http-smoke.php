@@ -56,10 +56,17 @@ $preauth_names = array_values( array_unique( $preauth_names ) );
 sort( $preauth_names );
 $reviewed_step_up_abilities = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
 $reviewed_step_up_names = array();
+$reviewed_step_up_by_ability = array();
+foreach ( $preauth_server->get_tools() as $tool_name => $dto ) {
+	$bound = $preauth_server->get_mcp_tool( $tool_name );
+	$meta = is_object( $bound ) && method_exists( $bound, 'get_adapter_meta' ) ? $bound->get_adapter_meta() : array();
+	$ability_name = is_array( $meta ) && isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
+	if ( ! in_array( $ability_name, $reviewed_step_up_abilities, true ) ) continue;
+	$reviewed_step_up_by_ability[ $ability_name ] = (string) $tool_name;
+	$reviewed_step_up_names[] = (string) $tool_name;
+}
 foreach ( $reviewed_step_up_abilities as $ability_name ) {
-	$name = \WP\MCP\Domain\Utils\McpNameSanitizer::sanitize_name( $ability_name );
-	if ( is_wp_error( $name ) || ! is_string( $name ) || '' === $name ) $fail( 'Reviewed direct step-up ability has no stable MCP name.', $ability_name );
-	$reviewed_step_up_names[] = $name;
+	if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) ) $fail( 'Reviewed direct step-up ability has no bound MCP tool.', $ability_name );
 }
 $reviewed_step_up_names = array_values( array_unique( $reviewed_step_up_names ) );
 sort( $reviewed_step_up_names );
