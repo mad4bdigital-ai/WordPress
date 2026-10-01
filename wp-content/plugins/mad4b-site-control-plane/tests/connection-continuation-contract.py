@@ -15,8 +15,8 @@ continuation = (inc / "class-mad4b-scp-post-update-continuation.php").read_text(
 self_update = (inc / "class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
 convergence = (inc / "class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
 authority = (inc / "class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
-edge = (root.parents[3] / "tools" / "connection-edge-acceptance.mjs").read_text(encoding="utf-8")
-edge_workflow = (root.parents[3] / ".github" / "workflows" / "connection-edge-acceptance.yml").read_text(encoding="utf-8")
+edge = (root.parents[2] / "tools" / "connection-edge-acceptance.mjs").read_text(encoding="utf-8")
+edge_workflow = (root.parents[2] / ".github" / "workflows" / "connection-edge-acceptance.yml").read_text(encoding="utf-8")
 
 # Canonical connection identity exists once and is loaded before runtime surfaces.
 for marker in (
