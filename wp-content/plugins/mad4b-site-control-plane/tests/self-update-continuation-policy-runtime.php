@@ -5,12 +5,16 @@ function sanitize_key( $value ) {
 	$value = strtolower( (string) $value );
 	return preg_replace( '/[^a-z0-9_\-]/', '', $value );
 }
+function sanitize_text_field( $value ) { return (string) $value; }
+function absint( $value ) { return abs( (int) $value ); }
 class WP_Error {
 	private $code;
 	private $message;
-	public function __construct( $code = '', $message = '' ) { $this->code = (string) $code; $this->message = (string) $message; }
+	private $data;
+	public function __construct( $code = '', $message = '', $data = null ) { $this->code = (string) $code; $this->message = (string) $message; $this->data = $data; }
 	public function get_error_code() { return $this->code; }
 	public function get_error_message() { return $this->message; }
+	public function get_error_data() { return $this->data; }
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 
@@ -21,6 +25,10 @@ final class MAD4B_SCP_Site_Profile {
 	public static function write_enabled() { return self::$write_enabled; }
 }
 final class MAD4B_SCP_Post_Update_Continuation {}
+final class MAD4B_SCP_Runtime_Maintenance_Lease {
+	public static $preflight = array();
+	public static function preflight( $requester = '' ) { return self::$preflight; }
+}
 final class MAD4B_SCP_Staging_Write_Authority {
 	public static $checkpoint = array();
 	public static $presence = array();
@@ -39,6 +47,21 @@ function check( $ok, $message ) {
 }
 function classify() {
 	$method = new ReflectionMethod( 'MAD4B_SCP_Self_Update', 'post_update_continuation_policy' );
+	$method->setAccessible( true );
+	return $method->invoke( null );
+}
+function maintenance_projection() {
+	$method = new ReflectionMethod( 'MAD4B_SCP_Self_Update', 'maintenance_status_projection' );
+	$method->setAccessible( true );
+	return $method->invoke( null );
+}
+function maintenance_gate() {
+	$method = new ReflectionMethod( 'MAD4B_SCP_Self_Update', 'maintenance_preflight' );
+	$method->setAccessible( true );
+	return $method->invoke( null, 'self_update_replacement' );
+}
+function continuation_projection() {
+	$method = new ReflectionMethod( 'MAD4B_SCP_Self_Update', 'continuation_policy_projection' );
 	$method->setAccessible( true );
 	return $method->invoke( null );
 }
@@ -69,6 +92,45 @@ check( ! is_wp_error( $bootstrap ), 'fresh bootstrap must be classifiable' );
 check( empty( $bootstrap['required'] ), 'fresh bootstrap must not require continuation' );
 check( ! empty( $bootstrap['bootstrap_without_authority'] ), 'fresh bootstrap marker missing' );
 check( 'bootstrap_no_prior_authority' === $bootstrap['mode'], 'fresh bootstrap mode mismatch' );
+
+MAD4B_SCP_Runtime_Maintenance_Lease::$preflight = array(
+	'contract' => 'mad4b.runtime-maintenance-preflight.v1',
+	'classification' => 'CLEAR',
+	'safe_to_acquire' => true,
+	'retryable' => false,
+	'operator_action_required' => false,
+	'automatic_mutation_retry_allowed' => false,
+	'preflight_recheck_allowed' => true,
+	'active_fence_count' => 0,
+	'read_only' => true,
+	'mutation_performed' => false,
+);
+$maintenance_projection = maintenance_projection();
+check( 'clear' === $maintenance_projection['classification'], 'maintenance projection classification mismatch' );
+check( ! empty( $maintenance_projection['safe_to_acquire'] ), 'clear maintenance projection must allow acquire' );
+$continuation_projection = continuation_projection();
+check( empty( $continuation_projection['blocked'] ) && 'bootstrap_no_prior_authority' === $continuation_projection['mode'], 'continuation projection must expose bootstrap mode' );
+
+MAD4B_SCP_Runtime_Maintenance_Lease::$preflight = array(
+	'contract' => 'mad4b.runtime-maintenance-preflight.v1',
+	'classification' => 'FENCE_CONFLICT',
+	'safe_to_acquire' => false,
+	'retryable' => false,
+	'operator_action_required' => true,
+	'automatic_mutation_retry_allowed' => false,
+	'preflight_recheck_allowed' => true,
+	'owner' => 'runtime_convergence',
+	'fence_source' => 'mad4b_scp_runtime_maintenance_lock_v1',
+	'active_fence_count' => 2,
+	'fence_token_conflict' => true,
+	'read_only' => true,
+	'mutation_performed' => false,
+);
+$conflict_gate = maintenance_gate();
+check( is_wp_error( $conflict_gate ), 'maintenance fence conflict must block self-update' );
+check( 'mad4b_runtime_maintenance_fence_conflict' === $conflict_gate->get_error_code(), 'maintenance fence conflict blocker mismatch' );
+$conflict_projection = maintenance_projection();
+check( empty( $conflict_projection['safe_to_acquire'] ) && ! empty( $conflict_projection['operator_action_required'] ), 'conflict projection must require operator action' );
 
 MAD4B_SCP_Staging_Write_Authority::$presence['managed_agent_present'] = true;
 MAD4B_SCP_Staging_Write_Authority::$presence['authority_residue_without_checkpoint'] = true;
