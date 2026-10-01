@@ -109,6 +109,9 @@ $_GET['page'] = 'mad4b-control-plane-connection';
 $admin_shallow = MAD4B_SCP_Connection_Status::status();
 $check( is_array( $admin_shallow ) && 'admin_shallow' === ( isset( $admin_shallow['status_mode'] ) ? $admin_shallow['status_mode'] : '' ), 'Connection admin status did not select admin_shallow mode.' );
 $check( ! empty( $admin_shallow['transport_deep_validation_deferred'] ), 'Connection admin status unexpectedly performed deep transport validation.' );
+$check( isset( $admin_shallow['local_transport_validation_state'] ) && in_array( $admin_shallow['local_transport_validation_state'], array( 'identity_ready_deep_validation_deferred', 'ready' ), true ), 'Connection admin shallow transport did not expose a truthful tri-state validation state.' );
+$check( ! in_array( 'mad4b_transport_registration_incomplete', (array) $admin_shallow['local_blockers'], true ), 'Connection admin shallow status converted deferred MCP registration into a false transport blocker.' );
+$check( isset( $admin_shallow['connection_certification_state'] ) && false !== strpos( (string) $admin_shallow['connection_certification_state'], 'deferred' ), 'Connection admin shallow certification must be explicitly deferred rather than falsely certified/not-certified.' );
 $check( in_array( 'provider_runtime_integrity', isset( $admin_shallow['deferred_checks'] ) ? (array) $admin_shallow['deferred_checks'] : array(), true ), 'Connection admin status did not defer provider runtime integrity.' );
 $check( isset( $admin_shallow['mcp_adapter_certification']['runtime_integrity_verification_deferred'] ) && ! empty( $admin_shallow['mcp_adapter_certification']['runtime_integrity_verification_deferred'] ), 'Connection admin status did not use the identity-only provider projection.' );
 $peer_admin = isset( $admin_shallow['mcp_peer_governance'] ) && is_array( $admin_shallow['mcp_peer_governance'] ) ? $admin_shallow['mcp_peer_governance'] : array();
@@ -130,6 +133,9 @@ if ( class_exists( 'MAD4B_SCP_ChatGPT_Connection_Admin_UI' ) ) {
     $chatgpt_admin = MAD4B_SCP_ChatGPT_Connection_Admin_UI::status();
     $check( 'runtime_identity' === ( isset( $chatgpt_admin['admin_status_projection'] ) ? $chatgpt_admin['admin_status_projection'] : '' ), 'ChatGPT admin status did not use the runtime identity projection.' );
     $check( ! empty( $chatgpt_admin['deep_oauth_status_deferred'] ), 'ChatGPT admin status did not defer deep OAuth diagnostics.' );
+    $check( array_key_exists( 'gateway_registration_identity_ready', $chatgpt_admin ), 'ChatGPT admin status did not expose registration identity readiness separately from actual registration.' );
+    $check( array_key_exists( 'gateway_registration_deep_check_deferred', $chatgpt_admin ), 'ChatGPT admin status did not expose deferred registration validation.' );
+    $check( array_key_exists( 'external_connection_evidence_present', $chatgpt_admin ), 'ChatGPT admin status did not expose persisted external evidence truth.' );
 }
 $check(
     false === $admin_convergence_gate->invoke( null, 'mad4b-control-plane-chatgpt', 'admin.php', '' ),
