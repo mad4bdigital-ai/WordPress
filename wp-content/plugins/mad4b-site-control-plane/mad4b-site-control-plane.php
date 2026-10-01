@@ -2,7 +2,6 @@
 /**
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
- * Update URI: https://mad4b.digital/plugins/mad4b-site-control-plane
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
  * Version: 0.4.0-rc.88
  * Requires at least: 6.9
