@@ -96,6 +96,16 @@ if "'ready' => null" not in read_consistency:
     raise SystemExit("deferred diagnostic checks must preserve unknown readiness as null")
 if "MAD4B_SCP_Truth_Projection::tri_state( $summary, 'ready' )" not in read_consistency:
     raise SystemExit("compact diagnostics must preserve tri-state readiness without boolean coercion")
+compact_status = read_consistency.split("private static function compact_status_data( $name, $data )", 1)[1].split("private static function", 1)[0]
+for marker in (
+    "'chatgpt_registration_identity_ready'",
+    "'chatgpt_registration_observed'",
+    "'chatgpt_registration_projection'",
+    "'chatgpt_registration_deep_check_deferred'",
+    "'external_handshake_evidence_present'",
+    "'external_handshake_live_verification_deferred'",
+):
+    require(compact_status, marker, "compact diagnostics preserves connection truth dimension")
 
 # 1. One canonical owner for external WPML truth.
 require(bootstrap, "class-mad4b-scp-truth-projection.php", "truth projection loader")
