@@ -260,6 +260,11 @@ for marker in (
     "'current_offer_auto_update_eligible' =>",
     "'filesystem_execution_preflight' => 'deferred_to_wordpress_automatic_updater'",
     "'mad4b_auto_update_mutation_performed' => false",
+    "'manual_only_scope' => 'mad4b_governed_native_action'",
+    "'governed_action_manual_only' => true",
+    "'wordpress_core_auto_update_observed' => (bool) $auto_update['effective_enabled']",
+    "'wordpress_core_auto_update_governed' => false",
+    "WordPress auto-update policy enabled (outside MAD4B governed updater)",
 ):
     if marker not in self_update:
         raise SystemExit(f"WordPress auto-update observation invariant missing: {marker}")
