@@ -119,7 +119,11 @@ foreach ( array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt'
     $check(false === $admin_surface_method->invoke(null), $hotpath_page . ' must stay outside shutdown Query Monitor telemetry capture');
 }
 $_GET['page'] = 'mad4b-control-plane-diagnostics';
-$check(true === $admin_surface_method->invoke(null), 'explicit MAD4B diagnostics page must remain eligible for Query Monitor telemetry capture');
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$check(false === $admin_surface_method->invoke(null), 'ordinary MAD4B diagnostics GET must remain outside Query Monitor telemetry capture');
+$_SERVER['REQUEST_METHOD'] = 'POST';
+$check(true === $admin_surface_method->invoke(null), 'explicit MAD4B diagnostics POST may opt into Query Monitor telemetry capture');
+$_SERVER['REQUEST_METHOD'] = 'GET';
 $GLOBALS['mad4b_qm_test_admin'] = false;
 unset($_GET['page']);
 
