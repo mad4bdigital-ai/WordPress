@@ -254,6 +254,7 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 			'MAD4B_MCP_OAUTH_ISSUER',
 			'MAD4B_MCP_LOCAL_OAUTH_ISSUER',
 			'MAD4B_MCP_OAUTH_WP_USER_ID',
+			'MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER',
 			'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS',
 			'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS',
 		);
@@ -262,14 +263,29 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 		if ( defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) && true !== constant( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) ) $blockers[] = 'explicit_local_oauth_disabled';
 		if ( defined( 'MAD4B_MCP_OAUTH_ENABLED' ) && true !== constant( 'MAD4B_MCP_OAUTH_ENABLED' ) ) $blockers[] = 'explicit_resource_oauth_disabled';
 		if ( defined( 'MAD4B_MCP_OAUTH_MODE' ) && 'local' !== sanitize_key( (string) constant( 'MAD4B_MCP_OAUTH_MODE' ) ) ) $blockers[] = 'explicit_non_local_oauth_mode';
-		foreach ( array( 'MAD4B_MCP_OAUTH_ISSUER', 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) as $name ) {
-			if ( ! defined( $name ) ) continue;
-			$value = untrailingslashit( trim( (string) constant( $name ) ) );
+		if ( defined( 'MAD4B_MCP_OAUTH_ISSUER' ) ) {
+			$value = untrailingslashit( trim( (string) constant( 'MAD4B_MCP_OAUTH_ISSUER' ) ) );
 			if ( '' !== $value && '' !== $issuer && ! hash_equals( $issuer, $value ) ) $blockers[] = 'explicit_external_oauth_issuer';
+		}
+		if ( defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) {
+			$value = untrailingslashit( trim( (string) constant( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) );
+			if ( '' !== $value && '' !== $issuer && ! hash_equals( $issuer, $value ) ) $blockers[] = 'explicit_local_oauth_issuer_conflict';
 		}
 		if ( defined( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) ) {
 			$configured_user = absint( constant( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) );
 			if ( $configured_user < 1 || ! in_array( $configured_user, $user_ids, true ) || ( $primary_owner > 0 && $configured_user !== (int) $primary_owner ) ) $blockers[] = 'explicit_wp_user_conflict';
+		}
+		if ( defined( 'MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER' ) ) {
+			$mapping = constant( 'MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER' );
+			$mapped_user = 0;
+			if ( is_array( $mapping ) ) {
+				foreach ( $mapping as $bound_issuer => $user_id ) {
+					if ( ! is_string( $bound_issuer ) || ! hash_equals( $issuer, rtrim( trim( $bound_issuer ), '/' ) ) ) continue;
+					$mapped_user = absint( $user_id );
+					break;
+				}
+			}
+			if ( $primary_owner < 1 || $mapped_user !== (int) $primary_owner ) $blockers[] = 'explicit_wp_user_conflict';
 		}
 		$expected_subjects = array_values( array_map( static function ( $id ) { return 'user:' . absint( $id ); }, $user_ids ) );
 		if ( defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS' ) ) {
@@ -377,6 +393,7 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 			'explicit_resource_oauth_disabled',
 			'explicit_non_local_oauth_mode',
 			'explicit_external_oauth_issuer',
+			'explicit_local_oauth_issuer_conflict',
 			'explicit_wp_user_conflict',
 			'explicit_subject_policy_conflict',
 			'explicit_subject_binding_conflict',
