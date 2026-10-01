@@ -1,0 +1,64 @@
+name: MAD4B Connection Edge Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Exact public HTTPS site origin, for example https://staging.example.com
+        required: true
+        type: string
+      expected_connection_fingerprint:
+        description: Optional expected 64-hex canonical connection fingerprint
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      base_url:
+        required: true
+        type: string
+      expected_connection_fingerprint:
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  external-edge-acceptance:
+    name: External connection edge acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+
+      - name: Validate input
+        shell: bash
+        env:
+          BASE_URL: ${{ inputs.base_url }}
+          EXPECTED_FP: ${{ inputs.expected_connection_fingerprint }}
+        run: |
+          set -euo pipefail
+          [[ "$BASE_URL" =~ ^https://[^[:space:]]+$ ]]
+          if [[ -n "$EXPECTED_FP" ]]; then
+            [[ "$EXPECTED_FP" =~ ^[A-Fa-f0-9]{64}$ ]]
+          fi
+
+      - name: Probe public discovery edge
+        shell: bash
+        env:
+          MAD4B_CONNECTION_BASE_URL: ${{ inputs.base_url }}
+          MAD4B_EXPECTED_CONNECTION_FINGERPRINT: ${{ inputs.expected_connection_fingerprint }}
+        run: |
+          set -euo pipefail
+          node tools/connection-edge-acceptance.mjs > connection-edge-acceptance.json
+          cat connection-edge-acceptance.json
+
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: connection-edge-acceptance-${{ github.sha }}
+          path: connection-edge-acceptance.json
+          if-no-files-found: ignore
+          retention-days: 7
