@@ -165,6 +165,22 @@ for marker in [
 if "['expected_identity']['source_commit_sha']" in frontend_collect.split("$same =", 1)[1].split("if ( $same )", 1)[0]:
     raise SystemExit('frontend sampling duplicate detection must compare the full exact-build identity, not source SHA only')
 
+managed_skills_status = parity.split("public static function managed_skills_reconciliation_status()", 1)[1].split("public static function reconciliation_status", 1)[0]
+for marker in (
+    "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()",
+    "$checkpoint_identity_current",
+    "self::skills_identity_matches( $checkpoint_identity, $current_identity )",
+    "'stale_build_checkpoint'",
+    "'checkpoint_identity_current' => $checkpoint_identity_current",
+    "'checkpoint_identity' => $checkpoint_identity",
+    "'current_identity' => $current_identity",
+    "'reconciliation_required' => ! $ready",
+):
+    if marker not in managed_skills_status:
+        raise SystemExit("managed Skills status lost exact-build checkpoint freshness: " + marker)
+if "&& $checkpoint_identity_current;" not in managed_skills_status:
+    raise SystemExit("completed Skills checkpoint must not be ready unless it matches the current build")
+
 if "delete_option( self::SKILLS_LOCK_OPTION" in parity:
     raise SystemExit("direct delete_option Skills lock reclamation is ABA-unsafe; CAS option fencing is required")
 
