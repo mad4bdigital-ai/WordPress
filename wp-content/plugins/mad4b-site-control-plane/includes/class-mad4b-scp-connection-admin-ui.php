@@ -89,6 +89,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		$local_ready = ! empty( $status['local_transport_ready'] );
 		$preflight_ready = ! empty( $status['remote_endpoint_preflight_ready'] );
 		$certified = ! empty( $status['connection_certified'] );
+		$certification_deferred = ! empty( $status['connection_certification_deferred'] );
 		return array(
 			array(
 				'label' => __( 'Environment', 'mad4b-site-control-plane' ),
@@ -111,19 +112,23 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			array(
 				'label' => __( 'External certification', 'mad4b-site-control-plane' ),
 				'state' => $certified ? 'complete' : 'pending',
-				'detail' => __( 'Real OAuth browser round-trip and MCP client handshake.', 'mad4b-site-control-plane' ),
+				'detail' => $certification_deferred
+					? __( 'Deep certification checks are deferred on this lightweight admin view.', 'mad4b-site-control-plane' )
+					: __( 'Real OAuth browser round-trip and MCP client handshake.', 'mad4b-site-control-plane' ),
 				'url' => MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'certification' ),
 			),
 		);
 	}
 
 	private static function render_readiness( array $status, array $oauth, array $local_oauth ) {
+		$certification_deferred = ! empty( $status['connection_certification_deferred'] );
+		$certification_value = ! empty( $status['connection_certified'] ) ? 'Certified' : ( $certification_deferred ? 'Deferred' : 'Not certified' );
 		MAD4B_SCP_Admin_Experience::cards(
 			array(
 				array( 'label' => 'MAD4B environment', 'value' => isset( $status['effective_environment'] ) ? $status['effective_environment'] : ( isset( $status['environment'] ) ? $status['environment'] : 'unknown' ), 'state' => ! empty( $status['environment_supported'] ) ? 'complete' : 'attention', 'help' => 'Effective Site Profile authority boundary; raw WordPress environment is shown separately below.' ),
 				array( 'label' => 'Local transport', 'value' => ! empty( $status['local_transport_ready'] ) ? 'Ready' : 'Blocked', 'state' => MAD4B_SCP_Admin_Experience::state_from_bool( ! empty( $status['local_transport_ready'] ), ! empty( $status['local_blockers'] ) ), 'help' => 'MCP routes and permission binding.' ),
 				array( 'label' => 'Remote preflight', 'value' => ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'Ready' : 'Pending', 'state' => ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'complete' : 'attention', 'help' => 'HTTPS + OAuth resource binding.' ),
-				array( 'label' => 'Connection certification', 'value' => ! empty( $status['connection_certified'] ) ? 'Certified' : 'Not certified', 'state' => ! empty( $status['connection_certified'] ) ? 'complete' : 'pending', 'help' => 'Requires real external client evidence.' ),
+				array( 'label' => 'Connection certification', 'value' => $certification_value, 'state' => ! empty( $status['connection_certified'] ) ? 'complete' : 'pending', 'help' => $certification_deferred ? 'Deep connection diagnostics are intentionally deferred on this lightweight view.' : 'Requires real external client evidence.' ),
 			)
 		);
 		self::render_next_step( $status, $oauth, $local_oauth );
@@ -141,6 +146,8 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			'Local transport ready' => ! empty( $status['local_transport_ready'] ),
 			'Remote endpoint preflight ready' => ! empty( $status['remote_endpoint_preflight_ready'] ),
 			'Connection certified' => ! empty( $status['connection_certified'] ),
+			'Connection certification state' => isset( $status['connection_certification_state'] ) ? $status['connection_certification_state'] : '',
+			'Deep certification deferred' => $certification_deferred,
 		) );
 		self::blockers( 'Local blockers', isset( $status['local_blockers'] ) ? $status['local_blockers'] : array() );
 		self::blockers( 'Remote preflight blockers', isset( $status['remote_preflight_blockers'] ) ? $status['remote_preflight_blockers'] : array() );
@@ -162,6 +169,10 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			return;
 		}
 		if ( empty( $status['connection_certified'] ) ) {
+			if ( ! empty( $status['connection_certification_deferred'] ) ) {
+				MAD4B_SCP_Admin_Experience::next_step( 'Next step', 'Run explicit deep Connection diagnostics to resolve the deferred checks. Existing external handshake evidence is preserved; repeat the OAuth round-trip only if it remains unverified after deep validation.', 'pending', MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'endpoints' ), 'Run deep diagnostics' );
+				return;
+			}
 			MAD4B_SCP_Admin_Experience::next_step( 'Next step', 'Run the real external OAuth browser round-trip and MCP client tool scan. Repository or local preflight evidence alone does not certify the connection.', 'pending', MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'certification' ), 'Open certification evidence' );
 			return;
 		}
@@ -307,11 +318,13 @@ final class MAD4B_SCP_Connection_Admin_UI {
 
 	private static function render_certification( array $status ) {
 		$handshake = isset( $status['external_handshake'] ) && is_array( $status['external_handshake'] ) ? $status['external_handshake'] : array();
+		$certification_deferred = ! empty( $status['connection_certification_deferred'] );
+		$certification_value = ! empty( $status['connection_certified'] ) ? 'Certified' : ( $certification_deferred ? 'Deferred' : 'Not certified' );
 		MAD4B_SCP_Admin_Experience::cards(
 			array(
 				array( 'label' => 'External handshake', 'value' => ! empty( $handshake['verified'] ) ? 'Verified' : 'Unverified', 'state' => ! empty( $handshake['verified'] ) ? 'complete' : 'pending', 'help' => 'Must come from a real external client round-trip.' ),
 				array( 'label' => 'Remote preflight', 'value' => ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'Ready' : 'Pending', 'state' => ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'complete' : 'attention', 'help' => 'Necessary but not sufficient for certification.' ),
-				array( 'label' => 'Connection', 'value' => ! empty( $status['connection_certified'] ) ? 'Certified' : 'Not certified', 'state' => ! empty( $status['connection_certified'] ) ? 'complete' : 'pending', 'help' => 'Final connection truth exposed by this site.' ),
+				array( 'label' => 'Connection', 'value' => $certification_value, 'state' => ! empty( $status['connection_certified'] ) ? 'complete' : 'pending', 'help' => $certification_deferred ? 'Final certification is not evaluated on the shallow admin projection.' : 'Final connection truth exposed by this site.' ),
 			)
 		);
 		echo '<h2>' . esc_html__( 'External handshake boundary', 'mad4b-site-control-plane' ) . '</h2>';
@@ -322,7 +335,11 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		) );
 		self::blockers( 'Certification blockers', isset( $status['certification_blockers'] ) ? $status['certification_blockers'] : array() );
 		if ( empty( $status['connection_certified'] ) ) {
-			MAD4B_SCP_Admin_Experience::next_step( 'Required evidence', 'Use a real external MCP client to complete OAuth authorization, return through the registered callback, establish the protected-resource session and scan the intended MCP tools. Do not mark this page certified from repository CI or a local self-probe.', 'pending' );
+			if ( $certification_deferred ) {
+				MAD4B_SCP_Admin_Experience::next_step( 'Deferred verification', 'This lightweight page intentionally defers deep transport validation. Run the explicit deep diagnostics first; only repeat the external OAuth/MCP round-trip if the persisted handshake is still unverified.', 'pending', MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'endpoints' ), 'Run deep diagnostics' );
+			} else {
+				MAD4B_SCP_Admin_Experience::next_step( 'Required evidence', 'Use a real external MCP client to complete OAuth authorization, return through the registered callback, establish the protected-resource session and scan the intended MCP tools. Do not mark this page certified from repository CI or a local self-probe.', 'pending' );
+			}
 		}
 	}
 
