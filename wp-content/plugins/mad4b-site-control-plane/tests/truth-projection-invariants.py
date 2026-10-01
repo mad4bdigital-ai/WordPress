@@ -205,6 +205,13 @@ for marker in (
 ):
     require(read_consistency, marker, "Skills read-consistency four-part candidate identity")
 
+# 4b. Deep Write Live Truth consumes the same canonical grant snapshot as reconciliation.
+current_authority_truth = live_truth.split("public static function current_authority_status()", 1)[1].split("public static function current_write_certification()", 1)[0]
+require(current_authority_truth, "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()", "Live Truth canonical grant snapshot")
+require(current_authority_truth, "'grant_snapshot_current_ready'", "Live Truth grant readiness evidence")
+if "MAD4B_SCP_Agent_Registry::exact_grant(" in current_authority_truth:
+    raise SystemExit("Live Truth must not maintain a parallel exact-grant readiness reducer")
+
 # 5. Third-party admin AJAX is zero-touch; owned MAD4B actions use exact registry.
 for marker in (
     "public static function mad4b_admin_ajax_actions()",

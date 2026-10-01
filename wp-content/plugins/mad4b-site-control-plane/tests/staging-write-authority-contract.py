@@ -948,6 +948,20 @@ if "candidate_binding_status()" not in effective_body:
 if "current_authority_status()" in effective_body:
     raise SystemExit('authority effective() may not recursively rebuild Live Truth/write inventory')
 
+current_authority_body = live_truth.split("public static function current_authority_status()", 1)[1].split("public static function current_write_certification()", 1)[0]
+for marker in [
+    "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()",
+    "'grant_snapshot_current_ready'",
+    "'grant_snapshot_blockers'",
+    "'unreviewed_stale_allow_grants_count'",
+]:
+    if marker not in current_authority_body:
+        raise SystemExit(f'Live Truth does not consume canonical current grant snapshot: {marker}')
+if "MAD4B_SCP_Agent_Registry::exact_grant(" in current_authority_body:
+    raise SystemExit('Live Truth regressed to a parallel N+1 grant-readiness interpretation')
+if "$grant_snapshot_ready" not in current_authority_body or "'grant_reconciliation_incomplete'" not in current_authority_body:
+    raise SystemExit('Live Truth must fail closed when canonical grant snapshot is not current-ready')
+
 for marker in [
     "runtime_authority_candidate_not_reconciled",
     "'contract' => 'mad4b.governed-write-candidate-bootstrap-closure.v1'",
