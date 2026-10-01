@@ -290,24 +290,23 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 	}
 
 	private static function normalize_subjects( $value ) {
-		if ( is_array( $value ) ) $items = $value;
-		else $items = preg_split( '/[\s,]+/', trim( (string) $value ) );
+		$items = is_array( $value ) ? $value : preg_split( '/[\s,]+/', (string) $value );
 		$out = array();
-		foreach ( is_array( $items ) ? $items : array() as $item ) {
-			$item = trim( (string) $item );
+		foreach ( is_array( $items ) ? array_slice( $items, 0, 500 ) : array() as $item ) {
+			if ( ! is_string( $item ) ) continue;
+			$item = trim( $item );
 			if ( '' !== $item ) $out[] = $item;
 		}
 		return array_values( array_unique( $out ) );
 	}
 
 	private static function binding_contains( $bindings, $issuer, $subject ) {
-		if ( is_string( $bindings ) ) {
-			$decoded = json_decode( $bindings, true );
-			if ( is_array( $decoded ) ) $bindings = $decoded;
-		}
 		if ( ! is_array( $bindings ) ) return false;
-		$subjects = isset( $bindings[ $issuer ] ) ? self::normalize_subjects( $bindings[ $issuer ] ) : array();
-		return in_array( $subject, $subjects, true );
+		foreach ( $bindings as $bound_issuer => $subjects ) {
+			if ( ! is_string( $bound_issuer ) || ! hash_equals( $issuer, rtrim( trim( $bound_issuer ), '/' ) ) ) continue;
+			return in_array( $subject, self::normalize_subjects( $subjects ), true );
+		}
+		return false;
 	}
 
 	private static function build_identity() {
