@@ -8,6 +8,9 @@ define( 'PHP_INT_MAX_TEST', PHP_INT_MAX );
 $GLOBALS['actions'] = array();
 $GLOBALS['option'] = array();
 $GLOBALS['current_build_fingerprint'] = str_repeat('a',64);
+$GLOBALS['current_source_commit_sha'] = str_repeat('1',40);
+$GLOBALS['current_package_manifest_digest'] = str_repeat('2',64);
+$GLOBALS['current_artifact_identity'] = 'mad4b-site-control-plane-test-a';
 $GLOBALS['browser_request'] = array(
     'request_id' => 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
     'probe_hash' => hash('sha256', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'),
@@ -43,7 +46,15 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
     const MAX_EVENTS = 32;
     const TELEMETRY_TTL = 21600;
     public static function staging_capture_allowed() { return true; }
-    public static function build_provenance_identity_status() { return array('build_fingerprint' => $GLOBALS['current_build_fingerprint']); }
+    public static function build_provenance_identity_status() {
+        return array(
+            'identity_ready' => true,
+            'source_commit_sha' => $GLOBALS['current_source_commit_sha'],
+            'build_fingerprint' => $GLOBALS['current_build_fingerprint'],
+            'package_manifest_digest' => $GLOBALS['current_package_manifest_digest'],
+            'artifact_identity' => $GLOBALS['current_artifact_identity'],
+        );
+    }
     public static function build_provenance_status() { throw new RuntimeException('full provenance must not run during Query Monitor bootstrap'); }
     public static function sanitize_warning_message( $m ) { return (string)$m; }
     public static function classify_warning_for_test( $type, $function, $message, array $trace = array() ) {
@@ -110,6 +121,12 @@ if ( empty($GLOBALS['actions']['shutdown'][8]) ) { fwrite(STDERR,"FAIL: bridge s
 
 $check = function($c,$m){ if(!$c){fwrite(STDERR,"FAIL: $m\n");exit(1);} };
 $check(str_repeat('a',64) === MAD4B_SCP_Query_Monitor_Evidence_Bridge::request_build_fingerprint_for_test(), 'request build fingerprint must pin at request bootstrap');
+$expected_package_token = hash('sha256', implode("\n", array(
+    $GLOBALS['current_source_commit_sha'],
+    $GLOBALS['current_build_fingerprint'],
+    $GLOBALS['current_package_manifest_digest'],
+    $GLOBALS['current_artifact_identity'],
+)));
 
 $admin_surface_method = new ReflectionMethod('MAD4B_SCP_Query_Monitor_Evidence_Bridge', 'current_request_is_mad4b_admin_surface');
 $admin_surface_method->setAccessible(true);
@@ -134,6 +151,9 @@ $check('' === $probe_method->invoke(null), 'unrelated UUID-shaped probe must not
 $_GET['mad4b_frontend_probe'] = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 $check(hash('sha256', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee') === $probe_method->invoke(null), 'active governed browser probe must be accepted');
 $GLOBALS['current_build_fingerprint'] = str_repeat('b',64);
+$GLOBALS['current_source_commit_sha'] = str_repeat('3',40);
+$GLOBALS['current_package_manifest_digest'] = str_repeat('4',64);
+$GLOBALS['current_artifact_identity'] = 'mad4b-site-control-plane-test-b';
 $check(str_repeat('a',64) === MAD4B_SCP_Query_Monitor_Evidence_Bridge::request_build_fingerprint_for_test(), 'mid-request provenance replacement must not change pinned build identity');
 
 $d = new FakeData();
@@ -151,6 +171,7 @@ QM_Collectors::$collector = new FakeCollector($d);
 MAD4B_SCP_Query_Monitor_Evidence_Bridge::capture_and_flush();
 $t = $GLOBALS['option'];
 $check(str_repeat('a',64) === $t['build_fingerprint'], 'shutdown telemetry must stay bound to request-start build identity');
+$check($expected_package_token === $t['package_identity_token'], 'shutdown telemetry must stay bound to the same request-start exact package identity');
 $check(1 === $t['observed_request_count'], 'request count');
 $check(1 === $t['counters']['mad4b']['doing_it_wrong'], 'MAD4B warning imported exactly once');
 $check(1 === $t['counters']['mad4b']['ability_not_found'], 'ability-not-found preserved');
