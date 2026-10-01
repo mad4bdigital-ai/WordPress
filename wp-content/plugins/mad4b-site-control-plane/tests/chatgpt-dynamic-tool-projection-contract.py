@@ -32,6 +32,19 @@ for marker in [
 ]:
     require(marker in PROJECTION, f"all-site Ability discovery invariant missing: {marker}")
 
+# Every registered Ability remains visible, but unknown classification is fail-closed:
+# no direct projection and no execution lane until the authority class is known.
+for marker in [
+    "classification",
+    "projection_eligible",
+    "execution_eligible",
+    "execution_lane",
+    "projection_blockers",
+    "ability_classification_required",
+    "ability_projection_policy_blocked",
+]:
+    require(marker in PROJECTION, f"unclassified Ability fail-closed invariant missing: {marker}")
+
 # Projection is schema-pinned and exact-plan fenced.
 for marker in [
     "expected_plan_sha256",

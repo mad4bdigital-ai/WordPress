@@ -10,7 +10,9 @@ if ( ! class_exists( 'MAD4B_SCP_Servers' ) ) $fail( 'MCP server registry is unav
 if ( ! class_exists( 'MAD4B_SCP_MCP_Catalog_Diagnostics' ) ) $fail( 'MCP catalog diagnostics are unavailable.' );
 
 if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
-	wp_register_ability( 'mad4b-ci/unclassified-projection-fixture', array(
+	$registry = class_exists( 'WP_Abilities_Registry' ) ? WP_Abilities_Registry::get_instance() : null;
+	if ( ! is_object( $registry ) || ! method_exists( $registry, 'register' ) ) $fail( 'WordPress Ability registry is unavailable for the runtime fixture.' );
+	$registered_fixture = $registry->register( 'mad4b-ci/unclassified-projection-fixture', array(
 		'label' => 'Unclassified Projection Fixture',
 		'description' => 'CI fixture proving a registered third-party-style Ability without annotations.readonly can still be projected conservatively.',
 		'category' => 'mad4b-read',
@@ -20,6 +22,9 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 		'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 		'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ) ),
 	) );
+	if ( ! is_object( $registered_fixture ) || ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
+		$fail( 'Unclassified projection fixture could not be registered.' );
+	}
 }
 
 foreach ( array(
@@ -79,10 +84,28 @@ $unclassified_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
 ) );
 if ( is_wp_error( $unclassified_plan ) ) $fail( 'Unclassified third-party-style Ability projection plan failed.', $unclassified_plan->get_error_code() );
 $unclassified_row = $unclassified_plan['desired_abilities'][0] ?? array();
-if ( ! empty( $unclassified_row['readonly'] ) || ! empty( $unclassified_row['readonly_declared'] ) || empty( $unclassified_row['conservative_mutation'] ) ) {
-	$fail( 'Unclassified Ability was not conservatively treated as mutation-visible-only.', $unclassified_row );
+if (
+	'unclassified' !== (string) ( $unclassified_row['classification'] ?? '' )
+	|| ! empty( $unclassified_row['readonly'] )
+	|| ! empty( $unclassified_row['readonly_declared'] )
+	|| empty( $unclassified_row['conservative_mutation'] )
+	|| ! empty( $unclassified_row['projection_eligible'] )
+	|| ! empty( $unclassified_row['execution_eligible'] )
+	|| 'none' !== (string) ( $unclassified_row['execution_lane'] ?? '' )
+	|| ! in_array( 'ability_classification_required', $unclassified_row['projection_blockers'] ?? array(), true )
+) {
+	$fail( 'Unclassified Ability did not remain visible but fail closed before direct projection or execution.', $unclassified_row );
 }
-if ( empty( $unclassified_plan['ready_for_apply'] ) ) $fail( 'Valid unclassified Ability should survive exact MCP preflight.', $unclassified_plan );
+if ( ! empty( $unclassified_plan['ready_for_apply'] ) ) $fail( 'Unclassified Ability unexpectedly became projection-ready.', $unclassified_plan );
+if ( ! in_array( 'mad4b-ci/unclassified-projection-fixture', $unclassified_plan['unprojectable_abilities'] ?? array(), true ) ) {
+	$fail( 'Unclassified Ability was not reported as unprojectable.', $unclassified_plan );
+}
+if ( ! in_array( 'ability_classification_required', $unclassified_plan['projection_policy_blockers']['mad4b-ci/unclassified-projection-fixture'] ?? array(), true ) ) {
+	$fail( 'Unclassified Ability classification blocker was not surfaced.', $unclassified_plan );
+}
+if ( in_array( 'mad4b-ci/unclassified-projection-fixture', $unclassified_plan['mcp_preflight']['tools'] ?? array(), true ) ) {
+	$fail( 'Unclassified Ability leaked into the MCP preflight candidate set.', $unclassified_plan );
+}
 
 $raw_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
 	'mode' => 'replace',
@@ -192,7 +215,7 @@ fwrite(
 			'base_tool_count' => count( $base ),
 			'read_projection_verified' => true,
 			'mutation_projection_classified' => true,
-			'unclassified_ability_conservative_projection_verified' => true,
+			'unclassified_ability_visible_fail_closed_verified' => true,
 			'schema_drift_fail_closed' => true,
 			'breakglass_opt_in_required' => true,
 		),

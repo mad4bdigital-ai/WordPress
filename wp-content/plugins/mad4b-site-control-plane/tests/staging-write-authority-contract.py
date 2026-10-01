@@ -492,9 +492,16 @@ for forbidden_grant in [
 
 if "'mad4b/staging-write-grant-reconcile'" not in servers:
     raise SystemExit('bounded grant reconciliation is missing from the internal enrollment server catalog')
+chatgpt_base = servers.split('public static function chatgpt_base_tools()', 1)[1].split('public static function chatgpt_tools()', 1)[0]
+direct_read_transport = servers.split('public static function chatgpt_direct_read_transport_tools()', 1)[1].split('public static function chatgpt_dispatch_transport_tools()', 1)[0]
 chatgpt_transport = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
-if "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" not in chatgpt_transport:
-    raise SystemExit('bounded Staging Write Authority read plan projection is missing')
+if (
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" not in chatgpt_base
+    and "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" not in direct_read_transport
+):
+    raise SystemExit('bounded Staging Write Authority read plan projection is missing from the required base catalog')
+if "$base = self::chatgpt_base_tools();" not in chatgpt_transport or "array_merge( $base, $dynamic )" not in chatgpt_transport:
+    raise SystemExit('dynamic ChatGPT projection no longer composes on top of the required base catalog')
 for marker in (
     'public static function chatgpt_reviewed_direct_step_up_tools()',
     'MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY',

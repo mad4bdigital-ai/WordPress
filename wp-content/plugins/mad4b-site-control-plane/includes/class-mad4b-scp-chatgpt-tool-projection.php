@@ -174,37 +174,66 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$meta = $ability->get_meta();
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 		$readonly_declared = array_key_exists( 'readonly', $annotations ) && is_bool( $annotations['readonly'] );
-		// Third-party WordPress Abilities are allowed into the projection universe
-		// even when they do not declare MAD4B-style readonly metadata. Unknown
-		// classification is never treated as read-safe: it is conservatively gated
-		// as a mutation projection and still executes only through the Ability's
-		// original permission callback / authorization path.
-		$readonly = $readonly_declared && true === $annotations['readonly'];
+		$category = method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
 		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
-		$lane = isset( $mcp['surface'] ) ? (string) $mcp['surface'] : ( true === $annotations['readonly'] ? 'read' : 'write' );
-		$classification_json = wp_json_encode( array( 'meta' => $meta, 'category' => method_exists( $ability, 'get_category' ) ? $ability->get_category() : '', 'output_schema' => method_exists( $ability, 'get_output_schema' ) ? $ability->get_output_schema() : null ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		if ( ! is_string( $classification_json ) ) return new WP_Error( 'mad4b_chatgpt_projection_classification_invalid', 'Projection classification cannot be serialized.' );
+		$surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
+		$known_lanes = array( 'read', 'write', 'developer', 'enrollment', 'internal', 'breakglass', 'developer-breakglass' );
+		$lane = in_array( $surface, $known_lanes, true ) ? $surface : '';
+		if ( '' === $lane && $readonly_declared ) $lane = true === $annotations['readonly'] ? 'read' : 'write';
+		if ( '' === $lane ) $lane = 'unclassified';
+
+		$readonly = 'read' === $lane && $readonly_declared && true === $annotations['readonly'];
+		$known = 'unclassified' !== $lane;
 		$breakglass = in_array( $lane, array( 'breakglass', 'developer-breakglass' ), true ) || in_array( $ability_name, array_merge(
 			class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::core_tools( 'mad4b-breakglass' ) : array(),
 			class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::core_tools( 'mad4b-developer-breakglass' ) : array()
 		), true );
+
+		$projection_blockers = array();
+		if ( ! $known ) $projection_blockers[] = 'ability_classification_required';
+		if ( 'internal' === $lane ) $projection_blockers[] = 'internal_surface_not_direct';
+		$projection_eligible = empty( $projection_blockers );
+		$execution_eligible = $projection_eligible;
+		$execution_lane = $execution_eligible ? $lane : 'none';
+
+		$classification_json = wp_json_encode(
+			array(
+				'meta' => $meta,
+				'category' => $category,
+				'output_schema' => method_exists( $ability, 'get_output_schema' ) ? $ability->get_output_schema() : null,
+				'classification' => $lane,
+				'known' => $known,
+				'projection_eligible' => $projection_eligible,
+				'execution_lane' => $execution_lane,
+				'projection_blockers' => $projection_blockers,
+			),
+			JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+		);
+		if ( ! is_string( $classification_json ) ) return new WP_Error( 'mad4b_chatgpt_projection_classification_invalid', 'Projection classification cannot be serialized.' );
+
 		return array(
 			'ability_name' => $ability_name,
 			'input_schema_sha256' => self::schema_sha256( $ability ),
 			'classification_sha256' => hash( 'sha256', $classification_json ),
+			'classification' => $lane,
+			'known' => (bool) $known,
 			'lane' => $lane,
 			'readonly' => (bool) $readonly,
 			'readonly_declared' => (bool) $readonly_declared,
 			'conservative_mutation' => ! $readonly_declared,
 			'breakglass' => (bool) $breakglass,
-			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
+			'category' => $category,
+			'projection_eligible' => (bool) $projection_eligible,
+			'execution_eligible' => (bool) $execution_eligible,
+			'execution_lane' => $execution_lane,
+			'projection_blockers' => $projection_blockers,
 		);
 	}
 
 	public static function all_site_ability_names() {
 		$names = array();
 		foreach ( function_exists( 'wp_get_abilities' ) ? wp_get_abilities() : array() as $name => $ability ) {
-			unset( $ability );
+			if ( is_object( $ability ) && method_exists( $ability, 'get_name' ) ) $name = $ability->get_name();
 			$name = (string) $name;
 			if ( '' !== $name ) $names[] = $name;
 		}
@@ -303,7 +332,17 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$base = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'chatgpt_base_tools' )
 			? MAD4B_SCP_Servers::chatgpt_base_tools()
 			: array();
-		$optional = array_keys( $rows );
+		$optional = array();
+		$policy_blocked = array();
+		foreach ( $rows as $ability_name => $row ) {
+			if ( empty( $row['projection_eligible'] ) ) {
+				$policy_blocked[ $ability_name ] = isset( $row['projection_blockers'] ) && is_array( $row['projection_blockers'] )
+					? array_values( array_unique( array_map( 'strval', $row['projection_blockers'] ) ) )
+					: array( 'ability_projection_policy_blocked' );
+				continue;
+			}
+			$optional[] = (string) $ability_name;
+		}
 		$requested_tools = array_values( array_unique( array_merge( $base, $optional ) ) );
 		$base_optional = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() : array();
 		$required_base = array_diff( $base, $base_optional );
@@ -315,8 +354,9 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			? MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $requested_tools, $all_optional )
 			: array( 'ready' => false, 'blocker' => 'mcp_catalog_preflight_unavailable' );
 		$preflight_tools = isset( $mcp_preflight['tools'] ) && is_array( $mcp_preflight['tools'] ) ? $mcp_preflight['tools'] : array();
-		$unprojectable = array_values( array_diff( $optional, $preflight_tools ) );
-		$ready_for_apply = ! empty( $mcp_preflight['ready'] ) && empty( $unprojectable );
+		$unprojectable = array_values( array_unique( array_merge( array_keys( $policy_blocked ), array_diff( $optional, $preflight_tools ) ) ) );
+		sort( $unprojectable, SORT_STRING );
+		$ready_for_apply = ! empty( $mcp_preflight['ready'] ) && empty( $unprojectable ) && empty( $policy_blocked );
 		return array(
 			'contract' => self::CONTRACT,
 			'plan_sha256' => $plan_sha256,
@@ -326,6 +366,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'base_tool_count' => count( $base ),
 			'budget' => $budget,
 			'mcp_preflight' => $mcp_preflight,
+			'projection_policy_blockers' => $policy_blocked,
 			'unprojectable_abilities' => $unprojectable,
 			'ready_for_apply' => $ready_for_apply,
 			'projection_changes_authority' => false,
@@ -355,11 +396,13 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$plan = self::plan( $input );
 		if ( is_wp_error( $plan ) ) return $plan;
 		if ( empty( $plan['ready_for_apply'] ) ) {
+			$policy_blocked = isset( $plan['projection_policy_blockers'] ) && is_array( $plan['projection_policy_blockers'] ) ? $plan['projection_policy_blockers'] : array();
 			return new WP_Error(
 				'mad4b_chatgpt_projection_preflight_blocked',
-				'Projection cannot be applied because every requested Ability must survive the exact resulting MCP catalog preflight and budget.',
+				'Projection cannot be applied because every requested Ability must pass projection policy and survive the exact resulting MCP catalog preflight and budget.',
 				array(
-					'blocker' => isset( $plan['mcp_preflight']['blocker'] ) ? (string) $plan['mcp_preflight']['blocker'] : 'unknown',
+					'blocker' => ! empty( $policy_blocked ) ? 'ability_projection_policy_blocked' : ( isset( $plan['mcp_preflight']['blocker'] ) ? (string) $plan['mcp_preflight']['blocker'] : 'unknown' ),
+					'projection_policy_blockers' => $policy_blocked,
 					'unprojectable_abilities' => isset( $plan['unprojectable_abilities'] ) ? $plan['unprojectable_abilities'] : array(),
 				)
 			);
@@ -414,6 +457,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			$expected = isset( $stored['input_schema_sha256'] ) ? strtolower( (string) $stored['input_schema_sha256'] ) : '';
 			if ( '' === $expected || ! hash_equals( $expected, strtolower( (string) $current['input_schema_sha256'] ) ) ) continue;
 			if ( empty( $stored['classification_sha256'] ) || ! hash_equals( (string) $stored['classification_sha256'], $current['classification_sha256'] ) ) continue;
+			if ( empty( $current['projection_eligible'] ) ) continue;
 			if ( ! empty( $current['breakglass'] ) && ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_breakglass() ) ) continue;
 			$rows[ $ability_name ] = $current;
 		}
@@ -441,8 +485,12 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			$stored[] = array(
 				'ability_name' => (string) $ability_name,
 				'input_schema_sha256' => is_array( $row ) && isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '',
+				'classification' => ! is_wp_error( $current ) && isset( $current['classification'] ) ? (string) $current['classification'] : 'unavailable',
 				'readonly' => is_array( $row ) && isset( $row['readonly'] ) ? (bool) $row['readonly'] : null,
 				'breakglass' => is_array( $row ) && ! empty( $row['breakglass'] ),
+				'projection_eligible' => ! is_wp_error( $current ) && ! empty( $current['projection_eligible'] ),
+				'execution_eligible' => ! is_wp_error( $current ) && ! empty( $current['execution_eligible'] ),
+				'projection_blockers' => ! is_wp_error( $current ) && isset( $current['projection_blockers'] ) && is_array( $current['projection_blockers'] ) ? $current['projection_blockers'] : array(),
 				'effective' => isset( $effective[ $ability_name ] ),
 				'stale' => (bool) $stale,
 			);
