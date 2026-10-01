@@ -54,11 +54,10 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 		$external_evidence = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) && method_exists( 'MAD4B_SCP_External_Handshake_Evidence', 'persisted_identity_status' )
 			? MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()
 			: array();
-		$external_evidence_present = ! empty( $external_evidence['evidence_present'] )
-			&& ! empty( $external_evidence['verified_at'] )
-			&& 'mad4b-chatgpt' === ( isset( $external_evidence['server_id'] ) ? sanitize_key( (string) $external_evidence['server_id'] ) : '' )
-			&& 'oauth2_bearer' === ( isset( $external_evidence['auth_method'] ) ? sanitize_key( (string) $external_evidence['auth_method'] ) : '' );
-		$external_certification_state = $external_evidence_present ? 'previously_verified_revalidation_deferred' : 'not_certified';
+		$external_evidence_present = ! empty( $external_evidence['previously_verified_external_session'] );
+		$external_certification_state = $external_evidence_present
+			? ( isset( $external_evidence['certification_projection_state'] ) ? sanitize_key( (string) $external_evidence['certification_projection_state'] ) : 'previously_verified_revalidation_deferred' )
+			: 'not_certified';
 		$server_url = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() : untrailingslashit( rest_url( 'mcp/mad4b-chatgpt' ) );
 		$cimd_ready = ! empty( $local['client_id_metadata_document_supported'] )
 			&& isset( $local['cimd_chatgpt_client_id'] )
