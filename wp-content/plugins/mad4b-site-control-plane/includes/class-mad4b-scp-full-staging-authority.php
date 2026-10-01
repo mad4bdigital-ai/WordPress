@@ -231,7 +231,12 @@ final class MAD4B_SCP_Full_Staging_Authority {
 	public static function status() {
 		$write_plan = self::write_plan();
 		$developer = class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::status() : array();
-		$write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
+		$write_checkpoint_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
+		$write_grant_snapshot_ready = is_array( $write_plan ) && ! empty( $write_plan['current_ready'] );
+		$write_ready = $write_checkpoint_ready
+			&& $write_grant_snapshot_ready
+			&& is_array( $write_plan )
+			&& ! empty( $write_plan['effective_ready'] );
 		$normal_ready = ! empty( $developer['developer_enabled'] )
 			&& ! empty( $developer['direct_execution_enabled'] )
 			&& empty( $developer['kill_switch_enabled'] )
@@ -249,6 +254,9 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'generic_raw_sql_breakglass_enabled' => self::generic_raw_sql_breakglass_gate_enabled(),
 			'write' => array(
 				'ready' => $write_ready,
+				'checkpoint_ready' => $write_checkpoint_ready,
+				'current_grant_snapshot_ready' => $write_grant_snapshot_ready,
+				'current_readiness_blockers' => is_array( $write_plan ) && isset( $write_plan['current_readiness_blockers'] ) && is_array( $write_plan['current_readiness_blockers'] ) ? $write_plan['current_readiness_blockers'] : array( 'write_reconciliation_plan_unavailable' ),
 				'plan' => is_array( $write_plan ) ? $write_plan : array(),
 			),
 			'developer' => array(
