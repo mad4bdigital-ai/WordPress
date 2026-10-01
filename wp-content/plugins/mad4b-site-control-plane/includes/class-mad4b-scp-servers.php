@@ -505,12 +505,11 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function chatgpt_tools() {
-		$step_up_bearer = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
-			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
-			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE );
-		// tools/list becomes request-authority-sensitive when a bearer is active;
-		// never reuse a pre-auth request-local catalog across that boundary.
-		$cacheable = self::catalog_cacheable() && ! ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() );
+		// Server registration runs during rest_api_init, while OAuth bearer
+		// verification happens later in rest_pre_dispatch. Keep the materialized
+		// ChatGPT server catalog request-authority invariant and perform bearer/
+		// scope/client visibility filtering only at tools/list time.
+		$cacheable = self::catalog_cacheable();
 		if ( $cacheable && is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
 		$core = self::core_tools( 'mad4b-chatgpt' );
 		$breakglass = self::core_tools( 'mad4b-breakglass' );
@@ -521,7 +520,7 @@ final class MAD4B_SCP_Servers {
 		// write dispatcher. This keeps tools/list small and stable enough for client
 		// refresh without weakening the underlying ability authority contracts.
 		if ( ! self::chatgpt_unified_catalog_enabled() ) {
-			$runtime_gate_step_up = $step_up_bearer && class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
+			$runtime_gate_step_up = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
 				? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()
 				: array();
 			$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up );
@@ -588,8 +587,10 @@ final class MAD4B_SCP_Servers {
 		);
 		$candidates = array_merge( $core, $bootstrap );
 		$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );
-		$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );
-		$step_up = array_merge( $step_up, $semantic_step_up );
+		// Materialize the bounded direct step-up superset regardless of bearer
+		// timing. mcp_adapter_tools_list removes these request-locally unless the
+		// verified bearer carries the dedicated scope and exact ChatGPT client.
+		$step_up = array_merge( $bounded_step_up, $full_step_up, $semantic_step_up );
 		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up ) ) );
 		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
 
