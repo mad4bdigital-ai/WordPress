@@ -80,6 +80,10 @@ final class MAD4B_SCP_WPML_Response_Contract {
 			'observed' => true,
 			'observed_at' => gmdate( 'c' ),
 			'build_fingerprint' => isset( $candidate['build_fingerprint'] ) ? (string) $candidate['build_fingerprint'] : '',
+			'package_identity_schema_revision' => 1,
+			'source_commit_sha' => isset( $candidate['source_commit_sha'] ) ? (string) $candidate['source_commit_sha'] : '',
+			'package_manifest_digest' => isset( $candidate['package_manifest_digest'] ) ? (string) $candidate['package_manifest_digest'] : '',
+			'artifact_identity' => isset( $candidate['artifact_identity'] ) ? (string) $candidate['artifact_identity'] : '',
 			'request_route' => self::ROUTE,
 			'test_get_parameter_present' => (bool) $parameter_present,
 			'response_status' => $status_code,
@@ -150,6 +154,14 @@ final class MAD4B_SCP_WPML_Response_Contract {
 			'observed_at' => '',
 			'build_fingerprint' => '',
 			'current_build_fingerprint' => isset( $candidate['build_fingerprint'] ) ? $candidate['build_fingerprint'] : '',
+			'package_identity_match' => false,
+			'package_identity_complete' => false,
+			'source_commit_sha' => '',
+			'current_source_commit_sha' => isset( $candidate['source_commit_sha'] ) ? $candidate['source_commit_sha'] : '',
+			'package_manifest_digest' => '',
+			'current_package_manifest_digest' => isset( $candidate['package_manifest_digest'] ) ? $candidate['package_manifest_digest'] : '',
+			'artifact_identity' => '',
+			'current_artifact_identity' => isset( $candidate['artifact_identity'] ) ? $candidate['artifact_identity'] : '',
 			'request_route' => self::ROUTE,
 			'test_get_parameter_present' => false,
 			'response_status' => 0,
@@ -173,16 +185,28 @@ final class MAD4B_SCP_WPML_Response_Contract {
 			$base['internal_rest_dispatch_performed'] = false;
 			return $base;
 		}
-		foreach ( array( 'observed','observed_at','build_fingerprint','request_route','test_get_parameter_present','response_status','response_content_type','error_code','body_classification','classification','status','get_parameters','safe_message' ) as $key ) {
+		foreach ( array( 'observed','observed_at','build_fingerprint','source_commit_sha','package_manifest_digest','artifact_identity','request_route','test_get_parameter_present','response_status','response_content_type','error_code','body_classification','classification','status','get_parameters','safe_message' ) as $key ) {
 			if ( array_key_exists( $key, $stored ) ) $base[ $key ] = $stored[ $key ];
 		}
-		$build_match = ! empty( $candidate['build_fingerprint'] ) && ! empty( $stored['build_fingerprint'] ) && hash_equals( (string) $candidate['build_fingerprint'], (string) $stored['build_fingerprint'] );
+		$stored_identity = array(
+			'source_commit_sha' => isset( $stored['source_commit_sha'] ) ? strtolower( trim( (string) $stored['source_commit_sha'] ) ) : '',
+			'build_fingerprint' => isset( $stored['build_fingerprint'] ) ? strtolower( trim( (string) $stored['build_fingerprint'] ) ) : '',
+			'package_manifest_digest' => isset( $stored['package_manifest_digest'] ) ? strtolower( trim( (string) $stored['package_manifest_digest'] ) ) : '',
+			'artifact_identity' => isset( $stored['artifact_identity'] ) ? trim( (string) $stored['artifact_identity'] ) : '',
+		);
+		$package_identity_complete = ! empty( $stored_identity['source_commit_sha'] )
+			&& ! empty( $stored_identity['build_fingerprint'] )
+			&& ! empty( $stored_identity['package_manifest_digest'] )
+			&& ! empty( $stored_identity['artifact_identity'] );
+		$package_identity_match = $package_identity_complete && self::candidate_identity_matches( $candidate, $stored_identity );
 		$observed_ts = self::parse_time( isset( $stored['observed_at'] ) ? $stored['observed_at'] : '' );
 		$fresh = false !== $observed_ts && $observed_ts <= time() + 60 && ( time() - $observed_ts ) <= self::TTL;
-		$verified = $build_match && $fresh && ! empty( $stored['test_get_parameter_present'] ) && 'success' === (string) $stored['classification'] && 'valid' === (string) $stored['status'] && 'valid' === (string) $stored['get_parameters'];
+		$verified = $package_identity_match && $fresh && ! empty( $stored['test_get_parameter_present'] ) && 'success' === (string) $stored['classification'] && 'valid' === (string) $stored['status'] && 'valid' === (string) $stored['get_parameters'];
+		$base['package_identity_complete'] = $package_identity_complete;
+		$base['package_identity_match'] = $package_identity_match;
 		$base['verified'] = $verified;
-		$base['stale'] = ! ( $build_match && $fresh );
-		$base['state'] = $verified ? 'verified_external_wpml' : ( ! $build_match ? 'stale_build_evidence' : ( ! $fresh ? 'stale_evidence' : (string) $stored['classification'] ) );
+		$base['stale'] = ! ( $package_identity_match && $fresh );
+		$base['state'] = $verified ? 'verified_external_wpml' : ( ! $package_identity_match ? 'stale_package_identity_evidence' : ( ! $fresh ? 'stale_evidence' : (string) $stored['classification'] ) );
 		return $base;
 	}
 
@@ -214,10 +238,28 @@ final class MAD4B_SCP_WPML_Response_Contract {
 			: array();
 		$sha = isset( $provenance['source_commit_sha'] ) ? strtolower( (string) $provenance['source_commit_sha'] ) : '';
 		$fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
+		$manifest = isset( $provenance['package_manifest_digest'] ) ? strtolower( (string) $provenance['package_manifest_digest'] ) : '';
+		$artifact = isset( $provenance['artifact_identity'] ) ? trim( (string) $provenance['artifact_identity'] ) : '';
+		$ready = ! empty( $provenance['identity_ready'] )
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/', $sha )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $fingerprint )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $manifest )
+			&& '' !== $artifact;
 		return array(
-			'source_commit_sha' => preg_match( '/^[a-f0-9]{40}$/', $sha ) ? $sha : '',
-			'build_fingerprint' => preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ? $fingerprint : '',
+			'ready' => (bool) $ready,
+			'source_commit_sha' => $ready ? $sha : '',
+			'build_fingerprint' => $ready ? $fingerprint : '',
+			'package_manifest_digest' => $ready ? $manifest : '',
+			'artifact_identity' => $ready ? $artifact : '',
 		);
+	}
+
+	private static function candidate_identity_matches( array $current, array $stored ) {
+		if ( empty( $current['ready'] ) ) return false;
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) {
+			if ( empty( $current[ $key ] ) || empty( $stored[ $key ] ) || ! hash_equals( (string) $current[ $key ], (string) $stored[ $key ] ) ) return false;
+		}
+		return true;
 	}
 
 	private static function staging_allowed() {
