@@ -71,6 +71,8 @@ for marker in (
     "'stale_allow_grants_count' => $reviewed_stale_count",
 ):
     assert marker in full, marker
+
+plan_body = full.split("public static function plan()", 1)[1].split("public static function apply( $input )", 1)[0]
 assert "$reviewed_stale_count = $stale_allow_total;" in plan_body, "reviewed stale grants must project directly from the reviewed stale count"
 assert "$stale_allow_total - $unreviewed_stale_count" not in plan_body, "unreviewed stale authority is a separate collection and must not be subtracted twice"
 
@@ -143,7 +145,6 @@ for marker in [
     assert marker in status_body, marker
 assert "$write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();" not in status_body
 
-plan_body = full.split("public static function plan()", 1)[1].split("public static function apply( $input )", 1)[0]
 for marker in [
     "$missing_rows = isset( $write_plan['exact_grants_missing'] )",
     "'explicit_deny'",
