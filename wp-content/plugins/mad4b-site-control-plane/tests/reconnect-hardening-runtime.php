@@ -45,7 +45,18 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
     public static function verified_bearer_active(){return true;}
     public static function verified_bearer_client_is($id){return $id==='https://chatgpt.com/oauth/client.json';}
 }
-final class MAD4B_SCP_MCP_Registration_Bridge { public static $status=array(); public static function status(){return self::$status;} }
+final class MAD4B_SCP_MCP_Registration_Bridge {
+    public static $status=array();
+    public static function status(){return self::$status;}
+    public static function server_registration_identity_status($server_id){
+        $row=MAD4B_SCP_Servers::$status[$server_id]??array();
+        $actual=!empty($row['registered']);
+        $error=isset($row['error'])?sanitize_key((string)$row['error']):'';
+        $synthetic=in_array($error,array('','not_registered','mcp_chatgpt_not_registered'),true);
+        $ready=$actual||($synthetic&&!empty(self::$status['bridge_booted'])&&!empty(self::$status['server_hook_bound'])&&!empty(self::$status['core_ability_hook_bound'])&&!empty(self::$status['registry_ability_hook_bound'])&&!empty(self::$status['core_category_hook_bound'])&&!empty(self::$status['registry_category_hook_bound']));
+        return array('actual_registered'=>$actual,'identity_ready'=>$ready,'state'=>$actual?'registered':($ready?'deferred_identity_ready':(''!==$error?'registration_error':'not_ready')),'blocking_registration_error'=>(!$actual&&!$synthetic)?$error:'','deep_registration_deferred'=>!$actual&&$ready);
+    }
+}
 final class MAD4B_SCP_MCP_Request_Scope {
     public static $passive=false;
     public static function current_request_is_passive_admin_hotpath(){return self::$passive;}
@@ -156,12 +167,14 @@ MAD4B_SCP_MCP_Registration_Bridge::$status=array(
     'server_hook_bound'=>true,
     'core_ability_hook_bound'=>true,
     'core_category_hook_bound'=>true,
+    'registry_ability_hook_bound'=>true,
+    'registry_category_hook_bound'=>true,
 );
 MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'not_registered');
 $passive=MAD4B_SCP_Reconnect_Hardening::reconnect_status();
 $passive=priv('passive_admin_notice_status',array($passive));
 ok(!empty($passive['ready']),'passive ChatGPT admin projects deferred registration identity as ready');
-ok(!empty($passive['chatgpt_registered'])&&'passive_admin_deferred_identity'===($passive['chatgpt_registration_projection']??''),'passive admin exposes explicit deferred registration projection');
+ok(empty($passive['chatgpt_registered'])&&!empty($passive['chatgpt_registration_identity_ready'])&&'deferred_identity_ready'===($passive['chatgpt_registration_projection']??''),'passive admin distinguishes actual registration from deferred registration identity');
 ok(!empty($passive['chatgpt_registration_deep_check_deferred']),'passive admin marks deep registration check deferred');
 MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'chatgpt_registration_failed');
 $passive_error=MAD4B_SCP_Reconnect_Hardening::reconnect_status();
