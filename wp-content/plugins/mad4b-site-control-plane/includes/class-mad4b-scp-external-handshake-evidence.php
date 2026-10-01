@@ -116,6 +116,14 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			);
 		}
 		$stored_build = isset( $evidence['build_fingerprint'] ) ? strtolower( trim( (string) $evidence['build_fingerprint'] ) ) : '';
+		$stored_source = isset( $evidence['source_commit_sha'] ) ? strtolower( trim( (string) $evidence['source_commit_sha'] ) ) : '';
+		$stored_package_build = isset( $evidence['package_build_fingerprint'] ) ? strtolower( trim( (string) $evidence['package_build_fingerprint'] ) ) : '';
+		$stored_manifest = isset( $evidence['package_manifest_digest'] ) ? strtolower( trim( (string) $evidence['package_manifest_digest'] ) ) : '';
+		$stored_artifact = isset( $evidence['artifact_identity'] ) ? trim( (string) $evidence['artifact_identity'] ) : '';
+		$package_identity_complete = 1 === preg_match( '/^[a-f0-9]{40}$/', $stored_source )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $stored_package_build )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $stored_manifest )
+			&& '' !== $stored_artifact;
 		$tool_inventory = isset( $evidence['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $evidence['tool_inventory_fingerprint'] ) ) : '';
 		$write_inventory = isset( $evidence['write_catalog_fingerprint'] ) ? strtolower( trim( (string) $evidence['write_catalog_fingerprint'] ) ) : '';
 		return array(
@@ -129,6 +137,12 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			'tool_count' => isset( $evidence['tool_count'] ) ? max( 0, (int) $evidence['tool_count'] ) : 0,
 			'write_tool_count' => isset( $evidence['write_tool_count'] ) ? max( 0, (int) $evidence['write_tool_count'] ) : 0,
 			'build_fingerprint' => 1 === preg_match( '/^[a-f0-9]{64}$/', $stored_build ) ? $stored_build : '',
+			'runtime_surface_fingerprint' => 1 === preg_match( '/^[a-f0-9]{64}$/', $stored_build ) ? $stored_build : '',
+			'package_identity_complete' => $package_identity_complete,
+			'source_commit_sha' => $package_identity_complete ? $stored_source : '',
+			'package_build_fingerprint' => $package_identity_complete ? $stored_package_build : '',
+			'package_manifest_digest' => $package_identity_complete ? $stored_manifest : '',
+			'artifact_identity' => $package_identity_complete ? $stored_artifact : '',
 			'tool_inventory_fingerprint' => 1 === preg_match( '/^[a-f0-9]{64}$/', $tool_inventory ) ? $tool_inventory : '',
 			'write_catalog_fingerprint' => 1 === preg_match( '/^[a-f0-9]{64}$/', $write_inventory ) ? $write_inventory : '',
 			'verified_at' => isset( $evidence['verified_at'] ) ? sanitize_text_field( (string) $evidence['verified_at'] ) : '',
@@ -175,6 +189,13 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			'verified_at' => '',
 			'age_seconds' => 0,
 			'build_fingerprint_match' => false,
+			'runtime_surface_fingerprint_match' => false,
+			'package_identity_match' => false,
+			'package_identity_complete' => false,
+			'source_commit_sha' => '',
+			'package_build_fingerprint' => '',
+			'package_manifest_digest' => '',
+			'artifact_identity' => '',
 			'credential_material_stored' => false,
 		);
 		if ( ! is_array( $evidence ) || empty( $evidence ) ) return $base;
@@ -212,6 +233,20 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$current_build = self::build_fingerprint();
 		$stored_build = isset( $evidence['build_fingerprint'] ) ? strtolower( trim( (string) $evidence['build_fingerprint'] ) ) : '';
 		$build_match = '' !== $current_build && preg_match( '/^[a-f0-9]{64}$/', $stored_build ) && hash_equals( $current_build, $stored_build );
+		$current_package_identity = self::package_identity();
+		$stored_package_identity = array(
+			'source_commit_sha' => isset( $evidence['source_commit_sha'] ) ? strtolower( trim( (string) $evidence['source_commit_sha'] ) ) : '',
+			'build_fingerprint' => isset( $evidence['package_build_fingerprint'] ) ? strtolower( trim( (string) $evidence['package_build_fingerprint'] ) ) : '',
+			'package_manifest_digest' => isset( $evidence['package_manifest_digest'] ) ? strtolower( trim( (string) $evidence['package_manifest_digest'] ) ) : '',
+			'artifact_identity' => isset( $evidence['artifact_identity'] ) ? trim( (string) $evidence['artifact_identity'] ) : '',
+		);
+		$package_identity_complete = ! empty( $stored_package_identity['source_commit_sha'] )
+			&& ! empty( $stored_package_identity['build_fingerprint'] )
+			&& ! empty( $stored_package_identity['package_manifest_digest'] )
+			&& ! empty( $stored_package_identity['artifact_identity'] );
+		$package_identity_match = $package_identity_complete
+			&& ! empty( $current_package_identity )
+			&& self::package_identity_matches( $current_package_identity, $stored_package_identity );
 
 		$base['environment'] = $environment;
 		$base['resource'] = $resource;
@@ -241,7 +276,14 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$base['tool_inventory_match'] = (bool) $inventory_match;
 		$base['verified_at'] = $verified_at;
 		$base['age_seconds'] = PHP_INT_MAX === $age ? 0 : $age;
-		$base['build_fingerprint_match'] = (bool) $build_match;
+		$base['build_fingerprint_match'] = (bool) $build_match; // Compatibility alias for transport-surface continuity.
+		$base['runtime_surface_fingerprint_match'] = (bool) $build_match;
+		$base['package_identity_complete'] = (bool) $package_identity_complete;
+		$base['package_identity_match'] = (bool) $package_identity_match;
+		$base['source_commit_sha'] = $stored_package_identity['source_commit_sha'];
+		$base['package_build_fingerprint'] = $stored_package_identity['build_fingerprint'];
+		$base['package_manifest_digest'] = $stored_package_identity['package_manifest_digest'];
+		$base['artifact_identity'] = $stored_package_identity['artifact_identity'];
 
 		$current_environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ) );
 		$current_resource = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() : '';
@@ -250,7 +292,8 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( '' === $current_resource || ! hash_equals( $current_resource, $resource ) ) { $base['status'] = 'resource_mismatch'; return $base; }
 		if ( 'oauth2_bearer' !== $auth_method || $wp_user_id < 1 || ! $base['subject_fingerprint_present'] || ! $base['mcp_session_fingerprint_present'] ) { $base['status'] = 'subject_or_session_invalid'; return $base; }
 		if ( ! in_array( self::REQUIRED_SCOPE, $scope_set, true ) || $tool_count < 1 || '' === $issuer ) { $base['status'] = 'handshake_incomplete'; return $base; }
-		if ( ! $build_match ) { $base['status'] = 'stale_build_evidence'; return $base; }
+		if ( ! $package_identity_match ) { $base['status'] = 'stale_package_identity_evidence'; return $base; }
+		if ( ! $build_match ) { $base['status'] = 'stale_runtime_surface_evidence'; return $base; }
 		if ( ! $inventory_match ) { $base['status'] = 'stale_tool_inventory_evidence'; return $base; }
 		if ( ! $write_inventory_match || ! $write_transport_ready || ! empty( $direct_write_schema_leaks ) ) { $base['status'] = 'stale_write_transport_evidence'; return $base; }
 		if ( $age > self::MAX_EVIDENCE_AGE ) { $base['status'] = 'stale_time_evidence'; return $base; }
@@ -281,6 +324,37 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		}
 		self::$request_build_fingerprint = hash_final( $ctx );
 		return self::$request_build_fingerprint;
+	}
+
+	/**
+	 * Exact governed package identity. The transport-surface fingerprint above is
+	 * useful drift evidence but is not a release/provenance authority: two
+	 * different packages may contain the same selected transport files.
+	 */
+	private static function package_identity() {
+		$status = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
+			&& method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()
+			: array();
+		if ( ! is_array( $status ) || empty( $status['identity_ready'] ) ) return array();
+		$identity = array(
+			'source_commit_sha' => isset( $status['source_commit_sha'] ) ? strtolower( trim( (string) $status['source_commit_sha'] ) ) : '',
+			'build_fingerprint' => isset( $status['build_fingerprint'] ) ? strtolower( trim( (string) $status['build_fingerprint'] ) ) : '',
+			'package_manifest_digest' => isset( $status['package_manifest_digest'] ) ? strtolower( trim( (string) $status['package_manifest_digest'] ) ) : '',
+			'artifact_identity' => isset( $status['artifact_identity'] ) ? trim( (string) $status['artifact_identity'] ) : '',
+		);
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $identity['source_commit_sha'] ) ) return array();
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $identity['build_fingerprint'] ) ) return array();
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $identity['package_manifest_digest'] ) ) return array();
+		if ( '' === $identity['artifact_identity'] || strlen( $identity['artifact_identity'] ) > 191 ) return array();
+		return $identity;
+	}
+
+	private static function package_identity_matches( array $expected, array $observed ) {
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) {
+			if ( empty( $expected[ $key ] ) || empty( $observed[ $key ] ) || ! hash_equals( (string) $expected[ $key ], (string) $observed[ $key ] ) ) return false;
+		}
+		return true;
 	}
 
 	private static function capture_runtime_allowed( $request ) {
@@ -317,8 +391,9 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( ! is_array( $context ) ) return;
 		$context['mcp_session_fingerprint'] = hash( 'sha256', $session_id );
 		$context['initialized_at'] = gmdate( 'Y-m-d H:i:s' );
-		$context['build_fingerprint'] = self::build_fingerprint();
-		if ( '' === $context['build_fingerprint'] ) return;
+		$context['build_fingerprint'] = self::build_fingerprint(); // Backward-compatible transport-surface fingerprint.
+		$context['package_identity'] = self::package_identity();
+		if ( '' === $context['build_fingerprint'] || empty( $context['package_identity'] ) ) return;
 		set_transient( self::pending_key( $context['mcp_session_fingerprint'] ), $context, self::PENDING_TTL );
 	}
 
@@ -333,6 +408,9 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$current = self::verified_request_context( $request );
 		if ( ! is_array( $current ) || ! self::same_context( $pending, $current ) ) return;
 		if ( empty( $pending['build_fingerprint'] ) || ! hash_equals( self::build_fingerprint(), (string) $pending['build_fingerprint'] ) ) return;
+		$current_package_identity = self::package_identity();
+		$pending_package_identity = isset( $pending['package_identity'] ) && is_array( $pending['package_identity'] ) ? $pending['package_identity'] : array();
+		if ( empty( $current_package_identity ) || ! self::package_identity_matches( $current_package_identity, $pending_package_identity ) ) return;
 
 		$data = $response->get_data();
 		if ( is_object( $data ) ) $data = get_object_vars( $data );
@@ -397,7 +475,14 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			'tool_inventory_fingerprint' => $actual_fingerprint,
 			'initialized_at' => isset( $pending['initialized_at'] ) ? sanitize_text_field( (string) $pending['initialized_at'] ) : '',
 			'verified_at' => gmdate( 'Y-m-d H:i:s' ),
+			// Retain the legacy field as the bounded transport-surface hash.
 			'build_fingerprint' => self::build_fingerprint(),
+			'runtime_surface_fingerprint' => self::build_fingerprint(),
+			'package_identity_schema_revision' => 1,
+			'source_commit_sha' => $current_package_identity['source_commit_sha'],
+			'package_build_fingerprint' => $current_package_identity['build_fingerprint'],
+			'package_manifest_digest' => $current_package_identity['package_manifest_digest'],
+			'artifact_identity' => $current_package_identity['artifact_identity'],
 		);
 		update_option( self::OPTION, $evidence, false );
 		delete_transient( self::pending_key( $session_fingerprint ) );
