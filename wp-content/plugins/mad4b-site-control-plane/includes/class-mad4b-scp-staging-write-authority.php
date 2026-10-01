@@ -1397,9 +1397,29 @@ final class MAD4B_SCP_Staging_Write_Authority {
 							'excess_count' => count( $allow_current[ $key ] ) - 1,
 						);
 					}
+					// A broad allow is drift even when an exact current-environment allow
+					// also exists. Reconcile already revokes this row; the read-only plan
+					// must expose the same truth so mutation admission fails closed.
+					if ( ! empty( $allow_all[ $key ] ) ) {
+						foreach ( $allow_all[ $key ] as $broad_grant ) {
+							$broad_environment[] = array(
+								'id' => isset( $broad_grant['id'] ) ? (int) $broad_grant['id'] : 0,
+								'ability' => (string) $ability,
+								'provider' => (string) $provider,
+								'environment' => 'all',
+							);
+						}
+					}
 				} elseif ( ! empty( $allow_all[ $key ] ) ) {
 					$row['grant_state'] = 'broad_environment_grant';
-					$broad_environment[] = array( 'ability' => (string) $ability, 'provider' => (string) $provider, 'environment' => 'all' );
+					foreach ( $allow_all[ $key ] as $broad_grant ) {
+						$broad_environment[] = array(
+							'id' => isset( $broad_grant['id'] ) ? (int) $broad_grant['id'] : 0,
+							'ability' => (string) $ability,
+							'provider' => (string) $provider,
+							'environment' => 'all',
+						);
+					}
 					$missing[] = array( 'ability' => (string) $ability, 'provider' => (string) $provider, 'reason' => 'broad_environment_grant' );
 				} else {
 					$row['grant_state'] = 'missing_exact_grant';
