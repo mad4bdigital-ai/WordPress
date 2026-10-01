@@ -200,8 +200,32 @@ for marker in [
     "private static function compact_status_data",
     "private static function bound_session_safe_report",
     "'runtime_changed_during_session_safe_report'",
+    "'valid_for_session_evidence_merge'",
+    "'valid_for_release_merge' => false",
+    "'merge_scope' => 'session_safe_subject_evidence_only'",
+    "'deep_acceptance_required' => true",
+    "'release_acceptance_deferred_checks'",
 ]:
     require(read_consistency, marker, "session-safe diagnostic invariant")
+
+reduced_report = read_consistency.split("$minimal = array(", 1)[1].split("return $minimal;", 1)[0]
+for marker in (
+    "'valid_for_session_evidence_merge'",
+    "'valid_for_release_merge' => false",
+    "'merge_scope' => 'session_safe_subject_evidence_only'",
+    "'deep_acceptance_required' => true",
+    "'subject_blockers'",
+    "'release_acceptance_deferred_checks'",
+):
+    require(reduced_report, marker, "reduced session-safe merge-scope invariant")
+generation_envelope = read_consistency.split("private static function generation_changed_envelope(", 1)[1].split("private static function request_metrics()", 1)[0]
+for marker in (
+    "'valid_for_session_evidence_merge' => false",
+    "'valid_for_release_merge' => false",
+    "'merge_scope' => 'session_safe_subject_evidence_only'",
+    "'deep_acceptance_required' => true",
+):
+    require(generation_envelope, marker, "generation-changed merge-scope invariant")
 
 require(main, "class-mad4b-scp-connector-resilience.php", "resilience runtime include")
 
