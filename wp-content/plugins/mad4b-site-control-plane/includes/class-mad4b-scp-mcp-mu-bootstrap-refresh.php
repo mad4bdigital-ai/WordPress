@@ -9,7 +9,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * new Control Plane source cannot change the already-running request. On the
  * explicitly enrolled governed non-production site only, this reconciler atomically replaces a
  * recognized MAD4B v2/v3 MU bootstrap with the current source and records the
- * change in the append-only audit. The next request then executes the new file.
+ * change in the append-only audit. Reconciliation is lifecycle-only and is
+ * deferred until init so ordinary request-serving GET/HEAD pages never perform
+ * filesystem mutation. The next request then executes the new file.
  */
 final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 	const CONTRACT = 'mad4b.mcp-mu-bootstrap-refresh.v1';
@@ -175,14 +177,18 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
 		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
 		if ( is_admin() ) {
+			// Deep Connection diagnostics are an explicit POST + nonce lifecycle.
+			if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+				&& MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed() ) return true;
+
 			global $pagenow;
 			$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
 			$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
-			if ( in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return true;
-			if ( in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true ) ) return true;
-			$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			if ( 'mad4b-control-plane-connection' === $page && 'endpoints' === $tab ) return true;
+			$lifecycle_screen = in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true );
+			$lifecycle_action = in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
+			if ( ( $lifecycle_screen || $lifecycle_action )
+				&& function_exists( 'current_user_can' )
+				&& current_user_can( 'update_plugins' ) ) return true;
 		}
 		return false;
 	}
