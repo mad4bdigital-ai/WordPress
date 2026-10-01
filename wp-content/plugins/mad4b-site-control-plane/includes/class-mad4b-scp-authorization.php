@@ -131,7 +131,9 @@ final class MAD4B_SCP_Authorization {
 		// current_execution_readiness() under its own exact Staging/OAuth/NHI proof.
 		if ( 'mad4b-write' === $server_id
 			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
-			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' ) ) {
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'manages_agent' )
+			&& MAD4B_SCP_Staging_Write_Authority::manages_agent( $agent ) ) {
 			$current_write = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness( $ability_name, $input );
 			if ( ! is_array( $current_write ) || empty( $current_write['ready'] ) ) {
 				return new WP_Error(
