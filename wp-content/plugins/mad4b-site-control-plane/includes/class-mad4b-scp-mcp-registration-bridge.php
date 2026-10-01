@@ -448,6 +448,44 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		self::$servers->register_servers( $adapter );
 	}
 
+
+	public static function server_registration_identity_status( $server_id ) {
+		$server_id = sanitize_key( (string) $server_id );
+		$expected_ids = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'expected_server_ids' ) ? MAD4B_SCP_Servers::expected_server_ids() : array();
+		$expected = in_array( $server_id, $expected_ids, true );
+		$registrations = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'registration_status' ) ? MAD4B_SCP_Servers::registration_status() : array();
+		$row = isset( $registrations[ $server_id ] ) && is_array( $registrations[ $server_id ] ) ? $registrations[ $server_id ] : array();
+		$actual_registered = ! empty( $row['registered'] );
+		$observed_error = isset( $row['error'] ) ? sanitize_key( (string) $row['error'] ) : '';
+		$synthetic_deferred_error = in_array( $observed_error, array( '', 'not_registered', 'mcp_chatgpt_not_registered' ), true );
+		$server_hook_bound = false !== has_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ) );
+		$core_ability_hook_bound = false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ) );
+		$registry_ability_hook_bound = false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ) );
+		$core_category_hook_bound = false !== has_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ) );
+		$registry_category_hook_bound = false !== has_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ) );
+		$bridge_ready = self::$booted && $server_hook_bound && $core_ability_hook_bound && $registry_ability_hook_bound && $core_category_hook_bound && $registry_category_hook_bound;
+		$identity_ready = $actual_registered || ( $expected && $bridge_ready && $synthetic_deferred_error );
+		$blocking_error = ( ! $actual_registered && ! $synthetic_deferred_error ) ? $observed_error : '';
+
+		return array(
+			'contract' => 'mad4b.mcp-registration-identity.v1',
+			'server_id' => $server_id,
+			'expected_server' => (bool) $expected,
+			'actual_registered' => (bool) $actual_registered,
+			'identity_ready' => (bool) $identity_ready,
+			'state' => $actual_registered ? 'registered' : ( '' !== $blocking_error ? 'registration_error' : ( $identity_ready ? 'deferred_identity_ready' : 'not_ready' ) ),
+			'observed_registration_error' => $observed_error,
+			'blocking_registration_error' => $blocking_error,
+			'deep_registration_deferred' => ! $actual_registered && $identity_ready,
+			'bridge_ready' => (bool) $bridge_ready,
+			'server_hook_bound' => (bool) $server_hook_bound,
+			'core_ability_hook_bound' => (bool) $core_ability_hook_bound,
+			'registry_ability_hook_bound' => (bool) $registry_ability_hook_bound,
+			'core_category_hook_bound' => (bool) $core_category_hook_bound,
+			'registry_category_hook_bound' => (bool) $registry_category_hook_bound,
+		);
+	}
+
 	public static function status() {
 		$runtime_source = 'unavailable';
 		$runtime_from_official_plugin = false;
