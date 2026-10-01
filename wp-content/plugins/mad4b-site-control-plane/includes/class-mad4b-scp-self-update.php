@@ -975,10 +975,9 @@ final class MAD4B_SCP_Self_Update {
 				'mad4b_control_plane_native_update'
 			);
 			$message = sprintf(
-				/* translators: 1: target version, 2: short source commit. */
-				__( 'A governed MAD4B update is available: %1$s (build %2$s).', 'mad4b-site-control-plane' ),
-				$manifest['version'],
-				substr( $manifest['source_commit_sha'], 0, 12 )
+				/* translators: %s: build-aware target display version. */
+				__( 'A governed MAD4B update is available: %s.', 'mad4b-site-control-plane' ),
+				$manifest['display_version']
 			);
 			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
 				. esc_html( $message ) . ' <a href="' . esc_url( $url ) . '">'
