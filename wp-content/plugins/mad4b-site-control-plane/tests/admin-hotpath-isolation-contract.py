@@ -298,8 +298,12 @@ oauth_hotpath = method_body(
     "private static function request_is_schema_migration_hotpath()",
     "private static function ensure_signing_key()",
 )
-for page in ("'mad4b-control-plane-connection'", "'mad4b-control-plane-chatgpt'"):
-    assert page in oauth_hotpath
+for marker in (
+    "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()",
+    "array( 'GET', 'HEAD' )",
+    "0 === strpos( $page, 'mad4b-control-plane-' )",
+):
+    assert marker in oauth_hotpath, marker
 assert "return true;" in oauth_hotpath
 
 oauth_ensure = method_body(
