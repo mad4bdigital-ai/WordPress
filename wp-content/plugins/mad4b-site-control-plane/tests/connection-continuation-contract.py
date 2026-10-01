@@ -28,8 +28,14 @@ for marker in (
     "connection_fingerprint",
     "explicit_wp_user_conflict",
     "explicit_external_oauth_issuer",
+    "explicit_local_oauth_issuer_conflict",
+    "explicit_advertised_issuer_conflict",
+    "explicit_resource_policy_conflict",
     "explicit_subject_policy_conflict",
     "explicit_subject_binding_conflict",
+    "MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER",
+    "MAD4B_MCP_OAUTH_ADVERTISED_ISSUERS",
+    "MAD4B_MCP_OAUTH_RESOURCE_POLICY_BY_ISSUER",
     "site_profile_admin_owner_required",
     "connection_projection_drift",
 ):
@@ -54,6 +60,20 @@ for forbidden in (
     "wp_safe_remote_post(",
 ):
     assert forbidden not in resolver, forbidden
+
+# Explicit override detector must mirror the runtime/autoconfig precedence that
+# can make one otherwise identical site fail while another succeeds.
+oauth_autoconfig = (inc / "class-mad4b-scp-staging-oauth-autoconfig.php").read_text(encoding="utf-8")
+for marker in (
+    "explicit_local_oauth_issuer_conflict",
+    "explicit_wp_user_conflict",
+    "explicit_advertised_issuer_conflict",
+    "explicit_resource_policy_conflict",
+    "MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER",
+    "MAD4B_MCP_OAUTH_ADVERTISED_ISSUERS",
+    "MAD4B_MCP_OAUTH_RESOURCE_POLICY_BY_ISSUER",
+):
+    assert marker in oauth_autoconfig, marker
 
 # Root cause is propagated before generic bridge symptoms.
 assert "oauth_preflight_blockers( $oauth, $connection_contract )" in status
