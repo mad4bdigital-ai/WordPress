@@ -1107,6 +1107,92 @@ final class MAD4B_SCP_Self_Update {
 		return true;
 	}
 
+	/**
+	 * Decide whether an update must carry an existing governed-write authority
+	 * across the replacement boundary.
+	 *
+	 * Site Profile write_enabled is capability intent, not proof that write
+	 * authority has ever been reconciled. A brand-new Staging site with no
+	 * persisted authority checkpoint may therefore update without a continuation
+	 * permit; post-update authority remains owner-gated and fail-closed. Once any
+	 * durable authority checkpoint exists, ambiguous/blocked/stale state must not
+	 * be reclassified as bootstrap.
+	 */
+	private static function post_update_continuation_policy() {
+		$out = array(
+			'contract' => 'mad4b.self-update-continuation-policy.v1',
+			'required' => false,
+			'mode' => 'not_applicable',
+			'write_profile_enabled' => false,
+			'authority_checkpoint_exists' => false,
+			'prior_authority_effective' => false,
+			'candidate_binding_match' => false,
+			'bootstrap_without_authority' => false,
+			'production_mutation_allowed' => false,
+			'authority_created' => false,
+		);
+
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return $out;
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+		$write_enabled = MAD4B_SCP_Site_Profile::write_enabled();
+		$out['write_profile_enabled'] = (bool) $write_enabled;
+		if ( 'staging' !== $environment || ! $write_enabled ) return $out;
+
+		if ( ! class_exists( 'MAD4B_SCP_Post_Update_Continuation' )
+			|| ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persistence_checkpoint' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'effective' ) ) {
+			return new WP_Error(
+				'mad4b_self_update_continuation_authority_state_unavailable',
+				'Unable to classify the pre-update governed-write authority state safely.'
+			);
+		}
+
+		$checkpoint = MAD4B_SCP_Staging_Write_Authority::persistence_checkpoint();
+		if ( ! is_array( $checkpoint )
+			|| 'mad4b.governed-write-authority-persistence-checkpoint.v1' !== ( isset( $checkpoint['contract'] ) ? (string) $checkpoint['contract'] : '' ) ) {
+			return new WP_Error(
+				'mad4b_self_update_continuation_authority_checkpoint_invalid',
+				'Persisted governed-write authority checkpoint could not be classified safely.'
+			);
+		}
+
+		$out['authority_checkpoint_exists'] = ! empty( $checkpoint['exists'] );
+		if ( empty( $checkpoint['exists'] ) ) {
+			$out['mode'] = 'bootstrap_no_prior_authority';
+			$out['bootstrap_without_authority'] = true;
+			return $out;
+		}
+
+		$status = isset( $checkpoint['status'] ) && is_array( $checkpoint['status'] ) ? $checkpoint['status'] : null;
+		if ( ! is_array( $status )
+			|| empty( $status['ready'] )
+			|| 'ready' !== ( isset( $status['state'] ) ? (string) $status['state'] : '' )
+			|| ! empty( $status['blocker'] )
+			|| empty( $status['write_inventory_fingerprint'] ) ) {
+			return new WP_Error(
+				'mad4b_self_update_continuation_prior_authority_not_effective',
+				'A persisted governed-write authority checkpoint exists but is not safely continuable.'
+			);
+		}
+
+		$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+		$effective = MAD4B_SCP_Staging_Write_Authority::effective();
+		$out['prior_authority_effective'] = (bool) $effective;
+		$out['candidate_binding_match'] = is_array( $binding ) && ! empty( $binding['match'] );
+		if ( ! $effective || ( is_array( $binding ) && ! empty( $binding['required'] ) && empty( $binding['match'] ) ) ) {
+			return new WP_Error(
+				'mad4b_self_update_continuation_prior_authority_drift',
+				'Existing governed-write authority is stale or candidate-bound to a different build; reconcile it before updating.'
+			);
+		}
+
+		$out['required'] = true;
+		$out['mode'] = 'carry_forward_effective_authority';
+		return $out;
+	}
+
 	private static function apply_verified_archive( $path, array $target, $channel, $plan_sha256, array $verified_archive ) {
 		$runtime_php_files = isset( $verified_archive['runtime_php_files'] ) && is_array( $verified_archive['runtime_php_files'] )
 			? array_values( array_filter( array_map( 'strval', $verified_archive['runtime_php_files'] ) ) )
@@ -1133,10 +1219,9 @@ final class MAD4B_SCP_Self_Update {
 			if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
 
 			$continuation = array();
-			$continuation_required = class_exists( 'MAD4B_SCP_Post_Update_Continuation' )
-				&& class_exists( 'MAD4B_SCP_Site_Profile' )
-				&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
-				&& MAD4B_SCP_Site_Profile::write_enabled();
+			$continuation_policy = self::post_update_continuation_policy();
+			if ( is_wp_error( $continuation_policy ) ) return $continuation_policy;
+			$continuation_required = ! empty( $continuation_policy['required'] );
 			if ( $continuation_required ) {
 				$continuation_target = $target;
 				$provenance = isset( $verified_archive['provenance'] ) && is_array( $verified_archive['provenance'] ) ? $verified_archive['provenance'] : array();
@@ -1276,6 +1361,7 @@ final class MAD4B_SCP_Self_Update {
 				'runtime_cache_invalidation' => $runtime_cache,
 				'post_update_convergence' => $convergence,
 				'post_update_continuation' => $continuation,
+				'post_update_continuation_policy' => $continuation_policy,
 				'core_maintenance_window_used' => true,
 				'pre_replacement_runtime_lease' => true,
 			) );
@@ -1303,6 +1389,7 @@ final class MAD4B_SCP_Self_Update {
 				'runtime_reboot_required' => true,
 				'post_update_convergence' => $convergence,
 				'post_update_continuation' => $continuation,
+				'post_update_continuation_policy' => $continuation_policy,
 				'production_mutation_performed' => false,
 				'authority_created' => false,
 				'authorizing' => false,
