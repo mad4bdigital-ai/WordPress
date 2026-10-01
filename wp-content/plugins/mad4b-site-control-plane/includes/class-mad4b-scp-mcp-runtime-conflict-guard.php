@@ -10,6 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * are included. When the reviewed Hostinger bundle owns the class on the exact
  * enrolled non-production origin, install a fixed, integrity-checked MU bootstrap for the next
  * request. The bootstrap loads the canonical MCP Adapter before normal plugins.
+ * Repair is lifecycle-only and runs after WordPress init/auth context is ready.
  * No plugin is disabled and Production is never modified.
  */
 final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
@@ -253,14 +254,17 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
 		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
 		if ( is_admin() ) {
+			if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
+				&& MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed() ) return true;
+
 			global $pagenow;
 			$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
 			$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
-			if ( in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true ) ) return true;
-			if ( in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true ) ) return true;
-			$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			if ( 'mad4b-control-plane-connection' === $page && 'endpoints' === $tab ) return true;
+			$lifecycle_screen = in_array( $screen, array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' ), true );
+			$lifecycle_action = in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
+			if ( ( $lifecycle_screen || $lifecycle_action )
+				&& function_exists( 'current_user_can' )
+				&& current_user_can( 'update_plugins' ) ) return true;
 		}
 		return false;
 	}
