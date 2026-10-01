@@ -359,6 +359,26 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		if ( isset( $write_plan['global_registry_wildcard_grants'] ) && (int) $write_plan['global_registry_wildcard_grants'] > 0 ) $hard_blockers[] = 'global_registry_wildcard_grants';
 		if ( isset( $write_plan['current_agent_wildcard_grants'] ) && (int) $write_plan['current_agent_wildcard_grants'] > 0 ) $hard_blockers[] = 'current_agent_wildcard_grants';
 		if ( isset( $write_plan['unreviewed_stale_allow_grants_count'] ) && (int) $write_plan['unreviewed_stale_allow_grants_count'] > 0 ) $hard_blockers[] = 'unreviewed_stale_write_authority';
+
+		// Some missing grant states are intentionally not auto-reconcilable. The
+		// composite plan must reject them before it enables Site Profile Write or
+		// provisions Developer/Breakglass authority. Otherwise ready_to_apply=true
+		// would describe a mutation sequence that is already known to fail later.
+		$nonreconcilable_write_drift = array();
+		$missing_rows = isset( $write_plan['exact_grants_missing'] ) && is_array( $write_plan['exact_grants_missing'] )
+			? $write_plan['exact_grants_missing']
+			: array();
+		foreach ( $missing_rows as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$reason = isset( $row['reason'] ) ? sanitize_key( (string) $row['reason'] ) : '';
+			if ( ! in_array( $reason, array( 'explicit_deny', 'write_provider_unmounted' ), true ) ) continue;
+			$nonreconcilable_write_drift[] = array(
+				'ability' => isset( $row['ability'] ) ? sanitize_text_field( (string) $row['ability'] ) : '',
+				'provider' => isset( $row['provider'] ) ? sanitize_key( (string) $row['provider'] ) : '',
+				'reason' => $reason,
+			);
+			$hard_blockers[] = 'explicit_deny' === $reason ? 'write_explicit_deny' : 'write_provider_unmounted';
+		}
 		if ( ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $hard_blockers[] = 'oauth_disabled';
 		if ( ! MAD4B_SCP_Site_Profile::acceptance_enabled() ) $hard_blockers[] = 'acceptance_disabled';
 		if ( ! MAD4B_SCP_Site_Profile::skills_enabled() ) $hard_blockers[] = 'skills_disabled';
@@ -392,6 +412,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'developer_plan' => $developer_plan,
 			'developer_breakglass_plan' => $developer_breakglass_plan,
 			'developer_breakglass_hard_blockers' => $breakglass_hard_blockers,
+			'nonreconcilable_write_drift' => $nonreconcilable_write_drift,
 			'fixable_write_drift' => array(
 				'exact_grants_missing_count' => isset( $write_plan['exact_grants_missing_count'] ) ? (int) $write_plan['exact_grants_missing_count'] : 0,
 				'stale_allow_grants_count' => isset( $write_plan['stale_allow_grants_count'] ) ? (int) $write_plan['stale_allow_grants_count'] : 0,
