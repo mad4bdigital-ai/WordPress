@@ -296,36 +296,6 @@ if ( ! empty( $wpml_receipt['observed'] ) ) $fail( 'Internal rest_do_request inc
 $write_reconciliation = MAD4B_SCP_Staging_Write_Authority::reconcile();
 if ( empty( $write_reconciliation['ready'] ) || 'ready' !== $write_reconciliation['state'] ) $fail( 'Governed write authority is not ready: ' . wp_json_encode( $write_reconciliation ) );
 
-// This disposable integration runtime now installs the same deterministic,
-// provenance-bearing package used by the canonical builder. Package identity
-// therefore makes candidate binding mandatory. The audited binding primitive is
-// covered independently by staging-write-candidate-binding-runtime.php; this
-// smoke needs the resulting post-binding state so it can exercise downstream
-// approval planning, Skills certification, and governed Write certification
-// without weakening the production effective() guard or inventing an OAuth
-// transport session inside WP-CLI.
-$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
-if ( ! empty( $binding['required'] ) && empty( $binding['match'] ) ) {
-	$stored_authority = get_option( MAD4B_SCP_Staging_Write_Authority::OPTION, array() );
-	if ( ! is_array( $stored_authority ) || empty( $stored_authority['ready'] ) ) $fail( 'Candidate-binding fixture requires reconciled persisted authority.' );
-	$fixture_map = array(
-		'source_commit_sha' => 'current_source_commit_sha',
-		'build_fingerprint' => 'current_build_fingerprint',
-		'package_manifest_digest' => 'current_package_manifest_digest',
-		'artifact_identity' => 'current_artifact_identity',
-	);
-	foreach ( $fixture_map as $stored_key => $current_key ) {
-		if ( empty( $binding[ $current_key ] ) ) $fail( 'Candidate-binding fixture is missing current package identity: ' . $current_key );
-		$stored_authority[ $stored_key ] = (string) $binding[ $current_key ];
-	}
-	$stored_authority['candidate_binding_contract'] = MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BINDING_CONTRACT;
-	$stored_authority['candidate_bound_at'] = gmdate( 'c' );
-	update_option( MAD4B_SCP_Staging_Write_Authority::OPTION, $stored_authority, false );
-	MAD4B_SCP_Staging_Write_Authority::bootstrap();
-	$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
-}
-if ( ! empty( $binding['required'] ) && empty( $binding['match'] ) ) $fail( 'Disposable post-binding fixture did not bind the exact packaged candidate.' );
-
 $write_authority = MAD4B_SCP_Staging_Write_Authority::status();
 if ( empty( $write_authority['mutation_gate_configured'] ) ) $fail( 'Governed mutation gate was not configured.' );
 if ( ! isset( $write_authority['approval_policy_contract'] ) || 'mad4b.remote-write-approval-policy.v2' !== (string) $write_authority['approval_policy_contract'] ) $fail( 'Write authority did not expose remote approval policy v2.' );
