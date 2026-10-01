@@ -218,11 +218,20 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			: array();
 		$optional = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $abilities ) ) ) as $ability_name ) {
+			// The persisted dynamic projection registry can change after an MCP
+			// registration snapshot was captured in the same request. Treat the
+			// live, schema-pinned effective projection as authoritative for
+			// optional isolation; required-base overlap is already excluded by
+			// effective_projection_rows().
+			if ( isset( $dynamic[ $ability_name ] ) ) {
+				$optional[] = $ability_name;
+				continue;
+			}
 			if ( ! empty( self::$registered_classification ) ) {
 				foreach ( self::$registered_classification as $captured ) {
-					if ( $ability_name === $captured['ability'] && ( ! empty( $captured['direct_step_up'] ) || ! empty( $captured['dynamic_projection'] ) ) ) $optional[] = $ability_name;
+					if ( $ability_name === $captured['ability'] && ! empty( $captured['direct_step_up'] ) ) $optional[] = $ability_name;
 				}
-			} elseif ( self::ability_is_direct_step_up( $ability_name ) || isset( $dynamic[ $ability_name ] ) ) {
+			} elseif ( self::ability_is_direct_step_up( $ability_name ) ) {
 				$optional[] = $ability_name;
 			}
 		}
