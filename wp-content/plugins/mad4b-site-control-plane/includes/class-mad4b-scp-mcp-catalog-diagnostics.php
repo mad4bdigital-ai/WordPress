@@ -69,9 +69,24 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	}
 
 	/** Deny-only final filter: never restore tools removed by earlier role/authority filters. */
+	private static function ability_is_direct_step_up( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		if ( '' === $ability_name || ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return false;
+		$ability = wp_get_ability( $ability_name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) return false;
+		$meta = $ability->get_meta();
+		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+		return ! empty( $mcp['chatgpt_direct_step_up'] )
+			&& ! empty( $mcp['exact_chatgpt_client_required'] )
+			&& 'enrollment' === ( isset( $mcp['surface'] ) ? (string) $mcp['surface'] : '' )
+			&& array_key_exists( 'readonly', $annotations )
+			&& false === $annotations['readonly'];
+	}
+
+	/** Deny-only final filter: never restore tools removed by earlier role/authority filters. */
 	public static function filter_serializable_tools( $tools, $server ) {
 		if ( ! is_array( $tools ) || ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) || 'mad4b-chatgpt' !== $server->get_server_id() ) return $tools;
-		$optional = self::optional_projections();
 		$step_up_visible = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
 			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
 			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )
@@ -83,26 +98,31 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			$bound = $name ? $server->get_mcp_tool( $name ) : null;
 			$meta = is_object( $bound ) && method_exists( $bound, 'get_adapter_meta' ) ? $bound->get_adapter_meta() : array();
 			$ability = is_array( $meta ) && isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
-			// Registration is a stable superset. Bearer scope/client only controls
-			// request-local visibility, never server materialization or authority.
-			if ( in_array( $ability, $optional, true ) && ! $step_up_visible ) continue;
+			$direct_step_up = self::ability_is_direct_step_up( $ability );
+			// Registration is a stable reviewed superset. Visibility is request-local
+			// and can only remove direct step-up tools after bearer verification.
+			if ( $direct_step_up && ! $step_up_visible ) continue;
 			$failure = self::dto_failure( $dto );
 			if ( ! $failure ) { $safe[] = $dto; continue; }
-			if ( ! in_array( $ability, $optional, true ) ) throw new RuntimeException( 'mad4b_required_catalog_schema_invalid' );
+			if ( ! $direct_step_up ) throw new RuntimeException( 'mad4b_required_catalog_schema_invalid' );
 			$failure['failing_ability'] = $ability;
 			if ( ! self::$failure_logged ) { self::$failure_logged = true; error_log( '[MAD4B MCP preflight] ' . wp_json_encode( $failure ) ); }
 		}
 		return $safe;
 	}
 
-	public static function optional_projections() {
-		// Read/dispatch tools are required. Only known direct step-up projections can degrade.
-		$optional = array();
-		foreach ( array( 'MAD4B_SCP_Site_Profile_Enrollment', 'MAD4B_SCP_Site_Profile_Write_Enablement', 'MAD4B_SCP_Staging_Write_Grant_Reconciliation', 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'MAD4B_SCP_Full_Staging_Authority', 'MAD4B_SCP_Self_Update', 'MAD4B_SCP_Governed_Runtime_Gates' ) as $class ) {
-			if ( class_exists( $class, false ) && method_exists( $class, 'chatgpt_step_up_tools' ) ) $optional = array_merge( $optional, $class::chatgpt_step_up_tools() );
+	public static function optional_projections( array $abilities = array() ) {
+		// Required read/dispatch tools never degrade. Only abilities explicitly
+		// marked as reviewed direct step-up projections may be isolated.
+		if ( empty( $abilities ) && class_exists( 'MAD4B_SCP_Servers', false ) && method_exists( 'MAD4B_SCP_Servers', 'chatgpt_reviewed_direct_step_up_tools' ) ) {
+			$abilities = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
 		}
-		if ( class_exists( 'MAD4B_SCP_Remote_Operation_Parity', false ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'chatgpt_direct_step_up_tools' ) ) $optional = array_merge( $optional, MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_tools() );
-		return array_values( array_unique( $optional ) );
+		$optional = array();
+		foreach ( array_values( array_unique( array_map( 'strval', $abilities ) ) ) as $ability_name ) {
+			if ( self::ability_is_direct_step_up( $ability_name ) ) $optional[] = $ability_name;
+		}
+		sort( $optional, SORT_STRING );
+		return $optional;
 	}
 
 	public static function inspect( $server, array $expected_abilities ) {
