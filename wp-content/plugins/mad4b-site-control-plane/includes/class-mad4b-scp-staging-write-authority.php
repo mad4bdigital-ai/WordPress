@@ -188,6 +188,9 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$blockers = isset( $plan['current_readiness_blockers'] ) && is_array( $plan['current_readiness_blockers'] )
 			? array_values( array_unique( array_map( 'sanitize_key', $plan['current_readiness_blockers'] ) ) )
 			: array();
+		if ( isset( $plan['subject_preflight_blockers'] ) && is_array( $plan['subject_preflight_blockers'] ) ) {
+			$blockers = array_merge( $blockers, array_map( 'sanitize_key', $plan['subject_preflight_blockers'] ) );
+		}
 		if ( ! $cheap_effective || ( ! empty( $binding['required'] ) && empty( $binding['match'] ) ) ) $blockers[] = 'runtime_authority_candidate_not_reconciled';
 		$blockers = array_values( array_unique( $blockers ) );
 		$ready = $cheap_effective && ! empty( $plan['current_ready'] ) && empty( $blockers );
@@ -1349,6 +1352,39 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		}
 		$grants = is_array( $grants ) ? $grants : array();
 
+		// Mirror reconcile() subject admission before any mutation. This lookup is
+		// deliberately read-only and includes disabled subject rows, because
+		// bind_subject() enforces global subject uniqueness regardless of status.
+		$subject_preflight_blockers = array();
+		$issuer = self::oauth_issuer();
+		$user_ids = self::enrolled_user_ids();
+		if ( '' === $issuer ) {
+			$subject_preflight_blockers[] = 'oauth_issuer_unavailable';
+		} elseif ( empty( $user_ids ) ) {
+			$subject_preflight_blockers[] = 'oauth_subject_unavailable';
+		} elseif ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! method_exists( 'MAD4B_SCP_Agent_Registry', 'subject_binding' ) ) {
+			$subject_preflight_blockers[] = 'agent_registry_subject_lookup_unavailable';
+		} else {
+			foreach ( $user_ids as $user_id ) {
+				if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_connect_user( $user_id ) ) {
+					$subject_preflight_blockers[] = 'oauth_subject_not_enrolled';
+					continue;
+				}
+				$fingerprint = self::subject_fingerprint( $issuer, $user_id );
+				$binding = MAD4B_SCP_Agent_Registry::subject_binding( 'oauth', $fingerprint );
+				if ( is_wp_error( $binding ) ) {
+					$subject_preflight_blockers[] = sanitize_key( $binding->get_error_code() );
+					continue;
+				}
+				if ( ! is_array( $binding ) ) continue;
+				$expected_agent_id = is_array( $agent ) && ! empty( $agent['id'] ) ? (int) $agent['id'] : 0;
+				if ( $expected_agent_id < 1 || (int) $binding['agent_id'] !== $expected_agent_id ) {
+					$subject_preflight_blockers[] = 'oauth_subject_bound_to_other_agent';
+				}
+			}
+		}
+		$subject_preflight_blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $subject_preflight_blockers ) ) ) );
+
 		// Build one in-memory grant snapshot for the whole projection. This keeps
 		// consent/dashboard reads O(1) in database lookups instead of one
 		// exact_grant() query per runtime write ability.
@@ -1513,7 +1549,9 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'read_only' => true,
 			'mutation_performed' => false,
 			'eligible' => ! empty( $status['eligible'] ),
-			'current_ready' => ! empty( $grant_truth['current_ready'] ),
+			'subject_preflight_ready' => empty( $subject_preflight_blockers ),
+			'subject_preflight_blockers' => $subject_preflight_blockers,
+			'current_ready' => ! empty( $grant_truth['current_ready'] ) && empty( $subject_preflight_blockers ),
 			'current_readiness_blockers' => isset( $grant_truth['blockers'] ) && is_array( $grant_truth['blockers'] ) ? $grant_truth['blockers'] : array(),
 			'persisted_ready' => $persisted_ready,
 			'effective_ready' => $effective_ready,

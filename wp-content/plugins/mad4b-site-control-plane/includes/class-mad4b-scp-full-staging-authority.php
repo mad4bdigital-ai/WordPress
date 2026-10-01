@@ -377,6 +377,11 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		if ( isset( $write_plan['global_registry_wildcard_grants'] ) && (int) $write_plan['global_registry_wildcard_grants'] > 0 ) $hard_blockers[] = 'global_registry_wildcard_grants';
 		if ( isset( $write_plan['current_agent_wildcard_grants'] ) && (int) $write_plan['current_agent_wildcard_grants'] > 0 ) $hard_blockers[] = 'current_agent_wildcard_grants';
 		if ( isset( $write_plan['unreviewed_stale_allow_grants_count'] ) && (int) $write_plan['unreviewed_stale_allow_grants_count'] > 0 ) $hard_blockers[] = 'unreviewed_stale_write_authority';
+		$write_subject_preflight_blockers = isset( $write_plan['subject_preflight_blockers'] ) && is_array( $write_plan['subject_preflight_blockers'] )
+			? array_values( array_unique( array_filter( array_map( 'sanitize_key', $write_plan['subject_preflight_blockers'] ) ) ) )
+			: array( 'write_subject_preflight_unavailable' );
+		if ( ! empty( $write_subject_preflight_blockers ) ) $hard_blockers[] = 'write_subject_preflight_blocked';
+		if ( defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true !== constant( 'MAD4B_MCP_MUTATION_ENABLED' ) ) $hard_blockers[] = 'explicit_mutation_disabled';
 
 		// Some missing grant states are intentionally not auto-reconcilable. The
 		// composite plan must reject them before it enables Site Profile Write or
@@ -444,6 +449,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'artifact_identity' => $provenance['artifact_identity'],
 			'write_enabled' => (bool) MAD4B_SCP_Site_Profile::write_enabled(),
 			'write_reconciliation' => $write_plan,
+			'write_subject_preflight_blockers' => $write_subject_preflight_blockers,
 			'developer_status' => $developer_status,
 			'developer_plan' => $developer_plan,
 			'developer_breakglass_plan' => $developer_breakglass_plan,
@@ -507,7 +513,8 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			if ( is_wp_error( $intent ) ) return new WP_Error( 'mad4b_full_authority_intent_audit_failed', 'Full authority authorization evidence could not be committed.' );
 
 			// Enable Site Profile write if needed using the existing exact-bound primitive.
-			if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) {
+			$write_feature_was_enabled = MAD4B_SCP_Site_Profile::write_enabled();
+			if ( ! $write_feature_was_enabled ) {
 				$result = MAD4B_SCP_Site_Profile_Write_Enablement::enable_write( array(
 					'expected_revision' => $plan['site_profile_revision'],
 					'expected_profile_digest' => $plan['site_profile_digest'],
@@ -516,7 +523,28 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'confirmation' => MAD4B_SCP_Site_Profile_Write_Enablement::CONFIRMATION,
 				) );
 				if ( is_wp_error( $result ) ) return self::fail_closed( 'write_enable_failed', $result );
-				// Feature enablement changes the Site Profile revision/digest.
+			}
+
+			// Staging Write bootstrap may have run earlier in this same request while
+			// write was still disabled, in which case it deliberately returned before
+			// defining the mutation gate. Re-evaluate after the profile transition so
+			// reconcile() observes the new exact Site Profile state rather than a stale
+			// request-local bootstrap result.
+			$write_runtime = MAD4B_SCP_Staging_Write_Authority::bootstrap();
+			if ( ! is_array( $write_runtime ) || empty( $write_runtime['eligible'] ) || empty( $write_runtime['mutation_gate_configured'] ) ) {
+				return self::fail_closed(
+					'write_runtime_gate_not_ready',
+					new WP_Error(
+						'mad4b_full_authority_write_runtime_gate_not_ready',
+						'Governed Write runtime gate did not become current-ready after Site Profile evaluation.',
+						array( 'status' => is_array( $write_runtime ) ? $write_runtime : array() )
+					)
+				);
+			}
+
+			if ( ! $write_feature_was_enabled ) {
+				// Feature enablement changes the Site Profile revision/digest. Rebuild the
+				// reviewed plan only after the request-local Write runtime has refreshed.
 				$plan = self::plan();
 				if ( is_wp_error( $plan ) ) return self::fail_closed( 'post_write_enable_plan_failed', $plan );
 				if ( empty( $plan['ready_to_apply'] ) ) {

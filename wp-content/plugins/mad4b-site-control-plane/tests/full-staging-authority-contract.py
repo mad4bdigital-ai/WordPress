@@ -57,6 +57,12 @@ required = [
     "'write_provider_unmounted'",
     "'nonreconcilable_write_drift' => $nonreconcilable_write_drift",
     "in_array( $reason, array( 'explicit_deny', 'write_provider_unmounted' ), true )",
+    "'write_subject_preflight_blocked'",
+    "'write_subject_preflight_blockers' => $write_subject_preflight_blockers",
+    "'explicit_mutation_disabled'",
+    "MAD4B_SCP_Staging_Write_Authority::bootstrap()",
+    "write_runtime_gate_not_ready",
+    "mad4b_full_authority_write_runtime_gate_not_ready",
 ]
 for marker in required:
     assert marker in full, marker
@@ -168,6 +174,13 @@ for marker in [
     assert marker in plan_body, marker
 assert plan_body.index("$missing_rows = isset( $write_plan['exact_grants_missing'] )") < plan_body.index("'ready_to_apply' => empty( $hard_blockers )")
 assert "MAD4B_SCP_Staging_Write_Authority::reconcile()" not in plan_body
+for marker in (
+    "$write_subject_preflight_blockers = isset( $write_plan['subject_preflight_blockers'] )",
+    "$hard_blockers[] = 'write_subject_preflight_blocked';",
+    "defined( 'MAD4B_MCP_MUTATION_ENABLED' )",
+    "$hard_blockers[] = 'explicit_mutation_disabled';",
+):
+    assert marker in plan_body, marker
 
 apply_body = full.split("public static function apply( $input )", 1)[1].split("private static function developer_apply_input", 1)[0]
 for marker in [
@@ -177,6 +190,21 @@ for marker in [
     "self::match_expected_plan( $plan, $input )",
 ]:
     assert marker in apply_body, marker
+for marker in (
+    "$write_feature_was_enabled = MAD4B_SCP_Site_Profile::write_enabled();",
+    "$write_runtime = MAD4B_SCP_Staging_Write_Authority::bootstrap();",
+    "empty( $write_runtime['eligible'] )",
+    "empty( $write_runtime['mutation_gate_configured'] )",
+    "'write_runtime_gate_not_ready'",
+):
+    assert marker in apply_body, marker
+enable_pos = apply_body.index("MAD4B_SCP_Site_Profile_Write_Enablement::enable_write")
+runtime_refresh_pos = apply_body.index("$write_runtime = MAD4B_SCP_Staging_Write_Authority::bootstrap();")
+developer_pos = apply_body.index("MAD4B_SCP_Developer_Authority::apply")
+reconcile_pos = apply_body.index("MAD4B_SCP_Staging_Write_Authority::reconcile")
+assert enable_pos < runtime_refresh_pos < developer_pos < reconcile_pos, "same-request Write gate must refresh before Developer/Write convergence"
+post_enable_slice = apply_body[enable_pos:developer_pos]
+assert post_enable_slice.index("$write_runtime = MAD4B_SCP_Staging_Write_Authority::bootstrap();") < post_enable_slice.index("$plan = self::plan();", post_enable_slice.index("$write_runtime = MAD4B_SCP_Staging_Write_Authority::bootstrap();")), "post-enable plan must be rebuilt after request-local Write bootstrap"
 assert "MAD4B_SCP_Full_Staging_Authority::enrollment_tools()" in servers
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in servers
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in servers

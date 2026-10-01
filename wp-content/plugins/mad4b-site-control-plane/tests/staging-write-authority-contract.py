@@ -48,6 +48,19 @@ for marker_text in [
 if "'current_ready' => $persisted_ready" in plan_body:
     raise SystemExit("write reconciliation current_ready must not alias the historical persisted checkpoint")
 
+for marker_text in [
+    "MAD4B_SCP_Agent_Registry::subject_binding( 'oauth', $fingerprint )",
+    "'subject_preflight_ready' => empty( $subject_preflight_blockers )",
+    "'subject_preflight_blockers' => $subject_preflight_blockers",
+    "'oauth_subject_bound_to_other_agent'",
+    "'oauth_subject_not_enrolled'",
+    "'oauth_issuer_unavailable'",
+]:
+    if marker_text not in plan_body:
+        raise SystemExit("write reconciliation subject preflight missing: " + marker_text)
+if "MAD4B_SCP_Agent_Registry::bind_subject(" in plan_body:
+    raise SystemExit("read-only reconciliation plan may not mutate subject bindings")
+
 # Exact current-environment authority and a simultaneous broad environment=all
 # allow can coexist because environment participates in the DB uniqueness key.
 # The read-only plan must expose that broad row even when the exact row wins
