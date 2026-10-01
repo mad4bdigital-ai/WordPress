@@ -78,7 +78,7 @@ for marker in [
     "grant_rows_fingerprint",
     "write_inventory_fingerprint",
     "unreviewed_stale_allow_grants_count",
-    "mad4b_candidate_bind_grant_snapshot_not_clean",
+    "mad4b_candidate_binding_primitive_snapshot_drift",
     "$clean_snapshot",
 ]:
     assert marker in primitive, f'candidate-binding primitive lacks mandatory guard: {marker}'
