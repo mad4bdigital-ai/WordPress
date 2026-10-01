@@ -511,6 +511,11 @@ final class MAD4B_SCP_Read_Consistency {
 		}
 
 		$subject_blockers = array();
+		$identity_checks = isset( $sections['identity']['checks'] ) && is_array( $sections['identity']['checks'] ) ? $sections['identity']['checks'] : array();
+		foreach ( array( 'site_profile', 'build', 'connection', 'reconnect' ) as $check_name ) {
+			$summary = isset( $identity_checks[ $check_name ]['summary'] ) && is_array( $identity_checks[ $check_name ]['summary'] ) ? $identity_checks[ $check_name ]['summary'] : array();
+			if ( ! array_key_exists( 'ready', $summary ) || true !== (bool) $summary['ready'] ) $subject_blockers[] = $check_name . '_not_ready';
+		}
 		$runtime_checks = isset( $sections['runtime']['checks'] ) && is_array( $sections['runtime']['checks'] ) ? $sections['runtime']['checks'] : array();
 		foreach ( array(
 			'write_authority' => 'effective_authority_ready',
@@ -605,7 +610,8 @@ final class MAD4B_SCP_Read_Consistency {
 			'contract', 'ready', 'state', 'supported', 'configured', 'environment', 'revision',
 			'profile_digest', 'exact_profile_bound', 'write_enabled', 'skills_enabled',
 			'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest',
-			'artifact_identity', 'mcp_adapter_version', 'runtime_manifest_match', 'stale',
+			'artifact_identity', 'mcp_adapter_version', 'manifest_present', 'manifest_valid',
+			'identity_ready', 'runtime_manifest_match', 'stale',
 			'local_transport_ready', 'local_transport_validation_state', 'local_transport_deep_validation_ready',
 			'remote_endpoint_preflight_ready', 'remote_endpoint_preflight_state', 'remote_endpoint_deep_preflight_ready',
 			'connection_certified', 'connection_certification_state',
@@ -638,7 +644,7 @@ final class MAD4B_SCP_Read_Consistency {
 			$value = $data[ $key ];
 			if ( is_scalar( $value ) || null === $value ) $out[ $key ] = $value;
 		}
-		foreach ( array( 'blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch', 'deferred_checks' ) as $key ) {
+		foreach ( array( 'blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'identity_mismatch', 'provenance_mismatch', 'deferred_checks', 'certification_deferred_checks' ) as $key ) {
 			if ( array_key_exists( $key, $data ) ) $out[ $key ] = self::bounded_scalar_list( $data[ $key ], 12 );
 		}
 		foreach ( array( 'current', 'target', 'build', 'connection', 'write_authority' ) as $nested_key ) {
@@ -839,8 +845,11 @@ final class MAD4B_SCP_Read_Consistency {
 		if ( is_wp_error( $status ) ) return $status;
 		$result = self::bounded_keys( $status, array(
 			'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest',
-			'artifact_identity', 'mcp_adapter_version', 'identity_ready', 'identity_mismatch', 'observed_at',
+			'artifact_identity', 'mcp_adapter_version', 'manifest_present', 'manifest_valid',
+			'identity_ready', 'identity_mismatch', 'observed_at',
 		) );
+		$result['ready'] = ! empty( $status['identity_ready'] );
+		$result['state'] = ! empty( $status['identity_ready'] ) ? 'identity_ready' : 'identity_not_ready';
 		$result['full_runtime_hash_validation_deferred'] = true;
 		return $result;
 	}
@@ -848,22 +857,29 @@ final class MAD4B_SCP_Read_Consistency {
 	private static function deep_build_projection() {
 		$status = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
 		if ( is_wp_error( $status ) ) return $status;
-		return self::bounded_keys( $status, array(
+		$result = self::bounded_keys( $status, array(
 			'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest',
-			'artifact_identity', 'mcp_adapter_version', 'runtime_manifest_match', 'stale',
-			'provenance_mismatch', 'observed_at',
+			'artifact_identity', 'mcp_adapter_version', 'manifest_present', 'manifest_valid',
+			'runtime_manifest_match', 'stale', 'provenance_mismatch', 'observed_at',
 		) );
+		$result['ready'] = ! empty( $status['manifest_valid'] ) && ! empty( $status['runtime_manifest_match'] ) && empty( $status['stale'] );
+		$result['state'] = ! empty( $result['ready'] ) ? 'runtime_manifest_match' : 'runtime_manifest_not_ready';
+		return $result;
 	}
 
 	private static function profile_projection() {
 		$status = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 		if ( is_wp_error( $status ) ) return $status;
+		$exact_profile_bound = ! empty( $status['exact_profile_bound'] ) || ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() );
+		$ready = ! empty( $status['configured'] ) && $exact_profile_bound;
 		return array(
+			'ready' => $ready,
+			'state' => $ready ? 'exact_profile_bound' : 'profile_not_exact',
 			'configured' => ! empty( $status['configured'] ),
 			'environment' => isset( $status['environment'] ) ? sanitize_key( (string) $status['environment'] ) : '',
 			'revision' => isset( $status['revision'] ) ? (int) $status['revision'] : 0,
 			'profile_digest' => isset( $status['profile_digest'] ) ? strtolower( (string) $status['profile_digest'] ) : '',
-			'exact_profile_bound' => ! empty( $status['exact_profile_bound'] ) || ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ),
+			'exact_profile_bound' => $exact_profile_bound,
 			'write_enabled' => ! empty( $status['write_enabled'] ),
 			'skills_enabled' => ! empty( $status['skills_enabled'] ),
 		);
