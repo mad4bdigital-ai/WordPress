@@ -208,6 +208,21 @@ for marker in [
 ]:
     require(read_consistency, marker, "session-safe diagnostic invariant")
 
+session_bundle_body = read_consistency.split("private static function session_safe_bundle_checks", 1)[1].split("private static function profile_projection", 1)[0]
+require(session_bundle_body, "self::session_safe_write_authority_projection()", "session-safe current write projection")
+session_write_body = read_consistency.split("private static function session_safe_write_authority_projection()", 1)[1].split("private static function deep_write_authority_projection()", 1)[0]
+for marker in (
+    "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()",
+    "'current_grant_snapshot_performed'",
+    "'current_grant_snapshot_ready'",
+    "'current_readiness_blockers'",
+    "'effective_authority_ready'",
+    "'deep_authority_scan_deferred'",
+):
+    require(session_write_body, marker, "session-safe current grant truth")
+if "MAD4B_SCP_Live_Truth::current_authority_status()" in session_write_body:
+    raise SystemExit("session-safe current grant projection must not expand into full Live Truth")
+
 reduced_report = read_consistency.split("$minimal = array(", 1)[1].split("return $minimal;", 1)[0]
 for marker in (
     "'valid_for_session_evidence_merge'",
