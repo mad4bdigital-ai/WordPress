@@ -117,11 +117,20 @@ ok( is_string( $after_grace ) && '' !== $after_grace, 'legacy lease may be recla
 MAD4B_SCP_Runtime_Maintenance_Lease::release( $after_grace, 'schema_lifecycle' );
 
 $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Runtime_Maintenance_Lease::OPTION ] = array(
-	'owner' => 'broken_without_token',
+	'owner' => 'tokenless_residue',
 	'expires_at' => time() + 60,
 );
+$tokenless = MAD4B_SCP_Runtime_Maintenance_Lease::preflight( 'self_update_replacement' );
+ok( 'STALE_RECLAIMABLE' === $tokenless['classification'] && ! empty( $tokenless['safe_to_acquire'] ), 'tokenless residue must preserve safe acquire-time cleanup' );
+unset( $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Runtime_Maintenance_Lease::OPTION ] );
+
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Runtime_Maintenance_Lease::OPTION ] = array(
+	'token' => 'active-malformed-token',
+	'expires_at' => time() + 60,
+	'hard_expires_at' => time() + 600,
+);
 $malformed = MAD4B_SCP_Runtime_Maintenance_Lease::preflight( 'self_update_replacement' );
-ok( 'STALE_REPAIR_REQUIRED' === $malformed['classification'], 'malformed maintenance residue must require repair' );
-ok( ! empty( $malformed['operator_action_required'] ) && empty( $malformed['safe_to_acquire'] ), 'malformed maintenance residue must fail closed' );
+ok( 'STALE_REPAIR_REQUIRED' === $malformed['classification'], 'active malformed maintenance record must require repair' );
+ok( ! empty( $malformed['operator_action_required'] ) && empty( $malformed['safe_to_acquire'] ), 'active malformed maintenance record must fail closed' );
 
 echo "mad4b.runtime-maintenance-lease.v1: PASS\n";
