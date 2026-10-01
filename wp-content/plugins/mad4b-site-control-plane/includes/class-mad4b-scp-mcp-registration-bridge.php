@@ -448,6 +448,33 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		self::$servers->register_servers( $adapter );
 	}
 
+	/**
+	 * Lightweight, side-effect-free registration identity for protocol/admin
+	 * surfaces that intentionally do not materialize the MCP Adapter registry.
+	 */
+	public static function server_registration_identity_status( $server_id ) {
+		$server_id = sanitize_key( (string) $server_id );
+		$expected_ids = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'expected_server_ids' ) ? MAD4B_SCP_Servers::expected_server_ids() : array();
+		$registrations = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'registration_status' ) ? MAD4B_SCP_Servers::registration_status() : array();
+		$row = isset( $registrations[ $server_id ] ) && is_array( $registrations[ $server_id ] ) ? $registrations[ $server_id ] : array();
+		$fact = array(
+			'contract' => 'mad4b.mcp-registration-fact.v1',
+			'server_id' => $server_id,
+			'expected_server' => in_array( $server_id, $expected_ids, true ),
+			'actual_registered' => ! empty( $row['registered'] ),
+			'observed_registration_error' => isset( $row['error'] ) ? sanitize_key( (string) $row['error'] ) : '',
+			'bridge_booted' => self::$booted,
+			'server_hook_bound' => false !== has_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ) ),
+			'core_ability_hook_bound' => false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ) ),
+			'registry_ability_hook_bound' => false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ) ),
+			'core_category_hook_bound' => false !== has_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ) ),
+			'registry_category_hook_bound' => false !== has_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ) ),
+		);
+		return class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'mcp_registration_identity' )
+			? MAD4B_SCP_Truth_Projection::mcp_registration_identity( $fact )
+			: array_merge( $fact, array( 'identity_ready' => ! empty( $fact['actual_registered'] ), 'state' => ! empty( $fact['actual_registered'] ) ? 'registered' : 'not_ready', 'blocking_registration_error' => isset( $fact['observed_registration_error'] ) ? $fact['observed_registration_error'] : '', 'deep_registration_deferred' => false, 'bridge_ready' => false ) );
+	}
+
 	public static function status() {
 		$runtime_source = 'unavailable';
 		$runtime_from_official_plugin = false;
