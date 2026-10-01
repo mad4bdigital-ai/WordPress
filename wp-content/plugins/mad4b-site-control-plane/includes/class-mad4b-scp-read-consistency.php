@@ -417,7 +417,14 @@ final class MAD4B_SCP_Read_Consistency {
 		$result['expected_runtime_generation'] = $expected_generation;
 		$result['runtime_generation'] = $after['runtime_generation'];
 		$result['generation_match'] = true;
+		// Backward-compatible alias: bundle merge means only that this evidence can
+		// join the same generation-bound read transaction. It is never a release or
+		// deployment acceptance verdict.
 		$result['valid_for_merge'] = true;
+		$result['valid_for_bundle_evidence_merge'] = true;
+		$result['valid_for_release_merge'] = false;
+		$result['merge_scope'] = 'generation_bound_bundle_evidence_only';
+		$result['deep_acceptance_required'] = true;
 		$result['resume_permitted'] = true;
 		$result['discard_partial'] = false;
 		$result['projection_freshness'] = 'live';
@@ -520,32 +527,42 @@ final class MAD4B_SCP_Read_Consistency {
 			if ( empty( $summary[ $effective_key ] ) ) $subject_blockers[] = $check_name . '_not_effective';
 		}
 		$subject_blockers = array_values( array_unique( $subject_blockers ) );
-		$valid_for_merge = ! $partial && empty( $subject_blockers );
+		$valid_for_session_evidence_merge = ! $partial && empty( $subject_blockers );
+		$deep_checks_deferred = array(
+			'full_runtime_provenance_hash',
+			'deep_write_authority_scan',
+			'live_skill_filesystem_reconciliation',
+			'live_update_manifest_network_fetch',
+			'staging_certification_sweep',
+			'workflow_provider_runtime_inventory',
+			'write_catalog_runtime_rebuild',
+		);
 
 		$report = array(
 			'contract' => 'mad4b.session-safe-diagnostics.v1',
-			'state' => $partial ? 'partial' : ( $valid_for_merge ? 'ready' : 'subject_not_ready' ),
+			'state' => $partial ? 'partial' : ( $valid_for_session_evidence_merge ? 'ready' : 'subject_not_ready' ),
 			'partial' => $partial,
 			'read_transaction_id' => $transaction_id,
 			'snapshot_id' => isset( $after['snapshot_id'] ) ? (string) $after['snapshot_id'] : '',
 			'runtime_generation' => $runtime_generation,
 			'generation_match' => true,
-			'valid_for_merge' => $valid_for_merge,
+			// Backward-compatible alias: this proves only that the bounded session
+			// evidence can be merged into one coherent report. It is not a release,
+			// PR or deployment acceptance verdict.
+			'valid_for_merge' => $valid_for_session_evidence_merge,
+			'valid_for_session_evidence_merge' => $valid_for_session_evidence_merge,
+			'valid_for_release_merge' => false,
+			'merge_scope' => 'session_safe_subject_evidence_only',
+			'deep_acceptance_required' => true,
 			'subject_blockers' => $subject_blockers,
+			'subject_live_validation_deferred' => array( 'skills_runtime' ),
 			'projection_freshness' => 'live',
 			'observed_at' => gmdate( 'c' ),
 			'elapsed_ms' => (int) round( ( microtime( true ) - $started ) * 1000 ),
 			'budget_ms' => $budget_ms,
 			'request_metrics' => self::request_metrics(),
-			'deep_checks_deferred' => array(
-				'full_runtime_provenance_hash',
-				'deep_write_authority_scan',
-				'live_skill_filesystem_reconciliation',
-				'live_update_manifest_network_fetch',
-				'staging_certification_sweep',
-				'workflow_provider_runtime_inventory',
-				'write_catalog_runtime_rebuild',
-			),
+			'deep_checks_deferred' => $deep_checks_deferred,
+			'release_acceptance_deferred_checks' => $deep_checks_deferred,
 			'fixed_bundle_order' => self::bundle_names(),
 			'section_count' => count( $sections ),
 			'sections' => $sections,
@@ -577,7 +594,7 @@ final class MAD4B_SCP_Read_Consistency {
 				'state' => isset( $check['state'] ) ? sanitize_key( (string) $check['state'] ) : '',
 				'check_execution_state' => isset( $check['state'] ) ? sanitize_key( (string) $check['state'] ) : '',
 				'subject_state' => isset( $summary['state'] ) ? sanitize_key( (string) $summary['state'] ) : '',
-				'subject_ready' => array_key_exists( 'ready', $summary ) ? (bool) $summary['ready'] : null,
+				'subject_ready' => class_exists( 'MAD4B_SCP_Truth_Projection' ) ? MAD4B_SCP_Truth_Projection::tri_state( $summary, 'ready' ) : ( array_key_exists( 'ready', $summary ) && null !== $summary['ready'] ? (bool) $summary['ready'] : null ),
 				'category' => isset( $check['category'] ) ? sanitize_key( (string) $check['category'] ) : '',
 				'elapsed_ms' => isset( $check['elapsed_ms'] ) ? max( 0, (int) $check['elapsed_ms'] ) : 0,
 				'summary' => $summary,
@@ -606,7 +623,9 @@ final class MAD4B_SCP_Read_Consistency {
 			'profile_digest', 'exact_profile_bound', 'write_enabled', 'skills_enabled',
 			'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest',
 			'artifact_identity', 'mcp_adapter_version', 'runtime_manifest_match', 'stale',
-			'local_transport_ready', 'remote_endpoint_preflight_ready', 'connection_certified',
+			'local_transport_ready', 'local_transport_validation_state', 'local_transport_deep_validation_ready',
+			'remote_endpoint_preflight_ready', 'remote_endpoint_preflight_state', 'remote_endpoint_deep_preflight_ready',
+			'connection_certified', 'connection_certification_state',
 			'resource', 'local_oauth_effective', 'oauth_resource_bridge_effective', 'chatgpt_registered',
 			'missed_rest_recovery_state', 'write_auto_enabled', 'production_authority_auto_enabled',
 			'breakglass_auto_enabled', 'eligible', 'runtime_reconciled', 'candidate_binding_required',
@@ -620,8 +639,9 @@ final class MAD4B_SCP_Read_Consistency {
 			'blind_retry_allowed', 'next_action', 'candidate_match', 'build_fingerprint_match',
 			'full_runtime_hash_validation_deferred', 'deep_authority_scan_deferred',
 			'live_skill_evaluation_deferred', 'runtime_catalog_rebuild_deferred',
-			'recorded_ready', 'current_candidate_match', 'effective_skill_ready', 'recorded_source_commit_sha', 'recorded_build_fingerprint',
+			'recorded_ready', 'current_candidate_match', 'effective_skill_ready', 'effective_skill_ready_scope', 'candidate_identity_bound_ready', 'live_skill_ready', 'recorded_source_commit_sha', 'recorded_build_fingerprint',
 			'persisted_authority_ready', 'effective_authority_ready',
+			'current_grant_snapshot_performed', 'current_grant_snapshot_ready',
 			'deep_route_validation_deferred', 'deep_peer_inventory_deferred',
 			'deep_oauth_validation_deferred', 'provider_runtime_hash_validation_deferred',
 			'deep_local_oauth_status_deferred', 'deep_oauth_bridge_status_deferred',
@@ -633,7 +653,7 @@ final class MAD4B_SCP_Read_Consistency {
 			$value = $data[ $key ];
 			if ( is_scalar( $value ) || null === $value ) $out[ $key ] = $value;
 		}
-		foreach ( array( 'blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch', 'deferred_checks' ) as $key ) {
+		foreach ( array( 'blockers', 'current_readiness_blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch', 'deferred_checks' ) as $key ) {
 			if ( array_key_exists( $key, $data ) ) $out[ $key ] = self::bounded_scalar_list( $data[ $key ], 12 );
 		}
 		foreach ( array( 'current', 'target', 'build', 'connection', 'write_authority' ) as $nested_key ) {
@@ -724,7 +744,15 @@ final class MAD4B_SCP_Read_Consistency {
 			'snapshot_id' => isset( $report['snapshot_id'] ) ? (string) $report['snapshot_id'] : '',
 			'runtime_generation' => isset( $report['runtime_generation'] ) ? (string) $report['runtime_generation'] : '',
 			'generation_match' => ! empty( $report['generation_match'] ),
+			// These semantics are safety-critical and must survive payload reduction.
+			// The legacy alias alone is ambiguous to older clients.
 			'valid_for_merge' => ! empty( $report['valid_for_merge'] ),
+			'valid_for_session_evidence_merge' => ! empty( $report['valid_for_session_evidence_merge'] ),
+			'valid_for_release_merge' => false,
+			'merge_scope' => 'session_safe_subject_evidence_only',
+			'deep_acceptance_required' => true,
+			'subject_blockers' => isset( $report['subject_blockers'] ) && is_array( $report['subject_blockers'] ) ? array_values( array_slice( $report['subject_blockers'], 0, 8 ) ) : array(),
+			'release_acceptance_deferred_checks' => isset( $report['release_acceptance_deferred_checks'] ) && is_array( $report['release_acceptance_deferred_checks'] ) ? array_values( array_slice( $report['release_acceptance_deferred_checks'], 0, 12 ) ) : array(),
 			'section_digests' => array(),
 			'session_termination_count' => isset( $report['session_termination_count'] ) ? max( 0, (int) $report['session_termination_count'] ) : 0,
 			'payload_reduced' => true,
@@ -797,7 +825,7 @@ final class MAD4B_SCP_Read_Consistency {
 		}
 		if ( 'runtime' === $bundle ) {
 			return array(
-				'write_authority' => static function () { return self::write_authority_projection(); },
+				'write_authority' => static function () { return self::session_safe_write_authority_projection(); },
 				'skills_runtime' => static function () { return self::skills_projection(); },
 				'update_state' => static function () { return self::update_projection(); },
 			);
@@ -807,7 +835,7 @@ final class MAD4B_SCP_Read_Consistency {
 				'deep_certification' => static function () {
 					return array(
 						'state' => 'deferred_explicit_diagnostic',
-						'ready' => false,
+						'ready' => null,
 						'deferred_checks' => array( 'staging_certification', 'managed_skills_reconciliation', 'browser_acceptance_receipt' ),
 						'read_only' => true,
 						'mutation_performed' => false,
@@ -820,7 +848,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'workflow_provider_runtime' => static function () {
 				return array(
 					'state' => 'deferred_explicit_diagnostic',
-					'ready' => false,
+					'ready' => null,
 					'deferred_checks' => array( 'workflow_provider_runtime_inventory' ),
 					'read_only' => true,
 					'mutation_performed' => false,
@@ -924,17 +952,21 @@ final class MAD4B_SCP_Read_Consistency {
 		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) && method_exists( 'MAD4B_SCP_External_Handshake_Evidence', 'persisted_identity_status' )
 			? MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()
 			: array();
-		$blockers = array();
-		if ( empty( $profile['configured'] ) ) $blockers[] = 'site_profile_unconfigured';
-		if ( empty( $profile['environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
-		if ( empty( $profile['origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
-		if ( ! $adapter_available ) $blockers[] = 'mcp_adapter_unavailable';
-		if ( $adapter_available && empty( $provider['identity_contract_ok'] ) ) $blockers[] = 'mcp_adapter_identity_not_certified';
-		if ( empty( $chatgpt['registered'] ) ) $blockers[] = 'mcp_chatgpt_not_registered';
+		$fact = array(
+			'profile_configured' => ! empty( $profile['configured'] ),
+			'profile_environment_match' => ! empty( $profile['environment_match'] ),
+			'profile_origin_match' => ! empty( $profile['origin_match'] ),
+			'adapter_available' => $adapter_available,
+			'adapter_identity_ok' => ! empty( $provider['identity_contract_ok'] ),
+			'chatgpt_actual_registered' => ! empty( $chatgpt['registered'] ),
+		);
+		$projection = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'session_connection_identity' )
+			? MAD4B_SCP_Truth_Projection::session_connection_identity( $fact )
+			: array( 'ready' => false, 'state' => 'blocked_identity', 'blockers' => array( 'truth_projection_unavailable' ) );
 		return array(
 			'contract' => 'mad4b.session-safe-connection-identity.v1',
-			'ready' => empty( $blockers ),
-			'state' => empty( $blockers ) ? 'ready_identity' : 'blocked_identity',
+			'ready' => ! empty( $projection['ready'] ),
+			'state' => isset( $projection['state'] ) ? sanitize_key( (string) $projection['state'] ) : 'blocked_identity',
 			'environment' => isset( $profile['environment'] ) ? sanitize_key( (string) $profile['environment'] ) : '',
 			'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '',
 			'mcp_adapter_available' => $adapter_available,
@@ -944,7 +976,7 @@ final class MAD4B_SCP_Read_Consistency {
 			'chatgpt_tool_count' => isset( $chatgpt['tool_count'] ) ? max( 0, (int) $chatgpt['tool_count'] ) : 0,
 			'external_handshake_evidence_present' => ! empty( $handshake['evidence_present'] ),
 			'external_handshake_live_verification_deferred' => true,
-			'blockers' => array_values( array_unique( $blockers ) ),
+			'blockers' => isset( $projection['blockers'] ) && is_array( $projection['blockers'] ) ? $projection['blockers'] : array(),
 			'deep_route_validation_deferred' => true,
 			'deep_peer_inventory_deferred' => true,
 			'deep_oauth_validation_deferred' => true,
@@ -959,16 +991,20 @@ final class MAD4B_SCP_Read_Consistency {
 		$registration = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
 		$chatgpt = isset( $registration['mad4b-chatgpt'] ) && is_array( $registration['mad4b-chatgpt'] ) ? $registration['mad4b-chatgpt'] : array();
 		$recovery = class_exists( 'MAD4B_SCP_Upgrade_Continuity' ) ? MAD4B_SCP_Upgrade_Continuity::recovery_status() : array();
-		$blockers = array();
-		if ( empty( $profile['configured'] ) ) $blockers[] = 'site_profile_unconfigured';
-		if ( empty( $profile['origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
-		if ( empty( $profile['environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
-		if ( empty( $chatgpt['registered'] ) ) $blockers[] = 'mcp_chatgpt_not_registered';
+		$fact = array(
+			'profile_configured' => ! empty( $profile['configured'] ),
+			'profile_origin_match' => ! empty( $profile['origin_match'] ),
+			'profile_environment_match' => ! empty( $profile['environment_match'] ),
+			'chatgpt_actual_registered' => ! empty( $chatgpt['registered'] ),
+		);
+		$projection = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'session_reconnect_identity' )
+			? MAD4B_SCP_Truth_Projection::session_reconnect_identity( $fact )
+			: array( 'ready' => false, 'state' => 'blocked_identity', 'blockers' => array( 'truth_projection_unavailable' ) );
 		return array(
 			'contract' => 'mad4b.session-safe-reconnect-identity.v1',
-			'ready' => empty( $blockers ),
-			'state' => empty( $blockers ) ? 'ready_identity' : 'blocked_identity',
-			'blockers' => array_values( array_unique( $blockers ) ),
+			'ready' => ! empty( $projection['ready'] ),
+			'state' => isset( $projection['state'] ) ? sanitize_key( (string) $projection['state'] ) : 'blocked_identity',
+			'blockers' => isset( $projection['blockers'] ) && is_array( $projection['blockers'] ) ? $projection['blockers'] : array(),
 			'resource' => class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() : '',
 			'chatgpt_registered' => ! empty( $chatgpt['registered'] ),
 			'upgrade_recovery_state' => isset( $recovery['state'] ) ? sanitize_key( (string) $recovery['state'] ) : '',
@@ -984,8 +1020,10 @@ final class MAD4B_SCP_Read_Consistency {
 		if ( is_wp_error( $status ) ) return $status;
 		return self::bounded_keys( $status, array(
 			'contract', 'environment', 'control_plane_version', 'mcp_adapter_version',
-			'local_transport_ready', 'remote_endpoint_preflight_ready', 'connection_certified',
-			'local_blockers', 'remote_preflight_blockers', 'certification_blockers',
+			'local_transport_ready', 'local_transport_validation_state', 'local_transport_deep_validation_ready',
+			'remote_endpoint_preflight_ready', 'remote_endpoint_preflight_state', 'remote_endpoint_deep_preflight_ready',
+			'connection_certified', 'connection_certification_state',
+			'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'certification_deferred_checks',
 		) );
 	}
 
@@ -994,7 +1032,8 @@ final class MAD4B_SCP_Read_Consistency {
 		if ( is_wp_error( $status ) ) return $status;
 		return self::bounded_keys( $status, array(
 			'contract', 'ready', 'blockers', 'resource', 'local_oauth_effective',
-			'oauth_resource_bridge_effective', 'chatgpt_registered', 'chatgpt_error',
+			'oauth_resource_bridge_effective', 'chatgpt_registered', 'chatgpt_registration_identity_ready',
+			'chatgpt_registration_projection', 'chatgpt_registration_deep_check_deferred', 'chatgpt_error',
 			'missed_rest_recovery_state', 'missed_rest_recovery_blocker',
 			'write_auto_enabled', 'production_authority_auto_enabled', 'breakglass_auto_enabled',
 		) );
@@ -1011,26 +1050,77 @@ final class MAD4B_SCP_Read_Consistency {
 		$result = self::bounded_keys( $status, array(
 			'contract', 'ready', 'state', 'eligible', 'blocker', 'blockers',
 			'write_tool_count', 'write_inventory_fingerprint', 'provider_blocked_fingerprint',
-			'wildcard_grants', 'breakglass_included', 'production_auto_enable', 'breakglass_auto_enable', 'observed_at',
+			'wildcard_grants', 'breakglass_included', 'production_auto_enable', 'breakglass_auto_enable',
+			'source_commit_sha', 'observed_at',
 		) );
-		$persisted_ready = ! empty( $result['ready'] );
-		$binding_required = ! empty( $binding['required'] );
-		$binding_match = ! empty( $binding['match'] );
-		$effective_ready = $persisted_ready && ( ! $binding_required || $binding_match );
-		$result['persisted_authority_ready'] = $persisted_ready;
-		$result['candidate_binding_required'] = $binding_required;
-		$result['candidate_binding_match'] = $binding_match;
-		$result['effective_authority_ready'] = $effective_ready;
-		$result['ready'] = $effective_ready;
-		$result['state'] = $effective_ready ? 'ready' : ( ! empty( $result['eligible'] ) ? 'blocked' : 'ineligible' );
-		$result['current_source_commit_sha'] = isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '';
-		$result['candidate_source_commit_sha'] = isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : ( isset( $status['source_commit_sha'] ) ? (string) $status['source_commit_sha'] : '' );
-		if ( $binding_required && ! $binding_match ) {
-			$result['blockers'] = isset( $result['blockers'] ) && is_array( $result['blockers'] ) ? $result['blockers'] : array();
-			$result['blockers'][] = 'runtime_authority_candidate_not_reconciled';
-			$result['blockers'] = array_values( array_unique( $result['blockers'] ) );
-			$result['blocker'] = 'runtime_authority_candidate_not_reconciled';
+		$projection = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'candidate_binding_bound_ready' )
+			? MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready( $result, is_array( $binding ) ? $binding : array(), 'runtime_authority_candidate_not_reconciled' )
+			: array();
+		if ( empty( $projection ) ) {
+			// Persisted authority is evidence, not current truth. If the canonical
+			// reducer is unavailable, preserve that evidence explicitly but never
+			// promote it to effective/current readiness.
+			$existing_blockers = isset( $result['blockers'] ) && is_array( $result['blockers'] ) ? $result['blockers'] : array();
+			$result['persisted_authority_ready'] = ! empty( $result['ready'] );
+			$result['candidate_binding_required'] = is_array( $binding ) && ! empty( $binding['required'] );
+			$result['candidate_binding_match'] = false;
+			$result['effective_authority_ready'] = false;
+			$result['ready'] = false;
+			$result['state'] = 'truth_projection_unavailable';
+			$result['blocker'] = 'truth_projection_unavailable';
+			$result['blockers'] = array_values( array_unique( array_merge( $existing_blockers, array( 'truth_projection_unavailable' ) ) ) );
+			$result['current_source_commit_sha'] = is_array( $binding ) && isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '';
+			$result['candidate_source_commit_sha'] = is_array( $binding ) && isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : '';
+			$result['deep_authority_scan_deferred'] = true;
+			return $result;
 		}
+		$result['persisted_authority_ready'] = ! empty( $projection['persisted_ready'] );
+		$result['candidate_binding_required'] = ! empty( $projection['candidate_binding_required'] );
+		$result['candidate_binding_match'] = ! empty( $projection['candidate_binding_match'] );
+		$result['effective_authority_ready'] = ! empty( $projection['effective_ready'] );
+		$result['ready'] = ! empty( $projection['effective_ready'] );
+		$result['state'] = isset( $projection['state'] ) ? sanitize_key( (string) $projection['state'] ) : 'blocked';
+		$result['blocker'] = isset( $projection['blocker'] ) ? sanitize_key( (string) $projection['blocker'] ) : '';
+		$result['blockers'] = isset( $projection['blockers'] ) && is_array( $projection['blockers'] ) ? $projection['blockers'] : array();
+		$result['current_source_commit_sha'] = isset( $projection['current_source_commit_sha'] ) ? (string) $projection['current_source_commit_sha'] : '';
+		$result['candidate_source_commit_sha'] = isset( $projection['candidate_source_commit_sha'] ) ? (string) $projection['candidate_source_commit_sha'] : '';
+		$result['deep_authority_scan_deferred'] = true;
+		return $result;
+	}
+
+	/**
+	 * Session-safe subject truth is stronger than the generic compact preflight:
+	 * keep full Live Truth/certification deferred, but perform the single bulk
+	 * managed-agent grant snapshot used by mutation authorization. This prevents
+	 * persisted checkpoint + candidate binding from being reported as current
+	 * subject readiness while broad/stale live grant drift would block mutation.
+	 */
+	private static function session_safe_write_authority_projection() {
+		$result = self::write_authority_projection();
+		if ( is_wp_error( $result ) ) return $result;
+		$current = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
+			? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()
+			: array();
+
+		$result['current_grant_snapshot_performed'] = true;
+		$result['current_grant_snapshot_ready'] = is_array( $current ) && ! empty( $current['current_grant_snapshot_ready'] );
+		$result['current_readiness_blockers'] = is_array( $current ) && isset( $current['blockers'] ) && is_array( $current['blockers'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $current['blockers'] ) ) )
+			: array( 'write_current_readiness_unavailable' );
+		$current_ready = is_array( $current ) && ! empty( $current['ready'] );
+		$result['effective_authority_ready'] = ! empty( $result['effective_authority_ready'] ) && $current_ready;
+		$result['ready'] = (bool) $result['effective_authority_ready'];
+
+		if ( ! $result['ready'] ) {
+			$result['state'] = is_array( $current ) && ! empty( $current['state'] )
+				? sanitize_key( (string) $current['state'] )
+				: 'blocked_current_drift';
+			$existing = isset( $result['blockers'] ) && is_array( $result['blockers'] ) ? $result['blockers'] : array();
+			$result['blockers'] = array_values( array_unique( array_merge( $existing, $result['current_readiness_blockers'] ) ) );
+		}
+		// Full Live Truth, write certification and provider canaries remain outside
+		// this session-safe request even though the current grant snapshot is live.
 		$result['deep_authority_scan_deferred'] = true;
 		return $result;
 	}
@@ -1038,7 +1128,13 @@ final class MAD4B_SCP_Read_Consistency {
 	private static function deep_write_authority_projection() {
 		$status = class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_authority_status' )
 			? MAD4B_SCP_Live_Truth::current_authority_status()
-			: ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array() );
+			: array(
+				'contract' => 'mad4b.deep-write-authority-projection.v1',
+				'ready' => false,
+				'state' => 'live_truth_unavailable',
+				'blocker' => 'live_truth_unavailable',
+				'blockers' => array( 'live_truth_unavailable' ),
+			);
 		if ( is_wp_error( $status ) ) return $status;
 		return self::bounded_keys( $status, array(
 			'contract', 'truth_contract', 'ready', 'state', 'eligible', 'blocker', 'blockers',
@@ -1055,37 +1151,62 @@ final class MAD4B_SCP_Read_Consistency {
 			: array( 'ready' => false, 'state' => 'unavailable' );
 		if ( is_wp_error( $status ) ) return $status;
 		$result = self::bounded_keys( $status, array(
-			'contract', 'ready', 'state', 'persistence', 'blocker', 'blockers',
+			'contract', 'ready', 'historical_ready', 'state', 'persistence', 'blocker', 'blockers',
+			'historical_evidence_only', 'build_identity_current', 'stale_reasons',
 			'provider_count', 'expected_provider_count', 'managed_skill_count',
-			'expected_managed_skill_count', 'source_commit_sha', 'build_fingerprint', 'observed_at',
+			'expected_managed_skill_count', 'source_commit_sha', 'build_fingerprint',
+			'package_manifest_digest', 'artifact_identity', 'observed_at',
 		) );
 		$current = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) && method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
 			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()
 			: array();
-		$recorded_sha = isset( $result['source_commit_sha'] ) ? strtolower( (string) $result['source_commit_sha'] ) : '';
-		$recorded_fingerprint = isset( $result['build_fingerprint'] ) ? strtolower( (string) $result['build_fingerprint'] ) : '';
-		$current_sha = isset( $current['source_commit_sha'] ) ? strtolower( (string) $current['source_commit_sha'] ) : '';
-		$current_fingerprint = isset( $current['build_fingerprint'] ) ? strtolower( (string) $current['build_fingerprint'] ) : '';
-		$candidate_match = preg_match( '/^[a-f0-9]{40}$/', $recorded_sha )
-			&& preg_match( '/^[a-f0-9]{64}$/', $recorded_fingerprint )
-			&& hash_equals( $recorded_sha, $current_sha )
-			&& hash_equals( $recorded_fingerprint, $current_fingerprint );
-		$recorded_ready = ! empty( $result['ready'] );
-		$effective_ready = $recorded_ready && $candidate_match;
-		$result['recorded_ready'] = $recorded_ready;
-		$result['recorded_source_commit_sha'] = $recorded_sha;
-		$result['recorded_build_fingerprint'] = $recorded_fingerprint;
-		$result['current_source_commit_sha'] = $current_sha;
-		$result['current_build_fingerprint'] = $current_fingerprint;
-		$result['current_candidate_match'] = $candidate_match;
-		$result['effective_skill_ready'] = $effective_ready;
-		$result['ready'] = $effective_ready;
-		if ( $recorded_ready && ! $candidate_match ) {
-			$result['state'] = 'historical_evidence';
-			$result['blockers'] = isset( $result['blockers'] ) && is_array( $result['blockers'] ) ? $result['blockers'] : array();
-			$result['blockers'][] = 'skill_runtime_candidate_identity_unproven';
-			$result['blockers'] = array_values( array_unique( $result['blockers'] ) );
+		$projection = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'candidate_identity_bound_ready' )
+			? MAD4B_SCP_Truth_Projection::candidate_identity_bound_ready( $result, is_array( $current ) ? $current : array(), 'skill_runtime_candidate_identity_unproven', 'historical_evidence' )
+			: array();
+		if ( empty( $projection ) ) {
+			$existing_blockers = isset( $result['blockers'] ) && is_array( $result['blockers'] ) ? $result['blockers'] : array();
+			$result['recorded_ready'] = array_key_exists( 'historical_ready', $result ) ? ! empty( $result['historical_ready'] ) : ! empty( $result['ready'] );
+			$result['recorded_source_commit_sha'] = isset( $result['source_commit_sha'] ) ? (string) $result['source_commit_sha'] : '';
+			$result['recorded_build_fingerprint'] = isset( $result['build_fingerprint'] ) ? (string) $result['build_fingerprint'] : '';
+			$result['recorded_package_manifest_digest'] = isset( $result['package_manifest_digest'] ) ? (string) $result['package_manifest_digest'] : '';
+			$result['recorded_artifact_identity'] = isset( $result['artifact_identity'] ) ? (string) $result['artifact_identity'] : '';
+			$result['current_source_commit_sha'] = is_array( $current ) && isset( $current['source_commit_sha'] ) ? (string) $current['source_commit_sha'] : '';
+			$result['current_build_fingerprint'] = is_array( $current ) && isset( $current['build_fingerprint'] ) ? (string) $current['build_fingerprint'] : '';
+			$result['current_package_manifest_digest'] = is_array( $current ) && isset( $current['package_manifest_digest'] ) ? (string) $current['package_manifest_digest'] : '';
+			$result['current_artifact_identity'] = is_array( $current ) && isset( $current['artifact_identity'] ) ? (string) $current['artifact_identity'] : '';
+			$result['current_candidate_match'] = false;
+			$result['effective_skill_ready'] = false;
+			$result['effective_skill_ready_scope'] = 'candidate_identity_bound_checkpoint_only';
+			$result['candidate_identity_bound_ready'] = false;
+			$result['live_skill_ready'] = null;
+			$result['ready'] = null;
+			$result['state'] = 'truth_projection_unavailable';
+			$result['blockers'] = array_values( array_unique( array_merge( $existing_blockers, array( 'truth_projection_unavailable' ) ) ) );
+			$result['live_skill_evaluation_deferred'] = true;
+			return $result;
 		}
+		$result['recorded_ready'] = ! empty( $projection['recorded_ready'] );
+		$result['recorded_source_commit_sha'] = isset( $projection['recorded_source_commit_sha'] ) ? (string) $projection['recorded_source_commit_sha'] : '';
+		$result['recorded_build_fingerprint'] = isset( $projection['recorded_build_fingerprint'] ) ? (string) $projection['recorded_build_fingerprint'] : '';
+		$result['recorded_package_manifest_digest'] = isset( $projection['recorded_package_manifest_digest'] ) ? (string) $projection['recorded_package_manifest_digest'] : '';
+		$result['recorded_artifact_identity'] = isset( $projection['recorded_artifact_identity'] ) ? (string) $projection['recorded_artifact_identity'] : '';
+		$result['current_source_commit_sha'] = isset( $projection['current_source_commit_sha'] ) ? (string) $projection['current_source_commit_sha'] : '';
+		$result['current_build_fingerprint'] = isset( $projection['current_build_fingerprint'] ) ? (string) $projection['current_build_fingerprint'] : '';
+		$result['current_package_manifest_digest'] = isset( $projection['current_package_manifest_digest'] ) ? (string) $projection['current_package_manifest_digest'] : '';
+		$result['current_artifact_identity'] = isset( $projection['current_artifact_identity'] ) ? (string) $projection['current_artifact_identity'] : '';
+		$result['current_candidate_match'] = ! empty( $projection['current_candidate_match'] );
+		// Backward-compatible evidence readiness: this proves only that the stored
+		// certification was ready for the exact current four-part package identity.
+		// It is not a live registry/filesystem/provider certification.
+		$result['effective_skill_ready'] = ! empty( $projection['effective_ready'] );
+		$result['effective_skill_ready_scope'] = 'candidate_identity_bound_checkpoint_only';
+		$result['candidate_identity_bound_ready'] = ! empty( $projection['effective_ready'] );
+		$result['live_skill_ready'] = null;
+		$result['ready'] = null;
+		$result['state'] = ! empty( $projection['effective_ready'] )
+			? 'candidate_identity_bound_live_validation_deferred'
+			: ( isset( $projection['state'] ) ? sanitize_key( (string) $projection['state'] ) : 'unavailable' );
+		$result['blockers'] = isset( $projection['blockers'] ) && is_array( $projection['blockers'] ) ? $projection['blockers'] : array();
 		$result['live_skill_evaluation_deferred'] = true;
 		return $result;
 	}
@@ -1186,6 +1307,7 @@ final class MAD4B_SCP_Read_Consistency {
 	}
 
 	private static function generation_changed_envelope( $bundle, $transaction_id, $sequence, $expected_generation, array $snapshot, $reason ) {
+		$session_report = 'session_safe_diagnostics' === (string) $bundle;
 		return array(
 			'contract' => self::CONTRACT,
 			'state' => 'generation_changed',
@@ -1198,6 +1320,11 @@ final class MAD4B_SCP_Read_Consistency {
 			'runtime_generation' => isset( $snapshot['runtime_generation'] ) ? (string) $snapshot['runtime_generation'] : '',
 			'generation_match' => false,
 			'valid_for_merge' => false,
+			'valid_for_bundle_evidence_merge' => false,
+			'valid_for_session_evidence_merge' => false,
+			'valid_for_release_merge' => false,
+			'merge_scope' => $session_report ? 'session_safe_subject_evidence_only' : 'generation_bound_bundle_evidence_only',
+			'deep_acceptance_required' => true,
 			'resume_permitted' => false,
 			'discard_partial' => true,
 			'reason' => sanitize_key( (string) $reason ),

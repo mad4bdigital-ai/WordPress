@@ -72,10 +72,50 @@ required_observer = [
     "'write_inventory_fingerprint_match'",
     "'write_transport_ready'",
     "'direct_write_schema_leaks'",
+    "'package_identity_match'",
+    "'source_commit_sha'",
+    "'package_build_fingerprint'",
+    "'package_manifest_digest'",
+    "'artifact_identity'",
+    "'stale_package_identity_evidence'",
 ]
 missing = [marker for marker in required_observer if marker not in observer]
 if missing:
     raise SystemExit('Missing Live Acceptance observer contract: ' + ' | '.join(missing))
+
+# External acceptance is package-bound, not merely selected-file or single-hash
+# bound. Both evidence producers must carry the same four-part provenance and
+# the aggregate gates must consume package_identity_match.
+for marker in (
+    "private static function package_identity()",
+    "'package_identity_match'",
+    "'source_commit_sha'",
+    "'package_build_fingerprint'",
+    "'package_manifest_digest'",
+    "'artifact_identity'",
+    "'stale_package_identity_evidence'",
+):
+    if marker not in external:
+        raise SystemExit('External handshake is missing exact-package binding: ' + marker)
+for marker in (
+    "private static function package_identity_matches",
+    "'package_identity_match'",
+    "'current_source_commit_sha'",
+    "'current_package_manifest_digest'",
+    "'current_artifact_identity'",
+):
+    if marker not in observer:
+        raise SystemExit('Live Acceptance observer is missing exact-package binding: ' + marker)
+provider_gate = observer.split("'provider_projection' => self::gate(", 1)[1].split("'write_authority' =>", 1)[0]
+if "$external['package_identity_match']" not in provider_gate:
+    raise SystemExit('Provider projection is not package-identity fresh.')
+if "$external['build_fingerprint_match']" in provider_gate:
+    raise SystemExit('Provider projection still trusts fingerprint-only freshness.')
+external_gates = observer.split("'external_handshake' => self::gate(", 1)[1].split("'mutation_acceptance' =>", 1)[0]
+if "$external['package_identity_match']" not in external_gates:
+    raise SystemExit('External acceptance gates are not package-identity fresh.')
+if "$external['build_fingerprint_match']" in external_gates:
+    raise SystemExit('External acceptance gates still trust fingerprint-only freshness.')
 
 required_finalizer = [
     "const CONTRACT = 'mad4b.live-acceptance-finalizer.v1'",

@@ -269,7 +269,9 @@ require(impl['transport'], 'mad4b_write_authority_mount_missing', 'implementatio
 require(impl['connection'], 'mad4b.connection-readiness.v4', 'implementation-connection-readiness')
 forbid(impl['connection'], "'connection_certified' => false", 'implementation-no-permanent-false')
 require(impl['connection'], 'MAD4B_SCP_External_Handshake_Evidence::status()', 'implementation-external-evidence-readback')
-require(impl['connection'], '$connection_certified = empty( $certification_blockers )', 'implementation-certified-from-bounded-blockers')
+require(impl['connection'], '$connection_certified = ! $admin_shallow && empty( $certification_blockers )', 'implementation-certified-only-after-deep-bounded-blockers')
+require(impl['connection'], "'connection_certification_state' => $certification_state", 'implementation-certification-tristate')
+require(impl['connection'], "'certification_deferred_checks' => $certification_deferred_checks", 'implementation-certification-deferred-not-blocked')
 require(impl['connection'], "'external_handshake_unverified'", 'implementation-unverified-handshake-blocker')
 require(impl['connection'], "'external_handshake_stale'", 'implementation-stale-handshake-blocker')
 for marker in (
@@ -279,7 +281,7 @@ for marker in (
     "defined( 'REST_REQUEST' )", "defined( 'WP_CLI' ) && WP_CLI",
     'verified_bearer_active()', "'initialize'", "'tools/list'",
     "hash( 'sha256', $session_id )", "update_option( self::OPTION, $evidence, false )",
-    "'credential_material_stored' => false", "'stale_build_evidence'", "'stale_tool_inventory_evidence'", 'build_fingerprint()',
+    "'credential_material_stored' => false", "'stale_package_identity_evidence'", "'stale_runtime_surface_evidence'", "'stale_tool_inventory_evidence'", 'build_fingerprint()',
     "'tool_inventory_fingerprint'", "'expected_tool_inventory_fingerprint'", "'tool_inventory_match'",
     "'write_catalog_fingerprint'", "'write_transport_ready'", "'direct_write_schema_leaks'",
     'expected_tool_names()', 'expected_write_tool_names()', 'blocked_write_tool_names()', 'breakglass_tool_names()',

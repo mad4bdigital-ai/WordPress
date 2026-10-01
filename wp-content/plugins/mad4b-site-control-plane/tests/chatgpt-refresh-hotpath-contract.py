@@ -568,12 +568,17 @@ assert conflict_bootstrap.index("current_request_is_protocol_hotpath()") < confl
 assert conflict_bootstrap.index("current_request_is_protocol_hotpath()") < conflict_bootstrap.index("update_option( 'active_plugins'")
 assert conflict_bootstrap.index("current_request_is_protocol_hotpath()") < conflict_bootstrap.index("MAD4B_SCP_Audit::record(")
 
-# Query Monitor telemetry bootstrap needs only packaged identity. Full runtime
-# hashing remains explicit/final acceptance and must not execute on every request.
-qm_pin = query_monitor.split("private static function pin_request_build_fingerprint()", 1)[1].split("private static function request_build_fingerprint()", 1)[0]
-assert "build_provenance_identity_status()" in qm_pin
-assert "build_provenance_status()" not in qm_pin
-assert "hash_file(" not in qm_pin
+# Query Monitor telemetry bootstrap pins build + package identity from one
+# lightweight provenance snapshot. The build helper must delegate to that
+# atomic pin instead of performing a second provenance read or full hashing.
+qm_identity_pin = query_monitor.split("private static function pin_request_identity()", 1)[1].split("private static function pin_request_build_fingerprint()", 1)[0]
+assert "build_provenance_identity_status()" in qm_identity_pin
+assert "build_provenance_status()" not in qm_identity_pin
+assert "hash_file(" not in qm_identity_pin
+qm_build_pin = query_monitor.split("private static function pin_request_build_fingerprint()", 1)[1].split("private static function request_build_fingerprint()", 1)[0]
+assert "self::pin_request_identity()" in qm_build_pin
+assert "build_provenance_status()" not in qm_build_pin
+assert "hash_file(" not in qm_build_pin
 
 qm_flush = query_monitor.split("public static function capture_and_flush()", 1)[1].split("/** @internal Pure seam", 1)[0]
 assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in qm_flush
@@ -607,7 +612,7 @@ assert qm_flush.index("$acceptance_canary = self::request_acceptance_canary_kind
 assert qm_flush.index(zero_touch_guard) < guard_pos
 assert guard_pos < qm_flush.index("MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed()")
 assert guard_pos < qm_flush.index("self::request_build_fingerprint()")
-assert guard_pos < qm_flush.index("self::load_telemetry( $build )")
+assert guard_pos < qm_flush.index("self::load_telemetry( $build, $package_identity_token )")
 assert guard_pos < qm_flush.index("$sample = self::performance_sample( $class )")
 assert guard_pos < qm_flush.index("foreach ( self::query_monitor_events()")
 foreign_prefix = qm_flush[:guard_pos]
@@ -639,18 +644,28 @@ assert guard.index("if ( $remote_preauth_probe ) return $result;") < guard.index
 
 # Passive admin readiness must not report a false not_registered merely because
 # the MCP Adapter registry is intentionally not materialized on that PHP request.
-registration_projection = reconnect.split("private static function chatgpt_registration_projection()", 1)[1].split("private static function preauth_reconnect_blockers()", 1)[0]
+# Registration facts are owned by the bridge; effective readiness is projected
+# canonically and consumed by reconnect_status without reviving deep materialization.
+registration_projection = registration_bridge.split("public static function server_registration_identity_status( $server_id )", 1)[1].split("public static function status()", 1)[0]
 for marker in (
+    "'mad4b.mcp-registration-fact.v1'",
     "MAD4B_SCP_Servers::expected_server_ids()",
-    "has_action( 'mcp_adapter_init'",
-    "expected_hook_bound_deferred_materialization",
-    "'observed' => $observed",
+    "MAD4B_SCP_Servers::registration_status()",
+    "MAD4B_SCP_Truth_Projection::mcp_registration_identity( $fact )",
+    "'actual_registered'",
+    "'observed_registration_error'",
 ):
     assert marker in registration_projection, marker
-reconnect_status = reconnect.split("public static function reconnect_status()", 1)[1].split("private static function chatgpt_registration_projection()", 1)[0]
-assert "self::chatgpt_registration_projection()" in reconnect_status
+for forbidden in ("rest_get_server(", "wp_get_abilities(", "register_servers( $adapter"):
+    assert forbidden not in registration_projection, forbidden
+
+reconnect_status = reconnect.split("public static function reconnect_status()", 1)[1].split("private static function preauth_reconnect_blockers()", 1)[0]
+assert "MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( 'mad4b-chatgpt' )" in reconnect_status
 assert "'chatgpt_registration_observed'" in reconnect_status
+assert "'chatgpt_registration_identity_ready'" in reconnect_status
 assert "'chatgpt_registration_projection'" in reconnect_status
+assert "'chatgpt_registration_deep_check_deferred'" in reconnect_status
+assert "self::chatgpt_registration_projection()" not in reconnect_status
 
 # Skills and OAuth Canary render from persisted/runtime-identity evidence. Fresh
 # certification or deep OAuth inspection happens only after an explicit action.

@@ -64,6 +64,8 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 				'contract' => array( 'type' => 'string', 'enum' => array( self::PRODUCTION_CONTRACT ) ),
 				'candidate_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
 				'build_fingerprint' => $hash,
+				'package_manifest_digest' => $hash,
+				'artifact_identity' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191 ),
 				'target' => array( 'type' => 'string', 'enum' => array( 'production' ) ),
 				'origin' => array( 'type' => 'string', 'minLength' => 8, 'maxLength' => 2048 ),
 				'environment' => array( 'type' => 'string', 'enum' => array( 'production' ) ),
@@ -79,7 +81,7 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 				'evidence_digest' => $hash,
 			),
 			'required' => array(
-				'contract','candidate_sha','build_fingerprint','target','origin','environment',
+				'contract','candidate_sha','build_fingerprint','package_manifest_digest','artifact_identity','target','origin','environment',
 				'production_runtime_identity','baseline_snapshot_digest','observed_snapshot_digest',
 				'baseline_plugin_snapshot_digest','observed_plugin_snapshot_digest','checked_at',
 				'issued_at','issuer','provenance','evidence_digest',
@@ -127,7 +129,7 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 			if ( ! is_array( $gate ) ) return false;
 			$effective = class_exists( 'MAD4B_SCP_Truth_Projection' )
 				? MAD4B_SCP_Truth_Projection::gate_effective_ready( $gate )
-				: ( ! empty( $gate['ready'] ) && ( ! array_key_exists( 'fresh', $gate ) || ! empty( $gate['fresh'] ) ) );
+				: ( ! empty( $gate['ready'] ) && empty( $gate['blockers'] ) && ( ! array_key_exists( 'fresh', $gate ) || ! empty( $gate['fresh'] ) ) );
 			if ( ! $effective ) return false;
 		}
 		return true;
@@ -164,6 +166,8 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 		$acceptance = self::append_acceptance_audit( 'mad4b/live-acceptance-execution-observed', array(
 			'candidate_sha' => $candidate['source_commit_sha'],
 			'build_fingerprint' => $candidate['build_fingerprint'],
+			'package_manifest_digest' => $candidate['package_manifest_digest'],
+			'artifact_identity' => $candidate['artifact_identity'],
 			'mutation_id' => $mutation_id,
 			'approval_ticket_id' => $ticket,
 			'ability' => isset( $record['ability_name'] ) ? (string) $record['ability_name'] : '',
@@ -182,6 +186,8 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 			'approval_ticket_id' => $ticket,
 			'candidate_sha' => $candidate['source_commit_sha'],
 			'build_fingerprint' => $candidate['build_fingerprint'],
+			'package_manifest_digest' => $candidate['package_manifest_digest'],
+			'artifact_identity' => $candidate['artifact_identity'],
 			'execution_event_id' => (string) $acceptance['event_id'],
 			'execution_event_hash' => (string) $acceptance['entry_hash'],
 			'execution_sequence' => (int) $acceptance['sequence'],
@@ -199,12 +205,20 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $ticket ) ) return;
 		$ledger = self::ledger();
 		foreach ( array_reverse( $ledger, true ) as $mutation_id => $item ) {
-			if ( ! is_array( $item ) || ! isset( $item['approval_ticket_id'], $item['candidate_sha'], $item['build_fingerprint'] ) ) continue;
+			if ( ! is_array( $item ) || ! isset( $item['approval_ticket_id'] ) ) continue;
 			if ( ! hash_equals( $ticket, (string) $item['approval_ticket_id'] ) ) continue;
-			if ( ! hash_equals( (string) $candidate['source_commit_sha'], (string) $item['candidate_sha'] ) || ! hash_equals( (string) $candidate['build_fingerprint'], (string) $item['build_fingerprint'] ) ) continue;
+			$ledger_identity = array(
+				'source_commit_sha' => isset( $item['candidate_sha'] ) ? (string) $item['candidate_sha'] : '',
+				'build_fingerprint' => isset( $item['build_fingerprint'] ) ? (string) $item['build_fingerprint'] : '',
+				'package_manifest_digest' => isset( $item['package_manifest_digest'] ) ? (string) $item['package_manifest_digest'] : '',
+				'artifact_identity' => isset( $item['artifact_identity'] ) ? (string) $item['artifact_identity'] : '',
+			);
+			if ( ! self::candidate_identity_matches( $candidate, $ledger_identity ) ) continue;
 			$acceptance = self::append_acceptance_audit( 'mad4b/live-acceptance-replay-denied-observed', array(
 				'candidate_sha' => $candidate['source_commit_sha'],
 				'build_fingerprint' => $candidate['build_fingerprint'],
+				'package_manifest_digest' => $candidate['package_manifest_digest'],
+				'artifact_identity' => $candidate['artifact_identity'],
 				'mutation_id' => (string) $mutation_id,
 				'approval_ticket_id' => $ticket,
 				'denial_code' => 'mad4b_approval_replay_denied',
@@ -228,7 +242,13 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 		if ( empty( $ledger[ $mutation_id ] ) || ! is_array( $ledger[ $mutation_id ] ) ) return;
 		$item = $ledger[ $mutation_id ];
 		if ( empty( $item['replay_event_id'] ) ) return;
-		if ( ! hash_equals( (string) $candidate['source_commit_sha'], (string) $item['candidate_sha'] ) || ! hash_equals( (string) $candidate['build_fingerprint'], (string) $item['build_fingerprint'] ) ) return;
+		$ledger_identity = array(
+			'source_commit_sha' => isset( $item['candidate_sha'] ) ? (string) $item['candidate_sha'] : '',
+			'build_fingerprint' => isset( $item['build_fingerprint'] ) ? (string) $item['build_fingerprint'] : '',
+			'package_manifest_digest' => isset( $item['package_manifest_digest'] ) ? (string) $item['package_manifest_digest'] : '',
+			'artifact_identity' => isset( $item['artifact_identity'] ) ? (string) $item['artifact_identity'] : '',
+		);
+		if ( ! self::candidate_identity_matches( $candidate, $ledger_identity ) ) return;
 		$record = class_exists( 'MAD4B_SCP_Mutation_Manager' ) ? MAD4B_SCP_Mutation_Manager::get( $mutation_id ) : null;
 		$recovery_id = isset( $summary['recovery_mutation_id'] ) ? strtolower( trim( (string) $summary['recovery_mutation_id'] ) ) : '';
 		$recovery = $recovery_id && class_exists( 'MAD4B_SCP_Mutation_Manager' ) ? MAD4B_SCP_Mutation_Manager::get( $recovery_id ) : null;
@@ -240,6 +260,8 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 		$acceptance = self::append_acceptance_audit( 'mad4b/live-acceptance-undo-observed', array(
 			'candidate_sha' => $candidate['source_commit_sha'],
 			'build_fingerprint' => $candidate['build_fingerprint'],
+			'package_manifest_digest' => $candidate['package_manifest_digest'],
+			'artifact_identity' => $candidate['artifact_identity'],
 			'mutation_id' => $mutation_id,
 			'approval_ticket_id' => isset( $record['approval_ticket_id'] ) ? (string) $record['approval_ticket_id'] : '',
 			'recovery_mutation_id' => $recovery_id,
@@ -275,7 +297,7 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 			$receipt = self::authoritative_mutation_receipt( (string) $mutation_id, $item );
 			$result = self::evaluate_mutation_receipt( $receipt, $candidate );
 			if ( ! empty( $result['ready'] ) ) return $result;
-			if ( in_array( $result['state'], array( 'candidate_mismatch', 'build_fingerprint_mismatch' ), true ) ) continue;
+			if ( in_array( $result['state'], array( 'candidate_mismatch', 'build_fingerprint_mismatch', 'package_manifest_digest_mismatch', 'artifact_identity_mismatch' ), true ) ) continue;
 			return $result;
 		}
 		return self::gate( false, 'pending_external_evidence', false, self::MUTATION_CONTRACT, array( 'complete_execute_replay_undo_receipt_required' ) );
@@ -295,6 +317,8 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 			'contract' => self::MUTATION_CONTRACT,
 			'candidate_sha' => isset( $item['candidate_sha'] ) ? (string) $item['candidate_sha'] : '',
 			'build_fingerprint' => isset( $item['build_fingerprint'] ) ? (string) $item['build_fingerprint'] : '',
+			'package_manifest_digest' => isset( $item['package_manifest_digest'] ) ? (string) $item['package_manifest_digest'] : '',
+			'artifact_identity' => isset( $item['artifact_identity'] ) ? (string) $item['artifact_identity'] : '',
 			'environment' => self::acceptance_environment(), 'origin' => self::acceptance_origin(),
 			'mutation_id' => $mutation_id,
 			'approval_ticket_id' => is_array( $record ) && isset( $record['approval_ticket_id'] ) ? (string) $record['approval_ticket_id'] : '',
@@ -331,9 +355,11 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 	private static function acceptance_event_valid( $event, $ability, array $item, $mutation_id ) {
 		if ( ! is_array( $event ) || $ability !== ( isset( $event['ability'] ) ? (string) $event['ability'] : '' ) || 'ok' !== (string) $event['status'] ) return false;
 		$summary = isset( $event['summary'] ) && is_array( $event['summary'] ) ? $event['summary'] : array();
-		foreach ( array( 'candidate_sha', 'build_fingerprint', 'mutation_id' ) as $key ) if ( empty( $summary[ $key ] ) ) return false;
+		foreach ( array( 'candidate_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity', 'mutation_id' ) as $key ) if ( empty( $summary[ $key ] ) || empty( $item[ $key === 'candidate_sha' ? 'candidate_sha' : $key ] ) ) return false;
 		return hash_equals( (string) $item['candidate_sha'], (string) $summary['candidate_sha'] )
 			&& hash_equals( (string) $item['build_fingerprint'], (string) $summary['build_fingerprint'] )
+			&& hash_equals( (string) $item['package_manifest_digest'], (string) $summary['package_manifest_digest'] )
+			&& hash_equals( (string) $item['artifact_identity'], (string) $summary['artifact_identity'] )
 			&& hash_equals( (string) $mutation_id, (string) $summary['mutation_id'] );
 	}
 
@@ -344,6 +370,8 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 		if ( self::MUTATION_CONTRACT !== ( isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '' ) ) $blockers[] = 'invalid_evidence';
 		if ( empty( $candidate['source_commit_sha'] ) || empty( $receipt['candidate_sha'] ) || ! hash_equals( (string) $candidate['source_commit_sha'], (string) $receipt['candidate_sha'] ) ) { $blockers[] = 'candidate_mismatch'; $state = 'candidate_mismatch'; }
 		if ( empty( $candidate['build_fingerprint'] ) || empty( $receipt['build_fingerprint'] ) || ! hash_equals( (string) $candidate['build_fingerprint'], (string) $receipt['build_fingerprint'] ) ) { $blockers[] = 'build_fingerprint_mismatch'; if ( 'candidate_mismatch' !== $state ) $state = 'build_fingerprint_mismatch'; }
+		if ( empty( $candidate['package_manifest_digest'] ) || empty( $receipt['package_manifest_digest'] ) || ! hash_equals( (string) $candidate['package_manifest_digest'], (string) $receipt['package_manifest_digest'] ) ) { $blockers[] = 'package_manifest_digest_mismatch'; if ( ! in_array( $state, array( 'candidate_mismatch', 'build_fingerprint_mismatch' ), true ) ) $state = 'package_manifest_digest_mismatch'; }
+		if ( empty( $candidate['artifact_identity'] ) || empty( $receipt['artifact_identity'] ) || ! hash_equals( (string) $candidate['artifact_identity'], (string) $receipt['artifact_identity'] ) ) { $blockers[] = 'artifact_identity_mismatch'; if ( ! in_array( $state, array( 'candidate_mismatch', 'build_fingerprint_mismatch', 'package_manifest_digest_mismatch' ), true ) ) $state = 'artifact_identity_mismatch'; }
 		$expected_environment = self::acceptance_environment();
 		$expected_origin = self::acceptance_origin();
 		if ( ! self::acceptance_target_ready() || ! hash_equals( $expected_environment, isset( $receipt['environment'] ) ? (string) $receipt['environment'] : '' ) || ! hash_equals( $expected_origin, isset( $receipt['origin'] ) ? rtrim( (string) $receipt['origin'], '/' ) : '' ) ) $blockers[] = 'wrong_target';
@@ -385,6 +413,8 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 		if ( self::PRODUCTION_CONTRACT !== ( isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '' ) ) $blockers[] = 'invalid_evidence';
 		if ( empty( $candidate['source_commit_sha'] ) || empty( $receipt['candidate_sha'] ) || ! hash_equals( (string) $candidate['source_commit_sha'], (string) $receipt['candidate_sha'] ) ) { $blockers[] = 'candidate_mismatch'; $state = 'candidate_mismatch'; }
 		if ( empty( $candidate['build_fingerprint'] ) || empty( $receipt['build_fingerprint'] ) || ! hash_equals( (string) $candidate['build_fingerprint'], (string) $receipt['build_fingerprint'] ) ) { $blockers[] = 'build_fingerprint_mismatch'; if ( 'candidate_mismatch' !== $state ) $state = 'build_fingerprint_mismatch'; }
+		if ( empty( $candidate['package_manifest_digest'] ) || empty( $receipt['package_manifest_digest'] ) || ! hash_equals( (string) $candidate['package_manifest_digest'], (string) $receipt['package_manifest_digest'] ) ) { $blockers[] = 'package_manifest_digest_mismatch'; if ( ! in_array( $state, array( 'candidate_mismatch', 'build_fingerprint_mismatch' ), true ) ) $state = 'package_manifest_digest_mismatch'; }
+		if ( empty( $candidate['artifact_identity'] ) || empty( $receipt['artifact_identity'] ) || ! hash_equals( (string) $candidate['artifact_identity'], (string) $receipt['artifact_identity'] ) ) { $blockers[] = 'artifact_identity_mismatch'; if ( ! in_array( $state, array( 'candidate_mismatch', 'build_fingerprint_mismatch', 'package_manifest_digest_mismatch' ), true ) ) $state = 'artifact_identity_mismatch'; }
 		$production_origin = self::production_origin();
 		if ( '' === $production_origin || 'production' !== ( isset( $receipt['target'] ) ? (string) $receipt['target'] : '' ) || 'production' !== ( isset( $receipt['environment'] ) ? (string) $receipt['environment'] : '' ) || ! hash_equals( $production_origin, isset( $receipt['origin'] ) ? rtrim( (string) $receipt['origin'], '/' ) : '' ) ) $blockers[] = 'wrong_production_identity';
 		if ( self::FINALIZER_ISSUER !== ( isset( $receipt['issuer'] ) ? (string) $receipt['issuer'] : '' ) || self::FINALIZER_PROVENANCE !== ( isset( $receipt['provenance'] ) ? (string) $receipt['provenance'] : '' ) ) $blockers[] = 'untrusted_receipt_provenance';
@@ -457,6 +487,9 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 			'contract' => self::WPML_DIAGNOSTIC_CONTRACT,
 			'observed_at' => gmdate( 'c' ),
 			'build_fingerprint' => isset( $candidate['build_fingerprint'] ) ? $candidate['build_fingerprint'] : '',
+			'package_manifest_digest' => isset( $candidate['package_manifest_digest'] ) ? $candidate['package_manifest_digest'] : '',
+			'artifact_identity' => isset( $candidate['artifact_identity'] ) ? $candidate['artifact_identity'] : '',
+			'source_commit_sha' => isset( $candidate['source_commit_sha'] ) ? $candidate['source_commit_sha'] : '',
 			'request_route' => '/wpml/v1/rest/status',
 			'response_status' => $status_code,
 			'response_content_type' => substr( sanitize_text_field( $content_type ), 0, 120 ),
@@ -502,14 +535,21 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 		if ( ! is_array( $diag ) ) $diag = array();
 		$classification = isset( $diag['classification'] ) ? (string) $diag['classification'] : 'pending_external_evidence';
 		if ( false === $route_registered && ! empty( $wpml['wpml_active'] ) ) $classification = 'route_not_registered';
-		$build_match = ! empty( $diag['build_fingerprint'] ) && ! empty( $current['build_fingerprint'] ) && hash_equals( (string) $current['build_fingerprint'], (string) $diag['build_fingerprint'] );
-		$verified = ! empty( $base['verified'] ) && $build_match && 'success' === $classification;
+		$diag_identity = array(
+			'source_commit_sha' => isset( $diag['source_commit_sha'] ) ? strtolower( trim( (string) $diag['source_commit_sha'] ) ) : '',
+			'build_fingerprint' => isset( $diag['build_fingerprint'] ) ? strtolower( trim( (string) $diag['build_fingerprint'] ) ) : '',
+			'package_manifest_digest' => isset( $diag['package_manifest_digest'] ) ? strtolower( trim( (string) $diag['package_manifest_digest'] ) ) : '',
+			'artifact_identity' => isset( $diag['artifact_identity'] ) ? trim( (string) $diag['artifact_identity'] ) : '',
+		);
+		$package_identity_match = self::candidate_identity_matches( $current, $diag_identity );
+		$verified = ! empty( $base['verified'] ) && $package_identity_match && 'success' === $classification;
 		$out = is_array( $base ) ? $base : array();
 		$out['contract'] = self::WPML_DIAGNOSTIC_CONTRACT;
 		$out['verified'] = $verified;
-		$out['stale'] = ! $build_match;
+		$out['package_identity_match'] = $package_identity_match;
+		$out['stale'] = ! $package_identity_match;
 		$out['classification'] = $classification;
-		$out['state'] = $verified ? 'verified_external_wpml' : ( ! $build_match && ! empty( $diag ) ? 'stale_build_evidence' : $classification );
+		$out['state'] = $verified ? 'verified_external_wpml' : ( ! $package_identity_match && ! empty( $diag ) ? 'stale_package_identity_evidence' : $classification );
 		foreach ( array( 'response_status','response_content_type','error_code','body_classification','safe_message','observed_at' ) as $key ) if ( array_key_exists( $key, $diag ) ) $out[ $key ] = $diag[ $key ];
 		$out['route_registered'] = $route_registered;
 		$out['candidate_identity_ready'] = ! empty( $current['ready'] );
@@ -538,22 +578,43 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 		return rtrim( (string) MAD4B_SCP_Site_Profile::related_origin( 'production' ), '/' );
 	}
 
+	private static function normalize_candidate_identity( array $provenance, $ready_hint ) {
+		$sha = isset( $provenance['source_commit_sha'] ) ? strtolower( trim( (string) $provenance['source_commit_sha'] ) ) : '';
+		$fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) ) : '';
+		$manifest = isset( $provenance['package_manifest_digest'] ) ? strtolower( trim( (string) $provenance['package_manifest_digest'] ) ) : '';
+		$artifact = isset( $provenance['artifact_identity'] ) ? trim( (string) $provenance['artifact_identity'] ) : '';
+		$ready = (bool) $ready_hint
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/', $sha )
+			&& self::valid_hash( $fingerprint )
+			&& self::valid_hash( $manifest )
+			&& '' !== $artifact && strlen( $artifact ) <= 191;
+		return array(
+			'ready' => $ready,
+			'source_commit_sha' => $ready ? $sha : '',
+			'build_fingerprint' => $ready ? $fingerprint : '',
+			'package_manifest_digest' => $ready ? $manifest : '',
+			'artifact_identity' => $ready ? $artifact : '',
+		);
+	}
+
+	private static function candidate_identity_matches( array $candidate, array $other ) {
+		if ( empty( $candidate['ready'] ) ) return false;
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) {
+			if ( empty( $candidate[ $key ] ) || empty( $other[ $key ] ) || ! hash_equals( (string) $candidate[ $key ], (string) $other[ $key ] ) ) return false;
+		}
+		return true;
+	}
+
 	private static function current_candidate_identity() {
 		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) && method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
 			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()
 			: array();
-		$sha = isset( $provenance['source_commit_sha'] ) ? strtolower( (string) $provenance['source_commit_sha'] ) : '';
-		$fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
-		$ready = ! empty( $provenance['identity_ready'] ) && preg_match( '/^[a-f0-9]{40}$/', $sha ) && self::valid_hash( $fingerprint );
-		return array( 'ready' => (bool) $ready, 'source_commit_sha' => $sha, 'build_fingerprint' => $fingerprint );
+		return self::normalize_candidate_identity( $provenance, ! empty( $provenance['identity_ready'] ) );
 	}
 
 	private static function current_candidate() {
 		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
-		$sha = isset( $provenance['source_commit_sha'] ) ? strtolower( (string) $provenance['source_commit_sha'] ) : '';
-		$fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
-		$ready = ! empty( $provenance['runtime_manifest_match'] ) && preg_match( '/^[a-f0-9]{40}$/', $sha ) && self::valid_hash( $fingerprint );
-		return array( 'ready' => (bool) $ready, 'source_commit_sha' => $sha, 'build_fingerprint' => $fingerprint );
+		return self::normalize_candidate_identity( $provenance, ! empty( $provenance['runtime_manifest_match'] ) );
 	}
 
 	private static function staging_allowed() {
@@ -587,7 +648,7 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 			'ready' => (bool) $ready,
 			'fresh' => (bool) $fresh,
 			'freshness_required' => true,
-			'effective_ready' => (bool) $ready && (bool) $fresh,
+			'effective_ready' => (bool) $ready && (bool) $fresh && empty( $blockers ),
 			'source_contract' => (string) $contract,
 			'blockers' => array_values( array_unique( array_filter( array_map( 'strval', $blockers ) ) ) ),
 			'observed_at' => '' !== (string) $observed_at ? (string) $observed_at : gmdate( 'c' ),

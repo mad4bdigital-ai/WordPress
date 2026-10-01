@@ -124,6 +124,30 @@ final class MAD4B_SCP_Authorization {
 		$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $server_id, $ability_name, $provider );
 		if ( is_wp_error( $grant ) ) return $grant;
 
+		// Persisted authority + exact candidate binding is intentionally a cheap
+		// request-serving predicate. Once a normal governed write reaches mutation
+		// admission, fail closed unless the current bulk grant snapshot is still
+		// zero-drift. The one bounded candidate-bootstrap exception is evaluated by
+		// current_execution_readiness() under its own exact Staging/OAuth/NHI proof.
+		if ( 'mad4b-write' === $server_id
+			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'manages_agent' )
+			&& MAD4B_SCP_Staging_Write_Authority::manages_agent( $agent ) ) {
+			$current_write = MAD4B_SCP_Staging_Write_Authority::current_execution_readiness( $ability_name, $input );
+			if ( ! is_array( $current_write ) || empty( $current_write['ready'] ) ) {
+				return new WP_Error(
+					'mad4b_write_authority_current_drift',
+					'Governed write authority is not current-ready; reconcile current grants before mutation.',
+					array(
+						'blockers' => is_array( $current_write ) && isset( $current_write['blockers'] ) && is_array( $current_write['blockers'] ) ? $current_write['blockers'] : array( 'write_current_readiness_unavailable' ),
+						'candidate_binding_match' => is_array( $current_write ) && ! empty( $current_write['candidate_binding_match'] ),
+						'current_grant_snapshot_ready' => is_array( $current_write ) && ! empty( $current_write['current_grant_snapshot_ready'] ),
+					)
+				);
+			}
+		}
+
 		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input, $ability_name ) : $input;
 		if ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
 			$context_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard( $ability_name, $authorization_input );
@@ -485,6 +509,15 @@ final class MAD4B_SCP_Authorization {
 		if ( ! empty( $peer_governance['foreign_transport_unreviewed'] ) ) $blockers[] = 'mcp_foreign_transport_unreviewed';
 		$blockers = array_values( array_unique( $blockers ) );
 		return array(
+			// This endpoint is a global governance/peer-health projection only. It is
+			// intentionally cheaper than per-ability mutation admission. Every actual
+			// mutation still resolves identity, exact grant, current write-authority
+			// drift, approvals, budgets and policy inside authorize_mutation().
+			'status_scope' => 'global_policy_and_peer_governance_only',
+			'per_ability_authorization_required' => true,
+			'current_write_authority_evaluated' => false,
+			'current_write_authority_evaluation' => 'deferred_to_authorize_mutation',
+			'legacy_status_ready_semantics' => 'global_gate_ready_not_execution_authorized',
 			'schema_ready' => ! empty( $schema['ready'] ),
 			'schema_version' => isset( $schema['installed_version'] ) ? (int) $schema['installed_version'] : 0,
 			'mutation_global_enabled' => $mutation_configured,
@@ -501,6 +534,7 @@ final class MAD4B_SCP_Authorization {
 			'transport_context' => class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::status() : array( 'bound' => false, 'server_id' => '', 'credential_material_stored' => false ),
 			'mcp_peer_governance' => $peer_governance,
 			'staging_write_authority' => $staging_write,
+			'staging_write_authority_projection' => 'checkpoint_diagnostic_not_per_ability_execution_verdict',
 			'blockers' => $blockers,
 			'status' => $blockers ? 'blocked' : ( $mutation_configured ? ( $mutation_effective ? 'ready_for_governed_mutation' : 'mutation_configured_identity_required' ) : 'ready_read_only' ),
 		);

@@ -38,10 +38,90 @@ if "MAD4B_SCP_Agent_Registry::exact_grant(" in plan_body:
     raise SystemExit("read-only reconciliation plan regressed to N+1 exact_grant lookups")
 if plan_body.count("MAD4B_SCP_Agent_Registry::grants_for_agent") != 1:
     raise SystemExit("read-only reconciliation plan must use one bulk agent grant snapshot")
+for marker_text in [
+    "MAD4B_SCP_Truth_Projection::governed_write_grant_snapshot",
+    "'current_readiness_blockers'",
+    "'persisted_ready' => $persisted_ready",
+]:
+    if marker_text not in plan_body:
+        raise SystemExit("write reconciliation current/persisted readiness split missing: " + marker_text)
+if "'current_ready' => $persisted_ready" in plan_body:
+    raise SystemExit("write reconciliation current_ready must not alias the historical persisted checkpoint")
+
+for marker_text in [
+    "MAD4B_SCP_Agent_Registry::subject_binding( 'oauth', $fingerprint )",
+    "'subject_preflight_ready' => empty( $subject_preflight_blockers )",
+    "'subject_preflight_blockers' => $subject_preflight_blockers",
+    "'oauth_subject_bound_to_other_agent'",
+    "'oauth_subject_not_enrolled'",
+    "'oauth_issuer_unavailable'",
+]:
+    if marker_text not in plan_body:
+        raise SystemExit("write reconciliation subject preflight missing: " + marker_text)
+if "MAD4B_SCP_Agent_Registry::bind_subject(" in plan_body:
+    raise SystemExit("read-only reconciliation plan may not mutate subject bindings")
+for marker_text in [
+    "$current_readiness_blockers = isset( $grant_truth['blockers'] )",
+    "array_merge( $current_readiness_blockers, $subject_preflight_blockers )",
+    "'current_readiness_blockers' => $current_readiness_blockers",
+]:
+    if marker_text not in plan_body:
+        raise SystemExit("write current readiness must explain subject preflight blockers: " + marker_text)
+
+# Exact current-environment authority and a simultaneous broad environment=all
+# allow can coexist because environment participates in the DB uniqueness key.
+# The read-only plan must expose that broad row even when the exact row wins
+# execution lookup, otherwise current readiness and explicit reconcile disagree.
+if "} elseif ( ! empty( $allow_current[ $key ] ) ) {" not in plan_body or "} elseif ( ! empty( $allow_all[ $key ] ) ) {" not in plan_body:
+    raise SystemExit("write reconciliation allow-current/allow-all branches are unavailable")
+exact_allow_branch = plan_body.split("} elseif ( ! empty( $allow_current[ $key ] ) ) {", 1)[1].split("} elseif ( ! empty( $allow_all[ $key ] ) ) {", 1)[0]
+for marker_text in (
+    "if ( ! empty( $allow_all[ $key ] ) )",
+    "foreach ( $allow_all[ $key ] as $broad_grant )",
+    "$broad_environment[] = array(",
+    "'environment' => 'all'",
+):
+    if marker_text not in exact_allow_branch:
+        raise SystemExit("exact+broad coexistence drift is not projected into current write truth: " + marker_text)
+
+current_status_body = write.split("public static function current_status()", 1)[1].split("public static function effective()", 1)[0]
+for marker_text in [
+    "self::current_execution_readiness()",
+    "'persisted_ready'",
+    "'checkpoint_ready'",
+    "'current_grant_snapshot_ready'",
+    "'current_readiness_blockers'",
+    "$checkpoint['current_truth'] = true;",
+    "'deep_grant_scan_performed'",
+]:
+    if marker_text not in current_status_body:
+        raise SystemExit("current write-authority status projection missing: " + marker_text)
+status_registration = write.split("public static function register_status_ability()", 1)[1]
+if "'execute_callback' => array( __CLASS__, 'current_status' )" not in status_registration:
+    raise SystemExit("write-authority status ability must expose current truth, not persisted checkpoint status")
+
 reconcile_body = write.split("public static function reconcile()", 1)[1]
 for marker_text in ["$seen_current_exact_allow", "$duplicate_grants_revoked", ":duplicate_grant"]:
     if marker_text not in reconcile_body:
         raise SystemExit("explicit reconcile lost deterministic duplicate-grant cleanup: " + marker_text)
+for marker_text in [
+    "$preflight_plan = self::reconciliation_plan();",
+    "'unreviewed_stale_allow_grants_count'",
+    "self::fail_closed_persisted_authority( 'unreviewed_stale_write_authority' )",
+]:
+    if marker_text not in reconcile_body:
+        raise SystemExit("unknown stale authority pre-mutation guard missing: " + marker_text)
+preflight_pos = reconcile_body.index("$preflight_plan = self::reconciliation_plan();")
+for mutation_marker in [
+    "MAD4B_SCP_Agent_Registry::create_agent",
+    "MAD4B_SCP_Agent_Registry::update_agent",
+    "MAD4B_SCP_Agent_Registry::bind_subject",
+    "MAD4B_SCP_Agent_Registry::set_subject_status",
+    "MAD4B_SCP_Agent_Registry::grant_ability",
+    "MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id",
+]:
+    if mutation_marker in reconcile_body and preflight_pos > reconcile_body.index(mutation_marker):
+        raise SystemExit("unknown stale authority guard runs after authority mutation: " + mutation_marker)
 
 if not write.rstrip().endswith('}'):
     raise SystemExit('write authority file must end at the canonical class closing brace')
@@ -388,6 +468,18 @@ if "'elementor/update-widget-settings'] = 'elementor'" not in retirement_allowli
     raise SystemExit('historical Elementor stale grant is not explicitly retirement-only')
 if "retirable_stale_ability_providers" not in grant_plan:
     raise SystemExit('stale grant plan does not use retirement-only historical allowlist')
+
+for marker in [
+    "'unreviewed_stale_allow_grants_count'",
+    "'unknown_stale_authority_fail_closed' => true",
+    "'stale_allow_unreviewed:'",
+    "'non_current_environment_allow:'",
+    "$reviewed_stale_grants_revoked",
+    "$broad_environment_grants_revoked",
+]:
+    if marker not in write:
+        raise SystemExit('governed write authority does not fail closed on unknown stale authority: ' + marker)
+
 
 for forbidden_grant in [
     "'jetengine/import-configuration'",
@@ -907,6 +999,89 @@ if "candidate_binding_status()" not in effective_body:
     raise SystemExit('authority effective() must fail closed on an exact packaged candidate mismatch')
 if "current_authority_status()" in effective_body:
     raise SystemExit('authority effective() may not recursively rebuild Live Truth/write inventory')
+
+current_execution_body = write.split("public static function current_execution_readiness(", 1)[1].split("public static function persisted_status()", 1)[0]
+for marker in [
+    "self::reconciliation_plan()",
+    "'current_grant_snapshot_ready'",
+    "'runtime_authority_candidate_not_reconciled'",
+    "self::CANDIDATE_BOOTSTRAP_ABILITY === $ability_name",
+    "self::candidate_bootstrap_allowed( $ability_name, $input )",
+]:
+    if marker not in current_execution_body:
+        raise SystemExit('mutation-bound current execution readiness invariant missing: ' + marker)
+if "MAD4B_SCP_Live_Truth::current_authority_status()" in current_execution_body:
+    raise SystemExit('mutation-bound readiness must consume canonical reconciliation snapshot directly, not recurse through Live Truth')
+
+candidate_bootstrap_body = write.split("public static function candidate_bootstrap_status( $ability_name, $input = null )", 1)[1].split("public static function candidate_bootstrap_allowed", 1)[0]
+for marker in (
+    "$bootstrap_write_plan = self::reconciliation_plan();",
+    "'bootstrap_write_reconciliation_unavailable'",
+    "'unreviewed_stale_allow_grants_count'",
+    "'bootstrap_unreviewed_stale_write_authority'",
+):
+    if marker not in candidate_bootstrap_body:
+        raise SystemExit('candidate bootstrap lost execution-time stale-authority gate: ' + marker)
+execution_gate_pos = candidate_bootstrap_body.index("if ( is_array( $input ) )")
+snapshot_pos = candidate_bootstrap_body.index("$bootstrap_write_plan = self::reconciliation_plan();")
+if snapshot_pos < execution_gate_pos:
+    raise SystemExit('candidate bootstrap deep grant scan leaked into read-only capability projection')
+
+manages_agent_body = write.split("public static function manages_agent( array $agent )", 1)[1].split("public static function effective()", 1)[0]
+for marker in [
+    "self::agent_slug()",
+    "isset( $agent['slug'] )",
+    "hash_equals( $expected, $slug )",
+]:
+    if marker not in manages_agent_body:
+        raise SystemExit('managed ChatGPT write-agent boundary invariant missing: ' + marker)
+
+planning_validate = planning.split("public static function validate_remote_plan_input", 1)[1]
+if "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness" not in planning_validate:
+    raise SystemExit('remote approval planning does not fail closed on current write drift')
+if "array( 'ready' => MAD4B_SCP_Staging_Write_Authority::effective(), 'blockers' => array() )" in planning_validate:
+    raise SystemExit('remote approval planning must never downgrade missing current-readiness support to persisted effective authority')
+for marker in ("'ready' => false", "'write_current_readiness_unavailable'"):
+    if marker not in planning_validate:
+        raise SystemExit('remote approval planning missing fail-closed current-readiness fallback: ' + marker)
+
+authorize_mutation = auth.split("public static function authorize_mutation", 1)[1].split("public static function claim_mutation", 1)[0]
+for marker in [
+    "'mad4b-write' === $server_id",
+    "MAD4B_SCP_Staging_Write_Authority::manages_agent( $agent )",
+    "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness",
+    "'mad4b_write_authority_current_drift'",
+]:
+    if marker not in authorize_mutation:
+        raise SystemExit('central mutation authorization lost current write-drift gate: ' + marker)
+
+authority_status = auth.split("public static function authority_status()", 1)[1].split("public static function audit_remote_permission_denial", 1)[0]
+for marker in (
+    "'status_scope' => 'global_policy_and_peer_governance_only'",
+    "'per_ability_authorization_required' => true",
+    "'current_write_authority_evaluated' => false",
+    "'current_write_authority_evaluation' => 'deferred_to_authorize_mutation'",
+    "'legacy_status_ready_semantics' => 'global_gate_ready_not_execution_authorized'",
+    "'staging_write_authority_projection' => 'checkpoint_diagnostic_not_per_ability_execution_verdict'",
+):
+    if marker not in authority_status:
+        raise SystemExit('global authorization status semantic boundary missing: ' + marker)
+if "current_execution_readiness(" in authority_status:
+    raise SystemExit('global authorization status must not perform deep per-ability current write evaluation')
+
+current_authority_body = live_truth.split("public static function current_authority_status()", 1)[1].split("public static function current_write_certification()", 1)[0]
+for marker in [
+    "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()",
+    "'grant_snapshot_current_ready'",
+    "'grant_snapshot_blockers'",
+    "'unreviewed_stale_allow_grants_count'",
+]:
+    if marker not in current_authority_body:
+        raise SystemExit(f'Live Truth does not consume canonical current grant snapshot: {marker}')
+if "MAD4B_SCP_Agent_Registry::exact_grant(" in current_authority_body:
+    raise SystemExit('Live Truth regressed to a parallel N+1 grant-readiness interpretation')
+if "$grant_snapshot_ready" not in current_authority_body or "'grant_reconciliation_incomplete'" not in current_authority_body:
+    raise SystemExit('Live Truth must fail closed when canonical grant snapshot is not current-ready')
 
 for marker in [
     "runtime_authority_candidate_not_reconciled",

@@ -107,6 +107,8 @@ final class MAD4B_SCP_Production_Unchanged_Attestation {
 				'contract' => array( 'type' => 'string', 'enum' => array( self::CONTRACT ) ),
 				'candidate_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
 				'build_fingerprint' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'package_manifest_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'artifact_identity' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191 ),
 				'target' => array( 'type' => 'string', 'enum' => array( 'production' ) ),
 				'origin' => array( 'type' => 'string', 'minLength' => 8, 'maxLength' => 2048 ),
 				'environment' => array( 'type' => 'string', 'enum' => array( 'production' ) ),
@@ -129,7 +131,7 @@ final class MAD4B_SCP_Production_Unchanged_Attestation {
 				'provenance' => array( 'type' => 'string', 'enum' => array( self::FINALIZER_PROVENANCE ) ),
 				'evidence_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 			),
-			'required' => array( 'contract','candidate_sha','build_fingerprint','target','origin','environment','producer','baseline','observed','issued_at','issuer','provenance','evidence_digest' ),
+			'required' => array( 'contract','candidate_sha','build_fingerprint','package_manifest_digest','artifact_identity','target','origin','environment','producer','baseline','observed','issued_at','issuer','provenance','evidence_digest' ),
 			'additionalProperties' => false,
 		);
 	}
@@ -143,6 +145,8 @@ final class MAD4B_SCP_Production_Unchanged_Attestation {
 		if ( self::CONTRACT !== ( isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '' ) ) $blockers[] = 'production_receipt_v2_required';
 		if ( empty( $candidate['source_commit_sha'] ) || empty( $receipt['candidate_sha'] ) || ! hash_equals( (string) $candidate['source_commit_sha'], (string) $receipt['candidate_sha'] ) ) { $blockers[] = 'candidate_mismatch'; $state = 'candidate_mismatch'; }
 		if ( empty( $candidate['build_fingerprint'] ) || empty( $receipt['build_fingerprint'] ) || ! hash_equals( (string) $candidate['build_fingerprint'], (string) $receipt['build_fingerprint'] ) ) { $blockers[] = 'build_fingerprint_mismatch'; if ( 'candidate_mismatch' !== $state ) $state = 'build_fingerprint_mismatch'; }
+		if ( empty( $candidate['package_manifest_digest'] ) || empty( $receipt['package_manifest_digest'] ) || ! hash_equals( (string) $candidate['package_manifest_digest'], (string) $receipt['package_manifest_digest'] ) ) { $blockers[] = 'package_manifest_digest_mismatch'; if ( ! in_array( $state, array( 'candidate_mismatch', 'build_fingerprint_mismatch' ), true ) ) $state = 'package_manifest_digest_mismatch'; }
+		if ( empty( $candidate['artifact_identity'] ) || empty( $receipt['artifact_identity'] ) || ! hash_equals( (string) $candidate['artifact_identity'], (string) $receipt['artifact_identity'] ) ) { $blockers[] = 'artifact_identity_mismatch'; if ( ! in_array( $state, array( 'candidate_mismatch', 'build_fingerprint_mismatch', 'package_manifest_digest_mismatch' ), true ) ) $state = 'artifact_identity_mismatch'; }
 		$production_origin = self::production_origin();
 		if ( '' === $production_origin || 'production' !== ( isset( $receipt['target'] ) ? (string) $receipt['target'] : '' ) || 'production' !== ( isset( $receipt['environment'] ) ? (string) $receipt['environment'] : '' ) || ! hash_equals( $production_origin, rtrim( isset( $receipt['origin'] ) ? (string) $receipt['origin'] : '', '/' ) ) ) $blockers[] = 'wrong_production_identity';
 		if ( self::FINALIZER_ISSUER !== ( isset( $receipt['issuer'] ) ? (string) $receipt['issuer'] : '' ) || self::FINALIZER_PROVENANCE !== ( isset( $receipt['provenance'] ) ? (string) $receipt['provenance'] : '' ) ) $blockers[] = 'untrusted_receipt_provenance';
@@ -265,9 +269,22 @@ final class MAD4B_SCP_Production_Unchanged_Attestation {
 
 	private static function current_candidate() {
 		$p = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
-		$sha = isset( $p['source_commit_sha'] ) ? strtolower( (string) $p['source_commit_sha'] ) : '';
-		$fingerprint = isset( $p['build_fingerprint'] ) ? strtolower( (string) $p['build_fingerprint'] ) : '';
-		return array( 'ready' => ! empty( $p['runtime_manifest_match'] ) && preg_match( '/^[a-f0-9]{40}$/', $sha ) && self::valid_hash( $fingerprint ), 'source_commit_sha' => $sha, 'build_fingerprint' => $fingerprint );
+		$sha = isset( $p['source_commit_sha'] ) ? strtolower( trim( (string) $p['source_commit_sha'] ) ) : '';
+		$fingerprint = isset( $p['build_fingerprint'] ) ? strtolower( trim( (string) $p['build_fingerprint'] ) ) : '';
+		$manifest = isset( $p['package_manifest_digest'] ) ? strtolower( trim( (string) $p['package_manifest_digest'] ) ) : '';
+		$artifact = isset( $p['artifact_identity'] ) ? trim( (string) $p['artifact_identity'] ) : '';
+		$ready = ! empty( $p['runtime_manifest_match'] )
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/', $sha )
+			&& self::valid_hash( $fingerprint )
+			&& self::valid_hash( $manifest )
+			&& '' !== $artifact && strlen( $artifact ) <= 191;
+		return array(
+			'ready' => $ready,
+			'source_commit_sha' => $ready ? $sha : '',
+			'build_fingerprint' => $ready ? $fingerprint : '',
+			'package_manifest_digest' => $ready ? $manifest : '',
+			'artifact_identity' => $ready ? $artifact : '',
+		);
 	}
 
 	private static function gate( $ready, $state, $fresh, array $blockers, $observed_at = '' ) {

@@ -72,7 +72,7 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/wordpress-addon-execution-guard-contract.php
 
-      - name: WordPress Plugin Check (pinned official distribution gate)
+      - name: WordPress Plugin Check (generic distribution hygiene)
         uses: WordPress/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e
         with:
           repo-token: ''
@@ -83,7 +83,6 @@ jobs:
             localhost
             no_unfiltered_uploads
             plugin_header_fields
-            plugin_updater
           exclude-directories: |
             tests
           include-experimental: 'false'
@@ -91,6 +90,18 @@ jobs:
           ignore-warnings: 'false'
           strict: 'false'
           slug: 'mad4b-site-control-plane'
+
+      # The Control Plane is intentionally distributed outside WordPress.org and
+      # reserves its Update URI. WordPress.org's plugin_updater check therefore
+      # rejects the intended deployment model. Keep generic Plugin Check hygiene
+      # above, and enforce updater safety with the repository's exact governed
+      # release-channel and plugin-scoped auto-update contracts instead.
+      - name: Governed Control Plane updater contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/self-update-auto-update-state-runtime.php
 
       - name: MAD4B-specific pre-Staging audit
         shell: bash

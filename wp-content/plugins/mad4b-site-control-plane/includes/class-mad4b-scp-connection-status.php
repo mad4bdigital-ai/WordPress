@@ -29,11 +29,16 @@ final class MAD4B_SCP_Connection_Status {
 			: array( 'status' => 'unavailable', 'runtime_contract_ok' => false, 'identity_contract_ok' => false );
 		$provider_ok = $lightweight ? ! empty( $provider['identity_contract_ok'] ) : ! empty( $provider['runtime_contract_ok'] );
 		$servers = self::server_status( $lightweight );
-		$expected_count = class_exists( 'MAD4B_SCP_Servers' ) ? count( MAD4B_SCP_Servers::expected_server_ids() ) : 7;
+		$fallback_server_ids = array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
+		$expected_count = class_exists( 'MAD4B_SCP_Servers' ) ? count( MAD4B_SCP_Servers::expected_server_ids() ) : count( $fallback_server_ids );
 		$server_ok = count( $servers ) === $expected_count;
 		foreach ( $servers as $server ) {
+			if ( $lightweight ) {
+				if ( empty( $server['registration_identity_ready'] ) ) { $server_ok = false; break; }
+				continue;
+			}
 			if ( empty( $server['registered'] ) ) { $server_ok = false; break; }
-			if ( ! $protocol_hotpath && empty( $server['deep_route_validation_deferred'] ) && ( empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) ) { $server_ok = false; break; }
+			if ( empty( $server['deep_route_validation_deferred'] ) && ( empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) ) { $server_ok = false; break; }
 		}
 		$peer = $lightweight
 			? array(
@@ -75,13 +80,18 @@ final class MAD4B_SCP_Connection_Status {
 		$remote_preflight_blockers = array_values( array_unique( array_map( 'sanitize_key', $remote_preflight_blockers ) ) );
 
 		$certification_blockers = $remote_preflight_blockers;
-		if ( $admin_shallow ) $certification_blockers[] = 'deep_connection_diagnostics_deferred';
-		if ( empty( $handshake['verified'] ) ) {
+		$certification_deferred_checks = array();
+		$persisted_external_evidence = $admin_shallow && ! empty( $handshake['evidence_present'] );
+		if ( $admin_shallow ) {
+			$certification_deferred_checks = array( 'deep_connection_diagnostics', 'live_handshake_revalidation', 'current_catalog_revalidation' );
+			if ( ! $persisted_external_evidence ) $certification_blockers[] = 'external_handshake_unverified';
+		} elseif ( empty( $handshake['verified'] ) ) {
 			$handshake_status = isset( $handshake['status'] ) ? sanitize_key( (string) $handshake['status'] ) : 'unverified';
-			$certification_blockers[] = in_array( $handshake_status, array( 'stale_build_evidence', 'stale_tool_inventory_evidence', 'stale_time_evidence' ), true ) ? 'external_handshake_stale' : 'external_handshake_unverified';
+			$certification_blockers[] = in_array( $handshake_status, array( 'stale_package_identity_evidence', 'stale_runtime_surface_evidence', 'stale_build_evidence', 'stale_tool_inventory_evidence', 'stale_write_transport_evidence', 'stale_time_evidence' ), true ) ? 'external_handshake_stale' : 'external_handshake_unverified';
 		}
 		$certification_blockers = array_values( array_unique( array_map( 'sanitize_key', $certification_blockers ) ) );
-		$connection_certified = empty( $certification_blockers );
+		$connection_certified = ! $admin_shallow && empty( $certification_blockers );
+		$certification_state = $connection_certified ? 'certified' : ( $admin_shallow ? ( $persisted_external_evidence ? 'persisted_external_evidence_deep_revalidation_deferred' : 'deep_validation_deferred' ) : 'not_certified' );
 		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
 		$portable_readonly_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
 		$environment_key = sanitize_key( (string) $environment );
@@ -109,11 +119,17 @@ final class MAD4B_SCP_Connection_Status {
 			'mcp_adapter_certified' => (bool) $provider_ok,
 			'mcp_registration_lifecycle' => $mcp_registration_lifecycle,
 			'local_transport_ready' => empty( $local_blockers ),
+			'local_transport_validation_state' => empty( $local_blockers ) ? ( $lightweight ? 'identity_ready_deep_validation_deferred' : 'ready' ) : 'blocked',
+			'local_transport_deep_validation_ready' => ! $lightweight && empty( $local_blockers ),
 			'local_blockers' => $local_blockers,
 			'remote_endpoint_preflight_ready' => empty( $remote_preflight_blockers ),
+			'remote_endpoint_preflight_state' => empty( $remote_preflight_blockers ) ? ( $lightweight ? 'identity_ready_deep_validation_deferred' : 'ready' ) : 'blocked',
+			'remote_endpoint_deep_preflight_ready' => ! $lightweight && empty( $remote_preflight_blockers ),
 			'remote_preflight_blockers' => $remote_preflight_blockers,
 			'connection_certified' => $connection_certified,
+			'connection_certification_state' => $certification_state,
 			'certification_blockers' => $certification_blockers,
+			'certification_deferred_checks' => $certification_deferred_checks,
 			'servers' => $servers,
 			'transport_deep_validation_deferred' => $lightweight || self::route_validation_deferred( $servers ),
 			'explicit_deep_validation' => (bool) $force_deep,
@@ -244,10 +260,16 @@ final class MAD4B_SCP_Connection_Status {
 	private static function bounded_handshake_status( $handshake, array $remote_preflight_blockers ) {
 		if ( ! is_array( $handshake ) ) $handshake = array();
 		$verified = ! empty( $handshake['verified'] );
+		$evidence_present = ! empty( $handshake['evidence_present'] ) || $verified;
+		$handshake_state = isset( $handshake['status'] ) ? sanitize_key( (string) $handshake['status'] ) : ( isset( $handshake['state'] ) ? sanitize_key( (string) $handshake['state'] ) : '' );
 		return array(
 			'contract' => isset( $handshake['contract'] ) ? sanitize_text_field( (string) $handshake['contract'] ) : '',
 			'verified' => $verified,
-			'status' => isset( $handshake['status'] ) ? sanitize_key( (string) $handshake['status'] ) : ( $verified ? 'verified_external_chatgpt_session' : ( empty( $remote_preflight_blockers ) ? 'requires_real_remote_mcp_session' : 'local_remote_preflight_incomplete' ) ),
+			'evidence_present' => $evidence_present,
+			'status' => '' !== $handshake_state ? $handshake_state : ( $verified ? 'verified_external_chatgpt_session' : ( empty( $remote_preflight_blockers ) ? 'requires_real_remote_mcp_session' : 'local_remote_preflight_incomplete' ) ),
+			'live_verification_deferred' => ! empty( $handshake['live_verification_deferred'] ),
+			'current_build_hash_deferred' => ! empty( $handshake['current_build_hash_deferred'] ),
+			'current_catalog_rebuild_deferred' => ! empty( $handshake['current_catalog_rebuild_deferred'] ),
 			'environment' => isset( $handshake['environment'] ) ? sanitize_key( (string) $handshake['environment'] ) : '',
 			'server_id' => isset( $handshake['server_id'] ) ? sanitize_key( (string) $handshake['server_id'] ) : '',
 			'client_id' => isset( $handshake['client_id'] ) ? esc_url_raw( (string) $handshake['client_id'] ) : '',
@@ -268,21 +290,27 @@ final class MAD4B_SCP_Connection_Status {
 			'verified_at' => isset( $handshake['verified_at'] ) ? sanitize_text_field( (string) $handshake['verified_at'] ) : '',
 			'build_fingerprint_match' => ! empty( $handshake['build_fingerprint_match'] ),
 			'credential_material_stored' => false,
-			'note' => $verified ? 'Verified from a real enrolled-site REST OAuth bearer session that completed MCP initialize and tools/list on the same hashed session identity. No bearer or raw MCP session id is persisted.' : 'Local readiness never self-certifies the external connection; a real ChatGPT OAuth/MCP session must complete initialize and tools/list.',
+			'note' => $verified ? 'Verified from a real enrolled-site REST OAuth bearer session that completed MCP initialize and tools/list on the same hashed session identity. No bearer or raw MCP session id is persisted.' : ( $evidence_present ? 'A prior external ChatGPT session is persisted, but current deep build/catalog revalidation is deliberately deferred on this lightweight admin surface.' : 'Local readiness never self-certifies the external connection; a real ChatGPT OAuth/MCP session must complete initialize and tools/list.' ),
 		);
 	}
 
-	private static function server_status( $protocol_hotpath = false ) {
+	private static function server_status( $lightweight = false ) {
 		$ids = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::expected_server_ids() : array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
 		$registration = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
-		if ( $protocol_hotpath ) {
+		if ( $lightweight ) {
 			$out = array();
 			foreach ( $ids as $id ) {
 				$row = isset( $registration[ $id ] ) && is_array( $registration[ $id ] ) ? $registration[ $id ] : array();
+				$identity = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) && method_exists( 'MAD4B_SCP_MCP_Registration_Bridge', 'server_registration_identity_status' )
+					? MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( $id )
+					: array( 'actual_registered' => ! empty( $row['registered'] ), 'identity_ready' => ! empty( $row['registered'] ), 'state' => ! empty( $row['registered'] ) ? 'registered' : 'not_ready', 'deep_registration_deferred' => false, 'blocking_registration_error' => isset( $row['error'] ) ? sanitize_key( (string) $row['error'] ) : '' );
 				$out[] = array(
 					'server_id' => $id,
-					'registered' => ! empty( $row['registered'] ),
-					'registration_error' => isset( $row['error'] ) ? sanitize_key( (string) $row['error'] ) : '',
+					'registered' => ! empty( $identity['actual_registered'] ),
+					'registration_identity_ready' => ! empty( $identity['identity_ready'] ),
+					'registration_state' => isset( $identity['state'] ) ? sanitize_key( (string) $identity['state'] ) : 'not_ready',
+					'registration_error' => isset( $identity['blocking_registration_error'] ) ? sanitize_key( (string) $identity['blocking_registration_error'] ) : '',
+					'deep_registration_deferred' => ! empty( $identity['deep_registration_deferred'] ),
 					'materialized' => ! empty( $row['materialized'] ),
 					'tool_count' => isset( $row['tool_count'] ) ? max( 0, (int) $row['tool_count'] ) : 0,
 					'route_registered' => null,
@@ -340,6 +368,8 @@ final class MAD4B_SCP_Connection_Status {
 			$out[] = array(
 				'server_id' => $id,
 				'registered' => ! empty( $registration[ $id ]['registered'] ),
+				'registration_identity_ready' => ! empty( $registration[ $id ]['registered'] ),
+				'registration_state' => ! empty( $registration[ $id ]['registered'] ) ? 'registered' : 'registration_error',
 				'materialized' => is_object( $server ),
 				'registration_error' => isset( $registration[ $id ]['error'] ) ? sanitize_key( (string) $registration[ $id ]['error'] ) : '',
 				'route_namespace' => $namespace,

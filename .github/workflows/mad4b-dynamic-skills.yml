@@ -220,9 +220,24 @@ jobs:
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-dynamic-skills-staging
+          CONTROL_PLANE_SRC=/tmp/mad4b-dynamic-skills-staging-control-plane-src
+          CONTROL_PLANE_ZIP=/tmp/mad4b-dynamic-skills-staging-control-plane.zip
+          SOURCE_SHA='${{ github.event.pull_request.head.sha || github.sha }}'
+          VERSION="$(awk -F= '$1=="release"{print $2; exit}' wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt | tr -d '\r')"
+          test -n "$VERSION"
+          ADAPTER_SHA="$(sha256sum wp-content/plugins/mcp-adapter.zip | awk '{print $1}')"
+          rm -rf "$CONTROL_PLANE_SRC" "$CONTROL_PLANE_ZIP"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$CONTROL_PLANE_SRC"
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py" \
+            --root "$CONTROL_PLANE_SRC" \
+            --output-zip "$CONTROL_PLANE_ZIP" \
+            --version "$VERSION" \
+            --source-sha "$SOURCE_SHA" \
+            --adapter-version "0.6.1" \
+            --adapter-sha "$ADAPTER_SHA"
           python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "wp-content/plugins/mcp-adapter.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
           rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
-          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "$CONTROL_PLANE_ZIP" --plugins-dir "$WP_PATH/wp-content/plugins" --slug mad4b-site-control-plane
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
           php /tmp/wp-cli.phar eval '
@@ -399,9 +414,24 @@ jobs:
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-dynamic-skills-production
+          CONTROL_PLANE_SRC=/tmp/mad4b-dynamic-skills-production-control-plane-src
+          CONTROL_PLANE_ZIP=/tmp/mad4b-dynamic-skills-production-control-plane.zip
+          SOURCE_SHA='${{ github.event.pull_request.head.sha || github.sha }}'
+          VERSION="$(awk -F= '$1=="release"{print $2; exit}' wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt | tr -d '\r')"
+          test -n "$VERSION"
+          ADAPTER_SHA="$(sha256sum wp-content/plugins/mcp-adapter.zip | awk '{print $1}')"
+          rm -rf "$CONTROL_PLANE_SRC" "$CONTROL_PLANE_ZIP"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$CONTROL_PLANE_SRC"
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py" \
+            --root "$CONTROL_PLANE_SRC" \
+            --output-zip "$CONTROL_PLANE_ZIP" \
+            --version "$VERSION" \
+            --source-sha "$SOURCE_SHA" \
+            --adapter-version "0.6.1" \
+            --adapter-sha "$ADAPTER_SHA"
           python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "wp-content/plugins/mcp-adapter.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
           rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
-          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "$CONTROL_PLANE_ZIP" --plugins-dir "$WP_PATH/wp-content/plugins" --slug mad4b-site-control-plane
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
       - name: Prove unconfigured Production receives no Skill/App/write authority

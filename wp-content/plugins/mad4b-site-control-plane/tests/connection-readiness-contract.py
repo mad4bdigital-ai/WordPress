@@ -46,6 +46,7 @@ for marker in (
     'deep_route_validation_deferred', 'route_validation_deferred',
     "'local_transport_ready'", "'remote_endpoint_preflight_ready'", '$connection_certified',
     "'external_handshake_unverified'", "'external_handshake_stale'",
+    "'stale_package_identity_evidence'", "'stale_runtime_surface_evidence'", "'stale_write_transport_evidence'",
     "'credential_material_exposed' => false", "'credential_creation_supported_here' => false",
     "'remote_subject_bridge_required' => true", "'write_surface'",
     "'exact_transport_grant_required' => true", "'generic_dispatcher_exposed' => false",
@@ -136,7 +137,7 @@ require(observer, "relative_wordpress_path", 'first-rest-trace-relative-paths')
 
 if status.index('$oauth_blockers = self::oauth_preflight_blockers') > status.index('$remote_preflight_blockers = array_merge'):
     raise SystemExit('FAIL oauth-before-remote-preflight: OAuth blockers must be resolved before remote readiness is claimed')
-if status.index('$remote_preflight_blockers = array_merge') > status.index('$connection_certified = empty( $certification_blockers )'):
+if status.index('$remote_preflight_blockers = array_merge') > status.index('$connection_certified = ! $admin_shallow && empty( $certification_blockers )'):
     raise SystemExit('FAIL preflight-before-certification: remote blockers must be assembled before final certification')
 
 for marker in (
@@ -147,7 +148,7 @@ for marker in (
     "defined( 'DOING_CRON' ) && DOING_CRON", 'verified_bearer_active()',
     "'initialize'", "'tools/list'", "hash( 'sha256', $session_id )",
     "update_option( self::OPTION, $evidence, false )", "'credential_material_stored' => false",
-    "'stale_build_evidence'", "'stale_tool_inventory_evidence'", "'stale_time_evidence'", 'build_fingerprint()',
+    "'stale_package_identity_evidence'", "'stale_runtime_surface_evidence'", "'stale_tool_inventory_evidence'", "'stale_time_evidence'", 'build_fingerprint()',
     "'tool_inventory_fingerprint'", "'expected_tool_inventory_fingerprint'", "'tool_inventory_match'",
     "'write_catalog_fingerprint'", "'write_inventory_fingerprint_match'",
     "'write_transport_ready'", "'write_transport_tool_count'", "'direct_write_schema_leaks'",
@@ -616,7 +617,8 @@ for marker in (
     "$lightweight = $protocol_hotpath || $admin_shallow",
     "'mcp_peer_inventory_deferred_admin_hotpath'",
     "'state' => $protocol_hotpath ? 'deferred_protocol_hotpath' : 'deferred_admin_hotpath'",
-    "'deep_connection_diagnostics_deferred'",
+    "'certification_deferred_checks'",
+    "'deep_connection_diagnostics'",
     "'status_mode' => $force_deep ? 'deep_explicit'",
     "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()",
     "'deep_status_deferred' =>",
@@ -636,6 +638,18 @@ require(ui, 'form method="post"', 'connection-ui-deep-post-form')
 require(ui, "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()", 'connection-ui-oauth-identity-projection')
 require(ui, "'endpoints' === $tab", 'connection-ui-deep-tab-gate')
 require(ui, "MAD4B_SCP_Local_OAuth_Server::status()", 'connection-ui-explicit-deep-oauth-remains')
+require(status, "MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( $id )", 'connection-shallow-central-registration-identity')
+require(status, "'registration_identity_ready'", 'connection-shallow-registration-identity-ready')
+require(status, "'identity_ready_deep_validation_deferred'", 'connection-shallow-transport-tristate')
+require(status, "'remote_endpoint_preflight_state'", 'connection-shallow-remote-preflight-tristate')
+require(status, "'remote_endpoint_deep_preflight_ready'", 'connection-deep-remote-preflight-fact')
+require(ui, "Remote endpoint preflight state", 'connection-ui-remote-preflight-state')
+require(status, "'persisted_external_evidence_deep_revalidation_deferred'", 'connection-shallow-certification-tristate')
+require(status, "'evidence_present' => $evidence_present", 'connection-shallow-persisted-evidence')
+require(status, "count( $fallback_server_ids )", 'connection-fallback-server-count-no-drift')
+require(ui, "Identity ready · deep validation deferred", 'connection-ui-transport-deferred-state')
+require(ui, "Deep revalidation deferred", 'connection-ui-certification-deferred-state')
+require(ui, "Deep connection validation result", 'connection-ui-deep-result')
 
 # Protocol connection status consumes persisted handshake evidence only. Live
 # build/tool revalidation remains available through explicit deep diagnostics.

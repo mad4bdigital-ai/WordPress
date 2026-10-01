@@ -258,9 +258,25 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 
 	public static function validate_remote_plan_input( $input ) {
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_remote_plan_input_invalid', 'Remote approval planning requires an object input.' );
-		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) return new WP_Error( 'mad4b_remote_plan_authority_not_ready', 'Governed write authority is not ready.' );
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) return new WP_Error( 'mad4b_remote_plan_authority_not_ready', 'Governed write authority is not ready.' );
 
 		$server_id = isset( $input['server_id'] ) ? sanitize_key( (string) $input['server_id'] ) : '';
+		if ( 'mad4b-developer' !== $server_id ) {
+			$readiness = method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
+				? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness( self::ABILITY, $input )
+				: array(
+					'ready' => false,
+					'blockers' => array( 'write_current_readiness_unavailable' ),
+				);
+			if ( empty( $readiness['ready'] ) ) {
+				return new WP_Error(
+					'mad4b_remote_plan_authority_not_ready',
+					'Governed write authority is not current-ready for remote approval planning.',
+					array( 'blockers' => isset( $readiness['blockers'] ) && is_array( $readiness['blockers'] ) ? $readiness['blockers'] : array() )
+				);
+			}
+		}
+
 		$target_ability = isset( $input['ability'] ) ? trim( (string) $input['ability'] ) : '';
 		$requested_agent = isset( $input['agent_public_id'] ) ? strtolower( trim( (string) $input['agent_public_id'] ) ) : '';
 		$operation_input = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();

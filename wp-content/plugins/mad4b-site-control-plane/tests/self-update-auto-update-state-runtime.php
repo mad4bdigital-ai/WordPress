@@ -17,6 +17,8 @@ function plugin_basename( $file ) {
 	unset( $file );
 	return 'mad4b-site-control-plane/mad4b-site-control-plane.php';
 }
+function wp_normalize_path( $path ) { return str_replace( '\\', '/', (string) $path ); }
+function trailingslashit( $path ) { return rtrim( (string) $path, '/\\' ) . '/'; }
 function wp_is_auto_update_enabled_for_type( $type ) {
 	return 'plugin' === $type && (bool) $GLOBALS['mad4b_auto_global'];
 }

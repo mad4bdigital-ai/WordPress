@@ -16,13 +16,131 @@ projection = read("includes/class-mad4b-scp-truth-projection.php")
 live_truth = read("includes/class-mad4b-scp-live-truth.php")
 rest = read("includes/class-mad4b-scp-rest-compatibility.php")
 observer = read("includes/class-mad4b-scp-live-acceptance-observer.php")
+external_handshake = read("includes/class-mad4b-scp-external-handshake-evidence.php")
 finalizer = read("includes/class-mad4b-scp-live-acceptance-finalizer.php")
 read_consistency = read("includes/class-mad4b-scp-read-consistency.php")
 skills = read("includes/class-mad4b-scp-skill-runtime-certification.php")
+write_runtime = read("includes/class-mad4b-scp-write-runtime-certification.php")
 policy = read("includes/class-mad4b-scp-provider-diagnostic-policy.php")
 qm_bridge = read("includes/class-mad4b-scp-query-monitor-evidence-bridge.php")
 family = read("includes/adapters/class-mad4b-scp-repository-family-adapter.php")
 catalog = json.loads(read("config/repository-plugin-artifacts.json"))
+
+# 0. Registration readiness is reduced by the canonical Truth Projection.
+registration_bridge = read("includes/class-mad4b-scp-mcp-registration-bridge.php")
+for marker in (
+    "public static function mcp_registration_identity( array $fact )",
+    "'deferred_identity_ready'",
+    "'registration_error'",
+    "'blocking_registration_error'",
+    "'deep_registration_deferred'",
+):
+    require(projection, marker, "canonical MCP registration truth projection")
+registration_fact = registration_bridge.split("public static function server_registration_identity_status( $server_id )", 1)[1].split("public static function status()", 1)[0]
+require(registration_fact, "MAD4B_SCP_Truth_Projection::mcp_registration_identity( $fact )", "registration source delegates projection")
+for forbidden in ("$identity_ready =", "$blocking_error =", "'deferred_identity_ready'"):
+    if forbidden in registration_fact:
+        raise SystemExit("registration source class re-derived projected readiness instead of delegating Truth Projection")
+
+# 0b. Candidate-bound persisted truth is reduced canonically.
+for marker in (
+    "public static function candidate_identity_bound_ready( array $persisted, array $current",
+    "public static function candidate_binding_bound_ready( array $persisted, array $binding",
+    "array_key_exists( 'historical_ready', $persisted )",
+    "'current_candidate_match'",
+    "'effective_ready'",
+    "'recorded_package_manifest_digest'",
+    "'recorded_artifact_identity'",
+    "'current_package_manifest_digest'",
+    "'current_artifact_identity'",
+):
+    require(projection, marker, "canonical candidate-bound truth projection")
+read_consistency = read("includes/class-mad4b-scp-read-consistency.php")
+skills_projection = read_consistency.split("private static function skills_projection()", 1)[1].split("private static function deep_skills_projection()", 1)[0]
+write_projection = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function deep_write_authority_projection()", 1)[0]
+require(skills_projection, "MAD4B_SCP_Truth_Projection::candidate_identity_bound_ready", "skills projection delegates candidate truth")
+if "if ( empty( $projection ) ) return $result;" in skills_projection:
+    raise SystemExit("Skills projection may not fail open to persisted certification when Truth Projection is unavailable")
+for marker in (
+    "$result['recorded_ready'] = array_key_exists( 'historical_ready', $result )",
+    "$result['effective_skill_ready'] = false;",
+    "$result['candidate_identity_bound_ready'] = false;",
+    "$result['ready'] = null;",
+    "$result['state'] = 'truth_projection_unavailable';",
+    "'truth_projection_unavailable'",
+):
+    require(skills_projection, marker, "Skills projection fail-closed fallback")
+require(skills_projection, "'historical_ready'", "skills projection preserves persisted historical result")
+require(skills_projection, "'build_identity_current'", "skills projection exposes persisted build freshness")
+require(skills_projection, "'stale_reasons'", "skills projection exposes persisted freshness reasons")
+for marker in (
+    "$result['effective_skill_ready_scope'] = 'candidate_identity_bound_checkpoint_only';",
+    "$result['candidate_identity_bound_ready'] = ! empty( $projection['effective_ready'] );",
+    "$result['live_skill_ready'] = null;",
+    "$result['ready'] = null;",
+    "$result['live_skill_evaluation_deferred'] = true;",
+):
+    if marker not in skills_projection:
+        raise SystemExit("session-safe Skills projection must distinguish candidate-bound checkpoint evidence from live readiness: " + marker)
+if "$result['ready'] = ! empty( $projection['effective_ready'] )" in skills_projection:
+    raise SystemExit("session-safe Skills projection must not promote candidate-bound persisted evidence to live ready")
+skill_freshness = skills.split("private static function project_persisted_freshness( array $stored )", 1)[1].split("private static function evaluate()", 1)[0]
+require(skill_freshness, "$stored['historical_ready']", "persisted Skill freshness preserves historical ready")
+require(skill_freshness, "array_key_exists( 'historical_ready', $stored )", "persisted Skill historical ready is idempotent")
+require(write_projection, "MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready", "write projection delegates candidate truth")
+if "if ( empty( $projection ) ) return $result;" in write_projection:
+    raise SystemExit("write projection may not fail open to persisted authority when Truth Projection is unavailable")
+for marker in (
+    "$result['persisted_authority_ready'] = ! empty( $result['ready'] );",
+    "$result['effective_authority_ready'] = false;",
+    "$result['ready'] = false;",
+    "$result['state'] = 'truth_projection_unavailable';",
+    "'truth_projection_unavailable'",
+):
+    require(write_projection, marker, "write projection fail-closed fallback")
+for forbidden in ("hash_equals( $recorded_sha", "$effective_ready = $recorded_ready && $candidate_match"):
+    if forbidden in skills_projection:
+        raise SystemExit("Read Consistency re-derived Skills candidate readiness")
+for forbidden in ("$effective_ready = $persisted_ready &&", "$binding_match = ! empty"):
+    if forbidden in write_projection:
+        raise SystemExit("Read Consistency re-derived write candidate readiness")
+
+# 0bb. Governed Write current readiness is live grant-snapshot truth, not the persisted checkpoint.
+for marker in (
+    "public static function governed_write_grant_snapshot( array $fact )",
+    "'persisted_write_authority_not_ready'",
+    "'unreviewed_stale_write_authority'",
+    "'current_ready' => empty( $blockers )",
+):
+    require(projection, marker, "canonical governed-write grant snapshot truth")
+write_authority_source = read("includes/class-mad4b-scp-staging-write-authority.php")
+write_plan = write_authority_source.split("public static function reconciliation_plan()", 1)[1].split("public static function reconcile()", 1)[0]
+require(write_plan, "MAD4B_SCP_Truth_Projection::governed_write_grant_snapshot", "write reconciliation delegates current readiness")
+if "'current_ready' => $persisted_ready" in write_plan:
+    raise SystemExit("write reconciliation still aliases current_ready to persisted_ready")
+require(write_plan, "'current_readiness_blockers'", "write reconciliation exposes current readiness blockers")
+deep_write_projection = read_consistency.split("private static function deep_write_authority_projection()", 1)[1].split("private static function skills_projection()", 1)[0]
+require(deep_write_projection, "'live_truth_unavailable'", "deep Write projection fail-closed fallback")
+if "MAD4B_SCP_Staging_Write_Authority::status()" in deep_write_projection:
+    raise SystemExit("deep Write projection may not downgrade to persisted authority when Live Truth is unavailable")
+
+# 0c. Session-safe identity truth remains strict and deferred readiness stays tri-state.
+for marker in (
+    "public static function session_connection_identity( array $fact )",
+    "public static function session_reconnect_identity( array $fact )",
+    "'chatgpt_actual_registered'",
+    "'mcp_chatgpt_not_registered'",
+):
+    require(projection, marker, "canonical session-safe identity truth")
+read_consistency = read("includes/class-mad4b-scp-read-consistency.php")
+session_connection = read_consistency.split("private static function session_safe_connection_projection()", 1)[1].split("private static function session_safe_reconnect_projection()", 1)[0]
+session_reconnect = read_consistency.split("private static function session_safe_reconnect_projection()", 1)[1].split("private static function connection_projection()", 1)[0]
+require(session_connection, "MAD4B_SCP_Truth_Projection::session_connection_identity( $fact )", "session connection delegates truth")
+require(session_reconnect, "MAD4B_SCP_Truth_Projection::session_reconnect_identity( $fact )", "session reconnect delegates truth")
+if "'ready' => null" not in read_consistency:
+    raise SystemExit("deferred diagnostic checks must preserve unknown readiness as null")
+if "MAD4B_SCP_Truth_Projection::tri_state( $summary, 'ready' )" not in read_consistency:
+    raise SystemExit("compact diagnostics must preserve tri-state readiness without boolean coercion")
 
 # 1. One canonical owner for external WPML truth.
 require(bootstrap, "class-mad4b-scp-truth-projection.php", "truth projection loader")
@@ -60,6 +178,17 @@ observer_write = observer.split("public static function write_runtime_certificat
 require(observer_write, "MAD4B_SCP_Truth_Projection::external_wpml( true )", "observer Write Runtime canonical projection")
 require(observer, "MAD4B_SCP_WPML_Response_Contract::receipt_status()", "observer normalized WPML source")
 
+# 1b. Lightweight and full provenance share the same artifact/source identity validator.
+for marker in (
+    "private static function artifact_identity_matches_source( $artifact_identity, $source_commit_sha )",
+    "artifact_identity_invalid",
+):
+    require(observer, marker, "shared artifact identity validation")
+identity_provenance = observer.split("public static function build_provenance_identity_status()", 1)[1].split("public static function build_provenance_status()", 1)[0]
+full_provenance = observer.split("public static function build_provenance_status()", 1)[1].split("private static function provenance_manifest()", 1)[0]
+require(identity_provenance, "self::artifact_identity_matches_source", "lightweight provenance artifact validation")
+require(full_provenance, "self::artifact_identity_matches_source", "full provenance artifact validation")
+
 # 2. Passive tri-state is never collapsed with !empty().
 rest_status = rest.split("public static function status()", 1)[1]
 require(rest_status, "MAD4B_SCP_Truth_Projection::tri_state( $wpml, 'query_parameters_preserved' )", "passive tri-state preservation")
@@ -72,13 +201,46 @@ for marker in (
     ": array_key_exists( 'fresh', $gate )",
 ):
     require(projection, marker, "truth gate contract")
+require(projection, "&& empty( $blockers )", "truth gate blocker consistency")
+if "empty( $gate['blockers'] )" not in finalizer:
+    raise SystemExit("live acceptance finalizer fallback may not ignore blockers")
+if "empty( $gate['blockers'] )" not in observer:
+    raise SystemExit("live acceptance observer fallback may not ignore blockers")
 aggregate = finalizer.split("public static function aggregate_ready", 1)[1].split("public static function production_receipt_status", 1)[0]
 require(aggregate, "MAD4B_SCP_Truth_Projection::gate_effective_ready", "freshness-aware aggregate reducer")
 observer_reducer = observer.split("$all_ready = true;", 1)[1].split("return array( 'contract' => self::AGGREGATE_CONTRACT", 1)[0]
 require(observer_reducer, "MAD4B_SCP_Truth_Projection::gate_effective_ready", "observer effective reducer")
 provider_gate = observer.split("'provider_projection' => self::gate(", 1)[1].split("'write_authority' =>", 1)[0]
-require(provider_gate, "empty( $provider_execution_leaks ) && ! empty( $external['build_fingerprint_match'] )", "provider effective projection")
+require(provider_gate, "empty( $provider_execution_leaks ) && ! empty( $external['package_identity_match'] )", "provider effective projection")
 require(provider_gate, "external_projection_not_current", "provider stale blocker")
+if "$external['build_fingerprint_match']" in provider_gate:
+    raise SystemExit("provider freshness must use exact package identity, not a single build fingerprint")
+
+external_gates = observer.split("'external_handshake' => self::gate(", 1)[1].split("'mutation_acceptance' =>", 1)[0]
+require(external_gates, "$external['package_identity_match']", "external acceptance exact package freshness")
+if "$external['build_fingerprint_match']" in external_gates:
+    raise SystemExit("external acceptance gates must not use fingerprint-only freshness")
+
+for marker in (
+    "private static function package_identity()",
+    "'source_commit_sha'",
+    "'package_build_fingerprint'",
+    "'package_manifest_digest'",
+    "'artifact_identity'",
+    "'package_identity_match'",
+    "'stale_package_identity_evidence'",
+):
+    require(external_handshake, marker, "external handshake exact-package binding")
+for marker in (
+    "private static function package_identity_matches",
+    "'package_identity_match'",
+    "'current_source_commit_sha'",
+    "'current_package_manifest_digest'",
+    "'current_artifact_identity'",
+):
+    require(observer, marker, "live observer exact-package binding")
+if "self::package_identity_matches( $handshake_package, $observer_package )" not in external_handshake:
+    raise SystemExit("finalizer evidence join must bind handshake and observer to the same exact package")
 
 # 4. Session-safe execution success is distinct from effective subject truth.
 for marker in (
@@ -92,17 +254,59 @@ for marker in (
     "'current_candidate_match'",
     "'effective_skill_ready'",
     "'subject_blockers'",
-    "'valid_for_merge' => $valid_for_merge",
+    "'subject_live_validation_deferred' => array( 'skills_runtime' )",
+    "'valid_for_merge' => $valid_for_session_evidence_merge",
+    "'valid_for_session_evidence_merge' => $valid_for_session_evidence_merge",
+    "'valid_for_release_merge' => false",
+    "'merge_scope' => 'session_safe_subject_evidence_only'",
+    "'deep_acceptance_required' => true",
+    "'release_acceptance_deferred_checks' => $deep_checks_deferred",
     "'subject_not_ready'",
 ):
     require(read_consistency, marker, "session-safe effective-state semantics")
 authority_projection = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function skills_projection()", 1)[0]
-require(authority_projection, "$effective_ready = $persisted_ready && ( ! $binding_required || $binding_match )", "effective authority formula")
+require(authority_projection, "MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready", "effective authority canonical projection")
 skills_projection = read_consistency.split("private static function skills_projection()", 1)[1].split("private static function update_projection()", 1)[0]
-require(skills_projection, "'historical_evidence'", "historical Skills state")
-require(skills_projection, "$effective_ready = $recorded_ready && $candidate_match", "effective Skills formula")
-for marker in ("'source_commit_sha' => $source_commit_sha", "'build_fingerprint' => $build_fingerprint"):
-    require(skills, marker, "persisted Skills exact-build identity")
+require(skills_projection, "MAD4B_SCP_Truth_Projection::candidate_identity_bound_ready", "effective Skills canonical projection")
+require(projection, "$effective_ready = $persisted_ready && ( ! $binding_required || $binding_match )", "effective authority formula owner")
+require(projection, "$effective_ready = $recorded_ready && $candidate_match", "effective Skills formula owner")
+require(projection, "$effective_ready = $effective_ready && empty( $blockers );", "effective readiness blocker consistency")
+require(projection, "'persisted_authority_not_ready'", "blocked persisted authority canonical reason")
+require(projection, "elseif ( ! empty( $blockers ) ) $state = 'blocked';", "candidate identity ready/blocker consistency")
+require(projection, "historical_evidence", "historical Skills state owner")
+for marker in (
+    "'source_commit_sha' => $source_commit_sha",
+    "'build_fingerprint' => $build_fingerprint",
+    "'package_manifest_digest' => $package_manifest_digest",
+    "'artifact_identity' => $artifact_identity",
+    "'build_provenance_identity_ready'",
+    "'build_provenance_identity_unavailable'",
+):
+    require(skills, marker, "persisted Skills exact-package identity")
+for marker in (
+    "'package_manifest_digest', 'artifact_identity'",
+    "'recorded_package_manifest_digest'",
+    "'recorded_artifact_identity'",
+    "'current_package_manifest_digest'",
+    "'current_artifact_identity'",
+):
+    require(read_consistency, marker, "Skills read-consistency four-part candidate identity")
+
+# 4b. Deep Write Live Truth consumes the same canonical grant snapshot as reconciliation.
+current_authority_truth = live_truth.split("public static function current_authority_status()", 1)[1].split("public static function current_write_certification()", 1)[0]
+require(current_authority_truth, "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()", "Live Truth canonical grant snapshot")
+write_runtime_evaluate = write_runtime.split("private static function evaluate()", 1)[1]
+require(write_runtime_evaluate, "MAD4B_SCP_Staging_Write_Authority::current_status()", "Write Runtime fallback uses current authority truth")
+if "MAD4B_SCP_Staging_Write_Authority::status()" in write_runtime_evaluate.split("$checks['exact_enrolled_origin']", 1)[0]:
+    raise SystemExit("Write Runtime live evaluation may not fall back to persisted Write authority status")
+require(write_runtime_evaluate, "'live_write_authority_unavailable'", "Write Runtime fallback fails closed when live authority is unavailable")
+observer_live_status = observer.split("public static function live_acceptance_status( $input = array() )", 1)[1].split("private static function gate(", 1)[0]
+require(observer_live_status, "'live_truth_unavailable'", "Live Acceptance write-authority fail-closed fallback")
+if "MAD4B_SCP_Staging_Write_Authority::status()" in observer_live_status:
+    raise SystemExit("Live Acceptance may not downgrade write-authority truth to persisted checkpoint status")
+require(current_authority_truth, "'grant_snapshot_current_ready'", "Live Truth grant readiness evidence")
+if "MAD4B_SCP_Agent_Registry::exact_grant(" in current_authority_truth:
+    raise SystemExit("Live Truth must not maintain a parallel exact-grant readiness reducer")
 
 # 5. Third-party admin AJAX is zero-touch; owned MAD4B actions use exact registry.
 for marker in (

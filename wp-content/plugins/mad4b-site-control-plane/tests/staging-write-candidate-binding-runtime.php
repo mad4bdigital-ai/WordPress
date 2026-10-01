@@ -102,6 +102,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	const OPTION = 'mad4b_scp_staging_write_authority_v1';
 	const CANDIDATE_BINDING_CONTRACT = 'mad4b.governed-write-authority-candidate-binding.v2';
 	public static $reconcile_calls = 0;
+	public static $unreviewed_stale_count = 0;
 	public static $current_sha = '3b1dd1c339e3dd3edc315cb65f6bcdb6f17ef6c9';
 	public static $current_build = '11acee18169e65a4d9e5437e77be08e31a901a04951d8128127ff95f60539bbd';
 	public static $current_manifest = '2fed7ef3164cc6909a4f40ed28e80994c4c9e4129d040e9928e9dda9fe793f3f';
@@ -159,6 +160,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'exact_grants_existing' => count( self::$rows ),
 			'exact_grants_missing_count' => 0,
 			'stale_allow_grants_count' => 0,
+			'unreviewed_stale_allow_grants_count' => self::$unreviewed_stale_count,
 			'broad_environment_grants_count' => 0,
 			'duplicate_exact_allow_grants_count' => 0,
 			'current_agent_wildcard_grants' => 0,
@@ -288,6 +290,16 @@ $input = array(
 	'expected_grant_rows_fingerprint' => $plan['grant_rows_fingerprint'],
 	'confirmation' => MAD4B_SCP_Staging_Write_Candidate_Binding::CONFIRMATION,
 );
+MAD4B_SCP_Staging_Write_Authority::$unreviewed_stale_count = 1;
+$blocked_plan = MAD4B_SCP_Staging_Write_Candidate_Binding::plan();
+mad4b_bind_assert( empty( $blocked_plan['execution_eligible'] ) && in_array( 'unreviewed_stale_write_authority', $blocked_plan['blockers'], true ), 'candidate-binding plan did not fail closed on unknown stale authority', $blocked_plan );
+$events_before_unknown_stale = count( MAD4B_SCP_Audit::$events );
+$blocked_unknown_stale = MAD4B_SCP_Staging_Write_Candidate_Binding::bind( $input );
+mad4b_bind_assert( is_wp_error( $blocked_unknown_stale ) && 'mad4b_candidate_bind_grant_snapshot_not_clean' === $blocked_unknown_stale->get_error_code(), 'candidate binding accepted unknown stale authority', $blocked_unknown_stale );
+mad4b_bind_assert( $events_before_unknown_stale === count( MAD4B_SCP_Audit::$events ), 'unknown stale candidate binding emitted authorization/completion audit before failing closed' );
+mad4b_bind_assert( ! MAD4B_SCP_Staging_Write_Authority::effective(), 'unknown stale candidate-binding precondition unexpectedly changed authority binding' );
+MAD4B_SCP_Staging_Write_Authority::$unreviewed_stale_count = 0;
+
 $reviewed_previous_binding = array(
 	'source_commit_sha' => str_repeat( '9', 40 ),
 	'build_fingerprint' => str_repeat( '8', 64 ),

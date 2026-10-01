@@ -231,7 +231,12 @@ final class MAD4B_SCP_Full_Staging_Authority {
 	public static function status() {
 		$write_plan = self::write_plan();
 		$developer = class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::status() : array();
-		$write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
+		$write_checkpoint_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
+		$write_grant_snapshot_ready = is_array( $write_plan ) && ! empty( $write_plan['current_ready'] );
+		$write_ready = $write_checkpoint_ready
+			&& $write_grant_snapshot_ready
+			&& is_array( $write_plan )
+			&& ! empty( $write_plan['effective_ready'] );
 		$normal_ready = ! empty( $developer['developer_enabled'] )
 			&& ! empty( $developer['direct_execution_enabled'] )
 			&& empty( $developer['kill_switch_enabled'] )
@@ -239,6 +244,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		$breakglass_ready = $normal_ready
 			&& ! empty( $developer['breakglass_enabled'] )
 			&& ! empty( $developer['breakglass_authority']['ready'] );
+		$developer_execution = self::developer_execution_projection( $developer );
 		return array(
 			'contract' => self::CONTRACT,
 			'read_only' => true,
@@ -249,14 +255,26 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'generic_raw_sql_breakglass_enabled' => self::generic_raw_sql_breakglass_gate_enabled(),
 			'write' => array(
 				'ready' => $write_ready,
+				'checkpoint_ready' => $write_checkpoint_ready,
+				'current_grant_snapshot_ready' => $write_grant_snapshot_ready,
+				'current_readiness_blockers' => is_array( $write_plan ) && isset( $write_plan['current_readiness_blockers'] ) && is_array( $write_plan['current_readiness_blockers'] ) ? $write_plan['current_readiness_blockers'] : array( 'write_reconciliation_plan_unavailable' ),
 				'plan' => is_array( $write_plan ) ? $write_plan : array(),
 			),
 			'developer' => array(
+				// Legacy ready means authority/grants + runtime flags, not host process
+				// operability. Keep it for compatibility and expose execution truth
+				// separately so callers never infer prlimit/sandbox readiness from grants.
 				'ready' => $normal_ready,
+				'authority_ready' => $normal_ready,
+				'ready_semantics' => 'authority_and_runtime_flags_only',
+				'execution' => $developer_execution,
 				'status' => $developer,
 			),
 			'developer_breakglass' => array(
 				'ready' => $breakglass_ready,
+				'authority_ready' => $breakglass_ready,
+				'ready_semantics' => 'authority_and_runtime_flags_only',
+				'execution' => $developer_execution,
 				'status' => $developer,
 			),
 			'ready' => $write_ready && $normal_ready && $breakglass_ready,
@@ -286,6 +304,10 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				$breakglass_ready = $normal_ready
 					&& ! empty( $developer_status['breakglass_enabled'] )
 					&& ! empty( $developer_status['breakglass_authority']['ready'] );
+				$developer_execution = self::developer_execution_projection( $developer_status );
+				$write_checkpoint_ready = ! empty( $write['effective_ready'] );
+				$write_grant_snapshot_ready = ! empty( $write['current_ready'] );
+				$write_ready = $write_checkpoint_ready && $write_grant_snapshot_ready;
 
 				return array(
 					'contract' => 'mad4b.full-staging-authority-handshake.v1',
@@ -298,10 +320,21 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'observed_at' => isset( $after['observed_at'] ) ? (string) $after['observed_at'] : gmdate( 'c' ),
 					'ready_to_apply' => ! empty( $plan['ready_to_apply'] ),
 					'hard_blockers' => self::compact_string_list( isset( $plan['hard_blockers'] ) ? $plan['hard_blockers'] : array(), 16 ),
-					'write_ready' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective(),
-					'write_grants_ready' => ! empty( $write['current_ready'] ),
+					// write_ready is operational/current truth. Preserve the historical
+					// checkpoint and grant snapshot as explicit component fields so clients
+					// never have to infer readiness from two contradictory booleans.
+					'write_ready' => $write_ready,
+					'write_checkpoint_ready' => $write_checkpoint_ready,
+					'write_grants_ready' => $write_grant_snapshot_ready,
+					'write_current_grant_snapshot_ready' => $write_grant_snapshot_ready,
+					'write_reconciliation_required' => ! $write_ready,
+					'write_current_readiness_blockers' => isset( $write['current_readiness_blockers'] ) && is_array( $write['current_readiness_blockers'] ) ? self::compact_string_list( $write['current_readiness_blockers'], 16 ) : array( 'write_reconciliation_plan_unavailable' ),
 					'developer_ready' => $normal_ready,
+					'developer_authority_ready' => $normal_ready,
+					'developer_ready_semantics' => 'authority_and_runtime_flags_only',
 					'developer_breakglass_ready' => $breakglass_ready,
+					'developer_breakglass_authority_ready' => $breakglass_ready,
+					'developer_execution' => $developer_execution,
 					'candidate_binding' => array(
 						'required' => ! empty( $binding['required'] ),
 						'match' => ! empty( $binding['match'] ),
@@ -326,6 +359,27 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				);
 			},
 			8192
+		);
+	}
+
+	private static function developer_execution_projection( array $developer_status ) {
+		$runtime = isset( $developer_status['runtime'] ) && is_array( $developer_status['runtime'] ) ? $developer_status['runtime'] : array();
+		$execution = isset( $runtime['execution_readiness'] ) && is_array( $runtime['execution_readiness'] ) ? $runtime['execution_readiness'] : array();
+		$process_ready = ! empty( $execution['process_backend_ready'] );
+		$normal_no_network_ready = ! empty( $execution['normal_no_network_execution_ready'] );
+		$blockers = array();
+		foreach ( array( 'process_backend_blockers', 'normal_no_network_execution_blockers' ) as $key ) {
+			if ( ! isset( $execution[ $key ] ) || ! is_array( $execution[ $key ] ) ) continue;
+			$blockers = array_merge( $blockers, $execution[ $key ] );
+		}
+		return array(
+			'host_capabilities_observed' => ! empty( $runtime ),
+			'process_backend_ready' => $process_ready,
+			'normal_no_network_execution_ready' => $normal_no_network_ready,
+			'execution_ready' => $process_ready && $normal_no_network_ready,
+			'blockers' => self::compact_string_list( $blockers, 16 ),
+			'authorizing' => false,
+			'mutation_performed' => false,
 		);
 	}
 
@@ -358,6 +412,50 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		$hard_blockers = array();
 		if ( isset( $write_plan['global_registry_wildcard_grants'] ) && (int) $write_plan['global_registry_wildcard_grants'] > 0 ) $hard_blockers[] = 'global_registry_wildcard_grants';
 		if ( isset( $write_plan['current_agent_wildcard_grants'] ) && (int) $write_plan['current_agent_wildcard_grants'] > 0 ) $hard_blockers[] = 'current_agent_wildcard_grants';
+		if ( isset( $write_plan['unreviewed_stale_allow_grants_count'] ) && (int) $write_plan['unreviewed_stale_allow_grants_count'] > 0 ) $hard_blockers[] = 'unreviewed_stale_write_authority';
+		$write_subject_preflight_blockers = isset( $write_plan['subject_preflight_blockers'] ) && is_array( $write_plan['subject_preflight_blockers'] )
+			? array_values( array_unique( array_filter( array_map( 'sanitize_key', $write_plan['subject_preflight_blockers'] ) ) ) )
+			: array( 'write_subject_preflight_unavailable' );
+		if ( ! empty( $write_subject_preflight_blockers ) ) $hard_blockers[] = 'write_subject_preflight_blocked';
+		if ( defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true !== constant( 'MAD4B_MCP_MUTATION_ENABLED' ) ) $hard_blockers[] = 'explicit_mutation_disabled';
+
+		// Some missing grant states are intentionally not auto-reconcilable. The
+		// composite plan must reject them before it enables Site Profile Write or
+		// provisions Developer/Breakglass authority. Otherwise ready_to_apply=true
+		// would describe a mutation sequence that is already known to fail later.
+		$nonreconcilable_write_drift = array();
+		$nonreconcilable_missing_count = 0;
+		$unreviewed_stale_count = isset( $write_plan['unreviewed_stale_allow_grants_count'] ) ? max( 0, (int) $write_plan['unreviewed_stale_allow_grants_count'] ) : 0;
+		$missing_rows = isset( $write_plan['exact_grants_missing'] ) && is_array( $write_plan['exact_grants_missing'] )
+			? $write_plan['exact_grants_missing']
+			: array();
+		foreach ( $missing_rows as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$reason = isset( $row['reason'] ) ? sanitize_key( (string) $row['reason'] ) : '';
+			if ( ! in_array( $reason, array( 'explicit_deny', 'write_provider_unmounted' ), true ) ) continue;
+			$nonreconcilable_missing_count++;
+			$nonreconcilable_write_drift[] = array(
+				'ability' => isset( $row['ability'] ) ? sanitize_text_field( (string) $row['ability'] ) : '',
+				'provider' => isset( $row['provider'] ) ? sanitize_key( (string) $row['provider'] ) : '',
+				'reason' => $reason,
+			);
+			$hard_blockers[] = 'explicit_deny' === $reason ? 'write_explicit_deny' : 'write_provider_unmounted';
+		}
+		if ( $unreviewed_stale_count > 0 ) {
+			$nonreconcilable_write_drift[] = array(
+				'ability' => '',
+				'provider' => '',
+				'reason' => 'unreviewed_stale_write_authority',
+				'count' => $unreviewed_stale_count,
+			);
+		}
+		$exact_missing_total = isset( $write_plan['exact_grants_missing_count'] ) ? max( 0, (int) $write_plan['exact_grants_missing_count'] ) : 0;
+		$stale_allow_total = isset( $write_plan['stale_allow_grants_count'] ) ? max( 0, (int) $write_plan['stale_allow_grants_count'] ) : 0;
+		$reconcilable_missing_count = max( 0, $exact_missing_total - $nonreconcilable_missing_count );
+		// reconciliation_plan() already separates reviewed stale grants from
+		// unreviewed_stale_allow_grants. Do not subtract the unreviewed count a
+		// second time or the compact Full Authority plan under-reports fixable drift.
+		$reviewed_stale_count = $stale_allow_total;
 		if ( ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $hard_blockers[] = 'oauth_disabled';
 		if ( ! MAD4B_SCP_Site_Profile::acceptance_enabled() ) $hard_blockers[] = 'acceptance_disabled';
 		if ( ! MAD4B_SCP_Site_Profile::skills_enabled() ) $hard_blockers[] = 'skills_disabled';
@@ -387,15 +485,21 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'artifact_identity' => $provenance['artifact_identity'],
 			'write_enabled' => (bool) MAD4B_SCP_Site_Profile::write_enabled(),
 			'write_reconciliation' => $write_plan,
+			'write_subject_preflight_blockers' => $write_subject_preflight_blockers,
 			'developer_status' => $developer_status,
 			'developer_plan' => $developer_plan,
 			'developer_breakglass_plan' => $developer_breakglass_plan,
 			'developer_breakglass_hard_blockers' => $breakglass_hard_blockers,
+			'nonreconcilable_write_drift' => $nonreconcilable_write_drift,
+			'nonreconcilable_write_drift_counts' => array(
+				'exact_grants_missing_count' => $nonreconcilable_missing_count,
+				'unreviewed_stale_allow_grants_count' => $unreviewed_stale_count,
+			),
 			'fixable_write_drift' => array(
-				'exact_grants_missing_count' => isset( $write_plan['exact_grants_missing_count'] ) ? (int) $write_plan['exact_grants_missing_count'] : 0,
-				'stale_allow_grants_count' => isset( $write_plan['stale_allow_grants_count'] ) ? (int) $write_plan['stale_allow_grants_count'] : 0,
-				'broad_environment_grants_count' => isset( $write_plan['broad_environment_grants_count'] ) ? (int) $write_plan['broad_environment_grants_count'] : 0,
-				'duplicate_exact_allow_grants_count' => isset( $write_plan['duplicate_exact_allow_grants_count'] ) ? (int) $write_plan['duplicate_exact_allow_grants_count'] : 0,
+				'exact_grants_missing_count' => $reconcilable_missing_count,
+				'stale_allow_grants_count' => $reviewed_stale_count,
+				'broad_environment_grants_count' => isset( $write_plan['broad_environment_grants_count'] ) ? max( 0, (int) $write_plan['broad_environment_grants_count'] ) : 0,
+				'duplicate_exact_allow_grants_count' => isset( $write_plan['duplicate_exact_allow_grants_count'] ) ? max( 0, (int) $write_plan['duplicate_exact_allow_grants_count'] ) : 0,
 				'candidate_binding_match' => ! empty( $write_plan['candidate_binding']['match'] ),
 			),
 			'hard_blockers' => array_values( array_unique( $hard_blockers ) ),
@@ -445,7 +549,8 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			if ( is_wp_error( $intent ) ) return new WP_Error( 'mad4b_full_authority_intent_audit_failed', 'Full authority authorization evidence could not be committed.' );
 
 			// Enable Site Profile write if needed using the existing exact-bound primitive.
-			if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) {
+			$write_feature_was_enabled = MAD4B_SCP_Site_Profile::write_enabled();
+			if ( ! $write_feature_was_enabled ) {
 				$result = MAD4B_SCP_Site_Profile_Write_Enablement::enable_write( array(
 					'expected_revision' => $plan['site_profile_revision'],
 					'expected_profile_digest' => $plan['site_profile_digest'],
@@ -454,7 +559,28 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'confirmation' => MAD4B_SCP_Site_Profile_Write_Enablement::CONFIRMATION,
 				) );
 				if ( is_wp_error( $result ) ) return self::fail_closed( 'write_enable_failed', $result );
-				// Feature enablement changes the Site Profile revision/digest.
+			}
+
+			// Staging Write bootstrap may have run earlier in this same request while
+			// write was still disabled, in which case it deliberately returned before
+			// defining the mutation gate. Re-evaluate after the profile transition so
+			// reconcile() observes the new exact Site Profile state rather than a stale
+			// request-local bootstrap result.
+			$write_runtime = MAD4B_SCP_Staging_Write_Authority::bootstrap();
+			if ( ! is_array( $write_runtime ) || empty( $write_runtime['eligible'] ) || empty( $write_runtime['mutation_gate_configured'] ) ) {
+				return self::fail_closed(
+					'write_runtime_gate_not_ready',
+					new WP_Error(
+						'mad4b_full_authority_write_runtime_gate_not_ready',
+						'Governed Write runtime gate did not become current-ready after Site Profile evaluation.',
+						array( 'status' => is_array( $write_runtime ) ? $write_runtime : array() )
+					)
+				);
+			}
+
+			if ( ! $write_feature_was_enabled ) {
+				// Feature enablement changes the Site Profile revision/digest. Rebuild the
+				// reviewed plan only after the request-local Write runtime has refreshed.
 				$plan = self::plan();
 				if ( is_wp_error( $plan ) ) return self::fail_closed( 'post_write_enable_plan_failed', $plan );
 				if ( empty( $plan['ready_to_apply'] ) ) {

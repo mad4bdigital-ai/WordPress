@@ -200,8 +200,60 @@ for marker in [
     "private static function compact_status_data",
     "private static function bound_session_safe_report",
     "'runtime_changed_during_session_safe_report'",
+    "'valid_for_session_evidence_merge'",
+    "'valid_for_release_merge' => false",
+    "'merge_scope' => 'session_safe_subject_evidence_only'",
+    "'deep_acceptance_required' => true",
+    "'release_acceptance_deferred_checks'",
 ]:
     require(read_consistency, marker, "session-safe diagnostic invariant")
+
+session_bundle_body = read_consistency.split("private static function session_safe_bundle_checks", 1)[1].split("private static function profile_projection", 1)[0]
+require(session_bundle_body, "self::session_safe_write_authority_projection()", "session-safe current write projection")
+session_write_body = read_consistency.split("private static function session_safe_write_authority_projection()", 1)[1].split("private static function deep_write_authority_projection()", 1)[0]
+for marker in (
+    "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()",
+    "'current_grant_snapshot_performed'",
+    "'current_grant_snapshot_ready'",
+    "'current_readiness_blockers'",
+    "'effective_authority_ready'",
+    "'deep_authority_scan_deferred'",
+):
+    require(session_write_body, marker, "session-safe current grant truth")
+if "MAD4B_SCP_Live_Truth::current_authority_status()" in session_write_body:
+    raise SystemExit("session-safe current grant projection must not expand into full Live Truth")
+
+reduced_report = read_consistency.split("$minimal = array(", 1)[1].split("return $minimal;", 1)[0]
+for marker in (
+    "'valid_for_session_evidence_merge'",
+    "'valid_for_release_merge' => false",
+    "'merge_scope' => 'session_safe_subject_evidence_only'",
+    "'deep_acceptance_required' => true",
+    "'subject_blockers'",
+    "'release_acceptance_deferred_checks'",
+):
+    require(reduced_report, marker, "reduced session-safe merge-scope invariant")
+generation_envelope = read_consistency.split("private static function generation_changed_envelope(", 1)[1].split("private static function request_metrics()", 1)[0]
+bundle_merge = read_consistency.split("$result['generation_match'] = true;", 1)[1].split("return $result;", 1)[0]
+for marker in (
+    "'valid_for_bundle_evidence_merge'",
+    "'valid_for_release_merge'",
+    "'merge_scope'",
+    "'generation_bound_bundle_evidence_only'",
+    "'deep_acceptance_required'",
+):
+    require(bundle_merge, marker, "bundle evidence merge-scope invariant")
+
+for marker in (
+    "$session_report = 'session_safe_diagnostics' === (string) $bundle;",
+    "'valid_for_bundle_evidence_merge' => false",
+    "'valid_for_session_evidence_merge' => false",
+    "'valid_for_release_merge' => false",
+    "'session_safe_subject_evidence_only'",
+    "'generation_bound_bundle_evidence_only'",
+    "'deep_acceptance_required' => true",
+):
+    require(generation_envelope, marker, "generation-changed merge-scope invariant")
 
 require(main, "class-mad4b-scp-connector-resilience.php", "resilience runtime include")
 
@@ -254,16 +306,21 @@ for marker in [
     "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()",
     "MAD4B_SCP_Staging_Write_Authority::persisted_status()",
     "MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()",
+    "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()",
     "'full_runtime_hash_validation_deferred' => true",
-    "'deep_authority_scan_deferred' => true",
+    "'deep_authority_scan_deferred' => false",
+    "'current_execution_truth_evaluated' => true",
+    "'current_grant_snapshot_ready'",
 ]:
-    require(connection, marker, "bounded compact preflight truth")
+    require(connection, marker, "bounded explicit preflight truth")
 
 preflight_body = connection.split("public static function preflight(", 1)[1]
 if "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status()" in preflight_body:
     raise SystemExit("compact preflight must not perform full package provenance hashing")
 if "MAD4B_SCP_Live_Truth::current_authority_status()" in preflight_body:
-    raise SystemExit("compact preflight must not perform deep authority/grant scans")
+    raise SystemExit("explicit preflight must consume bounded current write readiness directly, not expand into full Live Truth")
+if "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()" not in preflight_body:
+    raise SystemExit("explicit connection preflight must evaluate current write grant/candidate truth")
 
 for marker in [
     "MAD4B_SCP_Remote_Operation_Parity::reconciliation_status( $operation_id )",
@@ -275,4 +332,15 @@ for marker in [
 print("mad4b.connector-resilience.contract.v2: PASS")
 
 if "MAD4B_SCP_Staging_Write_Authority::persisted_status()" not in connection:
-    raise SystemExit("compact connector preflight must use persisted authority evidence")
+    raise SystemExit("connection preflight must retain persisted authority as explanatory checkpoint evidence")
+for marker in (
+    "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()",
+    "'persisted_ready'",
+    "'candidate_binding_required'",
+    "'candidate_binding_match'",
+    "'current_grant_snapshot_ready'",
+    "'deep_authority_scan_deferred' => false",
+    "'current_execution_truth_evaluated' => true",
+    "'write_current_readiness_unavailable'",
+):
+    require(connection, marker, "explicit connector current authority truth")

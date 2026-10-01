@@ -17,10 +17,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * downloaded into protected MAD4B storage, then passed through the same exact
  * archive/provenance verifier.
  *
- * All channels share the same backup/readback/rollback semantics.
- * WordPress automatic-update enablement is observed read-only. This coordinator
- * never opts the plugin into automatic updates and never bypasses the governed
- * manifest, exact-build verification, backup, readback, or rollback path.
+ * All MAD4B-owned update channels share the same backup/readback/rollback semantics.
+ * WordPress automatic-update state is observed read-only and remains outside this
+ * coordinator's authority. MAD4B never publishes a core update transient/package
+ * offer and never opts itself into core automatic updates; every MAD4B-owned
+ * package action uses the governed manifest, exact-build verification, backup,
+ * readback and rollback path below.
  */
 final class MAD4B_SCP_Self_Update {
 	const CONTRACT              = 'mad4b.control-plane-self-update.v1';
@@ -403,6 +405,10 @@ final class MAD4B_SCP_Self_Update {
 				'environment_resolution' => $environment_resolution,
 				'surface' => 'wp_admin_plugins_page',
 				'manual_only' => true,
+				'manual_only_scope' => 'mad4b_governed_native_action',
+				'governed_action_manual_only' => true,
+				'wordpress_core_auto_update_observed' => (bool) $auto_update['effective_enabled'],
+				'wordpress_core_auto_update_governed' => false,
 				'admin_update_capability' => (bool) current_user_can( 'update_plugins' ),
 				'ui_hook_mode' => 'exact_hook_plus_realpath_fallback',
 				'ui_state' => $ui_state['state'],
@@ -487,6 +493,11 @@ final class MAD4B_SCP_Self_Update {
 			'native_wordpress_update' => array(
 				'ready' => (bool) $native_ready,
 				'environment_resolution' => $environment_resolution,
+				'manual_only' => true,
+				'manual_only_scope' => 'mad4b_governed_native_action',
+				'governed_action_manual_only' => true,
+				'wordpress_core_auto_update_observed' => (bool) $auto_update['effective_enabled'],
+				'wordpress_core_auto_update_governed' => false,
 				'ui_state' => $ui_state['state'],
 				'ui_blockers' => $ui_state['blockers'],
 				'automatic_update_enabled' => (bool) $auto_update['effective_enabled'],
@@ -928,18 +939,12 @@ final class MAD4B_SCP_Self_Update {
 		$state = self::wordpress_auto_update_state();
 		$title = ! empty( $state['blockers'] )
 			? implode( ', ', $state['blockers'] )
-			: __( 'WordPress automatic updates are enabled for this plugin.', 'mad4b-site-control-plane' );
+			: __( 'WordPress core automatic-update policy is enabled; it is separate from the MAD4B governed release verifier.', 'mad4b-site-control-plane' );
 
-		if ( ! empty( $state['effective_enabled'] ) ) {
-			$text = __( 'Auto-updates enabled', 'mad4b-site-control-plane' );
-		} elseif ( 'forced_disabled' === $state['forced_state'] ) {
-			$text = __( 'Auto-updates disabled', 'mad4b-site-control-plane' );
-		} elseif ( ! empty( $state['selected_in_site_option'] ) ) {
-			$text = __( 'Auto-updates selected; governed channel required', 'mad4b-site-control-plane' );
-		} elseif ( empty( $state['global_type_enabled'] ) ) {
-			$text = __( 'Auto-updates disabled', 'mad4b-site-control-plane' );
+		if ( ! empty( $state['selected_in_site_option'] ) || ! empty( $state['effective_enabled'] ) ) {
+			$text = __( 'WordPress auto-update selected · governed update remains manual', 'mad4b-site-control-plane' );
 		} else {
-			$text = __( 'Auto-updates disabled', 'mad4b-site-control-plane' );
+			$text = __( 'Governed updates only · automatic update disabled', 'mad4b-site-control-plane' );
 		}
 
 		return '<span class="label mad4b-auto-update-state" title="' . esc_attr( $title ) . '">'
@@ -974,11 +979,15 @@ final class MAD4B_SCP_Self_Update {
 				admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
 				'mad4b_control_plane_native_update'
 			);
+			$current = self::installed_identity();
+			$current_display = isset( $current['version'] ) ? (string) $current['version'] : '';
+			if ( ! empty( $current['source_commit_sha'] ) ) $current_display .= '+build.' . substr( (string) $current['source_commit_sha'], 0, 7 );
+			$target_display = isset( $manifest['display_version'] ) ? (string) $manifest['display_version'] : (string) $manifest['version'];
 			$message = sprintf(
-				/* translators: 1: target version, 2: short source commit. */
-				__( 'A governed MAD4B update is available: %1$s (build %2$s).', 'mad4b-site-control-plane' ),
-				$manifest['version'],
-				substr( $manifest['source_commit_sha'], 0, 12 )
+				/* translators: 1: current exact build display, 2: target exact build display. */
+				__( 'A governed MAD4B build update is available: %1$s → %2$s.', 'mad4b-site-control-plane' ),
+				$current_display,
+				$target_display
 			);
 			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
 				. esc_html( $message ) . ' <a href="' . esc_url( $url ) . '">'

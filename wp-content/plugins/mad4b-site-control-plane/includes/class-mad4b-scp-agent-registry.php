@@ -112,6 +112,22 @@ final class MAD4B_SCP_Agent_Registry {
 		return is_array( $rows ) ? $rows : array();
 	}
 
+	/**
+	 * Return the exact persisted subject binding regardless of enabled/disabled
+	 * state. Preflight callers need the same uniqueness truth used by bind_subject()
+	 * so a disabled binding owned by another agent cannot be mistaken for unbound.
+	 */
+	public static function subject_binding( $subject_type, $subject_fingerprint ) {
+		global $wpdb; $t = MAD4B_SCP_Schema::tables();
+		$type = sanitize_key( (string) $subject_type );
+		$fingerprint = strtolower( trim( (string) $subject_fingerprint ) );
+		if ( '' === $type || ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) {
+			return new WP_Error( 'mad4b_subject_invalid', 'Subject type and SHA-256 fingerprint are required.' );
+		}
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['subjects']} WHERE subject_type=%s AND subject_fingerprint=%s LIMIT 1", $type, $fingerprint ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		return $row ? $row : null;
+	}
+
 	public static function set_subject_status( $agent_public_id, $subject_type, $subject_fingerprint, $status ) {
 		global $wpdb; $t = MAD4B_SCP_Schema::tables();
 		$agent = self::get_agent_by_public_id( $agent_public_id );

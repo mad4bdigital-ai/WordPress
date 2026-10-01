@@ -41,6 +41,16 @@ final class MAD4B_Test_Request { private $method; private $headers; public funct
 final class MAD4B_SCP_OAuth_Resource_Bridge { public static function verified_bearer_active() { return true; } public static function resource_identifier() { return 'https://staging.egypttourgates.com/wp-json/mcp/mad4b-chatgpt'; } public static function status() { return array( 'issuer' => 'https://staging.egypttourgates.com/wp-json/mad4b-oauth', 'resource' => self::resource_identifier() ); } }
 final class MAD4B_SCP_Identity_Context { public static function current() { return array( 'authenticated' => true, 'auth_method' => 'oauth2_bearer', 'subject_fingerprint' => str_repeat( 'a', 64 ), 'token_scopes' => array( 'mad4b:read' ), 'wp_user_id' => 7 ); } }
 final class MAD4B_SCP_Site_Profile { public static function current_environment() { return 'staging'; } public static function origin_enrolled() { return true; } public static function oauth_enabled() { return true; } }
+final class MAD4B_SCP_Live_Acceptance_Observer {
+	public static $identity = array(
+		'identity_ready' => true,
+		'source_commit_sha' => '1111111111111111111111111111111111111111',
+		'build_fingerprint' => '2222222222222222222222222222222222222222222222222222222222222222',
+		'package_manifest_digest' => '3333333333333333333333333333333333333333333333333333333333333333',
+		'artifact_identity' => 'mad4b-site-control-plane-0.4.0-rc.88-1111111111111111111111111111111111111111',
+	);
+	public static function build_provenance_identity_status() { return self::$identity; }
+}
 final class MAD4B_SCP_Servers {
 	public static $chatgpt_tools = array(); public static $external_write_tools = array(); public static $write_tools = array(); public static $blocked_write_tools = array();
 	public static function chatgpt_tools() { return self::$chatgpt_tools; }
@@ -84,11 +94,27 @@ mad4b_assert( empty( $evidence['direct_write_schema_leaks'] ), 'underlying write
 mad4b_assert( 0 === (int) $evidence['provider_gated_write_tool_count'], 'raw tools/list evidence must not execute provider gate projection' );
 $status = MAD4B_SCP_External_Handshake_Evidence::status();
 mad4b_assert( ! empty( $status['verified'] ), 'minimal transport plus logical write catalog should verify' );
+mad4b_assert( ! empty( $status['package_identity_match'] ), 'external evidence must bind the exact four-part package identity' );
+mad4b_assert( ! empty( $status['runtime_surface_fingerprint_match'] ), 'transport-surface fingerprint should remain an independent compatibility signal' );
 mad4b_assert( ! empty( $status['tool_inventory_match'] ), 'minimal transport fingerprint should match' );
 mad4b_assert( ! empty( $status['write_inventory_fingerprint_match'] ), 'logical write catalog fingerprint should match' );
 mad4b_assert( count( $core_writes ) === (int) $status['eligible_write_tool_count'], 'status read must project current eligible logical writes' );
 mad4b_assert( 1 === (int) $status['provider_gated_write_tool_count'], 'status read must project current provider-gated write count' );
 mad4b_assert( in_array( mad4b_tool_name( $gated_provider ), $status['provider_gated_write_tools'], true ), 'status read must identify the gated provider write' );
+
+$persisted = MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status();
+mad4b_assert( ! empty( $persisted['evidence_present'] ), 'persisted handshake identity evidence was not exposed' );
+mad4b_assert( ! empty( $persisted['previously_verified_external_session'] ), 'validated initialize/tools-list evidence was not projected as a previously verified external session' );
+mad4b_assert( 'previously_verified_revalidation_deferred' === $persisted['certification_projection_state'], 'persisted certification projection state drifted' );
+mad4b_assert( 'persisted_verified_identity' === $persisted['state'], 'persisted verified identity state drifted' );
+mad4b_assert( ! empty( $persisted['package_identity_complete'] ), 'persisted verified identity must retain exact package identity' );
+mad4b_assert( ! empty( $persisted['live_verification_deferred'] ), 'persisted identity projection must defer present-tense live certification' );
+$valid_persisted_snapshot = $GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ];
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ]['write_transport_ready'] = false;
+$invalid_persisted = MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status();
+mad4b_assert( empty( $invalid_persisted['previously_verified_external_session'] ), 'malformed persisted handshake evidence was promoted to previously verified' );
+mad4b_assert( 'persisted_evidence_invalid' === $invalid_persisted['certification_projection_state'], 'invalid persisted evidence did not fail closed' );
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ] = $valid_persisted_snapshot;
 
 // Certification transition changes runtime eligibility only; it must not change
 // either the external transport identity or the stable logical write catalog.
@@ -102,6 +128,27 @@ mad4b_assert( hash_equals( $before_transport_fp, $status['expected_tool_inventor
 mad4b_assert( hash_equals( $before_write_fp, $status['write_catalog_fingerprint'] ), 'provider activation must not change logical write catalog fingerprint' );
 mad4b_assert( count( $stable_writes ) === (int) $status['expected_eligible_write_tool_count'], 'eligible write count should reflect newly active provider tool' );
 mad4b_assert( 0 === (int) $status['provider_gated_write_tool_count'], 'gated count should clear after activation' );
+
+// A package provenance change must stale the external proof even when the same
+// bounded transport files and tool catalog remain unchanged.
+$stored_exact = $GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ];
+MAD4B_SCP_Live_Acceptance_Observer::$identity['source_commit_sha'] = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+MAD4B_SCP_Live_Acceptance_Observer::$identity['artifact_identity'] = 'mad4b-site-control-plane-0.4.0-rc.88-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+$status = MAD4B_SCP_External_Handshake_Evidence::status();
+mad4b_assert( empty( $status['verified'] ), 'changed package source must stale external evidence even when transport surface is unchanged' );
+mad4b_assert( empty( $status['package_identity_match'] ), 'changed package source must fail package identity match' );
+mad4b_assert( ! empty( $status['runtime_surface_fingerprint_match'] ), 'package provenance change must remain distinguishable from transport-surface drift' );
+mad4b_assert( 'stale_package_identity_evidence' === $status['status'], 'package provenance drift must have a dedicated stale classification' );
+MAD4B_SCP_Live_Acceptance_Observer::$identity['source_commit_sha'] = '1111111111111111111111111111111111111111';
+MAD4B_SCP_Live_Acceptance_Observer::$identity['artifact_identity'] = 'mad4b-site-control-plane-0.4.0-rc.88-1111111111111111111111111111111111111111';
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ] = $stored_exact;
+
+$legacy = $stored_exact;
+unset( $legacy['source_commit_sha'], $legacy['package_build_fingerprint'], $legacy['package_manifest_digest'], $legacy['artifact_identity'] );
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ] = $legacy;
+$status = MAD4B_SCP_External_Handshake_Evidence::status();
+mad4b_assert( empty( $status['verified'] ) && 'stale_package_identity_evidence' === $status['status'], 'legacy fingerprint-only evidence must fail closed and require a fresh handshake' );
+$GLOBALS['mad4b_test_options'][ MAD4B_SCP_External_Handshake_Evidence::OPTION ] = $stored_exact;
 
 $raw_sql = $exact_external; $raw_sql[] = mad4b_tool_name( 'mad4b/database-raw-query' );
 mad4b_assert( empty( mad4b_capture_scenario( 'session-raw-sql', $raw_sql ) ), 'raw SQL/Breakglass tool must reject handshake evidence' );

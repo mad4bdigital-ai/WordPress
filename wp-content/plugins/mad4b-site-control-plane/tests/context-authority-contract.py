@@ -576,6 +576,10 @@ require(admin, "Write Governance Readiness", "write governance readiness UX")
 require(admin, "MAD4B_SCP_Staging_Write_Authority::persisted_status()", "bounded persisted authority truth in UX")
 require(admin, "MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()", "exact candidate binding truth in UX")
 require(admin, "Full Live Truth walks the", "explicit separation of heavy Live Truth from admin rendering")
+require(admin, "A candidate-bound checkpoint is not a live execution verdict", "bounded admin authority wording must not overclaim live readiness")
+require(admin, "Authority checkpoint", "bounded Context authority checkpoint label")
+require(admin, "Candidate-bound checkpoint · live grant scan deferred", "deep current grant scan is explicitly deferred in Context admin")
+assert "self::governance_cell( 'Exact authority'" not in admin, "bounded Context admin must not label persisted evidence as exact live authority"
 require(admin, "Context Authority never reconciles grants automatically", "no automatic grant reconciliation UX")
 require(admin, "runtime_authority_not_reconciled", "runtime reconciliation blocker UX")
 

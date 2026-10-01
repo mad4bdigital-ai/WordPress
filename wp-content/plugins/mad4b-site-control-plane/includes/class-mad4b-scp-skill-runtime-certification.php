@@ -101,7 +101,9 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 
 	public static function persisted_status() {
 		$stored = get_option( self::OPTION, array() );
-		if ( is_array( $stored ) && isset( $stored['contract'] ) && self::CONTRACT === $stored['contract'] ) return $stored;
+		if ( is_array( $stored ) && isset( $stored['contract'] ) && self::CONTRACT === $stored['contract'] ) {
+			return self::project_persisted_freshness( $stored );
+		}
 		return array(
 			'contract' => self::CONTRACT,
 			'ready' => false,
@@ -110,8 +112,53 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'snapshot_identity_token' => '',
 			'local_runtime_only' => true,
 			'external_client_snapshot_verified' => false,
+			'historical_evidence_only' => true,
+			'build_identity_current' => false,
+			'stale_reasons' => array( 'runtime_certification_not_observed' ),
+			'persistence' => 'historical_evidence_only',
 			'external_client_action' => 'ChatGPT/Codex must install or refresh the published snapshot outside WordPress, then compare the package MAD4B-SNAPSHOT-ID.txt token with snapshot_identity_token.',
 		);
+	}
+
+	private static function project_persisted_freshness( array $stored ) {
+		$current = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
+			&& method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()
+			: array();
+
+		$stale_reasons = array();
+		if ( empty( $current['identity_ready'] ) ) {
+			$stale_reasons[] = 'current_build_identity_unavailable';
+		} else {
+			foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) {
+				$persisted = isset( $stored[ $key ] ) ? trim( (string) $stored[ $key ] ) : '';
+				$observed = isset( $current[ $key ] ) ? trim( (string) $current[ $key ] ) : '';
+				if ( '' === $persisted || '' === $observed || ! hash_equals( $observed, $persisted ) ) {
+					$stale_reasons[] = $key . '_mismatch';
+				}
+			}
+		}
+
+		// Preserve the immutable outcome that was actually certified. Freshness is
+		// a separate current-build question; downgrading current ready must not erase
+		// the historical result that produced the persisted evidence.
+		$stored['historical_ready'] = array_key_exists( 'historical_ready', $stored )
+			? ! empty( $stored['historical_ready'] )
+			: ! empty( $stored['ready'] );
+		$stored['historical_evidence_only'] = true;
+		$stored['build_identity_current'] = empty( $stale_reasons );
+		$stored['stale_reasons'] = array_values( array_unique( $stale_reasons ) );
+		$stored['persistence'] = 'historical_evidence_only';
+
+		if ( ! empty( $stale_reasons ) ) {
+			$stored['ready'] = false;
+			$stored['state'] = 'persisted_build_identity_stale';
+			$blockers = isset( $stored['blockers'] ) && is_array( $stored['blockers'] ) ? $stored['blockers'] : array();
+			$blockers[] = 'persisted_build_identity_stale';
+			$stored['blockers'] = array_values( array_unique( $blockers ) );
+		}
+
+		return $stored;
 	}
 
 	private static function evaluate() {
@@ -206,6 +253,14 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			: array();
 		$source_commit_sha = isset( $build_identity['source_commit_sha'] ) ? strtolower( (string) $build_identity['source_commit_sha'] ) : '';
 		$build_fingerprint = isset( $build_identity['build_fingerprint'] ) ? strtolower( (string) $build_identity['build_fingerprint'] ) : '';
+		$package_manifest_digest = isset( $build_identity['package_manifest_digest'] ) ? strtolower( (string) $build_identity['package_manifest_digest'] ) : '';
+		$artifact_identity = isset( $build_identity['artifact_identity'] ) ? trim( (string) $build_identity['artifact_identity'] ) : '';
+		$checks['build_provenance_identity_ready'] = ! empty( $build_identity['identity_ready'] )
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/', $source_commit_sha )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $build_fingerprint )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $package_manifest_digest )
+			&& '' !== $artifact_identity;
+		if ( ! $checks['build_provenance_identity_ready'] ) $blockers[] = 'build_provenance_identity_unavailable';
 		$evidence = array(
 			'environment' => $environment,
 			'checks' => $checks,
@@ -220,6 +275,8 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'snapshot_identity_token' => $identity_token,
 			'source_commit_sha' => $source_commit_sha,
 			'build_fingerprint' => $build_fingerprint,
+			'package_manifest_digest' => $package_manifest_digest,
+			'artifact_identity' => $artifact_identity,
 		);
 		$digest = hash( 'sha256', wp_json_encode( $evidence, JSON_UNESCAPED_SLASHES ) );
 
@@ -240,6 +297,8 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'snapshot_digest' => isset( $snapshot_identity['snapshot_digest'] ) ? (string) $snapshot_identity['snapshot_digest'] : '',
 			'source_commit_sha' => $source_commit_sha,
 			'build_fingerprint' => $build_fingerprint,
+			'package_manifest_digest' => $package_manifest_digest,
+			'artifact_identity' => $artifact_identity,
 			'app_mapping_source' => isset( $autoconfig['app_mapping_source'] ) ? $autoconfig['app_mapping_source'] : '',
 			'evidence_digest' => $digest,
 			'observed_at' => gmdate( 'c' ),

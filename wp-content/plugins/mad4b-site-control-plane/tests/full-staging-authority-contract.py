@@ -51,9 +51,53 @@ required = [
     "MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID",
     "mad4b_full_authority_step_up_scope_required",
     "mad4b_full_authority_chatgpt_client_required",
+    "unreviewed_stale_write_authority",
+    "'unreviewed_stale_allow_grants_count'",
+    "'write_explicit_deny'",
+    "'write_provider_unmounted'",
+    "'nonreconcilable_write_drift' => $nonreconcilable_write_drift",
+    "in_array( $reason, array( 'explicit_deny', 'write_provider_unmounted' ), true )",
+    "'write_subject_preflight_blocked'",
+    "'write_subject_preflight_blockers' => $write_subject_preflight_blockers",
+    "'explicit_mutation_disabled'",
+    "MAD4B_SCP_Staging_Write_Authority::bootstrap()",
+    "write_runtime_gate_not_ready",
+    "mad4b_full_authority_write_runtime_gate_not_ready",
 ]
 for marker in required:
     assert marker in full, marker
+
+for marker in (
+    "private static function developer_execution_projection( array $developer_status )",
+    "'authority_ready' => $normal_ready",
+    "'ready_semantics' => 'authority_and_runtime_flags_only'",
+    "'process_backend_ready' => $process_ready",
+    "'normal_no_network_execution_ready' => $normal_no_network_ready",
+    "'execution_ready' => $process_ready && $normal_no_network_ready",
+    "'developer_authority_ready' => $normal_ready",
+    "'developer_breakglass_authority_ready' => $breakglass_ready",
+    "'developer_execution' => $developer_execution",
+):
+    assert marker in full, marker
+developer_projection = full.split("private static function developer_execution_projection", 1)[1].split("private static function compact_string_list", 1)[0]
+for source in ("process_backend_blockers", "normal_no_network_execution_blockers"):
+    assert source in developer_projection, source
+assert "ready_to_apply" not in developer_projection, "host execution projection must remain diagnostic and must not silently redefine authority apply eligibility"
+
+fixable = full.split("'fixable_write_drift' => array(", 1)[1].split("),", 1)[0]
+assert "'unreviewed_stale_allow_grants_count'" not in fixable, "unreviewed stale authority must never be classified as auto-fixable"
+for marker in (
+    "'nonreconcilable_write_drift_counts' => array(",
+    "'unreviewed_stale_allow_grants_count' => $unreviewed_stale_count",
+    "'exact_grants_missing_count' => $nonreconcilable_missing_count",
+    "'exact_grants_missing_count' => $reconcilable_missing_count",
+    "'stale_allow_grants_count' => $reviewed_stale_count",
+):
+    assert marker in full, marker
+
+plan_body = full.split("public static function plan()", 1)[1].split("public static function apply( $input )", 1)[0]
+assert "$reviewed_stale_count = $stale_allow_total;" in plan_body, "reviewed stale grants must project directly from the reviewed stale count"
+assert "$stale_allow_total - $unreviewed_stale_count" not in plan_body, "unreviewed stale authority is a separate collection and must not be subtracted twice"
 
 reviewed_lineage_capture = full.index("$reviewed_previous_binding = MAD4B_SCP_Staging_Write_Candidate_Binding::audit_binding_snapshot")
 developer_apply = full.index("MAD4B_SCP_Developer_Authority::apply")
@@ -92,6 +136,20 @@ for marker in [
     "'client_action' => ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_handshake' : 'repair_blockers_then_request_fresh_handshake'",
 ]:
     assert marker in full, marker
+handshake_body = full.split("public static function handshake()", 1)[1].split("private static function compact_string_list", 1)[0]
+for marker in (
+    "$write_checkpoint_ready = ! empty( $write['effective_ready'] );",
+    "$write_grant_snapshot_ready = ! empty( $write['current_ready'] );",
+    "$write_ready = $write_checkpoint_ready && $write_grant_snapshot_ready;",
+    "'write_ready' => $write_ready",
+    "'write_checkpoint_ready' => $write_checkpoint_ready",
+    "'write_grants_ready' => $write_grant_snapshot_ready",
+    "'write_current_grant_snapshot_ready' => $write_grant_snapshot_ready",
+    "'write_reconciliation_required' => ! $write_ready",
+    "'write_current_readiness_blockers'",
+):
+    assert marker in handshake_body, marker
+assert "MAD4B_SCP_Staging_Write_Authority::effective()" not in handshake_body, "compact handshake must consume the reviewed write-plan snapshot instead of recomputing checkpoint-only readiness"
 assert "public static function chatgpt_step_up_tools()" in full
 step_up = full.split("public static function chatgpt_step_up_tools()", 1)[1].split("public static function register_category()", 1)[0]
 for marker in [
@@ -112,6 +170,35 @@ for forbidden in [
 ]:
     assert forbidden not in step_up, f"tools/list step-up projection must stay lifecycle-stable and off the full authority plan hotpath: {forbidden}"
 
+status_body = full.split("public static function status()", 1)[1].split("public static function handshake()", 1)[0]
+for marker in [
+    "$write_checkpoint_ready =",
+    "$write_grant_snapshot_ready = is_array( $write_plan ) && ! empty( $write_plan['current_ready'] )",
+    "! empty( $write_plan['effective_ready'] )",
+    "'checkpoint_ready' => $write_checkpoint_ready",
+    "'current_grant_snapshot_ready' => $write_grant_snapshot_ready",
+    "'current_readiness_blockers'",
+]:
+    assert marker in status_body, marker
+assert "$write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();" not in status_body
+
+for marker in [
+    "$missing_rows = isset( $write_plan['exact_grants_missing'] )",
+    "'explicit_deny'",
+    "'write_provider_unmounted'",
+    "$hard_blockers[] = 'explicit_deny' === $reason ? 'write_explicit_deny' : 'write_provider_unmounted';",
+]:
+    assert marker in plan_body, marker
+assert plan_body.index("$missing_rows = isset( $write_plan['exact_grants_missing'] )") < plan_body.index("'ready_to_apply' => empty( $hard_blockers )")
+assert "MAD4B_SCP_Staging_Write_Authority::reconcile()" not in plan_body
+for marker in (
+    "$write_subject_preflight_blockers = isset( $write_plan['subject_preflight_blockers'] )",
+    "$hard_blockers[] = 'write_subject_preflight_blocked';",
+    "defined( 'MAD4B_MCP_MUTATION_ENABLED' )",
+    "$hard_blockers[] = 'explicit_mutation_disabled';",
+):
+    assert marker in plan_body, marker
+
 apply_body = full.split("public static function apply( $input )", 1)[1].split("private static function developer_apply_input", 1)[0]
 for marker in [
     "$access = self::can_apply( $input );",
@@ -120,6 +207,21 @@ for marker in [
     "self::match_expected_plan( $plan, $input )",
 ]:
     assert marker in apply_body, marker
+for marker in (
+    "$write_feature_was_enabled = MAD4B_SCP_Site_Profile::write_enabled();",
+    "$write_runtime = MAD4B_SCP_Staging_Write_Authority::bootstrap();",
+    "empty( $write_runtime['eligible'] )",
+    "empty( $write_runtime['mutation_gate_configured'] )",
+    "'write_runtime_gate_not_ready'",
+):
+    assert marker in apply_body, marker
+enable_pos = apply_body.index("MAD4B_SCP_Site_Profile_Write_Enablement::enable_write")
+runtime_refresh_pos = apply_body.index("$write_runtime = MAD4B_SCP_Staging_Write_Authority::bootstrap();")
+developer_pos = apply_body.index("MAD4B_SCP_Developer_Authority::apply")
+reconcile_pos = apply_body.index("MAD4B_SCP_Staging_Write_Authority::reconcile")
+assert enable_pos < runtime_refresh_pos < developer_pos < reconcile_pos, "same-request Write gate must refresh before Developer/Write convergence"
+post_enable_slice = apply_body[enable_pos:developer_pos]
+assert post_enable_slice.index("$write_runtime = MAD4B_SCP_Staging_Write_Authority::bootstrap();") < post_enable_slice.index("$plan = self::plan();", post_enable_slice.index("$write_runtime = MAD4B_SCP_Staging_Write_Authority::bootstrap();")), "post-enable plan must be rebuilt after request-local Write bootstrap"
 assert "MAD4B_SCP_Full_Staging_Authority::enrollment_tools()" in servers
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in servers
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in servers

@@ -27,6 +27,8 @@ class MAD4B_SCP_Live_Acceptance_Observer {
 			'runtime_manifest_match' => true,
 			'source_commit_sha' => str_repeat( '1', 40 ),
 			'build_fingerprint' => str_repeat( '2', 64 ),
+			'package_manifest_digest' => str_repeat( '5', 64 ),
+			'artifact_identity' => 'mad4b-site-control-plane-' . str_repeat( '1', 40 ),
 		);
 	}
 	public static function external_handshake_attestation_status() {
@@ -79,9 +81,19 @@ class MAD4B_SCP_Audit {
 		$before = str_repeat( 'a', 64 );
 		$after = str_repeat( 'b', 64 );
 		return array(
-			array( 'sequence' => 10, 'entry_hash' => str_repeat( 'c', 64 ), 'time' => gmdate( 'c', time() - 20 ), 'ability' => 'mad4b/reversible-adapter-verified', 'status' => 'ok', 'summary' => array( 'mutation_id' => '11111111-1111-4111-8111-111111111111', 'before_sha256' => $before, 'after_sha256' => $after ) ),
-			array( 'sequence' => 11, 'entry_hash' => str_repeat( 'd', 64 ), 'time' => gmdate( 'c', time() - 15 ), 'ability' => 'mad4b/authorization:elementor/update-widget-settings', 'status' => 'denied', 'summary' => array( 'reason_code' => 'mad4b_approval_replay_denied', 'approval_ticket_id' => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' ) ),
-			array( 'sequence' => 12, 'entry_hash' => str_repeat( 'e', 64 ), 'time' => gmdate( 'c', time() - 10 ), 'ability' => 'mad4b/mutation-undo', 'status' => 'ok', 'summary' => array( 'mutation_id' => '11111111-1111-4111-8111-111111111111', 'recovery_mutation_id' => '22222222-2222-4222-8222-222222222222', 'restored_sha256' => $before, 'approval_ticket_id' => 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' ) ),
+			array( 'sequence' => 10, 'event_id' => 'execution-event-10', 'entry_hash' => str_repeat( 'c', 64 ), 'time' => gmdate( 'c', time() - 20 ), 'ability' => 'mad4b/reversible-adapter-verified', 'status' => 'ok', 'summary' => array( 'mutation_id' => '11111111-1111-4111-8111-111111111111', 'before_sha256' => $before, 'after_sha256' => $after ) ),
+			array( 'sequence' => 11, 'event_id' => 'acceptance-event-11', 'entry_hash' => str_repeat( 'f', 64 ), 'time' => gmdate( 'c', time() - 18 ), 'ability' => 'mad4b/live-acceptance-execution-observed', 'status' => 'ok', 'summary' => array(
+				'candidate_sha' => str_repeat( '1', 40 ),
+				'build_fingerprint' => str_repeat( '2', 64 ),
+				'package_manifest_digest' => str_repeat( '5', 64 ),
+				'artifact_identity' => 'mad4b-site-control-plane-' . str_repeat( '1', 40 ),
+				'mutation_id' => '11111111-1111-4111-8111-111111111111',
+				'approval_ticket_id' => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+				'source_event_id' => 'execution-event-10',
+				'source_event_hash' => str_repeat( 'c', 64 ),
+			) ),
+			array( 'sequence' => 12, 'entry_hash' => str_repeat( 'd', 64 ), 'time' => gmdate( 'c', time() - 15 ), 'ability' => 'mad4b/authorization:elementor/update-widget-settings', 'status' => 'denied', 'summary' => array( 'reason_code' => 'mad4b_approval_replay_denied', 'approval_ticket_id' => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' ) ),
+			array( 'sequence' => 13, 'entry_hash' => str_repeat( 'e', 64 ), 'time' => gmdate( 'c', time() - 10 ), 'ability' => 'mad4b/mutation-undo', 'status' => 'ok', 'summary' => array( 'mutation_id' => '11111111-1111-4111-8111-111111111111', 'recovery_mutation_id' => '22222222-2222-4222-8222-222222222222', 'restored_sha256' => $before, 'approval_ticket_id' => 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' ) ),
 		);
 	}
 }
@@ -123,6 +135,10 @@ class MAD4B_SCP_Live_Acceptance_Finalizer {
 	public static function mutation_acceptance_status() { return array( 'ready' => false, 'state' => 'pending_external_evidence', 'fresh' => false, 'blockers' => array( 'complete_execute_replay_undo_receipt_required' ) ); }
 	public static function evaluate_mutation_receipt( array $r, array $candidate ) {
 		$ok = 'mad4b.mutation-acceptance-receipt.v1' === $r['contract']
+			&& hash_equals( (string) $candidate['source_commit_sha'], (string) $r['candidate_sha'] )
+			&& hash_equals( (string) $candidate['build_fingerprint'], (string) $r['build_fingerprint'] )
+			&& hash_equals( (string) $candidate['package_manifest_digest'], (string) $r['package_manifest_digest'] )
+			&& hash_equals( (string) $candidate['artifact_identity'], (string) $r['artifact_identity'] )
 			&& 'undone' === $r['mutation_status']
 			&& 'used' === $r['approval_status']
 			&& ! empty( $r['execution_verified'] ) && ! empty( $r['replay_denied'] ) && ! empty( $r['undo_verified'] )
@@ -167,7 +183,9 @@ if ( false !== ( isset( $trace['execution_ticket_candidate_binding_exact'] ) ? $
 	fwrite( STDERR, 'stale approval-ticket candidate binding was not reported fail-closed: ' . wp_json_encode( $trace ) . "\n" ); exit( 1 );
 }
 if ( str_repeat( '1', 40 ) !== ( isset( $trace['current_candidate_sha'] ) ? (string) $trace['current_candidate_sha'] : '' )
-	|| str_repeat( '2', 64 ) !== ( isset( $trace['current_build_fingerprint'] ) ? (string) $trace['current_build_fingerprint'] : '' ) ) {
+	|| str_repeat( '2', 64 ) !== ( isset( $trace['current_build_fingerprint'] ) ? (string) $trace['current_build_fingerprint'] : '' )
+	|| str_repeat( '5', 64 ) !== ( isset( $trace['current_package_manifest_digest'] ) ? (string) $trace['current_package_manifest_digest'] : '' )
+	|| 'mad4b-site-control-plane-' . str_repeat( '1', 40 ) !== ( isset( $trace['current_artifact_identity'] ) ? (string) $trace['current_artifact_identity'] : '' ) ) {
 	fwrite( STDERR, 'reconstruction diagnostics are not bound to the current candidate: ' . wp_json_encode( $trace ) . "\n" ); exit( 1 );
 }
 foreach ( array( 'stored_candidate_sha', 'stored_build_fingerprint', 'candidate_binding_sha', 'candidate_binding_build_fingerprint' ) as $forbidden ) {

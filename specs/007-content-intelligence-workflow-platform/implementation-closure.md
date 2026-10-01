@@ -9,7 +9,7 @@ It does not redefine the existing contracts. It orders them into one executable 
 ## Baseline
 
 - target branch: `master`
-- reviewed repository parent: `bcadfc5d98989cbd86c042d0d90a344b3f1806ce`
+- reviewed repository parent: `e5d848c40d9aa82a9ccf3f36fb4430de1578bcc8`
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false

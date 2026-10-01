@@ -24,6 +24,7 @@ local_oauth = (PLUGIN / "includes/class-mad4b-scp-local-oauth-server.php").read_
 oauth_bridge = (PLUGIN / "includes/class-mad4b-scp-oauth-resource-bridge.php").read_text(encoding="utf-8")
 reconnect = (PLUGIN / "includes/class-mad4b-scp-reconnect-hardening.php").read_text(encoding="utf-8")
 registration_bridge = (PLUGIN / "includes/class-mad4b-scp-mcp-registration-bridge.php").read_text(encoding="utf-8")
+truth_projection = (PLUGIN / "includes/class-mad4b-scp-truth-projection.php").read_text(encoding="utf-8")
 dependency_manager = (PLUGIN / "includes/class-mad4b-scp-dependency-manager.php").read_text(encoding="utf-8")
 upgrade_continuity = (PLUGIN / "includes/class-mad4b-scp-upgrade-continuity.php").read_text(encoding="utf-8")
 slo = (ROOT / "specs/008-dynamic-content-runtime-hardening/performance-slo.md").read_text(encoding="utf-8")
@@ -278,7 +279,8 @@ for marker in (
     "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()",
     "MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()",
     "'mcp_peer_inventory_deferred_admin_hotpath'",
-    "'deep_connection_diagnostics_deferred'",
+    "'certification_deferred_checks'",
+    "'deep_connection_diagnostics'",
 ):
     assert marker in connection_method, marker
 
@@ -343,45 +345,55 @@ assert "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()" in reconnect
 assert "MAD4B_SCP_Local_OAuth_Server::status()" not in reconnect_status
 assert "MAD4B_SCP_OAuth_Resource_Bridge::status()" not in reconnect_status
 
-registration_identity = method_body(
-    registration_bridge,
-    "public static function server_registration_identity_status",
-    "public static function status()",
+passive_notice_projection = method_body(
+    reconnect,
+    "private static function passive_admin_notice_status( array $status )",
+    "public static function connection_admin_notice()",
 )
 for marker in (
-    "MAD4B_SCP_Servers::expected_server_ids()",
-    "MAD4B_SCP_Servers::registration_status()",
-    "has_action( 'mcp_adapter_init'",
-    "'deferred_identity_ready'",
-    "'deep_registration_deferred'",
+    "current_request_is_passive_admin_hotpath()",
+    "MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( 'mad4b-chatgpt' )",
+    "'chatgpt_registration_identity_ready'",
+    "'chatgpt_registration_deep_check_deferred'",
 ):
-    assert marker in registration_identity, marker
-for forbidden in (
-    "rest_get_server(",
-    "wp_get_abilities(",
-    "wp_get_ability(",
-    "wp_safe_remote_get(",
-):
-    assert forbidden not in registration_identity, forbidden
-
-passive_notice = method_body(
+    assert marker in passive_notice_projection, marker
+for forbidden in ("rest_get_server(", "wp_get_abilities(", "register_servers("):
+    assert forbidden not in passive_notice_projection, forbidden
+notice_method = method_body(
     reconnect,
-    "private static function passive_admin_notice_status",
-    "public static function connection_admin_notice",
-)
-assert "current_request_is_passive_admin_hotpath()" in passive_notice
-assert "server_registration_identity_status( 'mad4b-chatgpt' )" in passive_notice
-assert "array( 'not_registered', 'mcp_chatgpt_not_registered' )" in passive_notice
-assert "chatgpt_registration_deep_check_deferred" in passive_notice
-assert "rest_get_server(" not in passive_notice
-assert "wp_get_abilities(" not in passive_notice
-
-connection_notice = method_body(
-    reconnect,
-    "public static function connection_admin_notice",
+    "public static function connection_admin_notice()",
     "public static function is_resource_request_path",
 )
-assert "self::passive_admin_notice_status( self::reconnect_status() )" in connection_notice
+assert "self::passive_admin_notice_status( self::reconnect_status() )" in notice_method
+
+registration_identity = method_body(
+    registration_bridge,
+    "public static function server_registration_identity_status( $server_id )",
+    "public static function status()",
+)
+assert "MAD4B_SCP_Truth_Projection::mcp_registration_identity( $fact )" in registration_identity
+for marker in (
+    "'mad4b.mcp-registration-fact.v1'",
+    "'actual_registered'",
+    "'observed_registration_error'",
+    "'bridge_booted'",
+):
+    assert marker in registration_identity, marker
+for forbidden in ("rest_get_server(", "wp_get_abilities(", "register_servers(", "'deferred_identity_ready'"):
+    assert forbidden not in registration_identity, forbidden
+
+truth_registration = method_body(
+    truth_projection,
+    "public static function mcp_registration_identity( array $fact )",
+    "public static function canonical_external_wpml_receipt()",
+)
+for marker in (
+    "'deferred_identity_ready'",
+    "'registration_error'",
+    "'blocking_registration_error'",
+    "'deep_registration_deferred'",
+):
+    assert marker in truth_registration, marker
 
 bridge_identity = method_body(
     oauth_bridge,

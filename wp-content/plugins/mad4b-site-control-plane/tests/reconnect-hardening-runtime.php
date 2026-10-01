@@ -176,22 +176,22 @@ MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'
 ok(empty($s['ready'])&&in_array('chatgpt_registration_failed',$s['blockers'],true),'exact ChatGPT registration error blocks reconnect'); ok(!in_array('targeted_mad4b_route_count_incomplete',$s['blockers'],true),'global route blocker remains diagnostic context only');
 
 // Passive ChatGPT admin intentionally does not materialize REST/MCP registration.
-// The notice may project lightweight registration identity, but it must not mask
-// a real registration failure.
+// The notice must not translate that deferred state into a false not_registered
+// warning, while a real registration error must remain visible.
 MAD4B_SCP_MCP_Request_Scope::$passive=true;
 MAD4B_SCP_MCP_Registration_Bridge::$status=array(
     'bridge_booted'=>true,
     'server_hook_bound'=>true,
     'core_ability_hook_bound'=>true,
-    'registry_ability_hook_bound'=>true,
     'core_category_hook_bound'=>true,
+    'registry_ability_hook_bound'=>true,
     'registry_category_hook_bound'=>true,
 );
 MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'not_registered');
 $passive=MAD4B_SCP_Reconnect_Hardening::reconnect_status();
 $passive=priv('passive_admin_notice_status',array($passive));
 ok(!empty($passive['ready']),'passive ChatGPT admin projects deferred registration identity as ready');
-ok(empty($passive['chatgpt_registered'])&&!empty($passive['chatgpt_registration_identity_ready'])&&'deferred_identity_ready'===($passive['chatgpt_registration_projection']??''),'passive admin distinguishes actual registration from deferred identity');
+ok(empty($passive['chatgpt_registered'])&&!empty($passive['chatgpt_registration_identity_ready'])&&'deferred_identity_ready'===($passive['chatgpt_registration_projection']??''),'passive admin distinguishes actual registration from deferred registration identity');
 ok(!empty($passive['chatgpt_registration_deep_check_deferred']),'passive admin marks deep registration check deferred');
 MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'chatgpt_registration_failed');
 $passive_error=MAD4B_SCP_Reconnect_Hardening::reconnect_status();

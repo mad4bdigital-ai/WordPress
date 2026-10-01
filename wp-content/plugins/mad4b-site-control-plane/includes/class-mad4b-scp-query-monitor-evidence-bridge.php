@@ -26,6 +26,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	private static $last_capture_build = '';
 	private static $last_capture_class = '';
 	private static $request_build_fingerprint = '';
+	private static $request_package_identity_token = '';
 
 	public static function boot_early() {
 		if ( self::$booted ) return;
@@ -281,7 +282,9 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		$build = self::request_build_fingerprint();
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $build ) ) return;
 
-		$telemetry = self::load_telemetry( $build );
+		$package_identity_token = self::request_package_identity_token();
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $package_identity_token ) ) return;
+		$telemetry = self::load_telemetry( $build, $package_identity_token );
 
 		// MCP/OAuth protocol requests must never pay Query Monitor collection,
 		// duplicate-query analysis or per-request telemetry persistence costs.
@@ -447,15 +450,39 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		return $out;
 	}
 
+	private static function pin_request_identity() {
+		if (
+			preg_match( '/^[a-f0-9]{64}$/', self::$request_build_fingerprint )
+			&& preg_match( '/^[a-f0-9]{64}$/', self::$request_package_identity_token )
+		) {
+			return array(
+				'build_fingerprint' => self::$request_build_fingerprint,
+				'package_identity_token' => self::$request_package_identity_token,
+			);
+		}
+
+		// Pin build + exact package identity from one provenance snapshot. Never
+		// combine a request-start build hash with a later package identity.
+		$identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status();
+		$build = isset( $identity['build_fingerprint'] ) ? strtolower( trim( (string) $identity['build_fingerprint'] ) ) : '';
+		if ( empty( $identity['identity_ready'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $build ) ) return array();
+
+		$parts = array();
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) {
+			if ( empty( $identity[ $key ] ) ) return array();
+			$parts[] = (string) $identity[ $key ];
+		}
+		self::$request_build_fingerprint = $build;
+		self::$request_package_identity_token = hash( 'sha256', implode( "\n", $parts ) );
+		return array(
+			'build_fingerprint' => self::$request_build_fingerprint,
+			'package_identity_token' => self::$request_package_identity_token,
+		);
+	}
+
 	private static function pin_request_build_fingerprint() {
-		if ( preg_match( '/^[a-f0-9]{64}$/', self::$request_build_fingerprint ) ) return self::$request_build_fingerprint;
-		// Telemetry grouping needs only the signed/packaged build identity.
-		// Full byte-for-byte runtime hashing belongs to explicit/final acceptance,
-		// never to every request bootstrap.
-		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status();
-		$build = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
-		if ( preg_match( '/^[a-f0-9]{64}$/', $build ) ) self::$request_build_fingerprint = $build;
-		return self::$request_build_fingerprint;
+		$identity = self::pin_request_identity();
+		return isset( $identity['build_fingerprint'] ) ? (string) $identity['build_fingerprint'] : '';
 	}
 
 	private static function request_build_fingerprint() {
@@ -463,28 +490,36 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		return preg_match( '/^[a-f0-9]{64}$/', $build ) ? $build : '';
 	}
 
+	private static function request_package_identity_token() {
+		$identity = self::pin_request_identity();
+		$token = isset( $identity['package_identity_token'] ) ? (string) $identity['package_identity_token'] : '';
+		return preg_match( '/^[a-f0-9]{64}$/', $token ) ? $token : '';
+	}
+
 	/** @internal Pure seam for runtime regressions. */
 	public static function request_build_fingerprint_for_test() {
 		return self::request_build_fingerprint();
 	}
 
-	private static function load_telemetry( $build ) {
+	private static function load_telemetry( $build, $package_identity_token ) {
 		$stored = get_option( MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION, array() );
 		$valid = is_array( $stored )
-			&& isset( $stored['build_fingerprint'], $stored['capture_started_at'] )
-			&& hash_equals( (string) $stored['build_fingerprint'], (string) $build );
+			&& isset( $stored['build_fingerprint'], $stored['package_identity_token'], $stored['capture_started_at'] )
+			&& hash_equals( (string) $stored['build_fingerprint'], (string) $build )
+			&& hash_equals( (string) $stored['package_identity_token'], (string) $package_identity_token );
 		$started = $valid ? strtotime( (string) $stored['capture_started_at'] . ' UTC' ) : false;
 		if ( ! $valid || false === $started || ( time() - $started ) > MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_TTL ) {
-			return self::empty_telemetry( $build );
+			return self::empty_telemetry( $build, $package_identity_token );
 		}
 		return $stored;
 	}
 
-	private static function empty_telemetry( $build ) {
+	private static function empty_telemetry( $build, $package_identity_token ) {
 		return array(
 			'contract' => MAD4B_SCP_Live_Acceptance_Observer::QUERY_MONITOR_CONTRACT,
 			'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '',
 			'build_fingerprint' => (string) $build,
+			'package_identity_token' => (string) $package_identity_token,
 			'capture_started_at' => gmdate( 'Y-m-d H:i:s' ),
 			'last_observed_at' => '',
 			'observed_request_count' => 0,

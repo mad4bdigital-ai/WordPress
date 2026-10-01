@@ -253,8 +253,14 @@ for forbidden_registration in (
 ):
     if forbidden_registration in self_update:
         raise SystemExit("self-update must observe but never register the auto_update_plugin policy hook")
-if "'automatic_update_enabled' => false" in self_update:
-    raise SystemExit("automatic update state is still hard-coded instead of observed from WordPress")
+if "Update URI:" in bootstrap:
+    raise SystemExit("WordPress.org-compatible distribution must not claim an external Update URI")
+for marker in (
+    "MAD4B never publishes a core update transient/package",
+    "WordPress automatic-update state is observed read-only",
+):
+    if marker not in self_update:
+        raise SystemExit("observation-only WordPress updater boundary missing: " + marker)
 for marker in (
     "'automatic_update_enabled' => (bool) $auto_update['effective_enabled']",
     "'current_offer_auto_update_eligible' =>",
@@ -499,6 +505,13 @@ assert "self::fetch_manifest(" not in action_link_body
 render_body = self_update.split("public static function render_update_row(", 1)[1].split("public static function render_update_row_fallback", 1)[0]
 assert "self::cached_manifest()" in render_body
 assert "self::fetch_manifest(" not in render_body
+for marker in (
+    "self::installed_identity()",
+    "$manifest['display_version']",
+    "'+build.'",
+    "A governed MAD4B build update is available: %1$s → %2$s.",
+):
+    assert marker in render_body, f"exact build transition UI invariant missing: {marker}"
 
 refresh_body = self_update.split("public static function handle_refresh_update()", 1)[1].split("public static function handle_native_update()", 1)[0]
 assert "self::fetch_manifest( true )" in refresh_body
@@ -516,6 +529,16 @@ assert "'outbound_network_performed' => false" in cached_status
 assert "self::fetch_manifest(" not in cached_status
 assert "wp_safe_remote_get(" not in cached_status
 
+status_body = self_update.split("public static function status( $input = array() )", 1)[1].split("public static function cached_status", 1)[0]
+for marker in (
+    "'manual_only_scope' => 'mad4b_governed_native_action'",
+    "'governed_action_manual_only' => true",
+    "'wordpress_core_auto_update_observed' => (bool) $auto_update['effective_enabled']",
+    "'wordpress_core_auto_update_governed' => false",
+):
+    assert marker in status_body, f"governed/core auto-update distinction missing from live status: {marker}"
+    assert marker in cached_status, f"governed/core auto-update distinction missing from cached status: {marker}"
+
 # MAD4B auto-update observation must render in WordPress' native Auto-updates
 # column, not as a plugin action-link that visually diverges from core plugins.
 if "add_filter( 'plugin_auto_update_setting_html', array( __CLASS__, 'plugin_auto_update_setting_html' ), 20, 3 )" not in self_update:
@@ -527,8 +550,8 @@ for marker in (
     "self::is_control_plane_plugin_file( $plugin_file )",
     "self::wordpress_auto_update_state()",
     "mad4b-auto-update-state",
-    "Auto-updates enabled",
-    "Auto-updates disabled",
+    "WordPress auto-update selected · governed update remains manual",
+    "Governed updates only · automatic update disabled",
 ):
     if marker not in column_body:
         raise SystemExit(f"native auto-update column invariant missing: {marker}")
