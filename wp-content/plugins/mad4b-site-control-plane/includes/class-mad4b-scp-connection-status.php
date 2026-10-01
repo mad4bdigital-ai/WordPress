@@ -123,6 +123,8 @@ final class MAD4B_SCP_Connection_Status {
 			'local_transport_deep_validation_ready' => ! $lightweight && empty( $local_blockers ),
 			'local_blockers' => $local_blockers,
 			'remote_endpoint_preflight_ready' => empty( $remote_preflight_blockers ),
+			'remote_endpoint_preflight_state' => empty( $remote_preflight_blockers ) ? ( $lightweight ? 'identity_ready_deep_validation_deferred' : 'ready' ) : 'blocked',
+			'remote_endpoint_deep_preflight_ready' => ! $lightweight && empty( $remote_preflight_blockers ),
 			'remote_preflight_blockers' => $remote_preflight_blockers,
 			'connection_certified' => $connection_certified,
 			'connection_certification_state' => $certification_state,
