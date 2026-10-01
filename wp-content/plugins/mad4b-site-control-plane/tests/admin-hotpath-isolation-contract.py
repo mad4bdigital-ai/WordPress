@@ -314,9 +314,8 @@ passive_notice_projection = method_body(
 )
 for marker in (
     "current_request_is_passive_admin_hotpath()",
-    "MAD4B_SCP_Servers::expected_server_ids()",
-    "MAD4B_SCP_MCP_Registration_Bridge::status()",
-    "'passive_admin_deferred_identity'",
+    "MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( 'mad4b-chatgpt' )",
+    "'chatgpt_registration_identity_ready'",
     "'chatgpt_registration_deep_check_deferred'",
 ):
     assert marker in passive_notice_projection, marker
@@ -328,6 +327,23 @@ notice_method = method_body(
     "public static function is_resource_request_path",
 )
 assert "self::passive_admin_notice_status( self::reconnect_status() )" in notice_method
+
+registration_identity = method_body(
+    registration_bridge,
+    "public static function server_registration_identity_status( $server_id )",
+    "public static function status()",
+)
+for marker in (
+    "'mad4b.mcp-registration-identity.v1'",
+    "'actual_registered'",
+    "'identity_ready'",
+    "'deferred_identity_ready'",
+    "'blocking_registration_error'",
+    "'deep_registration_deferred'",
+):
+    assert marker in registration_identity, marker
+for forbidden in ("rest_get_server(", "wp_get_abilities(", "register_servers("):
+    assert forbidden not in registration_identity, forbidden
 
 bridge_identity = method_body(
     oauth_bridge,
