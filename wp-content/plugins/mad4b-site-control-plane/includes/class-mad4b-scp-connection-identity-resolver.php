@@ -193,9 +193,21 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 		if ( ! $runtime_issuer_match ) $blockers[] = 'connection_projection_drift';
 		if ( ! $runtime_resource_match ) $blockers[] = 'connection_projection_drift';
 		if ( empty( $key['ready'] ) ) $blockers[] = isset( $key['blocker'] ) ? sanitize_key( (string) $key['blocker'] ) : 'oauth_public_key_not_ready';
-		if ( empty( $build['identity_ready'] ) ) $blockers[] = 'package_identity_drift';
 		$blockers = array_values( array_unique( array_map( 'sanitize_key', $blockers ) ) );
 		$root = self::first_blocker( $blockers );
+
+		// Package provenance proves deployment/certification identity, not whether
+		// the current-origin OAuth/MCP endpoint is discoverable. Source-checkout
+		// fixtures intentionally have no generated provenance file; production
+		// artifacts do. Keep missing/stale provenance visible and fail-closed for
+		// certification without converting it into a false OAuth preflight blocker.
+		$certification_blockers = $blockers;
+		$package_identity_blocker = '';
+		if ( empty( $build['identity_ready'] ) ) {
+			$package_identity_blocker = 'package_identity_drift';
+			$certification_blockers[] = $package_identity_blocker;
+		}
+		$certification_blockers = array_values( array_unique( array_map( 'sanitize_key', $certification_blockers ) ) );
 
 		$result = $kernel;
 		$result['projection'] = 'canonical_connection';
@@ -209,11 +221,15 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 			'adapter_version' => $adapter_version,
 		);
 		$result['package_identity'] = $build;
+		$result['package_identity_ready'] = ! empty( $build['identity_ready'] );
+		$result['package_identity_blocker'] = $package_identity_blocker;
 		$result['blockers'] = $blockers;
 		$result['root_blocker'] = $root;
 		$result['root_blocker_source'] = self::blocker_source( $root );
 		$result['eligible'] = empty( $blockers );
 		$result['effective'] = empty( $blockers );
+		$result['certification_blockers'] = $certification_blockers;
+		$result['certification_ready'] = empty( $certification_blockers );
 		$result['connection_fingerprint'] = self::connection_fingerprint( $result );
 		$result['edge_contract'] = self::expected_edge_contract( $result );
 		self::$resolved = $result;
