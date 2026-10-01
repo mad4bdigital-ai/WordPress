@@ -83,6 +83,9 @@ final class MAD4B_SCP_Connection_Status {
 		$remote_preflight_blockers = array_values( array_unique( array_map( 'sanitize_key', $remote_preflight_blockers ) ) );
 
 		$certification_blockers = $remote_preflight_blockers;
+		if ( isset( $connection_contract['certification_blockers'] ) && is_array( $connection_contract['certification_blockers'] ) ) {
+			$certification_blockers = array_merge( $certification_blockers, $connection_contract['certification_blockers'] );
+		}
 		$certification_deferred_checks = array();
 		$persisted_external_evidence = $admin_shallow && ! empty( $handshake['evidence_present'] );
 		if ( $admin_shallow ) {
