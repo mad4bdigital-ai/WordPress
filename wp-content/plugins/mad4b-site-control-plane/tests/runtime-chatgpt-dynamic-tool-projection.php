@@ -9,6 +9,19 @@ if ( ! class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) $fail( 'Dynamic Cha
 if ( ! class_exists( 'MAD4B_SCP_Servers' ) ) $fail( 'MCP server registry is unavailable.' );
 if ( ! class_exists( 'MAD4B_SCP_MCP_Catalog_Diagnostics' ) ) $fail( 'MCP catalog diagnostics are unavailable.' );
 
+if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
+	wp_register_ability( 'mad4b-ci/unclassified-projection-fixture', array(
+		'label' => 'Unclassified Projection Fixture',
+		'description' => 'CI fixture proving a registered third-party-style Ability without annotations.readonly can still be projected conservatively.',
+		'category' => 'mad4b-read',
+		'execute_callback' => static function ( $input = null ) { unset( $input ); return array( 'ok' => true ); },
+		'permission_callback' => static function () { return true; },
+		'input_schema' => array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ),
+		'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+		'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ) ),
+	) );
+}
+
 foreach ( array(
 	MAD4B_SCP_ChatGPT_Tool_Projection::STATUS_ABILITY,
 	MAD4B_SCP_ChatGPT_Tool_Projection::DISCOVER_ABILITY,
@@ -23,7 +36,7 @@ $wp_all = array_keys( wp_get_abilities() );
 sort( $wp_all, SORT_STRING );
 if ( $all !== $wp_all ) $fail( 'Projection universe must equal all currently registered WordPress Abilities.', array( 'projection' => count( $all ), 'wordpress' => count( $wp_all ) ) );
 
-foreach ( array( 'mad4b/diagnostics-health', 'mad4b/plugin-package-apply', 'mad4b/database-raw-query' ) as $required ) {
+foreach ( array( 'mad4b/diagnostics-health', 'mad4b/plugin-package-apply', 'mad4b/database-raw-query', 'mad4b-ci/unclassified-projection-fixture' ) as $required ) {
 	if ( ! in_array( $required, $all, true ) ) $fail( 'All-site projection universe omitted a registered Ability.', $required );
 }
 
@@ -58,6 +71,18 @@ if ( empty( $write_plan['mcp_preflight']['ready'] ) ) $fail( 'Mutation projectio
 if ( ! isset( $write_plan['desired_abilities'][0]['readonly'] ) || false !== $write_plan['desired_abilities'][0]['readonly'] ) {
 	$fail( 'Mutation projection plan lost readonly=false classification.', $write_plan );
 }
+
+$unclassified_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
+	'mode' => 'replace',
+	'ability_names' => array( 'mad4b-ci/unclassified-projection-fixture' ),
+	'include_breakglass' => false,
+) );
+if ( is_wp_error( $unclassified_plan ) ) $fail( 'Unclassified third-party-style Ability projection plan failed.', $unclassified_plan->get_error_code() );
+$unclassified_row = $unclassified_plan['desired_abilities'][0] ?? array();
+if ( ! empty( $unclassified_row['readonly'] ) || ! empty( $unclassified_row['readonly_declared'] ) || empty( $unclassified_row['conservative_mutation'] ) ) {
+	$fail( 'Unclassified Ability was not conservatively treated as mutation-visible-only.', $unclassified_row );
+}
+if ( empty( $unclassified_plan['ready_for_apply'] ) ) $fail( 'Valid unclassified Ability should survive exact MCP preflight.', $unclassified_plan );
 
 $raw_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
 	'mode' => 'replace',
@@ -158,6 +183,7 @@ fwrite(
 			'base_tool_count' => count( $base ),
 			'read_projection_verified' => true,
 			'mutation_projection_classified' => true,
+			'unclassified_ability_conservative_projection_verified' => true,
 			'schema_drift_fail_closed' => true,
 			'breakglass_opt_in_required' => true,
 		),
