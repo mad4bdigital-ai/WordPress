@@ -417,7 +417,14 @@ final class MAD4B_SCP_Read_Consistency {
 		$result['expected_runtime_generation'] = $expected_generation;
 		$result['runtime_generation'] = $after['runtime_generation'];
 		$result['generation_match'] = true;
+		// Backward-compatible alias: bundle merge means only that this evidence can
+		// join the same generation-bound read transaction. It is never a release or
+		// deployment acceptance verdict.
 		$result['valid_for_merge'] = true;
+		$result['valid_for_bundle_evidence_merge'] = true;
+		$result['valid_for_release_merge'] = false;
+		$result['merge_scope'] = 'generation_bound_bundle_evidence_only';
+		$result['deep_acceptance_required'] = true;
 		$result['resume_permitted'] = true;
 		$result['discard_partial'] = false;
 		$result['projection_freshness'] = 'live';
@@ -1209,6 +1216,7 @@ final class MAD4B_SCP_Read_Consistency {
 	}
 
 	private static function generation_changed_envelope( $bundle, $transaction_id, $sequence, $expected_generation, array $snapshot, $reason ) {
+		$session_report = 'session_safe_diagnostics' === (string) $bundle;
 		return array(
 			'contract' => self::CONTRACT,
 			'state' => 'generation_changed',
@@ -1221,9 +1229,10 @@ final class MAD4B_SCP_Read_Consistency {
 			'runtime_generation' => isset( $snapshot['runtime_generation'] ) ? (string) $snapshot['runtime_generation'] : '',
 			'generation_match' => false,
 			'valid_for_merge' => false,
+			'valid_for_bundle_evidence_merge' => false,
 			'valid_for_session_evidence_merge' => false,
 			'valid_for_release_merge' => false,
-			'merge_scope' => 'session_safe_subject_evidence_only',
+			'merge_scope' => $session_report ? 'session_safe_subject_evidence_only' : 'generation_bound_bundle_evidence_only',
 			'deep_acceptance_required' => true,
 			'resume_permitted' => false,
 			'discard_partial' => true,
