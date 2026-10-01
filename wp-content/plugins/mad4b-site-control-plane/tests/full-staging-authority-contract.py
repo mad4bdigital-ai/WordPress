@@ -53,6 +53,10 @@ required = [
     "mad4b_full_authority_chatgpt_client_required",
     "unreviewed_stale_write_authority",
     "'unreviewed_stale_allow_grants_count'",
+    "'write_explicit_deny'",
+    "'write_provider_unmounted'",
+    "'nonreconcilable_write_drift' => $nonreconcilable_write_drift",
+    "in_array( $reason, array( 'explicit_deny', 'write_provider_unmounted' ), true )",
 ]
 for marker in required:
     assert marker in full, marker
@@ -113,6 +117,17 @@ for forbidden in [
     "hard_blockers",
 ]:
     assert forbidden not in step_up, f"tools/list step-up projection must stay lifecycle-stable and off the full authority plan hotpath: {forbidden}"
+
+plan_body = full.split("public static function plan()", 1)[1].split("public static function apply( $input )", 1)[0]
+for marker in [
+    "$missing_rows = isset( $write_plan['exact_grants_missing'] )",
+    "'explicit_deny'",
+    "'write_provider_unmounted'",
+    "$hard_blockers[] = 'explicit_deny' === $reason ? 'write_explicit_deny' : 'write_provider_unmounted';",
+]:
+    assert marker in plan_body, marker
+assert plan_body.index("$missing_rows = isset( $write_plan['exact_grants_missing'] )") < plan_body.index("'ready_to_apply' => empty( $hard_blockers )")
+assert "MAD4B_SCP_Staging_Write_Authority::reconcile()" not in plan_body
 
 apply_body = full.split("public static function apply( $input )", 1)[1].split("private static function developer_apply_input", 1)[0]
 for marker in [
