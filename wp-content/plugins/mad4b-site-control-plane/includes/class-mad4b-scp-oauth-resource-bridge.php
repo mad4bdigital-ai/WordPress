@@ -235,8 +235,12 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$resource = untrailingslashit( trim( (string) $resource ) );
 		if ( '' === $resource ) $resource = self::resource_identifier();
 		if ( ! self::is_protected_resource( $resource ) ) return array();
+		$connection_fingerprint = class_exists( 'MAD4B_SCP_Connection_Identity_Resolver' )
+			? MAD4B_SCP_Connection_Identity_Resolver::fingerprint()
+			: '';
 		return array(
 			'resource' => $resource,
+			'mad4b_connection_fingerprint' => $connection_fingerprint,
 			'authorization_servers' => self::advertised_issuers( $resource ),
 			'scopes_supported' => self::scopes_for_resource( $resource ),
 			'bearer_methods_supported' => array( 'header' ),

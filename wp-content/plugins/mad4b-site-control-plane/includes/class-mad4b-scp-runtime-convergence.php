@@ -406,7 +406,13 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'gated_actions' => $gated,
 			'release_plan' => is_wp_error( $release ) ? array( 'error_code' => $release->get_error_code() ) : $release,
 			'production_mutation_allowed' => false,
-			'candidate_binding_auto_refresh' => false,
+			'candidate_binding_auto_refresh' => class_exists( 'MAD4B_SCP_Post_Update_Continuation' )
+				&& ( function_exists( 'wp_get_environment_type' ) ? 'staging' === sanitize_key( (string) ( class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : wp_get_environment_type() ) ) : false )
+				&& ( static function () {
+					$status = MAD4B_SCP_Post_Update_Continuation::status();
+					return ! empty( $status['active'] ) && MAD4B_SCP_Post_Update_Continuation::CLASS_ZERO === ( isset( $status['classification'] ) ? (string) $status['classification'] : '' );
+				} )(),
+			'candidate_binding_auto_refresh_policy' => 'post_update_zero_delta_continuation_only',
 			'provider_write_auto_certification' => false,
 			'raw_sql_breakglass' => false,
 			'authorizing' => false,
@@ -554,10 +560,20 @@ final class MAD4B_SCP_Runtime_Convergence {
 			$stored_blocker = isset( $stored['resume_blocker'] ) ? sanitize_key( (string) $stored['resume_blocker'] ) : '';
 			if ( ! hash_equals( $expected_blocker, $stored_blocker ) ) return false;
 		}
+		if ( ! empty( $expected['continuation'] ) ) {
+			if ( empty( $stored['continuation'] ) || ! is_array( $stored['continuation'] ) ) return false;
+			foreach ( array( 'contract', 'permit_id', 'permit_digest', 'classification', 'state' ) as $field ) {
+				$left = isset( $expected['continuation'][ $field ] ) ? (string) $expected['continuation'][ $field ] : '';
+				$right = isset( $stored['continuation'][ $field ] ) ? (string) $stored['continuation'][ $field ] : '';
+				if ( ! hash_equals( $left, $right ) ) return false;
+			}
+			if ( (int) ( isset( $expected['continuation']['generation'] ) ? $expected['continuation']['generation'] : 0 )
+				!== (int) ( isset( $stored['continuation']['generation'] ) ? $stored['continuation']['generation'] : -1 ) ) return false;
+		}
 		return true;
 	}
 
-	public static function mark_post_update_pending( array $target, $channel = '', $plan_sha256 = '' ) {
+	public static function mark_post_update_pending( array $target, $channel = '', $plan_sha256 = '', array $continuation = array() ) {
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		if ( 'staging' !== $environment ) return array( 'scheduled' => false, 'state' => 'ignored_non_staging' );
 		$previous_checkpoint = get_option( self::CHECKPOINT_OPTION, null );
@@ -570,6 +586,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'quiet_period_seconds' => self::POST_UPDATE_QUIET_SECONDS,
 			'target_identity' => self::bounded_identity( $target ),
 			'update_plan_sha256' => strtolower( trim( (string) $plan_sha256 ) ),
+			'continuation' => empty( $continuation ) ? array() : array(
+				'contract' => isset( $continuation['contract'] ) ? (string) $continuation['contract'] : '',
+				'permit_id' => isset( $continuation['permit_id'] ) ? (string) $continuation['permit_id'] : '',
+				'permit_digest' => isset( $continuation['permit_digest'] ) ? (string) $continuation['permit_digest'] : '',
+				'generation' => isset( $continuation['generation'] ) ? (int) $continuation['generation'] : 0,
+				'classification' => isset( $continuation['classification'] ) ? (string) $continuation['classification'] : '',
+				'state' => isset( $continuation['state'] ) ? sanitize_key( (string) $continuation['state'] ) : '',
+			),
 			'created_at' => gmdate( 'c' ),
 			'updated_at' => gmdate( 'c' ),
 			'production_mutation' => false,
@@ -865,6 +889,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			}
 			$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 			$skills_pending = false;
+			$skills_persisted = array();
 			if ( ! empty( $profile['skills_enabled'] ) && class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ) {
 				$skills = MAD4B_SCP_Skill_Runtime_Certification::current_status();
 				$skills_pending = empty( $skills['ready'] );
@@ -882,20 +907,63 @@ final class MAD4B_SCP_Runtime_Convergence {
 					$changed[] = 'managed_skills';
 					$changed = array_values( array_unique( $changed ) );
 				}
+
+				// A healthy live Skill graph still needs build-bound persisted evidence
+				// after every package replacement. This is explicit lifecycle work and is
+				// never performed by passive/protocol status reads.
+				$observed = MAD4B_SCP_Skill_Runtime_Certification::observe( true );
+				if ( ! is_array( $observed ) || empty( $observed['ready'] ) ) {
+					return new WP_Error( 'mad4b_runtime_convergence_skills_persist_failed', 'Managed Skills are live-ready but current-build certification could not be persisted.' );
+				}
+				$skills_persisted = MAD4B_SCP_Skill_Runtime_Certification::persisted_status();
+				if ( empty( $skills_persisted['ready'] ) || empty( $skills_persisted['build_identity_current'] ) ) {
+					return new WP_Error( 'mad4b_runtime_convergence_skills_persisted_identity_stale', 'Managed Skills persisted certification is not bound to the exact current build.', array(
+						'stale_reasons' => isset( $skills_persisted['stale_reasons'] ) ? $skills_persisted['stale_reasons'] : array(),
+					) );
+				}
+				$continuation_status = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ? MAD4B_SCP_Post_Update_Continuation::status() : array();
+				$continuation_target = isset( $continuation_status['target_identity'] ) && is_array( $continuation_status['target_identity'] ) ? $continuation_status['target_identity'] : array();
+				if ( ! empty( $continuation_status['active'] ) && ! empty( $continuation_target ) ) {
+					foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $field ) {
+						if ( empty( $skills_persisted[ $field ] ) || empty( $continuation_target[ $field ] ) || ! hash_equals( (string) $continuation_target[ $field ], (string) $skills_persisted[ $field ] ) ) {
+							return new WP_Error( 'mad4b_runtime_convergence_skills_target_identity_mismatch', 'Persisted Skill certification does not match the continuation target.', array( 'field' => $field ) );
+						}
+					}
+				}
+				$changed[] = 'managed_skills_certification';
+				$changed = array_values( array_unique( $changed ) );
 			}
+
+			$continuation_result = array();
+			$continuation_status = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ? MAD4B_SCP_Post_Update_Continuation::status() : array();
+			if ( ! empty( $continuation_status['active'] ) && in_array( isset( $continuation_status['state'] ) ? (string) $continuation_status['state'] : '', array( 'exact_readback_verified', 'pending_convergence' ), true ) ) {
+				$continuation_result = MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind( $lock );
+				if ( is_wp_error( $continuation_result ) ) return $continuation_result;
+				$changed[] = 'post_update_continuation';
+				$changed = array_values( array_unique( $changed ) );
+			}
+
 			$lease_refresh = self::refresh_lock( $lock );
 			if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
 			$status = self::status();
+			$final_continuation = class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ? MAD4B_SCP_Post_Update_Continuation::status() : array();
+			$continuation_state = isset( $final_continuation['state'] ) ? sanitize_key( (string) $final_continuation['state'] ) : '';
+			$checkpoint_state = empty( $status['required_blockers'] ) ? 'completed' : 'awaiting_gated_phases';
+			if ( 'blocked' === $continuation_state ) $checkpoint_state = 'authority_blocked';
+			$prior_source = is_array( $existing_checkpoint ) && isset( $existing_checkpoint['source'] ) ? sanitize_key( (string) $existing_checkpoint['source'] ) : '';
+			$checkpoint_source = 'self_update' === $prior_source ? 'self_update' : sanitize_key( (string) $source );
 			$checkpoint = array(
 				'contract' => self::CONTRACT,
-				'state' => empty( $status['required_blockers'] ) ? 'completed' : 'awaiting_gated_phases',
-				'source' => sanitize_key( (string) $source ),
+				'state' => $checkpoint_state,
+				'source' => $checkpoint_source,
+				'last_execution_source' => sanitize_key( (string) $source ),
 				'current_identity' => self::current_identity(),
 				'changed_safe_phases' => $changed,
 				'required_blockers' => isset( $status['required_blockers'] ) ? $status['required_blockers'] : array(),
+				'continuation' => $final_continuation,
 				'updated_at' => gmdate( 'c' ),
 				'production_mutation' => false,
-				'candidate_binding_mutation' => false,
+				'candidate_binding_mutation' => is_array( $continuation_result ) && 'completed' === ( isset( $continuation_result['state'] ) ? (string) $continuation_result['state'] : '' ),
 				'provider_write_certification' => false,
 			);
 			update_option( self::CHECKPOINT_OPTION, $checkpoint, false );
@@ -906,7 +974,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 					'changed_safe_phases' => $changed,
 					'plan_sha256' => isset( $plan['plan_sha256'] ) ? (string) $plan['plan_sha256'] : '',
 					'production_mutation_performed' => false,
-					'candidate_binding_mutation_performed' => false,
+					'candidate_binding_mutation_performed' => ! empty( $checkpoint['candidate_binding_mutation'] ),
 				), 'ok' );
 			}
 			return array(
@@ -914,6 +982,8 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'state' => $checkpoint['state'],
 				'changed_safe_phases' => $changed,
 				'readback' => $status,
+				'continuation' => $final_continuation,
+				'continuation_result' => $continuation_result,
 				'checkpoint' => $checkpoint,
 			);
 		} finally {
@@ -974,7 +1044,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 	}
 
 	private static function current_identity() {
-		$identity = array( 'version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '', 'source_commit_sha' => '', 'build_fingerprint' => '', 'package_manifest_digest' => '' );
+		$identity = array( 'version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '', 'source_commit_sha' => '', 'build_fingerprint' => '', 'package_manifest_digest' => '', 'artifact_identity' => '' );
 		$path = defined( 'MAD4B_SCP_DIR' ) ? rtrim( (string) MAD4B_SCP_DIR, "/\\" ) . '/MAD4B-BUILD-PROVENANCE.json' : '';
 		if ( '' !== $path && is_file( $path ) && is_readable( $path ) && ! is_link( $path ) ) {
 			$raw = file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
@@ -982,6 +1052,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 			if ( is_array( $row ) ) {
 				if ( isset( $row['control_plane_version'] ) && '' !== trim( (string) $row['control_plane_version'] ) ) $identity['version'] = trim( (string) $row['control_plane_version'] );
 				foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $field ) if ( isset( $row[ $field ] ) ) $identity[ $field ] = strtolower( trim( (string) $row[ $field ] ) );
+				if ( isset( $row['artifact_identity'] ) ) $identity['artifact_identity'] = trim( (string) $row['artifact_identity'] );
 			}
 		}
 		return self::bounded_identity( $identity );
@@ -993,12 +1064,16 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'source_commit_sha' => isset( $identity['source_commit_sha'] ) && preg_match( '/^[a-f0-9]{40}$/', strtolower( trim( (string) $identity['source_commit_sha'] ) ) ) ? strtolower( trim( (string) $identity['source_commit_sha'] ) ) : '',
 			'build_fingerprint' => isset( $identity['build_fingerprint'] ) && preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) $identity['build_fingerprint'] ) ) ) ? strtolower( trim( (string) $identity['build_fingerprint'] ) ) : '',
 			'package_manifest_digest' => isset( $identity['package_manifest_digest'] ) && preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) $identity['package_manifest_digest'] ) ) ) ? strtolower( trim( (string) $identity['package_manifest_digest'] ) ) : '',
+			'artifact_identity' => isset( $identity['artifact_identity'] ) ? substr( sanitize_text_field( trim( (string) $identity['artifact_identity'] ) ), 0, 255 ) : '',
 		);
 	}
 
 	private static function identity_matches( array $expected, array $actual ) {
 		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
 			if ( empty( $expected[ $field ] ) || empty( $actual[ $field ] ) || ! hash_equals( (string) $expected[ $field ], (string) $actual[ $field ] ) ) return false;
+		}
+		if ( ! empty( $expected['artifact_identity'] ) ) {
+			if ( empty( $actual['artifact_identity'] ) || ! hash_equals( (string) $expected['artifact_identity'], (string) $actual['artifact_identity'] ) ) return false;
 		}
 		return true;
 	}

@@ -197,8 +197,12 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$portable_only = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' )
 			&& MAD4B_SCP_Portable_Readonly_Connection::effective()
 			&& ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::oauth_enabled() );
+		$connection_fingerprint = class_exists( 'MAD4B_SCP_Connection_Identity_Resolver' )
+			? MAD4B_SCP_Connection_Identity_Resolver::fingerprint()
+			: '';
 		return array(
 			'issuer' => self::issuer(),
+			'mad4b_connection_fingerprint' => $connection_fingerprint,
 			'authorization_endpoint' => self::authorize_url(),
 			'token_endpoint' => self::token_url(),
 			'jwks_uri' => self::jwks_url(),
@@ -219,6 +223,40 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	public static function jwks_document() {
 		$key = self::public_jwk();
 		return is_wp_error( $key ) ? $key : array( 'keys' => array( $key ) );
+	}
+
+	/**
+	 * Read-only public-key identity for canonical connection projections.
+	 *
+	 * This derives only the public JWK from the already provisioned private key.
+	 * It never creates, rotates or persists key material.
+	 */
+	public static function public_key_fingerprint_status() {
+		$key = self::public_jwk();
+		if ( is_wp_error( $key ) ) {
+			return array(
+				'contract' => 'mad4b.local-oauth-public-key-identity.v1',
+				'ready' => false,
+				'fingerprint' => '',
+				'blocker' => sanitize_key( (string) $key->get_error_code() ),
+				'mutation_performed' => false,
+			);
+		}
+		$public = array(
+			'kty' => isset( $key['kty'] ) ? (string) $key['kty'] : '',
+			'alg' => isset( $key['alg'] ) ? (string) $key['alg'] : '',
+			'kid' => isset( $key['kid'] ) ? (string) $key['kid'] : '',
+			'n' => isset( $key['n'] ) ? (string) $key['n'] : '',
+			'e' => isset( $key['e'] ) ? (string) $key['e'] : '',
+		);
+		$encoded = wp_json_encode( $public, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return array(
+			'contract' => 'mad4b.local-oauth-public-key-identity.v1',
+			'ready' => is_string( $encoded ) && '' !== $encoded,
+			'fingerprint' => is_string( $encoded ) && '' !== $encoded ? hash( 'sha256', $encoded ) : '',
+			'blocker' => is_string( $encoded ) && '' !== $encoded ? '' : 'oauth_public_key_identity_unavailable',
+			'mutation_performed' => false,
+		);
 	}
 
 	public static function issuer() {

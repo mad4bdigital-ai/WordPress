@@ -41,6 +41,13 @@ final class MAD4B_SCP_Plugin {
 		// lazy and no authority/provider reconciliation is performed here.
 		if ( is_admin() || ( defined( 'WP_CLI' ) && WP_CLI ) ) self::boot_admin_navigation();
 
+		// Tier 0 connection identity is always projected before any zero-touch
+		// decision. This is request-local/read-only: no provider discovery, schema
+		// repair, key generation, persistence or outbound I/O is allowed here.
+		if ( class_exists( 'MAD4B_SCP_Connection_Identity_Resolver', false ) ) {
+			MAD4B_SCP_Connection_Identity_Resolver::project_runtime_identity();
+		}
+
 		// Unrelated Core/provider REST and generic wp-cron.php are infrastructure
 		// hotpaths, not Control Plane operator lifecycles. Their owning scheduled
 		// hooks are registered before init; skip admin, authority, OAuth and

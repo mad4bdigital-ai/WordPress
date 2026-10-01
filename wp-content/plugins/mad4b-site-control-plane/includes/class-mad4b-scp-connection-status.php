@@ -63,7 +63,10 @@ final class MAD4B_SCP_Connection_Status {
 				? MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()
 				: MAD4B_SCP_External_Handshake_Evidence::status() )
 			: array( 'verified' => false, 'status' => 'evidence_component_unavailable' );
-		$oauth_blockers = self::oauth_preflight_blockers( $oauth );
+		$connection_contract = class_exists( 'MAD4B_SCP_Connection_Identity_Resolver' )
+			? MAD4B_SCP_Connection_Identity_Resolver::resolve()
+			: array();
+		$oauth_blockers = self::oauth_preflight_blockers( $oauth, $connection_contract );
 		$mcp_registration_lifecycle = self::bounded_mcp_registration_lifecycle();
 
 		$local_blockers = array();
@@ -80,6 +83,9 @@ final class MAD4B_SCP_Connection_Status {
 		$remote_preflight_blockers = array_values( array_unique( array_map( 'sanitize_key', $remote_preflight_blockers ) ) );
 
 		$certification_blockers = $remote_preflight_blockers;
+		if ( isset( $connection_contract['certification_blockers'] ) && is_array( $connection_contract['certification_blockers'] ) ) {
+			$certification_blockers = array_merge( $certification_blockers, $connection_contract['certification_blockers'] );
+		}
 		$certification_deferred_checks = array();
 		$persisted_external_evidence = $admin_shallow && ! empty( $handshake['evidence_present'] );
 		if ( $admin_shallow ) {
@@ -99,6 +105,11 @@ final class MAD4B_SCP_Connection_Status {
 
 		return array(
 			'contract' => self::CONTRACT,
+			'connection_contract' => $connection_contract,
+			'connection_fingerprint' => isset( $connection_contract['connection_fingerprint'] ) ? (string) $connection_contract['connection_fingerprint'] : '',
+			'connection_root_blocker' => isset( $connection_contract['root_blocker'] ) ? sanitize_key( (string) $connection_contract['root_blocker'] ) : '',
+			'connection_root_blocker_source' => isset( $connection_contract['root_blocker_source'] ) ? sanitize_text_field( (string) $connection_contract['root_blocker_source'] ) : '',
+			'external_edge_contract' => isset( $connection_contract['edge_contract'] ) && is_array( $connection_contract['edge_contract'] ) ? $connection_contract['edge_contract'] : array(),
 			'environment' => $environment_key,
 			'wordpress_environment' => class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::wordpress() : $environment_key,
 			'wordpress_environment_explicit' => class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::wordpress_explicit() : defined( 'WP_ENVIRONMENT_TYPE' ),
@@ -206,9 +217,18 @@ final class MAD4B_SCP_Connection_Status {
 		return in_array( $page, array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ), true );
 	}
 
-	private static function oauth_preflight_blockers( $oauth ) {
-		if ( ! is_array( $oauth ) || isset( $oauth['available'] ) && false === $oauth['available'] ) return array( 'oauth_resource_bridge_unavailable' );
+	private static function oauth_preflight_blockers( $oauth, $connection_contract = array() ) {
+		$connection_contract = is_array( $connection_contract ) ? $connection_contract : array();
+		$root = isset( $connection_contract['root_blocker'] ) ? sanitize_key( (string) $connection_contract['root_blocker'] ) : '';
 		$blockers = array();
+		// Canonical cause is always first. Generic bridge symptoms remain derived
+		// evidence only and can no longer hide a Site Profile / explicit override /
+		// projection-drift root cause.
+		if ( '' !== $root ) $blockers[] = $root;
+		if ( ! is_array( $oauth ) || isset( $oauth['available'] ) && false === $oauth['available'] ) {
+			$blockers[] = 'oauth_resource_bridge_unavailable';
+			return array_values( array_unique( $blockers ) );
+		}
 		if ( empty( $oauth['configured'] ) ) $blockers[] = 'oauth_resource_bridge_not_configured';
 		if ( empty( $oauth['issuer_configured'] ) ) $blockers[] = 'oauth_issuer_unconfigured';
 		if ( empty( $oauth['wp_user_id'] ) ) $blockers[] = 'oauth_wp_subject_unconfigured';
@@ -219,8 +239,8 @@ final class MAD4B_SCP_Connection_Status {
 		$portable_ok = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();
 		$environment_allowed = ( $profile_ok || $portable_ok ) && ( in_array( $env, array( 'local', 'development', 'staging' ), true ) || ( 'production' === $env && ! empty( $oauth['production_approved'] ) ) );
 		if ( ! $environment_allowed ) $blockers[] = 'oauth_environment_not_allowed';
-		if ( empty( $oauth['effective'] ) && ! $blockers ) $blockers[] = 'oauth_resource_bridge_not_effective';
-		return array_values( array_unique( $blockers ) );
+		if ( empty( $oauth['effective'] ) && empty( $blockers ) ) $blockers[] = 'oauth_resource_bridge_not_effective';
+		return array_values( array_unique( array_map( 'sanitize_key', $blockers ) ) );
 	}
 
 	private static function bounded_oauth_status( $oauth, array $blockers ) {

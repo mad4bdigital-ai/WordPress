@@ -460,6 +460,7 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		$row = isset( $registrations[ $server_id ] ) && is_array( $registrations[ $server_id ] ) ? $registrations[ $server_id ] : array();
 		$fact = array(
 			'contract' => 'mad4b.mcp-registration-fact.v1',
+			'connection_fingerprint' => class_exists( 'MAD4B_SCP_Connection_Identity_Resolver' ) ? MAD4B_SCP_Connection_Identity_Resolver::fingerprint() : '',
 			'server_id' => $server_id,
 			'expected_server' => in_array( $server_id, $expected_ids, true ),
 			'actual_registered' => ! empty( $row['registered'] ),
@@ -516,6 +517,7 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 
 		return array(
 			'contract' => self::CONTRACT,
+			'connection_fingerprint' => class_exists( 'MAD4B_SCP_Connection_Identity_Resolver' ) ? MAD4B_SCP_Connection_Identity_Resolver::fingerprint() : '',
 			'bridge_booted' => self::$booted,
 			'adapter_init_seen_before_bridge_boot' => self::$adapter_init_seen_before_boot,
 			'rest_init_seen_before_bridge_boot' => self::$rest_init_seen_before_boot,
