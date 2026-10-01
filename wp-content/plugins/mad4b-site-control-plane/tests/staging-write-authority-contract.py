@@ -977,6 +977,15 @@ for marker in [
 if "MAD4B_SCP_Live_Truth::current_authority_status()" in current_execution_body:
     raise SystemExit('mutation-bound readiness must consume canonical reconciliation snapshot directly, not recurse through Live Truth')
 
+manages_agent_body = write.split("public static function manages_agent( array $agent )", 1)[1].split("public static function effective()", 1)[0]
+for marker in [
+    "self::agent_slug()",
+    "isset( $agent['slug'] )",
+    "hash_equals( $expected, $slug )",
+]:
+    if marker not in manages_agent_body:
+        raise SystemExit('managed ChatGPT write-agent boundary invariant missing: ' + marker)
+
 planning_validate = planning.split("public static function validate_remote_plan_input", 1)[1]
 if "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness" not in planning_validate:
     raise SystemExit('remote approval planning does not fail closed on current write drift')
@@ -984,6 +993,7 @@ if "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness" not in plann
 authorize_mutation = auth.split("public static function authorize_mutation", 1)[1].split("public static function claim_mutation", 1)[0]
 for marker in [
     "'mad4b-write' === $server_id",
+    "MAD4B_SCP_Staging_Write_Authority::manages_agent( $agent )",
     "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness",
     "'mad4b_write_authority_current_drift'",
 ]:
