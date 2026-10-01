@@ -29,12 +29,23 @@ function sameOrigin(a, b) {
   return x.protocol === y.protocol && x.hostname === y.hostname && (x.port || "443") === (y.port || "443");
 }
 async function request(url, { expectJson = false, allow = [200] } = {}) {
-  const res = await fetch(url, {
-    method: "GET",
-    redirect: "manual",
-    headers: { accept: expectJson ? "application/json" : "application/json, */*;q=0.1", "user-agent": "MAD4B-Connection-Edge-Acceptance/1" },
-    signal: AbortSignal.timeout(12000),
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "GET",
+      redirect: "manual",
+      headers: { accept: expectJson ? "application/json" : "application/json, */*;q=0.1", "user-agent": "MAD4B-Connection-Edge-Acceptance/1" },
+      signal: AbortSignal.timeout(12000),
+    });
+  } catch (error) {
+    const cause = error && error.cause ? error.cause : {};
+    const code = String(cause.code || error.code || "");
+    const message = String(error && error.message ? error.message : error || "");
+    if (code === "ENOTFOUND" || code === "EAI_AGAIN") fail("edge_dns_unreachable", { url, network_code: code });
+    if (/CERT|TLS|SSL|certificate/i.test(code + " " + message)) fail("edge_tls_failure", { url, network_code: code });
+    if (/timeout|aborted/i.test(message) || code === "ETIMEDOUT") fail("edge_timeout", { url, network_code: code });
+    fail("edge_network_unreachable", { url, network_code: code });
+  }
   const text = await res.text();
   const location = res.headers.get("location") || "";
   const auth = res.headers.get("www-authenticate") || "";
