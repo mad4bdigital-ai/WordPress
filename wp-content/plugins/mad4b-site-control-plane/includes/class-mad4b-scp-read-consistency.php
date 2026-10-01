@@ -1074,7 +1074,8 @@ final class MAD4B_SCP_Read_Consistency {
 			: array( 'ready' => false, 'state' => 'unavailable' );
 		if ( is_wp_error( $status ) ) return $status;
 		$result = self::bounded_keys( $status, array(
-			'contract', 'ready', 'state', 'persistence', 'blocker', 'blockers',
+			'contract', 'ready', 'historical_ready', 'state', 'persistence', 'blocker', 'blockers',
+			'historical_evidence_only', 'build_identity_current', 'stale_reasons',
 			'provider_count', 'expected_provider_count', 'managed_skill_count',
 			'expected_managed_skill_count', 'source_commit_sha', 'build_fingerprint',
 			'package_manifest_digest', 'artifact_identity', 'observed_at',
