@@ -608,8 +608,9 @@ require(status, "$protocol_hotpath = ! $force_deep", 'connection-deep-bypasses-h
 require(status, "'explicit_deep_validation' => (bool) $force_deep", 'connection-deep-mode-observable')
 
 # Ordinary Connection/ChatGPT wp-admin rendering is a first-class shallow mode.
-# It must reuse the same hash-free identity projection as protocol hotpaths while
-# leaving explicit Endpoints diagnostics capable of performing deep verification.
+# It must reuse the same hash-free identity projection as protocol hotpaths.
+# Deep Endpoints diagnostics are POST + nonce only; opening a GET link never
+# materializes the deep runtime.
 for marker in (
     "self::admin_shallow_surface()",
     "$lightweight = $protocol_hotpath || $admin_shallow",
@@ -627,7 +628,11 @@ require(admin_surface, "'mad4b-control-plane-connection'", 'connection-admin-sha
 require(admin_surface, "'mad4b-control-plane-chatgpt'", 'chatgpt-admin-shallow-route')
 
 require(ui, "public static function snapshot( $force_deep = false )", 'connection-ui-shallow-snapshot')
-require(ui, "self::snapshot( 'endpoints' === $tab )", 'connection-ui-endpoints-only-deep')
+require(ui, "$deep_endpoints = false", 'connection-ui-deep-default-off')
+require(ui, "'POST' === strtoupper", 'connection-ui-deep-post-only')
+require(ui, "wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' )", 'connection-ui-deep-nonce')
+require(ui, "self::snapshot( $deep_endpoints )", 'connection-ui-explicit-deep-snapshot')
+require(ui, 'form method="post"', 'connection-ui-deep-post-form')
 require(ui, "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()", 'connection-ui-oauth-identity-projection')
 require(ui, "'endpoints' === $tab", 'connection-ui-deep-tab-gate')
 require(ui, "MAD4B_SCP_Local_OAuth_Server::status()", 'connection-ui-explicit-deep-oauth-remains')
