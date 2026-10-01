@@ -36,6 +36,13 @@ for marker in [
     "'undo_ticket_candidate_binding_exact'",
     "'current_candidate_sha'",
     "'current_build_fingerprint'",
+    "'current_package_manifest_digest'",
+    "'current_artifact_identity'",
+    "'package_identity_event_found'",
+    "'package_identity_event_not_found'",
+    "'mad4b/live-acceptance-execution-observed'",
+    "'package_manifest_digest' => isset( $package_summary['package_manifest_digest'] )",
+    "'artifact_identity' => isset( $package_summary['artifact_identity'] )",
     "'mad4b/mutation-get'",
     "'read' => array( 'mad4b/mutation-get' )",
 ]:
