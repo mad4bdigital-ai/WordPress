@@ -361,6 +361,19 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			|| empty( $write['grant_rows_fingerprint'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $write['grant_rows_fingerprint'] ) ) {
 			return new WP_Error( 'mad4b_candidate_binding_write_snapshot_invalid', 'Candidate binding write snapshot is invalid.' );
 		}
+		foreach ( array(
+			'exact_grants_missing_count',
+			'stale_allow_grants_count',
+			'unreviewed_stale_allow_grants_count',
+			'broad_environment_grants_count',
+			'duplicate_exact_allow_grants_count',
+			'current_agent_wildcard_grants',
+			'global_registry_wildcard_grants',
+		) as $clean_field ) {
+			if ( ! array_key_exists( $clean_field, $write ) || 0 !== (int) $write[ $clean_field ] ) {
+				return new WP_Error( 'mad4b_candidate_binding_write_snapshot_not_clean', 'Candidate binding requires a zero-drift reviewed write snapshot.', array( 'field' => $clean_field, 'value' => isset( $write[ $clean_field ] ) ? $write[ $clean_field ] : null ) );
+			}
+		}
 		$operation_basis = isset( $context['operation_basis'] ) && is_array( $context['operation_basis'] ) ? $context['operation_basis'] : array();
 		$authorization_source = isset( $operation_basis['source'] ) ? sanitize_key( (string) $operation_basis['source'] ) : '';
 		$authorization_contract = isset( $operation_basis['contract'] ) ? trim( (string) $operation_basis['contract'] ) : '';
@@ -509,7 +522,28 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			$binding = self::candidate_binding_status();
 			$write_snapshot = $context['write_snapshot'];
 			$plan_before = self::reconciliation_plan();
-			if ( ! is_array( $plan_before )
+			$clean_fields = array(
+				'exact_grants_missing_count',
+				'stale_allow_grants_count',
+				'unreviewed_stale_allow_grants_count',
+				'broad_environment_grants_count',
+				'duplicate_exact_allow_grants_count',
+				'current_agent_wildcard_grants',
+				'global_registry_wildcard_grants',
+			);
+			$clean_snapshot = is_array( $plan_before );
+			if ( $clean_snapshot ) {
+				foreach ( $clean_fields as $clean_field ) {
+					if ( ! array_key_exists( $clean_field, $write_snapshot )
+						|| ! array_key_exists( $clean_field, $plan_before )
+						|| 0 !== (int) $write_snapshot[ $clean_field ]
+						|| 0 !== (int) $plan_before[ $clean_field ] ) {
+						$clean_snapshot = false;
+						break;
+					}
+				}
+			}
+			if ( ! $clean_snapshot
 				|| (int) $plan_before['write_tool_count'] !== (int) $write_snapshot['write_tool_count']
 				|| ! hash_equals( (string) $plan_before['write_inventory_fingerprint'], (string) $write_snapshot['write_inventory_fingerprint'] )
 				|| ! hash_equals( (string) $plan_before['grant_rows_fingerprint'], (string) $write_snapshot['grant_rows_fingerprint'] ) ) {
@@ -617,6 +651,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				&& (int) $after_plan['exact_grants_existing'] === (int) $write_snapshot['write_tool_count']
 				&& 0 === (int) $after_plan['exact_grants_missing_count']
 				&& 0 === (int) $after_plan['stale_allow_grants_count']
+				&& 0 === (int) $after_plan['unreviewed_stale_allow_grants_count']
 				&& 0 === (int) $after_plan['broad_environment_grants_count']
 				&& 0 === (int) $after_plan['duplicate_exact_allow_grants_count']
 				&& 0 === (int) $after_plan['current_agent_wildcard_grants']
@@ -1400,6 +1435,18 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				self::$reconciling = false;
 				return $status;
 			}
+		}
+
+		// Unknown stale authority is not a reconciliation target. Detect it from the
+		// read-only bulk grant snapshot before creating/updating agents, subjects or
+		// grants. The only allowed mutation here is authority narrowing: invalidate
+		// the persisted ready checkpoint so ordinary write hotpaths fail closed.
+		$preflight_plan = self::reconciliation_plan();
+		if ( ! is_array( $preflight_plan ) ) return self::finish_blocked( $status, 'write_reconciliation_preflight_unavailable' );
+		if ( ! empty( $preflight_plan['unreviewed_stale_allow_grants_count'] ) ) {
+			$invalidated = self::fail_closed_persisted_authority( 'unreviewed_stale_write_authority' );
+			if ( is_wp_error( $invalidated ) ) return self::finish_blocked( $status, 'unreviewed_stale_authority_invalidation_failed' );
+			return self::finish_blocked( $status, 'unreviewed_stale_write_authority' );
 		}
 
 		$environment = self::current_environment();

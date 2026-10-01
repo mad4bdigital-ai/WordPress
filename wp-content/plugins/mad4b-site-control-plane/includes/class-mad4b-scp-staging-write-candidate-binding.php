@@ -100,6 +100,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 			if ( empty( $authority_plan['agent_present'] ) ) $blockers[] = 'governed_write_agent_missing';
 			if ( ! empty( $authority_plan['exact_grants_missing_count'] ) ) $blockers[] = 'exact_write_grants_missing';
 			if ( ! empty( $authority_plan['stale_allow_grants_count'] ) ) $blockers[] = 'stale_write_grants_present';
+			if ( ! empty( $authority_plan['unreviewed_stale_allow_grants_count'] ) ) $blockers[] = 'unreviewed_stale_write_authority';
 			if ( ! empty( $authority_plan['broad_environment_grants_count'] ) ) $blockers[] = 'broad_environment_grants_present';
 			if ( ! empty( $authority_plan['duplicate_exact_allow_grants_count'] ) ) $blockers[] = 'duplicate_exact_grants_present';
 			if ( ! empty( $authority_plan['current_agent_wildcard_grants'] ) || ! empty( $authority_plan['global_registry_wildcard_grants'] ) ) $blockers[] = 'wildcard_grants_present';
@@ -158,6 +159,11 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 				'exact_grants_existing' => isset( $authority_plan['exact_grants_existing'] ) ? (int) $authority_plan['exact_grants_existing'] : 0,
 				'exact_grants_missing_count' => isset( $authority_plan['exact_grants_missing_count'] ) ? (int) $authority_plan['exact_grants_missing_count'] : 0,
 				'stale_allow_grants_count' => isset( $authority_plan['stale_allow_grants_count'] ) ? (int) $authority_plan['stale_allow_grants_count'] : 0,
+				'unreviewed_stale_allow_grants_count' => isset( $authority_plan['unreviewed_stale_allow_grants_count'] ) ? (int) $authority_plan['unreviewed_stale_allow_grants_count'] : 0,
+				'broad_environment_grants_count' => isset( $authority_plan['broad_environment_grants_count'] ) ? (int) $authority_plan['broad_environment_grants_count'] : 0,
+				'duplicate_exact_allow_grants_count' => isset( $authority_plan['duplicate_exact_allow_grants_count'] ) ? (int) $authority_plan['duplicate_exact_allow_grants_count'] : 0,
+				'current_agent_wildcard_grants' => isset( $authority_plan['current_agent_wildcard_grants'] ) ? (int) $authority_plan['current_agent_wildcard_grants'] : 0,
+				'global_registry_wildcard_grants' => isset( $authority_plan['global_registry_wildcard_grants'] ) ? (int) $authority_plan['global_registry_wildcard_grants'] : 0,
 				'write_inventory_fingerprint' => isset( $authority_plan['write_inventory_fingerprint'] ) ? (string) $authority_plan['write_inventory_fingerprint'] : '',
 				'grant_rows_fingerprint' => isset( $authority_plan['grant_rows_fingerprint'] ) ? (string) $authority_plan['grant_rows_fingerprint'] : '',
 			),
@@ -333,6 +339,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		foreach ( array(
 			'exact_grants_missing_count',
 			'stale_allow_grants_count',
+			'unreviewed_stale_allow_grants_count',
 			'broad_environment_grants_count',
 			'duplicate_exact_allow_grants_count',
 			'current_agent_wildcard_grants',
@@ -486,6 +493,13 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 			'write_snapshot' => array(
 				'write_tool_count' => (int) $plan['write_tool_count'],
 				'exact_grants_existing' => (int) $plan['exact_grants_existing'],
+				'exact_grants_missing_count' => isset( $plan['exact_grants_missing_count'] ) ? (int) $plan['exact_grants_missing_count'] : 0,
+				'stale_allow_grants_count' => isset( $plan['stale_allow_grants_count'] ) ? (int) $plan['stale_allow_grants_count'] : 0,
+				'unreviewed_stale_allow_grants_count' => isset( $plan['unreviewed_stale_allow_grants_count'] ) ? (int) $plan['unreviewed_stale_allow_grants_count'] : 0,
+				'broad_environment_grants_count' => isset( $plan['broad_environment_grants_count'] ) ? (int) $plan['broad_environment_grants_count'] : 0,
+				'duplicate_exact_allow_grants_count' => isset( $plan['duplicate_exact_allow_grants_count'] ) ? (int) $plan['duplicate_exact_allow_grants_count'] : 0,
+				'current_agent_wildcard_grants' => isset( $plan['current_agent_wildcard_grants'] ) ? (int) $plan['current_agent_wildcard_grants'] : 0,
+				'global_registry_wildcard_grants' => isset( $plan['global_registry_wildcard_grants'] ) ? (int) $plan['global_registry_wildcard_grants'] : 0,
 				'write_inventory_fingerprint' => (string) $plan['write_inventory_fingerprint'],
 				'grant_rows_fingerprint' => (string) $plan['grant_rows_fingerprint'],
 			),
@@ -542,6 +556,13 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 				&& is_array( $after_plan )
 				&& (int) $after_plan['write_tool_count'] === (int) $plan['write_tool_count']
 				&& (int) $after_plan['exact_grants_existing'] === (int) $plan['exact_grants_existing']
+				&& 0 === (int) $after_plan['exact_grants_missing_count']
+				&& 0 === (int) $after_plan['stale_allow_grants_count']
+				&& 0 === (int) $after_plan['unreviewed_stale_allow_grants_count']
+				&& 0 === (int) $after_plan['broad_environment_grants_count']
+				&& 0 === (int) $after_plan['duplicate_exact_allow_grants_count']
+				&& 0 === (int) $after_plan['current_agent_wildcard_grants']
+				&& 0 === (int) $after_plan['global_registry_wildcard_grants']
 				&& hash_equals( (string) $plan['write_inventory_fingerprint'], (string) $after_plan['write_inventory_fingerprint'] )
 				&& hash_equals( (string) $plan['grant_rows_fingerprint'], (string) $after_plan['grant_rows_fingerprint'] )
 				&& MAD4B_SCP_Staging_Write_Authority::effective();

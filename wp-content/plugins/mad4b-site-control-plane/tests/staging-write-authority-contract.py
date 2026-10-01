@@ -42,6 +42,24 @@ reconcile_body = write.split("public static function reconcile()", 1)[1]
 for marker_text in ["$seen_current_exact_allow", "$duplicate_grants_revoked", ":duplicate_grant"]:
     if marker_text not in reconcile_body:
         raise SystemExit("explicit reconcile lost deterministic duplicate-grant cleanup: " + marker_text)
+for marker_text in [
+    "$preflight_plan = self::reconciliation_plan();",
+    "'unreviewed_stale_allow_grants_count'",
+    "self::fail_closed_persisted_authority( 'unreviewed_stale_write_authority' )",
+]:
+    if marker_text not in reconcile_body:
+        raise SystemExit("unknown stale authority pre-mutation guard missing: " + marker_text)
+preflight_pos = reconcile_body.index("$preflight_plan = self::reconciliation_plan();")
+for mutation_marker in [
+    "MAD4B_SCP_Agent_Registry::create_agent",
+    "MAD4B_SCP_Agent_Registry::update_agent",
+    "MAD4B_SCP_Agent_Registry::bind_subject",
+    "MAD4B_SCP_Agent_Registry::set_subject_status",
+    "MAD4B_SCP_Agent_Registry::grant_ability",
+    "MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id",
+]:
+    if mutation_marker in reconcile_body and preflight_pos > reconcile_body.index(mutation_marker):
+        raise SystemExit("unknown stale authority guard runs after authority mutation: " + mutation_marker)
 
 if not write.rstrip().endswith('}'):
     raise SystemExit('write authority file must end at the canonical class closing brace')
