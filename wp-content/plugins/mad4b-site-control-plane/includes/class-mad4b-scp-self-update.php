@@ -1244,7 +1244,7 @@ final class MAD4B_SCP_Self_Update {
 
 			$convergence = array();
 			if ( class_exists( 'MAD4B_SCP_Runtime_Convergence' ) && method_exists( 'MAD4B_SCP_Runtime_Convergence', 'mark_post_update_pending' ) ) {
-				$convergence = MAD4B_SCP_Runtime_Convergence::mark_post_update_pending( $target, $channel, $plan_sha256, $continuation );
+				$convergence = MAD4B_SCP_Runtime_Convergence::mark_post_update_pending( $readback_target, $channel, $plan_sha256, $continuation );
 			}
 			$convergence_state = is_array( $convergence ) && isset( $convergence['state'] ) ? sanitize_key( (string) $convergence['state'] ) : '';
 			if ( 'checkpoint_persist_failed' === $convergence_state ) {
