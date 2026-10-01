@@ -326,6 +326,42 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		);
 	}
 
+	/**
+	 * Lightweight, read-only presence probe for bootstrap/update admission.
+	 *
+	 * This deliberately avoids rebuilding provider/write inventories. It answers
+	 * only whether durable or registry-backed managed authority already exists,
+	 * so a missing checkpoint cannot silently reclassify orphaned authority as a
+	 * fresh bootstrap site.
+	 */
+	public static function authority_presence_status() {
+		$checkpoint = self::persistence_checkpoint();
+		$agent = self::agent_by_slug( self::agent_slug() );
+		$grant_count = 0;
+		if ( is_array( $agent ) && ! empty( $agent['id'] ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
+			$grants = MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $agent['id'], 'mad4b-write' );
+			$grant_count = is_array( $grants ) ? count( $grants ) : 0;
+		}
+		$checkpoint_exists = is_array( $checkpoint ) && ! empty( $checkpoint['exists'] );
+		$checkpoint_status = $checkpoint_exists && isset( $checkpoint['status'] ) && is_array( $checkpoint['status'] )
+			? $checkpoint['status']
+			: array();
+		$managed_agent_present = is_array( $agent ) && ! empty( $agent['id'] );
+		$residue = ! $checkpoint_exists && ( $managed_agent_present || $grant_count > 0 );
+
+		return array(
+			'contract' => 'mad4b.governed-write-authority-presence.v1',
+			'checkpoint_exists' => $checkpoint_exists,
+			'checkpoint_ready' => ! empty( $checkpoint_status['ready'] ),
+			'managed_agent_present' => $managed_agent_present,
+			'managed_grant_count' => $grant_count,
+			'authority_residue_without_checkpoint' => $residue,
+			'fresh_bootstrap_candidate' => ! $checkpoint_exists && ! $managed_agent_present && 0 === $grant_count,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
 	public static function restore_persistence_checkpoint( $checkpoint ) {
 		if ( ! is_array( $checkpoint ) || 'mad4b.governed-write-authority-persistence-checkpoint.v1' !== ( isset( $checkpoint['contract'] ) ? (string) $checkpoint['contract'] : '' ) ) {
 			return new WP_Error( 'mad4b_write_authority_checkpoint_invalid', 'Persisted authority checkpoint is invalid.' );
@@ -1628,6 +1664,30 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	}
 
 	public static function reconcile() {
+		$lease_token = null;
+		$lease_owner = 'governed_write_reconciliation';
+		if ( class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ) {
+			$lease_token = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner );
+			if ( is_wp_error( $lease_token ) ) {
+				$status = self::base_status();
+				$status['ready'] = false;
+				$status['state'] = 'blocked';
+				$status['blocker'] = $lease_token->get_error_code();
+				$status['runtime_maintenance_serialized'] = true;
+				$status['mutation_performed'] = false;
+				return $status;
+			}
+		}
+		try {
+			return self::reconcile_under_runtime_fence();
+		} finally {
+			if ( is_string( $lease_token ) && '' !== $lease_token && class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ) {
+				MAD4B_SCP_Runtime_Maintenance_Lease::release( $lease_token, $lease_owner );
+			}
+		}
+	}
+
+	private static function reconcile_under_runtime_fence() {
 		if ( self::$reconciling ) return self::status();
 		self::$reconciling = true;
 		$status = self::base_status();
