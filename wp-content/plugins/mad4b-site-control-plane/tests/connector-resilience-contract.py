@@ -219,10 +219,23 @@ for marker in (
 ):
     require(reduced_report, marker, "reduced session-safe merge-scope invariant")
 generation_envelope = read_consistency.split("private static function generation_changed_envelope(", 1)[1].split("private static function request_metrics()", 1)[0]
+bundle_merge = read_consistency.split("$result['generation_match'] = true;", 1)[1].split("return $result;", 1)[0]
 for marker in (
+    "'valid_for_bundle_evidence_merge'",
+    "'valid_for_release_merge'",
+    "'merge_scope'",
+    "'generation_bound_bundle_evidence_only'",
+    "'deep_acceptance_required'",
+):
+    require(bundle_merge, marker, "bundle evidence merge-scope invariant")
+
+for marker in (
+    "$session_report = 'session_safe_diagnostics' === (string) $bundle;",
+    "'valid_for_bundle_evidence_merge' => false",
     "'valid_for_session_evidence_merge' => false",
     "'valid_for_release_merge' => false",
-    "'merge_scope' => 'session_safe_subject_evidence_only'",
+    "'session_safe_subject_evidence_only'",
+    "'generation_bound_bundle_evidence_only'",
     "'deep_acceptance_required' => true",
 ):
     require(generation_envelope, marker, "generation-changed merge-scope invariant")
