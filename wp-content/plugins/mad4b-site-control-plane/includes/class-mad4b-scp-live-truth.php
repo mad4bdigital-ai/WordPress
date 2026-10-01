@@ -159,20 +159,25 @@ final class MAD4B_SCP_Live_Truth {
 
 		$tools = isset( $inventory['write_tools'] ) ? $inventory['write_tools'] : array();
 		if ( $eligible && empty( $tools ) ) $blockers[] = 'write_tool_inventory_empty';
-		$existing = 0;
-		if ( is_array( $agent ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) && class_exists( 'MAD4B_SCP_Servers' ) ) {
-			foreach ( $tools as $ability ) {
-				$provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability );
-				if ( null === $provider ) { $grant_blockers[] = 'unmounted:' . $ability; continue; }
-				$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-write', $ability, $provider );
-				if ( is_wp_error( $grant ) ) $grant_blockers[] = $grant->get_error_code() . ':' . $ability;
-				else ++$existing;
-			}
-		}
-		if ( $eligible && ! empty( $grant_blockers ) ) $blockers[] = 'grant_reconciliation_incomplete';
+
+		// Explicit Live Truth owns a deep read, so consume the same bulk grant
+		// snapshot used by reconciliation/candidate binding. A second N+1 exact-grant
+		// interpretation can prove required grants while silently missing stale,
+		// duplicate, broad-environment or otherwise unreviewed authority.
+		$grant_plan = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'reconciliation_plan' )
+			? MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()
+			: array();
+		$grant_snapshot_ready = is_array( $grant_plan ) && ! empty( $grant_plan['current_ready'] );
+		$existing = is_array( $grant_plan ) && isset( $grant_plan['exact_grants_existing'] ) ? (int) $grant_plan['exact_grants_existing'] : 0;
+		$grant_blockers = is_array( $grant_plan ) && isset( $grant_plan['current_readiness_blockers'] ) && is_array( $grant_plan['current_readiness_blockers'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $grant_plan['current_readiness_blockers'] ) ) )
+			: array( 'grant_snapshot_unavailable' );
+		if ( $eligible && ! $grant_snapshot_ready ) $blockers[] = 'grant_reconciliation_incomplete';
 
 		$counts = class_exists( 'MAD4B_SCP_Agent_Registry' ) && $schema_ready ? MAD4B_SCP_Agent_Registry::counts() : array();
-		$wildcards = isset( $counts['wildcard_grants'] ) ? (int) $counts['wildcard_grants'] : 0;
+		$wildcards = is_array( $grant_plan ) && isset( $grant_plan['global_registry_wildcard_grants'] )
+			? (int) $grant_plan['global_registry_wildcard_grants']
+			: ( isset( $counts['wildcard_grants'] ) ? (int) $counts['wildcard_grants'] : 0 );
 		if ( $wildcards > 0 ) $blockers[] = 'wildcard_grants_detected';
 		$breakglass = in_array( 'mad4b/database-raw-query', $tools, true );
 		if ( $breakglass ) $blockers[] = 'breakglass_leak';
@@ -258,7 +263,13 @@ final class MAD4B_SCP_Live_Truth {
 			'write_tools' => $tools,
 			'exact_grants_existing' => $existing,
 			'exact_grants_created' => 0,
+			'grant_snapshot_current_ready' => $grant_snapshot_ready,
+			'grant_snapshot_blockers' => $grant_blockers,
 			'grant_blockers' => $grant_blockers,
+			'unreviewed_stale_allow_grants_count' => is_array( $grant_plan ) && isset( $grant_plan['unreviewed_stale_allow_grants_count'] ) ? (int) $grant_plan['unreviewed_stale_allow_grants_count'] : 0,
+			'stale_allow_grants_count' => is_array( $grant_plan ) && isset( $grant_plan['stale_allow_grants_count'] ) ? (int) $grant_plan['stale_allow_grants_count'] : 0,
+			'broad_environment_grants_count' => is_array( $grant_plan ) && isset( $grant_plan['broad_environment_grants_count'] ) ? (int) $grant_plan['broad_environment_grants_count'] : 0,
+			'duplicate_exact_allow_grants_count' => is_array( $grant_plan ) && isset( $grant_plan['duplicate_exact_allow_grants_count'] ) ? (int) $grant_plan['duplicate_exact_allow_grants_count'] : 0,
 			'total_grants' => isset( $counts['grants'] ) ? (int) $counts['grants'] : 0,
 			'wildcard_grants' => $wildcards,
 			'production_auto_enable' => false,
