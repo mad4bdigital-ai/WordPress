@@ -71,6 +71,8 @@ for marker in (
     "'stale_allow_grants_count' => $reviewed_stale_count",
 ):
     assert marker in full, marker
+assert "$reviewed_stale_count = $stale_allow_total;" in plan_body, "reviewed stale grants must project directly from the reviewed stale count"
+assert "$stale_allow_total - $unreviewed_stale_count" not in plan_body, "unreviewed stale authority is a separate collection and must not be subtracted twice"
 
 reviewed_lineage_capture = full.index("$reviewed_previous_binding = MAD4B_SCP_Staging_Write_Candidate_Binding::audit_binding_snapshot")
 developer_apply = full.index("MAD4B_SCP_Developer_Authority::apply")
