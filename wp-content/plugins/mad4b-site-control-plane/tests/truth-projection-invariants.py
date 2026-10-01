@@ -61,8 +61,8 @@ require(skills_projection, "'historical_ready'", "skills projection preserves pe
 require(skills_projection, "'build_identity_current'", "skills projection exposes persisted build freshness")
 require(skills_projection, "'stale_reasons'", "skills projection exposes persisted freshness reasons")
 for marker in (
-    "'effective_skill_ready_scope' => 'candidate_identity_bound_checkpoint_only'",
-    "'candidate_identity_bound_ready'",
+    "$result['effective_skill_ready_scope'] = 'candidate_identity_bound_checkpoint_only';",
+    "$result['candidate_identity_bound_ready'] = ! empty( $projection['effective_ready'] );",
     "$result['live_skill_ready'] = null;",
     "$result['ready'] = null;",
     "$result['live_skill_evaluation_deferred'] = true;",
