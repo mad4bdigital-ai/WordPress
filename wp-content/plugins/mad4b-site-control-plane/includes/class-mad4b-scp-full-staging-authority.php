@@ -365,12 +365,17 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		// provisions Developer/Breakglass authority. Otherwise ready_to_apply=true
 		// would describe a mutation sequence that is already known to fail later.
 		$nonreconcilable_write_drift = array();
+		$fixable_missing_write_grants = 0;
 		$missing_rows = isset( $write_plan['exact_grants_missing'] ) && is_array( $write_plan['exact_grants_missing'] )
 			? $write_plan['exact_grants_missing']
 			: array();
 		foreach ( $missing_rows as $row ) {
 			if ( ! is_array( $row ) ) continue;
 			$reason = isset( $row['reason'] ) ? sanitize_key( (string) $row['reason'] ) : '';
+			if ( in_array( $reason, array( 'missing_exact_grant', 'broad_environment_grant' ), true ) ) {
+				$fixable_missing_write_grants++;
+				continue;
+			}
 			if ( ! in_array( $reason, array( 'explicit_deny', 'write_provider_unmounted' ), true ) ) continue;
 			$nonreconcilable_write_drift[] = array(
 				'ability' => isset( $row['ability'] ) ? sanitize_text_field( (string) $row['ability'] ) : '',
@@ -378,6 +383,15 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				'reason' => $reason,
 			);
 			$hard_blockers[] = 'explicit_deny' === $reason ? 'write_explicit_deny' : 'write_provider_unmounted';
+		}
+		$unreviewed_stale_count = isset( $write_plan['unreviewed_stale_allow_grants_count'] ) ? (int) $write_plan['unreviewed_stale_allow_grants_count'] : 0;
+		if ( $unreviewed_stale_count > 0 ) {
+			$nonreconcilable_write_drift[] = array(
+				'ability' => '',
+				'provider' => '',
+				'reason' => 'unreviewed_stale_write_authority',
+				'count' => $unreviewed_stale_count,
+			);
 		}
 		if ( ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $hard_blockers[] = 'oauth_disabled';
 		if ( ! MAD4B_SCP_Site_Profile::acceptance_enabled() ) $hard_blockers[] = 'acceptance_disabled';
@@ -413,13 +427,19 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'developer_breakglass_plan' => $developer_breakglass_plan,
 			'developer_breakglass_hard_blockers' => $breakglass_hard_blockers,
 			'nonreconcilable_write_drift' => $nonreconcilable_write_drift,
-			'fixable_write_drift' => array(
+			'write_drift_summary' => array(
 				'exact_grants_missing_count' => isset( $write_plan['exact_grants_missing_count'] ) ? (int) $write_plan['exact_grants_missing_count'] : 0,
 				'stale_allow_grants_count' => isset( $write_plan['stale_allow_grants_count'] ) ? (int) $write_plan['stale_allow_grants_count'] : 0,
-				'unreviewed_stale_allow_grants_count' => isset( $write_plan['unreviewed_stale_allow_grants_count'] ) ? (int) $write_plan['unreviewed_stale_allow_grants_count'] : 0,
+				'unreviewed_stale_allow_grants_count' => $unreviewed_stale_count,
 				'broad_environment_grants_count' => isset( $write_plan['broad_environment_grants_count'] ) ? (int) $write_plan['broad_environment_grants_count'] : 0,
 				'duplicate_exact_allow_grants_count' => isset( $write_plan['duplicate_exact_allow_grants_count'] ) ? (int) $write_plan['duplicate_exact_allow_grants_count'] : 0,
-				'candidate_binding_match' => ! empty( $write_plan['candidate_binding']['match'] ),
+			),
+			'fixable_write_drift' => array(
+				'missing_or_broad_exact_grants_count' => $fixable_missing_write_grants,
+				'reviewed_stale_allow_grants_count' => max( 0, ( isset( $write_plan['stale_allow_grants_count'] ) ? (int) $write_plan['stale_allow_grants_count'] : 0 ) - $unreviewed_stale_count ),
+				'broad_environment_grants_count' => isset( $write_plan['broad_environment_grants_count'] ) ? (int) $write_plan['broad_environment_grants_count'] : 0,
+				'duplicate_exact_allow_grants_count' => isset( $write_plan['duplicate_exact_allow_grants_count'] ) ? (int) $write_plan['duplicate_exact_allow_grants_count'] : 0,
+				'candidate_binding_required' => ! empty( $write_plan['candidate_binding']['required'] ) && empty( $write_plan['candidate_binding']['match'] ),
 			),
 			'hard_blockers' => array_values( array_unique( $hard_blockers ) ),
 			'ready_to_apply' => empty( $hard_blockers ),
