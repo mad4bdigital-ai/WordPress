@@ -267,3 +267,9 @@ jobs:
           # making the canonical 0.6.1 runtime owner and registering all six
           # MAD4B MCP servers through the normal mcp_adapter_init lifecycle.
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+      - name: Prove passive exact-profile OAuth identity projection is request-local
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-passive-connection-identity-projection.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
