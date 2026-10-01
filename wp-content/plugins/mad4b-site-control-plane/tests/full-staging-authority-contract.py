@@ -128,6 +128,15 @@ for marker in [
     assert marker in plan_body, marker
 assert plan_body.index("$missing_rows = isset( $write_plan['exact_grants_missing'] )") < plan_body.index("'ready_to_apply' => empty( $hard_blockers )")
 assert "MAD4B_SCP_Staging_Write_Authority::reconcile()" not in plan_body
+assert "'write_drift_summary' => array(" in plan_body
+assert "'fixable_write_drift' => array(" in plan_body
+assert "'nonreconcilable_write_drift' => $nonreconcilable_write_drift" in plan_body
+fixable_block = plan_body.split("'fixable_write_drift' => array(", 1)[1].split("),", 1)[0]
+assert "unreviewed_stale_allow_grants_count" not in fixable_block
+assert "explicit_deny" not in fixable_block
+assert "write_provider_unmounted" not in fixable_block
+assert "'reviewed_stale_allow_grants_count'" in fixable_block
+assert "'missing_or_broad_exact_grants_count'" in fixable_block
 
 apply_body = full.split("public static function apply( $input )", 1)[1].split("private static function developer_apply_input", 1)[0]
 for marker in [
