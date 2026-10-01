@@ -769,6 +769,12 @@ final class MAD4B_SCP_Servers {
 			$dynamic_projected = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
 				&& MAD4B_SCP_ChatGPT_Tool_Projection::is_projected( $ability_name );
 
+			// Dynamic projection owns the ChatGPT visibility identity whenever
+			// the Ability is not part of the required base catalog. Required-base
+			// overlap is already removed by effective_projection_rows(), so this
+			// precedence cannot relabel a required transport tool.
+			if ( $dynamic_projected ) return $remember( 'dynamic_projection' );
+
 			// The compact direct transport is overwhelmingly Control Plane core.
 			// Resolve those without scanning adapter/write catalogs. Underlying
 			// provider mutations are deliberately hidden behind write-execute.
@@ -780,7 +786,6 @@ final class MAD4B_SCP_Servers {
 				$runtime_provider = self::provider_for_ability( 'mad4b-write', $ability_name );
 				return $remember( null !== $runtime_provider ? $runtime_provider : self::provider_for_external_write_candidate( $ability_name ) );
 			}
-			if ( $dynamic_projected ) return $remember( 'dynamic_projection' );
 			if ( self::chatgpt_unified_catalog_enabled() ) {
 				if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
 					$registry = MAD4B_SCP_Adapter_Registry::instance();
