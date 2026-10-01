@@ -168,7 +168,10 @@ for marker in [
     "self::MAX_TOOLS - count( $required )",
 ]:
     assert marker in catalog_diagnostics, f'missing bounded catalog budget invariant: {marker}'
-assert "self::ability_is_direct_step_up( $ability_name ) || isset( $dynamic[ $ability_name ] )" in catalog_diagnostics
+# Dynamic projections use the live effective registry so same-request projection
+# changes cannot be hidden by an older registration-classification snapshot.
+assert "if ( isset( $dynamic[ $ability_name ] ) )" in catalog_diagnostics
+assert "self::ability_is_direct_step_up( $ability_name )" in catalog_diagnostics
 reviewed_helper = servers.split('public static function chatgpt_reviewed_direct_step_up_tools()', 1)[1].split('public static function is_chatgpt_direct_step_up_tool', 1)[0]
 for marker in [
     'MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY',
