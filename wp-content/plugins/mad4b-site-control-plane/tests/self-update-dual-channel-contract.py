@@ -101,17 +101,36 @@ for marker in required_self_update:
 
 
 # Bootstrap self-update is a narrow circular-dependency breaker, not a general
-# authority bypass. It must be projected only as a step-up tool and must turn
-# itself off once normal Write Authority is effective.
+# authority bypass. It is pre-registered only because MCP registration precedes
+# OAuth bearer verification, and visibility/execution still require exact
+# ChatGPT step-up attribution.
 for marker in (
-    "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()",
-    "MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()",
-    "$self_update_step_up",
-    "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );",
-    "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );",
+    "'chatgpt_direct_step_up' => true",
+    "'exact_chatgpt_client_required' => true",
+    "MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE",
+    "MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID",
+    "verified_bearer_client_is",
+):
+    if marker not in self_update:
+        raise SystemExit(f"bootstrap self-update direct step-up guard missing: {marker}")
+for marker in (
+    "public static function chatgpt_reviewed_direct_step_up_tools()",
+    "MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY",
+    "$direct_step_up = self::chatgpt_reviewed_direct_step_up_tools();",
+    "array_merge( self::chatgpt_dispatch_transport_tools(), $direct_step_up )",
 ):
     if marker not in servers:
-        raise SystemExit(f"bootstrap self-update step-up projection missing: {marker}")
+        raise SystemExit(f"bootstrap self-update stable registration invariant missing: {marker}")
+chatgpt_direct = servers.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_internal_enrollment_mutations()", 1)[0]
+for forbidden in (
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
+):
+    if forbidden in chatgpt_direct:
+        raise SystemExit(f"low-level enrollment primitive leaked into direct ChatGPT catalog: {forbidden}")
+
 for marker in (
     "if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() ) return array();",
     "if ( MAD4B_SCP_Staging_Write_Authority::effective() )",
