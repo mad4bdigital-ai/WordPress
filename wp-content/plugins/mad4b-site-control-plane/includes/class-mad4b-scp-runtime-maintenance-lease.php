@@ -204,11 +204,14 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease {
 			$hard = isset( $current['hard_expires_at'] )
 				? absint( $current['hard_expires_at'] )
 				: ( $soft > 0 ? $soft + self::LEGACY_EXPIRY_GRACE : 0 );
-			if ( ! $token_present || ! $owner_present || $hard < 1 ) {
+			if ( ! $token_present || $hard < 1 || $hard <= $now ) {
+				$stale_sources[] = (string) $option;
+				continue;
+			}
+			if ( ! $owner_present ) {
 				$malformed_sources[] = (string) $option;
 				continue;
 			}
-			if ( $hard <= $now ) $stale_sources[] = (string) $option;
 		}
 
 		$classification = 'CLEAR';
