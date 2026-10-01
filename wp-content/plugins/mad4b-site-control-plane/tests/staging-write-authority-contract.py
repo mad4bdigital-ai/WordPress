@@ -727,17 +727,16 @@ for marker in [
     "$registry->ability_names( 'admin' )",
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
-    "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()",
-    "MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()",
-    "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );",
-    "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );",
+    "public static function chatgpt_reviewed_direct_step_up_tools()",
+    "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY",
+    "MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY",
+    "MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY",
+    "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()",
     "public static function chatgpt_dispatch_transport_tools()",
-    "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )",
+    "$direct_step_up = self::chatgpt_reviewed_direct_step_up_tools();",
+    "array_merge( self::chatgpt_dispatch_transport_tools(), $direct_step_up )",
     "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
-    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
-    "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
-    "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()",
     "self::provider_for_ability( 'mad4b-write', $ability_name )",
     "'mad4b/write-authority-status'",
     "'mad4b/write-runtime-certification'",
@@ -745,6 +744,15 @@ for marker in [
 ]:
     if marker not in servers:
         raise SystemExit(f'missing logical write inventory/minimal transport invariant: {marker}')
+logical_direct = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
+for forbidden_direct in (
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
+):
+    if forbidden_direct in logical_direct:
+        raise SystemExit('low-level enrollment mutation leaked into logical direct transport: ' + forbidden_direct)
 
 for marker in [
     "MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name )",
