@@ -16,6 +16,7 @@ projection = read("includes/class-mad4b-scp-truth-projection.php")
 live_truth = read("includes/class-mad4b-scp-live-truth.php")
 rest = read("includes/class-mad4b-scp-rest-compatibility.php")
 observer = read("includes/class-mad4b-scp-live-acceptance-observer.php")
+external_handshake = read("includes/class-mad4b-scp-external-handshake-evidence.php")
 finalizer = read("includes/class-mad4b-scp-live-acceptance-finalizer.php")
 read_consistency = read("includes/class-mad4b-scp-read-consistency.php")
 skills = read("includes/class-mad4b-scp-skill-runtime-certification.php")
@@ -210,8 +211,36 @@ require(aggregate, "MAD4B_SCP_Truth_Projection::gate_effective_ready", "freshnes
 observer_reducer = observer.split("$all_ready = true;", 1)[1].split("return array( 'contract' => self::AGGREGATE_CONTRACT", 1)[0]
 require(observer_reducer, "MAD4B_SCP_Truth_Projection::gate_effective_ready", "observer effective reducer")
 provider_gate = observer.split("'provider_projection' => self::gate(", 1)[1].split("'write_authority' =>", 1)[0]
-require(provider_gate, "empty( $provider_execution_leaks ) && ! empty( $external['build_fingerprint_match'] )", "provider effective projection")
+require(provider_gate, "empty( $provider_execution_leaks ) && ! empty( $external['package_identity_match'] )", "provider effective projection")
 require(provider_gate, "external_projection_not_current", "provider stale blocker")
+if "$external['build_fingerprint_match']" in provider_gate:
+    raise SystemExit("provider freshness must use exact package identity, not a single build fingerprint")
+
+external_gates = observer.split("'external_handshake' => self::gate(", 1)[1].split("'mutation_acceptance' =>", 1)[0]
+require(external_gates, "$external['package_identity_match']", "external acceptance exact package freshness")
+if "$external['build_fingerprint_match']" in external_gates:
+    raise SystemExit("external acceptance gates must not use fingerprint-only freshness")
+
+for marker in (
+    "private static function package_identity()",
+    "'source_commit_sha'",
+    "'package_build_fingerprint'",
+    "'package_manifest_digest'",
+    "'artifact_identity'",
+    "'package_identity_match'",
+    "'stale_package_identity_evidence'",
+):
+    require(external_handshake, marker, "external handshake exact-package binding")
+for marker in (
+    "private static function package_identity_matches",
+    "'package_identity_match'",
+    "'current_source_commit_sha'",
+    "'current_package_manifest_digest'",
+    "'current_artifact_identity'",
+):
+    require(observer, marker, "live observer exact-package binding")
+if "self::package_identity_matches( $handshake_package, $observer_package )" not in external_handshake:
+    raise SystemExit("finalizer evidence join must bind handshake and observer to the same exact package")
 
 # 4. Session-safe execution success is distinct from effective subject truth.
 for marker in (
