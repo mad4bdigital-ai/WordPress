@@ -447,20 +447,34 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$correlation_id = isset( $context['correlation_id'] ) ? substr( sanitize_text_field( (string) $context['correlation_id'] ), 0, 100 ) : '';
 		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $operation_id ) || '' === $correlation_id ) return new WP_Error( 'mad4b_candidate_binding_operation_identity_invalid', 'Candidate binding operation/correlation identity is invalid.' );
 		$actor = isset( $context['actor'] ) && is_array( $context['actor'] ) ? $context['actor'] : array();
-		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
-		if ( is_wp_error( $identity ) || empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return new WP_Error( 'mad4b_candidate_binding_primitive_oauth_required', 'Candidate binding primitive requires the live verified OAuth governance identity.' );
-		$subject_fingerprint = isset( $actor['subject_fingerprint'] ) ? strtolower( trim( (string) $actor['subject_fingerprint'] ) ) : '';
-		$identity_subject = isset( $identity['subject_fingerprint'] ) ? strtolower( trim( (string) $identity['subject_fingerprint'] ) ) : '';
-		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $subject_fingerprint ) || ! hash_equals( $identity_subject, $subject_fingerprint ) ) return new WP_Error( 'mad4b_candidate_binding_subject_context_mismatch', 'Candidate binding actor fingerprint does not match the live OAuth subject.' );
-		foreach ( array( 'issuer_fingerprint', 'client_fingerprint', 'session_fingerprint' ) as $fingerprint_field ) {
-			$actor_value = isset( $actor[ $fingerprint_field ] ) ? strtolower( trim( (string) $actor[ $fingerprint_field ] ) ) : '';
-			$identity_value = isset( $identity[ $fingerprint_field ] ) ? strtolower( trim( (string) $identity[ $fingerprint_field ] ) ) : '';
-			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $actor_value ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $identity_value ) || ! hash_equals( $identity_value, $actor_value ) ) {
-				return new WP_Error( 'mad4b_candidate_binding_actor_attribution_mismatch', 'Candidate binding actor attribution does not match the live verified OAuth identity.', array( 'field' => $fingerprint_field ) );
+		$operation_basis_probe = isset( $context['operation_basis'] ) && is_array( $context['operation_basis'] ) ? $context['operation_basis'] : array();
+		$continuation_source = 'self_update_continuation' === ( isset( $operation_basis_probe['source'] ) ? sanitize_key( (string) $operation_basis_probe['source'] ) : '' );
+		if ( $continuation_source ) {
+			if ( ! class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ) return new WP_Error( 'mad4b_candidate_binding_continuation_unavailable', 'Post-update continuation authority is unavailable.' );
+			$continuation_check = MAD4B_SCP_Post_Update_Continuation::validate_binding_context( $context, $current );
+			if ( is_wp_error( $continuation_check ) ) return $continuation_check;
+			if ( ! isset( $actor['identity_method'] ) || 'self_update_continuation' !== (string) $actor['identity_method'] ) return new WP_Error( 'mad4b_candidate_binding_actor_method_invalid', 'Continuation candidate binding requires captured OAuth attribution, not a live OAuth session.' );
+			if ( empty( $actor['wp_user_id'] ) ) return new WP_Error( 'mad4b_candidate_binding_actor_user_mismatch', 'Continuation actor is missing the pre-update WordPress user attribution.' );
+			foreach ( array( 'subject_fingerprint', 'issuer_fingerprint', 'client_fingerprint', 'session_fingerprint' ) as $fingerprint_field ) {
+				$actor_value = isset( $actor[ $fingerprint_field ] ) ? strtolower( trim( (string) $actor[ $fingerprint_field ] ) ) : '';
+				if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $actor_value ) ) return new WP_Error( 'mad4b_candidate_binding_actor_attribution_mismatch', 'Continuation actor attribution is incomplete.', array( 'field' => $fingerprint_field ) );
 			}
+		} else {
+			$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
+			if ( is_wp_error( $identity ) || empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return new WP_Error( 'mad4b_candidate_binding_primitive_oauth_required', 'Candidate binding primitive requires the live verified OAuth governance identity.' );
+			$subject_fingerprint = isset( $actor['subject_fingerprint'] ) ? strtolower( trim( (string) $actor['subject_fingerprint'] ) ) : '';
+			$identity_subject = isset( $identity['subject_fingerprint'] ) ? strtolower( trim( (string) $identity['subject_fingerprint'] ) ) : '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $subject_fingerprint ) || ! hash_equals( $identity_subject, $subject_fingerprint ) ) return new WP_Error( 'mad4b_candidate_binding_subject_context_mismatch', 'Candidate binding actor fingerprint does not match the live OAuth subject.' );
+			foreach ( array( 'issuer_fingerprint', 'client_fingerprint', 'session_fingerprint' ) as $fingerprint_field ) {
+				$actor_value = isset( $actor[ $fingerprint_field ] ) ? strtolower( trim( (string) $actor[ $fingerprint_field ] ) ) : '';
+				$identity_value = isset( $identity[ $fingerprint_field ] ) ? strtolower( trim( (string) $identity[ $fingerprint_field ] ) ) : '';
+				if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $actor_value ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $identity_value ) || ! hash_equals( $identity_value, $actor_value ) ) {
+					return new WP_Error( 'mad4b_candidate_binding_actor_attribution_mismatch', 'Candidate binding actor attribution does not match the live verified OAuth identity.', array( 'field' => $fingerprint_field ) );
+				}
+			}
+			if ( (int) ( isset( $actor['wp_user_id'] ) ? $actor['wp_user_id'] : 0 ) !== get_current_user_id() || (int) $identity['wp_user_id'] !== get_current_user_id() ) return new WP_Error( 'mad4b_candidate_binding_actor_user_mismatch', 'Candidate binding actor does not match the authenticated WordPress user.' );
+			if ( ! isset( $actor['identity_method'] ) || 'oauth2_bearer' !== (string) $actor['identity_method'] ) return new WP_Error( 'mad4b_candidate_binding_actor_method_invalid', 'Candidate binding actor identity method is invalid.' );
 		}
-		if ( (int) ( isset( $actor['wp_user_id'] ) ? $actor['wp_user_id'] : 0 ) !== get_current_user_id() || (int) $identity['wp_user_id'] !== get_current_user_id() ) return new WP_Error( 'mad4b_candidate_binding_actor_user_mismatch', 'Candidate binding actor does not match the authenticated WordPress user.' );
-		if ( ! isset( $actor['identity_method'] ) || 'oauth2_bearer' !== (string) $actor['identity_method'] ) return new WP_Error( 'mad4b_candidate_binding_actor_method_invalid', 'Candidate binding actor identity method is invalid.' );
 		$target = isset( $context['target_binding'] ) && is_array( $context['target_binding'] ) ? $context['target_binding'] : array();
 		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) {
 			if ( ! isset( $target[ $key ], $current[ $key ] ) || ! hash_equals( (string) $current[ $key ], (string) $target[ $key ] ) ) return new WP_Error( 'mad4b_candidate_binding_target_context_mismatch', 'Candidate binding target identity changed after operator review.', array( 'field' => $key ) );
@@ -507,7 +521,11 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			&& '' !== $reconcile_contract
 			&& hash_equals( $reconcile_contract, $authorization_contract )
 			&& hash_equals( $reconcile_confirmation, $authorization_confirmation );
-		if ( ( ! $direct_authorization && ! $reconcile_authorization ) || ! hash_equals( $authorization_confirmation, $context_confirmation ) ) {
+		$continuation_authorization = 'self_update_continuation' === $authorization_source
+			&& class_exists( 'MAD4B_SCP_Post_Update_Continuation' )
+			&& hash_equals( (string) MAD4B_SCP_Post_Update_Continuation::CONTRACT, $authorization_contract )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( $authorization_confirmation ) );
+		if ( ( ! $direct_authorization && ! $reconcile_authorization && ! $continuation_authorization ) || ! hash_equals( $authorization_confirmation, $context_confirmation ) ) {
 			return new WP_Error( 'mad4b_candidate_binding_confirmation_context_invalid', 'Candidate binding audit context authorization/confirmation is invalid.' );
 		}
 		return $context;
