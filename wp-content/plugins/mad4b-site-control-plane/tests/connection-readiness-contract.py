@@ -46,6 +46,7 @@ for marker in (
     'deep_route_validation_deferred', 'route_validation_deferred',
     "'local_transport_ready'", "'remote_endpoint_preflight_ready'", '$connection_certified',
     "'external_handshake_unverified'", "'external_handshake_stale'",
+    "'stale_package_identity_evidence'", "'stale_runtime_surface_evidence'", "'stale_write_transport_evidence'",
     "'credential_material_exposed' => false", "'credential_creation_supported_here' => false",
     "'remote_subject_bridge_required' => true", "'write_surface'",
     "'exact_transport_grant_required' => true", "'generic_dispatcher_exposed' => false",

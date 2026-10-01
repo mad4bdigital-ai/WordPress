@@ -87,7 +87,7 @@ final class MAD4B_SCP_Connection_Status {
 			if ( ! $persisted_external_evidence ) $certification_blockers[] = 'external_handshake_unverified';
 		} elseif ( empty( $handshake['verified'] ) ) {
 			$handshake_status = isset( $handshake['status'] ) ? sanitize_key( (string) $handshake['status'] ) : 'unverified';
-			$certification_blockers[] = in_array( $handshake_status, array( 'stale_build_evidence', 'stale_tool_inventory_evidence', 'stale_time_evidence' ), true ) ? 'external_handshake_stale' : 'external_handshake_unverified';
+			$certification_blockers[] = in_array( $handshake_status, array( 'stale_package_identity_evidence', 'stale_runtime_surface_evidence', 'stale_build_evidence', 'stale_tool_inventory_evidence', 'stale_write_transport_evidence', 'stale_time_evidence' ), true ) ? 'external_handshake_stale' : 'external_handshake_unverified';
 		}
 		$certification_blockers = array_values( array_unique( array_map( 'sanitize_key', $certification_blockers ) ) );
 		$connection_certified = ! $admin_shallow && empty( $certification_blockers );
