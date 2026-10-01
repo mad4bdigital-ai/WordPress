@@ -17,6 +17,31 @@ final class MAD4B_SCP_Truth_Projection {
 		return (bool) $source[ $key ];
 	}
 
+	public static function mcp_registration_identity( array $fact ) {
+		$actual_registered = ! empty( $fact['actual_registered'] );
+		$expected = ! empty( $fact['expected_server'] );
+		$observed_error = isset( $fact['observed_registration_error'] ) ? sanitize_key( (string) $fact['observed_registration_error'] ) : '';
+		$synthetic_deferred_error = in_array( $observed_error, array( '', 'not_registered', 'mcp_chatgpt_not_registered' ), true );
+		$bridge_ready = ! empty( $fact['bridge_booted'] )
+			&& ! empty( $fact['server_hook_bound'] )
+			&& ! empty( $fact['core_ability_hook_bound'] )
+			&& ! empty( $fact['registry_ability_hook_bound'] )
+			&& ! empty( $fact['core_category_hook_bound'] )
+			&& ! empty( $fact['registry_category_hook_bound'] );
+		$identity_ready = $actual_registered || ( $expected && $bridge_ready && $synthetic_deferred_error );
+		$blocking_error = ( ! $actual_registered && ! $synthetic_deferred_error ) ? $observed_error : '';
+
+		return array_merge( $fact, array(
+			'projection_contract' => self::CONTRACT,
+			'actual_registered' => (bool) $actual_registered,
+			'identity_ready' => (bool) $identity_ready,
+			'state' => $actual_registered ? 'registered' : ( '' !== $blocking_error ? 'registration_error' : ( $identity_ready ? 'deferred_identity_ready' : 'not_ready' ) ),
+			'blocking_registration_error' => $blocking_error,
+			'deep_registration_deferred' => ! $actual_registered && $identity_ready,
+			'bridge_ready' => (bool) $bridge_ready,
+		) );
+	}
+
 	public static function canonical_external_wpml_receipt() {
 		if ( class_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer' )
 			&& method_exists( 'MAD4B_SCP_External_WPML_Acceptance_Finalizer', 'external_wpml_receipt_status' ) ) {
