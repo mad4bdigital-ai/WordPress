@@ -19,6 +19,7 @@ observer = read("includes/class-mad4b-scp-live-acceptance-observer.php")
 finalizer = read("includes/class-mad4b-scp-live-acceptance-finalizer.php")
 read_consistency = read("includes/class-mad4b-scp-read-consistency.php")
 skills = read("includes/class-mad4b-scp-skill-runtime-certification.php")
+write_runtime = read("includes/class-mad4b-scp-write-runtime-certification.php")
 policy = read("includes/class-mad4b-scp-provider-diagnostic-policy.php")
 qm_bridge = read("includes/class-mad4b-scp-query-monitor-evidence-bridge.php")
 family = read("includes/adapters/class-mad4b-scp-repository-family-adapter.php")
@@ -265,6 +266,11 @@ for marker in (
 # 4b. Deep Write Live Truth consumes the same canonical grant snapshot as reconciliation.
 current_authority_truth = live_truth.split("public static function current_authority_status()", 1)[1].split("public static function current_write_certification()", 1)[0]
 require(current_authority_truth, "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()", "Live Truth canonical grant snapshot")
+write_runtime_evaluate = write_runtime.split("private static function evaluate()", 1)[1]
+require(write_runtime_evaluate, "MAD4B_SCP_Staging_Write_Authority::current_status()", "Write Runtime fallback uses current authority truth")
+if "MAD4B_SCP_Staging_Write_Authority::status()" in write_runtime_evaluate.split("$checks['exact_enrolled_origin']", 1)[0]:
+    raise SystemExit("Write Runtime live evaluation may not fall back to persisted Write authority status")
+require(write_runtime_evaluate, "'live_write_authority_unavailable'", "Write Runtime fallback fails closed when live authority is unavailable")
 observer_live_status = observer.split("public static function live_acceptance_status( $input = array() )", 1)[1].split("private static function gate(", 1)[0]
 require(observer_live_status, "'live_truth_unavailable'", "Live Acceptance write-authority fail-closed fallback")
 if "MAD4B_SCP_Staging_Write_Authority::status()" in observer_live_status:

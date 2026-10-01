@@ -185,7 +185,9 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$checks = array();
 		$authority = class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_authority_status' )
 			? MAD4B_SCP_Live_Truth::current_authority_status()
-			: ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array() );
+			: ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_status' )
+				? MAD4B_SCP_Staging_Write_Authority::current_status()
+				: array( 'ready' => false, 'state' => 'live_write_authority_unavailable', 'blockers' => array( 'live_write_authority_unavailable' ) ) );
 		$checks['exact_enrolled_origin'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
 		$checks['write_feature_enabled'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::write_enabled();
 		$checks['write_authority_eligible'] = ! empty( $authority['eligible'] );
