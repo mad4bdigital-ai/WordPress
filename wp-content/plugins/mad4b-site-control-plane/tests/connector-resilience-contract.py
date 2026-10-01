@@ -306,16 +306,21 @@ for marker in [
     "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()",
     "MAD4B_SCP_Staging_Write_Authority::persisted_status()",
     "MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()",
+    "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()",
     "'full_runtime_hash_validation_deferred' => true",
-    "'deep_authority_scan_deferred' => true",
+    "'deep_authority_scan_deferred' => false",
+    "'current_execution_truth_evaluated' => true",
+    "'current_grant_snapshot_ready'",
 ]:
-    require(connection, marker, "bounded compact preflight truth")
+    require(connection, marker, "bounded explicit preflight truth")
 
 preflight_body = connection.split("public static function preflight(", 1)[1]
 if "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status()" in preflight_body:
     raise SystemExit("compact preflight must not perform full package provenance hashing")
 if "MAD4B_SCP_Live_Truth::current_authority_status()" in preflight_body:
-    raise SystemExit("compact preflight must not perform deep authority/grant scans")
+    raise SystemExit("explicit preflight must consume bounded current write readiness directly, not expand into full Live Truth")
+if "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()" not in preflight_body:
+    raise SystemExit("explicit connection preflight must evaluate current write grant/candidate truth")
 
 for marker in [
     "MAD4B_SCP_Remote_Operation_Parity::reconciliation_status( $operation_id )",
@@ -327,12 +332,15 @@ for marker in [
 print("mad4b.connector-resilience.contract.v2: PASS")
 
 if "MAD4B_SCP_Staging_Write_Authority::persisted_status()" not in connection:
-    raise SystemExit("compact connector preflight must use persisted authority evidence")
+    raise SystemExit("connection preflight must retain persisted authority as explanatory checkpoint evidence")
 for marker in (
-    "MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready",
+    "MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()",
     "'persisted_ready'",
     "'candidate_binding_required'",
     "'candidate_binding_match'",
-    "'deep_authority_scan_deferred' => true",
+    "'current_grant_snapshot_ready'",
+    "'deep_authority_scan_deferred' => false",
+    "'current_execution_truth_evaluated' => true",
+    "'write_current_readiness_unavailable'",
 ):
-    require(connection, marker, "compact connector candidate-bound authority truth")
+    require(connection, marker, "explicit connector current authority truth")
