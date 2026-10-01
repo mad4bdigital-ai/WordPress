@@ -420,7 +420,59 @@ $valid_plan = array(
 	'ticket_class' => 'mutation',
 	'reason' => 'CI bootstrap contract proof',
 );
-if ( true !== MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $valid_plan ) ) $fail( 'Valid self-agent mad4b-write approval plan was denied by bootstrap guard.' );
+
+// A packaged runtime must fail closed after grant reconciliation until the
+// exact four-part package candidate is bound under a verified authority
+// step-up bearer. Persisted/grant-ready is deliberately not execution-ready.
+$prebind_plan = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $valid_plan );
+if ( ! is_wp_error( $prebind_plan ) || 'mad4b_remote_plan_authority_not_ready' !== $prebind_plan->get_error_code() ) {
+	$fail( 'Approval planner did not fail closed before exact candidate binding.', $prebind_plan );
+}
+if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' )
+	|| ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+	|| ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) {
+	$fail( 'Candidate-binding OAuth integration runtime is unavailable.' );
+}
+if ( ! MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available() ) {
+	$fail( 'Authority step-up scope is unavailable on exact enrolled Staging.' );
+}
+MAD4B_SCP_Local_OAuth_Server::ensure_runtime();
+$oauth_status = MAD4B_SCP_OAuth_Resource_Bridge::status();
+if ( empty( $oauth_status['effective'] ) ) $fail( 'OAuth resource bridge is not effective for candidate-binding proof.', $oauth_status );
+
+$resource = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier();
+$mint = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'mint_access_token' );
+$mint->setAccessible( true );
+$step_up_token = $mint->invoke(
+	null,
+	MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID,
+	get_current_user_id(),
+	$resource,
+	array( MAD4B_SCP_OAuth_Resource_Bridge::READ_SCOPE, MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )
+);
+if ( is_wp_error( $step_up_token ) || ! is_string( $step_up_token ) || '' === $step_up_token ) {
+	$fail( 'Unable to mint exact local authority step-up bearer for candidate-binding proof.', is_wp_error( $step_up_token ) ? $step_up_token->get_error_code() : $step_up_token );
+}
+$auth_request = new WP_REST_Request( 'POST', '/mcp/mad4b-chatgpt' );
+$auth_request->set_header( 'Authorization', 'Bearer ' . $step_up_token );
+$auth_result = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, null, $auth_request );
+if ( null !== $auth_result || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+	|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
+	$fail( 'Authority step-up bearer did not establish verified OAuth execution context.', $auth_result );
+}
+
+$binding_plan = MAD4B_SCP_Staging_Write_Candidate_Binding::plan();
+if ( empty( $binding_plan['execution_eligible'] ) || empty( $binding_plan['apply_required'] ) || ! empty( $binding_plan['blockers'] ) ) {
+	$fail( 'Exact candidate-binding plan is not clean after grant reconciliation.', $binding_plan );
+}
+$binding_result = MAD4B_SCP_Staging_Write_Candidate_Binding::bind( $binding_plan['bind_input'] );
+if ( is_wp_error( $binding_result ) || empty( $binding_result['effective'] ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) {
+	$fail( 'Exact candidate binding did not make governed write authority effective.', is_wp_error( $binding_result ) ? $binding_result->get_error_code() : $binding_result );
+}
+MAD4B_SCP_OAuth_Resource_Bridge::reset_verified_bearer_context( false );
+$write_authority = MAD4B_SCP_Staging_Write_Authority::status();
+
+if ( true !== MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $valid_plan ) ) $fail( 'Valid self-agent mad4b-write approval plan was denied after exact candidate binding.' );
 $cross_agent = $valid_plan;
 $cross_agent['agent_public_id'] = '00000000-0000-0000-0000-000000000000';
 if ( ! is_wp_error( MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $cross_agent ) ) ) $fail( 'Approval planner accepted another agent.' );
