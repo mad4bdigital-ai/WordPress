@@ -965,11 +965,39 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		) );
 	}
 
+
+	private static function passive_admin_notice_status( array $status ) {
+		$passive_admin = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_is_passive_admin_hotpath' )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
+		if ( ! $passive_admin ) return $status;
+
+		$registration = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) && method_exists( 'MAD4B_SCP_MCP_Registration_Bridge', 'server_registration_identity_status' )
+			? MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( 'mad4b-chatgpt' )
+			: array();
+		if ( empty( $registration['identity_ready'] ) ) return $status;
+
+		$blockers = isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? $status['blockers'] : array();
+		$blockers = array_values( array_filter( $blockers, static function ( $blocker ) {
+			$blocker = sanitize_key( (string) $blocker );
+			return ! in_array( $blocker, array( 'not_registered', 'mcp_chatgpt_not_registered' ), true );
+		} ) );
+
+		$status['blockers'] = $blockers;
+		$status['ready'] = empty( $blockers );
+		$status['chatgpt_registered'] = ! empty( $registration['actual_registered'] );
+		$status['chatgpt_registration_identity_ready'] = true;
+		$status['chatgpt_error'] = isset( $registration['blocking_registration_error'] ) ? sanitize_key( (string) $registration['blocking_registration_error'] ) : '';
+		$status['chatgpt_registration_projection'] = isset( $registration['state'] ) ? sanitize_key( (string) $registration['state'] ) : 'deferred_identity_ready';
+		$status['chatgpt_registration_deep_check_deferred'] = ! empty( $registration['deep_registration_deferred'] );
+		return $status;
+	}
+
 	public static function connection_admin_notice() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only page routing.
 		if ( 'mad4b-control-plane-chatgpt' !== $page ) return;
-		$status = self::reconnect_status();
+		$status = self::passive_admin_notice_status( self::reconnect_status() );
 		$recovery = class_exists( 'MAD4B_SCP_Upgrade_Continuity' ) ? MAD4B_SCP_Upgrade_Continuity::recovery_status() : array();
 		if ( ! empty( $recovery['recovered'] ) ) echo '<div class="notice notice-success inline"><p>' . esc_html__( 'MAD4B recovered the previously verified read/OAuth connection for this exact non-Production Site Profile. Write authority remains disabled and requires explicit administrator re-enrollment.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( ! empty( $status['ready'] ) ) return;
