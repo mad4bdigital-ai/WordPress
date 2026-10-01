@@ -1056,7 +1056,24 @@ final class MAD4B_SCP_Read_Consistency {
 		$projection = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'candidate_binding_bound_ready' )
 			? MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready( $result, is_array( $binding ) ? $binding : array(), 'runtime_authority_candidate_not_reconciled' )
 			: array();
-		if ( empty( $projection ) ) return $result;
+		if ( empty( $projection ) ) {
+			// Persisted authority is evidence, not current truth. If the canonical
+			// reducer is unavailable, preserve that evidence explicitly but never
+			// promote it to effective/current readiness.
+			$existing_blockers = isset( $result['blockers'] ) && is_array( $result['blockers'] ) ? $result['blockers'] : array();
+			$result['persisted_authority_ready'] = ! empty( $result['ready'] );
+			$result['candidate_binding_required'] = is_array( $binding ) && ! empty( $binding['required'] );
+			$result['candidate_binding_match'] = false;
+			$result['effective_authority_ready'] = false;
+			$result['ready'] = false;
+			$result['state'] = 'truth_projection_unavailable';
+			$result['blocker'] = 'truth_projection_unavailable';
+			$result['blockers'] = array_values( array_unique( array_merge( $existing_blockers, array( 'truth_projection_unavailable' ) ) ) );
+			$result['current_source_commit_sha'] = is_array( $binding ) && isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '';
+			$result['candidate_source_commit_sha'] = is_array( $binding ) && isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : '';
+			$result['deep_authority_scan_deferred'] = true;
+			return $result;
+		}
 		$result['persisted_authority_ready'] = ! empty( $projection['persisted_ready'] );
 		$result['candidate_binding_required'] = ! empty( $projection['candidate_binding_required'] );
 		$result['candidate_binding_match'] = ! empty( $projection['candidate_binding_match'] );
@@ -1140,7 +1157,28 @@ final class MAD4B_SCP_Read_Consistency {
 		$projection = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'candidate_identity_bound_ready' )
 			? MAD4B_SCP_Truth_Projection::candidate_identity_bound_ready( $result, is_array( $current ) ? $current : array(), 'skill_runtime_candidate_identity_unproven', 'historical_evidence' )
 			: array();
-		if ( empty( $projection ) ) return $result;
+		if ( empty( $projection ) ) {
+			$existing_blockers = isset( $result['blockers'] ) && is_array( $result['blockers'] ) ? $result['blockers'] : array();
+			$result['recorded_ready'] = array_key_exists( 'historical_ready', $result ) ? ! empty( $result['historical_ready'] ) : ! empty( $result['ready'] );
+			$result['recorded_source_commit_sha'] = isset( $result['source_commit_sha'] ) ? (string) $result['source_commit_sha'] : '';
+			$result['recorded_build_fingerprint'] = isset( $result['build_fingerprint'] ) ? (string) $result['build_fingerprint'] : '';
+			$result['recorded_package_manifest_digest'] = isset( $result['package_manifest_digest'] ) ? (string) $result['package_manifest_digest'] : '';
+			$result['recorded_artifact_identity'] = isset( $result['artifact_identity'] ) ? (string) $result['artifact_identity'] : '';
+			$result['current_source_commit_sha'] = is_array( $current ) && isset( $current['source_commit_sha'] ) ? (string) $current['source_commit_sha'] : '';
+			$result['current_build_fingerprint'] = is_array( $current ) && isset( $current['build_fingerprint'] ) ? (string) $current['build_fingerprint'] : '';
+			$result['current_package_manifest_digest'] = is_array( $current ) && isset( $current['package_manifest_digest'] ) ? (string) $current['package_manifest_digest'] : '';
+			$result['current_artifact_identity'] = is_array( $current ) && isset( $current['artifact_identity'] ) ? (string) $current['artifact_identity'] : '';
+			$result['current_candidate_match'] = false;
+			$result['effective_skill_ready'] = false;
+			$result['effective_skill_ready_scope'] = 'candidate_identity_bound_checkpoint_only';
+			$result['candidate_identity_bound_ready'] = false;
+			$result['live_skill_ready'] = null;
+			$result['ready'] = null;
+			$result['state'] = 'truth_projection_unavailable';
+			$result['blockers'] = array_values( array_unique( array_merge( $existing_blockers, array( 'truth_projection_unavailable' ) ) ) );
+			$result['live_skill_evaluation_deferred'] = true;
+			return $result;
+		}
 		$result['recorded_ready'] = ! empty( $projection['recorded_ready'] );
 		$result['recorded_source_commit_sha'] = isset( $projection['recorded_source_commit_sha'] ) ? (string) $projection['recorded_source_commit_sha'] : '';
 		$result['recorded_build_fingerprint'] = isset( $projection['recorded_build_fingerprint'] ) ? (string) $projection['recorded_build_fingerprint'] : '';

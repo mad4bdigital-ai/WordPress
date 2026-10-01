@@ -57,6 +57,17 @@ read_consistency = read("includes/class-mad4b-scp-read-consistency.php")
 skills_projection = read_consistency.split("private static function skills_projection()", 1)[1].split("private static function deep_skills_projection()", 1)[0]
 write_projection = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function deep_write_authority_projection()", 1)[0]
 require(skills_projection, "MAD4B_SCP_Truth_Projection::candidate_identity_bound_ready", "skills projection delegates candidate truth")
+if "if ( empty( $projection ) ) return $result;" in skills_projection:
+    raise SystemExit("Skills projection may not fail open to persisted certification when Truth Projection is unavailable")
+for marker in (
+    "$result['recorded_ready'] = array_key_exists( 'historical_ready', $result )",
+    "$result['effective_skill_ready'] = false;",
+    "$result['candidate_identity_bound_ready'] = false;",
+    "$result['ready'] = null;",
+    "$result['state'] = 'truth_projection_unavailable';",
+    "'truth_projection_unavailable'",
+):
+    require(skills_projection, marker, "Skills projection fail-closed fallback")
 require(skills_projection, "'historical_ready'", "skills projection preserves persisted historical result")
 require(skills_projection, "'build_identity_current'", "skills projection exposes persisted build freshness")
 require(skills_projection, "'stale_reasons'", "skills projection exposes persisted freshness reasons")
@@ -75,6 +86,16 @@ skill_freshness = skills.split("private static function project_persisted_freshn
 require(skill_freshness, "$stored['historical_ready']", "persisted Skill freshness preserves historical ready")
 require(skill_freshness, "array_key_exists( 'historical_ready', $stored )", "persisted Skill historical ready is idempotent")
 require(write_projection, "MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready", "write projection delegates candidate truth")
+if "if ( empty( $projection ) ) return $result;" in write_projection:
+    raise SystemExit("write projection may not fail open to persisted authority when Truth Projection is unavailable")
+for marker in (
+    "$result['persisted_authority_ready'] = ! empty( $result['ready'] );",
+    "$result['effective_authority_ready'] = false;",
+    "$result['ready'] = false;",
+    "$result['state'] = 'truth_projection_unavailable';",
+    "'truth_projection_unavailable'",
+):
+    require(write_projection, marker, "write projection fail-closed fallback")
 for forbidden in ("hash_equals( $recorded_sha", "$effective_ready = $recorded_ready && $candidate_match"):
     if forbidden in skills_projection:
         raise SystemExit("Read Consistency re-derived Skills candidate readiness")
