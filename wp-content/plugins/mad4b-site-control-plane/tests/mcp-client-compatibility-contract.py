@@ -7,6 +7,11 @@ compat = (root / 'includes/class-mad4b-scp-mcp-client-compatibility.php').read_t
 challenge = (root / 'includes/class-mad4b-scp-oauth-challenge-alignment.php').read_text(encoding='utf-8')
 registry = (root / 'includes/class-mad4b-scp-mcp-client-profile-registry.php').read_text(encoding='utf-8')
 servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+catalog_diagnostics = (root / 'includes/class-mad4b-scp-mcp-catalog-diagnostics.php').read_text(encoding='utf-8')
+full_authority = (root / 'includes/class-mad4b-scp-full-staging-authority.php').read_text(encoding='utf-8')
+self_update = (root / 'includes/class-mad4b-scp-self-update.php').read_text(encoding='utf-8')
+runtime_gates = (root / 'includes/class-mad4b-scp-governed-runtime-gates.php').read_text(encoding='utf-8')
+remote_parity = (root / 'includes/class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
 transport_context = (root / 'includes/class-mad4b-scp-transport-context.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
@@ -96,49 +101,69 @@ for marker in required_registry:
     assert marker in registry, f'missing profile registry marker: {marker}'
 
 # Exact enrolled Staging uses one ChatGPT resource with a minimal direct
-# transport. The full logical read/write universe remains discoverable, while
-# large target schemas stay outside tools/list and execute only through their
-# original governed WP_Ability contracts.
+# transport. Registration is bearer-invariant because the server is materialized
+# during rest_api_init, before OAuth verification in rest_pre_dispatch. Only
+# explicitly reviewed composite step-up abilities may be pre-registered.
 for marker in [
     'chatgpt_unified_catalog_enabled',
-    "in_array( sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ), array( 'staging', 'production' ), true )",
-    'MAD4B_SCP_Site_Profile::origin_enrolled()',
-    'MAD4B_SCP_Site_Profile::site_urls_match_enrollment()',
-    'public static function chatgpt_full_catalog_candidates()',
-    "foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface )",
-    "self::core_tools( 'mad4b-enrollment' )",
-    "private static function chatgpt_internal_enrollment_mutations()",
+    'public static function chatgpt_reviewed_direct_step_up_tools()',
+    'public static function is_chatgpt_direct_step_up_tool( $ability_name )',
+    'MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY',
+    'MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY',
+    'MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY',
+    "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()",
+    '$direct_step_up = self::chatgpt_reviewed_direct_step_up_tools();',
+    'array_merge( self::chatgpt_dispatch_transport_tools(), $direct_step_up )',
+    'private static function chatgpt_internal_enrollment_mutations()',
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
-    "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
-    "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
-    "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()",
-    "MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()",
-    "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );",
-    "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );",
-    "verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )",
     "public static function chatgpt_direct_read_transport_tools()",
     "'mad4b/session-safe-diagnostics'",
     "$direct_read_transport = self::chatgpt_direct_read_transport_tools()",
     "in_array( $ability_name, $direct_read_transport, true )",
     "public static function chatgpt_dispatch_transport_tools()",
-    "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )",
     "'mad4b/write-execute'",
     "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'",
-    'self::external_write_tools()',
     "'mad4b/database-raw-query' === $ability_name",
     "self::core_tools( 'mad4b-breakglass' )",
 ]:
     assert marker in servers, f'missing minimal ChatGPT transport/logical catalog marker: {marker}'
 
-# Low-level environment-bound mutations remain hidden from ordinary read-only
-# tools/list. They may join the direct catalog only for the dedicated step-up
-# bearer, while logical user discovery continues to exclude the internal names.
+# Request-time visibility is deny-only and occurs after OAuth verification.
+for marker in [
+    "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
+    "verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )",
+    "verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )",
+    "self::ability_is_direct_step_up( $ability )",
+    "if ( $direct_step_up && ! $step_up_visible ) continue;",
+    "mad4b_required_catalog_schema_invalid",
+]:
+    assert marker in catalog_diagnostics, f'missing post-auth catalog visibility invariant: {marker}'
+
+# Every direct step-up source is permanently classified in WP Ability metadata
+# and independently enforces exact ChatGPT client attribution at execution time.
+for source, label in [
+    (full_authority, 'full authority'),
+    (self_update, 'bootstrap self-update'),
+    (runtime_gates, 'runtime gates'),
+    (remote_parity, 'remote operation parity'),
+]:
+    assert "'chatgpt_direct_step_up'" in source, f'{label} direct-step-up metadata missing'
+    assert "'exact_chatgpt_client_required'" in source, f'{label} exact-client metadata missing'
+for source, label in [
+    (full_authority, 'full authority'),
+    (self_update, 'bootstrap self-update'),
+    (runtime_gates, 'runtime gates'),
+    (remote_parity, 'remote operation parity'),
+]:
+    assert 'verified_bearer_client_is' in source, f'{label} direct execution lacks exact-client attribution'
+
+# Low-level enrollment primitives never join the direct ChatGPT catalog, even
+# for a bearer carrying authority:step-up. They remain behind enrollment-execute.
 chatgpt_tools_body = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
-assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in chatgpt_tools_body, 'bounded convergence step-up projection is missing from ChatGPT transport'
-assert "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in chatgpt_tools_body, 'bootstrap Control Plane self-update step-up projection is missing from ChatGPT transport'
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
 ]:
     assert low_level not in chatgpt_tools_body, f'low-level enrollment mutation leaked into direct ChatGPT catalog: {low_level}'
