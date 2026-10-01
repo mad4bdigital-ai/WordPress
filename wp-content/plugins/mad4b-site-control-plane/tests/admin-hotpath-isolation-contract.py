@@ -343,6 +343,46 @@ assert "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()" in reconnect
 assert "MAD4B_SCP_Local_OAuth_Server::status()" not in reconnect_status
 assert "MAD4B_SCP_OAuth_Resource_Bridge::status()" not in reconnect_status
 
+registration_identity = method_body(
+    registration_bridge,
+    "public static function server_registration_identity_status",
+    "public static function status()",
+)
+for marker in (
+    "MAD4B_SCP_Servers::expected_server_ids()",
+    "MAD4B_SCP_Servers::registration_status()",
+    "has_action( 'mcp_adapter_init'",
+    "'deferred_identity_ready'",
+    "'deep_registration_deferred'",
+):
+    assert marker in registration_identity, marker
+for forbidden in (
+    "rest_get_server(",
+    "wp_get_abilities(",
+    "wp_get_ability(",
+    "wp_safe_remote_get(",
+):
+    assert forbidden not in registration_identity, forbidden
+
+passive_notice = method_body(
+    reconnect,
+    "private static function passive_admin_notice_status",
+    "public static function connection_admin_notice",
+)
+assert "current_request_is_passive_admin_hotpath()" in passive_notice
+assert "server_registration_identity_status( 'mad4b-chatgpt' )" in passive_notice
+assert "array( 'not_registered', 'mcp_chatgpt_not_registered' )" in passive_notice
+assert "chatgpt_registration_deep_check_deferred" in passive_notice
+assert "rest_get_server(" not in passive_notice
+assert "wp_get_abilities(" not in passive_notice
+
+connection_notice = method_body(
+    reconnect,
+    "public static function connection_admin_notice",
+    "public static function is_resource_request_path",
+)
+assert "self::passive_admin_notice_status( self::reconnect_status() )" in connection_notice
+
 bridge_identity = method_body(
     oauth_bridge,
     "public static function runtime_identity_status()",

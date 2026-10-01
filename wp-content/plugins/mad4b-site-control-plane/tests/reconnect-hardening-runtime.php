@@ -45,14 +45,34 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
     public static function verified_bearer_active(){return true;}
     public static function verified_bearer_client_is($id){return $id==='https://chatgpt.com/oauth/client.json';}
 }
-final class MAD4B_SCP_MCP_Registration_Bridge { public static $status=array(); public static function status(){return self::$status;} }
+final class MAD4B_SCP_MCP_Registration_Bridge {
+    public static $status=array();
+    public static function status(){return self::$status;}
+    public static function server_registration_identity_status($server_id){
+        $row=MAD4B_SCP_Servers::$status[$server_id]??array();
+        $actual=!empty($row['registered']);
+        $error=isset($row['error'])?sanitize_key((string)$row['error']):'';
+        $synthetic=in_array($error,array('','not_registered','mcp_chatgpt_not_registered'),true);
+        $ready=$actual||($synthetic&&!empty(self::$status['bridge_booted'])&&!empty(self::$status['server_hook_bound'])&&!empty(self::$status['core_ability_hook_bound'])&&!empty(self::$status['registry_ability_hook_bound'])&&!empty(self::$status['core_category_hook_bound'])&&!empty(self::$status['registry_category_hook_bound']));
+        return array('actual_registered'=>$actual,'identity_ready'=>$ready,'state'=>$actual?'registered':($ready?'deferred_identity_ready':(''!==$error?'registration_error':'not_ready')),'blocking_registration_error'=>(!$actual&&!$synthetic)?$error:'','deep_registration_deferred'=>!$actual&&$ready);
+    }
+}
+final class MAD4B_SCP_MCP_Request_Scope {
+    public static $passive=false;
+    public static function current_request_is_passive_admin_hotpath(){return self::$passive;}
+    public static function current_request_is_protocol_hotpath(){return false;}
+    public static function current_request_is_http_mcp_transport(){return false;}
+    public static function current_request_requires_mcp_runtime(){return false;}
+    public static function current_request_mcp_server_id(){return '';}
+    public static function status(){return array('passive_admin_hotpath'=>self::$passive);}
+}
 final class MAD4B_SCP_Runtime_Convergence {
     public static $restart=array('active'=>false,'retry_after_seconds'=>0,'state'=>'');
     public static $maintenance=array('active'=>false,'retry_after_seconds'=>0,'owner'=>'');
     public static function restart_grace_status(){return self::$restart;}
     public static function maintenance_lease_status(){return self::$maintenance;}
 }
-final class MAD4B_SCP_Servers { public static $status=array(); public static function registration_status(){return self::$status;} public static function chatgpt_direct_read_transport_tools(){return array('mad4b/site-info');} }
+final class MAD4B_SCP_Servers { public static $status=array(); public static function expected_server_ids(){return array('mad4b-read','mad4b-chatgpt','mad4b-enrollment','mad4b-content','mad4b-write','mad4b-admin','mad4b-developer','mad4b-developer-breakglass','mad4b-breakglass');} public static function registration_status(){return self::$status;} public static function chatgpt_direct_read_transport_tools(){return array('mad4b/site-info');} }
 final class MAD4B_SCP_Transport_Context { public static $server='mad4b-chatgpt'; public static function current_server_id(){return self::$server;} }
 final class MAD4B_SCP_Provider_Contracts {
     public static $ok=true;
@@ -154,6 +174,30 @@ MAD4B_SCP_Runtime_Convergence::$maintenance=array('active'=>false,'retry_after_s
 
 MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'chatgpt_registration_failed'); $s=MAD4B_SCP_Reconnect_Hardening::reconnect_status();
 ok(empty($s['ready'])&&in_array('chatgpt_registration_failed',$s['blockers'],true),'exact ChatGPT registration error blocks reconnect'); ok(!in_array('targeted_mad4b_route_count_incomplete',$s['blockers'],true),'global route blocker remains diagnostic context only');
+
+// Passive ChatGPT admin intentionally does not materialize REST/MCP registration.
+// The notice may project lightweight registration identity, but it must not mask
+// a real registration failure.
+MAD4B_SCP_MCP_Request_Scope::$passive=true;
+MAD4B_SCP_MCP_Registration_Bridge::$status=array(
+    'bridge_booted'=>true,
+    'server_hook_bound'=>true,
+    'core_ability_hook_bound'=>true,
+    'registry_ability_hook_bound'=>true,
+    'core_category_hook_bound'=>true,
+    'registry_category_hook_bound'=>true,
+);
+MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'not_registered');
+$passive=MAD4B_SCP_Reconnect_Hardening::reconnect_status();
+$passive=priv('passive_admin_notice_status',array($passive));
+ok(!empty($passive['ready']),'passive ChatGPT admin projects deferred registration identity as ready');
+ok(empty($passive['chatgpt_registered'])&&!empty($passive['chatgpt_registration_identity_ready'])&&'deferred_identity_ready'===($passive['chatgpt_registration_projection']??''),'passive admin distinguishes actual registration from deferred identity');
+ok(!empty($passive['chatgpt_registration_deep_check_deferred']),'passive admin marks deep registration check deferred');
+MAD4B_SCP_Servers::$status['mad4b-chatgpt']=array('registered'=>false,'error'=>'chatgpt_registration_failed');
+$passive_error=MAD4B_SCP_Reconnect_Hardening::reconnect_status();
+$passive_error=priv('passive_admin_notice_status',array($passive_error));
+ok(empty($passive_error['ready'])&&in_array('chatgpt_registration_failed',$passive_error['blockers'],true),'passive admin never masks a real ChatGPT registration error');
+MAD4B_SCP_MCP_Request_Scope::$passive=false;
 ok(MAD4B_SCP_Reconnect_Hardening::is_resource_request_path('/mcp/mad4b-chatgpt'),'REST route form recognized'); ok(MAD4B_SCP_Reconnect_Hardening::is_resource_request_path('/wp-json/mcp/mad4b-chatgpt'),'wp-json resource form recognized');
 $request=new class { public function get_route(){return '/mcp/mad4b-chatgpt';} }; $guard=MAD4B_SCP_Reconnect_Hardening::guard_mcp_rest_dispatch(null,null,$request); ok(is_wp_error($guard)&&'mad4b_mcp_reconnect_not_ready'===$guard->get_error_code(),'missing route becomes deterministic reconnect error'); ok(503===($guard->get_error_data()['status']??0),'reconnect error is 503'); ok(!array_key_exists('blockers',(array)$guard->get_error_data()),'preauth reconnect error does not expose internal blocker names');
 // Nested request isolation: inner REST lifecycle cannot clear the outer initialize state.
