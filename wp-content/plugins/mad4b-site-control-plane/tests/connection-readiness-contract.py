@@ -616,7 +616,6 @@ for marker in (
     "$lightweight = $protocol_hotpath || $admin_shallow",
     "'mcp_peer_inventory_deferred_admin_hotpath'",
     "'state' => $protocol_hotpath ? 'deferred_protocol_hotpath' : 'deferred_admin_hotpath'",
-    "'deep_connection_diagnostics_deferred'",
     "'status_mode' => $force_deep ? 'deep_explicit'",
     "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()",
     "'deep_status_deferred' =>",
