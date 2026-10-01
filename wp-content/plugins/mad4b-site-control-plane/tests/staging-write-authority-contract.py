@@ -1055,6 +1055,20 @@ for marker in [
     if marker not in authorize_mutation:
         raise SystemExit('central mutation authorization lost current write-drift gate: ' + marker)
 
+authority_status = auth.split("public static function authority_status()", 1)[1].split("public static function audit_remote_permission_denial", 1)[0]
+for marker in (
+    "'status_scope' => 'global_policy_and_peer_governance_only'",
+    "'per_ability_authorization_required' => true",
+    "'current_write_authority_evaluated' => false",
+    "'current_write_authority_evaluation' => 'deferred_to_authorize_mutation'",
+    "'legacy_status_ready_semantics' => 'global_gate_ready_not_execution_authorized'",
+    "'staging_write_authority_projection' => 'checkpoint_diagnostic_not_per_ability_execution_verdict'",
+):
+    if marker not in authority_status:
+        raise SystemExit('global authorization status semantic boundary missing: ' + marker)
+if "current_execution_readiness(" in authority_status:
+    raise SystemExit('global authorization status must not perform deep per-ability current write evaluation')
+
 current_authority_body = live_truth.split("public static function current_authority_status()", 1)[1].split("public static function current_write_certification()", 1)[0]
 for marker in [
     "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()",
