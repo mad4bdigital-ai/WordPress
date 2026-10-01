@@ -462,6 +462,16 @@ if ( null !== $auth_result || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer
 	$fail( 'Authority step-up bearer did not establish verified OAuth execution context.', $auth_result );
 }
 
+// WP-CLI does not pass through the MCP server permission callback that normally
+// binds the request-local transport context. Reproduce that exact bounded step
+// here so candidate binding is exercised under the same ChatGPT transport +
+// verified OAuth identity pair used in a real remote MCP request.
+if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) ) $fail( 'Transport context runtime is unavailable for candidate-binding proof.' );
+$transport_binding = MAD4B_SCP_Transport_Context::bind( 'mad4b-chatgpt', $auth_request );
+if ( is_wp_error( $transport_binding ) || true !== $transport_binding ) {
+	$fail( 'ChatGPT transport context did not bind for candidate-binding proof.' );
+}
+
 $binding_plan = MAD4B_SCP_Staging_Write_Candidate_Binding::plan();
 if ( empty( $binding_plan['execution_eligible'] ) || empty( $binding_plan['apply_required'] ) || ! empty( $binding_plan['blockers'] ) ) {
 	$fail( 'Exact candidate-binding plan is not clean after grant reconciliation.', $binding_plan );
@@ -471,6 +481,7 @@ if ( is_wp_error( $binding_result ) || empty( $binding_result['effective'] ) || 
 	$fail( 'Exact candidate binding did not make governed write authority effective.', is_wp_error( $binding_result ) ? $binding_result->get_error_code() : $binding_result );
 }
 MAD4B_SCP_OAuth_Resource_Bridge::reset_verified_bearer_context( false );
+MAD4B_SCP_Transport_Context::clear();
 $write_authority = MAD4B_SCP_Staging_Write_Authority::status();
 
 if ( true !== MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $valid_plan ) ) $fail( 'Valid self-agent mad4b-write approval plan was denied after exact candidate binding.' );
