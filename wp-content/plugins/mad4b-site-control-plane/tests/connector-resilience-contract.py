@@ -313,3 +313,11 @@ print("mad4b.connector-resilience.contract.v2: PASS")
 
 if "MAD4B_SCP_Staging_Write_Authority::persisted_status()" not in connection:
     raise SystemExit("compact connector preflight must use persisted authority evidence")
+for marker in (
+    "MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready",
+    "'persisted_ready'",
+    "'candidate_binding_required'",
+    "'candidate_binding_match'",
+    "'deep_authority_scan_deferred' => true",
+):
+    require(connection, marker, "compact connector candidate-bound authority truth")
