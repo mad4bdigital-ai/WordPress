@@ -119,6 +119,18 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return ! empty( $status['eligible'] );
 	}
 
+	/**
+	 * Whether a resolved NHI is the exact Site Profile-managed ChatGPT write agent.
+	 * Other exact-grant agents remain governed by their own live Agent Registry
+	 * grant, approval, budget, policy, execution-fence and audit checks and must
+	 * never inherit or be blocked by another agent's persisted candidate state.
+	 */
+	public static function manages_agent( array $agent ) {
+		$slug = isset( $agent['slug'] ) ? sanitize_key( (string) $agent['slug'] ) : '';
+		$expected = self::agent_slug();
+		return '' !== $slug && '' !== $expected && hash_equals( $expected, $slug );
+	}
+
 	public static function effective() {
 		// Authorization hot paths must not recursively rebuild the provider/write
 		// inventory. Only an explicitly reconciled persisted authority may enable
