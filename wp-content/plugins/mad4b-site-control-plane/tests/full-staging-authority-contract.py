@@ -129,6 +129,18 @@ for forbidden in [
 ]:
     assert forbidden not in step_up, f"tools/list step-up projection must stay lifecycle-stable and off the full authority plan hotpath: {forbidden}"
 
+status_body = full.split("public static function status()", 1)[1].split("public static function handshake()", 1)[0]
+for marker in [
+    "$write_checkpoint_ready =",
+    "$write_grant_snapshot_ready = is_array( $write_plan ) && ! empty( $write_plan['current_ready'] )",
+    "! empty( $write_plan['effective_ready'] )",
+    "'checkpoint_ready' => $write_checkpoint_ready",
+    "'current_grant_snapshot_ready' => $write_grant_snapshot_ready",
+    "'current_readiness_blockers'",
+]:
+    assert marker in status_body, marker
+assert "$write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();" not in status_body
+
 plan_body = full.split("public static function plan()", 1)[1].split("public static function apply( $input )", 1)[0]
 for marker in [
     "$missing_rows = isset( $write_plan['exact_grants_missing'] )",
