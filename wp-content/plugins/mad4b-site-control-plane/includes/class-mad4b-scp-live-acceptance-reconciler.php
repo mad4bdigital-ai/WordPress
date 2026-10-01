@@ -172,6 +172,7 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 				'execution_ticket_candidate_binding_exact' => null,
 				'undo_ticket_candidate_binding_exact' => null,
 				'execution_event_found' => false,
+				'package_identity_event_found' => false,
 				'replay_denial_event_found' => false,
 			);
 
@@ -231,10 +232,26 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 			$replay_summary = isset( $replay['summary'] ) && is_array( $replay['summary'] ) ? $replay['summary'] : array();
 			$replay_ticket = isset( $replay_summary['approval_ticket_id'] ) ? strtolower( trim( (string) $replay_summary['approval_ticket_id'] ) ) : '';
 
+			$package_event = self::find_package_identity_event(
+				$events,
+				$execution,
+				$mutation_id,
+				$ticket_id,
+				(int) $replay['sequence']
+			);
+			if ( empty( $package_event ) ) {
+				self::remember_reconstruction_failure( $diagnostics, $attempt, 'package_identity_event_not_found' );
+				continue;
+			}
+			$attempt['package_identity_event_found'] = true;
+			$package_summary = isset( $package_event['summary'] ) && is_array( $package_event['summary'] ) ? $package_event['summary'] : array();
+
 			return array(
 				'contract' => 'mad4b.mutation-acceptance-receipt.v1',
-				'candidate_sha' => $candidate['source_commit_sha'],
-				'build_fingerprint' => $candidate['build_fingerprint'],
+				'candidate_sha' => isset( $package_summary['candidate_sha'] ) ? (string) $package_summary['candidate_sha'] : '',
+				'build_fingerprint' => isset( $package_summary['build_fingerprint'] ) ? (string) $package_summary['build_fingerprint'] : '',
+				'package_manifest_digest' => isset( $package_summary['package_manifest_digest'] ) ? (string) $package_summary['package_manifest_digest'] : '',
+				'artifact_identity' => isset( $package_summary['artifact_identity'] ) ? (string) $package_summary['artifact_identity'] : '',
 				'environment' => self::acceptance_environment(), 'origin' => self::acceptance_origin(),
 				'mutation_id' => $mutation_id,
 				'approval_ticket_id' => $ticket_id,
@@ -282,6 +299,8 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 			'first_reconstruction_failure' => '',
 			'current_candidate_sha' => isset( $candidate['source_commit_sha'] ) ? (string) $candidate['source_commit_sha'] : '',
 			'current_build_fingerprint' => isset( $candidate['build_fingerprint'] ) ? (string) $candidate['build_fingerprint'] : '',
+			'current_package_manifest_digest' => isset( $candidate['package_manifest_digest'] ) ? (string) $candidate['package_manifest_digest'] : '',
+			'current_artifact_identity' => isset( $candidate['artifact_identity'] ) ? (string) $candidate['artifact_identity'] : '',
 			'audit_limit' => self::AUDIT_LIMIT,
 			'audit_chain_valid' => null,
 			'audit_tail_event_available' => null,
@@ -390,6 +409,32 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 			$best = $event;
 		}
 		return $best;
+	}
+
+	private static function find_package_identity_event( array $events, array $execution, $mutation_id, $ticket_id, $before_sequence ) {
+		$execution_sequence = isset( $execution['sequence'] ) ? (int) $execution['sequence'] : 0;
+		$source_event_id = isset( $execution['event_id'] ) ? (string) $execution['event_id'] : '';
+		$source_event_hash = isset( $execution['entry_hash'] ) ? (string) $execution['entry_hash'] : '';
+		$mutation_id = strtolower( trim( (string) $mutation_id ) );
+		$ticket_id = strtolower( trim( (string) $ticket_id ) );
+
+		foreach ( $events as $event ) {
+			if ( ! is_array( $event ) || 'mad4b/live-acceptance-execution-observed' !== ( isset( $event['ability'] ) ? (string) $event['ability'] : '' ) || 'ok' !== ( isset( $event['status'] ) ? (string) $event['status'] : '' ) ) continue;
+			$sequence = isset( $event['sequence'] ) ? (int) $event['sequence'] : 0;
+			if ( $sequence <= $execution_sequence || $sequence >= (int) $before_sequence ) continue;
+			$summary = isset( $event['summary'] ) && is_array( $event['summary'] ) ? $event['summary'] : array();
+			if ( empty( $summary['mutation_id'] ) || ! hash_equals( $mutation_id, strtolower( (string) $summary['mutation_id'] ) ) ) continue;
+			if ( empty( $summary['approval_ticket_id'] ) || ! hash_equals( $ticket_id, strtolower( (string) $summary['approval_ticket_id'] ) ) ) continue;
+			if ( '' === $source_event_id || empty( $summary['source_event_id'] ) || ! hash_equals( $source_event_id, (string) $summary['source_event_id'] ) ) continue;
+			if ( ! self::valid_hash( $source_event_hash ) || empty( $summary['source_event_hash'] ) || ! hash_equals( $source_event_hash, strtolower( (string) $summary['source_event_hash'] ) ) ) continue;
+			$candidate_sha = isset( $summary['candidate_sha'] ) ? strtolower( trim( (string) $summary['candidate_sha'] ) ) : '';
+			$build = isset( $summary['build_fingerprint'] ) ? strtolower( trim( (string) $summary['build_fingerprint'] ) ) : '';
+			$manifest = isset( $summary['package_manifest_digest'] ) ? strtolower( trim( (string) $summary['package_manifest_digest'] ) ) : '';
+			$artifact = isset( $summary['artifact_identity'] ) ? trim( (string) $summary['artifact_identity'] ) : '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $candidate_sha ) || ! self::valid_hash( $build ) || ! self::valid_hash( $manifest ) || '' === $artifact || strlen( $artifact ) > 191 ) continue;
+			return $event;
+		}
+		return array();
 	}
 
 	private static function find_replay_event( array $events, $ticket_id, $expected_ability, $expected_user_id, $after_sequence, $before_sequence ) {
@@ -511,10 +556,22 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 
 	private static function current_candidate() {
 		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
-		$sha = isset( $provenance['source_commit_sha'] ) ? strtolower( (string) $provenance['source_commit_sha'] ) : '';
-		$fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
-		$ready = ! empty( $provenance['runtime_manifest_match'] ) && preg_match( '/^[a-f0-9]{40}$/', $sha ) && self::valid_hash( $fingerprint );
-		return array( 'ready' => (bool) $ready, 'source_commit_sha' => $sha, 'build_fingerprint' => $fingerprint );
+		$sha = isset( $provenance['source_commit_sha'] ) ? strtolower( trim( (string) $provenance['source_commit_sha'] ) ) : '';
+		$fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) ) : '';
+		$manifest = isset( $provenance['package_manifest_digest'] ) ? strtolower( trim( (string) $provenance['package_manifest_digest'] ) ) : '';
+		$artifact = isset( $provenance['artifact_identity'] ) ? trim( (string) $provenance['artifact_identity'] ) : '';
+		$ready = ! empty( $provenance['runtime_manifest_match'] )
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/', $sha )
+			&& self::valid_hash( $fingerprint )
+			&& self::valid_hash( $manifest )
+			&& '' !== $artifact && strlen( $artifact ) <= 191;
+		return array(
+			'ready' => (bool) $ready,
+			'source_commit_sha' => $ready ? $sha : '',
+			'build_fingerprint' => $ready ? $fingerprint : '',
+			'package_manifest_digest' => $ready ? $manifest : '',
+			'artifact_identity' => $ready ? $artifact : '',
+		);
 	}
 
 	private static function valid_hash( $value ) { return is_string( $value ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $value ); }

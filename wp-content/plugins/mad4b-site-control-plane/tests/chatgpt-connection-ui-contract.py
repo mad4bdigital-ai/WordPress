@@ -27,7 +27,7 @@ required_ui = [
     "'stores_chatgpt_credentials' => false",
     "'external_connection_certified' => false",
     "'external_connection_evidence_present' => $external_evidence_present",
-    "'external_connection_state' => $external_evidence_present ? 'persisted_identity_deep_revalidation_deferred' : 'unverified'",
+    "'external_connection_state' => $external_certification_state",
     "'gateway_registration_identity_ready' => $gateway_identity_ready",
     "'gateway_registration_state'",
     "'gateway_registration_deep_check_deferred'",
