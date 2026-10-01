@@ -1209,7 +1209,10 @@ final class MAD4B_SCP_Self_Update {
 
 			$runtime_cache = self::invalidate_runtime_caches( $runtime_php_files );
 			$activation = self::restore_activation_state( $before );
-			$readback = is_wp_error( $activation ) ? $activation : self::verify_installed_identity( $target );
+			$readback_target = $target;
+			$verified_provenance = isset( $verified_archive['provenance'] ) && is_array( $verified_archive['provenance'] ) ? $verified_archive['provenance'] : array();
+			if ( isset( $verified_provenance['artifact_identity'] ) ) $readback_target['artifact_identity'] = (string) $verified_provenance['artifact_identity'];
+			$readback = is_wp_error( $activation ) ? $activation : self::verify_installed_identity( $readback_target );
 			if ( is_wp_error( $readback ) ) {
 				$rollback = self::rollback( $backup, $before, $runtime_php_files );
 				if ( ! empty( $continuation ) && class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ) MAD4B_SCP_Post_Update_Continuation::cancel( 'readback_failed', isset( $continuation['target_identity'] ) ? $continuation['target_identity'] : array() );
@@ -1228,7 +1231,7 @@ final class MAD4B_SCP_Self_Update {
 
 			$continuation_readback = array();
 			if ( ! empty( $continuation ) && class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ) {
-				$continuation_readback = MAD4B_SCP_Post_Update_Continuation::mark_readback_verified( isset( $continuation['target_identity'] ) ? $continuation['target_identity'] : array() );
+				$continuation_readback = MAD4B_SCP_Post_Update_Continuation::mark_readback_verified( is_array( $readback ) ? $readback : array() );
 				if ( is_wp_error( $continuation_readback ) ) {
 					$rollback = self::rollback( $backup, $before, $runtime_php_files );
 					MAD4B_SCP_Post_Update_Continuation::cancel( 'continuation_readback_failed', isset( $continuation['target_identity'] ) ? $continuation['target_identity'] : array() );
@@ -1689,11 +1692,13 @@ final class MAD4B_SCP_Self_Update {
 			'source_commit_sha' => '',
 			'build_fingerprint' => '',
 			'package_manifest_digest' => '',
+			'artifact_identity' => '',
 		);
 		$row = self::installed_provenance();
 		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
 			if ( isset( $row[ $field ] ) ) $identity[ $field ] = strtolower( trim( (string) $row[ $field ] ) );
 		}
+		if ( isset( $row['artifact_identity'] ) ) $identity['artifact_identity'] = trim( (string) $row['artifact_identity'] );
 		return $identity;
 	}
 
@@ -1701,6 +1706,12 @@ final class MAD4B_SCP_Self_Update {
 		$current = self::installed_identity();
 		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
 			if ( empty( $current[ $field ] ) || ! hash_equals( $target[ $field ], $current[ $field ] ) ) return new WP_Error( 'mad4b_self_update_installed_identity_mismatch', 'Installed Control Plane identity does not match the target after replacement.', array( 'field' => $field, 'current' => isset( $current[ $field ] ) ? $current[ $field ] : '' ) );
+		}
+		$expected_artifact = isset( $target['artifact_identity'] ) ? trim( (string) $target['artifact_identity'] ) : '';
+		if ( '' !== $expected_artifact && ( empty( $current['artifact_identity'] ) || ! hash_equals( $expected_artifact, (string) $current['artifact_identity'] ) ) ) {
+			return new WP_Error( 'mad4b_self_update_installed_artifact_identity_mismatch', 'Installed Control Plane artifact identity does not match the exact target after replacement.', array(
+				'current' => isset( $current['artifact_identity'] ) ? $current['artifact_identity'] : '',
+			) );
 		}
 
 		$target_version = isset( $target['version'] ) ? trim( (string) $target['version'] ) : '';
