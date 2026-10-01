@@ -278,9 +278,13 @@ for marker in (
     "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()",
     "MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()",
     "'mcp_peer_inventory_deferred_admin_hotpath'",
-    "'deep_connection_diagnostics_deferred'",
+    "'local_transport_validation_state'",
+    "'remote_endpoint_preflight_state'",
+    "'connection_certification_state'",
+    "'certification_deferred_checks'",
 ):
     assert marker in connection_method, marker
+assert "$connection_certified = ! $admin_shallow && empty( $certification_blockers )" in connection_method
 
 local_identity = method_body(
     local_oauth,
