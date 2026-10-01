@@ -1266,6 +1266,17 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$persisted_status = self::status();
 		$persisted_ready = ! empty( $persisted_status['ready'] );
 		$effective_ready = self::effective();
+		$candidate_binding = self::candidate_binding_status();
+		$grant_set_converged = $persisted_ready
+			&& $existing_count === count( $tools )
+			&& 0 === count( $missing )
+			&& 0 === count( $stale )
+			&& 0 === count( $broad_environment )
+			&& 0 === $duplicate_excess
+			&& 0 === $current_agent_wildcards
+			&& 0 === $global_wildcards;
+		$effective_converged = $grant_set_converged
+			&& ( empty( $candidate_binding['required'] ) || ! empty( $candidate_binding['match'] ) );
 		$grant_rows_fingerprint = hash( 'sha256', wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 
 		return array(
@@ -1273,8 +1284,14 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'read_only' => true,
 			'mutation_performed' => false,
 			'eligible' => ! empty( $status['eligible'] ),
+			// current_ready is retained for backward compatibility and means only
+			// that a reconciled authority record was persisted. Consumers that need
+			// current grant truth must use grant_set_converged/effective_converged.
 			'current_ready' => $persisted_ready,
 			'persisted_ready' => $persisted_ready,
+			'grant_set_converged' => $grant_set_converged,
+			'effective_converged' => $effective_converged,
+			'drift_present' => ! $grant_set_converged,
 			'effective_ready' => $effective_ready,
 			'environment' => $environment,
 			'agent_present' => is_array( $agent ) && ! empty( $agent['id'] ),
@@ -1298,7 +1315,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'grant_lookup_strategy' => 'bulk_agent_grant_snapshot',
 			'bulk_agent_grant_rows' => count( $grants ),
 			'breakglass_included' => in_array( 'mad4b/database-raw-query', $tools, true ),
-			'candidate_binding' => self::candidate_binding_status(),
+			'candidate_binding' => $candidate_binding,
 			'rows' => $rows,
 			'apply_requires_explicit_operator_action' => true,
 			'apply_method' => 'MAD4B_SCP_Staging_Write_Authority::reconcile',
