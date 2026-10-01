@@ -43,7 +43,11 @@ final class MAD4B_SCP_Truth_Projection {
 	}
 
 	public static function candidate_identity_bound_ready( array $persisted, array $current, $mismatch_blocker = 'candidate_identity_unproven', $historical_state = 'historical_evidence' ) {
-		$recorded_ready = ! empty( $persisted['ready'] );
+		// A freshness projection may deliberately downgrade current ready=false
+		// while preserving the immutable historical certification outcome.
+		$recorded_ready = array_key_exists( 'historical_ready', $persisted )
+			? ! empty( $persisted['historical_ready'] )
+			: ! empty( $persisted['ready'] );
 		$recorded_sha = isset( $persisted['source_commit_sha'] ) ? strtolower( trim( (string) $persisted['source_commit_sha'] ) ) : '';
 		$recorded_fingerprint = isset( $persisted['build_fingerprint'] ) ? strtolower( trim( (string) $persisted['build_fingerprint'] ) ) : '';
 		$recorded_manifest = isset( $persisted['package_manifest_digest'] ) ? strtolower( trim( (string) $persisted['package_manifest_digest'] ) ) : '';
