@@ -15,10 +15,12 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 	const EDGE_CONTRACT = 'mad4b.connection-edge-contract.v1';
 
 	private static $kernel = null;
+	private static $projection = null;
 	private static $resolved = null;
 
 	public static function reset_request_cache() {
 		self::$kernel = null;
+		self::$projection = null;
 		self::$resolved = null;
 	}
 
@@ -86,6 +88,10 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 		$blockers = array();
 		if ( $profile_exact ) {
 			if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $blockers[] = 'site_profile_oauth_disabled';
+			if ( 'production' === $environment
+				&& class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' )
+				&& MAD4B_SCP_Site_Profile::oauth_enabled()
+				&& ! MAD4B_SCP_Staging_OAuth_Autoconfig::production_profile_enabled() ) $blockers[] = 'production_readonly_opt_in_required';
 			if ( empty( $user_ids ) ) $blockers[] = 'site_profile_subject_unavailable';
 			foreach ( $subjects as $subject ) if ( empty( $subject['exists'] ) ) $blockers[] = 'site_profile_subject_invalid';
 			if ( ! empty( $user_ids ) && $primary_owner < 1 ) $blockers[] = 'site_profile_admin_owner_required';
@@ -168,6 +174,59 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 		return self::$kernel;
 	}
 
+	/**
+	 * Project the already-resolved identity into request-local OAuth constants.
+	 *
+	 * Portable read-only has already projected itself before this class runs.
+	 * Exact Site Profile projection reuses the autoconfig validator but explicitly
+	 * avoids its persistence/bootstrap path.
+	 */
+	public static function project_runtime_identity() {
+		if ( is_array( self::$projection ) ) return self::$projection;
+		$kernel = self::kernel();
+		$source = isset( $kernel['source'] ) ? sanitize_key( (string) $kernel['source'] ) : '';
+		$result = array(
+			'contract' => 'mad4b.connection-identity-projection.v1',
+			'source' => $source,
+			'projected' => false,
+			'effective' => false,
+			'blocker' => '',
+			'request_local_only' => true,
+			'durable_mutation_performed' => false,
+			'outbound_io_performed' => false,
+			'provider_discovery_performed' => false,
+		);
+
+		if ( empty( $kernel['effective'] ) ) {
+			$result['blocker'] = isset( $kernel['root_blocker'] ) ? sanitize_key( (string) $kernel['root_blocker'] ) : 'connection_identity_not_effective';
+			return self::$projection = $result;
+		}
+		if ( 'portable_readonly' === $source ) {
+			$portable = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) ? MAD4B_SCP_Portable_Readonly_Connection::status() : array();
+			$result['projected'] = ! empty( $portable['effective'] );
+			$result['effective'] = ! empty( $portable['effective'] );
+			$result['blocker'] = $result['effective'] ? '' : ( isset( $portable['blocker'] ) ? sanitize_key( (string) $portable['blocker'] ) : 'portable_readonly_not_effective' );
+			return self::$projection = $result;
+		}
+		if ( 'exact_site_profile' !== $source
+			|| ! class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig', 'project_request_identity' ) ) {
+			$result['blocker'] = 'connection_identity_projection_unavailable';
+			return self::$projection = $result;
+		}
+
+		$projected = MAD4B_SCP_Staging_OAuth_Autoconfig::project_request_identity();
+		if ( ! is_array( $projected ) ) {
+			$result['blocker'] = 'connection_identity_projection_invalid';
+			return self::$projection = $result;
+		}
+		$result['projected'] = ! empty( $projected['projected'] );
+		$result['effective'] = ! empty( $projected['effective'] );
+		$result['blocker'] = isset( $projected['blocker'] ) ? sanitize_key( (string) $projected['blocker'] ) : '';
+		$result['oauth_projection'] = $projected;
+		return self::$projection = $result;
+	}
+
 	public static function resolve() {
 		if ( is_array( self::$resolved ) ) return self::$resolved;
 		$kernel = self::kernel();
@@ -219,6 +278,15 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 			'issuer_match' => $runtime_issuer_match,
 			'resource_match' => $runtime_resource_match,
 			'adapter_version' => $adapter_version,
+		);
+		$result['identity_projection'] = is_array( self::$projection ) ? self::$projection : array(
+			'contract' => 'mad4b.connection-identity-projection.v1',
+			'source' => isset( $kernel['source'] ) ? sanitize_key( (string) $kernel['source'] ) : '',
+			'projected' => false,
+			'effective' => false,
+			'blocker' => 'projection_not_requested',
+			'request_local_only' => true,
+			'durable_mutation_performed' => false,
 		);
 		$result['package_identity'] = $build;
 		$result['package_identity_ready'] = ! empty( $build['identity_ready'] );
