@@ -137,6 +137,13 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		$method = is_array( $body ) && isset( $body['method'] ) && is_string( $body['method'] ) ? $body['method'] : '';
 		if ( ! in_array( $method, array( 'initialize', 'tools/list' ), true ) || ! is_object( $response ) || ! method_exists( $response, 'get_data' ) || ! method_exists( $response, 'header' ) ) return $response;
 		$data = $response->get_data();
+		if ( is_object( $data ) && method_exists( $data, 'toArray' ) ) {
+			try { $data = $data->toArray(); } catch ( Throwable $error ) { $data = null; }
+		}
+		// Adapter success results can still be official DTOs at this WordPress filter seam.
+		if ( is_array( $data ) && isset( $data['result'] ) && is_object( $data['result'] ) && method_exists( $data['result'], 'toArray' ) ) {
+			try { $data['result'] = $data['result']->toArray(); } catch ( Throwable $error ) { $data['result'] = null; }
+		}
 		$status = (int) $response->get_status();
 		$outcome = $status >= 400 ? 'http_error' : ( ! is_array( $data ) || isset( $data['error'] ) || ! isset( $data['result'] ) || ! is_array( $data['result'] ) ? 'rpc_error' : 'ready' );
 		$count = null;
@@ -149,7 +156,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		}
 		// No body, request ID, token, cookie, session value, or error message is copied.
 		$evidence = array( 'contract' => self::CONTRACT, 'stage' => $method, 'http_status' => $status, 'outcome' => $outcome, 'session_header_present' => '' !== (string) $request->get_header( 'mcp-session-id' ), 'protocol_header_present' => '' !== (string) $request->get_header( 'mcp-protocol-version' ), 'tool_count' => $count );
-		if ( is_array( $data ) && isset( $data['error']['code'] ) && is_int( $data['error']['code'] ) ) $evidence['rpc_error_code'] = $data['error']['code'];
+		if ( is_array( $data ) && isset( $data['error'] ) && is_array( $data['error'] ) && isset( $data['error']['code'] ) && is_int( $data['error']['code'] ) ) $evidence['rpc_error_code'] = $data['error']['code'];
 		$response->header( 'X-MAD4B-MCP-Stage', $method );
 		$response->header( 'X-MAD4B-MCP-Outcome', $outcome );
 		if ( 'ready' !== $outcome && ! self::$failure_logged ) {

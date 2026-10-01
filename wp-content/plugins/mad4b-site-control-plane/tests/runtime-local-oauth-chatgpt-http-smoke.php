@@ -337,8 +337,8 @@ $bad_projection = static function ( $list, $server ) {
 	if ( 'mad4b-chatgpt' !== $server->get_server_id() ) return $list;
 	foreach ( $list as $key => $dto ) {
 		if ( 'mad4b-full-staging-authority-apply' !== $dto->getName() ) continue;
-		$data = $dto->toArray(); $data['description'] = "\xB1\x31";
-		$list[$key] = \WP\McpSchema\Server\Tools\DTO\Tool::fromArray( $data );
+		$copy = clone $dto; $description = new ReflectionProperty( 'WP\\McpSchema\\Server\\Tools\\DTO\\Tool', 'description' ); $description->setAccessible( true ); $description->setValue( $copy, "\xB1\x31" );
+		$list[$key] = $copy;
 	}
 	return $list;
 };
@@ -351,7 +351,7 @@ if ( 200 !== $degraded->get_status() || count( $degraded_names ) !== count( $cat
 // Failure in a required core read must stay fail-closed rather than masquerading as a ready subset.
 $bad_core = static function ( $list, $server ) {
 	if ( 'mad4b-chatgpt' !== $server->get_server_id() ) return $list;
-	foreach ( $list as $key => $dto ) if ( 'mad4b-site-info' === $dto->getName() ) { $data = $dto->toArray(); $data['description'] = "\xB1\x31"; $list[$key] = \WP\McpSchema\Server\Tools\DTO\Tool::fromArray( $data ); }
+	foreach ( $list as $key => $dto ) if ( 'mad4b-site-info' === $dto->getName() ) { $copy = clone $dto; $description = new ReflectionProperty( 'WP\\McpSchema\\Server\\Tools\\DTO\\Tool', 'description' ); $description->setAccessible( true ); $description->setValue( $copy, "\xB1\x31" ); $list[$key] = $copy; }
 	return $list;
 };
 add_filter( 'mcp_adapter_tools_list', $bad_core, 999, 2 );
