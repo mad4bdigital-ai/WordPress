@@ -19,7 +19,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	public static function preflight( array $abilities, array $optional ) {
 		$out = array( 'ready' => false, 'degraded' => false, 'tools' => array(), 'failures' => array(), 'blocker' => '' );
 		if ( count( $abilities ) > self::MAX_TOOLS || count( array_unique( $abilities ) ) !== count( $abilities ) ) { $out['blocker'] = 'mcp_catalog_budget_or_duplicate'; return $out; }
-		if ( ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
+		if ( ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! class_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
 		$names = array();
 		foreach ( $abilities as $name ) {
 			$stage = 'ability_lookup'; $failure = null; $source_fingerprint = ''; 
