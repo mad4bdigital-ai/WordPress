@@ -151,10 +151,12 @@ for marker in (
 ):
     require(read_consistency, marker, "session-safe effective-state semantics")
 authority_projection = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function skills_projection()", 1)[0]
-require(authority_projection, "$effective_ready = $persisted_ready && ( ! $binding_required || $binding_match )", "effective authority formula")
+require(authority_projection, "MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready", "effective authority canonical projection")
 skills_projection = read_consistency.split("private static function skills_projection()", 1)[1].split("private static function update_projection()", 1)[0]
-require(skills_projection, "'historical_evidence'", "historical Skills state")
-require(skills_projection, "$effective_ready = $recorded_ready && $candidate_match", "effective Skills formula")
+require(skills_projection, "MAD4B_SCP_Truth_Projection::candidate_identity_bound_ready", "effective Skills canonical projection")
+require(projection, "$effective_ready = $persisted_ready && ( ! $binding_required || $binding_match )", "effective authority formula owner")
+require(projection, "$effective_ready = $recorded_ready && $candidate_match", "effective Skills formula owner")
+require(projection, "historical_evidence", "historical Skills state owner")
 for marker in ("'source_commit_sha' => $source_commit_sha", "'build_fingerprint' => $build_fingerprint"):
     require(skills, marker, "persisted Skills exact-build identity")
 
