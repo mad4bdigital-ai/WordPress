@@ -61,6 +61,17 @@ required = [
 for marker in required:
     assert marker in full, marker
 
+fixable = full.split("'fixable_write_drift' => array(", 1)[1].split("),", 1)[0]
+assert "'unreviewed_stale_allow_grants_count'" not in fixable, "unreviewed stale authority must never be classified as auto-fixable"
+for marker in (
+    "'nonreconcilable_write_drift_counts' => array(",
+    "'unreviewed_stale_allow_grants_count' => $unreviewed_stale_count",
+    "'exact_grants_missing_count' => $nonreconcilable_missing_count",
+    "'exact_grants_missing_count' => $reconcilable_missing_count",
+    "'stale_allow_grants_count' => $reviewed_stale_count",
+):
+    assert marker in full, marker
+
 reviewed_lineage_capture = full.index("$reviewed_previous_binding = MAD4B_SCP_Staging_Write_Candidate_Binding::audit_binding_snapshot")
 developer_apply = full.index("MAD4B_SCP_Developer_Authority::apply")
 breakglass_apply = full.index("MAD4B_SCP_Developer_Authority::breakglass_apply")
