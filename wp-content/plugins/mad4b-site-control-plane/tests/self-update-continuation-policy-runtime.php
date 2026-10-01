@@ -23,9 +23,11 @@ final class MAD4B_SCP_Site_Profile {
 final class MAD4B_SCP_Post_Update_Continuation {}
 final class MAD4B_SCP_Staging_Write_Authority {
 	public static $checkpoint = array();
+	public static $plan = array();
 	public static $binding = array();
 	public static $effective = false;
 	public static function persistence_checkpoint() { return self::$checkpoint; }
+	public static function reconciliation_plan() { return self::$plan; }
 	public static function candidate_binding_status() { return self::$binding; }
 	public static function effective() { return self::$effective; }
 }
@@ -49,6 +51,12 @@ MAD4B_SCP_Staging_Write_Authority::$checkpoint = array(
 	'exists' => false,
 	'status' => array(),
 );
+MAD4B_SCP_Staging_Write_Authority::$plan = array(
+	'agent_present' => false,
+	'exact_grants_existing' => 0,
+	'persisted_ready' => false,
+	'effective_ready' => false,
+);
 MAD4B_SCP_Staging_Write_Authority::$binding = array( 'required' => true, 'match' => false );
 MAD4B_SCP_Staging_Write_Authority::$effective = false;
 $bootstrap = classify();
@@ -56,6 +64,12 @@ check( ! is_wp_error( $bootstrap ), 'fresh bootstrap must be classifiable' );
 check( empty( $bootstrap['required'] ), 'fresh bootstrap must not require continuation' );
 check( ! empty( $bootstrap['bootstrap_without_authority'] ), 'fresh bootstrap marker missing' );
 check( 'bootstrap_no_prior_authority' === $bootstrap['mode'], 'fresh bootstrap mode mismatch' );
+
+MAD4B_SCP_Staging_Write_Authority::$plan['agent_present'] = true;
+$residue = classify();
+check( is_wp_error( $residue ), 'orphaned managed authority must fail closed' );
+check( 'mad4b_self_update_continuation_bootstrap_authority_residue' === $residue->get_error_code(), 'authority residue blocker mismatch' );
+MAD4B_SCP_Staging_Write_Authority::$plan['agent_present'] = false;
 
 $ready_status = array(
 	'ready' => true,
