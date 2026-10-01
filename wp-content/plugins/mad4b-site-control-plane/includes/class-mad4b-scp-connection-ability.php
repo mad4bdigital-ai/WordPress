@@ -131,31 +131,39 @@ final class MAD4B_SCP_Connection_Ability {
 				);
 			},
 			'write_authority' => static function () {
-				// Compact preflight reports the persisted exact authority plus the
-				// current candidate-binding fingerprint. Deep grant/provider scans
-				// remain explicit diagnostics and mutation authorization concerns.
+				// Connection preflight is an explicit bounded diagnostic, so "ready" must
+				// mean current execution truth rather than a persisted checkpoint. Keep
+				// checkpoint/candidate evidence for explanation, but fail closed on live
+				// broad/stale/deny/provider drift exactly as mutation admission does.
 				$status = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persisted_status' )
 					? MAD4B_SCP_Staging_Write_Authority::persisted_status()
 					: array();
 				$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
 					? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
 					: array();
-				$projection = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'candidate_binding_bound_ready' )
-					? MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready( $status, is_array( $binding ) ? $binding : array() )
-					: array();
-				$effective_ready = ! empty( $projection ) ? ! empty( $projection['effective_ready'] ) : ( ! empty( $status['ready'] ) && ( empty( $binding['required'] ) || ! empty( $binding['match'] ) ) );
+				$current = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
+					? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()
+					: array(
+						'ready' => false,
+						'state' => 'unavailable',
+						'blockers' => array( 'write_current_readiness_unavailable' ),
+					);
+				$current_ready = ! empty( $current['ready'] );
 				return array(
 					'persisted_ready' => ! empty( $status['ready'] ),
-					'ready' => $effective_ready,
-					'state' => ! empty( $projection['state'] ) ? (string) $projection['state'] : ( $effective_ready ? 'ready' : 'blocked' ),
-					'candidate_binding_required' => ! empty( $binding['required'] ),
-					'candidate_binding_match' => ! empty( $binding['match'] ),
+					'ready' => $current_ready,
+					'state' => isset( $current['state'] ) ? (string) $current['state'] : ( $current_ready ? 'ready' : 'blocked_current_drift' ),
+					'current_grant_snapshot_ready' => ! empty( $current['current_grant_snapshot_ready'] ),
+					'candidate_binding_required' => isset( $current['candidate_binding_required'] ) ? ! empty( $current['candidate_binding_required'] ) : ! empty( $binding['required'] ),
+					'candidate_binding_match' => isset( $current['candidate_binding_match'] ) ? ! empty( $current['candidate_binding_match'] ) : ! empty( $binding['match'] ),
 					'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
 					'candidate_source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : ( isset( $status['source_commit_sha'] ) ? (string) $status['source_commit_sha'] : '' ),
-					'deep_authority_scan_deferred' => true,
+					'deep_authority_scan_deferred' => false,
+					'current_execution_truth_evaluated' => true,
+					'grant_rows_fingerprint' => isset( $current['grant_rows_fingerprint'] ) ? (string) $current['grant_rows_fingerprint'] : '',
 					'write_tool_count' => isset( $status['write_tool_count'] ) ? (int) $status['write_tool_count'] : 0,
 					'wildcard_grants' => isset( $status['wildcard_grants'] ) ? (int) $status['wildcard_grants'] : 0,
-					'blockers' => ! empty( $projection['blockers'] ) && is_array( $projection['blockers'] ) ? array_values( array_slice( $projection['blockers'], 0, 20 ) ) : ( isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? array_values( array_slice( $status['blockers'], 0, 20 ) ) : array() ),
+					'blockers' => isset( $current['blockers'] ) && is_array( $current['blockers'] ) ? array_values( array_slice( $current['blockers'], 0, 20 ) ) : array( 'write_current_readiness_unavailable' ),
 				);
 			},
 		);
