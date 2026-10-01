@@ -26,6 +26,11 @@ required_ui = [
     "'creates_chatgpt_connector' => false",
     "'stores_chatgpt_credentials' => false",
     "'external_connection_certified' => false",
+    "'external_connection_evidence_present' => $external_evidence_present",
+    "'external_connection_state' => $external_evidence_present ? 'persisted_identity_deep_revalidation_deferred' : 'unverified'",
+    "'gateway_registration_identity_ready' => $gateway_identity_ready",
+    "'gateway_registration_state'",
+    "'gateway_registration_deep_check_deferred'",
     "'production_readonly_profile_supported' => true",
     "'production_readonly_write_enabled' => false",
     "'production_readonly_breakglass_enabled' => false",
@@ -44,6 +49,10 @@ required_ui = [
     'A Site Profile from another tenant is quarantined.',
     'No write, Skills, Developer or Breakglass authority is inherited.',
     'Portable read-only auto-connect is active for this site.',
+    'Exact Production Site Profile governance is active.',
+    'identity ready · deep registration deferred',
+    'persisted external evidence · deep revalidation deferred',
+    'Governed WordPress MCP access: read-by-default with authority- and approval-bound mutations through the MAD4B ChatGPT gateway.',
     'mad4b_enable_production_readonly_oauth',
     'mad4b_disable_production_readonly_oauth',
     'mad4b_production_readonly_oauth',
@@ -71,6 +80,17 @@ for forbidden_status_call in [
         raise SystemExit(f'deep OAuth status call leaked into ChatGPT admin render: {forbidden_status_call}')
 if "private static $status_cache = null;" not in ui or "if ( is_array( self::$status_cache ) ) return self::$status_cache;" not in status_method:
     raise SystemExit('ChatGPT admin status must be request-local memoized')
+for marker in [
+    "MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( 'mad4b-chatgpt' )",
+    "MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()",
+    "$gateway_registered = ! empty( $gateway_registration['actual_registered'] )",
+    "$gateway_identity_ready = ! empty( $gateway_registration['identity_ready'] )",
+]:
+    if marker not in status_method:
+        raise SystemExit(f'missing truthful lightweight ChatGPT projection: {marker}')
+if "in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true )" in status_method:
+    raise SystemExit('expected server membership must not be labeled actual ChatGPT registration')
+
 
 for forbidden in [
     'update_option(', 'add_option(', 'delete_option(', '$wpdb->',
