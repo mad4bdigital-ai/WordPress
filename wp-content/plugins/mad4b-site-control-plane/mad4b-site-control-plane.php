@@ -209,6 +209,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-workflow-providers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operating-model.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-ability-overrides.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abilities.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-tool-projection.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-autoconfig.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-seeder.php';
