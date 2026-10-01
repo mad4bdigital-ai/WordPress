@@ -136,7 +136,7 @@ require(observer, "relative_wordpress_path", 'first-rest-trace-relative-paths')
 
 if status.index('$oauth_blockers = self::oauth_preflight_blockers') > status.index('$remote_preflight_blockers = array_merge'):
     raise SystemExit('FAIL oauth-before-remote-preflight: OAuth blockers must be resolved before remote readiness is claimed')
-if status.index('$remote_preflight_blockers = array_merge') > status.index('$connection_certified = ! $admin_shallow && empty( $certification_blockers )'):
+if status.index('$remote_preflight_blockers = array_merge') > status.index('$connection_certified = ! $lightweight && empty( $certification_blockers )'):
     raise SystemExit('FAIL preflight-before-certification: remote blockers must be assembled before final certification')
 
 for marker in (
@@ -627,7 +627,7 @@ for marker in (
     "'remote_endpoint_preflight_state'",
     "'connection_certification_state'",
     "'certification_deferred_checks'",
-    "$connection_certified = ! $admin_shallow && empty( $certification_blockers )",
+    "$connection_certified = ! $lightweight && empty( $certification_blockers )",
 ):
     require(status, marker, 'connection-admin-shallow-truth-state')
 
@@ -651,4 +651,7 @@ status_method = status.split("public static function status( $force_deep = false
 require(status_method, "MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()", 'connection-persisted-handshake-hotpath')
 require(status_method, "MAD4B_SCP_External_Handshake_Evidence::status()", 'connection-live-handshake-deep-path')
 require(status_method, "'live_handshake_revalidation'", 'connection-deferred-live-handshake-marker')
+require(status_method, "$persisted_external_evidence = $lightweight && ! empty( $handshake['evidence_present'] )", 'all-lightweight-surfaces-use-persisted-handshake-identity')
+require(status_method, "$connection_certified = ! $lightweight && empty( $certification_blockers )", 'deep-only-connection-certification')
+require(status_method, "$lightweight", 'protocol-and-admin-certification-deferral')
 require(status_method, "'provider_runtime_integrity'", 'connection-deferred-provider-integrity-marker')
