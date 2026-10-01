@@ -22,6 +22,7 @@ local_oauth = (PLUGIN / "includes/class-mad4b-scp-local-oauth-server.php").read_
 oauth_bridge = (PLUGIN / "includes/class-mad4b-scp-oauth-resource-bridge.php").read_text(encoding="utf-8")
 reconnect = (PLUGIN / "includes/class-mad4b-scp-reconnect-hardening.php").read_text(encoding="utf-8")
 registration_bridge = (PLUGIN / "includes/class-mad4b-scp-mcp-registration-bridge.php").read_text(encoding="utf-8")
+truth_projection = (PLUGIN / "includes/class-mad4b-scp-truth-projection.php").read_text(encoding="utf-8")
 dependency_manager = (PLUGIN / "includes/class-mad4b-scp-dependency-manager.php").read_text(encoding="utf-8")
 upgrade_continuity = (PLUGIN / "includes/class-mad4b-scp-upgrade-continuity.php").read_text(encoding="utf-8")
 slo = (ROOT / "specs/008-dynamic-content-runtime-hardening/performance-slo.md").read_text(encoding="utf-8")
@@ -334,17 +335,29 @@ registration_identity = method_body(
     "public static function server_registration_identity_status( $server_id )",
     "public static function status()",
 )
+assert "MAD4B_SCP_Truth_Projection::mcp_registration_identity( $fact )" in registration_identity
 for marker in (
-    "'mad4b.mcp-registration-identity.v1'",
+    "'mad4b.mcp-registration-fact.v1'",
     "'actual_registered'",
-    "'identity_ready'",
+    "'observed_registration_error'",
+    "'bridge_booted'",
+):
+    assert marker in registration_identity, marker
+for forbidden in ("rest_get_server(", "wp_get_abilities(", "register_servers(", "'deferred_identity_ready'"):
+    assert forbidden not in registration_identity, forbidden
+
+truth_registration = method_body(
+    truth_projection,
+    "public static function mcp_registration_identity( array $fact )",
+    "public static function canonical_external_wpml_receipt()",
+)
+for marker in (
     "'deferred_identity_ready'",
+    "'registration_error'",
     "'blocking_registration_error'",
     "'deep_registration_deferred'",
 ):
-    assert marker in registration_identity, marker
-for forbidden in ("rest_get_server(", "wp_get_abilities(", "register_servers("):
-    assert forbidden not in registration_identity, forbidden
+    assert marker in truth_registration, marker
 
 bridge_identity = method_body(
     oauth_bridge,
