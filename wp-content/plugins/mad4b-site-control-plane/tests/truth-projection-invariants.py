@@ -44,6 +44,7 @@ for forbidden in ("$identity_ready =", "$blocking_error =", "'deferred_identity_
 for marker in (
     "public static function candidate_identity_bound_ready( array $persisted, array $current",
     "public static function candidate_binding_bound_ready( array $persisted, array $binding",
+    "array_key_exists( 'historical_ready', $persisted )",
     "'current_candidate_match'",
     "'effective_ready'",
     "'recorded_package_manifest_digest'",
