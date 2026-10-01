@@ -494,23 +494,21 @@ if "'mad4b/staging-write-grant-reconcile'" not in servers:
     raise SystemExit('bounded grant reconciliation is missing from the internal enrollment server catalog')
 chatgpt_transport = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
 if "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" not in chatgpt_transport:
-    raise SystemExit('bounded Staging Write Authority plan projection is missing')
-if "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" not in chatgpt_transport:
-    raise SystemExit('bounded Staging Write Authority step-up projection is missing')
-if "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" not in chatgpt_transport:
-    raise SystemExit('single-app Full Staging Authority step-up projection is missing')
-if "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" not in chatgpt_transport:
-    raise SystemExit('bootstrap Control Plane self-update step-up projection is missing')
-if "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );" not in chatgpt_transport:
-    raise SystemExit('bounded authority step-ups must be composed explicitly')
-if "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );" not in chatgpt_transport:
-    raise SystemExit('bounded authority step-ups must require the dedicated bearer while Full Staging remains separately projected')
-dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_tools()', 1)[0]
+    raise SystemExit('bounded Staging Write Authority read plan projection is missing')
+for marker in (
+    'public static function chatgpt_reviewed_direct_step_up_tools()',
+    'MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY',
+    'MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY',
+    'MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY',
+    '$direct_step_up = self::chatgpt_reviewed_direct_step_up_tools();',
+    'array_merge( self::chatgpt_dispatch_transport_tools(), $direct_step_up )',
+):
+    if marker not in servers:
+        raise SystemExit('reviewed direct ChatGPT step-up invariant missing: ' + marker)
+dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_reviewed_direct_step_up_tools()', 1)[0]
 for dispatcher in ("'mad4b/write-execute'", "'mad4b/enrollment-execute'"):
     if dispatcher not in dispatcher_helper:
         raise SystemExit('canonical ChatGPT mutation dispatcher inventory is incomplete: ' + dispatcher)
-if "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )" not in chatgpt_transport:
-    raise SystemExit('direct ChatGPT mutation transport must derive from the canonical dispatcher inventory plus composed guarded authority step-ups')
 core_chatgpt = servers.split("'mad4b-chatgpt' => array_merge( array(", 1)[1].split("), $governed_status", 1)[0]
 if "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" not in core_chatgpt:
     raise SystemExit('bounded Enrollment discover/info/execute projection is missing from the canonical compact ChatGPT core catalog')
@@ -519,6 +517,7 @@ if "$candidates = array_merge( $core, $bootstrap )" not in chatgpt_transport:
 for bootstrap_ability in (
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
 ):
     if bootstrap_ability in chatgpt_transport:
@@ -533,18 +532,15 @@ for bootstrap_ability in (
     if bootstrap_ability not in internal_enrollment:
         raise SystemExit('internal enrollment primitive was lost: ' + bootstrap_ability)
 core_write = servers[servers.index('private static function core_write_candidates()'):servers.index('private static function registered_adapter_write_candidates()')]
-if "'mad4b/staging-write-grant-reconcile'" in core_write:
-    raise SystemExit('grant reconciliation must not become a normal mad4b-write candidate')
-if "'mad4b/staging-write-candidate-bind'" in core_write:
-    raise SystemExit('candidate binding bootstrap must not become a normal mad4b-write candidate')
-if "'mad4b/control-plane-bootstrap-apply'" in core_write:
-    raise SystemExit('bootstrap Control Plane self-update must never become a normal mad4b-write candidate')
-
-if "'mad4b/enrollment-execute'" in core_write:
-    raise SystemExit('bounded enrollment dispatcher must not become a normal mad4b-write candidate')
-if "'mad4b/reconcile-managed-skills'" in core_write:
-    raise SystemExit('managed Skills reconciliation must remain outside normal mad4b-write authority')
-
+for forbidden_write in (
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
+    "'mad4b/control-plane-bootstrap-apply'",
+    "'mad4b/enrollment-execute'",
+    "'mad4b/reconcile-managed-skills'",
+):
+    if forbidden_write in core_write:
+        raise SystemExit('bootstrap/internal enrollment ability leaked into normal mad4b-write authority: ' + forbidden_write)
 
 # A package transition may expose one bootstrap write before the persisted candidate
 # binding is refreshed. Lock the exception to the isolated acceptance target and
