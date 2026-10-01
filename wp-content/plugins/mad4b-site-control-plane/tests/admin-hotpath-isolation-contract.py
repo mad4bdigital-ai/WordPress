@@ -246,7 +246,8 @@ for marker in (
     "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()",
     "MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()",
     "'mcp_peer_inventory_deferred_admin_hotpath'",
-    "'deep_connection_diagnostics_deferred'",
+    "'certification_deferred_checks'",
+    "'deep_connection_diagnostics'",
 ):
     assert marker in connection_method, marker
 
