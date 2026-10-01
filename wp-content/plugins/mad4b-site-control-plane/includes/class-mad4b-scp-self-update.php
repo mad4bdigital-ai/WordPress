@@ -18,9 +18,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * archive/provenance verifier.
  *
  * All channels share the same backup/readback/rollback semantics.
- * WordPress automatic-update enablement is observed read-only. This coordinator
- * never opts the plugin into automatic updates and never bypasses the governed
- * manifest, exact-build verification, backup, readback, or rollback path.
+ * WordPress automatic-update selection is observed for diagnostics, but this
+ * plugin is explicitly denied from WordPress core automatic execution. Updates
+ * remain manual/governed so every applied package passes the fixed manifest,
+ * exact-build verification, backup, readback and rollback path.
  */
 final class MAD4B_SCP_Self_Update {
 	const CONTRACT              = 'mad4b.control-plane-self-update.v1';
@@ -72,6 +73,10 @@ final class MAD4B_SCP_Self_Update {
 		add_filter( 'plugin_action_links_' . $plugin, array( __CLASS__, 'plugin_action_links' ), 20, 1 );
 		add_filter( 'plugin_action_links', array( __CLASS__, 'plugin_action_links_fallback' ), 20, 4 );
 		add_filter( 'plugin_auto_update_setting_html', array( __CLASS__, 'plugin_auto_update_setting_html' ), 20, 3 );
+		// The deployment contract declares automatic background self-update false.
+		// Deny WordPress core automatic execution for this exact plugin only; this
+		// does not modify update transients/options and does not affect other plugins.
+		add_filter( 'auto_update_plugin', array( __CLASS__, 'block_wordpress_core_auto_update' ), PHP_INT_MAX, 2 );
 		add_action( 'after_plugin_row_' . $plugin, array( __CLASS__, 'render_update_row' ), 10, 3 );
 		add_action( 'after_plugin_row', array( __CLASS__, 'render_update_row_fallback' ), 10, 3 );
 		add_action( 'admin_post_mad4b_control_plane_native_update', array( __CLASS__, 'handle_native_update' ) );
@@ -921,6 +926,14 @@ final class MAD4B_SCP_Self_Update {
 		);
 	}
 
+	public static function block_wordpress_core_auto_update( $update, $item ) {
+		$plugin_file = '';
+		if ( is_object( $item ) && isset( $item->plugin ) ) $plugin_file = (string) $item->plugin;
+		elseif ( is_array( $item ) && isset( $item['plugin'] ) ) $plugin_file = (string) $item['plugin'];
+		if ( '' !== $plugin_file && self::is_control_plane_plugin_file( $plugin_file ) ) return false;
+		return $update;
+	}
+
 	public static function plugin_auto_update_setting_html( $html, $plugin_file, $plugin_data = array() ) {
 		unset( $plugin_data );
 		if ( ! self::is_control_plane_plugin_file( $plugin_file ) ) return $html;
@@ -930,16 +943,10 @@ final class MAD4B_SCP_Self_Update {
 			? implode( ', ', $state['blockers'] )
 			: __( 'WordPress automatic updates are enabled for this plugin.', 'mad4b-site-control-plane' );
 
-		if ( ! empty( $state['effective_enabled'] ) ) {
-			$text = __( 'Auto-updates enabled', 'mad4b-site-control-plane' );
-		} elseif ( 'forced_disabled' === $state['forced_state'] ) {
-			$text = __( 'Auto-updates disabled', 'mad4b-site-control-plane' );
-		} elseif ( ! empty( $state['selected_in_site_option'] ) ) {
-			$text = __( 'Auto-updates selected; governed channel required', 'mad4b-site-control-plane' );
-		} elseif ( empty( $state['global_type_enabled'] ) ) {
-			$text = __( 'Auto-updates disabled', 'mad4b-site-control-plane' );
+		if ( ! empty( $state['selected_in_site_option'] ) || ! empty( $state['effective_enabled'] ) ) {
+			$text = __( 'WordPress auto-update selected · governed update remains manual', 'mad4b-site-control-plane' );
 		} else {
-			$text = __( 'Auto-updates disabled', 'mad4b-site-control-plane' );
+			$text = __( 'Governed updates only · automatic update disabled', 'mad4b-site-control-plane' );
 		}
 
 		return '<span class="label mad4b-auto-update-state" title="' . esc_attr( $title ) . '">'
