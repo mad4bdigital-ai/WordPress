@@ -48,8 +48,10 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		// pluggable user/nonce APIs and opening a URL cannot trigger lifecycle work.
 		$deep_endpoints = false;
 		if ( 'endpoints' === $tab && 'POST' === strtoupper( isset( $_SERVER['REQUEST_METHOD'] ) ? (string) $_SERVER['REQUEST_METHOD'] : 'GET' ) ) {
-			$action = isset( $_POST['mad4b_connection_action'] ) ? sanitize_key( wp_unslash( (string) $_POST['mad4b_connection_action'] ) ) : '';
-			$nonce = isset( $_POST['mad4b_connection_nonce'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['mad4b_connection_nonce'] ) ) : '';
+			$raw_action = filter_input( INPUT_POST, 'mad4b_connection_action', FILTER_UNSAFE_RAW );
+			$raw_nonce = filter_input( INPUT_POST, 'mad4b_connection_nonce', FILTER_UNSAFE_RAW );
+			$action = is_string( $raw_action ) ? sanitize_key( wp_unslash( $raw_action ) ) : '';
+			$nonce = is_string( $raw_nonce ) ? sanitize_text_field( wp_unslash( $raw_nonce ) ) : '';
 			$deep_endpoints = 'deep_endpoints' === $action
 				&& current_user_can( 'manage_options' )
 				&& '' !== $nonce
