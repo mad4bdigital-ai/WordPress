@@ -115,6 +115,30 @@ $peer_admin = isset( $admin_shallow['mcp_peer_governance'] ) && is_array( $admin
 $check( 'deferred_admin_hotpath' === ( isset( $peer_admin['state'] ) ? $peer_admin['state'] : '' ), 'Connection admin status did not defer peer inventory.' );
 $check( empty( $peer_admin['deep_inventory_performed'] ), 'Connection admin status performed deep peer inventory.' );
 
+// Deferred MCP materialization on passive admin must not be reported as a real
+// transport-registration failure. Preserve literal registered=false while using
+// the bridge identity projection for shallow readiness.
+$registration_property = new ReflectionProperty( 'MAD4B_SCP_Servers', 'registrations' );
+$registration_property->setAccessible( true );
+$registration_snapshot = $registration_property->getValue();
+$deferred_registration = is_array( $registration_snapshot ) ? $registration_snapshot : array();
+$deferred_registration['mad4b-chatgpt'] = array( 'registered' => false, 'error' => 'not_registered' );
+$registration_property->setValue( null, $deferred_registration );
+$deferred_admin = MAD4B_SCP_Connection_Status::status();
+$deferred_chatgpt = array();
+foreach ( isset( $deferred_admin['servers'] ) && is_array( $deferred_admin['servers'] ) ? $deferred_admin['servers'] : array() as $server_row ) {
+    if ( is_array( $server_row ) && 'mad4b-chatgpt' === ( isset( $server_row['server_id'] ) ? $server_row['server_id'] : '' ) ) {
+        $deferred_chatgpt = $server_row;
+        break;
+    }
+}
+$check( empty( $deferred_chatgpt['registered'] ), 'Deferred shallow registration was incorrectly promoted to actual registered=true.' );
+$check( ! empty( $deferred_chatgpt['registration_identity_ready'] ), 'Deferred shallow registration did not use bridge identity readiness.' );
+$check( ! empty( $deferred_chatgpt['deep_registration_deferred'] ), 'Deferred shallow registration did not expose deep-registration deferral.' );
+$check( 'deferred_identity_ready' === ( isset( $deferred_chatgpt['registration_state'] ) ? $deferred_chatgpt['registration_state'] : '' ), 'Deferred shallow registration state drifted.' );
+$check( ! in_array( 'mad4b_transport_registration_incomplete', isset( $deferred_admin['local_blockers'] ) ? (array) $deferred_admin['local_blockers'] : array(), true ), 'Passive Connection status still promoted deferred registration into a false transport blocker.' );
+$registration_property->setValue( null, $registration_snapshot );
+
 $admin_convergence_gate = new ReflectionMethod( 'MAD4B_SCP_Runtime_Convergence', 'admin_page_convergence_allowed' );
 $admin_convergence_gate->setAccessible( true );
 $check(
