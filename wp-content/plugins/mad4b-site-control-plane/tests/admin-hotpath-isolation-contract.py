@@ -356,18 +356,16 @@ dependency_notice = method_body(
     "public static function admin_notice()",
     "public static function handle_install()",
 )
-for page in ("'mad4b-control-plane-connection'", "'mad4b-control-plane-chatgpt'"):
-    assert page in dependency_notice
-assert dependency_notice.index("'mad4b-control-plane-chatgpt'") < dependency_notice.index("$status = self::status();")
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()" in dependency_notice
+assert dependency_notice.index("current_request_is_passive_admin_hotpath()") < dependency_notice.index("$status = self::status();")
 
 governance_notice = method_body(
     upgrade_continuity,
     "public static function replace_ambiguous_governance_notice()",
     "public static function connection_admin_notice()",
 )
-for page in ("'mad4b-control-plane-connection'", "'mad4b-control-plane-chatgpt'"):
-    assert page in governance_notice
-assert governance_notice.index("'mad4b-control-plane-chatgpt'") < governance_notice.index("$status = self::governance_status();")
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()" in governance_notice
+assert governance_notice.index("current_request_is_passive_admin_hotpath()") < governance_notice.index("$status = self::governance_status();")
 
 print("admin hotpath isolation contract v2: PASS")
 
