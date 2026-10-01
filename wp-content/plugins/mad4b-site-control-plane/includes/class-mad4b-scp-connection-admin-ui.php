@@ -255,8 +255,6 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			'Exact transport grant required' => ! empty( $write['exact_transport_grant_required'] ),
 			'Generic dispatcher exposed' => ! empty( $write['generic_dispatcher_exposed'] ),
 		) );
-	}
-
 		if ( ! empty( $status['explicit_deep_validation'] ) ) {
 			$handshake = isset( $status['external_handshake'] ) && is_array( $status['external_handshake'] ) ? $status['external_handshake'] : array();
 			echo '<h2>' . esc_html__( 'Deep connection validation result', 'mad4b-site-control-plane' ) . '</h2>';
@@ -268,6 +266,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			) );
 			self::blockers( 'Deep certification blockers', isset( $status['certification_blockers'] ) ? $status['certification_blockers'] : array() );
 		}
+	}
 
 	private static function render_isolation( array $status ) {
 		$isolation = isset( $status['provider_mcp_isolation'] ) && is_array( $status['provider_mcp_isolation'] ) ? $status['provider_mcp_isolation'] : array();
