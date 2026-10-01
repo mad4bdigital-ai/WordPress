@@ -265,6 +265,10 @@ for marker in (
 # 4b. Deep Write Live Truth consumes the same canonical grant snapshot as reconciliation.
 current_authority_truth = live_truth.split("public static function current_authority_status()", 1)[1].split("public static function current_write_certification()", 1)[0]
 require(current_authority_truth, "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()", "Live Truth canonical grant snapshot")
+observer_live_status = observer.split("public static function live_acceptance_status( $input = array() )", 1)[1].split("private static function gate(", 1)[0]
+require(observer_live_status, "'live_truth_unavailable'", "Live Acceptance write-authority fail-closed fallback")
+if "MAD4B_SCP_Staging_Write_Authority::status()" in observer_live_status:
+    raise SystemExit("Live Acceptance may not downgrade write-authority truth to persisted checkpoint status")
 require(current_authority_truth, "'grant_snapshot_current_ready'", "Live Truth grant readiness evidence")
 if "MAD4B_SCP_Agent_Registry::exact_grant(" in current_authority_truth:
     raise SystemExit("Live Truth must not maintain a parallel exact-grant readiness reducer")
