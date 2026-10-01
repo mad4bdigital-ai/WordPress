@@ -101,7 +101,9 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 
 	public static function persisted_status() {
 		$stored = get_option( self::OPTION, array() );
-		if ( is_array( $stored ) && isset( $stored['contract'] ) && self::CONTRACT === $stored['contract'] ) return $stored;
+		if ( is_array( $stored ) && isset( $stored['contract'] ) && self::CONTRACT === $stored['contract'] ) {
+			return self::project_persisted_freshness( $stored );
+		}
 		return array(
 			'contract' => self::CONTRACT,
 			'ready' => false,
@@ -110,8 +112,47 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'snapshot_identity_token' => '',
 			'local_runtime_only' => true,
 			'external_client_snapshot_verified' => false,
+			'historical_evidence_only' => true,
+			'build_identity_current' => false,
+			'stale_reasons' => array( 'runtime_certification_not_observed' ),
+			'persistence' => 'historical_evidence_only',
 			'external_client_action' => 'ChatGPT/Codex must install or refresh the published snapshot outside WordPress, then compare the package MAD4B-SNAPSHOT-ID.txt token with snapshot_identity_token.',
 		);
+	}
+
+	private static function project_persisted_freshness( array $stored ) {
+		$current = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
+			&& method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()
+			: array();
+
+		$stale_reasons = array();
+		if ( empty( $current['identity_ready'] ) ) {
+			$stale_reasons[] = 'current_build_identity_unavailable';
+		} else {
+			foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) {
+				$persisted = isset( $stored[ $key ] ) ? trim( (string) $stored[ $key ] ) : '';
+				$observed = isset( $current[ $key ] ) ? trim( (string) $current[ $key ] ) : '';
+				if ( '' === $persisted || '' === $observed || ! hash_equals( $observed, $persisted ) ) {
+					$stale_reasons[] = $key . '_mismatch';
+				}
+			}
+		}
+
+		$stored['historical_evidence_only'] = true;
+		$stored['build_identity_current'] = empty( $stale_reasons );
+		$stored['stale_reasons'] = array_values( array_unique( $stale_reasons ) );
+		$stored['persistence'] = 'historical_evidence_only';
+
+		if ( ! empty( $stale_reasons ) ) {
+			$stored['ready'] = false;
+			$stored['state'] = 'persisted_build_identity_stale';
+			$blockers = isset( $stored['blockers'] ) && is_array( $stored['blockers'] ) ? $stored['blockers'] : array();
+			$blockers[] = 'persisted_build_identity_stale';
+			$stored['blockers'] = array_values( array_unique( $blockers ) );
+		}
+
+		return $stored;
 	}
 
 	private static function evaluate() {
