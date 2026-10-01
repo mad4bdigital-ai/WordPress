@@ -72,11 +72,11 @@ $check( class_exists( 'MAD4B_SCP_MCP_Request_Scope' ), 'MCP request scope class 
 
 $check( MAD4B_SCP_MCP_Request_Scope::passive_admin_route_for_test( 'mad4b-control-plane-chatgpt' ), 'ChatGPT admin route was not classified as passive.' );
 $check( MAD4B_SCP_MCP_Request_Scope::passive_admin_route_for_test( 'mad4b-control-plane-connection', 'readiness' ), 'Connection readiness route was not classified as passive.' );
-foreach ( array( 'oauth', 'isolation', 'certification' ) as $passive_tab ) {
+foreach ( array( 'oauth', 'isolation', 'certification', 'endpoints' ) as $passive_tab ) {
     $check( MAD4B_SCP_MCP_Request_Scope::passive_admin_route_for_test( 'mad4b-control-plane-connection', $passive_tab ), 'Passive Connection route was not classified as shallow: ' . $passive_tab );
 }
-$check( ! MAD4B_SCP_MCP_Request_Scope::passive_admin_route_for_test( 'mad4b-control-plane-connection', 'endpoints' ), 'Connection Endpoints diagnostic was incorrectly classified as passive.' );
-$check( ! MAD4B_SCP_MCP_Request_Scope::passive_admin_route_for_test( 'mad4b-control-plane-skills' ), 'Unrelated Control Plane route was incorrectly classified as passive.' );
+$check( MAD4B_SCP_MCP_Request_Scope::passive_admin_route_for_test( 'mad4b-control-plane-skills' ), 'Skills GET route must remain request-serving/passive.' );
+$check( MAD4B_SCP_MCP_Request_Scope::passive_admin_route_for_test( 'mad4b-control-plane' ), 'Control Plane overview GET route must remain request-serving/passive.' );
 
 // The runtime smoke executes through WP-CLI, where full MCP runtime remains
 // intentionally available regardless of simulated admin routing.
