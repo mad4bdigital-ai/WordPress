@@ -619,9 +619,17 @@ for marker in (
     "'deep_connection_diagnostics_deferred'",
     "'status_mode' => $force_deep ? 'deep_explicit'",
     "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()",
+    "MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( $id )",
+    "'registration_identity_ready'",
+    "'deep_registration_deferred'",
+    "'registration_state'",
     "'deep_status_deferred' =>",
 ):
     require(status, marker, 'connection-admin-shallow-mode')
+
+server_ok_projection = status.split("$server_ok = count( $servers ) === $expected_count;", 1)[1].split("$peer =", 1)[0]
+require(server_ok_projection, "if ( $lightweight )", 'connection-lightweight-registration-identity-gate')
+require(server_ok_projection, "empty( $server['registration_identity_ready'] )", 'connection-lightweight-registration-identity-required')
 
 admin_surface = status.split("private static function admin_shallow_surface()", 1)[1].split("private static function oauth_preflight_blockers", 1)[0]
 require(admin_surface, "'mad4b-control-plane-connection'", 'connection-admin-shallow-route')
