@@ -210,6 +210,11 @@ assert "mad4b_self_update_bootstrap_authority_changed_before_replacement" in sel
 assert "'automatic_mutation_retry_allowed' => false" in self_update
 assert "'preflight_recheck_allowed' => true" in self_update
 assert "'operator_action_required'" in self_update
+assert "'apply_preflight_ready'" in self_update
+assert "'maintenance_preflight' => $maintenance_projection" in self_update
+assert "'continuation_policy' => $continuation_projection" in self_update
+assert "private static function maintenance_status_projection()" in self_update
+assert "private static function continuation_policy_projection()" in self_update
 assert "private static function reconcile_under_runtime_fence()" in authority
 assert "MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner )" in authority
 assert "MAD4B_SCP_Runtime_Maintenance_Lease::release( $lease_token, $lease_owner )" in authority
