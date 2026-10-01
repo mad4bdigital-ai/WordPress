@@ -92,7 +92,7 @@ for marker in [
     "dynamic_projection",
     "dynamic_readonly",
     "dynamic_breakglass",
-    "reviewed direct step-ups and",
+    "! empty( $captured['direct_step_up'] ) || ! empty( $captured['dynamic_projection'] )",
     "projected_ability_names()",
 ]:
     require(marker in DIAG, f"dynamic projection classification missing: {marker}")

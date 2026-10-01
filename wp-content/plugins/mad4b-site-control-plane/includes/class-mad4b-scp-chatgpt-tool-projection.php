@@ -176,13 +176,19 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( ! array_key_exists( 'readonly', $annotations ) || ! is_bool( $annotations['readonly'] ) ) {
 			return new WP_Error( 'mad4b_chatgpt_projection_readonly_classification_required', 'Requested Ability must explicitly declare annotations.readonly.', array( 'ability_name' => $ability_name ) );
 		}
-		$breakglass = in_array( $ability_name, array_merge(
+		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+		$lane = isset( $mcp['surface'] ) ? (string) $mcp['surface'] : ( true === $annotations['readonly'] ? 'read' : 'write' );
+		$classification_json = wp_json_encode( array( 'meta' => $meta, 'category' => method_exists( $ability, 'get_category' ) ? $ability->get_category() : '', 'output_schema' => method_exists( $ability, 'get_output_schema' ) ? $ability->get_output_schema() : null ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $classification_json ) ) return new WP_Error( 'mad4b_chatgpt_projection_classification_invalid', 'Projection classification cannot be serialized.' );
+		$breakglass = in_array( $lane, array( 'breakglass', 'developer-breakglass' ), true ) || in_array( $ability_name, array_merge(
 			class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::core_tools( 'mad4b-breakglass' ) : array(),
 			class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::core_tools( 'mad4b-developer-breakglass' ) : array()
 		), true );
 		return array(
 			'ability_name' => $ability_name,
 			'input_schema_sha256' => self::schema_sha256( $ability ),
+			'classification_sha256' => hash( 'sha256', $classification_json ),
+			'lane' => $lane,
 			'readonly' => true === $annotations['readonly'],
 			'breakglass' => (bool) $breakglass,
 			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
@@ -335,6 +341,8 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	}
 
 	public static function apply( $input = array() ) {
+		$permission = self::can_apply( $input );
+		if ( is_wp_error( $permission ) ) return $permission;
 		$input = is_array( $input ) ? $input : array();
 		if ( ! isset( $input['confirmation'] ) || self::CONFIRMATION !== (string) $input['confirmation'] ) return new WP_Error( 'mad4b_chatgpt_projection_confirmation_required', 'Exact projection confirmation is required.' );
 		$plan = self::plan( $input );
@@ -369,6 +377,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		);
 		if ( false === get_option( self::OPTION, false ) ) add_option( self::OPTION, $next, '', false );
 		else update_option( self::OPTION, $next, false );
+		if ( self::raw_state() !== $next ) return new WP_Error( 'mad4b_chatgpt_projection_persistence_failed', 'Projection persistence could not be verified.' );
 		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 			MAD4B_SCP_Audit::record( self::APPLY_ABILITY, array(
 				'projection_revision' => (int) $next['revision'],
@@ -378,6 +387,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				'production_mutation' => false,
 			) );
 		}
+
 		return array_merge( self::status(), array(
 			'applied_plan_sha256' => $plan['plan_sha256'],
 			'mutation_performed' => true,
@@ -394,6 +404,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			if ( is_wp_error( $current ) ) continue;
 			$expected = isset( $stored['input_schema_sha256'] ) ? strtolower( (string) $stored['input_schema_sha256'] ) : '';
 			if ( '' === $expected || ! hash_equals( $expected, strtolower( (string) $current['input_schema_sha256'] ) ) ) continue;
+			if ( empty( $stored['classification_sha256'] ) || ! hash_equals( (string) $stored['classification_sha256'], $current['classification_sha256'] ) ) continue;
 			if ( ! empty( $current['breakglass'] ) && ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_breakglass() ) ) continue;
 			$rows[ $ability_name ] = $current;
 		}
@@ -417,6 +428,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		foreach ( $state['abilities'] as $ability_name => $row ) {
 			$current = self::ability_row( $ability_name );
 			$stale = is_wp_error( $current ) || ! is_array( $row ) || empty( $row['input_schema_sha256'] ) || ! hash_equals( strtolower( (string) $row['input_schema_sha256'] ), strtolower( is_wp_error( $current ) ? str_repeat( '0', 64 ) : (string) $current['input_schema_sha256'] ) );
+			$stale = $stale || empty( $row['classification_sha256'] ) || ( ! is_wp_error( $current ) && ! hash_equals( (string) $row['classification_sha256'], $current['classification_sha256'] ) );
 			$stored[] = array(
 				'ability_name' => (string) $ability_name,
 				'input_schema_sha256' => is_array( $row ) && isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '',

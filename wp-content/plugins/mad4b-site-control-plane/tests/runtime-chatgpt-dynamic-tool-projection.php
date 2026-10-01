@@ -96,6 +96,29 @@ try {
 		$fail( 'Dynamic projection did not survive exact MCP preflight.', $preflight );
 	}
 
+	// Plans are bound to the registry revision, even when the desired set is unchanged.
+	$reviewed = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array( 'ability_names' => array( 'mad4b/diagnostics-health' ) ) );
+	$next_fixture = $fixture_state;
+	$next_fixture['revision']++;
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $next_fixture, false );
+	$replanned = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array( 'ability_names' => array( 'mad4b/diagnostics-health' ) ) );
+	if ( $reviewed['plan_sha256'] === $replanned['plan_sha256'] ) $fail( 'Registry revision drift did not invalidate the reviewed plan.' );
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
+
+	// Same schema with changed authority metadata must also deactivate the projection.
+	$ability = wp_get_ability( 'mad4b/diagnostics-health' );
+	$meta_property = new ReflectionProperty( 'WP_Ability', 'meta' );
+	$meta_property->setAccessible( true );
+	$original_meta = $meta_property->getValue( $ability );
+	try {
+		$changed_meta = $original_meta;
+		$changed_meta['annotations']['readonly'] = false;
+		$meta_property->setValue( $ability, $changed_meta );
+		if ( MAD4B_SCP_ChatGPT_Tool_Projection::is_projected( 'mad4b/diagnostics-health' ) ) $fail( 'Authority classification drift remained effective.' );
+	} finally {
+		$meta_property->setValue( $ability, $original_meta );
+	}
+
 	// Schema pinning: any input schema drift disables only this projection.
 	$ability = wp_get_ability( 'mad4b/diagnostics-health' );
 	$schema_property = new ReflectionProperty( 'WP_Ability', 'input_schema' );
