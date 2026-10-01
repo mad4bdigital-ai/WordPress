@@ -57,6 +57,12 @@ read_consistency = read("includes/class-mad4b-scp-read-consistency.php")
 skills_projection = read_consistency.split("private static function skills_projection()", 1)[1].split("private static function deep_skills_projection()", 1)[0]
 write_projection = read_consistency.split("private static function write_authority_projection()", 1)[1].split("private static function deep_write_authority_projection()", 1)[0]
 require(skills_projection, "MAD4B_SCP_Truth_Projection::candidate_identity_bound_ready", "skills projection delegates candidate truth")
+require(skills_projection, "'historical_ready'", "skills projection preserves persisted historical result")
+require(skills_projection, "'build_identity_current'", "skills projection exposes persisted build freshness")
+require(skills_projection, "'stale_reasons'", "skills projection exposes persisted freshness reasons")
+skill_freshness = skills.split("private static function project_persisted_freshness( array $stored )", 1)[1].split("private static function evaluate()", 1)[0]
+require(skill_freshness, "$stored['historical_ready']", "persisted Skill freshness preserves historical ready")
+require(skill_freshness, "array_key_exists( 'historical_ready', $stored )", "persisted Skill historical ready is idempotent")
 require(write_projection, "MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready", "write projection delegates candidate truth")
 for forbidden in ("hash_equals( $recorded_sha", "$effective_ready = $recorded_ready && $candidate_match"):
     if forbidden in skills_projection:
