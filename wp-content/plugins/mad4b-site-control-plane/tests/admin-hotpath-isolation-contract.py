@@ -110,8 +110,8 @@ for source in (mu, guard):
     assert "wp_doing_cron()" in source
     assert "'update.php'" in source
     assert "'plugin-install.php'" in source
-    assert "'mad4b-control-plane-connection' === $page" in source
-    assert "'endpoints' === $tab" in source
+    assert "current_user_can( 'update_plugins' )" in source
+    assert "MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed()" in source
 
 assert "deferred_request_hotpath" in mu
 assert "repair_deferred_request_hotpath" in guard
