@@ -1165,6 +1165,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		// outside this classifier.
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) return true;
+		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( trim( (string) $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+		if ( in_array( $method, array( 'GET', 'HEAD' ), true )
+			&& ( 'mad4b-control-plane' === $page
+				|| 0 === strpos( $page, 'mad4b-control-plane-' )
+				|| in_array( $page, array( 'mad4b-adapter-coverage', 'mad4b-runtime-components', 'mad4b-approval-decisions' ), true ) ) ) return true;
 		if ( in_array( $pagenow, array( 'plugins.php', 'update.php', 'update-core.php', 'plugin-install.php' ), true ) ) return true;
 		return in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate', 'delete-selected' ), true );
 	}
