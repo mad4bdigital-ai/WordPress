@@ -51,6 +51,8 @@ required = [
     "MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID",
     "mad4b_full_authority_step_up_scope_required",
     "mad4b_full_authority_chatgpt_client_required",
+    "unreviewed_stale_write_authority",
+    "'unreviewed_stale_allow_grants_count'",
 ]
 for marker in required:
     assert marker in full, marker
