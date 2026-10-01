@@ -30,10 +30,13 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-mcp-client-profile-registry.php"
           php -l "$root/includes/class-mad4b-scp-mcp-client-compatibility.php"
+          php -l "$root/includes/class-mad4b-scp-chatgpt-tool-projection.php"
           php -l "$root/tests/runtime-mcp-client-compatibility-smoke.php"
           php -l "$root/tests/runtime-chatgpt-tool-inventory-smoke.php"
+          php -l "$root/tests/runtime-chatgpt-dynamic-tool-projection.php"
           python3 -m json.tool "$root/config/mcp-client-profiles.json" >/dev/null
           python3 "$root/tests/mcp-client-compatibility-contract.py"
+          python3 "$root/tests/chatgpt-dynamic-tool-projection-contract.py"
 
   runtime:
     name: MCP client compatibility runtime (${{ matrix.wordpress }})
@@ -118,6 +121,12 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-tool-inventory-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove arbitrary registered Abilities can be dynamically projected
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove initialize and minimal tools/list over the pinned Adapter protocol
         shell: bash
