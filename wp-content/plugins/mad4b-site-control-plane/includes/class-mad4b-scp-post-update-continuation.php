@@ -280,8 +280,11 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		if ( 'staging' !== ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : '' ) ) $hard[] = 'production_or_environment_changed';
 		if ( self::breakglass_enabled() ) $hard[] = 'breakglass_excluded';
 
-		$current_identity = self::current_identity();
-		if ( ! self::identity_matches( $permit['target_identity'], $current_identity ) ) $hard[] = 'package_identity_mismatch';
+		$current_identity_result = self::current_identity();
+		$current_identity = is_wp_error( $current_identity_result )
+			? array( 'available' => false, 'blocker' => sanitize_key( (string) $current_identity_result->get_error_code() ) )
+			: $current_identity_result;
+		if ( is_wp_error( $current_identity_result ) || ! self::identity_matches( $permit['target_identity'], $current_identity_result ) ) $hard[] = 'package_identity_mismatch';
 		if ( ! self::release_trusted( isset( $permit['release'] ) ? $permit['release'] : array() ) ) $hard[] = 'release_trust_invalid';
 
 		$site = isset( $permit['site'] ) && is_array( $permit['site'] ) ? $permit['site'] : array();
@@ -312,10 +315,9 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			if ( ! empty( $post['exact_grants_missing_count'] ) ) $review[] = 'exact_grants_changed';
 			if ( empty( $post['grant_rows_fingerprint'] ) || empty( $pre['grant_rows_fingerprint'] )
 				|| ! hash_equals( (string) $pre['grant_rows_fingerprint'], (string) $post['grant_rows_fingerprint'] ) ) {
-				// Clean shape + changed row fingerprint means a bounded authority
-				// delta and requires owner review. An unexplained same-shape TOCTOU
-				// after binding claim is treated as hard.
-				if ( $post_bind || ( empty( $post['exact_grants_missing_count'] ) && empty( $review ) ) ) $hard[] = 'grant_rows_fingerprint_changed';
+				// Any pre-claim grant fingerprint delta requires owner review. A
+				// fingerprint change after the one-time claim is a TOCTOU hard block.
+				if ( $post_bind ) $hard[] = 'grant_rows_fingerprint_changed';
 				else $review[] = 'grant_rows_fingerprint_changed';
 			}
 		}
@@ -400,16 +402,9 @@ final class MAD4B_SCP_Post_Update_Continuation {
 
 	private static function transport_snapshot() {
 		$ids = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'expected_server_ids' ) ? MAD4B_SCP_Servers::expected_server_ids() : array();
-		$registration = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'registration_status' ) ? MAD4B_SCP_Servers::registration_status() : array();
 		$rows = array();
 		foreach ( $ids as $id ) {
-			$id = sanitize_key( (string) $id );
-			$row = isset( $registration[ $id ] ) && is_array( $registration[ $id ] ) ? $registration[ $id ] : array();
-			$rows[] = array(
-				'server_id' => $id,
-				'registered' => ! empty( $row['registered'] ),
-				'error' => isset( $row['error'] ) ? sanitize_key( (string) $row['error'] ) : '',
-			);
+			$rows[] = array( 'server_id' => sanitize_key( (string) $id ) );
 		}
 		usort( $rows, static function ( $a, $b ) { return strcmp( $a['server_id'], $b['server_id'] ); } );
 		$kernel = class_exists( 'MAD4B_SCP_Connection_Identity_Resolver' ) ? MAD4B_SCP_Connection_Identity_Resolver::kernel() : array();
