@@ -78,6 +78,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		$local_ready = ! empty( $status['local_transport_ready'] );
 		$local_state = isset( $status['local_transport_validation_state'] ) ? sanitize_key( (string) $status['local_transport_validation_state'] ) : ( $local_ready ? 'ready' : 'blocked' );
 		$preflight_ready = ! empty( $status['remote_endpoint_preflight_ready'] );
+		$preflight_state = isset( $status['remote_endpoint_preflight_state'] ) ? sanitize_key( (string) $status['remote_endpoint_preflight_state'] ) : ( $preflight_ready ? 'ready' : 'blocked' );
 		$certified = ! empty( $status['connection_certified'] );
 		$certification_state = isset( $status['connection_certification_state'] ) ? sanitize_key( (string) $status['connection_certification_state'] ) : ( $certified ? 'certified' : 'not_certified' );
 		return array(
@@ -95,8 +96,8 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			),
 			array(
 				'label' => __( 'OAuth preflight', 'mad4b-site-control-plane' ),
-				'state' => $preflight_ready ? 'complete' : ( ! empty( $oauth['configured'] ) ? 'attention' : 'pending' ),
-				'detail' => __( 'Local or external authority is bound to the exact protected resource.', 'mad4b-site-control-plane' ),
+				'state' => 'identity_ready_deep_validation_deferred' === $preflight_state ? 'pending' : ( $preflight_ready ? 'complete' : ( ! empty( $oauth['configured'] ) ? 'attention' : 'pending' ) ),
+				'detail' => 'identity_ready_deep_validation_deferred' === $preflight_state ? __( 'Identity/OAuth prerequisites are ready; deep endpoint validation is deferred to MCP Endpoints.', 'mad4b-site-control-plane' ) : __( 'Local or external authority is bound to the exact protected resource.', 'mad4b-site-control-plane' ),
 				'url' => MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'oauth' ),
 			),
 			array(
@@ -112,11 +113,12 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		$local_state = isset( $status['local_transport_validation_state'] ) ? sanitize_key( (string) $status['local_transport_validation_state'] ) : ( ! empty( $status['local_transport_ready'] ) ? 'ready' : 'blocked' );
 		$certification_state = isset( $status['connection_certification_state'] ) ? sanitize_key( (string) $status['connection_certification_state'] ) : ( ! empty( $status['connection_certified'] ) ? 'certified' : 'not_certified' );
 		$certification_deferred = false !== strpos( $certification_state, 'deferred' );
+		$preflight_state = isset( $status['remote_endpoint_preflight_state'] ) ? sanitize_key( (string) $status['remote_endpoint_preflight_state'] ) : ( ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'ready' : 'blocked' );
 		MAD4B_SCP_Admin_Experience::cards(
 			array(
 				array( 'label' => 'MAD4B environment', 'value' => isset( $status['effective_environment'] ) ? $status['effective_environment'] : ( isset( $status['environment'] ) ? $status['environment'] : 'unknown' ), 'state' => ! empty( $status['environment_supported'] ) ? 'complete' : 'attention', 'help' => 'Effective Site Profile authority boundary; raw WordPress environment is shown separately below.' ),
 				array( 'label' => 'Local transport', 'value' => 'identity_ready_deep_validation_deferred' === $local_state ? 'Identity ready · deep validation deferred' : ( ! empty( $status['local_transport_ready'] ) ? 'Ready' : 'Blocked' ), 'state' => 'identity_ready_deep_validation_deferred' === $local_state ? 'pending' : MAD4B_SCP_Admin_Experience::state_from_bool( ! empty( $status['local_transport_ready'] ), ! empty( $status['local_blockers'] ) ), 'help' => 'MCP registration identity on lightweight tabs; exact routes and permission callbacks are validated on MCP Endpoints.' ),
-				array( 'label' => 'Remote preflight', 'value' => ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'Ready' : 'Pending', 'state' => ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'complete' : 'attention', 'help' => 'HTTPS + OAuth resource binding.' ),
+				array( 'label' => 'Remote preflight', 'value' => 'identity_ready_deep_validation_deferred' === $preflight_state ? 'Identity ready · deep validation deferred' : ( ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'Ready' : 'Pending' ), 'state' => 'identity_ready_deep_validation_deferred' === $preflight_state ? 'pending' : ( ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'complete' : 'attention' ), 'help' => 'HTTPS + OAuth resource binding; deep MCP endpoint validation is explicit.' ),
 				array( 'label' => 'Connection certification', 'value' => ! empty( $status['connection_certified'] ) ? 'Certified' : ( $certification_deferred ? 'Deep revalidation deferred' : 'Not certified' ), 'state' => ! empty( $status['connection_certified'] ) ? 'complete' : 'pending', 'help' => $certification_deferred ? 'This lightweight tab does not re-materialize REST/MCP or rebuild the live external inventory.' : 'Requires real external client evidence.' ),
 			)
 		);
@@ -135,6 +137,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			'Local transport ready' => ! empty( $status['local_transport_ready'] ),
 			'Local transport validation state' => isset( $status['local_transport_validation_state'] ) ? $status['local_transport_validation_state'] : '',
 			'Remote endpoint preflight ready' => ! empty( $status['remote_endpoint_preflight_ready'] ),
+			'Remote endpoint preflight state' => isset( $status['remote_endpoint_preflight_state'] ) ? $status['remote_endpoint_preflight_state'] : '',
 			'Connection certified' => ! empty( $status['connection_certified'] ),
 			'Connection certification state' => isset( $status['connection_certification_state'] ) ? $status['connection_certification_state'] : '',
 		) );
