@@ -57,11 +57,14 @@ for marker in (
     assert marker in resolver, marker
 
 # Tier-0 identity projection must precede the zero-touch short-circuit.
-kernel_idx = plugin.index("MAD4B_SCP_Connection_Identity_Resolver::kernel();")
+projection_idx = plugin.index("MAD4B_SCP_Connection_Identity_Resolver::project_runtime_identity();")
 zero_touch_idx = plugin.index("current_request_is_zero_touch_surface()")
-assert kernel_idx < zero_touch_idx
+assert projection_idx < zero_touch_idx
+assert "public static function project_runtime_identity()" in resolver
 
-# Resolver is observational only: no persistence, constant mutation, or outbound I/O.
+oauth_autoconfig = (inc / "class-mad4b-scp-staging-oauth-autoconfig.php").read_text(encoding="utf-8")
+# Resolver truth remains non-durable: the separate request-local projection may
+# define in-process OAuth constants through autoconfig, but it cannot persist.
 for forbidden in (
     "update_option(",
     "add_option(",
@@ -74,9 +77,17 @@ for forbidden in (
 ):
     assert forbidden not in resolver, forbidden
 
+oauth_projection_start = oauth_autoconfig.index("public static function project_request_identity()")
+oauth_projection_end = oauth_autoconfig.index("private static function bootstrap_enrolled_nonproduction", oauth_projection_start)
+oauth_projection = oauth_autoconfig[oauth_projection_start:oauth_projection_end]
+for forbidden in ("update_option(", "add_option(", "delete_option(", "wp_remote_get(", "wp_remote_post("):
+    assert forbidden not in oauth_projection, forbidden
+assert "durable_mutation_performed' => false" in oauth_projection
+assert "provider_discovery_performed' => false" in oauth_projection
+assert "apply_local_oauth_configuration(" in oauth_projection
+
 # Explicit override detector must mirror the runtime/autoconfig precedence that
 # can make one otherwise identical site fail while another succeeds.
-oauth_autoconfig = (inc / "class-mad4b-scp-staging-oauth-autoconfig.php").read_text(encoding="utf-8")
 for marker in (
     "explicit_local_oauth_issuer_conflict",
     "explicit_wp_user_conflict",
