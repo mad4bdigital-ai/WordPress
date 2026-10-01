@@ -140,16 +140,22 @@ final class MAD4B_SCP_Connection_Ability {
 				$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
 					? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
 					: array();
+				$projection = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'candidate_binding_bound_ready' )
+					? MAD4B_SCP_Truth_Projection::candidate_binding_bound_ready( $status, is_array( $binding ) ? $binding : array() )
+					: array();
+				$effective_ready = ! empty( $projection ) ? ! empty( $projection['effective_ready'] ) : ( ! empty( $status['ready'] ) && ( empty( $binding['required'] ) || ! empty( $binding['match'] ) ) );
 				return array(
-					'ready' => ! empty( $status['ready'] ),
-					'state' => isset( $status['state'] ) ? (string) $status['state'] : '',
+					'persisted_ready' => ! empty( $status['ready'] ),
+					'ready' => $effective_ready,
+					'state' => ! empty( $projection['state'] ) ? (string) $projection['state'] : ( $effective_ready ? 'ready' : 'blocked' ),
+					'candidate_binding_required' => ! empty( $binding['required'] ),
 					'candidate_binding_match' => ! empty( $binding['match'] ),
 					'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
-					'candidate_source_commit_sha' => isset( $status['source_commit_sha'] ) ? (string) $status['source_commit_sha'] : '',
+					'candidate_source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : ( isset( $status['source_commit_sha'] ) ? (string) $status['source_commit_sha'] : '' ),
 					'deep_authority_scan_deferred' => true,
 					'write_tool_count' => isset( $status['write_tool_count'] ) ? (int) $status['write_tool_count'] : 0,
 					'wildcard_grants' => isset( $status['wildcard_grants'] ) ? (int) $status['wildcard_grants'] : 0,
-					'blockers' => isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? array_values( array_slice( $status['blockers'], 0, 20 ) ) : array(),
+					'blockers' => ! empty( $projection['blockers'] ) && is_array( $projection['blockers'] ) ? array_values( array_slice( $projection['blockers'], 0, 20 ) ) : ( isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? array_values( array_slice( $status['blockers'], 0, 20 ) ) : array() ),
 				);
 			},
 		);
