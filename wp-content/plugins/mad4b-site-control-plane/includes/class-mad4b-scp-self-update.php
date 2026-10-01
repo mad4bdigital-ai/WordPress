@@ -514,8 +514,14 @@ final class MAD4B_SCP_Self_Update {
 		$auto_update = self::wordpress_auto_update_state();
 		$environment_resolution = self::environment_resolution();
 		$maintenance_projection = self::maintenance_status_projection();
-		$continuation_projection = self::continuation_policy_projection();
-		$apply_preflight_ready = ! empty( $maintenance_projection['safe_to_acquire'] ) && empty( $continuation_projection['blocked'] );
+		$continuation_projection = array(
+			'contract' => 'mad4b.self-update-continuation-policy.v1',
+			'state' => 'deferred_cache_only',
+			'deep_authority_presence_scan_deferred' => true,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+		$apply_preflight_ready = null;
 
 		return array(
 			'contract' => self::CONTRACT,
