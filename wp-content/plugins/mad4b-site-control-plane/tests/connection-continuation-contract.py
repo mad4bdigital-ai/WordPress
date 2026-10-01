@@ -88,6 +88,18 @@ for marker in (
 ):
     assert marker in oauth_autoconfig, marker
 
+# Generated package provenance is certification evidence, not a prerequisite
+# for current-origin read-only OAuth/MCP endpoint preflight.
+assert "package_identity_blocker" in resolver
+assert "certification_blockers" in resolver
+assert "if ( empty( $build['identity_ready'] ) )" in resolver
+package_drift_idx = resolver.index("$package_identity_blocker = 'package_identity_drift';")
+cert_merge_idx = resolver.index("$certification_blockers[] = $package_identity_blocker;")
+assert package_drift_idx < cert_merge_idx
+resolve_block = resolver.split("public static function resolve()", 1)[1].split("public static function fingerprint()", 1)[0]
+assert "$blockers[] = 'package_identity_drift'" not in resolve_block
+assert "connection_contract['certification_blockers']" in status
+
 # Root cause is propagated before generic bridge symptoms.
 assert "oauth_preflight_blockers( $oauth, $connection_contract )" in status
 assert "$root = isset( $connection_contract['root_blocker'] )" in status
