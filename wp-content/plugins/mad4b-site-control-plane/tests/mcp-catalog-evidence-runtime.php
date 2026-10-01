@@ -55,4 +55,7 @@ check( 'rpc_error' === $response->headers['X-MAD4B-MCP-Outcome'], 'RPC failure i
 check( false === strpos( $logged, 'DO_NOT_COPY' ) && false !== strpos( $logged, '-32603' ), 'failure log includes numeric code without sensitive payload' );
 MAD4B_SCP_MCP_Catalog_Diagnostics::observe_response( $response, null, $request );
 check( $logged === file_get_contents( $log ), 'bounded one failure log per request' ); unlink( $log );
+$bad = new FixtureResponse( array( 'result' => (object) array( 'tools' => array() ) ) );
+MAD4B_SCP_MCP_Catalog_Diagnostics::observe_response( $bad, null, $request );
+check( 'rpc_error' === $bad->headers['X-MAD4B-MCP-Outcome'], 'malformed result cannot crash discovery diagnostics' );
 echo "MCP catalog evidence runtime: PASS\n";

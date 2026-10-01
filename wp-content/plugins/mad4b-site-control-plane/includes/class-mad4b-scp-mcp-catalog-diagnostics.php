@@ -54,7 +54,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		if ( ! in_array( $method, array( 'initialize', 'tools/list' ), true ) || ! is_object( $response ) || ! method_exists( $response, 'get_data' ) || ! method_exists( $response, 'header' ) ) return $response;
 		$data = $response->get_data();
 		$status = (int) $response->get_status();
-		$outcome = $status >= 400 ? 'http_error' : ( ! is_array( $data ) || isset( $data['error'] ) || ! isset( $data['result'] ) ? 'rpc_error' : 'ready' );
+		$outcome = $status >= 400 ? 'http_error' : ( ! is_array( $data ) || isset( $data['error'] ) || ! isset( $data['result'] ) || ! is_array( $data['result'] ) ? 'rpc_error' : 'ready' );
 		$count = null;
 		if ( 'ready' === $outcome && 'tools/list' === $method ) {
 			$listed = isset( $data['result']['tools'] ) ? $data['result']['tools'] : null;
