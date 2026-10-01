@@ -82,6 +82,19 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$observer_inventory = isset( $attestation['external_tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $attestation['external_tool_inventory_fingerprint'] ) ) : '';
 		$handshake_inventory = isset( $handshake['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $handshake['tool_inventory_fingerprint'] ) ) : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $observer_inventory ) || ! preg_match( '/^[a-f0-9]{64}$/', $handshake_inventory ) || ! hash_equals( $handshake_inventory, $observer_inventory ) ) return false;
+		$observer_package = array(
+			'source_commit_sha' => isset( $attestation['source_commit_sha'] ) ? strtolower( trim( (string) $attestation['source_commit_sha'] ) ) : '',
+			'build_fingerprint' => isset( $attestation['package_build_fingerprint'] ) ? strtolower( trim( (string) $attestation['package_build_fingerprint'] ) ) : '',
+			'package_manifest_digest' => isset( $attestation['package_manifest_digest'] ) ? strtolower( trim( (string) $attestation['package_manifest_digest'] ) ) : '',
+			'artifact_identity' => isset( $attestation['artifact_identity'] ) ? trim( (string) $attestation['artifact_identity'] ) : '',
+		);
+		$handshake_package = array(
+			'source_commit_sha' => isset( $handshake['source_commit_sha'] ) ? strtolower( trim( (string) $handshake['source_commit_sha'] ) ) : '',
+			'build_fingerprint' => isset( $handshake['package_build_fingerprint'] ) ? strtolower( trim( (string) $handshake['package_build_fingerprint'] ) ) : '',
+			'package_manifest_digest' => isset( $handshake['package_manifest_digest'] ) ? strtolower( trim( (string) $handshake['package_manifest_digest'] ) ) : '',
+			'artifact_identity' => isset( $handshake['artifact_identity'] ) ? trim( (string) $handshake['artifact_identity'] ) : '',
+		);
+		if ( ! self::package_identity_matches( $handshake_package, $observer_package ) ) return false;
 		if ( ! isset( $attestation['external_tool_count'], $handshake['tool_count'] ) || (int) $attestation['external_tool_count'] !== (int) $handshake['tool_count'] ) return false;
 		if ( ! isset( $attestation['external_write_tool_count'], $handshake['write_tool_count'] ) || (int) $attestation['external_write_tool_count'] !== (int) $handshake['write_tool_count'] ) return false;
 		$observer_time = ! empty( $attestation['observed_at'] ) ? strtotime( (string) $attestation['observed_at'] . ' UTC' ) : false;
@@ -98,6 +111,10 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			isset( $handshake['client_id'] ) ? (string) $handshake['client_id'] : '',
 			isset( $handshake['mcp_session_fingerprint'] ) ? strtolower( (string) $handshake['mcp_session_fingerprint'] ) : '',
 			isset( $attestation['external_tool_inventory_fingerprint'] ) ? strtolower( (string) $attestation['external_tool_inventory_fingerprint'] ) : '',
+			isset( $handshake['source_commit_sha'] ) ? strtolower( (string) $handshake['source_commit_sha'] ) : '',
+			isset( $handshake['package_build_fingerprint'] ) ? strtolower( (string) $handshake['package_build_fingerprint'] ) : '',
+			isset( $handshake['package_manifest_digest'] ) ? strtolower( (string) $handshake['package_manifest_digest'] ) : '',
+			isset( $handshake['artifact_identity'] ) ? (string) $handshake['artifact_identity'] : '',
 			isset( $attestation['observed_at'] ) ? (string) $attestation['observed_at'] : '',
 		);
 		return hash( 'sha256', implode( "\n", $parts ) );
