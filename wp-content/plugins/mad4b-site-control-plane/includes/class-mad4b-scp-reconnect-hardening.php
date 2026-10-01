@@ -936,22 +936,10 @@ final class MAD4B_SCP_Reconnect_Hardening {
 			&& method_exists( 'MAD4B_SCP_MCP_Request_Scope', 'current_request_is_passive_admin_hotpath' )
 			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
 		if ( ! $passive_admin ) return $status;
-
-		$error = isset( $status['chatgpt_error'] ) ? sanitize_key( (string) $status['chatgpt_error'] ) : '';
-		if ( '' !== $error && 'not_registered' !== $error && 'mcp_chatgpt_not_registered' !== $error ) return $status;
-
-		$expected = class_exists( 'MAD4B_SCP_Servers' )
-			&& method_exists( 'MAD4B_SCP_Servers', 'expected_server_ids' )
-			&& in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true );
-		$bridge = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) && method_exists( 'MAD4B_SCP_MCP_Registration_Bridge', 'status' )
-			? MAD4B_SCP_MCP_Registration_Bridge::status()
+		$registration = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) && method_exists( 'MAD4B_SCP_MCP_Registration_Bridge', 'server_registration_identity_status' )
+			? MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( 'mad4b-chatgpt' )
 			: array();
-		$bridge_ready = ! empty( $bridge['bridge_booted'] )
-			&& ! empty( $bridge['server_hook_bound'] )
-			&& ! empty( $bridge['core_ability_hook_bound'] )
-			&& ! empty( $bridge['core_category_hook_bound'] );
-		if ( ! $expected || ! $bridge_ready ) return $status;
-
+		if ( empty( $registration['identity_ready'] ) ) return $status;
 		$blockers = isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? $status['blockers'] : array();
 		$blockers = array_values( array_filter( $blockers, static function ( $blocker ) {
 			$blocker = sanitize_key( (string) $blocker );
@@ -959,10 +947,11 @@ final class MAD4B_SCP_Reconnect_Hardening {
 		} ) );
 		$status['blockers'] = $blockers;
 		$status['ready'] = empty( $blockers );
-		$status['chatgpt_registered'] = true;
-		$status['chatgpt_error'] = '';
-		$status['chatgpt_registration_projection'] = 'passive_admin_deferred_identity';
-		$status['chatgpt_registration_deep_check_deferred'] = true;
+		$status['chatgpt_registered'] = ! empty( $registration['actual_registered'] );
+		$status['chatgpt_registration_identity_ready'] = true;
+		$status['chatgpt_error'] = isset( $registration['blocking_registration_error'] ) ? sanitize_key( (string) $registration['blocking_registration_error'] ) : '';
+		$status['chatgpt_registration_projection'] = isset( $registration['state'] ) ? sanitize_key( (string) $registration['state'] ) : 'deferred_identity_ready';
+		$status['chatgpt_registration_deep_check_deferred'] = ! empty( $registration['deep_registration_deferred'] );
 		return $status;
 	}
 
