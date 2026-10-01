@@ -882,13 +882,33 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$expires = is_array( $lock ) && isset( $lock['expires_at_epoch'] ) ? (int) $lock['expires_at_epoch'] : 0;
 		$lock_active = is_array( $lock ) && ! empty( $lock['owner'] ) && $expires > $now;
 		$checkpoint_state = isset( $checkpoint['status'] ) ? sanitize_key( (string) $checkpoint['status'] ) : 'idle';
+
+		$current_identity = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) && method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()
+			: array();
+		$current_identity = array(
+			'source_commit_sha' => isset( $current_identity['source_commit_sha'] ) ? strtolower( trim( (string) $current_identity['source_commit_sha'] ) ) : '',
+			'build_fingerprint' => isset( $current_identity['build_fingerprint'] ) ? strtolower( trim( (string) $current_identity['build_fingerprint'] ) ) : '',
+			'package_manifest_digest' => isset( $current_identity['package_manifest_digest'] ) ? strtolower( trim( (string) $current_identity['package_manifest_digest'] ) ) : '',
+		);
+		$checkpoint_identity = isset( $checkpoint['expected_identity'] ) && is_array( $checkpoint['expected_identity'] )
+			? $checkpoint['expected_identity']
+			: array();
+		$checkpoint_identity_current = ! empty( $checkpoint_identity ) && self::skills_identity_matches( $checkpoint_identity, $current_identity );
+
 		$state = ( 'running' === $checkpoint_state && ! $lock_active ) ? 'stale_running_checkpoint' : $checkpoint_state;
-		$ready = 'completed' === $checkpoint_state && ! empty( $checkpoint['certification_ready'] );
+		if ( 'completed' === $checkpoint_state && ! $checkpoint_identity_current ) $state = 'stale_build_checkpoint';
+		$ready = 'completed' === $checkpoint_state
+			&& ! empty( $checkpoint['certification_ready'] )
+			&& $checkpoint_identity_current;
 		return array(
 			'contract' => 'mad4b.remote-managed-skills-reconciliation-status.v1',
 			'supported' => true,
 			'state' => $state,
 			'ready' => $ready,
+			'checkpoint_identity_current' => $checkpoint_identity_current,
+			'checkpoint_identity' => $checkpoint_identity,
+			'current_identity' => $current_identity,
 			'checkpoint' => $checkpoint,
 			'lock' => array(
 				'active' => $lock_active,
