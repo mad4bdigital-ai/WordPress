@@ -307,6 +307,28 @@ assert "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()" in reconnect
 assert "MAD4B_SCP_Local_OAuth_Server::status()" not in reconnect_status
 assert "MAD4B_SCP_OAuth_Resource_Bridge::status()" not in reconnect_status
 
+passive_notice_projection = method_body(
+    reconnect,
+    "private static function passive_admin_notice_status( array $status )",
+    "public static function connection_admin_notice()",
+)
+for marker in (
+    "current_request_is_passive_admin_hotpath()",
+    "MAD4B_SCP_Servers::expected_server_ids()",
+    "MAD4B_SCP_MCP_Registration_Bridge::status()",
+    "'passive_admin_deferred_identity'",
+    "'chatgpt_registration_deep_check_deferred'",
+):
+    assert marker in passive_notice_projection, marker
+for forbidden in ("rest_get_server(", "wp_get_abilities(", "register_servers("):
+    assert forbidden not in passive_notice_projection, forbidden
+notice_method = method_body(
+    reconnect,
+    "public static function connection_admin_notice()",
+    "public static function is_resource_request_path",
+)
+assert "self::passive_admin_notice_status( self::reconnect_status() )" in notice_method
+
 bridge_identity = method_body(
     oauth_bridge,
     "public static function runtime_identity_status()",
