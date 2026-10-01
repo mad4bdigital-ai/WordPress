@@ -639,18 +639,29 @@ assert guard.index("if ( $remote_preauth_probe ) return $result;") < guard.index
 
 # Passive admin readiness must not report a false not_registered merely because
 # the MCP Adapter registry is intentionally not materialized on that PHP request.
-registration_projection = reconnect.split("private static function chatgpt_registration_projection()", 1)[1].split("private static function preauth_reconnect_blockers()", 1)[0]
+# Registration identity is reduced centrally by the bridge + Truth Projection;
+# reconnect consumes that projection but real MCP preauth remains strict.
+registration_projection = registration_bridge.split("public static function server_registration_identity_status( $server_id )", 1)[1].split("public static function status()", 1)[0]
 for marker in (
     "MAD4B_SCP_Servers::expected_server_ids()",
     "has_action( 'mcp_adapter_init'",
-    "expected_hook_bound_deferred_materialization",
-    "'observed' => $observed",
+    "MAD4B_SCP_Truth_Projection::mcp_registration_identity( $fact )",
+    "'actual_registered'",
 ):
     assert marker in registration_projection, marker
+reconnect_projection = reconnect.split("private static function chatgpt_registration_projection()", 1)[1].split("private static function preauth_reconnect_blockers()", 1)[0]
+assert "MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( 'mad4b-chatgpt' )" in reconnect_projection
 reconnect_status = reconnect.split("public static function reconnect_status()", 1)[1].split("private static function chatgpt_registration_projection()", 1)[0]
-assert "self::chatgpt_registration_projection()" in reconnect_status
-assert "'chatgpt_registration_observed'" in reconnect_status
-assert "'chatgpt_registration_projection'" in reconnect_status
+for marker in (
+    "self::chatgpt_registration_projection()",
+    "'chatgpt_registered' => ! empty( $chatgpt['actual_registered'] )",
+    "'chatgpt_registration_identity_ready' => ! empty( $chatgpt['identity_ready'] )",
+    "'chatgpt_registration_deep_check_deferred'",
+):
+    assert marker in reconnect_status, marker
+preauth = reconnect.split("private static function preauth_reconnect_blockers()", 1)[1].split("public static function guard_mcp_rest_dispatch", 1)[0]
+assert "MAD4B_SCP_Servers::registration_status()" in preauth
+assert "identity_ready" not in preauth
 
 # Skills and OAuth Canary render from persisted/runtime-identity evidence. Fresh
 # certification or deep OAuth inspection happens only after an explicit action.
