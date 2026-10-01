@@ -509,6 +509,15 @@ final class MAD4B_SCP_Authorization {
 		if ( ! empty( $peer_governance['foreign_transport_unreviewed'] ) ) $blockers[] = 'mcp_foreign_transport_unreviewed';
 		$blockers = array_values( array_unique( $blockers ) );
 		return array(
+			// This endpoint is a global governance/peer-health projection only. It is
+			// intentionally cheaper than per-ability mutation admission. Every actual
+			// mutation still resolves identity, exact grant, current write-authority
+			// drift, approvals, budgets and policy inside authorize_mutation().
+			'status_scope' => 'global_policy_and_peer_governance_only',
+			'per_ability_authorization_required' => true,
+			'current_write_authority_evaluated' => false,
+			'current_write_authority_evaluation' => 'deferred_to_authorize_mutation',
+			'legacy_status_ready_semantics' => 'global_gate_ready_not_execution_authorized',
 			'schema_ready' => ! empty( $schema['ready'] ),
 			'schema_version' => isset( $schema['installed_version'] ) ? (int) $schema['installed_version'] : 0,
 			'mutation_global_enabled' => $mutation_configured,
@@ -525,6 +534,7 @@ final class MAD4B_SCP_Authorization {
 			'transport_context' => class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::status() : array( 'bound' => false, 'server_id' => '', 'credential_material_stored' => false ),
 			'mcp_peer_governance' => $peer_governance,
 			'staging_write_authority' => $staging_write,
+			'staging_write_authority_projection' => 'checkpoint_diagnostic_not_per_ability_execution_verdict',
 			'blockers' => $blockers,
 			'status' => $blockers ? 'blocked' : ( $mutation_configured ? ( $mutation_effective ? 'ready_for_governed_mutation' : 'mutation_configured_identity_required' ) : 'ready_read_only' ),
 		);
