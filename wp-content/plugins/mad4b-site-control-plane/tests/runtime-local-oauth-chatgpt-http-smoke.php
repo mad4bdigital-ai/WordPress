@@ -210,6 +210,8 @@ $assert_direct_denied = static function ( $bearer, $session, $client_kind ) use 
 		$value = $normalize( $response->get_data() );
 		if ( empty( $value['result']['isError'] ) && ! isset( $value['error'] ) ) $fail( 'Known hidden step-up tool was executable.', array( 'tool' => $tool_name, 'client_kind' => $client_kind ) );
 		$bound = \WP\MCP\Core\McpAdapter::instance()->get_server( 'mad4b-chatgpt' )->get_mcp_tool( $tool_name );
+		$context = MAD4B_SCP_Transport_Context::bind( 'mad4b-chatgpt', new WP_REST_Request( 'POST', '/mcp/mad4b-chatgpt' ) );
+		if ( is_wp_error( $context ) ) $fail( 'Unable to bind independent permission proof to exact MCP transport.' );
 		$denial = $bound->check_permission( array() );
 		if ( ! is_wp_error( $denial ) ) $fail( 'Every direct step-up permission callback must independently deny this actor.', $tool_name );
 		$code = $denial->get_error_code();
@@ -225,6 +227,7 @@ try {
 	$meta_property->setValue( $full_ability, $changed_meta );
 	$transition = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 899, 'method' => 'tools/list', 'params' => array() ), $token, $session_id );
 	$transition_data = $normalize( $transition->get_data() );
+	if ( 200 !== $transition->get_status() || empty( $transition_data['result']['tools'] ) ) $fail( 'State-transition discovery must retain a usable catalog.' );
 	if ( in_array( 'mad4b-full-staging-authority-apply', array_column( $transition_data['result']['tools'] ?? array(), 'name' ), true ) || $classification !== MAD4B_SCP_MCP_Catalog_Diagnostics::classification_snapshot() || ! in_array( 'mad4b/full-staging-authority-apply', MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections(), true ) ) $fail( 'Immutable registration classification failed across state transition.' );
 } finally { $meta_property->setValue( $full_ability, $saved_meta ); }
 // Rich provider registries cannot auto-enroll arbitrary abilities into the compact direct catalog.
@@ -540,6 +543,7 @@ foreach ( $reviewed_step_up_names as $hidden_step_up ) {
 $assert_direct_denied( $foreign_step_token, $foreign_session_id, 'foreign_step_up' );
 $foreign_list = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 900, 'method' => 'tools/list', 'params' => array() ), $foreign_step_token, $foreign_session_id );
 $foreign_data = $normalize( $foreign_list->get_data() );
+if ( 200 !== $foreign_list->get_status() || empty( $foreign_data['result']['tools'] ) || ! in_array( 'mad4b-read-execute', array_column( $foreign_data['result']['tools'], 'name' ), true ) ) $fail( 'Foreign bearer must retain stable usable read transport.' );
 if ( array_intersect( $registered_step_names, array_column( $foreign_data['result']['tools'] ?? array(), 'name' ) ) ) $fail( 'Foreign-client step-up bearer must not discover any reviewed direct mutation.' );
 
 $foreign_apply = $dispatch(
