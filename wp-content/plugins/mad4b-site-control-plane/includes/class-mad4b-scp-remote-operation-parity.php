@@ -256,6 +256,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'generic_remote_admin' => false,
 				'production_mutation_allowed' => false,
 				'chatgpt_direct_step_up' => (bool) $chatgpt_direct_step_up,
+				'exact_chatgpt_client_required' => (bool) $chatgpt_direct_step_up,
 			),
 			'annotations' => array(
 				'readonly' => (bool) $readonly,
@@ -1107,6 +1108,29 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			return new WP_Error( 'mad4b_remote_operation_chatgpt_client_required', 'Direct ChatGPT enrollment execution requires OAuth attribution to the exact ChatGPT CIMD client.' );
 		}
 		return true;
+	}
+
+	public static function chatgpt_direct_step_up_catalog_tools() {
+		$tools = array();
+		foreach ( self::catalog() as $row ) {
+			if ( ! is_array( $row ) || empty( $row['chatgpt_direct_step_up'] ) ) continue;
+			$ability_name = isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '';
+			if ( '' === $ability_name || ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
+			$ability = wp_get_ability( $ability_name );
+			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
+			$meta = $ability->get_meta();
+			$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+			if ( empty( $mcp['chatgpt_direct_step_up'] )
+				|| empty( $mcp['exact_chatgpt_client_required'] )
+				|| 'enrollment' !== ( isset( $mcp['surface'] ) ? (string) $mcp['surface'] : '' )
+				|| ! array_key_exists( 'generic_remote_admin', $mcp ) || false !== $mcp['generic_remote_admin']
+				|| ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) continue;
+			$tools[] = $ability_name;
+		}
+		$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
+		sort( $tools, SORT_STRING );
+		return $tools;
 	}
 
 	public static function chatgpt_direct_step_up_tools() {

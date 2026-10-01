@@ -28,7 +28,7 @@ required = [
     "verified_bearer_client_is",
     "hash( 'sha256', 'oauth-client' . \"\\0\" . $issuer . \"\\0\" . $client_id )",
     "authority_step_up_scope_available",
-    "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
+    "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY",
     "reset_verified_bearer_context",
     "self::reset_verified_bearer_context( true )",
     "self::reset_verified_bearer_context( false )",

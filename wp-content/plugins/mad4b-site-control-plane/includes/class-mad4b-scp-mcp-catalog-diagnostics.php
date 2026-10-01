@@ -7,6 +7,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	const MAX_TOOLS = 36;
 	private static $booted = false;
 	private static $failure_logged = false;
+	private static $registered_classification = array();
+	private static $classification_server = ''; 
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -16,13 +18,57 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	}
 
 	/** Convert each requested ability using the same official builder as registration. No execution. */
+	public static function budget_projection( array $abilities, array $optional ) {
+		$abilities = array_values( array_map( 'strval', $abilities ) );
+		$optional = array_values( array_unique( array_map( 'strval', $optional ) ) );
+		if ( count( array_unique( $abilities ) ) !== count( $abilities ) ) {
+			return array( 'ready' => false, 'blocker' => 'mcp_catalog_duplicate_ability', 'selected' => array(), 'excluded_optional' => array() );
+		}
+		$required = array_values( array_diff( $abilities, $optional ) );
+		if ( count( $required ) > self::MAX_TOOLS ) {
+			return array( 'ready' => false, 'blocker' => 'mcp_required_catalog_budget_exceeded', 'selected' => array(), 'excluded_optional' => array() );
+		}
+		$capacity = max( 0, self::MAX_TOOLS - count( $required ) );
+		$optional_requested = array_values( array_intersect( $optional, $abilities ) );
+		$optional_kept = array_slice( $optional_requested, 0, $capacity );
+		$optional_excluded = array_slice( $optional_requested, $capacity );
+		$allow = array_fill_keys( array_merge( $required, $optional_kept ), true );
+		$selected = array_values( array_filter( $abilities, static function ( $name ) use ( $allow ) { return isset( $allow[ $name ] ); } ) );
+		return array(
+			'ready' => true,
+			'blocker' => '',
+			'selected' => $selected,
+			'excluded_optional' => $optional_excluded,
+			'required_count' => count( $required ),
+			'optional_capacity' => $capacity,
+		);
+	}
+
 	public static function preflight( array $abilities, array $optional ) {
 		$out = array( 'ready' => false, 'degraded' => false, 'tools' => array(), 'failures' => array(), 'blocker' => '' );
-		if ( count( $abilities ) > self::MAX_TOOLS || count( array_unique( $abilities ) ) !== count( $abilities ) ) { $out['blocker'] = 'mcp_catalog_budget_or_duplicate'; return $out; }
+		$abilities = array_values( array_map( 'strval', $abilities ) );
+		$optional = array_values( array_unique( array_map( 'strval', $optional ) ) );
+		// Required transport tools are never sacrificed to fit the client refresh
+		// budget. Reviewed direct step-ups may be deterministically omitted.
+		$budget = self::budget_projection( $abilities, $optional );
+		if ( empty( $budget['ready'] ) ) { $out['blocker'] = $budget['blocker']; return $out; }
+		$budget_allow = array_fill_keys( $budget['selected'], true );
+		foreach ( $budget['excluded_optional'] as $name ) {
+			$out['failures'][] = array(
+				'stage' => 'catalog_budget',
+				'error_class' => 'Budget',
+				'error_code' => 'mcp_optional_catalog_budget_excluded',
+				'schema_fingerprint' => '',
+				'source_schema_fingerprint' => '',
+				'failing_ability' => $name,
+			);
+		}
+
 		if ( ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! class_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
 		$names = array();
 		foreach ( $abilities as $name ) {
-			$stage = 'ability_lookup'; $failure = null; $source_fingerprint = ''; 
+			if ( ! isset( $budget_allow[ $name ] ) ) continue;
+			$stage = 'ability_lookup'; $failure = null; $source_fingerprint = '';
 			try {
 				$ability = wp_get_ability( $name );
 				if ( ! $ability ) throw new RuntimeException( 'ability_missing' );
@@ -38,7 +84,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			} catch ( Throwable $error ) { $failure = array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_preflight_exception', 'schema_fingerprint' => '' ); }
 			if ( $failure ) {
 				$failure['failing_ability'] = $name; $failure['source_schema_fingerprint'] = $source_fingerprint; $out['failures'][] = $failure;
-				// Only explicitly enumerated optional projections may be removed. Identity conflicts never degrade.
+				// Only explicitly classified reviewed direct step-ups may degrade.
+				// Identity conflicts never degrade because they make routing ambiguous.
 				if ( ! in_array( $name, $optional, true ) || 'identity' === $failure['stage'] ) $out['blocker'] = 'mcp_required_tool_preflight_failed';
 			} else $out['tools'][] = $name;
 		}
@@ -68,32 +115,83 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		} catch ( Throwable $error ) { return array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_tool_serialization_invalid', 'schema_fingerprint' => $fingerprint ); }
 	}
 
+	/** Freeze reviewed identity/classification once, at server materialization, before OAuth. */
+	public static function capture_classification( $server, array $expected ) {
+		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) ) throw new RuntimeException( 'mad4b_catalog_capture_unavailable' );
+		$reviewed = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
+		$captured = array();
+		foreach ( $server->get_tools() as $name => $dto ) {
+			$bound = $server->get_mcp_tool( $name ); $meta = $bound ? $bound->get_adapter_meta() : array();
+			$ability = $meta['ability'] ?? '';
+			if ( ! in_array( $ability, $expected, true ) || $name !== $dto->getName() ) throw new RuntimeException( 'mad4b_catalog_capture_identity_invalid' );
+			$captured[$name] = array( 'ability' => $ability, 'direct_step_up' => in_array( $ability, $reviewed, true ), 'exact_chatgpt_client_required' => in_array( $ability, $reviewed, true ) );
+		}
+		if ( ! empty( self::$registered_classification ) && self::$registered_classification !== $captured ) throw new RuntimeException( 'mad4b_catalog_classification_changed' );
+		self::$registered_classification = $captured;
+		self::$classification_server = spl_object_hash( $server );
+	}
+
+	public static function classification_snapshot() { return self::$registered_classification; }
+
+	/** Deny-only final filter: never restore tools removed by earlier role/authority filters. */
+	private static function ability_is_direct_step_up( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		if ( '' === $ability_name || ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return false;
+		$ability = wp_get_ability( $ability_name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) return false;
+		$meta = $ability->get_meta();
+		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+		return ! empty( $mcp['chatgpt_direct_step_up'] )
+			&& ! empty( $mcp['exact_chatgpt_client_required'] )
+			&& 'enrollment' === ( isset( $mcp['surface'] ) ? (string) $mcp['surface'] : '' )
+			&& array_key_exists( 'readonly', $annotations )
+			&& false === $annotations['readonly'];
+	}
+
 	/** Deny-only final filter: never restore tools removed by earlier role/authority filters. */
 	public static function filter_serializable_tools( $tools, $server ) {
-		if ( ! is_array( $tools ) || ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) || 'mad4b-chatgpt' !== $server->get_server_id() || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $tools;
-		$optional = self::optional_projections(); $safe = array();
+		if ( ! is_array( $tools ) || ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) || 'mad4b-chatgpt' !== $server->get_server_id() ) return $tools;
+		$step_up_visible = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )
+			&& class_exists( 'MAD4B_SCP_Local_OAuth_Server', false )
+			&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID );
+		$safe = array();
 		foreach ( $tools as $dto ) {
-			$failure = self::dto_failure( $dto );
-			if ( ! $failure ) { $safe[] = $dto; continue; }
 			$name = is_object( $dto ) && method_exists( $dto, 'getName' ) ? $dto->getName() : '';
 			$bound = $name ? $server->get_mcp_tool( $name ) : null;
-			$meta = $bound ? $bound->get_adapter_meta() : array();
-			$ability = $meta['ability'] ?? '';
-			if ( ! in_array( $ability, $optional, true ) ) throw new RuntimeException( 'mad4b_required_catalog_schema_invalid' );
+			$meta = is_object( $bound ) && method_exists( $bound, 'get_adapter_meta' ) ? $bound->get_adapter_meta() : array();
+			$ability = is_array( $meta ) && isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
+			$captured = isset( self::$registered_classification[$name] ) ? self::$registered_classification[$name] : null;
+			if ( spl_object_hash( $server ) !== self::$classification_server || ! is_array( $captured ) || $ability !== $captured['ability'] ) throw new RuntimeException( 'mad4b_catalog_classification_unavailable' );
+			$direct_step_up = $captured['direct_step_up'];
+			// Registration is a stable reviewed superset. Visibility is request-local
+			// and can only remove direct step-up tools after bearer verification.
+			if ( $direct_step_up && ! $step_up_visible ) continue;
+			$failure = self::dto_failure( $dto );
+			if ( ! $failure ) { $safe[] = $dto; continue; }
+			if ( ! $direct_step_up ) throw new RuntimeException( 'mad4b_required_catalog_schema_invalid' );
 			$failure['failing_ability'] = $ability;
 			if ( ! self::$failure_logged ) { self::$failure_logged = true; error_log( '[MAD4B MCP preflight] ' . wp_json_encode( $failure ) ); }
 		}
 		return $safe;
 	}
 
-	public static function optional_projections() {
-		// Read/dispatch tools are required. Only known direct step-up projections can degrade.
-		$optional = array();
-		foreach ( array( 'MAD4B_SCP_Site_Profile_Enrollment', 'MAD4B_SCP_Site_Profile_Write_Enablement', 'MAD4B_SCP_Staging_Write_Grant_Reconciliation', 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'MAD4B_SCP_Full_Staging_Authority', 'MAD4B_SCP_Self_Update', 'MAD4B_SCP_Governed_Runtime_Gates' ) as $class ) {
-			if ( class_exists( $class, false ) && method_exists( $class, 'chatgpt_step_up_tools' ) ) $optional = array_merge( $optional, $class::chatgpt_step_up_tools() );
+	public static function optional_projections( array $abilities = array() ) {
+		// Required read/dispatch tools never degrade. Only abilities explicitly
+		// marked as reviewed direct step-up projections may be isolated.
+		if ( empty( $abilities ) && ! empty( self::$registered_classification ) ) $abilities = array_column( self::$registered_classification, 'ability' );
+		elseif ( empty( $abilities ) && class_exists( 'MAD4B_SCP_Servers', false ) && method_exists( 'MAD4B_SCP_Servers', 'chatgpt_reviewed_direct_step_up_tools' ) ) {
+			$abilities = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
 		}
-		if ( class_exists( 'MAD4B_SCP_Remote_Operation_Parity', false ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'chatgpt_direct_step_up_tools' ) ) $optional = array_merge( $optional, MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_tools() );
-		return array_values( array_unique( $optional ) );
+		$optional = array();
+		foreach ( array_values( array_unique( array_map( 'strval', $abilities ) ) ) as $ability_name ) {
+			if ( ! empty( self::$registered_classification ) ) {
+				foreach ( self::$registered_classification as $captured ) if ( $ability_name === $captured['ability'] && $captured['direct_step_up'] ) $optional[] = $ability_name;
+			} elseif ( self::ability_is_direct_step_up( $ability_name ) ) $optional[] = $ability_name;
+		}
+		return $optional;
 	}
 
 	public static function inspect( $server, array $expected_abilities ) {

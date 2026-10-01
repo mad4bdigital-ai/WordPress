@@ -224,49 +224,54 @@ post_enable_slice = apply_body[enable_pos:developer_pos]
 assert post_enable_slice.index("$write_runtime = MAD4B_SCP_Staging_Write_Authority::bootstrap();") < post_enable_slice.index("$plan = self::plan();", post_enable_slice.index("$write_runtime = MAD4B_SCP_Staging_Write_Authority::bootstrap();")), "post-enable plan must be rebuilt after request-local Write bootstrap"
 assert "MAD4B_SCP_Full_Staging_Authority::enrollment_tools()" in servers
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in servers
-assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in servers
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in servers
-assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in servers
 assert "private static function chatgpt_internal_enrollment_mutations()" in servers
 assert "private static function chatgpt_enrollment_candidates()" in servers
 assert "array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in servers
 assert "array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools() )" in servers
 
+# Full Staging Apply is one reviewed direct step-up. The immutable metadata and
+# its permission callback both require the exact ChatGPT client.
+assert "'chatgpt_direct_step_up' => ! $readonly" in full
+assert "'exact_chatgpt_client_required' => ! $readonly" in full
+assert "verified_bearer_has_scope" in full
+assert "verified_bearer_client_is" in full
+assert "MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID" in full
+
 chatgpt_map = servers.split("'mad4b-chatgpt' => array_merge(", 1)[1].split("'mad4b-enrollment' =>", 1)[0]
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" not in chatgpt_map
+reviewed_helper = servers.split("public static function chatgpt_reviewed_direct_step_up_tools()", 1)[1].split("public static function is_chatgpt_direct_step_up_tool", 1)[0]
+assert "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY" in reviewed_helper
+assert "MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY" in reviewed_helper
+assert "MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY" in reviewed_helper
+
 chatgpt_tools = servers.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_internal_enrollment_mutations()", 1)[0]
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in chatgpt_tools
-assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in chatgpt_tools
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_tools
-assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_tools
-assert "MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in chatgpt_tools
-assert "$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );" in chatgpt_tools
-assert "$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );" in chatgpt_tools
-assert "verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )" in chatgpt_tools
+assert "$step_up = self::chatgpt_reviewed_direct_step_up_tools();" in chatgpt_tools
+assert "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )" in chatgpt_tools
 assert "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in chatgpt_map
 assert "$candidates = array_merge( $core, $bootstrap )" in chatgpt_tools
+
 direct_read_helper = servers.split('public static function chatgpt_direct_read_transport_tools()', 1)[1].split('public static function chatgpt_dispatch_transport_tools()', 1)[0]
 assert "MAD4B_SCP_Full_Staging_Authority::HANDSHAKE_ABILITY" in direct_read_helper
 assert "MAD4B_SCP_Full_Staging_Authority::PLAN_ABILITY" not in direct_read_helper
 assert "MAD4B_SCP_Full_Staging_Authority::STATUS_ABILITY" not in direct_read_helper
 
-dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_tools()', 1)[0]
+dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_reviewed_direct_step_up_tools()', 1)[0]
 assert "'mad4b/write-execute'" in dispatcher_helper
 assert "'mad4b/enrollment-execute'" in dispatcher_helper
-assert "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )" in chatgpt_tools
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
     "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
-    "'mad4b/full-staging-authority-apply'",
 ]:
     assert low_level not in chatgpt_tools
 full_catalog = servers.split("public static function chatgpt_full_catalog_candidates()", 1)[1].split("public static function is_chatgpt_full_catalog_candidate", 1)[0]
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_catalog_read_tools()" in full_catalog
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in full_catalog
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()" in full_catalog
-assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_catalog_read_tools()" in full_catalog
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in full_catalog
 assert full.count("self::meta( true, 'read' )") >= 3
 assert "self::meta( false, 'enrollment' )" in full

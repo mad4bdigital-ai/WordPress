@@ -169,13 +169,13 @@ jobs:
               'mad4b-write-info',
               'mad4b-write-execute',
               'mad4b-plugin-package-plan',
-              'mad4b-full-staging-authority-apply',
           }
           missing = sorted(required.difference(names))
           if missing:
               raise SystemExit(f'tools/list missing required minimal Staging transport tools: {missing}')
 
           hidden = {
+              'mad4b-full-staging-authority-apply',
               'mad4b-build-provenance-status',
               'mad4b-diagnostics-health',
               'mad4b-runtime-authority-status',

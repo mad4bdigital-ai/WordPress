@@ -176,6 +176,8 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				'mad4b_full_staging_authority' => self::CONTRACT,
 				'production_allowed' => false,
 				'generic_raw_sql_breakglass_included' => false,
+				'chatgpt_direct_step_up' => ! $readonly && 'enrollment' === sanitize_key( (string) $surface ),
+				'exact_chatgpt_client_required' => ! $readonly && 'enrollment' === sanitize_key( (string) $surface ),
 			),
 			'annotations' => array(
 				'readonly' => (bool) $readonly,

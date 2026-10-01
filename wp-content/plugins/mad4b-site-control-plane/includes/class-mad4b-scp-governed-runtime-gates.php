@@ -150,6 +150,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 				'generic_remote_admin' => false,
 				'production_allowed' => true,
 				'generic_raw_sql_breakglass_configuration' => true,
+				'chatgpt_direct_step_up' => ! $readonly,
+				'exact_chatgpt_client_required' => ! $readonly,
 			),
 			'annotations' => array(
 				'readonly' => (bool) $readonly,

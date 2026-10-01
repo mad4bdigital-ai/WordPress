@@ -189,12 +189,14 @@ for forbidden in [
     "self::core_tools( 'mad4b-admin' )",
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
-require("MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in chatgpt_body, "bootstrap Control Plane self-update step-up projection is missing")
-require("$bounded_step_up = array_merge( $feature_step_up, $write_enable_step_up, $narrow_step_up, $candidate_step_up, $self_update_step_up, $runtime_gate_step_up );" in chatgpt_body, "bounded authority step-ups must be composed explicitly")
-require("$step_up = array_merge( $step_up_bearer ? $bounded_step_up : array(), $full_step_up );" in chatgpt_body, "bounded step-ups must require the dedicated bearer while the Full Staging composite remains lifecycle-stable")
-require("verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )" in chatgpt_body, "bounded step-up projection is not bound to the dedicated OAuth scope")
-require("MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_tools()" in chatgpt_body, "reviewed semantic enrollment step-up projection missing from compact ChatGPT catalog")
-require("$step_up = array_merge( $step_up, $semantic_step_up );" in chatgpt_body, "semantic enrollment step-ups must join the direct mutation transport only after catalog validation")
+# Stable materialization precedes bearer verification. Visibility is gated later.
+require("$step_up = self::chatgpt_reviewed_direct_step_up_tools();" in chatgpt_body, "reviewed stable step-up registration missing")
+require("verified_bearer_has_scope" not in chatgpt_body, "registration cannot depend on a not-yet-verified bearer")
+reviewed = SERVERS.split("public static function chatgpt_reviewed_direct_step_up_tools()", 1)[1].split("public static function is_chatgpt_direct_step_up_tool", 1)[0]
+for marker in ("MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY", "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY", "MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY", "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()"):
+    require(marker in reviewed, "reviewed step-up source missing: " + marker)
+for primitive in ("Site_Profile_Enrollment", "Site_Profile_Write_Enablement", "Staging_Write_Grant_Reconciliation", "Staging_Write_Candidate_Binding"):
+    require("MAD4B_SCP_" + primitive + "::chatgpt_step_up_tools()" not in chatgpt_body, "internal primitive entered direct transport")
 require("'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in core_chatgpt, "bounded Enrollment dispatcher must remain in the canonical compact ChatGPT core catalog")
 require("$candidates = array_merge( $core, $bootstrap )" in chatgpt_body, "runtime ChatGPT tools/list must start from the canonical compact core catalog")
 dispatcher_helper = SERVERS.split("public static function chatgpt_dispatch_transport_tools()", 1)[1].split("public static function chatgpt_tools()", 1)[0]
@@ -204,8 +206,6 @@ require("array_values( array_unique( array_map( 'strval', $tools ) ) )" in dispa
 require("sort( $tools, SORT_STRING )" in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory must remain deterministic")
 require("array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )" in chatgpt_body, "normal governed mutation dispatch plus guarded authority step-ups must derive from the canonical dispatcher inventory")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_body, "unified enrolled Staging tools/list must include read-only full authority diagnostics")
-require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_body, "unified enrolled Staging tools/list must project the composite apply only through the guarded step-up method")
-require("MAD4B_SCP_Self_Update::chatgpt_step_up_tools()" in chatgpt_body, "unified enrolled Staging tools/list must project bootstrap self-update only through the guarded step-up method")
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
