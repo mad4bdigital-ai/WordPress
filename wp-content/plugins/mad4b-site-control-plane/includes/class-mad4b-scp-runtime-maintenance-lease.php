@@ -181,6 +181,89 @@ final class MAD4B_SCP_Runtime_Maintenance_Lease {
 		);
 	}
 
+	/**
+	 * Read-only update admission projection for the shared maintenance fence.
+	 *
+	 * No token values are exposed. Active hard fences are never reclaimed here;
+	 * acquire() remains the only mutation path and may clean only records whose
+	 * bounded hard deadline has already elapsed.
+	 */
+	public static function preflight( $requester = '' ) {
+		$requester = sanitize_key( (string) $requester );
+		$status = self::status();
+		$now = time();
+		$stale_sources = array();
+		$malformed_sources = array();
+
+		foreach ( array_merge( array( self::OPTION ), self::legacy_options() ) as $option ) {
+			$current = get_option( $option, array() );
+			if ( ! is_array( $current ) || empty( $current ) ) continue;
+			$token_present = ! empty( $current['token'] );
+			$owner_present = ! empty( $current['owner'] );
+			$soft = absint( isset( $current['expires_at'] ) ? $current['expires_at'] : 0 );
+			$hard = isset( $current['hard_expires_at'] )
+				? absint( $current['hard_expires_at'] )
+				: ( $soft > 0 ? $soft + self::LEGACY_EXPIRY_GRACE : 0 );
+			if ( ! $token_present || ! $owner_present || $hard < 1 ) {
+				$malformed_sources[] = (string) $option;
+				continue;
+			}
+			if ( $hard <= $now ) $stale_sources[] = (string) $option;
+		}
+
+		$classification = 'CLEAR';
+		$safe_to_acquire = true;
+		$retryable = false;
+		$operator_action_required = false;
+
+		if ( ! empty( $malformed_sources ) ) {
+			$classification = 'STALE_REPAIR_REQUIRED';
+			$safe_to_acquire = false;
+			$operator_action_required = true;
+		} elseif ( ! empty( $status['active'] ) ) {
+			$safe_to_acquire = false;
+			if ( ! empty( $status['fence_token_conflict'] ) ) {
+				$classification = 'FENCE_CONFLICT';
+				$operator_action_required = true;
+			} elseif ( ! empty( $status['legacy_only_fence'] ) && ! empty( $status['legacy_expiry_grace_applied'] ) ) {
+				$classification = 'LEGACY_GRACE';
+				$retryable = true;
+			} else {
+				$classification = 'ACTIVE_RETRYABLE';
+				$retryable = true;
+			}
+		} elseif ( ! empty( $stale_sources ) ) {
+			$classification = 'STALE_RECLAIMABLE';
+			$safe_to_acquire = true;
+		}
+
+		return array(
+			'contract' => 'mad4b.runtime-maintenance-preflight.v1',
+			'classification' => $classification,
+			'requester' => $requester,
+			'safe_to_acquire' => $safe_to_acquire,
+			'retryable' => $retryable,
+			'automatic_mutation_retry_allowed' => false,
+			'preflight_recheck_allowed' => true,
+			'operator_action_required' => $operator_action_required,
+			'active' => ! empty( $status['active'] ),
+			'owner' => isset( $status['owner'] ) ? sanitize_key( (string) $status['owner'] ) : '',
+			'expires_at' => isset( $status['expires_at'] ) ? absint( $status['expires_at'] ) : 0,
+			'hard_expires_at' => isset( $status['hard_expires_at'] ) ? absint( $status['hard_expires_at'] ) : 0,
+			'soft_lease_expired' => ! empty( $status['soft_lease_expired'] ),
+			'retry_after_seconds' => $retryable && isset( $status['retry_after_seconds'] ) ? absint( $status['retry_after_seconds'] ) : 0,
+			'fence_source' => isset( $status['fence_source'] ) ? (string) $status['fence_source'] : '',
+			'active_fence_count' => isset( $status['active_fence_count'] ) ? absint( $status['active_fence_count'] ) : 0,
+			'legacy_only_fence' => ! empty( $status['legacy_only_fence'] ),
+			'legacy_expiry_grace_applied' => ! empty( $status['legacy_expiry_grace_applied'] ),
+			'fence_token_conflict' => ! empty( $status['fence_token_conflict'] ),
+			'stale_source_count' => count( $stale_sources ),
+			'malformed_source_count' => count( $malformed_sources ),
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
 	private static function record_owned_by( $record, $token, $owner ) {
 		if ( ! is_array( $record ) || empty( $record['token'] ) || empty( $record['owner'] ) ) return false;
 		return hash_equals( (string) $record['token'], (string) $token )
