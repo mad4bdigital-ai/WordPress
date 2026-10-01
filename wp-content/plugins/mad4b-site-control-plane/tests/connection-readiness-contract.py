@@ -147,7 +147,7 @@ for marker in (
     "defined( 'DOING_CRON' ) && DOING_CRON", 'verified_bearer_active()',
     "'initialize'", "'tools/list'", "hash( 'sha256', $session_id )",
     "update_option( self::OPTION, $evidence, false )", "'credential_material_stored' => false",
-    "'stale_build_evidence'", "'stale_tool_inventory_evidence'", "'stale_time_evidence'", 'build_fingerprint()',
+    "'stale_package_identity_evidence'", "'stale_runtime_surface_evidence'", "'stale_tool_inventory_evidence'", "'stale_time_evidence'", 'build_fingerprint()',
     "'tool_inventory_fingerprint'", "'expected_tool_inventory_fingerprint'", "'tool_inventory_match'",
     "'write_catalog_fingerprint'", "'write_inventory_fingerprint_match'",
     "'write_transport_ready'", "'write_transport_tool_count'", "'direct_write_schema_leaks'",
