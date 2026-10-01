@@ -365,6 +365,8 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		// provisions Developer/Breakglass authority. Otherwise ready_to_apply=true
 		// would describe a mutation sequence that is already known to fail later.
 		$nonreconcilable_write_drift = array();
+		$nonreconcilable_missing_count = 0;
+		$unreviewed_stale_count = isset( $write_plan['unreviewed_stale_allow_grants_count'] ) ? max( 0, (int) $write_plan['unreviewed_stale_allow_grants_count'] ) : 0;
 		$missing_rows = isset( $write_plan['exact_grants_missing'] ) && is_array( $write_plan['exact_grants_missing'] )
 			? $write_plan['exact_grants_missing']
 			: array();
@@ -372,6 +374,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			if ( ! is_array( $row ) ) continue;
 			$reason = isset( $row['reason'] ) ? sanitize_key( (string) $row['reason'] ) : '';
 			if ( ! in_array( $reason, array( 'explicit_deny', 'write_provider_unmounted' ), true ) ) continue;
+			$nonreconcilable_missing_count++;
 			$nonreconcilable_write_drift[] = array(
 				'ability' => isset( $row['ability'] ) ? sanitize_text_field( (string) $row['ability'] ) : '',
 				'provider' => isset( $row['provider'] ) ? sanitize_key( (string) $row['provider'] ) : '',
@@ -379,6 +382,18 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			);
 			$hard_blockers[] = 'explicit_deny' === $reason ? 'write_explicit_deny' : 'write_provider_unmounted';
 		}
+		if ( $unreviewed_stale_count > 0 ) {
+			$nonreconcilable_write_drift[] = array(
+				'ability' => '',
+				'provider' => '',
+				'reason' => 'unreviewed_stale_write_authority',
+				'count' => $unreviewed_stale_count,
+			);
+		}
+		$exact_missing_total = isset( $write_plan['exact_grants_missing_count'] ) ? max( 0, (int) $write_plan['exact_grants_missing_count'] ) : 0;
+		$stale_allow_total = isset( $write_plan['stale_allow_grants_count'] ) ? max( 0, (int) $write_plan['stale_allow_grants_count'] ) : 0;
+		$reconcilable_missing_count = max( 0, $exact_missing_total - $nonreconcilable_missing_count );
+		$reviewed_stale_count = max( 0, $stale_allow_total - $unreviewed_stale_count );
 		if ( ! MAD4B_SCP_Site_Profile::oauth_enabled() ) $hard_blockers[] = 'oauth_disabled';
 		if ( ! MAD4B_SCP_Site_Profile::acceptance_enabled() ) $hard_blockers[] = 'acceptance_disabled';
 		if ( ! MAD4B_SCP_Site_Profile::skills_enabled() ) $hard_blockers[] = 'skills_disabled';
@@ -413,12 +428,15 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'developer_breakglass_plan' => $developer_breakglass_plan,
 			'developer_breakglass_hard_blockers' => $breakglass_hard_blockers,
 			'nonreconcilable_write_drift' => $nonreconcilable_write_drift,
+			'nonreconcilable_write_drift_counts' => array(
+				'exact_grants_missing_count' => $nonreconcilable_missing_count,
+				'unreviewed_stale_allow_grants_count' => $unreviewed_stale_count,
+			),
 			'fixable_write_drift' => array(
-				'exact_grants_missing_count' => isset( $write_plan['exact_grants_missing_count'] ) ? (int) $write_plan['exact_grants_missing_count'] : 0,
-				'stale_allow_grants_count' => isset( $write_plan['stale_allow_grants_count'] ) ? (int) $write_plan['stale_allow_grants_count'] : 0,
-				'unreviewed_stale_allow_grants_count' => isset( $write_plan['unreviewed_stale_allow_grants_count'] ) ? (int) $write_plan['unreviewed_stale_allow_grants_count'] : 0,
-				'broad_environment_grants_count' => isset( $write_plan['broad_environment_grants_count'] ) ? (int) $write_plan['broad_environment_grants_count'] : 0,
-				'duplicate_exact_allow_grants_count' => isset( $write_plan['duplicate_exact_allow_grants_count'] ) ? (int) $write_plan['duplicate_exact_allow_grants_count'] : 0,
+				'exact_grants_missing_count' => $reconcilable_missing_count,
+				'stale_allow_grants_count' => $reviewed_stale_count,
+				'broad_environment_grants_count' => isset( $write_plan['broad_environment_grants_count'] ) ? max( 0, (int) $write_plan['broad_environment_grants_count'] ) : 0,
+				'duplicate_exact_allow_grants_count' => isset( $write_plan['duplicate_exact_allow_grants_count'] ) ? max( 0, (int) $write_plan['duplicate_exact_allow_grants_count'] ) : 0,
 				'candidate_binding_match' => ! empty( $write_plan['candidate_binding']['match'] ),
 			),
 			'hard_blockers' => array_values( array_unique( $hard_blockers ) ),
