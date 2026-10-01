@@ -311,7 +311,8 @@ final class MAD4B_SCP_Plugin {
 		if ( 'mad4b-control-plane-connection' !== $page || 'endpoints' !== $tab ) return;
 		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' )
 			|| ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed() ) return;
-		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['_wpnonce'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- explicit read-only diagnostic gate.
+		$raw_nonce = filter_input( INPUT_POST, 'mad4b_connection_nonce', FILTER_UNSAFE_RAW );
+		$nonce = is_string( $raw_nonce ) ? sanitize_text_field( wp_unslash( $raw_nonce ) ) : '';
 		if ( '' === $nonce || false === wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' ) ) return;
 		if ( ! function_exists( 'rest_get_server' ) ) return;
 		try {
