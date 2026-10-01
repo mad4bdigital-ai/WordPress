@@ -62,6 +62,22 @@ for marker in [
 
 # Runtime write authority is tenant-neutral. ETG binding belongs to the reviewed
 # deployment Site Profile/handoff, never to a host constant inside the authority.
+reconciliation_body = write.split("public static function reconciliation_plan()", 1)[1].split("public static function reconcile()", 1)[0]
+for required in (
+    "$existing_count === count( $tools )",
+    "0 === count( $missing )",
+    "0 === count( $stale )",
+    "0 === count( $broad_environment )",
+    "0 === $duplicate_excess",
+    "0 === $current_agent_wildcards",
+    "0 === $global_wildcards",
+    "'grant_set_converged' => $grant_set_converged",
+    "'effective_converged' => $effective_converged",
+    "'drift_present' => ! $grant_set_converged",
+):
+    if required not in reconciliation_body:
+        raise SystemExit('write reconciliation convergence truth missing invariant: ' + required)
+
 for marker in [
     "const CONTRACT = 'mad4b.governed-write-authority.v2'",
     "const CANDIDATE_BINDING_CONTRACT = 'mad4b.governed-write-authority-candidate-binding.v2'",
@@ -79,6 +95,9 @@ for marker in [
     "'current_agent_wildcard_grants'",
     "'global_registry_wildcard_grants'",
     "'broad_environment_grants_count'",
+    "'grant_set_converged'",
+    "'effective_converged'",
+    "'drift_present'",
     "'duplicate_exact_allow_grants_revoked'",
     "public static function bind_candidate_identity( $source_commit_sha, $build_fingerprint, $context = array() )",
     "private static function current_candidate_identity()",
