@@ -46,14 +46,24 @@ final class MAD4B_SCP_Truth_Projection {
 		$recorded_ready = ! empty( $persisted['ready'] );
 		$recorded_sha = isset( $persisted['source_commit_sha'] ) ? strtolower( trim( (string) $persisted['source_commit_sha'] ) ) : '';
 		$recorded_fingerprint = isset( $persisted['build_fingerprint'] ) ? strtolower( trim( (string) $persisted['build_fingerprint'] ) ) : '';
+		$recorded_manifest = isset( $persisted['package_manifest_digest'] ) ? strtolower( trim( (string) $persisted['package_manifest_digest'] ) ) : '';
+		$recorded_artifact = isset( $persisted['artifact_identity'] ) ? trim( (string) $persisted['artifact_identity'] ) : '';
 		$current_sha = isset( $current['source_commit_sha'] ) ? strtolower( trim( (string) $current['source_commit_sha'] ) ) : '';
 		$current_fingerprint = isset( $current['build_fingerprint'] ) ? strtolower( trim( (string) $current['build_fingerprint'] ) ) : '';
+		$current_manifest = isset( $current['package_manifest_digest'] ) ? strtolower( trim( (string) $current['package_manifest_digest'] ) ) : '';
+		$current_artifact = isset( $current['artifact_identity'] ) ? trim( (string) $current['artifact_identity'] ) : '';
 		$candidate_match = 1 === preg_match( '/^[a-f0-9]{40}$/', $recorded_sha )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $recorded_fingerprint )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $recorded_manifest )
+			&& '' !== $recorded_artifact && strlen( $recorded_artifact ) <= 191
 			&& 1 === preg_match( '/^[a-f0-9]{40}$/', $current_sha )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $current_fingerprint )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $current_manifest )
+			&& '' !== $current_artifact && strlen( $current_artifact ) <= 191
 			&& hash_equals( $recorded_sha, $current_sha )
-			&& hash_equals( $recorded_fingerprint, $current_fingerprint );
+			&& hash_equals( $recorded_fingerprint, $current_fingerprint )
+			&& hash_equals( $recorded_manifest, $current_manifest )
+			&& hash_equals( $recorded_artifact, $current_artifact );
 		$effective_ready = $recorded_ready && $candidate_match;
 		$blockers = isset( $persisted['blockers'] ) && is_array( $persisted['blockers'] ) ? array_values( array_unique( array_map( 'strval', $persisted['blockers'] ) ) ) : array();
 		if ( $recorded_ready && ! $candidate_match ) $blockers[] = sanitize_key( (string) $mismatch_blocker );
@@ -66,8 +76,12 @@ final class MAD4B_SCP_Truth_Projection {
 			'recorded_ready' => $recorded_ready,
 			'recorded_source_commit_sha' => $recorded_sha,
 			'recorded_build_fingerprint' => $recorded_fingerprint,
+			'recorded_package_manifest_digest' => $recorded_manifest,
+			'recorded_artifact_identity' => $recorded_artifact,
 			'current_source_commit_sha' => $current_sha,
 			'current_build_fingerprint' => $current_fingerprint,
+			'current_package_manifest_digest' => $current_manifest,
+			'current_artifact_identity' => $current_artifact,
 			'current_candidate_match' => $candidate_match,
 			'effective_ready' => $effective_ready,
 			'state' => $state,

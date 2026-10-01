@@ -554,6 +554,13 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			$base[ $key ] = isset( $data[ $key ] ) ? sanitize_text_field( (string) $data[ $key ] ) : '';
 		}
 		$mismatch = array();
+		$artifact_identity = (string) $base['artifact_identity'];
+		$artifact_valid = '' !== $artifact_identity
+			&& strlen( $artifact_identity ) <= 191
+			&& 1 === preg_match( '/^[A-Za-z0-9._-]+$/', $artifact_identity )
+			&& 0 === strpos( $artifact_identity, 'mad4b-site-control-plane-' )
+			&& 1 === preg_match( '/-' . preg_quote( (string) $base['source_commit_sha'], '/' ) . '$/', $artifact_identity );
+		if ( ! $artifact_valid ) $mismatch[] = 'artifact_identity_invalid';
 		if ( (string) $base['version'] !== (string) ( isset( $data['control_plane_version'] ) ? $data['control_plane_version'] : '' ) ) $mismatch[] = 'control_plane_version_mismatch';
 		$base['identity_ready'] = empty( $mismatch );
 		$base['identity_mismatch'] = array_values( array_unique( $mismatch ) );

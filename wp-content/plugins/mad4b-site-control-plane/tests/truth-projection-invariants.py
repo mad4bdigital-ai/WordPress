@@ -46,6 +46,10 @@ for marker in (
     "public static function candidate_binding_bound_ready( array $persisted, array $binding",
     "'current_candidate_match'",
     "'effective_ready'",
+    "'recorded_package_manifest_digest'",
+    "'recorded_artifact_identity'",
+    "'current_package_manifest_digest'",
+    "'current_artifact_identity'",
 ):
     require(projection, marker, "canonical candidate-bound truth projection")
 read_consistency = read("includes/class-mad4b-scp-read-consistency.php")
@@ -157,8 +161,23 @@ require(skills_projection, "MAD4B_SCP_Truth_Projection::candidate_identity_bound
 require(projection, "$effective_ready = $persisted_ready && ( ! $binding_required || $binding_match )", "effective authority formula owner")
 require(projection, "$effective_ready = $recorded_ready && $candidate_match", "effective Skills formula owner")
 require(projection, "historical_evidence", "historical Skills state owner")
-for marker in ("'source_commit_sha' => $source_commit_sha", "'build_fingerprint' => $build_fingerprint"):
-    require(skills, marker, "persisted Skills exact-build identity")
+for marker in (
+    "'source_commit_sha' => $source_commit_sha",
+    "'build_fingerprint' => $build_fingerprint",
+    "'package_manifest_digest' => $package_manifest_digest",
+    "'artifact_identity' => $artifact_identity",
+    "'build_provenance_identity_ready'",
+    "'build_provenance_identity_unavailable'",
+):
+    require(skills, marker, "persisted Skills exact-package identity")
+for marker in (
+    "'package_manifest_digest', 'artifact_identity'",
+    "'recorded_package_manifest_digest'",
+    "'recorded_artifact_identity'",
+    "'current_package_manifest_digest'",
+    "'current_artifact_identity'",
+):
+    require(read_consistency, marker, "Skills read-consistency four-part candidate identity")
 
 # 5. Third-party admin AJAX is zero-touch; owned MAD4B actions use exact registry.
 for marker in (

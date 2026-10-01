@@ -1067,7 +1067,8 @@ final class MAD4B_SCP_Read_Consistency {
 		$result = self::bounded_keys( $status, array(
 			'contract', 'ready', 'state', 'persistence', 'blocker', 'blockers',
 			'provider_count', 'expected_provider_count', 'managed_skill_count',
-			'expected_managed_skill_count', 'source_commit_sha', 'build_fingerprint', 'observed_at',
+			'expected_managed_skill_count', 'source_commit_sha', 'build_fingerprint',
+			'package_manifest_digest', 'artifact_identity', 'observed_at',
 		) );
 		$current = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) && method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
 			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()
@@ -1079,8 +1080,12 @@ final class MAD4B_SCP_Read_Consistency {
 		$result['recorded_ready'] = ! empty( $projection['recorded_ready'] );
 		$result['recorded_source_commit_sha'] = isset( $projection['recorded_source_commit_sha'] ) ? (string) $projection['recorded_source_commit_sha'] : '';
 		$result['recorded_build_fingerprint'] = isset( $projection['recorded_build_fingerprint'] ) ? (string) $projection['recorded_build_fingerprint'] : '';
+		$result['recorded_package_manifest_digest'] = isset( $projection['recorded_package_manifest_digest'] ) ? (string) $projection['recorded_package_manifest_digest'] : '';
+		$result['recorded_artifact_identity'] = isset( $projection['recorded_artifact_identity'] ) ? (string) $projection['recorded_artifact_identity'] : '';
 		$result['current_source_commit_sha'] = isset( $projection['current_source_commit_sha'] ) ? (string) $projection['current_source_commit_sha'] : '';
 		$result['current_build_fingerprint'] = isset( $projection['current_build_fingerprint'] ) ? (string) $projection['current_build_fingerprint'] : '';
+		$result['current_package_manifest_digest'] = isset( $projection['current_package_manifest_digest'] ) ? (string) $projection['current_package_manifest_digest'] : '';
+		$result['current_artifact_identity'] = isset( $projection['current_artifact_identity'] ) ? (string) $projection['current_artifact_identity'] : '';
 		$result['current_candidate_match'] = ! empty( $projection['current_candidate_match'] );
 		$result['effective_skill_ready'] = ! empty( $projection['effective_ready'] );
 		$result['ready'] = ! empty( $projection['effective_ready'] );
