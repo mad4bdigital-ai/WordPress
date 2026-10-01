@@ -535,8 +535,10 @@ final class MAD4B_SCP_Servers {
 				|| ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) continue;
 			$tools[] = $ability_name;
 		}
+		// Preserve candidate priority: Full Staging, bootstrap self-update and
+		// governed runtime gates are retained before optional semantic projections
+		// if the bounded MCP catalog budget requires degradation.
 		$tools = array_values( array_unique( $tools ) );
-		sort( $tools, SORT_STRING );
 		return $tools;
 	}
 
