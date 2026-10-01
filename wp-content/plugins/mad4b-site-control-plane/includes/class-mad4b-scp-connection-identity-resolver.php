@@ -255,6 +255,8 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 			'MAD4B_MCP_LOCAL_OAUTH_ISSUER',
 			'MAD4B_MCP_OAUTH_WP_USER_ID',
 			'MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER',
+			'MAD4B_MCP_OAUTH_ADVERTISED_ISSUERS',
+			'MAD4B_MCP_OAUTH_RESOURCE_POLICY_BY_ISSUER',
 			'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS',
 			'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS',
 		);
@@ -286,6 +288,34 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 				}
 			}
 			if ( $primary_owner < 1 || $mapped_user !== (int) $primary_owner ) $blockers[] = 'explicit_wp_user_conflict';
+		}
+		if ( defined( 'MAD4B_MCP_OAUTH_ADVERTISED_ISSUERS' ) ) {
+			$raw = constant( 'MAD4B_MCP_OAUTH_ADVERTISED_ISSUERS' );
+			$items = is_array( $raw ) ? $raw : preg_split( '/[\s,]+/', (string) $raw );
+			$advertised = array();
+			foreach ( is_array( $items ) ? array_slice( $items, 0, 32 ) : array() as $candidate ) {
+				if ( ! is_string( $candidate ) ) continue;
+				$candidate = rtrim( trim( $candidate ), '/' );
+				if ( '' !== $candidate ) $advertised[] = $candidate;
+			}
+			if ( '' !== $issuer && ! in_array( $issuer, array_values( array_unique( $advertised ) ), true ) ) $blockers[] = 'explicit_advertised_issuer_conflict';
+		}
+		if ( defined( 'MAD4B_MCP_OAUTH_RESOURCE_POLICY_BY_ISSUER' ) ) {
+			$policies = constant( 'MAD4B_MCP_OAUTH_RESOURCE_POLICY_BY_ISSUER' );
+			if ( is_array( $policies ) ) {
+				foreach ( $policies as $bound_issuer => $resources ) {
+					if ( ! is_string( $bound_issuer ) || ! hash_equals( $issuer, rtrim( trim( $bound_issuer ), '/' ) ) ) continue;
+					$items = is_array( $resources ) ? $resources : preg_split( '/[\s,]+/', (string) $resources );
+					$allowed = array();
+					foreach ( is_array( $items ) ? array_slice( $items, 0, 16 ) : array() as $server_id ) {
+						if ( ! is_string( $server_id ) ) continue;
+						$server_id = sanitize_key( $server_id );
+						if ( '' !== $server_id ) $allowed[] = $server_id;
+					}
+					if ( ! in_array( 'mad4b-chatgpt', array_values( array_unique( $allowed ) ), true ) ) $blockers[] = 'explicit_resource_policy_conflict';
+					break;
+				}
+			}
 		}
 		$expected_subjects = array_values( array_map( static function ( $id ) { return 'user:' . absint( $id ); }, $user_ids ) );
 		if ( defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS' ) ) {
@@ -395,6 +425,8 @@ final class MAD4B_SCP_Connection_Identity_Resolver {
 			'explicit_external_oauth_issuer',
 			'explicit_local_oauth_issuer_conflict',
 			'explicit_wp_user_conflict',
+			'explicit_advertised_issuer_conflict',
+			'explicit_resource_policy_conflict',
 			'explicit_subject_policy_conflict',
 			'explicit_subject_binding_conflict',
 			'connection_projection_drift',
