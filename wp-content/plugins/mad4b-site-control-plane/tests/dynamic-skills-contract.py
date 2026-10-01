@@ -120,7 +120,7 @@ for marker in [
     "current_user_can( 'manage_options' )",
     "MAD4B_SCP_Skill_Seeder::reconcile()",
     "MAD4B_SCP_Skill_Provider_Discovery::reconcile()",
-    "MAD4B_SCP_Skill_Runtime_Certification::observe()",
+    "MAD4B_SCP_Skill_Runtime_Certification::observe( true )",
 ]:
     if marker not in admin:
         raise SystemExit(f'missing explicit managed Skill admin reconciliation invariant: {marker}')
