@@ -487,6 +487,32 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		}
 		$context = self::normalize_candidate_binding_context( $context, $current );
 		if ( is_wp_error( $context ) ) return $context;
+
+		// The reviewed write snapshot must already be zero-drift before the
+		// candidate-binding primitive opens a transaction. A second in-transaction
+		// reconciliation_plan() comparison below protects against TOCTOU changes.
+		$reviewed_write_snapshot = isset( $context['write_snapshot'] ) && is_array( $context['write_snapshot'] ) ? $context['write_snapshot'] : array();
+		foreach ( array(
+			'exact_grants_missing_count',
+			'stale_allow_grants_count',
+			'unreviewed_stale_allow_grants_count',
+			'broad_environment_grants_count',
+			'duplicate_exact_allow_grants_count',
+			'current_agent_wildcard_grants',
+			'global_registry_wildcard_grants',
+		) as $clean_field ) {
+			if ( ! array_key_exists( $clean_field, $reviewed_write_snapshot ) || 0 !== (int) $reviewed_write_snapshot[ $clean_field ] ) {
+				return new WP_Error(
+					'mad4b_candidate_binding_write_snapshot_not_clean',
+					'Candidate binding primitive requires a zero-drift reviewed write snapshot.',
+					array(
+						'field' => $clean_field,
+						'value' => isset( $reviewed_write_snapshot[ $clean_field ] ) ? $reviewed_write_snapshot[ $clean_field ] : null,
+					)
+				);
+			}
+		}
+
 		$audit_status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
 		if ( empty( $audit_status['ready'] ) || empty( $audit_status['head_initialized'] ) ) return new WP_Error( 'mad4b_candidate_binding_audit_required', 'Ready initialized append-only audit storage is required by the binding primitive.' );
 		if ( ! class_exists( 'MAD4B_SCP_Audit_Integrity' ) || ! MAD4B_SCP_Audit_Integrity::transactional_table( $wpdb->options ) ) {
