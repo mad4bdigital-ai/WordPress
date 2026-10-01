@@ -46,7 +46,15 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
     public static function verified_bearer_client_is($id){return $id==='https://chatgpt.com/oauth/client.json';}
 }
 final class MAD4B_SCP_MCP_Registration_Bridge { public static $status=array(); public static function status(){return self::$status;} }
-final class MAD4B_SCP_MCP_Request_Scope { public static $passive=false; public static function current_request_is_passive_admin_hotpath(){return self::$passive;} }
+final class MAD4B_SCP_MCP_Request_Scope {
+    public static $passive=false;
+    public static function current_request_is_passive_admin_hotpath(){return self::$passive;}
+    public static function current_request_is_protocol_hotpath(){return false;}
+    public static function current_request_is_http_mcp_transport(){return false;}
+    public static function current_request_requires_mcp_runtime(){return false;}
+    public static function current_request_mcp_server_id(){return '';}
+    public static function status(){return array('passive_admin_hotpath'=>self::$passive);}
+}
 final class MAD4B_SCP_Runtime_Convergence {
     public static $restart=array('active'=>false,'retry_after_seconds'=>0,'state'=>'');
     public static $maintenance=array('active'=>false,'retry_after_seconds'=>0,'owner'=>'');
