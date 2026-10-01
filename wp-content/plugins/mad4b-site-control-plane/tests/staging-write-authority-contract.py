@@ -993,6 +993,20 @@ for marker in [
 if "MAD4B_SCP_Live_Truth::current_authority_status()" in current_execution_body:
     raise SystemExit('mutation-bound readiness must consume canonical reconciliation snapshot directly, not recurse through Live Truth')
 
+candidate_bootstrap_body = write.split("public static function candidate_bootstrap_status( $ability_name, $input = null )", 1)[1].split("public static function candidate_bootstrap_allowed", 1)[0]
+for marker in (
+    "$bootstrap_write_plan = self::reconciliation_plan();",
+    "'bootstrap_write_reconciliation_unavailable'",
+    "'unreviewed_stale_allow_grants_count'",
+    "'bootstrap_unreviewed_stale_write_authority'",
+):
+    if marker not in candidate_bootstrap_body:
+        raise SystemExit('candidate bootstrap lost execution-time stale-authority gate: ' + marker)
+execution_gate_pos = candidate_bootstrap_body.index("if ( is_array( $input ) )")
+snapshot_pos = candidate_bootstrap_body.index("$bootstrap_write_plan = self::reconciliation_plan();")
+if snapshot_pos < execution_gate_pos:
+    raise SystemExit('candidate bootstrap deep grant scan leaked into read-only capability projection')
+
 manages_agent_body = write.split("public static function manages_agent( array $agent )", 1)[1].split("public static function effective()", 1)[0]
 for marker in [
     "self::agent_slug()",
