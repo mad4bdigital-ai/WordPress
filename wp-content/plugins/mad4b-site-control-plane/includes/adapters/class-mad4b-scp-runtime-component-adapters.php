@@ -357,7 +357,9 @@ final class MAD4B_SCP_Runtime_Component_Catalog {
 	}
 
 	public static function inventory() {
-		if ( null !== self::$inventory ) return self::$inventory;
+		$cacheable = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
+		if ( $cacheable && null !== self::$inventory ) return self::$inventory;
 		$plugin_coverage = class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ? MAD4B_SCP_Plugin_Discovery::coverage() : array();
 		$plugin_counts = isset( $plugin_coverage['counts'] ) && is_array( $plugin_coverage['counts'] ) ? $plugin_coverage['counts'] : array();
 		$mu = self::mu_plugins();
