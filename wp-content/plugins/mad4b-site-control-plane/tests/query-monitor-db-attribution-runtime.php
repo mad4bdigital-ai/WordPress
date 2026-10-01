@@ -65,7 +65,7 @@ mad4b_qm_assert( empty( $ordinary_admin['mutation_performed'] ), 'foreign admin 
 foreach ( array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt' ) as $hotpath_page ) {
 	$_GET['page'] = $hotpath_page;
 	$hotpath = MAD4B_SCP_Query_Monitor_Evidence_Bridge::maybe_enable_db_attribution();
-	mad4b_qm_assert( 'deferred_connection_admin_hotpath' === $hotpath['state'], $hotpath_page . ' must defer Query Monitor attribution bootstrap' );
+	mad4b_qm_assert( 'deferred_passive_mad4b_admin' === $hotpath['state'], $hotpath_page . ' must defer Query Monitor attribution bootstrap' );
 	mad4b_qm_assert( empty( $hotpath['mutation_performed'] ), $hotpath_page . ' attribution guard must remain mutation-free' );
 	mad4b_qm_assert( ! file_exists( WP_CONTENT_DIR . '/db.php' ), $hotpath_page . ' must never create Query Monitor db.php attribution during page load' );
 }
@@ -81,6 +81,7 @@ mad4b_qm_assert( empty( $remote_enabled['bootstrap']['foreign_dropin_replaced'] 
 
 $GLOBALS['mad4b_qm_admin'] = true;
 $_GET['page'] = 'mad4b-control-plane-diagnostics';
+$_SERVER['REQUEST_METHOD'] = 'POST';
 $enabled = MAD4B_SCP_Query_Monitor_Evidence_Bridge::maybe_enable_db_attribution();
 mad4b_qm_assert( file_exists( WP_CONTENT_DIR . '/db.php' ) && ! is_link( WP_CONTENT_DIR . '/db.php' ), 'bounded Query Monitor loader was not created when symlink was unavailable' );
 mad4b_qm_assert( false !== strpos( (string) file_get_contents( WP_CONTENT_DIR . '/db.php' ), MAD4B_SCP_Query_Monitor_Evidence_Bridge::ATTRIBUTION_LOADER_MARKER ), 'bounded loader marker missing' );
