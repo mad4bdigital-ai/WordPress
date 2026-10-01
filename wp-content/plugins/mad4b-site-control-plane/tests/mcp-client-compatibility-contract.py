@@ -157,6 +157,28 @@ for source, label in [
 ]:
     assert 'verified_bearer_client_is' in source, f'{label} direct execution lacks exact-client attribution'
 
+# Provider-rich sites must not lose the required catalog because optional
+# step-ups exceed the refresh budget. Composite step-ups retain explicit priority.
+for marker in [
+    'public static function budget_projection( array $abilities, array $optional )',
+    "'mcp_required_catalog_budget_exceeded'",
+    "'mcp_optional_catalog_budget_excluded'",
+    "self::MAX_TOOLS - count( $required )",
+]:
+    assert marker in catalog_diagnostics, f'missing bounded catalog budget invariant: {marker}'
+assert "array_intersect( self::chatgpt_reviewed_direct_step_up_tools(), $tools )" in servers
+reviewed_helper = servers.split('public static function chatgpt_reviewed_direct_step_up_tools()', 1)[1].split('public static function is_chatgpt_direct_step_up_tool', 1)[0]
+for marker in [
+    'MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY',
+    'MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY',
+    'MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY',
+    'MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()',
+]:
+    assert marker in reviewed_helper, f'missing reviewed step-up priority source: {marker}'
+assert reviewed_helper.index('MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY') < reviewed_helper.index('MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()')
+assert reviewed_helper.index('MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY') < reviewed_helper.index('MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()')
+assert reviewed_helper.index('MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY') < reviewed_helper.index('MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()')
+
 # Low-level enrollment primitives never join the direct ChatGPT catalog, even
 # for a bearer carrying authority:step-up. They remain behind enrollment-execute.
 chatgpt_tools_body = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
