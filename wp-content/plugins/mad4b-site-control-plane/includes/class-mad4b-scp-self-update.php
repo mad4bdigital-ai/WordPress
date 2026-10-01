@@ -141,7 +141,7 @@ final class MAD4B_SCP_Self_Update {
 		if ( is_wp_error( $maintenance ) ) {
 			$data = method_exists( $maintenance, 'get_error_data' ) ? $maintenance->get_error_data() : array();
 			$data = is_array( $data ) ? $data : array();
-			$status = array_merge( $status, self::bounded_maintenance_evidence( $data ) );
+			$status = array_merge( $status, $data );
 			$status['state'] = ! empty( $data['operator_action_required'] ) ? 'operator_action_required' : 'deferred_runtime_maintenance';
 			$status['blocker'] = $maintenance->get_error_code();
 			$status['operator_action_required'] = ! empty( $data['operator_action_required'] );
@@ -1121,9 +1121,9 @@ final class MAD4B_SCP_Self_Update {
 		$maintenance_state = isset( $_GET['mad4b_update_maintenance_state'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_update_maintenance_state'] ) ) : '';
 		if ( '' !== $maintenance_state ) {
 			$owner = isset( $_GET['mad4b_update_maintenance_owner'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_update_maintenance_owner'] ) ) : '';
-			$retry = isset( $_GET['mad4b_update_retry_after'] ) ? min( 1200, absint( $_GET['mad4b_update_retry_after'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only redirect evidence.
+			$retry = isset( $_GET['mad4b_update_retry_after'] ) ? min( 1200, absint( wp_unslash( $_GET['mad4b_update_retry_after'] ) ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only redirect evidence.
 			$source = isset( $_GET['mad4b_update_fence_source'] ) ? sanitize_text_field( wp_unslash( $_GET['mad4b_update_fence_source'] ) ) : '';
-			$count = isset( $_GET['mad4b_update_fence_count'] ) ? min( 16, absint( $_GET['mad4b_update_fence_count'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only redirect evidence.
+			$count = isset( $_GET['mad4b_update_fence_count'] ) ? min( 16, absint( wp_unslash( $_GET['mad4b_update_fence_count'] ) ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only redirect evidence.
 			$conflict = isset( $_GET['mad4b_update_fence_conflict'] ) && '1' === sanitize_key( wp_unslash( $_GET['mad4b_update_fence_conflict'] ) );
 			$message .= ' ' . sprintf( __( 'Maintenance state: %s.', 'mad4b-site-control-plane' ), $maintenance_state );
 			if ( '' !== $owner ) $message .= ' ' . sprintf( __( 'Owner: %s.', 'mad4b-site-control-plane' ), $owner );
@@ -1187,9 +1187,9 @@ final class MAD4B_SCP_Self_Update {
 		}
 		if ( ! empty( $status['safe_to_acquire'] ) ) return $status;
 		$classification = isset( $status['classification'] ) ? sanitize_key( (string) $status['classification'] ) : '';
-		$code = 'FENCE_CONFLICT' === $classification
+		$code = 'fence_conflict' === $classification
 			? 'mad4b_runtime_maintenance_fence_conflict'
-			: ( 'STALE_REPAIR_REQUIRED' === $classification ? 'mad4b_runtime_maintenance_stale_repair_required' : 'mad4b_runtime_maintenance_busy' );
+			: ( 'stale_repair_required' === $classification ? 'mad4b_runtime_maintenance_stale_repair_required' : 'mad4b_runtime_maintenance_busy' );
 		return new WP_Error( $code, 'MAD4B runtime maintenance prevents Control Plane replacement.', self::bounded_maintenance_evidence( $status ) );
 	}
 
