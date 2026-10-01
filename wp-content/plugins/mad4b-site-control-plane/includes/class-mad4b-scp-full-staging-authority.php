@@ -294,6 +294,9 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				$breakglass_ready = $normal_ready
 					&& ! empty( $developer_status['breakglass_enabled'] )
 					&& ! empty( $developer_status['breakglass_authority']['ready'] );
+				$write_checkpoint_ready = ! empty( $write['effective_ready'] );
+				$write_grant_snapshot_ready = ! empty( $write['current_ready'] );
+				$write_ready = $write_checkpoint_ready && $write_grant_snapshot_ready;
 
 				return array(
 					'contract' => 'mad4b.full-staging-authority-handshake.v1',
@@ -306,8 +309,15 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'observed_at' => isset( $after['observed_at'] ) ? (string) $after['observed_at'] : gmdate( 'c' ),
 					'ready_to_apply' => ! empty( $plan['ready_to_apply'] ),
 					'hard_blockers' => self::compact_string_list( isset( $plan['hard_blockers'] ) ? $plan['hard_blockers'] : array(), 16 ),
-					'write_ready' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective(),
-					'write_grants_ready' => ! empty( $write['current_ready'] ),
+					// write_ready is operational/current truth. Preserve the historical
+					// checkpoint and grant snapshot as explicit component fields so clients
+					// never have to infer readiness from two contradictory booleans.
+					'write_ready' => $write_ready,
+					'write_checkpoint_ready' => $write_checkpoint_ready,
+					'write_grants_ready' => $write_grant_snapshot_ready,
+					'write_current_grant_snapshot_ready' => $write_grant_snapshot_ready,
+					'write_reconciliation_required' => ! $write_ready,
+					'write_current_readiness_blockers' => isset( $write['current_readiness_blockers'] ) && is_array( $write['current_readiness_blockers'] ) ? self::compact_string_list( $write['current_readiness_blockers'], 16 ) : array( 'write_reconciliation_plan_unavailable' ),
 					'developer_ready' => $normal_ready,
 					'developer_breakglass_ready' => $breakglass_ready,
 					'candidate_binding' => array(
