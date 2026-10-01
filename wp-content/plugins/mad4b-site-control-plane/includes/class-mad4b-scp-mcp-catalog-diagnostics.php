@@ -16,23 +16,42 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	}
 
 	/** Convert each requested ability using the same official builder as registration. No execution. */
+	public static function budget_projection( array $abilities, array $optional ) {
+		$abilities = array_values( array_map( 'strval', $abilities ) );
+		$optional = array_values( array_unique( array_map( 'strval', $optional ) ) );
+		if ( count( array_unique( $abilities ) ) !== count( $abilities ) ) {
+			return array( 'ready' => false, 'blocker' => 'mcp_catalog_duplicate_ability', 'selected' => array(), 'excluded_optional' => array() );
+		}
+		$required = array_values( array_diff( $abilities, $optional ) );
+		if ( count( $required ) > self::MAX_TOOLS ) {
+			return array( 'ready' => false, 'blocker' => 'mcp_required_catalog_budget_exceeded', 'selected' => array(), 'excluded_optional' => array() );
+		}
+		$capacity = max( 0, self::MAX_TOOLS - count( $required ) );
+		$optional_requested = array_values( array_intersect( $optional, $abilities ) );
+		$optional_kept = array_slice( $optional_requested, 0, $capacity );
+		$optional_excluded = array_slice( $optional_requested, $capacity );
+		$allow = array_fill_keys( array_merge( $required, $optional_kept ), true );
+		$selected = array_values( array_filter( $abilities, static function ( $name ) use ( $allow ) { return isset( $allow[ $name ] ); } ) );
+		return array(
+			'ready' => true,
+			'blocker' => '',
+			'selected' => $selected,
+			'excluded_optional' => $optional_excluded,
+			'required_count' => count( $required ),
+			'optional_capacity' => $capacity,
+		);
+	}
+
 	public static function preflight( array $abilities, array $optional ) {
 		$out = array( 'ready' => false, 'degraded' => false, 'tools' => array(), 'failures' => array(), 'blocker' => '' );
 		$abilities = array_values( array_map( 'strval', $abilities ) );
 		$optional = array_values( array_unique( array_map( 'strval', $optional ) ) );
-		if ( count( array_unique( $abilities ) ) !== count( $abilities ) ) { $out['blocker'] = 'mcp_catalog_duplicate_ability'; return $out; }
-
 		// Required transport tools are never sacrificed to fit the client refresh
-		// budget. Reviewed direct step-ups are optional projections and may be
-		// deterministically omitted when a provider-rich site would exceed MAX_TOOLS.
-		$required = array_values( array_diff( $abilities, $optional ) );
-		if ( count( $required ) > self::MAX_TOOLS ) { $out['blocker'] = 'mcp_required_catalog_budget_exceeded'; return $out; }
-		$optional_capacity = max( 0, self::MAX_TOOLS - count( $required ) );
-		$optional_requested = array_values( array_intersect( $optional, $abilities ) );
-		$optional_kept = array_slice( $optional_requested, 0, $optional_capacity );
-		$optional_excluded = array_slice( $optional_requested, $optional_capacity );
-		$budget_allow = array_fill_keys( array_merge( $required, $optional_kept ), true );
-		foreach ( $optional_excluded as $name ) {
+		// budget. Reviewed direct step-ups may be deterministically omitted.
+		$budget = self::budget_projection( $abilities, $optional );
+		if ( empty( $budget['ready'] ) ) { $out['blocker'] = $budget['blocker']; return $out; }
+		$budget_allow = array_fill_keys( $budget['selected'], true );
+		foreach ( $budget['excluded_optional'] as $name ) {
 			$out['failures'][] = array(
 				'stage' => 'catalog_budget',
 				'error_class' => 'Budget',
