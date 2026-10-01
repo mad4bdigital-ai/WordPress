@@ -60,6 +60,17 @@ require(skills_projection, "MAD4B_SCP_Truth_Projection::candidate_identity_bound
 require(skills_projection, "'historical_ready'", "skills projection preserves persisted historical result")
 require(skills_projection, "'build_identity_current'", "skills projection exposes persisted build freshness")
 require(skills_projection, "'stale_reasons'", "skills projection exposes persisted freshness reasons")
+for marker in (
+    "'effective_skill_ready_scope' => 'candidate_identity_bound_checkpoint_only'",
+    "'candidate_identity_bound_ready'",
+    "'live_skill_ready' = null",
+    "'ready' = null",
+    "'live_skill_evaluation_deferred' = true",
+):
+    if marker not in skills_projection:
+        raise SystemExit("session-safe Skills projection must distinguish candidate-bound checkpoint evidence from live readiness: " + marker)
+if "$result['ready'] = ! empty( $projection['effective_ready'] )" in skills_projection:
+    raise SystemExit("session-safe Skills projection must not promote candidate-bound persisted evidence to live ready")
 skill_freshness = skills.split("private static function project_persisted_freshness( array $stored )", 1)[1].split("private static function evaluate()", 1)[0]
 require(skill_freshness, "$stored['historical_ready']", "persisted Skill freshness preserves historical ready")
 require(skill_freshness, "array_key_exists( 'historical_ready', $stored )", "persisted Skill historical ready is idempotent")
@@ -183,6 +194,7 @@ for marker in (
     "'current_candidate_match'",
     "'effective_skill_ready'",
     "'subject_blockers'",
+    "'subject_live_validation_deferred' => array( 'skills_runtime' )",
     "'valid_for_merge' => $valid_for_session_evidence_merge",
     "'valid_for_session_evidence_merge' => $valid_for_session_evidence_merge",
     "'valid_for_release_merge' => false",
