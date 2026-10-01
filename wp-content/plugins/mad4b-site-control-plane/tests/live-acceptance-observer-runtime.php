@@ -199,10 +199,15 @@ namespace {
 	$current_build_method->setAccessible( true );
 	$current_build = (string) $current_build_method->invoke( null );
 	mad4b_assert( 1 === preg_match( '/^[a-f0-9]{64}$/', $current_build ), 'Runtime fixture must resolve a current build fingerprint for performance evidence.' );
+	$current_package_method = $observer_reflection->getMethod( 'current_package_identity_token' );
+	$current_package_method->setAccessible( true );
+	$current_package = (string) $current_package_method->invoke( null );
+	mad4b_assert( 1 === preg_match( '/^[a-f0-9]{64}$/', $current_package ), 'Runtime fixture must resolve the exact package identity token for performance evidence.' );
 	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ] = array(
 		'contract' => MAD4B_SCP_Live_Acceptance_Observer::QUERY_MONITOR_CONTRACT,
 		'control_plane_version' => MAD4B_SCP_VERSION,
 		'build_fingerprint' => $current_build,
+		'package_identity_token' => $current_package,
 		'capture_started_at' => gmdate( 'Y-m-d H:i:s', time() - 60 ),
 		'last_observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ),
 		'observed_request_count' => 1,
