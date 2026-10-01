@@ -117,6 +117,10 @@ require(write_plan, "MAD4B_SCP_Truth_Projection::governed_write_grant_snapshot",
 if "'current_ready' => $persisted_ready" in write_plan:
     raise SystemExit("write reconciliation still aliases current_ready to persisted_ready")
 require(write_plan, "'current_readiness_blockers'", "write reconciliation exposes current readiness blockers")
+deep_write_projection = read_consistency.split("private static function deep_write_authority_projection()", 1)[1].split("private static function skills_projection()", 1)[0]
+require(deep_write_projection, "'live_truth_unavailable'", "deep Write projection fail-closed fallback")
+if "MAD4B_SCP_Staging_Write_Authority::status()" in deep_write_projection:
+    raise SystemExit("deep Write projection may not downgrade to persisted authority when Live Truth is unavailable")
 
 # 0c. Session-safe identity truth remains strict and deferred readiness stays tri-state.
 for marker in (

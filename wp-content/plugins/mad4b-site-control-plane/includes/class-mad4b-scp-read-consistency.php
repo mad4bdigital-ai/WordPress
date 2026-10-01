@@ -1128,7 +1128,13 @@ final class MAD4B_SCP_Read_Consistency {
 	private static function deep_write_authority_projection() {
 		$status = class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_authority_status' )
 			? MAD4B_SCP_Live_Truth::current_authority_status()
-			: ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array() );
+			: array(
+				'contract' => 'mad4b.deep-write-authority-projection.v1',
+				'ready' => false,
+				'state' => 'live_truth_unavailable',
+				'blocker' => 'live_truth_unavailable',
+				'blockers' => array( 'live_truth_unavailable' ),
+			);
 		if ( is_wp_error( $status ) ) return $status;
 		return self::bounded_keys( $status, array(
 			'contract', 'truth_contract', 'ready', 'state', 'eligible', 'blocker', 'blockers',
