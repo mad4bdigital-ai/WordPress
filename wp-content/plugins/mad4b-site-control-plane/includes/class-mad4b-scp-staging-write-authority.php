@@ -1664,6 +1664,30 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	}
 
 	public static function reconcile() {
+		$lease_token = null;
+		$lease_owner = 'governed_write_reconciliation';
+		if ( class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ) {
+			$lease_token = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( $lease_owner );
+			if ( is_wp_error( $lease_token ) ) {
+				$status = self::base_status();
+				$status['ready'] = false;
+				$status['state'] = 'blocked';
+				$status['blocker'] = $lease_token->get_error_code();
+				$status['runtime_maintenance_serialized'] = true;
+				$status['mutation_performed'] = false;
+				return $status;
+			}
+		}
+		try {
+			return self::reconcile_under_runtime_fence();
+		} finally {
+			if ( is_string( $lease_token ) && '' !== $lease_token && class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) ) {
+				MAD4B_SCP_Runtime_Maintenance_Lease::release( $lease_token, $lease_owner );
+			}
+		}
+	}
+
+	private static function reconcile_under_runtime_fence() {
 		if ( self::$reconciling ) return self::status();
 		self::$reconciling = true;
 		$status = self::base_status();
