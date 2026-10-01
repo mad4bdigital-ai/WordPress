@@ -130,8 +130,16 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		// Passive Control Plane GET/HEAD pages are request-serving views, not
 		// instrumentation bootstrap jobs. Do not inspect/create db.php, read Query
 		// Monitor loader files or persist attribution bootstrap state before render.
-		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
-			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath() ) {
+		$passive_admin = class_exists( 'MAD4B_SCP_MCP_Request_Scope', false )
+			&& MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath();
+		if ( ! $passive_admin ) {
+			$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( trim( (string) $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+			$passive_admin = in_array( $method, array( 'GET', 'HEAD' ), true )
+				&& ( 'mad4b-control-plane' === $page
+					|| 0 === strpos( $page, 'mad4b-control-plane-' )
+					|| in_array( $page, array( 'mad4b-adapter-coverage', 'mad4b-runtime-components', 'mad4b-approval-decisions' ), true ) );
+		}
+		if ( $passive_admin ) {
 			return array( 'state' => 'deferred_passive_mad4b_admin', 'mutation_performed' => false );
 		}
 		return self::enable_db_attribution_explicit();
