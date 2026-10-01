@@ -47,6 +47,15 @@ if ( is_wp_error( $token ) || ! is_string( $token ) || '' === $token ) {
 	$fail( 'Unable to mint local ChatGPT bearer for REST proof.', is_wp_error( $token ) ? $token->get_error_code() : $token );
 }
 
+if ( MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) $fail( 'Bearer context must be inactive before the first real REST dispatch.' );
+$preauth_server = \WP\MCP\Core\McpAdapter::instance()->get_server( 'mad4b-chatgpt' );
+if ( ! is_object( $preauth_server ) ) $fail( 'ChatGPT MCP server was not materialized before bearer verification.' );
+$preauth_names = array();
+foreach ( $preauth_server->get_tools() as $dto ) if ( is_object( $dto ) && method_exists( $dto, 'getName' ) ) $preauth_names[] = $dto->getName();
+if ( ! in_array( 'mad4b-full-staging-authority-apply', $preauth_names, true ) ) {
+	$fail( 'Pre-auth server registration did not retain the bounded step-up superset required for post-auth visibility.', $preauth_names );
+}
+
 // Observe the final pre_http_request state after the local loopback guards have
 // had a chance to preempt same-origin metadata/JWKS requests. Any request that
 // remains unpreempted here would be a real outbound network dependency.
@@ -150,10 +159,13 @@ foreach ( array(
 	'mad4b-write-discover',
 	'mad4b-write-info',
 	'mad4b-write-execute',
-	'mad4b-plugin-package-plan',
-	'mad4b-full-staging-authority-apply'
+	'mad4b-plugin-package-plan'
 ) as $required ) {
 	if ( ! in_array( $required, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required minimal transport tool.', $required );
+}
+
+if ( in_array( 'mad4b-full-staging-authority-apply', $names, true ) ) {
+	$fail( 'Read-only bearer tools/list exposed a step-up projection before the dedicated scope/client gate.', $names );
 }
 
 // Large normal reads/writes and low-level enrollment mutations must remain
@@ -216,9 +228,9 @@ if ( in_array( 'mad4b-database-raw-query', $names, true ) ) {
 	$fail( 'OAuth bearer tools/list exposed Breakglass Raw SQL.', 'mad4b-database-raw-query' );
 }
 
-// Visibility is not authority: the composite apply may be present in tools/list
-// for exact enrolled Staging, but a read-only bearer must be denied before any
-// plan execution or mutation because it lacks the dedicated step-up scope.
+// Visibility is request-authority filtered: a read-only bearer must not see the
+// composite step-up tool in tools/list. A direct call by a client that already
+// knows the name must still be denied before plan execution or mutation.
 $syntactic_apply = array(
 	'expected_plan_sha256' => str_repeat( '0', 64 ),
 	'expected_source_commit_sha' => str_repeat( '0', 40 ),
@@ -307,6 +319,9 @@ if ( empty( $preflight['ready'] ) || ! empty( $preflight['failures'] ) ) $fail( 
 $step_list = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 726, 'method' => 'tools/list', 'params' => array() ), $step_up_token, $step_session_id );
 $step_wire = json_decode( json_encode( $step_list->get_data(), JSON_THROW_ON_ERROR ) );
 if ( 200 !== $step_list->get_status() || ! isset( $step_wire->result->tools ) || count( $step_wire->result->tools ) !== count( $catalog_names ) ) $fail( 'Step-up bearer serialized inventory mismatch.' );
+$step_names = array();
+foreach ( $step_wire->result->tools as $dto ) if ( isset( $dto->name ) && is_string( $dto->name ) ) $step_names[] = $dto->name;
+if ( ! in_array( 'mad4b-full-staging-authority-apply', $step_names, true ) ) $fail( 'Exact ChatGPT step-up bearer did not receive the post-auth step-up projection.', $step_names );
 foreach ( $step_wire->result->tools as $dto ) {
 	if ( ! isset( $dto->inputSchema->properties ) || ! is_object( $dto->inputSchema->properties ) ) $fail( 'Actual wire input properties must remain a JSON object.', $dto->name );
 }
@@ -565,8 +580,11 @@ fwrite(
 			'unpreempted_http_calls' => count( $unpreempted_http ),
 			'session_established' => true,
 			'bearer_identity_verified' => true,
+			'registration_bearer_invariant' => true,
+			'read_bearer_step_up_hidden' => true,
 			'read_bearer_step_up_denied' => true,
 			'step_up_bearer_scope_verified' => true,
+			'step_up_bearer_projection_visible' => true,
 			'foreign_step_up_client_denied' => true,
 			'false_exact_identity_fail_closed' => true,
 			'browser_read_dispatch_verified' => true,
