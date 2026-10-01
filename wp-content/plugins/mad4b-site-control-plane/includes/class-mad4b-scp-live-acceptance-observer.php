@@ -268,8 +268,8 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		if ( function_exists( 'is_admin' ) && is_admin() ) return 'wp_admin';
 		return 'frontend';
 	}
-	private static function &telemetry() { if ( null !== self::$telemetry ) return self::$telemetry; $current_build = self::current_build_fingerprint(); $stored = self::staging_capture_allowed() ? get_option( self::TELEMETRY_OPTION, array() ) : array(); $valid = is_array( $stored ) && isset( $stored['build_fingerprint'], $stored['capture_started_at'] ) && hash_equals( (string) $stored['build_fingerprint'], $current_build ); $started = $valid ? strtotime( (string) $stored['capture_started_at'] . ' UTC' ) : false; if ( ! $valid || false === $started || ( time() - $started ) > self::TELEMETRY_TTL ) $stored = self::empty_telemetry( $current_build ); self::$telemetry = $stored; return self::$telemetry; }
-	private static function empty_telemetry( $build ) { return array( 'contract' => self::QUERY_MONITOR_CONTRACT, 'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '', 'build_fingerprint' => (string) $build, 'capture_started_at' => gmdate( 'Y-m-d H:i:s' ), 'last_observed_at' => '', 'observed_request_count' => 0, 'request_coverage' => array( 'mcp' => 0, 'rest' => 0, 'wp_admin' => 0, 'frontend' => 0, 'cron' => 0 ), 'canary_coverage' => array( 'wpml_admin' => 0, 'site_health_rest' => 0, 'wpml_external_rest' => 0, 'generic_cron' => 0 ), 'counters' => array( 'mad4b' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'ability_not_found' => 0, 'wp_get_ability_missing' => 0, 'pre_init_abilities_violation' => 0 ), 'third_party' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'fluentform_action_scheduler' => 0 ), 'wordpress_core' => array(), 'unknown' => array() ), 'events' => array(), 'events_by_bucket' => array( 'mad4b' => array(), 'third_party' => array(), 'wordpress_core' => array(), 'unknown' => array() ), 'performance' => array( 'contract' => 'mad4b.frontend-performance-evidence.v1', 'frontend_observed' => false, 'rest_observed' => false, 'samples' => array(), 'last_by_class' => array() ) ); }
+	private static function &telemetry() { if ( null !== self::$telemetry ) return self::$telemetry; $current_build = self::current_build_fingerprint(); $current_package = self::current_package_identity_token(); $stored = self::staging_capture_allowed() ? get_option( self::TELEMETRY_OPTION, array() ) : array(); $valid = is_array( $stored ) && isset( $stored['build_fingerprint'], $stored['package_identity_token'], $stored['capture_started_at'] ) && '' !== $current_package && hash_equals( (string) $stored['build_fingerprint'], $current_build ) && hash_equals( (string) $stored['package_identity_token'], $current_package ); $started = $valid ? strtotime( (string) $stored['capture_started_at'] . ' UTC' ) : false; if ( ! $valid || false === $started || ( time() - $started ) > self::TELEMETRY_TTL ) $stored = self::empty_telemetry( $current_build, $current_package ); self::$telemetry = $stored; return self::$telemetry; }
+	private static function empty_telemetry( $build, $package_identity_token = '' ) { return array( 'contract' => self::QUERY_MONITOR_CONTRACT, 'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '', 'build_fingerprint' => (string) $build, 'package_identity_token' => (string) $package_identity_token, 'capture_started_at' => gmdate( 'Y-m-d H:i:s' ), 'last_observed_at' => '', 'observed_request_count' => 0, 'request_coverage' => array( 'mcp' => 0, 'rest' => 0, 'wp_admin' => 0, 'frontend' => 0, 'cron' => 0 ), 'canary_coverage' => array( 'wpml_admin' => 0, 'site_health_rest' => 0, 'wpml_external_rest' => 0, 'generic_cron' => 0 ), 'counters' => array( 'mad4b' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'ability_not_found' => 0, 'wp_get_ability_missing' => 0, 'pre_init_abilities_violation' => 0 ), 'third_party' => array( 'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0, 'deprecated_hook' => 0, 'deprecated_class' => 0, 'fluentform_action_scheduler' => 0 ), 'wordpress_core' => array(), 'unknown' => array() ), 'events' => array(), 'events_by_bucket' => array( 'mad4b' => array(), 'third_party' => array(), 'wordpress_core' => array(), 'unknown' => array() ), 'performance' => array( 'contract' => 'mad4b.frontend-performance-evidence.v1', 'frontend_observed' => false, 'rest_observed' => false, 'samples' => array(), 'last_by_class' => array() ) ); }
 	public static function flush_observation() { if ( self::connection_admin_hotpath() || ! self::$telemetry_dirty || ! self::staging_capture_allowed() || ! is_array( self::$telemetry ) ) return; self::$telemetry['events'] = array_slice( isset( self::$telemetry['events'] ) ? self::$telemetry['events'] : array(), -1 * self::MAX_EVENTS ); update_option( self::TELEMETRY_OPTION, self::$telemetry, false ); self::$telemetry_dirty = false; }
 
 
@@ -350,7 +350,10 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	public static function query_monitor_status() {
 		$telemetry = self::telemetry();
 		$current_build = self::current_build_fingerprint();
-		$current_match = isset( $telemetry['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $telemetry['build_fingerprint'] );
+		$current_package = self::current_package_identity_token();
+		$current_build_match = isset( $telemetry['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $telemetry['build_fingerprint'] );
+		$current_package_match = isset( $telemetry['package_identity_token'] ) && '' !== $current_package && hash_equals( $current_package, (string) $telemetry['package_identity_token'] );
+		$current_match = $current_build_match && $current_package_match;
 		$count = isset( $telemetry['observed_request_count'] ) ? (int) $telemetry['observed_request_count'] : 0;
 		$closed_observation = ! empty( $telemetry['last_observed_at'] );
 		$fresh = self::staging_capture_allowed() && $current_match && $count > 0 && $closed_observation;
@@ -368,7 +371,8 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'current_build' => array( 'version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '', 'build_fingerprint' => $current_build ),
 			'evidence' => array(
 				'fresh' => $fresh,
-				'current_build_match' => $current_match,
+				'current_build_match' => $current_build_match,
+				'current_package_identity_match' => $current_package_match,
 				'capture_started_at' => isset( $telemetry['capture_started_at'] ) ? $telemetry['capture_started_at'] : '',
 				'last_observed_at' => isset( $telemetry['last_observed_at'] ) ? $telemetry['last_observed_at'] : '',
 				'observed_request_count' => $count,
@@ -435,7 +439,10 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	public static function frontend_performance_status() {
 		$telemetry = self::telemetry();
 		$current_build = self::current_build_fingerprint();
-		$current_match = isset( $telemetry['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $telemetry['build_fingerprint'] );
+		$current_package = self::current_package_identity_token();
+		$current_build_match = isset( $telemetry['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $telemetry['build_fingerprint'] );
+		$current_package_match = isset( $telemetry['package_identity_token'] ) && '' !== $current_package && hash_equals( $current_package, (string) $telemetry['package_identity_token'] );
+		$current_match = $current_build_match && $current_package_match;
 		$performance = isset( $telemetry['performance'] ) && is_array( $telemetry['performance'] ) ? $telemetry['performance'] : array();
 		$latest = isset( $performance['last_by_class']['frontend'] ) && is_array( $performance['last_by_class']['frontend'] ) ? $performance['last_by_class']['frontend'] : array();
 		$frontend_observed = ! empty( $performance['frontend_observed'] );
@@ -478,10 +485,11 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		$budget_pass = $minimum_samples_met && empty( $budget_failures );
 		$fresh = self::staging_capture_allowed() && $current_match && $frontend_observed;
 		$ready = $fresh && $minimum_samples_met && $budget_pass;
-		$state = ! $current_match ? 'stale_build_evidence'
+		$state = ! $current_package_match ? 'stale_package_identity_evidence'
+			: ( ! $current_build_match ? 'stale_build_evidence'
 			: ( ! $frontend_observed ? 'frontend_not_observed'
 			: ( ! $minimum_samples_met ? 'insufficient_frontend_samples'
-			: ( $budget_pass ? 'ready' : 'performance_budget_exceeded' ) ) );
+			: ( $budget_pass ? 'ready' : 'performance_budget_exceeded' ) ) ) );
 		return array(
 			'contract' => 'mad4b.frontend-performance-evidence.v3',
 			'ready' => $ready,
@@ -492,7 +500,8 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'budget_failures' => $budget_failures,
 			'budget' => $budget,
 			'reference_baseline' => $reference,
-			'current_build_match' => $current_match,
+			'current_build_match' => $current_build_match,
+			'current_package_identity_match' => $current_package_match,
 			'frontend_observed' => $frontend_observed,
 			'capture_started_at' => isset( $telemetry['capture_started_at'] ) ? (string) $telemetry['capture_started_at'] : '',
 			'last_observed_at' => isset( $telemetry['last_observed_at'] ) ? (string) $telemetry['last_observed_at'] : '',
@@ -590,6 +599,17 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		sort( $lines, SORT_STRING ); $digest = hash( 'sha256', implode( '', $lines ) ); if ( ! hash_equals( (string) $data['package_manifest_digest'], $digest ) ) $mismatch[] = 'package_manifest_digest_mismatch'; if ( ! self::artifact_identity_matches_source( $base['artifact_identity'], $base['source_commit_sha'] ) ) $mismatch[] = 'artifact_identity_invalid'; if ( (string) $base['version'] !== (string) ( isset( $data['control_plane_version'] ) ? $data['control_plane_version'] : '' ) ) $mismatch[] = 'control_plane_version_mismatch'; $base['runtime_manifest_match'] = empty( $mismatch ); $base['stale'] = ! $base['runtime_manifest_match']; $base['provenance_mismatch'] = array_values( array_unique( $mismatch ) ); return $base;
 	}
 	private static function provenance_manifest() { if ( is_array( self::$provenance_manifest_cache ) ) return self::$provenance_manifest_cache; $path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' : ''; if ( '' === $path || ! is_readable( $path ) ) return array(); $data = json_decode( (string) file_get_contents( $path ), true ); if ( is_array( $data ) ) self::$provenance_manifest_cache = $data; return is_array( $data ) ? $data : array(); }
+	private static function current_package_identity_token() {
+		$identity = self::build_provenance_identity_status();
+		if ( empty( $identity['identity_ready'] ) ) return '';
+		$parts = array();
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) {
+			if ( empty( $identity[ $key ] ) ) return '';
+			$parts[] = (string) $identity[ $key ];
+		}
+		return hash( 'sha256', implode( "\n", $parts ) );
+	}
+
 	private static function current_build_fingerprint() { $manifest = self::provenance_manifest(); if ( isset( $manifest['build_fingerprint'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $manifest['build_fingerprint'] ) ) return strtolower( (string) $manifest['build_fingerprint'] ); $legacy = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? MAD4B_SCP_External_Handshake_Evidence::build_fingerprint() : ''; $self_hash = is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : ''; return hash( 'sha256', self::CONTRACT . "\n" . ( defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '' ) . "\n" . $legacy . "\n" . $self_hash ); }
 
 	public static function observe_rest_response( $response, $server, $request ) { self::observe_wpml_response( $response, $request ); self::observe_external_handshake( $response, $request ); return $response; }
