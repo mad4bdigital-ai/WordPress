@@ -617,6 +617,9 @@ for marker in (
     "'mcp_peer_inventory_deferred_admin_hotpath'",
     "'state' => $protocol_hotpath ? 'deferred_protocol_hotpath' : 'deferred_admin_hotpath'",
     "'deep_connection_diagnostics_deferred'",
+    "'connection_certification_deferred'",
+    "'connection_certification_state'",
+    "$connection_certified ? 'certified' : ( $connection_certification_deferred ? 'deferred' : 'not_certified' )",
     "'status_mode' => $force_deep ? 'deep_explicit'",
     "MAD4B_SCP_OAuth_Resource_Bridge::runtime_identity_status()",
     "MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( $id )",
@@ -644,6 +647,14 @@ require(ui, 'form method="post"', 'connection-ui-deep-post-form')
 require(ui, "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()", 'connection-ui-oauth-identity-projection')
 require(ui, "'endpoints' === $tab", 'connection-ui-deep-tab-gate')
 require(ui, "MAD4B_SCP_Local_OAuth_Server::status()", 'connection-ui-explicit-deep-oauth-remains')
+for marker in (
+    "connection_certification_deferred",
+    "connection_certification_state",
+    "'Deferred'",
+    "'Run deep diagnostics'",
+    "'Deferred verification'",
+):
+    require(ui, marker, 'connection-ui-deferred-certification-tristate')
 
 # Protocol connection status consumes persisted handshake evidence only. Live
 # build/tool revalidation remains available through explicit deep diagnostics.
