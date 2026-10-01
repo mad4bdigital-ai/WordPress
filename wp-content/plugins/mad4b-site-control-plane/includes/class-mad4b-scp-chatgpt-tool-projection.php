@@ -301,6 +301,9 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$mcp_preflight = class_exists( 'MAD4B_SCP_MCP_Catalog_Diagnostics' )
 			? MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $requested_tools, $all_optional )
 			: array( 'ready' => false, 'blocker' => 'mcp_catalog_preflight_unavailable' );
+		$preflight_tools = isset( $mcp_preflight['tools'] ) && is_array( $mcp_preflight['tools'] ) ? $mcp_preflight['tools'] : array();
+		$unprojectable = array_values( array_diff( $optional, $preflight_tools ) );
+		$ready_for_apply = ! empty( $mcp_preflight['ready'] ) && empty( $unprojectable );
 		return array(
 			'contract' => self::CONTRACT,
 			'plan_sha256' => $plan_sha256,
@@ -310,6 +313,8 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'base_tool_count' => count( $base ),
 			'budget' => $budget,
 			'mcp_preflight' => $mcp_preflight,
+			'unprojectable_abilities' => $unprojectable,
+			'ready_for_apply' => $ready_for_apply,
 			'projection_changes_authority' => false,
 			'execution_permission_callbacks_preserved' => true,
 			'read_only' => true,
@@ -334,11 +339,14 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( ! isset( $input['confirmation'] ) || self::CONFIRMATION !== (string) $input['confirmation'] ) return new WP_Error( 'mad4b_chatgpt_projection_confirmation_required', 'Exact projection confirmation is required.' );
 		$plan = self::plan( $input );
 		if ( is_wp_error( $plan ) ) return $plan;
-		if ( empty( $plan['mcp_preflight']['ready'] ) ) {
+		if ( empty( $plan['ready_for_apply'] ) ) {
 			return new WP_Error(
 				'mad4b_chatgpt_projection_preflight_blocked',
-				'Projection cannot be applied because the exact resulting MCP catalog did not pass preflight.',
-				array( 'blocker' => isset( $plan['mcp_preflight']['blocker'] ) ? (string) $plan['mcp_preflight']['blocker'] : 'unknown' )
+				'Projection cannot be applied because every requested Ability must survive the exact resulting MCP catalog preflight and budget.',
+				array(
+					'blocker' => isset( $plan['mcp_preflight']['blocker'] ) ? (string) $plan['mcp_preflight']['blocker'] : 'unknown',
+					'unprojectable_abilities' => isset( $plan['unprojectable_abilities'] ) ? $plan['unprojectable_abilities'] : array(),
+				)
 			);
 		}
 		$expected = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
