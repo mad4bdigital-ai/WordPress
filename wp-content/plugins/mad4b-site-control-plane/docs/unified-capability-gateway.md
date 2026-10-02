@@ -20,4 +20,4 @@ The MCP specification exposes tools/list pagination and list-changed notificatio
 
 ## Resource bounds
 
-The host client defaults to at most 1,024 manifest pages and 32 MiB for one assembled schema. Hosts may lower these limits or explicitly raise them within the client hard ceilings. Server response budgets, retained-storage capacity, chunk sizes and preparation batch sizes remain separately bounded.
+The host client defaults to at most 1,024 manifest pages, 32 MiB for one assembled schema and four parallel REST schema fetches. Parallelism is adaptive and bounded; MCP schema transfer remains sequential by default unless a future host contract proves safe concurrent tool calls. Hosts may lower these limits or explicitly raise them within the client hard ceilings. Server response budgets, retained-storage capacity, chunk sizes and preparation batch sizes remain separately bounded.
