@@ -490,6 +490,21 @@ final class MAD4B_SCP_Context_Preflight {
 				array( 'context_receipt_transport_budget_exceeded' )
 			) ) );
 			$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
+			$compacted_json = wp_json_encode( $receipt, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			if ( ! is_string( $compacted_json ) || strlen( $compacted_json ) > self::MAX_RECEIPT_TRANSPORT_BYTES ) {
+				// Pathological metadata must not create an untransportable receipt
+				// even after asset summaries are removed. Preserve only bounded
+				// denial evidence; this object can never authorize a mutation.
+				$receipt = array(
+					'contract' => self::RECEIPT_CONTRACT,
+					'ephemeral' => true,
+					'persistence_state' => 'transport_budget_blocked',
+					'ready' => false,
+					'blockers' => array( 'context_receipt_transport_budget_exceeded' ),
+					'observed_at' => gmdate( 'c' ),
+				);
+				$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
+			}
 		}
 		return $receipt;
 	}
