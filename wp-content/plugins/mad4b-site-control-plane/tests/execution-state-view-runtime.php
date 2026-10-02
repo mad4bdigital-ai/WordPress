@@ -51,10 +51,10 @@ $cases = array(
 	array( 'state' => 'planned', 'outcome' => '', 'orphan' => false, 'expected' => 'PREPARED', 'terminal' => false, 'reconcile' => false ),
 	array( 'state' => 'running', 'outcome' => '', 'orphan' => false, 'expected' => 'EXECUTING', 'terminal' => false, 'reconcile' => false ),
 	array( 'state' => 'completed', 'outcome' => 'committed', 'orphan' => false, 'expected' => 'COMMITTED', 'terminal' => true, 'reconcile' => false ),
-	array( 'state' => 'completed', 'outcome' => '', 'orphan' => false, 'expected' => 'UNKNOWN', 'terminal' => false, 'reconcile' => false ),
+	array( 'state' => 'completed', 'outcome' => '', 'orphan' => false, 'expected' => 'UNKNOWN', 'terminal' => false, 'reconcile' => true ),
 	array( 'state' => 'terminal_failed', 'outcome' => 'failed', 'orphan' => false, 'expected' => 'FAILED', 'terminal' => true, 'reconcile' => false ),
 	array( 'state' => 'running', 'outcome' => '', 'orphan' => true, 'expected' => 'RECONCILING', 'terminal' => false, 'reconcile' => true ),
-	array( 'state' => 'future_state', 'outcome' => '', 'orphan' => false, 'expected' => 'UNKNOWN', 'terminal' => false, 'reconcile' => false ),
+	array( 'state' => 'future_state', 'outcome' => '', 'orphan' => false, 'expected' => 'UNKNOWN', 'terminal' => false, 'reconcile' => true ),
 );
 foreach ( $cases as $case ) {
 	$status = $base_journal;
@@ -86,7 +86,7 @@ $resume_cases = array(
 	array( 'status' => 'released_verified_no_effect', 'expired' => true, 'reconcile' => false, 'expected' => 'PREPARED', 'retry' => true ),
 	array( 'status' => 'pending', 'expired' => false, 'reconcile' => false, 'expected' => 'EXECUTING', 'retry' => false ),
 	array( 'status' => 'pending', 'expired' => true, 'reconcile' => true, 'expected' => 'RECONCILING', 'retry' => false ),
-	array( 'status' => 'foreign', 'expired' => false, 'reconcile' => false, 'expected' => 'UNKNOWN', 'retry' => false ),
+	array( 'status' => 'foreign', 'expired' => false, 'reconcile' => true, 'expected' => 'UNKNOWN', 'retry' => false ),
 );
 foreach ( $resume_cases as $case ) {
 	$status = $base_resume;
@@ -117,7 +117,7 @@ $unknown_view = MAD4B_SCP_Execution_State_View::mutation_error( $unknown );
 $check( 'RECONCILING' === $unknown_view['canonical_state'] && true === $unknown_view['reconciliation_required'] && false === $unknown_view['blind_retry_allowed'], 'Unknown mutation outcome did not require reconciliation.', $unknown_view );
 
 $unmapped_error = MAD4B_SCP_Execution_State_View::mutation_error( new WP_Error( 'fixture_unmapped' ) );
-$check( 'UNKNOWN' === $unmapped_error['canonical_state'] && ! empty( $unmapped_error['unmapped_source_state'] ), 'Unmapped mutation error was promoted to a known state.', $unmapped_error );
+$check( 'UNKNOWN' === $unmapped_error['canonical_state'] && ! empty( $unmapped_error['unmapped_source_state'] ) && ! empty( $unmapped_error['reconciliation_required'] ), 'Unmapped mutation error did not remain reconciliation-required.', $unmapped_error );
 
 MAD4B_SCP_Operation_Journal::$status = $base_journal;
 $delegated_operation = MAD4B_SCP_Execution_State_View::operation( $base_journal['operation_id'] );
