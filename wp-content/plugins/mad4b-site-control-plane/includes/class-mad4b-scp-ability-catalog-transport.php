@@ -10,10 +10,12 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		if ( is_wp_error( $identity ) || ! is_array( $identity ) ) $identity = array();
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? array_values( array_unique( array_map( 'strval', $identity['token_scopes'] ) ) ) : array();
 		sort( $scopes, SORT_STRING );
+		$allcaps = wp_get_current_user()->allcaps;
+		if ( is_array( $allcaps ) ) ksort( $allcaps, SORT_STRING );
 		return hash( 'sha256', wp_json_encode( array(
 			MAD4B_SCP_ChatGPT_Tool_Projection::current_binding(),
 			get_current_user_id(),
-			wp_get_current_user()->allcaps,
+			$allcaps,
 			isset( $identity['subject_fingerprint'] ) ? (string) $identity['subject_fingerprint'] : '',
 			isset( $identity['issuer_fingerprint'] ) ? (string) $identity['issuer_fingerprint'] : '',
 			isset( $identity['client_fingerprint'] ) ? (string) $identity['client_fingerprint'] : '',
