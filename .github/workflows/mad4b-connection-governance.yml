@@ -278,44 +278,27 @@ jobs:
           MANAGED_MU="$WP_PATH/wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php"
           HOSTINGER_PRELOAD="$WP_PATH/wp-content/mu-plugins/900-hostinger-mcp-preload.php"
           FOREIGN_VALIDATOR="$WP_PATH/wp-content/mu-plugins/900-foreign-mcp-validator.php"
-          FOREIGN_FIXTURE_DIR="$WP_PATH/wp-content/mu-plugins/mad4b-foreign-mcp-fixture"
-          FOREIGN_VALIDATOR_CLASS="$FOREIGN_FIXTURE_DIR/McpToolValidator.php"
 
           # Remove the prior whole-Adapter collision while preserving the same
-          # enrolled managed-runtime Site Profile. This fixture registers a
-          # competing autoloader but deliberately does NOT declare the validator
-          # class yet. McpAdapter itself therefore remains official at init.
+          # enrolled managed-runtime Site Profile. This fixture preclaims only
+          # the validator class; McpAdapter itself must remain official.
           php /tmp/wp-cli.phar plugin deactivate hostinger-ai-assistant --path="$WP_PATH" || true
           rm -f "$MANAGED_MU" "$HOSTINGER_PRELOAD" "$FOREIGN_VALIDATOR"
-          rm -rf "$FOREIGN_FIXTURE_DIR"
-          mkdir -p "$FOREIGN_FIXTURE_DIR"
-
-          cat > "$FOREIGN_VALIDATOR_CLASS" <<'PHP'
-          <?php
-          namespace WP\MCP\Domain\Tools;
-          if ( ! \defined( 'ABSPATH' ) ) { exit; }
-          final class McpToolValidator {
-              public static function validate_tool_dto( $dto ) { return true; }
-          }
-          PHP
 
           cat > "$FOREIGN_VALIDATOR" <<'PHP'
           <?php
-          if ( ! defined( 'ABSPATH' ) ) { exit; }
-          spl_autoload_register(
-              static function ( $class ) {
-                  if ( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' !== $class ) return;
-                  require_once WPMU_PLUGIN_DIR . '/mad4b-foreign-mcp-fixture/McpToolValidator.php';
-              },
-              true,
-              true
-          );
+          namespace WP\MCP\Domain\Tools;
+          if ( ! \defined( 'ABSPATH' ) ) { exit; }
+          if ( ! class_exists( __NAMESPACE__ . '\\McpToolValidator', false ) ) {
+              final class McpToolValidator {
+                  public static function validate_tool_dto( $dto ) { return true; }
+              }
+          }
           PHP
 
-          # Request 1 runs on a repair-authorized WP-CLI lifecycle surface.
-          # Full class-set certification must force resolution of the otherwise
-          # lazy validator, identify the foreign owner, keep this request
-          # fail-closed and arm the governed 000-* MU repair for next request.
+          # Request 1: official Adapter entrypoint + preclaimed foreign validator
+          # must classify as a mixed class set. PHP classes are not swapped in the
+          # current request; the governed 000-* MU repair is armed for next request.
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin
 
           # Request 2: managed 000-* executes before 900-*, verifies the exact
@@ -324,7 +307,6 @@ jobs:
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin
 
           rm -f "$FOREIGN_VALIDATOR"
-          rm -rf "$FOREIGN_FIXTURE_DIR"
 
       - name: Prove passive exact-profile OAuth identity projection is request-local
         shell: bash
