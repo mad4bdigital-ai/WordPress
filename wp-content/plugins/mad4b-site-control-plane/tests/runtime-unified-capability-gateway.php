@@ -42,6 +42,7 @@ $prepared = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
 if ( is_wp_error( $prepared ) ) $fail( 'Ability preparation failed.', $prepared->get_error_code() );
 $item = $prepared['abilities'][0] ?? array();
 if ( 'mad4b/read-execute' !== ( $item['execution']['dispatch_tool'] ?? '' ) ) $fail( 'Read Ability did not map to the governed read dispatcher.', $item );
+if ( empty( $item['input_schema_sha256'] ) || ! hash_equals( (string) $item['input_schema_sha256'], (string) ( $item['execution']['expected_input_schema_sha256'] ?? '' ) ) ) $fail( 'Read dispatcher did not receive the exact prepared input schema pin.', $item );
 if ( empty( $item['schema_sha256'] ) || empty( $item['snapshot'] ) || ! isset( $item['schema']['inputSchema'] ) ) $fail( 'Lazy schema preparation did not return an inline exact schema.', $item );
 $digest = (string) $item['schema_sha256'];
 
@@ -53,6 +54,18 @@ $cached = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
 if ( is_wp_error( $cached ) ) $fail( 'Cached preparation failed.', $cached->get_error_code() );
 $cached_item = $cached['abilities'][0] ?? array();
 if ( 'reusable' !== ( $cached_item['schema_cache_state'] ?? '' ) || isset( $cached_item['schema'] ) ) $fail( 'Matching schema fingerprint was not reused.', $cached_item );
+
+if ( wp_has_ability( 'mad4b/chatgpt-tool-projection-apply' ) ) {
+	$enrollment = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
+		'action' => 'prepare',
+		'ability_names' => array( 'mad4b/chatgpt-tool-projection-apply' ),
+	), 'rest' );
+	if ( is_wp_error( $enrollment ) ) $fail( 'Enrollment-style preparation failed.', $enrollment->get_error_code() );
+	$enrollment_item = $enrollment['abilities'][0] ?? array();
+	if ( 'requires_operation_resolution' !== ( $enrollment_item['execution']['state'] ?? '' ) || ! empty( $enrollment_item['execution']['direct_ability_dispatch'] ) ) {
+		$fail( 'Enrollment Ability was incorrectly described as directly dispatchable.', $enrollment_item );
+	}
+}
 
 if ( wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 	$unsafe = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
