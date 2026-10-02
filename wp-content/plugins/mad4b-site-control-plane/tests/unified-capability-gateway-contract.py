@@ -21,6 +21,9 @@ for marker in [
     "mad4b/developer-execute",
     "mad4b/enrollment-execute",
     "projection_is_never_implicit",
+    "expected_input_schema_sha256",
+    "requires_operation_resolution",
+    "enrollment_operation_resolution_required",
     "source_of_truth' => 'wordpress_abilities_api",
 ]:
     assert marker in gateway, f'missing unified gateway invariant: {marker}'
