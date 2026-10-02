@@ -105,6 +105,16 @@ $dispatcher = new MAD4B_SCP_Abilities();
 $receipt_input = array( 'ability_name' => 'mad4b/diagnostics-health', 'expected_input_schema_sha256' => $item['input_schema_sha256'], 'expected_execution_lane' => 'read', 'expected_classification_sha256' => $item['classification_sha256'], 'expected_authority_scope_sha256' => $item['authority_scope_sha256'], 'preparation_receipt' => $item['preparation_receipt'] . '0' );
 $denied_receipt = $dispatcher->read_execute( $receipt_input );
 if ( ! is_wp_error( $denied_receipt ) || 'mad4b_preparation_receipt_invalid' !== $denied_receipt->get_error_code() ) $fail( 'Real WordPress dispatcher accepted forged preparation evidence.' );
+$valid_prepared_input = $receipt_input;
+$valid_prepared_input['preparation_receipt'] = $item['preparation_receipt'];
+foreach ( array( 'preparation_receipt', 'expected_authority_scope_sha256' ) as $mandatory_evidence ) {
+	$missing_prepared = $valid_prepared_input;
+	unset( $missing_prepared[ $mandatory_evidence ] );
+	$denied_missing = $dispatcher->read_execute( $missing_prepared );
+	if ( ! is_wp_error( $denied_missing ) || 'mad4b_dispatch_preparation_required' !== $denied_missing->get_error_code() ) {
+		$fail( 'Real WordPress direct dispatcher accepted missing signed preparation evidence.', array( 'field' => $mandatory_evidence, 'result' => $denied_missing ) );
+	}
+}
 $digest = (string) $item['schema_sha256'];
 if ( ! empty( $item['wire']['sha256'] ) ) {
 	$wire_schema = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
