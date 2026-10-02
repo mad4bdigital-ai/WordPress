@@ -412,6 +412,7 @@ final class MAD4B_SCP_Self_Update {
 			'prior_authority_effective' => null,
 			'candidate_binding_required' => null,
 			'candidate_binding_match' => null,
+			'active_continuation' => null,
 			'authority_carry_forward' => false,
 			'authority_mutation_allowed' => false,
 			'grant_mutation_allowed' => false,
@@ -436,6 +437,18 @@ final class MAD4B_SCP_Self_Update {
 		}
 		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) $blockers[] = 'breakglass_enabled';
 		if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) $blockers[] = 'breakglass_active';
+
+		if ( ! class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) || ! method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'status' ) ) {
+			$blockers[] = 'post_update_continuation_status_unavailable';
+		} else {
+			$continuation_status = MAD4B_SCP_Post_Update_Continuation::status();
+			if ( ! is_array( $continuation_status ) ) {
+				$blockers[] = 'post_update_continuation_status_invalid';
+			} else {
+				$out['active_continuation'] = ! empty( $continuation_status['active'] );
+				if ( $out['active_continuation'] ) $blockers[] = 'post_update_continuation_active';
+			}
+		}
 
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
 			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persistence_checkpoint' )
