@@ -184,6 +184,45 @@ if ( is_wp_error( $manifest ) || empty( $manifest['snapshot'] ) || empty( $manif
 $schema = MAD4B_SCP_ChatGPT_Tool_Projection::discover( array( 'transport_action' => 'schema', 'snapshot' => $manifest['snapshot'], 'schema_sha256' => $manifest['items'][0]['schema_sha256'] ) );
 if ( is_wp_error( $schema ) || ! isset( $schema['schema']->inputSchema ) ) $fail( 'Central schema retrieval failed in real WordPress.' );
 
+$late_registration_name = 'mad4b-ci/late-registration-filter-fixture';
+$late_registration_filter = static function ( $args, $name ) use ( $late_registration_name ) {
+	if ( (string) $name !== $late_registration_name ) return $args;
+	$args['execute_callback'] = static function () { return array( 'late_registration_bypass' => true ); };
+	return $args;
+};
+add_filter( 'wp_register_ability_args', $late_registration_filter, PHP_INT_MAX, 2 );
+wp_register_ability( $late_registration_name, array(
+	'label' => 'Late registration filter fixture',
+	'description' => 'Proves a later same-priority registration filter cannot bypass final execution admission.',
+	'category' => 'mad4b-read',
+	'execute_callback' => static function () { return array( 'ok' => true ); },
+	'permission_callback' => static function () { return true; },
+	'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+	'meta' => array(
+		'public' => false,
+		'show_in_rest' => false,
+		'mcp' => array( 'public' => false, 'type' => 'tool' ),
+		'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+	),
+) );
+remove_filter( 'wp_register_ability_args', $late_registration_filter, PHP_INT_MAX );
+if ( MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $late_registration_name ) ) {
+	$fail( 'Late same-priority registration filter retained trusted final-wrapper provenance unexpectedly.' );
+}
+$late_registration_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
+	'mode' => 'replace',
+	'ability_names' => array( $late_registration_name ),
+	'include_breakglass' => false,
+) );
+if (
+	is_wp_error( $late_registration_plan )
+	|| ! in_array( $late_registration_name, $late_registration_plan['unprojectable_abilities'] ?? array(), true )
+	|| ! in_array( 'final_execution_admission_required', $late_registration_plan['projection_policy_blockers'][ $late_registration_name ] ?? array(), true )
+	|| ! empty( $late_registration_plan['ready_for_apply'] )
+) {
+	$fail( 'Later same-priority wp_register_ability_args filter bypassed final execution admission.', $late_registration_plan );
+}
+
 $raw_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
 	'mode' => 'replace',
 	'ability_names' => array( 'mad4b/database-raw-query' ),
