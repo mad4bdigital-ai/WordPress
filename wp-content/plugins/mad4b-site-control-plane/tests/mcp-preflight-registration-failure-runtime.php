@@ -48,6 +48,9 @@ $result = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'mad4b/broken' ),
 check( 'dto_validator_rejected' === $result['failures'][0]['error_code'] && 'official_schema_validation' === $result['failures'][0]['stage'] && 1 === $dto->calls, 'earlier validator failure was overwritten by repeated serialization' );
 check( 'input_schema_properties_not_object' === $result['failures'][0]['validator_reason'], 'bounded validator reason did not preserve the useful schema classification' );
 check( false === strpos( json_encode( $result ), 'Tool validation failed:' ), 'raw validator message leaked into bounded preflight evidence' );
+// Reuse the deliberate one-shot DTO for a separate validator case without
+// turning the second assertion into a serialization-exception test.
+$dto->calls = 0;
 \WP\MCP\Domain\Tools\McpToolValidator::$result = new WP_Error( 'dto_validator_rejected', 'PRIVATE VALIDATOR DETAIL 123' );
 $fallback = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'mad4b/broken' ), array() );
 check( 'validator_rejected' === $fallback['failures'][0]['validator_reason'], 'unknown validator text must collapse to a bounded generic reason' );
