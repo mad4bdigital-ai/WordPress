@@ -92,6 +92,7 @@ final class MAD4B_Test_WPDB {
 }
 
 $wpdb = new MAD4B_Test_WPDB();
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-identifiers.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-identity-context.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-authorization.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-approval-tickets.php';
