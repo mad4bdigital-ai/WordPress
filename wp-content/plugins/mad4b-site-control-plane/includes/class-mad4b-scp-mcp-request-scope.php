@@ -194,7 +194,7 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		if ( ! $resolved || ! $official || 0 !== strpos( wp_normalize_path( $resolved ), rtrim( wp_normalize_path( $official ), '/' ) . '/' ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_noncanonical_adapter', 'The loaded Adapter is not the official plugin.' );
 		self::$endpoint_diagnostic_server_id = $server_id;
 		self::$current_request_requires_mcp = true;
-		$adapter = \\WP\\MCP\\Core\\McpAdapter::instance();
+		$adapter = \WP\MCP\Core\McpAdapter::instance();
 		if ( false === has_action( 'rest_api_init', array( $adapter, 'init' ) ) ) add_action( 'rest_api_init', array( $adapter, 'init' ), 15 );
 		// Match the real governed MCP request's REST bootstrap. These callbacks
 		// remain request-local; unknown and MU callbacks are still preserved.
