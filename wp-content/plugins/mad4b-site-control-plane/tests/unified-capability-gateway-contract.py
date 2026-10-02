@@ -7,7 +7,6 @@ abilities = (root / 'includes/class-mad4b-scp-abilities.php').read_text(encoding
 projection = (root / 'includes/class-mad4b-scp-chatgpt-tool-projection.php').read_text(encoding='utf-8')
 inspector = (root / 'includes/class-mad4b-scp-ability-contract-inspector.php').read_text(encoding='utf-8')
 descriptor = (root / 'includes/class-mad4b-scp-capability-descriptor-registry.php').read_text(encoding='utf-8')
-abilities = (root / 'includes/class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 client = (root / 'client/ability-catalog-client.mjs').read_text(encoding='utf-8')
 oauth = (root / 'includes/class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
 compat = (root / 'includes/class-mad4b-scp-mcp-client-compatibility.php').read_text(encoding='utf-8')
