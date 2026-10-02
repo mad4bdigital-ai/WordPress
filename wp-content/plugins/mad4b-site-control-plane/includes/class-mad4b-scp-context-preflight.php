@@ -323,6 +323,14 @@ final class MAD4B_SCP_Context_Preflight {
 			$registry_revision,
 			$intended_ability
 		);
+		if ( empty( $receipt['ready'] ) ) {
+			$receipt_blockers = isset( $receipt['blockers'] ) && is_array( $receipt['blockers'] )
+				? array_values( array_filter( array_map( 'strval', $receipt['blockers'] ) ) )
+				: array();
+			if ( empty( $receipt_blockers ) ) $receipt_blockers[] = 'context_receipt_not_ready';
+			$blockers = array_values( array_unique( array_merge( $blockers, $receipt_blockers ) ) );
+			$ready = false;
+		}
 		return array(
 			'contract' => self::PREFLIGHT_CONTRACT,
 			'ready' => $ready,
