@@ -109,5 +109,18 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 		'input_schema' => array( 'type' => 'object', 'properties' => array() ), 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 		'meta' => array( 'annotations' => array( 'readonly' => false ), 'mcp' => array( 'type' => 'tool', 'surface' => 'write', 'mad4b_execution_boundary' => MAD4B_SCP_Authorization::EXECUTION_BOUNDARY_CONTRACT ) ),
 	) );
+	wp_register_ability( 'mad4b-ci/late-read-admission-fixture', array(
+		'label' => 'Late read admission fixture',
+		'description' => 'Readonly fixture whose final execution wrapper is intentionally replaced by a later same-priority registration filter.',
+		'category' => 'mad4b-read',
+		'execute_callback' => static function() { return array( 'ok' => true ); },
+		'permission_callback' => static function() { return true; },
+		'input_schema' => array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ),
+		'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+		'meta' => array(
+			'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+			'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+		),
+	) );
     remove_filter( 'wp_register_ability_args', $strip_boundary, PHP_INT_MAX );
 }, 99 );

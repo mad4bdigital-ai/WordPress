@@ -70,6 +70,9 @@ need("mad4b.final-execution-admission.v1" in execution_fence, "final execution a
 need("PHP_INT_MAX" in execution_fence and "wrap_final_execution_admission" in execution_fence, "final ability wrapper is not registered at terminal priority")
 need("mad4b.projected-call-seal.v1" in execution_fence and "consume_projected_call" in execution_fence, "projected call one-time seal missing")
 need("final_execution_wrapper_verified" in execution_fence and "final_execution_admission_required" in projection, "projection does not require final callback provenance")
+need("private static function planning_row" in projection, "final admission policy is not separated from structural ability classification")
+ability_row_body=projection.split("private static function ability_row",1)[1].split("private static function planning_row",1)[0]
+need("final_execution_wrapper_verified" not in ability_row_body, "registration-time structural classifier evaluates final live callback provenance")
 need("mad4b.governed-child-operation.v1" in execution_fence and "with_governed_child" in execution_fence, "explicit governed child operation contract missing")
 need("mad4b_recursive_dispatch_child_operation_required" in execution_fence, "unexpected recursive mutation is not denied")
 need("child_input_sha256" in execution_fence and "child_evidence_sha256" in execution_fence, "child permit is not bound to exact input/evidence")

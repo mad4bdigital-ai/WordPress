@@ -197,9 +197,14 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( ! class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' ) ) {
 			return new WP_Error( 'mad4b_capability_inspector_unavailable', 'Canonical Ability contract inspection is unavailable.' );
 		}
-		$row = MAD4B_SCP_Ability_Contract_Inspector::inspect( $ability_name );
+		return MAD4B_SCP_Ability_Contract_Inspector::inspect( $ability_name );
+	}
+
+	private static function planning_row( $ability_name ) {
+		$row = self::ability_row( $ability_name );
 		if ( is_wp_error( $row ) ) return $row;
-		$final_verified = class_exists( 'MAD4B_SCP_Execution_Fence' ) && MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name );
+		$final_verified = class_exists( 'MAD4B_SCP_Execution_Fence' )
+			&& MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name );
 		$row['final_execution_admission_verified'] = $final_verified;
 		if ( ! $final_verified ) {
 			$row['projection_eligible'] = false;
@@ -419,7 +424,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$include_breakglass = ! empty( $input['include_breakglass'] );
 		$rows = array();
 		foreach ( $desired as $ability_name ) {
-			$row = self::ability_row( $ability_name );
+			$row = self::planning_row( $ability_name );
 			if ( is_wp_error( $row ) ) return $row;
 			if ( ! empty( $row['breakglass'] ) && ! $include_breakglass ) {
 				return new WP_Error( 'mad4b_chatgpt_projection_breakglass_explicit_opt_in_required', 'Breakglass Ability projection requires include_breakglass=true.', array( 'ability_name' => $ability_name ) );
