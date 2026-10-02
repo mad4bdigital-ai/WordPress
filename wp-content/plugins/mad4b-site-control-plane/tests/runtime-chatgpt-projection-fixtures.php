@@ -1,5 +1,25 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
+// The recursion fixture isolates the final Execution Fence contract from the
+// separate NHI/provider Authorization wrapper. Registration is presented as
+// readonly only while Authorization's priority-190 wrapper runs, then restored
+// to readonly=false before the priority-200/final Execution Fence wrappers.
+add_filter( 'wp_register_ability_args', static function ( $args, $name ) {
+	if ( 'mad4b-ci/recursive-child-fixture' !== (string) $name || ! is_array( $args ) ) return $args;
+	if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();
+	if ( ! isset( $args['meta']['annotations'] ) || ! is_array( $args['meta']['annotations'] ) ) $args['meta']['annotations'] = array();
+	$args['meta']['annotations']['readonly'] = true;
+	$args['meta']['mcp']['mad4b_ci_recursion_authorization_isolation'] = true;
+	return $args;
+}, 189, 2 );
+add_filter( 'wp_register_ability_args', static function ( $args, $name ) {
+	if ( 'mad4b-ci/recursive-child-fixture' !== (string) $name || ! is_array( $args ) ) return $args;
+	if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();
+	if ( ! isset( $args['meta']['annotations'] ) || ! is_array( $args['meta']['annotations'] ) ) $args['meta']['annotations'] = array();
+	$args['meta']['annotations']['readonly'] = false;
+	return $args;
+}, 191, 2 );
+
 add_action( 'wp_abilities_api_init', static function () {
 // Foreign REST requests deliberately use the zero-touch bootstrap.
 if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return;
