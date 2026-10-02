@@ -117,12 +117,12 @@ foreach ( array( 'write', 'content', 'admin' ) as $lane ) {
  $identity = prepared_dispatch_identity( $name );
  check_gateway( ! is_wp_error( $identity ), 'Unable to issue prepared identity: ' . $lane );
  $input = array_merge( array( 'ability_name' => $name, 'input' => array() ), $identity );
- $approval_id = '00000000-0000-0000-0000-000000000001';
+ $approval_id = '00000000-0000-4000-8000-000000000001';
  $invalid_permission = $input; $invalid_permission['preparation_receipt'] .= '0'; $invalid_permission['_mad4b_approval_ticket_id'] = $approval_id;
  $scope_before = $GLOBALS['approval_scope_calls'];
  check_gateway( is_wp_error( $dispatcher->can_write_dispatch( $invalid_permission ) ) && $scope_before === $GLOBALS['approval_scope_calls'] && '' === $GLOBALS['approval_scope_active'], 'Invalid preparation entered approval execution scope during permission admission' );
  $valid_permission = $input; $valid_permission['_mad4b_approval_ticket_id'] = $approval_id;
- check_gateway( true === $dispatcher->can_write_dispatch( $valid_permission ) && $scope_before === $GLOBALS['approval_scope_calls'] && '' === $GLOBALS['approval_scope_active'], 'Permission admission leaked approval identity before target execution' );
+ check_gateway( true === $dispatcher->can_write_dispatch( $valid_permission ) && $scope_before === $GLOBALS['approval_scope_calls'] && '' === $GLOBALS['approval_scope_active'], 'Canonical approval fixture failed permission admission or leaked approval identity before target execution' );
  $oversized_permission = $input;
  $oversized_permission['_mad4b_context_receipt'] = array( 'payload' => str_repeat( 'x', MAD4B_SCP_Abilities::MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES + 1 ) );
  $oversized_scope_before = $GLOBALS['approval_scope_calls'];
@@ -161,7 +161,7 @@ foreach ( array( 'fixture/stale-a', 'fixture/stale-b' ) as $stale_name ) {
 }
 $first_identity = prepared_dispatch_identity( 'fixture/stale-a' );
 $second_identity = prepared_dispatch_identity( 'fixture/stale-b' );
-$stale_approval = '00000000-0000-0000-0000-000000000099';
+$stale_approval = '00000000-0000-4000-8000-000000000099';
 $first_input = array_merge( array( 'ability_name' => 'fixture/stale-a', 'input' => array( 'alpha' => 1, 'beta' => 2 ), '_mad4b_approval_ticket_id' => $stale_approval ), $first_identity );
 $second_input = array_merge( array( 'ability_name' => 'fixture/stale-b', 'input' => array() ), $second_identity );
 check_gateway( true === $dispatcher->can_write_dispatch( $first_input ), 'First prepared target failed governance capture' );
