@@ -22,6 +22,16 @@ $dispatch = static function ( $bearer, $method, array $params, $session = '' ) u
     $response = apply_filters( 'rest_post_dispatch', $response, rest_get_server(), $request );
     return array( $response, $wire( $response ) );
 };
+$gateway = static function ( $bearer, array $payload ) use ( $wire ) {
+    $request = new WP_REST_Request( 'POST', '/mad4b/v1/capability-gateway' );
+    $request->set_header( 'Authorization', 'Bearer ' . $bearer );
+    $request->set_header( 'Accept', 'application/json' );
+    $request->set_header( 'Content-Type', 'application/json' );
+    $request->set_body( wp_json_encode( $payload ) );
+    $response = rest_ensure_response( rest_do_request( $request ) );
+    $response = apply_filters( 'rest_post_dispatch', $response, rest_get_server(), $request );
+    return array( $response, $wire( $response ) );
+};
 $initialize = static function ( $bearer ) use ( $dispatch, $fail ) {
     list( $response, $body ) = $dispatch( $bearer, 'initialize', array( 'protocolVersion' => '2025-11-25', 'clientInfo' => array( 'name' => 'projection-proof', 'version' => '1' ) ) );
     if ( 200 !== $response->get_status() || ! isset( $body['result'] ) ) $fail( 'Projection OAuth initialize failed.' );
@@ -34,6 +44,38 @@ $call = static function ( $bearer, $session, $name, array $args = array() ) use 
 };
 $denied = static function ( array $body ) { return ! empty( $body['result']['isError'] ) || isset( $body['error'] ); };
 try {
+    list( $gateway_read_response, $gateway_read ) = $gateway( $read, array(
+        'action' => 'negotiate',
+        'client_capabilities' => array(
+            'dynamic_tool_refresh' => true,
+            'tools_list_changed' => true,
+            'tools_list_pagination' => true,
+        ),
+    ) );
+    if ( 200 !== $gateway_read_response->get_status() || 'fixed_dispatch' !== ( $gateway_read['exposure_mode'] ?? '' ) || empty( $gateway_read['transport']['rest_gateway_proven_by_request'] ) ) {
+        $fail( 'Read bearer did not reach the OAuth-protected adaptive REST gateway in fixed-dispatch mode.' );
+    }
+    list( $gateway_step_response, $gateway_step ) = $gateway( $step, array(
+        'action' => 'negotiate',
+        'client_capabilities' => array(
+            'dynamic_tool_refresh' => true,
+            'tools_list_changed' => true,
+            'tools_list_pagination' => true,
+        ),
+    ) );
+    if ( 200 !== $gateway_step_response->get_status() || 'dynamic_projection' !== ( $gateway_step['exposure_mode'] ?? '' ) || 'ready' !== ( $gateway_step['dynamic_projection_state'] ?? '' ) ) {
+        $fail( 'Exact ChatGPT step-up bearer did not negotiate dynamic projection readiness over REST.' );
+    }
+    list( $gateway_search_response, $gateway_search ) = $gateway( $read, array(
+        'action' => 'search',
+        'task' => 'diagnostics health',
+        'limit' => 8,
+    ) );
+    $gateway_search_names = array_column( $gateway_search['items'] ?? array(), 'ability_name' );
+    if ( 200 !== $gateway_search_response->get_status() || ! in_array( 'mad4b/diagnostics-health', $gateway_search_names, true ) ) {
+        $fail( 'OAuth-protected REST task discovery did not return the expected governed read Ability.' );
+    }
+
     $read_session = $initialize( $read );
     list( $response, $catalog ) = $dispatch( $read, 'tools/list', array(), $read_session );
     $names = array_column( $catalog['result']['tools'] ?? array(), 'name' );
@@ -59,7 +101,7 @@ try {
     $copied['binding']['origin'] = 'https://copied.invalid';
     update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $copied, false );
     if ( ! $denied( $call( $read, $read_session, 'mad4b-diagnostics-health' ) ) ) $fail( 'Copied origin retained tool execution.' );
-    fwrite( STDOUT, "mad4b.projection-http-admission.v1: PASS\n" );
+    fwrite( STDOUT, "mad4b.projection-http-admission.v1: PASS adaptive_rest_gateway=verified\n" );
 } finally {
     if ( false === $original ) delete_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION );
     else update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $original, false );
