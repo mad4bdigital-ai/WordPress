@@ -174,14 +174,10 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		return $state;
 	}
 
-	private static function schema_sha256( $ability ) {
-		$schema = is_object( $ability ) && method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
-		$json = wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		if ( false === $json ) return '';
-		return hash( 'sha256', $json );
-	}
-
 	public static function bounded_metadata( $value, $bytes ) {
+		if ( class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' ) ) {
+			return MAD4B_SCP_Ability_Contract_Inspector::bounded_metadata( $value, $bytes );
+		}
 		$value = (string) $value;
 		if ( strlen( $value ) <= $bytes ) return $value;
 		if ( function_exists( 'mb_strcut' ) ) return mb_strcut( $value, 0, $bytes, 'UTF-8' );
@@ -189,102 +185,25 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	}
 
 	public static function describe_ability( $name ) {
-		return class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ? MAD4B_SCP_Capability_Descriptor_Registry::describe( $name ) : self::ability_row( $name );
+		return class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' )
+			? MAD4B_SCP_Capability_Descriptor_Registry::describe( $name )
+			: self::ability_row( $name );
 	}
-	/** Shared classifier entry point; not an execution authorization decision. */
+
+	/** Shared structural classifier entry point; never an authorization decision. */
 	public static function inspect_contract( $name ) { return self::ability_row( $name ); }
 
 	private static function ability_row( $ability_name ) {
-		if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) && ! MAD4B_SCP_Unified_Capability_Gateway::runtime_blog_matches() ) return new WP_Error( 'mad4b_projection_blog_switch_denied', 'Use a fresh request to the target site.' );
-		try { return self::inspect_ability_row( $ability_name ); }
-		catch ( Throwable $error ) { return new WP_Error( 'mad4b_chatgpt_projection_ability_inspection_failed', 'Ability inspection failed; this projection is unavailable.' ); }
-	}
-
-	private static function inspect_ability_row( $ability_name ) {
-		$ability_name = trim( (string) $ability_name );
-		if ( '' === $ability_name || ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) {
-			return new WP_Error( 'mad4b_chatgpt_projection_ability_unavailable', 'Requested Ability is not registered in the current site runtime.', array( 'ability_name' => $ability_name ) );
+		if ( ! class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' ) ) {
+			return new WP_Error( 'mad4b_capability_inspector_unavailable', 'Canonical Ability contract inspection is unavailable.' );
 		}
-		$ability = wp_get_ability( $ability_name );
-		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) {
-			return new WP_Error( 'mad4b_chatgpt_projection_ability_contract_unavailable', 'Requested Ability does not expose the required WordPress Ability contract.', array( 'ability_name' => $ability_name ) );
-		}
-		$meta = $ability->get_meta();
-		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-		$readonly_declared = array_key_exists( 'readonly', $annotations ) && is_bool( $annotations['readonly'] );
-		$category = method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
-		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
-		$surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
-		$mutation_lanes = array( 'write', 'developer', 'enrollment', 'internal', 'breakglass', 'developer-breakglass' );
-		$lane = 'unclassified';
-		if ( in_array( $surface, $mutation_lanes, true ) || in_array( $surface, array( 'admin', 'content' ), true ) ) $lane = $surface;
-		elseif ( $readonly_declared && true === $annotations['readonly'] && in_array( $surface, array( '', 'read' ), true ) ) $lane = 'read';
-		elseif ( $readonly_declared && false === $annotations['readonly'] && '' === $surface ) $lane = 'write';
-		$readonly = $readonly_declared && true === $annotations['readonly'];
-		$known = 'unclassified' !== $lane;
-		$schema_digest = self::schema_sha256( $ability );
-		if ( '' === $schema_digest ) return new WP_Error( 'mad4b_chatgpt_projection_schema_invalid', 'Ability schema cannot be serialized.' );
-		$provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-' . $lane, $ability_name ) : null;
-		$breakglass = in_array( $lane, array( 'breakglass', 'developer-breakglass' ), true ) || in_array( $ability_name, array_merge(
-			class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::core_tools( 'mad4b-breakglass' ) : array(),
-			class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::core_tools( 'mad4b-developer-breakglass' ) : array()
-		), true );
-
-		$projection_blockers = array();
-		if ( ! $known ) $projection_blockers[] = 'ability_classification_required';
-		if ( 'internal' === $lane ) $projection_blockers[] = 'internal_surface_not_direct';
-		$projection_eligible = empty( $projection_blockers );
-		
-		$boundary_verified = class_exists( 'MAD4B_SCP_Authorization' ) && MAD4B_SCP_Authorization::execution_boundary_verified( $ability );
-		$execution_blocker = ! $projection_eligible ? 'ability_projection_policy_blocked' : ( ! $readonly && ! $boundary_verified ? 'governed_execution_boundary_required' : ( 'read' !== $lane && null === $provider ? 'original_lane_not_mounted' : '' ) );
-		$execution_eligible = '' === $execution_blocker;
-		$execution_lane = $execution_eligible ? $lane : 'none';
-
-		$classification_json = wp_json_encode(
-			array(
-				'meta' => $meta,
-				'category' => $category,
-				'output_schema' => method_exists( $ability, 'get_output_schema' ) ? $ability->get_output_schema() : null,
-				'execution_provider' => $provider,
-				'boundary_verified' => $boundary_verified,
-				'classification' => $lane,
-				'known' => $known,
-				'projection_eligible' => $projection_eligible,
-				'execution_lane' => $execution_lane,
-				'projection_blockers' => $projection_blockers,
-			),
-			JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-		);
-		if ( ! is_string( $classification_json ) ) return new WP_Error( 'mad4b_chatgpt_projection_classification_invalid', 'Projection classification cannot be serialized.' );
-
-		return array(
-			'ability_name' => $ability_name,
-			'input_schema_sha256' => $schema_digest,
-			'classification_sha256' => hash( 'sha256', $classification_json ),
-			'classification' => $lane,
-			'known' => (bool) $known,
-			'lane' => $lane,
-			'readonly' => (bool) $readonly,
-			'readonly_declared' => (bool) $readonly_declared,
-			'conservative_mutation' => ! $readonly_declared,
-			'breakglass' => (bool) $breakglass,
-			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
-			'execution_boundary' => isset( $mcp['mad4b_execution_boundary'] ) ? (string) $mcp['mad4b_execution_boundary'] : '',
-			'execution_provider' => null === $provider ? '' : (string) $provider,
-			'execution_boundary_verified' => $boundary_verified,
-			'execution_blocker' => $execution_blocker,
-			'label' => method_exists( $ability, 'get_label' ) ? self::bounded_metadata( $ability->get_label(), 160 ) : '',
-			'description' => method_exists( $ability, 'get_description' ) ? self::bounded_metadata( $ability->get_description(), 2048 ) : '',
-			'projection_eligible' => (bool) $projection_eligible,
-			'execution_eligible' => (bool) $execution_eligible,
-			'execution_lane' => $execution_lane,
-			'projection_blockers' => $projection_blockers,
-		);
+		return MAD4B_SCP_Ability_Contract_Inspector::inspect( $ability_name );
 	}
 
 	public static function current_binding() {
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return array();
-		return array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(), 'origin' => MAD4B_SCP_Site_Profile::current_origin(), 'environment' => MAD4B_SCP_Site_Profile::current_environment(), 'profile_revision' => MAD4B_SCP_Site_Profile::revision() );
+		return class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' )
+			? MAD4B_SCP_Ability_Contract_Inspector::site_binding()
+			: array();
 	}
 
 	private static function binding_matches( array $state ) {
