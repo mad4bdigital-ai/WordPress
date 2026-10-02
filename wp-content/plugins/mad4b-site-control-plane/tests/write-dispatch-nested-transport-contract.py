@@ -61,6 +61,10 @@ required_dispatch = [
     "mad4b_write_dispatch_governance_envelope_rebind_conflict",
     "_mad4b_approval_ticket_id",
     "_mad4b_context_receipt",
+    "MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES = 65536",
+    "'_mad4b_approval_ticket_id' => array( 'type' => 'string'",
+    "'_mad4b_context_receipt' => array( 'type' => 'object', 'additionalProperties' => true )",
+    "mad4b_write_dispatch_context_receipt_oversized",
 ]
 for marker in required_dispatch:
     if marker not in abilities:
