@@ -277,8 +277,10 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			'runtime_provenance_mismatch' => false,
 			'runtime_class_provenance_enforced' => false,
 			'runtime_class_provenance_ready' => null,
+			'runtime_class_provenance_complete' => false,
 			'runtime_class_provenance_state' => '',
 			'runtime_class_provenance_failure_count' => 0,
+			'runtime_class_provenance_unobserved_count' => 0,
 		);
 		$class = '\\WP\\MCP\\Core\\McpAdapter';
 		if ( ! class_exists( $class, false ) ) return $out;
@@ -310,9 +312,19 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		$class_provenance = class_exists( 'MAD4B_SCP_MCP_Class_Provenance', false ) ? MAD4B_SCP_MCP_Class_Provenance::status( false, false ) : array();
 		if ( is_array( $class_provenance ) && $class_provenance ) {
 			$out['runtime_class_provenance_enforced'] = ! empty( $class_provenance['enforced'] );
-			$out['runtime_class_provenance_ready'] = ! empty( $class_provenance['enforced'] ) ? ! empty( $class_provenance['ready'] ) : null;
-			$out['runtime_class_provenance_state'] = isset( $class_provenance['state'] ) ? sanitize_key( (string) $class_provenance['state'] ) : '';
+			$out['runtime_class_provenance_complete'] = ! empty( $class_provenance['complete'] );
 			$out['runtime_class_provenance_failure_count'] = isset( $class_provenance['failure_count'] ) ? max( 0, (int) $class_provenance['failure_count'] ) : 0;
+			$out['runtime_class_provenance_unobserved_count'] = isset( $class_provenance['unobserved_count'] ) ? max( 0, (int) $class_provenance['unobserved_count'] ) : 0;
+			if ( ! $out['runtime_class_provenance_enforced'] ) {
+				$out['runtime_class_provenance_ready'] = null;
+			} elseif ( $out['runtime_class_provenance_failure_count'] > 0 ) {
+				$out['runtime_class_provenance_ready'] = false;
+			} elseif ( $out['runtime_class_provenance_complete'] ) {
+				$out['runtime_class_provenance_ready'] = ! empty( $class_provenance['ready'] );
+			} else {
+				$out['runtime_class_provenance_ready'] = null;
+			}
+			$out['runtime_class_provenance_state'] = isset( $class_provenance['state'] ) ? sanitize_key( (string) $class_provenance['state'] ) : '';
 		}
 		$out['runtime_provenance_mismatch'] = ( $out['runtime_class_loaded'] && ! $out['runtime_from_official_plugin'] )
 			|| ( ! empty( $out['runtime_class_provenance_enforced'] ) && ! empty( $out['runtime_class_provenance_failure_count'] ) );
@@ -441,8 +453,10 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			'runtime_provenance_mismatch' => false,
 			'runtime_class_provenance_enforced' => false,
 			'runtime_class_provenance_ready' => null,
+			'runtime_class_provenance_complete' => false,
 			'runtime_class_provenance_state' => '',
 			'runtime_class_provenance_failure_count' => 0,
+			'runtime_class_provenance_unobserved_count' => 0,
 			'repair_applied' => false,
 			'load_order_repair_applied' => false,
 			'next_request_required' => false,
