@@ -38,7 +38,11 @@ export function createNetworkCatalogClient(sites, {maxSites = 100} = {}) {
         const prepared = await prepare(job.siteId, [job.abilityName], {signal});
         const catalog = prepared.catalogs.get(job.abilityName);
         if (!catalog) throw new CatalogError('Target is unavailable at this site');
-        const result = await execute(job.siteId, catalog, job.abilityName, job.input, {signal});
+        const result = await execute(job.siteId, catalog, job.abilityName, job.input, {
+          signal,
+          approvalTicketId: job.approvalTicketId,
+          contextReceipt: job.contextReceipt,
+        });
         results.push({siteId: job.siteId, abilityName: job.abilityName, result});
       } catch (cause) {
         const error = new CatalogError(cause?.message ?? String(cause));
