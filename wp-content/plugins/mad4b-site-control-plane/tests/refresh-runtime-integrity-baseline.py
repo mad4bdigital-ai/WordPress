@@ -64,6 +64,7 @@ def main() -> int:
             # must remain byte-bound to the exact certified release.
             if provider == "mcp_adapter":
                 for relative in (
+                    "includes/Core/McpAdapter.php",
                     "includes/Domain/Utils/AbilityArgumentNormalizer.php",
                     "includes/Domain/Tools/McpToolValidator.php",
                     "includes/Domain/Tools/RegisterAbilityAsMcpTool.php",
