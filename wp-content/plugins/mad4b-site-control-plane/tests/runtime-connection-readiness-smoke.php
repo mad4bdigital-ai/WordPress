@@ -181,9 +181,14 @@ $mismatch = MAD4B_SCP_Read_Consistency::diagnostic_bundle( array(
 $check( is_array( $mismatch ) && 'generation_changed' === $mismatch['state'], 'Generation mismatch did not fail closed.' );
 $check( empty( $mismatch['valid_for_merge'] ) && ! empty( $mismatch['discard_partial'] ) && empty( $mismatch['resume_permitted'] ), 'Generation mismatch did not invalidate partial evidence.' );
 $read_dispatch = wp_get_ability( 'mad4b/read-execute' );
+$read_info = wp_get_ability( 'mad4b/tool-info' );
 $check( is_object( $read_dispatch ) && method_exists( $read_dispatch, 'execute' ), 'Governed read dispatcher is unavailable.' );
+$check( is_object( $read_info ) && method_exists( $read_info, 'execute' ), 'Governed read info tool is unavailable.' );
+$metadata_info = $read_info->execute( array( 'ability_name' => 'mad4b/read-metadata-envelope' ) );
+$check( ! is_wp_error( $metadata_info ) && ! empty( $metadata_info['input_schema_sha256'] ), 'Compact metadata schema digest is unavailable.' );
 $metadata_dispatch = $read_dispatch->execute( array(
     'ability_name' => 'mad4b/read-metadata-envelope',
+    'expected_input_schema_sha256' => (string) $metadata_info['input_schema_sha256'],
     'input' => array(
         'target_type' => 'operation',
         'target' => 'managed_skills_reconciliation',
