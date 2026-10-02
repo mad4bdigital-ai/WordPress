@@ -376,7 +376,11 @@ final class MAD4B_SCP_Authorization {
 		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 		if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) return $args;
 		if ( empty( $mcp['mad4b_governed_write_authority'] ) ) return $args;
-		if ( isset( self::$trusted_execution_boundaries[ $name ] ) && self::$trusted_execution_boundaries[ $name ] === $args['execute_callback'] ) return $args;
+		if (
+			$args['execute_callback'] instanceof Closure
+			&& isset( self::$trusted_execution_boundaries[ $name ] )
+			&& in_array( spl_object_hash( $args['execute_callback'] ), self::$trusted_execution_boundaries[ $name ], true )
+		) return $args;
 
 		if ( isset( $args['permission_callback'] ) && is_callable( $args['permission_callback'] ) && empty( $mcp['mad4b_permission_denial_audit'] ) ) {
 			$permission = $args['permission_callback'];
@@ -423,7 +427,10 @@ final class MAD4B_SCP_Authorization {
 			return $result;
 		};
 		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
-		self::$trusted_execution_boundaries[ $name ] = $args['execute_callback'];
+		if ( ! isset( self::$trusted_execution_boundaries[ $name ] ) || ! is_array( self::$trusted_execution_boundaries[ $name ] ) ) self::$trusted_execution_boundaries[ $name ] = array();
+		$boundary_hash = spl_object_hash( $args['execute_callback'] );
+		if ( ! in_array( $boundary_hash, self::$trusted_execution_boundaries[ $name ], true ) ) self::$trusted_execution_boundaries[ $name ][] = $boundary_hash;
+		while ( count( self::$trusted_execution_boundaries[ $name ] ) > 16 ) array_shift( self::$trusted_execution_boundaries[ $name ] );
 		$args['meta']['mcp']['mad4b_execution_boundary'] = self::EXECUTION_BOUNDARY_CONTRACT;
 		$args['meta']['mcp']['mad4b_execution_commit_guard'] = class_exists( 'MAD4B_SCP_Execution_Commit_Guard' ) ? MAD4B_SCP_Execution_Commit_Guard::CONTRACT : '';
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) && MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY === (string) $name ) {
@@ -437,7 +444,10 @@ final class MAD4B_SCP_Authorization {
 			$name = $ability->get_name();
 			$property = ( new ReflectionObject( $ability ) )->getProperty( 'execute_callback' );
 			$property->setAccessible( true );
-			return isset( self::$trusted_execution_boundaries[ $name ] ) && self::$trusted_execution_boundaries[ $name ] === $property->getValue( $ability );
+			$callback = $property->getValue( $ability );
+			return $callback instanceof Closure
+				&& isset( self::$trusted_execution_boundaries[ $name ] )
+				&& in_array( spl_object_hash( $callback ), self::$trusted_execution_boundaries[ $name ], true );
 		} catch ( Throwable $e ) { return false; }
 	}
 
