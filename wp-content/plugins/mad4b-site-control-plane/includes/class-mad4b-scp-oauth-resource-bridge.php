@@ -15,6 +15,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	const CONTRACT = 'mad4b.oauth-resource-bridge.v5';
 	const READ_SCOPE = 'mad4b:read';
 	const AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up';
+	const BREAKGLASS_SCOPE = 'server:mad4b-breakglass';
 	const DEVELOPER_SCOPE = 'server:mad4b-developer';
 	const DEVELOPER_BREAKGLASS_SCOPE = 'server:mad4b-developer-breakglass';
 	const METADATA_NAMESPACE = 'mad4b/v1';
@@ -131,7 +132,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'resources' => self::resource_identifiers(),
 			'metadata_url' => self::metadata_url(),
 			'authorization_server_metadata_urls' => self::authorization_server_metadata_urls(),
-			'scopes_supported' => array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE, self::DEVELOPER_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE ),
+			'scopes_supported' => array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE, self::BREAKGLASS_SCOPE, self::DEVELOPER_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE ),
 			'wp_user_id' => self::configured_user_id( self::primary_issuer() ),
 			'wp_user_capable' => $wp_users_ready,
 			'https' => self::resources_are_https(),
@@ -226,6 +227,8 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'write_surfaces_enabled' => false,
 			'authority_step_up_surface_enabled' => self::authority_step_up_scope_available(),
 			'authority_step_up_scope' => self::AUTHORITY_STEP_UP_SCOPE,
+			'breakglass_scope_surface_enabled' => self::breakglass_scope_available(),
+			'breakglass_scope' => self::BREAKGLASS_SCOPE,
 			'protected_transport_server' => 'mad4b-chatgpt',
 			'protected_transport_servers' => array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ),
 		);
@@ -255,9 +258,31 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			&& MAD4B_SCP_Portable_Readonly_Connection::effective()
 			&& ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::oauth_enabled() );
 		if ( ! $portable_only && hash_equals( self::resource_identifier(), $resource ) && self::authority_step_up_scope_available() ) {
-			return array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE );
+			$scopes = array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE );
+			if ( self::breakglass_scope_available() ) $scopes[] = self::BREAKGLASS_SCOPE;
+			return $scopes;
 		}
 		return array( self::READ_SCOPE );
+	}
+
+	/**
+	 * Raw-SQL Breakglass is an explicit ChatGPT step-up scope, never ambient
+	 * authority. Advertise/issue it only for the exact enrolled Staging runtime
+	 * after governed write plus the database-backed Breakglass gate are effective.
+	 * Exact NHI grant, one-time approval and central authorization remain separate
+	 * execution gates.
+	 */
+	public static function breakglass_scope_available() {
+		if ( ! self::authority_step_up_scope_available() ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+			|| ! MAD4B_SCP_Site_Profile::configured()
+			|| 'staging' !== MAD4B_SCP_Site_Profile::current_environment()
+			|| ! MAD4B_SCP_Site_Profile::origin_enrolled()
+			|| ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			|| ! MAD4B_SCP_Site_Profile::oauth_enabled()
+			|| ! MAD4B_SCP_Site_Profile::governed_write_ready() ) return false;
+		return class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
+			&& MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled();
 	}
 
 	public static function authority_step_up_scope_available() {
