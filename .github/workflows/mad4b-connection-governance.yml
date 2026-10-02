@@ -287,8 +287,8 @@ jobs:
 
           cat > "$FOREIGN_VALIDATOR" <<'PHP'
           <?php
-          if ( ! defined( 'ABSPATH' ) ) { exit; }
           namespace WP\MCP\Domain\Tools;
+          if ( ! \defined( 'ABSPATH' ) ) { exit; }
           if ( ! class_exists( __NAMESPACE__ . '\\McpToolValidator', false ) ) {
               final class McpToolValidator {
                   public static function validate_tool_dto( $dto ) { return true; }
