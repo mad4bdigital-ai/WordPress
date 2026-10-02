@@ -12,6 +12,10 @@ MAIN = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
 for marker in (
     "mad4b.durable-execution.v1",
+    "write_topology_preflight",
+    "same_writer_after_write",
+    "database_write_failure",
+    "authoritative_read_failure",
     "mad4b.execution-plane.v1",
     "mad4b.idempotency-record.v1",
     "mad4b.execution-outbox.v1",
@@ -283,3 +287,20 @@ for forbidden in (
         raise SystemExit(f"durable execution contains forbidden side-effect path: {forbidden}")
 
 print("mad4b.durable-execution.v1: PASS")
+
+
+# Single-statement durable writes and commit-fence reads must use the certified
+# writer topology too; transaction-only coverage is insufficient.
+for method, end, markers in (
+    ("public static function begin_idempotency", "public static function complete_idempotency", ("write_topology_preflight", "same_writer_after_write", "authoritative_read_failure")),
+    ("public static function complete_idempotency", "public static function complete_idempotency_from_reconciliation", ("write_topology_preflight", "same_writer_after_write", "mad4b_durable_persistence_uncertain")),
+    ("public static function heartbeat", "public static function assert_fencing_token", ("write_topology_preflight", "same_writer_after_write", "database_write_failure")),
+    ("public static function assert_fencing_token", "public static function complete_lease", ("write_topology_preflight", "assert_same_writer", "authoritative_read_failure")),
+    ("public static function complete_lease", "public static function enqueue_outbox", ("write_topology_preflight", "same_writer_after_write", "mad4b_durable_persistence_uncertain")),
+    ("public static function enqueue_outbox", "public static function accept_inbox", ("write_topology_preflight", "same_writer_after_write", "database_write_failure")),
+    ("public static function accept_inbox", "private static function write_topology_preflight", ("write_topology_preflight", "same_writer_after_write", "database_write_failure")),
+):
+    surface = DURABLE[DURABLE.index(method):DURABLE.index(end)]
+    for marker in markers:
+        if marker not in surface:
+            raise SystemExit(f"single-statement durable write is not topology-fenced: {method} missing {marker}")

@@ -40,14 +40,26 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $scope_key ) ) return new WP_Error( 'mad4b_idempotency_scope_invalid', 'Idempotency scope must be a SHA-256 digest.' );
 		if ( '' === $idempotency_key || strlen( $idempotency_key ) > 191 ) return new WP_Error( 'mad4b_idempotency_key_invalid', 'Idempotency key is missing or too long.' );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $request_sha256 ) ) return new WP_Error( 'mad4b_idempotency_request_hash_invalid', 'Idempotency request hash must be SHA-256.' );
+		$topology = self::write_topology_preflight();
+		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
 		$expires = gmdate( 'Y-m-d H:i:s', time() + $ttl_seconds );
+		$wpdb->last_error = '';
 		$inserted = $wpdb->query( $wpdb->prepare(
 			"INSERT IGNORE INTO {$t['idempotency']} (scope_key,idempotency_key,request_sha256,claim_epoch,status,result_json,result_sha256,reconciliation_ref,expires_at,created_at,updated_at) VALUES (%s,%s,%s,1,'pending',NULL,'','',%s,%s,%s)",
 			$scope_key, $idempotency_key, $request_sha256, $expires, $now, $now
 		) );
+		if ( false === $inserted && '' !== trim( (string) $wpdb->last_error ) ) return self::database_write_failure( 'mad4b_idempotency_claim_failed', 'Unable to claim idempotency record.', 'idempotency_begin_insert', (string) $wpdb->last_error );
+		$same_writer = self::same_writer_after_write( $topology, 'idempotency_begin' );
+		if ( is_wp_error( $same_writer ) ) return $same_writer;
 		if ( 1 === (int) $inserted ) {
+			$wpdb->last_error = '';
+			$persisted = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s LIMIT 1", $scope_key, $idempotency_key ), ARRAY_A );
+			if ( ! empty( $wpdb->last_error ) ) return self::authoritative_read_failure( 'idempotency_begin_readback', (string) $wpdb->last_error );
+			if ( ! is_array( $persisted ) || 'pending' !== (string) $persisted['status'] || 1 !== (int) $persisted['claim_epoch'] || ! hash_equals( $request_sha256, (string) $persisted['request_sha256'] ) ) {
+				return new WP_Error( 'mad4b_durable_persistence_uncertain', 'Idempotency claim writeback did not match the authoritative readback.', array( 'phase' => 'idempotency_begin_readback', 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
+			}
 			return array(
 				'contract' => self::IDEMPOTENCY_CONTRACT,
 				'claimed' => true,
@@ -59,10 +71,12 @@ final class MAD4B_SCP_Durable_Execution {
 				'expires_at' => $expires,
 			);
 		}
+		$wpdb->last_error = '';
 		$row = $wpdb->get_row( $wpdb->prepare(
 			"SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s LIMIT 1",
 			$scope_key, $idempotency_key
 		), ARRAY_A );
+		if ( ! empty( $wpdb->last_error ) ) return self::authoritative_read_failure( 'idempotency_begin_existing_read', (string) $wpdb->last_error );
 		if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_idempotency_claim_failed', 'Unable to claim or read idempotency record.' );
 		if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
 			return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
@@ -70,11 +84,15 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( 'released_verified_no_effect' === (string) $row['status'] ) {
 			$current_epoch = isset( $row['claim_epoch'] ) ? max( 1, (int) $row['claim_epoch'] ) : 1;
 			$next_epoch = $current_epoch + 1;
+			$wpdb->last_error = '';
 			$reclaimed = $wpdb->query( $wpdb->prepare(
 				"UPDATE {$t['idempotency']} SET status='pending',claim_epoch=%d,result_json=NULL,result_sha256='',reconciliation_ref='',expires_at=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND claim_epoch=%d AND status='released_verified_no_effect'",
 				$next_epoch, $expires, $now, (int) $row['id'], $request_sha256, $current_epoch
 			) );
+			if ( false === $reclaimed ) return self::database_write_failure( 'mad4b_idempotency_in_progress', 'Verified no-effect idempotency reacquire write failed.', 'idempotency_begin_reacquire', (string) $wpdb->last_error );
 			if ( 1 === (int) $reclaimed ) {
+				$same_writer = self::same_writer_after_write( $topology, 'idempotency_begin_reacquire' );
+				if ( is_wp_error( $same_writer ) ) return $same_writer;
 				return array(
 					'contract' => self::IDEMPOTENCY_CONTRACT,
 					'claimed' => true,
@@ -132,14 +150,23 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( ! is_string( $json ) ) return new WP_Error( 'mad4b_idempotency_result_invalid', 'Idempotency result is not serializable.' );
 		if ( strlen( $json ) > 262144 ) return new WP_Error( 'mad4b_idempotency_result_too_large', 'Idempotency result exceeds the bounded storage limit.' );
 		$sha = hash( 'sha256', $json );
+		$topology = self::write_topology_preflight();
+		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
+		$wpdb->last_error = '';
 		$updated = $wpdb->query( $wpdb->prepare(
 			"UPDATE {$t['idempotency']} SET status='completed',result_json=%s,result_sha256=%s,updated_at=%s WHERE scope_key=%s AND idempotency_key=%s AND request_sha256=%s AND claim_epoch=%d AND status='pending' AND expires_at>%s",
 			$json, $sha, gmdate( 'Y-m-d H:i:s' ), (string) $claim['scope_key'], (string) $claim['idempotency_key'], (string) $claim['request_sha256'], absint( $claim['claim_epoch'] ), gmdate( 'Y-m-d H:i:s' )
 		) );
-		return 1 === (int) $updated
-			? array( 'contract' => self::IDEMPOTENCY_CONTRACT, 'completed' => true, 'result_sha256' => $sha )
-			: new WP_Error( 'mad4b_idempotency_complete_conflict', 'Idempotency record is no longer pending for this request.' );
+		if ( false === $updated ) return self::database_write_failure( 'mad4b_idempotency_complete_conflict', 'Idempotency completion persistence failed.', 'idempotency_complete', (string) $wpdb->last_error );
+		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_idempotency_complete_conflict', 'Idempotency record is no longer pending for this request.', array( 'blind_retry_allowed' => false ) );
+		$same_writer = self::same_writer_after_write( $topology, 'idempotency_complete' );
+		if ( is_wp_error( $same_writer ) ) return $same_writer;
+		$wpdb->last_error = '';
+		$persisted = $wpdb->get_row( $wpdb->prepare( "SELECT status,result_sha256,claim_epoch FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s LIMIT 1", (string) $claim['scope_key'], (string) $claim['idempotency_key'] ), ARRAY_A );
+		if ( ! empty( $wpdb->last_error ) ) return new WP_Error( 'mad4b_durable_persistence_uncertain', 'Idempotency completion readback failed after write.', array( 'phase' => 'idempotency_complete_readback', 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
+		if ( ! is_array( $persisted ) || 'completed' !== (string) $persisted['status'] || ! hash_equals( $sha, (string) $persisted['result_sha256'] ) || (int) $persisted['claim_epoch'] !== absint( $claim['claim_epoch'] ) ) return new WP_Error( 'mad4b_durable_persistence_uncertain', 'Idempotency completion readback did not match the committed claim.', array( 'phase' => 'idempotency_complete_readback', 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
+		return array( 'contract' => self::IDEMPOTENCY_CONTRACT, 'completed' => true, 'result_sha256' => $sha );
 	}
 
 	public static function complete_idempotency_from_reconciliation( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $result ) {
@@ -736,23 +763,37 @@ final class MAD4B_SCP_Durable_Execution {
 		$worker_id = trim( (string) $worker_id );
 		$lease_epoch = absint( $lease_epoch );
 		$ttl_seconds = max( 30, min( 3600, absint( $ttl_seconds ) ) );
+		$topology = self::write_topology_preflight();
+		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
 		$now_ts = time();
 		$now = gmdate( 'Y-m-d H:i:s', $now_ts );
 		$expires = gmdate( 'Y-m-d H:i:s', $now_ts + $ttl_seconds );
+		$wpdb->last_error = '';
 		$updated = $wpdb->query( $wpdb->prepare(
 			"UPDATE {$t['work_leases']} SET heartbeat_at=%s,expires_at=%s,updated_at=%s WHERE work_id=%s AND worker_id=%s AND lease_epoch=%d AND status='active' AND expires_at>%s",
 			$now, $expires, $now, $work_id, $worker_id, $lease_epoch, $now
 		) );
-		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_lease_heartbeat_fenced', 'Heartbeat rejected because worker/epoch is stale, expired or not active.' );
+		if ( false === $updated ) return self::database_write_failure( 'mad4b_lease_heartbeat_fenced', 'Lease heartbeat persistence failed.', 'lease_heartbeat', (string) $wpdb->last_error );
+		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_lease_heartbeat_fenced', 'Heartbeat rejected because worker/epoch is stale, expired or not active.', array( 'blind_retry_allowed' => false ) );
+		$same_writer = self::same_writer_after_write( $topology, 'lease_heartbeat' );
+		if ( is_wp_error( $same_writer ) ) return $same_writer;
+		$wpdb->last_error = '';
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['work_leases']} WHERE work_id=%s LIMIT 1", $work_id ), ARRAY_A );
+		if ( ! empty( $wpdb->last_error ) ) return new WP_Error( 'mad4b_durable_persistence_uncertain', 'Lease heartbeat readback failed after write.', array( 'phase' => 'lease_heartbeat_readback', 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
 		return self::lease_receipt_from_row( $row );
 	}
 
 	public static function assert_fencing_token( $work_id, $worker_id, $lease_epoch, $expected_revision ) {
 		global $wpdb;
+		$topology = self::write_topology_preflight();
+		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
+		$wpdb->last_error = '';
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['work_leases']} WHERE work_id=%s LIMIT 1", strtolower( trim( (string) $work_id ) ) ), ARRAY_A );
+		if ( ! empty( $wpdb->last_error ) ) return self::authoritative_read_failure( 'lease_fence_read', (string) $wpdb->last_error );
+		$same_writer = MAD4B_SCP_Database_Topology::assert_same_writer( $topology );
+		if ( is_wp_error( $same_writer ) ) return $same_writer;
 		if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_fence_missing', 'Durable work lease is missing.' );
 		if ( (int) $lease_epoch < (int) $row['lease_epoch'] ) return new WP_Error( 'mad4b_fence_epoch_stale', 'Zombie worker fencing epoch is stale.' );
 		if ( (int) $lease_epoch > (int) $row['lease_epoch'] ) return new WP_Error( 'mad4b_fence_epoch_unknown', 'Provided fencing epoch is ahead of the authoritative lease.' );
@@ -767,13 +808,23 @@ final class MAD4B_SCP_Durable_Execution {
 		global $wpdb;
 		$status = sanitize_key( (string) $status );
 		if ( ! in_array( $status, array( 'completed', 'blocked', 'failed', 'cancelled' ), true ) ) return new WP_Error( 'mad4b_lease_terminal_status_invalid', 'Lease terminal status is invalid.' );
+		$topology = self::write_topology_preflight();
+		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
+		$wpdb->last_error = '';
 		$updated = $wpdb->query( $wpdb->prepare(
 			"UPDATE {$t['work_leases']} SET status=%s,updated_at=%s WHERE work_id=%s AND worker_id=%s AND lease_epoch=%d AND status='active' AND expires_at>%s",
 			$status, $now, strtolower( trim( (string) $work_id ) ), trim( (string) $worker_id ), absint( $lease_epoch ), $now
 		) );
-		return 1 === (int) $updated ? true : new WP_Error( 'mad4b_lease_complete_fenced', 'Lease completion was rejected because ownership, epoch, status or expiry is no longer authoritative.' );
+		if ( false === $updated ) return self::database_write_failure( 'mad4b_lease_complete_fenced', 'Lease completion persistence failed.', 'lease_complete', (string) $wpdb->last_error );
+		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_lease_complete_fenced', 'Lease completion was rejected because ownership, epoch, status or expiry is no longer authoritative.', array( 'blind_retry_allowed' => false ) );
+		$same_writer = self::same_writer_after_write( $topology, 'lease_complete' );
+		if ( is_wp_error( $same_writer ) ) return $same_writer;
+		$wpdb->last_error = '';
+		$persisted = $wpdb->get_row( $wpdb->prepare( "SELECT status,lease_epoch,worker_id FROM {$t['work_leases']} WHERE work_id=%s LIMIT 1", strtolower( trim( (string) $work_id ) ) ), ARRAY_A );
+		if ( ! empty( $wpdb->last_error ) || ! is_array( $persisted ) || (string) $persisted['status'] !== $status || (int) $persisted['lease_epoch'] !== absint( $lease_epoch ) || ! hash_equals( (string) $persisted['worker_id'], trim( (string) $worker_id ) ) ) return new WP_Error( 'mad4b_durable_persistence_uncertain', 'Lease completion readback did not match the committed terminal state.', array( 'phase' => 'lease_complete_readback', 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
+		return true;
 	}
 
 	public static function enqueue_outbox( array $record ) {
@@ -796,6 +847,8 @@ final class MAD4B_SCP_Durable_Execution {
 		$payload = isset( $record['payload'] ) ? $record['payload'] : array();
 		$payload_json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( ! is_string( $payload_json ) || strlen( $payload_json ) > 262144 ) return new WP_Error( 'mad4b_outbox_payload_invalid', 'Outbox payload is invalid or exceeds bounded storage.' );
+		$topology = self::write_topology_preflight();
+		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
 		$outbox_id = wp_generate_uuid4();
 		$now = gmdate( 'Y-m-d H:i:s' );
@@ -805,6 +858,7 @@ final class MAD4B_SCP_Durable_Execution {
 			if ( false === $available_ts ) return new WP_Error( 'mad4b_outbox_available_at_invalid', 'Outbox available_at is invalid.' );
 			$available = gmdate( 'Y-m-d H:i:s', $available_ts );
 		}
+		$wpdb->last_error = '';
 		$ok = $wpdb->insert( $t['outbox'], array(
 			'outbox_id' => $outbox_id,
 			'job_id' => $job_id,
@@ -824,6 +878,10 @@ final class MAD4B_SCP_Durable_Execution {
 			'updated_at' => $now,
 		) );
 		if ( false === $ok ) {
+			if ( '' !== trim( (string) $wpdb->last_error ) ) return self::database_write_failure( 'mad4b_outbox_idempotency_conflict', 'Outbox persistence failed.', 'outbox_insert', (string) $wpdb->last_error );
+			$same_writer = MAD4B_SCP_Database_Topology::assert_same_writer( $topology );
+			if ( is_wp_error( $same_writer ) ) return $same_writer;
+			$wpdb->last_error = '';
 			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['outbox']} WHERE provider_id=%s AND idempotency_key=%s LIMIT 1", $provider_id, $idempotency_key ), ARRAY_A );
 			if ( is_array( $existing )
 				&& hash_equals( (string) $existing['request_sha256'], $request_sha256 )
@@ -833,7 +891,12 @@ final class MAD4B_SCP_Durable_Execution {
 				&& hash_equals( (string) $existing['workflow_plan_sha256'], $workflow_plan_sha256 ) ) return $existing;
 			return new WP_Error( 'mad4b_outbox_idempotency_conflict', 'Provider outbox idempotency key conflicts with a different logical request.' );
 		}
-		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['outbox']} WHERE outbox_id=%s LIMIT 1", $outbox_id ), ARRAY_A );
+		$same_writer = self::same_writer_after_write( $topology, 'outbox_insert' );
+		if ( is_wp_error( $same_writer ) ) return $same_writer;
+		$wpdb->last_error = '';
+		$persisted = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['outbox']} WHERE outbox_id=%s LIMIT 1", $outbox_id ), ARRAY_A );
+		if ( ! empty( $wpdb->last_error ) || ! is_array( $persisted ) || ! hash_equals( $request_sha256, (string) $persisted['request_sha256'] ) ) return new WP_Error( 'mad4b_durable_persistence_uncertain', 'Outbox writeback did not match authoritative readback.', array( 'phase' => 'outbox_insert_readback', 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
+		return $persisted;
 	}
 
 	public static function accept_inbox( $provider_id, $provider_event_id, $job_id, $payload_sha256, $provider_execution_ref = '' ) {
@@ -845,8 +908,11 @@ final class MAD4B_SCP_Durable_Execution {
 		$payload_sha256 = strtolower( trim( (string) $payload_sha256 ) );
 		if ( '' === $provider_id || '' === $provider_event_id || strlen( $provider_event_id ) > 191 || ! preg_match( '/^[a-f0-9-]{36}$/', $job_id ) || ! preg_match( '/^[a-f0-9]{64}$/', $payload_sha256 ) ) return new WP_Error( 'mad4b_inbox_identity_invalid', 'Provider inbox identity is invalid.' );
 		if ( strlen( $provider_execution_ref ) > 191 ) return new WP_Error( 'mad4b_inbox_execution_ref_invalid', 'Provider execution reference is too long.' );
+		$topology = self::write_topology_preflight();
+		if ( is_wp_error( $topology ) ) return $topology;
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
+		$wpdb->last_error = '';
 		$inserted = $wpdb->insert( $t['inbox'], array(
 			'provider_id' => $provider_id,
 			'provider_event_id' => $provider_event_id,
@@ -858,14 +924,69 @@ final class MAD4B_SCP_Durable_Execution {
 			'received_at' => $now,
 			'processed_at' => null,
 		) );
-		if ( false !== $inserted ) return array( 'contract' => self::INBOX_CONTRACT, 'duplicate' => false, 'provider_id' => $provider_id, 'provider_event_id' => $provider_event_id );
+		if ( false !== $inserted ) {
+			$same_writer = self::same_writer_after_write( $topology, 'inbox_insert' );
+			if ( is_wp_error( $same_writer ) ) return $same_writer;
+			return array( 'contract' => self::INBOX_CONTRACT, 'duplicate' => false, 'provider_id' => $provider_id, 'provider_event_id' => $provider_event_id );
+		}
+		if ( '' !== trim( (string) $wpdb->last_error ) ) return self::database_write_failure( 'mad4b_inbox_accept_failed', 'Provider inbox persistence failed.', 'inbox_insert', (string) $wpdb->last_error );
+		$same_writer = MAD4B_SCP_Database_Topology::assert_same_writer( $topology );
+		if ( is_wp_error( $same_writer ) ) return $same_writer;
+		$wpdb->last_error = '';
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['inbox']} WHERE provider_id=%s AND provider_event_id=%s LIMIT 1", $provider_id, $provider_event_id ), ARRAY_A );
+		if ( ! empty( $wpdb->last_error ) ) return self::authoritative_read_failure( 'inbox_duplicate_read', (string) $wpdb->last_error );
 		if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_inbox_accept_failed', 'Unable to accept or read provider event.' );
 		if ( ! hash_equals( (string) $row['payload_sha256'], $payload_sha256 ) ) return new WP_Error( 'mad4b_inbox_event_conflict', 'Duplicate provider event ID carries a different payload hash.' );
 		if ( ! hash_equals( (string) $row['job_id'], $job_id ) ) return new WP_Error( 'mad4b_inbox_job_conflict', 'Duplicate provider event ID is already bound to a different job.' );
 		$stored_execution_ref = isset( $row['provider_execution_ref'] ) ? (string) $row['provider_execution_ref'] : '';
 		if ( '' !== $provider_execution_ref && '' !== $stored_execution_ref && ! hash_equals( $stored_execution_ref, $provider_execution_ref ) ) return new WP_Error( 'mad4b_inbox_execution_ref_conflict', 'Duplicate provider event ID is already bound to a different provider execution reference.' );
 		return array( 'contract' => self::INBOX_CONTRACT, 'duplicate' => true, 'provider_id' => $provider_id, 'provider_event_id' => $provider_event_id, 'status' => (string) $row['status'], 'result_ref' => (string) $row['result_ref'] );
+	}
+
+	private static function write_topology_preflight() {
+		if ( ! class_exists( 'MAD4B_SCP_Database_Topology' ) ) return new WP_Error( 'mad4b_database_topology_unavailable', 'Database topology service is unavailable.' );
+		return MAD4B_SCP_Database_Topology::assert_write_ready( true );
+	}
+
+	private static function same_writer_after_write( array $topology, $phase ) {
+		$same = MAD4B_SCP_Database_Topology::assert_same_writer( $topology );
+		if ( ! is_wp_error( $same ) ) return $same;
+		return new WP_Error(
+			'mad4b_durable_persistence_uncertain',
+			'Durable write completed but same-writer readback could not be proven.',
+			array(
+				'phase' => sanitize_key( (string) $phase ),
+				'cause' => $same->get_error_code(),
+				'persistence_state' => 'unknown',
+				'reconciliation_required' => true,
+				'blind_retry_allowed' => false,
+				'client_action' => 'reconcile_database_state_before_any_retry',
+			)
+		);
+	}
+
+	private static function database_write_failure( $code, $message, $phase, $db_error, array $extra = array() ) {
+		$failure = MAD4B_SCP_Database_Failure_Semantics::classify( $phase, $db_error, null );
+		$failure = array_merge( $failure, $extra );
+		$final_code = ! empty( $failure['reconciliation_required'] ) ? 'mad4b_durable_persistence_uncertain' : sanitize_key( (string) $code );
+		$failure['original_error_code'] = sanitize_key( (string) $code );
+		if ( '' !== trim( (string) $db_error ) ) $failure['db_error'] = substr( trim( (string) $db_error ), 0, 191 );
+		return new WP_Error( $final_code, (string) $message, $failure );
+	}
+
+	private static function authoritative_read_failure( $phase, $db_error ) {
+		return new WP_Error(
+			'mad4b_durable_authoritative_read_unavailable',
+			'Authoritative durable state could not be read from the certified writer.',
+			array(
+				'phase' => sanitize_key( (string) $phase ),
+				'db_error' => substr( trim( (string) $db_error ), 0, 191 ),
+				'reconciliation_required' => false,
+				'blind_retry_allowed' => false,
+				'fresh_plan_required' => true,
+				'client_action' => 'restore_authoritative_database_read_then_replan',
+			)
+		);
 	}
 
 	private static function begin_owned_transaction( $scope, array $table_keys ) {
