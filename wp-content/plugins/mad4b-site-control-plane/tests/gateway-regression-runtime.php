@@ -97,6 +97,11 @@ foreach ( array( 'write', 'content', 'admin' ) as $lane ) {
  check_gateway( is_wp_error( $dispatcher->can_write_dispatch( $invalid_permission ) ) && $bind_before === $GLOBALS['approval_bind_calls'], 'Invalid preparation bound approval metadata during write permission admission' );
  $valid_permission = $input; $valid_permission['_mad4b_approval_ticket_id'] = $approval_id;
  check_gateway( true === $dispatcher->can_write_dispatch( $valid_permission ) && $bind_before + 1 === $GLOBALS['approval_bind_calls'], 'Valid signed preparation did not admit governance metadata after revalidation' );
+ $oversized_permission = $input;
+ $oversized_permission['_mad4b_context_receipt'] = array( 'payload' => str_repeat( 'x', MAD4B_SCP_Abilities::MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES + 1 ) );
+ $oversized_bind_before = $GLOBALS['approval_bind_calls'];
+ $oversized_result = $dispatcher->can_write_dispatch( $oversized_permission );
+ check_gateway( is_wp_error( $oversized_result ) && 'mad4b_write_dispatch_context_receipt_oversized' === $oversized_result->get_error_code() && $oversized_bind_before === $GLOBALS['approval_bind_calls'], 'Oversized Context Receipt reached governance binding' );
  $input = $valid_permission;
  check_gateway( ! is_wp_error( $dispatcher->write_execute( $input ) ) && 1 === $a->calls, 'Valid original lane failed execution: ' . $lane );
  foreach ( array( 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' ) as $required_pin ) {
