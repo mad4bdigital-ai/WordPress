@@ -43,6 +43,10 @@ jobs:
         run: php wp-content/plugins/mad4b-site-control-plane/tests/runtime-maintenance-lease-runtime.php
       - name: Verify actual MCP catalog and credential-free discovery evidence
         run: php wp-content/plugins/mad4b-site-control-plane/tests/mcp-catalog-evidence-runtime.php
+      - name: Verify bounded MCP registration diagnostic rendering
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/mcp-registration-diagnostics-admin-runtime.php
+      - name: Verify preflight evidence survives Adapter rejection
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/mcp-preflight-registration-failure-runtime.php
       - name: Verify canonical identity and lifecycle contracts
         run: python3 wp-content/plugins/mad4b-site-control-plane/tests/connection-continuation-contract.py
       - name: Verify external discovery acceptance failures
