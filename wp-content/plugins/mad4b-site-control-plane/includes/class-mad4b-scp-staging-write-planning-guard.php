@@ -189,6 +189,15 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 					MAD4B_SCP_Staging_Write_Planning_Guard::clear_undo_request_reason();
 				}
 			};
+			if ( class_exists( 'MAD4B_SCP_Authorization' )
+				&& ! MAD4B_SCP_Authorization::propagate_trusted_execution_boundary( $name, $args['execute_callback'], $original_execute ) ) {
+				$args['execute_callback'] = static function () {
+					return new WP_Error( 'mad4b_execution_boundary_provenance_lost', 'Undo execution wrapper could not preserve the reviewed authorization boundary provenance.' );
+				};
+				if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();
+				if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
+				$args['meta']['mcp']['mad4b_execution_boundary_provenance_lost'] = true;
+			}
 		}
 
 		if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();

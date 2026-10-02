@@ -5,10 +5,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	const CONTRACT = 'mad4b.mcp-catalog-evidence.v1';
 	const MAX_TOOLS = 36;
+	const MAX_SERIALIZED_TOOL_BYTES = 98304;
 	private static $booted = false;
 	private static $failure_logged = false;
 	private static $registered_classification = array();
-	private static $classification_server = ''; 
+	private static $classification_server = '';
+	private static $registered_callbacks = array();
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -65,8 +67,12 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		}
 
 		if ( ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! class_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
-		$names = array();
-		foreach ( $abilities as $name ) {
+		$names = array(); $catalog_bytes = 32;
+		// Validate required tools before optional projections. Direct tools must fit
+		// the same bounded tools/list envelope exercised by HTTP acceptance; large
+		// optional Abilities remain reachable through the stable dispatcher path.
+		$ordered = array_merge( array_values( array_diff( $abilities, $optional ) ), array_values( array_intersect( $abilities, $optional ) ) );
+		foreach ( $ordered as $name ) {
 			if ( ! isset( $budget_allow[ $name ] ) ) continue;
 			$stage = 'ability_lookup'; $failure = null; $source_fingerprint = '';
 			try {
@@ -78,8 +84,20 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				if ( is_wp_error( $built ) ) { $failure = array( 'stage' => $stage, 'error_class' => 'WP_Error', 'error_code' => sanitize_key( $built->get_error_code() ), 'schema_fingerprint' => '' ); }
 				else {
 					$failure = self::dto_failure( $built['tool'] );
+					$tool_bytes = strlen( json_encode( $built['tool']->toArray(), JSON_THROW_ON_ERROR ) ) + 1;
 					if ( ! $failure && ( ! isset( $built['adapter_meta']['ability'] ) || $name !== $built['adapter_meta']['ability'] || isset( $names[ $built['tool']->getName() ] ) ) ) $failure = array( 'stage' => 'identity', 'error_class' => 'Contract', 'error_code' => 'mcp_identity_collision', 'schema_fingerprint' => '' );
-					if ( ! $failure ) $names[ $built['tool']->getName() ] = true;
+					if ( ! $failure && $catalog_bytes + $tool_bytes > self::MAX_SERIALIZED_TOOL_BYTES ) {
+						$failure = array(
+							'stage' => 'catalog_size',
+							'error_class' => 'Budget',
+							'error_code' => in_array( $name, $optional, true ) ? 'mcp_optional_catalog_size_excluded' : 'mcp_required_catalog_size_exceeded',
+							'schema_fingerprint' => '',
+							'tool_bytes' => $tool_bytes,
+							'catalog_bytes_before' => max( 0, $catalog_bytes - 32 ),
+							'catalog_bytes_limit' => self::MAX_SERIALIZED_TOOL_BYTES,
+						);
+					}
+					if ( ! $failure ) { $names[ $built['tool']->getName() ] = true; $catalog_bytes += $tool_bytes; }
 				}
 			} catch ( Throwable $error ) { $failure = array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_preflight_exception', 'schema_fingerprint' => '' ); }
 			if ( $failure ) {
@@ -89,6 +107,9 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				if ( ! in_array( $name, $optional, true ) || 'identity' === $failure['stage'] ) $out['blocker'] = 'mcp_required_tool_preflight_failed';
 			} else $out['tools'][] = $name;
 		}
+		$out['serialized_tool_bytes'] = max( 0, $catalog_bytes - 32 );
+		$out['serialized_tool_bytes_limit'] = self::MAX_SERIALIZED_TOOL_BYTES;
+		$out['size_policy'] = 'bounded_serialized_tool_bytes';
 		$out['degraded'] = ! empty( $out['failures'] ) && '' === $out['blocker'];
 		$out['ready'] = '' === $out['blocker'] && ! empty( $out['tools'] );
 		if ( ! $out['ready'] && '' === $out['blocker'] ) $out['blocker'] = 'mcp_catalog_empty';
@@ -119,16 +140,40 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	public static function capture_classification( $server, array $expected ) {
 		if ( ! is_object( $server ) || ! method_exists( $server, 'get_tools' ) ) throw new RuntimeException( 'mad4b_catalog_capture_unavailable' );
 		$reviewed = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
+		$dynamic_rows = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
+			? MAD4B_SCP_ChatGPT_Tool_Projection::effective_projection_rows()
+			: array();
 		$captured = array();
 		foreach ( $server->get_tools() as $name => $dto ) {
-			$bound = $server->get_mcp_tool( $name ); $meta = $bound ? $bound->get_adapter_meta() : array();
-			$ability = $meta['ability'] ?? '';
+			$bound = $server->get_mcp_tool( $name );
+			$meta = $bound ? $bound->get_adapter_meta() : array();
+			$ability = isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
 			if ( ! in_array( $ability, $expected, true ) || $name !== $dto->getName() ) throw new RuntimeException( 'mad4b_catalog_capture_identity_invalid' );
-			$captured[$name] = array( 'ability' => $ability, 'direct_step_up' => in_array( $ability, $reviewed, true ), 'exact_chatgpt_client_required' => in_array( $ability, $reviewed, true ) );
+			$dynamic = isset( $dynamic_rows[ $ability ] ) && is_array( $dynamic_rows[ $ability ] );
+			$dynamic_readonly = $dynamic && 'read' === $dynamic_rows[ $ability ]['lane'] && ! empty( $dynamic_rows[ $ability ]['readonly'] );
+			$dynamic_breakglass = $dynamic && ! empty( $dynamic_rows[ $ability ]['breakglass'] );
+			$direct_step_up = in_array( $ability, $reviewed, true );
+			$captured[ $name ] = array(
+				'ability' => $ability,
+				'direct_step_up' => $direct_step_up,
+				'dynamic_projection' => $dynamic,
+				'input_schema_sha256' => $dynamic ? $dynamic_rows[ $ability ]['input_schema_sha256'] : '',
+				'classification_sha256' => $dynamic ? $dynamic_rows[ $ability ]['classification_sha256'] : '',
+				'wire_sha256' => $dynamic ? hash( 'sha256', wp_json_encode( $dto->toArray() ) ) : '',
+				'dynamic_readonly' => $dynamic_readonly,
+				'dynamic_breakglass' => $dynamic_breakglass,
+				'exact_chatgpt_client_required' => $direct_step_up || ( $dynamic && ! $dynamic_readonly ),
+			);
 		}
 		if ( ! empty( self::$registered_classification ) && self::$registered_classification !== $captured ) throw new RuntimeException( 'mad4b_catalog_classification_changed' );
 		self::$registered_classification = $captured;
 		self::$classification_server = spl_object_hash( $server );
+		foreach ( $captured as $name => $row ) if ( $row['dynamic_projection'] ) self::$registered_callbacks[ $name ] = MAD4B_SCP_ChatGPT_Tool_Projection::callback_identity( $server->get_mcp_tool( $name ) );
+	}
+
+	public static function materialized_callbacks_match( $tool, $server ) {
+		$name = $tool->get_protocol_dto()->getName();
+		return spl_object_hash( $server ) === self::$classification_server && isset( self::$registered_callbacks[ $name ] ) && self::$registered_callbacks[ $name ] === MAD4B_SCP_ChatGPT_Tool_Projection::callback_identity( $tool );
 	}
 
 	public static function classification_snapshot() { return self::$registered_classification; }
@@ -163,35 +208,69 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			$bound = $name ? $server->get_mcp_tool( $name ) : null;
 			$meta = is_object( $bound ) && method_exists( $bound, 'get_adapter_meta' ) ? $bound->get_adapter_meta() : array();
 			$ability = is_array( $meta ) && isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
-			$captured = isset( self::$registered_classification[$name] ) ? self::$registered_classification[$name] : null;
+			$captured = isset( self::$registered_classification[ $name ] ) ? self::$registered_classification[ $name ] : null;
 			if ( spl_object_hash( $server ) !== self::$classification_server || ! is_array( $captured ) || $ability !== $captured['ability'] ) throw new RuntimeException( 'mad4b_catalog_classification_unavailable' );
-			$direct_step_up = $captured['direct_step_up'];
-			// Registration is a stable reviewed superset. Visibility is request-local
-			// and can only remove direct step-up tools after bearer verification.
-			if ( $direct_step_up && ! $step_up_visible ) continue;
+			$direct_step_up = ! empty( $captured['direct_step_up'] );
+			$dynamic = ! empty( $captured['dynamic_projection'] );
+			$dynamic_readonly = ! empty( $captured['dynamic_readonly'] );
+			$dynamic_breakglass = ! empty( $captured['dynamic_breakglass'] );
+			if ( $dynamic && ! MAD4B_SCP_ChatGPT_Tool_Projection::materialized_tool_matches( $bound, $server ) ) continue;
+			if ( $dynamic && ( ! class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) || ! MAD4B_SCP_ChatGPT_Tool_Projection::is_projected( $ability ) ) ) continue;
+
+			// Dynamic projection changes discoverability only. Mutating projections
+			// require the exact ChatGPT step-up bearer for visibility; the original
+			// Ability permission callback remains authoritative for execution.
+			if ( ( $direct_step_up || ( $dynamic && ! $dynamic_readonly ) ) && ! $step_up_visible ) continue;
+			if ( $dynamic_breakglass ) {
+				$breakglass_scope_visible = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
+					&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+					&& (
+						MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE )
+						|| ( '' !== $ability && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'ability:' . $ability ) )
+					);
+				if ( ! $breakglass_scope_visible || ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_breakglass() ) continue;
+			}
+
 			$failure = self::dto_failure( $dto );
 			if ( ! $failure ) { $safe[] = $dto; continue; }
-			if ( ! $direct_step_up ) throw new RuntimeException( 'mad4b_required_catalog_schema_invalid' );
+			if ( ! $direct_step_up && ! $dynamic ) throw new RuntimeException( 'mad4b_required_catalog_schema_invalid' );
 			$failure['failing_ability'] = $ability;
-			if ( ! self::$failure_logged ) { self::$failure_logged = true; error_log( '[MAD4B MCP preflight] ' . wp_json_encode( $failure ) ); }
+			if ( ! self::$failure_logged ) {
+				self::$failure_logged = true;
+				error_log( '[MAD4B MCP preflight] ' . wp_json_encode( $failure ) );
+			}
 		}
 		return $safe;
 	}
 
 	public static function optional_projections( array $abilities = array() ) {
-		// Required read/dispatch tools never degrade. Only abilities explicitly
-		// marked as reviewed direct step-up projections may be isolated.
+		// Required base transport tools never degrade. Reviewed direct step-ups and
+		// explicitly persisted dynamic projections are optional isolation units.
 		if ( empty( $abilities ) && ! empty( self::$registered_classification ) ) $abilities = array_column( self::$registered_classification, 'ability' );
-		elseif ( empty( $abilities ) && class_exists( 'MAD4B_SCP_Servers', false ) && method_exists( 'MAD4B_SCP_Servers', 'chatgpt_reviewed_direct_step_up_tools' ) ) {
-			$abilities = MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools();
+		elseif ( empty( $abilities ) && class_exists( 'MAD4B_SCP_Servers', false ) ) {
+			$abilities = array_merge(
+				MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools(),
+				class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array()
+			);
 		}
+		$dynamic = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
+			? array_fill_keys( MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names(), true )
+			: array();
 		$optional = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $abilities ) ) ) as $ability_name ) {
+			if ( isset( $dynamic[ $ability_name ] ) ) {
+				$optional[] = $ability_name;
+				continue;
+			}
 			if ( ! empty( self::$registered_classification ) ) {
-				foreach ( self::$registered_classification as $captured ) if ( $ability_name === $captured['ability'] && $captured['direct_step_up'] ) $optional[] = $ability_name;
-			} elseif ( self::ability_is_direct_step_up( $ability_name ) ) $optional[] = $ability_name;
+				foreach ( self::$registered_classification as $captured ) {
+					if ( $ability_name === $captured['ability'] && ! empty( $captured['direct_step_up'] ) ) $optional[] = $ability_name;
+				}
+			} elseif ( self::ability_is_direct_step_up( $ability_name ) ) {
+				$optional[] = $ability_name;
+			}
 		}
-		return $optional;
+		return array_values( array_unique( $optional ) );
 	}
 
 	public static function inspect( $server, array $expected_abilities ) {

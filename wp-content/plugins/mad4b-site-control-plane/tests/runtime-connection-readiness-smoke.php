@@ -1,6 +1,7 @@
 <?php
 /** Runtime proof for read-only local connection truth and staged admin rendering. */
 if ( ! defined( 'ABSPATH' ) ) throw new RuntimeException( 'WordPress is not loaded.' );
+require_once __DIR__ . '/prepared-dispatch-runtime-helper.php';
 $check = static function ( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); };
 
 $endpoint_matches_route = static function ( $endpoint, $server_id ) {
@@ -181,15 +182,24 @@ $mismatch = MAD4B_SCP_Read_Consistency::diagnostic_bundle( array(
 $check( is_array( $mismatch ) && 'generation_changed' === $mismatch['state'], 'Generation mismatch did not fail closed.' );
 $check( empty( $mismatch['valid_for_merge'] ) && ! empty( $mismatch['discard_partial'] ) && empty( $mismatch['resume_permitted'] ), 'Generation mismatch did not invalidate partial evidence.' );
 $read_dispatch = wp_get_ability( 'mad4b/read-execute' );
+$read_info = wp_get_ability( 'mad4b/tool-info' );
 $check( is_object( $read_dispatch ) && method_exists( $read_dispatch, 'execute' ), 'Governed read dispatcher is unavailable.' );
-$metadata_dispatch = $read_dispatch->execute( array(
-    'ability_name' => 'mad4b/read-metadata-envelope',
-    'input' => array(
-        'target_type' => 'operation',
-        'target' => 'managed_skills_reconciliation',
-        'read_transaction_id' => $snapshot['read_transaction_id'],
-        'expected_runtime_generation' => $snapshot['runtime_generation'],
+$check( is_object( $read_info ) && method_exists( $read_info, 'execute' ), 'Governed read info tool is unavailable.' );
+$metadata_info = $read_info->execute( array( 'ability_name' => 'mad4b/read-metadata-envelope' ) );
+$check( ! is_wp_error( $metadata_info ) && ! empty( $metadata_info['input_schema_sha256'] ), 'Compact metadata schema digest is unavailable.' );
+$metadata_identity = mad4b_test_prepared_dispatch_identity( 'mad4b/read-metadata-envelope' );
+$check( ! is_wp_error( $metadata_identity ), 'Compact metadata signed preparation is unavailable.' );
+$metadata_dispatch = $read_dispatch->execute( array_merge(
+    array(
+        'ability_name' => 'mad4b/read-metadata-envelope',
+        'input' => array(
+            'target_type' => 'operation',
+            'target' => 'managed_skills_reconciliation',
+            'read_transaction_id' => $snapshot['read_transaction_id'],
+            'expected_runtime_generation' => $snapshot['runtime_generation'],
+        ),
     ),
+    $metadata_identity
 ) );
 $check( ! is_wp_error( $metadata_dispatch ), 'Compact metadata dispatch returned an error: ' . ( is_wp_error( $metadata_dispatch ) ? $metadata_dispatch->get_error_code() : '' ) );
 $check( is_array( $metadata_dispatch ) && 'mad4b.chatgpt-read-execute.v1' === $metadata_dispatch['contract'], 'Compact metadata dispatch wrapper drifted.' );

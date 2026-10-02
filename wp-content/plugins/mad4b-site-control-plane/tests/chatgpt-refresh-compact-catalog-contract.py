@@ -39,8 +39,13 @@ for marker in [
     "mad4b.chatgpt-read-discovery.v1",
     "mad4b.chatgpt-read-ability-info.v1",
     "mad4b.chatgpt-read-execute.v1",
-    "MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate",
+    "MAD4B_SCP_Capability_Descriptor_Registry::describe",
+    "empty( $row['execution_eligible'] )",
     "mad4b_read_dispatch_mutation_denied",
+    "mad4b_read_dispatch_schema_pin_required",
+    "mad4b_read_dispatch_schema_drift",
+    "expected_input_schema_sha256",
+    "array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' )",
     "true !== $annotations['readonly']",
     "$ability->execute( $params )",
 ]:
@@ -146,6 +151,15 @@ for marker in [
 ]:
     require(marker in core_chatgpt, f"required minimal direct ChatGPT tool missing: {marker}")
 
+
+for marker in [
+    "'mad4b/chatgpt-tool-projection-status'",
+    "'mad4b/chatgpt-tool-projection-discover'",
+    "'mad4b/chatgpt-tool-projection-plan'",
+    "'mad4b/chatgpt-tool-projection-apply'",
+]:
+    require(marker in core_chatgpt, f"dynamic projection control tool missing from compact ChatGPT core: {marker}")
+
 for forbidden_direct in [
     "'mad4b/diagnostics-health'",
     "'mad4b/runtime-authority-status'",
@@ -180,6 +194,7 @@ require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" not in core_cha
 require("mad4b/full-staging-authority-apply" not in core_chatgpt, "full staging apply must never be statically mounted in the core ChatGPT catalog")
 
 # Large capability families must not be directly merged back into tools/list.
+base_chatgpt_body = SERVERS.split("public static function chatgpt_base_tools()", 1)[1].split("public static function chatgpt_tools()", 1)[0]
 chatgpt_body = SERVERS.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_internal_enrollment_mutations()", 1)[0]
 for forbidden in [
     "self::external_write_tools()",
@@ -188,31 +203,35 @@ for forbidden in [
     "self::core_tools( 'mad4b-content' )",
     "self::core_tools( 'mad4b-admin' )",
 ]:
-    require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
+    require(forbidden not in base_chatgpt_body, f"large capability catalog leaked back into required base tools/list: {forbidden}")
 # Stable materialization precedes bearer verification. Visibility is gated later.
-require("$step_up = self::chatgpt_reviewed_direct_step_up_tools();" in chatgpt_body, "reviewed stable step-up registration missing")
-require("verified_bearer_has_scope" not in chatgpt_body, "registration cannot depend on a not-yet-verified bearer")
+require("$step_up = self::chatgpt_reviewed_direct_step_up_tools();" in base_chatgpt_body, "reviewed stable step-up registration missing")
+require("verified_bearer_has_scope" not in base_chatgpt_body, "base registration cannot depend on a not-yet-verified bearer")
+require("MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names()" in chatgpt_body, "dynamic projection composition missing")
+require("array_merge( $base, $dynamic )" in chatgpt_body, "dynamic projection must compose over the stable base catalog")
+for forbidden in ("self::external_write_tools()", "self::write_tools()", "$registry->ability_names( 'read' )"):
+    require(forbidden not in chatgpt_body, f"dynamic composition wrapper rebuilt a broad catalog: {forbidden}")
 reviewed = SERVERS.split("public static function chatgpt_reviewed_direct_step_up_tools()", 1)[1].split("public static function is_chatgpt_direct_step_up_tool", 1)[0]
-for marker in ("MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY", "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY", "MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY", "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()"):
+for marker in ("MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY", "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY", "MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY", "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()", "MAD4B_SCP_ChatGPT_Tool_Projection::APPLY_ABILITY"):
     require(marker in reviewed, "reviewed step-up source missing: " + marker)
 for primitive in ("Site_Profile_Enrollment", "Site_Profile_Write_Enablement", "Staging_Write_Grant_Reconciliation", "Staging_Write_Candidate_Binding"):
-    require("MAD4B_SCP_" + primitive + "::chatgpt_step_up_tools()" not in chatgpt_body, "internal primitive entered direct transport")
+    require("MAD4B_SCP_" + primitive + "::chatgpt_step_up_tools()" not in base_chatgpt_body, "internal primitive entered required base transport")
 require("'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in core_chatgpt, "bounded Enrollment dispatcher must remain in the canonical compact ChatGPT core catalog")
-require("$candidates = array_merge( $core, $bootstrap )" in chatgpt_body, "runtime ChatGPT tools/list must start from the canonical compact core catalog")
-dispatcher_helper = SERVERS.split("public static function chatgpt_dispatch_transport_tools()", 1)[1].split("public static function chatgpt_tools()", 1)[0]
+require("$candidates = array_merge( $core, $bootstrap )" in base_chatgpt_body, "runtime ChatGPT base tools/list must start from the canonical compact core catalog")
+dispatcher_helper = SERVERS.split("public static function chatgpt_dispatch_transport_tools()", 1)[1].split("public static function chatgpt_base_tools()", 1)[0]
 for dispatcher in ("'mad4b/write-execute'", "'mad4b/developer-execute'", "'mad4b/enrollment-execute'"):
     require(dispatcher in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory is incomplete: " + dispatcher)
 require("array_values( array_unique( array_map( 'strval', $tools ) ) )" in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory must remain deduplicated")
 require("sort( $tools, SORT_STRING )" in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory must remain deterministic")
-require("array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )" in chatgpt_body, "normal governed mutation dispatch plus guarded authority step-ups must derive from the canonical dispatcher inventory")
-require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_body, "unified enrolled Staging tools/list must include read-only full authority diagnostics")
+require("array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )" in base_chatgpt_body, "normal governed mutation dispatch plus guarded authority step-ups must derive from the canonical dispatcher inventory")
+require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in base_chatgpt_body, "unified enrolled Staging base catalog must include read-only full authority diagnostics")
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
     "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
 ]:
-    require(low_level not in chatgpt_body, f"low-level enrollment mutation leaked into direct ChatGPT tools/list: {low_level}")
+    require(low_level not in base_chatgpt_body, f"low-level enrollment mutation leaked into required ChatGPT base catalog: {low_level}")
 
 # The full logical capability universe remains intact behind discovery.
 full = SERVERS.split("public static function chatgpt_full_catalog_candidates()", 1)[1].split("public static function is_chatgpt_full_catalog_candidate", 1)[0]
@@ -246,3 +265,4 @@ enrollment_projection = SERVERS.split("private static function chatgpt_enrollmen
 require("self::chatgpt_internal_enrollment_mutations()" in enrollment_projection, "logical ChatGPT discovery must remove low-level enrollment mutations")
 
 print("mad4b.chatgpt-refresh-minimal-catalog.v6: PASS")
+

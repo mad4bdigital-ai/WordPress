@@ -163,8 +163,8 @@ foreach ( array(
 ) as $marker ) {
 	$check( false !== strpos( $source, $marker ), 'Intent Registry marker missing: ' . $marker );
 }
+$check( 1 === preg_match( '/const VERSION\s*=\s*([0-9]+)\s*;/', $schema, $version_match ) && (int) $version_match[1] >= 11, 'Intent Registry requires schema migration v11 or later' );
 foreach ( array(
-	"const VERSION = 11;",
 	"'intent_relations' =>",
 	"UNIQUE KEY relation_revision (relation_id,revision)",
 	"UNIQUE KEY current_relation_key (current_relation_key)",

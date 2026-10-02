@@ -213,7 +213,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'code_challenge_methods_supported' => array( 'S256' ),
 			'scopes_supported' => $portable_only
 				? array( 'mad4b:read', 'offline_access' )
-				: array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' ),
+				: array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-breakglass', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' ),
 			'authorization_response_iss_parameter_supported' => true,
 			'protected_resources' => self::resource_identifiers(),
 			'client_id_metadata_document_supported' => true,
@@ -708,17 +708,25 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . esc_html__( 'Authorize MCP access', 'mad4b-site-control-plane' ) . '</title></head><body>';
 		echo '<main style="max-width:720px;margin:40px auto;font-family:system-ui,sans-serif;padding:0 20px">';
 		echo '<h1>' . esc_html__( 'Authorize MCP access', 'mad4b-site-control-plane' ) . '</h1>';
-		$step_up_requested = in_array( 'mad4b:authority:step-up', $validated['scopes'], true );
-		echo '<p><strong>' . esc_html( $client_name ) . '</strong> ' . esc_html( $step_up_requested
-			? __( 'is requesting read access plus a governed authority step-up scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
-			: __( 'is requesting read access to this WordPress MCP resource.', 'mad4b-site-control-plane' )
-		) . '</p>';
+		$step_up_requested = in_array( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE, $validated['scopes'], true );
+		$raw_breakglass_requested = in_array( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE, $validated['scopes'], true );
+		$request_description = $raw_breakglass_requested
+			? __( 'is requesting read access plus governed authority step-up and explicit raw-SQL Breakglass request scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
+			: ( $step_up_requested
+				? __( 'is requesting read access plus a governed authority step-up scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
+				: __( 'is requesting read access to this WordPress MCP resource.', 'mad4b-site-control-plane' ) );
+		echo '<p><strong>' . esc_html( $client_name ) . '</strong> ' . esc_html( $request_description ) . '</p>';
 		$user_identity = self::consent_user_identity( $user_id );
 		echo '<p>' . esc_html__( 'Signed in as:', 'mad4b-site-control-plane' ) . ' <strong id="mad4b-oauth-user-label">' . esc_html( (string) $user_identity['display_label'] ) . '</strong></p>';
 		echo '<p>' . esc_html__( 'OAuth scopes:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( implode( ' ', $validated['scopes'] ) ) . '</code></p>';
 		if ( $step_up_requested ) {
 			echo '<p><strong>' . esc_html__( 'Authority step-up:', 'mad4b-site-control-plane' ) . '</strong> ' .
 				esc_html__( 'This OAuth scope permits ChatGPT to request exact environment-bound governance bootstrap and convergence operations, including bootstrap Control Plane self-update and database-backed governed runtime-gate policy changes only where the current environment policy permits them. It does not itself create write grants, Developer authority, Developer Breakglass authority, Production mutation authority, or raw-SQL Breakglass authority. Production writes require an exact Production Site Profile, database-bound Production OAuth opt-in, explicit runtime-gate confirmation, exact grants, one-time approval, matching build/site digests, enrolled administrator identity, audit readiness, and all fail-closed governance gates. Full Staging Authority remains Staging-only.', 'mad4b-site-control-plane' ) .
+				'</p>';
+		}
+		if ( $raw_breakglass_requested ) {
+			echo '<p><strong>' . esc_html__( 'Raw-SQL Breakglass request:', 'mad4b-site-control-plane' ) . '</strong> ' .
+				esc_html__( 'This explicit scope allows the exact ChatGPT client to request visibility and call admission for a projected raw-SQL Breakglass Ability only on the bound Staging resource while the database-backed Breakglass gate is effective. The scope is not execution authority: a bound enabled NHI, exact mad4b-breakglass grant, central mutation policy, one-time exact Breakglass approval ticket, audit/budget gates, and the original Ability permission callback remain mandatory.', 'mad4b-site-control-plane' ) .
 				'</p>';
 		}
 		$grant_projection = self::consent_grant_projection();
@@ -963,7 +971,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$scope = trim( (string) $scope );
 		if ( strlen( $scope ) > self::MAX_SCOPE_BYTES ) return new WP_Error( 'invalid_scope', 'OAuth scope is too large.' );
 		$items = preg_split( '/\s+/', $scope );
-		$allowed = array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' );
+		$allowed = array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-breakglass', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' );
 		$scopes = array();
 		foreach ( is_array( $items ) ? $items : array() as $item ) {
 			$item = trim( (string) $item );
@@ -979,22 +987,29 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( '' !== $resource && class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) {
 			$chatgpt = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier();
 			$developer = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer' );
-			$breakglass = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer-breakglass' );
-			$has_step_up = in_array( 'mad4b:authority:step-up', $scopes, true );
-			$has_developer = in_array( 'server:mad4b-developer', $scopes, true );
-			$has_breakglass = in_array( 'server:mad4b-developer-breakglass', $scopes, true );
+			$developer_breakglass = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer-breakglass' );
+			$has_step_up = in_array( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE, $scopes, true );
+			$has_raw_breakglass = in_array( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE, $scopes, true );
+			$has_developer = in_array( MAD4B_SCP_OAuth_Resource_Bridge::DEVELOPER_SCOPE, $scopes, true );
+			$has_developer_breakglass = in_array( MAD4B_SCP_OAuth_Resource_Bridge::DEVELOPER_BREAKGLASS_SCOPE, $scopes, true );
 
 			if ( $has_step_up ) {
 				if ( ! hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is reserved for the exact ChatGPT CIMD client.' );
 				if ( ! hash_equals( $chatgpt, $resource ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is valid only for the canonical ChatGPT resource.' );
 				if ( ! MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available() ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is unavailable outside an exact eligible governed environment.' );
 			}
+			if ( $has_raw_breakglass ) {
+				if ( ! $has_step_up ) return new WP_Error( 'invalid_scope', 'Raw Breakglass scope requires the dedicated authority step-up scope.' );
+				if ( ! hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) ) return new WP_Error( 'invalid_scope', 'Raw Breakglass scope is reserved for the exact ChatGPT CIMD client.' );
+				if ( ! hash_equals( $chatgpt, $resource ) ) return new WP_Error( 'invalid_scope', 'Raw Breakglass scope is valid only for the canonical ChatGPT resource.' );
+				if ( ! MAD4B_SCP_OAuth_Resource_Bridge::breakglass_scope_available() ) return new WP_Error( 'invalid_scope', 'Raw Breakglass scope is unavailable until the exact governed Staging Breakglass gate is effective.' );
+			}
 
 			if ( hash_equals( $developer, $resource ) ) {
-				if ( ! $has_developer || $has_breakglass || $has_step_up ) return new WP_Error( 'invalid_scope', 'Developer resource requires exactly the normal Developer server scope.' );
-			} elseif ( hash_equals( $breakglass, $resource ) ) {
-				if ( ! $has_breakglass || $has_developer || $has_step_up ) return new WP_Error( 'invalid_scope', 'Developer Breakglass resource requires exactly the Breakglass server scope.' );
-			} elseif ( $has_developer || $has_breakglass ) {
+				if ( ! $has_developer || $has_developer_breakglass || $has_raw_breakglass || $has_step_up ) return new WP_Error( 'invalid_scope', 'Developer resource requires exactly the normal Developer server scope.' );
+			} elseif ( hash_equals( $developer_breakglass, $resource ) ) {
+				if ( ! $has_developer_breakglass || $has_developer || $has_raw_breakglass || $has_step_up ) return new WP_Error( 'invalid_scope', 'Developer Breakglass resource requires exactly the Breakglass server scope.' );
+			} elseif ( $has_developer || $has_developer_breakglass ) {
 				return new WP_Error( 'invalid_scope', 'Developer scopes cannot be issued for a non-Developer protected resource.' );
 			}
 		}

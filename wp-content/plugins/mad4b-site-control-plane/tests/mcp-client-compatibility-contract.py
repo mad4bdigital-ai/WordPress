@@ -133,10 +133,10 @@ for marker in [
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
     "verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )",
     "verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )",
-    "$direct_step_up = $captured['direct_step_up'];",
+    "$direct_step_up = ! empty( $captured['direct_step_up'] );",
     "mad4b_catalog_classification_unavailable",
     "public static function capture_classification",
-    "if ( $direct_step_up && ! $step_up_visible ) continue;",
+    "if ( ( $direct_step_up || ( $dynamic && ! $dynamic_readonly ) ) && ! $step_up_visible ) continue;",
     "mad4b_required_catalog_schema_invalid",
 ]:
     assert marker in catalog_diagnostics, f'missing post-auth catalog visibility invariant: {marker}'
@@ -166,9 +166,16 @@ for marker in [
     "'mcp_required_catalog_budget_exceeded'",
     "'mcp_optional_catalog_budget_excluded'",
     "self::MAX_TOOLS - count( $required )",
+    "MAX_SERIALIZED_TOOL_BYTES",
+    "'mcp_optional_catalog_size_excluded'",
+    "'mcp_required_catalog_size_exceeded'",
+    "'bounded_serialized_tool_bytes'",
 ]:
     assert marker in catalog_diagnostics, f'missing bounded catalog budget invariant: {marker}'
-assert "array_intersect( self::chatgpt_reviewed_direct_step_up_tools(), $tools )" in servers
+# Dynamic projections use the live effective registry so same-request projection
+# changes cannot be hidden by an older registration-classification snapshot.
+assert "if ( isset( $dynamic[ $ability_name ] ) )" in catalog_diagnostics
+assert "self::ability_is_direct_step_up( $ability_name )" in catalog_diagnostics
 reviewed_helper = servers.split('public static function chatgpt_reviewed_direct_step_up_tools()', 1)[1].split('public static function is_chatgpt_direct_step_up_tool', 1)[0]
 for marker in [
     'MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY',

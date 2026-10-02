@@ -92,6 +92,7 @@ final class MAD4B_SCP_Schema {
 	}
 }
 
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-identifiers.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-abilities.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-authority.php';
 

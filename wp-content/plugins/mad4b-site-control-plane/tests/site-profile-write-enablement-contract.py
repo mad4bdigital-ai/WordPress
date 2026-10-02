@@ -106,16 +106,19 @@ for marker in [
 core_write = servers[servers.index('private static function core_write_candidates'):servers.index('private static function registered_adapter_write_candidates')]
 if 'mad4b/site-profile-write-enable' in core_write:
     raise SystemExit('bounded Site Profile write enablement leaked into normal governed write candidates')
+chatgpt_base = servers.split('public static function chatgpt_base_tools()', 1)[1].split('public static function chatgpt_tools()', 1)[0]
 chatgpt_transport = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
-if "self::chatgpt_reviewed_direct_step_up_tools()" not in chatgpt_transport:
-    raise SystemExit('single-app Full Staging Authority step-up projection is missing')
+if "self::chatgpt_reviewed_direct_step_up_tools()" not in chatgpt_base:
+    raise SystemExit('single-app Full Staging Authority step-up projection is missing from stable base')
+if "MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names()" not in chatgpt_transport:
+    raise SystemExit('dynamic ChatGPT projection composition is missing')
 for marker in (
     "MAD4B_SCP_Site_Profile_Enrollment::chatgpt_step_up_tools()",
     "MAD4B_SCP_Site_Profile_Write_Enablement::chatgpt_step_up_tools()",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_step_up_tools()",
     "MAD4B_SCP_Staging_Write_Candidate_Binding::chatgpt_step_up_tools()",
 ):
-    if marker in chatgpt_transport:
+    if marker in chatgpt_base or marker in chatgpt_transport:
         raise SystemExit('internal primitive leaked into direct transport: ' + marker)
 
 internal_enrollment = servers.split('private static function chatgpt_internal_enrollment_mutations()', 1)[1].split('private static function chatgpt_enrollment_candidates()', 1)[0]
