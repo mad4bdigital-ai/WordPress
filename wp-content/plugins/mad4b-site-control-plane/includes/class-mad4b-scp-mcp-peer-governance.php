@@ -41,6 +41,8 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 			return self::unavailable( 'mcp_server_registry_exception' );
 		}
 		if ( ! is_array( $servers ) ) return self::unavailable( 'mcp_server_registry_invalid' );
+		// Apply bounds before constructing or hashing the transport inventory.
+		if ( count( $servers ) > self::MAX_SERVERS ) return self::unavailable( 'mcp_server_inventory_overflow' );
 
 		// Bind tool identities, not only counts. Renaming a tool at the same count
 		// must still cross the continuation Owner Gate.
@@ -49,6 +51,7 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 			if ( ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) || ! method_exists( $server, 'get_tools' ) || ! method_exists( $server, 'get_mcp_tool' ) ) return self::unavailable( 'mcp_transport_identity_unavailable' );
 			$tools = $server->get_tools();
 			if ( ! is_array( $tools ) ) return self::unavailable( 'mcp_tool_identity_unavailable' );
+			if ( count( $tools ) > self::MAX_TOOLS_PER_SERVER ) return self::unavailable( 'mcp_tool_inventory_overflow' );
 			$entries = array();
 			foreach ( array_keys( $tools ) as $name ) {
 				$tool = $server->get_mcp_tool( $name );

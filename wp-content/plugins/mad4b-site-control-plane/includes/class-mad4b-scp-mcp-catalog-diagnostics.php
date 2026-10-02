@@ -129,8 +129,10 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				$valid = \WP\MCP\Domain\Tools\McpToolValidator::validate_tool_dto( $dto );
 				if ( is_wp_error( $valid ) ) return array( 'stage' => $stage, 'error_class' => 'WP_Error', 'error_code' => sanitize_key( $valid->get_error_code() ), 'schema_fingerprint' => $fingerprint );
 			}
+			// JSON Schema permits object schemas without a properties keyword.
+			// A supplied properties keyword must still serialize as an object.
 			$stage = 'wire_schema_shape'; $wire = json_decode( $json );
-			if ( ! is_object( $wire ) || ! isset( $wire->inputSchema ) || ! is_object( $wire->inputSchema ) || 'object' !== ( $wire->inputSchema->type ?? '' ) || ! isset( $wire->inputSchema->properties ) || ! is_object( $wire->inputSchema->properties ) ) throw new RuntimeException( 'wire_input_schema_invalid' );
+			if ( ! is_object( $wire ) || ! isset( $wire->inputSchema ) || ! is_object( $wire->inputSchema ) || 'object' !== ( $wire->inputSchema->type ?? '' ) || ( property_exists( $wire->inputSchema, 'properties' ) && ! is_object( $wire->inputSchema->properties ) ) ) throw new RuntimeException( 'wire_input_schema_invalid' );
 			if ( isset( $wire->outputSchema ) && ( ! is_object( $wire->outputSchema ) || 'object' !== ( $wire->outputSchema->type ?? '' ) ) ) throw new RuntimeException( 'wire_output_schema_invalid' );
 			return null;
 		} catch ( Throwable $error ) { return array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_tool_serialization_invalid', 'schema_fingerprint' => $fingerprint ); }

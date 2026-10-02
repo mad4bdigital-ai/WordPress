@@ -1213,12 +1213,19 @@ final class MAD4B_SCP_Self_Update {
 	private static function continuation_policy_projection() {
 		$policy = self::post_update_continuation_policy();
 		if ( is_wp_error( $policy ) ) {
+			$data = $policy->get_error_data();
+			$data = is_array( $data ) ? $data : array();
 			return array(
 				'contract' => 'mad4b.self-update-continuation-policy.v1',
 				'blocked' => true,
 				'blocker' => sanitize_key( (string) $policy->get_error_code() ),
 				'required' => null,
 				'mode' => 'blocked',
+				'prior_authority_effective' => isset( $data['prior_authority_effective'] ) ? (bool) $data['prior_authority_effective'] : null,
+				'candidate_binding_required' => isset( $data['candidate_binding_required'] ) ? (bool) $data['candidate_binding_required'] : null,
+				'candidate_binding_match' => isset( $data['candidate_binding_match'] ) ? (bool) $data['candidate_binding_match'] : null,
+				'operator_action' => 'mad4b_self_update_continuation_prior_authority_drift' === $policy->get_error_code() ? 'reconcile_staging_write_authority' : '',
+				'automatic_mutation_retry_allowed' => false,
 				'bootstrap_without_authority' => false,
 				'production_mutation_allowed' => false,
 				'authority_created' => false,
@@ -1378,7 +1385,14 @@ final class MAD4B_SCP_Self_Update {
 		if ( ! $effective || ( is_array( $binding ) && ! empty( $binding['required'] ) && empty( $binding['match'] ) ) ) {
 			return new WP_Error(
 				'mad4b_self_update_continuation_prior_authority_drift',
-				'Existing governed-write authority is stale or candidate-bound to a different build; reconcile it before updating.'
+				'Existing governed-write authority is stale or candidate-bound to a different build; reconcile it before updating.',
+				array(
+					'prior_authority_effective' => (bool) $effective,
+					'candidate_binding_required' => is_array( $binding ) && ! empty( $binding['required'] ),
+					'candidate_binding_match' => is_array( $binding ) && ! empty( $binding['match'] ),
+					'operator_action' => 'reconcile_staging_write_authority',
+					'automatic_mutation_retry_allowed' => false,
+				)
 			);
 		}
 

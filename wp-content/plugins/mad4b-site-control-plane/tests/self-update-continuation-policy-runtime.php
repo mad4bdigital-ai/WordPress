@@ -198,6 +198,15 @@ $drift = classify();
 check( is_wp_error( $drift ), 'stale candidate authority must fail closed' );
 check( 'mad4b_self_update_continuation_prior_authority_drift' === $drift->get_error_code(), 'stale candidate blocker mismatch' );
 
+check( false === $drift->get_error_data()['candidate_binding_match'] && false === $drift->get_error_data()['prior_authority_effective'], 'drift evidence must identify both blockers' );
+$projection = continuation_projection();
+check( 'reconcile_staging_write_authority' === $projection['operator_action'] && false === $projection['automatic_mutation_retry_allowed'], 'blocked update must expose a safe recovery action' );
+MAD4B_SCP_Staging_Write_Authority::$effective = true;
+check( is_wp_error( classify() ), 'effective authority must not bypass mismatched binding' );
+MAD4B_SCP_Staging_Write_Authority::$binding['match'] = true;
+MAD4B_SCP_Staging_Write_Authority::$effective = false;
+check( is_wp_error( classify() ), 'matching binding must not bypass ineffective authority' );
+
 MAD4B_SCP_Site_Profile::$write_enabled = false;
 $disabled = classify();
 check( ! is_wp_error( $disabled ) && empty( $disabled['required'] ), 'write-disabled profile must not require continuation' );

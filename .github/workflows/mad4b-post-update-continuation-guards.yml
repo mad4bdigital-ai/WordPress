@@ -47,6 +47,10 @@ jobs:
         run: php wp-content/plugins/mad4b-site-control-plane/tests/mcp-registration-diagnostics-admin-runtime.php
       - name: Verify preflight evidence survives Adapter rejection
         run: php wp-content/plugins/mad4b-site-control-plane/tests/mcp-preflight-registration-failure-runtime.php
+      - name: Verify failed catalogs block connection readiness
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/connection-catalog-readiness-runtime.php
+      - name: Verify peer bounds precede expensive inventory traversal
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/mcp-peer-inventory-bounds-runtime.php
       - name: Verify canonical identity and lifecycle contracts
         run: python3 wp-content/plugins/mad4b-site-control-plane/tests/connection-continuation-contract.py
       - name: Verify external discovery acceptance failures
