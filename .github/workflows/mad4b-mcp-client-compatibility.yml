@@ -34,6 +34,7 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-mcp-client-profile-registry.php"
           php -l "$root/includes/class-mad4b-scp-mcp-client-compatibility.php"
+          php -l "$root/includes/class-mad4b-scp-identity-context.php"
           php -l "$root/includes/class-mad4b-scp-ability-contract-inspector.php"
           php -l "$root/includes/class-mad4b-scp-capability-descriptor-registry.php"
           php -l "$root/includes/class-mad4b-scp-preparation-receipt.php"
@@ -48,6 +49,7 @@ jobs:
           node "$root/tests/catalog-transport-failures.mjs"
           php "$root/tests/projection-registration-lifecycle.php"
           php "$root/tests/gateway-regression-runtime.php"
+          php "$root/tests/identity-context-runtime.php"
           php "$root/tests/ability-contract-inspector-runtime.php"
           php "$root/tests/preparation-receipt-runtime.php"
           php "$root/tests/intent-registry-contract.php"
@@ -88,6 +90,7 @@ jobs:
           php "$root/tests/catalog-transport-runtime.php"
           php "$root/tests/projection-registration-lifecycle.php"
           php "$root/tests/gateway-regression-runtime.php"
+          php "$root/tests/identity-context-runtime.php"
           php "$root/tests/ability-contract-inspector-runtime.php"
           php "$root/tests/preparation-receipt-runtime.php"
           php "$root/tests/intent-registry-contract.php"
