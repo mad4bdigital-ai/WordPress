@@ -24,6 +24,17 @@ final class MAD4B_SCP_Servers {
 	private static $provider_for_ability_cache = array();
 	private static $external_attestation_projection_active = false;
 
+	public static function reset_request_cache() {
+		self::$registrations = array();
+		self::$adapter_write_projection_cache = null;
+		self::$registered_adapter_write_candidates_cache = null;
+		self::$external_write_tools_cache = null;
+		self::$chatgpt_tools_cache = null;
+		self::$provider_for_ability_cache = array();
+		self::$external_attestation_projection_active = false;
+		return true;
+	}
+
 	public static function expected_server_ids() {
 		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
 	}

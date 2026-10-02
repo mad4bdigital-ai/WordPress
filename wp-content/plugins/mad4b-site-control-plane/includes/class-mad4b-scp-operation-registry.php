@@ -15,6 +15,11 @@ final class MAD4B_SCP_Operation_Registry {
 
 	private static $catalog = null;
 
+	public static function reset_request_cache() {
+		self::$catalog = null;
+		return true;
+	}
+
 	public static function boot() {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 33 );
 	}
@@ -342,6 +347,10 @@ final class MAD4B_SCP_Operation_Registry {
 	}
 
 	public static function status( $input = null ) {
+		if ( class_exists( 'MAD4B_SCP_Request_Generation' ) ) {
+			$request_scope = MAD4B_SCP_Request_Generation::admit( 'operation_registry' );
+			if ( is_wp_error( $request_scope ) ) return $request_scope;
+		}
 		$catalog = self::catalog();
 		if ( is_wp_error( $catalog ) ) return array(
 			'contract' => self::CONTRACT,
@@ -412,6 +421,10 @@ final class MAD4B_SCP_Operation_Registry {
 	}
 
 	public static function discover( $input ) {
+		if ( class_exists( 'MAD4B_SCP_Request_Generation' ) ) {
+			$request_scope = MAD4B_SCP_Request_Generation::admit( 'operation_registry' );
+			if ( is_wp_error( $request_scope ) ) return $request_scope;
+		}
 		$input = is_array( $input ) ? $input : array();
 		$requested_raw = strtolower( trim( isset( $input['operation'] ) ? (string) $input['operation'] : '' ) );
 		$requested = preg_replace( '/[^a-z0-9._-]/', '', $requested_raw );

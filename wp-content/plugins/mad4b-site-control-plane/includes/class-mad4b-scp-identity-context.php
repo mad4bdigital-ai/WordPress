@@ -6,6 +6,7 @@ final class MAD4B_SCP_Identity_Context {
 	const MAX_SCOPES = 200;
 	private static $request_approval_ticket_id = '';
 	private static $request_subject_override = array();
+	private static $request_id = '';
 
 	public static function current() {
 		$context = array(
@@ -154,9 +155,26 @@ final class MAD4B_SCP_Identity_Context {
 		);
 	}
 
+	public static function request_scope_state() {
+		return array(
+			'approval_ticket_bound' => '' !== self::$request_approval_ticket_id,
+			'subject_override_active' => ! empty( self::$request_subject_override ),
+			'request_id' => self::$request_id,
+		);
+	}
+
+	public static function reset_request_cache() {
+		if ( '' !== self::$request_approval_ticket_id || ! empty( self::$request_subject_override ) ) {
+			return new WP_Error( 'mad4b_request_scope_identity_active', 'Request identity overlays are still active and cannot cross a request boundary.' );
+		}
+		self::$request_approval_ticket_id = '';
+		self::$request_subject_override = array();
+		self::$request_id = '';
+		return true;
+	}
+
 	public static function request_id() {
-		static $request_id = null;
-		if ( null === $request_id ) $request_id = wp_generate_uuid4();
-		return $request_id;
+		if ( '' === self::$request_id ) self::$request_id = wp_generate_uuid4();
+		return self::$request_id;
 	}
 }

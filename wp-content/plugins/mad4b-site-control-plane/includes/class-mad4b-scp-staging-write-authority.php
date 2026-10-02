@@ -32,6 +32,21 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	private static $status = array();
 	private static $candidate_identity = null;
 
+	public static function request_scope_state() {
+		return array(
+			'reconciling' => self::$reconciling,
+			'status_cached' => ! empty( self::$status ),
+			'candidate_identity_cached' => null !== self::$candidate_identity,
+		);
+	}
+
+	public static function reset_request_cache() {
+		if ( self::$reconciling ) return new WP_Error( 'mad4b_request_scope_reconciliation_active', 'Write-authority reconciliation is active and cannot cross a request boundary.' );
+		self::$status = array();
+		self::$candidate_identity = null;
+		return true;
+	}
+
 	public static function bootstrap() {
 		$status = self::base_status();
 		if ( empty( $status['eligible'] ) ) {

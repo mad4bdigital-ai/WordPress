@@ -185,6 +185,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-provider-gateway.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-brand-context-builder.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-commit-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy-resolution.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-request-generation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
 // The mutation execution-boundary filter must exist before any ability can be
 // materialized. Nested write dispatch calls Ability::execute() directly, so

@@ -27,6 +27,11 @@ final class MAD4B_SCP_Policy_Resolution {
 		'feature',
 	);
 
+	public static function reset_request_cache() {
+		self::$config = null;
+		return true;
+	}
+
 	public static function current_operating_mode() {
 		$config = self::config();
 		if ( is_wp_error( $config ) ) return $config;

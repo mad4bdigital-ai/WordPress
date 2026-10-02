@@ -468,6 +468,44 @@ final class MAD4B_SCP_MCP_Request_Scope {
 			&& MAD4B_SCP_Site_Profile::managed_runtime_enabled();
 	}
 
+	public static function request_scope_transition_safe() {
+		$unsafe = self::$adapter_init_removed
+			|| self::$bridge_watchdog_removed
+			|| self::$rescue_tail_removed
+			|| self::$rescue_pre_dispatch_removed
+			|| self::$deferred_recovery_removed
+			|| ! empty( self::$protocol_core_rest_callbacks_removed )
+			|| 0 < self::$protocol_external_rest_callbacks_removed_count;
+		return $unsafe
+			? new WP_Error( 'mad4b_request_scope_worker_recycle_required', 'The previous request changed request-local MCP/REST hooks; recycle this worker before serving another logical request.' )
+			: true;
+	}
+
+	public static function reset_request_cache() {
+		$safe = self::request_scope_transition_safe();
+		if ( is_wp_error( $safe ) ) return $safe;
+		self::$booted = false;
+		self::$eligible = false;
+		self::$current_request_requires_mcp = false;
+		self::$adapter_init_removed = false;
+		self::$adapter_runtime_from_official = false;
+		self::$adapter_suppression_skipped_non_official = false;
+		self::$adapter_runtime_source = 'unavailable';
+		self::$bridge_watchdog_removed = false;
+		self::$rescue_tail_removed = false;
+		self::$rescue_pre_dispatch_removed = false;
+		self::$deferred_recovery_removed = false;
+		self::$protocol_core_rest_isolation_evaluated = false;
+		self::$protocol_core_rest_callbacks_removed = array();
+		self::$protocol_external_rest_isolation_evaluated = false;
+		self::$protocol_external_rest_callbacks_removed = array();
+		self::$protocol_external_rest_callbacks_removed_count = 0;
+		self::$protocol_external_rest_scan_truncated = false;
+		self::$protocol_external_rest_callbacks_preserved = array();
+		self::bootstrap();
+		return true;
+	}
+
 	public static function status() {
 		return array(
 			'contract' => self::CONTRACT,

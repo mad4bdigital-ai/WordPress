@@ -39,6 +39,25 @@ final class MAD4B_SCP_Authorization {
 		if ( '' !== $ability_name ) unset( self::$execution_callback_started[ $ability_name ] );
 	}
 
+	public static function request_scope_state() {
+		$active = array();
+		foreach ( self::$execution_callback_started as $ability_name => $started ) {
+			if ( $started ) $active[] = (string) $ability_name;
+		}
+		return array(
+			'active_execution_observations' => $active,
+			'observation_count' => count( self::$execution_callback_started ),
+		);
+	}
+
+	public static function reset_request_cache() {
+		foreach ( self::$execution_callback_started as $started ) {
+			if ( $started ) return new WP_Error( 'mad4b_request_scope_execution_active', 'An execution callback observation is still active at the request boundary.' );
+		}
+		self::$execution_callback_started = array();
+		return true;
+	}
+
 	public static function permission_result_from_authorization( $result ) {
 		if ( is_wp_error( $result ) || is_bool( $result ) ) return $result;
 		if ( ! is_array( $result ) ) return false;
@@ -116,6 +135,10 @@ final class MAD4B_SCP_Authorization {
 	}
 
 	public static function authorize_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
+		if ( class_exists( 'MAD4B_SCP_Request_Generation' ) ) {
+			$request_scope = MAD4B_SCP_Request_Generation::admit( 'authorization' );
+			if ( is_wp_error( $request_scope ) ) return $request_scope;
+		}
 		if ( ! class_exists( 'MAD4B_SCP_Schema' )
 			|| ! MAD4B_SCP_Schema::is_ready()
 			|| ! MAD4B_SCP_Schema::critical_ready() ) {
