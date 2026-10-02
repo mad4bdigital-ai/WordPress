@@ -918,13 +918,14 @@
       "reason": "Real MariaDB runtime proof detects stuck/orphan jobs, expired leases, stale inbox, provider DLQ and Host Runner uncertain/recovery-required/dead-letter states while remaining site-scoped, read-only and non-authorizing."
     },
     "T3771": {
-      "status": "DONE",
+      "status": "PARTIAL",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
-        "workflow_job:110809063089"
+        "workflow_job:110809063089",
+        "workflow_run:36998008746"
       ],
-      "reason": "RequestScope generation fencing, cache ownership/invalidation, same-request drift denial, quiescent transition checks and worker-recycle semantics are implemented and the standalone MCP compatibility contract passed."
+      "reason": "RequestScope ownership and standalone generation fencing are implemented, but the first real runtime matrix exposed a projection-vs-authority generation regression. The projection generation is now separated as non-authorizing presentation state; exact-head runtime revalidation remains required."
     },
     "T3772": {
       "status": "PARTIAL",

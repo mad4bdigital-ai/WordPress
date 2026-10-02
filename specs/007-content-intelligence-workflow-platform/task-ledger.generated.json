@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "d5814c8276d251d8ca3674993ff8c87de6d7cf1e",
-  "override_git_blob_sha": "aabea9aa138ae6289ffca5b40bbb6c0e8db47f5d",
+  "source_tasks_git_blob_sha": "28e2120cfeff906e9a8142f74e9f09b0196b12b4",
+  "override_git_blob_sha": "82c232e35d10f9686d9a8097d005643a67f0a4ca",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,16 +10,16 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 47,
+    "DONE": 46,
     "OPEN": 642,
-    "PARTIAL": 66
+    "PARTIAL": 67
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 40,
+      "DONE": 39,
       "OPEN": 501,
-      "PARTIAL": 44
+      "PARTIAL": 45
     },
     "P1": {
       "DEFERRED": 0,
@@ -7686,14 +7686,15 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Define a RequestScopeContract for static/runtime caches across REST, MCP, WP-CLI, cron, blog switches, user switches and authoritative profile/policy/projection mutations; every cache must declare lifetime and invalidation owner.",
-      "status": "DONE",
-      "checked": true,
+      "status": "PARTIAL",
+      "checked": false,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
-        "workflow_job:110809063089"
+        "workflow_job:110809063089",
+        "workflow_run:36998008746"
       ],
-      "reason": "RequestScope generation fencing, cache ownership/invalidation, same-request drift denial, quiescent transition checks and worker-recycle semantics are implemented and the standalone MCP compatibility contract passed."
+      "reason": "RequestScope ownership and standalone generation fencing are implemented, but the first real runtime matrix exposed a projection-vs-authority generation regression. The projection generation is now separated as non-authorizing presentation state; exact-head runtime revalidation remains required."
     },
     {
       "task_id": "T3772",

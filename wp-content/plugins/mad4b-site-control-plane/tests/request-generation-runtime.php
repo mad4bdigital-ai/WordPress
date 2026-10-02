@@ -66,6 +66,10 @@ $check(is_array($a)&&1===$a['generation']&&!$a['reset_performed'],'first generat
 $a2=MAD4B_SCP_Request_Generation::admit('fixture');
 $check(is_array($a2)&&1===$a2['generation'],'same logical request was not idempotent');
 
+$GLOBALS['options']['projection']=array('revision'=>2);
+$presentation=MAD4B_SCP_Request_Generation::admit('fixture');
+$check(is_array($presentation)&&!empty($presentation['presentation_changed'])&&1===$presentation['generation'],'non-authorizing projection generation disrupted authoritative request context');
+
 $GLOBALS['user']=2;
 $GLOBALS['caps']=array('read'=>true,'edit_posts'=>true);
 $drift=MAD4B_SCP_Request_Generation::admit('fixture');

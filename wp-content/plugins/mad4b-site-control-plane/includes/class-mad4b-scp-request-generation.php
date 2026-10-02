@@ -14,8 +14,11 @@ final class MAD4B_SCP_Request_Generation {
 	private static $boundary_sha256 = '';
 	private static $context_sha256 = '';
 	private static $context = array();
+	private static $presentation_sha256 = '';
+	private static $presentation = array();
 	private static $generation = 0;
 	private static $reset_count = 0;
+	private static $presentation_change_count = 0;
 
 	public static function begin_long_lived_request( $token, $surface = 'long_lived_worker' ) {
 		$token = trim( (string) $token );
@@ -36,14 +39,18 @@ final class MAD4B_SCP_Request_Generation {
 		$boundary = self::boundary_sha256();
 		$context = self::context_snapshot();
 		$context_sha = self::digest( $context );
-		if ( '' === $context_sha ) return new WP_Error( 'mad4b_request_scope_context_unavailable', 'Request context could not be canonically fingerprinted.' );
+		$presentation = self::presentation_snapshot();
+		$presentation_sha = self::digest( $presentation );
+		if ( '' === $context_sha || '' === $presentation_sha ) return new WP_Error( 'mad4b_request_scope_context_unavailable', 'Request context could not be canonically fingerprinted.' );
 
 		if ( '' === self::$boundary_sha256 ) {
 			self::$boundary_sha256 = $boundary;
 			self::$context_sha256 = $context_sha;
 			self::$context = $context;
+			self::$presentation_sha256 = $presentation_sha;
+			self::$presentation = $presentation;
 			self::$generation = 1;
-			return self::receipt( $surface, false );
+			return self::receipt( $surface, false, array(), false );
 		}
 
 		if ( hash_equals( self::$boundary_sha256, $boundary ) ) {
@@ -58,7 +65,13 @@ final class MAD4B_SCP_Request_Generation {
 					)
 				);
 			}
-			return self::receipt( $surface, false );
+			$presentation_changed = ! hash_equals( self::$presentation_sha256, $presentation_sha );
+			if ( $presentation_changed ) {
+				self::$presentation_sha256 = $presentation_sha;
+				self::$presentation = $presentation;
+				self::$presentation_change_count++;
+			}
+			return self::receipt( $surface, false, array(), $presentation_changed );
 		}
 
 		$worker_changes = array_intersect(
@@ -80,13 +93,17 @@ final class MAD4B_SCP_Request_Generation {
 
 		$context = self::context_snapshot();
 		$context_sha = self::digest( $context );
-		if ( '' === $context_sha ) return new WP_Error( 'mad4b_request_scope_context_unavailable', 'Request context could not be re-fingerprinted after reset.' );
+		$presentation = self::presentation_snapshot();
+		$presentation_sha = self::digest( $presentation );
+		if ( '' === $context_sha || '' === $presentation_sha ) return new WP_Error( 'mad4b_request_scope_context_unavailable', 'Request context could not be re-fingerprinted after reset.' );
 		self::$boundary_sha256 = $boundary;
 		self::$context_sha256 = $context_sha;
 		self::$context = $context;
+		self::$presentation_sha256 = $presentation_sha;
+		self::$presentation = $presentation;
 		self::$generation++;
 		self::$reset_count++;
-		return self::receipt( $surface, true, $reset );
+		return self::receipt( $surface, true, $reset, false );
 	}
 
 	public static function status() {
@@ -95,7 +112,9 @@ final class MAD4B_SCP_Request_Generation {
 			'generation' => self::$generation,
 			'boundary_sha256' => self::$boundary_sha256,
 			'context_sha256' => self::$context_sha256,
+			'presentation_sha256' => self::$presentation_sha256,
 			'reset_count' => self::$reset_count,
+			'presentation_change_count' => self::$presentation_change_count,
 			'explicit_long_lived_boundary' => '' !== self::$explicit_boundary,
 			'authorizing' => false,
 			'mutation_performed' => false,
@@ -178,7 +197,6 @@ final class MAD4B_SCP_Request_Generation {
 
 	private static function context_snapshot() {
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile', false ) ? get_option( MAD4B_SCP_Site_Profile::OPTION, null ) : null;
-		$projection = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection', false ) ? get_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, null ) : null;
 		$user_caps = array();
 		if ( function_exists( 'wp_get_current_user' ) ) {
 			$user = wp_get_current_user();
@@ -200,9 +218,18 @@ final class MAD4B_SCP_Request_Generation {
 			'home' => function_exists( 'get_option' ) ? (string) get_option( 'home', '' ) : '',
 			'siteurl' => function_exists( 'get_option' ) ? (string) get_option( 'siteurl', '' ) : '',
 			'site_profile_sha256' => self::digest( $profile ),
-			'projection_sha256' => self::digest( $projection ),
 			'runtime_version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '',
 			'runtime_file_sha256' => $runtime_sha,
+		);
+	}
+
+	private static function presentation_snapshot() {
+		$projection = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection', false )
+			? get_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, null )
+			: null;
+		return array(
+			'projection_sha256' => self::digest( $projection ),
+			'authority_effect' => 'none',
 		);
 	}
 
@@ -218,15 +245,18 @@ final class MAD4B_SCP_Request_Generation {
 		return $changed;
 	}
 
-	private static function receipt( $surface, $reset_performed, array $reset_owners = array() ) {
+	private static function receipt( $surface, $reset_performed, array $reset_owners = array(), $presentation_changed = false ) {
 		return array(
 			'contract' => self::CONTRACT,
 			'generation' => self::$generation,
 			'boundary_sha256' => self::$boundary_sha256,
 			'context_sha256' => self::$context_sha256,
+			'presentation_sha256' => self::$presentation_sha256,
 			'surface' => $surface,
 			'reset_performed' => (bool) $reset_performed,
 			'reset_owners' => array_values( $reset_owners ),
+			'presentation_changed' => (bool) $presentation_changed,
+			'presentation_authority_effect' => 'none',
 			'authorizing' => false,
 			'mutation_performed' => false,
 		);

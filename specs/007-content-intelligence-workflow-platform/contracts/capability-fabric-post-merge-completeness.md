@@ -49,8 +49,8 @@ A PASS claim requires linked evidence; no claim is inferred from task presence a
 
 The runtime contract is `mad4b.request-scope-generation.v1`.
 
-- A logical request binds one canonical context fingerprint covering blog/site identity, current user/capabilities, environment, Site Profile option identity, ChatGPT projection identity and loaded runtime package identity.
-- Context drift inside the same logical request is denied with `mad4b_request_scope_context_drift`; a mutation cannot continue under a changed user/profile/projection generation.
+- A logical request binds one canonical **authority context** fingerprint covering blog/site identity, current user/capabilities, environment, Site Profile option identity and loaded runtime package identity. ChatGPT projection is tracked separately as non-authorizing presentation generation.
+- Authority-context drift inside the same logical request is denied with `mad4b_request_scope_context_drift`; a mutation cannot continue under a changed user/profile generation. Projection/hot-set changes are observed separately with `presentation_authority_effect=none` and cannot disrupt fixed dispatch.
 - A new logical request may reset only declared request-local cache owners and only after quiescence proves no active transaction, scoped approval/subject override, execution callback or write-authority reconciliation.
 - Site/environment/runtime-package identity changes are worker-lifetime boundaries and require recycle; they are never silently rebound in a stale process.
 - MCP/REST hook isolation is resettable only before request-local callbacks have been removed. Once hook topology was changed, cross-request reuse requires worker recycle rather than reconstructing unknown third-party hook state.

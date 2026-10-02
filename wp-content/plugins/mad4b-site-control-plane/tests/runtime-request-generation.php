@@ -56,9 +56,17 @@ $projection_key=MAD4B_SCP_ChatGPT_Tool_Projection::OPTION;
 $projection_before=get_option($projection_key,null);
 $projection_existed=null!==$projection_before && false!==$projection_before;
 update_option($projection_key,array('contract'=>'ci-request-generation','revision'=>wp_generate_uuid4()),false);
-$projection_drift=MAD4B_SCP_Request_Generation::admit('runtime_fixture');
-$check('mad4b_request_scope_context_drift'===$code($projection_drift),'same-request projection mutation failed open',$projection_drift);
+$projection_generation=MAD4B_SCP_Request_Generation::admit('runtime_fixture');
+$check(
+	is_array($projection_generation)
+	&& !empty($projection_generation['presentation_changed'])
+	&& 'none'===(string)$projection_generation['presentation_authority_effect'],
+	'non-authorizing projection generation was treated as authority drift',
+	$projection_generation
+);
 if($projection_existed) update_option($projection_key,$projection_before,false); else delete_option($projection_key);
+$projection_restore=MAD4B_SCP_Request_Generation::admit('runtime_fixture');
+$check(is_array($projection_restore)&&!empty($projection_restore['presentation_changed']),'projection restore generation was not observed',$projection_restore);
 
 $home_before=(string)get_option('home','');
 update_option('home',untrailingslashit($home_before).'/worker-recycle-fixture',false);
