@@ -78,9 +78,10 @@ if ( wp_has_ability( 'mad4b/chatgpt-tool-projection-apply' ) ) {
 	), 'rest' );
 	if ( is_wp_error( $enrollment ) ) $fail( 'Enrollment-style preparation failed.', $enrollment->get_error_code() );
 	$enrollment_item = $enrollment['abilities'][0] ?? array();
-	if ( 'requires_operation_resolution' !== ( $enrollment_item['execution']['state'] ?? '' ) || ! empty( $enrollment_item['execution']['direct_ability_dispatch'] ) ) {
+	if ( ! in_array( $enrollment_item['execution']['state'] ?? '', array( 'requires_operation_resolution', 'blocked' ), true ) || ! empty( $enrollment_item['execution']['direct_ability_dispatch'] ) ) {
 		$fail( 'Enrollment Ability was incorrectly described as directly dispatchable.', $enrollment_item );
 	}
+	if ( 'blocked' === $enrollment_item['execution']['state'] && ( ! empty( $enrollment_item['execution_eligible'] ) || 'governed_execution_boundary_required' !== $enrollment_item['execution']['blocker'] ) ) $fail( 'Unwrapped enrollment target did not retain exact execution denial.', $enrollment_item );
 }
 
 if ( wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {

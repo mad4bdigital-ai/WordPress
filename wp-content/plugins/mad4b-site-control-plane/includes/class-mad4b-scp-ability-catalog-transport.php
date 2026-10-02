@@ -92,7 +92,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 	}
 	/** Prepare only the selected Ability; no full-universe serialization. */
 	public static function prepare_ability( $name ) {
-		if ( ! MAD4B_SCP_Policy::can_read() ) return self::error( 'mad4b_catalog_forbidden', 403 );
+		if ( true !== MAD4B_SCP_Policy::can_read() ) return self::error( 'mad4b_catalog_forbidden', 403 );
 		if ( ! is_string( $name ) || ! wp_has_ability( $name ) ) return self::error( 'mad4b_catalog_ability_unavailable', 404 );
 		$store = new MAD4B_SCP_Catalog_Object_Store();
 		try {
@@ -114,7 +114,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		return array( 'contract' => self::CONTRACT, 'authority_scope_sha256' => self::scope(), 'rest_base_url' => rest_url( 'mad4b/v1/ability-catalog/' ), 'transports' => array( 'authenticated_rest_binary', 'mcp_base64' ), 'schema_formats' => array( 'source', 'wire' ), 'block_bytes' => self::BLOCK_BYTES, 'snapshot_ttl_seconds' => self::ttl(), 'dispatch' => array( 'read' => 'mad4b/read-execute', 'write' => 'mad4b/write-execute', 'developer' => 'mad4b/developer-execute', 'enrollment' => 'mad4b/enrollment-execute' ), 'authority_effect' => 'none' );
 	}
 	public static function handle( array $input, $binary = false ) {
-		if ( ! MAD4B_SCP_Policy::can_read() ) return self::error( 'mad4b_catalog_forbidden', 403 );
+		if ( true !== MAD4B_SCP_Policy::can_read() ) return self::error( 'mad4b_catalog_forbidden', 403 );
 		foreach ( array( 'snapshot', 'known_snapshot', 'schema_sha256' ) as $f ) if ( ! empty( $input[ $f ] ) && ( ! is_string( $input[ $f ] ) || ! preg_match( '/^[a-f0-9]{64}$/', $input[ $f ] ) ) ) return self::error( 'mad4b_catalog_reference_invalid' );
 		if ( isset( $input['query'] ) && ( ! is_string( $input['query'] ) || strlen( $input['query'] ) > 640 ) ) return self::error( 'mad4b_catalog_query_invalid' );
 		if ( isset( $input['schema_format'] ) && ! in_array( $input['schema_format'], array( 'source', 'wire' ), true ) ) return self::error( 'mad4b_catalog_format_invalid' );
@@ -170,13 +170,13 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 	public static function rest_permission( $request ) {
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return self::error( 'mad4b_catalog_forbidden', 403 );
 		if ( $request->get_header( 'authorization' ) && ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return self::error( 'mad4b_catalog_forbidden', 401 );
-		return MAD4B_SCP_Policy::can_read() ? true : self::error( 'mad4b_catalog_forbidden', 403 );
+		return true === MAD4B_SCP_Policy::can_read() ? true : self::error( 'mad4b_catalog_forbidden', 403 );
 	}
 	public static function rest_read( $request ) {
-		$input = array_merge( $request->get_params(), $request->get_url_params() ); $route = $request->get_route();
-		$input['transport_action'] = str_ends_with( $route, '/capabilities' ) ? 'capabilities' : ( isset( $input['schema_sha256'] ) ? ( isset( $input['chunk_index'] ) ? 'chunk' : 'schema' ) : 'manifest' );
+		$path = $request->get_url_params(); $input = array_merge( $request->get_params(), $path ); $route = $request->get_route();
+		$input['transport_action'] = str_ends_with( $route, '/capabilities' ) ? 'capabilities' : ( isset( $path['schema_sha256'] ) ? ( isset( $path['chunk_index'] ) ? 'chunk' : 'schema' ) : 'manifest' );
 		if ( isset( $input['force_refresh'] ) ) $input['force_refresh'] = rest_sanitize_boolean( $input['force_refresh'] );
-		$result = self::handle( $input, isset( $input['schema_sha256'] ) ); if ( is_wp_error( $result ) ) return $result;
+		$result = self::handle( $input, isset( $path['schema_sha256'] ) ); if ( is_wp_error( $result ) ) return $result;
 		$headers = array( 'Cache-Control' => 'private, no-store', 'Vary' => 'Authorization, Cookie', 'X-Content-Type-Options' => 'nosniff' );
 		if ( isset( $result['raw'] ) ) $headers += array( 'Content-Type' => 'application/octet-stream', 'X-MAD4B-Content-SHA256' => $result['chunk_sha256'], 'X-MAD4B-Schema-SHA256' => $result['schema_sha256'], 'X-MAD4B-Chunk-Count' => (string) $result['chunk_count'] );
 		return new WP_REST_Response( $result['raw'] ?? $result, 200, $headers );

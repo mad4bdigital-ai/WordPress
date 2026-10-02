@@ -103,7 +103,9 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
         }
       } catch (e) {
         if (e.status === 410 && !renewed) {
-          const fresh = await sync(null); const item = fresh.entries.get(abilityName);
+          const fresh = catalog.lazy ? (await prepare([abilityName])).catalogs.get(abilityName) : await sync(null);
+          if (!fresh) throw new CatalogError('Ability disappeared; replan');
+          const item = fresh.entries.get(abilityName);
           if (fresh.authority_scope_sha256 !== catalog.authority_scope_sha256 || item?.[format]?.sha256 !== descriptor.sha256) throw new CatalogError('Schema changed; replan');
           snapshot = fresh.snapshot; renewed = true; i--; continue;
         }

@@ -13,6 +13,8 @@ function apply_filters( $name, $v ) { return $v; }
 function set_transient( $key, $v, $ttl ) { $GLOBALS['cache'][$key] = $v; return true; }
 function get_transient( $key ) { return $GLOBALS['cache'][$key] ?? false; }
 function wp_get_abilities() { return $GLOBALS['abilities']; }
+function wp_has_ability( $name ) { return isset( $GLOBALS['abilities'][$name] ); }
+function wp_get_ability( $name ) { return $GLOBALS['abilities'][$name] ?? null; }
 function rest_url( $path ) { return 'https://ci.test/wp-json/' . $path; }
 function get_option( $key, $default = false ) { return $GLOBALS['options'][$key] ?? $default; }
 function add_option( $key, $value, $deprecated = '', $autoload = false ) { if ( isset( $GLOBALS['options'][$key] ) ) return false; $GLOBALS['options'][$key] = $value; return true; }
@@ -93,4 +95,14 @@ check( ! is_wp_error( $cycle ) && ! empty( $cycle['items'][0]['unavailable'] ), 
 $directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY];
 $expired = reset( $directory ); $key = array_key_first( $directory ); $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY][$key]['expires'] = time()-1;
 MAD4B_SCP_Catalog_Object_Store::collect_expired(); check( ! isset( $GLOBALS['options'][$expired['option']] ), 'Expired payload not collected' );
+
+class WireFixtureDTO { function toArray() { return array( 'name' => 'object-tool', 'inputSchema' => (object) array( 'type' => 'object', 'properties' => new stdClass() ), 'outputSchema' => (object) array( 'type' => 'object' ) ); } }
+class WireFixtureBuilder { static function build( $ability ) { return array( 'tool' => new WireFixtureDTO() ); } }
+class_alias( 'WireFixtureBuilder', 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' );
+$lazy = MAD4B_SCP_Ability_Catalog_Transport::prepare_ability( 'object' );
+check( ! is_wp_error( $lazy ) && $lazy['item']['source']['sha256'] !== $lazy['item']['wire']['sha256'], 'Source and wire identities conflated' );
+$wire = request( array( 'transport_action' => 'schema', 'schema_format' => 'wire', 'snapshot' => $lazy['snapshot'], 'schema_sha256' => $lazy['item']['wire']['sha256'] ) );
+check( ! is_wp_error( $wire ) && is_object( $wire['schema']->inputSchema->properties ), 'Lazy official wire schema unavailable' );
+$bad_format = request( array( 'transport_action' => 'schema', 'snapshot' => $lazy['snapshot'], 'schema_sha256' => $lazy['item']['wire']['sha256'] ) );
+check( is_wp_error( $bad_format ), 'Wire digest admitted as source' );
 echo "PASS catalog transport: large schema, chunks, frozen pages, delta, tampering, user and site isolation\n";

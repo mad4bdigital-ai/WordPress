@@ -122,6 +122,14 @@ try {
     $promote_args = array( 'ability_names' => array( 'mad4b/diagnostics-health' ), 'expected_plan_sha256' => $promotion['plan_sha256'], 'confirmation' => MAD4B_SCP_ChatGPT_Tool_Projection::CONFIRMATION );
     if ( $denied( $call( $step, $step_session, 'mad4b-chatgpt-tool-projection-apply', $promote_args ) ) ) $fail( 'Exact step-up promotion failed.' );
     if ( $denied( $call( $read, $read_session, 'mad4b-diagnostics-health' ) ) ) $fail( 'Promoted read tool did not regain admission.' );
+
+    $ability = wp_get_ability( 'mad4b/diagnostics-health' );
+    $callback_property = ( new ReflectionObject( $ability ) )->getProperty( 'execute_callback' );
+    $original_callback = $callback_property->getValue( $ability );
+    try {
+        $callback_property->setValue( $ability, static function() { throw new RuntimeException( 'Changed callback must never execute' ); } );
+        if ( ! $denied( $call( $read, $read_session, 'mad4b-diagnostics-health' ) ) ) $fail( 'Cached callback receipt admitted in-place drift.' );
+    } finally { $callback_property->setValue( $ability, $original_callback ); }
     $copied = get_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION );
     $copied['binding']['origin'] = 'https://copied.invalid';
     update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $copied, false );

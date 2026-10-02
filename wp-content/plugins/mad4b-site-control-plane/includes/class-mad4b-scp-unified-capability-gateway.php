@@ -85,11 +85,24 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		$permission = self::can_read_rest();
 		if ( is_wp_error( $permission ) ) return $permission;
 		$action = isset( $input['action'] ) ? sanitize_key( (string) $input['action'] ) : 'negotiate';
-		if ( 'negotiate' === $action ) return self::negotiate( $input, $transport );
-		if ( 'search' === $action ) return self::search( $input, $transport );
-		if ( 'prepare' === $action ) return self::prepare( $input, $transport );
-		if ( in_array( $action, array( 'schema', 'chunk' ), true ) ) return self::schema_transport( $input, $action, $transport );
-		return new WP_Error( 'mad4b_capability_gateway_action_invalid', 'Unknown capability gateway action.' );
+		if ( 'negotiate' === $action ) $result = self::negotiate( $input, $transport );
+		elseif ( 'search' === $action ) $result = self::search( $input, $transport );
+		elseif ( 'prepare' === $action ) $result = self::prepare( $input, $transport );
+		elseif ( in_array( $action, array( 'schema', 'chunk' ), true ) ) $result = self::schema_transport( $input, $action, $transport );
+		else return new WP_Error( 'mad4b_capability_gateway_action_invalid', 'Unknown capability gateway action.' );
+		if ( is_wp_error( $result ) ) return $result;
+		$budget = self::client_capabilities( $input )['max_response_bytes'];
+		if ( 'prepare' === $action && strlen( wp_json_encode( $result ) ) > $budget ) {
+			foreach ( $result['abilities'] as &$entry ) {
+				if ( ! isset( $entry['schema'] ) ) continue;
+				unset( $entry['schema'] ); $entry['schema_transfer_mode'] = 'chunked';
+				$entry['recommended_chunk_bytes'] = $result['transfer_policy']['recommended_chunk_bytes'];
+				if ( strlen( wp_json_encode( $result ) ) <= $budget ) break;
+			}
+			unset( $entry );
+		}
+		if ( strlen( wp_json_encode( $result ) ) > $budget ) return new WP_Error( 'mad4b_capability_gateway_response_budget', 'Use a smaller batch or chunked schema transfer.', array( 'status' => 413 ) );
+		return $result;
 	}
 
 	private static function as_bool( $value ) {
