@@ -48,6 +48,30 @@ if (
 	$fail( 'Task search loaded schema/authority pins before explicit preparation.', $search_row );
 }
 
+if ( wp_has_ability( 'mad4b-ci/arabic-metadata-fixture' ) ) {
+	$arabic_search = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
+		'action' => 'search',
+		'task' => 'محتوى عربي',
+		'limit' => 8,
+	), 'rest' );
+	if ( is_wp_error( $arabic_search ) ) $fail( 'Arabic metadata search failed.', $arabic_search->get_error_code() );
+	$arabic_rows = array_values( array_filter( $arabic_search['items'] ?? array(), static function ( $row ) {
+		return is_array( $row ) && 'mad4b-ci/arabic-metadata-fixture' === ( $row['ability_name'] ?? '' );
+	} ) );
+	$arabic_row = $arabic_rows[0] ?? array();
+	$encoded_arabic_row = wp_json_encode( $arabic_row, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+	if (
+		! is_string( $encoded_arabic_row )
+		|| '' === $encoded_arabic_row
+		|| strlen( (string) ( $arabic_row['label'] ?? '' ) ) > 160
+		|| strlen( (string) ( $arabic_row['description'] ?? '' ) ) > 320
+		|| isset( $arabic_row['input_schema_sha256'] )
+		|| isset( $arabic_row['classification_sha256'] )
+	) {
+		$fail( 'Arabic metadata-only discovery produced invalid UTF-8 or loaded schema pins.', $arabic_row );
+	}
+}
+
 $prepared = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
 	'action' => 'prepare',
 	'ability_names' => array( 'mad4b/diagnostics-health' ),
