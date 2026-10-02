@@ -11,6 +11,7 @@ function add_action() {} function add_filter() {}
 function sanitize_key( $value ) { return strtolower( $value ); }
 function absint( $value ) { return abs( (int) $value ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+function wp_salt( $scheme ) { return $GLOBALS['signing_salt'] ?? 'test-only-receipt-salt'; }
 function wp_strip_all_tags( $value ) { return strip_tags( $value ); }
 function wp_check_invalid_utf8( $value ) { return iconv( 'UTF-8', 'UTF-8//IGNORE', $value ); }
 function get_current_blog_id() { return $GLOBALS['blog']; }
@@ -56,11 +57,27 @@ class GatewayFixture {
  function execute( $input = null ) { if ( ! $this->permission ) return new WP_Error( 'permission_denied' ); ++$this->calls; return array( 'ok' => true ); }
 }
 $GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array();
+require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
+require __DIR__ . '/../includes/class-mad4b-scp-capability-descriptor-registry.php';
+require __DIR__ . '/../includes/class-mad4b-scp-preparation-receipt.php';
 require __DIR__ . '/../includes/class-mad4b-scp-chatgpt-tool-projection.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-catalog-transport.php';
 require __DIR__ . '/../includes/class-mad4b-scp-unified-capability-gateway.php';
 require __DIR__ . '/../includes/class-mad4b-scp-abilities.php';
 function check_gateway( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); }
+function prepared_dispatch_identity( $ability_name ) {
+ $row = MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name );
+ if ( is_wp_error( $row ) ) return $row;
+ $receipt = MAD4B_SCP_Preparation_Receipt::issue( $row );
+ if ( ! is_string( $receipt ) || '' === $receipt ) return new WP_Error( 'receipt_issue_failed' );
+ return array(
+  'expected_input_schema_sha256' => $row['input_schema_sha256'],
+  'expected_execution_lane' => $row['execution_lane'],
+  'expected_classification_sha256' => $row['classification_sha256'],
+  'expected_authority_scope_sha256' => MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(),
+  'preparation_receipt' => $receipt,
+ );
+}
 $dispatcher = new MAD4B_SCP_Abilities();
 foreach ( array( 'write', 'content', 'admin' ) as $lane ) {
  $name = 'fixture/' . $lane;
@@ -70,13 +87,15 @@ foreach ( array( 'write', 'content', 'admin' ) as $lane ) {
  $row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $name );
  $execution = MAD4B_SCP_Unified_Capability_Gateway::describe_execution( $row );
  check_gateway( $execution['dispatch_tool'] === 'mad4b/write-execute' && $execution['expected_execution_lane'] === $lane, 'Mutation lane lost stable dispatch/original identity: ' . $lane );
- $input = array( 'ability_name' => $name, 'input' => array(), 'expected_input_schema_sha256' => $execution['expected_input_schema_sha256'], 'expected_classification_sha256' => $execution['expected_classification_sha256'], 'expected_execution_lane' => $execution['expected_execution_lane'] );
+ $identity = prepared_dispatch_identity( $name );
+ check_gateway( ! is_wp_error( $identity ), 'Unable to issue prepared identity: ' . $lane );
+ $input = array_merge( array( 'ability_name' => $name, 'input' => array() ), $identity );
  check_gateway( ! is_wp_error( $dispatcher->write_execute( $input ) ) && 1 === $a->calls, 'Valid original lane failed execution: ' . $lane );
- foreach ( array( 'expected_execution_lane', 'expected_classification_sha256' ) as $required_pin ) {
+ foreach ( array( 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' ) as $required_pin ) {
   $missing = $input; unset( $missing[$required_pin] );
   check_gateway( is_wp_error( $dispatcher->write_execute( $missing ) ) && 1 === $a->calls, 'Missing prepared identity reached execution: ' . $required_pin );
  }
- $legacy = $input; unset( $legacy['expected_execution_lane'], $legacy['expected_classification_sha256'] );
+ $legacy = $input; unset( $legacy['expected_execution_lane'], $legacy['expected_classification_sha256'], $legacy['expected_authority_scope_sha256'], $legacy['preparation_receipt'] );
  check_gateway( is_wp_error( $dispatcher->write_execute( $legacy ) ) && 1 === $a->calls, 'Schema-only legacy execution was accepted' );
  $foreign = $input; $foreign['expected_authority_scope_sha256'] = str_repeat( 'f', 64 );
  check_gateway( is_wp_error( $dispatcher->write_execute( $foreign ) ) && 1 === $a->calls, 'Foreign transport authority reached execution' );
