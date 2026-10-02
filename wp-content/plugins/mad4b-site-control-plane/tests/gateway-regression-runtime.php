@@ -3,8 +3,11 @@
 // discovery/classification/dispatch code unchanged. Real WP parity runs in CI too.
 define( 'ABSPATH', __DIR__ );
 class WP_Error {
- private $code; function __construct( $code, $message = '', $data = array() ) { $this->code = $code; }
+ private $code; private $message; private $data;
+ function __construct( $code, $message = '', $data = array() ) { $this->code = $code; $this->message = $message; $this->data = $data; }
  function get_error_code() { return $this->code; }
+ function get_error_message() { return $this->message; }
+ function get_error_data() { return $this->data; }
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function add_action() {} function add_filter() {}
