@@ -149,6 +149,10 @@ $bad_ticket_input = $governed_transport_input;
 $bad_ticket_input['_mad4b_approval_ticket_id'] = 'not-a-ticket';
 $bad_ticket_valid = $write_transport->validate_input( $bad_ticket_input );
 if ( ! is_wp_error( $bad_ticket_valid ) || 'ability_invalid_input' !== $bad_ticket_valid->get_error_code() ) $fail( 'Real WordPress Ability validation accepted a malformed approval ticket id.', $bad_ticket_valid );
+$wrong_version_ticket = $governed_transport_input;
+$wrong_version_ticket['_mad4b_approval_ticket_id'] = '11111111-1111-1111-8111-111111111111';
+$wrong_version_valid = $write_transport->validate_input( $wrong_version_ticket );
+if ( ! is_wp_error( $wrong_version_valid ) || 'ability_invalid_input' !== $wrong_version_valid->get_error_code() ) $fail( 'Real WordPress Ability validation accepted a non-v4 approval UUID.', $wrong_version_valid );
 echo "PASS governed write envelope schema: explicit approval/context controls survive validation while unknown controls fail closed\n";
 
 $digest = (string) $item['schema_sha256'];
