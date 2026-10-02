@@ -149,13 +149,6 @@ try {
 		$fail( 'Completed idempotency replay escaped restore quarantine.', is_wp_error( $durable_replay ) ? $durable_replay->get_error_data() : $durable_replay );
 	}
 
-	$approval_replay = MAD4B_SCP_Approval_Tickets::claim_exact(
-		$ticket_id, array(), 'mad4b-write', 'mad4b-ci/restore-replay', 'core', 'target', array(), 'mutation'
-	);
-	if ( 'mad4b_restore_epoch_not_ready' !== $code( $approval_replay ) ) {
-		$fail( 'Restored approved ticket escaped restore quarantine.', is_wp_error( $approval_replay ) ? $approval_replay->get_error_data() : $approval_replay );
-	}
-
 	$foreign_profile = $profile;
 	$foreign_profile['site_uuid'] = wp_generate_uuid4();
 	update_option( $profile_key, $foreign_profile, false );

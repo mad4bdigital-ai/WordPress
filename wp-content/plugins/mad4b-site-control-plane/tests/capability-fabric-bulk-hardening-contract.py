@@ -110,3 +110,6 @@ restore_epoch=(ROOT/"includes/class-mad4b-scp-restore-epoch.php").read_text(enco
 need("pre_restore_epoch_commit_guard_receipt" in authorization and "post_epoch_snapshot" in authorization and "post_epoch_guard" in authorization, "commit guard is not re-captured/revalidated after restore epoch advance")
 need("restore_epoch_site_identity_mismatch" in restore_epoch, "restore epoch is not bound to the current Site UUID")
 need("reconcile_restored_security_state" in restore_epoch and "status='revoked'" in restore_epoch and "status='pending'" in restore_epoch and "released_verified_no_effect" in restore_epoch, "restore acknowledgement does not quarantine stale approval/idempotency state")
+
+
+need("MAD4B_SCP_Restore_Epoch::ensure_bound()" in authorization.split("public static function claim_mutation",1)[1].split("public static function wrap_execution_boundary",1)[0], "governed authorization claim does not preflight restore epoch before mutation admission")
