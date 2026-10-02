@@ -9,6 +9,7 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	throw new RuntimeException( 'WordPress is not loaded.' );
 }
+require_once __DIR__ . '/prepared-dispatch-runtime-helper.php';
 
 $fail = static function ( $message, $data = null ) {
 	throw new RuntimeException(
@@ -246,33 +247,27 @@ if ( ! is_wp_error( $read_missing_pin ) || 'ability_invalid_input' !== $read_mis
 	$fail( 'Readonly dispatcher accepted execution without an exact input schema pin.', $read_missing_pin );
 }
 
+$database_identity = mad4b_test_prepared_dispatch_identity( 'mad4b/database-list-tables' );
+if ( is_wp_error( $database_identity ) ) $fail( 'Read signed preparation failed.', $database_identity );
 $database_read = $read_execute->execute(
-	array(
-		'ability_name' => 'mad4b/database-list-tables',
-		'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/database-list-tables' )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/database-list-tables' )['classification_sha256'], 'expected_input_schema_sha256' => (string) $database_info['input_schema_sha256'],
-		'input' => array(),
-	)
+	array_merge( array( 'ability_name' => 'mad4b/database-list-tables', 'input' => array() ), $database_identity )
 );
 if ( is_wp_error( $database_read ) || empty( $database_read['read_only'] ) || ! isset( $database_read['result']['tables'] ) || ! hash_equals( (string) $database_info['input_schema_sha256'], (string) ( $database_read['input_schema_sha256'] ?? '' ) ) ) {
 	$fail( 'Readonly dispatcher could not execute a schema-pinned hidden governed read ability.', $database_read );
 }
+$database_drift_identity = $database_identity;
+$database_drift_identity['expected_input_schema_sha256'] = str_repeat( '0', 64 );
 $read_schema_drift = $read_execute->execute(
-	array(
-		'ability_name' => 'mad4b/database-list-tables',
-		'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/database-list-tables' )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/database-list-tables' )['classification_sha256'], 'expected_input_schema_sha256' => str_repeat( '0', 64 ),
-		'input' => array(),
-	)
+	array_merge( array( 'ability_name' => 'mad4b/database-list-tables', 'input' => array() ), $database_drift_identity )
 );
 if ( ! is_wp_error( $read_schema_drift ) || 'mad4b_read_dispatch_schema_drift' !== $read_schema_drift->get_error_code() ) {
 	$fail( 'Readonly dispatcher did not fail closed on exact input schema drift.', $read_schema_drift );
 }
 
+$package_read_identity = mad4b_test_prepared_dispatch_identity( 'mad4b/plugin-package-apply' );
+if ( is_wp_error( $package_read_identity ) ) $fail( 'Mutation-target preparation failed before readonly denial.', $package_read_identity );
 $mutation_denied = $read_execute->execute(
-	array(
-		'ability_name' => 'mad4b/plugin-package-apply',
-		'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/plugin-package-apply' )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/plugin-package-apply' )['classification_sha256'], 'expected_input_schema_sha256' => str_repeat( '0', 64 ),
-		'input' => array(),
-	)
+	array_merge( array( 'ability_name' => 'mad4b/plugin-package-apply', 'input' => array() ), $package_read_identity )
 );
 if ( ! is_wp_error( $mutation_denied ) || 'mad4b_read_dispatch_mutation_denied' !== $mutation_denied->get_error_code() ) {
 	$fail( 'Readonly dispatcher did not fail closed for a mutating ability.', $mutation_denied );
@@ -302,12 +297,10 @@ if ( is_wp_error( $package_write_info ) || empty( $package_write_info['input_sch
 if ( ! array_key_exists( 'runtime_eligible', $package_write_info ) ) {
 	$fail( 'Write info omitted runtime eligibility.', $package_write_info );
 }
+$package_write_identity = mad4b_test_prepared_dispatch_identity( 'mad4b/plugin-package-apply' );
+if ( is_wp_error( $package_write_identity ) ) $fail( 'Write signed preparation failed before authority denial.', $package_write_identity );
 $write_attempt = $write_execute->execute(
-	array(
-		'ability_name' => 'mad4b/plugin-package-apply',
-		'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/plugin-package-apply' )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/plugin-package-apply' )['classification_sha256'], 'expected_input_schema_sha256' => (string) $package_write_info['input_schema_sha256'],
-		'input' => array(),
-	)
+	array_merge( array( 'ability_name' => 'mad4b/plugin-package-apply', 'input' => array() ), $package_write_identity )
 );
 if ( ! is_wp_error( $write_attempt ) ) {
 	$fail( 'Write dispatcher unexpectedly executed without exact governed authority and target input.', $write_attempt );
