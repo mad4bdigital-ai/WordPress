@@ -24,6 +24,23 @@ if ( is_wp_error( $negotiated ) ) $fail( 'Negotiation failed.', $negotiated->get
 if ( ! empty( $negotiated['client_claims_authoritative'] ) || 'none' !== ( $negotiated['authority_effect'] ?? '' ) ) $fail( 'Client compatibility claims changed authority.', $negotiated );
 if ( empty( $negotiated['transport']['rest_gateway_proven_by_request'] ) || 'rest_gateway' !== ( $negotiated['transport']['catalog'] ?? '' ) ) $fail( 'REST transport proof was not reflected in negotiation.', $negotiated );
 if ( 'fixed_dispatch' !== ( $negotiated['exposure_mode'] ?? '' ) ) $fail( 'Read-only CLI context unexpectedly gained dynamic projection authority.', $negotiated );
+$dispatch_preparation = isset( $negotiated['fixed_dispatch_preparation'] ) && is_array( $negotiated['fixed_dispatch_preparation'] ) ? $negotiated['fixed_dispatch_preparation'] : array();
+$required_identity = array(
+	'expected_input_schema_sha256',
+	'expected_execution_lane',
+	'expected_classification_sha256',
+	'expected_authority_scope_sha256',
+	'preparation_receipt',
+);
+if (
+	empty( $dispatch_preparation['required'] )
+	|| 'mad4b.preparation-receipt.v1' !== ( $dispatch_preparation['receipt_contract'] ?? '' )
+	|| 'mad4b.capability-descriptor.v2' !== ( $dispatch_preparation['descriptor_contract'] ?? '' )
+	|| 'mad4b.ability-classification.v2' !== ( $dispatch_preparation['classification_contract'] ?? '' )
+	|| $required_identity !== ( $dispatch_preparation['required_identity_fields'] ?? array() )
+	|| empty( $dispatch_preparation['live_authority_revalidation'] )
+	|| 'none' !== ( $dispatch_preparation['authority_effect'] ?? '' )
+) $fail( 'Negotiation did not advertise the exact signed fixed-dispatch preparation contract.', $dispatch_preparation );
 
 $search = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
 	'action' => 'search',

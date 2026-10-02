@@ -56,6 +56,9 @@ assert "mad4b.ability-classification.v2" in inspector and "sort( $keys, SORT_STR
 assert "expected_authority_scope_sha256', 'preparation_receipt" in abilities, 'fixed dispatch schema does not require signed preparation scope'
 assert "expected_authority_scope_sha256: item.authority_scope_sha256" in client, 'client does not forward the fresh server authority scope'
 assert "preparation_receipt: item.preparation_receipt" in client, 'client does not forward fresh signed preparation evidence'
+assert "'fixed_dispatch_preparation' => self::fixed_dispatch_preparation_contract()" in gateway, 'gateway does not advertise fixed-dispatch preparation requirements'
+for marker in ["'required' => true", "'mad4b.preparation-receipt.v1'", "'mad4b.capability-descriptor.v2'", "'mad4b.ability-classification.v2'", "'expected_authority_scope_sha256'", "'live_authority_revalidation' => true"]:
+    assert marker in gateway, f'fixed-dispatch preparation contract missing: {marker}'
 assert main.index("class-mad4b-scp-ability-contract-inspector.php") < main.index("class-mad4b-scp-capability-descriptor-registry.php") < main.index("class-mad4b-scp-chatgpt-tool-projection.php"), 'canonical inspector/descriptor/projection bootstrap order drifted'
 assert "'/mad4b/v1/capability-gateway'" in oauth, 'adaptive REST gateway is not protected by the ChatGPT OAuth resource'
 assert "MAD4B_SCP_Unified_Capability_Gateway::public_manifest()" in compat, 'client compatibility manifest does not advertise adaptive gateway'

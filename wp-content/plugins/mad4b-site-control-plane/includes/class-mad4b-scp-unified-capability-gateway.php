@@ -37,6 +37,24 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		return untrailingslashit( rest_url( self::REST_NAMESPACE . self::REST_ROUTE ) );
 	}
 
+	private static function fixed_dispatch_preparation_contract() {
+		return array(
+			'required' => true,
+			'receipt_contract' => class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ? MAD4B_SCP_Preparation_Receipt::CONTRACT : 'mad4b.preparation-receipt.v1',
+			'descriptor_contract' => class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ? MAD4B_SCP_Capability_Descriptor_Registry::CONTRACT : 'mad4b.capability-descriptor.v2',
+			'classification_contract' => class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' ) ? MAD4B_SCP_Ability_Contract_Inspector::CLASSIFICATION_CONTRACT : 'mad4b.ability-classification.v2',
+			'required_identity_fields' => array(
+				'expected_input_schema_sha256',
+				'expected_execution_lane',
+				'expected_classification_sha256',
+				'expected_authority_scope_sha256',
+				'preparation_receipt',
+			),
+			'live_authority_revalidation' => true,
+			'authority_effect' => 'none',
+		);
+	}
+
 	public static function public_manifest() {
 		return array(
 			'contract' => self::CONTRACT,
@@ -46,6 +64,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'remote_client_auth_mode' => 'oauth_bearer',
 			'wordpress_cookie_requires_rest_nonce' => true,
 			'primary_execution_mode' => 'fixed_dispatch',
+			'fixed_dispatch_preparation' => self::fixed_dispatch_preparation_contract(),
 			'projection_role' => 'optional_hot_set',
 			'server_tools_list_changed' => false,
 			'actions' => array( 'negotiate', 'search', 'prepare', 'schema', 'chunk' ),
@@ -222,6 +241,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'rest_auth_modes' => array( 'oauth_bearer', 'authenticated_wordpress_session' ),
 			'remote_client_auth_mode' => 'oauth_bearer',
 			'primary_execution_mode' => 'fixed_dispatch',
+			'fixed_dispatch_preparation' => self::fixed_dispatch_preparation_contract(),
 			'projection_role' => 'optional_hot_set',
 			'server_tools_list_changed' => false,
 			'refresh_strategy' => 'explicit_tools_list_or_reconnect',
