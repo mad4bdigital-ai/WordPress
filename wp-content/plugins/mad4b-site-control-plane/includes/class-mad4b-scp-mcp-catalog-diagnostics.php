@@ -1,6 +1,8 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+require_once __DIR__ . '/class-mad4b-scp-mcp-class-provenance.php';
+
 /** Bounded request-local evidence; never repairs registrations or grants. */
 final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	const CONTRACT = 'mad4b.mcp-catalog-evidence.v1';
@@ -47,7 +49,14 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	}
 
 	public static function preflight( array $abilities, array $optional ) {
-		$out = array( 'ready' => false, 'degraded' => false, 'tools' => array(), 'failures' => array(), 'blocker' => '' );
+		$out = array(
+			'ready' => false,
+			'degraded' => false,
+			'tools' => array(),
+			'failures' => array(),
+			'blocker' => '',
+			'runtime_class_provenance' => array(),
+		);
 		$abilities = array_values( array_map( 'strval', $abilities ) );
 		$optional = array_values( array_unique( array_map( 'strval', $optional ) ) );
 		// Required transport tools are never sacrificed to fit the client refresh
@@ -67,6 +76,26 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		}
 
 		if ( ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! class_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
+
+		// Entry-point/version provenance is insufficient under Jetpack Autoloader:
+		// a foreign package may own one or more WP\\MCP / WP\\McpSchema classes.
+		// Certify the effective builder/validator/DTO class set before attributing
+		// downstream failures to individual Ability schemas.
+		$provenance = MAD4B_SCP_MCP_Class_Provenance::status();
+		$out['runtime_class_provenance'] = $provenance;
+		if ( ! empty( $provenance['enforced'] ) && empty( $provenance['ready'] ) ) {
+			$out['blocker'] = MAD4B_SCP_MCP_Class_Provenance::BLOCKER;
+			$out['failures'][] = array(
+				'failing_ability' => '',
+				'stage' => 'runtime_class_provenance',
+				'error_class' => 'Contract',
+				'error_code' => MAD4B_SCP_MCP_Class_Provenance::BLOCKER,
+				'validator_reason' => '',
+				'source_schema_fingerprint' => '',
+				'schema_fingerprint' => '',
+			);
+			return $out;
+		}
 		$names = array(); $catalog_bytes = 32;
 		// Validate required tools before optional projections. Direct tools must fit
 		// the same bounded tools/list envelope exercised by HTTP acceptance; large
@@ -126,6 +155,43 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		return $out;
 	}
 
+	/** Map upstream validator text into a bounded non-sensitive reason code. */
+	public static function validator_reason( $error ) {
+		if ( ! is_wp_error( $error ) || ! method_exists( $error, 'get_error_message' ) ) return 'validator_rejected';
+		$message = strtolower( (string) $error->get_error_message() );
+		$rules = array(
+			'inputschema must be a valid json schema object' => 'input_schema_invalid_object',
+			'inputschema must specify a root type' => 'input_schema_root_type_missing',
+			'inputschema root type must be' => 'input_schema_root_type_not_object',
+			'inputschema properties must be an object/array' => 'input_schema_properties_not_object',
+			'inputschema required field must be an array' => 'input_schema_required_not_array',
+			'inputschema required field names must be strings' => 'input_schema_required_name_invalid',
+			'inputschema required field' => 'input_schema_required_property_missing',
+			'outputschema must be a valid json schema object' => 'output_schema_invalid_object',
+			'outputschema must specify a root type' => 'output_schema_root_type_missing',
+			'outputschema root type must be' => 'output_schema_root_type_not_object',
+			'outputschema properties must be an object/array' => 'output_schema_properties_not_object',
+			'outputschema required field must be an array' => 'output_schema_required_not_array',
+			'outputschema required field names must be strings' => 'output_schema_required_name_invalid',
+			'outputschema required field' => 'output_schema_required_property_missing',
+			'tool annotations must be an array' => 'tool_annotations_invalid',
+			'tool annotation field' => 'tool_annotation_field_invalid',
+			'tool execution must be an object/array' => 'tool_execution_invalid',
+			'tool execution tasksupport must' => 'tool_execution_task_support_invalid',
+			'tool name' => 'tool_name_invalid',
+			'tool description must be a string' => 'tool_description_invalid',
+			'tool title must be a string' => 'tool_title_invalid',
+			'tool _meta must be an object/array' => 'tool_meta_invalid',
+			'tool icons' => 'tool_icons_invalid',
+		);
+		foreach ( $rules as $needle => $reason ) if ( false !== strpos( $message, $needle ) ) return $reason;
+		if ( false !== strpos( $message, 'inputschema property' ) && false !== strpos( $message, 'must be an object' ) ) return 'input_schema_property_not_object';
+		if ( false !== strpos( $message, 'inputschema property' ) && false !== strpos( $message, 'type must be a string or array' ) ) return 'input_schema_property_type_invalid';
+		if ( false !== strpos( $message, 'outputschema property' ) && false !== strpos( $message, 'must be an object' ) ) return 'output_schema_property_not_object';
+		if ( false !== strpos( $message, 'outputschema property' ) && false !== strpos( $message, 'type must be a string or array' ) ) return 'output_schema_property_type_invalid';
+		return 'validator_rejected';
+	}
+
 	/** Official validator plus exact wire serialization. Only bounded diagnostic fields escape. */
 	public static function dto_failure( $dto ) {
 		$stage = 'dto_serialization'; $fingerprint = '';
@@ -137,7 +203,13 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			$stage = 'official_schema_validation';
 			if ( class_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' ) ) {
 				$valid = \WP\MCP\Domain\Tools\McpToolValidator::validate_tool_dto( $dto );
-				if ( is_wp_error( $valid ) ) return array( 'stage' => $stage, 'error_class' => 'WP_Error', 'error_code' => sanitize_key( $valid->get_error_code() ), 'schema_fingerprint' => $fingerprint );
+				if ( is_wp_error( $valid ) ) return array(
+					'stage' => $stage,
+					'error_class' => 'WP_Error',
+					'error_code' => sanitize_key( $valid->get_error_code() ),
+					'validator_reason' => self::validator_reason( $valid ),
+					'schema_fingerprint' => $fingerprint,
+				);
 			}
 			// JSON Schema permits object schemas without a properties keyword.
 			// A supplied properties keyword must still serialize as an object.
