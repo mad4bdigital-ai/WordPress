@@ -40,6 +40,8 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'source_of_truth' => 'wordpress_abilities_api',
 			'client_claims_authoritative' => false,
 			'host_refresh_confirmation_required' => true,
+			'dynamic_projection_scope' => 'site_enrollment_explicit',
+			'per_client_projection_isolation' => false,
 			'authority_effect' => 'none',
 			'mcp_fallback' => array(
 				'resource' => class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ? MAD4B_SCP_MCP_Client_Compatibility::resource_identifier() : '',
@@ -179,6 +181,8 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			),
 			'exposure_mode' => $exposure,
 			'dynamic_projection_state' => $dynamic_state,
+			'dynamic_projection_scope' => 'site_enrollment_explicit',
+			'per_client_projection_isolation' => false,
 			'dynamic_projection_permission_blocker' => is_wp_error( $projection_permission ) ? $projection_permission->get_error_code() : '',
 			'fixed_dispatch_tools' => array(
 				'read' => 'mad4b/read-execute',
@@ -427,6 +431,8 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				'projection_plan_sha256' => $plan_ready ? (string) $projection_plan['plan_sha256'] : '',
 				'projection_plan_blocker' => is_wp_error( $projection_plan ) ? $projection_plan->get_error_code() : ( $plan_ready ? '' : 'projection_preflight_not_ready' ),
 				'projection_is_never_implicit' => true,
+				'projection_scope' => 'site_enrollment_explicit',
+				'per_client_projection_isolation' => false,
 			),
 			'transport' => $negotiation['transport'],
 			'transfer_policy' => $transfer,
