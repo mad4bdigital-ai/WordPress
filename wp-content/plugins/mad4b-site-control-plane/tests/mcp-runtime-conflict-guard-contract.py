@@ -101,6 +101,22 @@ for marker in (
     "has_action( $mad4b_mcp_mu_status['adapter_init_hook'], array( $mad4b_mcp_mu_adapter, 'init' ) )",
     "'canonical_runtime_pinned_adapter_hook_armed'",
     "'runtime_from_official_plugin'",
+    "'critical_class_baseline_ready'",
+    "'critical_class_set_pinned'",
+    "'critical_class_pin_count'",
+    "'critical_class_pin_failed_symbol'",
+    "WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool",
+    "WP\\MCP\\Domain\\Tools\\McpToolValidator",
+    "WP\\MCP\\Domain\\Utils\\SchemaTransformer",
+    "WP\\MCP\\Domain\\Utils\\McpAnnotationMapper",
+    "WP\\MCP\\Domain\\Utils\\McpValidator",
+    "WP\\McpSchema\\Server\\Tools\\DTO\\Tool",
+    "WP\\McpSchema\\Server\\Tools\\DTO\\ToolInputSchema",
+    "WP\\McpSchema\\Server\\Tools\\DTO\\ToolOutputSchema",
+    "WP\\McpSchema\\Server\\Tools\\DTO\\ToolAnnotations",
+    "WP\\McpSchema\\Server\\Tools\\DTO\\ToolExecution",
+    "critical_class_baseline_mismatch",
+    "critical_class_source_not_official",
 ):
     require(mu_bootstrap, marker, 'mu-bootstrap')
 
