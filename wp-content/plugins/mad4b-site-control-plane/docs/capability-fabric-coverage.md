@@ -75,7 +75,7 @@ migration requirement.
 | 17 | Unified execution receipt | Existing audit/claim/journal/commit evidence remains. The new preparation receipt is not an execution receipt and makes no commit/outcome claim. |
 | 18 | Authorization decision graph | Existing deterministic authorization and policy resolution remain. A complete redacted evaluated/not-evaluated graph needs integration into each existing gate. |
 | 19 | Signed OAuth metadata | Optional future layer; requires independent key lifecycle and JWT verification. WordPress preparation HMAC is not a public OAuth metadata signature. |
-| 20 | Fault/property CI | Expanded behavioral mutation suite from 10 to 19 regressions. Covers lost build ownership, database isolation, receipt signature/expiry/subject/descriptor and dispatcher enforcement; mandatory partial/null pin tests are retained. External provider commit+timeout and durable journal failure injection still need dedicated fixtures. |
+| 20 | Fault/property CI | Expanded behavioral mutation suite from 10 to 20 regressions. Covers lost build ownership, database isolation, receipt signature/expiry/subject/descriptor, dispatcher enforcement and preparation-before-governance-envelope ordering; mandatory partial/null pin tests are retained. External provider commit+timeout and durable journal failure injection still need dedicated fixtures. |
 | 21 | SLO contracts | Existing hard catalog count/bytes/time budgets, 5,000 lazy-ability regression and bounded transport remain. Production P95 targets require measured tracing data; proposed numbers are not asserted as achieved. |
 
 ## Migration acceptance gates
