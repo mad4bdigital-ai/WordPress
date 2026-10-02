@@ -352,7 +352,9 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		sort( $names, SORT_STRING );
 		$caps = self::client_capabilities( $input );
 		$transfer = self::transfer_policy( $caps );
-		$known = isset( $input['known_schemas'] ) && is_array( $input['known_schemas'] ) ? $input['known_schemas'] : array();
+		$known = isset( $input['known_schemas'] ) && is_array( $input['known_schemas'] )
+			? array_slice( $input['known_schemas'], 0, self::MAX_PREPARE, true )
+			: array();
 		$items = array();
 		foreach ( $names as $ability_name ) {
 			$row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $ability_name );
