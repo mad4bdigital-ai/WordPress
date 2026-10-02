@@ -71,8 +71,19 @@ $check( hash_equals( $first['classification_sha256'], $second['classification_sh
 $check( hash_equals( $first_descriptor['descriptor_sha256'], $second_descriptor['descriptor_sha256'] ), 'Associative metadata order changed descriptor identity.' );
 $check( MAD4B_SCP_Ability_Contract_Inspector::CLASSIFICATION_CONTRACT === $second['classification_contract'], 'Classification digest contract was not explicit.' );
 
+$object_a = (object) array( 'b' => 2, 'a' => 1 );
+$object_b = (object) array( 'a' => 1, 'b' => 2 );
+$object_digest_a = MAD4B_SCP_Ability_Contract_Inspector::digest( 'fixture.object-order.v1', $object_a );
+$object_digest_b = MAD4B_SCP_Ability_Contract_Inspector::digest( 'fixture.object-order.v1', $object_b );
+$check( ! is_wp_error( $object_digest_a ) && hash_equals( $object_digest_a, $object_digest_b ), 'Object property order changed canonical identity.' );
+$object_empty = MAD4B_SCP_Ability_Contract_Inspector::digest( 'fixture.object-kind.v1', new stdClass() );
+$list_empty = MAD4B_SCP_Ability_Contract_Inspector::digest( 'fixture.object-kind.v1', array() );
+$check( ! is_wp_error( $object_empty ) && ! is_wp_error( $list_empty ) && ! hash_equals( $object_empty, $list_empty ), 'Canonicalization collapsed empty object and list semantics.' );
+$float_digest = MAD4B_SCP_Ability_Contract_Inspector::digest( 'fixture.float.v1', array( 'ratio' => 0.5 ) );
+$check( ! is_wp_error( $float_digest ) && 64 === strlen( $float_digest ), 'Finite float canonicalization failed.' );
+
 $GLOBALS['abilities'][ $name ] = new InspectorFixture( $name, 'semantic-change' );
 $third = MAD4B_SCP_Ability_Contract_Inspector::inspect( $name );
 $check( ! hash_equals( $second['classification_sha256'], $third['classification_sha256'] ), 'Semantic output contract change did not change classification identity.' );
 
-echo "PASS canonical Ability inspection: projection-independent descriptor, stable key ordering, finite floats and semantic drift detection\n";
+echo "PASS canonical Ability inspection: projection-independent descriptor, stable array/object ordering, object/list fidelity, finite floats and semantic drift detection\n";
