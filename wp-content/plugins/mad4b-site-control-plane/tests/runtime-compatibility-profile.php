@@ -17,7 +17,7 @@ update_option('active_plugins',$active_before,false);
 
 $maintenance=trailingslashit(ABSPATH).'.maintenance';
 $maintenance_before=is_file($maintenance)?file_get_contents($maintenance):null;
-file_put_contents($maintenance,"<?php $upgrading = time();\n");
+file_put_contents( $maintenance, '<?php $upgrading = ' . time() . ";\n" );
 $blocked=MAD4B_SCP_Runtime_Compatibility_Profile::assert_governed_write_ready(true);
 $check('mad4b_runtime_compatibility_not_ready'===$code($blocked)&&in_array('wordpress_maintenance_mode_active',$blockers($blocked),true),'maintenance compatibility guard failed open',$blocked);
 if(null===$maintenance_before)@unlink($maintenance);else file_put_contents($maintenance,$maintenance_before);

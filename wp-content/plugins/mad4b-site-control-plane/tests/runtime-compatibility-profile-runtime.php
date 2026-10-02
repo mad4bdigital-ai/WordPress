@@ -49,7 +49,7 @@ $db=MAD4B_SCP_Runtime_Compatibility_Profile::assert_governed_write_ready(true);
 $check('mad4b_runtime_compatibility_not_ready'===$code($db)&&in_array('database_router_uncertified',$blockers($db),true),'uncertified db.php router failed open');
 unlink(WP_CONTENT_DIR.'/db.php');
 
-file_put_contents(ABSPATH.'.maintenance',"<?php $upgrading = time();\n");
+file_put_contents( ABSPATH . '.maintenance', '<?php $upgrading = ' . time() . ";\n" );
 $maint=MAD4B_SCP_Runtime_Compatibility_Profile::assert_governed_write_ready(true);
 $check('mad4b_runtime_compatibility_not_ready'===$code($maint)&&in_array('wordpress_maintenance_mode_active',$blockers($maint),true),'maintenance mode failed open');
 unlink(ABSPATH.'.maintenance');
