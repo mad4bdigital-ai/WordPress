@@ -146,6 +146,30 @@ for (const [lane, tool] of [['read', 'read'], ['write', 'write'], ['content', 'w
   await assert.rejects(laneClient.execute(prepared, 'vendor/mutation', {}), /contract changed/);
   preparedClassification = scope;
 }
+preparedLane = 'content';
+const governedPrepared = (await laneClient.prepare(['vendor/mutation'])).catalogs.get('vendor/mutation');
+const mutableContextReceipt = {contract: 'mad4b.content-context-receipt.v1', receipt_sha256: 'd'.repeat(64), nested: {state: 'before'}};
+const governedPromise = laneClient.execute(governedPrepared, 'vendor/mutation', {}, {
+  approvalTicketId: '11111111-1111-4111-8111-111111111111',
+  contextReceipt: mutableContextReceipt,
+});
+mutableContextReceipt.nested.state = 'after';
+assert.equal(await governedPromise, 'executed');
+assert.equal(captured.input._mad4b_approval_ticket_id, '11111111-1111-4111-8111-111111111111');
+assert.equal(captured.input._mad4b_context_receipt.nested.state, 'before', 'Context Receipt was not snapshotted before async preparation');
+assert.notEqual(captured.input._mad4b_context_receipt, mutableContextReceipt);
+await assert.rejects(laneClient.execute(governedPrepared, 'vendor/mutation', {}, {
+  approvalTicketId: 'not-a-ticket',
+}), /approval ticket/);
+await assert.rejects(laneClient.execute(governedPrepared, 'vendor/mutation', {}, {
+  contextReceipt: {payload: 'x'.repeat(70000)},
+}), /transport budget/);
+preparedLane = 'read';
+const readPrepared = (await laneClient.prepare(['vendor/mutation'])).catalogs.get('vendor/mutation');
+await assert.rejects(laneClient.execute(readPrepared, 'vendor/mutation', {}, {
+  approvalTicketId: '11111111-1111-4111-8111-111111111111',
+}), /only valid for governed write dispatch/);
+
 for (const lane of ['internal', 'breakglass', 'developer-breakglass', '__proto__']) {
   preparedLane = lane;
   const prepared = (await laneClient.prepare(['vendor/mutation'])).catalogs.get('vendor/mutation');
