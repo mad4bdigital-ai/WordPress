@@ -517,7 +517,24 @@ if capfab_path.exists() and tasks_path.exists():
     workstream_ids=[r.get("id") for r in rows if isinstance(r,dict)]
     if not rows or None in workstream_ids or len(workstream_ids) != len(set(workstream_ids)): errors.append("capability_fabric_closure:workstream_ids_invalid")
     mapped=[]
+    expected_status={"OPEN","PARTIAL","DONE","DEFERRED"}
     allowed_status=set(capfab.get("status_vocabulary",[]))
+    if allowed_status != expected_status:
+        errors.append("capability_fabric_closure:status_vocabulary_mismatch")
+    expected_quality={
+        "QCORRECTNESS","QRESILIENCE","QSECURITY","QSUPPLYCHAIN","QDATA","QPERF","QEVAL","QRECOVERY",
+        "QCOMPAT","QGOVERNANCE","QCONTENTSTATE","QRIGHTS","QOPERABILITY","QPORTABILITY","QROOTTRUST",
+        "QEXECUTIONMODEL","QLIVENESS","QSEMANTICS","QTEST"
+    }
+    if set(capfab.get("quality_family_vocabulary",[])) != expected_quality:
+        errors.append("capability_fabric_closure:quality_vocabulary_mismatch")
+    required_terminal={"ownership_closure","cancel_transport_cross_fault","canonical_db_storage"}
+    if set(capfab.get("completion_requires_workstreams",[])) != required_terminal:
+        errors.append("capability_fabric_closure:completion_workstreams_mismatch")
+    rules=capfab.get("closure_rules",{})
+    for key in ["exact_phase37_task_coverage","unique_task_ownership","dependency_graph_acyclic","unknown_quality_family_forbidden","docs_only_cannot_close_runtime_or_live_work","non_authorizing"]:
+        if rules.get(key) is not True:
+            errors.append(f"capability_fabric_closure:closure_rule_missing:{key}")
     for row in rows:
         if not isinstance(row,dict):
             errors.append("capability_fabric_closure:workstream_not_object"); continue
@@ -526,17 +543,45 @@ if capfab_path.exists() and tasks_path.exists():
             errors.append(f"capability_fabric_closure:task_ids_missing:{row.get('id')}"); continue
         mapped.extend(tids)
         if row.get("status") not in allowed_status: errors.append(f"capability_fabric_closure:invalid_status:{row.get('id')}:{row.get('status')}")
-        if not isinstance(row.get("quality_families",[]),list) or not row.get("quality_families"): errors.append(f"capability_fabric_closure:quality_family_missing:{row.get('id')}")
+        if not isinstance(row.get("quality_families",[]),list) or not row.get("quality_families"):
+            errors.append(f"capability_fabric_closure:quality_family_missing:{row.get('id')}")
+        else:
+            unknown_quality=set(row.get("quality_families",[]))-expected_quality
+            if unknown_quality:
+                errors.append(f"capability_fabric_closure:unknown_quality_family:{row.get('id')}:{','.join(sorted(unknown_quality))}")
+        if row.get("status") in {"DONE","PARTIAL"}:
+            refs=row.get("evidence_refs",[])
+            if not isinstance(refs,list) or not refs:
+                errors.append(f"capability_fabric_closure:closed_or_partial_without_evidence:{row.get('id')}")
         for field in ["interim_behavior","evidence_strategy"]:
             if not isinstance(row.get(field),str) or not row.get(field).strip(): errors.append(f"capability_fabric_closure:{field}_missing:{row.get('id')}")
         if not isinstance(row.get("dependencies",[]),list): errors.append(f"capability_fabric_closure:dependencies_invalid:{row.get('id')}")
     if len(mapped) != len(set(mapped)): errors.append("capability_fabric_closure:task_mapped_more_than_once")
     if set(mapped) != phase37_ids: errors.append("capability_fabric_closure:phase37_task_coverage_mismatch:" + ",".join(sorted(set(mapped) ^ phase37_ids)))
     known_workstreams=set(workstream_ids)
+    dep_graph={}
     for row in rows:
         if isinstance(row,dict):
-            unknown=set(row.get("dependencies",[]))-known_workstreams
+            deps=set(row.get("dependencies",[]))
+            dep_graph[row.get("id")]=deps
+            unknown=deps-known_workstreams
             if unknown: errors.append(f"capability_fabric_closure:unknown_dependency:{row.get('id')}:{','.join(sorted(unknown))}")
+    visiting=set()
+    visited=set()
+    def capfab_dfs(node):
+        if node in visiting:
+            errors.append(f"capability_fabric_closure:dependency_cycle:{node}")
+            return
+        if node in visited: return
+        visiting.add(node)
+        for dep in dep_graph.get(node,set()):
+            capfab_dfs(dep)
+        visiting.remove(node)
+        visited.add(node)
+    for node in known_workstreams:
+        capfab_dfs(node)
+    if closure_path.exists() and capfab.get("baseline_merge_commit") != (closure.get("repository_baseline") or {}).get("last_reviewed_parent_sha"):
+        errors.append("capability_fabric_closure:baseline_mismatch")
 
 quality_path=require_file("quality-model.md")
 if quality_path.exists() and "Post-merge Capability Fabric completeness overlay" not in quality_path.read_text(encoding="utf-8"): errors.append("capability_fabric_closure:quality_overlay_missing")

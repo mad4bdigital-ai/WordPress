@@ -423,5 +423,39 @@
       "interim_behavior": "Security identity uses canonical encodings only; uncertain collation/storage-engine/transaction ownership blocks governed mutation rather than degrading to alternate identity or non-atomic persistence.",
       "evidence_strategy": "Canonicalization negatives, binary/collation alias tests, SHOW TABLE STATUS/engine capability evidence and nested transaction/savepoint-or-deny fixtures."
     }
-  ]
+  ],
+  "quality_family_vocabulary": [
+    "QCORRECTNESS",
+    "QRESILIENCE",
+    "QSECURITY",
+    "QSUPPLYCHAIN",
+    "QDATA",
+    "QPERF",
+    "QEVAL",
+    "QRECOVERY",
+    "QCOMPAT",
+    "QGOVERNANCE",
+    "QCONTENTSTATE",
+    "QRIGHTS",
+    "QOPERABILITY",
+    "QPORTABILITY",
+    "QROOTTRUST",
+    "QEXECUTIONMODEL",
+    "QLIVENESS",
+    "QSEMANTICS",
+    "QTEST"
+  ],
+  "completion_requires_workstreams": [
+    "ownership_closure",
+    "cancel_transport_cross_fault",
+    "canonical_db_storage"
+  ],
+  "closure_rules": {
+    "exact_phase37_task_coverage": true,
+    "unique_task_ownership": true,
+    "dependency_graph_acyclic": true,
+    "unknown_quality_family_forbidden": true,
+    "docs_only_cannot_close_runtime_or_live_work": true,
+    "non_authorizing": true
+  }
 }
