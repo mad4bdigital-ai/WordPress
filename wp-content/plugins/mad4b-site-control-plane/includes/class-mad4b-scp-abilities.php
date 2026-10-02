@@ -727,7 +727,10 @@ final class MAD4B_SCP_Abilities {
 				return new WP_Error( 'mad4b_write_dispatch_context_receipt_invalid', 'The dispatcher Context Receipt must be an object.' );
 			} else {
 				$receipt_json = wp_json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-				if ( ! is_string( $receipt_json ) || strlen( $receipt_json ) > self::MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES ) {
+				$receipt_budget = class_exists( 'MAD4B_SCP_Context_Preflight', false )
+					? MAD4B_SCP_Context_Preflight::MAX_RECEIPT_TRANSPORT_BYTES
+					: self::MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES;
+				if ( ! is_string( $receipt_json ) || strlen( $receipt_json ) > $receipt_budget ) {
 					return new WP_Error( 'mad4b_write_dispatch_context_receipt_oversized', 'The dispatcher Context Receipt exceeds its bounded transport budget.' );
 				}
 			}
