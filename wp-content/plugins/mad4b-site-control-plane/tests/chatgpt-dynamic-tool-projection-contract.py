@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECTION = (ROOT / "includes" / "class-mad4b-scp-chatgpt-tool-projection.php").read_text(encoding="utf-8")
+INSPECTOR = (ROOT / "includes" / "class-mad4b-scp-ability-contract-inspector.php").read_text(encoding="utf-8")
 SERVERS = (ROOT / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 DIAG = (ROOT / "includes" / "class-mad4b-scp-mcp-catalog-diagnostics.php").read_text(encoding="utf-8")
 MAIN = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
@@ -32,9 +33,11 @@ for marker in [
 ]:
     require(marker in PROJECTION, f"all-site Ability discovery invariant missing: {marker}")
 
-# Every registered Ability remains visible, but unknown classification is fail-closed:
-# no direct projection and no execution lane until the authority class is known.
+# Every registered Ability remains visible, but structural classification now
+# belongs to the canonical inspector rather than the ChatGPT presentation layer.
 for marker in [
+    "mad4b.ability-contract-inspector.v1",
+    "mad4b.ability-classification.v2",
     "classification",
     "projection_eligible",
     "execution_eligible",
@@ -43,7 +46,8 @@ for marker in [
     "ability_classification_required",
     "ability_projection_policy_blocked",
 ]:
-    require(marker in PROJECTION, f"unclassified Ability fail-closed invariant missing: {marker}")
+    require(marker in INSPECTOR, f"canonical Ability fail-closed invariant missing: {marker}")
+require("MAD4B_SCP_Ability_Contract_Inspector::inspect" in PROJECTION, "projection does not consume the canonical Ability inspector")
 
 # Projection is schema-pinned and exact-plan fenced.
 for marker in [
