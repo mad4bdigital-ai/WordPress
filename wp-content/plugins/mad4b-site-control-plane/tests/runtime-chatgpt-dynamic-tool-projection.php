@@ -247,7 +247,7 @@ try {
 		if ( MAD4B_SCP_ChatGPT_Tool_Projection::materialized_tool_matches( $read_tool ) ) $fail( 'Stale materialized DTO admitted.' );
 	} finally { $schema_property->setValue( $target, $old_schema ); }
 
-	$allowed = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( array(), '', $read_tool, $server_fixture );
+	$allowed = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( null, '', $read_tool, $server_fixture );
 	if ( is_wp_error( $allowed ) ) $fail( 'Read projection admission unexpectedly denied.', $allowed->get_error_code() );
 	if ( ! class_exists( 'MAD4B_SCP_Execution_Fence' ) || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( 'mad4b/diagnostics-health' ) ) {
 		$fail( 'Projected read Ability is missing its final execution-admission wrapper.' );
@@ -260,11 +260,11 @@ try {
 	$request_fixture = new class { public function get_route() { return '/mcp/mad4b-chatgpt'; } };
 	$bound = MAD4B_SCP_Transport_Context::bind( 'mad4b-chatgpt', $request_fixture );
 	if ( is_wp_error( $bound ) ) $fail( 'ChatGPT transport fixture could not bind for final execution seal proof.', $bound->get_error_code() );
-	$allowed_again = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( array(), '', $read_tool, $server_fixture );
+	$allowed_again = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( null, '', $read_tool, $server_fixture );
 	if ( is_wp_error( $allowed_again ) ) $fail( 'Second projected admission could not mint a fresh one-time seal.', $allowed_again->get_error_code() );
-	$projected_execution = wp_get_ability( 'mad4b/diagnostics-health' )->execute( array() );
+	$projected_execution = wp_get_ability( 'mad4b/diagnostics-health' )->execute( null );
 	if ( is_wp_error( $projected_execution ) ) $fail( 'Fresh projected execution seal did not survive the final callback wrapper.', $projected_execution->get_error_code() );
-	$replayed_execution = wp_get_ability( 'mad4b/diagnostics-health' )->execute( array() );
+	$replayed_execution = wp_get_ability( 'mad4b/diagnostics-health' )->execute( null );
 	if ( ! is_wp_error( $replayed_execution ) || 'mad4b_projection_execution_seal_required' !== $replayed_execution->get_error_code() ) {
 		$fail( 'Projected execution seal was reusable or absent final callback enforcement.', $replayed_execution );
 	}
@@ -277,11 +277,11 @@ try {
 	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $copied_for_late_filter, false );
 	$late_pre_tool = static function ( $value ) { return is_wp_error( $value ) ? array() : $value; };
 	add_filter( 'mcp_adapter_pre_tool_call', $late_pre_tool, PHP_INT_MAX, 4 );
-	$overridden = apply_filters( 'mcp_adapter_pre_tool_call', array(), '', $read_tool, $server_fixture );
+	$overridden = apply_filters( 'mcp_adapter_pre_tool_call', null, '', $read_tool, $server_fixture );
 	if ( is_wp_error( $overridden ) ) $fail( 'Late-filter attack fixture did not override the earlier filter result as intended.' );
 	$bound = MAD4B_SCP_Transport_Context::bind( 'mad4b-chatgpt', $request_fixture );
 	if ( is_wp_error( $bound ) ) $fail( 'ChatGPT transport fixture could not bind for late-filter proof.', $bound->get_error_code() );
-	$late_bypass = wp_get_ability( 'mad4b/diagnostics-health' )->execute( array() );
+	$late_bypass = wp_get_ability( 'mad4b/diagnostics-health' )->execute( null );
 	if ( ! is_wp_error( $late_bypass ) || 'mad4b_projection_execution_seal_required' !== $late_bypass->get_error_code() ) {
 		$fail( 'Later same-priority pre-tool filter bypassed final projected execution admission.', $late_bypass );
 	}
@@ -291,7 +291,7 @@ try {
 	$copied = $fixture_state;
 	$copied['binding']['origin'] = 'https://different.invalid';
 	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $copied, false );
-	$denied = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( array(), '', $read_tool, $server_fixture );
+	$denied = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( null, '', $read_tool, $server_fixture );
 	if ( ! is_wp_error( $denied ) || 'mad4b_projection_binding_mismatch' !== $denied->get_error_code() ) $fail( 'Copied-site binding did not block a cached tool call.' );
 	if ( MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() ) $fail( 'Copied-site registry remained effective.' );
 	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );

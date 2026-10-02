@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 import sys
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -41,7 +42,11 @@ need("MAD4B_SCP_Database_Transaction_Guard::begin" in journal, "operation journa
 need("MAD4B_SCP_Database_Transaction_Guard::commit" in journal, "operation journal still owns raw transaction commit")
 need("WHERE BINARY operation_id=BINARY %s" in journal, "operation journal identity lookup is not binary-exact")
 need("'database_storage' => $database_storage" in commit_guard, "commit guard does not bind transactional storage")
-need("'database_storage', 'kill_switch'" in commit_guard, "commit revalidation does not recheck database storage")
+revalidation_match=re.search(r"foreach\s*\(\s*array\((.*?)\)\s*as\s*\$dependency", commit_guard, re.S)
+need(revalidation_match is not None, "commit revalidation dependency loop missing")
+revalidation_dependencies=revalidation_match.group(1)
+need("'database_storage'" in revalidation_dependencies, "commit revalidation does not recheck database storage")
+need("'runtime_compatibility'" in revalidation_dependencies, "commit revalidation does not recheck runtime compatibility")
 need("class-mad4b-scp-database-transaction-guard.php" in main, "transaction guard is not loaded by plugin bootstrap")
 need("class-mad4b-scp-database-topology.php" in main, "database topology is not loaded by plugin bootstrap")
 need("mad4b.database-topology.v1" in database_topology, "database topology contract missing")
