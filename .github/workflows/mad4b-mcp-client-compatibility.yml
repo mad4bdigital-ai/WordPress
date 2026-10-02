@@ -217,32 +217,50 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-decommission.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
-      - name: Prove fresh-process inactive decommission planning
+      - name: Prove fresh-process inactive decommission plan and apply
         shell: bash
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress
           PLUGIN=mad4b-site-control-plane
-          TOOL="$WP_PATH/wp-content/plugins/$PLUGIN/tools/catalog-decommission.php"
+          PLUGIN_PATH="$WP_PATH/wp-content/plugins/$PLUGIN"
+          HELPER="$PLUGIN_PATH/tests/catalog-decommission-fresh-process.php"
+          TOOL="$PLUGIN_PATH/tools/catalog-decommission.php"
           PLAN=/tmp/mad4b-catalog-decommission-fresh-plan.json
+          APPLY=/tmp/mad4b-catalog-decommission-fresh-apply.json
+          FIXTURE=mad4b_ct2_2000000000_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
           cleanup() {
-            rm -f "$WP_PATH/.maintenance" "$PLAN"
+            rm -f "$WP_PATH/.maintenance" "$PLAN" "$APPLY"
             php /tmp/wp-cli.phar plugin activate "$PLUGIN" --path="$WP_PATH" >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
           php /tmp/wp-cli.phar plugin deactivate "$PLUGIN" --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval "delete_option('$FIXTURE'); add_option('$FIXTURE', array('fresh_process_fixture'=>true), '', false);" --path="$WP_PATH" --user=mad4b-ci-admin
           printf '<?php $upgrading = %s;' "$(date +%s)" > "$WP_PATH/.maintenance"
-          php /tmp/wp-cli.phar eval-file "$TOOL" plan --path="$WP_PATH" --user=mad4b-ci-admin > "$PLAN"
-          python3 - <<'PY'
+          php /tmp/wp-cli.phar eval-file "$HELPER" --path="$WP_PATH" --user=mad4b-ci-admin > "$PLAN"
+          SHA="$(python3 - <<'PY'
           import json
           from pathlib import Path
           doc=json.loads(Path('/tmp/mad4b-catalog-decommission-fresh-plan.json').read_text())
           plan=doc.get('plan',{})
           assert plan.get('contract') == 'mad4b.catalog-offline-purge.v1', plan
           assert plan.get('origin') == 'https://mad4b-client.test', plan
-          assert isinstance(doc.get('plan_sha256'), str) and len(doc['plan_sha256']) == 64, doc
+          assert 'mad4b_ct2_2000000000_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' in plan.get('objects',{}), plan
           assert set(plan.get('preserves',[])) >= {'projection','grants','approvals','audit','site_profile'}, plan
-          print('PASS fresh-process decommission plan: inactive plugin, exact site, reviewed digest and authority retention')
+          sha=doc.get('plan_sha256','')
+          assert isinstance(sha,str) and len(sha)==64, doc
+          print(sha)
+          PY
+          )"
+          php /tmp/wp-cli.phar eval-file "$TOOL" apply "$PLAN" "$SHA" --path="$WP_PATH" --user=mad4b-ci-admin > "$APPLY"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('/tmp/mad4b-catalog-decommission-fresh-apply.json').read_text())
+          assert result.get('readback_verified') is True, result
+          assert result.get('authority_data_deleted') is False, result
+          assert int(result.get('deleted',0)) > 0, result
+          print('PASS fresh-process decommission: inactive plugin, exact reviewed plan, real deletion, empty readback and authority retention')
           PY
           cleanup
           trap - EXIT
