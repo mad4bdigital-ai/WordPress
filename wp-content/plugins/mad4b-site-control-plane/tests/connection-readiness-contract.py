@@ -183,7 +183,16 @@ read_server_block = servers.split("'mad4b-read' =>", 1)[1].split("'mad4b-chatgpt
 chatgpt_server_block = servers.split("'mad4b-chatgpt' =>", 1)[1].split("'mad4b-enrollment' =>", 1)[0]
 require(read_server_block, "'mad4b/read-metadata-envelope'", 'read-metadata-envelope-read-mount')
 forbid(chatgpt_server_block, "'mad4b/read-metadata-envelope'", 'read-metadata-envelope-hidden-from-chatgpt-direct-tools')
-require(abilities, "MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $ability_name )", 'read-dispatch-full-catalog-gate')
+for marker in (
+    "mad4b_read_dispatch_recursion_denied",
+    "array_key_exists( 'readonly', $annotations )",
+    "true !== $annotations['readonly']",
+    "MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $ability_name )",
+    "'read' !== $row['lane']",
+    "empty( $row['execution_eligible'] )",
+    "mad4b_read_dispatch_sensitive_target_denied",
+):
+    require(abilities, marker, 'read-dispatch-governed-universe-gate')
 require(servers, "'mad4b-write'", 'write-server-id')
 require(servers, "'MAD4B Write MCP'", 'write-server-registration')
 require(servers, "array( __CLASS__, 'can_write_transport' )", 'write-server-permission')
