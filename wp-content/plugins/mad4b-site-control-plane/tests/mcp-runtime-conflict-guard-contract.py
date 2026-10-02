@@ -58,6 +58,20 @@ for forbidden in (
 ):
     forbid(guard, forbidden, 'bounded-repair')
 
+repair_lifecycle = guard.split('private static function repair_lifecycle_allowed()', 1)[1].split('private static function mu_bootstrap_status()', 1)[0]
+for marker in (
+    "array( 'update.php', 'update-core.php', 'plugin-install.php', 'plugins.php' )",
+    "current_user_can( 'update_plugins' )",
+    "defined( 'WP_CLI' )",
+    "wp_doing_cron()",
+):
+    require(repair_lifecycle, marker, 'repair-lifecycle')
+for forbidden in (
+    "explicit_rest_materialization_allowed()",
+    "MAD4B_SCP_Endpoint_Diagnostic::is_authorized_request()",
+):
+    forbid(repair_lifecycle, forbidden, 'diagnostics-remain-read-only')
+
 for marker in (
     "'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v4'",
     "get_option( 'mad4b_scp_site_profile_v2', array() )",
