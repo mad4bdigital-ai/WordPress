@@ -94,6 +94,10 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 			self::row( 'Hostinger bundled adapter active', ! empty( $conflict['hostinger_bundle_active'] ) ? 'yes' : 'no' );
 			self::row( 'Official loads before Hostinger in active_plugins', ! empty( $conflict['official_loads_before_hostinger'] ) ? 'yes' : 'no' );
 			self::row( 'Runtime provenance mismatch', ! empty( $conflict['runtime_provenance_mismatch'] ) ? 'yes' : 'no' );
+			self::row( 'Runtime class provenance enforced', ! empty( $conflict['runtime_class_provenance_enforced'] ) ? 'yes' : 'no' );
+			self::row( 'Runtime class provenance ready', null === ( $conflict['runtime_class_provenance_ready'] ?? null ) ? 'Not checked' : ( ! empty( $conflict['runtime_class_provenance_ready'] ) ? 'yes' : 'no' ) );
+			self::row( 'Runtime class provenance state', isset( $conflict['runtime_class_provenance_state'] ) ? sanitize_key( (string) $conflict['runtime_class_provenance_state'] ) : '' );
+			self::row( 'Runtime class provenance failure count', isset( $conflict['runtime_class_provenance_failure_count'] ) ? (string) max( 0, (int) $conflict['runtime_class_provenance_failure_count'] ) : '0' );
 			self::row( 'Runtime from Hostinger bundle', ! empty( $conflict['runtime_from_hostinger_bundle'] ) ? 'yes' : 'no' );
 			self::row( 'Collision risk detected', ! empty( $conflict['collision_risk_detected'] ) ? 'yes' : 'no' );
 			self::row( 'Runtime repair applied', ! empty( $conflict['repair_applied'] ) ? 'yes' : 'no' );
