@@ -176,8 +176,21 @@ $cross_payload = $dispatcher->can_write_dispatch( $changed_payload );
 check_gateway( is_wp_error( $cross_payload ) && 'mad4b_write_dispatch_governance_target_conflict' === $cross_payload->get_error_code(), 'Abandoned governance envelope crossed into different mutation input for the same prepared Ability' );
 $cross_target = $dispatcher->can_write_dispatch( $second_input );
 check_gateway( is_wp_error( $cross_target ) && 'mad4b_write_dispatch_governance_target_conflict' === $cross_target->get_error_code(), 'Abandoned governance envelope crossed into another prepared target' );
+$execution_rebind = $first_input;
+$execution_rebind['_mad4b_approval_ticket_id'] = '00000000-0000-4000-8000-000000000098';
+$execution_rebind_result = $dispatcher->write_execute( $execution_rebind );
+check_gateway(
+ is_wp_error( $execution_rebind_result )
+ && 'mad4b_write_dispatch_governance_envelope_rebind_conflict' === $execution_rebind_result->get_error_code()
+ && 0 === $first->calls
+ && '' === $GLOBALS['approval_scope_active'],
+ 'Execution phase rebound governance evidence after permission admission'
+);
+// The conflicting attempt consumes the request-local capture fail-closed. Re-run
+// permission admission with the reviewed envelope before the legitimate execution.
+check_gateway( true === $dispatcher->can_write_dispatch( $first_input ), 'Reviewed governance envelope could not be recaptured after rejected execution rebind' );
 $first_execution = $dispatcher->write_execute( $first_input );
-check_gateway( ! is_wp_error( $first_execution ) && '' === $GLOBALS['approval_scope_active'], 'Original governance target could not safely consume its captured evidence' );
+check_gateway( ! is_wp_error( $first_execution ) && 1 === $first->calls && '' === $GLOBALS['approval_scope_active'], 'Original governance target could not safely consume its captured evidence' );
 
 // Approval-plan callback observation must be cleared on target errors and
 // exceptions so a later dispatcher in the same PHP request cannot inherit stale state.
