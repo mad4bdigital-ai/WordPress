@@ -37,6 +37,7 @@ class Ability {
  function get_category() { return 'mad4b-read'; } function get_label() { return 'Sensitive read'; } function get_description() { return 'fixture'; }
  function execute() { throw new RuntimeException( 'Forbidden callback reached' ); }
 }
+require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
 require __DIR__ . '/../includes/class-mad4b-scp-chatgpt-tool-projection.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-catalog-transport.php';
 $name = 'fixture/breakglass'; $GLOBALS['abilities'][$name] = new Ability(); $GLOBALS['identity_checks'] = 0;
