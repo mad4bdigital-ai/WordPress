@@ -29,6 +29,22 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     if (typeof text !== 'string' || text.length > maxResponseBytes || new TextEncoder().encode(text).byteLength > maxResponseBytes) throw new CatalogError('Response memory budget exceeded');
     return text;
   }
+  function governanceSnapshot(approvalTicketId, contextReceipt) {
+    let ticket;
+    if (approvalTicketId !== undefined && approvalTicketId !== null && approvalTicketId !== '') {
+      if (typeof approvalTicketId !== 'string' || !/^[a-f0-9-]{36}$/i.test(approvalTicketId)) throw new CatalogError('Invalid approval ticket identity');
+      ticket = approvalTicketId.toLowerCase();
+    }
+    let receipt;
+    if (contextReceipt !== undefined && contextReceipt !== null) {
+      if (typeof contextReceipt !== 'object' || Array.isArray(contextReceipt)) throw new CatalogError('Invalid Context Receipt');
+      let json;
+      try { json = JSON.stringify(contextReceipt); } catch { throw new CatalogError('Context Receipt is not serializable'); }
+      if (new TextEncoder().encode(json).byteLength > 65536) throw new CatalogError('Context Receipt exceeds transport budget');
+      receipt = JSON.parse(json);
+    }
+    return {approvalTicketId: ticket, contextReceipt: receipt};
+  }
   function mcpValue(result) {
     // The host owns allocation of structuredContent; bound its serialized contract too.
     if (result?.structuredContent !== undefined) {
@@ -311,9 +327,10 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     }
     return {...result, catalogs};
   }
-  async function execute(catalog, abilityName, input, {mode = 'dispatch', directToolNames = [], operation, signal} = {}) {
+  async function execute(catalog, abilityName, input, {mode = 'dispatch', directToolNames = [], operation, approvalTicketId, contextReceipt, signal} = {}) {
     if (!callTool) throw new CatalogError('Host tool execution callback required');
     if (signal?.aborted) throw signal.reason ?? new CatalogError('Transfer cancelled');
+    const governance = governanceSnapshot(approvalTicketId, contextReceipt);
     // Always resolve the selected target through one authoritative descriptor.
     const fresh = (await prepare([abilityName], {signal})).catalogs.get(abilityName);
     if (!fresh || (expectedAuthorityScopeSha256 && fresh.authority_scope_sha256 !== expectedAuthorityScopeSha256) || fresh.authority_scope_sha256 !== catalog.authority_scope_sha256) throw new CatalogError('Authority changed; rediscover');
@@ -323,6 +340,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     if (!execution?.execution_eligible || !DIGEST.test(execution.input_schema_sha256) || !DIGEST.test(execution.classification_sha256)) throw new CatalogError('Ability is not eligible for governed execution');
     if (!DIGEST.test(item.authority_scope_sha256 ?? '') || typeof item.preparation_receipt !== 'string' || item.preparation_receipt.length < 1 || item.preparation_receipt.length > 4096) throw new CatalogError('Fresh signed preparation evidence is required');
     if (mode === 'direct') {
+      if (governance.approvalTicketId || governance.contextReceipt) throw new CatalogError('Governance evidence requires governed fixed dispatch');
       if (!old?.wire?.sha256 || !item.wire?.sha256 || item.wire.sha256 !== old.wire.sha256 || item.wire.tool_name !== old.wire.tool_name) throw new CatalogError('Direct tool wire contract changed; refresh and replan');
       if (!item.wire?.tool_name || !directToolNames.includes(item.wire.tool_name)) throw new CatalogError('Host has not confirmed this direct tool');
       return callTool(item.wire.tool_name, input, {signal});
@@ -330,15 +348,21 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     if (mode !== 'dispatch') throw new CatalogError('Invalid execution mode');
     if (execution.dispatch_state === 'requires_dynamic_projection') throw new CatalogError('Host must refresh and confirm this direct projection');
     const dispatchLanes = {read: 'read', write: 'write', content: 'write', admin: 'write', developer: 'developer'};
-    if (Object.hasOwn(dispatchLanes, execution.lane)) return callTool(`mad4b-${dispatchLanes[execution.lane]}-execute`, {
-      ability_name: abilityName,
-      expected_authority_scope_sha256: item.authority_scope_sha256,
-      expected_input_schema_sha256: execution.input_schema_sha256,
-      expected_classification_sha256: execution.classification_sha256,
-      expected_execution_lane: execution.lane,
-      preparation_receipt: item.preparation_receipt,
-      input,
-    }, {signal});
+    if (Object.hasOwn(dispatchLanes, execution.lane)) {
+      const mutationDispatch = ['write', 'content', 'admin'].includes(execution.lane);
+      if (!mutationDispatch && (governance.approvalTicketId || governance.contextReceipt)) throw new CatalogError('Governance evidence is only valid for governed write dispatch');
+      return callTool(`mad4b-${dispatchLanes[execution.lane]}-execute`, {
+        ability_name: abilityName,
+        expected_authority_scope_sha256: item.authority_scope_sha256,
+        expected_input_schema_sha256: execution.input_schema_sha256,
+        expected_classification_sha256: execution.classification_sha256,
+        expected_execution_lane: execution.lane,
+        preparation_receipt: item.preparation_receipt,
+        ...(mutationDispatch && governance.approvalTicketId ? {_mad4b_approval_ticket_id: governance.approvalTicketId} : {}),
+        ...(mutationDispatch && governance.contextReceipt ? {_mad4b_context_receipt: governance.contextReceipt} : {}),
+        input,
+      }, {signal});
+    }
     if (execution.lane === 'enrollment' && operation?.ability_name === abilityName && DIGEST.test(operation.expected_registration_digest) && DIGEST.test(operation.expected_dispatch_policy_digest)) return callTool('mad4b-enrollment-execute', {operation_id: operation.operation_id, expected_registration_digest: operation.expected_registration_digest, expected_dispatch_policy_digest: operation.expected_dispatch_policy_digest, expected_input_schema_sha256: execution.input_schema_sha256, input}, {signal});
     throw new CatalogError('Use the original explicit authority route for this lane');
   }
