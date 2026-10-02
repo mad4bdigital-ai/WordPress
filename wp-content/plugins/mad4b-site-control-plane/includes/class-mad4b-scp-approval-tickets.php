@@ -326,15 +326,15 @@ final class MAD4B_SCP_Approval_Tickets {
 	}
 
 	public static function claim_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
-		if ( class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) {
+		global $wpdb;
+		$validated = self::validate_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
+		if ( is_wp_error( $validated ) ) return $validated;
+		if ( self::is_governed_remote_mutation( $ticket_class, $server_id ) && class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) {
 			$restore_ready = MAD4B_SCP_Restore_Epoch::ensure_bound();
 			if ( is_wp_error( $restore_ready ) ) return $restore_ready;
 		}
-		global $wpdb;
 		$topology = class_exists( 'MAD4B_SCP_Database_Topology' ) ? MAD4B_SCP_Database_Topology::assert_write_ready( true ) : new WP_Error( 'mad4b_database_topology_unavailable', 'Database topology service is unavailable.' );
 		if ( is_wp_error( $topology ) ) return $topology;
-		$validated = self::validate_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
-		if ( is_wp_error( $validated ) ) return $validated;
 		$ticket = $validated['ticket'];
 		$ticket_id = isset( $ticket['ticket_id'] ) && class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket['ticket_id'] ) : '';
 		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_ticket_invalid', 'Stored approval ticket id is not canonical.' );
