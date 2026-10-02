@@ -457,8 +457,14 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		if ( ( empty( $input['snapshot'] ) || empty( $input['schema_sha256'] ) ) && ! empty( $input['ability_name'] ) ) {
 			$prepared = MAD4B_SCP_Ability_Catalog_Transport::prepare_ability( (string) $input['ability_name'] );
 			if ( is_wp_error( $prepared ) ) return $prepared;
+			$format = isset( $input['schema_format'] ) ? sanitize_key( (string) $input['schema_format'] ) : 'source';
+			$descriptor = 'wire' === $format
+				? ( isset( $prepared['item']['wire'] ) && is_array( $prepared['item']['wire'] ) ? $prepared['item']['wire'] : array() )
+				: ( isset( $prepared['item']['source'] ) && is_array( $prepared['item']['source'] ) ? $prepared['item']['source'] : array() );
+			if ( empty( $descriptor['sha256'] ) ) return new WP_Error( 'mad4b_capability_gateway_schema_format_unavailable', 'Requested Ability schema format is unavailable.' );
 			$input['snapshot'] = $prepared['snapshot'];
-			$input['schema_sha256'] = $prepared['item']['schema_sha256'];
+			$input['schema_sha256'] = (string) $descriptor['sha256'];
+			$input['schema_format'] = $format;
 		}
 		$input['transport_action'] = $action;
 		if ( 'chunk' === $action ) $input['chunk_bytes'] = min( (int) ( $input['chunk_bytes'] ?? 1048576 ), self::transfer_policy( $caps )['recommended_chunk_bytes'] );
