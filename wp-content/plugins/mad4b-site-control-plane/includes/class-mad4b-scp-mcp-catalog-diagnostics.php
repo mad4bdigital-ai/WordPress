@@ -225,7 +225,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 				$breakglass_scope_visible = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
 					&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
 					&& (
-						MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'server:mad4b-breakglass' )
+						MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE )
 						|| ( '' !== $ability && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'ability:' . $ability ) )
 					);
 				if ( ! $breakglass_scope_visible || ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_breakglass() ) continue;
