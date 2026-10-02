@@ -172,7 +172,18 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 		if ( $depth > self::MAX_CANONICAL_DEPTH ) return new WP_Error( 'mad4b_ability_contract_too_deep', 'Ability contract exceeds the canonical nesting limit.' );
 		if ( null === $value || is_bool( $value ) || is_int( $value ) || is_string( $value ) ) return $value;
 		if ( is_float( $value ) ) return is_finite( $value ) ? $value : new WP_Error( 'mad4b_ability_contract_float_invalid', 'Ability contract contains a non-finite number.' );
-		if ( is_object( $value ) ) $value = get_object_vars( $value );
+		if ( is_object( $value ) ) {
+			if ( ! $value instanceof stdClass ) return new WP_Error( 'mad4b_ability_contract_object_unsupported', 'Ability contract contains an unsupported object type.' );
+			$vars = get_object_vars( $value );
+			ksort( $vars, SORT_STRING );
+			$out = new stdClass();
+			foreach ( $vars as $key => $item ) {
+				$normalized = self::normalize( $item, $depth + 1 );
+				if ( is_wp_error( $normalized ) ) return $normalized;
+				$out->{(string) $key} = $normalized;
+			}
+			return $out;
+		}
 		if ( ! is_array( $value ) ) return new WP_Error( 'mad4b_ability_contract_type_unsupported', 'Ability contract contains an unsupported value.' );
 		if ( self::is_list( $value ) ) {
 			$out = array();
