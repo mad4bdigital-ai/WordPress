@@ -679,7 +679,12 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'universe_count' => count( self::all_site_ability_names() ),
 			'binding_match' => self::binding_matches( $state ),
 			'catalog_preflight' => $preflight,
-			'budgets' => array( 'max_selected' => self::MAX_SELECTED, 'max_tools' => MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS, 'schema_size_policy' => 'full_schema_without_fixed_byte_rejection' ),
+			'budgets' => array(
+				'max_selected' => self::MAX_SELECTED,
+				'max_tools' => MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS,
+				'max_serialized_tool_bytes' => MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_SERIALIZED_TOOL_BYTES,
+				'schema_size_policy' => 'bounded_direct_projection_with_dispatcher_fallback',
+			),
 			'catalog_refresh_action' => 'Request tools/list after a projection change.',
 			'abilities' => $stored,
 			'projection_changes_authority' => false,
