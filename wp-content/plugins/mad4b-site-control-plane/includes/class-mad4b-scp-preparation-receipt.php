@@ -10,8 +10,14 @@ final class MAD4B_SCP_Preparation_Receipt {
 	public static function issue( array $row ) {
 		if ( empty( $row['execution_eligible'] ) || empty( $row['descriptor_sha256'] ) ) return '';
 		$now = time();
+		try {
+			$nonce = bin2hex( random_bytes( 16 ) );
+		} catch ( Throwable $error ) {
+			return '';
+		}
 		$payload = array(
 			'contract' => self::CONTRACT,
+			'nonce' => $nonce,
 			'ability_name' => $row['ability_name'],
 			'descriptor_sha256' => $row['descriptor_sha256'],
 			'authority_scope_sha256' => MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(),
@@ -30,7 +36,7 @@ final class MAD4B_SCP_Preparation_Receipt {
 		$json = base64_decode( strtr( $parts[1], '-_', '+/' ), true );
 		$p = is_string( $json ) ? json_decode( $json, true, 8 ) : null;
 		$now = time();
-		if ( ! is_array( $p ) || ( $p['contract'] ?? '' ) !== self::CONTRACT || ( $p['ability_name'] ?? '' ) !== $name || ! isset( $p['issued_at'], $p['expires_at'] ) || ! is_int( $p['issued_at'] ) || ! is_int( $p['expires_at'] ) || $p['issued_at'] > $now || $p['expires_at'] <= $now || $p['expires_at'] - $p['issued_at'] !== self::TTL ) return self::failure();
+		if ( ! is_array( $p ) || ( $p['contract'] ?? '' ) !== self::CONTRACT || ( $p['ability_name'] ?? '' ) !== $name || ! isset( $p['nonce'] ) || ! is_string( $p['nonce'] ) || 1 !== preg_match( '/^[a-f0-9]{32}$/D', $p['nonce'] ) || ! isset( $p['issued_at'], $p['expires_at'] ) || ! is_int( $p['issued_at'] ) || ! is_int( $p['expires_at'] ) || $p['issued_at'] > $now || $p['expires_at'] <= $now || $p['expires_at'] - $p['issued_at'] !== self::TTL ) return self::failure();
 		foreach ( array( 'descriptor_sha256', 'authority_scope_sha256' ) as $key ) if ( ! isset( $p[$key] ) || ! is_string( $p[$key] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $p[$key] ) ) return self::failure();
 		if ( ! hash_equals( MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), $p['authority_scope_sha256'] ) ) return self::failure();
 		$row = MAD4B_SCP_Capability_Descriptor_Registry::describe( $name );
