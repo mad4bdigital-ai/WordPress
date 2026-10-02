@@ -423,6 +423,22 @@ $none = MAD4B_SCP_Context_Preflight::preflight_entry(
 	)
 );
 mad4b_context_preflight_assert( ! empty( $none['ready'] ) && 'not_required' === $none['state'], 'Non-context Skill must remain usable without Brand Context.', $none );
+$oversized_none = MAD4B_SCP_Context_Preflight::preflight_entry(
+	array(
+		'logical_id' => 'site/utility/' . str_repeat( 'oversized-', 9000 ),
+		'sha256' => str_repeat( 'c', 64 ),
+		'context_policy' => array( 'preset' => 'none' ),
+	)
+);
+mad4b_context_preflight_assert(
+	is_array( $oversized_none )
+	&& empty( $oversized_none['ready'] )
+	&& 'blocked' === $oversized_none['state']
+	&& in_array( 'context_receipt_transport_budget_exceeded', $oversized_none['blockers'], true )
+	&& empty( $oversized_none['receipt']['ready'] ),
+	'No-context preflight must propagate receipt transport denial instead of claiming not_required readiness.',
+	$oversized_none
+);
 $none_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard(
 	'mad4b/content-update-post',
 	array( 'post_id' => 12, 'post_content' => 'Brand content', '_mad4b_context_receipt' => $none['receipt'] )
