@@ -153,7 +153,8 @@ $second_input = array_merge( array( 'ability_name' => 'fixture/stale-b', 'input'
 check_gateway( true === $dispatcher->can_write_dispatch( $first_input ), 'First prepared target failed governance capture' );
 $cross_target = $dispatcher->can_write_dispatch( $second_input );
 check_gateway( is_wp_error( $cross_target ) && 'mad4b_write_dispatch_governance_target_conflict' === $cross_target->get_error_code(), 'Abandoned governance envelope crossed into another prepared target' );
-check_gateway( ! is_wp_error( $dispatcher->write_execute( $first_input ) && '' === $GLOBALS['approval_scope_active'] ), 'Original governance target could not safely consume its captured evidence' );
+$first_execution = $dispatcher->write_execute( $first_input );
+check_gateway( ! is_wp_error( $first_execution ) && '' === $GLOBALS['approval_scope_active'], 'Original governance target could not safely consume its captured evidence' );
 
 foreach ( array( 'internal', 'breakglass', 'developer-breakglass', 'unknown' ) as $lane ) {
  $row = array( 'ability_name' => 'fixture/sensitive', 'execution_lane' => $lane, 'execution_eligible' => true, 'readonly' => false );
