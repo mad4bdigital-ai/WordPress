@@ -37,7 +37,17 @@ if ( ! wp_has_ability( $parent_name ) ) {
 		'execute_callback' => static function ( $input = null ) use ( $child_name ) {
 			$mode = is_array( $input ) && isset( $input['mode'] ) ? (string) $input['mode'] : 'direct';
 			$child = wp_get_ability( $child_name );
-			$child_input = array( '_mad4b_approval_ticket_id' => '00000000-0000-4000-8000-000000000999', 'value' => 1 );
+			$child_input = array(
+				'_mad4b_approval_ticket_id' => '00000000-0000-4000-8000-000000000999',
+				'preparation_receipt' => 'fixture-preparation-receipt',
+				'_mad4b_context_receipt' => array( 'receipt_sha256' => str_repeat( 'a', 64 ) ),
+				'idempotency_key' => 'fixture-idempotency-key',
+				'operation_id' => 'fixture-operation',
+				'execution_id' => 'fixture-execution',
+				'claim_epoch' => 7,
+				'request_sha256' => str_repeat( 'b', 64 ),
+				'value' => 1,
+			);
 			if ( 'direct' === $mode ) return $child->execute( $child_input );
 			if ( 'permitted' === $mode ) {
 				return MAD4B_SCP_Execution_Fence::with_governed_child( $child_name, $child_input, static function () use ( $child, $child_input ) {
@@ -48,6 +58,13 @@ if ( ! wp_has_ability( $parent_name ) ) {
 				return MAD4B_SCP_Execution_Fence::with_governed_child( $child_name, $child_input, static function () use ( $child, $child_input ) {
 					$changed = $child_input;
 					$changed['value'] = 2;
+					return $child->execute( $changed );
+				}, 'fixture' );
+			}
+			if ( 'evidence_mismatch' === $mode ) {
+				return MAD4B_SCP_Execution_Fence::with_governed_child( $child_name, $child_input, static function () use ( $child, $child_input ) {
+					$changed = $child_input;
+					$changed['idempotency_key'] = 'fixture-idempotency-key-changed';
 					return $child->execute( $changed );
 				}, 'fixture' );
 			}
@@ -78,6 +95,10 @@ $check( ! is_wp_error( $permitted ) && ! empty( $permitted['ok'] ) && 1 === (int
 $mismatch = $parent->execute( array( 'mode' => 'mismatch' ) );
 $check( 'mad4b_child_operation_permit_mismatch' === $code( $mismatch ), 'Child input/evidence mutation after permit was not denied.', $mismatch );
 $check( 1 === (int) $GLOBALS['mad4b_recursive_child_calls'], 'Mismatched child permit reached the original callback.' );
+
+$evidence_mismatch = $parent->execute( array( 'mode' => 'evidence_mismatch' ) );
+$check( 'mad4b_child_operation_permit_mismatch' === $code( $evidence_mismatch ), 'Child authority/idempotency evidence mutation after permit was not denied.', $evidence_mismatch );
+$check( 1 === (int) $GLOBALS['mad4b_recursive_child_calls'], 'Evidence-mismatched child permit reached the original callback.' );
 
 $replay = $parent->execute( array( 'mode' => 'replay' ) );
 $check( is_array( $replay ) && ! is_wp_error( $replay['first'] ) && 'mad4b_recursive_dispatch_child_operation_required' === $code( $replay['second'] ), 'One-time child permit was reusable.', $replay );
