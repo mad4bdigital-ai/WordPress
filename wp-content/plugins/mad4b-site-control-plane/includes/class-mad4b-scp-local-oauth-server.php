@@ -1008,7 +1008,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			if ( hash_equals( $developer, $resource ) ) {
 				if ( ! $has_developer || $has_developer_breakglass || $has_raw_breakglass || $has_step_up ) return new WP_Error( 'invalid_scope', 'Developer resource requires exactly the normal Developer server scope.' );
 			} elseif ( hash_equals( $developer_breakglass, $resource ) ) {
-				if ( ! $has_developer_breakglass || $has_developer || $has_raw_breakglass || $has_step_up ) return new WP_Error( 'invalid_scope', 'Developer Breakglass resource requires exactly the Developer Breakglass server scope.' );
+				if ( ! $has_developer_breakglass || $has_developer || $has_raw_breakglass || $has_step_up ) return new WP_Error( 'invalid_scope', 'Developer Breakglass resource requires exactly the Breakglass server scope.' );
 			} elseif ( $has_developer || $has_developer_breakglass ) {
 				return new WP_Error( 'invalid_scope', 'Developer scopes cannot be issued for a non-Developer protected resource.' );
 			}
