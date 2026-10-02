@@ -325,6 +325,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 	public static function resource_for_route( $route ) {
 		$route = '/' . ltrim( rtrim( (string) $route, '/' ), '/' );
+		if ( '/mad4b/v1/capability-gateway' === $route ) return self::resource_identifier( 'mad4b-chatgpt' );
 		foreach ( array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ) as $server_id ) {
 			if ( '/mcp/' . $server_id === $route ) return self::resource_identifier( $server_id );
 		}
