@@ -8,6 +8,8 @@ transport = (root / "includes" / "class-mad4b-scp-transport-context.php").read_t
 abilities = (root / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
+execution_fence = (root / "includes" / "class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
+planning_guard = (root / "includes" / "class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
 
 required_transport = [
     "private static $write_dispatch_target = '';",
@@ -79,6 +81,18 @@ for marker in required_authorization_boundary:
     if marker not in authorization:
         raise SystemExit("execution callback boundary invariant missing: " + marker)
 
+for marker in [
+    "private static function remember_trusted_execution_boundary",
+    "public static function propagate_trusted_execution_boundary",
+    "in_array( $inner_callback, self::$trusted_execution_boundaries[ $ability_name ], true )",
+]:
+    if marker not in authorization:
+        raise SystemExit("trusted execution provenance invariant missing: " + marker)
+
+for source_name, source in (("execution fence", execution_fence), ("undo post-boundary wrapper", planning_guard)):
+    if "MAD4B_SCP_Authorization::propagate_trusted_execution_boundary" not in source:
+        raise SystemExit(source_name + " does not propagate reviewed execution-boundary provenance")
+
 # Execute the real central permission wrapper against the WordPress 7.1
 # bool|WP_Error contract. This reproduces the live failure without booting a
 # complete WordPress site and proves that only the exact successful preflight
@@ -128,7 +142,36 @@ $error = new WP_Error( 'denied' );
 if ( $error !== wrapped_permission_result( $error ) ) exit( 16 );
 if ( false !== wrapped_permission_result( 'truthy-but-invalid' ) ) exit( 17 );
 
-echo "mad4b.authorization-permission-wrapper.runtime.v1: PASS\\n";
+$base = array(
+    'execute_callback' => static function () { return true; },
+    'permission_callback' => static function () { return true; },
+    'category' => 'mad4b-write',
+    'meta' => array(
+        'annotations' => array( 'readonly' => false ),
+        'mcp' => array(
+            'mad4b_governed_write_authority' => 'runtime-test',
+            'surface' => 'write',
+        ),
+    ),
+);
+$trusted = MAD4B_SCP_Authorization::wrap_execution_boundary( $base, 'mad4b/provenance-fixture' );
+$inner = $trusted['execute_callback'];
+$outer = static function ( $input = null ) use ( $inner ) { return call_user_func( $inner, $input ); };
+if ( true !== MAD4B_SCP_Authorization::propagate_trusted_execution_boundary( 'mad4b/provenance-fixture', $outer, $inner ) ) exit( 18 );
+
+class ProvenanceAbilityFixture {
+    private $execute_callback;
+    public function __construct( $callback ) { $this->execute_callback = $callback; }
+    public function get_name() { return 'mad4b/provenance-fixture'; }
+}
+if ( ! MAD4B_SCP_Authorization::execution_boundary_verified( new ProvenanceAbilityFixture( $outer ) ) ) exit( 19 );
+
+$spoof_inner = static function () { return true; };
+$spoof_outer = static function () use ( $spoof_inner ) { return call_user_func( $spoof_inner ); };
+if ( MAD4B_SCP_Authorization::propagate_trusted_execution_boundary( 'mad4b/provenance-fixture', $spoof_outer, $spoof_inner ) ) exit( 20 );
+if ( MAD4B_SCP_Authorization::execution_boundary_verified( new ProvenanceAbilityFixture( $spoof_outer ) ) exit( 21 );
+
+echo "mad4b.authorization-permission-wrapper.runtime.v2: PASS\\n";
 """), encoding="utf-8")
     subprocess.run(
         ["php", str(harness), str(root / "includes" / "class-mad4b-scp-authorization.php")],
