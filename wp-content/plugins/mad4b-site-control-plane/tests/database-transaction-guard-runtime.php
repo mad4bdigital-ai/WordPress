@@ -48,6 +48,7 @@ class MAD4B_Fake_Transaction_DB {
 		if ( 'COMMIT' === $sql || 'ROLLBACK' === $sql ) { $this->state = 0; $this->savepoints = array(); return true; }
 		return true;
 	}
+}
 
 $GLOBALS['wpdb'] = new MAD4B_Fake_Transaction_DB();
 
