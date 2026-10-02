@@ -20,6 +20,7 @@ mutations = [
     ('authority scope dispatcher pin ignored', 'class-mad4b-scp-abilities.php', "! hash_equals( MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), $input['expected_authority_scope_sha256'] )", 'false', 'gateway-regression-runtime.php'),
     ('write permission preparation gate removed', 'class-mad4b-scp-abilities.php', "$prepared = $this->validate_prepared_classification( $ability_name, $input );", "$prepared = true;", 'gateway-regression-runtime.php'),
     ('context receipt byte budget removed', 'class-mad4b-scp-abilities.php', "strlen( $receipt_json ) > self::MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES", 'false', 'gateway-regression-runtime.php'),
+    ('context receipt issuer budget removed', 'class-mad4b-scp-context-preflight.php', "strlen( $encoded_receipt ) > self::MAX_RECEIPT_TRANSPORT_BYTES", 'false', 'context-preflight-runtime.php'),
     ('classification canonical ordering removed', 'class-mad4b-scp-ability-contract-inspector.php', "sort( $keys, SORT_STRING );", '/* canonical ordering removed */', 'ability-contract-inspector-runtime.php'),
     ('receipt signature ignored', 'class-mad4b-scp-preparation-receipt.php', "! hash_equals( hash_hmac( 'sha256', $parts[1], self::key() ), $parts[2] )", 'false', 'preparation-receipt-runtime.php'),
     ('receipt expiry ignored', 'class-mad4b-scp-preparation-receipt.php', "$p['expires_at'] <= $now", 'false', 'preparation-receipt-runtime.php'),
@@ -28,7 +29,7 @@ mutations = [
     ('receipt dispatcher verification ignored', 'class-mad4b-scp-abilities.php', 'if ( is_wp_error( $receipt ) ) return $receipt;', '/* ignored receipt failure */', 'preparation-receipt-runtime.php'),
     ('cron cleanup omitted', 'class-mad4b-scp-catalog-lifecycle.php', "wp_clear_scheduled_hook( 'mad4b_catalog_gc' );", '/* omitted */', 'catalog-lifecycle-runtime.php'),
 ]
-files = ['class-mad4b-scp-ability-contract-inspector.php', 'class-mad4b-scp-capability-descriptor-registry.php', 'class-mad4b-scp-preparation-receipt.php', 'class-mad4b-scp-distributed-lock.php', 'class-mad4b-scp-unified-capability-gateway.php', 'class-mad4b-scp-chatgpt-tool-projection.php', 'class-mad4b-scp-ability-catalog-transport.php', 'class-mad4b-scp-catalog-object-store.php', 'class-mad4b-scp-abilities.php', 'class-mad4b-scp-catalog-lifecycle.php']
+files = ['class-mad4b-scp-context-preflight.php', 'class-mad4b-scp-ability-contract-inspector.php', 'class-mad4b-scp-capability-descriptor-registry.php', 'class-mad4b-scp-preparation-receipt.php', 'class-mad4b-scp-distributed-lock.php', 'class-mad4b-scp-unified-capability-gateway.php', 'class-mad4b-scp-chatgpt-tool-projection.php', 'class-mad4b-scp-ability-catalog-transport.php', 'class-mad4b-scp-catalog-object-store.php', 'class-mad4b-scp-abilities.php', 'class-mad4b-scp-catalog-lifecycle.php']
 with tempfile.TemporaryDirectory(prefix='mad4b-gateway-mutants-') as tmp:
     target = Path(tmp)
     (target / 'includes').mkdir()
