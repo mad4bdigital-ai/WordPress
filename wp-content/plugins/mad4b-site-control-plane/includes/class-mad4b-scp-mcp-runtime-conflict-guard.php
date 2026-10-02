@@ -64,7 +64,10 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		$status['hostinger_index'] = false === $hostinger_index ? -1 : (int) $hostinger_index;
 		$status['official_loads_before_hostinger'] = false === $hostinger_index || ( false !== $official_index && $official_index < $hostinger_index );
 
-		$status = array_merge( $status, self::runtime_provenance(), self::mu_bootstrap_status() );
+		// Lifecycle repair surfaces may safely resolve the full certified class
+		// set. This catches lazy competing autoloaders that have not declared a
+		// foreign class yet; protocol/passive surfaces never take this path.
+		$status = array_merge( $status, self::runtime_provenance( true ), self::mu_bootstrap_status() );
 
 		if ( false === $official_index ) {
 			$status['blocker'] = 'official_mcp_adapter_not_active';
@@ -267,7 +270,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		return false;
 	}
 
-	private static function runtime_provenance() {
+	private static function runtime_provenance( $full_class_set = false ) {
 		$out = array(
 			'runtime_class_loaded' => false,
 			'runtime_source' => 'unavailable',
@@ -309,7 +312,9 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		} catch ( Throwable $e ) {
 			$out['runtime_source'] = 'reflection-unavailable';
 		}
-		$class_provenance = class_exists( 'MAD4B_SCP_MCP_Class_Provenance', false ) ? MAD4B_SCP_MCP_Class_Provenance::status( false, false ) : array();
+		$class_provenance = class_exists( 'MAD4B_SCP_MCP_Class_Provenance', false )
+			? MAD4B_SCP_MCP_Class_Provenance::status( (bool) $full_class_set, (bool) $full_class_set )
+			: array();
 		if ( is_array( $class_provenance ) && $class_provenance ) {
 			$out['runtime_class_provenance_enforced'] = ! empty( $class_provenance['enforced'] );
 			$out['runtime_class_provenance_complete'] = ! empty( $class_provenance['complete'] );
