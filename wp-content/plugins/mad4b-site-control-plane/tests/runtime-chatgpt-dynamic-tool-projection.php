@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) throw new RuntimeException( 'WordPress is not loaded.' );
+require_once __DIR__ . '/prepared-dispatch-runtime-helper.php';
 
 $fail = static function ( $message, $data = null ) {
 	throw new RuntimeException( $message . ( null !== $data ? ' ' . wp_json_encode( $data, JSON_UNESCAPED_SLASHES ) : '' ) );
@@ -116,29 +117,31 @@ if (
 	$fail( 'Oversized Ability did not remain available through lazy transport/dispatcher planning.', $oversized_prepared );
 }
 $read_dispatch = wp_get_ability( 'mad4b/read-execute' );
-$oversized_execution = $read_dispatch->execute( array(
-    'ability_name' => $oversized_name,
-    'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $oversized_name )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $oversized_name )['classification_sha256'], 'expected_input_schema_sha256' => $oversized_prepared['input_schema_sha256'],
-    'input' => array(),
+$oversized_identity = mad4b_test_prepared_dispatch_identity( $oversized_name );
+if ( is_wp_error( $oversized_identity ) ) $fail( 'Oversized Ability signed preparation failed.', $oversized_identity->get_error_code() );
+$oversized_execution = $read_dispatch->execute( array_merge(
+    array( 'ability_name' => $oversized_name, 'input' => array() ),
+    $oversized_identity
 ) );
 if ( is_wp_error( $oversized_execution ) || empty( $oversized_execution['result']['ok'] ) ) {
     $fail( 'Oversized Ability could not actually execute through the governed dispatcher.', is_wp_error( $oversized_execution ) ? $oversized_execution->get_error_code() : $oversized_execution );
 }
-$drifted_execution = $read_dispatch->execute( array(
-    'ability_name' => $oversized_name,
-    'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $oversized_name )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $oversized_name )['classification_sha256'], 'expected_input_schema_sha256' => str_repeat( '0', 64 ),
-    'input' => array(),
+$drifted_identity = $oversized_identity;
+$drifted_identity['expected_input_schema_sha256'] = str_repeat( '0', 64 );
+$drifted_execution = $read_dispatch->execute( array_merge(
+    array( 'ability_name' => $oversized_name, 'input' => array() ),
+    $drifted_identity
 ) );
 if ( ! is_wp_error( $drifted_execution ) || 'mad4b_read_dispatch_schema_drift' !== $drifted_execution->get_error_code() ) {
     $fail( 'Oversized dispatcher accepted a mismatched schema pin.' );
 }
 // A valid read lane never replaces the target's own permission decision.
 $denied_read = wp_get_ability( 'mad4b-ci/denied-read-dispatch' );
-$denied_schema_pin = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b-ci/denied-read-dispatch' );
-$denied_execution = $read_dispatch->execute( array(
-    'ability_name' => 'mad4b-ci/denied-read-dispatch',
-    'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b-ci/denied-read-dispatch' )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b-ci/denied-read-dispatch' )['classification_sha256'], 'expected_input_schema_sha256' => $denied_schema_pin['input_schema_sha256'],
-    'input' => array(),
+$denied_identity = mad4b_test_prepared_dispatch_identity( 'mad4b-ci/denied-read-dispatch' );
+if ( is_wp_error( $denied_identity ) ) $fail( 'Denied-read signed preparation failed.', $denied_identity->get_error_code() );
+$denied_execution = $read_dispatch->execute( array_merge(
+    array( 'ability_name' => 'mad4b-ci/denied-read-dispatch', 'input' => array() ),
+    $denied_identity
 ) );
 if ( ! is_wp_error( $denied_execution ) ) $fail( 'Read dispatcher ignored original permission denial.' );
 $oversized_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
@@ -259,13 +262,11 @@ try {
 	$session_b['abilities'] = array();
 	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $session_b, false );
 	$fixed_name = 'mad4b-ci/readonly-projection-fixture';
-	$fixed_row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $fixed_name );
-	$stable_dispatch = ( new MAD4B_SCP_Abilities() )->read_execute( array(
-		'ability_name' => $fixed_name,
-		'expected_input_schema_sha256' => $fixed_row['input_schema_sha256'],
-		'expected_classification_sha256' => $fixed_row['classification_sha256'],
-		'expected_execution_lane' => 'read',
-		'input' => array(),
+	$fixed_identity = mad4b_test_prepared_dispatch_identity( $fixed_name );
+	if ( is_wp_error( $fixed_identity ) ) $fail( 'Fixed-dispatch signed preparation failed.', $fixed_identity->get_error_code() );
+	$stable_dispatch = ( new MAD4B_SCP_Abilities() )->read_execute( array_merge(
+		array( 'ability_name' => $fixed_name, 'input' => array() ),
+		$fixed_identity
 	) );
 	if ( is_wp_error( $stable_dispatch ) || empty( $stable_dispatch['result']['ok'] ) ) $fail( 'Another session hot-set replacement disrupted fixed dispatch.' );
 
