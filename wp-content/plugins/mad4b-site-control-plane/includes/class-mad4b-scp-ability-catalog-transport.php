@@ -19,7 +19,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		if ( ! is_array( $context ) ) $context = array();
 		if ( isset( $context['token_scopes'] ) && is_array( $context['token_scopes'] ) ) { $context['token_scopes'] = array_values( array_unique( array_map( 'strval', $context['token_scopes'] ) ) ); sort( $context['token_scopes'], SORT_STRING ); }
 		$identity = array_intersect_key( $context, array_flip( array( 'subject_type', 'subject_fingerprint', 'issuer_fingerprint', 'client_fingerprint', 'token_scopes' ) ) );
-		return hash( 'sha256', self::encode( array( function_exists( 'get_current_blog_id' ) ? get_current_blog_id() : 1, MAD4B_SCP_ChatGPT_Tool_Projection::current_binding(), get_current_user_id(), wp_get_current_user()->allcaps, $identity ) ) );
+		return hash( 'sha256', self::encode( array( function_exists( 'get_current_blog_id' ) ? get_current_blog_id() : 1, MAD4B_SCP_Ability_Contract_Inspector::site_binding(), get_current_user_id(), wp_get_current_user()->allcaps, $identity ) ) );
 	}
 	private static function key( $scope, $kind, $id ) { return hash( 'sha256', $scope . ':' . $kind . ':' . $id ); }
 	private static function canonical( $value, $depth = 0 ) {
