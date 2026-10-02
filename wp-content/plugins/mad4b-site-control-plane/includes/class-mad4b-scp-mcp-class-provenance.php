@@ -15,7 +15,7 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 	const PROVIDER = 'mcp_adapter';
 	const BLOCKER = 'mcp_adapter_class_provenance_mismatch';
 
-	private static $cache = null;
+	private static $cache = array();
 
 	public static function critical_classes() {
 		return array(
@@ -33,8 +33,9 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 		);
 	}
 
-	public static function status( $force = false ) {
-		if ( ! $force && null !== self::$cache ) return self::$cache;
+	public static function status( $force = false, $autoload = true ) {
+		$cache_key = $autoload ? 'full' : 'loaded_only';
+		if ( ! $force && isset( self::$cache[ $cache_key ] ) ) return self::$cache[ $cache_key ];
 		$out = array(
 			'contract' => self::CONTRACT,
 			'enforced' => false,
@@ -46,33 +47,37 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			'class_count' => count( self::critical_classes() ),
 			'verified_count' => 0,
 			'failure_count' => 0,
+			'unobserved_count' => 0,
+			'complete' => false,
 			'mixed_runtime' => false,
 			'classes' => array(),
 			'failures' => array(),
 		);
 
 		if ( ! defined( 'WP_PLUGIN_DIR' ) || ! class_exists( 'MAD4B_SCP_Provider_Contracts', false ) ) {
-			self::$cache = $out;
-			return self::$cache;
+			self::$cache[ $cache_key ] = $out;
+			return self::$cache[ $cache_key ];
 		}
 		$contract = MAD4B_SCP_Provider_Contracts::get( self::PROVIDER );
 		if ( empty( $contract ) || ! is_array( $contract ) ) {
 			$out['enforced'] = true;
 			$out['state'] = 'baseline_unavailable';
 			$out['blocker'] = self::BLOCKER;
-			self::$cache = $out;
-			return self::$cache;
+			self::$cache[ $cache_key ] = $out;
+			return self::$cache[ $cache_key ];
 		}
-		$out = self::inspect_contract( $contract, trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter', $out );
-		self::$cache = $out;
-		return self::$cache;
+		$out = self::inspect_contract( $contract, trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter', $out, $autoload );
+		self::$cache[ $cache_key ] = $out;
+		return self::$cache[ $cache_key ];
 	}
 
 	/**
-	 * Public for deterministic offline certification fixtures. Never mutates disk
-	 * or autoloader state; it only reflects already-resolvable classes and hashes.
+	 * Public for deterministic offline certification fixtures. Never mutates disk.
+	 * When $autoload is false it reflects only already-loaded classes and therefore
+	 * cannot claim autoloader ownership. Full preflight uses $autoload=true because
+	 * the same classes are immediately required for MCP DTO construction anyway.
 	 */
-	public static function inspect_contract( array $contract, $runtime_root, array $seed = array() ) {
+	public static function inspect_contract( array $contract, $runtime_root, array $seed = array(), $autoload = true ) {
 		$out = array_merge( array(
 			'contract' => self::CONTRACT,
 			'enforced' => true,
@@ -84,6 +89,8 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			'class_count' => count( self::critical_classes() ),
 			'verified_count' => 0,
 			'failure_count' => 0,
+			'unobserved_count' => 0,
+			'complete' => false,
 			'mixed_runtime' => false,
 			'classes' => array(),
 			'failures' => array(),
@@ -116,7 +123,13 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 
 			if ( '' === $row['expected_sha256'] ) {
 				$row['reason'] = 'certified_class_hash_missing';
-			} elseif ( ! class_exists( $class ) ) {
+			} elseif ( ! class_exists( $class, (bool) $autoload ) ) {
+				if ( ! $autoload && ! class_exists( $class, false ) ) {
+					$row['reason'] = 'runtime_class_not_loaded';
+					$out['classes'][] = $row;
+					$out['unobserved_count']++;
+					continue;
+				}
 				$row['reason'] = 'runtime_class_unavailable';
 			} else {
 				try {
@@ -163,14 +176,18 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 		}
 
 		$out['failure_count'] = count( $out['failures'] );
+		$out['complete'] = 0 === $out['unobserved_count'];
 		$out['mixed_runtime'] = $out['failure_count'] > 0 && $out['verified_count'] > 0;
-		$out['ready'] = 0 === $out['failure_count'] && $out['verified_count'] === $out['class_count'];
-		$out['state'] = $out['ready'] ? 'certified_class_set' : ( $out['mixed_runtime'] ? 'mixed_runtime' : 'class_set_mismatch' );
-		$out['blocker'] = $out['ready'] ? '' : self::BLOCKER;
+		$out['ready'] = $out['complete'] && 0 === $out['failure_count'] && $out['verified_count'] === $out['class_count'];
+		if ( $out['ready'] ) $out['state'] = 'certified_class_set';
+		elseif ( $out['mixed_runtime'] ) $out['state'] = 'mixed_runtime';
+		elseif ( $out['failure_count'] > 0 ) $out['state'] = 'class_set_mismatch';
+		else $out['state'] = 'partial_certified_class_set';
+		$out['blocker'] = $out['failure_count'] > 0 ? self::BLOCKER : '';
 		return $out;
 	}
 
-	public static function reset_cache() { self::$cache = null; }
+	public static function reset_cache() { self::$cache = array(); }
 
 	private static function normalize_path( $path ) {
 		$path = str_replace( '\\', '/', (string) $path );
