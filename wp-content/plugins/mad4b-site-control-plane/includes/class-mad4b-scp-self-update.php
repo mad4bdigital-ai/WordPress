@@ -1848,8 +1848,13 @@ final class MAD4B_SCP_Self_Update {
 			// post-update redirect. Deleting it here forced plugins.php to block on
 			// a new remote GitHub request and could trip upstream gateway timeouts.
 
+			$native_release_channel = in_array(
+				(string) $channel,
+				array( 'governed_native_release_pull', 'governed_native_release_pull_bootstrap' ),
+				true
+			);
 			return array(
-				'contract' => 'governed_native_release_pull' === (string) $channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT,
+				'contract' => $native_release_channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT,
 				'channel' => $channel,
 				'plugin' => plugin_basename( MAD4B_SCP_FILE ),
 				'before' => $before,
@@ -1868,6 +1873,12 @@ final class MAD4B_SCP_Self_Update {
 				'post_update_convergence' => $convergence,
 				'post_update_continuation' => $continuation,
 				'post_update_continuation_policy' => $continuation_policy,
+				'bootstrap_candidate_drift' => (bool) $bootstrap_candidate_drift,
+				'authority_carry_forward' => ! $bootstrap_candidate_drift && ! empty( $continuation ),
+				'post_update_candidate_rebind_required' => ! empty( $continuation_policy['post_update_candidate_rebind_required'] ),
+				'authority_mutation_performed' => false,
+				'grant_mutation_performed' => false,
+				'candidate_binding_mutation_performed' => false,
 				'production_mutation_performed' => false,
 				'authority_created' => false,
 				'authorizing' => false,
