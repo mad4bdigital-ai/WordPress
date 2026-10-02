@@ -379,7 +379,7 @@ final class MAD4B_SCP_Authorization {
 		if (
 			$args['execute_callback'] instanceof Closure
 			&& isset( self::$trusted_execution_boundaries[ $name ] )
-			&& in_array( spl_object_hash( $args['execute_callback'] ), self::$trusted_execution_boundaries[ $name ], true )
+			&& in_array( $args['execute_callback'], self::$trusted_execution_boundaries[ $name ], true )
 		) return $args;
 
 		if ( isset( $args['permission_callback'] ) && is_callable( $args['permission_callback'] ) && empty( $mcp['mad4b_permission_denial_audit'] ) ) {
@@ -428,8 +428,8 @@ final class MAD4B_SCP_Authorization {
 		};
 		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
 		if ( ! isset( self::$trusted_execution_boundaries[ $name ] ) || ! is_array( self::$trusted_execution_boundaries[ $name ] ) ) self::$trusted_execution_boundaries[ $name ] = array();
-		$boundary_hash = spl_object_hash( $args['execute_callback'] );
-		if ( ! in_array( $boundary_hash, self::$trusted_execution_boundaries[ $name ], true ) ) self::$trusted_execution_boundaries[ $name ][] = $boundary_hash;
+		$boundary_callback = $args['execute_callback'];
+		if ( ! in_array( $boundary_callback, self::$trusted_execution_boundaries[ $name ], true ) ) self::$trusted_execution_boundaries[ $name ][] = $boundary_callback;
 		while ( count( self::$trusted_execution_boundaries[ $name ] ) > 16 ) array_shift( self::$trusted_execution_boundaries[ $name ] );
 		$args['meta']['mcp']['mad4b_execution_boundary'] = self::EXECUTION_BOUNDARY_CONTRACT;
 		$args['meta']['mcp']['mad4b_execution_commit_guard'] = class_exists( 'MAD4B_SCP_Execution_Commit_Guard' ) ? MAD4B_SCP_Execution_Commit_Guard::CONTRACT : '';
@@ -447,7 +447,7 @@ final class MAD4B_SCP_Authorization {
 			$callback = $property->getValue( $ability );
 			return $callback instanceof Closure
 				&& isset( self::$trusted_execution_boundaries[ $name ] )
-				&& in_array( spl_object_hash( $callback ), self::$trusted_execution_boundaries[ $name ], true );
+				&& in_array( $callback, self::$trusted_execution_boundaries[ $name ], true );
 		} catch ( Throwable $e ) { return false; }
 	}
 
