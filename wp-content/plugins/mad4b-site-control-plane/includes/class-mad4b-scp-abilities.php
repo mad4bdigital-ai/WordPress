@@ -923,56 +923,62 @@ final class MAD4B_SCP_Abilities {
 		if ( 'mad4b/approval-plan' === $ability_name ) {
 			$started = microtime( true );
 			try {
-				$planner_result = $with_approval_scope( $execute_target );
-			} catch ( \Throwable $throwable ) {
-				return new WP_Error(
-					'mad4b_approval_plan_dispatch_exception',
-					'Approval planning failed inside the governed target. Reconcile Approval Decisions before retrying.',
-					array(
-						'mutation_state' => 'unknown',
-						'reconciliation_required' => true,
-						'blind_retry_allowed' => false,
-						'error_class' => get_class( $throwable ),
-					)
-				);
-			}
-			if ( is_wp_error( $planner_result ) ) {
-				$original_code = sanitize_key( (string) $planner_result->get_error_code() );
-				if ( ! $target_entered ) return $this->approval_plan_dispatch_preflight_failure( $planner_result );
-				return new WP_Error(
-					'mad4b_approval_plan_dispatch_target_error',
-					'Approval planning failed with blocker: ' . ( '' !== $original_code ? $original_code : 'unknown' ) . '. Reconcile Approval Decisions before retrying.',
-					array(
-						'original_error_code' => $original_code,
-						'mutation_state' => 'unconfirmed_pending_ticket',
-						'reconciliation_required' => true,
-						'blind_retry_allowed' => false,
-					)
-				);
-			}
-			$execution = array(
-				'result' => $planner_result,
-				'attempts' => 1,
-				'elapsed_ms' => max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) ),
-				'automatic_retry_performed' => false,
-			);
-			if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'clear_execution_callback_observation' ) ) {
-				MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name );
-			}
-		} else {
-			$execution = $with_approval_scope(
-				static function () use ( $ability_name, $execute_target ) {
-					return MAD4B_SCP_Connector_Resilience::execute_mutation(
-						'write',
-						$ability_name,
-						static function () use ( $execute_target ) {
-							return $execute_target();
-						}
+				try {
+					$planner_result = $with_approval_scope( $execute_target );
+				} catch ( \Throwable $throwable ) {
+					return new WP_Error(
+						'mad4b_approval_plan_dispatch_exception',
+						'Approval planning failed inside the governed target. Reconcile Approval Decisions before retrying.',
+						array(
+							'mutation_state' => 'unknown',
+							'reconciliation_required' => true,
+							'blind_retry_allowed' => false,
+							'error_class' => get_class( $throwable ),
+						)
 					);
 				}
-			);
-			if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'clear_execution_callback_observation' ) ) {
-				MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name );
+				if ( is_wp_error( $planner_result ) ) {
+					$original_code = sanitize_key( (string) $planner_result->get_error_code() );
+					if ( ! $target_entered ) return $this->approval_plan_dispatch_preflight_failure( $planner_result );
+					return new WP_Error(
+						'mad4b_approval_plan_dispatch_target_error',
+						'Approval planning failed with blocker: ' . ( '' !== $original_code ? $original_code : 'unknown' ) . '. Reconcile Approval Decisions before retrying.',
+						array(
+							'original_error_code' => $original_code,
+							'mutation_state' => 'unconfirmed_pending_ticket',
+							'reconciliation_required' => true,
+							'blind_retry_allowed' => false,
+						)
+					);
+				}
+				$execution = array(
+					'result' => $planner_result,
+					'attempts' => 1,
+					'elapsed_ms' => max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) ),
+					'automatic_retry_performed' => false,
+				);
+			} finally {
+				if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'clear_execution_callback_observation' ) ) {
+					MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name );
+				}
+			}
+		} else {
+			try {
+				$execution = $with_approval_scope(
+					static function () use ( $ability_name, $execute_target ) {
+						return MAD4B_SCP_Connector_Resilience::execute_mutation(
+							'write',
+							$ability_name,
+							static function () use ( $execute_target ) {
+								return $execute_target();
+							}
+						);
+					}
+				);
+			} finally {
+				if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'clear_execution_callback_observation' ) ) {
+					MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name );
+				}
 			}
 			if ( is_wp_error( $execution ) ) {
 				if ( ! $target_entered ) {
