@@ -41,8 +41,10 @@ for marker in [
     "mad4b.chatgpt-read-execute.v1",
     "MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate",
     "mad4b_read_dispatch_mutation_denied",
+    "mad4b_read_dispatch_schema_pin_required",
     "mad4b_read_dispatch_schema_drift",
     "expected_input_schema_sha256",
+    "array( 'ability_name', 'expected_input_schema_sha256' )",
     "true !== $annotations['readonly']",
     "$ability->execute( $params )",
 ]:
