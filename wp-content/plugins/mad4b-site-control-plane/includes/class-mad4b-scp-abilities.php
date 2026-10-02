@@ -341,7 +341,7 @@ final class MAD4B_SCP_Abilities {
 		$meta = $ability->get_meta();
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 		if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) return new WP_Error( 'mad4b_read_dispatch_mutation_denied', 'Only abilities explicitly annotated readonly=true may be executed through mad4b/read-execute.' );
-		$row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $ability_name );
+		$row = MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name );
 		if ( is_wp_error( $row ) || 'read' !== $row['lane'] || empty( $row['execution_eligible'] ) ) return new WP_Error( 'mad4b_read_dispatch_sensitive_target_denied', 'Read annotation cannot downgrade the original authority lane.' );
 		return $ability;
 	}
@@ -588,10 +588,10 @@ final class MAD4B_SCP_Abilities {
 		$receipt = MAD4B_SCP_Preparation_Receipt::verify( $input['preparation_receipt'], $ability_name );
 		if ( is_wp_error( $receipt ) ) return $receipt;
 
-		if ( ! class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) {
-			return new WP_Error( 'mad4b_dispatch_classification_unavailable', 'Prepared classification cannot be revalidated.' );
+		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ) {
+			return new WP_Error( 'mad4b_dispatch_classification_unavailable', 'Canonical capability descriptor cannot be revalidated.' );
 		}
-		$row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $ability_name );
+		$row = MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name );
 		if ( is_wp_error( $row ) || empty( $row['execution_eligible'] ) ) {
 			return new WP_Error( 'mad4b_dispatch_classification_unavailable', 'Prepared target is no longer execution eligible.' );
 		}
