@@ -55,3 +55,33 @@ state = 'blocked';
 await assert.rejects(execution.execute(catalog, abilityName, {}), /not eligible/);
 assert.equal(preparations, 2); assert.equal(executions, 0);
 console.log('PASS failures: MCP expiry and denial, REST abort, headers/body timeout, bounded stream and selected-target execution');
+
+// MCP text, multibyte, structured content and error paths obey the same budget.
+for (const content of [
+  {content: [{type: 'text', text: JSON.stringify({...capabilities, padding: 'x'.repeat(5000)})}]},
+  {content: [{type: 'text', text: JSON.stringify({...capabilities, padding: '界'.repeat(1500)})}]},
+  {structuredContent: {...capabilities, padding: 'x'.repeat(5000)}},
+  {isError: true, content: [{type: 'text', text: 'x'.repeat(5000)}]},
+]) {
+  const bounded = createAbilityCatalogClient({maxResponseBytes: 4096, callDiscover: async () => content});
+  await assert.rejects(bounded.negotiate(), /memory budget/);
+}
+for (const operation of ['negotiate', 'search']) {
+  let fetched = false, headerSignal;
+  const slowHeaders = createAbilityCatalogClient({...options, requestTimeoutMs: 10,
+    headers: ({signal}) => {headerSignal = signal; return new Promise(() => {});},
+    fetchImpl: async () => {fetched = true;},
+  });
+  await assert.rejects(slowHeaders[operation]('task'), e => e.status === 408);
+  assert.equal(headerSignal.aborted, true);
+  assert.equal(fetched, false);
+}
+console.log('PASS MCP byte budgets and credential-provider timeout');
+
+const headerAbort = new AbortController();
+const cancellableHeaders = createAbilityCatalogClient({...options, headers: ({signal}) => {
+  assert.equal(signal.aborted, false);
+  headerAbort.abort(new Error('credential acquisition cancelled'));
+  return new Promise(() => {});
+}});
+await assert.rejects(cancellableHeaders.search('task', {signal: headerAbort.signal}), /credential acquisition cancelled/);

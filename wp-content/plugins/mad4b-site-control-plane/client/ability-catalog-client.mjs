@@ -23,11 +23,26 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
   if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 4096 || maxResponseBytes > 16777216) throw new CatalogError('Invalid response budget');
   let chunkBytes = minChunkBytes, parallelFetches = base ? Math.min(2, maxParallelSchemaFetches) : 1;
   const hash = async bytes => [...new Uint8Array(await cryptoImpl.subtle.digest('SHA-256', bytes))].map(n => n.toString(16).padStart(2, '0')).join('');
+  function boundedText(text) {
+    if (typeof text !== 'string' || text.length > maxResponseBytes || new TextEncoder().encode(text).byteLength > maxResponseBytes) throw new CatalogError('Response memory budget exceeded');
+    return text;
+  }
+  function mcpValue(result) {
+    // The host owns allocation of structuredContent; bound its serialized contract too.
+    if (result?.structuredContent !== undefined) {
+      boundedText(JSON.stringify(result.structuredContent));
+      return result.structuredContent;
+    }
+    if (Array.isArray(result?.content)) return JSON.parse(boundedText(result.content.find(x => x.type === 'text')?.text ?? '{}'));
+    boundedText(JSON.stringify(result));
+    return result;
+  }
   function unwrapError(result) {
     if (!result?.isError && !result?.error) return;
     let detail = result.structuredContent ?? result.error;
+    if (detail !== undefined) boundedText(JSON.stringify(detail));
     if (!detail) {
-      try { detail = JSON.parse(result.content?.find(x => x.type === 'text')?.text ?? '{}'); } catch { detail = {}; }
+      try { detail = JSON.parse(boundedText(result.content?.find(x => x.type === 'text')?.text ?? '{}')); } catch (error) { if (error instanceof CatalogError) throw error; detail = {}; }
     }
     detail = detail?.error ?? detail;
     const status = detail?.data?.status ?? detail?.status ?? 0;
@@ -79,7 +94,9 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
   }
   async function http(endpoint, init, limit, signal) {
     return boundedRequest(async requestSignal => {
-      const response = await fetchImpl(endpoint, {...init, signal: requestSignal});
+      const resolvedInit = typeof init === 'function' ? await init(requestSignal) : init;
+      requestSignal.throwIfAborted();
+      const response = await fetchImpl(endpoint, {...resolvedInit, signal: requestSignal});
       requestSignal.throwIfAborted();
       if (!response.ok) throw new CatalogError('Catalog HTTP request failed', response.status);
       const bytes = await readBounded(response, limit, requestSignal);
@@ -90,7 +107,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
   const decode = bytes => JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(bytes));
   const unwrap = result => {
     unwrapError(result);
-    const value = result?.structuredContent ?? (Array.isArray(result?.content) ? JSON.parse(result.content.find(x => x.type === 'text')?.text ?? '{}') : result);
+    const value = mcpValue(result);
     if (value?.contract !== CONTRACT) throw new CatalogError('Unsupported catalog contract');
     return value;
   };
@@ -102,7 +119,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     return u;
   }
   async function rest(path, params = {}, {signal, limit = maxResponseBytes} = {}) {
-    return http(url(path, params), {method: 'GET', headers: await headers(), credentials: credentialMode, redirect: 'error', cache: 'no-store'}, limit, signal);
+    return http(url(path, params), async requestSignal => ({method: 'GET', headers: await headers({signal: requestSignal}), credentials: credentialMode, redirect: 'error', cache: 'no-store'}), limit, signal);
   }
   async function request(action, input = {}, {signal} = {}) {
     if (!base) return unwrap(await boundedRequest(requestSignal => callDiscover({transport_action: action, ...input}, {signal: requestSignal}), signal));
@@ -253,12 +270,12 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     if (!base) {
       const result = await boundedRequest(requestSignal => callDiscover({gateway_action: action, ...input}, {signal: requestSignal}), signal);
       unwrapError(result);
-      value = result?.structuredContent ?? (Array.isArray(result?.content) ? JSON.parse(result.content.find(x => x.type === 'text')?.text ?? '{}') : result);
+      value = mcpValue(result);
     } else {
       const endpoint = new URL(base);
       if (endpoint.searchParams.has('rest_route')) endpoint.searchParams.set('rest_route', endpoint.searchParams.get('rest_route').replace(/ability-catalog\/?$/, 'capability-gateway'));
       else endpoint.pathname = endpoint.pathname.replace(/ability-catalog\/?$/, 'capability-gateway');
-      const {bytes} = await http(endpoint, {method: 'POST', headers: {...await headers(), 'Content-Type': 'application/json'}, body: JSON.stringify({action, ...input}), credentials: credentialMode, redirect: 'error', cache: 'no-store'}, maxResponseBytes, signal);
+      const {bytes} = await http(endpoint, async requestSignal => ({method: 'POST', headers: {...await headers({signal: requestSignal}), 'Content-Type': 'application/json'}, body: JSON.stringify({action, ...input}), credentials: credentialMode, redirect: 'error', cache: 'no-store'}), maxResponseBytes, signal);
       value = decode(bytes);
     }
     if (value?.contract !== 'mad4b.unified-capability-gateway.v1') throw new CatalogError('Unsupported gateway contract');

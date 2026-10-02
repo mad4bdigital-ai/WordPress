@@ -337,16 +337,6 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				'revalidation' => array( 'authority', 'site_binding', 'registration_digest', 'dispatch_policy_digest', 'input_schema_identity' ),
 			);
 		}
-		if ( 'read' === $lane && ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $ability_name ) ) ) {
-			return array(
-				'state' => 'requires_dynamic_projection',
-				'blocker' => 'read_target_not_in_fixed_dispatch_catalog',
-				'transport' => 'mcp_dynamic_projection',
-				'target_ability' => $ability_name,
-				'expected_input_schema_sha256' => $input_schema_sha256,
-				'direct_ability_dispatch' => false,
-			);
-		}
 		if ( 'write' === $lane && ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) ) {
 			return array(
 				'state' => 'blocked',

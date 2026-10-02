@@ -111,10 +111,46 @@ if (
 	'chunked' !== ( $oversized_prepared['schema_transfer_mode'] ?? '' )
 	|| empty( $oversized_prepared['source']['sha256'] )
 	|| empty( $oversized_prepared['projection_eligible'] )
-	|| 'requires_dynamic_projection' !== ( $oversized_prepared['execution']['state'] ?? '' )
+	|| 'governed_dispatch' !== ( $oversized_prepared['execution']['state'] ?? '' )
 ) {
 	$fail( 'Oversized Ability did not remain available through lazy transport/dispatcher planning.', $oversized_prepared );
 }
+$read_dispatch = wp_get_ability( 'mad4b/read-execute' );
+$oversized_execution = $read_dispatch->execute( array(
+    'ability_name' => $oversized_name,
+    'expected_input_schema_sha256' => $oversized_prepared['input_schema_sha256'],
+    'input' => array(),
+) );
+if ( is_wp_error( $oversized_execution ) || empty( $oversized_execution['result']['ok'] ) ) {
+    $fail( 'Oversized Ability could not actually execute through the governed dispatcher.', is_wp_error( $oversized_execution ) ? $oversized_execution->get_error_code() : $oversized_execution );
+}
+$drifted_execution = $read_dispatch->execute( array(
+    'ability_name' => $oversized_name,
+    'expected_input_schema_sha256' => str_repeat( '0', 64 ),
+    'input' => array(),
+) );
+if ( ! is_wp_error( $drifted_execution ) || 'mad4b_read_dispatch_schema_drift' !== $drifted_execution->get_error_code() ) {
+    $fail( 'Oversized dispatcher accepted a mismatched schema pin.' );
+}
+// A valid read lane never replaces the target's own permission decision.
+wp_register_ability( 'mad4b-ci/denied-read-dispatch', array(
+    'label' => 'Denied read dispatcher fixture',
+    'description' => 'Checks preservation of the original permission callback.',
+    'category' => 'mad4b-read',
+    'execute_callback' => static function () { throw new RuntimeException( 'Denied callback executed.' ); },
+    'permission_callback' => static function () { return false; },
+    'input_schema' => array( 'type' => 'object' ),
+    'output_schema' => array( 'type' => 'object' ),
+    'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ), 'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ) ),
+) );
+$denied_read = wp_get_ability( 'mad4b-ci/denied-read-dispatch' );
+$denied_schema_pin = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b-ci/denied-read-dispatch' );
+$denied_execution = $read_dispatch->execute( array(
+    'ability_name' => 'mad4b-ci/denied-read-dispatch',
+    'expected_input_schema_sha256' => $denied_schema_pin['input_schema_sha256'],
+    'input' => array(),
+) );
+if ( ! is_wp_error( $denied_execution ) ) $fail( 'Read dispatcher ignored original permission denial.' );
 $oversized_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
 	'mode' => 'replace',
 	'ability_names' => array( $oversized_name ),

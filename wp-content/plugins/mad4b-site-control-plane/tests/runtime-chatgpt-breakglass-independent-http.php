@@ -270,7 +270,43 @@ try {
 	$mint->setAccessible( true );
 	$read = $mint->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID, $breakglass_user_id, $resource, array( 'mad4b:read' ) );
 	$step = $mint->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID, $breakglass_user_id, $resource, array( 'mad4b:read', MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) );
-	$authorized = $mint->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID, $breakglass_user_id, $resource, array( 'mad4b:read', MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE, 'server:mad4b-breakglass' ) );
+    // Obtain the positive bearer through real consent, PKCE exchange and refresh.
+    $session_token = WP_Session_Tokens::get_instance( $breakglass_user_id )->create( time() + 300 );
+    $cookie = LOGGED_IN_COOKIE . '=' . wp_generate_auth_cookie( $breakglass_user_id, time() + 300, 'logged_in', $session_token );
+    $oauth_http = static function ( $url, $method, array $params, $authenticated = false ) use ( $network_base, $network_host, $cookie, $fail ) {
+        $headers = array( 'Accept' => 'application/json, text/html' );
+        if ( $authenticated ) $headers['Cookie'] = $cookie;
+        if ( is_string( $network_host ) && '' !== $network_host ) $headers['Host'] = $network_host;
+        $endpoint = rtrim( $network_base, '/' ) . wp_parse_url( $url, PHP_URL_PATH );
+        if ( 'GET' === $method ) $endpoint = add_query_arg( $params, $endpoint );
+        $response = wp_remote_request( $endpoint, array( 'method' => $method, 'headers' => $headers, 'body' => 'POST' === $method ? $params : null, 'timeout' => 30, 'redirection' => 0 ) );
+        if ( is_wp_error( $response ) ) $fail( 'OAuth HTTP exchange failed.', $response->get_error_code() );
+        return $response;
+    };
+    $verifier = str_repeat( 'v', 64 );
+    $flow = $authorization_params;
+    $flow['code_challenge'] = rtrim( strtr( base64_encode( hash( 'sha256', $verifier, true ) ), '+/', '-_' ), '=' );
+    $flow['scope'] .= ' offline_access';
+    $consent = $oauth_http( MAD4B_SCP_Local_OAuth_Server::authorize_url(), 'GET', $flow, true );
+    if ( 200 !== wp_remote_retrieve_response_code( $consent ) || ! preg_match( '/name="_mad4b_oauth_nonce"[^>]*value="([^"]+)"/', wp_remote_retrieve_body( $consent ), $nonce_match ) ) {
+        $fail( 'Breakglass OAuth consent form unavailable.', array( 'status' => wp_remote_retrieve_response_code( $consent ) ) );
+    }
+    if ( false === strpos( wp_remote_retrieve_body( $consent ), 'Raw-SQL Breakglass request:' ) ) $fail( 'Consent did not explicitly disclose raw Breakglass scope.' );
+    $flow['_mad4b_oauth_nonce'] = html_entity_decode( $nonce_match[1], ENT_QUOTES );
+    $flow['decision'] = 'approve';
+    $approved = $oauth_http( MAD4B_SCP_Local_OAuth_Server::authorize_url(), 'POST', $flow, true );
+    parse_str( (string) wp_parse_url( wp_remote_retrieve_header( $approved, 'location' ), PHP_URL_QUERY ), $redirect_params );
+    if ( empty( $redirect_params['code'] ) || ( $redirect_params['state'] ?? '' ) !== $flow['state'] ) $fail( 'Consent did not issue a bound authorization code.' );
+    $token_params = array( 'grant_type' => 'authorization_code', 'code' => $redirect_params['code'], 'client_id' => $flow['client_id'], 'redirect_uri' => $flow['redirect_uri'], 'resource' => $resource, 'code_verifier' => $verifier );
+    $issued = $oauth_http( MAD4B_SCP_Local_OAuth_Server::token_url(), 'POST', $token_params );
+    $issued_body = json_decode( wp_remote_retrieve_body( $issued ), true );
+    if ( 200 !== wp_remote_retrieve_response_code( $issued ) || empty( $issued_body['access_token'] ) || empty( $issued_body['refresh_token'] ) ) $fail( 'Breakglass PKCE token exchange failed.', array( 'status' => wp_remote_retrieve_response_code( $issued ), 'error' => $issued_body['error'] ?? '' ) );
+    $code_replay = $oauth_http( MAD4B_SCP_Local_OAuth_Server::token_url(), 'POST', $token_params );
+    if ( 400 !== wp_remote_retrieve_response_code( $code_replay ) ) $fail( 'Authorization code replay accepted.' );
+    $refreshed = $oauth_http( MAD4B_SCP_Local_OAuth_Server::token_url(), 'POST', array( 'grant_type' => 'refresh_token', 'refresh_token' => $issued_body['refresh_token'], 'client_id' => $flow['client_id'], 'resource' => $resource ) );
+    $refreshed_body = json_decode( wp_remote_retrieve_body( $refreshed ), true );
+    if ( 200 !== wp_remote_retrieve_response_code( $refreshed ) || empty( $refreshed_body['access_token'] ) || ! in_array( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE, explode( ' ', $refreshed_body['scope'] ?? '' ), true ) ) $fail( 'Refresh lost the authorized Breakglass scope.', array( 'status' => wp_remote_retrieve_response_code( $refreshed ) ) );
+    $authorized = $refreshed_body['access_token'];
 	if ( is_wp_error( $read ) || is_wp_error( $step ) || is_wp_error( $authorized ) ) $fail( 'Cannot mint Breakglass proof tokens.' );
 
 	wp_set_current_user( 0 );
@@ -295,9 +331,10 @@ try {
 	list( $replay_status, $replay_body ) = $call( $authorized, $authorized_session, $arguments );
 	if ( $replay_status >= 500 || ! $denied( $replay_body ) ) $fail( 'One-time Breakglass approval replay was accepted.', $replay_body );
 
-	fwrite( STDOUT, "mad4b.breakglass-independent-http.v1: PASS oauth_authorize_scope exact_surface exact_scope exact_grant one_time_approval\n" );
+	fwrite( STDOUT, "mad4b.breakglass-independent-http.v1: PASS oauth_consent_pkce_refresh code_replay oauth_authorize_scope exact_surface exact_scope exact_grant one_time_approval\n" );
 } finally {
 	wp_set_current_user( $admin_id );
+	if ( isset( $session_token ) ) WP_Session_Tokens::get_instance( $breakglass_user_id )->destroy( $session_token );
 	if ( false === $projection_before ) delete_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION );
 	else update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $projection_before, false );
 	if ( false === $gate_before ) delete_option( MAD4B_SCP_Governed_Runtime_Gates::OPTION );

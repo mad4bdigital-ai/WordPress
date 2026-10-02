@@ -321,7 +321,7 @@ final class MAD4B_SCP_Abilities {
 		$ability_name = trim( (string) $ability_name );
 		if ( '' === $ability_name ) return new WP_Error( 'mad4b_read_dispatch_target_required', 'A governed read ability_name is required.' );
 		if ( in_array( $ability_name, array( 'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute' ), true ) ) return new WP_Error( 'mad4b_read_dispatch_recursion_denied', 'Nested read-dispatch execution is not allowed.' );
-		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $ability_name ) ) return new WP_Error( 'mad4b_read_dispatch_target_not_cataloged', 'Requested ability is not in the governed ChatGPT capability universe.' );
+		// Universe admission is revalidated below; direct catalog size is not execution authority.
 		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_read_dispatch_target_unavailable', 'Requested ability is not registered in the current runtime.' );
 		$ability = wp_get_ability( $ability_name );
 		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) return new WP_Error( 'mad4b_read_dispatch_contract_unavailable', 'Requested ability does not expose the required WordPress Ability contract.' );

@@ -115,11 +115,11 @@ if ( wp_has_ability( 'mad4b-ci/readonly-projection-fixture' ) ) {
 	if ( is_wp_error( $dynamic_only ) ) $fail( 'Classified dynamic-only read preparation failed.', $dynamic_only->get_error_code() );
 	$dynamic_only_item = $dynamic_only['abilities'][0] ?? array();
 	if (
-		'requires_dynamic_projection' !== ( $dynamic_only_item['execution']['state'] ?? '' )
-		|| 'read_target_not_in_fixed_dispatch_catalog' !== ( $dynamic_only_item['execution']['blocker'] ?? '' )
+		'governed_dispatch' !== ( $dynamic_only_item['execution']['state'] ?? '' )
+		|| 'mad4b/read-execute' !== ( $dynamic_only_item['execution']['dispatch_tool'] ?? '' )
 		|| empty( $dynamic_only_item['projection_eligible'] )
 	) {
-		$fail( 'Classified third-party read Ability was incorrectly advertised through the fixed dispatcher.', $dynamic_only_item );
+		$fail( 'Classified third-party read Ability lost its governed dispatcher.', $dynamic_only_item );
 	}
 }
 
