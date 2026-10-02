@@ -110,7 +110,14 @@ for source in (mu, guard):
     assert "'update.php'" in source
     assert "'plugin-install.php'" in source
     assert "current_user_can( 'update_plugins' )" in source
-    assert "MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed()" in source
+
+# Refreshing bytes for an already-managed MU bootstrap may use the explicit,
+# nonce-bound deep diagnostic lifecycle. Creating a new runtime-repair bootstrap
+# must remain stricter: plugin lifecycle, WP-CLI or cron only.
+assert "MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed()" in mu
+guard_repair = guard.split("private static function repair_lifecycle_allowed()", 1)[1].split("private static function mu_bootstrap_status()", 1)[0]
+assert "explicit_rest_materialization_allowed()" not in guard_repair
+assert "MAD4B_SCP_Endpoint_Diagnostic::is_authorized_request()" not in guard_repair
 
 assert "deferred_request_hotpath" in mu
 assert "repair_deferred_request_hotpath" in guard
