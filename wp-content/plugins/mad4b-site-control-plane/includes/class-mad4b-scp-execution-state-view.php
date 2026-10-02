@@ -219,6 +219,9 @@ final class MAD4B_SCP_Execution_State_View {
 	}
 
 	private static function view( $scope, $source_contract, $source_state, $source_outcome, $state, $terminal, $reconciliation, $retry_after_replan, $reason, $confidence, array $evidence ) {
+		// Unknown execution evidence is never equivalent to safe/no-effect.
+		// Independent reconciliation remains mandatory before any write retry.
+		if ( self::UNKNOWN === $state ) $reconciliation = true;
 		return array(
 			'contract' => self::CONTRACT,
 			'scope' => sanitize_key( (string) $scope ),
