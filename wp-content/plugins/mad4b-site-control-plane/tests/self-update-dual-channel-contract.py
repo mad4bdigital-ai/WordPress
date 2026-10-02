@@ -149,6 +149,8 @@ for marker in (
     "'grant_mutation_allowed' => false",
     "'candidate_binding_mutation_allowed' => false",
     "'post_update_candidate_rebind_required' => true",
+    "'post_update_continuation_active'",
+    "'active_continuation' => null",
 ):
     if marker not in self_update:
         raise SystemExit(f"bootstrap self-update fail-closed authority invariant missing: {marker}")
