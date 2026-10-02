@@ -44,12 +44,15 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-database-transaction-guard.php"
           php -l "$root/includes/class-mad4b-scp-database-topology.php"
           php -l "$root/includes/class-mad4b-scp-database-failure-semantics.php"
+          php -l "$root/includes/class-mad4b-scp-runtime-compatibility-profile.php"
           php -l "$root/includes/class-mad4b-scp-unified-capability-gateway.php"
           php -l "$root/includes/class-mad4b-scp-catalog-object-store.php"
           php -l "$root/tools/catalog-decommission.php"
           php "$root/tests/catalog-transport-runtime.php"
           php "$root/tests/database-transaction-guard-runtime.php"
           php "$root/tests/database-topology-runtime.php"
+          php "$root/tests/runtime-compatibility-profile-runtime.php"
+          php "$root/tests/runtime-compatibility-profile-cron.php"
           php "$root/tests/request-generation-runtime.php"
           python3 "$root/tests/capability-fabric-bulk-hardening-contract.py"
           node "$root/tests/catalog-transport-client.mjs"
@@ -99,6 +102,8 @@ jobs:
           php "$root/tests/catalog-transport-runtime.php"
           php "$root/tests/database-transaction-guard-runtime.php"
           php "$root/tests/database-topology-runtime.php"
+          php "$root/tests/runtime-compatibility-profile-runtime.php"
+          php "$root/tests/runtime-compatibility-profile-cron.php"
           php "$root/tests/request-generation-runtime.php"
           python3 "$root/tests/capability-fabric-bulk-hardening-contract.py"
           php "$root/tests/projection-registration-lifecycle.php"
@@ -239,6 +244,12 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-execution-fence-recursion.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove infrastructure compatibility profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-compatibility-profile.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove independent database builds and non-destructive cron lifecycle
         shell: bash

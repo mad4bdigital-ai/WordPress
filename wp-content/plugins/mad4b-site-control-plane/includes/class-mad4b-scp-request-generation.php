@@ -154,6 +154,7 @@ final class MAD4B_SCP_Request_Generation {
 		$owners = array(
 			array( 'MAD4B_SCP_Site_Profile', 'reset_cache' ),
 			array( 'MAD4B_SCP_Schema', 'reset_request_cache' ),
+			array( 'MAD4B_SCP_Runtime_Compatibility_Profile', 'reset_request_cache' ),
 			array( 'MAD4B_SCP_Agent_Registry', 'reset_request_cache' ),
 			array( 'MAD4B_SCP_Operation_Registry', 'reset_request_cache' ),
 			array( 'MAD4B_SCP_Policy_Resolution', 'reset_request_cache' ),

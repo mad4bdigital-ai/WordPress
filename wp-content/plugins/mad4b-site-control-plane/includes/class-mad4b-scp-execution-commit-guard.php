@@ -53,7 +53,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 		if ( ! self::same( $expected_material, $current, 'provider' ) ) {
 			return self::error( 'RECERTIFICATION_REQUIRED', 'Provider capability or artifact evidence changed before commit.' );
 		}
-		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'site_profile', 'candidate', 'database_storage', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
+		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'site_profile', 'candidate', 'database_storage', 'runtime_compatibility', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
 			if ( ! self::same( $expected_material, $current, $dependency ) ) {
 				return self::error( 'REAPPROVAL_REQUIRED', 'A material authorization dependency changed before commit.', array( 'dependency' => $dependency ) );
 			}
@@ -89,6 +89,28 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
 		if ( is_wp_error( $identity ) || ! is_array( $identity ) ) return self::error( 'DENIED', 'Authenticated subject identity is unavailable at commit guard.' );
+
+		if ( ! class_exists( 'MAD4B_SCP_Runtime_Compatibility_Profile' ) ) return self::error( 'DENIED', 'Runtime compatibility profile is unavailable at commit guard.' );
+		$compatibility_status = MAD4B_SCP_Runtime_Compatibility_Profile::assert_governed_write_ready( true );
+		if ( is_wp_error( $compatibility_status ) ) {
+			$data = $compatibility_status->get_error_data();
+			return self::error( 'DENIED', 'Runtime infrastructure is not certified for governed mutation.', array(
+				'blockers' => is_array( $data ) && isset( $data['blockers'] ) ? $data['blockers'] : array( $compatibility_status->get_error_code() ),
+			) );
+		}
+		$runtime_compatibility = array(
+			'contract' => isset( $compatibility_status['contract'] ) ? (string) $compatibility_status['contract'] : '',
+			'profile_sha256' => isset( $compatibility_status['profile_sha256'] ) ? (string) $compatibility_status['profile_sha256'] : '',
+			'execution_context' => isset( $compatibility_status['execution_context'] ) ? (string) $compatibility_status['execution_context'] : '',
+			'remote_transport_server_id' => isset( $compatibility_status['remote_transport_server_id'] ) ? (string) $compatibility_status['remote_transport_server_id'] : '',
+			'object_cache' => isset( $compatibility_status['object_cache'] ) && is_array( $compatibility_status['object_cache'] ) ? array(
+				'external' => ! empty( $compatibility_status['object_cache']['external'] ),
+				'contract_verified' => ! empty( $compatibility_status['object_cache']['contract_verified'] ),
+			) : array(),
+			'database_router_present' => ! empty( $compatibility_status['database_topology']['database_dropin_present'] ),
+			'security_firewall_plugins' => isset( $compatibility_status['security_firewall']['plugins'] ) ? $compatibility_status['security_firewall']['plugins'] : array(),
+			'maintenance_active' => ! empty( $compatibility_status['maintenance']['active'] ),
+		);
 
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! method_exists( 'MAD4B_SCP_Schema', 'transactional_storage_status' ) ) {
 			return self::error( 'DENIED', 'Transactional governance storage contract is unavailable.' );
@@ -205,6 +227,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 			'site_profile' => $profile,
 			'candidate' => $candidate,
 			'database_storage' => $database_storage,
+			'runtime_compatibility' => $runtime_compatibility,
 			'provider' => $provider_material,
 			'kill_switch' => $kill_switch,
 			'rights' => empty( $rights ) ? array( 'state' => 'not_applicable' ) : self::canonicalize( $rights ),
