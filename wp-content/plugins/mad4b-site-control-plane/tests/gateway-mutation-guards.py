@@ -14,16 +14,28 @@ mutations = [
     ('ability build budget removed', 'class-mad4b-scp-ability-catalog-transport.php', 'count( $abilities ) > $max_abilities', 'false', 'catalog-transport-runtime.php'),
     ('byte build budget removed', 'class-mad4b-scp-ability-catalog-transport.php', '$definition_bytes > $max_bytes', 'false', 'catalog-transport-runtime.php'),
     ('deadline removed', 'class-mad4b-scp-ability-catalog-transport.php', 'microtime( true ) >= $deadline', 'false', 'catalog-transport-runtime.php'),
-    ('single-flight fail-open', 'class-mad4b-scp-ability-catalog-transport.php', '1 !== (int) $acquired', 'false', 'catalog-transport-runtime.php'),
+    ('single-flight fail-open', 'class-mad4b-scp-distributed-lock.php', '1 !== (int) $acquired', 'false', 'catalog-transport-runtime.php'),
+    ('lost connection lock ignored', 'class-mad4b-scp-ability-catalog-transport.php', '! MAD4B_SCP_Distributed_Lock::owns( $lock )', 'false', 'catalog-transport-runtime.php'),
+    ('database lock namespace omitted', 'class-mad4b-scp-distributed-lock.php', "$database . ':' . $wpdb->options", "$wpdb->options", 'catalog-transport-runtime.php'),
+    ('receipt signature ignored', 'class-mad4b-scp-preparation-receipt.php', "! hash_equals( hash_hmac( 'sha256', $parts[1], self::key() ), $parts[2] )", 'false', 'preparation-receipt-runtime.php'),
+    ('receipt expiry ignored', 'class-mad4b-scp-preparation-receipt.php', "$p['expires_at'] <= $now", 'false', 'preparation-receipt-runtime.php'),
+    ('receipt subject ignored', 'class-mad4b-scp-preparation-receipt.php', "! hash_equals( MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), $p['authority_scope_sha256'] )", 'false', 'preparation-receipt-runtime.php'),
+    ('receipt descriptor ignored', 'class-mad4b-scp-preparation-receipt.php', "! hash_equals( $row['descriptor_sha256'], $p['descriptor_sha256'] )", 'false', 'preparation-receipt-runtime.php'),
+    ('receipt dispatcher verification ignored', 'class-mad4b-scp-abilities.php', 'if ( is_wp_error( $receipt ) ) return $receipt;', '/* ignored receipt failure */', 'preparation-receipt-runtime.php'),
     ('cron cleanup omitted', 'class-mad4b-scp-catalog-lifecycle.php', "wp_clear_scheduled_hook( 'mad4b_catalog_gc' );", '/* omitted */', 'catalog-lifecycle-runtime.php'),
 ]
-files = ['class-mad4b-scp-unified-capability-gateway.php', 'class-mad4b-scp-chatgpt-tool-projection.php', 'class-mad4b-scp-ability-catalog-transport.php', 'class-mad4b-scp-catalog-object-store.php', 'class-mad4b-scp-abilities.php', 'class-mad4b-scp-catalog-lifecycle.php']
+files = ['class-mad4b-scp-capability-descriptor-registry.php', 'class-mad4b-scp-preparation-receipt.php', 'class-mad4b-scp-distributed-lock.php', 'class-mad4b-scp-unified-capability-gateway.php', 'class-mad4b-scp-chatgpt-tool-projection.php', 'class-mad4b-scp-ability-catalog-transport.php', 'class-mad4b-scp-catalog-object-store.php', 'class-mad4b-scp-abilities.php', 'class-mad4b-scp-catalog-lifecycle.php']
 with tempfile.TemporaryDirectory(prefix='mad4b-gateway-mutants-') as tmp:
     target = Path(tmp)
     (target / 'includes').mkdir()
     (target / 'tests').mkdir()
     for test in {m[4] for m in mutations}:
         shutil.copy2(root / 'tests' / test, target / 'tests' / test)
+    for name in files:
+        shutil.copy2(root / 'includes' / name, target / 'includes' / name)
+    for test in {m[4] for m in mutations}:
+        baseline = subprocess.run(['php', str(target / 'tests' / test)], capture_output=True, text=True, timeout=10)
+        assert baseline.returncode == 0, f'Pristine behavioral test failed: {test}: {baseline.stderr}'
     for label, file, before, after, test in mutations:
         for name in files:
             shutil.copy2(root / 'includes' / name, target / 'includes' / name)

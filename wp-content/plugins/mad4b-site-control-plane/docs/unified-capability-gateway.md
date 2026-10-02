@@ -48,7 +48,7 @@ Providers may supply at most 24 `meta.mcp.search_aliases` strings, each bounded 
 
 The MCP compatibility matrix executes behavioral gateway and lifecycle fixtures on PHP 7.4/8.3, and real WordPress 6.9/latest tests verify original content/admin lanes, independent database connections and cron retention. The local OAuth matrix proves cookie+nonce access, nonce denial and invalid-bearer fallback denial through independent HTTP requests. Existing tests retain schema/wire drift, projection CAS, immutable storage races, UTF-8, chunk transport, oversized-tool fallback and original permissions.
 
-`gateway-mutation-guards.py` introduces ten representative regressions into isolated source copies and requires the behavioral tests to reject each one. This protects against a test suite that passes while no longer exercising its intended invariant.
+`gateway-mutation-guards.py` introduces seventeen representative regressions into isolated source copies and requires the behavioral tests to reject each one. This protects against a test suite that passes while no longer exercising its intended invariant.
 
 
 ## Explicit offline cache retirement
@@ -66,3 +66,16 @@ Then run `wp --url=<same-site> --user=<administrator> eval-file <plugin-path>/to
 ## Upstream compatibility certification
 
 Reflection is retained where the pinned Adapter/Abilities expose no supported callback accessor. Unsupported layouts fail closed. The real WordPress 6.9/PHP 7.4 and latest/PHP 8.3 matrix requires a positive materialized-tool baseline, callable execute/permission identity, separate same-schema substitution denials for both callbacks, and unknown-layout denial. Adapter archive, core and MU-bootstrap changes trigger certification; a weekly scheduled run also detects changes in latest WordPress. Do not upgrade the packaged Adapter without passing this matrix on the exact candidate head. Certification verifies compatibility and does not grant runtime authority.
+
+## Preparation evidence and full review coverage
+
+Gateway preparation now returns an expiring `preparation_receipt` and selected
+`descriptor_sha256` with contract/site generation roots. The client forwards
+the fresh receipt to the read/write/developer dispatcher. Evidence pins observed
+identity and contract; live authorization, target permission and original
+execution boundaries remain mandatory. Original-lane and classification pins
+remain mandatory under the current dispatch contract.
+
+See [Capability Fabric coverage](capability-fabric-coverage.md) for the full
+21-item review matrix, delivered behavior, explicit limitations and remaining
+migration acceptance gates.

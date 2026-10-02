@@ -18,8 +18,8 @@ function wp_get_abilities() { return $GLOBALS['abilities']; }
 function wp_get_ability( $name ) { return $GLOBALS['abilities'][$name] ?? null; }
 function wp_has_ability( $name ) { return isset( $GLOBALS['abilities'][$name] ); }
 function apply_filters( $name, $value ) { return $value; }
-function get_current_user_id() { return 1; }
-function wp_get_current_user() { return (object) array( 'allcaps' => array() ); }
+function get_current_user_id() { return $GLOBALS['receipt_user'] ?? 1; }
+function wp_get_current_user() { return (object) array( 'allcaps' => $GLOBALS['receipt_caps'] ?? array() ); }
 function current_user_can() { return false; }
 function get_option( $name, $default = false ) { return $default; }
 function rest_url( $path ) { return 'https://ci.test/wp-json/' . $path; }

@@ -26,8 +26,8 @@ class FakeDB {
  public $options = 'options'; public $race = false; public $locked = false; public $measurements = 0;
  function esc_like( $value ) { return $value; }
  function get_col( $args ) { $names = array_values( array_filter( array_keys( $GLOBALS['options'] ), static function( $key ) use ( $args ) { return 0 === strpos( $key, 'mad4b_ct2_' ) && $key > $args[1]; } ) ); sort( $names, SORT_STRING ); return array_slice( $names, 0, 500 ); }
- function get_var( $args ) { if ( ($args[0] ?? '') === '__lock' ) { if ( $this->locked ) return 0; $this->locked = true; return 1; } if ( ($args[0] ?? '') === '__unlock' ) { $this->locked = false; return 1; } ++$this->measurements; $bytes = 0; foreach ( $GLOBALS['options'] as $name => $value ) if ( 0 === strpos( $name, 'mad4b_ct2_' ) ) $bytes += strlen( serialize( $value ) ); return $bytes; }
- function prepare( $query, ...$args ) { if ( strpos( $query, 'GET_LOCK' ) !== false ) return array( '__lock', $args[0] ); if ( strpos( $query, 'RELEASE_LOCK' ) !== false ) return array( '__unlock', $args[0] ); return $args; }
+ function get_var( $args ) { if ( ($args[0] ?? '') === '__lock' ) { if ( $this->locked ) return 0; $this->locked = true; return 1; } if ( ($args[0] ?? '') === '__unlock' ) { $this->locked = false; return 1; } if ( ($args[0] ?? '') === '__owns' ) return $this->locked ? 1 : 0; ++$this->measurements; $bytes = 0; foreach ( $GLOBALS['options'] as $name => $value ) if ( 0 === strpos( $name, 'mad4b_ct2_' ) ) $bytes += strlen( serialize( $value ) ); return $bytes; }
+ function prepare( $query, ...$args ) { if ( strpos( $query, 'GET_LOCK' ) !== false ) return array( '__lock', $args[0] ); if ( strpos( $query, 'RELEASE_LOCK' ) !== false ) return array( '__unlock', $args[0] ); if ( strpos( $query, 'IS_USED_LOCK' ) !== false ) return array( '__owns', $args[0] ); return $args; }
  function query( $args ) {
   list( $next, $key, $old ) = $args;
   if ( $this->race ) { $this->race = false; $GLOBALS['options'][$key]['concurrent'] = array( 'option' => 'other', 'expires' => time()+3600, 'bytes' => 1 ); return 0; }
@@ -44,6 +44,7 @@ class FixtureAbility {
  function get_meta() { return array( 'annotations' => array( 'readonly' => true ) ); }
  function get_category() { return 'read'; }
 }
+require __DIR__ . '/../includes/class-mad4b-scp-distributed-lock.php';
 require __DIR__ . '/../includes/class-mad4b-scp-catalog-object-store.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-catalog-transport.php';
 function check( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); }
@@ -225,3 +226,19 @@ $again = request( array( 'force_refresh' => true ) );
 check( $built['snapshot'] === $again['snapshot'] && 0 === $again['storage_metrics']['writes'], 'Repeated force refresh rewrote unchanged generation' );
 check( $measurements === $GLOBALS['wpdb']->measurements, 'Unchanged snapshot performed a physical aggregate scan' );
 echo "PASS build admission: nonblocking single-flight, budgets, release, force-refresh coalescing and zero-write fast path\n";
+
+// A reconnect releases advisory locks. Publication must fail rather than using
+// a request-local boolean as proof of connection ownership.
+class LostLockAbility extends FixtureAbility {
+ function get_input_schema() { $GLOBALS['wpdb']->locked = false; return parent::get_input_schema(); }
+}
+$directory_before = serialize( $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY] );
+$GLOBALS['abilities'] = array( 'lost-lock' => new LostLockAbility( 'disconnected-during-build' ) );
+$lost = request( array( 'force_refresh' => true ) );
+check( is_wp_error( $lost ) && 'mad4b_catalog_build_lock_lost' === $lost->code, 'Lost connection lock did not deny publication' );
+check( $directory_before === serialize( $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY] ), 'Lost lock published partial catalog directory' );
+$GLOBALS['wpdb']->dbname = 'database-one';
+$one = MAD4B_SCP_Distributed_Lock::catalog_name( 'same-scope' );
+$GLOBALS['wpdb']->dbname = 'database-two';
+check( $one !== MAD4B_SCP_Distributed_Lock::catalog_name( 'same-scope' ), 'Server-wide mutex omitted database namespace' );
+echo "PASS lock fault injection: connection loss denies publication and database namespaces are isolated\n";

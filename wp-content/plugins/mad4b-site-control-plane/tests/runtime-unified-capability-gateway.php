@@ -82,6 +82,12 @@ $item = $prepared['abilities'][0] ?? array();
 if ( 'mad4b/read-execute' !== ( $item['execution']['dispatch_tool'] ?? '' ) ) $fail( 'Read Ability did not map to the governed read dispatcher.', $item );
 if ( empty( $item['input_schema_sha256'] ) || ! hash_equals( (string) $item['input_schema_sha256'], (string) ( $item['execution']['expected_input_schema_sha256'] ?? '' ) ) ) $fail( 'Read dispatcher did not receive the exact prepared input schema pin.', $item );
 if ( empty( $item['schema_sha256'] ) || empty( $item['snapshot'] ) || ! isset( $item['schema']->inputSchema ) ) $fail( 'Lazy schema preparation did not return an inline exact schema.', $item );
+if ( empty( $item['preparation_receipt'] ) || true !== MAD4B_SCP_Preparation_Receipt::verify( $item['preparation_receipt'], 'mad4b/diagnostics-health' ) ) $fail( 'Real WordPress preparation receipt did not verify.' );
+if ( ! is_wp_error( MAD4B_SCP_Preparation_Receipt::verify( $item['preparation_receipt'] . '0', 'mad4b/diagnostics-health' ) ) ) $fail( 'Forged real WordPress receipt verified.' );
+$dispatcher = new MAD4B_SCP_Abilities();
+$receipt_input = array( 'ability_name' => 'mad4b/diagnostics-health', 'expected_input_schema_sha256' => $item['input_schema_sha256'], 'expected_execution_lane' => 'read', 'expected_classification_sha256' => $item['classification_sha256'], 'preparation_receipt' => $item['preparation_receipt'] . '0' );
+$denied_receipt = $dispatcher->read_execute( $receipt_input );
+if ( ! is_wp_error( $denied_receipt ) || 'mad4b_preparation_receipt_invalid' !== $denied_receipt->get_error_code() ) $fail( 'Real WordPress dispatcher accepted forged preparation evidence.' );
 $digest = (string) $item['schema_sha256'];
 if ( ! empty( $item['wire']['sha256'] ) ) {
 	$wire_schema = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
@@ -114,6 +120,9 @@ if ( wp_has_ability( 'mad4b-ci/readonly-projection-fixture' ) ) {
 	), 'rest' );
 	if ( is_wp_error( $dynamic_only ) ) $fail( 'Classified dynamic-only read preparation failed.', $dynamic_only->get_error_code() );
 	$dynamic_only_item = $dynamic_only['abilities'][0] ?? array();
+	$fixture_execution = $dispatcher->read_execute( array( 'ability_name' => 'mad4b-ci/readonly-projection-fixture', 'input' => array(), 'expected_input_schema_sha256' => $dynamic_only_item['input_schema_sha256'], 'expected_execution_lane' => 'read', 'expected_classification_sha256' => $dynamic_only_item['classification_sha256'], 'preparation_receipt' => $dynamic_only_item['preparation_receipt'] ) );
+	if ( is_wp_error( $fixture_execution ) || empty( $fixture_execution['result']['ok'] ) ) $fail( 'Valid real WordPress preparation evidence did not reach the governed read fixture.', $fixture_execution );
+
 	if (
 		'governed_dispatch' !== ( $dynamic_only_item['execution']['state'] ?? '' )
 		|| 'mad4b/read-execute' !== ( $dynamic_only_item['execution']['dispatch_tool'] ?? '' )

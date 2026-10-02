@@ -4,7 +4,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Ability_Catalog_Transport {
 	const CONTRACT = 'mad4b.ability-catalog-transport.v2';
 	const BLOCK_BYTES = 32768;
-	private static $builds_in_progress = array();
 	public static function boot() {
 		add_action( 'rest_api_init', array( __CLASS__, 'routes' ) );
 		add_filter( 'rest_pre_serve_request', array( __CLASS__, 'serve_binary' ), 10, 4 );
@@ -77,23 +76,16 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		return $out;
 	}
 	private static function snapshot( $scope, $store, $force ) {
-		global $wpdb;
-		// A connection-owned database mutex has no lease expiry race or stale
-		// option residue. Never wait behind another expensive schema build.
-		$lock = 'mad4b-catalog-' . substr( hash( 'sha256', $wpdb->options . ':' . $scope ), 0, 48 );
-		if ( isset( self::$builds_in_progress[$lock] ) ) return self::error( 'mad4b_catalog_build_in_progress', 409 );
-		$acquired = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 0)', $lock ) );
-		if ( null === $acquired ) return self::error( 'mad4b_catalog_build_lock_unavailable', 503 );
-		if ( 1 !== (int) $acquired ) return self::error( 'mad4b_catalog_build_in_progress', 409 );
-		self::$builds_in_progress[$lock] = true;
+		$lock = MAD4B_SCP_Distributed_Lock::catalog_name( $scope );
+		$acquired = MAD4B_SCP_Distributed_Lock::acquire( $lock );
+		if ( is_wp_error( $acquired ) ) return $acquired;
 		try {
-			return self::build_snapshot( $scope, $store, $force );
+			return self::build_snapshot( $scope, $store, $force, $lock );
 		} finally {
-			unset( self::$builds_in_progress[$lock] );
-			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock ) );
+			MAD4B_SCP_Distributed_Lock::release( $lock );
 		}
 	}
-	private static function build_snapshot( $scope, $store, $force ) {
+	private static function build_snapshot( $scope, $store, $force, $lock ) {
 		$deadline = microtime( true ) + max( 0.001, min( 30, (float) apply_filters( 'mad4b_scp_catalog_build_seconds', 10 ) ) );
 		$max_abilities = max( 1, min( 10000, (int) apply_filters( 'mad4b_scp_catalog_build_max_abilities', 5000 ) ) );
 		$max_bytes = max( 1024, min( 67108864, (int) apply_filters( 'mad4b_scp_catalog_build_max_bytes', 33554432 ) ) );
@@ -144,6 +136,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		}
 		$id = hash( 'sha256', self::encode( array( self::CONTRACT, $items ) ) ); $data = array( 'items' => $items );
 		if ( microtime( true ) >= $deadline ) return self::error( 'mad4b_catalog_build_time_budget', 503 );
+		if ( ! MAD4B_SCP_Distributed_Lock::owns( $lock ) ) return self::error( 'mad4b_catalog_build_lock_lost', 503 );
 		$store->put( self::key( $scope, 'snapshot', $id ), $data, self::ttl() ); $store->flush(); return array( $id, $data );
 	}
 	/** Prepare only the selected Ability; no full-universe serialization. */

@@ -335,6 +335,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
       expected_input_schema_sha256: execution.input_schema_sha256,
       expected_classification_sha256: execution.classification_sha256,
       expected_execution_lane: execution.lane,
+      ...(item.preparation_receipt ? {preparation_receipt: item.preparation_receipt} : {}),
       input,
     }, {signal});
     if (execution.lane === 'enrollment' && operation?.ability_name === abilityName && DIGEST.test(operation.expected_registration_digest) && DIGEST.test(operation.expected_dispatch_policy_digest)) return callTool('mad4b-enrollment-execute', {operation_id: operation.operation_id, expected_registration_digest: operation.expected_registration_digest, expected_dispatch_policy_digest: operation.expected_dispatch_policy_digest, expected_input_schema_sha256: execution.input_schema_sha256, input}, {signal});

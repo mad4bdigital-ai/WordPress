@@ -119,11 +119,11 @@ console.log('PASS client: bounded adaptive REST/MCP, resume, integrity, authorit
 
 // The client must share server dispatch semantics without needing a projected
 // tool or a tools/listChanged notification from a caching host.
-let preparedLane = 'content', preparedClassification = scope;
+let preparedLane = 'content', preparedClassification = scope, receiptSequence = 0;
 const laneClient = createAbilityCatalogClient({
   callDiscover: async request => ({
     contract: 'mad4b.unified-capability-gateway.v1',
-    abilities: [{ability_name: 'vendor/mutation', snapshot, authority_scope_sha256: scope,
+    abilities: [{preparation_receipt: `receipt-${++receiptSequence}`, ability_name: 'vendor/mutation', snapshot, authority_scope_sha256: scope,
       classification: preparedLane, input_schema_sha256: sha, classification_sha256: preparedClassification,
       source: {sha256: sha, bytes: raw.length}, execution_eligible: true,
       execution: {state: 'governed_dispatch'}}],
@@ -137,6 +137,8 @@ for (const [lane, tool] of [['read', 'read'], ['write', 'write'], ['content', 'w
   const prepared = (await laneClient.prepare(['vendor/mutation'])).catalogs.get('vendor/mutation');
   assert.equal(await laneClient.execute(prepared, 'vendor/mutation', {}), 'executed');
   assert.equal(captured.name, `mad4b-${tool}-execute`);
+  assert.equal(captured.input.preparation_receipt, `receipt-${receiptSequence}`);
+  assert.notEqual(captured.input.preparation_receipt, prepared.entries.get('vendor/mutation').preparation_receipt);
   assert.equal(captured.input.expected_execution_lane, lane);
   assert.equal(captured.input.expected_classification_sha256, scope);
   preparedClassification = snapshot;

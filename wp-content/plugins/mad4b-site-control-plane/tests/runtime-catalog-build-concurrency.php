@@ -5,7 +5,7 @@ global $wpdb;
 $scope_method = new ReflectionMethod( 'MAD4B_SCP_Ability_Catalog_Transport', 'scope' );
 $scope_method->setAccessible( true );
 $scope = $scope_method->invoke( null );
-$lock = 'mad4b-catalog-' . substr( hash( 'sha256', $wpdb->options . ':' . $scope ), 0, 48 );
+$lock = MAD4B_SCP_Distributed_Lock::catalog_name( $scope );
 $other = new wpdb( DB_USER, DB_PASSWORD, DB_NAME, DB_HOST );
 if ( 1 !== (int) $other->get_var( $other->prepare( 'SELECT GET_LOCK(%s, 0)', $lock ) ) ) $fail( 'Independent connection did not acquire catalog mutex.' );
 try {

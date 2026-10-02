@@ -188,7 +188,11 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		return wp_check_invalid_utf8( substr( $value, 0, $bytes ), true );
 	}
 
-	public static function describe_ability( $name ) { return self::ability_row( $name ); }
+	public static function describe_ability( $name ) {
+		return class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ? MAD4B_SCP_Capability_Descriptor_Registry::describe( $name ) : self::ability_row( $name );
+	}
+	/** Shared classifier entry point; not an execution authorization decision. */
+	public static function inspect_contract( $name ) { return self::ability_row( $name ); }
 
 	private static function ability_row( $ability_name ) {
 		if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) && ! MAD4B_SCP_Unified_Capability_Gateway::runtime_blog_matches() ) return new WP_Error( 'mad4b_projection_blog_switch_denied', 'Use a fresh request to the target site.' );
