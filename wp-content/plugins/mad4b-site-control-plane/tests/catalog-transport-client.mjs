@@ -35,6 +35,7 @@ const fetchImpl = async (url, options) => {
   return new Response(bytes, {headers: {'X-MAD4B-Schema-SHA256': sha, 'X-MAD4B-Content-SHA256': corrupt ? scope : digest(bytes), 'X-MAD4B-Chunk-Count': String(Math.ceil(raw.length / size))}});
 };
 assert.throws(() => createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', maxPages: 0}), /page budget/);
+assert.throws(() => createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', maxManifestEvents: 0}), /event budget/);
 assert.throws(() => createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', maxSchemaBytes: Infinity}), /memory budget/);
 assert.throws(() => createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', maxParallelSchemaFetches: 0}), /parallelism budget/);
 assert.throws(() => createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', credentialMode: 'include'}), /credential mode/);
@@ -50,7 +51,28 @@ const cookieClient = createAbilityCatalogClient({
 });
 await cookieClient.negotiate();
 assert.equal(explicitCookieModeObserved, true);
-const client = createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', headers: async () => ({Authorization: 'Bearer test'}), fetchImpl, cryptoImpl: webcrypto, callTool: async (name, input) => {captured = {name, input}; return 'executed';}});
+const eventBounded = createAbilityCatalogClient({
+  maxManifestEvents: 1,
+  callDiscover: async input => {
+    if (input.transport_action === 'capabilities') return {contract, authority_scope_sha256: scope, transports: ['mcp_base64']};
+    return {contract, authority_scope_sha256: scope, snapshot, items: [row, {...row, ability_name: 'vendor/read-2'}], removed: [], delta: false, next_cursor: null};
+  },
+});
+await assert.rejects(eventBounded.sync(null), /event budget/);
+
+let syncSignalObserved = false;
+const syncAbort = new AbortController();
+const cancellableSync = createAbilityCatalogClient({
+  callDiscover: async (input, {signal} = {}) => {
+    if (input.transport_action === 'capabilities') return {contract, authority_scope_sha256: scope, transports: ['mcp_base64']};
+    syncSignalObserved = signal instanceof AbortSignal;
+    syncAbort.abort(new Error('sync cancelled'));
+    return new Promise(() => {});
+  },
+});
+await assert.rejects(cancellableSync.sync(null, '', {signal: syncAbort.signal}), /sync cancelled/);
+assert.equal(syncSignalObserved, true);
+const client = createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', headers: async () => ({Authorization: 'Bearer test'}), fetchImpl, cryptoImpl: webcrypto, callTool: async (name, input, options = {}) => {captured = {name, input, options}; return 'executed';}});
 assert.equal((await client.search('booking')).items[0].ability_name, row.ability_name);
 const lazy = (await client.prepare([row.ability_name])).catalogs.get(row.ability_name);
 const lazySchema = await client.readSchema(lazy, row.ability_name);
@@ -76,6 +98,11 @@ origin = 'https://attacker.invalid'; await assert.rejects(client.negotiate(), /c
 denied = true; await assert.rejects(client.sync(catalog), e => e.status === 403); denied = false;
 assert.equal(await client.execute(catalog, row.ability_name, {value: 1}), 'executed');
 assert.equal(captured.name, 'mad4b-read-execute'); assert.equal(captured.input.expected_input_schema_sha256, sha);
+const executeSignal = new AbortController();
+assert.equal(await client.execute(catalog, row.ability_name, {value: 2}, {signal: executeSignal.signal}), 'executed');
+assert.equal(captured.options.signal, executeSignal.signal);
+executeSignal.abort(new Error('execute cancelled'));
+await assert.rejects(client.execute(catalog, row.ability_name, {}, {signal: executeSignal.signal}), /execute cancelled/);
 await assert.rejects(client.execute(catalog, row.ability_name, {}, {mode: 'direct'}), /confirmed/);
 assert.equal(await client.execute(catalog, row.ability_name, {}, {mode: 'direct', directToolNames: ['vendor-read']}), 'executed');
 wireSha = scope;
