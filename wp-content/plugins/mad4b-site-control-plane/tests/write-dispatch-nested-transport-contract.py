@@ -70,6 +70,16 @@ for marker in required_dispatch:
     if marker not in abilities:
         raise SystemExit("write dispatcher target binding/governance invariant missing: " + marker)
 
+write_schema = abilities.split("$this->add( 'mad4b/write-execute'", 1)[1].split("$this->add( 'mad4b/developer-discover'", 1)[0]
+for marker in [
+    "'_mad4b_approval_ticket_id' => array( 'type' => 'string'",
+    "'_mad4b_context_receipt' => array( 'type' => 'object', 'additionalProperties' => true )",
+]:
+    if marker not in write_schema:
+        raise SystemExit("write dispatcher transport schema is missing reviewed governance field: " + marker)
+if "private function schema( array $properties" not in abilities or "'additionalProperties' => false" not in abilities:
+    raise SystemExit("write dispatcher must retain the shared top-level additionalProperties=false schema boundary")
+
 required_authorization_boundary = [
     "private static $execution_callback_started = array();",
     "public static function permission_result_from_authorization",
