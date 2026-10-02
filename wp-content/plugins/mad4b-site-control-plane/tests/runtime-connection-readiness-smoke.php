@@ -188,7 +188,7 @@ $metadata_info = $read_info->execute( array( 'ability_name' => 'mad4b/read-metad
 $check( ! is_wp_error( $metadata_info ) && ! empty( $metadata_info['input_schema_sha256'] ), 'Compact metadata schema digest is unavailable.' );
 $metadata_dispatch = $read_dispatch->execute( array(
     'ability_name' => 'mad4b/read-metadata-envelope',
-    'expected_input_schema_sha256' => (string) $metadata_info['input_schema_sha256'],
+    'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/read-metadata-envelope' )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/read-metadata-envelope' )['classification_sha256'], 'expected_input_schema_sha256' => (string) $metadata_info['input_schema_sha256'],
     'input' => array(
         'target_type' => 'operation',
         'target' => 'managed_skills_reconciliation',

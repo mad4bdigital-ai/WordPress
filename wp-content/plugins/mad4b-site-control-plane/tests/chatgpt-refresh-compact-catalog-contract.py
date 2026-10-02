@@ -45,7 +45,7 @@ for marker in [
     "mad4b_read_dispatch_schema_pin_required",
     "mad4b_read_dispatch_schema_drift",
     "expected_input_schema_sha256",
-    "array( 'ability_name', 'expected_input_schema_sha256' )",
+    "array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256' )",
     "true !== $annotations['readonly']",
     "$ability->execute( $params )",
 ]:

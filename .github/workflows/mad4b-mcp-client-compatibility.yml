@@ -6,6 +6,10 @@ on:
       - '.github/workflows/mad4b-mcp-client-compatibility.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-includes/**'
+      - 'wp-content/mu-plugins/**'
+  schedule:
+    - cron: '23 4 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -34,8 +38,10 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-ability-catalog-transport.php"
           php -l "$root/includes/class-mad4b-scp-unified-capability-gateway.php"
           php -l "$root/includes/class-mad4b-scp-catalog-object-store.php"
+          php -l "$root/tools/catalog-decommission.php"
           php "$root/tests/catalog-transport-runtime.php"
           node "$root/tests/catalog-transport-client.mjs"
+          node "$root/tests/network-catalog-client.mjs"
           node "$root/tests/catalog-transport-failures.mjs"
           php "$root/tests/projection-registration-lifecycle.php"
           php "$root/tests/gateway-regression-runtime.php"
@@ -185,6 +191,12 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-build-concurrency.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove explicit offline catalog retirement preserves authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-decommission.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove initialize and minimal tools/list over the pinned Adapter protocol
         shell: bash

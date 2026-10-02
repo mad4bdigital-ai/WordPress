@@ -118,7 +118,7 @@ if (
 $read_dispatch = wp_get_ability( 'mad4b/read-execute' );
 $oversized_execution = $read_dispatch->execute( array(
     'ability_name' => $oversized_name,
-    'expected_input_schema_sha256' => $oversized_prepared['input_schema_sha256'],
+    'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $oversized_name )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $oversized_name )['classification_sha256'], 'expected_input_schema_sha256' => $oversized_prepared['input_schema_sha256'],
     'input' => array(),
 ) );
 if ( is_wp_error( $oversized_execution ) || empty( $oversized_execution['result']['ok'] ) ) {
@@ -126,7 +126,7 @@ if ( is_wp_error( $oversized_execution ) || empty( $oversized_execution['result'
 }
 $drifted_execution = $read_dispatch->execute( array(
     'ability_name' => $oversized_name,
-    'expected_input_schema_sha256' => str_repeat( '0', 64 ),
+    'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $oversized_name )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $oversized_name )['classification_sha256'], 'expected_input_schema_sha256' => str_repeat( '0', 64 ),
     'input' => array(),
 ) );
 if ( ! is_wp_error( $drifted_execution ) || 'mad4b_read_dispatch_schema_drift' !== $drifted_execution->get_error_code() ) {
@@ -137,7 +137,7 @@ $denied_read = wp_get_ability( 'mad4b-ci/denied-read-dispatch' );
 $denied_schema_pin = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b-ci/denied-read-dispatch' );
 $denied_execution = $read_dispatch->execute( array(
     'ability_name' => 'mad4b-ci/denied-read-dispatch',
-    'expected_input_schema_sha256' => $denied_schema_pin['input_schema_sha256'],
+    'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b-ci/denied-read-dispatch' )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b-ci/denied-read-dispatch' )['classification_sha256'], 'expected_input_schema_sha256' => $denied_schema_pin['input_schema_sha256'],
     'input' => array(),
 ) );
 if ( ! is_wp_error( $denied_execution ) ) $fail( 'Read dispatcher ignored original permission denial.' );
@@ -211,6 +211,21 @@ try {
 	$server_fixture = new class { public function get_server_id() { return 'mad4b-chatgpt'; } };
 	$read_tool = \WP\MCP\Domain\Tools\McpTool::fromAbility( wp_get_ability( 'mad4b/diagnostics-health' ) );
 	if ( is_wp_error( $read_tool ) ) $fail( 'Official read tool fixture failed.' );
+	$identity = MAD4B_SCP_ChatGPT_Tool_Projection::callback_identity( $read_tool );
+	if ( ! is_array( $identity ) || 2 !== count( $identity ) || ! is_callable( $identity[0] ) || ! is_callable( $identity[1] ) || ! MAD4B_SCP_ChatGPT_Tool_Projection::materialized_tool_matches( $read_tool ) ) $fail( 'Upstream callback identity compatibility certification failed.' );
+	$detached = clone $read_tool;
+	$bound_property = ( new ReflectionObject( $detached ) )->getProperty( 'ability' ); $bound_property->setAccessible( true );
+	$bound = clone $bound_property->getValue( $detached ); $bound_property->setValue( $detached, $bound );
+	foreach ( array( 'execute_callback', 'permission_callback' ) as $callback_property ) {
+		$property = ( new ReflectionObject( $bound ) )->getProperty( $callback_property ); $property->setAccessible( true ); $original = $property->getValue( $bound );
+		try {
+			$property->setValue( $bound, static function() { return true; } );
+			if ( MAD4B_SCP_ChatGPT_Tool_Projection::materialized_tool_matches( $detached ) ) $fail( 'Same-schema callback identity substitution admitted: ' . $callback_property );
+		} finally { $property->setValue( $bound, $original ); }
+	}
+	if ( null !== MAD4B_SCP_ChatGPT_Tool_Projection::callback_identity( new stdClass() ) || MAD4B_SCP_ChatGPT_Tool_Projection::materialized_tool_matches( new stdClass() ) ) $fail( 'Unknown upstream internals did not fail closed.' );
+	echo "PASS upstream callback identity certification: positive baseline, execute/permission substitution and unknown-layout denial\n";
+
 	$target = wp_get_ability( 'mad4b/diagnostics-health' ); $schema_property = ( new ReflectionObject( $target ) )->getProperty( 'input_schema' ); $schema_property->setAccessible( true ); $old_schema = $schema_property->getValue( $target );
 	try {
 		$schema_property->setValue( $target, array( 'type' => 'object', 'properties' => array( 'changed' => array( 'type' => 'integer' ) ) ) );

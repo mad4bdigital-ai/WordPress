@@ -69,6 +69,12 @@ foreach ( array( 'write', 'content', 'admin' ) as $lane ) {
  check_gateway( $execution['dispatch_tool'] === 'mad4b/write-execute' && $execution['expected_execution_lane'] === $lane, 'Mutation lane lost stable dispatch/original identity: ' . $lane );
  $input = array( 'ability_name' => $name, 'input' => array(), 'expected_input_schema_sha256' => $execution['expected_input_schema_sha256'], 'expected_classification_sha256' => $execution['expected_classification_sha256'], 'expected_execution_lane' => $execution['expected_execution_lane'] );
  check_gateway( ! is_wp_error( $dispatcher->write_execute( $input ) ) && 1 === $a->calls, 'Valid original lane failed execution: ' . $lane );
+ foreach ( array( 'expected_execution_lane', 'expected_classification_sha256' ) as $required_pin ) {
+  $missing = $input; unset( $missing[$required_pin] );
+  check_gateway( is_wp_error( $dispatcher->write_execute( $missing ) ) && 1 === $a->calls, 'Missing prepared identity reached execution: ' . $required_pin );
+ }
+ $legacy = $input; unset( $legacy['expected_execution_lane'], $legacy['expected_classification_sha256'] );
+ check_gateway( is_wp_error( $dispatcher->write_execute( $legacy ) ) && 1 === $a->calls, 'Schema-only legacy execution was accepted' );
  $a->permission = false;
  check_gateway( is_wp_error( $dispatcher->write_execute( $input ) ) && 1 === $a->calls, 'Dispatcher bypassed original permission: ' . $lane );
  $a->permission = true; $a->lane = 'write' === $lane ? 'content' : 'write';

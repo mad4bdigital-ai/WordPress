@@ -249,7 +249,7 @@ if ( ! is_wp_error( $read_missing_pin ) || 'ability_invalid_input' !== $read_mis
 $database_read = $read_execute->execute(
 	array(
 		'ability_name' => 'mad4b/database-list-tables',
-		'expected_input_schema_sha256' => (string) $database_info['input_schema_sha256'],
+		'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/database-list-tables' )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/database-list-tables' )['classification_sha256'], 'expected_input_schema_sha256' => (string) $database_info['input_schema_sha256'],
 		'input' => array(),
 	)
 );
@@ -259,7 +259,7 @@ if ( is_wp_error( $database_read ) || empty( $database_read['read_only'] ) || ! 
 $read_schema_drift = $read_execute->execute(
 	array(
 		'ability_name' => 'mad4b/database-list-tables',
-		'expected_input_schema_sha256' => str_repeat( '0', 64 ),
+		'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/database-list-tables' )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/database-list-tables' )['classification_sha256'], 'expected_input_schema_sha256' => str_repeat( '0', 64 ),
 		'input' => array(),
 	)
 );
@@ -270,7 +270,7 @@ if ( ! is_wp_error( $read_schema_drift ) || 'mad4b_read_dispatch_schema_drift' !
 $mutation_denied = $read_execute->execute(
 	array(
 		'ability_name' => 'mad4b/plugin-package-apply',
-		'expected_input_schema_sha256' => str_repeat( '0', 64 ),
+		'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/plugin-package-apply' )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/plugin-package-apply' )['classification_sha256'], 'expected_input_schema_sha256' => str_repeat( '0', 64 ),
 		'input' => array(),
 	)
 );
@@ -305,7 +305,7 @@ if ( ! array_key_exists( 'runtime_eligible', $package_write_info ) ) {
 $write_attempt = $write_execute->execute(
 	array(
 		'ability_name' => 'mad4b/plugin-package-apply',
-		'expected_input_schema_sha256' => (string) $package_write_info['input_schema_sha256'],
+		'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/plugin-package-apply' )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/plugin-package-apply' )['classification_sha256'], 'expected_input_schema_sha256' => (string) $package_write_info['input_schema_sha256'],
 		'input' => array(),
 	)
 );

@@ -40,7 +40,7 @@ final class MAD4B_SCP_Abilities {
 				'expected_execution_lane' => array( 'type' => 'string', 'enum' => array( 'read', 'write', 'content', 'admin', 'developer' ) ),
 				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
-			), array( 'ability_name', 'expected_input_schema_sha256' )
+			), array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256' )
 		), false, true, false, true );
 		$this->add( 'mad4b/write-discover', 'Discover Governed Write Abilities', 'mad4b-read', 'write_discover', 'read', $this->schema(
 			array(
@@ -58,7 +58,7 @@ final class MAD4B_SCP_Abilities {
 				'expected_execution_lane' => array( 'type' => 'string', 'enum' => array( 'read', 'write', 'content', 'admin', 'developer' ) ),
 				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
-			), array( 'ability_name', 'expected_input_schema_sha256' )
+			), array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256' )
 		), false, false, true, false );
 		$this->add( 'mad4b/developer-discover', 'Discover Normal Developer Abilities', 'mad4b-read', 'developer_discover', 'read', $this->schema(
 			array(
@@ -76,7 +76,7 @@ final class MAD4B_SCP_Abilities {
 				'expected_execution_lane' => array( 'type' => 'string', 'enum' => array( 'read', 'write', 'content', 'admin', 'developer' ) ),
 				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
-			), array( 'ability_name', 'expected_input_schema_sha256' )
+			), array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256' )
 		), false, false, true, false );
 		$this->add( 'mad4b/enrollment-discover', 'Discover Bounded Enrollment Operations', 'mad4b-read', 'enrollment_discover', 'read', $this->schema(
 			array(
@@ -560,7 +560,7 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	private function validate_prepared_classification( $ability_name, array $input ) {
-		if ( ! array_key_exists( 'expected_execution_lane', $input ) && ! array_key_exists( 'expected_classification_sha256', $input ) ) return true;
+		if ( ! isset( $input['expected_execution_lane'], $input['expected_classification_sha256'] ) || ! is_string( $input['expected_execution_lane'] ) || ! in_array( $input['expected_execution_lane'], array( 'read', 'write', 'content', 'admin', 'developer' ), true ) || ! is_string( $input['expected_classification_sha256'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $input['expected_classification_sha256'] ) ) return new WP_Error( 'mad4b_dispatch_preparation_required', 'Prepare the target again and supply its exact execution lane and classification digest.' );
 		if ( ! class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) return new WP_Error( 'mad4b_dispatch_classification_unavailable', 'Prepared classification cannot be revalidated.' );
 		$row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $ability_name );
 		if ( is_wp_error( $row ) || empty( $row['execution_eligible'] ) ) return new WP_Error( 'mad4b_dispatch_classification_unavailable', 'Prepared target is no longer execution eligible.' );

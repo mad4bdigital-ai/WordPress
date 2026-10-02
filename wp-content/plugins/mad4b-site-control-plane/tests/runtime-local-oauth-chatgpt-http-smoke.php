@@ -606,7 +606,7 @@ $browser_call = $dispatch(
 			'name' => 'mad4b-read-execute',
 			'arguments' => array(
 				'ability_name' => 'mad4b/browser-acceptance-capabilities',
-				'expected_input_schema_sha256' => $browser_info['input_schema_sha256'],
+				'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/browser-acceptance-capabilities' )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b/browser-acceptance-capabilities' )['classification_sha256'], 'expected_input_schema_sha256' => $browser_info['input_schema_sha256'],
 				'input' => array(),
 			),
 		),

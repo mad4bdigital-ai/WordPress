@@ -23,3 +23,12 @@ for forbidden in ("delete_option(", "delete_site_option(", "DROP TABLE", "DELETE
 assert "finally { restore_current_blog(); }" in lifecycle
 
 print("mad4b.plugin-lifecycle-data-retention-contract.v1: PASS")
+
+# Explicit retirement remains outside plugin boot and remote Ability surfaces.
+purge = (plugin / 'tools/catalog-decommission.php').read_text()
+assert 'tools/catalog-decommission.php' not in main_text
+for required in ('CLI only', 'manage_options', 'is_super_admin', 'ms_is_switched', 'READER_GRACE_SECONDS', 'hash_equals', 'SHA2(option_value,256)', 'readback_verified', 'authority_data_deleted', 'LIMIT 10001'):
+    assert required in purge, required
+for forbidden in ('wp_register_ability', 'register_rest_route', 'DROP TABLE', 'delete_site_option(', 'delete_metadata('):
+    assert forbidden not in purge, forbidden
+print('mad4b.explicit-catalog-retirement-boundary.v1: PASS')

@@ -23,7 +23,7 @@ $dispatch_read = static function ( $ability_name, array $input = array() ) use (
 	$result = $read_dispatch->execute(
 		array(
 			'ability_name' => (string) $ability_name,
-			'expected_input_schema_sha256' => $info['input_schema_sha256'],
+			'expected_execution_lane' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( (string) $ability_name )['execution_lane'], 'expected_classification_sha256' => MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( (string) $ability_name )['classification_sha256'], 'expected_input_schema_sha256' => $info['input_schema_sha256'],
 			'input' => $input,
 		)
 	);
