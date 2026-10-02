@@ -204,7 +204,7 @@ for ability in [
     read_catalog = servers.split("'mad4b-read' =>", 1)[1].split("'mad4b-chatgpt' =>", 1)[0]
     if ability not in read_catalog or "self::core_tools( 'mad4b-read' )" not in servers:
         raise SystemExit(f'{ability} must remain in the read discovery universe shared with ChatGPT')
-    if "MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $ability_name )" not in abilities or "'read' !== $row['lane']" not in abilities:
+    if "MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name )" not in abilities or "'read' !== $row['lane']" not in abilities:
         raise SystemExit('Remote parity discovery must preserve governed read classification admission')
 
 for ability in [
