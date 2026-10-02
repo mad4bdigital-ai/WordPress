@@ -148,12 +148,16 @@ foreach ( array( 'fixture/stale-a', 'fixture/stale-b' ) as $stale_name ) {
 $first_identity = prepared_dispatch_identity( 'fixture/stale-a' );
 $second_identity = prepared_dispatch_identity( 'fixture/stale-b' );
 $stale_approval = '00000000-0000-0000-0000-000000000099';
-$first_input = array_merge( array( 'ability_name' => 'fixture/stale-a', 'input' => array(), '_mad4b_approval_ticket_id' => $stale_approval ), $first_identity );
+$first_input = array_merge( array( 'ability_name' => 'fixture/stale-a', 'input' => array( 'alpha' => 1, 'beta' => 2 ), '_mad4b_approval_ticket_id' => $stale_approval ), $first_identity );
 $second_input = array_merge( array( 'ability_name' => 'fixture/stale-b', 'input' => array() ), $second_identity );
 check_gateway( true === $dispatcher->can_write_dispatch( $first_input ), 'First prepared target failed governance capture' );
+$reordered_payload = $first_input;
+unset( $reordered_payload['_mad4b_approval_ticket_id'] );
+$reordered_payload['input'] = array( 'beta' => 2, 'alpha' => 1 );
+check_gateway( true === $dispatcher->can_write_dispatch( $reordered_payload ), 'Semantically identical reordered mutation input produced false governance drift' );
 $changed_payload = $first_input;
 unset( $changed_payload['_mad4b_approval_ticket_id'] );
-$changed_payload['input'] = array( 'different_target_payload' => true );
+$changed_payload['input'] = array( 'alpha' => 1, 'beta' => 3 );
 $cross_payload = $dispatcher->can_write_dispatch( $changed_payload );
 check_gateway( is_wp_error( $cross_payload ) && 'mad4b_write_dispatch_governance_target_conflict' === $cross_payload->get_error_code(), 'Abandoned governance envelope crossed into different mutation input for the same prepared Ability' );
 $cross_target = $dispatcher->can_write_dispatch( $second_input );
