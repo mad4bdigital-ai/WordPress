@@ -236,6 +236,16 @@ $database_info = $info->execute( array( 'ability_name' => 'mad4b/database-list-t
 if ( is_wp_error( $database_info ) || empty( $database_info['input_schema_sha256'] ) ) {
 	$fail( 'Read info did not expose an exact input schema digest.', $database_info );
 }
+$read_missing_pin = $read_execute->execute(
+	array(
+		'ability_name' => 'mad4b/database-list-tables',
+		'input' => array(),
+	)
+);
+if ( ! is_wp_error( $read_missing_pin ) || 'mad4b_read_dispatch_schema_pin_required' !== $read_missing_pin->get_error_code() ) {
+	$fail( 'Readonly dispatcher accepted execution without an exact input schema pin.', $read_missing_pin );
+}
+
 $database_read = $read_execute->execute(
 	array(
 		'ability_name' => 'mad4b/database-list-tables',
