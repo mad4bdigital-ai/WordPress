@@ -221,7 +221,15 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			// require the exact ChatGPT step-up bearer for visibility; the original
 			// Ability permission callback remains authoritative for execution.
 			if ( ( $direct_step_up || ( $dynamic && ! $dynamic_readonly ) ) && ! $step_up_visible ) continue;
-			if ( $dynamic_breakglass && ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_breakglass() ) ) continue;
+			if ( $dynamic_breakglass ) {
+				$breakglass_scope_visible = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
+					&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+					&& (
+						MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'server:mad4b-breakglass' )
+						|| ( '' !== $ability && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'ability:' . $ability ) )
+					);
+				if ( ! $breakglass_scope_visible || ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_breakglass() ) continue;
+			}
 
 			$failure = self::dto_failure( $dto );
 			if ( ! $failure ) { $safe[] = $dto; continue; }
