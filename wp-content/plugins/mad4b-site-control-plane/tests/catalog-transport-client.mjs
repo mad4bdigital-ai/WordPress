@@ -20,7 +20,7 @@ const fetchImpl = async (url, options) => {
     }
     return Response.json({
       contract: 'mad4b.unified-capability-gateway.v1',
-      abilities: [{...currentRow(), snapshot, authority_scope_sha256: scope, classification: 'read', input_schema_sha256: sha, classification_sha256: scope, execution: {state: 'governed_dispatch'}}],
+      abilities: [{...currentRow(), preparation_receipt: 'receipt-main', snapshot, authority_scope_sha256: scope, classification: 'read', input_schema_sha256: sha, classification_sha256: scope, execution: {state: 'governed_dispatch'}}],
       transfer_policy: {recommended_parallel_schema_fetches: 3},
     });
   }
@@ -140,6 +140,7 @@ for (const [lane, tool] of [['read', 'read'], ['write', 'write'], ['content', 'w
   assert.equal(captured.input.preparation_receipt, `receipt-${receiptSequence}`);
   assert.notEqual(captured.input.preparation_receipt, prepared.entries.get('vendor/mutation').preparation_receipt);
   assert.equal(captured.input.expected_execution_lane, lane);
+  assert.equal(captured.input.expected_authority_scope_sha256, scope);
   assert.equal(captured.input.expected_classification_sha256, scope);
   preparedClassification = snapshot;
   await assert.rejects(laneClient.execute(prepared, 'vendor/mutation', {}), /contract changed/);
