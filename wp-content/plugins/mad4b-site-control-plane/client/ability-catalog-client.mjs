@@ -7,7 +7,8 @@ export class CatalogError extends Error {
 /** Host adapter: explicit trusted REST origin or explicit MCP discovery callback. No implicit credentials. */
 export function createAbilityCatalogClient({ baseUrl, headers = async () => ({}), fetchImpl = globalThis.fetch,
   callDiscover, callTool, cryptoImpl = globalThis.crypto, maxPages = 1024, maxSchemaBytes = 33554432,
-  minChunkBytes = 32768, maxChunkBytes = 262144, targetLatencyMs = 750, credentialMode = 'omit', onProgress = () => {} } = {}) {
+  minChunkBytes = 32768, maxChunkBytes = 262144, targetLatencyMs = 750, maxParallelSchemaFetches = 4,
+  credentialMode = 'omit', onProgress = () => {} } = {}) {
   const base = baseUrl ? new URL(baseUrl) : null;
   if (base && (!['http:', 'https:'].includes(base.protocol) || base.username || base.password)) throw new CatalogError('Invalid trusted REST base');
   if (!base && !callDiscover) throw new CatalogError('A REST base or MCP discovery callback is required');
@@ -16,8 +17,9 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
   if (bounds.some(n => !Number.isInteger(n) || n < 1024 || n > 1048576) || minChunkBytes > maxChunkBytes) throw new CatalogError('Invalid transfer bounds');
   if (!Number.isInteger(maxPages) || maxPages < 1 || maxPages > 10000) throw new CatalogError('Invalid manifest page budget');
   if (!Number.isSafeInteger(maxSchemaBytes) || maxSchemaBytes < 1024 || maxSchemaBytes > 1073741824) throw new CatalogError('Invalid schema memory budget');
+  if (!Number.isInteger(maxParallelSchemaFetches) || maxParallelSchemaFetches < 1 || maxParallelSchemaFetches > 8) throw new CatalogError('Invalid schema parallelism budget');
   if (!['omit', 'same-origin'].includes(credentialMode)) throw new CatalogError('Invalid credential mode');
-  let chunkBytes = minChunkBytes;
+  let chunkBytes = minChunkBytes, parallelFetches = base ? Math.min(2, maxParallelSchemaFetches) : 1;
   const hash = async bytes => [...new Uint8Array(await cryptoImpl.subtle.digest('SHA-256', bytes))].map(n => n.toString(16).padStart(2, '0')).join('');
   const unwrap = result => {
     if (result?.isError) throw new CatalogError('MCP discovery denied');
@@ -80,46 +82,90 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     if (caps.authority_scope_sha256 !== catalog.authority_scope_sha256) throw new CatalogError('Authority changed; rediscover');
     const descriptor = catalog.entries.get(abilityName)?.[format];
     if (!descriptor || !DIGEST.test(descriptor.sha256) || !Number.isSafeInteger(descriptor.bytes) || descriptor.bytes < 1 || descriptor.bytes > maxSchemaBytes) throw new CatalogError('Schema unavailable or host memory budget exceeded');
-    // The fixed chunk size is pinned for this download and its resume state.
+    // Chunk size is pinned for one download/resume namespace; REST parallelism may adapt between bounded windows.
     const size = state.chunkBytes ?? chunkBytes;
     if (!Number.isInteger(size) || size < minChunkBytes || size > maxChunkBytes) throw new CatalogError('Invalid resume chunk size');
     const namespace = [base?.origin ?? 'mcp', catalog.authority_scope_sha256, format, descriptor.sha256, size].join(':');
     if (state.namespace && state.namespace !== namespace) throw new CatalogError('Resume authority or schema mismatch');
     state.namespace = namespace; state.chunkBytes = size;
     if (!(state.chunks instanceof Map)) throw new CatalogError('Invalid resume chunk cache');
-    const count = Math.ceil(descriptor.bytes / size); let snapshot = catalog.snapshot; let renewed = false;
+    const serverRecommended = catalog.transferPolicy?.recommended_parallel_schema_fetches;
+    let activeParallel = base
+      ? Math.max(1, Math.min(maxParallelSchemaFetches, Number.isInteger(serverRecommended) ? serverRecommended : parallelFetches))
+      : 1;
+    state.parallelism = activeParallel;
+    const count = Math.ceil(descriptor.bytes / size);
+    let snapshot = catalog.snapshot, renewed = false, completedBytes = 0;
+    const remaining = new Set();
     for (let i = 0; i < count; i++) {
+      const expected = Math.min(size, descriptor.bytes - i * size), cached = state.chunks.get(i);
+      const valid = cached?.bytes instanceof Uint8Array
+        && cached.bytes.length === expected
+        && DIGEST.test(cached.sha256)
+        && await hash(cached.bytes) === cached.sha256;
+      if (valid) completedBytes += expected;
+      else { state.chunks.delete(i); remaining.add(i); }
+    }
+    const fetchChunk = async i => {
       if (signal?.aborted) throw signal.reason ?? new CatalogError('Transfer cancelled');
-      const expected = Math.min(size, descriptor.bytes - i * size); const cached = state.chunks.get(i);
-      if (cached?.bytes instanceof Uint8Array && cached.bytes.length === expected && DIGEST.test(cached.sha256) && await hash(cached.bytes) === cached.sha256) continue;
+      const expected = Math.min(size, descriptor.bytes - i * size);
       let bytes, checksum; const started = performance.now();
       const input = {snapshot, schema_sha256: descriptor.sha256, schema_format: format, chunk_bytes: size, chunk_index: i};
-      try {
-        if (base) {
-          const response = await rest(`schemas/${descriptor.sha256}/chunks/${i}`, input);
-          if (response.headers.get('X-MAD4B-Schema-SHA256') !== descriptor.sha256 || Number(response.headers.get('X-MAD4B-Chunk-Count')) !== count) throw new CatalogError('Chunk identity mismatch');
-          bytes = new Uint8Array(await response.arrayBuffer()); checksum = response.headers.get('X-MAD4B-Content-SHA256');
-        } else {
-          const part = await request('chunk', input);
-          if (part.schema_sha256 !== descriptor.sha256 || part.chunk_index !== i || part.chunk_count !== count || part.encoding !== 'base64') throw new CatalogError('MCP chunk identity mismatch');
-          bytes = Uint8Array.from(atob(part.data), c => c.charCodeAt(0)); checksum = part.chunk_sha256;
-        }
-      } catch (e) {
-        if (e.status === 410 && !renewed) {
+      if (base) {
+        const response = await rest(`schemas/${descriptor.sha256}/chunks/${i}`, input);
+        if (response.headers.get('X-MAD4B-Schema-SHA256') !== descriptor.sha256 || Number(response.headers.get('X-MAD4B-Chunk-Count')) !== count) throw new CatalogError('Chunk identity mismatch');
+        bytes = new Uint8Array(await response.arrayBuffer()); checksum = response.headers.get('X-MAD4B-Content-SHA256');
+      } else {
+        const part = await request('chunk', input);
+        if (part.schema_sha256 !== descriptor.sha256 || part.chunk_index !== i || part.chunk_count !== count || part.encoding !== 'base64') throw new CatalogError('MCP chunk identity mismatch');
+        bytes = Uint8Array.from(atob(part.data), c => c.charCodeAt(0)); checksum = part.chunk_sha256;
+      }
+      if (bytes.length !== expected || !DIGEST.test(checksum ?? '') || await hash(bytes) !== checksum) throw new CatalogError('Chunk integrity failure');
+      state.chunks.set(i, {bytes, sha256: checksum});
+      completedBytes += bytes.length;
+      const elapsed = performance.now() - started;
+      onProgress({abilityName, completedBytes: Math.min(descriptor.bytes, completedBytes), totalBytes: descriptor.bytes, transport, elapsedMs: elapsed, parallelism: activeParallel});
+      return {index: i, elapsed};
+    };
+    while (remaining.size) {
+      if (signal?.aborted) throw signal.reason ?? new CatalogError('Transfer cancelled');
+      const window = Array.from(remaining).slice(0, activeParallel);
+      const settled = await Promise.allSettled(window.map(fetchChunk));
+      const successful = [], failures = [];
+      for (const result of settled) {
+        if (result.status === 'fulfilled') { successful.push(result.value); remaining.delete(result.value.index); }
+        else failures.push(result.reason);
+      }
+      if (failures.length) {
+        const expired = failures.find(error => error?.status === 410);
+        if (expired && !renewed) {
           const fresh = (await prepare([abilityName])).catalogs.get(abilityName);
           if (!fresh) throw new CatalogError('Ability disappeared; replan');
           const item = fresh.entries.get(abilityName);
           if (fresh.authority_scope_sha256 !== catalog.authority_scope_sha256 || item?.[format]?.sha256 !== descriptor.sha256) throw new CatalogError('Schema changed; replan');
-          snapshot = fresh.snapshot; renewed = true; i--; continue;
+          snapshot = fresh.snapshot; renewed = true;
+          const refreshedRecommendation = fresh.transferPolicy?.recommended_parallel_schema_fetches;
+          if (base && Number.isInteger(refreshedRecommendation)) activeParallel = Math.max(1, Math.min(maxParallelSchemaFetches, refreshedRecommendation));
+          state.parallelism = activeParallel;
+          continue;
         }
-        if ([429, 502, 503, 504].includes(e.status)) chunkBytes = Math.max(minChunkBytes, Math.floor(size / 2));
-        throw e; // Never replay mutations or silently switch credentials/transports.
+        if (failures.some(error => [429, 502, 503, 504].includes(error?.status))) chunkBytes = Math.max(minChunkBytes, Math.floor(size / 2));
+        if (base) {
+          activeParallel = Math.max(1, Math.floor(activeParallel / 2));
+          parallelFetches = activeParallel; state.parallelism = activeParallel;
+        }
+        throw failures[0];
       }
-      if (bytes.length !== expected || !DIGEST.test(checksum ?? '') || await hash(bytes) !== checksum) throw new CatalogError('Chunk integrity failure');
-      state.chunks.set(i, {bytes, sha256: checksum});
-      const elapsed = performance.now() - started;
-      chunkBytes = elapsed < targetLatencyMs / 2 ? Math.min(maxChunkBytes, size * 2) : elapsed > targetLatencyMs ? Math.max(minChunkBytes, Math.floor(size / 2)) : size;
-      onProgress({abilityName, completedBytes: Math.min(descriptor.bytes, (i + 1) * size), totalBytes: descriptor.bytes, transport, elapsedMs: elapsed});
+      if (successful.length) {
+        const averageElapsed = successful.reduce((sum, item) => sum + item.elapsed, 0) / successful.length;
+        chunkBytes = averageElapsed < targetLatencyMs / 2 ? Math.min(maxChunkBytes, size * 2) : averageElapsed > targetLatencyMs ? Math.max(minChunkBytes, Math.floor(size / 2)) : size;
+        if (base) {
+          activeParallel = averageElapsed < targetLatencyMs / 2
+            ? Math.min(maxParallelSchemaFetches, activeParallel + 1)
+            : averageElapsed > targetLatencyMs ? Math.max(1, activeParallel - 1) : activeParallel;
+          parallelFetches = activeParallel; state.parallelism = activeParallel;
+        }
+      }
     }
     const bytes = new Uint8Array(descriptor.bytes);
     for (let i = 0; i < count; i++) bytes.set(state.chunks.get(i).bytes, i * size);
@@ -146,12 +192,20 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
   }
   async function search(task, options = {}) { return gateway('search', {task, ...options}); }
   async function prepare(abilityNames, options = {}) {
-    const result = await gateway('prepare', {ability_names: abilityNames, ...options});
+    const {client_capabilities: suppliedCapabilities = {}, ...gatewayOptions} = options;
+    const requestedParallel = Number.isInteger(suppliedCapabilities.max_parallel_schema_fetches)
+      ? Math.min(maxParallelSchemaFetches, Math.max(1, suppliedCapabilities.max_parallel_schema_fetches))
+      : maxParallelSchemaFetches;
+    const result = await gateway('prepare', {
+      ability_names: abilityNames,
+      ...gatewayOptions,
+      client_capabilities: {...suppliedCapabilities, max_parallel_schema_fetches: requestedParallel},
+    });
     const catalogs = new Map();
     for (const item of result.abilities ?? []) {
       if (!item.source || !DIGEST.test(item.authority_scope_sha256 ?? '') || !DIGEST.test(item.snapshot ?? '')) continue;
       const row = {...item, execution: {lane: item.classification, execution_eligible: item.execution_eligible ?? item.execution?.state === 'governed_dispatch', dispatch_state: item.execution?.state, input_schema_sha256: item.input_schema_sha256, classification_sha256: item.classification_sha256}};
-      catalogs.set(item.ability_name, {snapshot: item.snapshot, authority_scope_sha256: item.authority_scope_sha256, entries: new Map([[item.ability_name, row]]), lazy: true});
+      catalogs.set(item.ability_name, {snapshot: item.snapshot, authority_scope_sha256: item.authority_scope_sha256, entries: new Map([[item.ability_name, row]]), transferPolicy: result.transfer_policy, lazy: true});
     }
     return {...result, catalogs};
   }
