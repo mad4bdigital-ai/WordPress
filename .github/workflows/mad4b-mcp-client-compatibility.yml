@@ -48,6 +48,7 @@ jobs:
           php "$root/tests/preparation-receipt-runtime.php"
           php "$root/tests/intent-registry-contract.php"
           php "$root/tests/catalog-lifecycle-runtime.php"
+          php "$root/tests/catalog-decommission-bootstrap.php"
           python3 "$root/tests/plugin-lifecycle-data-retention-contract.py"
           php -l "$root/tests/runtime-unified-capability-gateway.php"
           php -l "$root/tests/runtime-mcp-client-compatibility-smoke.php"
@@ -86,6 +87,7 @@ jobs:
           php "$root/tests/preparation-receipt-runtime.php"
           php "$root/tests/intent-registry-contract.php"
           php "$root/tests/catalog-lifecycle-runtime.php"
+          php "$root/tests/catalog-decommission-bootstrap.php"
           python3 "$root/tests/plugin-lifecycle-data-retention-contract.py"
 
   runtime:

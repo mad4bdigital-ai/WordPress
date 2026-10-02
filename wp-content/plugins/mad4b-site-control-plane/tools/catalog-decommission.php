@@ -1,7 +1,7 @@
 <?php
 /** Explicit offline cache retirement. Run with wp eval-file, never load in plugin boot. */
 if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) { throw new RuntimeException( 'CLI only' ); }
-require_once __DIR__ . '/../includes/class-mad4b-scp-catalog-object-store.php';
+if ( ! class_exists( 'MAD4B_SCP_Catalog_Object_Store', false ) ) require_once __DIR__ . '/../includes/class-mad4b-scp-catalog-object-store.php';
 final class MAD4B_Catalog_Decommission {
  public static function assert_offline() {
   if ( ! current_user_can( 'manage_options' ) || is_multisite() && ! is_super_admin() ) throw new RuntimeException( 'Administrator authority required' );
