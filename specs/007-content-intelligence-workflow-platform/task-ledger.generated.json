@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "539680eb3e00de1829a04986a15cde6ef7da3164",
-  "override_git_blob_sha": "7b671bb5988b9e86972221389fdbb72f5f72a0d4",
+  "source_tasks_git_blob_sha": "bf36d3646b96acb172ba5e6aa085c740960a71ac",
+  "override_git_blob_sha": "ec0614d8c7e31c154c5824ddded27dd2e80932eb",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,16 +10,16 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 53,
-    "OPEN": 637,
-    "PARTIAL": 65
+    "DONE": 55,
+    "OPEN": 634,
+    "PARTIAL": 66
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 45,
-      "OPEN": 497,
-      "PARTIAL": 43
+      "DONE": 47,
+      "OPEN": 494,
+      "PARTIAL": 44
     },
     "P1": {
       "DEFERRED": 0,
@@ -7818,10 +7818,16 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Add database/site clone fixtures proving copied Site Profile, OAuth state, approvals, grants, projections and durable execution evidence are quarantined on foreign origin/environment and require explicit re-enrollment/rebinding.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/clone-authority-quarantine-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "workflow_run:37024826444"
+      ],
+      "reason": "Foreign origin/environment Site Profile, OAuth subject mapping, durable site binding, catalog authority scope and commit-time subject/profile checks are statically certified and the contract runs in MCP CI. A full database/site clone runtime rehearsal across copied approval/grant/projection/durable rows remains to complete T3778."
     },
     {
       "task_id": "T3779",
@@ -7858,20 +7864,28 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Define subject lifecycle invalidation for user deletion, role/capability demotion, Site Profile unenrollment, ChatGPT App remapping and authority/key revocation; active sessions/tokens/receipts remain non-authorizing and next admission/commit revalidates live subject state.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/subject-lifecycle-commit-guard-runtime.php",
+        "workflow_run:37024826444"
+      ],
+      "reason": "Commit-time subject lifecycle revalidation rejects user deletion, capability demotion, Site Profile unenrollment/App remapping and authority/key-generation drift; active session/claim state cannot authorize the final commit."
     },
     {
       "task_id": "T3783",
       "phase": 37,
       "priority": "P0",
       "summary": "GATE Approve an operation, then demote/delete the subject or alter its enrolled mapping before provider entry/commit; execution must fail closed without consuming a successful terminal receipt.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/subject-lifecycle-commit-guard-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "workflow_run:37024826444"
+      ],
+      "reason": "The runtime fixture captures an authorized commit snapshot then mutates subject capabilities, deletes the user, changes enrollment/App mapping and authority generation; every change fails closed with reapproval required before provider commit."
     },
     {
       "task_id": "T3784",

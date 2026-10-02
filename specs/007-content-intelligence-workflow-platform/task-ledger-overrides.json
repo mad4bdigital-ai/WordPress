@@ -1053,6 +1053,35 @@
         "workflow_job:110887688583"
       ],
       "reason": "Compatibility profile now classifies persistent object cache, uncertified db.php/HyperDB-style routers, known security/firewall plugins, maintenance mode, WP-CLI and cron. Unsupported/conflicting infrastructure fails closed with stable blockers and the real runtime profile passed on all certified database/PHP jobs."
+    },
+    "T3778": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/clone-authority-quarantine-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "workflow_run:37024826444"
+      ],
+      "reason": "Foreign origin/environment Site Profile, OAuth subject mapping, durable site binding, catalog authority scope and commit-time subject/profile checks are statically certified and the contract runs in MCP CI. A full database/site clone runtime rehearsal across copied approval/grant/projection/durable rows remains to complete T3778."
+    },
+    "T3782": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/subject-lifecycle-commit-guard-runtime.php",
+        "workflow_run:37024826444"
+      ],
+      "reason": "Commit-time subject lifecycle revalidation rejects user deletion, capability demotion, Site Profile unenrollment/App remapping and authority/key-generation drift; active session/claim state cannot authorize the final commit."
+    },
+    "T3783": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/subject-lifecycle-commit-guard-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "workflow_run:37024826444"
+      ],
+      "reason": "The runtime fixture captures an authorized commit snapshot then mutates subject capabilities, deletes the user, changes enrollment/App mapping and authority generation; every change fails closed with reapproval required before provider commit."
     }
   }
 }

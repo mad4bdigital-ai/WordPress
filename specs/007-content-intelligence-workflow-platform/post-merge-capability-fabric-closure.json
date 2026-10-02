@@ -325,7 +325,7 @@
     },
     {
       "id": "clone_restore_subject_lifecycle",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "task_ids": [
         "T3778",
         "T3779",
@@ -345,7 +345,12 @@
         "impact_approval_receipt_routing"
       ],
       "interim_behavior": "Foreign clones quarantine; restored old state and changed subjects cannot replay previously valid authority artifacts.",
-      "evidence_strategy": "Clone/restore/replay epoch plus user demotion/deletion/remapping fixtures."
+      "evidence_strategy": "Foreign clone quarantine and subject lifecycle commit revalidation are certified. Restore/time-travel epoch plus real clone/restore rehearsal remain open.",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/clone-authority-quarantine-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/subject-lifecycle-commit-guard-runtime.php",
+        "workflow_run:37024826444"
+      ]
     },
     {
       "id": "contract_mixed_runtime",
