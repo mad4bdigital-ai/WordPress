@@ -187,7 +187,7 @@ for marker in (
     "mad4b_read_dispatch_recursion_denied",
     "array_key_exists( 'readonly', $annotations )",
     "true !== $annotations['readonly']",
-    "MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $ability_name )",
+    "MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name )",
     "'read' !== $row['lane']",
     "empty( $row['execution_eligible'] )",
     "mad4b_read_dispatch_sensitive_target_denied",
