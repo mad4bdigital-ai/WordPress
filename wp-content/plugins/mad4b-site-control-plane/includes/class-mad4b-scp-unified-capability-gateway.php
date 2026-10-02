@@ -247,27 +247,35 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		list( $task, $terms ) = self::task_terms( $input );
 		if ( '' === $task && empty( $terms ) ) return new WP_Error( 'mad4b_capability_gateway_task_required', 'Task text or keywords are required for bounded capability search.' );
 		$limit = isset( $input['limit'] ) ? max( 1, min( 25, (int) $input['limit'] ) ) : 12;
+		$ability_names = MAD4B_SCP_ChatGPT_Tool_Projection::all_site_ability_names();
 		$matches = array();
-		foreach ( MAD4B_SCP_ChatGPT_Tool_Projection::all_site_ability_names() as $ability_name ) {
-			$row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $ability_name );
-			if ( is_wp_error( $row ) ) continue;
+		foreach ( $ability_names as $ability_name ) {
+			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
+			try {
+				$ability = wp_get_ability( $ability_name );
+				if ( ! is_object( $ability ) ) continue;
+				$meta = method_exists( $ability, 'get_meta' ) ? $ability->get_meta() : array();
+				$meta = is_array( $meta ) ? $meta : array();
+				$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+				$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+				$row = array(
+					'ability_name' => $ability_name,
+					'label' => method_exists( $ability, 'get_label' ) ? substr( (string) $ability->get_label(), 0, 160 ) : '',
+					'description' => method_exists( $ability, 'get_description' ) ? substr( wp_strip_all_tags( (string) $ability->get_description() ), 0, 320 ) : '',
+					'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
+					'declared_surface' => isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '',
+					'declared_readonly' => array_key_exists( 'readonly', $annotations ) ? (bool) $annotations['readonly'] : null,
+				);
+			} catch ( Throwable $error ) {
+				continue;
+			}
 			$score = self::relevance_score( $row, $task, $terms );
 			if ( $score <= 0 ) continue;
-			$matches[] = array(
-				'ability_name' => $ability_name,
-				'label' => isset( $row['label'] ) ? (string) $row['label'] : '',
-				'description' => isset( $row['description'] ) ? substr( wp_strip_all_tags( (string) $row['description'] ), 0, 320 ) : '',
-				'category' => isset( $row['category'] ) ? (string) $row['category'] : '',
-				'classification' => isset( $row['classification'] ) ? (string) $row['classification'] : 'unavailable',
-				'readonly' => ! empty( $row['readonly'] ),
-				'projection_eligible' => ! empty( $row['projection_eligible'] ),
-				'execution_eligible' => ! empty( $row['execution_eligible'] ),
-				'input_schema_sha256' => isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '',
-				'schema_reference_requires_prepare' => true,
-				'classification_sha256' => isset( $row['classification_sha256'] ) ? (string) $row['classification_sha256'] : '',
-				'projection_blockers' => isset( $row['projection_blockers'] ) && is_array( $row['projection_blockers'] ) ? $row['projection_blockers'] : array(),
-				'relevance_score' => $score,
-			);
+			$row['preparation_required'] = true;
+			$row['schema_loaded'] = false;
+			$row['authority_decision_deferred'] = true;
+			$row['relevance_score'] = $score;
+			$matches[] = $row;
 		}
 		usort( $matches, static function ( $a, $b ) {
 			if ( $a['relevance_score'] === $b['relevance_score'] ) return strcmp( $a['ability_name'], $b['ability_name'] );
@@ -279,10 +287,11 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'contract' => self::CONTRACT,
 			'task' => $task,
 			'keywords' => $terms,
-			'search_mode' => 'bounded_lexical_relevance',
+			'search_mode' => 'bounded_metadata_only_relevance',
 			'items' => $matches,
 			'count' => count( $matches ),
-			'universe_count' => count( MAD4B_SCP_ChatGPT_Tool_Projection::all_site_ability_names() ),
+			'universe_count' => count( $ability_names ),
+			'preparation_required_for_authority_and_schema' => true,
 			'transport_strategy' => $negotiation['transport'],
 			'authority_effect' => 'none',
 			'read_only' => true,
