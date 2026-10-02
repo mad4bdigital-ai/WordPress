@@ -197,7 +197,17 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( ! class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' ) ) {
 			return new WP_Error( 'mad4b_capability_inspector_unavailable', 'Canonical Ability contract inspection is unavailable.' );
 		}
-		return MAD4B_SCP_Ability_Contract_Inspector::inspect( $ability_name );
+		$row = MAD4B_SCP_Ability_Contract_Inspector::inspect( $ability_name );
+		if ( is_wp_error( $row ) ) return $row;
+		$final_verified = class_exists( 'MAD4B_SCP_Execution_Fence' ) && MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name );
+		$row['final_execution_admission_verified'] = $final_verified;
+		if ( ! $final_verified ) {
+			$row['projection_eligible'] = false;
+			if ( ! isset( $row['projection_blockers'] ) || ! is_array( $row['projection_blockers'] ) ) $row['projection_blockers'] = array();
+			$row['projection_blockers'][] = 'final_execution_admission_required';
+			$row['projection_blockers'] = array_values( array_unique( $row['projection_blockers'] ) );
+		}
+		return $row;
 	}
 
 	public static function current_binding() {
@@ -244,6 +254,11 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			$lane = self::execution_server( $name );
 			if ( is_wp_error( $lane ) ) return $lane;
 		}
+		if ( ! class_exists( 'MAD4B_SCP_Execution_Fence' ) || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $name ) ) {
+			return new WP_Error( 'mad4b_projection_final_execution_admission_required', 'Projected Ability is missing the final execution-admission wrapper.' );
+		}
+		$seal = MAD4B_SCP_Execution_Fence::seal_projected_call( $name, $args, $tool, $server );
+		if ( is_wp_error( $seal ) ) return $seal;
 		return $args;
 	}
 

@@ -99,7 +99,7 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
     // Simulate a later plugin replacing a genuinely wrapped callback while
     // leaving its claimed boundary metadata intact. The actual callback must fail provenance.
     $strip_boundary = static function ( $args, $name ) {
-        if ( 'mad4b-ci/spoofed-boundary' === $name ) $args['execute_callback'] = static function () { return array( 'ok' => true ); };
+        if ( in_array( $name, array( 'mad4b-ci/spoofed-boundary', 'mad4b-ci/late-read-admission-fixture' ), true ) ) $args['execute_callback'] = static function () { return array( 'ok' => true ); };
         return $args;
     };
     add_filter( 'wp_register_ability_args', $strip_boundary, PHP_INT_MAX, 2 );

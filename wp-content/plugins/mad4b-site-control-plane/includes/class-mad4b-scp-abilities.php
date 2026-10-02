@@ -569,7 +569,8 @@ final class MAD4B_SCP_Abilities {
 			return MAD4B_SCP_Transport_Context::with_developer_dispatch_target(
 				$ability_name,
 				$actual_schema_sha256,
-				static function () use ( $ability, $params ) { return $ability->execute( $params ); }
+				static function () use ( $ability, $params ) { return $ability->execute( $params ); },
+				$params
 			);
 		};
 
@@ -950,7 +951,8 @@ final class MAD4B_SCP_Abilities {
 							? MAD4B_SCP_Authorization::execution_callback_started( $ability_name )
 							: true;
 					}
-				}
+				},
+				$params
 			);
 		};
 

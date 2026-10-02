@@ -161,6 +161,7 @@ final class MAD4B_SCP_Request_Generation {
 			array( 'MAD4B_SCP_Servers', 'reset_request_cache' ),
 			array( 'MAD4B_SCP_Staging_Write_Authority', 'reset_request_cache' ),
 			array( 'MAD4B_SCP_Authorization', 'reset_request_cache' ),
+			array( 'MAD4B_SCP_Execution_Fence', 'reset_request_cache' ),
 			array( 'MAD4B_SCP_Abilities', 'reset_request_cache' ),
 			array( 'MAD4B_SCP_Identity_Context', 'reset_request_cache' ),
 			array( 'MAD4B_SCP_MCP_Request_Scope', 'reset_request_cache' ),

@@ -234,6 +234,12 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
+      - name: Prove final execution admission and governed child recursion
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-execution-fence-recursion.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
       - name: Prove independent database builds and non-destructive cron lifecycle
         shell: bash
         run: |
