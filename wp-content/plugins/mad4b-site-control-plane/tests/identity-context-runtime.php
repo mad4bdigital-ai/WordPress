@@ -14,6 +14,7 @@ function absint( $value ) { return abs( (int) $value ); }
 function sanitize_text_field( $value ) { return trim( preg_replace( '/[\r\n\t]+/', ' ', (string) $value ) ); }
 function wp_generate_uuid4() { return 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; }
 
+require __DIR__ . '/../includes/class-mad4b-scp-identifiers.php';
 require __DIR__ . '/../includes/class-mad4b-scp-identity-context.php';
 
 $check = static function ( $condition, $message ) {
