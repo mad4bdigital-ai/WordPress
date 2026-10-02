@@ -701,6 +701,10 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	private function governance_envelope_hash( $value ) {
+		if ( class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' ) ) {
+			$digest = MAD4B_SCP_Ability_Contract_Inspector::digest( 'mad4b.write-dispatch-governance-value.v1', $value );
+			return is_wp_error( $digest ) ? '' : (string) $digest;
+		}
 		$encoded = wp_json_encode( $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		return false === $encoded ? '' : hash( 'sha256', $encoded );
 	}
