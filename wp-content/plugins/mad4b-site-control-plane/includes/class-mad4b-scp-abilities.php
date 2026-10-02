@@ -193,6 +193,12 @@ final class MAD4B_SCP_Abilities {
 			$mcp_meta['generic_remote_admin'] = false;
 			$mcp_meta['production_mutation_allowed'] = false;
 		}
+		if ( 'breakglass' === (string) $permission || 'mad4b-breakglass' === (string) $category ) {
+			$mcp_meta['surface'] = 'breakglass';
+			$mcp_meta['generic_remote_admin'] = false;
+			$mcp_meta['production_mutation_allowed'] = false;
+			$mcp_meta['breakglass_allowed'] = true;
+		}
 		$args = array(
 			'label' => $label,
 			'description' => $label . ' through the governed MAD4B Site Control Plane.',
