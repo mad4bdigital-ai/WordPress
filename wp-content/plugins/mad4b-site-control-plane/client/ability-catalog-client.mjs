@@ -6,7 +6,7 @@ export class CatalogError extends Error {
 
 /** Host adapter: explicit trusted REST origin or explicit MCP discovery callback. No implicit credentials. */
 export function createAbilityCatalogClient({ baseUrl, headers = async () => ({}), fetchImpl = globalThis.fetch,
-  callDiscover, callTool, cryptoImpl = globalThis.crypto, maxPages = 1024, maxSchemaBytes = 33554432,
+  callDiscover, callTool, cryptoImpl = globalThis.crypto, maxPages = 1024, maxManifestEvents = 10000, maxSchemaBytes = 33554432,
   minChunkBytes = 32768, maxChunkBytes = 262144, targetLatencyMs = 750, maxParallelSchemaFetches = 4,
   credentialMode = 'omit', requestTimeoutMs = 15000, maxResponseBytes = 1048576, onProgress = () => {} } = {}) {
   const base = baseUrl ? new URL(baseUrl) : null;
@@ -16,6 +16,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
   const bounds = [minChunkBytes, maxChunkBytes];
   if (bounds.some(n => !Number.isInteger(n) || n < 1024 || n > 1048576) || minChunkBytes > maxChunkBytes) throw new CatalogError('Invalid transfer bounds');
   if (!Number.isInteger(maxPages) || maxPages < 1 || maxPages > 10000) throw new CatalogError('Invalid manifest page budget');
+  if (!Number.isInteger(maxManifestEvents) || maxManifestEvents < 1 || maxManifestEvents > 1000000) throw new CatalogError('Invalid manifest event budget');
   if (!Number.isSafeInteger(maxSchemaBytes) || maxSchemaBytes < 1024 || maxSchemaBytes > 1073741824) throw new CatalogError('Invalid schema memory budget');
   if (!Number.isInteger(maxParallelSchemaFetches) || maxParallelSchemaFetches < 1 || maxParallelSchemaFetches > 8) throw new CatalogError('Invalid schema parallelism budget');
   if (!['omit', 'same-origin'].includes(credentialMode)) throw new CatalogError('Invalid credential mode');
@@ -131,28 +132,37 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     if (base && new URL(caps.rest_base_url).origin !== base.origin) throw new CatalogError('Server advertised a different credential origin');
     return caps;
   }
-  async function manifest(input = {}, expectedScope) {
+  async function manifest(input = {}, expectedScope, {signal} = {}) {
     let cursor, snapshot, scope, delta, pages = 0; const items = [], removed = [], seen = new Set(), events = new Set();
     do {
+      if (signal?.aborted) throw signal.reason ?? new CatalogError('Transfer cancelled');
       if (++pages > maxPages) throw new CatalogError('Manifest page budget exhausted');
-      const page = await request('manifest', cursor ? {cursor} : input);
+      const page = await request('manifest', cursor ? {cursor} : input, {signal});
       if (!DIGEST.test(page.snapshot) || !DIGEST.test(page.authority_scope_sha256) || !Array.isArray(page.items) || !Array.isArray(page.removed)) throw new CatalogError('Invalid manifest');
       snapshot ??= page.snapshot; scope ??= page.authority_scope_sha256; delta ??= page.delta;
       if (snapshot !== page.snapshot || scope !== page.authority_scope_sha256 || (expectedScope && scope !== expectedScope) || delta !== page.delta) throw new CatalogError('Manifest authority or revision changed');
-      for (const item of page.items) { if (typeof item.ability_name !== 'string' || events.has(item.ability_name)) throw new CatalogError('Duplicate or invalid manifest event'); events.add(item.ability_name); items.push(item); }
-      for (const name of page.removed) { if (typeof name !== 'string' || events.has(name)) throw new CatalogError('Duplicate or invalid removal'); events.add(name); removed.push(name); }
+      for (const item of page.items) {
+        if (typeof item.ability_name !== 'string' || events.has(item.ability_name)) throw new CatalogError('Duplicate or invalid manifest event');
+        if (events.size >= maxManifestEvents) throw new CatalogError('Manifest event budget exhausted');
+        events.add(item.ability_name); items.push(item);
+      }
+      for (const name of page.removed) {
+        if (typeof name !== 'string' || events.has(name)) throw new CatalogError('Duplicate or invalid removal');
+        if (events.size >= maxManifestEvents) throw new CatalogError('Manifest event budget exhausted');
+        events.add(name); removed.push(name);
+      }
       cursor = page.next_cursor;
       if (cursor && (typeof cursor !== 'string' || seen.has(cursor))) throw new CatalogError('Repeated manifest cursor');
       if (cursor) seen.add(cursor);
     } while (cursor);
     return {contract: CONTRACT, snapshot, authority_scope_sha256: scope, delta, items, removed};
   }
-  async function sync(previous, query = '') {
-    const caps = await negotiate();
+  async function sync(previous, query = '', {signal} = {}) {
+    const caps = await negotiate({signal});
     const compatible = previous?.authority_scope_sha256 === caps.authority_scope_sha256 && previous.query === query;
     let result;
-    try { result = await manifest({query, known_snapshot: compatible ? previous.snapshot : undefined}, caps.authority_scope_sha256); }
-    catch (e) { if (!compatible || e.status !== 410) throw e; result = await manifest({query}, caps.authority_scope_sha256); }
+    try { result = await manifest({query, known_snapshot: compatible ? previous.snapshot : undefined}, caps.authority_scope_sha256, {signal}); }
+    catch (e) { if (!compatible || e.status !== 410) throw e; result = await manifest({query}, caps.authority_scope_sha256, {signal}); }
     const entries = compatible && result.delta ? new Map(previous.entries) : new Map();
     for (const name of result.removed) entries.delete(name);
     for (const item of result.items) entries.set(item.ability_name, item);
@@ -300,10 +310,11 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     }
     return {...result, catalogs};
   }
-  async function execute(catalog, abilityName, input, {mode = 'dispatch', directToolNames = [], operation} = {}) {
+  async function execute(catalog, abilityName, input, {mode = 'dispatch', directToolNames = [], operation, signal} = {}) {
     if (!callTool) throw new CatalogError('Host tool execution callback required');
+    if (signal?.aborted) throw signal.reason ?? new CatalogError('Transfer cancelled');
     // Always resolve the selected target through one authoritative descriptor.
-    const fresh = (await prepare([abilityName])).catalogs.get(abilityName);
+    const fresh = (await prepare([abilityName], {signal})).catalogs.get(abilityName);
     if (!fresh || fresh.authority_scope_sha256 !== catalog.authority_scope_sha256) throw new CatalogError('Authority changed; rediscover');
     const item = fresh.entries.get(abilityName), old = catalog.entries.get(abilityName);
     if (!item || item.source?.sha256 !== old?.source?.sha256 || item.execution?.classification_sha256 !== old?.execution?.classification_sha256) throw new CatalogError('Ability contract changed; replan');
@@ -312,13 +323,13 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     if (mode === 'direct') {
       if (!old?.wire?.sha256 || !item.wire?.sha256 || item.wire.sha256 !== old.wire.sha256 || item.wire.tool_name !== old.wire.tool_name) throw new CatalogError('Direct tool wire contract changed; refresh and replan');
       if (!item.wire?.tool_name || !directToolNames.includes(item.wire.tool_name)) throw new CatalogError('Host has not confirmed this direct tool');
-      return callTool(item.wire.tool_name, input);
+      return callTool(item.wire.tool_name, input, {signal});
     }
     if (mode !== 'dispatch') throw new CatalogError('Invalid execution mode');
     if (execution.dispatch_state === 'requires_dynamic_projection') throw new CatalogError('Host must refresh and confirm this direct projection');
-    if (execution.lane === 'read') return callTool('mad4b-read-execute', {ability_name: abilityName, expected_input_schema_sha256: execution.input_schema_sha256, input});
-    if (['write', 'developer'].includes(execution.lane)) return callTool(`mad4b-${execution.lane}-execute`, {ability_name: abilityName, expected_input_schema_sha256: execution.input_schema_sha256, input});
-    if (execution.lane === 'enrollment' && operation?.ability_name === abilityName && DIGEST.test(operation.expected_registration_digest) && DIGEST.test(operation.expected_dispatch_policy_digest)) return callTool('mad4b-enrollment-execute', {operation_id: operation.operation_id, expected_registration_digest: operation.expected_registration_digest, expected_dispatch_policy_digest: operation.expected_dispatch_policy_digest, expected_input_schema_sha256: execution.input_schema_sha256, input});
+    if (execution.lane === 'read') return callTool('mad4b-read-execute', {ability_name: abilityName, expected_input_schema_sha256: execution.input_schema_sha256, input}, {signal});
+    if (['write', 'developer'].includes(execution.lane)) return callTool(`mad4b-${execution.lane}-execute`, {ability_name: abilityName, expected_input_schema_sha256: execution.input_schema_sha256, input}, {signal});
+    if (execution.lane === 'enrollment' && operation?.ability_name === abilityName && DIGEST.test(operation.expected_registration_digest) && DIGEST.test(operation.expected_dispatch_policy_digest)) return callTool('mad4b-enrollment-execute', {operation_id: operation.operation_id, expected_registration_digest: operation.expected_registration_digest, expected_dispatch_policy_digest: operation.expected_dispatch_policy_digest, expected_input_schema_sha256: execution.input_schema_sha256, input}, {signal});
     throw new CatalogError('Use the original explicit authority route for this lane');
   }
   return {negotiate, search, prepare, manifest, sync, readSchema, execute, transport};
