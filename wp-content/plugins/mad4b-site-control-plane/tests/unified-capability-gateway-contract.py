@@ -32,6 +32,12 @@ for marker in [
     assert marker in gateway, f'missing unified gateway invariant: {marker}'
 
 assert '->execute(' not in gateway, 'unified gateway must not directly execute target Abilities'
+search_section = gateway.split("public static function search", 1)[1].split("private static function execution_descriptor", 1)[0]
+for forbidden in ["describe_ability(", "get_input_schema(", "get_output_schema(", "input_schema_sha256", "classification_sha256", "execution_eligible"]:
+    assert forbidden not in search_section, f'task search must remain metadata-only before preparation: {forbidden}'
+for marker in ["bounded_metadata_only_relevance", "preparation_required", "schema_loaded", "authority_decision_deferred"]:
+    assert marker in search_section, f'metadata-only search invariant missing: {marker}'
+
 assert "public static function prepare_ability" in catalog, 'single-Ability lazy schema preparation is missing'
 for marker in ["subject_fingerprint", "issuer_fingerprint", "client_fingerprint", "token_scopes"]:
     assert marker in catalog, f'catalog scope is not identity-bound: {marker}'
