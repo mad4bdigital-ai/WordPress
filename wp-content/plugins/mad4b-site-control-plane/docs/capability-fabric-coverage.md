@@ -56,7 +56,7 @@ migration requirement.
 
 | # | Recommendation | Current coverage / remaining implementation |
 |---|---|---|
-| 1 | Canonical descriptor | Delivered a projection-independent canonical Ability inspector plus selected-capability descriptor facade with canonical classification hashing. Operation Registry, Traits, Servers and Authorization still need gradual migration to consume the descriptor directly rather than re-deriving adjacent facts. |
+| 1 | Canonical descriptor | Delivered a projection-independent canonical Ability inspector plus selected-capability descriptor facade with canonical classification hashing. Gateway preparation, catalog execution metadata and fixed dispatch now consume the descriptor directly; Projection is a consumer rather than the classifier owner. Operation Registry, Traits, Servers and Authorization still need gradual migration where they own adjacent facts. |
 | 2 | Generation hierarchy | Delivered independent contract/site roots. Provider certification, policy and impact roots require their owning registries' stable contracts. Never label an incomplete root as complete. |
 | 3 | Prepared receipt | Delivered signed, expiring, scope-bound preparation evidence. Receipt and prepared authority scope are mandatory for normal fixed read/write/developer dispatch, while live authorization still re-runs. It does not replace operation-specific approvals. |
 | 4 | MCP compatibility profiles | Existing pinned Adapter/protocol remains certified. A 2026 profile needs separate shadow wire certification; no new advertised support is added. |
