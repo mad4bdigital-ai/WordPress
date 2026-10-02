@@ -47,6 +47,7 @@ required_dispatch = [
     "private static $write_dispatch_governance_envelope = array();",
     "private static $write_dispatch_governance_binding = '';",
     "write_dispatch_preparation_binding",
+    "MAD4B_SCP_Ability_Contract_Inspector::digest( 'mad4b.write-dispatch-governance-value.v1'",
     "$identity['target_input_sha256'] = $target_input_sha256;",
     "mad4b_write_dispatch_governance_target_conflict",
     "self::$write_dispatch_governance_binding = '';",
