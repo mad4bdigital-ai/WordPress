@@ -69,3 +69,12 @@ $bad = new FixtureResponse( array( 'result' => (object) array( 'tools' => array(
 MAD4B_SCP_MCP_Catalog_Diagnostics::observe_response( $bad, null, $request );
 check( 'rpc_error' === $bad->headers['X-MAD4B-MCP-Outcome'], 'malformed result cannot crash discovery diagnostics' );
 echo "MCP catalog evidence runtime: PASS\n";
+
+// Valid object schemas may omit properties; provided keywords keep strict wire types.
+class SchemaFixtureDTO { private $schema; function __construct( $schema ) { $this->schema = $schema; } function toArray() { return array( 'inputSchema' => $this->schema ); } }
+check( null === MAD4B_SCP_MCP_Catalog_Diagnostics::dto_failure( new SchemaFixtureDTO( array( 'type' => 'object' ) ) ), 'Object schema without properties rejected' );
+check( null === MAD4B_SCP_MCP_Catalog_Diagnostics::dto_failure( new SchemaFixtureDTO( array( 'type' => 'object', 'additionalProperties' => false ) ) ), 'No-argument closed object rejected' );
+foreach ( array( array(), null, 'bad' ) as $properties ) {
+ check( null !== MAD4B_SCP_MCP_Catalog_Diagnostics::dto_failure( new SchemaFixtureDTO( array( 'type' => 'object', 'properties' => $properties ) ) ), 'Invalid provided properties admitted' );
+}
+check( null !== MAD4B_SCP_MCP_Catalog_Diagnostics::dto_failure( new SchemaFixtureDTO( array( 'type' => 'array' ) ) ), 'Non-object input admitted' );

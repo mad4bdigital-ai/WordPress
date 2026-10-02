@@ -1138,6 +1138,9 @@ final class MAD4B_SCP_Self_Update {
 		}
 		$message = __( 'MAD4B Site Control Plane update did not complete.', 'mad4b-site-control-plane' );
 		if ( '' !== $code ) $message .= ' ' . sprintf( __( 'Reason: %s', 'mad4b-site-control-plane' ), $code );
+		if ( 'mad4b_self_update_continuation_prior_authority_drift' === $code ) {
+			$message .= ' ' . __( 'Review governed write authority and reconcile its binding to the currently installed build before retrying this update.', 'mad4b-site-control-plane' );
+		}
 
 		$maintenance_state = isset( $_GET['mad4b_update_maintenance_state'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_update_maintenance_state'] ) ) : '';
 		if ( '' !== $maintenance_state ) {
@@ -1213,12 +1216,19 @@ final class MAD4B_SCP_Self_Update {
 	private static function continuation_policy_projection() {
 		$policy = self::post_update_continuation_policy();
 		if ( is_wp_error( $policy ) ) {
+			$data = $policy->get_error_data();
+			$data = is_array( $data ) ? $data : array();
 			return array(
 				'contract' => 'mad4b.self-update-continuation-policy.v1',
 				'blocked' => true,
 				'blocker' => sanitize_key( (string) $policy->get_error_code() ),
 				'required' => null,
 				'mode' => 'blocked',
+				'prior_authority_effective' => isset( $data['prior_authority_effective'] ) ? (bool) $data['prior_authority_effective'] : null,
+				'candidate_binding_required' => isset( $data['candidate_binding_required'] ) ? (bool) $data['candidate_binding_required'] : null,
+				'candidate_binding_match' => isset( $data['candidate_binding_match'] ) ? (bool) $data['candidate_binding_match'] : null,
+				'operator_action' => 'mad4b_self_update_continuation_prior_authority_drift' === $policy->get_error_code() ? 'reconcile_staging_write_authority' : '',
+				'automatic_mutation_retry_allowed' => false,
 				'bootstrap_without_authority' => false,
 				'production_mutation_allowed' => false,
 				'authority_created' => false,
@@ -1373,12 +1383,22 @@ final class MAD4B_SCP_Self_Update {
 
 		$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
 		$effective = MAD4B_SCP_Staging_Write_Authority::effective();
+		if ( ! is_array( $binding ) || ! isset( $binding['required'], $binding['match'] ) || ! is_bool( $binding['required'] ) || ! is_bool( $binding['match'] ) || ! is_bool( $effective ) ) {
+			return new WP_Error( 'mad4b_self_update_continuation_authority_state_unavailable', 'Unable to classify the pre-update governed-write candidate binding safely.' );
+		}
 		$out['prior_authority_effective'] = (bool) $effective;
 		$out['candidate_binding_match'] = is_array( $binding ) && ! empty( $binding['match'] );
 		if ( ! $effective || ( is_array( $binding ) && ! empty( $binding['required'] ) && empty( $binding['match'] ) ) ) {
 			return new WP_Error(
 				'mad4b_self_update_continuation_prior_authority_drift',
-				'Existing governed-write authority is stale or candidate-bound to a different build; reconcile it before updating.'
+				'Existing governed-write authority is stale or candidate-bound to a different build; reconcile it before updating.',
+				array(
+					'prior_authority_effective' => (bool) $effective,
+					'candidate_binding_required' => is_array( $binding ) && ! empty( $binding['required'] ),
+					'candidate_binding_match' => is_array( $binding ) && ! empty( $binding['match'] ),
+					'operator_action' => 'reconcile_staging_write_authority',
+					'automatic_mutation_retry_allowed' => false,
+				)
 			);
 		}
 
