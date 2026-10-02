@@ -21,7 +21,10 @@ function is_wp_error( $value ) { return $value instanceof WP_Error; }
 final class MAD4B_SCP_Site_Profile {
 	public static $environment = 'staging';
 	public static $write_enabled = true;
+	public static function configured() { return true; }
 	public static function current_environment() { return self::$environment; }
+	public static function origin_enrolled() { return true; }
+	public static function site_urls_match_enrollment() { return true; }
 	public static function write_enabled() { return self::$write_enabled; }
 }
 final class MAD4B_SCP_Post_Update_Continuation {}
