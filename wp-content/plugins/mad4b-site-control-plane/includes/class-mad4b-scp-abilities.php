@@ -63,7 +63,7 @@ final class MAD4B_SCP_Abilities {
 				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'expected_authority_scope_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'preparation_receipt' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 4096 ),
-				'_mad4b_approval_ticket_id' => array( 'type' => 'string', 'pattern' => '^[A-Fa-f0-9-]{36}$' ),
+				'_mad4b_approval_ticket_id' => array( 'type' => 'string', 'pattern' => MAD4B_SCP_Identifiers::APPROVAL_TICKET_SCHEMA_PATTERN ),
 				'_mad4b_context_receipt' => array( 'type' => 'object', 'additionalProperties' => true ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
 			), array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' )
@@ -764,8 +764,8 @@ final class MAD4B_SCP_Abilities {
 		foreach ( $present as $key ) {
 			$value = $input[ $key ];
 			if ( '_mad4b_approval_ticket_id' === $key ) {
-				$value = strtolower( trim( (string) $value ) );
-				if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $value ) ) return new WP_Error( 'mad4b_write_dispatch_approval_ticket_invalid', 'The dispatcher approval ticket identifier is malformed.' );
+				$value = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $value ) : '';
+				if ( '' === $value ) return new WP_Error( 'mad4b_write_dispatch_approval_ticket_invalid', 'The dispatcher approval ticket identifier is malformed.' );
 			} elseif ( ! is_array( $value ) ) {
 				return new WP_Error( 'mad4b_write_dispatch_context_receipt_invalid', 'The dispatcher Context Receipt must be an object.' );
 			} else {
