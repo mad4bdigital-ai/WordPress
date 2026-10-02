@@ -19,6 +19,7 @@ final class MAD4B_SCP_Context_Preflight {
 	const MAX_ASSETS_PER_SET = 3;
 	const MAX_CONTEXT_ASSETS = 24;
 	const MAX_CONTEXT_BYTES = 786432; // 768 KiB exact-provider text across one preflight.
+	const MAX_RECEIPT_TRANSPORT_BYTES = 65536; // Receipt metadata only; raw context remains in the envelope.
 	const MAX_RECEIPT_AGE = 1800; // 30 minutes; approval is still one-time and separately short-lived.
 	const MAX_ALLOWED_MUTATION_ABILITIES = 20;
 
@@ -475,6 +476,21 @@ final class MAD4B_SCP_Context_Preflight {
 			'observed_at' => (string) $observed_at,
 		);
 		$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
+		$encoded_receipt = wp_json_encode( $receipt, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $encoded_receipt ) || strlen( $encoded_receipt ) > self::MAX_RECEIPT_TRANSPORT_BYTES ) {
+			// The full Context Envelope already carries selected asset detail/content.
+			// Never mint an authorizing receipt that the governed dispatcher cannot
+			// transport. Compact diagnostic asset summaries and make the receipt
+			// explicitly non-authorizing instead of silently raising the transport cap.
+			$receipt['assets_loaded'] = array();
+			$receipt['ready'] = false;
+			$receipt['persistence_state'] = 'transport_budget_blocked';
+			$receipt['blockers'] = array_values( array_unique( array_merge(
+				isset( $receipt['blockers'] ) && is_array( $receipt['blockers'] ) ? $receipt['blockers'] : array(),
+				array( 'context_receipt_transport_budget_exceeded' )
+			) ) );
+			$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
+		}
 		return $receipt;
 	}
 
