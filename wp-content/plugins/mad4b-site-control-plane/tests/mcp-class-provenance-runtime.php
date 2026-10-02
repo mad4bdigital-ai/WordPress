@@ -21,13 +21,13 @@ function fixture_php( $class ) {
 	$namespace = implode( '\\', $parts );
 	return "<?php\nnamespace {$namespace};\nclass {$name} {}\n";
 }
-function write_fixture_class( $runtime, $relative, $class ) {
+function write_fixture_class( $runtime, $relative, $class, $load = true ) {
 	$file = $runtime . '/' . $relative;
 	$dir = dirname( $file );
 	if ( ! is_dir( $dir ) && ! mkdir( $dir, 0777, true ) && ! is_dir( $dir ) ) throw new RuntimeException( 'Unable to create fixture directory' );
 	$content = fixture_php( $class );
 	if ( false === file_put_contents( $file, $content ) ) throw new RuntimeException( 'Unable to write fixture class' );
-	require $file;
+	if ( $load ) require $file;
 	return hash( 'sha256', $content );
 }
 function cleanup_tree( $path ) {
@@ -46,8 +46,22 @@ $contract = array(
 	'version' => 'fixture-0.6.1',
 	'critical_files' => array(),
 );
-foreach ( MAD4B_SCP_MCP_Class_Provenance::critical_classes() as $alias => $spec ) {
-	$contract['critical_files'][ $spec['file'] ] = write_fixture_class( $runtime, $spec['file'], $spec['class'] );
+$specs = MAD4B_SCP_MCP_Class_Provenance::critical_classes();
+$loaded_aliases = array( 'adapter', 'tool_validator' );
+foreach ( $specs as $alias => $spec ) {
+	$contract['critical_files'][ $spec['file'] ] = write_fixture_class( $runtime, $spec['file'], $spec['class'], in_array( $alias, $loaded_aliases, true ) );
+}
+
+$partial = MAD4B_SCP_MCP_Class_Provenance::inspect_contract( $contract, $runtime, array(), false );
+check( empty( $partial['ready'] ), 'loaded-only inspection must not claim full certification' );
+check( 'partial_certified_class_set' === $partial['state'], 'unloaded classes must classify as partial, not drift' );
+check( 0 === $partial['failure_count'], 'unloaded classes must not count as provenance failures' );
+check( count( $specs ) - count( $loaded_aliases ) === $partial['unobserved_count'], 'loaded-only unobserved count mismatch' );
+check( '' === $partial['blocker'], 'partial loaded-only inspection must not block or trigger repair' );
+
+foreach ( $specs as $alias => $spec ) {
+	if ( in_array( $alias, $loaded_aliases, true ) ) continue;
+	require $runtime . '/' . $spec['file'];
 }
 
 $ready = MAD4B_SCP_MCP_Class_Provenance::inspect_contract( $contract, $runtime );
