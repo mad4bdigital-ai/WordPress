@@ -35,6 +35,7 @@ mutations = [
     ('receipt descriptor ignored', 'class-mad4b-scp-preparation-receipt.php', "! hash_equals( $row['descriptor_sha256'], $p['descriptor_sha256'] )", 'false', 'preparation-receipt-runtime.php'),
     ('receipt dispatcher verification ignored', 'class-mad4b-scp-abilities.php', 'if ( is_wp_error( $receipt ) ) return $receipt;', '/* ignored receipt failure */', 'preparation-receipt-runtime.php'),
     ('execution orphan promoted out of reconciliation', 'class-mad4b-scp-execution-state-view.php', "if ( $orphan ) {", 'if ( false ) {', 'execution-state-view-runtime.php'),
+    ('unknown execution reconciliation fail-open', 'class-mad4b-scp-execution-state-view.php', "if ( self::UNKNOWN === $state ) $reconciliation = true;", '/* unknown reconciliation requirement removed */', 'execution-state-view-runtime.php'),
     ('execution completed without outcome promoted to success', 'class-mad4b-scp-execution-state-view.php', "if ( in_array( $outcome, array( 'committed', 'completed', 'success', 'succeeded', 'ok' ), true ) ) {", "if ( '' === $outcome || in_array( $outcome, array( 'committed', 'completed', 'success', 'succeeded', 'ok' ), true ) ) {", 'execution-state-view-runtime.php'),
     ('cron cleanup omitted', 'class-mad4b-scp-catalog-lifecycle.php', "wp_clear_scheduled_hook( 'mad4b_catalog_gc' );", '/* omitted */', 'catalog-lifecycle-runtime.php'),
 ]
