@@ -18,7 +18,8 @@ $network = static function( $bearer, $route, $method, array $params = array(), a
     wp_cache_delete( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, 'options' );
     wp_cache_delete( 'notoptions', 'options' );
     $bytes = wp_remote_retrieve_body( $raw );
-    $data = json_decode( $bytes, true );
+    $binary = false !== strpos( (string) wp_remote_retrieve_header( $raw, 'content-type' ), 'application/octet-stream' );
+    $data = $binary ? null : json_decode( $bytes, true );
     $response = new WP_REST_Response( null === $data ? $bytes : $data, wp_remote_retrieve_response_code( $raw ) );
     foreach ( wp_remote_retrieve_headers( $raw ) as $name => $value ) $response->header( $name, $value );
     return $response;
