@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class MAD4B_SCP_Abilities {
 	const MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES = 65536;
 	private static $write_dispatch_governance_envelope = array();
+	private static $write_dispatch_governance_binding = '';
 	public function register_categories() {
 		foreach (
 			array(
@@ -704,6 +705,26 @@ final class MAD4B_SCP_Abilities {
 		return false === $encoded ? '' : hash( 'sha256', $encoded );
 	}
 
+	private function write_dispatch_preparation_binding( $input ) {
+		if ( ! is_array( $input ) ) return '';
+		$keys = array(
+			'ability_name',
+			'expected_input_schema_sha256',
+			'expected_execution_lane',
+			'expected_classification_sha256',
+			'expected_authority_scope_sha256',
+			'preparation_receipt',
+		);
+		$identity = array();
+		foreach ( $keys as $key ) {
+			if ( ! isset( $input[ $key ] ) || ! is_string( $input[ $key ] ) || '' === $input[ $key ] ) return '';
+			$identity[ $key ] = (string) $input[ $key ];
+		}
+		// Do not retain the signed receipt itself in the request binding.
+		$identity['preparation_receipt'] = hash( 'sha256', $identity['preparation_receipt'] );
+		return $this->governance_envelope_hash( $identity );
+	}
+
 	private function capture_write_dispatch_governance_envelope( $input ) {
 		if ( ! is_array( $input ) ) return true;
 		$keys = array( '_mad4b_approval_ticket_id', '_mad4b_context_receipt' );
@@ -711,10 +732,23 @@ final class MAD4B_SCP_Abilities {
 		foreach ( $keys as $key ) {
 			if ( array_key_exists( $key, $input ) ) $present[] = $key;
 		}
+		$binding = $this->write_dispatch_preparation_binding( $input );
+		if ( '' === $binding ) return new WP_Error( 'mad4b_write_dispatch_governance_binding_invalid', 'Governance evidence requires one exact prepared dispatcher identity.' );
+
 		// WordPress/MCP may evaluate permission more than once. A later sanitized
-		// preflight must not erase governance metadata captured earlier in the same
-		// request. State is request-local and consumed exactly once by forward().
-		if ( empty( $present ) ) return true;
+		// preflight may reuse only the exact same prepared target; stale evidence
+		// can never flow to another target in the same PHP request.
+		if ( empty( $present ) ) {
+			if ( ! empty( self::$write_dispatch_governance_envelope )
+				&& ( '' === self::$write_dispatch_governance_binding || ! hash_equals( self::$write_dispatch_governance_binding, $binding ) ) ) {
+				return new WP_Error( 'mad4b_write_dispatch_governance_target_conflict', 'Captured governance evidence belongs to a different prepared dispatcher target.' );
+			}
+			return true;
+		}
+		if ( ! empty( self::$write_dispatch_governance_envelope )
+			&& ( '' === self::$write_dispatch_governance_binding || ! hash_equals( self::$write_dispatch_governance_binding, $binding ) ) ) {
+			return new WP_Error( 'mad4b_write_dispatch_governance_target_conflict', 'Repeated dispatcher preflight attempted to move governance evidence to another prepared target.' );
+		}
 
 		$nested = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
 		$incoming = array();
@@ -755,18 +789,22 @@ final class MAD4B_SCP_Abilities {
 			$next[ $key ] = $value;
 		}
 
-		if ( isset( $incoming['_mad4b_approval_ticket_id'] ) ) {
-			if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( $incoming['_mad4b_approval_ticket_id'] ) ) {
-				return new WP_Error( 'mad4b_write_dispatch_approval_binding_conflict', 'The dispatcher approval ticket could not be bound to this request.' );
-			}
-		}
 		self::$write_dispatch_governance_envelope = $next;
+		self::$write_dispatch_governance_binding = $binding;
 		return true;
 	}
 
 	private function forward_write_dispatch_governance_envelope( $dispatch_input, $target_input ) {
 		$envelope = self::$write_dispatch_governance_envelope;
+		$captured_binding = self::$write_dispatch_governance_binding;
 		self::$write_dispatch_governance_envelope = array();
+		self::$write_dispatch_governance_binding = '';
+		if ( ! empty( $envelope ) ) {
+			$current_binding = $this->write_dispatch_preparation_binding( $dispatch_input );
+			if ( '' === $captured_binding || '' === $current_binding || ! hash_equals( $captured_binding, $current_binding ) ) {
+				return new WP_Error( 'mad4b_write_dispatch_governance_target_conflict', 'Captured governance evidence cannot be forwarded to a different prepared dispatcher target.' );
+			}
+		}
 		if ( is_array( $dispatch_input ) ) {
 			foreach ( array( '_mad4b_approval_ticket_id', '_mad4b_context_receipt' ) as $key ) {
 				if ( array_key_exists( $key, $dispatch_input ) ) $envelope[ $key ] = $dispatch_input[ $key ];
@@ -821,6 +859,17 @@ final class MAD4B_SCP_Abilities {
 		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 		$params = $this->forward_write_dispatch_governance_envelope( $input, $params );
 		if ( is_wp_error( $params ) ) return $params;
+		$approval_ticket_id = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			? MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $params )
+			: ( is_array( $params ) && isset( $params['_mad4b_approval_ticket_id'] ) ? strtolower( trim( (string) $params['_mad4b_approval_ticket_id'] ) ) : '' );
+		$with_approval_scope = static function ( $callback ) use ( $approval_ticket_id ) {
+			if ( ! is_callable( $callback ) ) return new WP_Error( 'mad4b_write_dispatch_callback_invalid', 'Governed write execution callback is invalid.' );
+			if ( '' === $approval_ticket_id ) return call_user_func( $callback );
+			if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! method_exists( 'MAD4B_SCP_Identity_Context', 'with_approval_ticket_for_request' ) ) {
+				return new WP_Error( 'mad4b_write_dispatch_approval_scope_unavailable', 'Approval ticket attribution cannot be scoped to this governed execution.' );
+			}
+			return MAD4B_SCP_Identity_Context::with_approval_ticket_for_request( $approval_ticket_id, $callback );
+		};
 
 		// WordPress Abilities normalizes a failed permission_callback to
 		// ability_invalid_permissions. For approval-plan that would erase the
@@ -865,7 +914,7 @@ final class MAD4B_SCP_Abilities {
 		if ( 'mad4b/approval-plan' === $ability_name ) {
 			$started = microtime( true );
 			try {
-				$planner_result = $execute_target();
+				$planner_result = $with_approval_scope( $execute_target );
 			} catch ( \Throwable $throwable ) {
 				return new WP_Error(
 					'mad4b_approval_plan_dispatch_exception',
@@ -902,11 +951,15 @@ final class MAD4B_SCP_Abilities {
 				MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name );
 			}
 		} else {
-			$execution = MAD4B_SCP_Connector_Resilience::execute_mutation(
-				'write',
-				$ability_name,
-				static function () use ( $execute_target ) {
-					return $execute_target();
+			$execution = $with_approval_scope(
+				static function () use ( $ability_name, $execute_target ) {
+					return MAD4B_SCP_Connector_Resilience::execute_mutation(
+						'write',
+						$ability_name,
+						static function () use ( $execute_target ) {
+							return $execute_target();
+						}
+					);
 				}
 			);
 			if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'clear_execution_callback_observation' ) ) {
