@@ -144,6 +144,22 @@ mad4b_context_preflight_assert( preg_match( '/^[a-f0-9]{64}$/', $ready['receipt'
 $ready_receipt_json = wp_json_encode( $ready['receipt'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 mad4b_context_preflight_assert( is_string( $ready_receipt_json ) && strlen( $ready_receipt_json ) <= MAD4B_SCP_Context_Preflight::MAX_RECEIPT_TRANSPORT_BYTES, 'Ready Context Receipt must fit the governed dispatcher transport budget.', strlen( (string) $ready_receipt_json ) );
 
+$normal_brand_title = MAD4B_SCP_Context_Authority::$assets['brand']['title'];
+MAD4B_SCP_Context_Authority::$assets['brand']['title'] = str_repeat( 'oversized-title-', 6000 );
+$transport_blocked = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'campaign-x' );
+mad4b_context_preflight_assert(
+	is_array( $transport_blocked )
+	&& empty( $transport_blocked['ready'] )
+	&& 'blocked' === $transport_blocked['state']
+	&& in_array( 'context_receipt_transport_budget_exceeded', $transport_blocked['blockers'], true )
+	&& empty( $transport_blocked['receipt']['ready'] ),
+	'Receipt transport budget blocker must propagate to the outer preflight state.',
+	$transport_blocked
+);
+$transport_blocked_json = wp_json_encode( $transport_blocked['receipt'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+mad4b_context_preflight_assert( is_string( $transport_blocked_json ) && strlen( $transport_blocked_json ) <= MAD4B_SCP_Context_Preflight::MAX_RECEIPT_TRANSPORT_BYTES, 'Blocked receipt must remain transportable after compaction.', strlen( (string) $transport_blocked_json ) );
+MAD4B_SCP_Context_Authority::$assets['brand']['title'] = $normal_brand_title;
+
 $receipt_method = new ReflectionMethod( 'MAD4B_SCP_Context_Preflight', 'receipt' );
 $receipt_method->setAccessible( true );
 $oversized_receipt = $receipt_method->invoke(
