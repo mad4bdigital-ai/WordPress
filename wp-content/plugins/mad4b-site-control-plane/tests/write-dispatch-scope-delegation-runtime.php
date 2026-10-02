@@ -57,6 +57,7 @@ final class MAD4B_SCP_Servers {
     }
 }
 
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-identifiers.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-staging-write-authority.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-abilities.php';
 
@@ -114,6 +115,10 @@ $schema_sha = hash( 'sha256', wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | 
 $valid = array(
     'ability_name' => $target,
     'expected_input_schema_sha256' => $schema_sha,
+    'expected_execution_lane' => 'write',
+    'expected_classification_sha256' => str_repeat( 'd', 64 ),
+    'expected_authority_scope_sha256' => str_repeat( 'e', 64 ),
+    'preparation_receipt' => 'fixture-signed-preparation',
     'input' => array(),
 );
 
@@ -153,16 +158,24 @@ $receipt = array( 'contract' => 'mad4b.context-receipt.v1', 'sha256' => str_repe
 $outer = array(
     'ability_name' => $target,
     'expected_input_schema_sha256' => $schema_sha,
+    'expected_execution_lane' => 'write',
+    'expected_classification_sha256' => str_repeat( 'd', 64 ),
+    'expected_authority_scope_sha256' => str_repeat( 'e', 64 ),
+    'preparation_receipt' => 'fixture-signed-preparation',
     'input' => array( 'ability' => 'mad4b/plugin-package-apply' ),
     '_mad4b_approval_ticket_id' => $ticket,
     '_mad4b_context_receipt' => $receipt,
 );
 mad4b_assert( true === $capture->invoke( $dispatcher, $outer ), 'Dispatcher permission preflight must capture exact governance metadata.' );
-mad4b_assert( $ticket === MAD4B_SCP_Identity_Context::$ticket_id, 'Dispatcher must bind the exact approval ticket request-locally.' );
+mad4b_assert( '' === MAD4B_SCP_Identity_Context::$ticket_id, 'Permission preflight must not leak approval identity before target execution.' );
 
 $stripped = array(
     'ability_name' => $target,
     'expected_input_schema_sha256' => $schema_sha,
+    'expected_execution_lane' => 'write',
+    'expected_classification_sha256' => str_repeat( 'd', 64 ),
+    'expected_authority_scope_sha256' => str_repeat( 'e', 64 ),
+    'preparation_receipt' => 'fixture-signed-preparation',
     'input' => $outer['input'],
 );
 mad4b_assert( true === $capture->invoke( $dispatcher, $stripped ), 'Repeated sanitized permission preflight must preserve the already captured governance envelope.' );
@@ -178,9 +191,14 @@ mad4b_assert( is_array( $target_input ), 'Forwarded target input must remain an 
 mad4b_assert( $ticket === $target_input['_mad4b_approval_ticket_id'], 'Approval ticket must survive provider-envelope stripping.' );
 mad4b_assert( $receipt === $target_input['_mad4b_context_receipt'], 'Context Receipt must survive provider-envelope stripping.' );
 
+$oversized = $outer;
+$oversized['_mad4b_context_receipt'] = array( 'payload' => str_repeat( 'x', MAD4B_SCP_Abilities::MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES + 1 ) );
+$oversized_result = $capture->invoke( $dispatcher, $oversized );
+mad4b_assert( is_wp_error( $oversized_result ) && 'mad4b_write_dispatch_context_receipt_oversized' === $oversized_result->get_error_code(), 'Oversized Context Receipt must fail before request-local governance binding.' );
+
 $conflicting = $outer;
 $conflicting['input']['_mad4b_approval_ticket_id'] = '22222222-2222-4222-8222-222222222222';
 $conflict = $capture->invoke( $dispatcher, $conflicting );
 mad4b_assert( is_wp_error( $conflict ) && 'mad4b_write_dispatch_governance_envelope_conflict' === $conflict->get_error_code(), 'Conflicting nested governance metadata must fail closed.' );
 
-echo "mad4b.write-dispatch-scope-delegation.runtime.v3: PASS\n";
+echo "mad4b.write-dispatch-scope-delegation.runtime.v4: PASS\n";

@@ -8,6 +8,8 @@ transport = (root / "includes" / "class-mad4b-scp-transport-context.php").read_t
 abilities = (root / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
+execution_fence = (root / "includes" / "class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
+planning_guard = (root / "includes" / "class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
 
 required_transport = [
     "private static $write_dispatch_target = '';",
@@ -39,15 +41,21 @@ required_dispatch = [
     "'mutation_state' => 'not_started'",
     "'target_execution_entered' => false",
     "MAD4B_SCP_Transport_Context::with_write_dispatch_target(",
-    "$planner_result = $execute_target();",
-    "static function () use ( $execute_target )",
+    "$planner_result = $with_approval_scope( $execute_target );",
+    "static function () use ( $ability_name, $execute_target )",
     "return $execute_target();",
     "private static $write_dispatch_governance_envelope = array();",
+    "private static $write_dispatch_governance_binding = '';",
+    "write_dispatch_preparation_binding",
+    "MAD4B_SCP_Ability_Contract_Inspector::digest( 'mad4b.write-dispatch-governance-value.v1'",
+    "$identity['target_input_sha256'] = $target_input_sha256;",
+    "mad4b_write_dispatch_governance_target_conflict",
+    "self::$write_dispatch_governance_binding = '';",
     "capture_write_dispatch_governance_envelope",
     "forward_write_dispatch_governance_envelope",
-    "MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request",
+    "MAD4B_SCP_Identity_Context::with_approval_ticket_for_request",
     "mad4b_write_dispatch_governance_envelope_conflict",
-    "mad4b_write_dispatch_approval_binding_conflict",
+    "mad4b_write_dispatch_approval_scope_unavailable",
     "approval_plan_dispatch_preflight_failure",
     "mad4b_approval_plan_guard_unavailable",
     "MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input",
@@ -55,14 +63,28 @@ required_dispatch = [
     "'mutation_state' => 'not_started'",
     "'reconciliation_required' => false",
     "'client_action' => 'correct_plan_input_or_authority_then_replan'",
-    "if ( empty( $present ) ) return true;",
+    "if ( empty( $present ) ) {",
     "mad4b_write_dispatch_governance_envelope_rebind_conflict",
     "_mad4b_approval_ticket_id",
     "_mad4b_context_receipt",
+    "MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES = 65536",
+    "'_mad4b_approval_ticket_id' => array( 'type' => 'string'",
+    "'_mad4b_context_receipt' => array( 'type' => 'object', 'additionalProperties' => true )",
+    "mad4b_write_dispatch_context_receipt_oversized",
 ]
 for marker in required_dispatch:
     if marker not in abilities:
         raise SystemExit("write dispatcher target binding/governance invariant missing: " + marker)
+
+write_schema = abilities.split("$this->add( 'mad4b/write-execute'", 1)[1].split("$this->add( 'mad4b/developer-discover'", 1)[0]
+for marker in [
+    "'_mad4b_approval_ticket_id' => array( 'type' => 'string'",
+    "'_mad4b_context_receipt' => array( 'type' => 'object', 'additionalProperties' => true )",
+]:
+    if marker not in write_schema:
+        raise SystemExit("write dispatcher transport schema is missing reviewed governance field: " + marker)
+if "private function schema( array $properties" not in abilities or "'additionalProperties' => false" not in abilities:
+    raise SystemExit("write dispatcher must retain the shared top-level additionalProperties=false schema boundary")
 
 required_authorization_boundary = [
     "private static $execution_callback_started = array();",
@@ -78,6 +100,18 @@ required_authorization_boundary = [
 for marker in required_authorization_boundary:
     if marker not in authorization:
         raise SystemExit("execution callback boundary invariant missing: " + marker)
+
+for marker in [
+    "private static function remember_trusted_execution_boundary",
+    "public static function propagate_trusted_execution_boundary",
+    "in_array( $inner_callback, self::$trusted_execution_boundaries[ $ability_name ], true )",
+]:
+    if marker not in authorization:
+        raise SystemExit("trusted execution provenance invariant missing: " + marker)
+
+for source_name, source in (("execution fence", execution_fence), ("undo post-boundary wrapper", planning_guard)):
+    if "MAD4B_SCP_Authorization::propagate_trusted_execution_boundary" not in source:
+        raise SystemExit(source_name + " does not propagate reviewed execution-boundary provenance")
 
 # Execute the real central permission wrapper against the WordPress 7.1
 # bool|WP_Error contract. This reproduces the live failure without booting a
@@ -128,7 +162,36 @@ $error = new WP_Error( 'denied' );
 if ( $error !== wrapped_permission_result( $error ) ) exit( 16 );
 if ( false !== wrapped_permission_result( 'truthy-but-invalid' ) ) exit( 17 );
 
-echo "mad4b.authorization-permission-wrapper.runtime.v1: PASS\\n";
+$base = array(
+    'execute_callback' => static function () { return true; },
+    'permission_callback' => static function () { return true; },
+    'category' => 'mad4b-write',
+    'meta' => array(
+        'annotations' => array( 'readonly' => false ),
+        'mcp' => array(
+            'mad4b_governed_write_authority' => 'runtime-test',
+            'surface' => 'write',
+        ),
+    ),
+);
+$trusted = MAD4B_SCP_Authorization::wrap_execution_boundary( $base, 'mad4b/provenance-fixture' );
+$inner = $trusted['execute_callback'];
+$outer = static function ( $input = null ) use ( $inner ) { return call_user_func( $inner, $input ); };
+if ( true !== MAD4B_SCP_Authorization::propagate_trusted_execution_boundary( 'mad4b/provenance-fixture', $outer, $inner ) ) exit( 18 );
+
+class ProvenanceAbilityFixture {
+    private $execute_callback;
+    public function __construct( $callback ) { $this->execute_callback = $callback; }
+    public function get_name() { return 'mad4b/provenance-fixture'; }
+}
+if ( ! MAD4B_SCP_Authorization::execution_boundary_verified( new ProvenanceAbilityFixture( $outer ) ) ) exit( 19 );
+
+$spoof_inner = static function () { return true; };
+$spoof_outer = static function () use ( $spoof_inner ) { return call_user_func( $spoof_inner ); };
+if ( MAD4B_SCP_Authorization::propagate_trusted_execution_boundary( 'mad4b/provenance-fixture', $spoof_outer, $spoof_inner ) ) exit( 20 );
+if ( MAD4B_SCP_Authorization::execution_boundary_verified( new ProvenanceAbilityFixture( $spoof_outer ) ) ) exit( 21 );
+
+echo "mad4b.authorization-permission-wrapper.runtime.v2: PASS\\n";
 """), encoding="utf-8")
     subprocess.run(
         ["php", str(harness), str(root / "includes" / "class-mad4b-scp-authorization.php")],

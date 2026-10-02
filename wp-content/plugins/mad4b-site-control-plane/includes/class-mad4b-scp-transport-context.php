@@ -91,6 +91,15 @@ final class MAD4B_SCP_Transport_Context {
 			return 'mad4b-write';
 		}
 
+		// Dynamic projection cannot change a mutation's original authorization lane.
+		// Normal external writes have already passed the dedicated write admission above.
+		if ( 'mad4b-chatgpt' === $current && class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) && MAD4B_SCP_ChatGPT_Tool_Projection::is_projected( $ability_name ) ) {
+			$original = MAD4B_SCP_ChatGPT_Tool_Projection::execution_server( $ability_name );
+			if ( is_wp_error( $original ) ) return $original;
+			if ( $declared_server_id !== $original ) return new WP_Error( 'mad4b_projection_execution_lane_mismatch', 'Projection cannot change the declared execution authority.' );
+			return $original;
+		}
+
 		if ( ! MAD4B_SCP_Servers::ability_is_mounted( $current, $ability_name ) ) {
 			return new WP_Error( 'mad4b_transport_ability_not_mounted', 'The requested ability is not mounted on the active MCP transport server.' );
 		}

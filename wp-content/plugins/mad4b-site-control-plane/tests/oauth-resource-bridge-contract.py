@@ -24,10 +24,12 @@ required = [
     "subject_allowed",
     "verified_bearer_active",
     "AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up'",
+    "BREAKGLASS_SCOPE = 'server:mad4b-breakglass'",
     "verified_bearer_has_scope",
     "verified_bearer_client_is",
     "hash( 'sha256', 'oauth-client' . \"\\0\" . $issuer . \"\\0\" . $client_id )",
     "authority_step_up_scope_available",
+    "breakglass_scope_available",
     "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY",
     "reset_verified_bearer_context",
     "self::reset_verified_bearer_context( true )",
@@ -76,6 +78,8 @@ required = [
     "write_surfaces_enabled' => false",
     "authority_step_up_surface_enabled' => self::authority_step_up_scope_available()",
     "authority_step_up_scope' => self::AUTHORITY_STEP_UP_SCOPE",
+    "breakglass_scope_surface_enabled' => self::breakglass_scope_available()",
+    "breakglass_scope' => self::BREAKGLASS_SCOPE",
     "'resource_transport_allowed' => $resource_transport_allowed",
     "'http_loopback_local_only' => ( ! $https && $resource_transport_allowed )",
     "valid_local_http_loopback_url",
@@ -87,6 +91,14 @@ required = [
     "MAD4B_SCP_Local_OAuth_Server::jwks_url()",
     "mad4b_oauth_local_metadata_invalid",
 ]
+for local_marker in [
+    "server:mad4b-breakglass",
+    "Raw Breakglass scope requires the dedicated authority step-up scope.",
+    "MAD4B_SCP_OAuth_Resource_Bridge::breakglass_scope_available()",
+]:
+    if local_marker not in local_oauth:
+        raise SystemExit(f"missing Local OAuth raw Breakglass scope guard: {local_marker}")
+
 for marker in required:
     if marker not in bridge:
         raise SystemExit(f"missing OAuth bridge marker: {marker}")

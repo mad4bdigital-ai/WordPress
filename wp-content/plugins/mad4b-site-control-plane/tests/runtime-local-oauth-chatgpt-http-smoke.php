@@ -595,6 +595,21 @@ if ( '' === $session_id ) $fail( 'Unable to restore read-only MCP session after 
 // Prove the exact packaged MCP Adapter can execute a hidden safe Browser
 // Acceptance read ability through the compact readonly dispatcher and that its
 // wire result remains compatible with external MCP clients.
+$browser_prepared = MAD4B_SCP_Unified_Capability_Gateway::dispatch(
+	array(
+		'action' => 'prepare',
+		'ability_names' => array( 'mad4b/browser-acceptance-capabilities' ),
+	),
+	'internal'
+);
+if ( is_wp_error( $browser_prepared ) ) $fail( 'Browser Acceptance signed preparation failed.', $browser_prepared->get_error_code() );
+$browser_info = isset( $browser_prepared['abilities'][0] ) && is_array( $browser_prepared['abilities'][0] ) ? $browser_prepared['abilities'][0] : array();
+if (
+	empty( $browser_info['input_schema_sha256'] )
+	|| empty( $browser_info['classification_sha256'] )
+	|| empty( $browser_info['authority_scope_sha256'] )
+	|| empty( $browser_info['preparation_receipt'] )
+) $fail( 'Browser Acceptance preparation omitted mandatory fixed-dispatch evidence.', $browser_info );
 $browser_call = $dispatch(
 	array(
 		'jsonrpc' => '2.0',
@@ -604,6 +619,11 @@ $browser_call = $dispatch(
 			'name' => 'mad4b-read-execute',
 			'arguments' => array(
 				'ability_name' => 'mad4b/browser-acceptance-capabilities',
+				'expected_execution_lane' => 'read',
+				'expected_classification_sha256' => $browser_info['classification_sha256'],
+				'expected_authority_scope_sha256' => $browser_info['authority_scope_sha256'],
+				'expected_input_schema_sha256' => $browser_info['input_schema_sha256'],
+				'preparation_receipt' => $browser_info['preparation_receipt'],
 				'input' => array(),
 			),
 		),

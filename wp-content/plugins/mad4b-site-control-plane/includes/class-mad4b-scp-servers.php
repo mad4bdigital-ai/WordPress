@@ -56,6 +56,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute',
 				'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute',
 				'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute',
+				'mad4b/chatgpt-tool-projection-status', 'mad4b/chatgpt-tool-projection-discover', 'mad4b/chatgpt-tool-projection-plan', 'mad4b/chatgpt-tool-projection-apply',
 				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan',
 				'mad4b/operation-discover', 'mad4b/provider-closure-matrix',
 			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'direct' ) : array(), $governed_status ),
@@ -475,6 +476,9 @@ final class MAD4B_SCP_Servers {
 			'mad4b/developer-info',
 			'mad4b/enrollment-discover',
 			'mad4b/enrollment-info',
+			'mad4b/chatgpt-tool-projection-status',
+			'mad4b/chatgpt-tool-projection-discover',
+			'mad4b/chatgpt-tool-projection-plan',
 			'mad4b/plugin-package-plan',
 			'mad4b/plugin-remote-update-plan',
 			'mad4b/control-plane-upload-plan',
@@ -517,6 +521,7 @@ final class MAD4B_SCP_Servers {
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $candidates[] = MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Self_Update' ) ) $candidates[] = MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ) $candidates[] = MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY;
+		if ( class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) $candidates[] = MAD4B_SCP_ChatGPT_Tool_Projection::APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'chatgpt_direct_step_up_catalog_tools' ) ) {
 			$candidates = array_merge( $candidates, MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools() );
 		}
@@ -546,7 +551,7 @@ final class MAD4B_SCP_Servers {
 		return in_array( (string) $ability_name, self::chatgpt_reviewed_direct_step_up_tools(), true );
 	}
 
-	public static function chatgpt_tools() {
+	public static function chatgpt_base_tools() {
 		// Server registration runs during rest_api_init, while OAuth bearer
 		// verification happens later in rest_pre_dispatch. Materialize only the
 		// stable read/dispatch transport plus a small explicitly reviewed direct
@@ -618,6 +623,21 @@ final class MAD4B_SCP_Servers {
 		$tools = array_values( array_unique( $tools ) );
 		sort( $tools, SORT_STRING );
 		if ( $cacheable ) self::$chatgpt_tools_cache = $tools;
+		return $tools;
+	}
+
+
+	/**
+	 * Final ChatGPT registration set: stable required/base tools plus schema-pinned
+	 * dynamic projections. Dynamic projections are optional at MCP preflight and
+	 * never displace required transport tools.
+	 */
+	public static function chatgpt_tools() {
+		$base = self::chatgpt_base_tools();
+		$dynamic = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
+			? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names()
+			: array();
+		$tools = array_values( array_unique( array_merge( $base, $dynamic ) ) );
 		return $tools;
 	}
 
@@ -746,6 +766,14 @@ final class MAD4B_SCP_Servers {
 		}
 		if ( 'mad4b-chatgpt' === $server_id ) {
 			if ( ! in_array( $ability_name, self::chatgpt_tools(), true ) ) return $remember( null );
+			$dynamic_projected = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
+				&& MAD4B_SCP_ChatGPT_Tool_Projection::is_projected( $ability_name );
+
+			// Dynamic projection owns the ChatGPT visibility identity whenever
+			// the Ability is not part of the required base catalog. Required-base
+			// overlap is already removed by effective_projection_rows(), so this
+			// precedence cannot relabel a required transport tool.
+			if ( $dynamic_projected ) return $remember( 'dynamic_projection' );
 
 			// The compact direct transport is overwhelmingly Control Plane core.
 			// Resolve those without scanning adapter/write catalogs. Underlying
@@ -908,17 +936,32 @@ final class MAD4B_SCP_Servers {
 		$preflight = null;
 		$requested_tools = $tools;
 		if ( 'mad4b-chatgpt' === $id && $materialized ) {
-			$reviewed_optional = array_values( array_intersect( self::chatgpt_reviewed_direct_step_up_tools(), $tools ) );
+			$dynamic_optional = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
+				? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names()
+				: array();
+			$reviewed_optional = array_values( array_intersect(
+				array_values( array_unique( array_merge( self::chatgpt_reviewed_direct_step_up_tools(), $dynamic_optional ) ) ),
+				$tools
+			) );
 			$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $tools, $reviewed_optional );
 			if ( ! empty( $preflight['ready'] ) ) $tools = $preflight['tools'];
 		}
 		$result = $adapter->create_server( $id, 'mcp', $id, $name, $description, MAD4B_SCP_VERSION, array( $transport ), $error_handler, $observability, $tools, array(), array(), $permission );
-		if ( is_wp_error( $result ) ) { self::$registrations[ $id ] = array( 'registered' => false, 'error' => $result->get_error_code(), 'materialized' => false, 'tool_count' => 0 ); error_log( '[MAD4B SCP] Failed creating ' . $id . ': ' . $result->get_error_message() ); return; }
+		if ( is_wp_error( $result ) ) {
+			self::$registrations[ $id ] = array( 'registered' => false, 'error' => $result->get_error_code(), 'materialized' => false, 'tool_count' => 0 );
+			// Adapter rejection must not erase the earlier required-tool evidence.
+			if ( is_array( $preflight ) ) {
+				self::$registrations[ $id ]['requested_tool_count'] = count( $requested_tools );
+				self::$registrations[ $id ]['preflight'] = $preflight;
+			}
+			error_log( '[MAD4B SCP] Failed creating ' . $id . ': ' . $result->get_error_message() );
+			return;
+		}
 		self::$registrations[ $id ] = array( 'registered' => true, 'error' => '', 'materialized' => (bool) $materialized, 'tool_count' => count( $tools ) );
 		if ( 'mad4b-chatgpt' === $id && $materialized ) {
 			$server = method_exists( $adapter, 'get_server' ) ? $adapter->get_server( $id ) : null;
 			$evidence = MAD4B_SCP_MCP_Catalog_Diagnostics::inspect( $server, $tools );
-			if ( ! empty( $evidence['ready'] ) ) MAD4B_SCP_MCP_Catalog_Diagnostics::capture_classification( $server, $tools );
+			if ( ! empty( $preflight['ready'] ) && ! empty( $evidence['ready'] ) ) MAD4B_SCP_MCP_Catalog_Diagnostics::capture_classification( $server, $tools );
 			self::$registrations[ $id ]['requested_tool_count'] = count( $requested_tools );
 			self::$registrations[ $id ]['preflight'] = $preflight;
 			if ( empty( $preflight['ready'] ) ) { $evidence['ready'] = false; $evidence['blocker'] = $preflight['blocker']; }

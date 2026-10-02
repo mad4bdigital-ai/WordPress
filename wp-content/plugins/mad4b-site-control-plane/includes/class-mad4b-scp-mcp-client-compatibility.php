@@ -74,6 +74,9 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 			'detection_authoritative' => false,
 			'authorization_depends_on_vendor' => false,
 			'unknown_client_fallback' => 'generic-mcp',
+			'capability_gateway' => class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) ? MAD4B_SCP_Unified_Capability_Gateway::public_manifest() : array(),
+			'transport_selection_policy' => 'per_client_per_operation',
+			'client_capability_claims_create_authority' => false,
 			'write_surfaces_exposed_by_this_manifest' => false,
 		);
 	}
@@ -104,6 +107,9 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 			'developer_breakglass_authoritative_well_known_url' => self::authoritative_well_known_url( 'mad4b-developer-breakglass' ),
 			'compatibility_alias_url' => self::compatibility_alias_url(),
 			'compatibility_manifest_url' => untrailingslashit( rest_url( self::MANIFEST_NAMESPACE . self::MANIFEST_ROUTE ) ),
+			'capability_gateway_url' => class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) ? MAD4B_SCP_Unified_Capability_Gateway::rest_url() : '',
+			'adaptive_transport_policy' => 'rest_when_proven_mcp_fallback',
+			'client_capability_claims_authoritative' => false,
 			'profile_registry_contract' => isset( $registry['contract'] ) ? $registry['contract'] : '',
 			'profile_count' => isset( $registry['profile_count'] ) ? (int) $registry['profile_count'] : 0,
 			'client_profiles_create_authority' => false,

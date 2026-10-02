@@ -201,8 +201,11 @@ for ability in [
     'mad4b/remote-operation-parity-status',
     'mad4b/operation-discover',
 ]:
-    if servers.count(ability) < 2:
-        raise SystemExit(f'{ability} must be discoverable from read and ChatGPT surfaces')
+    read_catalog = servers.split("'mad4b-read' =>", 1)[1].split("'mad4b-chatgpt' =>", 1)[0]
+    if ability not in read_catalog or "self::core_tools( 'mad4b-read' )" not in servers:
+        raise SystemExit(f'{ability} must remain in the read discovery universe shared with ChatGPT')
+    if "MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name )" not in abilities or "'read' !== $row['lane']" not in abilities:
+        raise SystemExit('Remote parity discovery must preserve governed read classification admission')
 
 for ability in [
     'mad4b/reconcile-managed-skills',
@@ -353,19 +356,20 @@ for marker in [
 augment = write_authority.split('public static function augment_write_ability', 1)[1].split('public static function reconciliation_plan', 1)[0]
 for marker in [
     "$mcp_surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';",
-    "if ( 'enrollment' === $mcp_surface ) return $args;",
+    "if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch' ), true ) ) return $args;",
 ]:
     if marker not in augment:
         raise SystemExit(f'Enrollment dispatcher is no longer isolated from governed-write augmentation: {marker}')
-guard_index = augment.find("if ( 'enrollment' === $mcp_surface ) return $args;")
+guard_index = augment.find("if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch' ), true ) ) return $args;")
 approval_index = augment.find("self::APPROVAL_INPUT_KEY")
 authority_index = augment.find("mad4b_governed_write_authority")
 if min(guard_index, approval_index, authority_index) < 0 or guard_index > approval_index or guard_index > authority_index:
     raise SystemExit('Enrollment authority isolation must execute before governed-write approval/NHI metadata is added')
 for marker in [
     "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'",
-    "$direct_mutation_transport[] = 'mad4b/enrollment-execute';",
-    "$direct_mutation_transport = array_values( array_unique( $direct_mutation_transport ) );",
+    "public static function chatgpt_dispatch_transport_tools()",
+    "$tools = array( 'mad4b/write-execute', 'mad4b/developer-execute', 'mad4b/enrollment-execute' );",
+    "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )",
 ]:
     if marker not in servers:
         raise SystemExit(f'compact ChatGPT Enrollment projection invariant missing: {marker}')
@@ -387,11 +391,11 @@ for marker in [
 
 semantic_projection = servers.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_internal_enrollment_mutations()", 1)[0]
 for marker in [
-    "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_tools()",
-    "$semantic_step_up",
-    "$step_up = array_merge( $step_up, $semantic_step_up );",
+    "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()",
+    "public static function chatgpt_reviewed_direct_step_up_tools()",
+    "$step_up = self::chatgpt_reviewed_direct_step_up_tools();",
 ]:
-    if marker not in semantic_projection:
+    if marker not in servers:
         raise SystemExit(f'compact ChatGPT semantic step-up projection missing: {marker}')
 
 if "public static function chatgpt_tools()" not in dispatch:

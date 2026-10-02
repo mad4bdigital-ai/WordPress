@@ -82,7 +82,8 @@ final class MAD4B_SCP_Approval_Tickets {
 
 		$t = MAD4B_SCP_Schema::tables();
 		$now = time();
-		$ticket_id = wp_generate_uuid4();
+		$ticket_id = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( wp_generate_uuid4() ) : '';
+		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_ticket_identity_invalid', 'Approval ticket generator did not produce a canonical UUIDv4 identity.' );
 		$data = array(
 			'ticket_id' => $ticket_id,
 			'ticket_class' => $ticket_class,
@@ -119,8 +120,8 @@ final class MAD4B_SCP_Approval_Tickets {
 		global $wpdb;
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
-		$ticket_id = strtolower( trim( (string) $ticket_id ) );
-		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) ) return new WP_Error( 'mad4b_approval_candidate_ticket_invalid', 'Candidate binding requires an exact approval ticket id.' );
+		$ticket_id = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket_id ) : '';
+		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_candidate_ticket_invalid', 'Candidate binding requires a canonical UUIDv4 approval ticket id.' );
 		$profile = self::profile_snapshot( true );
 		if ( is_wp_error( $profile ) ) return $profile;
 		$ticket = self::get( $ticket_id );
@@ -150,10 +151,10 @@ final class MAD4B_SCP_Approval_Tickets {
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
 		if ( ! self::can_approve() ) return new WP_Error( 'mad4b_approval_admin_required', 'Approval capability is required to decide a ticket.' );
-		$ticket_id = strtolower( trim( (string) $ticket_id ) );
+		$ticket_id = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket_id ) : '';
 		$decision = sanitize_key( (string) $decision );
 		$expected_payload_sha256 = strtolower( trim( (string) $expected_payload_sha256 ) );
-		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) ) return new WP_Error( 'mad4b_approval_decision_ticket_invalid', 'Approval ticket id is invalid.' );
+		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_decision_ticket_invalid', 'Approval ticket id is not a canonical UUIDv4 identity.' );
 		if ( ! in_array( $decision, array( 'approve', 'reject' ), true ) ) return new WP_Error( 'mad4b_approval_decision_invalid', 'Decision must be approve or reject.' );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_payload_sha256 ) ) return new WP_Error( 'mad4b_approval_payload_mismatch', 'Expected approval payload digest is invalid.' );
 		$ticket = self::get( $ticket_id );
@@ -201,8 +202,10 @@ final class MAD4B_SCP_Approval_Tickets {
 		if ( is_wp_error( $schema ) ) return $schema;
 		if ( ! class_exists( 'MAD4B_SCP_AI_Approval' ) ) return new WP_Error( 'mad4b_ai_approval_unavailable', 'AI approval authority is unavailable.' );
 
+		$ticket_id = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket_id ) : '';
+		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_decision_ticket_invalid', 'Approval ticket id is not a canonical UUIDv4 identity.' );
 		$guard_input = array(
-			'ticket_id' => strtolower( trim( (string) $ticket_id ) ),
+			'ticket_id' => $ticket_id,
 			'decision' => sanitize_key( (string) $decision ),
 			'expected_payload_sha256' => strtolower( trim( (string) $expected_payload_sha256 ) ),
 			'expected_classification_sha256' => strtolower( trim( (string) $expected_classification_sha256 ) ),
@@ -256,6 +259,8 @@ final class MAD4B_SCP_Approval_Tickets {
 
 	public static function approve( $ticket_id ) {
 		global $wpdb;
+		$ticket_id = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket_id ) : '';
+		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_ticket_invalid', 'Approval ticket id is not a canonical UUIDv4 identity.' );
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
 		if ( ! self::can_approve() ) return new WP_Error( 'mad4b_approval_admin_required', 'Approval capability is required to approve a ticket.' );
@@ -277,6 +282,8 @@ final class MAD4B_SCP_Approval_Tickets {
 
 	public static function revoke( $ticket_id ) {
 		global $wpdb;
+		$ticket_id = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket_id ) : '';
+		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_ticket_invalid', 'Approval ticket id is not a canonical UUIDv4 identity.' );
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
 		if ( ! self::can_approve() ) return new WP_Error( 'mad4b_approval_admin_required', 'Approval capability is required to revoke a ticket.' );
@@ -288,6 +295,8 @@ final class MAD4B_SCP_Approval_Tickets {
 	}
 
 	public static function validate_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
+		$ticket_id = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket_id ) : '';
+		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_ticket_invalid', 'Approval ticket id is not a canonical UUIDv4 identity.' );
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
 		$ticket = self::get( $ticket_id );
@@ -321,6 +330,8 @@ final class MAD4B_SCP_Approval_Tickets {
 		$validated = self::validate_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
 		if ( is_wp_error( $validated ) ) return $validated;
 		$ticket = $validated['ticket'];
+		$ticket_id = isset( $ticket['ticket_id'] ) && class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket['ticket_id'] ) : '';
+		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_ticket_invalid', 'Stored approval ticket id is not canonical.' );
 		$hash = $validated['payload_sha256'];
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
@@ -333,6 +344,8 @@ final class MAD4B_SCP_Approval_Tickets {
 
 	public static function finalize_claim( $ticket_id, $terminal_status, $execution_error_code = '' ) {
 		global $wpdb;
+		$ticket_id = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket_id ) : '';
+		if ( '' === $ticket_id ) return new WP_Error( 'mad4b_approval_ticket_invalid', 'Approval ticket id is not a canonical UUIDv4 identity.' );
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
 		$terminal_status = sanitize_key( (string) $terminal_status );
@@ -358,14 +371,16 @@ final class MAD4B_SCP_Approval_Tickets {
 	}
 
 	public static function get( $ticket_id ) {
+		$ticket_id = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket_id ) : '';
+		if ( '' === $ticket_id ) return null;
 		global $wpdb; $t = MAD4B_SCP_Schema::tables();
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['approvals']} WHERE ticket_id = %s LIMIT 1", (string) $ticket_id ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['approvals']} WHERE ticket_id = %s LIMIT 1", $ticket_id ), ARRAY_A );
 		return $row ? $row : null;
 	}
 
 	public static function candidate_binding( $ticket_id ) {
-		$ticket_id = strtolower( trim( (string) $ticket_id ) );
-		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) ) return array();
+		$ticket_id = class_exists( 'MAD4B_SCP_Identifiers' ) ? MAD4B_SCP_Identifiers::approval_ticket_id( $ticket_id ) : '';
+		if ( '' === $ticket_id ) return array();
 		$ticket = self::get( $ticket_id );
 		if ( is_array( $ticket ) ) {
 			$binding = self::candidate_binding_from_ticket( $ticket );
@@ -386,7 +401,7 @@ final class MAD4B_SCP_Approval_Tickets {
 		$profile_digest = isset( $ticket['site_profile_digest'] ) ? strtolower( trim( (string) $ticket['site_profile_digest'] ) ) : '';
 		$environment = isset( $ticket['binding_environment'] ) ? sanitize_key( (string) $ticket['binding_environment'] ) : '';
 		$host = isset( $ticket['binding_host'] ) ? strtolower( rtrim( (string) $ticket['binding_host'], '.' ) ) : '';
-		if ( self::CANDIDATE_BINDING_CONTRACT !== $contract || ! preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) || ! preg_match( '/^[a-f0-9]{64}$/', $payload ) || ! preg_match( '/^[a-f0-9]{40}$/', $sha ) || ! preg_match( '/^[a-f0-9]{64}$/', $build ) || ! preg_match( '/^[a-f0-9-]{36}$/', $site_uuid ) || $profile_revision < 1 || ! preg_match( '/^[a-f0-9]{64}$/', $profile_digest ) || '' === $environment || '' === $host ) return array();
+		if ( self::CANDIDATE_BINDING_CONTRACT !== $contract || ! class_exists( 'MAD4B_SCP_Identifiers' ) || ! MAD4B_SCP_Identifiers::valid_approval_ticket_id( $ticket_id ) || ! preg_match( '/^[a-f0-9]{64}$/', $payload ) || ! preg_match( '/^[a-f0-9]{40}$/', $sha ) || ! preg_match( '/^[a-f0-9]{64}$/', $build ) || ! preg_match( '/^[a-f0-9-]{36}$/', $site_uuid ) || $profile_revision < 1 || ! preg_match( '/^[a-f0-9]{64}$/', $profile_digest ) || '' === $environment || '' === $host ) return array();
 		$bound_at = ! empty( $ticket['bound_at'] ) ? strtotime( (string) $ticket['bound_at'] . ' UTC' ) : false;
 		return array(
 			'contract' => $contract,

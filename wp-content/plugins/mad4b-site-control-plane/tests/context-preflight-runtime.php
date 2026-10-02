@@ -16,6 +16,8 @@ function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-
 function sanitize_text_field( $value ) { return trim( preg_replace( '/[\r\n\t]+/', ' ', (string) $value ) ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function wp_strip_all_tags( $value ) { return strip_tags( (string) $value ); }
+$GLOBALS['context_receipt_signing_salt'] = 'context-receipt-test-salt';
+function wp_salt( $scheme ) { return $GLOBALS['context_receipt_signing_salt']; }
 
 final class MAD4B_SCP_Context_Authority {
 	public static $assets = array();
@@ -141,6 +143,55 @@ mad4b_context_preflight_assert( empty( $ready['blockers'] ), 'Ready preflight mu
 mad4b_context_preflight_assert( 'mad4b.context-envelope.v1' === $ready['envelope']['contract'], 'Context envelope contract mismatch.', $ready );
 mad4b_context_preflight_assert( 'mad4b.content-context-receipt.v1' === $ready['receipt']['contract'], 'Context receipt contract mismatch.', $ready );
 mad4b_context_preflight_assert( preg_match( '/^[a-f0-9]{64}$/', $ready['receipt']['receipt_sha256'] ), 'Context receipt must carry deterministic SHA256.', $ready );
+mad4b_context_preflight_assert( preg_match( '/^[a-f0-9]{64}$/', $ready['receipt']['receipt_signature'] ), 'Context receipt must carry runtime-issued HMAC proof.', $ready );
+$ready_receipt_json = wp_json_encode( $ready['receipt'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+mad4b_context_preflight_assert( is_string( $ready_receipt_json ) && strlen( $ready_receipt_json ) <= MAD4B_SCP_Context_Preflight::MAX_RECEIPT_TRANSPORT_BYTES, 'Ready Context Receipt must fit the governed dispatcher transport budget.', strlen( (string) $ready_receipt_json ) );
+
+$normal_brand_title = MAD4B_SCP_Context_Authority::$assets['brand']['title'];
+MAD4B_SCP_Context_Authority::$assets['brand']['title'] = str_repeat( 'oversized-title-', 6000 );
+$transport_blocked = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'campaign-x' );
+mad4b_context_preflight_assert(
+	is_array( $transport_blocked )
+	&& empty( $transport_blocked['ready'] )
+	&& 'blocked' === $transport_blocked['state']
+	&& in_array( 'context_receipt_transport_budget_exceeded', $transport_blocked['blockers'], true )
+	&& empty( $transport_blocked['receipt']['ready'] ),
+	'Receipt transport budget blocker must propagate to the outer preflight state.',
+	$transport_blocked
+);
+$transport_blocked_json = wp_json_encode( $transport_blocked['receipt'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+mad4b_context_preflight_assert( is_string( $transport_blocked_json ) && strlen( $transport_blocked_json ) <= MAD4B_SCP_Context_Preflight::MAX_RECEIPT_TRANSPORT_BYTES, 'Blocked receipt must remain transportable after compaction.', strlen( (string) $transport_blocked_json ) );
+MAD4B_SCP_Context_Authority::$assets['brand']['title'] = $normal_brand_title;
+
+$receipt_method = new ReflectionMethod( 'MAD4B_SCP_Context_Preflight', 'receipt' );
+$receipt_method->setAccessible( true );
+$oversized_receipt = $receipt_method->invoke(
+	null,
+	'site:fixture:oversized',
+	str_repeat( 'a', 64 ),
+	array(
+		'brand_context_required' => true,
+		'required_context_sets' => array(),
+		'optional_context_sets' => array(),
+		'allowed_mutation_abilities' => array( 'mad4b/content-update-post' ),
+	),
+	str_repeat( 'b', 64 ),
+	array( array( 'asset_id' => str_repeat( 'c', 64 ), 'title' => str_repeat( 'x', MAD4B_SCP_Context_Preflight::MAX_RECEIPT_TRANSPORT_BYTES + 1024 ) ) ),
+	array(),
+	array(),
+	'site-fixture',
+	1,
+	str_repeat( 'd', 64 ),
+	gmdate( 'c' ),
+	'campaign-x',
+	'brand',
+	str_repeat( 'e', 64 ),
+	1,
+	'mad4b/content-update-post'
+);
+$oversized_json = wp_json_encode( $oversized_receipt, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+mad4b_context_preflight_assert( empty( $oversized_receipt['ready'] ) && in_array( 'context_receipt_transport_budget_exceeded', $oversized_receipt['blockers'], true ), 'Oversized Context Receipt must become explicitly non-authorizing.', $oversized_receipt );
+mad4b_context_preflight_assert( empty( $oversized_receipt['assets_loaded'] ) && is_string( $oversized_json ) && strlen( $oversized_json ) <= MAD4B_SCP_Context_Preflight::MAX_RECEIPT_TRANSPORT_BYTES, 'Oversized Context Receipt must compact diagnostic asset summaries back under the transport budget.', strlen( (string) $oversized_json ) );
 
 $ids = array();
 foreach ( $ready['envelope']['assets'] as $asset ) $ids[] = (string) $asset['asset_id'];
@@ -159,6 +210,25 @@ mad4b_context_preflight_assert( str_repeat( 'd', 64 ) === $site_union['receipt']
 
 $validation = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $site_union['receipt'] );
 mad4b_context_preflight_assert( is_array( $validation ) && ! empty( $validation['ready'] ), 'Fresh exact Context Receipt must validate against live Skill and Authority state.', $validation );
+
+$tampered_signature = $site_union['receipt'];
+$tampered_signature['receipt_signature'] = str_repeat( '0', 64 );
+$tampered_signature_result = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $tampered_signature );
+mad4b_context_preflight_assert( is_wp_error( $tampered_signature_result ) && 'mad4b_context_receipt_signature_invalid' === $tampered_signature_result->get_error_code(), 'Tampered Context Receipt signature must fail closed.', $tampered_signature_result );
+
+$self_rehash = $site_union['receipt'];
+$self_rehash['task_scope'] = 'forged-client-scope';
+$digest_method = new ReflectionMethod( 'MAD4B_SCP_Context_Preflight', 'canonical_receipt_digest' );
+$digest_method->setAccessible( true );
+$self_rehash['receipt_sha256'] = $digest_method->invoke( null, $self_rehash );
+$self_rehash_result = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $self_rehash );
+mad4b_context_preflight_assert( is_wp_error( $self_rehash_result ) && 'mad4b_context_receipt_signature_invalid' === $self_rehash_result->get_error_code(), 'Client-side self-rehash must not mint a trusted Context Receipt.', $self_rehash_result );
+
+$original_context_receipt_salt = $GLOBALS['context_receipt_signing_salt'];
+$GLOBALS['context_receipt_signing_salt'] = 'rotated-context-receipt-test-salt';
+$rotated_key_result = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $site_union['receipt'] );
+mad4b_context_preflight_assert( is_wp_error( $rotated_key_result ) && 'mad4b_context_receipt_signature_invalid' === $rotated_key_result->get_error_code(), 'Context Receipt must fail after signing-key rotation.', $rotated_key_result );
+$GLOBALS['context_receipt_signing_salt'] = $original_context_receipt_salt;
 
 $missing_receipt = MAD4B_SCP_Context_Preflight::mutation_context_guard(
 	'mad4b/content-update-post',
@@ -375,6 +445,22 @@ $none = MAD4B_SCP_Context_Preflight::preflight_entry(
 	)
 );
 mad4b_context_preflight_assert( ! empty( $none['ready'] ) && 'not_required' === $none['state'], 'Non-context Skill must remain usable without Brand Context.', $none );
+$oversized_none = MAD4B_SCP_Context_Preflight::preflight_entry(
+	array(
+		'logical_id' => 'site/utility/' . str_repeat( 'oversized-', 9000 ),
+		'sha256' => str_repeat( 'c', 64 ),
+		'context_policy' => array( 'preset' => 'none' ),
+	)
+);
+mad4b_context_preflight_assert(
+	is_array( $oversized_none )
+	&& empty( $oversized_none['ready'] )
+	&& 'blocked' === $oversized_none['state']
+	&& in_array( 'context_receipt_transport_budget_exceeded', $oversized_none['blockers'], true )
+	&& empty( $oversized_none['receipt']['ready'] ),
+	'No-context preflight must propagate receipt transport denial instead of claiming not_required readiness.',
+	$oversized_none
+);
 $none_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard(
 	'mad4b/content-update-post',
 	array( 'post_id' => 12, 'post_content' => 'Brand content', '_mad4b_context_receipt' => $none['receipt'] )

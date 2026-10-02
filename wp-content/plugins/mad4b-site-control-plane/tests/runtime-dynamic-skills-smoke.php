@@ -562,7 +562,7 @@ $fake_identity = array(
 	'token_scopes' => array( 'mad4b:read' ),
 );
 if ( MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed( $fake_identity, 'mad4b-write', 'mad4b/content-update-post', array() ) ) $fail( 'Read OAuth identity crossed into write authority without an approval ticket.' );
-if ( ! MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed( $fake_identity, 'mad4b-write', 'mad4b/content-update-post', array( '_mad4b_approval_ticket_id' => '11111111-1111-1111-1111-111111111111' ) ) ) $fail( 'Syntactically valid approval envelope did not unlock scope delegation for later exact ticket consumption.' );
+if ( ! MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed( $fake_identity, 'mad4b-write', 'mad4b/content-update-post', array( '_mad4b_approval_ticket_id' => '11111111-1111-4111-8111-111111111111' ) ) ) $fail( 'Canonical UUIDv4 approval envelope did not unlock scope delegation for later exact ticket consumption.' );
 
 $snapshot_identity = MAD4B_SCP_Skill_Snapshot_Identity::build();
 if ( empty( $snapshot_identity['ready'] ) ) $fail( 'Deterministic snapshot identity is not ready.' );

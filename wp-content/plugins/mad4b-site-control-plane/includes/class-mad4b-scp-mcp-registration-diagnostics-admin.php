@@ -44,6 +44,17 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 
 		echo '<div class="notice notice-' . esc_attr( $type ) . '"><p><strong>' . esc_html__( 'MAD4B MCP registration diagnostics', 'mad4b-site-control-plane' ) . '</strong></p>';
 		echo '<table class="widefat striped" style="max-width:1100px;margin:8px 0 12px"><tbody>';
+		if ( class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) {
+			$projection = MAD4B_SCP_ChatGPT_Tool_Projection::status();
+			self::row( 'Projection revision', $projection['revision'] );
+			self::row( 'Projection stored / effective', $projection['stored_count'] . ' / ' . $projection['effective_count'] );
+			self::row( 'Stale projection entries', count( array_filter( $projection['abilities'], static function ( $row ) { return ! empty( $row['stale'] ); } ) ) );
+			self::row( 'Execution strategy', 'Governed dispatcher; optional direct hot set' );
+			self::row( 'Catalog indexed bytes / capacity', $projection['storage']['indexed_bytes'] . ' / ' . $projection['storage']['capacity_bytes'] );
+			self::row( 'Catalog indexed objects', $projection['storage']['indexed_objects'] );
+			self::row( 'Next catalog GC', $projection['storage']['next_gc'] ? gmdate( 'c', $projection['storage']['next_gc'] ) : 'not scheduled' );
+			self::row( 'Client refresh', $projection['catalog_refresh_action'] );
+		}
 		self::row( 'Control Plane runtime version', $build['runtime_version'] );
 		self::row( 'Control Plane main file disk version', $build['disk_version'] );
 		self::row( 'Control Plane runtime stale vs disk', ! empty( $build['runtime_stale_vs_disk'] ) ? 'yes' : 'no' );
@@ -104,6 +115,7 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		$catalog = isset( $chatgpt['catalog_evidence'] ) && is_array( $chatgpt['catalog_evidence'] ) ? $chatgpt['catalog_evidence'] : array();
 		if ( $preflight ) {
 			self::row( 'ChatGPT requested tool count', isset( $chatgpt['requested_tool_count'] ) ? (string) (int) $chatgpt['requested_tool_count'] : '0' );
+			self::row( 'ChatGPT accepted preflight tool count', isset( $preflight['tools'] ) && is_array( $preflight['tools'] ) ? (string) count( $preflight['tools'] ) : '0' );
 			self::row( 'ChatGPT materialized tool count', isset( $chatgpt['tool_count'] ) ? (string) (int) $chatgpt['tool_count'] : '0' );
 			self::row( 'ChatGPT preflight ready', ! empty( $preflight['ready'] ) ? 'yes' : 'no' );
 			self::row( 'ChatGPT preflight degraded', ! empty( $preflight['degraded'] ) ? 'yes' : 'no' );
@@ -112,20 +124,11 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 			self::row( 'ChatGPT preflight failure count', isset( $preflight['failures'] ) && is_array( $preflight['failures'] ) ? (string) count( $preflight['failures'] ) : '0' );
 			foreach ( $failures as $index => $failure ) {
 				if ( ! is_array( $failure ) ) continue;
-				$ability = isset( $failure['failing_ability'] ) ? sanitize_text_field( (string) $failure['failing_ability'] ) : '';
-				$stage = isset( $failure['stage'] ) ? sanitize_key( (string) $failure['stage'] ) : '';
-				$error_code = isset( $failure['error_code'] ) ? sanitize_key( (string) $failure['error_code'] ) : '';
-				$source_fp = isset( $failure['source_schema_fingerprint'] ) ? strtolower( preg_replace( '/[^a-f0-9]/', '', (string) $failure['source_schema_fingerprint'] ) ) : '';
-				$dto_fp = isset( $failure['schema_fingerprint'] ) ? strtolower( preg_replace( '/[^a-f0-9]/', '', (string) $failure['schema_fingerprint'] ) ) : '';
-				$bounded = implode( ' | ', array_filter( array(
-					'ability=' . $ability,
-					'stage=' . $stage,
-					'error=' . $error_code,
-					'' !== $source_fp ? 'source_schema=' . substr( $source_fp, 0, 16 ) : '',
-					'' !== $dto_fp ? 'dto_schema=' . substr( $dto_fp, 0, 16 ) : '',
-				) ) );
+				$bounded = self::failure_summary( $failure );
 				self::row( 'ChatGPT preflight failure ' . ( (int) $index + 1 ), $bounded );
 			}
+		} else {
+			self::row( 'ChatGPT preflight observed', 'no' );
 		}
 		if ( $catalog ) {
 			self::row( 'ChatGPT catalog observed', ! empty( $catalog['observed'] ) ? 'yes' : 'no' );
@@ -141,10 +144,30 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 			self::row( 'Foreign MCP plugin count', isset( $foreign['foreign_plugin_count'] ) ? (string) (int) $foreign['foreign_plugin_count'] : '0' );
 			$foreign_routes = isset( $foreign['foreign_routes'] ) && is_array( $foreign['foreign_routes'] ) ? array_slice( $foreign['foreign_routes'], 0, 20 ) : array();
 			$foreign_plugins = isset( $foreign['foreign_plugins'] ) && is_array( $foreign['foreign_plugins'] ) ? array_slice( $foreign['foreign_plugins'], 0, 20 ) : array();
-			foreach ( $foreign_routes as $index => $route ) self::row( 'Foreign MCP route ' . ( (int) $index + 1 ), sanitize_text_field( (string) $route ) );
-			foreach ( $foreign_plugins as $index => $plugin ) self::row( 'Foreign MCP plugin ' . ( (int) $index + 1 ), sanitize_text_field( (string) $plugin ) );
+			foreach ( $foreign_routes as $index => $route ) self::row( 'Foreign MCP route ' . ( (int) $index + 1 ), self::bounded_text( $route, 256 ) );
+			foreach ( $foreign_plugins as $index => $plugin ) self::row( 'Foreign MCP plugin ' . ( (int) $index + 1 ), self::bounded_text( $plugin, 256 ) );
 		}
 		echo '</tbody></table></div>';
+	}
+
+	/** Allowlisted evidence only; malformed provider values must not break the notice. */
+	private static function bounded_text( $value, $limit = 128 ) {
+		return is_string( $value ) ? sanitize_text_field( substr( $value, 0, $limit ) ) : '';
+	}
+
+	private static function failure_summary( array $failure ) {
+		$fields = array();
+		foreach ( array( 'failing_ability' => 'ability', 'stage' => 'stage', 'error_class' => 'class', 'error_code' => 'error' ) as $key => $label ) {
+			$fields[] = $label . '=' . self::bounded_text( $failure[ $key ] ?? '', 160 );
+		}
+		foreach ( array( 'source_schema_fingerprint' => 'source_schema', 'schema_fingerprint' => 'dto_schema' ) as $key => $label ) {
+			$value = $failure[ $key ] ?? '';
+			if ( is_string( $value ) && preg_match( '/^[a-f0-9]{64}$/iD', $value ) ) $fields[] = $label . '=' . strtolower( substr( $value, 0, 16 ) );
+		}
+		foreach ( array( 'tool_bytes', 'catalog_bytes_before', 'catalog_bytes_limit' ) as $key ) {
+			if ( isset( $failure[ $key ] ) && is_int( $failure[ $key ] ) && $failure[ $key ] >= 0 ) $fields[] = $key . '=' . $failure[ $key ];
+		}
+		return implode( ' | ', $fields );
 	}
 
 	/**

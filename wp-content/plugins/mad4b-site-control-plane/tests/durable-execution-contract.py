@@ -6,6 +6,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 DURABLE = (ROOT / "includes/class-mad4b-scp-durable-execution.php").read_text(encoding="utf-8")
+STATE_VIEW = (ROOT / "includes/class-mad4b-scp-execution-state-view.php").read_text(encoding="utf-8")
 SCHEMA = (ROOT / "includes/class-mad4b-scp-schema.php").read_text(encoding="utf-8")
 MAIN = (ROOT / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
@@ -58,6 +59,40 @@ for marker in (
 ):
     if marker not in DURABLE:
         raise SystemExit(f"durable execution contract missing: {marker}")
+
+for marker in (
+    "mad4b.execution-state-view.v1",
+    "public static function operation",
+    "public static function idempotency",
+    "public static function mutation_error",
+    "normalize_journal_status",
+    "normalize_resume_status",
+    "normalize_mutation_evidence",
+    "journal_orphan_candidate",
+    "journal_terminal_outcome_missing",
+    "idempotency_pending_requires_reconciliation",
+    "mutation_outcome_requires_reconciliation",
+    "'blind_retry_allowed' => false",
+    "'authority_created' => false",
+):
+    if marker not in STATE_VIEW:
+        raise SystemExit(f"execution state view contract missing: {marker}")
+for forbidden in (
+    "INSERT ",
+    "UPDATE ",
+    "DELETE ",
+    "wp_remote_get(",
+    "wp_remote_post(",
+    "wp_remote_request(",
+    "curl_exec(",
+):
+    if forbidden in STATE_VIEW:
+        raise SystemExit(f"execution state view contains forbidden mutation/network path: {forbidden}")
+state_view_load = "includes/class-mad4b-scp-execution-state-view.php"
+if state_view_load not in MAIN:
+    raise SystemExit("execution state view exists but is not loaded by the plugin runtime")
+if MAIN.index(state_view_load) < MAIN.index("includes/class-mad4b-scp-operation-resume.php"):
+    raise SystemExit("execution state view must load after its read-only source adapters")
 
 load_marker = "includes/class-mad4b-scp-durable-execution.php"
 if load_marker not in MAIN:

@@ -965,8 +965,9 @@ final class MAD4B_SCP_Staging_Write_Authority {
 
 	public static function approval_ticket_from_input( $input ) {
 		if ( ! is_array( $input ) || ! isset( $input[ self::APPROVAL_INPUT_KEY ] ) ) return '';
-		$value = strtolower( trim( (string) $input[ self::APPROVAL_INPUT_KEY ] ) );
-		return preg_match( '/^[a-f0-9-]{36}$/', $value ) ? $value : '';
+		return class_exists( 'MAD4B_SCP_Identifiers' )
+			? MAD4B_SCP_Identifiers::approval_ticket_id( $input[ self::APPROVAL_INPUT_KEY ] )
+			: '';
 	}
 
 	public static function context_receipt_from_input( $input ) {
@@ -1359,7 +1360,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				'type' => 'string',
 				'minLength' => 36,
 				'maxLength' => 36,
-				'pattern' => '^[A-Fa-f0-9-]{36}$',
+				'pattern' => MAD4B_SCP_Identifiers::APPROVAL_TICKET_SCHEMA_PATTERN,
 				'description' => 'One-time exact MAD4B approval ticket required for remote governed writes.',
 			);
 			$args['input_schema']['properties'][ self::CONTEXT_RECEIPT_INPUT_KEY ] = array(

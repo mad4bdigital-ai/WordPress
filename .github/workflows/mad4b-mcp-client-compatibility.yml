@@ -6,6 +6,10 @@ on:
       - '.github/workflows/mad4b-mcp-client-compatibility.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-includes/**'
+      - 'wp-content/mu-plugins/**'
+  schedule:
+    - cron: '23 4 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -30,22 +34,96 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-mcp-client-profile-registry.php"
           php -l "$root/includes/class-mad4b-scp-mcp-client-compatibility.php"
+          php -l "$root/includes/class-mad4b-scp-identifiers.php"
+          php -l "$root/includes/class-mad4b-scp-identity-context.php"
+          php -l "$root/includes/class-mad4b-scp-ability-contract-inspector.php"
+          php -l "$root/includes/class-mad4b-scp-capability-descriptor-registry.php"
+          php -l "$root/includes/class-mad4b-scp-preparation-receipt.php"
+          php -l "$root/includes/class-mad4b-scp-chatgpt-tool-projection.php"
+          php -l "$root/includes/class-mad4b-scp-ability-catalog-transport.php"
+          php -l "$root/includes/class-mad4b-scp-unified-capability-gateway.php"
+          php -l "$root/includes/class-mad4b-scp-catalog-object-store.php"
+          php -l "$root/tools/catalog-decommission.php"
+          php "$root/tests/catalog-transport-runtime.php"
+          node "$root/tests/catalog-transport-client.mjs"
+          node "$root/tests/network-catalog-client.mjs"
+          node "$root/tests/catalog-transport-failures.mjs"
+          php "$root/tests/projection-registration-lifecycle.php"
+          php "$root/tests/gateway-regression-runtime.php"
+          php "$root/tests/identity-context-runtime.php"
+          php "$root/tests/ability-contract-inspector-runtime.php"
+          php "$root/tests/preparation-receipt-runtime.php"
+          php "$root/tests/execution-state-view-runtime.php"
+          php "$root/tests/intent-registry-contract.php"
+          php "$root/tests/catalog-lifecycle-runtime.php"
+          php "$root/tests/catalog-decommission-bootstrap.php"
+          python3 "$root/tests/plugin-lifecycle-data-retention-contract.py"
+          php -l "$root/tests/runtime-unified-capability-gateway.php"
           php -l "$root/tests/runtime-mcp-client-compatibility-smoke.php"
           php -l "$root/tests/runtime-chatgpt-tool-inventory-smoke.php"
+          php -l "$root/tests/runtime-chatgpt-dynamic-tool-projection.php"
           python3 -m json.tool "$root/config/mcp-client-profiles.json" >/dev/null
           python3 "$root/tests/mcp-client-compatibility-contract.py"
+          python3 "$root/tests/chatgpt-dynamic-tool-projection-contract.py"
+          python3 "$root/tests/unified-capability-gateway-contract.py"
+          python3 "$root/tests/gateway-mutation-guards.py"
 
-  runtime:
-    name: MCP client compatibility runtime (${{ matrix.wordpress }})
+  catalog-compatibility:
+    name: Catalog runtime (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        wordpress: ['6.9', 'latest']
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint production PHP and exercise catalog lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          find "$root/includes" -name '*.php' -print0 | xargs -0 -n1 php -l
+          php "$root/tests/catalog-transport-runtime.php"
+          php "$root/tests/projection-registration-lifecycle.php"
+          php "$root/tests/gateway-regression-runtime.php"
+          php "$root/tests/identity-context-runtime.php"
+          php "$root/tests/ability-contract-inspector-runtime.php"
+          php "$root/tests/preparation-receipt-runtime.php"
+          php "$root/tests/execution-state-view-runtime.php"
+          php "$root/tests/intent-registry-contract.php"
+          php "$root/tests/catalog-lifecycle-runtime.php"
+          php "$root/tests/catalog-decommission-bootstrap.php"
+          python3 "$root/tests/plugin-lifecycle-data-retention-contract.py"
+
+  runtime:
+    name: MCP client compatibility runtime (${{ matrix.wordpress }} / PHP ${{ matrix.php }} / ${{ matrix.database }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - wordpress: '6.9'
+            php: '7.4'
+            database: mysql:8.0
+            health_command: mysqladmin ping -h 127.0.0.1 -uroot -proot
+          - wordpress: 'latest'
+            php: '8.3'
+            database: mysql:8.0
+            health_command: mysqladmin ping -h 127.0.0.1 -uroot -proot
+          - wordpress: 'latest'
+            php: '8.3'
+            database: mariadb:11.8
+            health_command: mariadb-admin ping -h 127.0.0.1 -uroot -proot
 
     services:
       mysql:
-        image: mysql:8.0
+        image: ${{ matrix.database }}
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: wordpress
@@ -54,7 +132,7 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-cmd="${{ matrix.health_command }}"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -65,7 +143,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: ${{ matrix.php }}
           extensions: mysqli, mbstring, openssl
           coverage: none
 
@@ -106,6 +184,8 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cp "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-fixtures.php" "$WP_PATH/wp-content/mu-plugins/mad4b-projection-ci.php"
 
       - name: Prove dynamic vendor-neutral RFC 9728 discovery
         shell: bash
@@ -118,6 +198,78 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-tool-inventory-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove arbitrary registered Abilities can be dynamically projected
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove adaptive unified capability gateway remains non-authorizing
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-unified-capability-gateway.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove independent database builds and non-destructive cron lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-build-concurrency.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove explicit offline catalog retirement preserves authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-decommission.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove fresh-process inactive decommission plan and apply
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          PLUGIN=mad4b-site-control-plane
+          PLUGIN_PATH="$WP_PATH/wp-content/plugins/$PLUGIN"
+          HELPER="$PLUGIN_PATH/tests/catalog-decommission-fresh-process.php"
+          TOOL="$PLUGIN_PATH/tools/catalog-decommission.php"
+          PLAN=/tmp/mad4b-catalog-decommission-fresh-plan.json
+          APPLY=/tmp/mad4b-catalog-decommission-fresh-apply.json
+          FIXTURE=mad4b_ct2_2000000000_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          cleanup() {
+            rm -f "$WP_PATH/.maintenance" "$PLAN" "$APPLY"
+            php /tmp/wp-cli.phar plugin activate "$PLUGIN" --path="$WP_PATH" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          php /tmp/wp-cli.phar plugin deactivate "$PLUGIN" --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval "delete_option('$FIXTURE'); add_option('$FIXTURE', array('fresh_process_fixture'=>true), '', false);" --path="$WP_PATH" --user=mad4b-ci-admin
+          printf '<?php $upgrading = %s;' "$(date +%s)" > "$WP_PATH/.maintenance"
+          php /tmp/wp-cli.phar eval-file "$HELPER" --path="$WP_PATH" --user=mad4b-ci-admin > "$PLAN"
+          SHA="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          doc=json.loads(Path('/tmp/mad4b-catalog-decommission-fresh-plan.json').read_text())
+          plan=doc.get('plan',{})
+          assert plan.get('contract') == 'mad4b.catalog-offline-purge.v1', plan
+          assert plan.get('origin') == 'https://mad4b-client.test', plan
+          assert 'mad4b_ct2_2000000000_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' in plan.get('objects',{}), plan
+          assert set(plan.get('preserves',[])) >= {'projection','grants','approvals','audit','site_profile'}, plan
+          sha=doc.get('plan_sha256','')
+          assert isinstance(sha,str) and len(sha)==64, doc
+          print(sha)
+          PY
+          )"
+          php /tmp/wp-cli.phar eval-file "$TOOL" apply "$PLAN" "$SHA" --path="$WP_PATH" --user=mad4b-ci-admin > "$APPLY"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('/tmp/mad4b-catalog-decommission-fresh-apply.json').read_text())
+          assert result.get('readback_verified') is True, result
+          assert result.get('authority_data_deleted') is False, result
+          assert int(result.get('deleted',0)) > 0, result
+          print('PASS fresh-process decommission: inactive plugin, exact reviewed plan, real deletion, empty readback and authority retention')
+          PY
+          cleanup
+          trap - EXIT
 
       - name: Prove initialize and minimal tools/list over the pinned Adapter protocol
         shell: bash
@@ -236,3 +388,4 @@ jobs:
 
           print(json.dumps({'status': 'PASS', 'catalog_mode': 'session_safe_direct_plus_governed_read_write_dispatch', 'tool_count': len(names), 'tools_payload_bytes': payload_bytes, 'tools': names}, indent=2))
           PY
+
