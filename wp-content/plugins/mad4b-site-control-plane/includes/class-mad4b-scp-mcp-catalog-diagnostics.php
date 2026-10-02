@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	const CONTRACT = 'mad4b.mcp-catalog-evidence.v1';
 	const MAX_TOOLS = 36;
+	const MAX_SERIALIZED_TOOL_BYTES = 98304;
 	private static $booted = false;
 	private static $failure_logged = false;
 	private static $registered_classification = array();
@@ -67,7 +68,9 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 
 		if ( ! class_exists( 'WP\\MCP\\Domain\\Tools\\RegisterAbilityAsMcpTool' ) || ! class_exists( 'WP\\MCP\\Domain\\Tools\\McpToolValidator' ) || ! function_exists( 'wp_get_ability' ) ) { $out['blocker'] = 'mcp_catalog_builder_unavailable'; return $out; }
 		$names = array(); $catalog_bytes = 32;
-		// Validate required tools before optional projections; size is evidence, not schema validity.
+		// Validate required tools before optional projections. Direct tools must fit
+		// the same bounded tools/list envelope exercised by HTTP acceptance; large
+		// optional Abilities remain reachable through the stable dispatcher path.
 		$ordered = array_merge( array_values( array_diff( $abilities, $optional ) ), array_values( array_intersect( $abilities, $optional ) ) );
 		foreach ( $ordered as $name ) {
 			if ( ! isset( $budget_allow[ $name ] ) ) continue;
@@ -83,6 +86,17 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 					$failure = self::dto_failure( $built['tool'] );
 					$tool_bytes = strlen( json_encode( $built['tool']->toArray(), JSON_THROW_ON_ERROR ) ) + 1;
 					if ( ! $failure && ( ! isset( $built['adapter_meta']['ability'] ) || $name !== $built['adapter_meta']['ability'] || isset( $names[ $built['tool']->getName() ] ) ) ) $failure = array( 'stage' => 'identity', 'error_class' => 'Contract', 'error_code' => 'mcp_identity_collision', 'schema_fingerprint' => '' );
+					if ( ! $failure && $catalog_bytes + $tool_bytes > self::MAX_SERIALIZED_TOOL_BYTES ) {
+						$failure = array(
+							'stage' => 'catalog_size',
+							'error_class' => 'Budget',
+							'error_code' => in_array( $name, $optional, true ) ? 'mcp_optional_catalog_size_excluded' : 'mcp_required_catalog_size_exceeded',
+							'schema_fingerprint' => '',
+							'tool_bytes' => $tool_bytes,
+							'catalog_bytes_before' => max( 0, $catalog_bytes - 32 ),
+							'catalog_bytes_limit' => self::MAX_SERIALIZED_TOOL_BYTES,
+						);
+					}
 					if ( ! $failure ) { $names[ $built['tool']->getName() ] = true; $catalog_bytes += $tool_bytes; }
 				}
 			} catch ( Throwable $error ) { $failure = array( 'stage' => $stage, 'error_class' => get_class( $error ), 'error_code' => 'mcp_preflight_exception', 'schema_fingerprint' => '' ); }
@@ -94,7 +108,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			} else $out['tools'][] = $name;
 		}
 		$out['serialized_tool_bytes'] = max( 0, $catalog_bytes - 32 );
-		$out['size_policy'] = 'measured_without_fixed_byte_rejection';
+		$out['serialized_tool_bytes_limit'] = self::MAX_SERIALIZED_TOOL_BYTES;
+		$out['size_policy'] = 'bounded_serialized_tool_bytes';
 		$out['degraded'] = ! empty( $out['failures'] ) && '' === $out['blocker'];
 		$out['ready'] = '' === $out['blocker'] && ! empty( $out['tools'] );
 		if ( ! $out['ready'] && '' === $out['blocker'] ) $out['blocker'] = 'mcp_catalog_empty';
