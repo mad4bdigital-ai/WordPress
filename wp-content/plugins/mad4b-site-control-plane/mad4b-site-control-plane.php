@@ -125,6 +125,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connector-resilience.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-read-consistency.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-contracts.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-health-view.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-traits.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-addon-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-data-governance.php';
