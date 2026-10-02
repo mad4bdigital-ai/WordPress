@@ -73,6 +73,18 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		}
 
 		if ( ! empty( $status['runtime_from_official_plugin'] ) ) {
+			if ( ! empty( $status['runtime_class_provenance_enforced'] ) && empty( $status['runtime_class_provenance_ready'] ) ) {
+				// PHP classes cannot be safely replaced after declaration. Fail closed
+				// for this request and expose bounded class-level evidence; lifecycle
+				// repair/restart can then restore a single certified class set.
+				$status['state'] = 'mixed_runtime_class_set';
+				$status['collision_risk_detected'] = true;
+				$status['runtime_provenance_mismatch'] = true;
+				$status['blocker'] = 'mcp_adapter_class_provenance_mismatch';
+				$status['next_request_required'] = true;
+				self::$status = $status;
+				return $status;
+			}
 			$status['state'] = 'canonical_runtime';
 			$status['blocker'] = '';
 			self::$status = $status;
@@ -218,6 +230,10 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			'runtime_from_official_plugin' => false,
 			'runtime_from_hostinger_bundle' => false,
 			'runtime_provenance_mismatch' => false,
+			'runtime_class_provenance_enforced' => false,
+			'runtime_class_provenance_ready' => null,
+			'runtime_class_provenance_state' => '',
+			'runtime_class_provenance_failure_count' => 0,
 		);
 		$class = '\\WP\\MCP\\Core\\McpAdapter';
 		if ( ! class_exists( $class, false ) ) return $out;
@@ -246,7 +262,15 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		} catch ( Throwable $e ) {
 			$out['runtime_source'] = 'reflection-unavailable';
 		}
-		$out['runtime_provenance_mismatch'] = $out['runtime_class_loaded'] && ! $out['runtime_from_official_plugin'];
+		$class_provenance = class_exists( 'MAD4B_SCP_MCP_Class_Provenance', false ) ? MAD4B_SCP_MCP_Class_Provenance::status() : array();
+		if ( is_array( $class_provenance ) && $class_provenance ) {
+			$out['runtime_class_provenance_enforced'] = ! empty( $class_provenance['enforced'] );
+			$out['runtime_class_provenance_ready'] = ! empty( $class_provenance['enforced'] ) ? ! empty( $class_provenance['ready'] ) : null;
+			$out['runtime_class_provenance_state'] = isset( $class_provenance['state'] ) ? sanitize_key( (string) $class_provenance['state'] ) : '';
+			$out['runtime_class_provenance_failure_count'] = isset( $class_provenance['failure_count'] ) ? max( 0, (int) $class_provenance['failure_count'] ) : 0;
+		}
+		$out['runtime_provenance_mismatch'] = ( $out['runtime_class_loaded'] && ! $out['runtime_from_official_plugin'] )
+			|| ( ! empty( $out['runtime_class_provenance_enforced'] ) && false === $out['runtime_class_provenance_ready'] );
 		return $out;
 	}
 
@@ -370,6 +394,10 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			'official_loads_before_hostinger' => false,
 			'collision_risk_detected' => false,
 			'runtime_provenance_mismatch' => false,
+			'runtime_class_provenance_enforced' => false,
+			'runtime_class_provenance_ready' => null,
+			'runtime_class_provenance_state' => '',
+			'runtime_class_provenance_failure_count' => 0,
 			'repair_applied' => false,
 			'load_order_repair_applied' => false,
 			'next_request_required' => false,
