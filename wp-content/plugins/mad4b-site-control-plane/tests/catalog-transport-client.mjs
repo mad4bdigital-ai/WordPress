@@ -9,7 +9,7 @@ const sha = digest(raw); let calls = 0, manifestCalls = 0, prepareCalls = 0, cor
 const row = {ability_name: 'vendor/read', source: {sha256: sha, bytes: raw.length}, wire: {sha256: sha, bytes: raw.length, tool_name: 'vendor-read'}, execution: {lane: 'read', execution_eligible: true, input_schema_sha256: sha, classification_sha256: scope}};
 const currentRow = () => ({...row, wire: {...row.wire, sha256: wireSha}});
 const fetchImpl = async (url, options) => {
-  assert.equal(options.redirect, 'error'); assert.equal(options.headers.Authorization, 'Bearer test');
+  assert.equal(options.redirect, 'error'); assert.equal(options.credentials, 'omit'); assert.equal(options.headers.Authorization, 'Bearer test');
   if (denied) return new Response('{}', {status: 403});
   if (url.pathname.endsWith('/capability-gateway')) {
     const request = JSON.parse(options.body);
@@ -27,6 +27,19 @@ const fetchImpl = async (url, options) => {
 };
 assert.throws(() => createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', maxPages: 0}), /page budget/);
 assert.throws(() => createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', maxSchemaBytes: Infinity}), /memory budget/);
+assert.throws(() => createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', credentialMode: 'include'}), /credential mode/);
+let explicitCookieModeObserved = false;
+const cookieClient = createAbilityCatalogClient({
+  baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/',
+  credentialMode: 'same-origin',
+  fetchImpl: async (url, options) => {
+    assert.equal(options.credentials, 'same-origin');
+    explicitCookieModeObserved = true;
+    return Response.json({contract, authority_scope_sha256: scope, rest_base_url: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', transports: ['authenticated_rest_binary', 'mcp_base64']});
+  },
+});
+await cookieClient.negotiate();
+assert.equal(explicitCookieModeObserved, true);
 const client = createAbilityCatalogClient({baseUrl: 'https://ci.test/wp-json/mad4b/v1/ability-catalog/', headers: async () => ({Authorization: 'Bearer test'}), fetchImpl, cryptoImpl: webcrypto, callTool: async (name, input) => {captured = {name, input}; return 'executed';}});
 assert.equal((await client.search('booking')).items[0].ability_name, row.ability_name);
 const lazy = (await client.prepare([row.ability_name])).catalogs.get(row.ability_name);
