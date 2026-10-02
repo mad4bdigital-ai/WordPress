@@ -7,7 +7,7 @@ export class CatalogError extends Error {
 /** Host adapter: explicit trusted REST origin or explicit MCP discovery callback. No implicit credentials. */
 export function createAbilityCatalogClient({ baseUrl, headers = async () => ({}), fetchImpl = globalThis.fetch,
   callDiscover, callTool, cryptoImpl = globalThis.crypto, maxPages = 1024, maxSchemaBytes = 33554432,
-  minChunkBytes = 32768, maxChunkBytes = 262144, targetLatencyMs = 750, onProgress = () => {} } = {}) {
+  minChunkBytes = 32768, maxChunkBytes = 262144, targetLatencyMs = 750, credentialMode = 'omit', onProgress = () => {} } = {}) {
   const base = baseUrl ? new URL(baseUrl) : null;
   if (base && (!['http:', 'https:'].includes(base.protocol) || base.username || base.password)) throw new CatalogError('Invalid trusted REST base');
   if (!base && !callDiscover) throw new CatalogError('A REST base or MCP discovery callback is required');
@@ -16,6 +16,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
   if (bounds.some(n => !Number.isInteger(n) || n < 1024 || n > 1048576) || minChunkBytes > maxChunkBytes) throw new CatalogError('Invalid transfer bounds');
   if (!Number.isInteger(maxPages) || maxPages < 1 || maxPages > 10000) throw new CatalogError('Invalid manifest page budget');
   if (!Number.isSafeInteger(maxSchemaBytes) || maxSchemaBytes < 1024 || maxSchemaBytes > 1073741824) throw new CatalogError('Invalid schema memory budget');
+  if (!['omit', 'same-origin'].includes(credentialMode)) throw new CatalogError('Invalid credential mode');
   let chunkBytes = minChunkBytes;
   const hash = async bytes => [...new Uint8Array(await cryptoImpl.subtle.digest('SHA-256', bytes))].map(n => n.toString(16).padStart(2, '0')).join('');
   const unwrap = result => {
@@ -32,7 +33,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     return u;
   }
   async function rest(path, params = {}) {
-    const response = await fetchImpl(url(path, params), {method: 'GET', headers: await headers(), credentials: 'same-origin', redirect: 'error', cache: 'no-store'});
+    const response = await fetchImpl(url(path, params), {method: 'GET', headers: await headers(), credentials: credentialMode, redirect: 'error', cache: 'no-store'});
     if (!response.ok) throw new CatalogError('Catalog HTTP request failed', response.status);
     return response;
   }
@@ -136,7 +137,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
       const endpoint = new URL(base);
       if (endpoint.searchParams.has('rest_route')) endpoint.searchParams.set('rest_route', endpoint.searchParams.get('rest_route').replace(/ability-catalog\/?$/, 'capability-gateway'));
       else endpoint.pathname = endpoint.pathname.replace(/ability-catalog\/?$/, 'capability-gateway');
-      const response = await fetchImpl(endpoint, {method: 'POST', headers: {...await headers(), 'Content-Type': 'application/json'}, body: JSON.stringify({action, ...input}), credentials: 'same-origin', redirect: 'error', cache: 'no-store'});
+      const response = await fetchImpl(endpoint, {method: 'POST', headers: {...await headers(), 'Content-Type': 'application/json'}, body: JSON.stringify({action, ...input}), credentials: credentialMode, redirect: 'error', cache: 'no-store'});
       if (!response.ok) throw new CatalogError('Capability gateway request failed', response.status);
       value = await response.json();
     }
