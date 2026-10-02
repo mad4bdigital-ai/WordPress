@@ -36,7 +36,15 @@ class MAD4B_SCP_Servers {
  static function chatgpt_reviewed_direct_step_up_tools() { return array(); }
 }
 class MAD4B_SCP_Authorization { static function execution_boundary_verified( $ability ) { return $ability->boundary; } }
-class MAD4B_SCP_Identity_Context { static function bind_approval_ticket_for_request( $id ) { $GLOBALS['approval_bind_calls']++; return true; } }
+class MAD4B_SCP_Identity_Context {
+ static function with_approval_ticket_for_request( $id, $callback ) {
+  ++$GLOBALS['approval_scope_calls'];
+  $previous = $GLOBALS['approval_scope_active'];
+  if ( '' !== $previous && $previous !== $id ) return new WP_Error( 'approval_rebind' );
+  $GLOBALS['approval_scope_active'] = $id;
+  try { return $callback(); } finally { $GLOBALS['approval_scope_active'] = $previous; }
+ }
+}
 class MAD4B_SCP_Connector_Resilience {
  const CONTRACT = 'fixture';
  static function execute_mutation( $lane, $name, $callback ) { $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
@@ -55,9 +63,13 @@ class GatewayFixture {
  function get_category() { return 'fixture'; }
  function get_label() { return 'Metadata fixture'; }
  function get_description() { return 'Schema must remain lazy'; }
- function execute( $input = null ) { if ( ! $this->permission ) return new WP_Error( 'permission_denied' ); ++$this->calls; return array( 'ok' => true ); }
+ function execute( $input = null ) {
+  if ( ! $this->permission ) return new WP_Error( 'permission_denied' );
+  if ( is_array( $input ) && ! empty( $input['_mad4b_approval_ticket_id'] ) && $GLOBALS['approval_scope_active'] !== $input['_mad4b_approval_ticket_id'] ) return new WP_Error( 'approval_scope_missing' );
+  ++$this->calls; return array( 'ok' => true );
+ }
 }
-$GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array(); $GLOBALS['approval_bind_calls'] = 0;
+$GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array(); $GLOBALS['approval_scope_calls'] = 0; $GLOBALS['approval_scope_active'] = '';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
 require __DIR__ . '/../includes/class-mad4b-scp-capability-descriptor-registry.php';
 require __DIR__ . '/../includes/class-mad4b-scp-preparation-receipt.php';
@@ -93,17 +105,17 @@ foreach ( array( 'write', 'content', 'admin' ) as $lane ) {
  $input = array_merge( array( 'ability_name' => $name, 'input' => array() ), $identity );
  $approval_id = '00000000-0000-0000-0000-000000000001';
  $invalid_permission = $input; $invalid_permission['preparation_receipt'] .= '0'; $invalid_permission['_mad4b_approval_ticket_id'] = $approval_id;
- $bind_before = $GLOBALS['approval_bind_calls'];
- check_gateway( is_wp_error( $dispatcher->can_write_dispatch( $invalid_permission ) ) && $bind_before === $GLOBALS['approval_bind_calls'], 'Invalid preparation bound approval metadata during write permission admission' );
+ $scope_before = $GLOBALS['approval_scope_calls'];
+ check_gateway( is_wp_error( $dispatcher->can_write_dispatch( $invalid_permission ) ) && $scope_before === $GLOBALS['approval_scope_calls'] && '' === $GLOBALS['approval_scope_active'], 'Invalid preparation entered approval execution scope during permission admission' );
  $valid_permission = $input; $valid_permission['_mad4b_approval_ticket_id'] = $approval_id;
- check_gateway( true === $dispatcher->can_write_dispatch( $valid_permission ) && $bind_before + 1 === $GLOBALS['approval_bind_calls'], 'Valid signed preparation did not admit governance metadata after revalidation' );
+ check_gateway( true === $dispatcher->can_write_dispatch( $valid_permission ) && $scope_before === $GLOBALS['approval_scope_calls'] && '' === $GLOBALS['approval_scope_active'], 'Permission admission leaked approval identity before target execution' );
  $oversized_permission = $input;
  $oversized_permission['_mad4b_context_receipt'] = array( 'payload' => str_repeat( 'x', MAD4B_SCP_Abilities::MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES + 1 ) );
- $oversized_bind_before = $GLOBALS['approval_bind_calls'];
+ $oversized_scope_before = $GLOBALS['approval_scope_calls'];
  $oversized_result = $dispatcher->can_write_dispatch( $oversized_permission );
- check_gateway( is_wp_error( $oversized_result ) && 'mad4b_write_dispatch_context_receipt_oversized' === $oversized_result->get_error_code() && $oversized_bind_before === $GLOBALS['approval_bind_calls'], 'Oversized Context Receipt reached governance binding' );
+ check_gateway( is_wp_error( $oversized_result ) && 'mad4b_write_dispatch_context_receipt_oversized' === $oversized_result->get_error_code() && $oversized_scope_before === $GLOBALS['approval_scope_calls'], 'Oversized Context Receipt entered approval execution scope' );
  $input = $valid_permission;
- check_gateway( ! is_wp_error( $dispatcher->write_execute( $input ) ) && 1 === $a->calls, 'Valid original lane failed execution: ' . $lane );
+ check_gateway( ! is_wp_error( $dispatcher->write_execute( $input ) ) && 1 === $a->calls && $scope_before + 1 === $GLOBALS['approval_scope_calls'] && '' === $GLOBALS['approval_scope_active'], 'Valid original lane failed scoped approval execution or leaked approval identity: ' . $lane );
  foreach ( array( 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' ) as $required_pin ) {
   $missing = $input; unset( $missing[$required_pin] );
   check_gateway( is_wp_error( $dispatcher->write_execute( $missing ) ) && 1 === $a->calls, 'Missing prepared identity reached execution: ' . $required_pin );
@@ -122,6 +134,27 @@ foreach ( array( 'write', 'content', 'admin' ) as $lane ) {
  $a->boundary = true; unset( $GLOBALS['mounted']['mad4b-write'][$name] );
  check_gateway( 'blocked' === MAD4B_SCP_Unified_Capability_Gateway::describe_execution( $row )['state'], 'Unmounted write lane advertised executable dispatch' );
 }
+
+// Permission state from an abandoned prepared target must never be reusable by
+// another write target in the same PHP request.
+$first = new GatewayFixture( 'fixture/stale-a', 'content', false );
+$second = new GatewayFixture( 'fixture/stale-b', 'content', false );
+$GLOBALS['abilities']['fixture/stale-a'] = $first;
+$GLOBALS['abilities']['fixture/stale-b'] = $second;
+foreach ( array( 'fixture/stale-a', 'fixture/stale-b' ) as $stale_name ) {
+ $GLOBALS['mounted']['mad4b-content'][$stale_name] = true;
+ $GLOBALS['mounted']['mad4b-write'][$stale_name] = true;
+}
+$first_identity = prepared_dispatch_identity( 'fixture/stale-a' );
+$second_identity = prepared_dispatch_identity( 'fixture/stale-b' );
+$stale_approval = '00000000-0000-0000-0000-000000000099';
+$first_input = array_merge( array( 'ability_name' => 'fixture/stale-a', 'input' => array(), '_mad4b_approval_ticket_id' => $stale_approval ), $first_identity );
+$second_input = array_merge( array( 'ability_name' => 'fixture/stale-b', 'input' => array() ), $second_identity );
+check_gateway( true === $dispatcher->can_write_dispatch( $first_input ), 'First prepared target failed governance capture' );
+$cross_target = $dispatcher->can_write_dispatch( $second_input );
+check_gateway( is_wp_error( $cross_target ) && 'mad4b_write_dispatch_governance_target_conflict' === $cross_target->get_error_code(), 'Abandoned governance envelope crossed into another prepared target' );
+check_gateway( ! is_wp_error( $dispatcher->write_execute( $first_input ) && '' === $GLOBALS['approval_scope_active'] ), 'Original governance target could not safely consume its captured evidence' );
+
 foreach ( array( 'internal', 'breakglass', 'developer-breakglass', 'unknown' ) as $lane ) {
  $row = array( 'ability_name' => 'fixture/sensitive', 'execution_lane' => $lane, 'execution_eligible' => true, 'readonly' => false );
  check_gateway( 'blocked' === MAD4B_SCP_Unified_Capability_Gateway::describe_execution( $row )['state'], 'Unsupported lane gained generic dispatcher: ' . $lane );
