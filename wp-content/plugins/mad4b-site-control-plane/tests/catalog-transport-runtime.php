@@ -4,7 +4,7 @@ define( 'ABSPATH', __DIR__ );
 class WP_Error { public $code; function __construct( $code, $message ) { $this->code = $code; } }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 class MAD4B_SCP_Policy { static function can_read() { return $GLOBALS['allowed']; } }
-class MAD4B_SCP_ChatGPT_Tool_Projection { static function current_binding() { return array( 'origin' => 'https://ci.test', 'revision' => $GLOBALS['binding'] ); } }
+class MAD4B_SCP_Ability_Contract_Inspector { static function site_binding() { return array( 'origin' => 'https://ci.test', 'revision' => $GLOBALS['binding'] ); } }
 class MAD4B_SCP_Capability_Descriptor_Registry { static function describe( $name ) { return array( 'lane' => 'read', 'readonly' => true, 'execution_eligible' => true, 'input_schema_sha256' => str_repeat( 'a', 64 ), 'classification_sha256' => str_repeat( 'b', 64 ) ); } }
 function wp_json_encode( $v ) { return json_encode( $v ); }
 function get_current_user_id() { return $GLOBALS['user']; }
