@@ -141,6 +141,38 @@ mad4b_context_preflight_assert( empty( $ready['blockers'] ), 'Ready preflight mu
 mad4b_context_preflight_assert( 'mad4b.context-envelope.v1' === $ready['envelope']['contract'], 'Context envelope contract mismatch.', $ready );
 mad4b_context_preflight_assert( 'mad4b.content-context-receipt.v1' === $ready['receipt']['contract'], 'Context receipt contract mismatch.', $ready );
 mad4b_context_preflight_assert( preg_match( '/^[a-f0-9]{64}$/', $ready['receipt']['receipt_sha256'] ), 'Context receipt must carry deterministic SHA256.', $ready );
+$ready_receipt_json = wp_json_encode( $ready['receipt'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+mad4b_context_preflight_assert( is_string( $ready_receipt_json ) && strlen( $ready_receipt_json ) <= MAD4B_SCP_Context_Preflight::MAX_RECEIPT_TRANSPORT_BYTES, 'Ready Context Receipt must fit the governed dispatcher transport budget.', strlen( (string) $ready_receipt_json ) );
+
+$receipt_method = new ReflectionMethod( 'MAD4B_SCP_Context_Preflight', 'receipt' );
+$receipt_method->setAccessible( true );
+$oversized_receipt = $receipt_method->invoke(
+	null,
+	'site:fixture:oversized',
+	str_repeat( 'a', 64 ),
+	array(
+		'brand_context_required' => true,
+		'required_context_sets' => array(),
+		'optional_context_sets' => array(),
+		'allowed_mutation_abilities' => array( 'mad4b/content-update-post' ),
+	),
+	str_repeat( 'b', 64 ),
+	array( array( 'asset_id' => str_repeat( 'c', 64 ), 'title' => str_repeat( 'x', MAD4B_SCP_Context_Preflight::MAX_RECEIPT_TRANSPORT_BYTES + 1024 ) ) ),
+	array(),
+	array(),
+	'site-fixture',
+	1,
+	str_repeat( 'd', 64 ),
+	gmdate( 'c' ),
+	'campaign-x',
+	'brand',
+	str_repeat( 'e', 64 ),
+	1,
+	'mad4b/content-update-post'
+);
+$oversized_json = wp_json_encode( $oversized_receipt, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+mad4b_context_preflight_assert( empty( $oversized_receipt['ready'] ) && in_array( 'context_receipt_transport_budget_exceeded', $oversized_receipt['blockers'], true ), 'Oversized Context Receipt must become explicitly non-authorizing.', $oversized_receipt );
+mad4b_context_preflight_assert( empty( $oversized_receipt['assets_loaded'] ) && is_string( $oversized_json ) && strlen( $oversized_json ) <= MAD4B_SCP_Context_Preflight::MAX_RECEIPT_TRANSPORT_BYTES, 'Oversized Context Receipt must compact diagnostic asset summaries back under the transport budget.', strlen( (string) $oversized_json ) );
 
 $ids = array();
 foreach ( $ready['envelope']['assets'] as $asset ) $ids[] = (string) $asset['asset_id'];
