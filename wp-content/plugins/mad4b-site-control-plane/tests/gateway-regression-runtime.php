@@ -35,7 +35,12 @@ class MAD4B_SCP_Servers {
  static function chatgpt_base_tools() { return array(); }
  static function chatgpt_reviewed_direct_step_up_tools() { return array(); }
 }
-class MAD4B_SCP_Authorization { static function execution_boundary_verified( $ability ) { return $ability->boundary; } }
+class MAD4B_SCP_Authorization {
+ static function execution_boundary_verified( $ability ) { return $ability->boundary; }
+ static function begin_execution_callback_observation( $name ) { $GLOBALS['observation_started'][$name] = false; }
+ static function execution_callback_started( $name ) { return ! empty( $GLOBALS['observation_started'][$name] ); }
+ static function clear_execution_callback_observation( $name ) { ++$GLOBALS['observation_clear_calls']; unset( $GLOBALS['observation_started'][$name] ); }
+}
 class MAD4B_SCP_Identity_Context {
  static function with_approval_ticket_for_request( $id, $callback ) {
   ++$GLOBALS['approval_scope_calls'];
@@ -51,9 +56,14 @@ class MAD4B_SCP_Connector_Resilience {
  static function execute_read( $name, $callback ) { $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
 }
 class MAD4B_SCP_Transport_Context { static function with_write_dispatch_target( $name, $digest, $callback ) { return $callback(); } }
+class MAD4B_SCP_Staging_Write_Planning_Guard {
+ const ABILITY = 'mad4b/approval-plan';
+ static function canonicalize_remote_plan_input( $input ) { return $input; }
+ static function validate_remote_plan_input( $input ) { return true; }
+}
 class MAD4B_SCP_OAuth_Resource_Bridge { static function verified_bearer_active() { return $GLOBALS['bearer']; } }
 class GatewayFixture {
- public $aliases = array(); public $boundary = true; public $permission = true; public $lane; public $readonly; public $calls = 0; public $schema_reads = 0;
+ public $aliases = array(); public $boundary = true; public $permission = true; public $lane; public $readonly; public $calls = 0; public $schema_reads = 0; public $throw_exception = false; public $error_code = '';
  private $name;
  function __construct( $name, $lane, $readonly ) { $this->name = $name; $this->lane = $lane; $this->readonly = $readonly; }
  function get_name() { return $this->name; }
@@ -66,10 +76,13 @@ class GatewayFixture {
  function execute( $input = null ) {
   if ( ! $this->permission ) return new WP_Error( 'permission_denied' );
   if ( is_array( $input ) && ! empty( $input['_mad4b_approval_ticket_id'] ) && $GLOBALS['approval_scope_active'] !== $input['_mad4b_approval_ticket_id'] ) return new WP_Error( 'approval_scope_missing' );
+  $GLOBALS['observation_started'][$this->name] = true;
+  if ( $this->throw_exception ) throw new RuntimeException( 'fixture planner exception' );
+  if ( '' !== $this->error_code ) return new WP_Error( $this->error_code );
   ++$this->calls; return array( 'ok' => true );
  }
 }
-$GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array(); $GLOBALS['approval_scope_calls'] = 0; $GLOBALS['approval_scope_active'] = '';
+$GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array(); $GLOBALS['approval_scope_calls'] = 0; $GLOBALS['approval_scope_active'] = ''; $GLOBALS['observation_started'] = array(); $GLOBALS['observation_clear_calls'] = 0;
 require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
 require __DIR__ . '/../includes/class-mad4b-scp-capability-descriptor-registry.php';
 require __DIR__ . '/../includes/class-mad4b-scp-preparation-receipt.php';
@@ -164,6 +177,53 @@ $cross_target = $dispatcher->can_write_dispatch( $second_input );
 check_gateway( is_wp_error( $cross_target ) && 'mad4b_write_dispatch_governance_target_conflict' === $cross_target->get_error_code(), 'Abandoned governance envelope crossed into another prepared target' );
 $first_execution = $dispatcher->write_execute( $first_input );
 check_gateway( ! is_wp_error( $first_execution ) && '' === $GLOBALS['approval_scope_active'], 'Original governance target could not safely consume its captured evidence' );
+
+// Approval-plan callback observation must be cleared on target errors and
+// exceptions so a later dispatcher in the same PHP request cannot inherit stale state.
+$planner = new GatewayFixture( 'mad4b/approval-plan', 'admin', false );
+$GLOBALS['abilities']['mad4b/approval-plan'] = $planner;
+$GLOBALS['mounted']['mad4b-admin']['mad4b/approval-plan'] = true;
+$GLOBALS['mounted']['mad4b-write']['mad4b/approval-plan'] = true;
+$planner_identity = prepared_dispatch_identity( 'mad4b/approval-plan' );
+check_gateway( ! is_wp_error( $planner_identity ), 'Approval-plan signed preparation failed' );
+$planner_input = array_merge( array( 'ability_name' => 'mad4b/approval-plan', 'input' => array() ), $planner_identity );
+
+$planner->error_code = 'fixture_planner_error';
+check_gateway( true === $dispatcher->can_write_dispatch( $planner_input ), 'Approval-plan error fixture failed permission admission' );
+$clear_before = $GLOBALS['observation_clear_calls'];
+$planner_error = $dispatcher->write_execute( $planner_input );
+check_gateway(
+ is_wp_error( $planner_error )
+ && 'mad4b_approval_plan_dispatch_target_error' === $planner_error->get_error_code()
+ && $clear_before + 1 === $GLOBALS['observation_clear_calls']
+ && ! isset( $GLOBALS['observation_started']['mad4b/approval-plan'] ),
+ 'Approval-plan target error leaked execution callback observation state'
+);
+
+$planner->error_code = '';
+$planner->throw_exception = true;
+check_gateway( true === $dispatcher->can_write_dispatch( $planner_input ), 'Approval-plan exception fixture failed permission admission' );
+$clear_before = $GLOBALS['observation_clear_calls'];
+$planner_exception = $dispatcher->write_execute( $planner_input );
+check_gateway(
+ is_wp_error( $planner_exception )
+ && 'mad4b_approval_plan_dispatch_exception' === $planner_exception->get_error_code()
+ && $clear_before + 1 === $GLOBALS['observation_clear_calls']
+ && ! isset( $GLOBALS['observation_started']['mad4b/approval-plan'] ),
+ 'Approval-plan exception leaked execution callback observation state'
+);
+
+$planner->throw_exception = false;
+check_gateway( true === $dispatcher->can_write_dispatch( $planner_input ), 'Approval-plan success fixture failed permission admission after prior failures' );
+$clear_before = $GLOBALS['observation_clear_calls'];
+$planner_success = $dispatcher->write_execute( $planner_input );
+check_gateway(
+ ! is_wp_error( $planner_success )
+ && 1 === $planner->calls
+ && $clear_before + 1 === $GLOBALS['observation_clear_calls']
+ && ! isset( $GLOBALS['observation_started']['mad4b/approval-plan'] ),
+ 'Approval-plan did not recover cleanly after prior failed executions'
+);
 
 foreach ( array( 'internal', 'breakglass', 'developer-breakglass', 'unknown' ) as $lane ) {
  $row = array( 'ability_name' => 'fixture/sensitive', 'execution_lane' => $lane, 'execution_eligible' => true, 'readonly' => false );
