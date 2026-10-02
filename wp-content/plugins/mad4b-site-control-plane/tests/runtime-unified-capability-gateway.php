@@ -115,6 +115,42 @@ foreach ( array( 'preparation_receipt', 'expected_authority_scope_sha256' ) as $
 		$fail( 'Real WordPress direct dispatcher accepted missing signed preparation evidence.', array( 'field' => $mandatory_evidence, 'result' => $denied_missing ) );
 	}
 }
+$write_transport = wp_get_ability( 'mad4b/write-execute' );
+if ( ! is_object( $write_transport ) || ! method_exists( $write_transport, 'validate_input' ) ) $fail( 'Real WordPress governed write dispatcher is unavailable for schema validation.' );
+$write_transport_schema = $write_transport->get_input_schema();
+foreach ( array( '_mad4b_approval_ticket_id', '_mad4b_context_receipt' ) as $governance_field ) {
+	if ( empty( $write_transport_schema['properties'][ $governance_field ] ) ) $fail( 'Write dispatcher schema does not expose governed envelope field.', $governance_field );
+}
+if ( true !== ( $write_transport_schema['additionalProperties'] ?? null ) && false !== ( $write_transport_schema['additionalProperties'] ?? null ) ) {
+	$fail( 'Write dispatcher additionalProperties contract is not explicit.', $write_transport_schema );
+}
+if ( false !== $write_transport_schema['additionalProperties'] ) $fail( 'Write dispatcher reopened arbitrary top-level input properties.', $write_transport_schema );
+$governed_transport_input = array(
+	'ability_name' => 'mad4b/plugin-package-apply',
+	'expected_input_schema_sha256' => str_repeat( 'a', 64 ),
+	'expected_execution_lane' => 'write',
+	'expected_classification_sha256' => str_repeat( 'b', 64 ),
+	'expected_authority_scope_sha256' => str_repeat( 'c', 64 ),
+	'preparation_receipt' => 'schema-validation-fixture',
+	'_mad4b_approval_ticket_id' => '11111111-1111-4111-8111-111111111111',
+	'_mad4b_context_receipt' => array(
+		'contract' => 'mad4b.content-context-receipt.v1',
+		'receipt_sha256' => str_repeat( 'd', 64 ),
+	),
+	'input' => array(),
+);
+$governed_valid = $write_transport->validate_input( $governed_transport_input );
+if ( true !== $governed_valid ) $fail( 'Real WordPress Ability validation rejected explicit governance envelope fields.', is_wp_error( $governed_valid ) ? $governed_valid->get_error_code() : $governed_valid );
+$unknown_governance_input = $governed_transport_input;
+$unknown_governance_input['_mad4b_unreviewed_control'] = true;
+$unknown_valid = $write_transport->validate_input( $unknown_governance_input );
+if ( ! is_wp_error( $unknown_valid ) || 'ability_invalid_input' !== $unknown_valid->get_error_code() ) $fail( 'Real WordPress Ability validation accepted an unknown dispatcher control field.', $unknown_valid );
+$bad_ticket_input = $governed_transport_input;
+$bad_ticket_input['_mad4b_approval_ticket_id'] = 'not-a-ticket';
+$bad_ticket_valid = $write_transport->validate_input( $bad_ticket_input );
+if ( ! is_wp_error( $bad_ticket_valid ) || 'ability_invalid_input' !== $bad_ticket_valid->get_error_code() ) $fail( 'Real WordPress Ability validation accepted a malformed approval ticket id.', $bad_ticket_valid );
+echo "PASS governed write envelope schema: explicit approval/context controls survive validation while unknown controls fail closed\n";
+
 $digest = (string) $item['schema_sha256'];
 if ( ! empty( $item['wire']['sha256'] ) ) {
 	$wire_schema = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
