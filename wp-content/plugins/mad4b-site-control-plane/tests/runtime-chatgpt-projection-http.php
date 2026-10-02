@@ -34,7 +34,9 @@ if ( is_wp_error( $read ) || is_wp_error( $step ) ) $fail( 'Cannot mint projecti
 wp_set_current_user( 0 );
 $dispatch = static function ( $bearer, $method, array $params, $session = '' ) use ( $wire, $network_base, $network ) {
     if ( $network_base ) {
-        $response = $network( $bearer, '/mcp/mad4b-chatgpt', 'POST', array( 'jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => $params ), array( 'MCP-Protocol-Version' => '2025-11-25', 'Mcp-Session-Id' => $session ) );
+        $headers = array( 'MCP-Protocol-Version' => '2025-11-25' );
+        if ( $session ) $headers['Mcp-Session-Id'] = $session;
+        $response = $network( $bearer, '/mcp/mad4b-chatgpt', 'POST', array( 'jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => empty( $params ) ? new stdClass() : $params ), $headers );
         return array( $response, $wire( $response ) );
     }
     $request = new WP_REST_Request( 'POST', '/mcp/mad4b-chatgpt' );
@@ -63,8 +65,8 @@ $gateway = static function ( $bearer, array $payload ) use ( $wire, $network_bas
     return array( $response, $wire( $response ) );
 };
 $initialize = static function ( $bearer ) use ( $dispatch, $fail ) {
-    list( $response, $body ) = $dispatch( $bearer, 'initialize', array( 'protocolVersion' => '2025-11-25', 'clientInfo' => array( 'name' => 'projection-proof', 'version' => '1' ) ) );
-    if ( 200 !== $response->get_status() || ! isset( $body['result'] ) ) $fail( 'Projection OAuth initialize failed.' );
+    list( $response, $body ) = $dispatch( $bearer, 'initialize', array( 'protocolVersion' => '2025-11-25', 'capabilities' => new stdClass(), 'clientInfo' => array( 'name' => 'projection-proof', 'version' => '1' ) ) );
+    if ( 200 !== $response->get_status() || ! isset( $body['result'] ) ) $fail( 'Projection OAuth initialize failed: ' . $response->get_status() . ' ' . wp_json_encode( $body ) );
     foreach ( $response->get_headers() as $key => $value ) if ( 'mcp-session-id' === strtolower( $key ) ) return is_array( $value ) ? reset( $value ) : $value;
     $fail( 'Projection initialize session missing.' );
 };

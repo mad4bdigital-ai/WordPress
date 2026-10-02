@@ -1,6 +1,8 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 add_action( 'wp_abilities_api_init', static function () {
+// Foreign REST requests deliberately use the zero-touch bootstrap.
+if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return;
 if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 	wp_register_ability( 'mad4b-ci/unclassified-projection-fixture', array(
 		'label' => 'Unclassified Projection Fixture',

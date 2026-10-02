@@ -185,7 +185,7 @@ try {
 	$server_fixture = new class { public function get_server_id() { return 'mad4b-chatgpt'; } };
 	$read_tool = \WP\MCP\Domain\Tools\McpTool::fromAbility( wp_get_ability( 'mad4b/diagnostics-health' ) );
 	if ( is_wp_error( $read_tool ) ) $fail( 'Official read tool fixture failed.' );
-	$target = wp_get_ability( 'mad4b/diagnostics-health' ); $schema_property = ( new ReflectionObject( $target ) )->getProperty( 'input_schema' ); $old_schema = $schema_property->getValue( $target );
+	$target = wp_get_ability( 'mad4b/diagnostics-health' ); $schema_property = ( new ReflectionObject( $target ) )->getProperty( 'input_schema' ); $schema_property->setAccessible( true ); $old_schema = $schema_property->getValue( $target );
 	try {
 		$schema_property->setValue( $target, array( 'type' => 'object', 'properties' => array( 'changed' => array( 'type' => 'integer' ) ) ) );
 		if ( MAD4B_SCP_ChatGPT_Tool_Projection::materialized_tool_matches( $read_tool ) ) $fail( 'Stale materialized DTO admitted.' );
