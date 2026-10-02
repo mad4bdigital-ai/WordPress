@@ -837,8 +837,8 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3770 P0 GATE Phase 37 must map into existing quality/traceability families and must not authorize Production, Breakglass, generic shell/raw SQL, or any new authority by documentation alone.
 
 ### 37M — Request scope, database consistency and extension interference
-- [ ] T3771 P0 Define a RequestScopeContract for static/runtime caches across REST, MCP, WP-CLI, cron, blog switches, user switches and authoritative profile/policy/projection mutations; every cache must declare lifetime and invalidation owner.
-- [ ] T3772 P0 Add long-lived-worker fixtures with sequential requests for different sites/users/environments proving no static cache, identity, authority, descriptor, policy or projection state leaks across request boundaries.
+- [x] T3771 P0 Define a RequestScopeContract for static/runtime caches across REST, MCP, WP-CLI, cron, blog switches, user switches and authoritative profile/policy/projection mutations; every cache must declare lifetime and invalidation owner.
+- [x] T3772 P0 Add long-lived-worker fixtures with sequential requests for different sites/users/environments proving no static cache, identity, authority, descriptor, policy or projection state leaks across request boundaries.
 - [ ] T3773 P0 Define an authoritative database-topology profile for governance writes/claims/journals/commit guards/readback; governed mutation state must use read-your-writes semantics and must detect or deny unsafe read-replica routing.
 - [ ] T3774 P0 Define deadlock, lock-wait-timeout, connection-loss and transaction-abort semantics for approval claims, operation journal appends and durable execution; ambiguous persistence becomes reconciliation-required and never blind-retried.
 - [ ] T3775 P0 GATE Prove final execution admission cannot be bypassed by WordPress hook/filter priority, registration order or a later/same-priority extension mutating projected tool metadata or call arguments.

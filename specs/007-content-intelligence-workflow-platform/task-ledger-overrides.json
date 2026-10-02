@@ -918,23 +918,29 @@
       "reason": "Real MariaDB runtime proof detects stuck/orphan jobs, expired leases, stale inbox, provider DLQ and Host Runner uncertain/recovery-required/dead-letter states while remaining site-scoped, read-only and non-authorizing."
     },
     "T3771": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
-        "workflow_job:110809063089",
-        "workflow_run:36998008746"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php",
+        "workflow_run:36998811349",
+        "workflow_job:110811546225",
+        "workflow_job:110811546312",
+        "workflow_job:110811546391"
       ],
-      "reason": "RequestScope ownership and standalone generation fencing are implemented, but the first real runtime matrix exposed a projection-vs-authority generation regression. The projection generation is now separated as non-authorizing presentation state; exact-head runtime revalidation remains required."
+      "reason": "RequestScope authority context, presentation-generation separation, cache ownership/reset, quiescent transition checks and worker-recycle semantics are implemented and pass WordPress 6.9/PHP 7.4/MySQL 8 plus latest/PHP 8.3 on MySQL 8 and MariaDB 11.8."
     },
     "T3772": {
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php",
+        "workflow_run:36998811349",
+        "workflow_job:110811546225",
+        "workflow_job:110811546312",
+        "workflow_job:110811546391"
       ],
-      "reason": "Sequential logical-request fixtures exist for user/capability drift, transaction/identity leakage and site/runtime recycle semantics; the exact-head real WordPress matrix is still pending."
+      "reason": "Sequential logical-request fixtures prove user/capability drift denial, request-id reset, transaction and scoped-identity boundary denial, non-authorizing projection generation isolation, and site/runtime worker-recycle behavior across the certified MySQL/MariaDB matrix."
     },
     "T3796": {
       "status": "DONE",

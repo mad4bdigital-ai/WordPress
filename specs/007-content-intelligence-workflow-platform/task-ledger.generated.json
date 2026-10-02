@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "28e2120cfeff906e9a8142f74e9f09b0196b12b4",
-  "override_git_blob_sha": "82c232e35d10f9686d9a8097d005643a67f0a4ca",
+  "source_tasks_git_blob_sha": "2ac34afe8b60674b202f8a40daba5b43f7f50f8d",
+  "override_git_blob_sha": "a958fe8ee58d7d24a9a619ff6d2560cb6c2d0931",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,16 +10,16 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 46,
+    "DONE": 48,
     "OPEN": 642,
-    "PARTIAL": 67
+    "PARTIAL": 65
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 39,
+      "DONE": 41,
       "OPEN": 501,
-      "PARTIAL": 45
+      "PARTIAL": 43
     },
     "P1": {
       "DEFERRED": 0,
@@ -7686,29 +7686,35 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Define a RequestScopeContract for static/runtime caches across REST, MCP, WP-CLI, cron, blog switches, user switches and authoritative profile/policy/projection mutations; every cache must declare lifetime and invalidation owner.",
-      "status": "PARTIAL",
-      "checked": false,
+      "status": "DONE",
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
-        "workflow_job:110809063089",
-        "workflow_run:36998008746"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php",
+        "workflow_run:36998811349",
+        "workflow_job:110811546225",
+        "workflow_job:110811546312",
+        "workflow_job:110811546391"
       ],
-      "reason": "RequestScope ownership and standalone generation fencing are implemented, but the first real runtime matrix exposed a projection-vs-authority generation regression. The projection generation is now separated as non-authorizing presentation state; exact-head runtime revalidation remains required."
+      "reason": "RequestScope authority context, presentation-generation separation, cache ownership/reset, quiescent transition checks and worker-recycle semantics are implemented and pass WordPress 6.9/PHP 7.4/MySQL 8 plus latest/PHP 8.3 on MySQL 8 and MariaDB 11.8."
     },
     {
       "task_id": "T3772",
       "phase": 37,
       "priority": "P0",
       "summary": "Add long-lived-worker fixtures with sequential requests for different sites/users/environments proving no static cache, identity, authority, descriptor, policy or projection state leaks across request boundaries.",
-      "status": "PARTIAL",
-      "checked": false,
+      "status": "DONE",
+      "checked": true,
       "evidence_refs": [
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php",
+        "workflow_run:36998811349",
+        "workflow_job:110811546225",
+        "workflow_job:110811546312",
+        "workflow_job:110811546391"
       ],
-      "reason": "Sequential logical-request fixtures exist for user/capability drift, transaction/identity leakage and site/runtime recycle semantics; the exact-head real WordPress matrix is still pending."
+      "reason": "Sequential logical-request fixtures prove user/capability drift denial, request-id reset, transaction and scoped-identity boundary denial, non-authorizing projection generation isolation, and site/runtime worker-recycle behavior across the certified MySQL/MariaDB matrix."
     },
     {
       "task_id": "T3773",
