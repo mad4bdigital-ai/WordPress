@@ -25,7 +25,7 @@ function current_user_can() { return false; }
 function get_option( $name, $default = false ) { return $default; }
 function rest_url( $path ) { return 'https://ci.test/wp-json/' . $path; }
 function untrailingslashit( $value ) { return rtrim( $value, '/' ); }
-class MAD4B_SCP_Policy { static function can_read() { return $GLOBALS['read_allowed']; } }
+class MAD4B_SCP_Policy { static function can_read() { return $GLOBALS['read_allowed']; } static function can_admin() { return true; } static function can_mutate() { return true; } }
 class MAD4B_SCP_Servers {
  static function ability_is_mounted( $server, $name ) { return isset( $GLOBALS['mounted'][$server][$name] ); }
  static function provider_for_ability( $server, $name ) { return self::ability_is_mounted( $server, $name ) ? 'fixture' : null; }
@@ -36,6 +36,7 @@ class MAD4B_SCP_Servers {
  static function chatgpt_reviewed_direct_step_up_tools() { return array(); }
 }
 class MAD4B_SCP_Authorization { static function execution_boundary_verified( $ability ) { return $ability->boundary; } }
+class MAD4B_SCP_Identity_Context { static function bind_approval_ticket_for_request( $id ) { $GLOBALS['approval_bind_calls']++; return true; } }
 class MAD4B_SCP_Connector_Resilience {
  const CONTRACT = 'fixture';
  static function execute_mutation( $lane, $name, $callback ) { $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
@@ -56,7 +57,7 @@ class GatewayFixture {
  function get_description() { return 'Schema must remain lazy'; }
  function execute( $input = null ) { if ( ! $this->permission ) return new WP_Error( 'permission_denied' ); ++$this->calls; return array( 'ok' => true ); }
 }
-$GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array();
+$GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array(); $GLOBALS['approval_bind_calls'] = 0;
 require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
 require __DIR__ . '/../includes/class-mad4b-scp-capability-descriptor-registry.php';
 require __DIR__ . '/../includes/class-mad4b-scp-preparation-receipt.php';
@@ -90,6 +91,13 @@ foreach ( array( 'write', 'content', 'admin' ) as $lane ) {
  $identity = prepared_dispatch_identity( $name );
  check_gateway( ! is_wp_error( $identity ), 'Unable to issue prepared identity: ' . $lane );
  $input = array_merge( array( 'ability_name' => $name, 'input' => array() ), $identity );
+ $approval_id = '00000000-0000-0000-0000-000000000001';
+ $invalid_permission = $input; $invalid_permission['preparation_receipt'] .= '0'; $invalid_permission['_mad4b_approval_ticket_id'] = $approval_id;
+ $bind_before = $GLOBALS['approval_bind_calls'];
+ check_gateway( is_wp_error( $dispatcher->can_write_dispatch( $invalid_permission ) ) && $bind_before === $GLOBALS['approval_bind_calls'], 'Invalid preparation bound approval metadata during write permission admission' );
+ $valid_permission = $input; $valid_permission['_mad4b_approval_ticket_id'] = $approval_id;
+ check_gateway( true === $dispatcher->can_write_dispatch( $valid_permission ) && $bind_before + 1 === $GLOBALS['approval_bind_calls'], 'Valid signed preparation did not admit governance metadata after revalidation' );
+ $input = $valid_permission;
  check_gateway( ! is_wp_error( $dispatcher->write_execute( $input ) ) && 1 === $a->calls, 'Valid original lane failed execution: ' . $lane );
  foreach ( array( 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' ) as $required_pin ) {
   $missing = $input; unset( $missing[$required_pin] );
