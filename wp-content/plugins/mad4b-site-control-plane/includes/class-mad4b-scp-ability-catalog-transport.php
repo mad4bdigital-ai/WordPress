@@ -124,7 +124,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 							if ( ! is_wp_error( $built ) ) { $dto = $built['tool']->toArray(); $wire = self::publish_schema( array( 'inputSchema' => $dto['inputSchema'], 'outputSchema' => $dto['outputSchema'] ?? null ), $store, $force ); $row['wire'] = array( 'sha256' => $wire['sha256'], 'bytes' => $wire['bytes'], 'tool_name' => $dto['name'] ); }
 						}
 					} catch ( Throwable $e ) { $row['wire_unavailable'] = true; }
-					$classification = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $name );
+					$classification = MAD4B_SCP_Capability_Descriptor_Registry::describe( $name );
 					if ( ! is_wp_error( $classification ) ) {
 						$row['execution'] = array_intersect_key( $classification, array_flip( array( 'lane', 'readonly', 'execution_eligible', 'execution_blocker', 'input_schema_sha256', 'classification_sha256' ) ) );
 						if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) ) $row['execution'] += MAD4B_SCP_Unified_Capability_Gateway::describe_execution( $classification );
