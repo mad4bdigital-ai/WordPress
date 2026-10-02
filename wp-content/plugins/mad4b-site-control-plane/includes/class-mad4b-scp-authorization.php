@@ -11,6 +11,7 @@ final class MAD4B_SCP_Authorization {
 
 	private static $booted = false;
 	private static $execution_callback_started = array();
+	private static $trusted_execution_boundaries = array();
 
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_filter' ) ) return;
@@ -374,7 +375,8 @@ final class MAD4B_SCP_Authorization {
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 		if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) return $args;
-		if ( empty( $mcp['mad4b_governed_write_authority'] ) || ! empty( $mcp['mad4b_execution_boundary'] ) ) return $args;
+		if ( empty( $mcp['mad4b_governed_write_authority'] ) ) return $args;
+		if ( isset( self::$trusted_execution_boundaries[ $name ] ) && self::$trusted_execution_boundaries[ $name ] === $args['execute_callback'] ) return $args;
 
 		if ( isset( $args['permission_callback'] ) && is_callable( $args['permission_callback'] ) && empty( $mcp['mad4b_permission_denial_audit'] ) ) {
 			$permission = $args['permission_callback'];
@@ -421,12 +423,21 @@ final class MAD4B_SCP_Authorization {
 			return $result;
 		};
 		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
+		self::$trusted_execution_boundaries[ $name ] = $args['execute_callback'];
 		$args['meta']['mcp']['mad4b_execution_boundary'] = self::EXECUTION_BOUNDARY_CONTRACT;
 		$args['meta']['mcp']['mad4b_execution_commit_guard'] = class_exists( 'MAD4B_SCP_Execution_Commit_Guard' ) ? MAD4B_SCP_Execution_Commit_Guard::CONTRACT : '';
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) && MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY === (string) $name ) {
 			$args['meta']['mcp']['mad4b_local_admin_planner_compatibility'] = 'local_only_remote_claim_required';
 		}
 		return $args;
+	}
+
+	public static function execution_boundary_verified( $ability ) {
+		try {
+			$name = $ability->get_name();
+			$property = ( new ReflectionObject( $ability ) )->getProperty( 'execute_callback' );
+			return isset( self::$trusted_execution_boundaries[ $name ] ) && self::$trusted_execution_boundaries[ $name ] === $property->getValue( $ability );
+		} catch ( Throwable $e ) { return false; }
 	}
 
 	public static function local_approval_planner_execution( $ability_name ) {

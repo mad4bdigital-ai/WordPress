@@ -8,7 +8,8 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 	private static $booted = false;
 	private static $failure_logged = false;
 	private static $registered_classification = array();
-	private static $classification_server = ''; 
+	private static $classification_server = '';
+	private static $registered_callbacks = array();
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -134,13 +135,16 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			$ability = isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
 			if ( ! in_array( $ability, $expected, true ) || $name !== $dto->getName() ) throw new RuntimeException( 'mad4b_catalog_capture_identity_invalid' );
 			$dynamic = isset( $dynamic_rows[ $ability ] ) && is_array( $dynamic_rows[ $ability ] );
-			$dynamic_readonly = $dynamic && ! empty( $dynamic_rows[ $ability ]['readonly'] );
+			$dynamic_readonly = $dynamic && 'read' === $dynamic_rows[ $ability ]['lane'] && ! empty( $dynamic_rows[ $ability ]['readonly'] );
 			$dynamic_breakglass = $dynamic && ! empty( $dynamic_rows[ $ability ]['breakglass'] );
 			$direct_step_up = in_array( $ability, $reviewed, true );
 			$captured[ $name ] = array(
 				'ability' => $ability,
 				'direct_step_up' => $direct_step_up,
 				'dynamic_projection' => $dynamic,
+				'input_schema_sha256' => $dynamic ? $dynamic_rows[ $ability ]['input_schema_sha256'] : '',
+				'classification_sha256' => $dynamic ? $dynamic_rows[ $ability ]['classification_sha256'] : '',
+				'wire_sha256' => $dynamic ? hash( 'sha256', wp_json_encode( $dto->toArray() ) ) : '',
 				'dynamic_readonly' => $dynamic_readonly,
 				'dynamic_breakglass' => $dynamic_breakglass,
 				'exact_chatgpt_client_required' => $direct_step_up || ( $dynamic && ! $dynamic_readonly ),
@@ -149,6 +153,12 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 		if ( ! empty( self::$registered_classification ) && self::$registered_classification !== $captured ) throw new RuntimeException( 'mad4b_catalog_classification_changed' );
 		self::$registered_classification = $captured;
 		self::$classification_server = spl_object_hash( $server );
+		foreach ( $captured as $name => $row ) if ( $row['dynamic_projection'] ) self::$registered_callbacks[ $name ] = MAD4B_SCP_ChatGPT_Tool_Projection::callback_identity( $server->get_mcp_tool( $name ) );
+	}
+
+	public static function materialized_callbacks_match( $tool, $server ) {
+		$name = $tool->get_protocol_dto()->getName();
+		return spl_object_hash( $server ) === self::$classification_server && isset( self::$registered_callbacks[ $name ] ) && self::$registered_callbacks[ $name ] === MAD4B_SCP_ChatGPT_Tool_Projection::callback_identity( $tool );
 	}
 
 	public static function classification_snapshot() { return self::$registered_classification; }
@@ -189,6 +199,7 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			$dynamic = ! empty( $captured['dynamic_projection'] );
 			$dynamic_readonly = ! empty( $captured['dynamic_readonly'] );
 			$dynamic_breakglass = ! empty( $captured['dynamic_breakglass'] );
+			if ( $dynamic && ! MAD4B_SCP_ChatGPT_Tool_Projection::materialized_tool_matches( $bound, $server ) ) continue;
 			if ( $dynamic && ( ! class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) || ! MAD4B_SCP_ChatGPT_Tool_Projection::is_projected( $ability ) ) ) continue;
 
 			// Dynamic projection changes discoverability only. Mutating projections

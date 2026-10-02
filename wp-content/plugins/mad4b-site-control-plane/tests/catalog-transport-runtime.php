@@ -4,7 +4,7 @@ define( 'ABSPATH', __DIR__ );
 class WP_Error { public $code; function __construct( $code, $message ) { $this->code = $code; } }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 class MAD4B_SCP_Policy { static function can_read() { return $GLOBALS['allowed']; } }
-class MAD4B_SCP_ChatGPT_Tool_Projection { static function current_binding() { return array( 'origin' => 'https://ci.test', 'revision' => $GLOBALS['binding'] ); } }
+class MAD4B_SCP_ChatGPT_Tool_Projection { static function describe_ability( $name ) { return array( 'lane' => 'read', 'readonly' => true, 'execution_eligible' => true, 'input_schema_sha256' => str_repeat( 'a', 64 ), 'classification_sha256' => str_repeat( 'b', 64 ) ); } static function current_binding() { return array( 'origin' => 'https://ci.test', 'revision' => $GLOBALS['binding'] ); } }
 function wp_json_encode( $v ) { return json_encode( $v ); }
 function get_current_user_id() { return $GLOBALS['user']; }
 function wp_get_current_user() { return (object) array( 'allcaps' => array( 'read' => true ) ); }
@@ -13,6 +13,23 @@ function apply_filters( $name, $v ) { return $v; }
 function set_transient( $key, $v, $ttl ) { $GLOBALS['cache'][$key] = $v; return true; }
 function get_transient( $key ) { return $GLOBALS['cache'][$key] ?? false; }
 function wp_get_abilities() { return $GLOBALS['abilities']; }
+function rest_url( $path ) { return 'https://ci.test/wp-json/' . $path; }
+function get_option( $key, $default = false ) { return $GLOBALS['options'][$key] ?? $default; }
+function add_option( $key, $value, $deprecated = '', $autoload = false ) { if ( isset( $GLOBALS['options'][$key] ) ) return false; $GLOBALS['options'][$key] = $value; return true; }
+function delete_option( $key ) { unset( $GLOBALS['options'][$key] ); }
+function wp_cache_delete( $key, $group ) { return true; }
+function maybe_serialize( $v ) { return serialize( $v ); }
+class FakeDB {
+ public $options = 'options'; public $race = false;
+ function prepare( $query, ...$args ) { return $args; }
+ function query( $args ) {
+  list( $next, $key, $old ) = $args;
+  if ( $this->race ) { $this->race = false; $GLOBALS['options'][$key]['concurrent'] = array( 'option' => 'other', 'expires' => time()+3600, 'bytes' => 1 ); return 0; }
+  if ( serialize( $GLOBALS['options'][$key] ) !== $old ) return 0;
+  $GLOBALS['options'][$key] = unserialize( $next ); return 1;
+ }
+}
+$GLOBALS['wpdb'] = new FakeDB(); $GLOBALS['options'] = array();
 class FixtureAbility {
  private $text; function __construct( $text ) { $this->text = $text; }
  function get_input_schema() { return array( 'type' => 'object', 'properties' => array( 'value' => array( 'type' => 'string', 'description' => $this->text ) ) ); }
@@ -21,6 +38,7 @@ class FixtureAbility {
  function get_meta() { return array( 'annotations' => array( 'readonly' => true ) ); }
  function get_category() { return 'read'; }
 }
+require __DIR__ . '/../includes/class-mad4b-scp-catalog-object-store.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-catalog-transport.php';
 function check( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); }
 function request( $input ) { return MAD4B_SCP_Ability_Catalog_Transport::handle( $input ); }
@@ -30,7 +48,7 @@ $first = request( array( 'limit' => 1 ) );
 check( $first['items'][0]['schema_bytes'] > 65536 && ! empty( $first['next_cursor'] ), 'Large schema rejected or pagination absent' );
 $ref = array( 'snapshot' => $first['snapshot'], 'schema_sha256' => $first['items'][0]['schema_sha256'] );
 $full = request( $ref + array( 'transport_action' => 'schema' ) );
-check( strlen( $full['schema']['inputSchema']['properties']['value']['description'] ) > 65536, 'Schema truncated' );
+check( strlen( $full['schema']->inputSchema->properties->value->description ) > 65536, 'Schema truncated' );
 $assembled = ''; $index = 0;
 do {
  $chunk = request( $ref + array( 'transport_action' => 'chunk', 'chunk_bytes' => 1024, 'chunk_index' => $index ) );
@@ -46,4 +64,33 @@ check( is_wp_error( request( array( 'cursor' => $first['next_cursor'] . 'x' ) ) 
 $GLOBALS['user'] = 2; check( is_wp_error( request( $ref + array( 'transport_action' => 'schema' ) ) ), 'Cross-user cache leak' );
 $GLOBALS['user'] = 1; $GLOBALS['binding'] = 2; check( is_wp_error( request( array( 'cursor' => $first['next_cursor'] ) ) ), 'Cross-binding cursor accepted' );
 $GLOBALS['allowed'] = false; check( is_wp_error( request( array() ) ), 'Read permission bypass' );
+$GLOBALS['allowed'] = true; $GLOBALS['binding'] = 1;
+$caps = request( array( 'transport_action' => 'capabilities' ) ); check( in_array( 'authenticated_rest_binary', $caps['transports'], true ), 'No negotiation' );
+$stable = request( array() ); $same = request( array() ); check( $same['storage_metrics']['writes'] === 0, 'Unchanged catalog rewritten' );
+$GLOBALS['abilities'] = array(); $delta = request( array( 'known_snapshot' => $stable['snapshot'], 'limit' => 1 ) );
+check( count( $delta['removed'] ) === 1 && ! empty( $delta['next_cursor'] ), 'Removals not paginated' );
+$tail = request( array( 'cursor' => $delta['next_cursor'] ) ); check( count( $tail['removed'] ) === 1, 'Missing removal page' );
+$store = new MAD4B_SCP_Catalog_Object_Store(); $store->put( 'race', 'safe', 3600 ); $GLOBALS['wpdb']->race = true; $store->flush();
+check( $store->get( 'race' ) === 'safe' && isset( $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]['concurrent'] ), 'CAS overwrote concurrent publication' );
+
+class ObjectAbility extends FixtureAbility {
+ function get_input_schema() { return (object) array( 'type' => 'object', 'properties' => new stdClass() ); }
+ function get_output_schema() { return new stdClass(); }
+}
+class LabelAbility extends FixtureAbility {
+ private $label; function __construct( $label ) { parent::__construct( 'same' ); $this->label = $label; }
+ function get_label() { return $this->label; }
+}
+$GLOBALS['abilities'] = array( 'object' => new ObjectAbility( '' ), 'label' => new LabelAbility( 'booking' ) );
+$manifest = request( array() ); $object = array_values( array_filter( $manifest['items'], static fn($v) => $v['ability_name'] === 'object' ) )[0];
+$value = request( array( 'transport_action' => 'schema', 'snapshot' => $manifest['snapshot'], 'schema_sha256' => $object['schema_sha256'] ) );
+check( is_object( $value['schema']->inputSchema->properties ) && is_object( $value['schema']->outputSchema ), 'Empty object became array' );
+$query = request( array( 'query' => 'booking' ) ); $GLOBALS['abilities']['label'] = new LabelAbility( 'other' );
+$query_delta = request( array( 'query' => 'booking', 'known_snapshot' => $query['snapshot'] ) ); check( $query_delta['removed'] === array( 'label' ), 'Query membership removal lost' );
+class CycleAbility extends FixtureAbility { function get_input_schema() { $v = new stdClass(); $v->self = $v; return $v; } }
+$GLOBALS['abilities']['cycle'] = new CycleAbility( '' ); $cycle = request( array() );
+check( ! is_wp_error( $cycle ) && ! empty( $cycle['items'][0]['unavailable'] ), 'Invalid schema destroyed catalog' );
+$directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY];
+$expired = reset( $directory ); $key = array_key_first( $directory ); $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY][$key]['expires'] = time()-1;
+MAD4B_SCP_Catalog_Object_Store::collect_expired(); check( ! isset( $GLOBALS['options'][$expired['option']] ), 'Expired payload not collected' );
 echo "PASS catalog transport: large schema, chunks, frozen pages, delta, tampering, user and site isolation\n";

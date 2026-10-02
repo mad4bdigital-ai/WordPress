@@ -43,7 +43,7 @@ if ( is_wp_error( $prepared ) ) $fail( 'Ability preparation failed.', $prepared-
 $item = $prepared['abilities'][0] ?? array();
 if ( 'mad4b/read-execute' !== ( $item['execution']['dispatch_tool'] ?? '' ) ) $fail( 'Read Ability did not map to the governed read dispatcher.', $item );
 if ( empty( $item['input_schema_sha256'] ) || ! hash_equals( (string) $item['input_schema_sha256'], (string) ( $item['execution']['expected_input_schema_sha256'] ?? '' ) ) ) $fail( 'Read dispatcher did not receive the exact prepared input schema pin.', $item );
-if ( empty( $item['schema_sha256'] ) || empty( $item['snapshot'] ) || ! isset( $item['schema']['inputSchema'] ) ) $fail( 'Lazy schema preparation did not return an inline exact schema.', $item );
+if ( empty( $item['schema_sha256'] ) || empty( $item['snapshot'] ) || ! isset( $item['schema']->inputSchema ) ) $fail( 'Lazy schema preparation did not return an inline exact schema.', $item );
 $digest = (string) $item['schema_sha256'];
 
 $cached = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
@@ -97,3 +97,4 @@ $protected = MAD4B_SCP_OAuth_Resource_Bridge::resource_for_route( '/mad4b/v1/cap
 if ( ! hash_equals( MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier(), $protected ) ) $fail( 'REST capability gateway is not bound to the governed OAuth resource.' );
 
 fwrite( STDOUT, 'mad4b.unified-capability-gateway.runtime.v1: PASS' . PHP_EOL );
+

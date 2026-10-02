@@ -43,7 +43,32 @@ $call = static function ( $bearer, $session, $name, array $args = array() ) use 
     return $body;
 };
 $denied = static function ( array $body ) { return ! empty( $body['result']['isError'] ) || isset( $body['error'] ); };
+$rest_catalog = static function( $bearer, $path, array $params = array(), $method = 'GET' ) {
+    wp_set_current_user( 0 );
+    $request = new WP_REST_Request( $method, '/mad4b/v1/ability-catalog/' . $path );
+    if ( $bearer ) $request->set_header( 'Authorization', 'Bearer ' . $bearer );
+    $request->set_query_params( $params );
+    return array( rest_ensure_response( rest_do_request( $request ) ), $request );
+};
 try {
+
+    list( $rest_manifest ) = $rest_catalog( $read, 'manifest', array( 'limit' => 1 ) );
+    if ( 200 !== $rest_manifest->get_status() ) $fail( 'Authenticated native REST manifest failed.' );
+    $manifest = $rest_manifest->get_data(); $descriptor = $manifest['items'][0]['wire'] ?? null;
+    if ( ! $descriptor ) $fail( 'Official wire schema descriptor missing.' );
+    list( $chunk_response, $chunk_request ) = $rest_catalog( $read, 'schemas/' . $descriptor['sha256'] . '/chunks/0', array( 'snapshot' => $manifest['snapshot'], 'schema_format' => 'wire' ) );
+    if ( 200 !== $chunk_response->get_status() || ! is_string( $chunk_response->get_data() ) ) $fail( 'REST binary chunk unavailable.' );
+    $chunk_headers = $chunk_response->get_headers();
+    if ( hash( 'sha256', $chunk_response->get_data() ) !== $chunk_headers['X-MAD4B-Content-SHA256'] ) $fail( 'Binary REST integrity failure.' );
+    ob_start(); $served = MAD4B_SCP_Ability_Catalog_Transport::serve_binary( false, $chunk_response, $chunk_request, rest_get_server() ); $bytes = ob_get_clean();
+    if ( ! $served || $bytes !== $chunk_response->get_data() ) $fail( 'REST server JSON-encoded raw bytes.' );
+    $chunk_request->set_method( 'HEAD' ); ob_start(); MAD4B_SCP_Ability_Catalog_Transport::serve_binary( false, $chunk_response, $chunk_request, rest_get_server() ); $head = ob_get_clean();
+    if ( '' !== $head ) $fail( 'HEAD returned a response body.' );
+    list( $no_auth ) = $rest_catalog( '', 'manifest' ); list( $bad_auth ) = $rest_catalog( 'invalid', 'manifest' );
+    if ( $no_auth->get_status() < 400 || $bad_auth->get_status() < 400 ) $fail( 'REST authentication bypass.' );
+    $developer_token = $mint->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID, 1, MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer' ), array( 'mad4b:read' ) );
+    if ( is_wp_error( $developer_token ) ) $fail( 'Cannot mint wrong-audience proof token.' );
+    list( $wrong_audience ) = $rest_catalog( $developer_token, 'manifest' ); if ( $wrong_audience->get_status() < 400 ) $fail( 'REST accepted wrong resource audience.' );
     list( $gateway_read_response, $gateway_read ) = $gateway( $read, array(
         'action' => 'negotiate',
         'client_capabilities' => array(
@@ -101,6 +126,7 @@ try {
     $copied['binding']['origin'] = 'https://copied.invalid';
     update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $copied, false );
     if ( ! $denied( $call( $read, $read_session, 'mad4b-diagnostics-health' ) ) ) $fail( 'Copied origin retained tool execution.' );
+    fwrite( STDOUT, "mad4b.projection-http-admission.v2: PASS REST binary OAuth audience and dynamic tool admission\n" );
     fwrite( STDOUT, "mad4b.projection-http-admission.v1: PASS adaptive_rest_gateway=verified\n" );
 } finally {
     if ( false === $original ) delete_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION );

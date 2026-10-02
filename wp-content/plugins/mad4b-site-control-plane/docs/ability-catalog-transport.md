@@ -1,25 +1,64 @@
-# Central ability catalog transport v1
+# Central ability catalog transport v2
 
-The existing `mad4b/chatgpt-tool-projection-discover` Ability supports optional `transport_action`: `manifest`, `schema`, or `chunk`. Omitting it preserves the existing discovery contract. This does not increase the base tool count or grant execution authority.
+All registered WordPress Abilities remain in the universe. Discovery, transfer, direct projection, and execution share Ability identity but have separate admission checks. Transfer never grants execution authority.
 
-## Client flow
+## Protocol and authentication
 
-1. Request `{ "transport_action": "manifest", "limit": 50 }`. Retain `snapshot`, schema digests and `next_cursor`.
-2. Follow `next_cursor` with the same transport action. Signed cursors freeze snapshot, query, page size, authority context and expiration. Never merge pages from different snapshots.
-3. Fetch a complete schema with `schema`, `snapshot`, `schema_sha256`; or fetch numbered chunks using `chunk`, the same references, `chunk_index` and `chunk_bytes`.
-4. Base64-decode chunks, verify each `chunk_sha256`, concatenate raw bytes in index order, verify the aggregate `schema_sha256`, then parse UTF-8 JSON. UTF-8 characters may span chunks. Keep chunk size unchanged when resuming.
-5. Refresh using `known_snapshot` to obtain changed entries and removed names. An expired delta base requires a full manifest. Apply removals idempotently; they repeat on delta pages.
+Authenticated GET endpoints under `/wp-json/mad4b/v1/ability-catalog/`:
 
-Schemas are serialized completely, without a fixed byte rejection. Chunk size bounds response size only; they are not schema validity limits. Existing count-based projection limits remain separate from the transport universe. Standard MCP tools/list still receives complete inputSchema; custom chunks are not inserted into tool DTOs. Projection remains explicit through existing plan/apply.
+| Endpoint | Purpose |
+| --- | --- |
+| `capabilities` | Contract, authority scope, supported transports and dispatch routes |
+| `manifest` | Frozen cursor pagination, query filtering and paginated upsert/removal events |
+| `schemas/{sha256}` | Complete source or official Adapter wire schema |
+| `schemas/{sha256}/chunks/{index}` | Raw UTF-8 byte slices with integrity headers |
 
-## Storage and lifetime
+REST catalog routes use the existing `mad4b-chatgpt` protected resource audience and the same OAuth application. The OAuth bridge verifies the bearer before endpoint permissions. WordPress cookie authentication retains its nonce requirements. No public schema download, alternative bearer audience, new grant, or new execution endpoint is introduced.
 
-One central transport implementation owns content-addressed schema objects and immutable manifest snapshots. WordPress transients use the configured object-cache backend, or the options database when none is configured. References are scoped to exact site binding, user capabilities, and step-up context. They are private; clients must not share cached content across identities.
+Responses are private and `no-store`. Binary responses carry `X-MAD4B-Content-SHA256`, `X-MAD4B-Schema-SHA256` and `X-MAD4B-Chunk-Count`; the server emits raw bytes, without JSON string quoting. HEAD has no response body. The MCP discovery Ability supports explicit `capabilities`, `manifest`, `schema`, and base64 `chunk` actions as a compatible alternative.
 
-Snapshots have a renewable retention window (default one hour; trusted server filter `mad4b_scp_catalog_snapshot_ttl`). Content digests are durable identities, not a promise of permanent storage. Expired or evicted objects require manifest refresh. Long-running clients retain verified objects locally and revalidate against fresh manifests. This intentionally does not create an unbounded permanent archive in WordPress.
+The contract is `mad4b.ability-catalog-transport.v2`. Source schemas and wire schemas have independent SHA-256 identities. Wire schemas are built using the same official Adapter builder as direct tool materialization. JSON objects, including `{}`, retain their type. Nonserializable schemas fail independently of other entries. Chunk boundaries may divide UTF-8 code points; clients decode only after assembling and verifying all bytes.
 
-Versioned contract `mad4b.ability-catalog-transport.v1` permits future backends and retention policies without changing client identity or projection permissions. First-page discovery captures the current registered universe; it is not a background registry service. `schema_bytes` and serialized-tool evidence measure actual size. No 64 KiB schema or 256 KiB catalog rejection is applied.
+## Storage, revisions and lifecycle
 
-## Verification
+Private durable nonautoloaded WordPress options replace transient-only snapshots. Schemas are content-addressed and split into 32 KiB native blocks. A chunk reads its covering blocks, not the entire schema repeatedly. Shared schema objects have no public access path: every request must prove membership in a snapshot scoped to site binding, WordPress user/capabilities, OAuth subject/client and scopes.
 
-Standalone runtime test covers schemas larger than 64 KiB, multi-byte chunk reconstruction, hash integrity, stable pages across universe changes, deltas, tampered cursors, identity/binding isolation and denied reads. CI additionally runs real WordPress projection and actual OAuth tools/call tests on the supported WordPress matrix.
+New payloads are staged under unique option names and an atomic SQL compare-and-swap publishes the directory. Concurrent publishers retry from the latest directory. Failed publication deletes its own drafts. Expired payloads are collected hourly; crash drafts have a one-hour grace period, longer than the 30-second publication deadline. WordPress cron must run. Maintenance failure does not authorize data access.
+
+Default snapshot lifetime is one hour and object retention is seven days. The default 128 MiB retained storage capacity is a configurable server resource limit, not schema validity or a per-Ability byte rejection. Capacity exhaustion returns an explicit unavailable error; it does not publish a partial success. Building a publication may temporarily use additional staging space.
+
+An unchanged manifest reuses its stored definitions and schema descriptors, avoiding per-Ability rewrites. It still scans current registered definitions to detect changes. Adapter/filter changes outside Ability metadata must update `mad4b_scp_catalog_wire_generation`. Snapshot cursors pin contract, query, delta base, authority scope and expiration. Removals and upserts share the page limit. Query deltas compare membership both before and after a change.
+
+## Host client integration
+
+`client/ability-catalog-client.mjs` is a host adapter, not automatic native ChatGPT integration:
+
+```js
+import { createAbilityCatalogClient } from './client/ability-catalog-client.mjs';
+const client = createAbilityCatalogClient({
+  baseUrl: 'https://example.com/wp-json/mad4b/v1/ability-catalog/',
+  headers: async () => ({ Authorization: `Bearer ${await tokenProvider()}` }),
+  callTool: host.callTool,
+  maxSchemaBytes: host.availableSchemaMemory,
+});
+const matches = await client.search('booking status');
+const prepared = await client.prepare(['vendor/booking-status']);
+const catalog = prepared.catalogs.get('vendor/booking-status');
+const definition = await client.readSchema(catalog, 'vendor/booking-status');
+```
+
+Task search and preparation use the protected `/mad4b/v1/capability-gateway` endpoint, or the same MCP discovery tool with `gateway_action`. Preparation serializes only selected Abilities. Full `sync` is an explicit catalog-mirror operation.
+
+Configure REST only when the host supports it. Otherwise configure `callDiscover` and use MCP base64 transfer. The client never silently switches authenticated transports after denial. It rejects changed credential origins and redirects, validates the contract and authority scope, applies complete paginated revisions atomically, verifies each chunk and aggregate digest, resumes only within the same authority/schema namespace, and renews expired REST snapshots only if the same Ability schema still exists.
+
+Latency adjusts the chunk size for subsequent downloads within configurable bounds. A download pins its size to keep resume indices stable. Transient transfer errors reduce the next transfer size and return the saved state; they never retry a mutation. Download concurrency is deliberately sequential. The host may cancel downloads and set its memory budget independently of server schema validity.
+
+`execute` refreshes discovery, checks schema/classification pins, and delegates to existing governed read/write/developer dispatchers. Enrollment additionally requires the existing operation registration and policy pins. Direct execution requires the host to confirm the exact tool name from its actual refreshed tool catalog; claiming MCP capabilities alone is insufficient. The SDK does not promote tools or change permissions automatically. Original dispatchers still check schema, permissions, mounts, approval and original authority. Breakglass, internal and unsupported authority lanes require their explicit original routes.
+
+## Authority and stale tool defense
+
+Sensitive declared surfaces take precedence over the readonly annotation. Readonly describes side effects and cannot turn internal, developer or Breakglass authority into read authority. A mutation boundary is verified against the actual wrapper created by central Authorization, not a metadata claim.
+
+At tool materialization, diagnostics capture source schema/classification, exact wire DTO digest and actual execution/permission callbacks. List filtering and call admission reject drift even when a new projection registry happens to match the latest Ability definition. Required base tools retain their existing independent contracts.
+
+Tests cover large/multibyte schemas, chunk aggregation, object fidelity, frozen pages, paginated removals, query membership, cursor tampering, user/site isolation, unchanged publication, concurrent CAS and expiry cleanup; SDK REST/MCP transport, resume and corruption, origin/authority, expiry and governed dispatch; disposable WordPress/OAuth tests verify binary serving, missing/invalid tokens, wrong audience, sensitive readonly lanes, spoofed boundary and stale DTOs. Native ChatGPT host compatibility must be established separately from server CI.

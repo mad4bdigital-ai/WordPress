@@ -38,6 +38,12 @@ if ( ! in_array( 'mad4b/diagnostics-health', $found_names, true ) ) $fail( 'Proj
 $base = MAD4B_SCP_Servers::chatgpt_base_tools();
 if ( in_array( 'mad4b/diagnostics-health', $base, true ) ) $fail( 'Fixture Ability unexpectedly belongs to the stable base tools/list.' );
 
+foreach ( array( 'internal', 'developer', 'breakglass' ) as $sensitive_lane ) {
+	$row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b-ci/readonly-' . $sensitive_lane );
+	if ( is_wp_error( $row ) || $row['lane'] !== $sensitive_lane ) $fail( 'Readonly downgraded a sensitive authority lane.' );
+}
+$spoofed = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b-ci/spoofed-boundary' );
+if ( is_wp_error( $spoofed ) || $spoofed['execution_boundary_verified'] || $spoofed['execution_eligible'] ) $fail( 'Metadata-only execution boundary admitted.' );
 $plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
 	'mode' => 'replace',
 	'ability_names' => array( 'mad4b/diagnostics-health' ),
@@ -93,7 +99,7 @@ if ( in_array( 'mad4b-ci/unclassified-projection-fixture', $unclassified_plan['m
 $manifest = MAD4B_SCP_ChatGPT_Tool_Projection::discover( array( 'transport_action' => 'manifest', 'limit' => 1 ) );
 if ( is_wp_error( $manifest ) || empty( $manifest['snapshot'] ) || empty( $manifest['items'][0]['schema_sha256'] ) ) $fail( 'Central manifest failed in real WordPress.' );
 $schema = MAD4B_SCP_ChatGPT_Tool_Projection::discover( array( 'transport_action' => 'schema', 'snapshot' => $manifest['snapshot'], 'schema_sha256' => $manifest['items'][0]['schema_sha256'] ) );
-if ( is_wp_error( $schema ) || ! isset( $schema['schema']['inputSchema'] ) ) $fail( 'Central schema retrieval failed in real WordPress.' );
+if ( is_wp_error( $schema ) || ! isset( $schema['schema']->inputSchema ) ) $fail( 'Central schema retrieval failed in real WordPress.' );
 
 $raw_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
 	'mode' => 'replace',
@@ -137,6 +143,12 @@ try {
 	$server_fixture = new class { public function get_server_id() { return 'mad4b-chatgpt'; } };
 	$read_tool = \WP\MCP\Domain\Tools\McpTool::fromAbility( wp_get_ability( 'mad4b/diagnostics-health' ) );
 	if ( is_wp_error( $read_tool ) ) $fail( 'Official read tool fixture failed.' );
+	$target = wp_get_ability( 'mad4b/diagnostics-health' ); $schema_property = ( new ReflectionObject( $target ) )->getProperty( 'input_schema' ); $old_schema = $schema_property->getValue( $target );
+	try {
+		$schema_property->setValue( $target, array( 'type' => 'object', 'properties' => array( 'changed' => array( 'type' => 'integer' ) ) ) );
+		if ( MAD4B_SCP_ChatGPT_Tool_Projection::materialized_tool_matches( $read_tool ) ) $fail( 'Stale materialized DTO admitted.' );
+	} finally { $schema_property->setValue( $target, $old_schema ); }
+
 	$allowed = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( array(), '', $read_tool, $server_fixture );
 	if ( is_wp_error( $allowed ) ) $fail( 'Read projection admission unexpectedly denied.', $allowed->get_error_code() );
 	$copied = $fixture_state;

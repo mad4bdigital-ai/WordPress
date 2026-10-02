@@ -33,7 +33,9 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-chatgpt-tool-projection.php"
           php -l "$root/includes/class-mad4b-scp-ability-catalog-transport.php"
           php -l "$root/includes/class-mad4b-scp-unified-capability-gateway.php"
+          php -l "$root/includes/class-mad4b-scp-catalog-object-store.php"
           php "$root/tests/catalog-transport-runtime.php"
+          node "$root/tests/catalog-transport-client.mjs"
           php -l "$root/tests/runtime-unified-capability-gateway.php"
           php -l "$root/tests/runtime-mcp-client-compatibility-smoke.php"
           php -l "$root/tests/runtime-chatgpt-tool-inventory-smoke.php"
@@ -258,3 +260,4 @@ jobs:
 
           print(json.dumps({'status': 'PASS', 'catalog_mode': 'session_safe_direct_plus_governed_read_write_dispatch', 'tool_count': len(names), 'tools_payload_bytes': payload_bytes, 'tools': names}, indent=2))
           PY
+

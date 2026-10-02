@@ -39,6 +39,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'actions' => array( 'negotiate', 'search', 'prepare', 'schema', 'chunk' ),
 			'source_of_truth' => 'wordpress_abilities_api',
 			'client_claims_authoritative' => false,
+			'host_refresh_confirmation_required' => true,
 			'authority_effect' => 'none',
 			'mcp_fallback' => array(
 				'resource' => class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ? MAD4B_SCP_MCP_Client_Compatibility::resource_identifier() : '',
@@ -126,7 +127,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		$chunk = 32768;
 		if ( $caps['recent_error_rate'] >= 0.05 || $caps['observed_rtt_ms'] >= 1200 ) $chunk = 16384;
 		elseif ( $caps['observed_rtt_ms'] > 0 && $caps['observed_rtt_ms'] <= 250 && $caps['recent_error_rate'] < 0.01 ) $chunk = 131072;
-		$chunk = min( $chunk, max( 1024, $caps['max_response_bytes'] - 2048 ) );
+		$chunk = min( $chunk, max( 1024, (int) ( ( $caps['max_response_bytes'] - 2048 ) * 3 / 4 ) ) );
 		$chunk = max( 1024, min( 1048576, $chunk ) );
 		$parallel = 2;
 		if ( $caps['recent_error_rate'] >= 0.05 || $caps['observed_rtt_ms'] >= 1200 ) $parallel = 1;
@@ -153,6 +154,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'contract' => self::CONTRACT,
 			'client_capabilities' => $caps,
 			'client_claims_authoritative' => false,
+			'host_refresh_confirmation_required' => true,
 			'detected_profile' => isset( $detected['profile'] ) ? $detected['profile'] : array(),
 			'detection_authoritative' => false,
 			'transport' => array(
@@ -242,6 +244,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				'classification' => isset( $row['classification'] ) ? (string) $row['classification'] : 'unavailable',
 				'readonly' => ! empty( $row['readonly'] ),
 				'projection_eligible' => ! empty( $row['projection_eligible'] ),
+				'execution_eligible' => ! empty( $row['execution_eligible'] ),
 				'execution_eligible' => ! empty( $row['execution_eligible'] ),
 				'input_schema_sha256' => isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '',
 				'schema_reference_requires_prepare' => true,
@@ -352,9 +355,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		sort( $names, SORT_STRING );
 		$caps = self::client_capabilities( $input );
 		$transfer = self::transfer_policy( $caps );
-		$known = isset( $input['known_schemas'] ) && is_array( $input['known_schemas'] )
-			? array_slice( $input['known_schemas'], 0, self::MAX_PREPARE, true )
-			: array();
+		$known = isset( $input['known_schemas'] ) && is_array( $input['known_schemas'] ) ? array_slice( $input['known_schemas'], 0, self::MAX_PREPARE, true ) : array();
 		$items = array();
 		foreach ( $names as $ability_name ) {
 			$row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $ability_name );
@@ -376,21 +377,27 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				'ability_name' => $ability_name,
 				'classification' => isset( $row['classification'] ) ? (string) $row['classification'] : 'unavailable',
 				'projection_eligible' => ! empty( $row['projection_eligible'] ),
+				'execution_eligible' => ! empty( $row['execution_eligible'] ),
 				'projection_blockers' => isset( $row['projection_blockers'] ) && is_array( $row['projection_blockers'] ) ? $row['projection_blockers'] : array(),
-				'input_schema_sha256' => isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '',
 				'schema_sha256' => $digest,
 				'schema_bytes' => (int) $item['schema_bytes'],
+				'source' => $item['source'],
+				'wire' => $item['wire'] ?? null,
+				'authority_scope_sha256' => $prepared['authority_scope_sha256'],
+				'input_schema_sha256' => $row['input_schema_sha256'],
+				'classification_sha256' => $row['classification_sha256'],
 				'schema_cache_state' => $reusable ? 'reusable' : 'refresh_required',
 				'schema_transfer_mode' => $schema_mode,
 				'snapshot' => (string) $prepared['snapshot'],
 				'expires_at' => (int) $prepared['expires_at'],
 				'execution' => self::execution_descriptor( $row ),
 			);
-			if ( ! $reusable && 'inline' === $schema_mode ) {
+			if ( ! $reusable && 'inline' === $schema_mode && strlen( wp_json_encode( $items ) ) + (int) $item['schema_bytes'] + 4096 < $caps['max_response_bytes'] ) {
 				$schema = MAD4B_SCP_Ability_Catalog_Transport::handle( array( 'transport_action' => 'schema', 'snapshot' => $prepared['snapshot'], 'schema_sha256' => $digest ) );
 				if ( ! is_wp_error( $schema ) && isset( $schema['schema'] ) ) $entry['schema'] = $schema['schema'];
 			}
-			if ( 'chunked' === $schema_mode ) $entry['recommended_chunk_bytes'] = $transfer['recommended_chunk_bytes'];
+			if ( ! $reusable && ! isset( $entry['schema'] ) ) $entry['schema_transfer_mode'] = 'chunked';
+			if ( 'chunked' === $entry['schema_transfer_mode'] ) $entry['recommended_chunk_bytes'] = $transfer['recommended_chunk_bytes'];
 			$items[] = $entry;
 		}
 		$projection_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array( 'mode' => 'replace', 'ability_names' => $names, 'include_breakglass' => false ) );
@@ -412,6 +419,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'transport' => $negotiation['transport'],
 			'transfer_policy' => $transfer,
 			'client_claims_authoritative' => false,
+			'host_refresh_confirmation_required' => true,
 			'authority_effect' => 'none',
 			'read_only' => true,
 		);
@@ -426,7 +434,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			$input['schema_sha256'] = $prepared['item']['schema_sha256'];
 		}
 		$input['transport_action'] = $action;
-		if ( 'chunk' === $action && empty( $input['chunk_bytes'] ) ) $input['chunk_bytes'] = self::transfer_policy( $caps )['recommended_chunk_bytes'];
+		if ( 'chunk' === $action ) $input['chunk_bytes'] = min( (int) ( $input['chunk_bytes'] ?? 1048576 ), self::transfer_policy( $caps )['recommended_chunk_bytes'] );
 		$result = MAD4B_SCP_Ability_Catalog_Transport::handle( $input );
 		if ( is_wp_error( $result ) ) return $result;
 		$result['gateway_contract'] = self::CONTRACT;
@@ -436,3 +444,4 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 	}
 }
 MAD4B_SCP_Unified_Capability_Gateway::boot();
+

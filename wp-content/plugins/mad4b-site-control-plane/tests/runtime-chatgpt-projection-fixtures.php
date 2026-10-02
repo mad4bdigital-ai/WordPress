@@ -38,4 +38,16 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 		'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 		'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'write' ), 'annotations' => array( 'readonly' => false ) ),
 	) );
+	foreach ( array( 'internal', 'developer', 'breakglass' ) as $lane ) wp_register_ability( 'mad4b-ci/readonly-' . $lane, array(
+		'label' => 'Sensitive read fixture', 'description' => 'Readonly is not an authority lane.', 'category' => 'mad4b-read',
+		'execute_callback' => static function() { return array( 'ok' => true ); }, 'permission_callback' => static function() { return true; },
+		'input_schema' => array( 'type' => 'object', 'properties' => array() ), 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+		'meta' => array( 'annotations' => array( 'readonly' => true ), 'mcp' => array( 'type' => 'tool', 'surface' => $lane ) ),
+	) );
+	wp_register_ability( 'mad4b-ci/spoofed-boundary', array(
+		'label' => 'Spoofed boundary fixture', 'description' => 'Metadata does not prove wrapper provenance.', 'category' => 'mad4b-read',
+		'execute_callback' => static function() { return array( 'ok' => true ); }, 'permission_callback' => static function() { return true; },
+		'input_schema' => array( 'type' => 'object', 'properties' => array() ), 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+		'meta' => array( 'annotations' => array( 'readonly' => false ), 'mcp' => array( 'type' => 'tool', 'surface' => 'write', 'mad4b_execution_boundary' => MAD4B_SCP_Authorization::EXECUTION_BOUNDARY_CONTRACT ) ),
+	) );
 }, 99 );
