@@ -50,6 +50,9 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			'unobserved_count' => 0,
 			'complete' => false,
 			'mixed_runtime' => false,
+			'repair_action' => '',
+			'repair_provider_id' => self::PROVIDER,
+			'explicit_admin_repair_required' => false,
 			'classes' => array(),
 			'failures' => array(),
 		);
@@ -92,6 +95,9 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 			'unobserved_count' => 0,
 			'complete' => false,
 			'mixed_runtime' => false,
+			'repair_action' => '',
+			'repair_provider_id' => self::PROVIDER,
+			'explicit_admin_repair_required' => false,
 			'classes' => array(),
 			'failures' => array(),
 		), $seed );
@@ -184,6 +190,28 @@ final class MAD4B_SCP_MCP_Class_Provenance {
 		elseif ( $out['failure_count'] > 0 ) $out['state'] = 'class_set_mismatch';
 		else $out['state'] = 'partial_certified_class_set';
 		$out['blocker'] = $out['failure_count'] > 0 ? self::BLOCKER : '';
+
+		$official_disk_mismatch = false;
+		$foreign_source_mismatch = false;
+		foreach ( $out['failures'] as $failure ) {
+			if ( ! is_array( $failure ) ) continue;
+			$reason = isset( $failure['reason'] ) ? (string) $failure['reason'] : '';
+			$observed = isset( $failure['observed_source'] ) ? (string) $failure['observed_source'] : '';
+			if ( 'runtime_class_sha256_mismatch' === $reason && 0 === strpos( $observed, 'mcp-adapter/' ) ) {
+				$official_disk_mismatch = true;
+			}
+			if ( 'runtime_class_source_mismatch' === $reason ) {
+				$foreign_source_mismatch = true;
+			}
+		}
+		if ( $official_disk_mismatch ) {
+			$out['repair_action'] = 'repair_certified_mcp_adapter_package';
+			$out['explicit_admin_repair_required'] = true;
+		} elseif ( $foreign_source_mismatch ) {
+			$out['repair_action'] = 'arm_managed_mu_bootstrap_on_lifecycle';
+		} elseif ( $out['failure_count'] > 0 ) {
+			$out['repair_action'] = 'inspect_certified_mcp_runtime';
+		}
 		return $out;
 	}
 
