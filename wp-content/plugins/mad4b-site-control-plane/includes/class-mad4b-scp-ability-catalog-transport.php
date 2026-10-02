@@ -49,21 +49,33 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		return $p;
 	}
 	private static function publish_schema( $schema, $store, $force ) {
-		$json = self::encode( $schema ); $digest = hash( 'sha256', $json ); $key = self::key( '', 'schema', $digest );
-		$existing = $store->get( $key );
-		if ( ! $force && is_array( $existing ) && $existing['retain_until'] > time() + self::ttl() ) return $existing;
+		unset( $force );
+		$json = self::encode( $schema );
+		$digest = hash( 'sha256', $json );
+		$key = self::key( '', 'schema', $digest );
+		$retention = self::retention();
+		$retain_until = time() + $retention;
 		$blocks = array();
-		foreach ( str_split( $json, self::BLOCK_BYTES ) as $bytes ) { $hash = hash( 'sha256', $bytes ); $blocks[] = $hash; $store->put( self::key( '', 'block', $hash ), $bytes, self::retention() ); }
-		$out = array( 'sha256' => $digest, 'bytes' => strlen( $json ), 'blocks' => $blocks, 'retain_until' => time() + self::retention() );
-		$store->put( $key, $out, self::retention() ); return $out;
+		foreach ( str_split( $json, self::BLOCK_BYTES ) as $bytes ) {
+			$hash = hash( 'sha256', $bytes );
+			$blocks[] = $hash;
+			$store->put( self::key( '', 'block', $hash ), $bytes, $retention, $retain_until );
+		}
+		$out = array( 'sha256' => $digest, 'bytes' => strlen( $json ), 'blocks' => $blocks, 'retain_until' => $retain_until );
+		$store->put( $key, $out, $retention, $retain_until );
+		return $out;
 	}
 	private static function snapshot( $scope, $store, $force ) {
 		$abilities = array(); $definitions = array();
 		foreach ( wp_get_abilities() as $name => $a ) { if ( is_object( $a ) && method_exists( $a, 'get_name' ) ) $name = $a->get_name(); $abilities[ $name ] = $a; }
 		ksort( $abilities, SORT_STRING );
 		foreach ( $abilities as $name => $a ) {
-			try { $definitions[ $name ] = hash( 'sha256', serialize( array( $a->get_input_schema(), $a->get_output_schema(), $a->get_meta(), $a->get_category(), $a->get_label() ) ) ); }
-			catch ( Throwable $e ) { $definitions[ $name ] = 'unavailable'; }
+			try {
+				$definition = array( $a->get_input_schema(), $a->get_output_schema(), $a->get_meta(), $a->get_category(), $a->get_label() );
+				try { $encoded = self::encode( $definition ); }
+				catch ( Throwable $canonical_error ) { $encoded = serialize( $definition ); }
+				$definitions[ $name ] = hash( 'sha256', $encoded );
+			} catch ( Throwable $e ) { $definitions[ $name ] = 'unavailable'; }
 		}
 		$generation = apply_filters( 'mad4b_scp_catalog_wire_generation', self::CONTRACT . ':' . ( defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '' ) );
 		$fingerprint = hash( 'sha256', self::encode( array( $definitions, $generation ) ) ); $current_key = self::key( $scope, 'current', '' ); $current = $store->get( $current_key );
