@@ -83,6 +83,7 @@ class GatewayFixture {
  }
 }
 $GLOBALS['blog'] = 1; $GLOBALS['read_allowed'] = true; $GLOBALS['bearer'] = false; $GLOBALS['mounted'] = array(); $GLOBALS['abilities'] = array(); $GLOBALS['approval_scope_calls'] = 0; $GLOBALS['approval_scope_active'] = ''; $GLOBALS['observation_started'] = array(); $GLOBALS['observation_clear_calls'] = 0;
+require __DIR__ . '/../includes/class-mad4b-scp-identifiers.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-contract-inspector.php';
 require __DIR__ . '/../includes/class-mad4b-scp-capability-descriptor-registry.php';
 require __DIR__ . '/../includes/class-mad4b-scp-preparation-receipt.php';
