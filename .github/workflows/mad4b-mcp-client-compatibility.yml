@@ -102,6 +102,7 @@ jobs:
           php "$root/tests/execution-state-view-runtime.php"
           php "$root/tests/intent-registry-contract.php"
           php "$root/tests/catalog-lifecycle-runtime.php"
+          php "$root/tests/mcp-class-provenance-runtime.php"
           php "$root/tests/catalog-decommission-bootstrap.php"
           python3 "$root/tests/plugin-lifecycle-data-retention-contract.py"
 
