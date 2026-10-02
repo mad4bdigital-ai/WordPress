@@ -12,46 +12,41 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 
 	public static function transaction_state() {
 		global $wpdb;
-		if ( ! isset( $wpdb ) || ! is_object( $wpdb ) || ! method_exists( $wpdb, 'get_var' ) ) {
+		if ( ! isset( $wpdb ) || ! is_object( $wpdb ) || ! method_exists( $wpdb, 'query' ) ) {
 			return new WP_Error( 'mad4b_database_transaction_state_unavailable', 'Database transaction state is unavailable.' );
 		}
-		$server_info = method_exists( $wpdb, 'db_server_info' ) ? (string) $wpdb->db_server_info() : '';
-		if ( false !== stripos( $server_info, 'mariadb' ) ) {
-			$value = self::quiet_get_var( 'SELECT @@session.in_transaction' );
-			if ( null === $value || false === $value || ! is_numeric( $value ) ) {
-				return new WP_Error( 'mad4b_database_transaction_state_unavailable', 'MariaDB transaction state could not be verified.' );
-			}
-			return 0 === (int) $value ? 0 : 1;
+		try {
+			$probe = 'mad4b_tx_probe_' . substr( bin2hex( random_bytes( 8 ) ), 0, 16 );
+		} catch ( Throwable $error ) {
+			$probe = 'mad4b_tx_probe_' . substr( hash( 'sha256', uniqid( '', true ) ), 0, 16 );
 		}
 
-		// MySQL does not expose MariaDB's @@session.in_transaction variable.
-		// Performance Schema reports ACTIVE immediately after START TRANSACTION.
-		$consumer = self::quiet_get_var( "SELECT ENABLED FROM performance_schema.setup_consumers WHERE NAME='events_transactions_current' LIMIT 1" );
-		$instrument = self::quiet_get_var( "SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME='transaction' LIMIT 1" );
-		if ( 'YES' !== strtoupper( (string) $consumer ) || 'YES' !== strtoupper( (string) $instrument ) ) {
-			return new WP_Error( 'mad4b_database_transaction_observer_unavailable', 'MySQL transaction instrumentation is unavailable or disabled.' );
-		}
-		$state = self::quiet_get_var(
-			"SELECT etc.STATE
-			FROM performance_schema.events_transactions_current AS etc
-			INNER JOIN performance_schema.threads AS th ON th.THREAD_ID=etc.THREAD_ID
-			WHERE th.PROCESSLIST_ID=CONNECTION_ID()
-			ORDER BY etc.EVENT_ID DESC
-			LIMIT 1"
-		);
-		if ( null === $state || '' === (string) $state ) return 0;
-		$state = strtoupper( trim( (string) $state ) );
-		if ( 'ACTIVE' === $state ) return 1;
-		if ( in_array( $state, array( 'COMMITTED', 'ROLLED BACK' ), true ) ) return 0;
-		return new WP_Error( 'mad4b_database_transaction_state_unavailable', 'MySQL transaction state is unknown.' );
-	}
-
-	private static function quiet_get_var( $sql ) {
-		global $wpdb;
+		// SAVEPOINT itself does not commit or roll back a caller transaction.
+		// With no durable current transaction the savepoint does not survive to
+		// RELEASE; with an active transaction RELEASE succeeds. This gives us a
+		// portable MySQL/MariaDB nesting probe without PROCESS/performance_schema
+		// privileges or MariaDB-only system variables.
 		$previous = method_exists( $wpdb, 'suppress_errors' ) ? $wpdb->suppress_errors( true ) : null;
-		$value = $wpdb->get_var( $sql );
+		$wpdb->last_error = '';
+		$created = $wpdb->query( 'SAVEPOINT ' . $probe );
+		$create_error = isset( $wpdb->last_error ) ? (string) $wpdb->last_error : '';
+		if ( false === $created ) {
+			if ( method_exists( $wpdb, 'suppress_errors' ) ) $wpdb->suppress_errors( (bool) $previous );
+			return new WP_Error( 'mad4b_database_transaction_state_unavailable', 'Database savepoint transaction probe could not be created.', array( 'db_error' => substr( $create_error, 0, 191 ) ) );
+		}
+
+		$wpdb->last_error = '';
+		$released = $wpdb->query( 'RELEASE SAVEPOINT ' . $probe );
+		$release_error = isset( $wpdb->last_error ) ? (string) $wpdb->last_error : '';
 		if ( method_exists( $wpdb, 'suppress_errors' ) ) $wpdb->suppress_errors( (bool) $previous );
-		return $value;
+		if ( false !== $released ) return 1;
+
+		if ( preg_match( '/savepoint.+does not exist/i', $release_error ) ) return 0;
+		return new WP_Error(
+			'mad4b_database_transaction_state_unavailable',
+			'Database savepoint transaction probe could not distinguish transaction state.',
+			array( 'db_error' => substr( $release_error, 0, 191 ) )
+		);
 	}
 
 	public static function assert_storage( array $required_table_keys = array(), $refresh = false ) {
