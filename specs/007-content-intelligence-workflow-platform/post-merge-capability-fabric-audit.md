@@ -34,7 +34,7 @@ Baseline:
 | Cryptographic agility | HMAC-backed receipts are strong but need explicit algorithm/key-id/rotation/revocation profiles beyond OAuth key lifecycle. | T3755 |
 | Clock skew / monotonic deadlines | TTLs, leases and observation windows exist; one platform-wide clock model is still implicit. | T3756 |
 | Replay semantics | Nonces/idempotency exist, but reusable versus single-use preparation evidence should be risk-class explicit. | T3757 |
-| Unicode/canonicalization | Canonical JSON/order exists in key places; cross-surface Unicode/confusable normalization needs one policy. | T3758 |
+| Unicode canonicalization | Canonical JSON/order exists in key places; cross-surface Unicode/confusable normalization needs one policy. | T3758 |
 | Rate limiting and complexity budgets | Many byte/count/time budgets exist; principal/site/client abuse and algorithmic complexity budgets need a unified policy. | T3759 |
 | Egress TLS/DNS/proxy trust | SSRF/private-network controls are modeled; transport trust and redirect/DNS/certificate changes need explicit semantics. | T3760 |
 | Backward compatibility | Tightening legacy dispatcher calls is intentional; migration telemetry/versioned errors/sunset should be explicit. | T3761 |
