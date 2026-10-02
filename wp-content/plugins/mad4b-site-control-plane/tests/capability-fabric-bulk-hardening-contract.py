@@ -74,6 +74,8 @@ need("request_scope_transition_safe" in mcp_scope, "MCP hook-lifecycle transitio
 need("mad4b.final-execution-admission.v1" in execution_fence, "final execution admission wrapper contract missing")
 need("PHP_INT_MAX" in execution_fence and "wrap_final_execution_admission" in execution_fence, "final ability wrapper is not registered at terminal priority")
 need("mad4b.projected-call-seal.v1" in execution_fence and "consume_projected_call" in execution_fence, "projected call one-time seal missing")
+need("projected_call_requirements" in execution_fence and "require_projected_call_seal" in execution_fence and "projected_call_requirement_pending" in execution_fence, "denied projected calls do not leave a final-admission tombstone")
+need("require_projected_call_seal" in projection, "pre-tool guard does not mark projected execution seal requirement before deny paths")
 need("final_execution_wrapper_verified" in execution_fence and "final_execution_admission_required" in projection, "projection does not require final callback provenance")
 need("private static function planning_row" in projection, "final admission policy is not separated from structural ability classification")
 ability_row_body=projection.split("private static function ability_row",1)[1].split("private static function planning_row",1)[0]

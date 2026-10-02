@@ -237,6 +237,11 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$name = isset( $meta['ability'] ) ? (string) $meta['ability'] : '';
 		// Existing base tools retain their independent permission and execution contracts.
 		if ( in_array( $name, MAD4B_SCP_Servers::chatgpt_base_tools(), true ) ) return $args;
+		if ( '' === $name || ! class_exists( 'MAD4B_SCP_Execution_Fence' ) ) {
+			return new WP_Error( 'mad4b_projection_final_execution_admission_required', 'Dynamic projected execution requires the request-local final admission fence.' );
+		}
+		$requirement = MAD4B_SCP_Execution_Fence::require_projected_call_seal( $name );
+		if ( is_wp_error( $requirement ) ) return $requirement;
 		$state = self::raw_state();
 		if ( ! self::binding_matches( $state ) ) return new WP_Error( 'mad4b_projection_binding_mismatch', 'Dynamic projection is not bound to this enrolled Staging runtime.' );
 		$row = self::effective_row( $name, $state, true );

@@ -20,6 +20,7 @@ final class MAD4B_SCP_Execution_Fence {
 	private static $entries = array();
 	private static $trusted_final_boundaries = array();
 	private static $projected_call_seals = array();
+	private static $projected_call_requirements = array();
 	private static $execution_stack = array();
 	private static $child_permit = array();
 
@@ -170,6 +171,21 @@ final class MAD4B_SCP_Execution_Fence {
 		}
 	}
 
+	public static function require_projected_call_seal( $ability_name ) {
+		$ability_name = trim( (string) $ability_name );
+		if ( '' === $ability_name ) return new WP_Error( 'mad4b_projection_execution_requirement_identity_invalid', 'Projected execution requirement needs an exact Ability identity.' );
+		self::$projected_call_requirements[ $ability_name ] = array(
+			'contract' => self::PROJECTED_CALL_SEAL_CONTRACT,
+			'required' => true,
+		);
+		return true;
+	}
+
+	public static function projected_call_requirement_pending( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		return '' !== $ability_name && isset( self::$projected_call_requirements[ $ability_name ] );
+	}
+
 	public static function seal_projected_call( $ability_name, $input, $tool, $server ) {
 		$ability_name = (string) $ability_name;
 		if ( '' === $ability_name ) return new WP_Error( 'mad4b_projection_execution_seal_identity_invalid', 'Projected execution seal requires an exact Ability identity.' );
@@ -193,8 +209,15 @@ final class MAD4B_SCP_Execution_Fence {
 
 	public static function consume_projected_call( $ability_name, $input ) {
 		$ability_name = (string) $ability_name;
+		$required = isset( self::$projected_call_requirements[ $ability_name ] );
+		unset( self::$projected_call_requirements[ $ability_name ] );
 		if ( ! isset( self::$projected_call_seals[ $ability_name ] ) ) {
-			return new WP_Error( 'mad4b_projection_execution_seal_required', 'Projected execution requires a fresh final pre-tool admission seal.' );
+			return new WP_Error(
+				'mad4b_projection_execution_seal_required',
+				$required
+					? 'Projected execution reached the final callback without the required fresh pre-tool admission seal.'
+					: 'Projected execution requires a fresh final pre-tool admission seal.'
+			);
 		}
 		$seal = self::$projected_call_seals[ $ability_name ];
 		unset( self::$projected_call_seals[ $ability_name ] );
@@ -216,9 +239,11 @@ final class MAD4B_SCP_Execution_Fence {
 	}
 
 	public static function projected_call_requires_seal( $ability_name ) {
+		$ability_name = (string) $ability_name;
 		if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) || 'mad4b-chatgpt' !== MAD4B_SCP_Transport_Context::current_server_id() ) return false;
-		if ( ! class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) || ! MAD4B_SCP_ChatGPT_Tool_Projection::is_projected( $ability_name ) ) return false;
-		return ! class_exists( 'MAD4B_SCP_Servers' ) || ! in_array( (string) $ability_name, MAD4B_SCP_Servers::chatgpt_base_tools(), true );
+		if ( class_exists( 'MAD4B_SCP_Servers' ) && in_array( $ability_name, MAD4B_SCP_Servers::chatgpt_base_tools(), true ) ) return false;
+		if ( self::projected_call_requirement_pending( $ability_name ) ) return true;
+		return class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) && MAD4B_SCP_ChatGPT_Tool_Projection::is_projected( $ability_name );
 	}
 
 	public static function has_active_frame() {
@@ -264,6 +289,7 @@ final class MAD4B_SCP_Execution_Fence {
 			'execution_depth' => count( self::$execution_stack ),
 			'child_permit_pending' => ! empty( self::$child_permit ),
 			'projected_seal_count' => count( self::$projected_call_seals ),
+			'projected_requirement_count' => count( self::$projected_call_requirements ),
 			'authorizing' => false,
 		);
 	}
@@ -274,6 +300,7 @@ final class MAD4B_SCP_Execution_Fence {
 		}
 		self::$entries = array();
 		self::$projected_call_seals = array();
+		self::$projected_call_requirements = array();
 		self::$trusted_final_boundaries = array();
 		return true;
 	}
@@ -312,6 +339,7 @@ final class MAD4B_SCP_Execution_Fence {
 		self::$execution_stack = array();
 		self::$child_permit = array();
 		self::$projected_call_seals = array();
+		self::$projected_call_requirements = array();
 	}
 
 	private static function consume_child_permit( array $parent, $ability_name, $input ) {
