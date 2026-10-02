@@ -105,6 +105,10 @@ function mad4b_replay_assert( $condition, $message ) {
 }
 
 $ticket_id = '11111111-1111-4111-8111-111111111111';
+$non_v4_ticket_id = '11111111-1111-1111-8111-111111111111';
+mad4b_replay_assert( null === MAD4B_SCP_Approval_Tickets::get( $non_v4_ticket_id ), 'Approval store must reject a structurally valid non-v4 UUID before lookup.' );
+$non_v4_finalize = MAD4B_SCP_Approval_Tickets::finalize_claim( $non_v4_ticket_id, 'used' );
+mad4b_replay_assert( is_wp_error( $non_v4_finalize ) && 'mad4b_approval_ticket_invalid' === $non_v4_finalize->get_error_code(), 'Approval finalization accepted a non-v4 ticket identity.' );
 mad4b_replay_assert( MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( $ticket_id ), 'Governance-input ticket must bind to request-local identity evidence.' );
 $overlay = MAD4B_SCP_Identity_Context::current();
 mad4b_replay_assert( is_array( $overlay ) && $ticket_id === $overlay['approval_ticket_id'], 'Synchronous audit/finalizer reads must recover the bound ticket.' );
