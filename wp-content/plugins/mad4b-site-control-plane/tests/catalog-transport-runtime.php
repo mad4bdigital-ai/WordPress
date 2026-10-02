@@ -75,6 +75,19 @@ $tail = request( array( 'cursor' => $delta['next_cursor'] ) ); check( count( $ta
 $store = new MAD4B_SCP_Catalog_Object_Store(); $store->put( 'race', 'safe', 3600 ); $GLOBALS['wpdb']->race = true; $store->flush();
 check( $store->get( 'race' ) === 'safe' && isset( $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]['concurrent'] ), 'CAS overwrote concurrent publication' );
 
+$lease_store = new MAD4B_SCP_Catalog_Object_Store();
+$lease_store->put( 'dependency-lease', 'shared', 3600 );
+$lease_store->flush();
+$GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]['dependency-lease']['expires'] = time() + 2000;
+$minimum_dependency_expiry = time() + 5000;
+$lease_store = new MAD4B_SCP_Catalog_Object_Store();
+$lease_store->put( 'dependency-lease', 'shared', 3600, $minimum_dependency_expiry );
+$lease_store->flush();
+check(
+	$GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]['dependency-lease']['expires'] >= $minimum_dependency_expiry,
+	'Shared dependency lifetime was not extended to the referencing object lifetime'
+);
+
 class ObjectAbility extends FixtureAbility {
  function get_input_schema() { return (object) array( 'type' => 'object', 'properties' => new stdClass() ); }
  function get_output_schema() { return new stdClass(); }
