@@ -162,6 +162,9 @@ await assert.rejects(laneClient.execute(governedPrepared, 'vendor/mutation', {},
   approvalTicketId: 'not-a-ticket',
 }), /approval ticket/);
 await assert.rejects(laneClient.execute(governedPrepared, 'vendor/mutation', {}, {
+  approvalTicketId: '11111111-1111-1111-8111-111111111111',
+}), /approval ticket/);
+await assert.rejects(laneClient.execute(governedPrepared, 'vendor/mutation', {}, {
   contextReceipt: {payload: 'x'.repeat(70000)},
 }), /transport budget/);
 preparedLane = 'read';
