@@ -12,7 +12,7 @@ final class MAD4B_SCP_Database_Failure_Semantics {
 		$message = trim( (string) $message );
 		$lower = strtolower( $message );
 		$kind = 'database_error';
-		if ( preg_match( '/deadlock found|deadlock victim|try restarting transaction/i', $message ) ) $kind = 'deadlock';
+		if ( preg_match( '/deadlock found|deadlock victim|deadlock detected/i', $message ) ) $kind = 'deadlock';
 		elseif ( preg_match( '/lock wait timeout|lock timeout exceeded/i', $message ) ) $kind = 'lock_wait_timeout';
 		elseif ( preg_match( '/server has gone away|lost connection|connection.*closed|not connected|connection was killed|error while sending query packet/i', $message ) ) $kind = 'connection_loss';
 		elseif ( preg_match( '/transaction.*aborted|transaction.*rolled back|no active transaction|savepoint.+does not exist/i', $message ) ) $kind = 'transaction_aborted';
