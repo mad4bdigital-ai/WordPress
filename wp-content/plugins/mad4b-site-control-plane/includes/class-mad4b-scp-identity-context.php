@@ -49,6 +49,27 @@ final class MAD4B_SCP_Identity_Context {
 	}
 
 	/**
+	 * Scope an approval ticket to one synchronous execution only.
+	 *
+	 * The previous request-local value is restored even when the callback throws,
+	 * preventing one abandoned dispatcher permission phase from contaminating a
+	 * later target in the same PHP request.
+	 */
+	public static function with_approval_ticket_for_request( $ticket_id, $callback ) {
+		if ( ! is_callable( $callback ) ) return new WP_Error( 'mad4b_identity_approval_callback_invalid', 'Approval ticket scope requires a callable target.' );
+		$ticket_id = strtolower( trim( (string) $ticket_id ) );
+		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) ) return new WP_Error( 'mad4b_identity_approval_invalid', 'Approval ticket identifier is malformed.' );
+		$previous = self::$request_approval_ticket_id;
+		if ( '' !== $previous && ! hash_equals( $previous, $ticket_id ) ) return new WP_Error( 'mad4b_identity_approval_rebind_conflict', 'A different approval ticket is already scoped to this execution.' );
+		self::$request_approval_ticket_id = $ticket_id;
+		try {
+			return call_user_func( $callback );
+		} finally {
+			self::$request_approval_ticket_id = $previous;
+		}
+	}
+
+	/**
 	 * Apply one bounded request-local subject override while executing a nested
 	 * Developer dispatcher target. This never changes token scopes, user identity,
 	 * credentials or persistent bindings and is cleared in a finally block.
