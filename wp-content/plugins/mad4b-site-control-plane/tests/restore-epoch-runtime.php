@@ -30,6 +30,30 @@ $code=static function($v){return is_wp_error($v)?$v->get_error_code():'';};
 $initial=MAD4B_SCP_Restore_Epoch::ensure_bound();
 $check(is_array($initial)&&1===(int)$initial['epoch'],'initial external epoch did not bind',$initial);
 $stale_binding=$GLOBALS['options'][MAD4B_SCP_Restore_Epoch::OPTION];
+$initial_external=file_get_contents(MAD4B_SCP_RESTORE_EPOCH_PATH);
+$check(is_string($initial_external)&&''!==$initial_external,'initial external epoch record could not be captured');
+
+// Half-present state must never be treated as a fresh install. Binding-only
+// represents lost external monotonic state and therefore remains quarantined.
+unlink(MAD4B_SCP_RESTORE_EPOCH_PATH);
+MAD4B_SCP_Restore_Epoch::reset_request_cache();
+$binding_only=MAD4B_SCP_Restore_Epoch::status(true,true);
+$check(empty($binding_only['ready'])&&in_array('restore_epoch_external_missing',$binding_only['blockers'],true),'binding-only restore state auto-initialized or failed open',$binding_only);
+$check(!file_exists(MAD4B_SCP_RESTORE_EPOCH_PATH),'binding-only restore state recreated external epoch unexpectedly');
+file_put_contents(MAD4B_SCP_RESTORE_EPOCH_PATH,$initial_external);
+chmod(MAD4B_SCP_RESTORE_EPOCH_PATH,0600);
+
+// External-only represents a restored/lost database binding and must also stay
+// quarantined. Initialization is legal only when both stores are truly empty.
+unset($GLOBALS['options'][MAD4B_SCP_Restore_Epoch::OPTION]);
+MAD4B_SCP_Restore_Epoch::reset_request_cache();
+$external_only=MAD4B_SCP_Restore_Epoch::status(true,true);
+$check(empty($external_only['ready'])&&in_array('restore_epoch_database_binding_missing',$external_only['blockers'],true),'external-only restore state auto-bound or failed open',$external_only);
+$check(!isset($GLOBALS['options'][MAD4B_SCP_Restore_Epoch::OPTION]),'external-only restore state recreated database binding unexpectedly');
+$GLOBALS['options'][MAD4B_SCP_Restore_Epoch::OPTION]=$stale_binding;
+MAD4B_SCP_Restore_Epoch::reset_request_cache();
+$restored_initial=MAD4B_SCP_Restore_Epoch::status(false,true);
+$check(!empty($restored_initial['ready'])&&1===(int)$restored_initial['epoch'],'fixture could not restore initial epoch after half-present tests',$restored_initial);
 
 $advanced=MAD4B_SCP_Restore_Epoch::advance('governed_execution');
 $check(is_array($advanced)&&2===(int)$advanced['epoch'],'epoch did not advance before execution',$advanced);

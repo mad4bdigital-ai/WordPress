@@ -26,6 +26,32 @@ $reset_request_ticket_overlay = static function () {
 $check( class_exists( 'MAD4B_SCP_Mutation_Manager' ), 'Mutation manager is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Governed_Ability_Overrides' ), 'Governed ability override layer is unavailable.' );
 $check( class_exists( '\\WP\\MCP\\Domain\\Tools\\McpTool' ), 'Exact MCP Adapter McpTool runtime is unavailable.' );
+$check( class_exists( 'MAD4B_SCP_Site_Profile' ), 'Site Profile contract is unavailable.' );
+$check( class_exists( 'MAD4B_SCP_Restore_Epoch' ), 'Restore/authority epoch contract is unavailable.' );
+
+// Governed mutation must run against an explicitly enrolled site identity.
+// This disposable runtime uses local environment because WordPress CI serves
+// over HTTP and WP_ENVIRONMENT_TYPE is intentionally not configured.
+$profile_status = MAD4B_SCP_Site_Profile::save_current_site(
+	array(
+		'environment' => 'local',
+		'expected_revision' => MAD4B_SCP_Site_Profile::revision(),
+		'oauth_user_ids' => array( get_current_user_id() ),
+		'oauth_enabled' => false,
+		'skills_enabled' => false,
+		'write_enabled' => true,
+		'provider_isolation_enabled' => false,
+		'managed_runtime_enabled' => false,
+		'acceptance_enabled' => false,
+	)
+);
+$check( ! is_wp_error( $profile_status ), 'Unable to enroll disposable CI Site Profile: ' . ( is_wp_error( $profile_status ) ? $profile_status->get_error_message() : '' ) );
+$check( MAD4B_SCP_Site_Profile::origin_enrolled(), 'Disposable CI Site Profile is not bound to the exact runtime origin/environment.' );
+$check( MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ), 'Disposable CI WordPress user is not enrolled in the Site Profile.' );
+$check( MAD4B_SCP_Site_Profile::write_enabled(), 'Disposable CI Site Profile did not enable governed write.' );
+
+$restore_epoch = MAD4B_SCP_Restore_Epoch::ensure_bound();
+$check( ! is_wp_error( $restore_epoch ) && ! empty( $restore_epoch['ready'] ) && 1 === (int) $restore_epoch['epoch'], 'Fresh enrolled CI site did not initialize the external restore/authority epoch.' );
 $check( wp_has_ability( 'mad4b/content-update-post' ), 'Governed post update ability is missing.' );
 $check( wp_has_ability( 'mad4b/mutation-get' ), 'Mutation evidence ability is missing.' );
 $check( wp_has_ability( 'mad4b/mutation-undo' ), 'Mutation undo ability is missing.' );
