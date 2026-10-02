@@ -6,7 +6,20 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 	const CONTRACT = 'mad4b.ability-catalog-transport.v1';
 
 	private static function scope() {
-		return hash( 'sha256', wp_json_encode( array( MAD4B_SCP_ChatGPT_Tool_Projection::current_binding(), get_current_user_id(), wp_get_current_user()->allcaps, class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false ) && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) ) );
+		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
+		if ( is_wp_error( $identity ) || ! is_array( $identity ) ) $identity = array();
+		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? array_values( array_unique( array_map( 'strval', $identity['token_scopes'] ) ) ) : array();
+		sort( $scopes, SORT_STRING );
+		return hash( 'sha256', wp_json_encode( array(
+			MAD4B_SCP_ChatGPT_Tool_Projection::current_binding(),
+			get_current_user_id(),
+			wp_get_current_user()->allcaps,
+			isset( $identity['subject_fingerprint'] ) ? (string) $identity['subject_fingerprint'] : '',
+			isset( $identity['issuer_fingerprint'] ) ? (string) $identity['issuer_fingerprint'] : '',
+			isset( $identity['client_fingerprint'] ) ? (string) $identity['client_fingerprint'] : '',
+			$scopes,
+			class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false ) && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ),
+		) ) );
 	}
 	private static function key( $scope, $kind, $digest ) {
 		return 'mad4b_ct_' . hash( 'sha256', $scope . ':' . $kind . ':' . $digest );
@@ -51,6 +64,52 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		if ( ! set_transient( self::key( $scope, 'snapshot', $id ), $data, self::ttl() ) && get_transient( self::key( $scope, 'snapshot', $id ) ) !== $data ) return new WP_Error( 'mad4b_catalog_storage_unavailable', 'Cannot retain catalog snapshot.' );
 		return array( $id, $data );
 	}
+	public static function prepare_ability( $ability_name ) {
+		if ( ! MAD4B_SCP_Policy::can_read() ) return new WP_Error( 'mad4b_catalog_forbidden', 'Catalog read authority required.' );
+		$ability_name = trim( (string) $ability_name );
+		if ( '' === $ability_name || ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) {
+			return new WP_Error( 'mad4b_catalog_ability_unavailable', 'Requested Ability is not registered in the current runtime.' );
+		}
+		$ability = wp_get_ability( $ability_name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_input_schema' ) || ! method_exists( $ability, 'get_output_schema' ) ) {
+			return new WP_Error( 'mad4b_catalog_ability_contract_unavailable', 'Requested Ability does not expose a serializable schema contract.' );
+		}
+		$scope = self::scope();
+		try {
+			$json = self::encode( array( 'inputSchema' => $ability->get_input_schema(), 'outputSchema' => $ability->get_output_schema() ) );
+			$digest = hash( 'sha256', $json );
+			if ( ! set_transient( self::key( $scope, 'schema', $digest ), $json, self::ttl() ) && get_transient( self::key( $scope, 'schema', $digest ) ) !== $json ) {
+				return new WP_Error( 'mad4b_catalog_storage_unavailable', 'Cannot retain the selected Ability schema.' );
+			}
+			$item = array(
+				'ability_name' => $ability_name,
+				'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : $ability_name,
+				'schema_sha256' => $digest,
+				'schema_bytes' => strlen( $json ),
+				'classification_sha256' => hash( 'sha256', self::encode( array(
+					method_exists( $ability, 'get_meta' ) ? $ability->get_meta() : array(),
+					method_exists( $ability, 'get_category' ) ? $ability->get_category() : '',
+				) ) ),
+			);
+			$id = hash( 'sha256', self::encode( array( 'lazy_single_ability' => true, 'item' => $item ) ) );
+			$data = array( 'items' => array( $item ), 'expires' => time() + self::ttl() );
+			if ( ! set_transient( self::key( $scope, 'snapshot', $id ), $data, self::ttl() ) && get_transient( self::key( $scope, 'snapshot', $id ) ) !== $data ) {
+				return new WP_Error( 'mad4b_catalog_storage_unavailable', 'Cannot retain the selected Ability schema snapshot.' );
+			}
+			return array(
+				'contract' => self::CONTRACT,
+				'snapshot' => $id,
+				'expires_at' => $data['expires'],
+				'item' => $item,
+				'lazy_single_ability' => true,
+				'read_only' => true,
+				'authority_effect' => 'none',
+			);
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_catalog_schema_serialization_failed', 'Selected Ability schema could not be serialized.' );
+		}
+	}
+
 	public static function handle( array $input ) {
 		if ( ! MAD4B_SCP_Policy::can_read() ) return new WP_Error( 'mad4b_catalog_forbidden', 'Catalog read authority required.' );
 		$scope = self::scope();
