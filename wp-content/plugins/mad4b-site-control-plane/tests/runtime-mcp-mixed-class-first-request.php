@@ -20,6 +20,6 @@ if ( ! empty( $provenance['ready'] ) || empty( $provenance['mixed_runtime'] ) ) 
 $failures = array_column( $provenance['failures'] ?? array(), null, 'alias' );
 if ( empty( $failures['tool_validator'] ) ) mad4b_mixed_class_fail( 'Foreign validator was not identified.', $provenance );
 if ( 'runtime_class_source_mismatch' !== ( $failures['tool_validator']['reason'] ?? '' ) ) mad4b_mixed_class_fail( 'Foreign validator mismatch reason was not source-bound.', $failures['tool_validator'] );
-if ( 0 !== strpos( (string) ( $failures['tool_validator']['observed_source'] ?? '' ), 'mu-plugins/' ) ) mad4b_mixed_class_fail( 'Foreign validator source must be reported as bounded plugin-relative evidence.', $failures['tool_validator'] );
+if ( 'outside-wp-plugin-dir' !== (string) ( $failures['tool_validator']['observed_source'] ?? '' ) ) mad4b_mixed_class_fail( 'Foreign validator source outside the normal plugin root must remain bounded without leaking an absolute path.', $failures['tool_validator'] );
 
 echo 'mad4b.mcp-mixed-class-repair-first-request.v1: PASS' . PHP_EOL;
