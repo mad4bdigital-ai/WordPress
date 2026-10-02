@@ -197,6 +197,12 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/durable-execution-contract.py
 
+      - name: Verify unified execution state read model
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/execution-state-view-runtime.php
+
       - name: Verify Ability category and schema diagnostic contract
         shell: bash
         run: |
