@@ -529,10 +529,10 @@ final class MAD4B_SCP_Self_Update {
 		$bootstrap_step_up_available = in_array( self::BOOTSTRAP_APPLY_ABILITY, self::chatgpt_step_up_tools(), true );
 		$maintenance_projection = self::maintenance_status_projection();
 		$continuation_projection = self::continuation_policy_projection();
-		$bootstrap_drift_policy = self::bootstrap_candidate_drift_policy();
-		$bootstrap_drift_eligible = ! empty( $bootstrap_drift_policy['eligible'] )
-			&& ! empty( $continuation_projection['blocked'] )
-			&& 'mad4b_self_update_continuation_prior_authority_drift' === ( isset( $continuation_projection['blocker'] ) ? (string) $continuation_projection['blocker'] : '' );
+		$bootstrap_drift_policy = isset( $continuation_projection['bootstrap_candidate_drift'] ) && is_array( $continuation_projection['bootstrap_candidate_drift'] )
+			? $continuation_projection['bootstrap_candidate_drift']
+			: array();
+		$bootstrap_drift_eligible = ! empty( $continuation_projection['bootstrap_candidate_drift_eligible'] );
 		$apply_preflight_ready = ! empty( $maintenance_projection['safe_to_acquire'] )
 			&& ( empty( $continuation_projection['blocked'] ) || $bootstrap_drift_eligible );
 
@@ -1356,6 +1356,9 @@ final class MAD4B_SCP_Self_Update {
 		if ( is_wp_error( $policy ) ) {
 			$data = $policy->get_error_data();
 			$data = is_array( $data ) ? $data : array();
+			$drift_blocked = 'mad4b_self_update_continuation_prior_authority_drift' === $policy->get_error_code();
+			$bootstrap = $drift_blocked ? self::bootstrap_candidate_drift_policy() : array();
+			$bootstrap_eligible = is_array( $bootstrap ) && ! empty( $bootstrap['eligible'] );
 			return array(
 				'contract' => 'mad4b.self-update-continuation-policy.v1',
 				'blocked' => true,
@@ -1365,7 +1368,11 @@ final class MAD4B_SCP_Self_Update {
 				'prior_authority_effective' => isset( $data['prior_authority_effective'] ) ? (bool) $data['prior_authority_effective'] : null,
 				'candidate_binding_required' => isset( $data['candidate_binding_required'] ) ? (bool) $data['candidate_binding_required'] : null,
 				'candidate_binding_match' => isset( $data['candidate_binding_match'] ) ? (bool) $data['candidate_binding_match'] : null,
-				'operator_action' => 'mad4b_self_update_continuation_prior_authority_drift' === $policy->get_error_code() ? 'reconcile_staging_write_authority' : '',
+				'operator_action' => $drift_blocked
+					? ( $bootstrap_eligible ? 'retry_native_update_with_candidate_drift_bootstrap' : 'reconcile_staging_write_authority' )
+					: '',
+				'bootstrap_candidate_drift_eligible' => $bootstrap_eligible,
+				'bootstrap_candidate_drift' => $bootstrap,
 				'automatic_mutation_retry_allowed' => false,
 				'bootstrap_without_authority' => false,
 				'production_mutation_allowed' => false,
@@ -1385,6 +1392,8 @@ final class MAD4B_SCP_Self_Update {
 			'prior_authority_effective' => ! empty( $policy['prior_authority_effective'] ),
 			'candidate_binding_match' => ! empty( $policy['candidate_binding_match'] ),
 			'bootstrap_without_authority' => ! empty( $policy['bootstrap_without_authority'] ),
+			'bootstrap_candidate_drift_eligible' => false,
+			'bootstrap_candidate_drift' => array(),
 			'production_mutation_allowed' => false,
 			'authority_created' => false,
 			'read_only' => true,
