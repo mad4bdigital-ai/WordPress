@@ -111,6 +111,19 @@ $query_delta = request( array( 'query' => 'booking', 'known_snapshot' => $query[
 class CycleAbility extends FixtureAbility { function get_input_schema() { $v = new stdClass(); $v->self = $v; return $v; } }
 $GLOBALS['abilities']['cycle'] = new CycleAbility( '' ); $cycle = request( array() );
 check( ! is_wp_error( $cycle ) && ! empty( $cycle['items'][0]['unavailable'] ), 'Invalid schema destroyed catalog' );
+$cycle_item = array_values( array_filter( $cycle['items'], static fn($v) => $v['ability_name'] === 'cycle' ) )[0];
+check(
+	isset( $cycle_item['classification_sha256'] )
+	&& 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $cycle_item['classification_sha256'] )
+	&& 'schema_serialization_failed' === (string) $cycle_item['reason'],
+	'Invalid schema did not receive one deterministic fail-closed catalog identity'
+);
+$cycle_again = request( array( 'force_refresh' => true ) );
+$cycle_again_item = array_values( array_filter( $cycle_again['items'], static fn($v) => $v['ability_name'] === 'cycle' ) )[0];
+check(
+	hash_equals( (string) $cycle_item['classification_sha256'], (string) $cycle_again_item['classification_sha256'] ),
+	'Unavailable schema fingerprint changed across equivalent catalog rebuilds'
+);
 $directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY];
 $expired = reset( $directory ); $key = array_key_first( $directory ); $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY][$key]['expires'] = time()-1;
 MAD4B_SCP_Catalog_Object_Store::collect_expired();
