@@ -13,9 +13,7 @@ below and remain unimplemented.
 
 ## Delivered behavior
 
-`MAD4B_SCP_Capability_Descriptor_Registry` provides a fresh selected-capability
-view over the existing authoritative classifier. Gateway preparation, catalog
-execution descriptors and dispatcher receipt verification consume that view.
+`MAD4B_SCP_Ability_Contract_Inspector` is now the canonical structural classifier for a selected Ability. `MAD4B_SCP_Capability_Descriptor_Registry` builds contract/site generation roots from that classifier without depending on ChatGPT projection. Gateway preparation, projection, catalog execution descriptors and dispatcher receipt verification consume the same structural identity.
 Metadata search remains schema-lazy. Projection's existing callback provenance
 and materialization checks remain authoritative; descriptor digests do not
 replace them or claim to hash a callback's complete semantics.
@@ -37,12 +35,10 @@ secret. The signature uses a domain-separated key derived from the WordPress
 invalid shape, excessive size, tampering, wrong target, future issuance, expiry,
 changed scope, changed contract and lost runtime eligibility.
 
-Read/write/developer dispatchers verify a supplied receipt before execution.
+Read/write/developer dispatchers require and verify a signed receipt plus the exact prepared authority-scope digest before execution.
 The receipt never creates a grant, ticket or idempotency key. Existing permission
 callbacks, current mounting, execution boundaries, NHI, grants, approval claims
-and commit guards still execute. The current upstream contract requires exact lane/classification pins;
-missing, partial or null values fail closed even when a receipt is supplied.
-The JS client forwards the fresh receipt returned by its pre-execution prepare.
+and commit guards still execute. The current dispatch contract requires exact schema, lane, classification, authority-scope and receipt fields; missing, partial, null, expired or cross-subject evidence fails closed. The JS client performs fresh single-target preparation immediately before dispatch and forwards that fresh evidence.
 Explicit enrollment and exceptional lanes retain their separate contracts.
 
 `MAD4B_SCP_Distributed_Lock` centralizes catalog admission. Names include the
@@ -60,9 +56,9 @@ migration requirement.
 
 | # | Recommendation | Current coverage / remaining implementation |
 |---|---|---|
-| 1 | Canonical descriptor | Delivered selected-capability facade over one existing classifier. Global migration of Operation Registry, Traits, Servers and Authorization to a richer immutable descriptor is still required. |
+| 1 | Canonical descriptor | Delivered a projection-independent canonical Ability inspector plus selected-capability descriptor facade with canonical classification hashing. Operation Registry, Traits, Servers and Authorization still need gradual migration to consume the descriptor directly rather than re-deriving adjacent facts. |
 | 2 | Generation hierarchy | Delivered independent contract/site roots. Provider certification, policy and impact roots require their owning registries' stable contracts. Never label an incomplete root as complete. |
-| 3 | Prepared receipt | Delivered signed, expiring, scope-bound preparation evidence and fixed-dispatch verification. It does not replace operation-specific approvals. |
+| 3 | Prepared receipt | Delivered signed, expiring, scope-bound preparation evidence. Receipt and prepared authority scope are mandatory for normal fixed read/write/developer dispatch, while live authorization still re-runs. It does not replace operation-specific approvals. |
 | 4 | MCP compatibility profiles | Existing pinned Adapter/protocol remains certified. A 2026 profile needs separate shadow wire certification; no new advertised support is added. |
 | 5 | Native WordPress lifecycle | Existing provenance wrappers remain active across 6.9/latest. Native-hook replacement requires parity proofs, including pre-execute short-circuit and permission/output filters. |
 | 6 | Unified execution state machine | Existing Operation Journal, Execution Fence, Connector Resilience and commit guard remain in force. A common transition contract across these components is not delivered by this patch. |
@@ -79,7 +75,7 @@ migration requirement.
 | 17 | Unified execution receipt | Existing audit/claim/journal/commit evidence remains. The new preparation receipt is not an execution receipt and makes no commit/outcome claim. |
 | 18 | Authorization decision graph | Existing deterministic authorization and policy resolution remain. A complete redacted evaluated/not-evaluated graph needs integration into each existing gate. |
 | 19 | Signed OAuth metadata | Optional future layer; requires independent key lifecycle and JWT verification. WordPress preparation HMAC is not a public OAuth metadata signature. |
-| 20 | Fault/property CI | Expanded behavioral mutation suite from 10 to 17 regressions. Covers lost build ownership, database isolation, receipt signature/expiry/subject/descriptor and dispatcher enforcement; mandatory partial/null pin tests are retained. External provider commit+timeout and durable journal failure injection still need dedicated fixtures. |
+| 20 | Fault/property CI | Expanded behavioral mutation suite from 10 to 19 regressions. Covers lost build ownership, database isolation, receipt signature/expiry/subject/descriptor and dispatcher enforcement; mandatory partial/null pin tests are retained. External provider commit+timeout and durable journal failure injection still need dedicated fixtures. |
 | 21 | SLO contracts | Existing hard catalog count/bytes/time budgets, 5,000 lazy-ability regression and bounded transport remain. Production P95 targets require measured tracing data; proposed numbers are not asserted as achieved. |
 
 ## Migration acceptance gates
@@ -114,16 +110,16 @@ migration requirement.
 
 ## Verification
 
-- Standalone receipt regression exercises real classifier and dispatcher code,
+- Standalone canonical-inspector regression proves associative-order stability, projection-independent descriptors and semantic drift detection. Standalone receipt regression exercises real classifier and dispatcher code,
   forgery, expiry/future time, malformed evidence, salt rotation, user/capability,
-  blog/lane/boundary changes, partial pins and original permission denial.
+  blog/lane/boundary changes, mandatory authority-scope/receipt pins, partial pins and original permission denial.
 - JS client regression proves fresh evidence forwarding across all five normal
   lanes while retaining contract drift and exceptional-lane denials.
 - Catalog regression injects connection loss before publication and verifies
   unchanged directory state, in addition to reader/CAS/GC/capacity/build tests.
 - Mutation suite first requires pristine copied harnesses to pass, then requires
   every representative defect to fail; missing fixtures cannot count as a kill.
-- Real WordPress CI verifies receipt issuance and dispatcher denial of forgery,
+- Real WordPress CI verifies receipt issuance and dispatcher denial of forgery, fresh-process inactive decommission planning,
   real independent DB connection contention, rejection release and cron retention
   on MySQL 8.0 and MariaDB 11.8. Local standalone success does not establish those
   remote matrix results.
