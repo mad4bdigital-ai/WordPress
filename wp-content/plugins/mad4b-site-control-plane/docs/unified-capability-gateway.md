@@ -32,6 +32,8 @@ Gateway clients forward `expected_execution_lane`, `expected_classification_sha2
 
 The canonical structural identity is produced by `MAD4B_SCP_Ability_Contract_Inspector` using the versioned `mad4b.ability-classification.v2` digest contract; `MAD4B_SCP_Capability_Descriptor_Registry` builds projection-independent contract/site roots from it. Upgrading from the older noncanonical classification digest intentionally makes stored projection rows and preparation receipts stale so they fail closed and must be prepared/replanned again.
 
+For governed `write`/`content`/`admin` dispatch, the compact transport schema explicitly permits the reviewed `_mad4b_approval_ticket_id` and `_mad4b_context_receipt` envelope fields while keeping top-level `additionalProperties=false`. Context Receipts are bounded to 64 KiB before request-local binding, and approval/context metadata are bound only after signed preparation, authority scope and exact target schema revalidation. Read, Developer and direct-projection paths reject this governance envelope.
+
 Fixed dispatch is the primary execution path. Direct projection is an optional hot set, sharing site-level state. The pinned MCP Adapter advertises `tools.listChanged=false`; no notification delivery is claimed. A client may explicitly refresh `tools/list` or reconnect before direct use. A different session replacing the hot set does not invalidate a schema/classification-stable fixed-dispatch target. The 64-entry selection registry and 36-total-tool/96-KiB DTO limits describe different resources and are not interchangeable.
 
 REST discovery/schema endpoints accept either a verified OAuth bearer or an authenticated WordPress cookie session with the core REST nonce checks. Remote clients default to bearer authentication with cookies omitted. An invalid Authorization header never falls back to cookie authority. The manifest declares both modes and `Cache-Control: private, no-store` plus `Vary: Authorization, Cookie` prevents shared-cache reuse.
@@ -50,7 +52,7 @@ Providers may supply at most 24 `meta.mcp.search_aliases` strings, each bounded 
 
 The MCP compatibility matrix executes behavioral gateway and lifecycle fixtures on PHP 7.4/8.3, and real WordPress 6.9/latest tests verify original content/admin lanes, independent database connections and cron retention. The local OAuth matrix proves cookie+nonce access, nonce denial and invalid-bearer fallback denial through independent HTTP requests. Existing tests retain schema/wire drift, projection CAS, immutable storage races, UTF-8, chunk transport, oversized-tool fallback and original permissions.
 
-`gateway-mutation-guards.py` introduces twenty representative regressions into isolated source copies and requires the behavioral tests to reject each one. This protects against a test suite that passes while no longer exercising its intended invariant.
+`gateway-mutation-guards.py` introduces twenty-one representative regressions into isolated source copies and requires the behavioral tests to reject each one. This protects against a test suite that passes while no longer exercising its intended invariant.
 
 
 ## Explicit offline cache retirement
