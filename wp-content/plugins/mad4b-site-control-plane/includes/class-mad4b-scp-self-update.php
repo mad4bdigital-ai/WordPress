@@ -380,6 +380,12 @@ final class MAD4B_SCP_Self_Update {
 		if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) {
 			return new WP_Error( 'mad4b_self_update_bootstrap_breakglass_active', 'Bootstrap Control Plane self-update is unavailable while generic Breakglass is active.' );
 		}
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_authority_runtime_missing', 'Write Authority runtime is unavailable.' );
+		}
+		if ( MAD4B_SCP_Staging_Write_Authority::effective() ) {
+			return new WP_Error( 'mad4b_self_update_bootstrap_not_required', 'Write Authority is already effective; use the normal governed Control Plane update path.' );
+		}
 		$bootstrap_policy = self::bootstrap_candidate_drift_policy();
 		if ( empty( $bootstrap_policy['eligible'] ) ) {
 			return new WP_Error(
