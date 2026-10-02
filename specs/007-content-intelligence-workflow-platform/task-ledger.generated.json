@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "bf36d3646b96acb172ba5e6aa085c740960a71ac",
-  "override_git_blob_sha": "ec0614d8c7e31c154c5824ddded27dd2e80932eb",
+  "source_tasks_git_blob_sha": "43745bdb6d9eda4492c442cb8bf62252a779b4d5",
+  "override_git_blob_sha": "9697eabd905a1cc1e423f8a2e16ffe428398e6e4",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,16 +10,16 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 55,
-    "OPEN": 634,
-    "PARTIAL": 66
+    "DONE": 59,
+    "OPEN": 631,
+    "PARTIAL": 65
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 47,
-      "OPEN": 494,
-      "PARTIAL": 44
+      "DONE": 51,
+      "OPEN": 491,
+      "PARTIAL": 43
     },
     "P1": {
       "DEFERRED": 0,
@@ -7818,46 +7818,77 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Add database/site clone fixtures proving copied Site Profile, OAuth state, approvals, grants, projections and durable execution evidence are quarantined on foreign origin/environment and require explicit re-enrollment/rebinding.",
-      "status": "PARTIAL",
-      "checked": false,
+      "status": "DONE",
+      "checked": true,
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/clone-authority-quarantine-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php",
-        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
-        "workflow_run:37024826444"
+        "wp-content/plugins/mad4b-site-control-plane/tests/restore-epoch-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
+        "workflow_run:37061462626",
+        "workflow_job:111018866439",
+        "workflow_job:111018866648",
+        "workflow_job:111018866869"
       ],
-      "reason": "Foreign origin/environment Site Profile, OAuth subject mapping, durable site binding, catalog authority scope and commit-time subject/profile checks are statically certified and the contract runs in MCP CI. A full database/site clone runtime rehearsal across copied approval/grant/projection/durable rows remains to complete T3778."
+      "reason": "Foreign Site UUID/profile clones and copied restore-epoch state are quarantined. The exact-head runtime rehearsal proves copied authority/durable/projection state cannot cross Site identity on WordPress 6.9/PHP7.4/MySQL8 and latest/PHP8.3 on MySQL8/MariaDB11.8."
     },
     {
       "task_id": "T3779",
       "phase": 37,
       "priority": "P0",
       "summary": "Define same-origin backup-restore time-travel detection: restoring an older database snapshot must not silently resurrect consumed approvals, revoked credentials, stale grants, completed idempotency claims or pre-restore projection authority assumptions.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
+        "workflow_run:37061462626",
+        "workflow_job:111018866439",
+        "workflow_job:111018866648",
+        "workflow_job:111018866869"
+      ],
+      "reason": "Same-origin database rollback is detected because the external monotonic epoch remains ahead of the restored database binding. Approval admission and every durable replay/mutation surface fail closed while quarantined."
     },
     {
       "task_id": "T3780",
       "phase": 37,
       "priority": "P0",
       "summary": "Define a monotonic RestoreEpoch/AuthorityEpoch anchored outside rollback-prone application state, or an equivalent independently verifiable mechanism, and bind it to security-sensitive persisted evidence that could otherwise replay after restore.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
+        "workflow_run:37061462626",
+        "workflow_job:111018866439",
+        "workflow_job:111018866648",
+        "workflow_job:111018866869"
+      ],
+      "reason": "Restore/AuthorityEpoch is stored outside the WordPress/document root, bound to exact Site UUID plus a database binding, advanced before provider entry, and post-advance commit material is recaptured/revalidated before callback entry."
     },
     {
       "task_id": "T3781",
       "phase": 37,
       "priority": "P0",
       "summary": "GATE Rehearse restore of a snapshot containing previously valid but now consumed/revoked approval/token/idempotency records and prove post-restore replay is denied until governed reconciliation/re-enrollment completes.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/restore-epoch-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
+        "workflow_run:37061462626",
+        "workflow_job:111018866439",
+        "workflow_job:111018866648",
+        "workflow_job:111018866869"
+      ],
+      "reason": "Real database rehearsal restores old approved-ticket, completed-idempotency, active-lease and projection state while external epoch remains newer; pre-ack replay is quarantined and governed acknowledgement revokes approvals, expires/reconciliation-marks idempotency, fails active leases and clears projection before rebinding."
     },
     {
       "task_id": "T3782",

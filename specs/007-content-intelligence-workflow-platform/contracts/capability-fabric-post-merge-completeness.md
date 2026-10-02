@@ -76,3 +76,14 @@ The runtime contract is `mad4b.request-scope-generation.v1`.
 - `mad4b.runtime-compatibility-profile.v1` is non-authorizing and may only reduce mutation eligibility.
 - Persistent object cache behavior, database routers/read replicas, security/firewall plugins, maintenance mode, WP-CLI and cron contexts are explicitly classified.
 - Unsupported or uncertified infrastructure fails closed with stable reason codes; compatibility never creates OAuth, grant, approval, provider or Production authority.
+
+
+## Restore-time authority reconciliation
+
+The Restore/AuthorityEpoch contract is `mad4b.restore-authority-epoch.v1`.
+
+- The monotonic external epoch lives outside WordPress and the HTTP document root and is bound to the exact enrolled Site UUID.
+- Governed execution advances the epoch before provider callback entry, then recaptures and revalidates commit material against the new epoch.
+- A database snapshot whose binding trails the external epoch is quarantined before governed authorization and before any durable replay/mutation surface.
+- Restore acknowledgement is not a blind rebind. While write authority remains disabled it transactionally revokes restored usable approvals, converts pending/completed/released idempotency state to expired reconciliation-required pending state, fails restored active leases, clears dynamic projection state, and only then writes the current external epoch binding.
+- Foreign Site UUID copies remain quarantined and require exact enrollment/rebinding; restore evidence is non-authorizing.

@@ -325,7 +325,7 @@
     },
     {
       "id": "clone_restore_subject_lifecycle",
-      "status": "PARTIAL",
+      "status": "DONE",
       "task_ids": [
         "T3778",
         "T3779",
@@ -345,11 +345,17 @@
         "impact_approval_receipt_routing"
       ],
       "interim_behavior": "Foreign clones quarantine; restored old state and changed subjects cannot replay previously valid authority artifacts.",
-      "evidence_strategy": "Foreign clone quarantine and subject lifecycle commit revalidation are certified. Restore/time-travel epoch plus real clone/restore rehearsal remain open.",
+      "evidence_strategy": "Foreign-clone quarantine, monotonic external restore epoch, same-origin rollback detection, durable replay quarantine, governed post-restore reconciliation, and subject lifecycle invalidation are exact-head certified across the supported WordPress/PHP/MySQL/MariaDB matrix.",
       "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/clone-authority-quarantine-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/restore-epoch-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restore-replay-quarantine.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/subject-lifecycle-commit-guard-runtime.php",
-        "workflow_run:37024826444"
+        "workflow_run:37061462626",
+        "workflow_job:111018866439",
+        "workflow_job:111018866648",
+        "workflow_job:111018866869"
       ]
     },
     {
