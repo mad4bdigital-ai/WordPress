@@ -22,6 +22,7 @@ final class MAD4B_SCP_Context_Preflight {
 	const MAX_RECEIPT_TRANSPORT_BYTES = 65536; // Receipt metadata only; raw context remains in the envelope.
 	const MAX_RECEIPT_AGE = 1800; // 30 minutes; approval is still one-time and separately short-lived.
 	const MAX_ALLOWED_MUTATION_ABILITIES = 20;
+	const RECEIPT_SIGNATURE_CONTRACT = 'mad4b.content-context-receipt-signature.v1';
 
 	public static function presets() {
 		return array(
@@ -456,6 +457,16 @@ final class MAD4B_SCP_Context_Preflight {
 		return $canonical;
 	}
 
+	private static function receipt_signature_key() {
+		return hash_hmac( 'sha256', self::RECEIPT_SIGNATURE_CONTRACT, wp_salt( 'auth' ), true );
+	}
+
+	private static function receipt_signature( $receipt_sha256 ) {
+		$receipt_sha256 = strtolower( trim( (string) $receipt_sha256 ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $receipt_sha256 ) ) return '';
+		return hash_hmac( 'sha256', $receipt_sha256, self::receipt_signature_key() );
+	}
+
 	private static function receipt( $logical_id, $skill_sha, array $policy, $policy_digest, array $assets, array $missing_sets, array $blockers, $site_uuid, $revision, $fingerprint, $observed_at, $task_scope, $brand_id = '', $authority_manifest_fingerprint = '', $registry_revision = 0, $intended_ability = '' ) {
 		$effective_required = isset( $policy['effective_required_context_sets'] ) && is_array( $policy['effective_required_context_sets'] )
 			? array_values( $policy['effective_required_context_sets'] )
@@ -488,6 +499,7 @@ final class MAD4B_SCP_Context_Preflight {
 			'observed_at' => (string) $observed_at,
 		);
 		$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
+		$receipt['receipt_signature'] = self::receipt_signature( $receipt['receipt_sha256'] );
 		$encoded_receipt = wp_json_encode( $receipt, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( ! is_string( $encoded_receipt ) || strlen( $encoded_receipt ) > self::MAX_RECEIPT_TRANSPORT_BYTES ) {
 			// The full Context Envelope already carries selected asset detail/content.
@@ -502,6 +514,7 @@ final class MAD4B_SCP_Context_Preflight {
 				array( 'context_receipt_transport_budget_exceeded' )
 			) ) );
 			$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
+			$receipt['receipt_signature'] = self::receipt_signature( $receipt['receipt_sha256'] );
 			$compacted_json = wp_json_encode( $receipt, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			if ( ! is_string( $compacted_json ) || strlen( $compacted_json ) > self::MAX_RECEIPT_TRANSPORT_BYTES ) {
 				// Pathological metadata must not create an untransportable receipt
@@ -516,6 +529,7 @@ final class MAD4B_SCP_Context_Preflight {
 					'observed_at' => gmdate( 'c' ),
 				);
 				$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
+				$receipt['receipt_signature'] = self::receipt_signature( $receipt['receipt_sha256'] );
 			}
 		}
 		return $receipt;
@@ -667,6 +681,10 @@ final class MAD4B_SCP_Context_Preflight {
 		if ( ! is_array( $receipt ) || self::RECEIPT_CONTRACT !== ( isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '' ) ) return new WP_Error( 'mad4b_context_receipt_invalid', 'Context Receipt contract is missing or invalid.' );
 		if ( empty( $receipt['ready'] ) || ! empty( $receipt['blockers'] ) ) return new WP_Error( 'mad4b_context_receipt_not_ready', 'Context Receipt was not issued from a ready governed preflight.' );
 		$expected_digest = isset( $receipt['receipt_sha256'] ) ? strtolower( trim( (string) $receipt['receipt_sha256'] ) ) : '';
+		$signature = isset( $receipt['receipt_signature'] ) ? strtolower( trim( (string) $receipt['receipt_signature'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_digest ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $signature ) || ! hash_equals( self::receipt_signature( $expected_digest ), $signature ) ) {
+			return new WP_Error( 'mad4b_context_receipt_signature_invalid', 'Context Receipt was not issued by the current trusted runtime or its signing key changed.' );
+		}
 		$observed_at = isset( $receipt['observed_at'] ) ? strtotime( (string) $receipt['observed_at'] ) : false;
 		if ( false === $observed_at || $observed_at > time() + 60 || ( time() - $observed_at ) > self::MAX_RECEIPT_AGE ) return new WP_Error( 'mad4b_context_receipt_expired', 'Context Receipt is outside the certified freshness window; rerun the Skill Context Preflight.' );
 		$observed_digest = self::canonical_receipt_digest( $receipt );
@@ -752,7 +770,7 @@ final class MAD4B_SCP_Context_Preflight {
 	}
 
 	private static function canonical_receipt_digest( array $receipt ) {
-		unset( $receipt['receipt_sha256'] );
+		unset( $receipt['receipt_sha256'], $receipt['receipt_signature'] );
 		$canonical = self::canonicalize_receipt_value( $receipt );
 		$json = wp_json_encode( $canonical, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		return is_string( $json ) ? hash( 'sha256', $json ) : '';
