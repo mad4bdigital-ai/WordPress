@@ -96,10 +96,18 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 		'input_schema' => array( 'type' => 'object', 'properties' => array() ), 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 		'meta' => array( 'annotations' => array( 'readonly' => true ), 'mcp' => array( 'type' => 'tool', 'surface' => $lane ) ),
 	) );
+    // Simulate a later plugin replacing a genuinely wrapped callback while
+    // leaving its claimed boundary metadata intact. The actual callback must fail provenance.
+    $strip_boundary = static function ( $args, $name ) {
+        if ( 'mad4b-ci/spoofed-boundary' === $name ) $args['execute_callback'] = static function () { return array( 'ok' => true ); };
+        return $args;
+    };
+    add_filter( 'wp_register_ability_args', $strip_boundary, PHP_INT_MAX, 2 );
 	wp_register_ability( 'mad4b-ci/spoofed-boundary', array(
 		'label' => 'Spoofed boundary fixture', 'description' => 'Metadata does not prove wrapper provenance.', 'category' => 'mad4b-read',
 		'execute_callback' => static function() { return array( 'ok' => true ); }, 'permission_callback' => static function() { return true; },
 		'input_schema' => array( 'type' => 'object', 'properties' => array() ), 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 		'meta' => array( 'annotations' => array( 'readonly' => false ), 'mcp' => array( 'type' => 'tool', 'surface' => 'write', 'mad4b_execution_boundary' => MAD4B_SCP_Authorization::EXECUTION_BOUNDARY_CONTRACT ) ),
 	) );
+    remove_filter( 'wp_register_ability_args', $strip_boundary, PHP_INT_MAX );
 }, 99 );
