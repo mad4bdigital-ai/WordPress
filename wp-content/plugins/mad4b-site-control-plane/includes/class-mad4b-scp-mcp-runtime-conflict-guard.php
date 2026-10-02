@@ -73,7 +73,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		}
 
 		if ( ! empty( $status['runtime_from_official_plugin'] ) ) {
-			if ( ! empty( $status['runtime_class_provenance_enforced'] ) && empty( $status['runtime_class_provenance_ready'] ) ) {
+			if ( ! empty( $status['runtime_class_provenance_enforced'] ) && ! empty( $status['runtime_class_provenance_failure_count'] ) ) {
 				// PHP classes cannot be safely replaced after declaration. Keep the
 				// current request fail-closed, but arm the governed MU bootstrap so the
 				// next request pins every certified builder/validator/DTO class before
@@ -315,7 +315,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			$out['runtime_class_provenance_failure_count'] = isset( $class_provenance['failure_count'] ) ? max( 0, (int) $class_provenance['failure_count'] ) : 0;
 		}
 		$out['runtime_provenance_mismatch'] = ( $out['runtime_class_loaded'] && ! $out['runtime_from_official_plugin'] )
-			|| ( ! empty( $out['runtime_class_provenance_enforced'] ) && false === $out['runtime_class_provenance_ready'] );
+			|| ( ! empty( $out['runtime_class_provenance_enforced'] ) && ! empty( $out['runtime_class_provenance_failure_count'] ) );
 		return $out;
 	}
 
