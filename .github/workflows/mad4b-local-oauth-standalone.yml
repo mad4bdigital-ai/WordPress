@@ -206,6 +206,25 @@ jobs:
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress
           root="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests"
+          # Actual HTTP MCP includes the reconnect gate; explicitly enroll its
+          # managed runtime while retaining the OAuth-only write boundary.
+          php /tmp/wp-cli.phar eval '
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+              "expected_revision" => MAD4B_SCP_Site_Profile::revision(),
+              "display_name" => "MAD4B Independent HTTP CI",
+              "chatgpt_app_id" => "",
+              "oauth_user_ids" => array( get_current_user_id() ),
+              "oauth_enabled" => true,
+              "skills_enabled" => false,
+              "write_enabled" => false,
+              "production_write_confirmed" => false,
+              "provider_isolation_enabled" => false,
+              "managed_runtime_enabled" => true,
+              "acceptance_enabled" => false,
+          ) );
+          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() );
+          if ( MAD4B_SCP_Staging_Write_Authority::eligible() ) throw new RuntimeException( "MCP runtime enrollment granted write authority." );
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
           mkdir -p "$WP_PATH/wp-content/mu-plugins"
           cp "$root/runtime-chatgpt-projection-fixtures.php" "$WP_PATH/wp-content/mu-plugins/mad4b-projection-ci.php"
           php /tmp/wp-cli.phar eval-file "$root/runtime-chatgpt-projection-http-seed.php" --path="$WP_PATH" --user=mad4b-ci-admin

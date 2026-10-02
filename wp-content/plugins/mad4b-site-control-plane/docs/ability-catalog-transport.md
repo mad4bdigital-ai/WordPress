@@ -72,3 +72,5 @@ The pinned Adapter converts WP_Error into text-only MCP errors. Catalog/gateway 
 ## Direct projection budget
 
 Catalog transport and direct MCP projection are deliberately separate resource problems. Source/wire schemas may be transferred in chunks without a small per-Ability rejection, but a direct MCP tool must be serialized into `tools/list` as one DTO. The direct projection preflight therefore enforces both the 36-tool ceiling and a 96 KiB aggregate serialized-tool ceiling. Required transport tools fail closed if they cannot fit; optional/dynamic tools are excluded deterministically and remain reachable through discovery, lazy preparation and the governed dispatcher.
+
+A size exclusion does not create a new execution lane: an Ability outside the fixed governed dispatcher still requires an admissible direct projection or its original explicitly authorized route. Chunk transfer alone does not let an arbitrary third-party Ability execute through the fixed dispatcher.
