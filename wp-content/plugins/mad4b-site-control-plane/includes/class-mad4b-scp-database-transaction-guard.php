@@ -1,5 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Database_Topology' ) ) require_once __DIR__ . '/class-mad4b-scp-database-topology.php';
+if ( ! class_exists( 'MAD4B_SCP_Database_Failure_Semantics' ) ) require_once __DIR__ . '/class-mad4b-scp-database-failure-semantics.php';
 
 /**
  * Owns MAD4B database transactions without nesting into or implicitly committing
@@ -61,6 +63,8 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 	}
 
 	public static function preflight( array $required_table_keys = array(), $refresh = false ) {
+		$topology = MAD4B_SCP_Database_Topology::assert_write_ready( true );
+		if ( is_wp_error( $topology ) ) return $topology;
 		$storage = self::assert_storage( $required_table_keys, $refresh );
 		if ( is_wp_error( $storage ) ) return $storage;
 		if ( '' !== self::$owned_token ) return new WP_Error( 'mad4b_database_transaction_reentrant_denied', 'A MAD4B-owned transaction is already active in this process.' );
@@ -71,6 +75,7 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 			'contract' => self::CONTRACT,
 			'storage_contract' => isset( $storage['contract'] ) ? (string) $storage['contract'] : '',
 			'connection_fingerprint' => isset( $storage['connection_fingerprint'] ) ? (string) $storage['connection_fingerprint'] : '',
+			'database_topology' => $topology,
 			'nested_transaction' => false,
 			'authorizing' => false,
 		);
@@ -87,12 +92,26 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 		} catch ( Throwable $error ) {
 			return new WP_Error( 'mad4b_database_transaction_token_unavailable', 'Database transaction ownership token could not be generated.' );
 		}
+		$wpdb->last_error = '';
 		$started = $wpdb->query( 'START TRANSACTION' );
-		if ( false === $started ) return new WP_Error( 'mad4b_database_transaction_begin_failed', 'Database transaction could not be started.' );
+		if ( false === $started ) {
+			return MAD4B_SCP_Database_Failure_Semantics::error(
+				'mad4b_database_transaction_begin_failed',
+				'Database transaction could not be started.',
+				'transaction_begin',
+				isset( $wpdb->last_error ) ? (string) $wpdb->last_error : '',
+				null
+			);
+		}
 		$state = self::transaction_state();
 		if ( is_wp_error( $state ) || 1 !== $state ) {
 			$wpdb->query( 'ROLLBACK' );
 			return new WP_Error( 'mad4b_database_transaction_begin_unverified', 'Database transaction start could not be verified.' );
+		}
+		$writer = MAD4B_SCP_Database_Topology::assert_same_writer( isset( $preflight['database_topology'] ) && is_array( $preflight['database_topology'] ) ? $preflight['database_topology'] : array() );
+		if ( is_wp_error( $writer ) ) {
+			$wpdb->query( 'ROLLBACK' );
+			return $writer;
 		}
 		self::$owned_token = $token;
 		self::$owned_scope = $scope;
@@ -101,6 +120,7 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 			'token' => $token,
 			'scope' => $scope,
 			'connection_fingerprint' => isset( $preflight['connection_fingerprint'] ) ? (string) $preflight['connection_fingerprint'] : '',
+			'database_topology' => isset( $preflight['database_topology'] ) && is_array( $preflight['database_topology'] ) ? $preflight['database_topology'] : array(),
 			'authorizing' => false,
 		);
 	}
@@ -109,14 +129,30 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 		global $wpdb;
 		$valid = self::validate_lease( $lease );
 		if ( is_wp_error( $valid ) ) return $valid;
+		$writer = MAD4B_SCP_Database_Topology::assert_same_writer( isset( $lease['database_topology'] ) && is_array( $lease['database_topology'] ) ? $lease['database_topology'] : array() );
+		if ( is_wp_error( $writer ) ) {
+			self::clear_owned();
+			return $writer;
+		}
 		$state = self::transaction_state();
 		if ( is_wp_error( $state ) || 1 !== $state ) {
 			self::clear_owned();
 			return new WP_Error( 'mad4b_database_transaction_commit_state_lost', 'Owned transaction state was lost before commit; outcome requires reconciliation.' );
 		}
+		$wpdb->last_error = '';
 		$committed = $wpdb->query( 'COMMIT' );
+		$commit_error = isset( $wpdb->last_error ) ? (string) $wpdb->last_error : '';
 		self::clear_owned();
-		if ( false === $committed ) return new WP_Error( 'mad4b_database_transaction_commit_uncertain', 'Database commit result is uncertain and requires reconciliation.' );
+		if ( false === $committed ) {
+			return MAD4B_SCP_Database_Failure_Semantics::error(
+				'mad4b_database_transaction_commit_uncertain',
+				'Database commit result is uncertain and requires reconciliation.',
+				'transaction_commit',
+				$commit_error,
+				false,
+				array( 'reconciliation_required' => true, 'persistence_state' => 'unknown' )
+			);
+		}
 		$after = self::transaction_state();
 		if ( is_wp_error( $after ) || 0 !== $after ) return new WP_Error( 'mad4b_database_transaction_commit_unverified', 'Database commit could not be verified.' );
 		return true;
@@ -126,6 +162,11 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 		global $wpdb;
 		$valid = self::validate_lease( $lease );
 		if ( is_wp_error( $valid ) ) return $valid;
+		$writer = MAD4B_SCP_Database_Topology::assert_same_writer( isset( $lease['database_topology'] ) && is_array( $lease['database_topology'] ) ? $lease['database_topology'] : array() );
+		if ( is_wp_error( $writer ) ) {
+			self::clear_owned();
+			return $writer;
+		}
 		$state = self::transaction_state();
 		if ( is_wp_error( $state ) ) {
 			self::clear_owned();
@@ -135,9 +176,20 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 			self::clear_owned();
 			return new WP_Error( 'mad4b_database_transaction_rollback_state_lost', 'Owned transaction disappeared before rollback verification.' );
 		}
+		$wpdb->last_error = '';
 		$rolled_back = $wpdb->query( 'ROLLBACK' );
+		$rollback_error = isset( $wpdb->last_error ) ? (string) $wpdb->last_error : '';
 		self::clear_owned();
-		if ( false === $rolled_back ) return new WP_Error( 'mad4b_database_transaction_rollback_failed', 'Database rollback failed.' );
+		if ( false === $rolled_back ) {
+			return MAD4B_SCP_Database_Failure_Semantics::error(
+				'mad4b_database_transaction_rollback_failed',
+				'Database rollback failed.',
+				'transaction_rollback',
+				$rollback_error,
+				false,
+				array( 'reconciliation_required' => true, 'persistence_state' => 'unknown' )
+			);
+		}
 		$after = self::transaction_state();
 		if ( is_wp_error( $after ) || 0 !== $after ) return new WP_Error( 'mad4b_database_transaction_rollback_unverified', 'Database rollback could not be verified.' );
 		return true;

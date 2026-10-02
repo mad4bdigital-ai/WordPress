@@ -24,7 +24,7 @@ final class MAD4B_SCP_Operation_Journal {
 			"INSERT IGNORE INTO {$t['operation_heads']} (operation_id,operation_key,operation_binding_sha256,latest_sequence,latest_event_sha256,lifecycle_state,terminal_outcome,heartbeat_at,lock_expires_at,stale_after,hard_deadline_at,created_at,updated_at) VALUES (%s,%s,%s,0,%s,%s,'',%s,NULL,%s,%s,%s,%s)",
 			$context['operation_id'], $context['operation_key'], $context['operation_binding_sha256'], str_repeat( '0', 64 ), sanitize_key( $lifecycle_state ), $now, gmdate( 'Y-m-d H:i:s', time() + self::DEFAULT_STALE_SECONDS ), $deadline, $now, $now
 		) );
-		if ( false === $inserted ) return new WP_Error( 'mad4b_operation_journal_head_create_failed', 'Unable to initialize operation journal.', array( 'db_error' => $wpdb->last_error ) );
+		if ( false === $inserted ) return MAD4B_SCP_Database_Failure_Semantics::error( 'mad4b_operation_journal_head_create_failed', 'Unable to initialize operation journal.', 'operation_journal_head_create', (string) $wpdb->last_error, null );
 		return self::append( $context, 'operation_started', array( 'checkpoint' => 'planned', 'lifecycle_state' => $lifecycle_state, 'metadata' => $metadata ) );
 	}
 
@@ -82,13 +82,16 @@ final class MAD4B_SCP_Operation_Journal {
 			}
 			return array( 'contract' => self::CONTRACT, 'operation_id' => $context['operation_id'], 'sequence' => $sequence, 'event_sha256' => $event_sha, 'journal_head_sha256' => $event_sha, 'lifecycle_state' => $lifecycle, 'terminal_outcome' => $outcome );
 		} catch ( Throwable $e ) {
+			$db_error = isset( $wpdb->last_error ) ? (string) $wpdb->last_error : '';
 			$rolled_back = MAD4B_SCP_Database_Transaction_Guard::rollback( $transaction );
-			return new WP_Error( 'mad4b_operation_journal_append_failed', 'Unable to append operation journal event.', array(
+			$rollback_verified = true === $rolled_back;
+			$semantics = MAD4B_SCP_Database_Failure_Semantics::classify( 'operation_journal_append', $db_error . ' ' . $e->getMessage(), $rollback_verified );
+			$code = ! empty( $semantics['reconciliation_required'] ) ? 'mad4b_operation_journal_persistence_uncertain' : 'mad4b_operation_journal_append_failed';
+			return new WP_Error( $code, 'Unable to append operation journal event.', array_merge( $semantics, array(
 				'reason' => substr( $e->getMessage(), 0, 100 ),
-				'db_error' => $wpdb->last_error,
-				'rollback_verified' => true === $rolled_back,
+				'db_error' => substr( $db_error, 0, 191 ),
 				'rollback_error' => is_wp_error( $rolled_back ) ? $rolled_back->get_error_code() : '',
-			) );
+			) ) );
 		}
 	}
 

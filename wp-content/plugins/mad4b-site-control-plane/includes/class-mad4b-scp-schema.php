@@ -56,6 +56,12 @@ final class MAD4B_SCP_Schema {
 		$engines = array();
 		$collations = array();
 		$blockers = array();
+		$topology = class_exists( 'MAD4B_SCP_Database_Topology' )
+			? MAD4B_SCP_Database_Topology::status( (bool) $refresh )
+			: array( 'ready' => false, 'blockers' => array( 'database_topology_service_unavailable' ) );
+		if ( ! is_array( $topology ) || empty( $topology['ready'] ) || empty( $topology['read_your_writes'] ) ) {
+			$blockers = array_merge( $blockers, is_array( $topology ) && isset( $topology['blockers'] ) && is_array( $topology['blockers'] ) ? $topology['blockers'] : array( 'database_topology_not_write_safe' ) );
+		}
 		foreach ( $required as $key ) {
 			if ( ! isset( $tables[ $key ] ) ) {
 				$blockers[] = 'unknown_table:' . $key;
@@ -79,12 +85,17 @@ final class MAD4B_SCP_Schema {
 			'host' => isset( $wpdb->dbhost ) ? (string) $wpdb->dbhost : '',
 			'server_version' => method_exists( $wpdb, 'db_version' ) ? (string) $wpdb->db_version() : '',
 		);
+		$connection_fingerprint = is_array( $topology ) && ! empty( $topology['connection_fingerprint'] )
+			? (string) $topology['connection_fingerprint']
+			: hash( 'sha256', self::stable_json( $connection_basis ) );
 		$status = array(
 			'contract' => 'mad4b.database-transactional-storage.v1',
 			'required_table_keys' => $required,
 			'engines' => $engines,
 			'collations' => $collations,
-			'connection_fingerprint' => hash( 'sha256', self::stable_json( $connection_basis ) ),
+			'connection_fingerprint' => $connection_fingerprint,
+			'database_topology' => is_array( $topology ) ? $topology : array(),
+			'read_your_writes' => is_array( $topology ) && ! empty( $topology['read_your_writes'] ),
 			'identity_comparison_policy' => 'canonical_application_identity_plus_binary_sql_for_security_keys',
 			'blockers' => array_values( array_unique( $blockers ) ),
 			'ready' => empty( $blockers ),

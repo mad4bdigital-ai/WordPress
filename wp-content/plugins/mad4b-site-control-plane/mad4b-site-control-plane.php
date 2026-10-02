@@ -92,6 +92,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-maintenance-lease
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-post-update-continuation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-portable-readonly-connection.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dependency-manager.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-topology.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-failure-semantics.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-database-transaction-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema-lifecycle.php';

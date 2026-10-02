@@ -12,15 +12,26 @@ $code = static function ( $value ) { return is_wp_error( $value ) ? $value->get_
 
 $check( class_exists( 'MAD4B_SCP_Schema' ), 'Schema contract unavailable' );
 $check( class_exists( 'MAD4B_SCP_Database_Transaction_Guard' ), 'Transaction guard unavailable' );
+$check( class_exists( 'MAD4B_SCP_Database_Topology' ), 'Database topology contract unavailable' );
+$check( class_exists( 'MAD4B_SCP_Database_Failure_Semantics' ), 'Database failure semantics unavailable' );
 $check( class_exists( 'MAD4B_SCP_Operation_Context' ), 'Operation context unavailable' );
 $check( class_exists( 'MAD4B_SCP_Operation_Journal' ), 'Operation journal unavailable' );
 
+$topology = MAD4B_SCP_Database_Topology::assert_write_ready( true );
+$check( is_array( $topology ) && ! empty( $topology['ready'] ) && ! empty( $topology['read_your_writes'] ), 'Database topology is not write-safe', $topology );
+$check( empty( $topology['database_dropin_present'] ), 'Disposable runtime unexpectedly has a database router drop-in', $topology );
+$check( 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $topology['connection_fingerprint'] ), 'Topology connection fingerprint missing', $topology );
 $storage = MAD4B_SCP_Schema::transactional_storage_status( array(), true );
 $check( is_array( $storage ) && ! empty( $storage['ready'] ), 'Transactional storage is not ready', $storage );
 foreach ( $storage['engines'] as $table_key => $engine ) {
 	$check( 'innodb' === strtolower( (string) $engine ), 'Governed table is not InnoDB: ' . $table_key, $storage );
 }
 $check( 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $storage['connection_fingerprint'] ), 'Connection fingerprint missing', $storage );
+$check( ! empty( $storage['read_your_writes'] ) && isset( $storage['database_topology']['connection_fingerprint'] ), 'Storage readiness did not bind database topology', $storage );
+$deadlock_semantics = MAD4B_SCP_Database_Failure_Semantics::classify( 'runtime_fixture', 'Deadlock found when trying to get lock; try restarting transaction', true );
+$check( 'deadlock' === $deadlock_semantics['failure_class'] && empty( $deadlock_semantics['blind_retry_allowed'] ) && empty( $deadlock_semantics['reconciliation_required'] ), 'Deadlock semantics are not bounded', $deadlock_semantics );
+$lost_semantics = MAD4B_SCP_Database_Failure_Semantics::classify( 'runtime_fixture', 'Lost connection to MySQL server during query', null );
+$check( 'connection_loss' === $lost_semantics['failure_class'] && ! empty( $lost_semantics['reconciliation_required'] ), 'Connection-loss semantics failed open', $lost_semantics );
 
 $context = MAD4B_SCP_Operation_Context::create(
 	'bulk.db.transaction.guard',

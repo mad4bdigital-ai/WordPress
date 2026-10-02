@@ -105,6 +105,8 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 			'engines' => isset( $database_storage_status['engines'] ) && is_array( $database_storage_status['engines'] ) ? $database_storage_status['engines'] : array(),
 			'collations' => isset( $database_storage_status['collations'] ) && is_array( $database_storage_status['collations'] ) ? $database_storage_status['collations'] : array(),
 			'identity_comparison_policy' => isset( $database_storage_status['identity_comparison_policy'] ) ? (string) $database_storage_status['identity_comparison_policy'] : '',
+			'read_your_writes' => ! empty( $database_storage_status['read_your_writes'] ),
+			'database_topology' => isset( $database_storage_status['database_topology'] ) && is_array( $database_storage_status['database_topology'] ) ? $database_storage_status['database_topology'] : array(),
 		);
 
 		$agent = class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::get_agent_by_public_id( $agent_public_id ) : null;

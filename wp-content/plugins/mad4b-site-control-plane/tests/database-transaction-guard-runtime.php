@@ -9,6 +9,22 @@ class WP_Error {
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 
+class MAD4B_SCP_Database_Topology {
+	public static $fingerprint = '';
+	public static function assert_write_ready( $refresh = true ) {
+		if ( '' === self::$fingerprint ) self::$fingerprint = str_repeat( 'b', 64 );
+		return array( 'contract' => 'mad4b.database-topology.v1', 'ready' => true, 'read_your_writes' => true, 'server_fingerprint' => str_repeat( 'c', 64 ), 'connection_fingerprint' => self::$fingerprint );
+	}
+	public static function assert_same_writer( array $expected ) {
+		$current = self::assert_write_ready( true );
+		return isset( $expected['connection_fingerprint'] ) && hash_equals( (string) $expected['connection_fingerprint'], (string) $current['connection_fingerprint'] )
+			? $current
+			: new WP_Error( 'mad4b_database_topology_writer_changed' );
+	}
+}
+class MAD4B_SCP_Database_Failure_Semantics {
+	public static function error( $code, $message, $phase, $db_error = '', $rollback_verified = null, array $extra = array() ) { return new WP_Error( $code, $message ); }
+}
 class MAD4B_SCP_Schema {
 	public static $ready = true;
 	public static function transactional_storage_status( array $required = array(), $refresh = false ) {
@@ -16,7 +32,7 @@ class MAD4B_SCP_Schema {
 			'contract' => 'mad4b.database-transactional-storage.v1',
 			'ready' => self::$ready,
 			'blockers' => self::$ready ? array() : array( 'nontransactional_engine:operation_heads:myisam' ),
-			'connection_fingerprint' => str_repeat( 'a', 64 ),
+			'connection_fingerprint' => MAD4B_SCP_Database_Topology::$fingerprint ?: str_repeat( 'b', 64 ),
 		);
 	}
 }
