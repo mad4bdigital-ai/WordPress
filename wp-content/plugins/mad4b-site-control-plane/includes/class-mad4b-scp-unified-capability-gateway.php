@@ -272,16 +272,39 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 
 	private static function execution_descriptor( array $row ) {
 		$lane = isset( $row['execution_lane'] ) ? (string) $row['execution_lane'] : '';
+		$ability_name = isset( $row['ability_name'] ) ? (string) $row['ability_name'] : '';
+		$input_schema_sha256 = isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '';
+		$execution_blocker = isset( $row['execution_blocker'] ) ? (string) $row['execution_blocker'] : '';
+		if ( empty( $row['execution_eligible'] ) || '' !== $execution_blocker ) {
+			return array(
+				'state' => 'blocked',
+				'blocker' => '' !== $execution_blocker ? $execution_blocker : 'no_governed_dispatch_lane',
+				'transport' => 'none',
+			);
+		}
+		if ( 'enrollment' === $lane ) {
+			return array(
+				'state' => 'requires_operation_resolution',
+				'blocker' => 'enrollment_operation_resolution_required',
+				'transport' => 'mcp',
+				'server' => 'mad4b-chatgpt',
+				'discovery_tool' => 'mad4b/enrollment-discover',
+				'info_tool' => 'mad4b/enrollment-info',
+				'dispatch_tool' => 'mad4b/enrollment-execute',
+				'target_ability' => $ability_name,
+				'direct_ability_dispatch' => false,
+				'revalidation' => array( 'authority', 'site_binding', 'registration_digest', 'dispatch_policy_digest', 'input_schema_identity' ),
+			);
+		}
 		$map = array(
 			'read' => 'mad4b/read-execute',
 			'write' => 'mad4b/write-execute',
 			'developer' => 'mad4b/developer-execute',
-			'enrollment' => 'mad4b/enrollment-execute',
 		);
-		if ( empty( $row['execution_eligible'] ) || ! isset( $map[ $lane ] ) ) {
+		if ( ! isset( $map[ $lane ] ) ) {
 			return array(
 				'state' => 'blocked',
-				'blocker' => isset( $row['execution_blocker'] ) && '' !== $row['execution_blocker'] ? (string) $row['execution_blocker'] : 'no_governed_dispatch_lane',
+				'blocker' => 'no_governed_dispatch_lane',
 				'transport' => 'none',
 			);
 		}
@@ -290,8 +313,10 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'transport' => 'mcp',
 			'server' => 'mad4b-chatgpt',
 			'dispatch_tool' => $map[ $lane ],
-			'target_ability' => isset( $row['ability_name'] ) ? (string) $row['ability_name'] : '',
-			'revalidation' => array( 'authority', 'site_binding', 'schema_identity', 'classification_identity', 'original_execution_lane' ),
+			'target_ability' => $ability_name,
+			'expected_input_schema_sha256' => $input_schema_sha256,
+			'direct_ability_dispatch' => true,
+			'revalidation' => array( 'authority', 'site_binding', 'input_schema_identity', 'classification_identity', 'original_execution_lane' ),
 		);
 	}
 
@@ -326,6 +351,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				'classification' => isset( $row['classification'] ) ? (string) $row['classification'] : 'unavailable',
 				'projection_eligible' => ! empty( $row['projection_eligible'] ),
 				'projection_blockers' => isset( $row['projection_blockers'] ) && is_array( $row['projection_blockers'] ) ? $row['projection_blockers'] : array(),
+				'input_schema_sha256' => isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '',
 				'schema_sha256' => $digest,
 				'schema_bytes' => (int) $item['schema_bytes'],
 				'schema_cache_state' => $reusable ? 'reusable' : 'refresh_required',
