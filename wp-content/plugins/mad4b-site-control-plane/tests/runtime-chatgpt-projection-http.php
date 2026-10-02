@@ -6,6 +6,7 @@ $wire = static function ( $response ) { return json_decode( wp_json_encode( $res
 // process; the WP-CLI process only mints fixtures and asserts responses.
 $network_base = getenv( 'MAD4B_PROJECTION_NETWORK_BASE' );
 $network = static function( $bearer, $route, $method, array $params = array(), array $headers = array() ) use ( $network_base, $fail ) {
+    if ( getenv( 'MAD4B_PROJECTION_NETWORK_HOST' ) ) $headers['Host'] = getenv( 'MAD4B_PROJECTION_NETWORK_HOST' );
     $url = rtrim( $network_base, '/' ) . '/wp-json' . $route;
     $headers += array( 'Authorization' => 'Bearer ' . $bearer, 'Accept' => 'application/json, text/event-stream', 'Content-Type' => 'application/json' );
     $options = array( 'method' => $method, 'headers' => $headers, 'timeout' => 20, 'redirection' => 0 );

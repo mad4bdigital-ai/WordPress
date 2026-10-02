@@ -196,6 +196,38 @@ jobs:
           php /tmp/wp-cli.phar option delete mad4b_scp_chatgpt_tool_projection_v1 --path=/tmp/mad4b-wordpress
           rm /tmp/mad4b-wordpress/wp-content/mu-plugins/mad4b-projection-ci.php
 
+      - name: Prove projection through independent HTTP requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          root="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests"
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cp "$root/runtime-chatgpt-projection-fixtures.php" "$WP_PATH/wp-content/mu-plugins/mad4b-projection-ci.php"
+          php /tmp/wp-cli.phar eval-file "$root/runtime-chatgpt-projection-http-seed.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          # Emulate a TLS-terminating reverse proxy for this disposable fixture.
+          # Keep the enrolled Staging HTTPS origin and exact resource audience.
+          cat >/tmp/mad4b-projection-router.php <<'PHP'
+          <?php
+          $_SERVER['HTTPS'] = 'on';
+          $path = parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH );
+          if ( 0 === strpos( $path, '/wp-json/' ) ) {
+              $_GET['rest_route'] = '/' . substr( $path, strlen( '/wp-json/' ) );
+              $_REQUEST['rest_route'] = $_GET['rest_route'];
+          }
+          require $_SERVER['DOCUMENT_ROOT'] . '/index.php';
+          PHP
+          php -S 127.0.0.1:8089 -t "$WP_PATH" /tmp/mad4b-projection-router.php >/tmp/mad4b-projection-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true; cat /tmp/mad4b-projection-server.log || true' EXIT
+          for i in $(seq 1 40); do
+            if curl -fsS -H 'Host: mad4b-local-oauth.test' 'http://127.0.0.1:8089/wp-json/' >/dev/null; then break; fi
+            sleep 0.25
+          done
+          MAD4B_PROJECTION_NETWORK_BASE=http://127.0.0.1:8089 MAD4B_PROJECTION_NETWORK_HOST=mad4b-local-oauth.test php /tmp/wp-cli.phar eval-file "$root/runtime-chatgpt-projection-http.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar option delete mad4b_scp_chatgpt_tool_projection_v1 --path="$WP_PATH"
+          rm "$WP_PATH/wp-content/mu-plugins/mad4b-projection-ci.php"
+
       - name: Prove live authority dashboard in a real browser
         if: matrix.wordpress == 'latest'
         shell: bash
@@ -253,10 +285,6 @@ jobs:
           require rtrim( $_SERVER['DOCUMENT_ROOT'], '/' ) . '/index.php';
           PHP
 
-          mkdir -p "$WP_PATH/wp-content/mu-plugins"
-          cp "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-fixtures.php" "$WP_PATH/wp-content/mu-plugins/mad4b-projection-ci.php"
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-http-seed.php" --path="$WP_PATH" --user=mad4b-ci-admin
-
           php -S 127.0.0.1:8088 -t "$WP_PATH" /tmp/mad4b-wp-router.php >/tmp/mad4b-browser-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true; cat /tmp/mad4b-browser-server.log || true' EXIT
@@ -265,10 +293,6 @@ jobs:
             sleep 0.25
           done
           curl -fsS "$MAD4B_BROWSER_BASE_URL/wp-login.php" >/dev/null
-
-          MAD4B_PROJECTION_NETWORK_BASE="$MAD4B_BROWSER_BASE_URL" php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-http.php" --path="$WP_PATH" --user=mad4b-ci-admin
-          php /tmp/wp-cli.phar option delete mad4b_scp_chatgpt_tool_projection_v1 --path="$WP_PATH"
-          rm "$WP_PATH/wp-content/mu-plugins/mad4b-projection-ci.php"
 
           # Bound the complete OAuth/MCP discovery chain used by external clients.
           # These are full HTTP requests and therefore include WordPress/plugin boot.
