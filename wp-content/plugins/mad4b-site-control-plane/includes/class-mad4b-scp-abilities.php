@@ -572,6 +572,9 @@ final class MAD4B_SCP_Abilities {
 				return new WP_Error( 'mad4b_dispatch_preparation_required', 'Prepare the target again and supply its exact signed preparation identity.' );
 			}
 		}
+		if ( ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ) {
+			return new WP_Error( 'mad4b_preparation_receipt_unavailable', 'Preparation evidence cannot be verified.' );
+		}
 		if ( ! in_array( $input['expected_execution_lane'], array( 'read', 'write', 'content', 'admin', 'developer' ), true )
 			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $input['expected_classification_sha256'] )
 			|| 1 !== preg_match( '/^[a-f0-9]{64}$/', $input['expected_authority_scope_sha256'] )
@@ -581,9 +584,6 @@ final class MAD4B_SCP_Abilities {
 		if ( ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' )
 			|| ! hash_equals( MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), $input['expected_authority_scope_sha256'] ) ) {
 			return new WP_Error( 'mad4b_dispatch_authority_scope_drift', 'Execution transport does not match the prepared site and authority context.' );
-		}
-		if ( ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ) {
-			return new WP_Error( 'mad4b_preparation_receipt_unavailable', 'Preparation evidence cannot be verified.' );
 		}
 		$receipt = MAD4B_SCP_Preparation_Receipt::verify( $input['preparation_receipt'], $ability_name );
 		if ( is_wp_error( $receipt ) ) return $receipt;
