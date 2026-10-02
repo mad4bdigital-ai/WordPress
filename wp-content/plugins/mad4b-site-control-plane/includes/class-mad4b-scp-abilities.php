@@ -443,6 +443,8 @@ final class MAD4B_SCP_Abilities {
 		if ( ! is_array( $input ) || empty( $input['ability_name'] ) || empty( $input['expected_input_schema_sha256'] ) ) return new WP_Error( 'mad4b_developer_dispatch_request_invalid', 'Developer dispatch requires an exact target and schema digest.' );
 		$ability = $this->governed_developer_target( $input['ability_name'] );
 		if ( is_wp_error( $ability ) ) return $ability;
+		$prepared = $this->validate_prepared_classification( (string) $input['ability_name'], $input );
+		if ( is_wp_error( $prepared ) ) return $prepared;
 		$actual = $this->ability_input_schema_sha256( $ability );
 		$expected = strtolower( trim( (string) $input['expected_input_schema_sha256'] ) );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected ) || ! hash_equals( strtolower( $actual ), $expected ) ) return new WP_Error( 'mad4b_developer_dispatch_schema_drift', 'Developer target schema changed after discovery.' );
@@ -630,9 +632,17 @@ final class MAD4B_SCP_Abilities {
 	public function can_write_dispatch( $input = null ) {
 		if ( ! MAD4B_SCP_Policy::can_admin() ) return false;
 		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_write_dispatch_mutation_disabled', 'Governed mutation authority is not currently ready.' );
-		if ( ! is_array( $input ) || empty( $input['ability_name'] ) ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write ability_name is required.' );
-		$ability = $this->governed_write_target( $input['ability_name'], true );
+		if ( ! is_array( $input ) || empty( $input['ability_name'] ) || empty( $input['expected_input_schema_sha256'] ) ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write target and prepared schema identity are required.' );
+		$ability_name = (string) $input['ability_name'];
+		$ability = $this->governed_write_target( $ability_name, true );
 		if ( is_wp_error( $ability ) ) return $ability;
+		$prepared = $this->validate_prepared_classification( $ability_name, $input );
+		if ( is_wp_error( $prepared ) ) return $prepared;
+		$actual = $this->ability_input_schema_sha256( $ability );
+		$expected = strtolower( trim( (string) $input['expected_input_schema_sha256'] ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected ) || ! hash_equals( strtolower( $actual ), $expected ) ) return new WP_Error( 'mad4b_write_dispatch_schema_drift', 'Requested write ability input schema changed after planning.', array( 'ability_name' => $ability_name, 'current_input_schema_sha256' => $actual ) );
+		// Governance metadata is bound only after the signed preparation contract
+		// and exact schema identity have passed current-request revalidation.
 		$captured = $this->capture_write_dispatch_governance_envelope( $input );
 		if ( is_wp_error( $captured ) ) return $captured;
 		return true;
