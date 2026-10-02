@@ -35,6 +35,11 @@ if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Wr
 	mad4b_client_compat_fail( 'OAuth-only compatibility enrollment unexpectedly enabled governed write authority.', MAD4B_SCP_Staging_Write_Authority::status() );
 }
 
+$class_provenance = MAD4B_SCP_MCP_Class_Provenance::status( true );
+if ( empty( $class_provenance['enforced'] ) || empty( $class_provenance['ready'] ) || 'certified_class_set' !== ( $class_provenance['state'] ?? '' ) ) {
+	mad4b_client_compat_fail( 'Effective MCP builder/validator/DTO classes do not match the certified Adapter release.', $class_provenance );
+}
+
 add_filter( 'mad4b_scp_mcp_client_profiles', function ( $profiles ) {
 	$profiles[] = array(
 		'id' => 'future-agent',
