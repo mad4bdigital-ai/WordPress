@@ -97,12 +97,17 @@ if ( isset( $expect[$case] ) ) {
 	check( ! $result['connection_certified'] && ! $result['certification_performed'] && $result['foreign_transport_inventory_deferred'], 'Scoped job fabricated certification' );
 	check( ! $result['server']['local_endpoint_ready'], 'Missing actual Adapter server admitted' );
 	if ( 'evidence' === $case ) {
-		$failure = array( 'failing_ability' => 'mad4b/example', 'stage' => 'official_dto_build', 'error_code' => 'fixture_error', 'error_class' => 'WP_Error', 'tool_bytes' => 120, 'raw_payload' => 'PRIVATE_PAYLOAD' );
+		$failure = array( 'failing_ability' => 'mad4b/example', 'stage' => 'official_schema_validation', 'error_code' => 'mcp_tool_validation_failed', 'error_class' => 'WP_Error', 'validator_reason' => 'input_schema_properties_not_object', 'tool_bytes' => 120, 'raw_payload' => 'PRIVATE_PAYLOAD' );
+		$class_failure = array( 'alias' => 'tool_validator', 'class' => 'WP\\MCP\\Domain\\Tools\\McpToolValidator', 'expected_source' => 'mcp-adapter/includes/Domain/Tools/McpToolValidator.php', 'observed_source' => 'foreign-plugin/vendor/McpToolValidator.php', 'expected_sha256' => str_repeat( 'c', 64 ), 'actual_sha256' => str_repeat( 'd', 64 ), 'reason' => 'runtime_class_source_mismatch', 'absolute_path' => '/PRIVATE/ABSOLUTE/PATH' );
+		$provenance = array( 'enforced' => true, 'ready' => false, 'state' => 'mixed_runtime', 'blocker' => 'mcp_adapter_class_provenance_mismatch', 'failure_count' => 1, 'failures' => array( $class_failure ) );
 		$reflection = new ReflectionProperty( MAD4B_SCP_Servers::class, 'registrations' ); $reflection->setAccessible( true );
-		$reflection->setValue( null, array( 'mad4b-chatgpt' => array( 'registered' => true, 'error' => 'mcp_required_tool_preflight_failed', 'preflight' => array( 'ready' => false, 'failures' => array_fill( 0, 15, $failure ) ) ) ) );
+		$reflection->setValue( null, array( 'mad4b-chatgpt' => array( 'registered' => true, 'error' => 'mcp_adapter_class_provenance_mismatch', 'preflight' => array( 'ready' => false, 'failures' => array_fill( 0, 15, $failure ), 'runtime_class_provenance' => $provenance ) ) ) );
 		$evidence = MAD4B_SCP_Connection_Status::endpoint_diagnostic( 'mad4b-chatgpt' );
 		check( 12 === count( $evidence['preflight_failures'] ) && 15 === $evidence['preflight_failure_count'] && false === strpos( json_encode( $evidence ), 'PRIVATE_PAYLOAD' ), 'Failure evidence unbounded or private' );
-		check( ! $evidence['local_endpoint_ready'] && 'official_dto_build' === $evidence['preflight_failures'][0]['stage'], 'Required preflight evidence lost' );
+		check( ! $evidence['local_endpoint_ready'] && 'official_schema_validation' === $evidence['preflight_failures'][0]['stage'] && 'input_schema_properties_not_object' === $evidence['preflight_failures'][0]['validator_reason'], 'Required validator evidence lost' );
+		check( false === $evidence['runtime_class_provenance_ready'] && 'mixed_runtime' === $evidence['runtime_class_provenance_state'] && 1 === $evidence['runtime_class_failure_count'], 'Runtime class provenance summary lost' );
+		check( 'tool_validator' === $evidence['runtime_class_failures'][0]['alias'] && 'foreign-plugin/vendor/McpToolValidator.php' === $evidence['runtime_class_failures'][0]['observed_source'], 'Class provenance evidence lost' );
+		check( false === strpos( json_encode( $evidence ), '/PRIVATE/ABSOLUTE/PATH' ), 'Absolute class path leaked from endpoint diagnostics' );
 	}
 }
 check( ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed(), 'Job authorization leaked' );
