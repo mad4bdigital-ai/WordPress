@@ -205,6 +205,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-pipeline.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-transaction.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-resume.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-state-view.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-activation-state.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-package.php';
