@@ -296,6 +296,24 @@ try {
 		$fail( 'Projected call argument mutation after final guard was not rejected.', $tampered );
 	}
 
+	$metadata_seal = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( null, '', $read_tool, $server_fixture );
+	if ( is_wp_error( $metadata_seal ) ) $fail( 'Metadata-drift seal fixture could not mint a fresh seal.', $metadata_seal->get_error_code() );
+	$metadata_target = wp_get_ability( 'mad4b/diagnostics-health' );
+	$metadata_property = new ReflectionProperty( 'WP_Ability', 'meta' );
+	$metadata_property->setAccessible( true );
+	$metadata_original = $metadata_property->getValue( $metadata_target );
+	try {
+		$metadata_changed = $metadata_original;
+		$metadata_changed['annotations']['readonly'] = false;
+		$metadata_property->setValue( $metadata_target, $metadata_changed );
+		$metadata_tampered = MAD4B_SCP_Execution_Fence::consume_projected_call( 'mad4b/diagnostics-health', null );
+		if ( ! is_wp_error( $metadata_tampered ) ) {
+			$fail( 'Projected metadata mutation after final guard was not rejected.', $metadata_tampered );
+		}
+	} finally {
+		$metadata_property->setValue( $metadata_target, $metadata_original );
+	}
+
 	$request_fixture = new class { public function get_route() { return '/mcp/mad4b-chatgpt'; } };
 	$bound = MAD4B_SCP_Transport_Context::bind( 'mad4b-chatgpt', $request_fixture );
 	if ( is_wp_error( $bound ) ) $fail( 'ChatGPT transport fixture could not bind for final execution seal proof.', $bound->get_error_code() );

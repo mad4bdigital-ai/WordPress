@@ -78,18 +78,28 @@ if ( ! wp_has_ability( $parent_name ) ) {
 			return new WP_Error( 'fixture_mode_invalid', 'Unknown fixture mode.' );
 		},
 		'permission_callback' => static function () { return true; },
-		'input_schema' => array( 'type' => 'object', 'properties' => array( 'mode' => array( 'type' => 'string' ) ), 'additionalProperties' => false ),
+		'input_schema' => array( 'type' => 'object', 'properties' => array( 'mode' => array( 'type' => 'string' ) ), 'additionalProperties' => true ),
 		'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 		'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ), 'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ) ),
 	) );
 }
 
 $parent = wp_get_ability( $parent_name );
-$direct = $parent->execute( array( 'mode' => 'direct' ) );
-$check( 'mad4b_recursive_dispatch_child_operation_required' === $code( $direct ), 'Unexpected nested mutation was not denied.', $direct );
+$shared_parent_evidence = array(
+	'_mad4b_approval_ticket_id' => '00000000-0000-4000-8000-000000000999',
+	'preparation_receipt' => 'fixture-preparation-receipt',
+	'_mad4b_context_receipt' => array( 'receipt_sha256' => str_repeat( 'a', 64 ) ),
+	'idempotency_key' => 'fixture-idempotency-key',
+	'operation_id' => 'fixture-operation',
+	'execution_id' => 'fixture-execution',
+	'claim_epoch' => 7,
+	'request_sha256' => str_repeat( 'b', 64 ),
+);
+$direct = $parent->execute( array_merge( array( 'mode' => 'direct' ), $shared_parent_evidence ) );
+$check( 'mad4b_recursive_dispatch_child_operation_required' === $code( $direct ), 'Nested reuse of parent authority/idempotency evidence without an explicit child operation was not denied.', $direct );
 $check( 0 === (int) $GLOBALS['mad4b_recursive_child_calls'], 'Denied recursive child reached the original callback.' );
 
-$permitted = $parent->execute( array( 'mode' => 'permitted' ) );
+$permitted = $parent->execute( array_merge( array( 'mode' => 'permitted' ), $shared_parent_evidence ) );
 $check( ! is_wp_error( $permitted ) && ! empty( $permitted['ok'] ) && 1 === (int) $GLOBALS['mad4b_recursive_child_calls'], 'Explicit governed child permit did not execute exactly once.', $permitted );
 
 $mismatch = $parent->execute( array( 'mode' => 'mismatch' ) );
