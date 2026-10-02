@@ -499,7 +499,7 @@ if audit_path.exists():
 capfab_contract_path=require_file("contracts/capability-fabric-post-merge-completeness.md")
 if capfab_contract_path.exists():
     contract_txt=capfab_contract_path.read_text(encoding="utf-8")
-    for phrase in ["mad4b.capability-fabric-post-merge-completeness.v1","Every Phase 37 task belongs to exactly one closure workstream","Production activation","Restore/time-travel protection","T3795"]:
+    for phrase in ["mad4b.capability-fabric-post-merge-completeness.v1","Every Phase 37 task belongs to exactly one closure workstream","Production activation","Restore/time-travel protection","T3795","T3799"]:
         if phrase not in contract_txt:
             errors.append(f"capability_fabric_contract:missing:{phrase}")
 

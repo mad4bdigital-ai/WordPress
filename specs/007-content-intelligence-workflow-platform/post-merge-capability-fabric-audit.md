@@ -54,6 +54,10 @@ Baseline:
 | Cancellation after side effect | Generic cancellation race coverage exists, but provider-entered cancellation must be explicitly normalized to reconciliation rather than a false cancelled terminal outcome. | T3793 |
 | Chunk/reassembly integrity | Catalog/schema transport is chunked and content-addressed; mixed-generation/out-of-order/missing chunk and decompression-abuse behavior needs explicit certification. | T3794 |
 | Cross-fault closure | Individual fault tests are strong; a composed infrastructure/runtime cross-fault gate is needed before claiming long-term Capability Fabric completeness. | T3795 |
+| Canonical fingerprint single interpretation | Ability catalog classification fingerprinting currently has a PHP `serialize()` fallback when canonical encoding throws; security-relevant identities should have exactly one canonical encoding or fail closed. | T3796 |
+| Database collation identity | Schema creation inherits WordPress `get_charset_collate()`; UUID/hash/key identity semantics therefore need explicit canonical/binary comparison proof independent of site collation. | T3797 |
+| Transactional storage engine | Governance tables are created through dbDelta without an explicit per-table engine invariant in the schema definition; journal/approval atomicity requires certified transactional behavior. | T3798 |
+| Transaction ownership/nesting | Operation Journal opens explicit transactions; nested use with another plugin/caller needs an ownership/savepoint-or-deny contract so MAD4B cannot commit or rollback foreign work. | T3799 |
 
 ## Existing Spec Kit tasks intentionally reused rather than duplicated
 
@@ -71,7 +75,7 @@ Phase 37 refines rather than replaces existing coverage, especially:
 
 `CAPABILITY_FABRIC_NO_UNTRIAGED_P0_P1=PASS` requires no P0/P1 dimension to exist only as prose or implicit design knowledge.
 
-`CAPABILITY_FABRIC_CROSS_FAULT_CLOSURE=PASS` additionally requires T3795 to prove composed failure behavior across request scope, DB topology, hook ordering, restore time-travel, subject revocation, evidence exhaustion, fatal interruption and cancellation.
+`CAPABILITY_FABRIC_CROSS_FAULT_CLOSURE=PASS` additionally requires T3795 to prove composed failure behavior across request scope, DB topology, hook ordering, restore time-travel, subject revocation, evidence exhaustion, fatal interruption and cancellation. `CAPABILITY_FABRIC_CANONICAL_DB_STORAGE=PASS` requires T3799 to prove one canonical security identity plus transactional/collation/nesting invariants.
 
 `CAPABILITY_FABRIC_NO_AUTHORITY_WIDENING=PASS` requires all Phase 37 work to preserve:
 - descriptor/projection/telemetry/routing are non-authorizing;

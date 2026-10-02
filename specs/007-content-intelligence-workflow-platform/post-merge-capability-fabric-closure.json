@@ -399,6 +399,29 @@
       ],
       "interim_behavior": "Post-side-effect cancellation and incomplete/mixed-generation transport stay nonterminal/denied until evidence resolves them.",
       "evidence_strategy": "Cancellation propagation, chunk integrity/decompression bounds and composed cross-fault certification."
+    },
+    {
+      "id": "canonical_db_storage",
+      "status": "OPEN",
+      "task_ids": [
+        "T3796",
+        "T3797",
+        "T3798",
+        "T3799"
+      ],
+      "quality_families": [
+        "QCORRECTNESS",
+        "QSECURITY",
+        "QCOMPAT",
+        "QEXECUTIONMODEL"
+      ],
+      "dependencies": [
+        "canonical_capability_semantics",
+        "request_scope_db_hooks",
+        "contract_mixed_runtime"
+      ],
+      "interim_behavior": "Security identity uses canonical encodings only; uncertain collation/storage-engine/transaction ownership blocks governed mutation rather than degrading to alternate identity or non-atomic persistence.",
+      "evidence_strategy": "Canonicalization negatives, binary/collation alias tests, SHOW TABLE STATUS/engine capability evidence and nested transaction/savepoint-or-deny fixtures."
     }
   ]
 }

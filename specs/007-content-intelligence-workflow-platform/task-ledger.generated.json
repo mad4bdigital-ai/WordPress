@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "bf19977af36fe3b952c4eba2210e87ea57674a68",
+  "source_tasks_git_blob_sha": "30b04debab20ff1c384aca17602685ee8f0f973f",
   "override_git_blob_sha": "064155f95604092f93677b47203063b68354c736",
   "classification_policy": {
     "default_unchecked": "OPEN",
@@ -11,14 +11,14 @@
   "counts": {
     "DEFERRED": 2,
     "DONE": 42,
-    "OPEN": 644,
+    "OPEN": 648,
     "PARTIAL": 65
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
       "DONE": 35,
-      "OPEN": 503,
+      "OPEN": 507,
       "PARTIAL": 43
     },
     "P1": {
@@ -34,7 +34,7 @@
       "PARTIAL": 1
     }
   },
-  "task_count": 753,
+  "task_count": 757,
   "tasks": [
     {
       "task_id": "T0001",
@@ -7926,6 +7926,46 @@
       "phase": 37,
       "priority": "P0",
       "summary": "GATE Execute a cross-fault matrix covering long-lived worker cache leakage, read-replica lag, DB deadlock/loss, hook-order interference, clone/restore time-travel, subject revocation, evidence-store exhaustion, fatal interruption and post-side-effect cancellation before Capability Fabric completeness can be declared.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3796",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Eliminate alternate PHP serialization fallback from security-sensitive capability/schema/classification fingerprints; unsupported canonical input must become unavailable/fail-closed rather than acquire a second hash interpretation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3797",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Define database identity collation semantics for UUIDs, SHA digests, operation/idempotency/provider keys and authority fingerprints; canonical normalization plus binary/case-exact comparison must prevent collation aliases.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3798",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Certify transactional storage-engine/runtime capabilities for approval, idempotency, operation-journal, audit and execution tables; nontransactional engines or unsupported implicit-commit behavior must block governed mutation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3799",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "GATE Prove transaction ownership/nesting behavior (including savepoint or explicit nesting denial), canonical-hash single interpretation, storage-engine requirements and collation identity fixtures; a MAD4B transaction must never accidentally commit/rollback an unrelated caller transaction.",
       "status": "OPEN",
       "checked": false,
       "evidence_refs": [],

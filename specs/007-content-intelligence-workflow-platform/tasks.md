@@ -870,3 +870,9 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3793 P0 Define cancellation propagation across queue/worker/provider boundaries; cancellation after possible side effect becomes RECONCILING/UNKNOWN until postcondition proof, never a simple cancelled terminal state.
 - [ ] T3794 P1 Certify chunked/schema/catalog transport reassembly against missing, duplicate, reordered and mixed-generation chunks with content digests, bounded decompression and payload/ratio limits.
 - [ ] T3795 P0 GATE Execute a cross-fault matrix covering long-lived worker cache leakage, read-replica lag, DB deadlock/loss, hook-order interference, clone/restore time-travel, subject revocation, evidence-store exhaustion, fatal interruption and post-side-effect cancellation before Capability Fabric completeness can be declared.
+
+### 37R — Canonical identity and transactional database storage
+- [ ] T3796 P0 Eliminate alternate PHP serialization fallback from security-sensitive capability/schema/classification fingerprints; unsupported canonical input must become unavailable/fail-closed rather than acquire a second hash interpretation.
+- [ ] T3797 P0 Define database identity collation semantics for UUIDs, SHA digests, operation/idempotency/provider keys and authority fingerprints; canonical normalization plus binary/case-exact comparison must prevent collation aliases.
+- [ ] T3798 P0 Certify transactional storage-engine/runtime capabilities for approval, idempotency, operation-journal, audit and execution tables; nontransactional engines or unsupported implicit-commit behavior must block governed mutation.
+- [ ] T3799 P0 GATE Prove transaction ownership/nesting behavior (including savepoint or explicit nesting denial), canonical-hash single interpretation, storage-engine requirements and collation identity fixtures; a MAD4B transaction must never accidentally commit/rollback an unrelated caller transaction.

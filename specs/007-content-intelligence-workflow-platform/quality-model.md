@@ -140,6 +140,7 @@ It maps residual Capability Fabric work into existing hard quality gates:
 - durable circuit breakers, tracing/SLOs and infrastructure degraded modes → QRESILIENCE + QOPERABILITY + QPERF;
 - impact-bound approvals, unified execution receipts, crypto/replay/time semantics and restore time-travel → QGOVERNANCE + QSECURITY + QRECOVERY;
 - evidence commit ordering, storage exhaustion and archival integrity → QRECOVERY + QOPERABILITY + QDATA;
+- canonical fingerprint encoding, DB collation/engine and transaction ownership → QCORRECTNESS + QSECURITY + QCOMPAT + QEXECUTIONMODEL;
 - maintainability/change slicing/dependency direction are maturity controls and cannot by themselves grant or deny runtime authority.
 
-`CAPABILITY_FABRIC_COMPLETENESS=PASS` is a maturity claim only. It requires the machine-readable Phase 37 closure ledger plus T3768–T3770 and cross-fault gate T3795. It does not replace `CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED`, does not authorize Production, and cannot be satisfied by documentation-only evidence where runtime/security/live proof is required.
+`CAPABILITY_FABRIC_COMPLETENESS=PASS` is a maturity claim only. It requires the machine-readable Phase 37 closure ledger plus T3768–T3770, cross-fault gate T3795 and canonical/DB storage gate T3799. It does not replace `CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED`, does not authorize Production, and cannot be satisfied by documentation-only evidence where runtime/security/live proof is required.

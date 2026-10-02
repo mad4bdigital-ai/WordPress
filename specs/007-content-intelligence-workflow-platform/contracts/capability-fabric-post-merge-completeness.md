@@ -19,7 +19,9 @@ Turn the residual Capability Fabric review after PR #230 into a machine-checkabl
 9. Restore/time-travel protection must prevent rollback-prone application state from resurrecting previously consumed/revoked authority artifacts.
 10. Mixed-version workers and long-lived processes must not execute with stale authority/config/runtime generations.
 11. Provider-side-effect ambiguity always resolves conservatively to reconciliation/unknown until certified postcondition evidence proves otherwise.
-12. Capability Fabric completeness requires ownership gates T3768–T3770 plus composed cross-fault gate T3795.
+12. Capability Fabric completeness requires ownership gates T3768–T3770, composed cross-fault gate T3795 and canonical/DB storage gate T3799.
+13. Security-sensitive hashes have one canonical encoding only; alternate serialization cannot create a second valid identity.
+14. Governed transaction assumptions require certified transactional storage, identity-safe collation semantics and explicit transaction ownership/nesting behavior.
 
 ## Status vocabulary
 
@@ -36,6 +38,7 @@ The ledger may emit only these high-level claims:
 - `CAPABILITY_FABRIC_NO_UNTRIAGED_P0_P1`
 - `CAPABILITY_FABRIC_NO_AUTHORITY_WIDENING`
 - `CAPABILITY_FABRIC_CROSS_FAULT_CLOSURE`
+- `CAPABILITY_FABRIC_CANONICAL_DB_STORAGE`
 - `CAPABILITY_FABRIC_COMPLETENESS`
 
 A PASS claim requires linked evidence; no claim is inferred from task presence alone.
