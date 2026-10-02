@@ -6,7 +6,7 @@ export class CatalogError extends Error {
 
 /** Host adapter: explicit trusted REST origin or explicit MCP discovery callback. No implicit credentials. */
 export function createAbilityCatalogClient({ baseUrl, headers = async () => ({}), fetchImpl = globalThis.fetch,
-  callDiscover, callTool, cryptoImpl = globalThis.crypto, maxPages = 10000, maxSchemaBytes = Infinity,
+  callDiscover, callTool, cryptoImpl = globalThis.crypto, maxPages = 1024, maxSchemaBytes = 33554432,
   minChunkBytes = 32768, maxChunkBytes = 262144, targetLatencyMs = 750, onProgress = () => {} } = {}) {
   const base = baseUrl ? new URL(baseUrl) : null;
   if (base && (!['http:', 'https:'].includes(base.protocol) || base.username || base.password)) throw new CatalogError('Invalid trusted REST base');
@@ -14,6 +14,8 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
   const transport = base ? 'authenticated_rest_binary' : 'mcp_base64';
   const bounds = [minChunkBytes, maxChunkBytes];
   if (bounds.some(n => !Number.isInteger(n) || n < 1024 || n > 1048576) || minChunkBytes > maxChunkBytes) throw new CatalogError('Invalid transfer bounds');
+  if (!Number.isInteger(maxPages) || maxPages < 1 || maxPages > 10000) throw new CatalogError('Invalid manifest page budget');
+  if (!Number.isSafeInteger(maxSchemaBytes) || maxSchemaBytes < 1024 || maxSchemaBytes > 1073741824) throw new CatalogError('Invalid schema memory budget');
   let chunkBytes = minChunkBytes;
   const hash = async bytes => [...new Uint8Array(await cryptoImpl.subtle.digest('SHA-256', bytes))].map(n => n.toString(16).padStart(2, '0')).join('');
   const unwrap = result => {
@@ -161,6 +163,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     const execution = item.execution;
     if (!execution?.execution_eligible || !DIGEST.test(execution.input_schema_sha256)) throw new CatalogError('Ability is not eligible for governed execution');
     if (mode === 'direct') {
+      if (!old?.wire?.sha256 || !item.wire?.sha256 || item.wire.sha256 !== old.wire.sha256 || item.wire.tool_name !== old.wire.tool_name) throw new CatalogError('Direct tool wire contract changed; refresh and replan');
       if (!item.wire?.tool_name || !directToolNames.includes(item.wire.tool_name)) throw new CatalogError('Host has not confirmed this direct tool');
       return callTool(item.wire.tool_name, input);
     }
