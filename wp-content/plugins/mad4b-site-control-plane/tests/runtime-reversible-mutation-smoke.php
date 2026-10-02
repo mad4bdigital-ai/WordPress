@@ -30,22 +30,47 @@ $check( class_exists( 'MAD4B_SCP_Site_Profile' ), 'Site Profile contract is unav
 $check( class_exists( 'MAD4B_SCP_Restore_Epoch' ), 'Restore/authority epoch contract is unavailable.' );
 
 // Governed mutation must run against an explicitly enrolled site identity.
-// This disposable runtime uses local environment because WordPress CI serves
-// over HTTP and WP_ENVIRONMENT_TYPE is intentionally not configured.
-$profile_status = MAD4B_SCP_Site_Profile::save_current_site(
-	array(
-		'environment' => 'local',
-		'expected_revision' => MAD4B_SCP_Site_Profile::revision(),
-		'oauth_user_ids' => array( get_current_user_id() ),
-		'oauth_enabled' => false,
-		'skills_enabled' => false,
-		'write_enabled' => true,
-		'provider_isolation_enabled' => false,
-		'managed_runtime_enabled' => false,
-		'acceptance_enabled' => false,
-	)
+// Runtime Integration uses an explicit Staging environment over an HTTP-only
+// disposable CI origin. Public enrollment correctly requires HTTPS for
+// non-local sites, so this fixture uses the verified low-level persistence seam
+// instead of weakening production enrollment policy.
+$ci_origin = MAD4B_SCP_Site_Profile::current_origin();
+$ci_environment = MAD4B_SCP_Site_Profile::wordpress_environment();
+$ci_profile = array(
+	'contract' => MAD4B_SCP_Site_Profile::CONTRACT,
+	'version' => MAD4B_SCP_Site_Profile::VERSION,
+	'site_uuid' => wp_generate_uuid4(),
+	'revision' => 1,
+	'environment' => $ci_environment,
+	'canonical_origin' => $ci_origin,
+	'display_name' => 'MAD4B Runtime Integration CI',
+	'chatgpt_app_id' => '',
+	'oauth_user_ids' => array( get_current_user_id() ),
+	'related_origins' => array( $ci_environment => $ci_origin ),
+	'features' => array(
+		'oauth' => false,
+		'skills' => false,
+		'write' => true,
+		'production_write_confirmed' => false,
+		'provider_isolation' => false,
+		'managed_runtime' => false,
+		'acceptance' => false,
+	),
+	'legacy_agent_slug' => '',
+	'legacy_zero_touch' => false,
+	'created_at' => gmdate( 'c' ),
+	'updated_at' => gmdate( 'c' ),
 );
-$check( ! is_wp_error( $profile_status ), 'Unable to enroll disposable CI Site Profile: ' . ( is_wp_error( $profile_status ) ? $profile_status->get_error_message() : '' ) );
+$check(
+	MAD4B_SCP_Site_Profile::validate_record_for_test( $ci_profile, $ci_environment, $ci_origin ),
+	'Disposable CI Site Profile fixture is invalid before persistence.'
+);
+$check(
+	MAD4B_SCP_Site_Profile::persist_record_exact( $ci_profile ),
+	'Unable to persist and read back the exact disposable CI Site Profile.'
+);
+$profile_status = MAD4B_SCP_Site_Profile::status();
+$check( is_array( $profile_status ) && ! empty( $profile_status['configured'] ), 'Disposable CI Site Profile did not materialize after exact persistence.' );
 $check( MAD4B_SCP_Site_Profile::origin_enrolled(), 'Disposable CI Site Profile is not bound to the exact runtime origin/environment.' );
 $check( MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ), 'Disposable CI WordPress user is not enrolled in the Site Profile.' );
 $check( MAD4B_SCP_Site_Profile::write_enabled(), 'Disposable CI Site Profile did not enable governed write.' );
