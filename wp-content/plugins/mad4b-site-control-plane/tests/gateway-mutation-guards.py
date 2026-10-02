@@ -21,6 +21,7 @@ mutations = [
     ('write permission preparation gate removed', 'class-mad4b-scp-abilities.php', "$prepared = $this->validate_prepared_classification( $ability_name, $input );", "$prepared = true;", 'gateway-regression-runtime.php'),
     ('write governance target binding removed', 'class-mad4b-scp-abilities.php', "! hash_equals( self::$write_dispatch_governance_binding, $binding )", 'false', 'gateway-regression-runtime.php'),
     ('write governance input binding removed', 'class-mad4b-scp-abilities.php', "$identity['target_input_sha256'] = $target_input_sha256;", "$identity['target_input_sha256'] = str_repeat( '0', 64 );", 'gateway-regression-runtime.php'),
+    ('approval UUIDv4 version guard removed', 'class-mad4b-scp-identifiers.php', "4[a-f0-9]{3}-[89ab]", "[a-f0-9]{4}-[89ab]", 'identity-context-runtime.php'),
     ('approval execution scope restoration removed', 'class-mad4b-scp-identity-context.php', "self::$request_approval_ticket_id = $previous;", '/* approval scope restoration removed */', 'identity-context-runtime.php'),
     ('write execution observation cleanup removed', 'class-mad4b-scp-abilities.php', "MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name );", '/* execution observation cleanup removed */', 'gateway-regression-runtime.php'),
     ('context receipt byte budget removed', 'class-mad4b-scp-abilities.php', "strlen( $receipt_json ) > $receipt_budget", 'false', 'gateway-regression-runtime.php'),
