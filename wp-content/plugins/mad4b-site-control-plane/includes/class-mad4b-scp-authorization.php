@@ -436,6 +436,7 @@ final class MAD4B_SCP_Authorization {
 		try {
 			$name = $ability->get_name();
 			$property = ( new ReflectionObject( $ability ) )->getProperty( 'execute_callback' );
+			$property->setAccessible( true );
 			return isset( self::$trusted_execution_boundaries[ $name ] ) && self::$trusted_execution_boundaries[ $name ] === $property->getValue( $ability );
 		} catch ( Throwable $e ) { return false; }
 	}

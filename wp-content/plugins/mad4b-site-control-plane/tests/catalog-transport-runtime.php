@@ -16,13 +16,17 @@ function wp_get_abilities() { return $GLOBALS['abilities']; }
 function wp_has_ability( $name ) { return isset( $GLOBALS['abilities'][$name] ); }
 function wp_get_ability( $name ) { return $GLOBALS['abilities'][$name] ?? null; }
 function rest_url( $path ) { return 'https://ci.test/wp-json/' . $path; }
-function get_option( $key, $default = false ) { return $GLOBALS['options'][$key] ?? $default; }
+function get_option( $key, $default = false ) { if ( isset( $GLOBALS['read_hook'] ) ) call_user_func( $GLOBALS['read_hook'], $key ); return $GLOBALS['options'][$key] ?? $default; }
 function add_option( $key, $value, $deprecated = '', $autoload = false ) { if ( isset( $GLOBALS['options'][$key] ) ) return false; $GLOBALS['options'][$key] = $value; return true; }
+function update_option( $key, $value, $autoload = false ) { $GLOBALS['options'][$key] = $value; return true; }
 function delete_option( $key ) { unset( $GLOBALS['options'][$key] ); }
 function wp_cache_delete( $key, $group ) { return true; }
 function maybe_serialize( $v ) { return serialize( $v ); }
 class FakeDB {
  public $options = 'options'; public $race = false;
+ function esc_like( $value ) { return $value; }
+ function get_col( $args ) { $names = array_values( array_filter( array_keys( $GLOBALS['options'] ), static function( $key ) use ( $args ) { return 0 === strpos( $key, 'mad4b_ct2_' ) && $key > $args[1]; } ) ); sort( $names, SORT_STRING ); return array_slice( $names, 0, 500 ); }
+ function get_var( $args ) { $bytes = 0; foreach ( $GLOBALS['options'] as $name => $value ) if ( 0 === strpos( $name, 'mad4b_ct2_' ) ) $bytes += strlen( serialize( $value ) ); return $bytes; }
  function prepare( $query, ...$args ) { return $args; }
  function query( $args ) {
   list( $next, $key, $old ) = $args;
@@ -107,7 +111,11 @@ $GLOBALS['abilities']['cycle'] = new CycleAbility( '' ); $cycle = request( array
 check( ! is_wp_error( $cycle ) && ! empty( $cycle['items'][0]['unavailable'] ), 'Invalid schema destroyed catalog' );
 $directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY];
 $expired = reset( $directory ); $key = array_key_first( $directory ); $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY][$key]['expires'] = time()-1;
-MAD4B_SCP_Catalog_Object_Store::collect_expired(); check( ! isset( $GLOBALS['options'][$expired['option']] ), 'Expired payload not collected' );
+MAD4B_SCP_Catalog_Object_Store::collect_expired();
+check( isset( $GLOBALS['options'][$expired['option']] ), 'Expired payload was reclaimed before reader grace' );
+$GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]['retired:' . $expired['option']]['expires'] = time() - 1;
+MAD4B_SCP_Catalog_Object_Store::collect_expired();
+check( ! isset( $GLOBALS['options'][$expired['option']] ), 'Retired payload not collected after grace' );
 
 // A newly published schema may share older blocks. Its advertised retention must cover every block.
 foreach ( $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY] as $key => $entry ) {
@@ -129,3 +137,32 @@ check( ! is_wp_error( $wire ) && is_object( $wire['schema']->inputSchema->proper
 $bad_format = request( array( 'transport_action' => 'schema', 'snapshot' => $lazy['snapshot'], 'schema_sha256' => $lazy['item']['wire']['sha256'] ) );
 check( is_wp_error( $bad_format ), 'Wire digest admitted as source' );
 echo "PASS catalog transport: large schema, chunks, frozen pages, delta, tampering, user and site isolation\n";
+
+// The reader holds the old directory while another publisher replaces its value.
+$writer = new MAD4B_SCP_Catalog_Object_Store(); $writer->put( 'reader-race', 'old', 3600 ); $writer->flush();
+$old_option = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]['reader-race']['option'];
+$GLOBALS['read_hook'] = static function( $name ) use ( $old_option ) {
+ if ( $name !== $old_option ) return;
+ unset( $GLOBALS['read_hook'] );
+ $writer = new MAD4B_SCP_Catalog_Object_Store(); $writer->put( 'reader-race', 'new', 3600 ); $writer->flush();
+};
+$reader = new MAD4B_SCP_Catalog_Object_Store();
+check( 'old' === $reader->get( 'reader-race' ), 'Concurrent publication broke the existing reader' );
+check( 'new' === $reader->get( 'reader-race' ), 'Reader did not see the next published revision' );
+check( isset( $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]['retired:' . $old_option] ), 'Reader lease was not accounted in storage capacity' );
+// Same payload lease renewal must reuse its option, even when expiry advances.
+$lease = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]['reader-race'];
+$writer = new MAD4B_SCP_Catalog_Object_Store(); $writer->put( 'reader-race', 'new', 3600, time() + 7200 ); $writer->flush();
+check( $writer->metrics()['writes'] === 0 && $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]['reader-race']['option'] === $lease['option'], 'Lease renewal copied unchanged bytes' );
+// More than one complete live page must not starve an orphan on a later page.
+$stamp = time() - 7200;
+for ( $i = 0; $i < 600; ++$i ) {
+ $name = 'mad4b_ct2_' . $stamp . '_gc' . str_pad( (string) $i, 4, '0', STR_PAD_LEFT );
+ $GLOBALS['options'][$name] = 'live';
+ $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY]['gc-live-' . $i] = array( 'option' => $name, 'expires' => time() + 3600, 'bytes' => 4 );
+}
+$orphan = 'mad4b_ct2_' . $stamp . '_zz-orphan'; $GLOBALS['options'][$orphan] = 'orphan';
+MAD4B_SCP_Catalog_Object_Store::collect_expired();
+check( ! isset( $GLOBALS['options'][$orphan] ), 'GC starved an orphan after 600 live objects' );
+check( isset( $GLOBALS['options']['mad4b_ct2_' . $stamp . '_gc0599'] ), 'GC removed an active payload' );
+echo "PASS catalog storage: overlapping reader/writer, lease reuse, deferred GC and 600-live-page progress\n";

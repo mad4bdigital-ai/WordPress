@@ -30,12 +30,21 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 			return $out;
 		}
 		if ( ! is_array( $value ) ) return $value;
-		if ( ! array_is_list( $value ) ) ksort( $value, SORT_STRING );
+		if ( array() !== $value && array_keys( $value ) !== range( 0, count( $value ) - 1 ) ) ksort( $value, SORT_STRING );
 		foreach ( $value as $key => $item ) $value[ $key ] = self::canonical( $item, $depth + 1 );
 		return $value;
 	}
 	private static function encode( $value ) { return json_encode( self::canonical( $value ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR ); }
 	private static function error( $code, $status = 400 ) { return new WP_Error( $code, 'Catalog request unavailable. Refresh discovery if its revision expired.', array( 'status' => $status ) ); }
+	/** The pinned Adapter carries tool errors as text. Preserve a bounded contract. */
+	public static function mcp_result( $result ) {
+		if ( ! is_wp_error( $result ) ) return $result;
+		$data = $result->get_error_data();
+		$status = is_array( $data ) && isset( $data['status'] ) ? (int) $data['status'] : 400;
+		$code = sanitize_key( $result->get_error_code() );
+		$message = wp_json_encode( array( 'contract' => 'mad4b.catalog-error.v1', 'code' => $code, 'status' => $status, 'message' => 'Catalog request unavailable.' ) );
+		return new WP_Error( $code, $message, array( 'status' => $status ) );
+	}
 	private static function cursor( $payload ) {
 		$encoded = rtrim( strtr( base64_encode( self::encode( $payload ) ), '+/', '-_' ), '=' );
 		return $encoded . '.' . hash_hmac( 'sha256', $encoded, wp_salt( 'auth' ) );
@@ -94,7 +103,10 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 						}
 					} catch ( Throwable $e ) { $row['wire_unavailable'] = true; }
 					$classification = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $name );
-					if ( ! is_wp_error( $classification ) ) $row['execution'] = array_intersect_key( $classification, array_flip( array( 'lane', 'readonly', 'execution_eligible', 'execution_blocker', 'input_schema_sha256', 'classification_sha256' ) ) );
+					if ( ! is_wp_error( $classification ) ) {
+						$row['execution'] = array_intersect_key( $classification, array_flip( array( 'lane', 'readonly', 'execution_eligible', 'execution_blocker', 'input_schema_sha256', 'classification_sha256' ) ) );
+						if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) ) $row['execution'] += MAD4B_SCP_Unified_Capability_Gateway::describe_execution( $classification );
+					}
 					$items[] = $row;
 				} catch ( Throwable $e ) { $items[] = array( 'ability_name' => $name, 'unavailable' => true, 'reason' => 'schema_serialization_failed' ); }
 			}
@@ -187,7 +199,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 	}
 	public static function rest_read( $request ) {
 		$path = $request->get_url_params(); $input = array_merge( $request->get_params(), $path ); $route = $request->get_route();
-		$input['transport_action'] = str_ends_with( $route, '/capabilities' ) ? 'capabilities' : ( isset( $path['schema_sha256'] ) ? ( isset( $path['chunk_index'] ) ? 'chunk' : 'schema' ) : 'manifest' );
+		$input['transport_action'] = '/capabilities' === substr( $route, -13 ) ? 'capabilities' : ( isset( $path['schema_sha256'] ) ? ( isset( $path['chunk_index'] ) ? 'chunk' : 'schema' ) : 'manifest' );
 		if ( isset( $input['force_refresh'] ) ) $input['force_refresh'] = rest_sanitize_boolean( $input['force_refresh'] );
 		$result = self::handle( $input, isset( $path['schema_sha256'] ) ); if ( is_wp_error( $result ) ) return $result;
 		$headers = array( 'Cache-Control' => 'private, no-store', 'Vary' => 'Authorization, Cookie', 'X-Content-Type-Options' => 'nosniff' );

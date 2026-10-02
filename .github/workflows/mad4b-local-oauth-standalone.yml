@@ -253,6 +253,10 @@ jobs:
           require rtrim( $_SERVER['DOCUMENT_ROOT'], '/' ) . '/index.php';
           PHP
 
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cp "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-fixtures.php" "$WP_PATH/wp-content/mu-plugins/mad4b-projection-ci.php"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-http-seed.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
           php -S 127.0.0.1:8088 -t "$WP_PATH" /tmp/mad4b-wp-router.php >/tmp/mad4b-browser-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true; cat /tmp/mad4b-browser-server.log || true' EXIT
@@ -261,6 +265,10 @@ jobs:
             sleep 0.25
           done
           curl -fsS "$MAD4B_BROWSER_BASE_URL/wp-login.php" >/dev/null
+
+          MAD4B_PROJECTION_NETWORK_BASE="$MAD4B_BROWSER_BASE_URL" php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-http.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar option delete mad4b_scp_chatgpt_tool_projection_v1 --path="$WP_PATH"
+          rm "$WP_PATH/wp-content/mu-plugins/mad4b-projection-ci.php"
 
           # Bound the complete OAuth/MCP discovery chain used by external clients.
           # These are full HTTP requests and therefore include WordPress/plugin boot.

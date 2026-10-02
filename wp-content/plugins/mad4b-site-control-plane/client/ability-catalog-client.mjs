@@ -8,7 +8,7 @@ export class CatalogError extends Error {
 export function createAbilityCatalogClient({ baseUrl, headers = async () => ({}), fetchImpl = globalThis.fetch,
   callDiscover, callTool, cryptoImpl = globalThis.crypto, maxPages = 1024, maxSchemaBytes = 33554432,
   minChunkBytes = 32768, maxChunkBytes = 262144, targetLatencyMs = 750, maxParallelSchemaFetches = 4,
-  credentialMode = 'omit', onProgress = () => {} } = {}) {
+  credentialMode = 'omit', requestTimeoutMs = 15000, maxResponseBytes = 1048576, onProgress = () => {} } = {}) {
   const base = baseUrl ? new URL(baseUrl) : null;
   if (base && (!['http:', 'https:'].includes(base.protocol) || base.username || base.password)) throw new CatalogError('Invalid trusted REST base');
   if (!base && !callDiscover) throw new CatalogError('A REST base or MCP discovery callback is required');
@@ -19,10 +19,77 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
   if (!Number.isSafeInteger(maxSchemaBytes) || maxSchemaBytes < 1024 || maxSchemaBytes > 1073741824) throw new CatalogError('Invalid schema memory budget');
   if (!Number.isInteger(maxParallelSchemaFetches) || maxParallelSchemaFetches < 1 || maxParallelSchemaFetches > 8) throw new CatalogError('Invalid schema parallelism budget');
   if (!['omit', 'same-origin'].includes(credentialMode)) throw new CatalogError('Invalid credential mode');
+  if (!Number.isInteger(requestTimeoutMs) || requestTimeoutMs < 1 || requestTimeoutMs > 300000) throw new CatalogError('Invalid request timeout');
+  if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 4096 || maxResponseBytes > 16777216) throw new CatalogError('Invalid response budget');
   let chunkBytes = minChunkBytes, parallelFetches = base ? Math.min(2, maxParallelSchemaFetches) : 1;
   const hash = async bytes => [...new Uint8Array(await cryptoImpl.subtle.digest('SHA-256', bytes))].map(n => n.toString(16).padStart(2, '0')).join('');
+  function unwrapError(result) {
+    if (!result?.isError && !result?.error) return;
+    let detail = result.structuredContent ?? result.error;
+    if (!detail) {
+      try { detail = JSON.parse(result.content?.find(x => x.type === 'text')?.text ?? '{}'); } catch { detail = {}; }
+    }
+    detail = detail?.error ?? detail;
+    const status = detail?.data?.status ?? detail?.status ?? 0;
+    const error = new CatalogError(detail?.message ?? 'MCP request failed', Number.isInteger(status) ? status : 0);
+    error.code = detail?.code;
+    throw error;
+  }
+  async function boundedRequest(operation, signal) {
+    const controller = new AbortController();
+    const abort = () => controller.abort(signal.reason ?? new CatalogError('Transfer cancelled'));
+    if (signal?.aborted) abort(); else signal?.addEventListener('abort', abort, {once: true});
+    const timer = setTimeout(() => controller.abort(new CatalogError('Catalog request timed out', 408)), requestTimeoutMs);
+    let rejectAbort;
+    const interrupted = new Promise((_, reject) => { rejectAbort = () => reject(controller.signal.reason); });
+    controller.signal.addEventListener('abort', rejectAbort, {once: true});
+    try {
+      controller.signal.throwIfAborted();
+      return await Promise.race([operation(controller.signal), interrupted]);
+    } finally {
+      clearTimeout(timer); signal?.removeEventListener('abort', abort);
+      controller.signal.removeEventListener('abort', rejectAbort);
+    }
+  }
+  async function readBounded(response, limit, signal) {
+    const length = response.headers.get('Content-Length');
+    if (length !== null && (!/^\d+$/.test(length) || Number(length) > limit)) {
+      void response.body?.cancel().catch(() => {});
+      throw new CatalogError('Response memory budget exceeded');
+    }
+    if (!response.body) return new Uint8Array();
+    const reader = response.body.getReader(); const parts = []; let total = 0;
+    const cancel = () => { void reader.cancel(signal.reason).catch(() => {}); };
+    signal.addEventListener('abort', cancel, {once: true});
+    try {
+      while (true) {
+        signal.throwIfAborted();
+        const {done, value} = await reader.read();
+        signal.throwIfAborted();
+        if (done) break;
+        total += value.byteLength;
+        if (total > limit) throw new CatalogError('Response memory budget exceeded');
+        parts.push(value);
+      }
+      const bytes = new Uint8Array(total); let offset = 0;
+      for (const part of parts) { bytes.set(part, offset); offset += part.byteLength; }
+      return bytes;
+    } catch (error) { void reader.cancel(error).catch(() => {}); throw error; }
+    finally { signal.removeEventListener('abort', cancel); reader.releaseLock(); }
+  }
+  async function http(endpoint, init, limit, signal) {
+    return boundedRequest(async requestSignal => {
+      const response = await fetchImpl(endpoint, {...init, signal: requestSignal});
+      requestSignal.throwIfAborted();
+      if (!response.ok) throw new CatalogError('Catalog HTTP request failed', response.status);
+      const bytes = await readBounded(response, limit, requestSignal);
+      requestSignal.throwIfAborted();
+      return {response, bytes};
+    }, signal);
+  }
+  const decode = bytes => JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(bytes));
   const unwrap = result => {
-    if (result?.isError) throw new CatalogError('MCP discovery denied');
+    unwrapError(result);
     const value = result?.structuredContent ?? (Array.isArray(result?.content) ? JSON.parse(result.content.find(x => x.type === 'text')?.text ?? '{}') : result);
     if (value?.contract !== CONTRACT) throw new CatalogError('Unsupported catalog contract');
     return value;
@@ -34,17 +101,15 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== '') u.searchParams.set(key, String(value));
     return u;
   }
-  async function rest(path, params = {}) {
-    const response = await fetchImpl(url(path, params), {method: 'GET', headers: await headers(), credentials: credentialMode, redirect: 'error', cache: 'no-store'});
-    if (!response.ok) throw new CatalogError('Catalog HTTP request failed', response.status);
-    return response;
+  async function rest(path, params = {}, {signal, limit = maxResponseBytes} = {}) {
+    return http(url(path, params), {method: 'GET', headers: await headers(), credentials: credentialMode, redirect: 'error', cache: 'no-store'}, limit, signal);
   }
-  async function request(action, input = {}) {
-    if (!base) return unwrap(await callDiscover({transport_action: action, ...input}));
-    const response = await rest(action, input); return unwrap(await response.json());
+  async function request(action, input = {}, {signal} = {}) {
+    if (!base) return unwrap(await boundedRequest(requestSignal => callDiscover({transport_action: action, ...input}, {signal: requestSignal}), signal));
+    const {bytes} = await rest(action, input, {signal}); return unwrap(decode(bytes));
   }
-  async function negotiate() {
-    const caps = await request('capabilities');
+  async function negotiate({signal} = {}) {
+    const caps = await request('capabilities', {}, {signal});
     if (!DIGEST.test(caps.authority_scope_sha256) || !caps.transports?.includes(transport)) throw new CatalogError('Incompatible transport or authority scope');
     if (base && new URL(caps.rest_base_url).origin !== base.origin) throw new CatalogError('Server advertised a different credential origin');
     return caps;
@@ -78,7 +143,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
   }
   async function readSchema(catalog, abilityName, {format = 'source', state = {chunks: new Map()}, signal} = {}) {
     if (!['source', 'wire'].includes(format)) throw new CatalogError('Invalid schema format');
-    const caps = await negotiate();
+    const caps = await negotiate({signal});
     if (caps.authority_scope_sha256 !== catalog.authority_scope_sha256) throw new CatalogError('Authority changed; rediscover');
     const descriptor = catalog.entries.get(abilityName)?.[format];
     if (!descriptor || !DIGEST.test(descriptor.sha256) || !Number.isSafeInteger(descriptor.bytes) || descriptor.bytes < 1 || descriptor.bytes > maxSchemaBytes) throw new CatalogError('Schema unavailable or host memory budget exceeded');
@@ -116,12 +181,13 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
       let bytes, checksum; const started = performance.now();
       const input = {snapshot, schema_sha256: descriptor.sha256, schema_format: format, chunk_bytes: size, chunk_index: i};
       if (base) {
-        const response = await rest(`schemas/${descriptor.sha256}/chunks/${i}`, input);
+        const {response, bytes: bodyBytes} = await rest(`schemas/${descriptor.sha256}/chunks/${i}`, input, {signal, limit: expected});
         if (response.headers.get('X-MAD4B-Schema-SHA256') !== descriptor.sha256 || Number(response.headers.get('X-MAD4B-Chunk-Count')) !== count) throw new CatalogError('Chunk identity mismatch');
-        bytes = new Uint8Array(await response.arrayBuffer()); checksum = response.headers.get('X-MAD4B-Content-SHA256');
+        bytes = bodyBytes; checksum = response.headers.get('X-MAD4B-Content-SHA256');
       } else {
-        const part = await request('chunk', input);
+        const part = await request('chunk', input, {signal});
         if (part.schema_sha256 !== descriptor.sha256 || part.chunk_index !== i || part.chunk_count !== count || part.encoding !== 'base64') throw new CatalogError('MCP chunk identity mismatch');
+        if (typeof part.data !== 'string' || part.data.length > 4 * Math.ceil(expected / 3)) throw new CatalogError('Response memory budget exceeded');
         bytes = Uint8Array.from(atob(part.data), c => c.charCodeAt(0)); checksum = part.chunk_sha256;
       }
       if (bytes.length !== expected || !DIGEST.test(checksum ?? '') || await hash(bytes) !== checksum) throw new CatalogError('Chunk integrity failure');
@@ -143,7 +209,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
       if (failures.length) {
         const expired = failures.find(error => error?.status === 410);
         if (expired && !renewed) {
-          const fresh = (await prepare([abilityName])).catalogs.get(abilityName);
+          const fresh = (await prepare([abilityName], {signal})).catalogs.get(abilityName);
           if (!fresh) throw new CatalogError('Ability disappeared; replan');
           const item = fresh.entries.get(abilityName);
           if (fresh.authority_scope_sha256 !== catalog.authority_scope_sha256 || item?.[format]?.sha256 !== descriptor.sha256) throw new CatalogError('Schema changed; replan');
@@ -174,32 +240,33 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
         }
       }
     }
+    if (signal?.aborted) throw signal.reason ?? new CatalogError('Transfer cancelled');
     const bytes = new Uint8Array(descriptor.bytes);
     for (let i = 0; i < count; i++) bytes.set(state.chunks.get(i).bytes, i * size);
     if (await hash(bytes) !== descriptor.sha256) throw new CatalogError('Schema aggregate integrity failure');
     const json = new TextDecoder('utf-8', {fatal: true}).decode(bytes);
+    if (signal?.aborted) throw signal.reason ?? new CatalogError('Transfer cancelled');
     return {schema: JSON.parse(json), json, sha256: descriptor.sha256, state};
   }
-  async function gateway(action, input = {}) {
+  async function gateway(action, input = {}, {signal} = {}) {
     let value;
     if (!base) {
-      const result = await callDiscover({gateway_action: action, ...input});
-      if (result?.isError) throw new CatalogError('Gateway discovery denied');
+      const result = await boundedRequest(requestSignal => callDiscover({gateway_action: action, ...input}, {signal: requestSignal}), signal);
+      unwrapError(result);
       value = result?.structuredContent ?? (Array.isArray(result?.content) ? JSON.parse(result.content.find(x => x.type === 'text')?.text ?? '{}') : result);
     } else {
       const endpoint = new URL(base);
       if (endpoint.searchParams.has('rest_route')) endpoint.searchParams.set('rest_route', endpoint.searchParams.get('rest_route').replace(/ability-catalog\/?$/, 'capability-gateway'));
       else endpoint.pathname = endpoint.pathname.replace(/ability-catalog\/?$/, 'capability-gateway');
-      const response = await fetchImpl(endpoint, {method: 'POST', headers: {...await headers(), 'Content-Type': 'application/json'}, body: JSON.stringify({action, ...input}), credentials: credentialMode, redirect: 'error', cache: 'no-store'});
-      if (!response.ok) throw new CatalogError('Capability gateway request failed', response.status);
-      value = await response.json();
+      const {bytes} = await http(endpoint, {method: 'POST', headers: {...await headers(), 'Content-Type': 'application/json'}, body: JSON.stringify({action, ...input}), credentials: credentialMode, redirect: 'error', cache: 'no-store'}, maxResponseBytes, signal);
+      value = decode(bytes);
     }
     if (value?.contract !== 'mad4b.unified-capability-gateway.v1') throw new CatalogError('Unsupported gateway contract');
     return value;
   }
-  async function search(task, options = {}) { return gateway('search', {task, ...options}); }
+  async function search(task, {signal, ...options} = {}) { return gateway('search', {task, ...options}, {signal}); }
   async function prepare(abilityNames, options = {}) {
-    const {client_capabilities: suppliedCapabilities = {}, ...gatewayOptions} = options;
+    const {client_capabilities: suppliedCapabilities = {}, signal, ...gatewayOptions} = options;
     const requestedParallel = Number.isInteger(suppliedCapabilities.max_parallel_schema_fetches)
       ? Math.min(maxParallelSchemaFetches, Math.max(1, suppliedCapabilities.max_parallel_schema_fetches))
       : maxParallelSchemaFetches;
@@ -207,18 +274,19 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
       ability_names: abilityNames,
       ...gatewayOptions,
       client_capabilities: {...suppliedCapabilities, max_parallel_schema_fetches: requestedParallel},
-    });
+    }, {signal});
     const catalogs = new Map();
     for (const item of result.abilities ?? []) {
       if (!item.source || !DIGEST.test(item.authority_scope_sha256 ?? '') || !DIGEST.test(item.snapshot ?? '')) continue;
-      const row = {...item, execution: {lane: item.classification, execution_eligible: item.execution_eligible ?? item.execution?.state === 'governed_dispatch', dispatch_state: item.execution?.state, input_schema_sha256: item.input_schema_sha256, classification_sha256: item.classification_sha256}};
+      const row = {...item, execution: {lane: item.classification, execution_eligible: item.execution_eligible !== false && ['governed_dispatch', 'requires_dynamic_projection', 'requires_operation_resolution'].includes(item.execution?.state), dispatch_state: item.execution?.state, input_schema_sha256: item.input_schema_sha256, classification_sha256: item.classification_sha256}};
       catalogs.set(item.ability_name, {snapshot: item.snapshot, authority_scope_sha256: item.authority_scope_sha256, entries: new Map([[item.ability_name, row]]), transferPolicy: result.transfer_policy, lazy: true});
     }
     return {...result, catalogs};
   }
   async function execute(catalog, abilityName, input, {mode = 'dispatch', directToolNames = [], operation} = {}) {
     if (!callTool) throw new CatalogError('Host tool execution callback required');
-    const fresh = catalog.lazy ? (await prepare([abilityName])).catalogs.get(abilityName) : await sync(catalog, catalog.query);
+    // Always resolve the selected target through one authoritative descriptor.
+    const fresh = (await prepare([abilityName])).catalogs.get(abilityName);
     if (!fresh || fresh.authority_scope_sha256 !== catalog.authority_scope_sha256) throw new CatalogError('Authority changed; rediscover');
     const item = fresh.entries.get(abilityName), old = catalog.entries.get(abilityName);
     if (!item || item.source?.sha256 !== old?.source?.sha256 || item.execution?.classification_sha256 !== old?.execution?.classification_sha256) throw new CatalogError('Ability contract changed; replan');

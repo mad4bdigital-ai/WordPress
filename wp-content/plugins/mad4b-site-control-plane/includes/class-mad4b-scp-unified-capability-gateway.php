@@ -385,6 +385,10 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		);
 	}
 
+	public static function describe_execution( array $row ) {
+		return self::execution_descriptor( $row );
+	}
+
 	public static function prepare( array $input, $transport = 'internal' ) {
 		$names = isset( $input['ability_names'] ) && is_array( $input['ability_names'] ) ? array_values( array_unique( array_map( 'strval', $input['ability_names'] ) ) ) : array();
 		$names = array_values( array_filter( $names, static function ( $name ) { return '' !== trim( (string) $name ); } ) );
@@ -480,7 +484,9 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			$input['schema_format'] = $format;
 		}
 		$input['transport_action'] = $action;
-		if ( 'chunk' === $action ) $input['chunk_bytes'] = min( (int) ( $input['chunk_bytes'] ?? 1048576 ), self::transfer_policy( $caps )['recommended_chunk_bytes'] );
+		// Chunk indices are meaningful only with the caller's pinned size. A
+		// recommendation may choose a default, but must never rewrite that size.
+		if ( 'chunk' === $action && ! isset( $input['chunk_bytes'] ) ) $input['chunk_bytes'] = self::transfer_policy( $caps )['recommended_chunk_bytes'];
 		$result = MAD4B_SCP_Ability_Catalog_Transport::handle( $input );
 		if ( is_wp_error( $result ) ) return $result;
 		$result['gateway_contract'] = self::CONTRACT;
@@ -490,4 +496,3 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 	}
 }
 MAD4B_SCP_Unified_Capability_Gateway::boot();
-

@@ -293,7 +293,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( in_array( $name, MAD4B_SCP_Servers::chatgpt_base_tools(), true ) ) return $args;
 		$state = self::raw_state();
 		if ( ! self::binding_matches( $state ) ) return new WP_Error( 'mad4b_projection_binding_mismatch', 'Dynamic projection is not bound to this enrolled Staging runtime.' );
-		$row = self::effective_row( $name, $state );
+		$row = self::effective_row( $name, $state, true );
 		if ( is_wp_error( $row ) ) return $row;
 		if ( ! self::materialized_tool_matches( $tool, $server ) ) return new WP_Error( 'mad4b_projection_materialized_drift', 'Materialized tool contract changed; refresh registration.' );
 		if ( empty( $row['execution_eligible'] ) ) return new WP_Error( 'mad4b_projection_execution_blocked', $row['execution_blocker'] );
@@ -307,20 +307,24 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		return $args;
 	}
 
+	private static function property_value( $object, $name ) {
+		$property = ( new ReflectionObject( $object ) )->getProperty( $name );
+		$property->setAccessible( true );
+		return $property->getValue( $object );
+	}
+
 	public static function callback_identity( $tool ) {
 		try {
-			$a = ( new ReflectionObject( $tool ) )->getProperty( 'ability' )->getValue( $tool );
-			$r = new ReflectionObject( $a );
-			return array( $r->getProperty( 'execute_callback' )->getValue( $a ), $r->getProperty( 'permission_callback' )->getValue( $a ) );
+			$a = self::property_value( $tool, 'ability' );
+			return array( self::property_value( $a, 'execute_callback' ), self::property_value( $a, 'permission_callback' ) );
 		} catch ( Throwable $e ) { return null; }
 	}
 	public static function materialized_tool_matches( $tool, $server = null ) {
 		try {
 			$meta = $tool->get_adapter_meta(); $name = $meta['ability']; $current = wp_get_ability( $name );
-			$bound = ( new ReflectionObject( $tool ) )->getProperty( 'ability' )->getValue( $tool );
+			$bound = self::property_value( $tool, 'ability' );
 			if ( ! $current || ! $bound ) return false;
-			$r = new ReflectionObject( $current ); $rb = new ReflectionObject( $bound );
-			foreach ( array( 'execute_callback', 'permission_callback' ) as $property ) if ( $r->getProperty( $property )->getValue( $current ) !== $rb->getProperty( $property )->getValue( $bound ) ) return false;
+			foreach ( array( 'execute_callback', 'permission_callback' ) as $property ) if ( self::property_value( $current, $property ) !== self::property_value( $bound, $property ) ) return false;
 			$built = \WP\MCP\Domain\Tools\RegisterAbilityAsMcpTool::build( $current );
 			if ( is_wp_error( $built ) ) return false;
 			$actual = $tool->get_protocol_dto()->toArray();
@@ -345,7 +349,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		return $server;
 	}
 
-	private static function effective_row( $name, array $state ) {
+	private static function effective_row( $name, array $state, $request_authority = false ) {
 		$stored = isset( $state['abilities'][ $name ] ) ? $state['abilities'][ $name ] : null;
 		if ( ! is_array( $stored ) ) return new WP_Error( 'mad4b_projection_not_selected', 'Ability is not selected for dynamic projection.' );
 		$current = self::ability_row( $name );
@@ -354,7 +358,9 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		foreach ( array( 'input_schema_sha256', 'classification_sha256' ) as $pin ) {
 			if ( empty( $stored[ $pin ] ) || ! hash_equals( (string) $stored[ $pin ], $current[ $pin ] ) ) return new WP_Error( 'mad4b_projection_identity_drift', 'Ability schema or authority classification changed after projection review.' );
 		}
-		if ( $current['breakglass'] && ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_breakglass() ) ) return new WP_Error( 'mad4b_projection_breakglass_disabled', 'Breakglass is not currently authorized.' );
+		// Registration precedes bearer verification. Only list/call admission may
+		// evaluate request identity; structural registration grants no visibility.
+		if ( $request_authority && $current['breakglass'] && ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_breakglass() ) ) return new WP_Error( 'mad4b_projection_breakglass_disabled', 'Breakglass is not currently authorized.' );
 		return $current;
 	}
 
@@ -371,8 +377,8 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	}
 
 	public static function discover( $input = array() ) {
-		if ( is_array( $input ) && isset( $input['gateway_action'] ) ) { $input['action'] = $input['gateway_action']; return MAD4B_SCP_Unified_Capability_Gateway::dispatch( $input, 'mcp' ); }
-		if ( is_array( $input ) && isset( $input['transport_action'] ) ) return MAD4B_SCP_Ability_Catalog_Transport::handle( $input );
+		if ( is_array( $input ) && isset( $input['gateway_action'] ) ) { $input['action'] = $input['gateway_action']; return MAD4B_SCP_Ability_Catalog_Transport::mcp_result( MAD4B_SCP_Unified_Capability_Gateway::dispatch( $input, 'mcp' ) ); }
+		if ( is_array( $input ) && isset( $input['transport_action'] ) ) return MAD4B_SCP_Ability_Catalog_Transport::mcp_result( MAD4B_SCP_Ability_Catalog_Transport::handle( $input ) );
 		$input = is_array( $input ) ? $input : array();
 		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
 		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;

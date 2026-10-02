@@ -36,6 +36,8 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-catalog-object-store.php"
           php "$root/tests/catalog-transport-runtime.php"
           node "$root/tests/catalog-transport-client.mjs"
+          node "$root/tests/catalog-transport-failures.mjs"
+          php "$root/tests/projection-registration-lifecycle.php"
           php -l "$root/tests/runtime-unified-capability-gateway.php"
           php -l "$root/tests/runtime-mcp-client-compatibility-smoke.php"
           php -l "$root/tests/runtime-chatgpt-tool-inventory-smoke.php"
@@ -44,6 +46,30 @@ jobs:
           python3 "$root/tests/mcp-client-compatibility-contract.py"
           python3 "$root/tests/chatgpt-dynamic-tool-projection-contract.py"
           python3 "$root/tests/unified-capability-gateway-contract.py"
+
+  catalog-compatibility:
+    name: Catalog runtime (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint production PHP and exercise catalog lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          find "$root/includes" -name '*.php' -print0 | xargs -0 -n1 php -l
+          php "$root/tests/catalog-transport-runtime.php"
+          php "$root/tests/projection-registration-lifecycle.php"
 
   runtime:
     name: MCP client compatibility runtime (${{ matrix.wordpress }})

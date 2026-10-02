@@ -2,6 +2,26 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 $fail = static function ( $message ) { throw new RuntimeException( $message ); };
 $wire = static function ( $response ) { return json_decode( wp_json_encode( $response->get_data() ), true ); };
+// Optional independent HTTP mode: every request boots WordPress in the server
+// process; the WP-CLI process only mints fixtures and asserts responses.
+$network_base = getenv( 'MAD4B_PROJECTION_NETWORK_BASE' );
+$network = static function( $bearer, $route, $method, array $params = array(), array $headers = array() ) use ( $network_base, $fail ) {
+    $url = rtrim( $network_base, '/' ) . '/wp-json' . $route;
+    $headers += array( 'Authorization' => 'Bearer ' . $bearer, 'Accept' => 'application/json, text/event-stream', 'Content-Type' => 'application/json' );
+    $options = array( 'method' => $method, 'headers' => $headers, 'timeout' => 20, 'redirection' => 0 );
+    if ( 'GET' === $method || 'HEAD' === $method ) $url = add_query_arg( $params, $url );
+    else $options['body'] = wp_json_encode( $params );
+    $raw = wp_remote_request( $url, $options );
+    if ( is_wp_error( $raw ) ) $fail( 'Independent HTTP request failed: ' . $raw->get_error_code() );
+    // The independent server may have changed projection state in its process.
+    wp_cache_delete( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, 'options' );
+    wp_cache_delete( 'notoptions', 'options' );
+    $bytes = wp_remote_retrieve_body( $raw );
+    $data = json_decode( $bytes, true );
+    $response = new WP_REST_Response( null === $data ? $bytes : $data, wp_remote_retrieve_response_code( $raw ) );
+    foreach ( wp_remote_retrieve_headers( $raw ) as $name => $value ) $response->header( $name, $value );
+    return $response;
+};
 $original = get_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, false );
 $mint = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'mint_access_token' );
 $mint->setAccessible( true );
@@ -10,7 +30,11 @@ $read = $mint->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_I
 $step = $mint->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID, 1, $resource, array( 'mad4b:read', MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) );
 if ( is_wp_error( $read ) || is_wp_error( $step ) ) $fail( 'Cannot mint projection HTTP proof tokens.' );
 wp_set_current_user( 0 );
-$dispatch = static function ( $bearer, $method, array $params, $session = '' ) use ( $wire ) {
+$dispatch = static function ( $bearer, $method, array $params, $session = '' ) use ( $wire, $network_base, $network ) {
+    if ( $network_base ) {
+        $response = $network( $bearer, '/mcp/mad4b-chatgpt', 'POST', array( 'jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => $params ), array( 'MCP-Protocol-Version' => '2025-11-25', 'Mcp-Session-Id' => $session ) );
+        return array( $response, $wire( $response ) );
+    }
     $request = new WP_REST_Request( 'POST', '/mcp/mad4b-chatgpt' );
     $request->set_header( 'Authorization', 'Bearer ' . $bearer );
     $request->set_header( 'Accept', 'application/json, text/event-stream' );
@@ -22,7 +46,11 @@ $dispatch = static function ( $bearer, $method, array $params, $session = '' ) u
     $response = apply_filters( 'rest_post_dispatch', $response, rest_get_server(), $request );
     return array( $response, $wire( $response ) );
 };
-$gateway = static function ( $bearer, array $payload ) use ( $wire ) {
+$gateway = static function ( $bearer, array $payload ) use ( $wire, $network_base, $network ) {
+    if ( $network_base ) {
+        $response = $network( $bearer, '/mad4b/v1/capability-gateway', 'POST', $payload );
+        return array( $response, $wire( $response ) );
+    }
     $request = new WP_REST_Request( 'POST', '/mad4b/v1/capability-gateway' );
     $request->set_header( 'Authorization', 'Bearer ' . $bearer );
     $request->set_header( 'Accept', 'application/json' );
@@ -43,7 +71,8 @@ $call = static function ( $bearer, $session, $name, array $args = array() ) use 
     return $body;
 };
 $denied = static function ( array $body ) { return ! empty( $body['result']['isError'] ) || isset( $body['error'] ); };
-$rest_catalog = static function( $bearer, $path, array $params = array(), $method = 'GET' ) {
+$rest_catalog = static function( $bearer, $path, array $params = array(), $method = 'GET' ) use ( $network_base, $network ) {
+    if ( $network_base ) return array( $network( $bearer, '/mad4b/v1/ability-catalog/' . $path, $method, $params ), null );
     wp_set_current_user( 0 );
     $request = new WP_REST_Request( $method, '/mad4b/v1/ability-catalog/' . $path );
     if ( $bearer ) $request->set_header( 'Authorization', 'Bearer ' . $bearer );
@@ -58,12 +87,17 @@ try {
     if ( ! $descriptor ) $fail( 'Official wire schema descriptor missing.' );
     list( $chunk_response, $chunk_request ) = $rest_catalog( $read, 'schemas/' . $descriptor['sha256'] . '/chunks/0', array( 'snapshot' => $manifest['snapshot'], 'schema_format' => 'wire' ) );
     if ( 200 !== $chunk_response->get_status() || ! is_string( $chunk_response->get_data() ) ) $fail( 'REST binary chunk unavailable.' );
-    $chunk_headers = $chunk_response->get_headers();
-    if ( hash( 'sha256', $chunk_response->get_data() ) !== $chunk_headers['X-MAD4B-Content-SHA256'] ) $fail( 'Binary REST integrity failure.' );
+    $chunk_headers = array_change_key_case( $chunk_response->get_headers(), CASE_LOWER );
+    if ( hash( 'sha256', $chunk_response->get_data() ) !== $chunk_headers['x-mad4b-content-sha256'] ) $fail( 'Binary REST integrity failure.' );
+    if ( $network_base ) {
+        list( $head_response ) = $rest_catalog( $read, 'schemas/' . $descriptor['sha256'] . '/chunks/0', array( 'snapshot' => $manifest['snapshot'], 'schema_format' => 'wire' ), 'HEAD' );
+        if ( 200 !== $head_response->get_status() || '' !== $head_response->get_data() ) $fail( 'Independent HEAD returned a body or failed.' );
+    } else {
     ob_start(); $served = MAD4B_SCP_Ability_Catalog_Transport::serve_binary( false, $chunk_response, $chunk_request, rest_get_server() ); $bytes = ob_get_clean();
     if ( ! $served || $bytes !== $chunk_response->get_data() ) $fail( 'REST server JSON-encoded raw bytes.' );
     $chunk_request->set_method( 'HEAD' ); ob_start(); MAD4B_SCP_Ability_Catalog_Transport::serve_binary( false, $chunk_response, $chunk_request, rest_get_server() ); $head = ob_get_clean();
     if ( '' !== $head ) $fail( 'HEAD returned a response body.' );
+    }
     list( $no_auth ) = $rest_catalog( '', 'manifest' ); list( $bad_auth ) = $rest_catalog( 'invalid', 'manifest' );
     if ( $no_auth->get_status() < 400 || $bad_auth->get_status() < 400 ) $fail( 'REST authentication bypass.' );
     $developer_token = $mint->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID, 1, MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer' ), array( 'mad4b:read' ) );
@@ -123,17 +157,21 @@ try {
     if ( $denied( $call( $step, $step_session, 'mad4b-chatgpt-tool-projection-apply', $promote_args ) ) ) $fail( 'Exact step-up promotion failed.' );
     if ( $denied( $call( $read, $read_session, 'mad4b-diagnostics-health' ) ) ) $fail( 'Promoted read tool did not regain admission.' );
 
+    if ( ! $network_base ) {
     $ability = wp_get_ability( 'mad4b/diagnostics-health' );
     $callback_property = ( new ReflectionObject( $ability ) )->getProperty( 'execute_callback' );
+    $callback_property->setAccessible( true );
     $original_callback = $callback_property->getValue( $ability );
     try {
         $callback_property->setValue( $ability, static function() { throw new RuntimeException( 'Changed callback must never execute' ); } );
         if ( ! $denied( $call( $read, $read_session, 'mad4b-diagnostics-health' ) ) ) $fail( 'Cached callback receipt admitted in-place drift.' );
     } finally { $callback_property->setValue( $ability, $original_callback ); }
+    }
     $copied = get_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION );
     $copied['binding']['origin'] = 'https://copied.invalid';
     update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $copied, false );
     if ( ! $denied( $call( $read, $read_session, 'mad4b-diagnostics-health' ) ) ) $fail( 'Copied origin retained tool execution.' );
+    if ( $network_base ) fwrite( STDOUT, "PASS independent HTTP: fresh registration, binary/HEAD, OAuth audience, projection promotion/demotion and replay\n" );
     fwrite( STDOUT, "mad4b.projection-http-admission.v2: PASS REST binary OAuth audience and dynamic tool admission\n" );
     fwrite( STDOUT, "mad4b.projection-http-admission.v1: PASS adaptive_rest_gateway=verified\n" );
 } finally {
