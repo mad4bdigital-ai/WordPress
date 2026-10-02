@@ -3,6 +3,7 @@ from pathlib import Path
 root = Path('wp-content/plugins/mad4b-site-control-plane')
 gateway = (root / 'includes/class-mad4b-scp-unified-capability-gateway.php').read_text(encoding='utf-8')
 catalog = (root / 'includes/class-mad4b-scp-ability-catalog-transport.php').read_text(encoding='utf-8')
+abilities = (root / 'includes/class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 projection = (root / 'includes/class-mad4b-scp-chatgpt-tool-projection.php').read_text(encoding='utf-8')
 inspector = (root / 'includes/class-mad4b-scp-ability-contract-inspector.php').read_text(encoding='utf-8')
 descriptor = (root / 'includes/class-mad4b-scp-capability-descriptor-registry.php').read_text(encoding='utf-8')
@@ -50,6 +51,9 @@ assert "public static function prepare_ability" in catalog, 'single-Ability lazy
 for marker in ["subject_fingerprint", "issuer_fingerprint", "client_fingerprint", "token_scopes"]:
     assert marker in catalog, f'catalog scope is not identity-bound: {marker}'
 assert "public static function describe_ability" in projection, 'projection classification is not reusable by gateway'
+for source_name, source in [('gateway', gateway), ('catalog', catalog), ('fixed-dispatch', abilities)]:
+    assert 'MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability' not in source, f'{source_name} regressed to presentation-layer capability classification'
+    assert 'MAD4B_SCP_Capability_Descriptor_Registry::describe' in source, f'{source_name} does not consume canonical capability descriptors'
 assert "MAD4B_SCP_Ability_Contract_Inspector::inspect" in descriptor, 'descriptor registry is not backed by the canonical inspector'
 assert "MAD4B_SCP_ChatGPT_Tool_Projection::inspect_contract" not in descriptor, 'descriptor registry regressed to presentation-layer classification'
 assert "mad4b.ability-classification.v2" in inspector and "sort( $keys, SORT_STRING )" in inspector, 'canonical classification digest contract is incomplete'
