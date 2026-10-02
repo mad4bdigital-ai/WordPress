@@ -297,6 +297,15 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( is_wp_error( $row ) ) return $row;
 		if ( ! self::materialized_tool_matches( $tool, $server ) ) return new WP_Error( 'mad4b_projection_materialized_drift', 'Materialized tool contract changed; refresh registration.' );
 		if ( empty( $row['execution_eligible'] ) ) return new WP_Error( 'mad4b_projection_execution_blocked', $row['execution_blocker'] );
+		if ( ! empty( $row['breakglass'] ) ) {
+			$breakglass_scope = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
+				&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+				&& (
+					MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'server:mad4b-breakglass' )
+					|| MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'ability:' . $name )
+				);
+			if ( ! $breakglass_scope ) return new WP_Error( 'mad4b_projection_breakglass_scope_required', 'Projected Breakglass execution requires an exact Breakglass server or Ability OAuth scope.' );
+		}
 		if ( 'read' !== $row['lane'] || empty( $row['readonly'] ) ) {
 			$step_up = self::can_apply();
 			if ( is_wp_error( $step_up ) ) return $step_up;
