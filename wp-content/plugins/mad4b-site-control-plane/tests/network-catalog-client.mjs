@@ -7,8 +7,8 @@ function site(id, scope) {
  headers: async () => ({Authorization: `Bearer ${id}`}),
  fetchImpl: async (url, init) => {
   assert.equal(init.headers.Authorization, `Bearer ${id}`); assert.ok(url.href.includes(`/${id}/`));
-  return new Response(JSON.stringify({contract:'mad4b.unified-capability-gateway.v1', abilities:[{ability_name:'fixture/read', source:{sha256:digest('a')}, authority_scope_sha256:scope, snapshot:digest('b'), classification:'read', execution_eligible:true, input_schema_sha256:digest('a'), classification_sha256:digest('c'), execution:{state:'governed_dispatch'}}]}));
- }, callTool: async (name, args) => {calls.push(id); assert.equal(args.expected_execution_lane,'read'); assert.equal(args.expected_authority_scope_sha256,scope); return id;}};
+  return new Response(JSON.stringify({contract:'mad4b.unified-capability-gateway.v1', abilities:[{preparation_receipt:`receipt-${id}`, ability_name:'fixture/read', source:{sha256:digest('a')}, authority_scope_sha256:scope, snapshot:digest('b'), classification:'read', execution_eligible:true, input_schema_sha256:digest('a'), classification_sha256:digest('c'), execution:{state:'governed_dispatch'}}]}));
+ }, callTool: async (name, args) => {calls.push(id); assert.equal(args.expected_execution_lane,'read'); assert.equal(args.expected_authority_scope_sha256,scope); assert.equal(args.preparation_receipt,`receipt-${id}`); return id;}};
 }
 const a=site('a',digest('a')), b=site('b',digest('b')), network=createNetworkCatalogClient([a,b]);
 const prepared=await network.prepare('a',['fixture/read']), catalog=prepared.catalogs.get('fixture/read');
