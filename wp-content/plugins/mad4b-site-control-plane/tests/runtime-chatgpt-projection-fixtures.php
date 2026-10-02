@@ -66,6 +66,57 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 		) );
 	}
 
+
+	if ( ! wp_has_ability( 'mad4b-ci/recursive-child-fixture' ) ) {
+		wp_register_ability( 'mad4b-ci/recursive-child-fixture', array(
+			'label' => 'Recursive child fixture',
+			'description' => 'Mutating child fixture for explicit governed child permits.',
+			'category' => 'mad4b-read',
+			'execute_callback' => static function ( $input = null ) {
+				$GLOBALS['mad4b_recursive_child_calls'] = (int) ( $GLOBALS['mad4b_recursive_child_calls'] ?? 0 ) + 1;
+				return array( 'ok' => true, 'input' => $input );
+			},
+			'permission_callback' => static function () { return true; },
+			'input_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'write' ), 'annotations' => array( 'readonly' => false ) ),
+		) );
+	}
+	if ( ! wp_has_ability( 'mad4b-ci/recursive-parent-fixture' ) ) {
+		wp_register_ability( 'mad4b-ci/recursive-parent-fixture', array(
+			'label' => 'Recursive parent fixture',
+			'description' => 'Readonly parent fixture driving nested child mutation tests.',
+			'category' => 'mad4b-read',
+			'execute_callback' => static function ( $input = null ) {
+				$child_name = 'mad4b-ci/recursive-child-fixture';
+				$mode = is_array( $input ) && isset( $input['mode'] ) ? (string) $input['mode'] : 'direct';
+				$child = wp_get_ability( $child_name );
+				if ( ! $child ) return new WP_Error( 'mad4b_recursive_fixture_child_missing', 'Recursive child fixture is unavailable.' );
+				$child_input = array(
+					'_mad4b_approval_ticket_id' => '00000000-0000-4000-8000-000000000999',
+					'preparation_receipt' => 'fixture-preparation-receipt',
+					'_mad4b_context_receipt' => array( 'receipt_sha256' => str_repeat( 'a', 64 ) ),
+					'idempotency_key' => 'fixture-idempotency-key',
+					'operation_id' => 'fixture-operation',
+					'execution_id' => 'fixture-execution',
+					'claim_epoch' => 7,
+					'request_sha256' => str_repeat( 'b', 64 ),
+					'value' => 1,
+				);
+				if ( 'direct' === $mode ) return $child->execute( $child_input );
+				if ( 'permitted' === $mode ) return MAD4B_SCP_Execution_Fence::with_governed_child( $child_name, $child_input, static function () use ( $child, $child_input ) { return $child->execute( $child_input ); }, 'fixture' );
+				if ( 'mismatch' === $mode ) return MAD4B_SCP_Execution_Fence::with_governed_child( $child_name, $child_input, static function () use ( $child, $child_input ) { $changed=$child_input; $changed['value']=2; return $child->execute( $changed ); }, 'fixture' );
+				if ( 'evidence_mismatch' === $mode ) return MAD4B_SCP_Execution_Fence::with_governed_child( $child_name, $child_input, static function () use ( $child, $child_input ) { $changed=$child_input; $changed['idempotency_key']='fixture-idempotency-key-changed'; return $child->execute( $changed ); }, 'fixture' );
+				if ( 'replay' === $mode ) return MAD4B_SCP_Execution_Fence::with_governed_child( $child_name, $child_input, static function () use ( $child, $child_input ) { $first=$child->execute( $child_input ); $second=$child->execute( $child_input ); return array( 'first'=>$first, 'second'=>$second ); }, 'fixture' );
+				return new WP_Error( 'fixture_mode_invalid', 'Unknown fixture mode.' );
+			},
+			'permission_callback' => static function () { return true; },
+			'input_schema' => array( 'type' => 'object', 'properties' => array( 'mode' => array( 'type' => 'string' ) ), 'additionalProperties' => true ),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ), 'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ) ),
+		) );
+	}
+
 	if ( ! wp_has_ability( 'mad4b-ci/readonly-projection-fixture' ) ) {
 		wp_register_ability( 'mad4b-ci/readonly-projection-fixture', array(
 			'label' => 'Readonly Projection Fixture',
