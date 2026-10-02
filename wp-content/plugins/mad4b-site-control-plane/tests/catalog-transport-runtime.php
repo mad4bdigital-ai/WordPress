@@ -9,7 +9,7 @@ function wp_json_encode( $v ) { return json_encode( $v ); }
 function get_current_user_id() { return $GLOBALS['user']; }
 function wp_get_current_user() { return (object) array( 'allcaps' => array( 'read' => true ) ); }
 function wp_salt( $v ) { return 'test-signing-key'; }
-function apply_filters( $name, $v ) { return $v; }
+function apply_filters( $name, $v ) { return 'mad4b_scp_catalog_storage_capacity_bytes' === $name ? ( $GLOBALS['capacity'] ?? $v ) : $v; }
 function set_transient( $key, $v, $ttl ) { $GLOBALS['cache'][$key] = $v; return true; }
 function get_transient( $key ) { return $GLOBALS['cache'][$key] ?? false; }
 function wp_get_abilities() { return $GLOBALS['abilities']; }
@@ -166,3 +166,19 @@ MAD4B_SCP_Catalog_Object_Store::collect_expired();
 check( ! isset( $GLOBALS['options'][$orphan] ), 'GC starved an orphan after 600 live objects' );
 check( isset( $GLOBALS['options']['mad4b_ct2_' . $stamp . '_gc0599'] ), 'GC removed an active payload' );
 echo "PASS catalog storage: overlapping reader/writer, lease reuse, deferred GC and 600-live-page progress\n";
+
+// Capacity must include crash drafts absent from the published directory, and
+// failed publication must neither leak new options nor replace existing state.
+$before_directory = $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY];
+$crash = 'mad4b_ct2_' . ( time() - 7200 ) . '_zz-crash-capacity';
+$GLOBALS['options'][$crash] = str_repeat( 'x', 1048576 ); $GLOBALS['capacity'] = 1048576;
+$before_names = array_keys( $GLOBALS['options'] );
+$writer = new MAD4B_SCP_Catalog_Object_Store(); $writer->put( 'must-not-publish', 'new', 3600 );
+try { $writer->flush(); throw new RuntimeException( 'Capacity overflow was accepted' ); }
+catch ( RuntimeException $error ) { check( 'catalog_storage_capacity_exhausted' === $error->getMessage(), 'Unexpected capacity failure' ); }
+check( $before_names === array_keys( $GLOBALS['options'] ), 'Failed capacity publication leaked drafts' );
+check( $before_directory === $GLOBALS['options'][MAD4B_SCP_Catalog_Object_Store::DIRECTORY], 'Capacity failure published partial state' );
+MAD4B_SCP_Catalog_Object_Store::collect_expired();
+check( ! isset( $GLOBALS['options'][$crash] ), 'Overflow prevented GC from recovering crash drafts' );
+unset( $GLOBALS['capacity'] );
+echo "PASS physical capacity: crash drafts counted, failed publication atomic and GC recovery allowed\n";

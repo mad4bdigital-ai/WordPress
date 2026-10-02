@@ -51,3 +51,11 @@ $wire_error = MAD4B_SCP_Ability_Catalog_Transport::mcp_result( new WP_Error( 'ma
 $envelope = json_decode( $wire_error->get_error_message(), true );
 if ( 410 !== $envelope['status'] || isset( $envelope['private'] ) ) throw new RuntimeException( 'Bounded MCP error contract lost status or exposed data' );
 echo "PASS projection lifecycle: identity-free registration, guarded execution and bounded Adapter error envelope\n";
+
+$protected_tool = new class( $GLOBALS['abilities'][$name] ) {
+ protected $ability;
+ function __construct( $ability ) { $this->ability = $ability; }
+};
+$callbacks = MAD4B_SCP_ChatGPT_Tool_Projection::callback_identity( $protected_tool );
+if ( ! is_array( $callbacks ) || 2 !== count( $callbacks ) || ! is_callable( $callbacks[0] ) || ! is_callable( $callbacks[1] ) ) throw new RuntimeException( 'Protected callback identity unavailable on supported PHP' );
+echo "PASS protected reflection: Adapter Ability and callbacks accessible on PHP 7.4+\n";

@@ -42,7 +42,7 @@ for (const advertiseLength of [false, true]) {
     return new Response(new ReadableStream({start(stream) {stream.enqueue(new Uint8Array(bytes.length + 1));}, cancel() {cancelled = true;}}), {headers: {...headers, ...(advertiseLength ? {'Content-Length': String(bytes.length + 1)} : {})}});
   }});
   await assert.rejects(oversized.readSchema(catalog, abilityName), /memory budget/);
-  if (!advertiseLength) assert.equal(cancelled, true);
+  assert.equal(cancelled, true);
 }
 let executions = 0, state = 'requires_dynamic_projection', preparations = 0;
 const execution = createAbilityCatalogClient({...options, callTool: async () => {executions++;}, fetchImpl: async url => {

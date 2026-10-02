@@ -137,6 +137,10 @@ try {
     }
 
     $read_session = $initialize( $read );
+    $expired = $call( $read, $read_session, 'mad4b-chatgpt-tool-projection-discover', array( 'transport_action' => 'schema', 'snapshot' => str_repeat( 'f', 64 ), 'schema_sha256' => $descriptor['sha256'] ) );
+    $error_text = $expired['result']['content'][0]['text'] ?? '';
+    $error_envelope = json_decode( $error_text, true );
+    if ( empty( $expired['result']['isError'] ) || 410 !== ( $error_envelope['status'] ?? null ) || 'mad4b.catalog-error.v1' !== ( $error_envelope['contract'] ?? '' ) ) $fail( 'Pinned Adapter lost catalog expiry status on the wire.' );
     list( $response, $catalog ) = $dispatch( $read, 'tools/list', array(), $read_session );
     $names = array_column( $catalog['result']['tools'] ?? array(), 'name' );
     if ( ! in_array( 'mad4b-diagnostics-health', $names, true ) || in_array( 'mad4b-ci-unsafe-write-projection-fixture', $names, true ) ) $fail( 'Read catalog did not enforce dynamic classification.' );
