@@ -59,6 +59,20 @@ if ( 'mad4b/read-execute' !== ( $item['execution']['dispatch_tool'] ?? '' ) ) $f
 if ( empty( $item['input_schema_sha256'] ) || ! hash_equals( (string) $item['input_schema_sha256'], (string) ( $item['execution']['expected_input_schema_sha256'] ?? '' ) ) ) $fail( 'Read dispatcher did not receive the exact prepared input schema pin.', $item );
 if ( empty( $item['schema_sha256'] ) || empty( $item['snapshot'] ) || ! isset( $item['schema']->inputSchema ) ) $fail( 'Lazy schema preparation did not return an inline exact schema.', $item );
 $digest = (string) $item['schema_sha256'];
+if ( ! empty( $item['wire']['sha256'] ) ) {
+	$wire_schema = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
+		'action' => 'schema',
+		'ability_name' => 'mad4b/diagnostics-health',
+		'schema_format' => 'wire',
+	), 'rest' );
+	if (
+		is_wp_error( $wire_schema )
+		|| 'wire' !== ( $wire_schema['schema_format'] ?? '' )
+		|| ! hash_equals( (string) $item['wire']['sha256'], (string) ( $wire_schema['schema_sha256'] ?? '' ) )
+	) {
+		$fail( 'Ability-name wire schema resolution used the wrong schema identity.', $wire_schema );
+	}
+}
 
 $cached = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
 	'action' => 'prepare',
