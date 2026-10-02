@@ -38,6 +38,10 @@ for forbidden in ["describe_ability(", "get_input_schema(", "get_output_schema("
 for marker in ["bounded_metadata_only_relevance", "preparation_required", "schema_loaded", "authority_decision_deferred"]:
     assert marker in search_section, f'metadata-only search invariant missing: {marker}'
 
+schema_section = gateway.split("private static function schema_transport", 1)[1]
+for marker in ["schema_format", "'wire' === $format", "$prepared['item']['wire']", "$prepared['item']['source']", "mad4b_capability_gateway_schema_format_unavailable"]:
+    assert marker in schema_section, f'format-aware schema resolution invariant missing: {marker}'
+
 assert "public static function prepare_ability" in catalog, 'single-Ability lazy schema preparation is missing'
 for marker in ["subject_fingerprint", "issuer_fingerprint", "client_fingerprint", "token_scopes"]:
     assert marker in catalog, f'catalog scope is not identity-bound: {marker}'
