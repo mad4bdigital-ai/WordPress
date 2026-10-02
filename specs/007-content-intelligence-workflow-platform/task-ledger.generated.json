@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "5a52ce6fee3d10313b5b68817156046f2f6777aa",
+  "source_tasks_git_blob_sha": "bf19977af36fe3b952c4eba2210e87ea57674a68",
   "override_git_blob_sha": "064155f95604092f93677b47203063b68354c736",
   "classification_policy": {
     "default_unchecked": "OPEN",
@@ -11,20 +11,20 @@
   "counts": {
     "DEFERRED": 2,
     "DONE": 42,
-    "OPEN": 619,
+    "OPEN": 644,
     "PARTIAL": 65
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
       "DONE": 35,
-      "OPEN": 482,
+      "OPEN": 503,
       "PARTIAL": 43
     },
     "P1": {
       "DEFERRED": 0,
       "DONE": 6,
-      "OPEN": 115,
+      "OPEN": 119,
       "PARTIAL": 21
     },
     "P2": {
@@ -34,7 +34,7 @@
       "PARTIAL": 1
     }
   },
-  "task_count": 728,
+  "task_count": 753,
   "tasks": [
     {
       "task_id": "T0001",
@@ -7676,6 +7676,256 @@
       "phase": 37,
       "priority": "P0",
       "summary": "GATE Phase 37 must map into existing quality/traceability families and must not authorize Production, Breakglass, generic shell/raw SQL, or any new authority by documentation alone.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3771",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Define a RequestScopeContract for static/runtime caches across REST, MCP, WP-CLI, cron, blog switches, user switches and authoritative profile/policy/projection mutations; every cache must declare lifetime and invalidation owner.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3772",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Add long-lived-worker fixtures with sequential requests for different sites/users/environments proving no static cache, identity, authority, descriptor, policy or projection state leaks across request boundaries.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3773",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Define an authoritative database-topology profile for governance writes/claims/journals/commit guards/readback; governed mutation state must use read-your-writes semantics and must detect or deny unsafe read-replica routing.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3774",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Define deadlock, lock-wait-timeout, connection-loss and transaction-abort semantics for approval claims, operation journal appends and durable execution; ambiguous persistence becomes reconciliation-required and never blind-retried.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3775",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "GATE Prove final execution admission cannot be bypassed by WordPress hook/filter priority, registration order or a later/same-priority extension mutating projected tool metadata or call arguments.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3776",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Add reentrancy/recursive-dispatch protection so nested Ability calls cannot reuse/rebind approval, preparation, context, idempotency or execution evidence from a parent call without an explicit governed child operation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3777",
+      "phase": 37,
+      "priority": "P1",
+      "summary": "Certify a compatibility/conflict matrix for persistent object cache, HyperDB/read replicas, security/firewall plugins, maintenance mode, WP-CLI and cron so unsupported infrastructure fails closed with stable reason codes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3778",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Add database/site clone fixtures proving copied Site Profile, OAuth state, approvals, grants, projections and durable execution evidence are quarantined on foreign origin/environment and require explicit re-enrollment/rebinding.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3779",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Define same-origin backup-restore time-travel detection: restoring an older database snapshot must not silently resurrect consumed approvals, revoked credentials, stale grants, completed idempotency claims or pre-restore projection authority assumptions.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3780",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Define a monotonic RestoreEpoch/AuthorityEpoch anchored outside rollback-prone application state, or an equivalent independently verifiable mechanism, and bind it to security-sensitive persisted evidence that could otherwise replay after restore.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3781",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "GATE Rehearse restore of a snapshot containing previously valid but now consumed/revoked approval/token/idempotency records and prove post-restore replay is denied until governed reconciliation/re-enrollment completes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3782",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Define subject lifecycle invalidation for user deletion, role/capability demotion, Site Profile unenrollment, ChatGPT App remapping and authority/key revocation; active sessions/tokens/receipts remain non-authorizing and next admission/commit revalidates live subject state.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3783",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "GATE Approve an operation, then demote/delete the subject or alter its enrolled mapping before provider entry/commit; execution must fail closed without consuming a successful terminal receipt.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3784",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Define persisted contract/schema version compatibility for profiles, approvals, receipts, journal rows, catalog objects and execution records: unknown/newer versions fail closed and downgrade never silently reinterprets newer security fields.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3785",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Add rolling-deploy N/N-1 worker compatibility tests across PHP workers for schema, receipts, policy/config generations, catalog state and durable records; mixed workers cannot widen authority or corrupt evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3786",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Define upgrade rollback/downgrade semantics with explicit durable-identity preservation or invalidation; rollback may not resurrect an older interpretation of a newer approval/receipt/authority record.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3787",
+      "phase": 37,
+      "priority": "P1",
+      "summary": "Prove stale long-lived workers/processes loaded before plugin/package update cannot commit after runtime/code generation changes; they must observe a generation fence or terminate/reload before governed mutation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3788",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Define a mutation crash-point table covering intent persistence, approval claim, provider entry, provider return, readback, audit/journal append, durable receipt and terminal state; every boundary maps to exactly one conservative recovery state.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3789",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "GATE Inject audit/journal/receipt database failure, read-only filesystem, disk-full/quota exhaustion and evidence-store unavailability before/after provider side effects; terminal success is forbidden unless required durable evidence is committed.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3790",
+      "phase": 37,
+      "priority": "P1",
+      "summary": "Preserve evidence hash-chain/trust references through archival, tiering, export/import, retention and legal-hold workflows; moving evidence cannot weaken verification or recreate authority.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3791",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Define bounded evidence truncation semantics: oversized provider/error metadata may be summarized/redacted, but mandatory reason codes, digests, target identity and reconciliation pointers can never be silently dropped.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3792",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Add fatal-error/OOM/process-kill fixtures around provider entry and evidence persistence; recovery must distinguish not-started, possible-side-effect and committed-with-missing-receipt without inferring success.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3793",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "Define cancellation propagation across queue/worker/provider boundaries; cancellation after possible side effect becomes RECONCILING/UNKNOWN until postcondition proof, never a simple cancelled terminal state.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3794",
+      "phase": 37,
+      "priority": "P1",
+      "summary": "Certify chunked/schema/catalog transport reassembly against missing, duplicate, reordered and mixed-generation chunks with content digests, bounded decompression and payload/ratio limits.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3795",
+      "phase": 37,
+      "priority": "P0",
+      "summary": "GATE Execute a cross-fault matrix covering long-lived worker cache leakage, read-replica lag, DB deadlock/loss, hook-order interference, clone/restore time-travel, subject revocation, evidence-store exhaustion, fatal interruption and post-side-effect cancellation before Capability Fabric completeness can be declared.",
       "status": "OPEN",
       "checked": false,
       "evidence_refs": [],

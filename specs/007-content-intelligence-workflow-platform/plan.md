@@ -848,11 +848,16 @@ Workstreams:
 10. Cryptographic agility, time/clock policy, replay semantics, Unicode canonicalization, abuse-rate limits and egress TLS/DNS policy.
 11. Maintainability/change slicing, dependency-direction enforcement, stable reason codes and configuration-generation governance.
 12. A terminal completeness audit proving every dimension has ownership, fail-closed interim semantics and evidence.
+13. Request-scope and database consistency: cache lifetimes, long-lived workers, authoritative DB routing, deadlocks and hook/reentrancy interference.
+14. Clone/restore security lifecycle: foreign-clone quarantine, rollback time-travel protection and subject/user revocation propagation.
+15. Mixed-runtime evolution: persisted-contract versioning, N/N-1 workers, rollback/downgrade and stale-process generation fencing.
+16. Evidence infrastructure failure: crash-point ordering, storage exhaustion, archival verification and fatal interruption semantics.
+17. Cancellation/transport integrity: post-side-effect cancellation, chunk-generation integrity and a terminal cross-fault matrix.
 
 Exit gates:
 - CAPABILITY_FABRIC_DIMENSION_OWNERSHIP=PASS
 - CAPABILITY_FABRIC_NO_UNTRIAGED_P0_P1=PASS
 - CAPABILITY_FABRIC_NO_AUTHORITY_WIDENING=PASS
 
-Phase 37 is complete only when T3768–T3770 pass. Documentation alone cannot satisfy runtime/security/live gates.
+Phase 37 is complete only when T3768–T3770 and T3795 pass. T3768–T3770 establish ownership/traceability/non-authorizing semantics; T3795 supplies the cross-fault runtime closure gate. Documentation alone cannot satisfy runtime/security/live gates.
 

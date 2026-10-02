@@ -54,7 +54,7 @@ required = [
     "contracts/ai-eval-integrity.md","contracts/runtime-profile-compatibility.md",
     "contracts/offline-authorization-window.md","contracts/audit-telemetry-retention.md",
     "contracts/data-flow-policy.md","contracts/formal-model-critical-state.md",
-    "contracts/architecture-freeze.md",
+    "contracts/architecture-freeze.md","contracts/capability-fabric-post-merge-completeness.md",
     "references/host-provider-validation-profile.md",
     "contracts/bulk-runtime-closure-hardening.md","bulk-closure-hardening.json",
 ]
@@ -75,6 +75,15 @@ if feature_path.exists():
     for k, v in expected.items():
         if data.get(k) != v:
             errors.append(f"feature_field:{k}:expected={v!r}:got={data.get(k)!r}")
+    capfab_expected = {
+        "post_merge_capability_fabric_closure_ledger": "post-merge-capability-fabric-closure.json",
+        "post_merge_capability_fabric_contract": "mad4b.capability-fabric-post-merge-completeness.v1",
+        "post_merge_capability_fabric_contract_document": "contracts/capability-fabric-post-merge-completeness.md",
+        "post_merge_capability_fabric_completeness_claim": "NOT_YET_PROVEN",
+    }
+    for k, v in capfab_expected.items():
+        if data.get(k) != v:
+            errors.append(f"feature_capability_fabric_field:{k}:expected={v!r}:got={data.get(k)!r}")
     for key in ["baseline_head_at_creation","last_reviewed_master_parent_sha"]:
         val=data.get(key)
         if not isinstance(val,str) or not re.fullmatch(r"[0-9a-f]{40}", val):
@@ -290,7 +299,7 @@ if trace.exists():
         "POLICY","ATTEST","BOOT","INTENT","STORE","RECOMP","PVERIFY","RIGHTS","AIDATA","OPS","CONF",
         "FAIR","LOC","EVALREG","EXP","USAGE","PORT","BASESYNC","ROOT","STATE","FENCE","COMMIT",
         "LIVENESS","TRAIT","PRIVHASH","PUBFP","AIINT","PROFILE","OFFLINE","AUDITSEP","DATAFLOW",
-        "FORMAL","FREEZE","TOOL","CLI","RUNNER","HOSTPROF","REPOGOV","BACKUP","CLOSURE"
+        "FORMAL","FREEZE","TOOL","CLI","RUNNER","HOSTPROF","REPOGOV","BACKUP","CLOSURE","CAPFAB"
     ]
     for family in families:
         if f"| {family} |" not in t:
@@ -487,6 +496,50 @@ if audit_path.exists():
         if task_id not in audit_txt:
             errors.append(f"capability_fabric_audit:task_missing:{task_id}")
 
+capfab_contract_path=require_file("contracts/capability-fabric-post-merge-completeness.md")
+if capfab_contract_path.exists():
+    contract_txt=capfab_contract_path.read_text(encoding="utf-8")
+    for phrase in ["mad4b.capability-fabric-post-merge-completeness.v1","Every Phase 37 task belongs to exactly one closure workstream","Production activation","Restore/time-travel protection","T3795"]:
+        if phrase not in contract_txt:
+            errors.append(f"capability_fabric_contract:missing:{phrase}")
+
+capfab_path=require_file("post-merge-capability-fabric-closure.json")
+if capfab_path.exists() and tasks_path.exists():
+    capfab=json.loads(capfab_path.read_text(encoding="utf-8"))
+    if capfab.get("contract") != "mad4b.capability-fabric-post-merge-closure.v1": errors.append("capability_fabric_closure:contract_mismatch")
+    if capfab.get("phase") != 37: errors.append("capability_fabric_closure:phase_mismatch")
+    for key in ["production_authorized","breakglass_widened","generic_shell_authorized","generic_raw_sql_authorized"]:
+        if capfab.get(key) is not False: errors.append(f"capability_fabric_closure:must_remain_false:{key}")
+    if capfab.get("critical_kernel_terminal_gate_unchanged") is not True or capfab.get("critical_kernel_terminal_gate") != "critical_kernel_vertical_slice_verified": errors.append("capability_fabric_closure:critical_kernel_gate_changed")
+    if capfab.get("completeness_claim") != "NOT_YET_PROVEN": errors.append("capability_fabric_closure:premature_completeness_claim")
+    phase37_ids=set(re.findall(r"^- \[[ x]\] (T37\d{2}) P\d ", task_txt, flags=re.MULTILINE))
+    rows=capfab.get("workstreams",[])
+    workstream_ids=[r.get("id") for r in rows if isinstance(r,dict)]
+    if not rows or None in workstream_ids or len(workstream_ids) != len(set(workstream_ids)): errors.append("capability_fabric_closure:workstream_ids_invalid")
+    mapped=[]
+    allowed_status=set(capfab.get("status_vocabulary",[]))
+    for row in rows:
+        if not isinstance(row,dict):
+            errors.append("capability_fabric_closure:workstream_not_object"); continue
+        tids=row.get("task_ids",[])
+        if not isinstance(tids,list) or not tids:
+            errors.append(f"capability_fabric_closure:task_ids_missing:{row.get('id')}"); continue
+        mapped.extend(tids)
+        if row.get("status") not in allowed_status: errors.append(f"capability_fabric_closure:invalid_status:{row.get('id')}:{row.get('status')}")
+        if not isinstance(row.get("quality_families",[]),list) or not row.get("quality_families"): errors.append(f"capability_fabric_closure:quality_family_missing:{row.get('id')}")
+        for field in ["interim_behavior","evidence_strategy"]:
+            if not isinstance(row.get(field),str) or not row.get(field).strip(): errors.append(f"capability_fabric_closure:{field}_missing:{row.get('id')}")
+        if not isinstance(row.get("dependencies",[]),list): errors.append(f"capability_fabric_closure:dependencies_invalid:{row.get('id')}")
+    if len(mapped) != len(set(mapped)): errors.append("capability_fabric_closure:task_mapped_more_than_once")
+    if set(mapped) != phase37_ids: errors.append("capability_fabric_closure:phase37_task_coverage_mismatch:" + ",".join(sorted(set(mapped) ^ phase37_ids)))
+    known_workstreams=set(workstream_ids)
+    for row in rows:
+        if isinstance(row,dict):
+            unknown=set(row.get("dependencies",[]))-known_workstreams
+            if unknown: errors.append(f"capability_fabric_closure:unknown_dependency:{row.get('id')}:{','.join(sorted(unknown))}")
+
+quality_path=require_file("quality-model.md")
+if quality_path.exists() and "Post-merge Capability Fabric completeness overlay" not in quality_path.read_text(encoding="utf-8"): errors.append("capability_fabric_closure:quality_overlay_missing")
 for rel in ["spec.md","plan.md","coverage-audit.md"]:
     p=require_file(rel)
     if p.exists() and "Production" not in p.read_text(encoding="utf-8"):

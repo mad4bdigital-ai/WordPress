@@ -239,5 +239,9 @@
   },
   "post_merge_capability_fabric_audit_document": "post-merge-capability-fabric-audit.md",
   "post_merge_capability_fabric_phase": 37,
-  "post_merge_capability_fabric_semantics": "post-merge backlog and completeness closure; non-authorizing"
+  "post_merge_capability_fabric_semantics": "post-merge backlog and completeness closure; non-authorizing",
+  "post_merge_capability_fabric_closure_ledger": "post-merge-capability-fabric-closure.json",
+  "post_merge_capability_fabric_contract": "mad4b.capability-fabric-post-merge-completeness.v1",
+  "post_merge_capability_fabric_contract_document": "contracts/capability-fabric-post-merge-completeness.md",
+  "post_merge_capability_fabric_completeness_claim": "NOT_YET_PROVEN"
 }

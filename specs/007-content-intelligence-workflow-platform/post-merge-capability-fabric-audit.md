@@ -43,6 +43,17 @@ Baseline:
 | Stable error/schema evolution | Reason codes exist across subsystems but need one client-facing registry/evolution policy. | T3766 |
 | Configuration generation/drift | Material configuration affects behavior; explicit generation binding prevents flags from becoming hidden authority. | T3767 |
 | Completeness closure | The backlog itself needs a machine-reviewable no-orphan/no-untriaged gate. | T3768–T3770 |
+| Request-scope cache lifetime | Several runtime classes keep static/request caches and some expose explicit reset methods; long-lived worker boundaries and mutation-triggered invalidation need one contract. | T3771–T3772 |
+| Authoritative DB topology | Approval claims and Operation Journal use transactional/CAS SQL, but managed WordPress may introduce read replicas or routing layers whose read-your-writes semantics are not yet a certified invariant. | T3773–T3774 |
+| Hook ordering and reentrancy | MCP projection uses a final filter guard, but plugin hook priority/order and nested dispatch need explicit bypass-resistant acceptance. | T3775–T3777 |
+| Clone/restore identity | Site Profile already quarantines foreign origin/environment, but full copied governance/OAuth/durable-state clone behavior lacks one replay-oriented fixture family. | T3778 |
+| Restore time-travel | Database rollback can theoretically resurrect consumed/revoked security records unless a monotonic restore/authority generation exists outside rollback-prone state. | T3779–T3781 |
+| Subject lifecycle revocation | Live authorization is strong, but user deletion/demotion/App remapping between approval and commit deserves direct lifecycle fixtures. | T3782–T3783 |
+| Persisted contract downgrade | Exact contracts exist across subsystems; mixed N/N-1 workers and downgrade interpretation of newer persisted security fields need explicit fail-closed rules. | T3784–T3787 |
+| Evidence commit ordering | Durable journal/receipt primitives exist, but a complete provider-side-effect versus evidence-persistence crash table is not yet one normative artifact. | T3788–T3792 |
+| Cancellation after side effect | Generic cancellation race coverage exists, but provider-entered cancellation must be explicitly normalized to reconciliation rather than a false cancelled terminal outcome. | T3793 |
+| Chunk/reassembly integrity | Catalog/schema transport is chunked and content-addressed; mixed-generation/out-of-order/missing chunk and decompression-abuse behavior needs explicit certification. | T3794 |
+| Cross-fault closure | Individual fault tests are strong; a composed infrastructure/runtime cross-fault gate is needed before claiming long-term Capability Fabric completeness. | T3795 |
 
 ## Existing Spec Kit tasks intentionally reused rather than duplicated
 
@@ -59,6 +70,8 @@ Phase 37 refines rather than replaces existing coverage, especially:
 `CAPABILITY_FABRIC_DIMENSION_OWNERSHIP=PASS` requires every row above to have explicit task ownership and fail-closed interim behavior.
 
 `CAPABILITY_FABRIC_NO_UNTRIAGED_P0_P1=PASS` requires no P0/P1 dimension to exist only as prose or implicit design knowledge.
+
+`CAPABILITY_FABRIC_CROSS_FAULT_CLOSURE=PASS` additionally requires T3795 to prove composed failure behavior across request scope, DB topology, hook ordering, restore time-travel, subject revocation, evidence exhaustion, fatal interruption and cancellation.
 
 `CAPABILITY_FABRIC_NO_AUTHORITY_WIDENING=PASS` requires all Phase 37 work to preserve:
 - descriptor/projection/telemetry/routing are non-authorizing;

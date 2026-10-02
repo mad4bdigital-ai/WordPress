@@ -836,3 +836,37 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3769 P0 GATE No P0/P1 dimension may remain untriaged; any OPEN item must have explicit priority, dependencies and fail-closed interim behavior.
 - [ ] T3770 P0 GATE Phase 37 must map into existing quality/traceability families and must not authorize Production, Breakglass, generic shell/raw SQL, or any new authority by documentation alone.
 
+### 37M — Request scope, database consistency and extension interference
+- [ ] T3771 P0 Define a RequestScopeContract for static/runtime caches across REST, MCP, WP-CLI, cron, blog switches, user switches and authoritative profile/policy/projection mutations; every cache must declare lifetime and invalidation owner.
+- [ ] T3772 P0 Add long-lived-worker fixtures with sequential requests for different sites/users/environments proving no static cache, identity, authority, descriptor, policy or projection state leaks across request boundaries.
+- [ ] T3773 P0 Define an authoritative database-topology profile for governance writes/claims/journals/commit guards/readback; governed mutation state must use read-your-writes semantics and must detect or deny unsafe read-replica routing.
+- [ ] T3774 P0 Define deadlock, lock-wait-timeout, connection-loss and transaction-abort semantics for approval claims, operation journal appends and durable execution; ambiguous persistence becomes reconciliation-required and never blind-retried.
+- [ ] T3775 P0 GATE Prove final execution admission cannot be bypassed by WordPress hook/filter priority, registration order or a later/same-priority extension mutating projected tool metadata or call arguments.
+- [ ] T3776 P0 Add reentrancy/recursive-dispatch protection so nested Ability calls cannot reuse/rebind approval, preparation, context, idempotency or execution evidence from a parent call without an explicit governed child operation.
+- [ ] T3777 P1 Certify a compatibility/conflict matrix for persistent object cache, HyperDB/read replicas, security/firewall plugins, maintenance mode, WP-CLI and cron so unsupported infrastructure fails closed with stable reason codes.
+
+### 37N — Clone, restore time-travel and subject lifecycle
+- [ ] T3778 P0 Add database/site clone fixtures proving copied Site Profile, OAuth state, approvals, grants, projections and durable execution evidence are quarantined on foreign origin/environment and require explicit re-enrollment/rebinding.
+- [ ] T3779 P0 Define same-origin backup-restore time-travel detection: restoring an older database snapshot must not silently resurrect consumed approvals, revoked credentials, stale grants, completed idempotency claims or pre-restore projection authority assumptions.
+- [ ] T3780 P0 Define a monotonic RestoreEpoch/AuthorityEpoch anchored outside rollback-prone application state, or an equivalent independently verifiable mechanism, and bind it to security-sensitive persisted evidence that could otherwise replay after restore.
+- [ ] T3781 P0 GATE Rehearse restore of a snapshot containing previously valid but now consumed/revoked approval/token/idempotency records and prove post-restore replay is denied until governed reconciliation/re-enrollment completes.
+- [ ] T3782 P0 Define subject lifecycle invalidation for user deletion, role/capability demotion, Site Profile unenrollment, ChatGPT App remapping and authority/key revocation; active sessions/tokens/receipts remain non-authorizing and next admission/commit revalidates live subject state.
+- [ ] T3783 P0 GATE Approve an operation, then demote/delete the subject or alter its enrolled mapping before provider entry/commit; execution must fail closed without consuming a successful terminal receipt.
+
+### 37O — Persisted contract evolution and mixed-runtime safety
+- [ ] T3784 P0 Define persisted contract/schema version compatibility for profiles, approvals, receipts, journal rows, catalog objects and execution records: unknown/newer versions fail closed and downgrade never silently reinterprets newer security fields.
+- [ ] T3785 P0 Add rolling-deploy N/N-1 worker compatibility tests across PHP workers for schema, receipts, policy/config generations, catalog state and durable records; mixed workers cannot widen authority or corrupt evidence.
+- [ ] T3786 P0 Define upgrade rollback/downgrade semantics with explicit durable-identity preservation or invalidation; rollback may not resurrect an older interpretation of a newer approval/receipt/authority record.
+- [ ] T3787 P1 Prove stale long-lived workers/processes loaded before plugin/package update cannot commit after runtime/code generation changes; they must observe a generation fence or terminate/reload before governed mutation.
+
+### 37P — Evidence commit ordering and infrastructure exhaustion
+- [ ] T3788 P0 Define a mutation crash-point table covering intent persistence, approval claim, provider entry, provider return, readback, audit/journal append, durable receipt and terminal state; every boundary maps to exactly one conservative recovery state.
+- [ ] T3789 P0 GATE Inject audit/journal/receipt database failure, read-only filesystem, disk-full/quota exhaustion and evidence-store unavailability before/after provider side effects; terminal success is forbidden unless required durable evidence is committed.
+- [ ] T3790 P1 Preserve evidence hash-chain/trust references through archival, tiering, export/import, retention and legal-hold workflows; moving evidence cannot weaken verification or recreate authority.
+- [ ] T3791 P0 Define bounded evidence truncation semantics: oversized provider/error metadata may be summarized/redacted, but mandatory reason codes, digests, target identity and reconciliation pointers can never be silently dropped.
+- [ ] T3792 P0 Add fatal-error/OOM/process-kill fixtures around provider entry and evidence persistence; recovery must distinguish not-started, possible-side-effect and committed-with-missing-receipt without inferring success.
+
+### 37Q — Cancellation, transport integrity and cross-fault closure
+- [ ] T3793 P0 Define cancellation propagation across queue/worker/provider boundaries; cancellation after possible side effect becomes RECONCILING/UNKNOWN until postcondition proof, never a simple cancelled terminal state.
+- [ ] T3794 P1 Certify chunked/schema/catalog transport reassembly against missing, duplicate, reordered and mixed-generation chunks with content digests, bounded decompression and payload/ratio limits.
+- [ ] T3795 P0 GATE Execute a cross-fault matrix covering long-lived worker cache leakage, read-replica lag, DB deadlock/loss, hook-order interference, clone/restore time-travel, subject revocation, evidence-store exhaustion, fatal interruption and post-side-effect cancellation before Capability Fabric completeness can be declared.
