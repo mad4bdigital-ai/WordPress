@@ -816,7 +816,16 @@ final class MAD4B_SCP_Abilities {
 		}
 		if ( is_array( $dispatch_input ) ) {
 			foreach ( array( '_mad4b_approval_ticket_id', '_mad4b_context_receipt' ) as $key ) {
-				if ( array_key_exists( $key, $dispatch_input ) ) $envelope[ $key ] = $dispatch_input[ $key ];
+				if ( ! array_key_exists( $key, $dispatch_input ) ) continue;
+				if ( array_key_exists( $key, $envelope ) ) {
+					$captured_hash = $this->governance_envelope_hash( $envelope[ $key ] );
+					$execute_hash = $this->governance_envelope_hash( $dispatch_input[ $key ] );
+					if ( '' === $captured_hash || '' === $execute_hash || ! hash_equals( $captured_hash, $execute_hash ) ) {
+						return new WP_Error( 'mad4b_write_dispatch_governance_envelope_rebind_conflict', 'Governance metadata changed between dispatcher permission admission and target execution.' );
+					}
+					continue;
+				}
+				$envelope[ $key ] = $dispatch_input[ $key ];
 			}
 		}
 		if ( empty( $envelope ) ) return $target_input;
