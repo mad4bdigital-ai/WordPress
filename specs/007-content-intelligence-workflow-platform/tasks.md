@@ -839,11 +839,11 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 ### 37M — Request scope, database consistency and extension interference
 - [x] T3771 P0 Define a RequestScopeContract for static/runtime caches across REST, MCP, WP-CLI, cron, blog switches, user switches and authoritative profile/policy/projection mutations; every cache must declare lifetime and invalidation owner.
 - [x] T3772 P0 Add long-lived-worker fixtures with sequential requests for different sites/users/environments proving no static cache, identity, authority, descriptor, policy or projection state leaks across request boundaries.
-- [ ] T3773 P0 Define an authoritative database-topology profile for governance writes/claims/journals/commit guards/readback; governed mutation state must use read-your-writes semantics and must detect or deny unsafe read-replica routing.
-- [ ] T3774 P0 Define deadlock, lock-wait-timeout, connection-loss and transaction-abort semantics for approval claims, operation journal appends and durable execution; ambiguous persistence becomes reconciliation-required and never blind-retried.
-- [ ] T3775 P0 GATE Prove final execution admission cannot be bypassed by WordPress hook/filter priority, registration order or a later/same-priority extension mutating projected tool metadata or call arguments.
-- [ ] T3776 P0 Add reentrancy/recursive-dispatch protection so nested Ability calls cannot reuse/rebind approval, preparation, context, idempotency or execution evidence from a parent call without an explicit governed child operation.
-- [ ] T3777 P1 Certify a compatibility/conflict matrix for persistent object cache, HyperDB/read replicas, security/firewall plugins, maintenance mode, WP-CLI and cron so unsupported infrastructure fails closed with stable reason codes.
+- [x] T3773 P0 Define an authoritative database-topology profile for governance writes/claims/journals/commit guards/readback; governed mutation state must use read-your-writes semantics and must detect or deny unsafe read-replica routing.
+- [x] T3774 P0 Define deadlock, lock-wait-timeout, connection-loss and transaction-abort semantics for approval claims, operation journal appends and durable execution; ambiguous persistence becomes reconciliation-required and never blind-retried.
+- [x] T3775 P0 GATE Prove final execution admission cannot be bypassed by WordPress hook/filter priority, registration order or a later/same-priority extension mutating projected tool metadata or call arguments.
+- [x] T3776 P0 Add reentrancy/recursive-dispatch protection so nested Ability calls cannot reuse/rebind approval, preparation, context, idempotency or execution evidence from a parent call without an explicit governed child operation.
+- [x] T3777 P1 Certify a compatibility/conflict matrix for persistent object cache, HyperDB/read replicas, security/firewall plugins, maintenance mode, WP-CLI and cron so unsupported infrastructure fails closed with stable reason codes.
 
 ### 37N — Clone, restore time-travel and subject lifecycle
 - [ ] T3778 P0 Add database/site clone fixtures proving copied Site Profile, OAuth state, approvals, grants, projections and durable execution evidence are quarantined on foreign origin/environment and require explicit re-enrollment/rebinding.

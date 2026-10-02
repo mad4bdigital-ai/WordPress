@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "2ac34afe8b60674b202f8a40daba5b43f7f50f8d",
-  "override_git_blob_sha": "a958fe8ee58d7d24a9a619ff6d2560cb6c2d0931",
+  "source_tasks_git_blob_sha": "539680eb3e00de1829a04986a15cde6ef7da3164",
+  "override_git_blob_sha": "7b671bb5988b9e86972221389fdbb72f5f72a0d4",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,21 +10,21 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 48,
-    "OPEN": 642,
+    "DONE": 53,
+    "OPEN": 637,
     "PARTIAL": 65
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 41,
-      "OPEN": 501,
+      "DONE": 45,
+      "OPEN": 497,
       "PARTIAL": 43
     },
     "P1": {
       "DEFERRED": 0,
-      "DONE": 6,
-      "OPEN": 119,
+      "DONE": 7,
+      "OPEN": 118,
       "PARTIAL": 21
     },
     "P2": {
@@ -7721,50 +7721,97 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Define an authoritative database-topology profile for governance writes/claims/journals/commit guards/readback; governed mutation state must use read-your-writes semantics and must detect or deny unsafe read-replica routing.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-topology.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-transaction-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/database-topology-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Authoritative database topology now proves same-writer CONNECTION_ID/server fingerprint, read_your_writes, read-only state and uncertified db.php-router denial. Governance storage/transaction admission binds that topology and all three certified WordPress/PHP/MySQL-MariaDB runtime jobs passed."
     },
     {
       "task_id": "T3774",
       "phase": 37,
       "priority": "P0",
       "summary": "Define deadlock, lock-wait-timeout, connection-loss and transaction-abort semantics for approval claims, operation journal appends and durable execution; ambiguous persistence becomes reconciliation-required and never blind-retried.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-failure-semantics.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/database-topology-runtime.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Deadlock, lock-wait timeout, connection loss and transaction-abort semantics are normalized across approval claims, journal and durable execution. Ambiguous persistence requires reconciliation, blind/automatic retry is forbidden, and the runtime matrix passed."
     },
     {
       "task_id": "T3775",
       "phase": 37,
       "priority": "P0",
       "summary": "GATE Prove final execution admission cannot be bypassed by WordPress hook/filter priority, registration order or a later/same-priority extension mutating projected tool metadata or call arguments.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-fixtures.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Final execution admission uses a one-time projected-call seal binding exact input, execution identity, structural pins and materialized tool/server identity. Late/same-priority filter argument/metadata mutation, stale callback identity and missing final wrapper are rejected in all certified runtime jobs."
     },
     {
       "task_id": "T3776",
       "phase": 37,
       "priority": "P0",
       "summary": "Add reentrancy/recursive-dispatch protection so nested Ability calls cannot reuse/rebind approval, preparation, context, idempotency or execution evidence from a parent call without an explicit governed child operation.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-execution-fence-recursion.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-fixtures.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Execution stack and one-time governed-child permits bind parent frame, exact child Ability/input and approval/preparation/context/idempotency evidence digests. Direct recursion, permit mismatch, evidence mutation and permit replay are denied; explicit governed child execution succeeds exactly once across the matrix."
     },
     {
       "task_id": "T3777",
       "phase": 37,
       "priority": "P1",
       "summary": "Certify a compatibility/conflict matrix for persistent object cache, HyperDB/read replicas, security/firewall plugins, maintenance mode, WP-CLI and cron so unsupported infrastructure fails closed with stable reason codes.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-compatibility-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-compatibility-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-compatibility-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-compatibility-profile-cron.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Compatibility profile now classifies persistent object cache, uncertified db.php/HyperDB-style routers, known security/firewall plugins, maintenance mode, WP-CLI and cron. Unsupported/conflicting infrastructure fails closed with stable blockers and the real runtime profile passed on all certified database/PHP jobs."
     },
     {
       "task_id": "T3778",

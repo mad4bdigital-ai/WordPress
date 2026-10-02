@@ -55,3 +55,24 @@ The runtime contract is `mad4b.request-scope-generation.v1`.
 - Site/environment/runtime-package identity changes are worker-lifetime boundaries and require recycle; they are never silently rebound in a stale process.
 - MCP/REST hook isolation is resettable only before request-local callbacks have been removed. Once hook topology was changed, cross-request reuse requires worker recycle rather than reconstructing unknown third-party hook state.
 - RequestScope receipts are evidence-only and non-authorizing. Cache reset can remove stale positive state; it cannot create grants, approvals, eligibility or Production/Breakglass authority.
+
+
+## DatabaseTopologyContract
+
+- Governed database mutation uses `mad4b.database-topology.v1` and requires a single certified writer/readback session with stable connection/server fingerprints.
+- Uncertified `db.php`/HyperDB-style routers, read-only writers or connection identity drift fail closed; no mutation assumes replica read-your-writes behavior.
+- Database failures use `mad4b.database-failure-semantics.v1`. Deadlock and lock timeout may require a fresh plan only after verified rollback; connection loss or ambiguous rollback/commit requires reconciliation before any retry.
+- `blind_retry_allowed=false` and `automatic_retry_allowed=false` are invariant for governed database writes.
+
+## FinalExecutionAdmissionContract
+
+- `mad4b.final-execution-admission.v1` is the last in-process callback wrapper for every registered Ability.
+- Projected direct execution additionally requires a one-time `mad4b.projected-call-seal.v1` minted by the final pre-tool admission and consumed by the final callback.
+- The seal binds exact input, runtime/site/request authority context, projection structural pins and materialized callback/server identity; late filters cannot mint or replay it.
+- Nested mutation requires exactly one `mad4b.governed-child-operation.v1` permit binding the parent frame, child Ability, exact child input and authority/idempotency evidence digest. Recursive mutation without that permit is denied.
+
+## RuntimeCompatibilityContract
+
+- `mad4b.runtime-compatibility-profile.v1` is non-authorizing and may only reduce mutation eligibility.
+- Persistent object cache behavior, database routers/read replicas, security/firewall plugins, maintenance mode, WP-CLI and cron contexts are explicitly classified.
+- Unsupported or uncertified infrastructure fails closed with stable reason codes; compatibility never creates OAuth, grant, approval, provider or Production authority.

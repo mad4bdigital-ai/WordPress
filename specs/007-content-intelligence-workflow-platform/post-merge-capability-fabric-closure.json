@@ -289,7 +289,7 @@
     },
     {
       "id": "request_scope_db_hooks",
-      "status": "PARTIAL",
+      "status": "DONE",
       "task_ids": [
         "T3771",
         "T3772",
@@ -309,15 +309,18 @@
         "canonical_capability_semantics"
       ],
       "interim_behavior": "Stale request/static/replica/hook state cannot authorize or commit; ambiguous DB outcomes reconcile.",
-      "evidence_strategy": "RequestScope and long-lived sequential-request isolation are exact-head certified across WordPress/PHP/MySQL/MariaDB. Replica topology, DB failure semantics, hook priority/reentrancy and infrastructure-profile tasks remain open.",
+      "evidence_strategy": "Closed: request-scope isolation, authoritative DB topology/read-your-writes, database failure semantics, final hook-order execution seal, recursive child-permit fencing and infrastructure compatibility profile all pass the certified PHP/MySQL/MariaDB runtime matrix.",
       "evidence_refs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php",
-        "workflow_run:36998811349",
-        "workflow_job:110811546225",
-        "workflow_job:110811546312",
-        "workflow_job:110811546391"
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-topology.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-failure-semantics.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-compatibility-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
       ]
     },
     {

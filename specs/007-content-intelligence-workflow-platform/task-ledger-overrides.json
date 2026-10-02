@@ -981,6 +981,78 @@
         "workflow_run:36996652203"
       ],
       "reason": "Portable savepoint probing, explicit nested/reentrant denial, ownership-token commit/rollback verification and MySQL 8/MariaDB 11.8 runtime fixtures prove MAD4B does not commit or roll back unrelated caller transactions."
+    },
+    "T3773": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-topology.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-transaction-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/database-topology-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Authoritative database topology now proves same-writer CONNECTION_ID/server fingerprint, read_your_writes, read-only state and uncertified db.php-router denial. Governance storage/transaction admission binds that topology and all three certified WordPress/PHP/MySQL-MariaDB runtime jobs passed."
+    },
+    "T3774": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-failure-semantics.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/database-topology-runtime.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Deadlock, lock-wait timeout, connection loss and transaction-abort semantics are normalized across approval claims, journal and durable execution. Ambiguous persistence requires reconciliation, blind/automatic retry is forbidden, and the runtime matrix passed."
+    },
+    "T3775": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-fixtures.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Final execution admission uses a one-time projected-call seal binding exact input, execution identity, structural pins and materialized tool/server identity. Late/same-priority filter argument/metadata mutation, stale callback identity and missing final wrapper are rejected in all certified runtime jobs."
+    },
+    "T3776": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-execution-fence-recursion.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-projection-fixtures.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Execution stack and one-time governed-child permits bind parent frame, exact child Ability/input and approval/preparation/context/idempotency evidence digests. Direct recursion, permit mismatch, evidence mutation and permit replay are denied; explicit governed child execution succeeds exactly once across the matrix."
+    },
+    "T3777": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-compatibility-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-compatibility-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-compatibility-profile-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-compatibility-profile-cron.php",
+        "workflow_run:37022167154",
+        "workflow_job:110887688410",
+        "workflow_job:110887688518",
+        "workflow_job:110887688583"
+      ],
+      "reason": "Compatibility profile now classifies persistent object cache, uncertified db.php/HyperDB-style routers, known security/firewall plugins, maintenance mode, WP-CLI and cron. Unsupported/conflicting infrastructure fails closed with stable blockers and the real runtime profile passed on all certified database/PHP jobs."
     }
   }
 }
