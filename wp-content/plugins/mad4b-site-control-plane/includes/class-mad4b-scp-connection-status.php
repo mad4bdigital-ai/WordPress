@@ -318,8 +318,9 @@ final class MAD4B_SCP_Connection_Status {
 		);
 	}
 
-	private static function server_status( $lightweight = false ) {
+	private static function server_status( $lightweight = false, $only_server_id = '' ) {
 		$ids = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::expected_server_ids() : array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
+		if ( '' !== $only_server_id ) $ids = in_array( $only_server_id, $ids, true ) ? array( $only_server_id ) : array();
 		$registration = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
 		if ( $lightweight ) {
 			$out = array();
@@ -330,7 +331,11 @@ final class MAD4B_SCP_Connection_Status {
 					: array( 'actual_registered' => ! empty( $row['registered'] ), 'identity_ready' => ! empty( $row['registered'] ), 'state' => ! empty( $row['registered'] ) ? 'registered' : 'not_ready', 'deep_registration_deferred' => false, 'blocking_registration_error' => isset( $row['error'] ) ? sanitize_key( (string) $row['error'] ) : '' );
 				$out[] = array(
 					'server_id' => $id,
-					'registered' => ! empty( $identity['actual_registered'] ),
+					'surface' => self::surface_label( $id ),
+					'route_namespace' => 'mcp',
+					'route' => '/' . $id,
+					'endpoint' => esc_url_raw( rest_url( 'mcp/' . $id ) ),
+					'registered' => ! empty( $identity['actual_registered'] ) ? true : ( ! empty( $identity['deep_registration_deferred'] ) ? null : false ),
 					'registration_identity_ready' => ! empty( $identity['identity_ready'] ),
 					'registration_state' => isset( $identity['state'] ) ? sanitize_key( (string) $identity['state'] ) : 'not_ready',
 					'registration_error' => isset( $identity['blocking_registration_error'] ) ? sanitize_key( (string) $identity['blocking_registration_error'] ) : '',
@@ -359,9 +364,12 @@ final class MAD4B_SCP_Connection_Status {
 		if ( class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ) {
 			try {
 				$adapter = \WP\MCP\Core\McpAdapter::instance();
-				if ( is_object( $adapter ) && method_exists( $adapter, 'get_servers' ) ) {
+				if ( '' !== $only_server_id && is_object( $adapter ) && method_exists( $adapter, 'get_server' ) ) {
+					$found = $adapter->get_server( $only_server_id );
+					if ( is_object( $found ) ) $adapter_servers[ $only_server_id ] = $found;
+				} elseif ( is_object( $adapter ) && method_exists( $adapter, 'get_servers' ) ) {
 					$found = $adapter->get_servers();
-					if ( is_array( $found ) ) foreach ( $found as $server ) if ( is_object( $server ) && method_exists( $server, 'get_server_id' ) ) $adapter_servers[ (string) $server->get_server_id() ] = $server;
+					if ( is_array( $found ) ) foreach ( array_slice( $found, 0, 100 ) as $server ) if ( is_object( $server ) && method_exists( $server, 'get_server_id' ) ) $adapter_servers[ (string) $server->get_server_id() ] = $server;
 				}
 			} catch ( Throwable $e ) { $adapter_servers = array(); }
 		}
@@ -372,19 +380,24 @@ final class MAD4B_SCP_Connection_Status {
 		$rest_materialized = is_object( $rest ) && method_exists( $rest, 'get_routes' );
 		try {
 			$routes = $rest_materialized ? $rest->get_routes() : array();
-		} catch ( Throwable $e ) { $routes = array(); }
-		if ( ! is_array( $routes ) ) $routes = array();
+		} catch ( Throwable $e ) { $routes = array(); $rest_materialized = false; }
+		if ( ! is_array( $routes ) ) { $routes = array(); $rest_materialized = false; }
 
 		$out = array();
 		foreach ( $ids as $id ) {
 			$server = isset( $adapter_servers[ $id ] ) ? $adapter_servers[ $id ] : null;
 			$namespace = 'mcp'; $route = '/' . $id; $permission = null; $server_version = '';
+			$observed_tool_count = null;
 			if ( is_object( $server ) ) {
 				try {
 					if ( method_exists( $server, 'get_server_route_namespace' ) ) $namespace = trim( (string) $server->get_server_route_namespace(), '/' );
 					if ( method_exists( $server, 'get_server_route' ) ) $route = '/' . ltrim( (string) $server->get_server_route(), '/' );
 					if ( method_exists( $server, 'get_transport_permission_callback' ) ) $permission = $server->get_transport_permission_callback();
 					if ( method_exists( $server, 'get_server_version' ) ) $server_version = (string) $server->get_server_version();
+					if ( '' !== $only_server_id && method_exists( $server, 'get_tools' ) ) {
+						$tools = $server->get_tools();
+						if ( is_array( $tools ) ) $observed_tool_count = count( $tools );
+					}
 				} catch ( Throwable $e ) { $permission = null; }
 			}
 			$full_route = '/' . trim( $namespace, '/' ) . $route;
@@ -406,10 +419,38 @@ final class MAD4B_SCP_Connection_Status {
 				'permission_callback' => self::callback_label( $permission ),
 				'permission_callback_match' => self::callbacks_equal( $permission, $expected_permission ),
 				'server_version' => $server_version,
+				'observed_tool_count' => $observed_tool_count,
 				'surface' => self::surface_label( $id ),
 			);
 		}
 		return $out;
+	}
+
+	/** Inspect only the completed job's endpoint; never run full connection certification. */
+	public static function endpoint_diagnostic( $server_id ) {
+		$servers = self::server_status( false, $server_id );
+		$server = $servers ? $servers[0] : array( 'server_id' => $server_id );
+		$registration = MAD4B_SCP_Servers::registration_status();
+		$row = isset( $registration[ $server_id ] ) && is_array( $registration[ $server_id ] ) ? $registration[ $server_id ] : array();
+		$server['catalog_materialized'] = ! empty( $row['materialized'] );
+		$server['tool_count'] = $server['observed_tool_count'] ?? null;
+		$server['catalog_tool_count'] = isset( $row['tool_count'] ) ? max( 0, (int) $row['tool_count'] ) : null;
+		$server['catalog_count_match'] = null === $server['tool_count'] || null === $server['catalog_tool_count'] ? null : $server['tool_count'] === $server['catalog_tool_count'];
+		$server['requested_tool_count'] = isset( $row['requested_tool_count'] ) ? max( 0, (int) $row['requested_tool_count'] ) : null;
+		$preflight = isset( $row['preflight'] ) && is_array( $row['preflight'] ) ? $row['preflight'] : array();
+		$failures = isset( $preflight['failures'] ) && is_array( $preflight['failures'] ) ? $preflight['failures'] : array();
+		$server['preflight_ready'] = $preflight ? ! empty( $preflight['ready'] ) : null;
+		$server['preflight_failure_count'] = count( $failures );
+		$server['preflight_failures'] = array();
+		foreach ( array_slice( $failures, 0, 12 ) as $failure ) {
+			if ( ! is_array( $failure ) ) continue;
+			$bounded = array();
+			foreach ( array( 'failing_ability', 'stage', 'error_class', 'error_code', 'source_schema_fingerprint', 'schema_fingerprint' ) as $key ) $bounded[ $key ] = isset( $failure[ $key ] ) && is_scalar( $failure[ $key ] ) ? substr( sanitize_text_field( (string) $failure[ $key ] ), 0, 160 ) : '';
+			$bounded['tool_bytes'] = isset( $failure['tool_bytes'] ) && is_numeric( $failure['tool_bytes'] ) ? max( 0, (int) $failure['tool_bytes'] ) : null;
+			$server['preflight_failures'][] = $bounded;
+		}
+		$server['local_endpoint_ready'] = true === ( $server['registered'] ?? null ) && true === ( $server['route_registered'] ?? null ) && true === ( $server['permission_callback_match'] ?? null ) && $server['catalog_materialized'] && true === $server['catalog_count_match'] && empty( $server['registration_error'] ) && ( 'mad4b-chatgpt' !== $server_id || true === ( $server['catalog_ready'] ?? null ) );
+		return $server;
 	}
 
 	private static function route_validation_deferred( array $servers ) {
@@ -427,7 +468,7 @@ final class MAD4B_SCP_Connection_Status {
 		$tools = ( ! $protocol_hotpath && class_exists( 'MAD4B_SCP_Servers' ) ) ? MAD4B_SCP_Servers::write_tools() : array();
 		return array(
 			'server_id' => 'mad4b-write',
-			'registered' => ! empty( $server['registered'] ),
+			'registered' => array_key_exists( 'registered', $server ) ? $server['registered'] : null,
 			'route_registered' => $protocol_hotpath ? null : ! empty( $server['route_registered'] ),
 			'permission_callback_match' => $protocol_hotpath ? null : ! empty( $server['permission_callback_match'] ),
 			'endpoint' => isset( $server['endpoint'] ) ? esc_url_raw( $server['endpoint'] ) : esc_url_raw( rest_url( 'mcp/mad4b-write' ) ),

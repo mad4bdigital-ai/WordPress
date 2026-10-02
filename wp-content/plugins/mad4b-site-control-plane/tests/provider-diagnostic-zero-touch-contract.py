@@ -12,6 +12,8 @@ plugin = (PLUGIN / "includes/class-mad4b-scp-plugin.php").read_text(encoding="ut
 servers = (PLUGIN / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 bootstrap = (PLUGIN / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 
+endpoint_worker = (PLUGIN / 'includes/class-mad4b-scp-endpoint-diagnostic.php').read_text(encoding='utf-8')
+
 assert "class-mad4b-scp-provider-diagnostic-policy.php" in bootstrap
 for token in (
     "passive_by_default",
@@ -39,9 +41,11 @@ assert "MAD4B_SCP_REST_Compatibility::status()" not in receipt
 assert "MAD4B_SCP_Provider_Diagnostic_Policy::rest_route_snapshot" in receipt
 
 prime = plugin.split("public static function prime_admin_mcp_runtime()", 1)[1].split("public static function governance_bootstrap_error_code", 1)[0]
-assert "MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed()" in prime
-assert prime.count("rest_get_server()") == 1
-assert "admin_connection_endpoints_prime" in prime
+assert "rest_get_server(" not in prime
+assert endpoint_worker.count("rest_get_server()") == 1
+assert endpoint_worker.index("wp_verify_nonce") < endpoint_worker.index("begin_endpoint_diagnostic") < endpoint_worker.index("rest_get_server()")
+for forbidden in ("rest_do_request(", "wp_remote_get(", "wp_remote_post("):
+    assert forbidden not in endpoint_worker, forbidden
 
 
 assert "explicit_deep_diagnostic_allowed" in policy

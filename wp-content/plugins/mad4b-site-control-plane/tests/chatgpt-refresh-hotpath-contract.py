@@ -83,32 +83,19 @@ assert "if ( 'mad4b-control-plane-connection' === $page ) return true;" in passi
 assert "current_admin_request_method_is_read_only()" in request_scope
 assert "array( 'GET', 'HEAD' )" in request_scope
 
-# Connection > Endpoints deep route materialization is a signed, read-only POST
-# diagnostic; ordinary GET/HEAD page loads remain passive.
+# Deep endpoint work is signed AJAX; GET and obsolete HTML POST stay passive.
 assert "public static function explicit_rest_materialization_allowed()" in provider_policy
-explicit_rest = provider_policy.split("public static function explicit_rest_materialization_allowed()", 1)[1].split("/**", 1)[0]
-for marker in (
-    "if ( 'POST' !== $method ) return false;",
-    "'mad4b-control-plane-connection' === $page",
-    "'endpoints' === $tab",
-    "'deep_endpoints' === $action",
-    "filter_input( INPUT_POST, 'mad4b_connection_action'",
-    "filter_input( INPUT_POST, 'mad4b_connection_nonce'",
-):
-    assert marker in explicit_rest, marker
+assert "MAD4B_SCP_Endpoint_Diagnostic::is_authorized_request()" in provider_policy
+endpoint_worker = (root / "includes/class-mad4b-scp-endpoint-diagnostic.php").read_text(encoding="utf-8")
+assert endpoint_worker.index("wp_verify_nonce") < endpoint_worker.index("begin_endpoint_diagnostic") < endpoint_worker.index("rest_get_server()")
 connection_ui = (root / "includes/class-mad4b-scp-connection-admin-ui.php").read_text(encoding="utf-8")
-assert "mad4b_connection_deep_endpoints" in connection_ui
-assert "wp_nonce_field( 'mad4b_connection_deep_endpoints', 'mad4b_connection_nonce' )" in connection_ui
-assert "filter_input( INPUT_POST, 'mad4b_connection_action'" in connection_ui
+assert "wp_create_nonce( 'mad4b_connection_deep_endpoints' )" in connection_ui
 assert "Run Deep Endpoint Diagnostic" in connection_ui
-assert "self::snapshot( $deep_endpoints )" in connection_ui
+assert "self::snapshot( false )" in connection_ui
 assert "$_POST" not in connection_ui
+assert "rest_get_server(" not in connection_ui
 prime = plugin.split("public static function prime_admin_mcp_runtime()", 1)[1].split("public static function governance_bootstrap_error_code()", 1)[0]
-assert "explicit_rest_materialization_allowed()" in prime
-assert "wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' )" in prime
-assert "$_POST" not in prime
-assert "filter_input( INPUT_POST, 'mad4b_connection_nonce'" in prime
-assert prime.index("wp_verify_nonce") < prime.index("rest_get_server();")
+assert "rest_get_server(" not in prime
 
 # Passive MAD4B admin is part of zero-touch policy, so Plugin::boot() returns
 # after navigation registration and before authority/OAuth/provider lifecycle.

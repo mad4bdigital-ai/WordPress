@@ -862,6 +862,10 @@ final class MAD4B_SCP_Servers {
 	 * hundreds of schemas for sibling servers during ChatGPT tools/list.
 	 */
 	private static function current_request_server_id() {
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) ) {
+			$diagnostic_target = MAD4B_SCP_MCP_Request_Scope::endpoint_diagnostic_server_id();
+			if ( in_array( $diagnostic_target, self::expected_server_ids(), true ) ) return $diagnostic_target;
+		}
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return '';
 
 		$route = '';

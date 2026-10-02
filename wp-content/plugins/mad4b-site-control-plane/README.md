@@ -6,6 +6,12 @@ Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime gen
 
 Current plugin version: **0.4.0-rc.88**.
 
+### Explicit endpoint diagnostics
+
+Connection > MCP Endpoints always renders the bounded snapshot. Deferred registration, route, permission and mounted write-tool measurements display **Not checked**, with the surface and endpoint URL still present. The diagnostic defaults to `mad4b-chatgpt`; selecting All endpoints runs signed administrator AJAX jobs serially, with only one MAD4B tool catalog materialized per request. On governed sites each job uses the same request-local REST isolation as the real MCP transport.
+
+The browser stops after 15 seconds, including response-body reads, and stops on gateway, authentication, malformed-result or build-change errors. Completed results remain visible; subsequent jobs and automatic retries are blocked. A browser deadline cannot terminate a PHP callback blocked inside a provider or MU plugin. Each completed job exposes bounded required-tool preflight failures and observed tool counts without executing a tool, creating credentials or granting authority. Endpoint inspection does not certify the external connection or clear foreign-transport governance blockers; those checks remain separate.
+
 ### rc.88 protocol bootstrap, recovery and live-acceptance hardening
 
 rc.88 moves unrelated REST and admin-AJAX traffic onto an entry-point zero-touch kernel before the full Control Plane class graph is loaded. Exact MAD4B MCP/OAuth requests keep WordPress REST defaults, MAD4B and the official MCP Adapter, but prune proven third-party plugin REST registrars request-locally with bounded callback/evidence limits and fail-open handling for unknown, Core or MU-plugin provenance. Compact ChatGPT/enrollment/Developer transports also avoid instantiating the full provider Adapter Registry.
@@ -14,7 +20,7 @@ Protocol and passive ChatGPT/Connection admin requests return through a reduced 
 
 Exact enrolled Staging sites with Write + managed-runtime enabled gain a governed WP-Cron recovery update lane that resolves only the signed immutable release channel, verifies the package, uses the shared maintenance lease, exact readback and rollback, and performs no persistence at all when the recovery lane is ineligible (including Production). The external ETG diagnostic now runs on master pushes and requires exact deployed runtime identity plus the existing 8-second hotpath ceilings; pull-request deployment drift remains diagnostic-only.
 
-The recovery cron exists only after rc.88 is loaded. The first upgrade from an older runtime that cannot serve MCP still uses the existing governed WordPress admin updater or an external one-time package deployment; subsequent governed Staging releases no longer depend on a healthy MCP transport for recovery.
+The recovery cron exists only after rc.88 is loaded. A runtime that already contains the candidate-drift bootstrap can use the governed WordPress admin updater even when MCP is unhealthy and prior governed-write authority is fail-closed solely because its exact candidate binding is stale. That bounded bootstrap is Staging-only, requires an exact enrolled profile plus a clean persisted grant/subject snapshot, rejects active continuation permits, Breakglass, Production, missing/stale/broad/duplicate/wildcard grants and any other authority blocker, and still verifies the immutable signed release, archive, maintenance lease, backup, exact readback and rollback. It performs no grant, subject, authority or candidate-binding mutation and creates no carry-forward continuation permit; after replacement, Runtime Convergence leaves authority binding owner-gated until the exact new candidate is explicitly rebound. A site already running a pre-fix build that is blocked before it can load this logic still requires one external/manual package deployment of a build containing the fix; the bootstrap prevents recurrence on subsequent governed Staging releases.
 
 ### rc.87 shared REST / MCP / passive-admin hotpath hardening
 
