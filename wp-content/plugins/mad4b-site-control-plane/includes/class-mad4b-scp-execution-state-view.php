@@ -56,6 +56,10 @@ final class MAD4B_SCP_Execution_State_View {
 		$lifecycle = isset( $status['lifecycle_state'] ) ? sanitize_key( (string) $status['lifecycle_state'] ) : '';
 		$outcome = isset( $status['terminal_outcome'] ) ? sanitize_key( (string) $status['terminal_outcome'] ) : '';
 		$orphan = ! empty( $status['orphan_candidate'] );
+		$stale_heartbeat = ! empty( $status['stale_heartbeat'] );
+		$lock_expired = ! empty( $status['lock_expired'] );
+		$hard_deadline_exceeded = ! empty( $status['hard_deadline_exceeded'] );
+		$hazard_signal = $stale_heartbeat || $lock_expired || $hard_deadline_exceeded;
 		$success_outcomes = array( 'committed', 'completed', 'success', 'succeeded', 'ok' );
 		$failure_outcomes = array( 'failed', 'error', 'blocked', 'cancelled', 'canceled', 'rejected', 'aborted' );
 		$state = self::UNKNOWN;
@@ -64,11 +68,11 @@ final class MAD4B_SCP_Execution_State_View {
 		$reason = 'unmapped_journal_state';
 		$confidence = 'conservative';
 
-		if ( $orphan ) {
+		if ( $orphan || $hazard_signal ) {
 			$state = self::RECONCILING;
 			$reconciliation = true;
-			$reason = 'journal_orphan_candidate';
-			$confidence = 'exact';
+			$reason = $orphan ? 'journal_orphan_candidate' : 'journal_hazard_signal_without_orphan';
+			$confidence = $orphan ? 'exact' : 'contradictory_evidence';
 		} elseif ( in_array( $lifecycle, array( 'planned', 'running' ), true ) && '' !== $outcome ) {
 			$state = self::RECONCILING;
 			$reconciliation = true;
@@ -124,9 +128,9 @@ final class MAD4B_SCP_Execution_State_View {
 				'operation_binding_sha256' => isset( $status['operation_binding_sha256'] ) ? (string) $status['operation_binding_sha256'] : '',
 				'latest_sequence' => isset( $status['latest_sequence'] ) ? (int) $status['latest_sequence'] : 0,
 				'journal_head_sha256' => isset( $status['journal_head_sha256'] ) ? (string) $status['journal_head_sha256'] : '',
-				'stale_heartbeat' => ! empty( $status['stale_heartbeat'] ),
-				'lock_expired' => ! empty( $status['lock_expired'] ),
-				'hard_deadline_exceeded' => ! empty( $status['hard_deadline_exceeded'] ),
+				'stale_heartbeat' => $stale_heartbeat,
+				'lock_expired' => $lock_expired,
+				'hard_deadline_exceeded' => $hard_deadline_exceeded,
 				'orphan_candidate' => $orphan,
 			)
 		);

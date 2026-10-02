@@ -57,12 +57,17 @@ $cases = array(
 	array( 'state' => 'future_state', 'outcome' => '', 'orphan' => false, 'expected' => 'UNKNOWN', 'terminal' => false, 'reconcile' => true ),
 	array( 'state' => 'running', 'outcome' => 'committed', 'orphan' => false, 'expected' => 'RECONCILING', 'terminal' => false, 'reconcile' => true ),
 	array( 'state' => 'terminal_failed', 'outcome' => 'committed', 'orphan' => false, 'expected' => 'RECONCILING', 'terminal' => false, 'reconcile' => true ),
+	array( 'state' => 'running', 'outcome' => '', 'orphan' => false, 'stale' => true, 'expected' => 'RECONCILING', 'terminal' => false, 'reconcile' => true ),
+	array( 'state' => 'completed', 'outcome' => 'committed', 'orphan' => false, 'deadline' => true, 'expected' => 'RECONCILING', 'terminal' => false, 'reconcile' => true ),
 );
 foreach ( $cases as $case ) {
 	$status = $base_journal;
 	$status['lifecycle_state'] = $case['state'];
 	$status['terminal_outcome'] = $case['outcome'];
 	$status['orphan_candidate'] = $case['orphan'];
+	$status['stale_heartbeat'] = ! empty( $case['stale'] );
+	$status['lock_expired'] = ! empty( $case['lock'] );
+	$status['hard_deadline_exceeded'] = ! empty( $case['deadline'] );
 	$view = MAD4B_SCP_Execution_State_View::normalize_journal_status( $status );
 	$check( is_array( $view ) && $case['expected'] === $view['canonical_state'], 'Journal mapping mismatch.', array( 'case' => $case, 'view' => $view ) );
 	$check( $case['terminal'] === $view['terminal'], 'Journal terminal flag mismatch.', $view );
