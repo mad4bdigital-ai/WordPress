@@ -623,8 +623,12 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function scope_key( $site_uuid, $capability, $operation, $target_identity ) {
+		$binding = class_exists( 'MAD4B_SCP_Ability_Contract_Inspector' ) && method_exists( 'MAD4B_SCP_Ability_Contract_Inspector', 'site_binding' )
+			? MAD4B_SCP_Ability_Contract_Inspector::site_binding()
+			: array();
 		$material = array(
 			'site_uuid' => strtolower( trim( (string) $site_uuid ) ),
+			'site_binding' => is_array( $binding ) ? $binding : array(),
 			'capability' => trim( (string) $capability ),
 			'operation' => trim( (string) $operation ),
 			'target_identity' => trim( (string) $target_identity ),

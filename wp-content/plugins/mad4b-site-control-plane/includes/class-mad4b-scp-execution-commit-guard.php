@@ -53,7 +53,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 		if ( ! self::same( $expected_material, $current, 'provider' ) ) {
 			return self::error( 'RECERTIFICATION_REQUIRED', 'Provider capability or artifact evidence changed before commit.' );
 		}
-		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'site_profile', 'candidate', 'database_storage', 'runtime_compatibility', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
+		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'subject_lifecycle', 'site_profile', 'candidate', 'database_storage', 'runtime_compatibility', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
 			if ( ! self::same( $expected_material, $current, $dependency ) ) {
 				return self::error( 'REAPPROVAL_REQUIRED', 'A material authorization dependency changed before commit.', array( 'dependency' => $dependency ) );
 			}
@@ -89,6 +89,9 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
 		if ( is_wp_error( $identity ) || ! is_array( $identity ) ) return self::error( 'DENIED', 'Authenticated subject identity is unavailable at commit guard.' );
+
+		$subject_lifecycle = self::subject_lifecycle_material( $identity );
+		if ( is_wp_error( $subject_lifecycle ) ) return $subject_lifecycle;
 
 		if ( ! class_exists( 'MAD4B_SCP_Runtime_Compatibility_Profile' ) ) return self::error( 'DENIED', 'Runtime compatibility profile is unavailable at commit guard.' );
 		$compatibility_status = MAD4B_SCP_Runtime_Compatibility_Profile::assert_governed_write_ready( true );
@@ -224,6 +227,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 			'approval' => $approval,
 			'policy' => $policy,
 			'authority' => $authority,
+			'subject_lifecycle' => $subject_lifecycle,
 			'site_profile' => $profile,
 			'candidate' => $candidate,
 			'database_storage' => $database_storage,
@@ -232,6 +236,39 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 			'kill_switch' => $kill_switch,
 			'rights' => empty( $rights ) ? array( 'state' => 'not_applicable' ) : self::canonicalize( $rights ),
 			'data_processing' => empty( $data_processing ) ? array( 'state' => 'not_applicable' ) : self::canonicalize( $data_processing ),
+		);
+	}
+
+	private static function subject_lifecycle_material( array $identity ) {
+		$user_id = isset( $identity['wp_user_id'] ) ? absint( $identity['wp_user_id'] ) : 0;
+		if ( $user_id < 1 ) return self::error( 'REAPPROVAL_REQUIRED', 'Authenticated WordPress subject is unavailable before commit.', array( 'dependency' => 'subject_lifecycle' ) );
+		$user = get_userdata( $user_id );
+		if ( ! $user ) return self::error( 'REAPPROVAL_REQUIRED', 'Authenticated WordPress user was deleted before commit.', array( 'dependency' => 'subject_lifecycle', 'wp_user_id' => $user_id ) );
+		$capability = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'connection_capability' )
+			? MAD4B_SCP_Policy::connection_capability()
+			: 'manage_options';
+		$connection_capable = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'can_connect_user' )
+			? MAD4B_SCP_Policy::can_connect_user( $user_id )
+			: ( '' !== $capability && user_can( $user, $capability ) );
+		$enrolled = ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured()
+			? true
+			: MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id );
+		if ( ! $connection_capable || ! $enrolled ) {
+			return self::error( 'REAPPROVAL_REQUIRED', 'Authenticated WordPress subject is no longer enrolled or connection-capable before commit.', array(
+				'dependency' => 'subject_lifecycle',
+				'wp_user_id' => $user_id,
+				'connection_capability' => $capability,
+			) );
+		}
+		$capabilities = isset( $user->allcaps ) && is_array( $user->allcaps ) ? array_keys( array_filter( $user->allcaps ) ) : array();
+		sort( $capabilities, SORT_STRING );
+		return array(
+			'wp_user_id' => $user_id,
+			'user_exists' => true,
+			'enrolled' => true,
+			'connection_capable' => true,
+			'connection_capability' => $capability,
+			'capabilities_sha256' => self::stable_digest( $capabilities ),
 		);
 	}
 

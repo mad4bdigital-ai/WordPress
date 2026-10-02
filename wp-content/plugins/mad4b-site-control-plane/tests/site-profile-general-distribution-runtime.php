@@ -20,6 +20,7 @@ function wp_parse_url($u,$c=-1){return parse_url($u,$c);}
 function wp_json_encode($v,$f=0){return json_encode($v,$f);}
 function trailingslashit($v){return rtrim((string)$v,'/\\').'/';}
 function home_url($p=''){return rtrim($GLOBALS['mad4b_test_home'],'/').(''===$p?'':'/'.ltrim($p,'/'));}
+function site_url($p=''){return home_url($p);}
 function wp_get_environment_type(){return $GLOBALS['mad4b_test_environment'];}
 function apply_filters($tag,$value,...$args){
 	if('mad4b_scp_wordpress_environment_explicit'===$tag && null!==$GLOBALS['mad4b_test_explicit_environment_filter']) return (bool)$GLOBALS['mad4b_test_explicit_environment_filter'];
@@ -27,6 +28,9 @@ function apply_filters($tag,$value,...$args){
 }
 function current_user_can($c){return 'manage_options'===$c ? !empty($GLOBALS['mad4b_test_is_admin']) : false;}
 function get_current_user_id(){return (int)$GLOBALS['mad4b_test_user_id'];}
+function get_current_blog_id(){return 1;}
+function wp_get_current_user(){return (object)array('ID'=>(int)$GLOBALS['mad4b_test_user_id'],'allcaps'=>array('manage_options'=>true));}
+function wp_check_invalid_utf8($v,$strip=false){return (string)$v;}
 function get_option($k,$d=false){return array_key_exists($k,$GLOBALS['mad4b_test_options'])?$GLOBALS['mad4b_test_options'][$k]:$d;}
 function update_option($k,$v,$a=null){$GLOBALS['mad4b_test_options'][$k]=$v;return true;}
 function delete_option($k){unset($GLOBALS['mad4b_test_options'][$k]);return true;}
@@ -38,6 +42,11 @@ function wp_register_ability(){}
 final class MAD4B_SCP_Audit { public static function storage_status(){return array('ready'=>!empty($GLOBALS['mad4b_test_audit_ready']));} public static function record($a,$s,$st){if(!empty($GLOBALS['mad4b_test_audit_fail']))return new WP_Error('audit_failed','forced');$GLOBALS['mad4b_test_audit_events'][]=array($a,$s,$st);return true;} }
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-site-profile.php';
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-environment.php';
+require_once dirname(__DIR__).'/includes/class-mad4b-scp-ability-contract-inspector.php';
+require_once dirname(__DIR__).'/includes/class-mad4b-scp-ability-catalog-transport.php';
+require_once dirname(__DIR__).'/includes/class-mad4b-scp-chatgpt-tool-projection.php';
+require_once dirname(__DIR__).'/includes/class-mad4b-scp-approval-tickets.php';
+require_once dirname(__DIR__).'/includes/class-mad4b-scp-durable-execution.php';
 function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL: {$m}\n");exit(1);}}
 function reset_state(){ $GLOBALS['mad4b_test_options']=array();$GLOBALS['mad4b_test_audit_events']=array();$GLOBALS['mad4b_test_audit_ready']=true;$GLOBALS['mad4b_test_audit_fail']=false;$GLOBALS['mad4b_test_is_admin']=true;$GLOBALS['mad4b_test_explicit_environment_filter']=null;putenv('WP_ENVIRONMENT_TYPE');MAD4B_SCP_Site_Profile::reset_cache(); }
 function legacy_record($env,$origin,$revision=4){return array('contract'=>MAD4B_SCP_Site_Profile::LEGACY_CONTRACT,'version'=>MAD4B_SCP_Site_Profile::LEGACY_VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>$revision,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Legacy Client','chatgpt_app_id'=>'plugin_asdk_app_legacy123','oauth_user_ids'=>array(7,8),'related_origins'=>array($env=>$origin),'features'=>array('oauth'=>true,'skills'=>true,'write'=>true,'production_write_confirmed'=>true,'provider_isolation'=>true,'managed_runtime'=>true,'acceptance'=>true),'legacy_agent_slug'=>'legacy-agent','legacy_zero_touch'=>true,'created_at'=>'2026-01-01T00:00:00Z','updated_at'=>'2026-01-01T00:00:00Z');}
@@ -159,12 +168,26 @@ $site_a=MAD4B_SCP_Site_Profile::save_current_site(array(
 ));
 ok(!is_wp_error($site_a)&&!empty($site_a['configured']),'source tenant profile created');
 $site_a_uuid=$site_a['site_uuid'];$site_a_revision=(int)$site_a['revision'];
+$clone_agent='agent-clone-fixture';$clone_ability='mad4b/content-update-post';$clone_input=array('post_id'=>123,'post_title'=>'Clone identity fixture');$clone_target=str_repeat('a',64);
+$source_approval=MAD4B_SCP_Approval_Tickets::canonical_payload_hash($clone_agent,'mad4b-write',$clone_ability,'core',$clone_target,$clone_input,'mutation');
+$source_durable=MAD4B_SCP_Durable_Execution::scope_key($site_a_uuid,$clone_ability,'update',$clone_target);
+$source_projection_binding=MAD4B_SCP_ChatGPT_Tool_Projection::current_binding();
+$source_authority_scope=MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope();
+ok(1===preg_match('/^[a-f0-9]{64}$/',$source_approval)&&1===preg_match('/^[a-f0-9]{64}$/',$source_durable),'source authority identities are valid');
 $GLOBALS['mad4b_test_home']='https://site-b.test/';
 MAD4B_SCP_Site_Profile::reset_cache();
 $foreign=MAD4B_SCP_Site_Profile::status();
 ok(!empty($foreign['configured'])&&'foreign_origin'===($foreign['binding_state']??''),'cloned profile is classified as foreign origin');
 ok(!empty($foreign['foreign_profile_detected'])&&!empty($foreign['profile_authority_quarantined']),'foreign profile authority is quarantined');
 ok(empty($foreign['oauth_enabled'])&&empty($foreign['write_enabled'])&&empty($foreign['skills_enabled']),'foreign profile carries no authority to the new tenant');
+$clone_approval=MAD4B_SCP_Approval_Tickets::canonical_payload_hash($clone_agent,'mad4b-write',$clone_ability,'core',$clone_target,$clone_input,'mutation');
+$clone_durable=MAD4B_SCP_Durable_Execution::scope_key(MAD4B_SCP_Site_Profile::site_uuid(),$clone_ability,'update',$clone_target);
+$clone_projection_binding=MAD4B_SCP_ChatGPT_Tool_Projection::current_binding();
+$clone_authority_scope=MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope();
+ok(!hash_equals($source_approval,$clone_approval),'copied approval payload identity remained valid on foreign origin');
+ok(!hash_equals($source_durable,$clone_durable),'copied durable idempotency scope remained valid on foreign origin');
+ok($source_projection_binding!==$clone_projection_binding,'copied projection binding remained valid on foreign origin');
+ok(!hash_equals($source_authority_scope,$clone_authority_scope),'copied authority/catalog scope remained valid on foreign origin');
 $site_b=MAD4B_SCP_Site_Profile::save_current_site(array(
     'expected_revision'=>$site_a_revision,
     'display_name'=>'Site B',
