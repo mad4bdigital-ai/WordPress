@@ -39,6 +39,16 @@ final class MAD4B_SCP_Policy {
 	public static $breakglass = false;
 	public static function can_breakglass() { return self::$breakglass; }
 }
+final class MAD4B_SCP_Post_Update_Continuation {
+	public static $active = false;
+	public static function status() {
+		return array(
+			'contract' => 'mad4b.post-update-continuation.v1',
+			'active' => (bool) self::$active,
+			'state' => self::$active ? 'prepared' : 'absent',
+		);
+	}
+}
 final class MAD4B_SCP_Staging_Write_Authority {
 	public static $checkpoint = array();
 	public static $plan = array();
@@ -67,6 +77,7 @@ function setup_clean_candidate_drift() {
 	MAD4B_SCP_Site_Profile::$urls_match = true;
 	MAD4B_SCP_Site_Profile::$write_enabled = true;
 	MAD4B_SCP_Policy::$breakglass = false;
+	MAD4B_SCP_Post_Update_Continuation::$active = false;
 	MAD4B_SCP_Staging_Write_Authority::$effective = false;
 	MAD4B_SCP_Staging_Write_Authority::$checkpoint = array(
 		'contract' => 'mad4b.governed-write-authority-persistence-checkpoint.v1',
@@ -113,6 +124,7 @@ check( false === $ready['authority_carry_forward'], 'bootstrap must not carry au
 check( false === $ready['authority_mutation_allowed'], 'bootstrap must not mutate authority' );
 check( false === $ready['grant_mutation_allowed'], 'bootstrap must not mutate grants' );
 check( false === $ready['candidate_binding_mutation_allowed'], 'bootstrap must not bind candidate during replacement' );
+check( false === $ready['active_continuation'], 'bootstrap must prove no active continuation permit exists' );
 check( true === $ready['post_update_candidate_rebind_required'], 'bootstrap must require explicit post-update candidate rebind' );
 check( false === $ready['production_mutation_allowed'], 'bootstrap must never authorize Production mutation' );
 check( false === $ready['mutation_performed'], 'bootstrap policy must remain read-only' );
@@ -134,6 +146,7 @@ $cases = array(
 	'bad artifact identity' => static function () { MAD4B_SCP_Staging_Write_Authority::$binding['current_artifact_identity'] = 'wrong-artifact'; },
 	'missing checkpoint' => static function () { MAD4B_SCP_Staging_Write_Authority::$checkpoint['exists'] = false; },
 	'checkpoint not ready' => static function () { MAD4B_SCP_Staging_Write_Authority::$checkpoint['status']['ready'] = false; },
+	'active continuation permit' => static function () { MAD4B_SCP_Post_Update_Continuation::$active = true; },
 	'breakglass active' => static function () { MAD4B_SCP_Policy::$breakglass = true; },
 	'production environment' => static function () { MAD4B_SCP_Site_Profile::$environment = 'production'; },
 	'write profile disabled' => static function () { MAD4B_SCP_Site_Profile::$write_enabled = false; },
