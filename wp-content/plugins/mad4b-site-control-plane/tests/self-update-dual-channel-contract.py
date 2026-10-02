@@ -12,6 +12,7 @@ authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_t
 impact = (root / "includes" / "class-mad4b-scp-impact-policy.php").read_text(encoding="utf-8")
 commit_guard = (root / "includes" / "class-mad4b-scp-execution-commit-guard.php").read_text(encoding="utf-8")
 governance = (root / "includes" / "class-mad4b-scp-governance-abilities.php").read_text(encoding="utf-8")
+runtime_convergence = (root / "includes" / "class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
 bootstrap = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 readback_runtime = (root / "tests" / "self-update-readback-runtime.php").read_text(encoding="utf-8")
 handoff = json.loads((root / "config" / "staging-deployment-handoff.json").read_text(encoding="utf-8"))
@@ -218,6 +219,14 @@ for forbidden in (
 ):
     if forbidden in managed_apply_bootstrap:
         raise SystemExit(f"self-update bootstrap must not mutate governed authority directly: {forbidden}")
+
+for marker in (
+    "'authority_binding', 'owner_rebind_exact_candidate'",
+    "'candidate_binding_auto_refresh_policy' => 'post_update_zero_delta_continuation_only'",
+    "MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind",
+):
+    if marker not in runtime_convergence:
+        raise SystemExit(f"post-bootstrap authority must remain owner-gated without an active continuation: {marker}")
 
 bootstrap_readback_index = managed_apply_bootstrap.find("$readback = is_wp_error( $activation ) ? $activation : self::verify_installed_identity( $readback_target );")
 bootstrap_convergence_index = managed_apply_bootstrap.find("MAD4B_SCP_Runtime_Convergence::mark_post_update_pending")
