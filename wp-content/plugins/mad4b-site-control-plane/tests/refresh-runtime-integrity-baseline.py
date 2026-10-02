@@ -58,13 +58,25 @@ def main() -> int:
             for rel in ((result.get("native_mcp") or {}).get("files") or []):
                 candidates.add(str(rel))
 
-            # MCP 0.6.1 normalizes an MCP client's empty {} to null for abilities
-            # without input schemas. Runtime acceptance depends on this exact file,
-            # so its deployed bytes are part of the fail-closed transport contract.
+            # MCP runtime certification is class-level, not entrypoint-only.
+            # Jetpack Autoloader may resolve WP\\MCP / WP\\McpSchema classes from
+            # another package, so every class that constructs or validates tool DTOs
+            # must remain byte-bound to the exact certified release.
             if provider == "mcp_adapter":
-                candidates.add(
-                    (package_root / "includes/Domain/Utils/AbilityArgumentNormalizer.php").as_posix()
-                )
+                for relative in (
+                    "includes/Domain/Utils/AbilityArgumentNormalizer.php",
+                    "includes/Domain/Tools/McpToolValidator.php",
+                    "includes/Domain/Tools/RegisterAbilityAsMcpTool.php",
+                    "includes/Domain/Utils/McpAnnotationMapper.php",
+                    "includes/Domain/Utils/McpValidator.php",
+                    "includes/Domain/Utils/SchemaTransformer.php",
+                    "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/Tool.php",
+                    "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolInputSchema.php",
+                    "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolOutputSchema.php",
+                    "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolAnnotations.php",
+                    "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolExecution.php",
+                ):
+                    candidates.add((package_root / relative).as_posix())
 
             manifest = {}
             prefix = package_root.as_posix().rstrip("/")
