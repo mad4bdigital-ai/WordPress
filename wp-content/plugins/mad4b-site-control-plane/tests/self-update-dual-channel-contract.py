@@ -217,6 +217,18 @@ for forbidden in (
     if forbidden in managed_apply_bootstrap:
         raise SystemExit(f"self-update bootstrap must not mutate governed authority directly: {forbidden}")
 
+bootstrap_readback_index = managed_apply_bootstrap.find("$readback = is_wp_error( $activation ) ? $activation : self::verify_installed_identity( $readback_target );")
+bootstrap_convergence_index = managed_apply_bootstrap.find("MAD4B_SCP_Runtime_Convergence::mark_post_update_pending")
+if min(bootstrap_readback_index, bootstrap_convergence_index) < 0 or bootstrap_readback_index >= bootstrap_convergence_index:
+    raise SystemExit("candidate-drift bootstrap must establish exact readback before persisting post-update convergence")
+for marker in (
+    "$rollback = self::rollback( $backup, $before, $runtime_php_files );",
+    "mad4b_self_update_readback_failed",
+    "'rollback_ok' => ! is_wp_error( $rollback )",
+):
+    if marker not in managed_apply_bootstrap:
+        raise SystemExit(f"candidate-drift bootstrap lost common rollback/readback safety: {marker}")
+
 if "'release_channel_bound' => true" not in self_update:
     raise SystemExit("governed file upload is not bound to the repository release channel")
 if "target_not_current_governed_release:" not in self_update:
