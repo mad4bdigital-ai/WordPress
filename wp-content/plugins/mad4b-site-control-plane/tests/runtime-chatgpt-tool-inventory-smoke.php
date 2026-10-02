@@ -242,7 +242,7 @@ $read_missing_pin = $read_execute->execute(
 		'input' => array(),
 	)
 );
-if ( ! is_wp_error( $read_missing_pin ) || 'mad4b_read_dispatch_schema_pin_required' !== $read_missing_pin->get_error_code() ) {
+if ( ! is_wp_error( $read_missing_pin ) || 'ability_invalid_input' !== $read_missing_pin->get_error_code() ) {
 	$fail( 'Readonly dispatcher accepted execution without an exact input schema pin.', $read_missing_pin );
 }
 

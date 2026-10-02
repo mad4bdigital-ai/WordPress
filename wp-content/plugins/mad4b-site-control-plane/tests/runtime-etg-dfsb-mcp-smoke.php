@@ -18,9 +18,12 @@ $read_dispatch = wp_get_ability( 'mad4b/read-execute' );
 $check( is_object( $read_dispatch ) && method_exists( $read_dispatch, 'execute' ), 'Governed ChatGPT readonly dispatcher is unavailable.' );
 
 $dispatch_read = static function ( $ability_name, array $input = array() ) use ( $check, $read_dispatch ) {
+	$info = wp_get_ability( 'mad4b/tool-info' )->execute( array( 'ability_name' => $ability_name ) );
+	$check( ! is_wp_error( $info ) && ! empty( $info['input_schema_sha256'] ), 'Target schema preparation failed for ' . $ability_name );
 	$result = $read_dispatch->execute(
 		array(
 			'ability_name' => (string) $ability_name,
+			'expected_input_schema_sha256' => $info['input_schema_sha256'],
 			'input' => $input,
 		)
 	);

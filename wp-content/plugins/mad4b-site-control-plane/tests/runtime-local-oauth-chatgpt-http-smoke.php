@@ -595,6 +595,8 @@ if ( '' === $session_id ) $fail( 'Unable to restore read-only MCP session after 
 // Prove the exact packaged MCP Adapter can execute a hidden safe Browser
 // Acceptance read ability through the compact readonly dispatcher and that its
 // wire result remains compatible with external MCP clients.
+$browser_info = wp_get_ability( 'mad4b/tool-info' )->execute( array( 'ability_name' => 'mad4b/browser-acceptance-capabilities' ) );
+if ( is_wp_error( $browser_info ) || empty( $browser_info['input_schema_sha256'] ) ) $fail( 'Browser Acceptance schema preparation failed.' );
 $browser_call = $dispatch(
 	array(
 		'jsonrpc' => '2.0',
@@ -604,6 +606,7 @@ $browser_call = $dispatch(
 			'name' => 'mad4b-read-execute',
 			'arguments' => array(
 				'ability_name' => 'mad4b/browser-acceptance-capabilities',
+				'expected_input_schema_sha256' => $browser_info['input_schema_sha256'],
 				'input' => array(),
 			),
 		),
