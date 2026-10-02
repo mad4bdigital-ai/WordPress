@@ -13,6 +13,7 @@ database_failures=(ROOT/"includes/class-mad4b-scp-database-failure-semantics.php
 approvals=(ROOT/"includes/class-mad4b-scp-approval-tickets.php").read_text(encoding="utf-8")
 operation_journal=(ROOT/"includes/class-mad4b-scp-operation-journal.php").read_text(encoding="utf-8")
 commit_guard=(ROOT/"includes/class-mad4b-scp-execution-commit-guard.php").read_text(encoding="utf-8")
+authorization=(ROOT/"includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 runtime_compatibility=(ROOT/"includes/class-mad4b-scp-runtime-compatibility-profile.php").read_text(encoding="utf-8")
 main=(ROOT/"mad4b-site-control-plane.php").read_text(encoding="utf-8")
 request_generation=(ROOT/"includes/class-mad4b-scp-request-generation.php").read_text(encoding="utf-8")
