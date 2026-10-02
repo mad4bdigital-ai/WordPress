@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "30b04debab20ff1c384aca17602685ee8f0f973f",
-  "override_git_blob_sha": "064155f95604092f93677b47203063b68354c736",
+  "source_tasks_git_blob_sha": "d5814c8276d251d8ca3674993ff8c87de6d7cf1e",
+  "override_git_blob_sha": "aabea9aa138ae6289ffca5b40bbb6c0e8db47f5d",
   "classification_policy": {
     "default_unchecked": "OPEN",
     "default_checked": "DONE",
@@ -10,16 +10,16 @@
   },
   "counts": {
     "DEFERRED": 2,
-    "DONE": 42,
-    "OPEN": 648,
-    "PARTIAL": 65
+    "DONE": 47,
+    "OPEN": 642,
+    "PARTIAL": 66
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
-      "DONE": 35,
-      "OPEN": 507,
-      "PARTIAL": 43
+      "DONE": 40,
+      "OPEN": 501,
+      "PARTIAL": 44
     },
     "P1": {
       "DEFERRED": 0,
@@ -7686,20 +7686,28 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Define a RequestScopeContract for static/runtime caches across REST, MCP, WP-CLI, cron, blog switches, user switches and authoritative profile/policy/projection mutations; every cache must declare lifetime and invalidation owner.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
+        "workflow_job:110809063089"
+      ],
+      "reason": "RequestScope generation fencing, cache ownership/invalidation, same-request drift denial, quiescent transition checks and worker-recycle semantics are implemented and the standalone MCP compatibility contract passed."
     },
     {
       "task_id": "T3772",
       "phase": 37,
       "priority": "P0",
       "summary": "Add long-lived-worker fixtures with sequential requests for different sites/users/environments proving no static cache, identity, authority, descriptor, policy or projection state leaks across request boundaries.",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php"
+      ],
+      "reason": "Sequential logical-request fixtures exist for user/capability drift, transaction/identity leakage and site/runtime recycle semantics; the exact-head real WordPress matrix is still pending."
     },
     {
       "task_id": "T3773",
@@ -7936,40 +7944,60 @@
       "phase": 37,
       "priority": "P0",
       "summary": "Eliminate alternate PHP serialization fallback from security-sensitive capability/schema/classification fingerprints; unsupported canonical input must become unavailable/fail-closed rather than acquire a second hash interpretation.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-catalog-transport.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-transport-runtime.php",
+        "workflow_run:36996652203"
+      ],
+      "reason": "Security-sensitive catalog definition identity has one canonical JSON interpretation; unsupported schema serialization becomes deterministic unavailable/fail-closed evidence instead of PHP serialize fallback."
     },
     {
       "task_id": "T3797",
       "phase": 37,
       "priority": "P0",
       "summary": "Define database identity collation semantics for UUIDs, SHA digests, operation/idempotency/provider keys and authority fingerprints; canonical normalization plus binary/case-exact comparison must prevent collation aliases.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:36996652203"
+      ],
+      "reason": "Security-sensitive operation/journal identities use canonical normalization plus BINARY SQL comparisons; case/collation alias fixtures are rejected on the certified database matrix."
     },
     {
       "task_id": "T3798",
       "phase": 37,
       "priority": "P0",
       "summary": "Certify transactional storage-engine/runtime capabilities for approval, idempotency, operation-journal, audit and execution tables; nontransactional engines or unsupported implicit-commit behavior must block governed mutation.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:36996652203"
+      ],
+      "reason": "Governance/approval/idempotency/journal/audit/execution tables are runtime-checked for InnoDB transactional storage and commit admission binds the certified storage fingerprint; unsupported engines fail closed."
     },
     {
       "task_id": "T3799",
       "phase": 37,
       "priority": "P0",
       "summary": "GATE Prove transaction ownership/nesting behavior (including savepoint or explicit nesting denial), canonical-hash single interpretation, storage-engine requirements and collation identity fixtures; a MAD4B transaction must never accidentally commit/rollback an unrelated caller transaction.",
-      "status": "OPEN",
-      "checked": false,
-      "evidence_refs": [],
-      "reason": ""
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-transaction-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/database-transaction-guard-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:36996652203"
+      ],
+      "reason": "Portable savepoint probing, explicit nested/reentrant denial, ownership-token commit/rollback verification and MySQL 8/MariaDB 11.8 runtime fixtures prove MAD4B does not commit or roll back unrelated caller transactions."
     }
   ]
 }

@@ -916,6 +916,64 @@
         "workflow_run:36095311341"
       ],
       "reason": "Real MariaDB runtime proof detects stuck/orphan jobs, expired leases, stale inbox, provider DLQ and Host Runner uncertain/recovery-required/dead-letter states while remaining site-scoped, read-only and non-authorizing."
+    },
+    "T3771": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
+        "workflow_job:110809063089"
+      ],
+      "reason": "RequestScope generation fencing, cache ownership/invalidation, same-request drift denial, quiescent transition checks and worker-recycle semantics are implemented and the standalone MCP compatibility contract passed."
+    },
+    "T3772": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-request-generation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/request-generation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php"
+      ],
+      "reason": "Sequential logical-request fixtures exist for user/capability drift, transaction/identity leakage and site/runtime recycle semantics; the exact-head real WordPress matrix is still pending."
+    },
+    "T3796": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-catalog-transport.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-transport-runtime.php",
+        "workflow_run:36996652203"
+      ],
+      "reason": "Security-sensitive catalog definition identity has one canonical JSON interpretation; unsupported schema serialization becomes deterministic unavailable/fail-closed evidence instead of PHP serialize fallback."
+    },
+    "T3797": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:36996652203"
+      ],
+      "reason": "Security-sensitive operation/journal identities use canonical normalization plus BINARY SQL comparisons; case/collation alias fixtures are rejected on the certified database matrix."
+    },
+    "T3798": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:36996652203"
+      ],
+      "reason": "Governance/approval/idempotency/journal/audit/execution tables are runtime-checked for InnoDB transactional storage and commit admission binds the certified storage fingerprint; unsupported engines fail closed."
+    },
+    "T3799": {
+      "status": "DONE",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-transaction-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/database-transaction-guard-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php",
+        "workflow_run:36996652203"
+      ],
+      "reason": "Portable savepoint probing, explicit nested/reentrant denial, ownership-token commit/rollback verification and MySQL 8/MariaDB 11.8 runtime fixtures prove MAD4B does not commit or roll back unrelated caller transactions."
     }
   }
 }

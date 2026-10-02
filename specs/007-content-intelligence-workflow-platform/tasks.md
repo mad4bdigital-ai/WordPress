@@ -837,7 +837,7 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3770 P0 GATE Phase 37 must map into existing quality/traceability families and must not authorize Production, Breakglass, generic shell/raw SQL, or any new authority by documentation alone.
 
 ### 37M — Request scope, database consistency and extension interference
-- [ ] T3771 P0 Define a RequestScopeContract for static/runtime caches across REST, MCP, WP-CLI, cron, blog switches, user switches and authoritative profile/policy/projection mutations; every cache must declare lifetime and invalidation owner.
+- [x] T3771 P0 Define a RequestScopeContract for static/runtime caches across REST, MCP, WP-CLI, cron, blog switches, user switches and authoritative profile/policy/projection mutations; every cache must declare lifetime and invalidation owner.
 - [ ] T3772 P0 Add long-lived-worker fixtures with sequential requests for different sites/users/environments proving no static cache, identity, authority, descriptor, policy or projection state leaks across request boundaries.
 - [ ] T3773 P0 Define an authoritative database-topology profile for governance writes/claims/journals/commit guards/readback; governed mutation state must use read-your-writes semantics and must detect or deny unsafe read-replica routing.
 - [ ] T3774 P0 Define deadlock, lock-wait-timeout, connection-loss and transaction-abort semantics for approval claims, operation journal appends and durable execution; ambiguous persistence becomes reconciliation-required and never blind-retried.
@@ -872,7 +872,7 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3795 P0 GATE Execute a cross-fault matrix covering long-lived worker cache leakage, read-replica lag, DB deadlock/loss, hook-order interference, clone/restore time-travel, subject revocation, evidence-store exhaustion, fatal interruption and post-side-effect cancellation before Capability Fabric completeness can be declared.
 
 ### 37R — Canonical identity and transactional database storage
-- [ ] T3796 P0 Eliminate alternate PHP serialization fallback from security-sensitive capability/schema/classification fingerprints; unsupported canonical input must become unavailable/fail-closed rather than acquire a second hash interpretation.
-- [ ] T3797 P0 Define database identity collation semantics for UUIDs, SHA digests, operation/idempotency/provider keys and authority fingerprints; canonical normalization plus binary/case-exact comparison must prevent collation aliases.
-- [ ] T3798 P0 Certify transactional storage-engine/runtime capabilities for approval, idempotency, operation-journal, audit and execution tables; nontransactional engines or unsupported implicit-commit behavior must block governed mutation.
-- [ ] T3799 P0 GATE Prove transaction ownership/nesting behavior (including savepoint or explicit nesting denial), canonical-hash single interpretation, storage-engine requirements and collation identity fixtures; a MAD4B transaction must never accidentally commit/rollback an unrelated caller transaction.
+- [x] T3796 P0 Eliminate alternate PHP serialization fallback from security-sensitive capability/schema/classification fingerprints; unsupported canonical input must become unavailable/fail-closed rather than acquire a second hash interpretation.
+- [x] T3797 P0 Define database identity collation semantics for UUIDs, SHA digests, operation/idempotency/provider keys and authority fingerprints; canonical normalization plus binary/case-exact comparison must prevent collation aliases.
+- [x] T3798 P0 Certify transactional storage-engine/runtime capabilities for approval, idempotency, operation-journal, audit and execution tables; nontransactional engines or unsupported implicit-commit behavior must block governed mutation.
+- [x] T3799 P0 GATE Prove transaction ownership/nesting behavior (including savepoint or explicit nesting denial), canonical-hash single interpretation, storage-engine requirements and collation identity fixtures; a MAD4B transaction must never accidentally commit/rollback an unrelated caller transaction.
