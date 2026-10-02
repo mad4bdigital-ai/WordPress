@@ -7,8 +7,10 @@ $GLOBALS['mounted']['mad4b-content'][$a->get_name()] = true;
 $GLOBALS['mounted']['mad4b-write'][$a->get_name()] = true;
 $row = MAD4B_SCP_Capability_Descriptor_Registry::describe( $a->get_name() );
 $token = MAD4B_SCP_Preparation_Receipt::issue( $row );
+$second_token = MAD4B_SCP_Preparation_Receipt::issue( $row );
 $verify = static function ( $value = null ) use ( $token, $a ) { return MAD4B_SCP_Preparation_Receipt::verify( null === $value ? $token : $value, $a->get_name() ); };
 check_gateway( true === $verify(), 'Valid receipt rejected' );
+check_gateway( is_string( $second_token ) && $second_token !== $token && true === $verify( $second_token ), 'Consecutive preparation did not issue a unique valid receipt identity' );
 check_gateway( $row['descriptor_sha256'] === MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $a->get_name() )['descriptor_sha256'], 'Classifier and canonical descriptor diverged' );
 check_gateway( is_wp_error( $verify( $token . '0' ) ), 'Forged signature accepted' );
 check_gateway( is_wp_error( $verify( array() ) ), 'Non-string receipt accepted' );
@@ -41,6 +43,8 @@ foreach ( array( -1000, 1000 ) as $offset ) {
 }
 $malformed = $payload; $malformed['descriptor_sha256'] = array();
 check_gateway( is_wp_error( $verify( $sign( $malformed ) ) ), 'Malformed signed payload accepted' );
+$nonce_missing = $payload; unset( $nonce_missing['nonce'] );
+check_gateway( is_wp_error( $verify( $sign( $nonce_missing ) ) ), 'Signed preparation receipt without nonce accepted' );
 $input = array( 'ability_name' => $a->get_name(), 'expected_input_schema_sha256' => $row['input_schema_sha256'], 'expected_execution_lane' => 'content', 'expected_classification_sha256' => $row['classification_sha256'], 'expected_authority_scope_sha256' => MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), 'preparation_receipt' => $token, 'input' => array() );
 check_gateway( ! is_wp_error( $dispatcher->write_execute( $input ) ) && 1 === $a->calls, 'Valid receipt failed fixed dispatcher' );
 $a->permission = false;
