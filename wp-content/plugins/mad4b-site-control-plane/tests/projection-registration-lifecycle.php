@@ -8,6 +8,9 @@ function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function get_option( $name, $default = false ) { return $GLOBALS['options'][$name] ?? $default; }
 function wp_has_ability( $name ) { return isset( $GLOBALS['abilities'][$name] ); }
 function wp_get_ability( $name ) { return $GLOBALS['abilities'][$name] ?? null; }
+function wp_get_abilities() { throw new RuntimeException( 'Registration notice scanned the Ability universe' ); }
+class MAD4B_SCP_MCP_Catalog_Diagnostics { static function preflight() { throw new RuntimeException( 'Registration notice rebuilt the MCP catalog' ); } }
+class MAD4B_SCP_Catalog_Object_Store { static function status() { return array( 'indexed_bytes' => 0, 'indexed_objects' => 0 ); } }
 class WP_Error {
  private $code; private $message; private $data;
  function __construct( $code, $message, $data = array() ) { $this->code = $code; $this->message = $message; $this->data = $data; }
@@ -44,6 +47,13 @@ $name = 'fixture/breakglass'; $GLOBALS['abilities'][$name] = new Ability(); $GLO
 $row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $name );
 $GLOBALS['options'][MAD4B_SCP_ChatGPT_Tool_Projection::OPTION] = array( 'contract' => MAD4B_SCP_ChatGPT_Tool_Projection::CONTRACT, 'revision' => 1, 'binding' => MAD4B_SCP_ChatGPT_Tool_Projection::current_binding(), 'abilities' => array( $name => $row ) );
 if ( array( $name ) !== MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() || 0 !== $GLOBALS['identity_checks'] ) throw new RuntimeException( 'Registration evaluated pre-auth identity' );
+$snapshot = MAD4B_SCP_ChatGPT_Tool_Projection::registration_diagnostic_snapshot();
+if ( 1 !== $snapshot['stored_count'] || 1 !== $snapshot['effective_count'] || $snapshot['abilities'][0]['stale'] || $snapshot['catalog_preflight_performed'] || $snapshot['universe_scan_performed'] || 0 !== $GLOBALS['identity_checks'] ) throw new RuntimeException( 'Registration bookkeeping changed projection or evaluated authority' );
+$GLOBALS['options'][MAD4B_SCP_ChatGPT_Tool_Projection::OPTION]['abilities'][$name]['classification_sha256'] = str_repeat( '0', 64 );
+$snapshot = MAD4B_SCP_ChatGPT_Tool_Projection::registration_diagnostic_snapshot();
+if ( 0 !== $snapshot['effective_count'] || ! $snapshot['abilities'][0]['stale'] ) throw new RuntimeException( 'Registration bookkeeping missed classification drift' );
+$GLOBALS['options'][MAD4B_SCP_ChatGPT_Tool_Projection::OPTION]['abilities'][$name] = $row;
+echo "PASS registration bookkeeping: no DTO build, universe scan or permission callback\n";
 $tool = new class { function get_adapter_meta() { return array( 'ability' => 'fixture/breakglass' ); } };
 $server = new class { function get_server_id() { return 'mad4b-chatgpt'; } };
 $denied = MAD4B_SCP_ChatGPT_Tool_Projection::guard_tool_call( array(), 'fixture-breakglass', $tool, $server );

@@ -37,7 +37,7 @@ final class MAD4B_SCP_Connection_Status {
 				if ( empty( $server['registration_identity_ready'] ) ) { $server_ok = false; break; }
 				continue;
 			}
-			if ( empty( $server['registered'] ) ) { $server_ok = false; break; }
+			if ( empty( $server['registered'] ) || ! empty( $server['registration_error'] ) || ( 'mad4b-chatgpt' === $server['server_id'] && false === $server['catalog_ready'] ) ) { $server_ok = false; break; }
 			if ( empty( $server['deep_route_validation_deferred'] ) && ( empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) ) { $server_ok = false; break; }
 		}
 		$peer = $lightweight
@@ -73,6 +73,10 @@ final class MAD4B_SCP_Connection_Status {
 		if ( ! $adapter_available ) $local_blockers[] = 'mcp_adapter_unavailable';
 		if ( $adapter_available && ! $provider_ok ) $local_blockers[] = 'mcp_adapter_not_certified';
 		if ( ! $server_ok ) $local_blockers[] = 'mad4b_transport_registration_incomplete';
+		foreach ( $servers as $server ) {
+			if ( ! empty( $server['registration_error'] ) ) $local_blockers[] = $server['registration_error'];
+			if ( ! empty( $server['catalog_blocker'] ) ) $local_blockers[] = $server['catalog_blocker'];
+		}
 		if ( ! $lightweight && empty( $peer['inventory_ready'] ) ) $local_blockers[] = 'mcp_peer_inventory_unavailable';
 		if ( ! empty( $peer['write_side_channel_detected'] ) ) $local_blockers[] = 'mcp_write_side_channel_detected';
 		if ( ! $lightweight && ! empty( $peer['blockers'] ) && is_array( $peer['blockers'] ) ) $local_blockers = array_merge( $local_blockers, $peer['blockers'] );
@@ -389,7 +393,9 @@ final class MAD4B_SCP_Connection_Status {
 				'server_id' => $id,
 				'registered' => ! empty( $registration[ $id ]['registered'] ),
 				'registration_identity_ready' => ! empty( $registration[ $id ]['registered'] ),
-				'registration_state' => ! empty( $registration[ $id ]['registered'] ) ? 'registered' : 'registration_error',
+				'registration_state' => ! empty( $registration[ $id ]['registered'] ) && empty( $registration[ $id ]['error'] ) ? 'registered' : 'registration_error',
+				'catalog_blocker' => isset( $registration[ $id ]['catalog_evidence']['blocker'] ) && is_string( $registration[ $id ]['catalog_evidence']['blocker'] ) ? sanitize_key( $registration[ $id ]['catalog_evidence']['blocker'] ) : '',
+				'catalog_ready' => isset( $registration[ $id ]['catalog_evidence'] ) && is_array( $registration[ $id ]['catalog_evidence'] ) ? ! empty( $registration[ $id ]['catalog_evidence']['ready'] ) : null,
 				'materialized' => is_object( $server ),
 				'registration_error' => isset( $registration[ $id ]['error'] ) ? sanitize_key( (string) $registration[ $id ]['error'] ) : '',
 				'route_namespace' => $namespace,

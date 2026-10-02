@@ -848,7 +848,11 @@ final class MAD4B_SCP_Servers {
 		if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) ) return new WP_Error( 'mad4b_transport_context_unavailable', 'MAD4B transport context is unavailable.' );
 		$bound = MAD4B_SCP_Transport_Context::bind( $server_id, $request ); if ( is_wp_error( $bound ) ) return $bound;
 		if ( ! is_callable( $policy_callback ) ) return new WP_Error( 'mad4b_transport_policy_unavailable', 'MAD4B transport permission policy is unavailable.' );
-		return call_user_func( $policy_callback );
+		$allowed = call_user_func( $policy_callback );
+		if ( false === $allowed && in_array( $server_id, array( 'mad4b-read', 'mad4b-chatgpt' ), true ) ) {
+			return new WP_Error( 'mad4b_transport_read_permission_denied', 'The WordPress subject does not satisfy the configured read capability.', array( 'status' => 403, 'stage' => 'read_permission', 'blocker' => 'read_capability_not_satisfied' ) );
+		}
+		return $allowed;
 	}
 
 	/**
@@ -955,7 +959,9 @@ final class MAD4B_SCP_Servers {
 				$tools
 			) );
 			$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $tools, $reviewed_optional );
-			if ( ! empty( $preflight['ready'] ) ) $tools = $preflight['tools'];
+			// A failed required preflight admits a route-only server for bounded
+			// failure reporting. Do not rebuild known-invalid DTOs in the Adapter.
+			$tools = ! empty( $preflight['ready'] ) ? $preflight['tools'] : array();
 		}
 		$result = $adapter->create_server( $id, 'mcp', $id, $name, $description, MAD4B_SCP_VERSION, array( $transport ), $error_handler, $observability, $tools, array(), array(), $permission );
 		if ( is_wp_error( $result ) ) {
