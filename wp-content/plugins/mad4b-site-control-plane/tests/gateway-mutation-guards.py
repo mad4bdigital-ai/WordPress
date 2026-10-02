@@ -35,7 +35,7 @@ mutations = [
     ('receipt dispatcher verification ignored', 'class-mad4b-scp-abilities.php', 'if ( is_wp_error( $receipt ) ) return $receipt;', '/* ignored receipt failure */', 'preparation-receipt-runtime.php'),
     ('cron cleanup omitted', 'class-mad4b-scp-catalog-lifecycle.php', "wp_clear_scheduled_hook( 'mad4b_catalog_gc' );", '/* omitted */', 'catalog-lifecycle-runtime.php'),
 ]
-files = ['class-mad4b-scp-identity-context.php', 'class-mad4b-scp-context-preflight.php', 'class-mad4b-scp-ability-contract-inspector.php', 'class-mad4b-scp-capability-descriptor-registry.php', 'class-mad4b-scp-preparation-receipt.php', 'class-mad4b-scp-distributed-lock.php', 'class-mad4b-scp-unified-capability-gateway.php', 'class-mad4b-scp-chatgpt-tool-projection.php', 'class-mad4b-scp-ability-catalog-transport.php', 'class-mad4b-scp-catalog-object-store.php', 'class-mad4b-scp-abilities.php', 'class-mad4b-scp-catalog-lifecycle.php']
+files = ['class-mad4b-scp-identifiers.php', 'class-mad4b-scp-identity-context.php', 'class-mad4b-scp-context-preflight.php', 'class-mad4b-scp-ability-contract-inspector.php', 'class-mad4b-scp-capability-descriptor-registry.php', 'class-mad4b-scp-preparation-receipt.php', 'class-mad4b-scp-distributed-lock.php', 'class-mad4b-scp-unified-capability-gateway.php', 'class-mad4b-scp-chatgpt-tool-projection.php', 'class-mad4b-scp-ability-catalog-transport.php', 'class-mad4b-scp-catalog-object-store.php', 'class-mad4b-scp-abilities.php', 'class-mad4b-scp-catalog-lifecycle.php']
 with tempfile.TemporaryDirectory(prefix='mad4b-gateway-mutants-') as tmp:
     target = Path(tmp)
     (target / 'includes').mkdir()
