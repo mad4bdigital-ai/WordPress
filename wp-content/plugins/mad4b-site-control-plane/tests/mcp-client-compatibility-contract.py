@@ -166,6 +166,10 @@ for marker in [
     "'mcp_required_catalog_budget_exceeded'",
     "'mcp_optional_catalog_budget_excluded'",
     "self::MAX_TOOLS - count( $required )",
+    "MAX_SERIALIZED_TOOL_BYTES",
+    "'mcp_optional_catalog_size_excluded'",
+    "'mcp_required_catalog_size_exceeded'",
+    "'bounded_serialized_tool_bytes'",
 ]:
     assert marker in catalog_diagnostics, f'missing bounded catalog budget invariant: {marker}'
 # Dynamic projections use the live effective registry so same-request projection
