@@ -15,7 +15,23 @@ function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/i','',(s
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 function get_option($k,$d=false){return array_key_exists($k,$GLOBALS['options'])?$GLOBALS['options'][$k]:$d;}
 function update_option($k,$v,$autoload=false){$GLOBALS['options'][$k]=$v;return true;}
+function delete_option($k){$had=array_key_exists($k,$GLOBALS['options']);unset($GLOBALS['options'][$k]);return $had;}
 function current_user_can($cap){return !empty($GLOBALS['admin']);}
+class MAD4B_Restore_Fake_DB{
+ public $last_error='';
+ public $queries=array();
+ function prepare($sql,...$args){$this->queries[]=array($sql,$args);return $sql;}
+ function query($sql){$this->queries[]=$sql;$this->last_error='';return 1;}
+}
+$GLOBALS['wpdb']=new MAD4B_Restore_Fake_DB();
+final class MAD4B_SCP_Schema{
+ static function tables(){return array('approvals'=>'wp_approvals','idempotency'=>'wp_idempotency','work_leases'=>'wp_work_leases');}
+}
+final class MAD4B_SCP_Database_Transaction_Guard{
+ static function begin($scope,$tables=array(),$refresh=false){return array('contract'=>'ci.tx','token'=>'fixture','scope'=>$scope);}
+ static function commit($tx){return true;}
+ static function rollback($tx){return true;}
+}
 final class MAD4B_SCP_Site_Profile{
  public static $site_uuid_for_test='123e4567-e89b-42d3-a456-426614174000';
  static function site_uuid(){return self::$site_uuid_for_test;}
