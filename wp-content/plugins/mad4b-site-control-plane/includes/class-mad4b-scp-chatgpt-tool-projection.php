@@ -582,6 +582,31 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		return ! in_array( (string) $ability_name, $required_base, true ) && self::binding_matches( $state ) && ! is_wp_error( self::effective_row( (string) $ability_name, $state ) );
 	}
 
+	/** Bookkeeping for registration notices; never rebuild DTOs or the universe. */
+	public static function registration_diagnostic_snapshot() {
+		$state = self::raw_state();
+		$effective = self::effective_projection_rows();
+		$rows = array();
+		foreach ( $state['abilities'] as $name => $stored ) {
+			$current = self::ability_row( $name );
+			$stale = is_wp_error( $current ) || ! is_array( $stored )
+				|| empty( $stored['input_schema_sha256'] ) || empty( $stored['classification_sha256'] );
+			if ( ! $stale ) $stale = ! hash_equals( strtolower( (string) $stored['input_schema_sha256'] ), strtolower( (string) $current['input_schema_sha256'] ) )
+				|| ! hash_equals( (string) $stored['classification_sha256'], (string) $current['classification_sha256'] );
+			$rows[] = array( 'stale' => $stale );
+		}
+		return array(
+			'revision' => (int) $state['revision'],
+			'stored_count' => count( $state['abilities'] ),
+			'effective_count' => count( $effective ),
+			'abilities' => $rows,
+			'storage' => MAD4B_SCP_Catalog_Object_Store::status(),
+			'catalog_refresh_action' => 'Request tools/list after a projection change; reconnect if the host caches tools.',
+			'catalog_preflight_performed' => false,
+			'universe_scan_performed' => false,
+		);
+	}
+
 	public static function status( $input = null ) {
 		unset( $input );
 		$state = self::raw_state();

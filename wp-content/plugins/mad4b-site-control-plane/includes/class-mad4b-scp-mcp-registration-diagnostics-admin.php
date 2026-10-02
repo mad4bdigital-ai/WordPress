@@ -45,7 +45,7 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		echo '<div class="notice notice-' . esc_attr( $type ) . '"><p><strong>' . esc_html__( 'MAD4B MCP registration diagnostics', 'mad4b-site-control-plane' ) . '</strong></p>';
 		echo '<table class="widefat striped" style="max-width:1100px;margin:8px 0 12px"><tbody>';
 		if ( class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) {
-			$projection = MAD4B_SCP_ChatGPT_Tool_Projection::status();
+			$projection = MAD4B_SCP_ChatGPT_Tool_Projection::registration_diagnostic_snapshot();
 			self::row( 'Projection revision', $projection['revision'] );
 			self::row( 'Projection stored / effective', $projection['stored_count'] . ' / ' . $projection['effective_count'] );
 			self::row( 'Stale projection entries', count( array_filter( $projection['abilities'], static function ( $row ) { return ! empty( $row['stale'] ); } ) ) );

@@ -1138,6 +1138,9 @@ final class MAD4B_SCP_Self_Update {
 		}
 		$message = __( 'MAD4B Site Control Plane update did not complete.', 'mad4b-site-control-plane' );
 		if ( '' !== $code ) $message .= ' ' . sprintf( __( 'Reason: %s', 'mad4b-site-control-plane' ), $code );
+		if ( 'mad4b_self_update_continuation_prior_authority_drift' === $code ) {
+			$message .= ' ' . __( 'Review governed write authority and reconcile its binding to the currently installed build before retrying this update.', 'mad4b-site-control-plane' );
+		}
 
 		$maintenance_state = isset( $_GET['mad4b_update_maintenance_state'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_update_maintenance_state'] ) ) : '';
 		if ( '' !== $maintenance_state ) {
@@ -1380,6 +1383,9 @@ final class MAD4B_SCP_Self_Update {
 
 		$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
 		$effective = MAD4B_SCP_Staging_Write_Authority::effective();
+		if ( ! is_array( $binding ) || ! isset( $binding['required'], $binding['match'] ) || ! is_bool( $binding['required'] ) || ! is_bool( $binding['match'] ) || ! is_bool( $effective ) ) {
+			return new WP_Error( 'mad4b_self_update_continuation_authority_state_unavailable', 'Unable to classify the pre-update governed-write candidate binding safely.' );
+		}
 		$out['prior_authority_effective'] = (bool) $effective;
 		$out['candidate_binding_match'] = is_array( $binding ) && ! empty( $binding['match'] );
 		if ( ! $effective || ( is_array( $binding ) && ! empty( $binding['required'] ) && empty( $binding['match'] ) ) ) {

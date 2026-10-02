@@ -159,6 +159,15 @@ $carry = classify();
 check( ! is_wp_error( $carry ), 'effective prior authority must be classifiable' );
 check( ! empty( $carry['required'] ), 'effective prior authority must require continuation' );
 check( 'carry_forward_effective_authority' === $carry['mode'], 'carry-forward mode mismatch' );
+foreach ( array( null, array(), array( 'required' => true ), array( 'required' => 'false', 'match' => true ), array( 'required' => true, 'match' => 1 ) ) as $bad_binding ) {
+	MAD4B_SCP_Staging_Write_Authority::$binding = $bad_binding;
+	$invalid = classify();
+	check( is_wp_error( $invalid ) && 'mad4b_self_update_continuation_authority_state_unavailable' === $invalid->get_error_code(), 'Malformed binding must not authorize carry-forward' );
+}
+MAD4B_SCP_Staging_Write_Authority::$binding = array( 'required' => true, 'match' => true );
+MAD4B_SCP_Staging_Write_Authority::$effective = new WP_Error( 'unavailable' );
+check( is_wp_error( classify() ), 'Authority error must not be cast into effective authority' );
+MAD4B_SCP_Staging_Write_Authority::$effective = true;
 
 $malformed_ready = $ready_status;
 $malformed_ready['write_inventory_fingerprint'] = 'not-a-sha256';

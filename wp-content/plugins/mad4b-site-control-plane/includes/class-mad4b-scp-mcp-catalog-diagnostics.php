@@ -77,14 +77,24 @@ final class MAD4B_SCP_MCP_Catalog_Diagnostics {
 			$stage = 'ability_lookup'; $failure = null; $source_fingerprint = '';
 			try {
 				$ability = wp_get_ability( $name );
-				if ( ! $ability ) throw new RuntimeException( 'ability_missing' );
+				if ( ! $ability ) {
+					$out['failures'][] = array( 'failing_ability' => $name, 'stage' => $stage, 'error_class' => 'Contract', 'error_code' => 'ability_missing', 'source_schema_fingerprint' => '', 'schema_fingerprint' => '' );
+					if ( ! in_array( $name, $optional, true ) ) $out['blocker'] = 'mcp_required_tool_preflight_failed';
+					continue;
+				}
+				$stage = 'source_schema_read';
 				$source_fingerprint = hash( 'sha256', serialize( array( $ability->get_input_schema(), $ability->get_output_schema() ) ) );
 				$stage = 'official_dto_build';
 				$built = \WP\MCP\Domain\Tools\RegisterAbilityAsMcpTool::build( $ability );
 				if ( is_wp_error( $built ) ) { $failure = array( 'stage' => $stage, 'error_class' => 'WP_Error', 'error_code' => sanitize_key( $built->get_error_code() ), 'schema_fingerprint' => '' ); }
-				else {
+				elseif ( ! is_array( $built ) || ! isset( $built['tool'] ) || ! is_object( $built['tool'] ) || ! method_exists( $built['tool'], 'toArray' ) || ! method_exists( $built['tool'], 'getName' ) ) {
+					$failure = array( 'stage' => $stage, 'error_class' => 'Contract', 'error_code' => 'mcp_catalog_builder_contract_invalid', 'schema_fingerprint' => '' );
+				} else {
 					$failure = self::dto_failure( $built['tool'] );
-					$tool_bytes = strlen( json_encode( $built['tool']->toArray(), JSON_THROW_ON_ERROR ) ) + 1;
+					// Preserve the first failure; serializing it again may throw and
+					// otherwise replace the useful validator evidence with a symptom.
+					$stage = 'dto_serialization';
+					$tool_bytes = $failure ? 0 : strlen( json_encode( $built['tool']->toArray(), JSON_THROW_ON_ERROR ) ) + 1;
 					if ( ! $failure && ( ! isset( $built['adapter_meta']['ability'] ) || $name !== $built['adapter_meta']['ability'] || isset( $names[ $built['tool']->getName() ] ) ) ) $failure = array( 'stage' => 'identity', 'error_class' => 'Contract', 'error_code' => 'mcp_identity_collision', 'schema_fingerprint' => '' );
 					if ( ! $failure && $catalog_bytes + $tool_bytes > self::MAX_SERIALIZED_TOOL_BYTES ) {
 						$failure = array(
