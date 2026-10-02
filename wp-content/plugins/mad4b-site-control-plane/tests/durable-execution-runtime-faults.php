@@ -27,6 +27,27 @@ $check( ! empty( $status['ready'] ), 'schema is not ready' );
 $tables = MAD4B_SCP_Schema::tables();
 global $wpdb;
 
+// ---- Caller transaction ownership boundary ----
+// A long-lived caller may already own a transaction. DurableExecution must
+// deny nesting without committing or rolling back that caller transaction.
+$check( class_exists( 'MAD4B_SCP_Database_Transaction_Guard' ), 'transaction guard unavailable for durable runtime fixture' );
+$check( false !== $wpdb->query( 'START TRANSACTION' ), 'unable to start caller-owned transaction fixture for DurableExecution' );
+$caller_state = MAD4B_SCP_Database_Transaction_Guard::transaction_state();
+$check( 1 === $caller_state, 'caller-owned transaction fixture is not active' );
+$nested_work_id = wp_generate_uuid4();
+$nested_lease = MAD4B_SCP_Durable_Execution::acquire_lease(
+	$nested_work_id,
+	'content_job',
+	'job-' . wp_generate_uuid4(),
+	'worker-nested-denied',
+	1,
+	30
+);
+$check( 'mad4b_database_nested_transaction_denied' === $error_code( $nested_lease ), 'DurableExecution nested into caller-owned transaction' );
+$check( 1 === MAD4B_SCP_Database_Transaction_Guard::transaction_state(), 'DurableExecution changed caller-owned transaction state' );
+$check( false !== $wpdb->query( 'ROLLBACK' ), 'unable to rollback caller-owned transaction fixture' );
+$check( 0 === MAD4B_SCP_Database_Transaction_Guard::transaction_state(), 'caller-owned rollback did not clear transaction fixture' );
+
 // ---- Lease / fencing fault injection ----
 $work_id = wp_generate_uuid4();
 $aggregate_id = 'job-' . wp_generate_uuid4();

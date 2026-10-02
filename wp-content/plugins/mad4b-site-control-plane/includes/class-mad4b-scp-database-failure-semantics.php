@@ -19,9 +19,10 @@ final class MAD4B_SCP_Database_Failure_Semantics {
 
 		$rollback_known = true === $rollback_verified || false === $rollback_verified;
 		$rolled_back = true === $rollback_verified;
+		$server_rolled_back = 'deadlock' === $kind;
 		$connection_uncertain = 'connection_loss' === $kind || 'transaction_aborted' === $kind;
-		$reconciliation_required = $connection_uncertain || ! $rollback_known || ! $rolled_back;
-		if ( in_array( $kind, array( 'deadlock', 'lock_wait_timeout' ), true ) && $rolled_back ) $reconciliation_required = false;
+		$reconciliation_required = $connection_uncertain || ( ! $server_rolled_back && ( ! $rollback_known || ! $rolled_back ) );
+		if ( 'lock_wait_timeout' === $kind && $rolled_back ) $reconciliation_required = false;
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -30,6 +31,7 @@ final class MAD4B_SCP_Database_Failure_Semantics {
 			'failure_fingerprint' => hash( 'sha256', $phase . "\n" . $kind . "\n" . $lower ),
 			'persistence_state' => $reconciliation_required ? 'unknown' : 'rolled_back_or_not_applied',
 			'rollback_verified' => $rollback_known ? $rolled_back : null,
+			'server_transaction_rollback_guaranteed' => $server_rolled_back,
 			'reconciliation_required' => $reconciliation_required,
 			'blind_retry_allowed' => false,
 			'automatic_retry_allowed' => false,

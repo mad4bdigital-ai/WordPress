@@ -142,10 +142,10 @@ for marker in (
     "claim_epoch=%d",
     "status='pending'",
     "expires_at<=%s",
-    "START TRANSACTION",
+    "begin_owned_transaction",
     "FOR UPDATE",
-    "COMMIT",
-    "ROLLBACK",
+    "commit_owned_transaction",
+    "rollback_owned_transaction",
 ):
     if marker not in idempotency_reclaim:
         raise SystemExit(f"idempotency reclaim is not fail-closed: {marker}")
@@ -153,7 +153,7 @@ for marker in (
 no_effect_release = DURABLE[DURABLE.index("public static function release_idempotency_after_verified_no_effect"):]
 no_effect_release = no_effect_release[: no_effect_release.index("public static function reclaim_idempotency")]
 for marker in (
-    "START TRANSACTION",
+    "begin_owned_transaction",
     "FOR UPDATE",
     "RECONCILIATION_OBSERVATIONS_CONTRACT",
     "count( $observations ) < 2",
@@ -166,8 +166,8 @@ for marker in (
     "status='released_verified_no_effect'",
     "claim_epoch=%d",
     "status='pending'",
-    "COMMIT",
-    "ROLLBACK",
+    "commit_owned_transaction",
+    "rollback_owned_transaction",
 ):
     if marker not in no_effect_release:
         raise SystemExit(f"verified no-effect idempotency release is not fail-closed: {marker}")
@@ -175,7 +175,7 @@ for marker in (
 observation = DURABLE[DURABLE.index("public static function record_idempotency_reconciliation_observation"):]
 observation = observation[: observation.index("public static function release_idempotency_after_verified_no_effect")]
 for marker in (
-    "START TRANSACTION",
+    "begin_owned_transaction",
     "FOR UPDATE",
     "reconciliation_verified( 'idempotency_observation'",
     "provider_scan_generation",
@@ -184,8 +184,8 @@ for marker in (
     "MAX_RECONCILIATION_OBSERVATIONS",
     "status='pending'",
     "claim_epoch=%d",
-    "COMMIT",
-    "ROLLBACK",
+    "commit_owned_transaction",
+    "rollback_owned_transaction",
 ):
     if marker not in observation:
         raise SystemExit(f"idempotency reconciliation observation ledger is incomplete: {marker}")
@@ -249,6 +249,26 @@ for marker in (
 ):
     if marker not in outbox:
         raise SystemExit(f"outbox identity validation missing: {marker}")
+
+# Durable transactions must use the central ownership/topology guard. Raw
+# transaction statements would reintroduce caller-transaction commits.
+for forbidden in (
+    "$wpdb->query( 'START TRANSACTION' );",
+    "$wpdb->query( 'COMMIT' );",
+    "$wpdb->query( 'ROLLBACK' );",
+):
+    if forbidden in DURABLE:
+        raise SystemExit(f"raw transaction ownership bypass remains: {forbidden}")
+for marker in (
+    "MAD4B_SCP_Database_Transaction_Guard::begin",
+    "MAD4B_SCP_Database_Transaction_Guard::commit",
+    "MAD4B_SCP_Database_Transaction_Guard::rollback",
+    "MAD4B_SCP_Database_Failure_Semantics::classify",
+    "mad4b_durable_persistence_uncertain",
+    "blind_retry_allowed",
+):
+    if marker not in DURABLE:
+        raise SystemExit(f"durable database failure/ownership contract missing: {marker}")
 
 # Durable persistence primitives must not become an alternate provider/network
 # execution surface.
