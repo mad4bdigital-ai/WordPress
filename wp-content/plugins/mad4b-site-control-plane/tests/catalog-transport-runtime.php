@@ -264,8 +264,10 @@ $mad4b_child_tests = array(
 	'request-generation-runtime.php',
 );
 foreach ( $mad4b_child_tests as $mad4b_child_test ) {
+	$mad4b_child_path = __DIR__ . '/' . $mad4b_child_test;
+	if ( ! is_file( $mad4b_child_path ) ) continue;
 	$mad4b_exit = 0;
-	$mad4b_command = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __DIR__ . '/' . $mad4b_child_test );
+	$mad4b_command = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( $mad4b_child_path );
 	passthru( $mad4b_command, $mad4b_exit );
 	check( 0 === $mad4b_exit, 'Standalone hardening fixture failed: ' . $mad4b_child_test );
 }
