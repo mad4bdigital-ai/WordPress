@@ -170,6 +170,13 @@ await assert.rejects(laneClient.execute(readPrepared, 'vendor/mutation', {}, {
   approvalTicketId: '11111111-1111-4111-8111-111111111111',
 }), /only valid for governed write dispatch/);
 
+preparedLane = 'enrollment';
+const enrollmentPrepared = (await laneClient.prepare(['vendor/mutation'])).catalogs.get('vendor/mutation');
+await assert.rejects(laneClient.execute(enrollmentPrepared, 'vendor/mutation', {}, {
+  approvalTicketId: '11111111-1111-4111-8111-111111111111',
+  operation: {ability_name:'vendor/mutation',operation_id:'op',expected_registration_digest:scope,expected_dispatch_policy_digest:scope},
+}), /only valid for governed write dispatch/);
+
 for (const lane of ['internal', 'breakglass', 'developer-breakglass', '__proto__']) {
   preparedLane = lane;
   const prepared = (await laneClient.prepare(['vendor/mutation'])).catalogs.get('vendor/mutation');
