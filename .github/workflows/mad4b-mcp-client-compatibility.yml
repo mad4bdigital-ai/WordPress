@@ -47,6 +47,7 @@ jobs:
           php -l "$root/tools/catalog-decommission.php"
           php "$root/tests/catalog-transport-runtime.php"
           php "$root/tests/database-transaction-guard-runtime.php"
+          php "$root/tests/request-generation-runtime.php"
           python3 "$root/tests/capability-fabric-bulk-hardening-contract.py"
           node "$root/tests/catalog-transport-client.mjs"
           node "$root/tests/network-catalog-client.mjs"
@@ -94,6 +95,7 @@ jobs:
           find "$root/includes" -name '*.php' -print0 | xargs -0 -n1 php -l
           php "$root/tests/catalog-transport-runtime.php"
           php "$root/tests/database-transaction-guard-runtime.php"
+          php "$root/tests/request-generation-runtime.php"
           python3 "$root/tests/capability-fabric-bulk-hardening-contract.py"
           php "$root/tests/projection-registration-lifecycle.php"
           php "$root/tests/gateway-regression-runtime.php"
@@ -221,6 +223,12 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-database-transaction-guard.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove long-lived request generation isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-request-generation.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove independent database builds and non-destructive cron lifecycle
         shell: bash
