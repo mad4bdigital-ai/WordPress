@@ -72,12 +72,16 @@ jobs:
           php "$root/tests/projection-registration-lifecycle.php"
 
   runtime:
-    name: MCP client compatibility runtime (${{ matrix.wordpress }})
+    name: MCP client compatibility runtime (${{ matrix.wordpress }} / PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        wordpress: ['6.9', 'latest']
+        include:
+          - wordpress: '6.9'
+            php: '7.4'
+          - wordpress: 'latest'
+            php: '8.3'
 
     services:
       mysql:
@@ -101,7 +105,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: ${{ matrix.php }}
           extensions: mysqli, mbstring, openssl
           coverage: none
 
