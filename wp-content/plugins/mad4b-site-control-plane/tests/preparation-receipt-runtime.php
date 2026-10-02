@@ -1,9 +1,6 @@
 <?php
 // Exercise real classification, evidence verification and fixed mutation dispatch.
 require __DIR__ . '/gateway-regression-runtime.php';
-function wp_salt( $scheme ) { return $GLOBALS['signing_salt'] ?? 'test-only-receipt-salt'; }
-require __DIR__ . '/../includes/class-mad4b-scp-capability-descriptor-registry.php';
-require __DIR__ . '/../includes/class-mad4b-scp-preparation-receipt.php';
 $a = new GatewayFixture( 'fixture/receipt-write', 'content', false );
 $GLOBALS['abilities'] = array( $a->get_name() => $a );
 $GLOBALS['mounted']['mad4b-content'][$a->get_name()] = true;
@@ -44,14 +41,14 @@ foreach ( array( -1000, 1000 ) as $offset ) {
 }
 $malformed = $payload; $malformed['descriptor_sha256'] = array();
 check_gateway( is_wp_error( $verify( $sign( $malformed ) ) ), 'Malformed signed payload accepted' );
-$input = array( 'ability_name' => $a->get_name(), 'expected_input_schema_sha256' => $row['input_schema_sha256'], 'expected_execution_lane' => 'content', 'expected_classification_sha256' => $row['classification_sha256'], 'preparation_receipt' => $token, 'input' => array() );
+$input = array( 'ability_name' => $a->get_name(), 'expected_input_schema_sha256' => $row['input_schema_sha256'], 'expected_execution_lane' => 'content', 'expected_classification_sha256' => $row['classification_sha256'], 'expected_authority_scope_sha256' => MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), 'preparation_receipt' => $token, 'input' => array() );
 check_gateway( ! is_wp_error( $dispatcher->write_execute( $input ) ) && 1 === $a->calls, 'Valid receipt failed fixed dispatcher' );
 $a->permission = false;
 check_gateway( is_wp_error( $dispatcher->write_execute( $input ) ) && 1 === $a->calls, 'Receipt substituted for live permission callback' );
 $a->permission = true;
 $bad = $input; $bad['preparation_receipt'] .= '0';
 check_gateway( is_wp_error( $dispatcher->write_execute( $bad ) ) && 1 === $a->calls, 'Forged receipt reached target callback' );
-foreach ( array( 'expected_execution_lane', 'expected_classification_sha256' ) as $key ) {
+foreach ( array( 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' ) as $key ) {
  $bad = $input; unset( $bad[$key] );
  check_gateway( is_wp_error( $dispatcher->write_execute( $bad ) ) && 1 === $a->calls, 'Partial pins downgraded prepared contract' );
  $bad = $input; $bad[$key] = null;
