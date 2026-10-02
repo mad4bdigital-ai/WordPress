@@ -15,11 +15,43 @@ final class MAD4B_SCP_Database_Transaction_Guard {
 		if ( ! isset( $wpdb ) || ! is_object( $wpdb ) || ! method_exists( $wpdb, 'get_var' ) ) {
 			return new WP_Error( 'mad4b_database_transaction_state_unavailable', 'Database transaction state is unavailable.' );
 		}
-		$value = $wpdb->get_var( 'SELECT @@session.in_transaction' );
-		if ( null === $value || false === $value || ! is_numeric( $value ) ) {
-			return new WP_Error( 'mad4b_database_transaction_state_unavailable', 'Database transaction state could not be verified.' );
+		$server_info = method_exists( $wpdb, 'db_server_info' ) ? (string) $wpdb->db_server_info() : '';
+		if ( false !== stripos( $server_info, 'mariadb' ) ) {
+			$value = self::quiet_get_var( 'SELECT @@session.in_transaction' );
+			if ( null === $value || false === $value || ! is_numeric( $value ) ) {
+				return new WP_Error( 'mad4b_database_transaction_state_unavailable', 'MariaDB transaction state could not be verified.' );
+			}
+			return 0 === (int) $value ? 0 : 1;
 		}
-		return 0 === (int) $value ? 0 : 1;
+
+		// MySQL does not expose MariaDB's @@session.in_transaction variable.
+		// Performance Schema reports ACTIVE immediately after START TRANSACTION.
+		$consumer = self::quiet_get_var( "SELECT ENABLED FROM performance_schema.setup_consumers WHERE NAME='events_transactions_current' LIMIT 1" );
+		$instrument = self::quiet_get_var( "SELECT ENABLED FROM performance_schema.setup_instruments WHERE NAME='transaction' LIMIT 1" );
+		if ( 'YES' !== strtoupper( (string) $consumer ) || 'YES' !== strtoupper( (string) $instrument ) ) {
+			return new WP_Error( 'mad4b_database_transaction_observer_unavailable', 'MySQL transaction instrumentation is unavailable or disabled.' );
+		}
+		$state = self::quiet_get_var(
+			"SELECT etc.STATE
+			FROM performance_schema.events_transactions_current AS etc
+			INNER JOIN performance_schema.threads AS th ON th.THREAD_ID=etc.THREAD_ID
+			WHERE th.PROCESSLIST_ID=CONNECTION_ID()
+			ORDER BY etc.EVENT_ID DESC
+			LIMIT 1"
+		);
+		if ( null === $state || '' === (string) $state ) return 0;
+		$state = strtoupper( trim( (string) $state ) );
+		if ( 'ACTIVE' === $state ) return 1;
+		if ( in_array( $state, array( 'COMMITTED', 'ROLLED BACK' ), true ) ) return 0;
+		return new WP_Error( 'mad4b_database_transaction_state_unavailable', 'MySQL transaction state is unknown.' );
+	}
+
+	private static function quiet_get_var( $sql ) {
+		global $wpdb;
+		$previous = method_exists( $wpdb, 'suppress_errors' ) ? $wpdb->suppress_errors( true ) : null;
+		$value = $wpdb->get_var( $sql );
+		if ( method_exists( $wpdb, 'suppress_errors' ) ) $wpdb->suppress_errors( (bool) $previous );
+		return $value;
 	}
 
 	public static function assert_storage( array $required_table_keys = array(), $refresh = false ) {

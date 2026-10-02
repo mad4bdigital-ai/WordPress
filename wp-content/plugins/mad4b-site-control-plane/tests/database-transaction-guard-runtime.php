@@ -24,12 +24,20 @@ class MAD4B_SCP_Schema {
 class MAD4B_Fake_Transaction_DB {
 	public $state = 0;
 	public $state_available = true;
+	public $server_info = '10.11.0-MariaDB';
+	public $performance_schema_ready = true;
 	public $queries = array();
 	public $last_error = '';
+	public function db_server_info() { return $this->server_info; }
+	public function suppress_errors( $value = null ) { return false; }
 	public function get_var( $sql ) {
 		$this->queries[] = $sql;
-		if ( 'SELECT @@session.in_transaction' !== $sql || ! $this->state_available ) return null;
-		return $this->state;
+		if ( ! $this->state_available ) return null;
+		if ( 'SELECT @@session.in_transaction' === $sql ) return $this->state;
+		if ( false !== strpos( $sql, "setup_consumers" ) ) return $this->performance_schema_ready ? 'YES' : 'NO';
+		if ( false !== strpos( $sql, "setup_instruments" ) ) return $this->performance_schema_ready ? 'YES' : 'NO';
+		if ( false !== strpos( $sql, "events_transactions_current" ) ) return $this->state ? 'ACTIVE' : null;
+		return null;
 	}
 	public function query( $sql ) {
 		$this->queries[] = $sql;
@@ -75,6 +83,20 @@ $check( 0 === $GLOBALS['wpdb']->state, 'commit did not leave transaction state c
 $lease = MAD4B_SCP_Database_Transaction_Guard::begin( 'rollback', array( 'operation_heads' ), false );
 $check( is_array( $lease ) && true === MAD4B_SCP_Database_Transaction_Guard::rollback( $lease ), 'owned rollback failed' );
 $check( 0 === $GLOBALS['wpdb']->state, 'rollback did not leave transaction state clean' );
+
+$GLOBALS['wpdb']->server_info = '8.0.46 MySQL Community Server';
+$GLOBALS['wpdb']->state = 0;
+$mysql_idle = MAD4B_SCP_Database_Transaction_Guard::transaction_state();
+$check( 0 === $mysql_idle, 'MySQL idle transaction observer failed' );
+$GLOBALS['wpdb']->state = 1;
+$mysql_active = MAD4B_SCP_Database_Transaction_Guard::transaction_state();
+$check( 1 === $mysql_active, 'MySQL active transaction observer failed' );
+$GLOBALS['wpdb']->state = 0;
+$GLOBALS['wpdb']->performance_schema_ready = false;
+$mysql_unobserved = MAD4B_SCP_Database_Transaction_Guard::transaction_state();
+$check( 'mad4b_database_transaction_observer_unavailable' === $code( $mysql_unobserved ), 'Disabled MySQL transaction instrumentation failed open' );
+$GLOBALS['wpdb']->performance_schema_ready = true;
+$GLOBALS['wpdb']->server_info = '10.11.0-MariaDB';
 
 $GLOBALS['wpdb']->state_available = false;
 $unknown = MAD4B_SCP_Database_Transaction_Guard::preflight( array( 'operation_heads' ), false );
