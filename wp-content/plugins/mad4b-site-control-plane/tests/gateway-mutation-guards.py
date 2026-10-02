@@ -20,6 +20,7 @@ mutations = [
     ('authority scope dispatcher pin ignored', 'class-mad4b-scp-abilities.php', "! hash_equals( MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), $input['expected_authority_scope_sha256'] )", 'false', 'gateway-regression-runtime.php'),
     ('write permission preparation gate removed', 'class-mad4b-scp-abilities.php', "$prepared = $this->validate_prepared_classification( $ability_name, $input );", "$prepared = true;", 'gateway-regression-runtime.php'),
     ('write governance target binding removed', 'class-mad4b-scp-abilities.php', "! hash_equals( self::$write_dispatch_governance_binding, $binding )", 'false', 'gateway-regression-runtime.php'),
+    ('write governance input binding removed', 'class-mad4b-scp-abilities.php', "$identity['target_input_sha256'] = $target_input_sha256;", "$identity['target_input_sha256'] = str_repeat( '0', 64 );", 'gateway-regression-runtime.php'),
     ('approval execution scope restoration removed', 'class-mad4b-scp-identity-context.php', "self::$request_approval_ticket_id = $previous;", '/* approval scope restoration removed */', 'identity-context-runtime.php'),
     ('context receipt byte budget removed', 'class-mad4b-scp-abilities.php', "strlen( $receipt_json ) > $receipt_budget", 'false', 'gateway-regression-runtime.php'),
     ('context receipt issuer budget removed', 'class-mad4b-scp-context-preflight.php', "strlen( $encoded_receipt ) > self::MAX_RECEIPT_TRANSPORT_BYTES", 'false', 'context-preflight-runtime.php'),
