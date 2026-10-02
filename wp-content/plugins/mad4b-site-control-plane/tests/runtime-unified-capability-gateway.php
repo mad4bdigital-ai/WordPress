@@ -33,6 +33,20 @@ $search = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
 if ( is_wp_error( $search ) ) $fail( 'Task capability search failed.', $search->get_error_code() );
 $names = array_column( $search['items'] ?? array(), 'ability_name' );
 if ( ! in_array( 'mad4b/diagnostics-health', $names, true ) ) $fail( 'Task search did not return diagnostics-health.', $search );
+$search_rows = array_values( array_filter( $search['items'] ?? array(), static function ( $row ) {
+	return is_array( $row ) && 'mad4b/diagnostics-health' === ( $row['ability_name'] ?? '' );
+} ) );
+$search_row = $search_rows[0] ?? array();
+if (
+	empty( $search_row['preparation_required'] )
+	|| ! array_key_exists( 'schema_loaded', $search_row )
+	|| false !== $search_row['schema_loaded']
+	|| isset( $search_row['input_schema_sha256'] )
+	|| isset( $search_row['classification_sha256'] )
+	|| isset( $search_row['execution_eligible'] )
+) {
+	$fail( 'Task search loaded schema/authority pins before explicit preparation.', $search_row );
+}
 
 $prepared = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
 	'action' => 'prepare',
