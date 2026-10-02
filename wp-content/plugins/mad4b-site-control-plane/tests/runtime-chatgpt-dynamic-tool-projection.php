@@ -96,6 +96,48 @@ if ( in_array( 'mad4b-ci/unclassified-projection-fixture', $unclassified_plan['m
 	$fail( 'Unclassified Ability leaked into the MCP preflight candidate set.', $unclassified_plan );
 }
 
+$oversized_name = 'mad4b-ci/oversized-read-projection-fixture';
+$oversized_prepare = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
+	'action' => 'prepare',
+	'ability_names' => array( $oversized_name ),
+	'client_capabilities' => array(
+		'max_response_bytes' => 65536,
+		'max_inline_schema_bytes' => 1024,
+	),
+), 'internal' );
+if ( is_wp_error( $oversized_prepare ) ) $fail( 'Oversized Ability could not use lazy preparation.', $oversized_prepare->get_error_code() );
+$oversized_prepared = $oversized_prepare['abilities'][0] ?? array();
+if (
+	'chunked' !== ( $oversized_prepared['schema_transfer_mode'] ?? '' )
+	|| empty( $oversized_prepared['source']['sha256'] )
+	|| empty( $oversized_prepared['projection_eligible'] )
+	|| 'requires_dynamic_projection' !== ( $oversized_prepared['execution']['state'] ?? '' )
+) {
+	$fail( 'Oversized Ability did not remain available through lazy transport/dispatcher planning.', $oversized_prepared );
+}
+$oversized_plan = MAD4B_SCP_ChatGPT_Tool_Projection::plan( array(
+	'mode' => 'replace',
+	'ability_names' => array( $oversized_name ),
+	'include_breakglass' => false,
+) );
+if ( is_wp_error( $oversized_plan ) ) $fail( 'Oversized Ability projection planning failed unexpectedly.', $oversized_plan->get_error_code() );
+if (
+	! empty( $oversized_plan['ready_for_apply'] )
+	|| ! in_array( $oversized_name, $oversized_plan['unprojectable_abilities'] ?? array(), true )
+	|| ! in_array( $oversized_name, array_column( array_filter(
+		$oversized_plan['mcp_preflight']['failures'] ?? array(),
+		static function ( $failure ) { return is_array( $failure ) && 'mcp_optional_catalog_size_excluded' === ( $failure['error_code'] ?? '' ); }
+	), 'failing_ability' ), true )
+) {
+	$fail( 'Oversized direct schema did not fail closed to dispatcher fallback.', $oversized_plan );
+}
+if (
+	( $oversized_plan['mcp_preflight']['serialized_tool_bytes'] ?? PHP_INT_MAX ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_SERIALIZED_TOOL_BYTES
+	|| 'bounded_serialized_tool_bytes' !== ( $oversized_plan['mcp_preflight']['size_policy'] ?? '' )
+) {
+	$fail( 'Direct catalog byte budget was not enforced.', $oversized_plan['mcp_preflight'] ?? array() );
+}
+
 $manifest = MAD4B_SCP_ChatGPT_Tool_Projection::discover( array( 'transport_action' => 'manifest', 'limit' => 1 ) );
 if ( is_wp_error( $manifest ) || empty( $manifest['snapshot'] ) || empty( $manifest['items'][0]['schema_sha256'] ) ) $fail( 'Central manifest failed in real WordPress.' );
 $schema = MAD4B_SCP_ChatGPT_Tool_Projection::discover( array( 'transport_action' => 'schema', 'snapshot' => $manifest['snapshot'], 'schema_sha256' => $manifest['items'][0]['schema_sha256'] ) );
@@ -246,6 +288,7 @@ fwrite(
 			'unclassified_ability_visible_fail_closed_verified' => true,
 			'schema_drift_fail_closed' => true,
 			'breakglass_opt_in_required' => true,
+			'oversized_schema_dispatcher_fallback_verified' => true,
 		),
 		JSON_UNESCAPED_SLASHES
 	) . PHP_EOL
