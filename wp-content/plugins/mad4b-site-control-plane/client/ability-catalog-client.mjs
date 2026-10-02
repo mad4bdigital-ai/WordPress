@@ -40,8 +40,9 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
       if (typeof contextReceipt !== 'object' || Array.isArray(contextReceipt)) throw new CatalogError('Invalid Context Receipt');
       let json;
       try { json = JSON.stringify(contextReceipt); } catch { throw new CatalogError('Context Receipt is not serializable'); }
+      if (typeof json !== 'string') throw new CatalogError('Context Receipt is not serializable');
       if (new TextEncoder().encode(json).byteLength > 65536) throw new CatalogError('Context Receipt exceeds transport budget');
-      receipt = JSON.parse(json);
+      try { receipt = JSON.parse(json); } catch { throw new CatalogError('Context Receipt is not serializable'); }
     }
     return {approvalTicketId: ticket, contextReceipt: receipt};
   }
