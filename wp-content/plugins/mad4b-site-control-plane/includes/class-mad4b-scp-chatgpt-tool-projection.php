@@ -176,6 +176,10 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		catch ( Throwable $error ) { return new WP_Error( 'mad4b_chatgpt_projection_ability_inspection_failed', 'Ability inspection failed; this projection is unavailable.' ); }
 	}
 
+	public static function describe_ability( $ability_name ) {
+		return self::ability_row( $ability_name );
+	}
+
 	private static function inspect_ability_row( $ability_name ) {
 		$ability_name = trim( (string) $ability_name );
 		if ( '' === $ability_name || ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) {
