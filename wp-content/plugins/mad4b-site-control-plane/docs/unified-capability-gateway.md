@@ -13,7 +13,7 @@ The gateway chooses discovery, schema transfer and exposure strategy per client 
 - Other clients remain on the stable discovery/info/dispatch tool set.
 - Search is metadata-only: it ranks bounded labels, descriptions, categories and declared metadata without loading schemas or making final execution/projection decisions.
 - Preparation serializes only selected Ability schemas. Matching schema fingerprints are reused; large schemas are chunked with bounded adaptive size/parallelism recommendations.
-- Every governed read/write/developer execution carries the prepared input-schema identity back to the existing dispatcher; read execution without an exact schema pin fails closed. The host refreshes discovery before execution. Direct execution additionally requires the wire schema/tool identity to remain unchanged.
+- Every governed read/write/developer fixed-dispatch execution carries the exact prepared input-schema identity, original execution lane, classification digest, authority-scope digest and HMAC-signed preparation receipt back to the dispatcher. Missing, expired, malformed or cross-subject preparation evidence fails closed. The host refreshes preparation immediately before execution. Direct execution additionally requires the wire schema/tool identity to remain unchanged.
 - The gateway never invokes a target Ability directly.
 - Unclassified/internal/unsupported lanes remain visible for diagnosis but fail closed for projection and execution.
 - Projected Breakglass is structurally registered without consulting pre-auth request identity, but authenticated visibility and call admission require exact ChatGPT step-up plus `server:mad4b-breakglass` or the exact `ability:<name>` scope. Original NHI grant, runtime gate, approval and Ability permission checks still run.
@@ -29,6 +29,8 @@ The host client defaults to at most 1,024 manifest pages, 10,000 aggregate manif
 `read` uses `read-execute`; `write`, `content` and `admin` use `write-execute`; normal `developer` uses `developer-execute`. The original lane is retained and revalidated, not relabeled as write authority. Mutation targets must remain mounted on the dedicated write surface and explicitly declare `readonly=false`. Enrollment still resolves its explicit operation contract; internal and Breakglass lanes never enter a generic fixed dispatcher.
 
 Gateway clients forward `expected_execution_lane` and `expected_classification_sha256` alongside the mandatory input-schema pin. All three pins are required by the dispatcher schemas and by direct PHP entrypoints. Schema-only legacy callers fail closed with `mad4b_dispatch_preparation_required`; refresh tool definitions and prepare again. This intentionally tightens the dispatcher contract; no legacy bypass flag is available. Read clients without the mandatory input-schema pin must refresh tool definitions and prepare the target again; no permissive legacy fallback is provided.
+
+The canonical structural identity is produced by `MAD4B_SCP_Ability_Contract_Inspector` using the versioned `mad4b.ability-classification.v2` digest contract; `MAD4B_SCP_Capability_Descriptor_Registry` builds projection-independent contract/site roots from it. Upgrading from the older noncanonical classification digest intentionally makes stored projection rows and preparation receipts stale so they fail closed and must be prepared/replanned again.
 
 Fixed dispatch is the primary execution path. Direct projection is an optional hot set, sharing site-level state. The pinned MCP Adapter advertises `tools.listChanged=false`; no notification delivery is claimed. A client may explicitly refresh `tools/list` or reconnect before direct use. A different session replacing the hot set does not invalidate a schema/classification-stable fixed-dispatch target. The 64-entry selection registry and 36-total-tool/96-KiB DTO limits describe different resources and are not interchangeable.
 
@@ -48,7 +50,7 @@ Providers may supply at most 24 `meta.mcp.search_aliases` strings, each bounded 
 
 The MCP compatibility matrix executes behavioral gateway and lifecycle fixtures on PHP 7.4/8.3, and real WordPress 6.9/latest tests verify original content/admin lanes, independent database connections and cron retention. The local OAuth matrix proves cookie+nonce access, nonce denial and invalid-bearer fallback denial through independent HTTP requests. Existing tests retain schema/wire drift, projection CAS, immutable storage races, UTF-8, chunk transport, oversized-tool fallback and original permissions.
 
-`gateway-mutation-guards.py` introduces seventeen representative regressions into isolated source copies and requires the behavioral tests to reject each one. This protects against a test suite that passes while no longer exercising its intended invariant.
+`gateway-mutation-guards.py` introduces nineteen representative regressions into isolated source copies and requires the behavioral tests to reject each one. This protects against a test suite that passes while no longer exercising its intended invariant.
 
 
 ## Explicit offline cache retirement
@@ -69,9 +71,7 @@ Reflection is retained where the pinned Adapter/Abilities expose no supported ca
 
 ## Preparation evidence and full review coverage
 
-Gateway preparation now returns an expiring `preparation_receipt` and selected
-`descriptor_sha256` with contract/site generation roots. The client forwards
-the fresh receipt to the read/write/developer dispatcher. Evidence pins observed
+Gateway preparation now returns an expiring `preparation_receipt`, exact `authority_scope_sha256` and selected `descriptor_sha256` with contract/site generation roots. The client performs a fresh single-target prepare before execution and forwards both signed receipt and exact authority scope to the read/write/developer dispatcher. Evidence pins observed
 identity and contract; live authorization, target permission and original
 execution boundaries remain mandatory. Original-lane and classification pins
 remain mandatory under the current dispatch contract.
