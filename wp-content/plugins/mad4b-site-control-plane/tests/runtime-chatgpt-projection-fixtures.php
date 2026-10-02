@@ -14,6 +14,22 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 	) );
 }
 
+	if ( ! wp_has_ability( 'mad4b-ci/arabic-metadata-fixture' ) ) {
+		wp_register_ability( 'mad4b-ci/arabic-metadata-fixture', array(
+			'label' => str_repeat( 'مرحبا', 80 ),
+			'description' => str_repeat( 'محتوى عربي للاختبار ', 80 ),
+			'category' => 'mad4b-read',
+			'execute_callback' => static function ( $input = null ) { unset( $input ); return array( 'ok' => true ); },
+			'permission_callback' => static function () { return true; },
+			'input_schema' => array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array(
+				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			),
+		) );
+	}
+
 	if ( ! wp_has_ability( 'mad4b-ci/readonly-projection-fixture' ) ) {
 		wp_register_ability( 'mad4b-ci/readonly-projection-fixture', array(
 			'label' => 'Readonly Projection Fixture',
