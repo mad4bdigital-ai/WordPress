@@ -336,25 +336,28 @@ final class MAD4B_SCP_Execution_Fence {
 		if ( ! self::final_execution_wrapper_verified( $ability_name ) ) return new WP_Error( 'mad4b_projection_final_execution_admission_required', 'Projected Ability is missing the final execution-admission wrapper.' );
 		$row = MAD4B_SCP_ChatGPT_Tool_Projection::inspect_contract( $ability_name );
 		if ( is_wp_error( $row ) ) return $row;
-		$descriptor = class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' ) ? MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name ) : array();
-		if ( is_wp_error( $descriptor ) ) return $descriptor;
-		$lane = MAD4B_SCP_ChatGPT_Tool_Projection::execution_server( $ability_name );
-		if ( is_wp_error( $lane ) ) return $lane;
 		$request_context_sha = '';
 		if ( class_exists( 'MAD4B_SCP_Request_Generation' ) ) {
 			$request = MAD4B_SCP_Request_Generation::admit( 'projected_execution_admission' );
 			if ( is_wp_error( $request ) ) return $request;
 			$request_context_sha = isset( $request['context_sha256'] ) ? (string) $request['context_sha256'] : '';
 		}
-		return array(
+		$binding = MAD4B_SCP_ChatGPT_Tool_Projection::current_binding();
+		$binding_sha = self::digest( 'mad4b.projected-call-site-binding.v1', $binding );
+		$pin_basis = array(
 			'ability_name' => (string) $ability_name,
-			'execution_server' => (string) $lane,
+			'execution_lane' => isset( $row['lane'] ) ? (string) $row['lane'] : ( isset( $row['execution_lane'] ) ? (string) $row['execution_lane'] : '' ),
 			'input_schema_sha256' => isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '',
 			'classification_sha256' => isset( $row['classification_sha256'] ) ? (string) $row['classification_sha256'] : '',
-			'descriptor_sha256' => isset( $descriptor['descriptor_sha256'] ) ? (string) $descriptor['descriptor_sha256'] : '',
+			'site_binding_sha256' => $binding_sha,
+		);
+		$structural_pin_sha = self::digest( 'mad4b.projected-call-structural-pins.v1', $pin_basis );
+		if ( '' === $binding_sha || '' === $structural_pin_sha ) return new WP_Error( 'mad4b_projection_execution_pin_digest_failed', 'Projected execution structural pins could not be derived.' );
+		return array_merge( $pin_basis, array(
+			'structural_pin_sha256' => $structural_pin_sha,
 			'authority_scope_sha256' => class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' ) ? MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope() : '',
 			'request_context_sha256' => $request_context_sha,
-		);
+		) );
 	}
 
 	private static function evidence_sha256( $input ) {
