@@ -18,6 +18,7 @@ mutations = [
     ('lost connection lock ignored', 'class-mad4b-scp-ability-catalog-transport.php', '! MAD4B_SCP_Distributed_Lock::owns( $lock )', 'false', 'catalog-transport-runtime.php'),
     ('database lock namespace omitted', 'class-mad4b-scp-distributed-lock.php', "$database . ':' . $wpdb->options", "$wpdb->options", 'catalog-transport-runtime.php'),
     ('authority scope dispatcher pin ignored', 'class-mad4b-scp-abilities.php', "! hash_equals( MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), $input['expected_authority_scope_sha256'] )", 'false', 'gateway-regression-runtime.php'),
+    ('write permission preparation gate removed', 'class-mad4b-scp-abilities.php', "$prepared = $this->validate_prepared_classification( $ability_name, $input );", "$prepared = true;", 'gateway-regression-runtime.php'),
     ('classification canonical ordering removed', 'class-mad4b-scp-ability-contract-inspector.php', "sort( $keys, SORT_STRING );", '/* canonical ordering removed */', 'ability-contract-inspector-runtime.php'),
     ('receipt signature ignored', 'class-mad4b-scp-preparation-receipt.php', "! hash_equals( hash_hmac( 'sha256', $parts[1], self::key() ), $parts[2] )", 'false', 'preparation-receipt-runtime.php'),
     ('receipt expiry ignored', 'class-mad4b-scp-preparation-receipt.php', "$p['expires_at'] <= $now", 'false', 'preparation-receipt-runtime.php'),
