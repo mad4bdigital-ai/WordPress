@@ -46,6 +46,27 @@ final class MAD4B_SCP_Authorization {
 		return true === $result['allowed'] && 'preflight_allowed' === (string) $result['reason_code'];
 	}
 
+	private static function remember_trusted_execution_boundary( $ability_name, $callback ) {
+		$ability_name = (string) $ability_name;
+		if ( '' === $ability_name || ! ( $callback instanceof Closure ) ) return false;
+		if ( ! isset( self::$trusted_execution_boundaries[ $ability_name ] ) || ! is_array( self::$trusted_execution_boundaries[ $ability_name ] ) ) {
+			self::$trusted_execution_boundaries[ $ability_name ] = array();
+		}
+		if ( ! in_array( $callback, self::$trusted_execution_boundaries[ $ability_name ], true ) ) {
+			self::$trusted_execution_boundaries[ $ability_name ][] = $callback;
+		}
+		while ( count( self::$trusted_execution_boundaries[ $ability_name ] ) > 16 ) array_shift( self::$trusted_execution_boundaries[ $ability_name ] );
+		return true;
+	}
+
+	public static function propagate_trusted_execution_boundary( $ability_name, $outer_callback, $inner_callback ) {
+		$ability_name = (string) $ability_name;
+		if ( '' === $ability_name || ! ( $outer_callback instanceof Closure ) || ! ( $inner_callback instanceof Closure ) ) return false;
+		if ( ! isset( self::$trusted_execution_boundaries[ $ability_name ] )
+			|| ! in_array( $inner_callback, self::$trusted_execution_boundaries[ $ability_name ], true ) ) return false;
+		return self::remember_trusted_execution_boundary( $ability_name, $outer_callback );
+	}
+
 	public static function target_fingerprint( $ability_name, $provider, $input, array $agent = array(), array $identity = array() ) {
 		$provider = sanitize_key( (string) $provider );
 		if ( '' === $provider ) $provider = 'core';
@@ -427,10 +448,7 @@ final class MAD4B_SCP_Authorization {
 			return $result;
 		};
 		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
-		if ( ! isset( self::$trusted_execution_boundaries[ $name ] ) || ! is_array( self::$trusted_execution_boundaries[ $name ] ) ) self::$trusted_execution_boundaries[ $name ] = array();
-		$boundary_callback = $args['execute_callback'];
-		if ( ! in_array( $boundary_callback, self::$trusted_execution_boundaries[ $name ], true ) ) self::$trusted_execution_boundaries[ $name ][] = $boundary_callback;
-		while ( count( self::$trusted_execution_boundaries[ $name ] ) > 16 ) array_shift( self::$trusted_execution_boundaries[ $name ] );
+		self::remember_trusted_execution_boundary( $name, $args['execute_callback'] );
 		$args['meta']['mcp']['mad4b_execution_boundary'] = self::EXECUTION_BOUNDARY_CONTRACT;
 		$args['meta']['mcp']['mad4b_execution_commit_guard'] = class_exists( 'MAD4B_SCP_Execution_Commit_Guard' ) ? MAD4B_SCP_Execution_Commit_Guard::CONTRACT : '';
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) && MAD4B_SCP_Staging_Write_Planning_Guard::ABILITY === (string) $name ) {
