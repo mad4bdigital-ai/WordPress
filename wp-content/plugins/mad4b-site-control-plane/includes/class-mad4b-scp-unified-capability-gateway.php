@@ -203,7 +203,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 
 	private static function task_terms( array $input ) {
 		$task = isset( $input['task'] ) ? trim( (string) $input['task'] ) : ( isset( $input['query'] ) ? trim( (string) $input['query'] ) : '' );
-		if ( strlen( $task ) > self::MAX_TASK_BYTES ) $task = substr( $task, 0, self::MAX_TASK_BYTES );
+		$task = self::bounded_text( $task, self::MAX_TASK_BYTES );
 		$terms = array();
 		if ( '' !== $task ) {
 			$split = preg_split( '/[^\p{L}\p{N}._+\/-]+/u', function_exists( 'mb_strtolower' ) ? mb_strtolower( $task, 'UTF-8' ) : strtolower( $task ) );
@@ -211,8 +211,8 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		}
 		$keywords = isset( $input['keywords'] ) && is_array( $input['keywords'] ) ? array_slice( $input['keywords'], 0, self::MAX_KEYWORDS ) : array();
 		foreach ( $keywords as $keyword ) {
-			$keyword = trim( (string) $keyword );
-			if ( '' !== $keyword && strlen( $keyword ) <= 80 ) $terms[] = function_exists( 'mb_strtolower' ) ? mb_strtolower( $keyword, 'UTF-8' ) : strtolower( $keyword );
+			$keyword = self::bounded_text( trim( (string) $keyword ), 80 );
+			if ( '' !== $keyword ) $terms[] = function_exists( 'mb_strtolower' ) ? mb_strtolower( $keyword, 'UTF-8' ) : strtolower( $keyword );
 		}
 		return array( $task, array_values( array_unique( $terms ) ) );
 	}
@@ -220,6 +220,19 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 	private static function lower( $value ) {
 		$value = (string) $value;
 		return function_exists( 'mb_strtolower' ) ? mb_strtolower( $value, 'UTF-8' ) : strtolower( $value );
+	}
+
+	private static function bounded_text( $value, $max_bytes, $strip_tags = false ) {
+		$value = (string) $value;
+		$max_bytes = max( 1, (int) $max_bytes );
+		if ( $strip_tags && function_exists( 'wp_strip_all_tags' ) ) $value = wp_strip_all_tags( $value );
+		if ( strlen( $value ) <= $max_bytes ) return $value;
+		if ( function_exists( 'mb_strcut' ) ) {
+			$cut = mb_strcut( $value, 0, $max_bytes, 'UTF-8' );
+			return is_string( $cut ) ? $cut : '';
+		}
+		$cut = substr( $value, 0, $max_bytes );
+		return function_exists( 'wp_check_invalid_utf8' ) ? wp_check_invalid_utf8( $cut, true ) : $cut;
 	}
 
 	private static function relevance_score( array $row, $task, array $terms ) {
@@ -260,9 +273,9 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 				$row = array(
 					'ability_name' => $ability_name,
-					'label' => method_exists( $ability, 'get_label' ) ? substr( (string) $ability->get_label(), 0, 160 ) : '',
-					'description' => method_exists( $ability, 'get_description' ) ? substr( wp_strip_all_tags( (string) $ability->get_description() ), 0, 320 ) : '',
-					'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
+					'label' => method_exists( $ability, 'get_label' ) ? self::bounded_text( $ability->get_label(), 160 ) : '',
+					'description' => method_exists( $ability, 'get_description' ) ? self::bounded_text( $ability->get_description(), 320, true ) : '',
+					'category' => method_exists( $ability, 'get_category' ) ? self::bounded_text( $ability->get_category(), 160 ) : '',
 					'declared_surface' => isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '',
 					'declared_readonly' => array_key_exists( 'readonly', $annotations ) ? (bool) $annotations['readonly'] : null,
 				);
