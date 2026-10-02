@@ -256,3 +256,17 @@ $one = MAD4B_SCP_Distributed_Lock::catalog_name( 'same-scope' );
 $GLOBALS['wpdb']->dbname = 'database-two';
 check( $one !== MAD4B_SCP_Distributed_Lock::catalog_name( 'same-scope' ), 'Server-wide mutex omitted database namespace' );
 echo "PASS lock fault injection: connection loss denies publication and database namespaces are isolated\n";
+$mad4b_child_tests = array(
+	'database-transaction-guard-runtime.php',
+	'database-topology-runtime.php',
+	'runtime-compatibility-profile-runtime.php',
+	'runtime-compatibility-profile-cron.php',
+	'request-generation-runtime.php',
+);
+foreach ( $mad4b_child_tests as $mad4b_child_test ) {
+	$mad4b_exit = 0;
+	$mad4b_command = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __DIR__ . '/' . $mad4b_child_test );
+	passthru( $mad4b_command, $mad4b_exit );
+	check( 0 === $mad4b_exit, 'Standalone hardening fixture failed: ' . $mad4b_child_test );
+}
+

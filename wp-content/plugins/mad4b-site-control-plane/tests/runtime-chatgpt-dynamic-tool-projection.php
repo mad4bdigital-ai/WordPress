@@ -380,6 +380,19 @@ try {
 	else update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $previous, false );
 }
 
+
+$mad4b_real_runtime_fixture = static function ( $file ) {
+	require $file;
+};
+foreach ( array(
+	'runtime-database-transaction-guard.php',
+	'runtime-request-generation.php',
+	'runtime-execution-fence-recursion.php',
+	'runtime-compatibility-profile.php',
+) as $mad4b_runtime_fixture ) {
+	$mad4b_real_runtime_fixture( __DIR__ . '/' . $mad4b_runtime_fixture );
+}
+
 $status = MAD4B_SCP_ChatGPT_Tool_Projection::status();
 if ( empty( $status['read_only'] ) || ! empty( $status['mutation_performed'] ) || ! empty( $status['projection_changes_authority'] ) ) {
 	$fail( 'Projection status changed its non-authorizing read boundary.', $status );

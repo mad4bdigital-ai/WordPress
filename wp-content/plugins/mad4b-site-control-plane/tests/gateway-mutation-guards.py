@@ -1,5 +1,6 @@
 """Prove behavioral CI rejects representative regressions, not just marker loss."""
 from pathlib import Path
+import runpy
 import shutil
 import subprocess
 import tempfile
@@ -75,3 +76,4 @@ with tempfile.TemporaryDirectory(prefix='mad4b-gateway-mutants-') as tmp:
         assert 'syntax error' not in result.stderr.lower(), f'Mutation only caused syntax failure: {label}'
         print(f'KILLED {label}')
 print(f'PASS {len(mutations)} representative regression mutations rejected')
+runpy.run_path(str(root / 'tests' / 'capability-fabric-bulk-hardening-contract.py'), run_name='__main__')
