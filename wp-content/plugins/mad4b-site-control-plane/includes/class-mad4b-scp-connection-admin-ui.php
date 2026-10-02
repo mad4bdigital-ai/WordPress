@@ -12,6 +12,24 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 20 );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+		MAD4B_SCP_Endpoint_Diagnostic::boot();
+	}
+
+	public static function enqueue_assets() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+		$page = isset( $_GET['page'] ) && is_string( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presentation only.
+		$tab = isset( $_GET['tab'] ) && is_string( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- presentation only.
+		if ( self::PAGE_SLUG !== $page || 'endpoints' !== $tab ) return;
+		wp_enqueue_script( 'mad4b-scp-endpoint-diagnostics', plugins_url( 'assets/connection-endpoint-diagnostics.js', MAD4B_SCP_FILE ), array(), MAD4B_SCP_VERSION, true );
+		$ids = MAD4B_SCP_Servers::expected_server_ids();
+		$ids = array_values( array_unique( array_merge( array( 'mad4b-chatgpt' ), $ids ) ) );
+		wp_localize_script( 'mad4b-scp-endpoint-diagnostics', 'mad4bEndpointDiagnostics', array(
+			'url' => admin_url( 'admin-ajax.php' ), 'action' => MAD4B_SCP_Endpoint_Diagnostic::ACTION,
+			'nonce' => wp_create_nonce( 'mad4b_connection_deep_endpoints' ), 'build' => MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint(),
+			'servers' => $ids, 'timeoutMs' => 15000,
+			'labels' => array( 'notChecked' => __( 'Not checked', 'mad4b-site-control-plane' ), 'running' => __( 'Checking', 'mad4b-site-control-plane' ), 'complete' => __( 'Endpoint checks complete. External certification and foreign transport review were not performed.', 'mad4b-site-control-plane' ), 'stopped' => __( 'Diagnostic stopped', 'mad4b-site-control-plane' ), 'timeout' => __( 'The request exceeded 15 seconds. No further requests were started. A server callback may still be running; do not immediately retry.', 'mad4b-site-control-plane' ) ),
+		) );
 	}
 
 	public static function register_menu() {
@@ -43,21 +61,9 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'readiness'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'readiness';
 
-		// Every ordinary Connection GET/HEAD is request-serving. Deep endpoint
-		// materialization is POST-only so the early plugin classifier never needs
-		// pluggable user/nonce APIs and opening a URL cannot trigger lifecycle work.
-		$deep_endpoints = false;
-		if ( 'endpoints' === $tab && 'POST' === strtoupper( isset( $_SERVER['REQUEST_METHOD'] ) ? (string) $_SERVER['REQUEST_METHOD'] : 'GET' ) ) {
-			$raw_action = filter_input( INPUT_POST, 'mad4b_connection_action', FILTER_UNSAFE_RAW );
-			$raw_nonce = filter_input( INPUT_POST, 'mad4b_connection_nonce', FILTER_UNSAFE_RAW );
-			$action = is_string( $raw_action ) ? sanitize_key( wp_unslash( $raw_action ) ) : '';
-			$nonce = is_string( $raw_nonce ) ? sanitize_text_field( wp_unslash( $raw_nonce ) ) : '';
-			$deep_endpoints = 'deep_endpoints' === $action
-				&& current_user_can( 'manage_options' )
-				&& '' !== $nonce
-				&& false !== wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' );
-		}
-		$status = self::snapshot( $deep_endpoints );
+		// HTML always uses the bounded snapshot, including obsolete full-page POSTs.
+		// Deep materialization belongs to the separate signed AJAX worker.
+		$status = self::snapshot( false );
 
 		MAD4B_SCP_Admin_Experience::styles();
 		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'MAD4B Connection', 'mad4b-site-control-plane' ) . '</h1>';
@@ -69,16 +75,14 @@ final class MAD4B_SCP_Connection_Admin_UI {
 
 		$oauth = isset( $status['oauth_resource_server'] ) && is_array( $status['oauth_resource_server'] ) ? $status['oauth_resource_server'] : array();
 		$local_oauth = class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
-			? ( $deep_endpoints
-				? MAD4B_SCP_Local_OAuth_Server::status()
-				: MAD4B_SCP_Local_OAuth_Server::runtime_identity_status() )
+			? MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()
 			: array();
 		MAD4B_SCP_Admin_Experience::stages( self::connection_stages( $status, $oauth ) );
 		MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
 
 		if ( 'readiness' === $tab ) self::render_readiness( $status, $oauth, $local_oauth );
 		if ( 'oauth' === $tab ) self::render_oauth( $status, $oauth, $local_oauth );
-		if ( 'endpoints' === $tab ) self::render_endpoints( $status, $deep_endpoints );
+		if ( 'endpoints' === $tab ) self::render_endpoints( $status );
 		if ( 'isolation' === $tab ) self::render_isolation( $status );
 		if ( 'certification' === $tab ) self::render_certification( $status );
 		echo '</div>';
@@ -245,22 +249,20 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		) );
 	}
 
-	private static function render_endpoints( array $status, $deep_endpoints = false ) {
+	private static function render_endpoints( array $status ) {
 		echo '<h2>' . esc_html__( 'MAD4B MCP endpoints', 'mad4b-site-control-plane' ) . '</h2>';
-		if ( ! $deep_endpoints ) {
-			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'This page is using the bounded endpoint snapshot. Deep REST route and provider registration materialization runs only when explicitly requested below.', 'mad4b-site-control-plane' ) . '</p></div>';
-			echo '<form method="post" action="' . esc_url( add_query_arg( array( 'page' => self::PAGE_SLUG, 'tab' => 'endpoints' ), admin_url( 'admin.php' ) ) ) . '" style="margin:12px 0 18px">';
-			wp_nonce_field( 'mad4b_connection_deep_endpoints', 'mad4b_connection_nonce' );
-			echo '<input type="hidden" name="mad4b_connection_action" value="deep_endpoints">';
-			submit_button( __( 'Run Deep Endpoint Diagnostic', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
-			echo '</form>';
-		} else {
-			echo '<div class="notice notice-success inline"><p>' . esc_html__( 'Deep endpoint diagnostic was explicitly requested for this response.', 'mad4b-site-control-plane' ) . '</p></div>';
-		}
+		echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Unmeasured values are shown as Not checked. Select an endpoint to inspect it without leaving this page. All endpoints runs one request at a time and stops on a timeout.', 'mad4b-site-control-plane' ) . '</p></div>';
+		echo '<form id="mad4b-endpoint-diagnostic-form" method="post" style="margin:12px 0 18px">';
+		echo '<label for="mad4b-endpoint-diagnostic-server">' . esc_html__( 'Endpoint', 'mad4b-site-control-plane' ) . '</label> <select id="mad4b-endpoint-diagnostic-server" name="server_id">';
+		foreach ( array_values( array_unique( array_merge( array( 'mad4b-chatgpt' ), MAD4B_SCP_Servers::expected_server_ids() ) ) ) as $id ) echo '<option value="' . esc_attr( $id ) . '">' . esc_html( $id ) . '</option>';
+		echo '<option value="all">' . esc_html__( 'All endpoints', 'mad4b-site-control-plane' ) . '</option></select> ';
+		submit_button( __( 'Run Deep Endpoint Diagnostic', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+		echo '<noscript><p>' . esc_html__( 'Enable JavaScript to run endpoint checks. Page loads never run the deep diagnostic.', 'mad4b-site-control-plane' ) . '</p></noscript></form>';
+		echo '<p id="mad4b-endpoint-diagnostic-progress" role="status" aria-live="polite"></p><div id="mad4b-endpoint-diagnostic-results"></div>';
 		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Inspect the actual registered server surfaces before any client configuration. Permission binding must remain exact for every transport.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Surface</th><th>Server</th><th>Endpoint</th><th>Registered</th><th>REST route</th><th>Permission binding</th></tr></thead><tbody>';
 		foreach ( isset( $status['servers'] ) && is_array( $status['servers'] ) ? $status['servers'] : array() as $server ) {
-			echo '<tr><td>' . esc_html( isset( $server['surface'] ) ? $server['surface'] : '' ) . '</td><td><code>' . esc_html( isset( $server['server_id'] ) ? $server['server_id'] : '' ) . '</code></td><td><code>' . esc_html( isset( $server['endpoint'] ) ? $server['endpoint'] : '' ) . '</code></td><td>' . esc_html( self::yesno( ! empty( $server['registered'] ) ) ) . '</td><td>' . esc_html( self::yesno( ! empty( $server['route_registered'] ) ) ) . '</td><td>' . esc_html( self::yesno( ! empty( $server['permission_callback_match'] ) ) ) . '<br><code>' . esc_html( isset( $server['permission_callback'] ) ? $server['permission_callback'] : '' ) . '</code></td></tr>';
+			echo '<tr data-mad4b-endpoint="' . esc_attr( $server['server_id'] ?? '' ) . '"><td>' . esc_html( $server['surface'] ?? '' ) . '</td><td><code>' . esc_html( $server['server_id'] ?? '' ) . '</code></td><td><code>' . esc_html( $server['endpoint'] ?? '' ) . '</code></td><td data-check="registered">' . esc_html( self::measurement( $server['registered'] ?? null ) ) . '</td><td data-check="route_registered">' . esc_html( self::measurement( $server['route_registered'] ?? null ) ) . '</td><td><span data-check="permission_callback_match">' . esc_html( self::measurement( $server['permission_callback_match'] ?? null ) ) . '</span><br><code data-check="permission_callback">' . esc_html( $server['permission_callback'] ?? '' ) . '</code></td></tr>';
 		}
 		echo '</tbody></table></div>';
 
@@ -270,26 +272,15 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		self::kv( array(
 			'Server' => isset( $write['server_id'] ) ? $write['server_id'] : 'mad4b-write',
 			'Endpoint' => isset( $write['endpoint'] ) ? $write['endpoint'] : '',
-			'Registered' => ! empty( $write['registered'] ),
-			'REST route registered' => ! empty( $write['route_registered'] ),
-			'Permission binding exact' => ! empty( $write['permission_callback_match'] ),
-			'Mounted write tools' => isset( $write['mounted_write_tool_count'] ) ? (int) $write['mounted_write_tool_count'] : 0,
+			'Registered' => self::measurement( $write['registered'] ?? null ),
+			'REST route registered' => self::measurement( $write['route_registered'] ?? null ),
+			'Permission binding exact' => self::measurement( $write['permission_callback_match'] ?? null ),
+			'Mounted write tools' => isset( $write['mounted_write_tool_count'] ) ? (int) $write['mounted_write_tool_count'] : __( 'Not checked', 'mad4b-site-control-plane' ),
 			'Global mutation configured' => ! empty( $write['mutation_global_enabled'] ),
 			'Mutation effective for current request' => ! empty( $write['mutation_effective_for_current_request'] ),
 			'Exact transport grant required' => ! empty( $write['exact_transport_grant_required'] ),
 			'Generic dispatcher exposed' => ! empty( $write['generic_dispatcher_exposed'] ),
-		) );
-		if ( ! empty( $status['explicit_deep_validation'] ) ) {
-			$handshake = isset( $status['external_handshake'] ) && is_array( $status['external_handshake'] ) ? $status['external_handshake'] : array();
-			echo '<h2>' . esc_html__( 'Deep connection validation result', 'mad4b-site-control-plane' ) . '</h2>';
-			self::kv( array(
-				'Local transport deep ready' => ! empty( $status['local_transport_deep_validation_ready'] ),
-				'External handshake verified' => ! empty( $handshake['verified'] ),
-				'Connection certified' => ! empty( $status['connection_certified'] ),
-				'Certification state' => isset( $status['connection_certification_state'] ) ? $status['connection_certification_state'] : '',
-			) );
-			self::blockers( 'Deep certification blockers', isset( $status['certification_blockers'] ) ? $status['certification_blockers'] : array() );
-		}
+		), array( 'Registered' => 'registered', 'REST route registered' => 'route_registered', 'Permission binding exact' => 'permission_callback_match', 'Mounted write tools' => 'tool_count' ) );
 	}
 
 	private static function render_isolation( array $status ) {
@@ -359,11 +350,12 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		}
 	}
 
-	private static function kv( array $items ) {
+	private static function kv( array $items, array $write_fields = array() ) {
 		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped" style="max-width:1100px"><tbody>';
 		foreach ( $items as $label => $value ) {
 			if ( is_bool( $value ) ) $value = self::yesno( $value );
-			echo '<tr><th style="width:260px">' . esc_html( $label ) . '</th><td>' . esc_html( (string) $value ) . '</td></tr>';
+			$attribute = isset( $write_fields[ $label ] ) ? ' data-write-check="' . esc_attr( $write_fields[ $label ] ) . '"' : '';
+			echo '<tr><th style="width:260px">' . esc_html( $label ) . '</th><td' . $attribute . '>' . esc_html( (string) $value ) . '</td></tr>';
 		}
 		echo '</tbody></table></div>';
 	}
@@ -411,4 +403,5 @@ final class MAD4B_SCP_Connection_Admin_UI {
 	}
 
 	private static function yesno( $value ) { return $value ? 'yes' : 'no'; }
+	private static function measurement( $value ) { return is_bool( $value ) ? self::yesno( $value ) : __( 'Not checked', 'mad4b-site-control-plane' ); }
 }

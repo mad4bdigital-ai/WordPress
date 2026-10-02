@@ -12,6 +12,7 @@ authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_t
 impact = (root / "includes" / "class-mad4b-scp-impact-policy.php").read_text(encoding="utf-8")
 commit_guard = (root / "includes" / "class-mad4b-scp-execution-commit-guard.php").read_text(encoding="utf-8")
 governance = (root / "includes" / "class-mad4b-scp-governance-abilities.php").read_text(encoding="utf-8")
+runtime_convergence = (root / "includes" / "class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
 bootstrap = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 readback_runtime = (root / "tests" / "self-update-readback-runtime.php").read_text(encoding="utf-8")
 handoff = json.loads((root / "config" / "staging-deployment-handoff.json").read_text(encoding="utf-8"))
@@ -133,14 +134,24 @@ for forbidden in (
 
 for marker in (
     "if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() ) return array();",
-    "if ( MAD4B_SCP_Staging_Write_Authority::effective() )",
-    "empty( $authority_plan['eligible'] ) || empty( $authority_plan['current_ready'] )",
+    "private static function bootstrap_candidate_drift_policy()",
+    "mad4b.self-update-bootstrap-candidate-drift-policy.v1",
+    "'prior_authority_effective_use_normal_path'",
     "'exact_grants_missing_count'",
     "'stale_allow_grants_count'",
+    "'unreviewed_stale_allow_grants_count'",
     "'broad_environment_grants_count'",
+    "'duplicate_exact_allow_grants_count'",
     "'current_agent_wildcard_grants'",
     "'global_registry_wildcard_grants'",
-    "empty( $binding['required'] ) || ! empty( $binding['match'] )",
+    "'candidate_drift_not_the_bootstrap_blocker'",
+    "'authority_carry_forward' => false",
+    "'authority_mutation_allowed' => false",
+    "'grant_mutation_allowed' => false",
+    "'candidate_binding_mutation_allowed' => false",
+    "'post_update_candidate_rebind_required' => true",
+    "'post_update_continuation_active'",
+    "'active_continuation' => null",
 ):
     if marker not in self_update:
         raise SystemExit(f"bootstrap self-update fail-closed authority invariant missing: {marker}")
@@ -155,9 +166,15 @@ for marker in (
         raise SystemExit(f"bootstrap self-update pre-mutation revalidation invariant missing: {marker}")
 verify_index = native_apply_body.find("$verified = self::verify_archive( $tmp, $manifest );")
 recheck_index = native_apply_body.find("$bootstrap_access = self::can_bootstrap_native_apply( $input );")
-apply_index = native_apply_body.find("$result = self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected, $verified );")
+apply_index = native_apply_body.find("$result = self::apply_verified_archive(")
 if min(verify_index, recheck_index, apply_index) < 0 or not (verify_index < recheck_index < apply_index):
     raise SystemExit("bootstrap authority must be revalidated after archive verification and immediately before filesystem mutation")
+for marker in (
+    "$bootstrap_revalidate ? 'governed_native_release_pull_bootstrap' : 'governed_native_release_pull'",
+    "(bool) $bootstrap_revalidate",
+):
+    if marker not in native_apply_body:
+        raise SystemExit(f"native bootstrap apply routing invariant missing: {marker}")
 bootstrap_apply_body = self_update.split("public static function bootstrap_native_apply", 1)[1].split("private static function is_control_plane_plugin_file", 1)[0]
 if "\n\t\t\ttrue\n\t\t);" not in bootstrap_apply_body:
     raise SystemExit("bootstrap self-update must invoke native apply with pre-mutation authority revalidation enabled")
@@ -170,6 +187,58 @@ for forbidden in (
     bootstrap_apply = self_update.split("public static function bootstrap_native_apply", 1)[1].split("private static function is_control_plane_plugin_file", 1)[0]
     if forbidden in bootstrap_apply:
         raise SystemExit(f"bootstrap self-update widened beyond manifest-derived native apply: {forbidden}")
+
+# The local wp-admin candidate-drift bootstrap is a file-replacement escape hatch,
+# never an authority repair primitive. It may run only for the exact continuation
+# blocker and must leave candidate rebinding owner-gated on the new runtime.
+local_handler = self_update.split("public static function handle_native_update()", 1)[1].split("public static function native_update_notice()", 1)[0]
+for marker in (
+    "mad4b_self_update_continuation_prior_authority_drift",
+    "self::bootstrap_candidate_drift_policy()",
+    "wordpress_admin_candidate_drift_bootstrap",
+    "$bootstrap_mode",
+):
+    if marker not in local_handler:
+        raise SystemExit(f"local candidate-drift bootstrap routing invariant missing: {marker}")
+managed_apply_bootstrap = self_update.split("private static function apply_verified_archive(", 1)[1].split("private static function download_governed_release_to_protected_storage", 1)[0]
+for marker in (
+    "$bootstrap_candidate_drift = false",
+    "bootstrap_candidate_drift_policy()",
+    "'bootstrap_candidate_drift_quarantined'",
+    "'required' => false",
+    "'authority_carry_forward' => false",
+    "'post_update_candidate_rebind_required' => true",
+    "pre_replacement_candidate_drift_bootstrap_revalidation",
+    "'candidate_binding_mutation_performed' => false",
+):
+    if marker not in managed_apply_bootstrap:
+        raise SystemExit(f"candidate-drift bootstrap quarantine invariant missing: {marker}")
+for forbidden in (
+    "MAD4B_SCP_Staging_Write_Authority::reconcile(",
+    "MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity(",
+):
+    if forbidden in managed_apply_bootstrap:
+        raise SystemExit(f"self-update bootstrap must not mutate governed authority directly: {forbidden}")
+
+for marker in (
+    "'authority_binding', 'owner_rebind_exact_candidate'",
+    "'candidate_binding_auto_refresh_policy' => 'post_update_zero_delta_continuation_only'",
+    "MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind",
+):
+    if marker not in runtime_convergence:
+        raise SystemExit(f"post-bootstrap authority must remain owner-gated without an active continuation: {marker}")
+
+bootstrap_readback_index = managed_apply_bootstrap.find("$readback = is_wp_error( $activation ) ? $activation : self::verify_installed_identity( $readback_target );")
+bootstrap_convergence_index = managed_apply_bootstrap.find("MAD4B_SCP_Runtime_Convergence::mark_post_update_pending")
+if min(bootstrap_readback_index, bootstrap_convergence_index) < 0 or bootstrap_readback_index >= bootstrap_convergence_index:
+    raise SystemExit("candidate-drift bootstrap must establish exact readback before persisting post-update convergence")
+for marker in (
+    "$rollback = self::rollback( $backup, $before, $runtime_php_files );",
+    "mad4b_self_update_readback_failed",
+    "'rollback_ok' => ! is_wp_error( $rollback )",
+):
+    if marker not in managed_apply_bootstrap:
+        raise SystemExit(f"candidate-drift bootstrap lost common rollback/readback safety: {marker}")
 
 if "'release_channel_bound' => true" not in self_update:
     raise SystemExit("governed file upload is not bound to the repository release channel")
@@ -215,8 +284,9 @@ for marker in (
     "'limit_response_size' => self::MAX_UPLOAD_BYTES + 1",
     "self::temp_archive_path()",
     "self::verify_archive( $tmp, $manifest )",
-    "self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected, $verified )",
-    "'governed_native_release_pull' === (string) $channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT",
+    "'governed_native_release_pull_bootstrap'",
+    "array( 'governed_native_release_pull', 'governed_native_release_pull_bootstrap' )",
+    "$native_release_channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT",
 ):
     if marker not in self_update:
         raise SystemExit(f"governed native release pull invariant missing: {marker}")
@@ -417,6 +487,7 @@ for marker in (
 subprocess.run(["php", str(root / "tests" / "self-update-readback-runtime.php")], check=True)
 subprocess.run(["php", str(root / "tests" / "self-update-auto-update-state-runtime.php")], check=True)
 subprocess.run(["php", str(root / "tests" / "self-update-pointer-runtime.php")], check=True)
+subprocess.run(["php", str(root / "tests" / "self-update-candidate-drift-bootstrap-runtime.php")], check=True)
 
 # Read-side plans remain directly projectable where operator action needs them.
 # Broad update status remains in the governed read/logical catalog so composite

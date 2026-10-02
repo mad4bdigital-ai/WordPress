@@ -12,8 +12,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * left untouched so the request retains the same host/provider baseline it has
  * when the MAD4B Control Plane is absent.
  *
- * This class is deny-only. It never registers a route, never changes provider
- * settings, and never replaces a foreign Adapter runtime. Eligibility is bound
+ * Protocol isolation is deny-only. A verified endpoint job may re-arm the
+ * official callback for one catalog; it never grants transport authority,
+ * changes provider settings or replaces a foreign Adapter runtime. Eligibility is bound
  * to the exact enrolled Site Profile and its managed-runtime feature.
  */
 final class MAD4B_SCP_MCP_Request_Scope {
@@ -22,6 +23,7 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	const MAX_PROTOCOL_REST_CALLBACK_EVIDENCE = 100;
 
 	private static $booted = false;
+	private static $endpoint_diagnostic_server_id = '';
 	private static $eligible = false;
 	private static $current_request_requires_mcp = false;
 	private static $adapter_init_removed = false;
@@ -157,16 +159,56 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	}
 
 	public static function current_request_is_passive_admin_hotpath() {
-		if ( ! function_exists( 'is_admin' ) || ! is_admin() || ! self::current_admin_request_method_is_read_only() ) return false;
+		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
+		// Classification only. A raw AJAX action keeps boot passive; it cannot arm
+		// the Adapter until the worker verifies the administrator, nonce and target.
+		if ( self::current_request_is_endpoint_diagnostic_job() ) return true;
 		$page = isset( $_GET['page'] ) ? wp_unslash( (string) $_GET['page'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		if ( 'mad4b-control-plane-connection' === $page ) return true;
+		if ( ! self::current_admin_request_method_is_read_only() ) return false;
 		$tab = isset( $_GET['tab'] ) ? wp_unslash( (string) $_GET['tab'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		return self::passive_admin_route( $page, $tab );
+	}
+
+	public static function current_request_is_endpoint_diagnostic_job() {
+		return function_exists( 'is_admin' ) && is_admin()
+			&& function_exists( 'wp_doing_ajax' ) && wp_doing_ajax()
+			&& isset( $_POST['action'] ) && is_string( $_POST['action'] )
+			&& 'mad4b_connection_endpoint_diagnostic' === $_POST['action']; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- passive boot classification, never authorization.
+	}
+
+	public static function endpoint_diagnostic_server_id() { return self::$endpoint_diagnostic_server_id; }
+
+	/** Arm only the proven official singleton, after the explicit job is authorized. */
+	public static function begin_endpoint_diagnostic( $server_id ) {
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false ) || ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed()
+			|| ! self::current_request_is_endpoint_diagnostic_job() || ! current_user_can( 'manage_options' )
+			|| ! in_array( $server_id, MAD4B_SCP_Servers::expected_server_ids(), true ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_forbidden', 'An authorized endpoint job is required.', array( 'status' => 403 ) );
+		// Existing catalogs cannot prove which single target was materialized.
+		if ( did_action( 'rest_api_init' ) || did_action( 'mcp_adapter_init' ) || class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false ) && is_object( MAD4B_SCP_Provider_Diagnostic_Policy::current_rest_server() ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_runtime_already_materialized', 'REST was initialized before the endpoint job.' );
+		if ( ! class_exists( '\\WP\\MCP\\Core\\McpAdapter', false ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_adapter_unavailable', 'Official MCP Adapter is unavailable.' );
+		$reflection = new ReflectionClass( '\\WP\\MCP\\Core\\McpAdapter' );
+		$file = $reflection->getFileName();
+		$resolved = $file ? realpath( $file ) : false;
+		$official = defined( 'WP_PLUGIN_DIR' ) ? realpath( trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter' ) : false;
+		if ( ! $resolved || ! $official || 0 !== strpos( wp_normalize_path( $resolved ), rtrim( wp_normalize_path( $official ), '/' ) . '/' ) ) return new WP_Error( 'mad4b_endpoint_diagnostic_noncanonical_adapter', 'The loaded Adapter is not the official plugin.' );
+		self::$endpoint_diagnostic_server_id = $server_id;
+		self::$current_request_requires_mcp = true;
+		$adapter = \WP\MCP\Core\McpAdapter::instance();
+		if ( false === has_action( 'rest_api_init', array( $adapter, 'init' ) ) ) add_action( 'rest_api_init', array( $adapter, 'init' ), 15 );
+		// Match the real governed MCP request's REST bootstrap. These callbacks
+		// remain request-local; unknown and MU callbacks are still preserved.
+		if ( self::$eligible ) {
+			add_action( 'rest_api_init', array( __CLASS__, 'isolate_protocol_core_rest_bootstrap' ), PHP_INT_MIN );
+			add_action( 'rest_api_init', array( __CLASS__, 'isolate_protocol_external_rest_bootstrap' ), PHP_INT_MIN + 1 );
+		}
+		return true;
 	}
 
 	public static function isolate_protocol_core_rest_bootstrap() {
 		if ( self::$protocol_core_rest_isolation_evaluated ) return;
 		self::$protocol_core_rest_isolation_evaluated = true;
-		if ( ! self::$eligible || ! self::current_request_is_protocol_hotpath() ) return;
+		if ( ! self::$eligible || ( ! self::current_request_is_protocol_hotpath() && '' === self::$endpoint_diagnostic_server_id ) ) return;
 
 		foreach ( array( 'register_initial_settings', 'create_initial_rest_routes' ) as $callback ) {
 			$priority = has_action( 'rest_api_init', $callback );
@@ -189,7 +231,7 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	public static function isolate_protocol_external_rest_bootstrap() {
 		if ( self::$protocol_external_rest_isolation_evaluated ) return;
 		self::$protocol_external_rest_isolation_evaluated = true;
-		if ( ! self::$eligible || ! self::current_request_is_protocol_hotpath() ) return;
+		if ( ! self::$eligible || ( ! self::current_request_is_protocol_hotpath() && '' === self::$endpoint_diagnostic_server_id ) ) return;
 
 		global $wp_filter;
 		if ( ! isset( $wp_filter['rest_api_init'] ) || ! ( $wp_filter['rest_api_init'] instanceof WP_Hook ) ) return;
@@ -348,6 +390,7 @@ final class MAD4B_SCP_MCP_Request_Scope {
 
 	public static function current_request_requires_mcp_runtime() {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
+		if ( self::current_request_is_endpoint_diagnostic_job() ) return '' !== self::$endpoint_diagnostic_server_id;
 
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		if ( self::current_request_is_passive_admin_hotpath() ) return false;
@@ -472,6 +515,7 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		return array(
 			'contract' => self::CONTRACT,
 			'eligible' => self::$eligible,
+			'endpoint_diagnostic_server_id' => self::$endpoint_diagnostic_server_id,
 			'current_request_requires_mcp_runtime' => self::$current_request_requires_mcp,
 			'current_request_is_passive_admin_hotpath' => self::current_request_is_passive_admin_hotpath(),
 			'current_request_is_http_mcp_transport' => self::current_request_is_http_mcp_transport(),

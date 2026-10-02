@@ -44,6 +44,8 @@ skill_route = method_body(
     "private static function request_requires_skill_reconciliation()",
     "private static function bind_local_oauth_subject_compatibility()",
 )
+endpoint_worker = (PLUGIN / 'includes/class-mad4b-scp-endpoint-diagnostic.php').read_text(encoding='utf-8')
+
 prime = method_body(
     plugin,
     "public static function prime_admin_mcp_runtime()",
@@ -84,15 +86,11 @@ for marker in (
     assert passive_gate < entry.index(marker), marker
 assert "MAD4B_SCP_Skill_Runtime_Certification::observe();" not in entry
 
-# REST/Abilities priming is allowed only on the exact signed MCP Endpoints
-# read-only diagnostic POST. Opening the tab itself is passive.
-assert "'mad4b-control-plane-connection' !== $page" in prime
-assert "'endpoints' !== $tab" in prime
-assert "explicit_rest_materialization_allowed()" in prime
-assert "wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' )" in prime
-assert prime.index("wp_verify_nonce") < prime.index("rest_get_server()")
-assert "admin_connection_endpoints_prime" in prime
-assert "admin_connection_prime" in prime  # legacy source-contract marker only
+# HTML never primes REST. The signed AJAX worker authorizes a single target.
+assert "rest_get_server(" not in prime
+assert "prime_admin_mcp_runtime' ), 1 )" not in plugin
+assert endpoint_worker.index("wp_verify_nonce") < endpoint_worker.index("begin_endpoint_diagnostic") < endpoint_worker.index("rest_get_server()")
+assert "current_request_is_endpoint_diagnostic_job()" in request_scope
 
 # Main governance UI is tab scoped and no longer runs deep provider/peer scans
 # simply to render Overview.
@@ -256,16 +254,14 @@ assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_passive_admin_hotpath()"
 assert admin_convergence_router.index("current_request_is_passive_admin_hotpath()") < admin_convergence_router.index("0 === strpos( $page, 'mad4b-control-plane' )")
 
 assert "public static function snapshot( $force_deep = false )" in connection_ui
-assert "self::snapshot( $deep_endpoints )" in connection_ui
+assert "self::snapshot( false )" in connection_ui
 assert "mad4b_connection_deep_endpoints" in connection_ui
-assert "wp_nonce_field( 'mad4b_connection_deep_endpoints', 'mad4b_connection_nonce' )" in connection_ui
-assert "filter_input( INPUT_POST, 'mad4b_connection_action'" in connection_ui
+assert "wp_create_nonce( 'mad4b_connection_deep_endpoints' )" in connection_ui
 assert "Run Deep Endpoint Diagnostic" in connection_ui
 assert "$_POST" not in connection_ui
-assert "$deep_endpoints" in connection_ui
+assert "rest_get_server(" not in connection_ui
 assert "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()" in connection_ui
-assert "MAD4B_SCP_Local_OAuth_Server::status()" in connection_ui
-assert connection_ui.index("$deep_endpoints") < connection_ui.index("MAD4B_SCP_Local_OAuth_Server::status()")
+assert "MAD4B_SCP_Local_OAuth_Server::status()" not in connection_ui
 
 connection_method = method_body(
     connection_status,

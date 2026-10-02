@@ -386,28 +386,152 @@ final class MAD4B_SCP_Self_Update {
 		if ( MAD4B_SCP_Staging_Write_Authority::effective() ) {
 			return new WP_Error( 'mad4b_self_update_bootstrap_not_required', 'Write Authority is already effective; use the normal governed Control Plane update path.' );
 		}
-		$authority_plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
-		if ( is_wp_error( $authority_plan ) || ! is_array( $authority_plan ) ) {
-			return new WP_Error( 'mad4b_self_update_bootstrap_authority_plan_unavailable', 'A clean read-only Write Authority reconciliation plan is required before bootstrap self-update.' );
-		}
-		$unsafe = array();
-		if ( empty( $authority_plan['eligible'] ) || empty( $authority_plan['current_ready'] ) ) $unsafe[] = 'write_grants_not_clean';
-		foreach ( array( 'exact_grants_missing_count', 'stale_allow_grants_count', 'broad_environment_grants_count', 'duplicate_exact_allow_grants_count', 'current_agent_wildcard_grants', 'global_registry_wildcard_grants' ) as $field ) {
-			$value = isset( $authority_plan[ $field ] ) ? $authority_plan[ $field ] : 0;
-			$count = is_array( $value ) ? count( $value ) : (int) $value;
-			if ( $count > 0 ) $unsafe[] = $field;
-		}
-		if ( ! empty( $authority_plan['grant_blockers'] ) ) $unsafe[] = 'grant_blockers_present';
-		$binding = isset( $authority_plan['candidate_binding'] ) && is_array( $authority_plan['candidate_binding'] ) ? $authority_plan['candidate_binding'] : array();
-		if ( empty( $binding['required'] ) || ! empty( $binding['match'] ) ) $unsafe[] = 'candidate_drift_not_the_bootstrap_blocker';
-		if ( $unsafe ) {
+		$bootstrap_policy = self::bootstrap_candidate_drift_policy();
+		if ( empty( $bootstrap_policy['eligible'] ) ) {
 			return new WP_Error(
 				'mad4b_self_update_bootstrap_authority_not_clean',
 				'Bootstrap self-update is allowed only for clean exact grants plus stale candidate binding.',
-				array( 'blockers' => array_values( array_unique( $unsafe ) ) )
+				array(
+					'blockers' => isset( $bootstrap_policy['blockers'] ) ? $bootstrap_policy['blockers'] : array( 'bootstrap_policy_unavailable' ),
+					'bootstrap_policy' => $bootstrap_policy,
+				)
 			);
 		}
 		return true;
+	}
+
+
+	private static function bootstrap_candidate_drift_policy() {
+		$out = array(
+			'contract' => 'mad4b.self-update-bootstrap-candidate-drift-policy.v1',
+			'eligible' => false,
+			'mode' => 'candidate_drift_only',
+			'blockers' => array(),
+			'environment' => '',
+			'authority_checkpoint_exists' => false,
+			'prior_authority_effective' => null,
+			'candidate_binding_required' => null,
+			'candidate_binding_match' => null,
+			'active_continuation' => null,
+			'authority_carry_forward' => false,
+			'authority_mutation_allowed' => false,
+			'grant_mutation_allowed' => false,
+			'candidate_binding_mutation_allowed' => false,
+			'post_update_candidate_rebind_required' => true,
+			'automatic_mutation_retry_allowed' => false,
+			'production_mutation_allowed' => false,
+			'breakglass_allowed' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+		$blockers = array();
+
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) {
+			$blockers[] = 'site_profile_unconfigured';
+		} else {
+			$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+			$out['environment'] = $environment;
+			if ( 'staging' !== $environment ) $blockers[] = 'environment_not_staging';
+			if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) $blockers[] = 'site_profile_not_exact';
+			if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) $blockers[] = 'site_profile_write_disabled';
+		}
+		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) $blockers[] = 'breakglass_enabled';
+		if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) $blockers[] = 'breakglass_active';
+
+		if ( ! class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) || ! method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'status' ) ) {
+			$blockers[] = 'post_update_continuation_status_unavailable';
+		} else {
+			$continuation_status = MAD4B_SCP_Post_Update_Continuation::status();
+			if ( ! is_array( $continuation_status ) ) {
+				$blockers[] = 'post_update_continuation_status_invalid';
+			} else {
+				$out['active_continuation'] = ! empty( $continuation_status['active'] );
+				if ( $out['active_continuation'] ) $blockers[] = 'post_update_continuation_active';
+			}
+		}
+
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persistence_checkpoint' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'reconciliation_plan' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'effective' ) ) {
+			$blockers[] = 'write_authority_runtime_unavailable';
+		} else {
+			$checkpoint = MAD4B_SCP_Staging_Write_Authority::persistence_checkpoint();
+			$out['authority_checkpoint_exists'] = is_array( $checkpoint ) && ! empty( $checkpoint['exists'] );
+			if ( ! is_array( $checkpoint )
+				|| 'mad4b.governed-write-authority-persistence-checkpoint.v1' !== ( isset( $checkpoint['contract'] ) ? (string) $checkpoint['contract'] : '' )
+				|| empty( $checkpoint['exists'] ) ) {
+				$blockers[] = 'prior_authority_checkpoint_required';
+			} else {
+				$checkpoint_status = isset( $checkpoint['status'] ) && is_array( $checkpoint['status'] ) ? $checkpoint['status'] : array();
+				if ( empty( $checkpoint_status['ready'] )
+					|| 'ready' !== ( isset( $checkpoint_status['state'] ) ? (string) $checkpoint_status['state'] : '' )
+					|| ! empty( $checkpoint_status['blocker'] )
+					|| empty( $checkpoint_status['write_inventory_fingerprint'] )
+					|| 1 !== preg_match( '/^[a-f0-9]{64}$/', strtolower( (string) $checkpoint_status['write_inventory_fingerprint'] ) ) ) {
+					$blockers[] = 'persisted_authority_not_clean';
+				}
+			}
+
+			$effective = MAD4B_SCP_Staging_Write_Authority::effective();
+			if ( ! is_bool( $effective ) ) {
+				$blockers[] = 'authority_effective_state_invalid';
+			} else {
+				$out['prior_authority_effective'] = $effective;
+				if ( $effective ) $blockers[] = 'prior_authority_effective_use_normal_path';
+			}
+
+			$plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+			if ( is_wp_error( $plan ) || ! is_array( $plan ) ) {
+				$blockers[] = 'write_authority_plan_unavailable';
+			} else {
+				if ( empty( $plan['eligible'] ) || empty( $plan['current_ready'] ) || empty( $plan['agent_present'] ) ) $blockers[] = 'write_grants_not_clean';
+				foreach ( array(
+					'exact_grants_missing_count',
+					'stale_allow_grants_count',
+					'unreviewed_stale_allow_grants_count',
+					'broad_environment_grants_count',
+					'duplicate_exact_allow_grants_count',
+					'current_agent_wildcard_grants',
+					'global_registry_wildcard_grants',
+				) as $field ) {
+					$value = isset( $plan[ $field ] ) ? $plan[ $field ] : 0;
+					$count = is_array( $value ) ? count( $value ) : (int) $value;
+					if ( $count > 0 ) $blockers[] = $field;
+				}
+				if ( ! empty( $plan['grant_blockers'] ) ) $blockers[] = 'grant_blockers_present';
+				foreach ( array( 'write_inventory_fingerprint', 'grant_rows_fingerprint', 'persisted_grant_records_fingerprint' ) as $field ) {
+					if ( empty( $plan[ $field ] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', strtolower( (string) $plan[ $field ] ) ) ) $blockers[] = 'invalid_' . $field;
+				}
+			}
+
+			$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+			if ( ! is_array( $binding ) || ! isset( $binding['required'], $binding['match'] ) || ! is_bool( $binding['required'] ) || ! is_bool( $binding['match'] ) ) {
+				$blockers[] = 'candidate_binding_state_invalid';
+			} else {
+				$out['candidate_binding_required'] = $binding['required'];
+				$out['candidate_binding_match'] = $binding['match'];
+				if ( ! $binding['required'] || $binding['match'] ) $blockers[] = 'candidate_drift_not_the_bootstrap_blocker';
+				foreach ( array(
+					'current_source_commit_sha' => 40,
+					'current_build_fingerprint' => 64,
+					'current_package_manifest_digest' => 64,
+				) as $field => $length ) {
+					$value = isset( $binding[ $field ] ) ? strtolower( trim( (string) $binding[ $field ] ) ) : '';
+					if ( 1 !== preg_match( '/^[a-f0-9]{' . (int) $length . '}$/', $value ) ) $blockers[] = 'current_candidate_identity_invalid:' . $field;
+				}
+				$artifact = isset( $binding['current_artifact_identity'] ) ? trim( (string) $binding['current_artifact_identity'] ) : '';
+				if ( '' === $artifact || strlen( $artifact ) > 191 || 1 !== preg_match( '/^mad4b-site-control-plane-[A-Za-z0-9._-]+-[A-Fa-f0-9]{40}$/', $artifact ) ) {
+					$blockers[] = 'current_candidate_identity_invalid:artifact_identity';
+				}
+			}
+		}
+
+		$out['blockers'] = array_values( array_unique( array_map( 'sanitize_key', $blockers ) ) );
+		sort( $out['blockers'], SORT_STRING );
+		$out['eligible'] = empty( $out['blockers'] );
+		return $out;
 	}
 
 	public static function status( $input = array() ) {
@@ -424,7 +548,12 @@ final class MAD4B_SCP_Self_Update {
 		$bootstrap_step_up_available = in_array( self::BOOTSTRAP_APPLY_ABILITY, self::chatgpt_step_up_tools(), true );
 		$maintenance_projection = self::maintenance_status_projection();
 		$continuation_projection = self::continuation_policy_projection();
-		$apply_preflight_ready = ! empty( $maintenance_projection['safe_to_acquire'] ) && empty( $continuation_projection['blocked'] );
+		$bootstrap_drift_policy = isset( $continuation_projection['bootstrap_candidate_drift'] ) && is_array( $continuation_projection['bootstrap_candidate_drift'] )
+			? $continuation_projection['bootstrap_candidate_drift']
+			: array();
+		$bootstrap_drift_eligible = ! empty( $continuation_projection['bootstrap_candidate_drift_eligible'] );
+		$apply_preflight_ready = ! empty( $maintenance_projection['safe_to_acquire'] )
+			&& ( empty( $continuation_projection['blocked'] ) || $bootstrap_drift_eligible );
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -446,6 +575,8 @@ final class MAD4B_SCP_Self_Update {
 				'apply_preflight_ready' => (bool) $apply_preflight_ready,
 				'maintenance_preflight' => $maintenance_projection,
 				'continuation_policy' => $continuation_projection,
+				'bootstrap_candidate_drift' => $bootstrap_drift_policy,
+				'apply_mode' => $bootstrap_drift_eligible ? 'local_admin_candidate_drift_bootstrap' : 'normal',
 				'modifies_core_update_transients' => false,
 				'automatic_update_enabled' => (bool) $auto_update['effective_enabled'],
 				'automatic_update_observation' => $auto_update,
@@ -764,7 +895,14 @@ final class MAD4B_SCP_Self_Update {
 			}
 		}
 
-		$result = self::apply_verified_archive( $tmp, $manifest, 'governed_native_release_pull', $expected, $verified );
+		$result = self::apply_verified_archive(
+			$tmp,
+			$manifest,
+			$bootstrap_revalidate ? 'governed_native_release_pull_bootstrap' : 'governed_native_release_pull',
+			$expected,
+			$verified,
+			(bool) $bootstrap_revalidate
+		);
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return $result;
 	}
@@ -1114,13 +1252,28 @@ final class MAD4B_SCP_Self_Update {
 			self::redirect_native_result( 'verify_error', $verified->get_error_code() );
 		}
 
-		$result = self::apply_verified_archive( $tmp, $manifest, 'wordpress_admin_plugin_update', '', $verified );
+		$bootstrap_mode = false;
+		$continuation_probe = self::post_update_continuation_policy();
+		if ( is_wp_error( $continuation_probe )
+			&& 'mad4b_self_update_continuation_prior_authority_drift' === $continuation_probe->get_error_code() ) {
+			$bootstrap_policy = self::bootstrap_candidate_drift_policy();
+			if ( ! empty( $bootstrap_policy['eligible'] ) ) $bootstrap_mode = true;
+		}
+
+		$result = self::apply_verified_archive(
+			$tmp,
+			$manifest,
+			$bootstrap_mode ? 'wordpress_admin_candidate_drift_bootstrap' : 'wordpress_admin_plugin_update',
+			'',
+			$verified,
+			$bootstrap_mode
+		);
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		if ( is_wp_error( $result ) ) {
 			$details = method_exists( $result, 'get_error_data' ) ? $result->get_error_data() : array();
 			self::redirect_native_result( 'apply_error', $result->get_error_code(), is_array( $details ) ? $details : array() );
 		}
-		self::redirect_native_result( 'success', '' );
+		self::redirect_native_result( $bootstrap_mode ? 'bootstrap_success' : 'success', '' );
 	}
 
 	public static function native_update_notice() {
@@ -1130,6 +1283,10 @@ final class MAD4B_SCP_Self_Update {
 		$code = isset( $_GET['mad4b_update_code'] ) ? sanitize_key( wp_unslash( $_GET['mad4b_update_code'] ) ) : '';
 		if ( 'success' === $state ) {
 			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'MAD4B Site Control Plane updated and exact-build readback passed.', 'mad4b-site-control-plane' ) . '</p></div>';
+			return;
+		}
+		if ( 'bootstrap_success' === $state ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'MAD4B Site Control Plane updated through the bounded candidate-drift bootstrap path. Governed write authority remains quarantined until the exact new candidate is explicitly rebound.', 'mad4b-site-control-plane' ) . '</p></div>';
 			return;
 		}
 		if ( 'current' === $state ) {
@@ -1218,6 +1375,9 @@ final class MAD4B_SCP_Self_Update {
 		if ( is_wp_error( $policy ) ) {
 			$data = $policy->get_error_data();
 			$data = is_array( $data ) ? $data : array();
+			$drift_blocked = 'mad4b_self_update_continuation_prior_authority_drift' === $policy->get_error_code();
+			$bootstrap = $drift_blocked ? self::bootstrap_candidate_drift_policy() : array();
+			$bootstrap_eligible = is_array( $bootstrap ) && ! empty( $bootstrap['eligible'] );
 			return array(
 				'contract' => 'mad4b.self-update-continuation-policy.v1',
 				'blocked' => true,
@@ -1227,7 +1387,11 @@ final class MAD4B_SCP_Self_Update {
 				'prior_authority_effective' => isset( $data['prior_authority_effective'] ) ? (bool) $data['prior_authority_effective'] : null,
 				'candidate_binding_required' => isset( $data['candidate_binding_required'] ) ? (bool) $data['candidate_binding_required'] : null,
 				'candidate_binding_match' => isset( $data['candidate_binding_match'] ) ? (bool) $data['candidate_binding_match'] : null,
-				'operator_action' => 'mad4b_self_update_continuation_prior_authority_drift' === $policy->get_error_code() ? 'reconcile_staging_write_authority' : '',
+				'operator_action' => $drift_blocked
+					? ( $bootstrap_eligible ? 'retry_native_update_with_candidate_drift_bootstrap' : 'reconcile_staging_write_authority' )
+					: '',
+				'bootstrap_candidate_drift_eligible' => $bootstrap_eligible,
+				'bootstrap_candidate_drift' => $bootstrap,
 				'automatic_mutation_retry_allowed' => false,
 				'bootstrap_without_authority' => false,
 				'production_mutation_allowed' => false,
@@ -1247,6 +1411,8 @@ final class MAD4B_SCP_Self_Update {
 			'prior_authority_effective' => ! empty( $policy['prior_authority_effective'] ),
 			'candidate_binding_match' => ! empty( $policy['candidate_binding_match'] ),
 			'bootstrap_without_authority' => ! empty( $policy['bootstrap_without_authority'] ),
+			'bootstrap_candidate_drift_eligible' => false,
+			'bootstrap_candidate_drift' => array(),
 			'production_mutation_allowed' => false,
 			'authority_created' => false,
 			'read_only' => true,
@@ -1407,7 +1573,7 @@ final class MAD4B_SCP_Self_Update {
 		return $out;
 	}
 
-	private static function apply_verified_archive( $path, array $target, $channel, $plan_sha256, array $verified_archive ) {
+	private static function apply_verified_archive( $path, array $target, $channel, $plan_sha256, array $verified_archive, $bootstrap_candidate_drift = false ) {
 		$runtime_php_files = isset( $verified_archive['runtime_php_files'] ) && is_array( $verified_archive['runtime_php_files'] )
 			? array_values( array_filter( array_map( 'strval', $verified_archive['runtime_php_files'] ) ) )
 			: array();
@@ -1454,15 +1620,48 @@ final class MAD4B_SCP_Self_Update {
 			if ( is_wp_error( $lease_refresh ) ) return $lease_refresh;
 
 			$continuation = array();
-			$continuation_policy = self::post_update_continuation_policy();
-			if ( is_wp_error( $continuation_policy ) ) {
-				self::audit( $channel, $target, false, array(
-					'failure_phase' => 'pre_update_continuation_policy',
-					'failure_code' => $continuation_policy->get_error_code(),
+			if ( $bootstrap_candidate_drift ) {
+				$bootstrap_policy = self::bootstrap_candidate_drift_policy();
+				if ( empty( $bootstrap_policy['eligible'] ) ) {
+					self::audit( $channel, $target, false, array(
+						'failure_phase' => 'pre_update_bootstrap_candidate_drift_policy',
+						'failure_code' => 'mad4b_self_update_bootstrap_authority_not_clean',
+						'bootstrap_policy' => $bootstrap_policy,
+						'authority_created' => false,
+						'production_mutation_performed' => false,
+					) );
+					return new WP_Error(
+						'mad4b_self_update_bootstrap_authority_not_clean',
+						'Candidate-drift bootstrap became ineligible before replacement.',
+						array( 'blockers' => isset( $bootstrap_policy['blockers'] ) ? $bootstrap_policy['blockers'] : array(), 'mutation_performed' => false )
+					);
+				}
+				$continuation_policy = array(
+					'contract' => 'mad4b.self-update-continuation-policy.v1',
+					'required' => false,
+					'mode' => 'bootstrap_candidate_drift_quarantined',
+					'write_profile_enabled' => true,
+					'authority_checkpoint_exists' => true,
+					'prior_authority_effective' => false,
+					'candidate_binding_match' => false,
+					'bootstrap_without_authority' => false,
+					'bootstrap_candidate_drift' => true,
+					'authority_carry_forward' => false,
+					'post_update_candidate_rebind_required' => true,
+					'production_mutation_allowed' => false,
 					'authority_created' => false,
-					'production_mutation_performed' => false,
-				) );
-				return $continuation_policy;
+				);
+			} else {
+				$continuation_policy = self::post_update_continuation_policy();
+				if ( is_wp_error( $continuation_policy ) ) {
+					self::audit( $channel, $target, false, array(
+						'failure_phase' => 'pre_update_continuation_policy',
+						'failure_code' => $continuation_policy->get_error_code(),
+						'authority_created' => false,
+						'production_mutation_performed' => false,
+					) );
+					return $continuation_policy;
+				}
 			}
 			$continuation_required = ! empty( $continuation_policy['required'] );
 			if ( $continuation_required ) {
@@ -1490,6 +1689,27 @@ final class MAD4B_SCP_Self_Update {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 			require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+
+			if ( ! empty( $continuation_policy['bootstrap_candidate_drift'] ) ) {
+				$bootstrap_recheck = self::bootstrap_candidate_drift_policy();
+				if ( empty( $bootstrap_recheck['eligible'] ) ) {
+					self::audit( $channel, $target, false, array(
+						'failure_phase' => 'pre_replacement_candidate_drift_bootstrap_revalidation',
+						'failure_code' => 'mad4b_self_update_bootstrap_authority_changed_before_replacement',
+						'bootstrap_policy' => $bootstrap_recheck,
+						'authority_created' => false,
+						'production_mutation_performed' => false,
+					) );
+					return new WP_Error(
+						'mad4b_self_update_bootstrap_authority_changed_before_replacement',
+						'Governed-write authority changed after candidate-drift bootstrap admission; replacement was not started.',
+						array(
+							'blockers' => isset( $bootstrap_recheck['blockers'] ) ? $bootstrap_recheck['blockers'] : array(),
+							'mutation_performed' => false,
+						)
+					);
+				}
+			}
 
 			if ( ! empty( $continuation_policy['bootstrap_without_authority'] ) ) {
 				$bootstrap_recheck = self::post_update_continuation_policy();
@@ -1647,8 +1867,13 @@ final class MAD4B_SCP_Self_Update {
 			// post-update redirect. Deleting it here forced plugins.php to block on
 			// a new remote GitHub request and could trip upstream gateway timeouts.
 
+			$native_release_channel = in_array(
+				(string) $channel,
+				array( 'governed_native_release_pull', 'governed_native_release_pull_bootstrap' ),
+				true
+			);
 			return array(
-				'contract' => 'governed_native_release_pull' === (string) $channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT,
+				'contract' => $native_release_channel ? self::NATIVE_APPLY_CONTRACT : self::APPLY_CONTRACT,
 				'channel' => $channel,
 				'plugin' => plugin_basename( MAD4B_SCP_FILE ),
 				'before' => $before,
@@ -1667,6 +1892,12 @@ final class MAD4B_SCP_Self_Update {
 				'post_update_convergence' => $convergence,
 				'post_update_continuation' => $continuation,
 				'post_update_continuation_policy' => $continuation_policy,
+				'bootstrap_candidate_drift' => (bool) $bootstrap_candidate_drift,
+				'authority_carry_forward' => ! $bootstrap_candidate_drift && ! empty( $continuation ),
+				'post_update_candidate_rebind_required' => ! empty( $continuation_policy['post_update_candidate_rebind_required'] ),
+				'authority_mutation_performed' => false,
+				'grant_mutation_performed' => false,
+				'candidate_binding_mutation_performed' => false,
 				'production_mutation_performed' => false,
 				'authority_created' => false,
 				'authorizing' => false,

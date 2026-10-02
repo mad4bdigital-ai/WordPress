@@ -86,7 +86,7 @@ final class MAD4B_SCP_Plugin {
 		// through resource writers, browser canaries or lifecycle reconciliation
 		// merely to serve a protocol request or render a cached/read-only admin view.
 		// Keep only the lightweight ability annotations needed by catalog/status
-		// projections. Connection > Endpoints is intentionally not passive.
+		// projections. Endpoint jobs stay passive until their worker authorizes REST.
 		if ( $protocol_hotpath || $passive_admin_hotpath ) {
 			MAD4B_SCP_Staging_Write_Authority::boot();
 			MAD4B_SCP_Write_Runtime_Certification::boot();
@@ -168,9 +168,7 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Skill_Runtime_Certification::boot();
 		MAD4B_SCP_MCP_Registration_Bridge::boot_early();
 
-		if ( class_exists( 'WP\\MCP\\Core\\McpAdapter' ) ) {
-			add_action( 'admin_init', array( __CLASS__, 'prime_admin_mcp_runtime' ), 1 );
-		} else {
+		if ( ! class_exists( 'WP\\MCP\\Core\\McpAdapter' ) ) {
 			add_action( 'admin_notices', array( __CLASS__, 'mcp_notice' ) );
 		}
 	}
@@ -317,26 +315,9 @@ final class MAD4B_SCP_Plugin {
 	}
 
 	public static function prime_admin_mcp_runtime() {
-		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
-		if ( 'mad4b-control-plane-connection' !== $page || 'endpoints' !== $tab ) return;
-		if ( ! class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy' )
-			|| ! MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed() ) return;
-		$raw_nonce = filter_input( INPUT_POST, 'mad4b_connection_nonce', FILTER_UNSAFE_RAW );
-		$nonce = is_string( $raw_nonce ) ? sanitize_text_field( wp_unslash( $raw_nonce ) ) : '';
-		if ( '' === $nonce || false === wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' ) ) return;
-		if ( ! function_exists( 'rest_get_server' ) ) return;
-		try {
-			rest_get_server();
-			// Legacy source-contract marker retained for older CI only:
-			// MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );
-			if ( class_exists( 'MAD4B_SCP_MCP_Registration_Rescue' ) ) {
-				MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_endpoints_prime' );
-			}
-		} catch ( Throwable $e ) {
-			// Diagnostics remain fail-closed and report unavailable registry.
-		}
+		// Compatibility entry point. HTML rendering never primes REST; signed
+		// MAD4B_SCP_Endpoint_Diagnostic AJAX jobs own single-server materialization.
+		return;
 	}
 
 	public static function governance_bootstrap_error_code() {

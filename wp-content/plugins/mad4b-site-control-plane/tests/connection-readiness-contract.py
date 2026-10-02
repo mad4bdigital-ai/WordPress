@@ -453,7 +453,7 @@ require(ui, "'manage_options'", 'connection-admin-capability')
 for marker in (
     "'readiness' =>", "'oauth' =>", "'endpoints' =>", "'isolation' =>", "'certification' =>",
     'MAD4B_SCP_Admin_Experience::stages', 'MAD4B_SCP_Admin_Experience::tabs', 'MAD4B_SCP_Admin_Experience::next_step',
-    'WordPress local OAuth authority', 'External / federated OAuth resource bridge', 'MAD4B_SCP_Local_OAuth_Server::status()',
+    'WordPress local OAuth authority', 'External / federated OAuth resource bridge', 'MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()',
     'OAuth & Identity', 'Isolation & Safety', 'Required evidence', 'real external OAuth browser round-trip',
     'Bridge configured', 'Bridge effective', 'Issuer configured', 'RFC 9728 metadata',
     'Authorization-server metadata candidates', 'OAuth blockers', 'Outbound discovery on this screen',
@@ -644,14 +644,12 @@ require(admin_surface, "'mad4b-control-plane-connection'", 'connection-admin-sha
 require(admin_surface, "'mad4b-control-plane-chatgpt'", 'chatgpt-admin-shallow-route')
 
 require(ui, "public static function snapshot( $force_deep = false )", 'connection-ui-shallow-snapshot')
-require(ui, "$deep_endpoints = false", 'connection-ui-deep-default-off')
-require(ui, "'POST' === strtoupper", 'connection-ui-deep-post-only')
-require(ui, "wp_verify_nonce( $nonce, 'mad4b_connection_deep_endpoints' )", 'connection-ui-deep-nonce')
-require(ui, "self::snapshot( $deep_endpoints )", 'connection-ui-explicit-deep-snapshot')
-require(ui, 'form method="post"', 'connection-ui-deep-post-form')
+require(ui, "self::snapshot( false )", 'connection-html-always-shallow')
+require(ui, "wp_create_nonce( 'mad4b_connection_deep_endpoints' )", 'connection-job-nonce')
+require(ui, 'form id="mad4b-endpoint-diagnostic-form" method="post"', 'connection-job-form')
 require(ui, "MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()", 'connection-ui-oauth-identity-projection')
-require(ui, "'endpoints' === $tab", 'connection-ui-deep-tab-gate')
-require(ui, "MAD4B_SCP_Local_OAuth_Server::status()", 'connection-ui-explicit-deep-oauth-remains')
+forbid(ui, "MAD4B_SCP_Local_OAuth_Server::status()", 'connection-html-no-deep-oauth')
+forbid(ui, "rest_get_server(", 'connection-html-no-rest-bootstrap')
 require(status, "MAD4B_SCP_MCP_Registration_Bridge::server_registration_identity_status( $id )", 'connection-shallow-central-registration-identity')
 require(status, "'registration_identity_ready'", 'connection-shallow-registration-identity-ready')
 require(status, "'identity_ready_deep_validation_deferred'", 'connection-shallow-transport-tristate')
@@ -663,7 +661,7 @@ require(status, "'evidence_present' => $evidence_present", 'connection-shallow-p
 require(status, "count( $fallback_server_ids )", 'connection-fallback-server-count-no-drift')
 require(ui, "Identity ready · deep validation deferred", 'connection-ui-transport-deferred-state')
 require(ui, "Deep revalidation deferred", 'connection-ui-certification-deferred-state')
-require(ui, "Deep connection validation result", 'connection-ui-deep-result')
+require(ui, "External certification and foreign transport review were not performed.", 'endpoint-ui-does-not-certify')
 
 # Protocol connection status consumes persisted handshake evidence only. Live
 # build/tool revalidation remains available through explicit deep diagnostics.
