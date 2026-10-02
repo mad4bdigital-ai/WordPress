@@ -56,6 +56,8 @@ final class MAD4B_SCP_Execution_State_View {
 		$lifecycle = isset( $status['lifecycle_state'] ) ? sanitize_key( (string) $status['lifecycle_state'] ) : '';
 		$outcome = isset( $status['terminal_outcome'] ) ? sanitize_key( (string) $status['terminal_outcome'] ) : '';
 		$orphan = ! empty( $status['orphan_candidate'] );
+		$success_outcomes = array( 'committed', 'completed', 'success', 'succeeded', 'ok' );
+		$failure_outcomes = array( 'failed', 'error', 'blocked', 'cancelled', 'canceled', 'rejected', 'aborted' );
 		$state = self::UNKNOWN;
 		$terminal = false;
 		$reconciliation = false;
@@ -67,6 +69,16 @@ final class MAD4B_SCP_Execution_State_View {
 			$reconciliation = true;
 			$reason = 'journal_orphan_candidate';
 			$confidence = 'exact';
+		} elseif ( in_array( $lifecycle, array( 'planned', 'running' ), true ) && '' !== $outcome ) {
+			$state = self::RECONCILING;
+			$reconciliation = true;
+			$reason = 'journal_nonterminal_with_terminal_outcome';
+			$confidence = 'contradictory_evidence';
+		} elseif ( 'terminal_failed' === $lifecycle && in_array( $outcome, $success_outcomes, true ) ) {
+			$state = self::RECONCILING;
+			$reconciliation = true;
+			$reason = 'journal_failed_lifecycle_with_success_outcome';
+			$confidence = 'contradictory_evidence';
 		} elseif ( 'planned' === $lifecycle ) {
 			$state = self::PREPARED;
 			$reason = 'journal_planned';
@@ -81,12 +93,12 @@ final class MAD4B_SCP_Execution_State_View {
 			$reason = 'journal_terminal_failed';
 			$confidence = 'exact';
 		} elseif ( 'completed' === $lifecycle ) {
-			if ( in_array( $outcome, array( 'committed', 'completed', 'success', 'succeeded', 'ok' ), true ) ) {
+			if ( in_array( $outcome, $success_outcomes, true ) ) {
 				$state = self::COMMITTED;
 				$terminal = true;
 				$reason = 'journal_completed_success';
 				$confidence = 'exact';
-			} elseif ( in_array( $outcome, array( 'failed', 'error', 'blocked', 'cancelled', 'canceled', 'rejected', 'aborted' ), true ) ) {
+			} elseif ( in_array( $outcome, $failure_outcomes, true ) ) {
 				$state = self::FAILED;
 				$terminal = true;
 				$reason = 'journal_completed_failure';
@@ -128,6 +140,11 @@ final class MAD4B_SCP_Execution_State_View {
 		$source_state = isset( $status['status'] ) ? sanitize_key( (string) $status['status'] ) : '';
 		$expired = ! empty( $status['expired'] );
 		$source_reconciliation = ! empty( $status['reconciliation_required'] );
+		$source_retry_allowed = ! empty( $status['retry_allowed'] );
+		$result_sha256 = isset( $status['result_sha256'] ) ? strtolower( trim( (string) $status['result_sha256'] ) ) : '';
+		$result_digest_valid = 1 === preg_match( '/^[a-f0-9]{64}$/D', $result_sha256 );
+		$reconciliation_ref_present = ! empty( $status['reconciliation_ref_present'] );
+		$client_action = isset( $status['client_action'] ) ? sanitize_key( (string) $status['client_action'] ) : '';
 		$state = self::UNKNOWN;
 		$terminal = false;
 		$reconciliation = false;
@@ -135,25 +152,58 @@ final class MAD4B_SCP_Execution_State_View {
 		$reason = 'unmapped_idempotency_state';
 		$confidence = 'conservative';
 
-		if ( 'completed' === $source_state ) {
+		if ( in_array( $source_state, array( 'completed', 'released_verified_no_effect' ), true ) && $source_reconciliation ) {
+			$state = self::RECONCILING;
+			$reconciliation = true;
+			$reason = 'idempotency_terminal_state_requires_reconciliation';
+			$confidence = 'contradictory_evidence';
+		} elseif ( 'completed' === $source_state
+			&& $result_digest_valid
+			&& ! $source_retry_allowed
+			&& 'consume_completed_receipt' === $client_action ) {
 			$state = self::COMMITTED;
 			$terminal = true;
 			$reason = 'idempotency_completed';
 			$confidence = 'exact';
-		} elseif ( 'released_verified_no_effect' === $source_state ) {
+		} elseif ( 'completed' === $source_state ) {
+			$reconciliation = true;
+			$reason = 'idempotency_completed_evidence_incomplete';
+			$confidence = 'contradictory_evidence';
+		} elseif ( 'released_verified_no_effect' === $source_state
+			&& $reconciliation_ref_present
+			&& $source_retry_allowed
+			&& 'replan_then_retry' === $client_action ) {
 			$state = self::PREPARED;
 			$retry_after_replan = true;
 			$reason = 'idempotency_verified_no_effect_released';
 			$confidence = 'exact';
-		} elseif ( 'pending' === $source_state && ( $expired || $source_reconciliation ) ) {
-			$state = self::RECONCILING;
+		} elseif ( 'released_verified_no_effect' === $source_state ) {
 			$reconciliation = true;
-			$reason = 'idempotency_pending_requires_reconciliation';
-			$confidence = 'exact';
-		} elseif ( 'pending' === $source_state ) {
+			$reason = 'idempotency_verified_no_effect_evidence_incomplete';
+			$confidence = 'contradictory_evidence';
+		} elseif ( 'pending' === $source_state && $source_retry_allowed ) {
+			$reconciliation = true;
+			$reason = 'idempotency_pending_retry_flag_conflict';
+			$confidence = 'contradictory_evidence';
+		} elseif ( 'pending' === $source_state && ( $expired || $source_reconciliation ) ) {
+			if ( 'reconcile_provider_state_before_any_retry' === $client_action ) {
+				$state = self::RECONCILING;
+				$reconciliation = true;
+				$reason = 'idempotency_pending_requires_reconciliation';
+				$confidence = 'exact';
+			} else {
+				$reconciliation = true;
+				$reason = 'idempotency_reconciliation_action_mismatch';
+				$confidence = 'contradictory_evidence';
+			}
+		} elseif ( 'pending' === $source_state && 'wait_or_reconnect_without_replay' === $client_action ) {
 			$state = self::EXECUTING;
 			$reason = 'idempotency_pending_in_flight';
 			$confidence = 'durable_pending';
+		} elseif ( 'pending' === $source_state ) {
+			$reconciliation = true;
+			$reason = 'idempotency_pending_action_mismatch';
+			$confidence = 'contradictory_evidence';
 		}
 
 		return self::view(
@@ -170,9 +220,10 @@ final class MAD4B_SCP_Execution_State_View {
 			array(
 				'claim_epoch' => isset( $status['claim_epoch'] ) ? (int) $status['claim_epoch'] : 0,
 				'expired' => $expired,
-				'result_sha256' => isset( $status['result_sha256'] ) ? (string) $status['result_sha256'] : '',
-				'reconciliation_ref_present' => ! empty( $status['reconciliation_ref_present'] ),
-				'client_action' => isset( $status['client_action'] ) ? sanitize_key( (string) $status['client_action'] ) : '',
+				'result_sha256' => $result_sha256,
+				'reconciliation_ref_present' => $reconciliation_ref_present,
+				'source_retry_allowed' => $source_retry_allowed,
+				'client_action' => $client_action,
 				'execution_started_known' => false,
 			)
 		);
@@ -181,21 +232,30 @@ final class MAD4B_SCP_Execution_State_View {
 	public static function normalize_mutation_evidence( array $data, $error_code = '' ) {
 		$mutation_state = isset( $data['mutation_state'] ) ? sanitize_key( (string) $data['mutation_state'] ) : '';
 		$reconciliation = ! empty( $data['reconciliation_required'] );
+		$target_execution_known = array_key_exists( 'target_execution_entered', $data );
+		$target_execution_entered = $target_execution_known ? (bool) $data['target_execution_entered'] : null;
 		$state = self::UNKNOWN;
 		$terminal = false;
 		$reason = 'unmapped_mutation_error';
 		$confidence = 'conservative';
 
-		if ( 'not_started' === $mutation_state ) {
-			$state = self::FAILED;
-			$terminal = true;
-			$reason = 'mutation_attempt_not_started';
-			$confidence = 'exact';
-		} elseif ( $reconciliation || in_array( $mutation_state, array( 'unknown', 'unconfirmed_pending_ticket' ), true ) ) {
+		if ( $reconciliation || in_array( $mutation_state, array( 'unknown', 'unconfirmed_pending_ticket' ), true ) ) {
 			$state = self::RECONCILING;
 			$reconciliation = true;
 			$reason = 'mutation_outcome_requires_reconciliation';
 			$confidence = 'exact';
+		} elseif ( 'not_started' === $mutation_state && $target_execution_known && false === $target_execution_entered ) {
+			$state = self::FAILED;
+			$terminal = true;
+			$reason = 'mutation_attempt_not_started';
+			$confidence = 'exact';
+		} elseif ( 'not_started' === $mutation_state ) {
+			$state = self::RECONCILING;
+			$reconciliation = true;
+			$reason = $target_execution_known
+				? 'mutation_not_started_conflicts_with_execution_entry'
+				: 'mutation_not_started_without_execution_entry_evidence';
+			$confidence = 'contradictory_evidence';
 		}
 
 		return self::view(
@@ -211,7 +271,8 @@ final class MAD4B_SCP_Execution_State_View {
 			$confidence,
 			array(
 				'error_code' => sanitize_key( (string) $error_code ),
-				'target_execution_entered' => array_key_exists( 'target_execution_entered', $data ) ? (bool) $data['target_execution_entered'] : null,
+				'target_execution_entered' => $target_execution_entered,
+				'target_execution_entered_known' => $target_execution_known,
 				'fresh_plan_required' => ! empty( $data['fresh_plan_required'] ),
 				'client_action' => isset( $data['client_action'] ) ? sanitize_key( (string) $data['client_action'] ) : '',
 			)

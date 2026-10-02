@@ -55,6 +55,8 @@ $cases = array(
 	array( 'state' => 'terminal_failed', 'outcome' => 'failed', 'orphan' => false, 'expected' => 'FAILED', 'terminal' => true, 'reconcile' => false ),
 	array( 'state' => 'running', 'outcome' => '', 'orphan' => true, 'expected' => 'RECONCILING', 'terminal' => false, 'reconcile' => true ),
 	array( 'state' => 'future_state', 'outcome' => '', 'orphan' => false, 'expected' => 'UNKNOWN', 'terminal' => false, 'reconcile' => true ),
+	array( 'state' => 'running', 'outcome' => 'committed', 'orphan' => false, 'expected' => 'RECONCILING', 'terminal' => false, 'reconcile' => true ),
+	array( 'state' => 'terminal_failed', 'outcome' => 'committed', 'orphan' => false, 'expected' => 'RECONCILING', 'terminal' => false, 'reconcile' => true ),
 );
 foreach ( $cases as $case ) {
 	$status = $base_journal;
@@ -82,22 +84,33 @@ $base_resume = array(
 	'client_action' => 'wait_or_reconnect_without_replay',
 );
 $resume_cases = array(
-	array( 'status' => 'completed', 'expired' => false, 'reconcile' => false, 'expected' => 'COMMITTED', 'retry' => false ),
-	array( 'status' => 'released_verified_no_effect', 'expired' => true, 'reconcile' => false, 'expected' => 'PREPARED', 'retry' => true ),
-	array( 'status' => 'pending', 'expired' => false, 'reconcile' => false, 'expected' => 'EXECUTING', 'retry' => false ),
-	array( 'status' => 'pending', 'expired' => true, 'reconcile' => true, 'expected' => 'RECONCILING', 'retry' => false ),
-	array( 'status' => 'foreign', 'expired' => false, 'reconcile' => true, 'expected' => 'UNKNOWN', 'retry' => false ),
+	array( 'status' => 'completed', 'expired' => false, 'reconcile' => false, 'result' => str_repeat( 'c', 64 ), 'ref' => false, 'source_retry' => false, 'action' => 'consume_completed_receipt', 'expected' => 'COMMITTED', 'retry' => false, 'expected_reconcile' => false ),
+	array( 'status' => 'completed', 'expired' => false, 'reconcile' => false, 'result' => '', 'ref' => false, 'source_retry' => false, 'action' => 'consume_completed_receipt', 'expected' => 'UNKNOWN', 'retry' => false, 'expected_reconcile' => true ),
+	array( 'status' => 'released_verified_no_effect', 'expired' => true, 'reconcile' => false, 'result' => '', 'ref' => true, 'source_retry' => true, 'action' => 'replan_then_retry', 'expected' => 'PREPARED', 'retry' => true, 'expected_reconcile' => false ),
+	array( 'status' => 'released_verified_no_effect', 'expired' => true, 'reconcile' => false, 'result' => '', 'ref' => false, 'source_retry' => true, 'action' => 'replan_then_retry', 'expected' => 'UNKNOWN', 'retry' => false, 'expected_reconcile' => true ),
+	array( 'status' => 'released_verified_no_effect', 'expired' => true, 'reconcile' => false, 'result' => '', 'ref' => true, 'source_retry' => false, 'action' => 'replan_then_retry', 'expected' => 'UNKNOWN', 'retry' => false, 'expected_reconcile' => true ),
+	array( 'status' => 'pending', 'expired' => false, 'reconcile' => false, 'result' => '', 'ref' => false, 'source_retry' => false, 'action' => 'wait_or_reconnect_without_replay', 'expected' => 'EXECUTING', 'retry' => false, 'expected_reconcile' => false ),
+	array( 'status' => 'pending', 'expired' => true, 'reconcile' => true, 'result' => '', 'ref' => false, 'source_retry' => false, 'action' => 'reconcile_provider_state_before_any_retry', 'expected' => 'RECONCILING', 'retry' => false, 'expected_reconcile' => true ),
+	array( 'status' => 'pending', 'expired' => false, 'reconcile' => false, 'result' => '', 'ref' => false, 'source_retry' => true, 'action' => 'wait_or_reconnect_without_replay', 'expected' => 'UNKNOWN', 'retry' => false, 'expected_reconcile' => true ),
+	array( 'status' => 'foreign', 'expired' => false, 'reconcile' => true, 'result' => '', 'ref' => false, 'source_retry' => false, 'action' => 'do_not_retry', 'expected' => 'UNKNOWN', 'retry' => false, 'expected_reconcile' => true ),
 );
 foreach ( $resume_cases as $case ) {
 	$status = $base_resume;
 	$status['status'] = $case['status'];
 	$status['expired'] = $case['expired'];
 	$status['reconciliation_required'] = $case['reconcile'];
+	$status['result_sha256'] = $case['result'];
+	$status['reconciliation_ref_present'] = $case['ref'];
+	$status['retry_allowed'] = $case['source_retry'];
+	$status['client_action'] = $case['action'];
 	$view = MAD4B_SCP_Execution_State_View::normalize_resume_status( $status );
 	$check( is_array( $view ) && $case['expected'] === $view['canonical_state'], 'Durable resume mapping mismatch.', array( 'case' => $case, 'view' => $view ) );
 	$check( $case['retry'] === $view['retry_after_replan_allowed'], 'Durable retry-after-replan flag mismatch.', $view );
+	$check( $case['expected_reconcile'] === $view['reconciliation_required'], 'Durable reconciliation flag mismatch.', array( 'case' => $case, 'view' => $view ) );
 	$check( false === $view['blind_retry_allowed'], 'Durable state view permitted blind mutation retry.', $view );
 }
+$bad_resume = MAD4B_SCP_Execution_State_View::normalize_resume_status( array( 'contract' => 'foreign' ) );
+$check( is_wp_error( $bad_resume ) && 'mad4b_execution_state_resume_contract_invalid' === $bad_resume->get_error_code(), 'Foreign durable-resume contract was normalized.' );
 
 $not_started = new WP_Error( 'fixture_preflight', '', array(
 	'mutation_state' => 'not_started',
@@ -115,6 +128,29 @@ $unknown = new WP_Error( 'fixture_uncertain', '', array(
 ) );
 $unknown_view = MAD4B_SCP_Execution_State_View::mutation_error( $unknown );
 $check( 'RECONCILING' === $unknown_view['canonical_state'] && true === $unknown_view['reconciliation_required'] && false === $unknown_view['blind_retry_allowed'], 'Unknown mutation outcome did not require reconciliation.', $unknown_view );
+
+$contradictory_not_started = new WP_Error( 'fixture_contradictory_not_started', '', array(
+	'mutation_state' => 'not_started',
+	'reconciliation_required' => true,
+	'target_execution_entered' => false,
+) );
+$contradictory_view = MAD4B_SCP_Execution_State_View::mutation_error( $contradictory_not_started );
+$check( 'RECONCILING' === $contradictory_view['canonical_state'] && ! empty( $contradictory_view['reconciliation_required'] ), 'Contradictory not-started/reconciliation evidence was treated as terminal.', $contradictory_view );
+
+$entered_not_started = new WP_Error( 'fixture_entered_not_started', '', array(
+	'mutation_state' => 'not_started',
+	'reconciliation_required' => false,
+	'target_execution_entered' => true,
+) );
+$entered_not_started_view = MAD4B_SCP_Execution_State_View::mutation_error( $entered_not_started );
+$check( 'RECONCILING' === $entered_not_started_view['canonical_state'] && ! empty( $entered_not_started_view['reconciliation_required'] ), 'Not-started evidence that had entered target execution was treated as safe.', $entered_not_started_view );
+
+$missing_entry_not_started = new WP_Error( 'fixture_missing_entry_not_started', '', array(
+	'mutation_state' => 'not_started',
+	'reconciliation_required' => false,
+) );
+$missing_entry_not_started_view = MAD4B_SCP_Execution_State_View::mutation_error( $missing_entry_not_started );
+$check( 'RECONCILING' === $missing_entry_not_started_view['canonical_state'] && ! empty( $missing_entry_not_started_view['reconciliation_required'] ), 'Not-started evidence without an execution-entry proof was treated as safe.', $missing_entry_not_started_view );
 
 $unmapped_error = MAD4B_SCP_Execution_State_View::mutation_error( new WP_Error( 'fixture_unmapped' ) );
 $check( 'UNKNOWN' === $unmapped_error['canonical_state'] && ! empty( $unmapped_error['unmapped_source_state'] ) && ! empty( $unmapped_error['reconciliation_required'] ), 'Unmapped mutation error did not remain reconciliation-required.', $unmapped_error );
