@@ -52,7 +52,7 @@ Providers may supply at most 24 `meta.mcp.search_aliases` strings, each bounded 
 
 The MCP compatibility matrix executes behavioral gateway and lifecycle fixtures on PHP 7.4/8.3, and real WordPress 6.9/latest tests verify original content/admin lanes, independent database connections and cron retention. The local OAuth matrix proves cookie+nonce access, nonce denial and invalid-bearer fallback denial through independent HTTP requests. Existing tests retain schema/wire drift, projection CAS, immutable storage races, UTF-8, chunk transport, oversized-tool fallback and original permissions.
 
-`gateway-mutation-guards.py` introduces thirty-one representative regressions into isolated source copies and requires the behavioral tests to reject each one. This protects against a test suite that passes while no longer exercising its intended invariant.
+`gateway-mutation-guards.py` introduces thirty-two representative regressions into isolated source copies and requires the behavioral tests to reject each one. This protects against a test suite that passes while no longer exercising its intended invariant.
 
 
 ## Explicit offline cache retirement
