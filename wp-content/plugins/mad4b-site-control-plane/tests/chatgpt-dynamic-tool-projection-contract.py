@@ -111,14 +111,34 @@ for marker in [
     require(marker in DIAG, f"dynamic projection classification missing: {marker}")
 
 # Mutating dynamic projections are hidden without exact ChatGPT step-up;
-# readonly projections remain discoverable without gaining authority.
+# Breakglass additionally needs an exact server/Ability OAuth scope. Readonly
+# projections remain discoverable without gaining authority.
 for marker in [
     "( $dynamic && ! $dynamic_readonly )",
     "$step_up_visible",
+    "$breakglass_scope_visible",
+    "server:mad4b-breakglass",
+    "ability:",
     "MAD4B_SCP_Policy::can_breakglass()",
     "mad4b_required_catalog_schema_invalid",
 ]:
     require(marker in DIAG, f"dynamic tools/list request-time gate missing: {marker}")
+
+for marker in [
+    "mad4b_projection_breakglass_scope_required",
+    "server:mad4b-breakglass",
+    "ability:",
+]:
+    require(marker in PROJECTION, f"projected Breakglass call admission missing: {marker}")
+
+# Direct tools/list schemas are bounded independently from chunked catalog transport.
+for marker in [
+    "MAX_SERIALIZED_TOOL_BYTES",
+    "mcp_optional_catalog_size_excluded",
+    "mcp_required_catalog_size_exceeded",
+    "bounded_serialized_tool_bytes",
+]:
+    require(marker in DIAG, f"serialized tools/list byte budget invariant missing: {marker}")
 
 # Exact plan validates the resulting real MCP catalog, not only stored metadata.
 for marker in [
