@@ -53,7 +53,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 		if ( ! self::same( $expected_material, $current, 'provider' ) ) {
 			return self::error( 'RECERTIFICATION_REQUIRED', 'Provider capability or artifact evidence changed before commit.' );
 		}
-		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'site_profile', 'candidate', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
+		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'site_profile', 'candidate', 'database_storage', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
 			if ( ! self::same( $expected_material, $current, $dependency ) ) {
 				return self::error( 'REAPPROVAL_REQUIRED', 'A material authorization dependency changed before commit.', array( 'dependency' => $dependency ) );
 			}
@@ -89,6 +89,23 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
 		if ( is_wp_error( $identity ) || ! is_array( $identity ) ) return self::error( 'DENIED', 'Authenticated subject identity is unavailable at commit guard.' );
+
+		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! method_exists( 'MAD4B_SCP_Schema', 'transactional_storage_status' ) ) {
+			return self::error( 'DENIED', 'Transactional governance storage contract is unavailable.' );
+		}
+		$database_storage_status = MAD4B_SCP_Schema::transactional_storage_status( array(), true );
+		if ( ! is_array( $database_storage_status ) || empty( $database_storage_status['ready'] ) ) {
+			return self::error( 'DENIED', 'Transactional governance storage is not ready for commit.', array(
+				'blockers' => is_array( $database_storage_status ) && isset( $database_storage_status['blockers'] ) ? $database_storage_status['blockers'] : array( 'storage_status_unavailable' ),
+			) );
+		}
+		$database_storage = array(
+			'contract' => isset( $database_storage_status['contract'] ) ? (string) $database_storage_status['contract'] : '',
+			'connection_fingerprint' => isset( $database_storage_status['connection_fingerprint'] ) ? (string) $database_storage_status['connection_fingerprint'] : '',
+			'engines' => isset( $database_storage_status['engines'] ) && is_array( $database_storage_status['engines'] ) ? $database_storage_status['engines'] : array(),
+			'collations' => isset( $database_storage_status['collations'] ) && is_array( $database_storage_status['collations'] ) ? $database_storage_status['collations'] : array(),
+			'identity_comparison_policy' => isset( $database_storage_status['identity_comparison_policy'] ) ? (string) $database_storage_status['identity_comparison_policy'] : '',
+		);
 
 		$agent = class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::get_agent_by_public_id( $agent_public_id ) : null;
 		if ( ! is_array( $agent ) || empty( $agent['id'] ) || 'enabled' !== (string) $agent['status'] ) {
@@ -185,6 +202,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 			'authority' => $authority,
 			'site_profile' => $profile,
 			'candidate' => $candidate,
+			'database_storage' => $database_storage,
 			'provider' => $provider_material,
 			'kill_switch' => $kill_switch,
 			'rights' => empty( $rights ) ? array( 'state' => 'not_applicable' ) : self::canonicalize( $rights ),

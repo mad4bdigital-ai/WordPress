@@ -90,7 +90,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 		$max_abilities = max( 1, min( 10000, (int) apply_filters( 'mad4b_scp_catalog_build_max_abilities', 5000 ) ) );
 		$max_bytes = max( 1024, min( 67108864, (int) apply_filters( 'mad4b_scp_catalog_build_max_bytes', 33554432 ) ) );
 		$definition_bytes = 0;
-		$abilities = array(); $definitions = array();
+		$abilities = array(); $definitions = array(); $definition_failures = array();
 		foreach ( wp_get_abilities() as $name => $a ) { if ( is_object( $a ) && method_exists( $a, 'get_name' ) ) $name = $a->get_name(); $abilities[ $name ] = $a; }
 		if ( count( $abilities ) > $max_abilities ) return self::error( 'mad4b_catalog_build_ability_budget', 413 );
 		ksort( $abilities, SORT_STRING );
@@ -98,12 +98,19 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 			if ( microtime( true ) >= $deadline ) return self::error( 'mad4b_catalog_build_time_budget', 503 );
 			try {
 				$definition = array( $a->get_input_schema(), $a->get_output_schema(), $a->get_meta(), $a->get_category(), $a->get_label() );
-				try { $encoded = self::encode( $definition ); }
-				catch ( Throwable $canonical_error ) { $encoded = serialize( $definition ); }
+				$encoded = self::encode( $definition );
 				$definition_bytes += strlen( $encoded );
 				if ( $definition_bytes > $max_bytes ) return self::error( 'mad4b_catalog_build_byte_budget', 413 );
 				$definitions[ $name ] = hash( 'sha256', $encoded );
-			} catch ( Throwable $e ) { $definitions[ $name ] = 'unavailable'; }
+			} catch ( Throwable $e ) {
+				$definition_failures[ $name ] = 'schema_serialization_failed';
+				$marker = self::encode( array(
+					'contract' => 'mad4b.catalog-definition-unavailable.v1',
+					'ability_name' => (string) $name,
+					'reason' => 'schema_serialization_failed',
+				) );
+				$definitions[ $name ] = hash( 'sha256', $marker );
+			}
 		}
 		$generation = apply_filters( 'mad4b_scp_catalog_wire_generation', self::CONTRACT . ':' . ( defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '' ) );
 		$fingerprint = hash( 'sha256', self::encode( array( $definitions, $generation ) ) ); $current_key = self::key( $scope, 'current', '' ); $current = $store->get( $current_key );
@@ -114,6 +121,15 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 			$items = array(); $retain_until = time() + self::retention();
 			foreach ( $abilities as $name => $a ) {
 				if ( microtime( true ) >= $deadline ) return self::error( 'mad4b_catalog_build_time_budget', 503 );
+				if ( isset( $definition_failures[ $name ] ) ) {
+					$items[] = array(
+						'ability_name' => $name,
+						'unavailable' => true,
+						'reason' => $definition_failures[ $name ],
+						'classification_sha256' => $definitions[ $name ],
+					);
+					continue;
+				}
 				try {
 					$source = self::publish_schema( array( 'inputSchema' => $a->get_input_schema(), 'outputSchema' => $a->get_output_schema() ), $store, $force );
 					$retain_until = min( $retain_until, $source['retain_until'] );
