@@ -14,7 +14,12 @@ for path in php_files:
         raise SystemExit(f"uninstall hook is forbidden without an explicit reviewed data-destruction contract: {path.relative_to(plugin)}")
 
 main_text = main.read_text(encoding="utf-8")
-if "register_deactivation_hook(" in main_text:
-    raise SystemExit("plugin deactivation must remain non-destructive and hook-free unless a separately reviewed continuity contract is added")
+assert main_text.count("register_deactivation_hook(") == 1
+assert "array( 'MAD4B_SCP_Catalog_Lifecycle', 'deactivate' )" in main_text
+lifecycle = (plugin / "includes/class-mad4b-scp-catalog-lifecycle.php").read_text()
+assert "wp_clear_scheduled_hook( 'mad4b_catalog_gc' )" in lifecycle
+for forbidden in ("delete_option(", "delete_site_option(", "DROP TABLE", "DELETE FROM", "update_option("):
+    assert forbidden not in lifecycle, f"deactivation must preserve data: {forbidden}"
+assert "finally { restore_current_blog(); }" in lifecycle
 
 print("mad4b.plugin-lifecycle-data-retention-contract.v1: PASS")

@@ -238,6 +238,22 @@ try {
 	$raced = $cas->invoke( null, $fixture_state, $loser );
 	if ( ! is_wp_error( $raced ) || 'mad4b_projection_concurrent_update' !== $raced->get_error_code() ) $fail( 'Stale writer overwrote the winning projection.' );
 	if ( get_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION ) !== $winner ) $fail( 'CAS loser changed stored state.' );
+	// A different session can replace the site's hot set; stable dispatcher
+	// execution must remain independent of that semantic catalog contention.
+	$session_b = $winner;
+	$session_b['abilities'] = array();
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $session_b, false );
+	$fixed_name = 'mad4b-ci/readonly-projection-fixture';
+	$fixed_row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $fixed_name );
+	$stable_dispatch = ( new MAD4B_SCP_Abilities() )->read_execute( array(
+		'ability_name' => $fixed_name,
+		'expected_input_schema_sha256' => $fixed_row['input_schema_sha256'],
+		'expected_classification_sha256' => $fixed_row['classification_sha256'],
+		'expected_execution_lane' => 'read',
+		'input' => array(),
+	) );
+	if ( is_wp_error( $stable_dispatch ) || empty( $stable_dispatch['result']['ok'] ) ) $fail( 'Another session hot-set replacement disrupted fixed dispatch.' );
+
 	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
 
 	// Selecting a required base tool cannot turn it into an optional eviction candidate.

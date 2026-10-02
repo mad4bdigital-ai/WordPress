@@ -116,3 +116,36 @@ const mcp = createAbilityCatalogClient({cryptoImpl: webcrypto, callDiscover: asy
 }});
 assert.equal((await mcp.readSchema(await mcp.sync(null), row.ability_name)).sha256, sha);
 console.log('PASS client: bounded adaptive REST/MCP, resume, integrity, authority/origin, governed dispatch and wire-pinned direct execution');
+
+// The client must share server dispatch semantics without needing a projected
+// tool or a tools/listChanged notification from a caching host.
+let preparedLane = 'content', preparedClassification = scope;
+const laneClient = createAbilityCatalogClient({
+  callDiscover: async request => ({
+    contract: 'mad4b.unified-capability-gateway.v1',
+    abilities: [{ability_name: 'vendor/mutation', snapshot, authority_scope_sha256: scope,
+      classification: preparedLane, input_schema_sha256: sha, classification_sha256: preparedClassification,
+      source: {sha256: sha, bytes: raw.length}, execution_eligible: true,
+      execution: {state: 'governed_dispatch'}}],
+    server_tools_list_changed: false,
+    exposure: {mode: 'fixed_dispatch'},
+  }),
+  callTool: async (name, input) => { captured = {name, input}; return 'executed'; },
+});
+for (const [lane, tool] of [['read', 'read'], ['write', 'write'], ['content', 'write'], ['admin', 'write'], ['developer', 'developer']]) {
+  preparedLane = lane;
+  const prepared = (await laneClient.prepare(['vendor/mutation'])).catalogs.get('vendor/mutation');
+  assert.equal(await laneClient.execute(prepared, 'vendor/mutation', {}), 'executed');
+  assert.equal(captured.name, `mad4b-${tool}-execute`);
+  assert.equal(captured.input.expected_execution_lane, lane);
+  assert.equal(captured.input.expected_classification_sha256, scope);
+  preparedClassification = snapshot;
+  await assert.rejects(laneClient.execute(prepared, 'vendor/mutation', {}), /contract changed/);
+  preparedClassification = scope;
+}
+for (const lane of ['internal', 'breakglass', 'developer-breakglass', '__proto__']) {
+  preparedLane = lane;
+  const prepared = (await laneClient.prepare(['vendor/mutation'])).catalogs.get('vendor/mutation');
+  await assert.rejects(laneClient.execute(prepared, 'vendor/mutation', {}), /explicit authority route/);
+}
+console.log('PASS client dispatcher parity: content/admin, classification and original-lane pins, no-refresh host and exceptional lane denial');

@@ -9,7 +9,7 @@ function wp_json_encode( $v ) { return json_encode( $v ); }
 function get_current_user_id() { return $GLOBALS['user']; }
 function wp_get_current_user() { return (object) array( 'allcaps' => array( 'read' => true ) ); }
 function wp_salt( $v ) { return 'test-signing-key'; }
-function apply_filters( $name, $v ) { return 'mad4b_scp_catalog_storage_capacity_bytes' === $name ? ( $GLOBALS['capacity'] ?? $v ) : $v; }
+function apply_filters( $name, $v ) { return $GLOBALS['filters'][$name] ?? ( 'mad4b_scp_catalog_storage_capacity_bytes' === $name ? ( $GLOBALS['capacity'] ?? $v ) : $v ); }
 function set_transient( $key, $v, $ttl ) { $GLOBALS['cache'][$key] = $v; return true; }
 function get_transient( $key ) { return $GLOBALS['cache'][$key] ?? false; }
 function wp_get_abilities() { return $GLOBALS['abilities']; }
@@ -23,11 +23,11 @@ function delete_option( $key ) { unset( $GLOBALS['options'][$key] ); }
 function wp_cache_delete( $key, $group ) { return true; }
 function maybe_serialize( $v ) { return serialize( $v ); }
 class FakeDB {
- public $options = 'options'; public $race = false;
+ public $options = 'options'; public $race = false; public $locked = false; public $measurements = 0;
  function esc_like( $value ) { return $value; }
  function get_col( $args ) { $names = array_values( array_filter( array_keys( $GLOBALS['options'] ), static function( $key ) use ( $args ) { return 0 === strpos( $key, 'mad4b_ct2_' ) && $key > $args[1]; } ) ); sort( $names, SORT_STRING ); return array_slice( $names, 0, 500 ); }
- function get_var( $args ) { $bytes = 0; foreach ( $GLOBALS['options'] as $name => $value ) if ( 0 === strpos( $name, 'mad4b_ct2_' ) ) $bytes += strlen( serialize( $value ) ); return $bytes; }
- function prepare( $query, ...$args ) { return $args; }
+ function get_var( $args ) { if ( ($args[0] ?? '') === '__lock' ) { if ( $this->locked ) return 0; $this->locked = true; return 1; } if ( ($args[0] ?? '') === '__unlock' ) { $this->locked = false; return 1; } ++$this->measurements; $bytes = 0; foreach ( $GLOBALS['options'] as $name => $value ) if ( 0 === strpos( $name, 'mad4b_ct2_' ) ) $bytes += strlen( serialize( $value ) ); return $bytes; }
+ function prepare( $query, ...$args ) { if ( strpos( $query, 'GET_LOCK' ) !== false ) return array( '__lock', $args[0] ); if ( strpos( $query, 'RELEASE_LOCK' ) !== false ) return array( '__unlock', $args[0] ); return $args; }
  function query( $args ) {
   list( $next, $key, $old ) = $args;
   if ( $this->race ) { $this->race = false; $GLOBALS['options'][$key]['concurrent'] = array( 'option' => 'other', 'expires' => time()+3600, 'bytes' => 1 ); return 0; }
@@ -182,3 +182,46 @@ MAD4B_SCP_Catalog_Object_Store::collect_expired();
 check( ! isset( $GLOBALS['options'][$crash] ), 'Overflow prevented GC from recovering crash drafts' );
 unset( $GLOBALS['capacity'] );
 echo "PASS physical capacity: crash drafts counted, failed publication atomic and GC recovery allowed\n";
+
+// Full-build admission must fail before publication and release its mutex.
+$GLOBALS['wpdb']->locked = true;
+$blocked = request( array( 'force_refresh' => true ) );
+check( is_wp_error( $blocked ) && 'mad4b_catalog_build_in_progress' === $blocked->code && $GLOBALS['wpdb']->locked, 'Contended build was admitted or released another connection lock' );
+$GLOBALS['wpdb']->locked = false;
+$GLOBALS['capacity'] = 134217728;
+$GLOBALS['abilities'] = array( 'a' => new FixtureAbility( 'bounded' ), 'b' => new FixtureAbility( 'bounded' ) );
+$baseline = serialize( $GLOBALS['options'] );
+$GLOBALS['filters']['mad4b_scp_catalog_build_max_abilities'] = 1;
+$blocked = request( array( 'force_refresh' => true ) );
+check( is_wp_error( $blocked ) && 'mad4b_catalog_build_ability_budget' === $blocked->code, 'Ability build budget not enforced' );
+check( $baseline === serialize( $GLOBALS['options'] ) && ! $GLOBALS['wpdb']->locked, 'Failed build published state or leaked mutex' );
+unset( $GLOBALS['filters']['mad4b_scp_catalog_build_max_abilities'] );
+$GLOBALS['abilities'] = array( 'large' => new FixtureAbility( str_repeat( 'x', 2048 ) ) );
+$GLOBALS['filters']['mad4b_scp_catalog_build_max_bytes'] = 1024;
+$blocked = request( array() );
+check( is_wp_error( $blocked ) && 'mad4b_catalog_build_byte_budget' === $blocked->code && ! $GLOBALS['wpdb']->locked, 'Byte budget failed open or leaked mutex' );
+unset( $GLOBALS['filters']['mad4b_scp_catalog_build_max_bytes'] );
+class ReentrantAbility extends FixtureAbility {
+ function get_input_schema() {
+  $GLOBALS['concurrent_build_result'] = request( array( 'force_refresh' => true ) );
+  return parent::get_input_schema();
+ }
+}
+$GLOBALS['abilities'] = array( 'nested' => new ReentrantAbility( 'single-flight' ) );
+$single = request( array() );
+check( ! is_wp_error( $single ) && is_wp_error( $GLOBALS['concurrent_build_result'] ) && 'mad4b_catalog_build_in_progress' === $GLOBALS['concurrent_build_result']->code, 'Parallel full build was admitted' );
+check( ! $GLOBALS['wpdb']->locked, 'Successful build leaked mutex' );
+class SlowAbility extends FixtureAbility { function get_input_schema() { usleep( 5000 ); return parent::get_input_schema(); } }
+$GLOBALS['abilities'] = array( 'slow' => new SlowAbility( 'time-budget' ) );
+$GLOBALS['filters']['mad4b_scp_catalog_build_seconds'] = 0.001;
+$baseline = serialize( $GLOBALS['options'] );
+$blocked = request( array() );
+check( is_wp_error( $blocked ) && 'mad4b_catalog_build_time_budget' === $blocked->code && $baseline === serialize( $GLOBALS['options'] ) && ! $GLOBALS['wpdb']->locked, 'Deadline failed open, published a partial snapshot, or leaked mutex' );
+unset( $GLOBALS['filters']['mad4b_scp_catalog_build_seconds'] );
+$GLOBALS['abilities'] = array( 'bounded' => new FixtureAbility( 'stable-force' ) );
+$built = request( array( 'force_refresh' => true ) );
+$measurements = $GLOBALS['wpdb']->measurements;
+$again = request( array( 'force_refresh' => true ) );
+check( $built['snapshot'] === $again['snapshot'] && 0 === $again['storage_metrics']['writes'], 'Repeated force refresh rewrote unchanged generation' );
+check( $measurements === $GLOBALS['wpdb']->measurements, 'Unchanged snapshot performed a physical aggregate scan' );
+echo "PASS build admission: nonblocking single-flight, budgets, release, force-refresh coalescing and zero-write fast path\n";

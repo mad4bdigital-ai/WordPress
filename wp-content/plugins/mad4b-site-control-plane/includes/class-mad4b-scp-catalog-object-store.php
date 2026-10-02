@@ -82,6 +82,11 @@ final class MAD4B_SCP_Catalog_Object_Store {
 		try {
 			$initial = $this->directory();
 			$initial = is_array( $initial ) ? $initial : array();
+			if ( empty( $this->pending ) ) {
+				$expired = false;
+				foreach ( $initial as $entry ) if ( $entry['expires'] <= time() ) { $expired = true; break; }
+				if ( ! $expired ) { $published = true; return; }
+			}
 			$physical = self::physical_bytes( $initial );
 			foreach ( $this->pending as $key => $entry ) {
 				if ( microtime( true ) >= $deadline ) throw new RuntimeException( 'catalog_storage_publication_timeout' );
@@ -132,6 +137,21 @@ final class MAD4B_SCP_Catalog_Object_Store {
 		} finally {
 			if ( ! $published ) foreach ( $created as $option ) delete_option( $option );
 		}
+	}
+
+	/** Directory evidence only; orphan bytes remain enforced by physical SQL. */
+	public static function status() {
+		$directory = get_option( self::DIRECTORY, array() );
+		$directory = is_array( $directory ) ? $directory : array();
+		return array(
+			'indexed_objects' => count( $directory ),
+			'indexed_bytes' => array_sum( array_column( $directory, 'bytes' ) ),
+			'physical_bytes_measured' => false,
+			'capacity_bytes' => self::capacity(),
+			'next_gc' => function_exists( 'wp_next_scheduled' ) ? wp_next_scheduled( 'mad4b_catalog_gc' ) : false,
+			'retention_policy' => 'preserve_on_deactivation_and_uninstall',
+			'authority_effect' => 'none',
+		);
 	}
 
 	public static function collect_expired() {

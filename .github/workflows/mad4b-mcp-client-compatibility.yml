@@ -38,6 +38,9 @@ jobs:
           node "$root/tests/catalog-transport-client.mjs"
           node "$root/tests/catalog-transport-failures.mjs"
           php "$root/tests/projection-registration-lifecycle.php"
+          php "$root/tests/gateway-regression-runtime.php"
+          php "$root/tests/catalog-lifecycle-runtime.php"
+          python3 "$root/tests/plugin-lifecycle-data-retention-contract.py"
           php -l "$root/tests/runtime-unified-capability-gateway.php"
           php -l "$root/tests/runtime-mcp-client-compatibility-smoke.php"
           php -l "$root/tests/runtime-chatgpt-tool-inventory-smoke.php"
@@ -46,6 +49,7 @@ jobs:
           python3 "$root/tests/mcp-client-compatibility-contract.py"
           python3 "$root/tests/chatgpt-dynamic-tool-projection-contract.py"
           python3 "$root/tests/unified-capability-gateway-contract.py"
+          python3 "$root/tests/gateway-mutation-guards.py"
 
   catalog-compatibility:
     name: Catalog runtime (PHP ${{ matrix.php }})
@@ -70,6 +74,9 @@ jobs:
           find "$root/includes" -name '*.php' -print0 | xargs -0 -n1 php -l
           php "$root/tests/catalog-transport-runtime.php"
           php "$root/tests/projection-registration-lifecycle.php"
+          php "$root/tests/gateway-regression-runtime.php"
+          php "$root/tests/catalog-lifecycle-runtime.php"
+          python3 "$root/tests/plugin-lifecycle-data-retention-contract.py"
 
   runtime:
     name: MCP client compatibility runtime (${{ matrix.wordpress }} / PHP ${{ matrix.php }})
@@ -172,6 +179,12 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-unified-capability-gateway.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove independent database builds and non-destructive cron lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-build-concurrency.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove initialize and minimal tools/list over the pinned Adapter protocol
         shell: bash

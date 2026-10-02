@@ -20,11 +20,17 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 	const DEFAULT_MAX_RESPONSE_BYTES = 131072;
 
 	private static $booted = false;
+	private static $boot_blog_id = null;
 
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
 		self::$booted = true;
+		self::$boot_blog_id = function_exists( 'get_current_blog_id' ) ? get_current_blog_id() : 1;
 		add_action( 'rest_api_init', array( __CLASS__, 'register_rest_route' ), 2 );
+	}
+
+	public static function runtime_blog_matches() {
+		return null === self::$boot_blog_id || ! function_exists( 'get_current_blog_id' ) || self::$boot_blog_id === get_current_blog_id();
 	}
 
 	public static function rest_url() {
@@ -35,9 +41,16 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		return array(
 			'contract' => self::CONTRACT,
 			'rest_url' => self::rest_url(),
-			'rest_requires_oauth_bearer' => true,
+			'rest_requires_oauth_bearer' => false,
+			'rest_auth_modes' => array( 'oauth_bearer', 'authenticated_wordpress_session' ),
+			'remote_client_auth_mode' => 'oauth_bearer',
+			'wordpress_cookie_requires_rest_nonce' => true,
+			'primary_execution_mode' => 'fixed_dispatch',
+			'projection_role' => 'optional_hot_set',
+			'server_tools_list_changed' => false,
 			'actions' => array( 'negotiate', 'search', 'prepare', 'schema', 'chunk' ),
 			'source_of_truth' => 'wordpress_abilities_api',
+			'multisite_request_scope' => 'boot_blog_only',
 			'client_claims_authoritative' => false,
 			'host_refresh_confirmation_required' => true,
 			'dynamic_projection_scope' => 'site_enrollment_explicit',
@@ -65,7 +78,10 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 	}
 
 	public static function can_read_rest( $request = null ) {
-		unset( $request );
+		if ( ! self::runtime_blog_matches() ) return new WP_Error( 'mad4b_capability_gateway_blog_switch_denied', 'Use a fresh request to the target site.', array( 'status' => 409 ) );
+		if ( is_object( $request ) && method_exists( $request, 'get_header' ) ) {
+			return MAD4B_SCP_Ability_Catalog_Transport::rest_permission( $request );
+		}
 		if ( ! class_exists( 'MAD4B_SCP_Policy' ) ) return new WP_Error( 'mad4b_capability_gateway_policy_unavailable', 'Capability gateway policy is unavailable.', array( 'status' => 503 ) );
 		$allowed = MAD4B_SCP_Policy::can_read();
 		if ( is_wp_error( $allowed ) ) return $allowed;
@@ -79,11 +95,17 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		$result = self::dispatch( $input, 'rest' );
 		if ( is_wp_error( $result ) ) return $result;
 		$response = rest_ensure_response( $result );
-		if ( $response instanceof WP_REST_Response ) $response->header( 'Cache-Control', 'no-store' );
+		if ( $response instanceof WP_REST_Response ) {
+			$response->header( 'Cache-Control', 'private, no-store' );
+			$response->header( 'Vary', 'Authorization, Cookie' );
+			$response->header( 'X-Content-Type-Options', 'nosniff' );
+		}
 		return $response;
 	}
 
 	public static function dispatch( array $input, $transport = 'internal' ) {
+		$valid = self::validate_input( $input );
+		if ( is_wp_error( $valid ) ) return $valid;
 		$permission = self::can_read_rest();
 		if ( is_wp_error( $permission ) ) return $permission;
 		$action = isset( $input['action'] ) ? sanitize_key( (string) $input['action'] ) : 'negotiate';
@@ -105,6 +127,23 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		}
 		if ( strlen( wp_json_encode( $result ) ) > $budget ) return new WP_Error( 'mad4b_capability_gateway_response_budget', 'Use a smaller batch or chunked schema transfer.', array( 'status' => 413 ) );
 		return $result;
+	}
+
+	private static function validate_input( array $input ) {
+		foreach ( array( 'action', 'task', 'query', 'ability_name', 'snapshot', 'schema_sha256', 'schema_format' ) as $key ) {
+			if ( isset( $input[$key] ) && ( ! is_string( $input[$key] ) || strlen( $input[$key] ) > 4096 ) ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Gateway text fields must be bounded strings.', array( 'status' => 400 ) );
+		}
+		foreach ( array( 'ability_names' => self::MAX_PREPARE, 'keywords' => self::MAX_KEYWORDS, 'known_schemas' => self::MAX_PREPARE ) as $key => $max ) {
+			if ( ! isset( $input[$key] ) ) continue;
+			if ( ! is_array( $input[$key] ) || count( $input[$key] ) > $max ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Gateway arrays exceed their preparation/search bounds.', array( 'status' => 400 ) );
+			foreach ( $input[$key] as $value ) if ( ! is_string( $value ) || strlen( $value ) > 512 ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Gateway array entries must be bounded strings.', array( 'status' => 400 ) );
+		}
+		if ( isset( $input['limit'] ) && false === filter_var( $input['limit'], FILTER_VALIDATE_INT ) ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Search limit must be an integer.', array( 'status' => 400 ) );
+		if ( isset( $input['client_capabilities'] ) ) {
+			if ( ! is_array( $input['client_capabilities'] ) || count( $input['client_capabilities'] ) > 16 ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Client capabilities must be a bounded object.', array( 'status' => 400 ) );
+			foreach ( $input['client_capabilities'] as $value ) if ( ! is_scalar( $value ) || ( is_string( $value ) && strlen( $value ) > 80 ) ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Client capability values must be bounded scalars.', array( 'status' => 400 ) );
+		}
+		return true;
 	}
 
 	private static function as_bool( $value ) {
@@ -180,6 +219,12 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				'mcp_resource' => class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ? MAD4B_SCP_MCP_Client_Compatibility::resource_identifier() : '',
 			),
 			'exposure_mode' => $exposure,
+			'rest_auth_modes' => array( 'oauth_bearer', 'authenticated_wordpress_session' ),
+			'remote_client_auth_mode' => 'oauth_bearer',
+			'primary_execution_mode' => 'fixed_dispatch',
+			'projection_role' => 'optional_hot_set',
+			'server_tools_list_changed' => false,
+			'refresh_strategy' => 'explicit_tools_list_or_reconnect',
 			'dynamic_projection_state' => $dynamic_state,
 			'dynamic_projection_scope' => 'site_enrollment_explicit',
 			'per_client_projection_isolation' => false,
@@ -187,11 +232,14 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'fixed_dispatch_tools' => array(
 				'read' => 'mad4b/read-execute',
 				'write' => 'mad4b/write-execute',
+				'content' => 'mad4b/write-execute',
+				'admin' => 'mad4b/write-execute',
 				'developer' => 'mad4b/developer-execute',
 				'enrollment' => 'mad4b/enrollment-execute',
 			),
 			'transfer_policy' => self::transfer_policy( $caps ),
 			'source_of_truth' => 'wordpress_abilities_api',
+			'multisite_request_scope' => 'boot_blog_only',
 			'authority_effect' => 'none',
 			'read_only' => true,
 		);
@@ -240,18 +288,21 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		$label = self::lower( isset( $row['label'] ) ? $row['label'] : '' );
 		$description = self::lower( isset( $row['description'] ) ? $row['description'] : '' );
 		$category = self::lower( isset( $row['category'] ) ? $row['category'] : '' );
+		$aliases = self::lower( implode( ' ', $row['search_aliases'] ?? array() ) );
 		$score = 0;
 		$phrase = self::lower( $task );
 		if ( '' !== $phrase ) {
 			if ( false !== strpos( $name, $phrase ) ) $score += 24;
 			if ( false !== strpos( $label, $phrase ) ) $score += 16;
 			if ( false !== strpos( $description, $phrase ) ) $score += 8;
+			if ( false !== strpos( $aliases, $phrase ) ) $score += 12;
 		}
 		foreach ( $terms as $term ) {
 			if ( false !== strpos( $name, $term ) ) $score += 8;
 			if ( false !== strpos( $label, $term ) ) $score += 5;
 			if ( false !== strpos( $description, $term ) ) $score += 2;
 			if ( false !== strpos( $category, $term ) ) $score += 1;
+			if ( false !== strpos( $aliases, $term ) ) $score += 3;
 		}
 		return $score;
 	}
@@ -270,9 +321,12 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				$meta = method_exists( $ability, 'get_meta' ) ? $ability->get_meta() : array();
 				$meta = is_array( $meta ) ? $meta : array();
 				$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+				$aliases = isset( $mcp['search_aliases'] ) && is_array( $mcp['search_aliases'] ) ? array_slice( $mcp['search_aliases'], 0, self::MAX_KEYWORDS ) : array();
+				$aliases = array_values( array_map( static function ( $value ) { return self::bounded_text( $value, 80, true ); }, array_filter( $aliases, 'is_string' ) ) );
 				$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 				$row = array(
 					'ability_name' => $ability_name,
+					'search_aliases' => $aliases,
 					'label' => method_exists( $ability, 'get_label' ) ? self::bounded_text( $ability->get_label(), 160 ) : '',
 					'description' => method_exists( $ability, 'get_description' ) ? self::bounded_text( $ability->get_description(), 320, true ) : '',
 					'category' => method_exists( $ability, 'get_category' ) ? self::bounded_text( $ability->get_category(), 160 ) : '',
@@ -289,12 +343,12 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			$row['authority_decision_deferred'] = true;
 			$row['relevance_score'] = $score;
 			$matches[] = $row;
+			usort( $matches, static function ( $a, $b ) {
+				if ( $a['relevance_score'] === $b['relevance_score'] ) return strcmp( $a['ability_name'], $b['ability_name'] );
+				return $a['relevance_score'] > $b['relevance_score'] ? -1 : 1;
+			} );
+			$matches = array_slice( $matches, 0, $limit );
 		}
-		usort( $matches, static function ( $a, $b ) {
-			if ( $a['relevance_score'] === $b['relevance_score'] ) return strcmp( $a['ability_name'], $b['ability_name'] );
-			return $a['relevance_score'] > $b['relevance_score'] ? -1 : 1;
-		} );
-		$matches = array_slice( $matches, 0, $limit );
 		$negotiation = self::negotiation( $input, $transport );
 		return array(
 			'contract' => self::CONTRACT,
@@ -323,6 +377,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				'transport' => 'none',
 			);
 		}
+		if ( in_array( $lane, array( 'write', 'content', 'admin' ), true ) && ( ! isset( $row['readonly'] ) || false !== $row['readonly'] ) ) return array( 'state' => 'blocked', 'blocker' => 'write_dispatch_requires_mutation_annotation', 'transport' => 'none' );
 		if ( 'enrollment' === $lane ) {
 			return array(
 				'state' => 'requires_operation_resolution',
@@ -337,7 +392,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				'revalidation' => array( 'authority', 'site_binding', 'registration_digest', 'dispatch_policy_digest', 'input_schema_identity' ),
 			);
 		}
-		if ( 'write' === $lane && ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) ) {
+		if ( in_array( $lane, array( 'write', 'content', 'admin' ), true ) && ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) ) {
 			return array(
 				'state' => 'blocked',
 				'blocker' => 'write_runtime_not_eligible',
@@ -354,6 +409,8 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		$map = array(
 			'read' => 'mad4b/read-execute',
 			'write' => 'mad4b/write-execute',
+			'content' => 'mad4b/write-execute',
+			'admin' => 'mad4b/write-execute',
 			'developer' => 'mad4b/developer-execute',
 		);
 		if ( ! isset( $map[ $lane ] ) ) {
@@ -370,6 +427,8 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'dispatch_tool' => $map[ $lane ],
 			'target_ability' => $ability_name,
 			'expected_input_schema_sha256' => $input_schema_sha256,
+			'expected_execution_lane' => $lane,
+			'expected_classification_sha256' => isset( $row['classification_sha256'] ) ? (string) $row['classification_sha256'] : '',
 			'direct_ability_dispatch' => true,
 			'revalidation' => array( 'authority', 'site_binding', 'input_schema_identity', 'classification_identity', 'original_execution_lane' ),
 		);

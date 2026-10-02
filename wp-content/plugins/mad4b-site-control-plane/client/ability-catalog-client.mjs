@@ -319,7 +319,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     const item = fresh.entries.get(abilityName), old = catalog.entries.get(abilityName);
     if (!item || item.source?.sha256 !== old?.source?.sha256 || item.execution?.classification_sha256 !== old?.execution?.classification_sha256) throw new CatalogError('Ability contract changed; replan');
     const execution = item.execution;
-    if (!execution?.execution_eligible || !DIGEST.test(execution.input_schema_sha256)) throw new CatalogError('Ability is not eligible for governed execution');
+    if (!execution?.execution_eligible || !DIGEST.test(execution.input_schema_sha256) || !DIGEST.test(execution.classification_sha256)) throw new CatalogError('Ability is not eligible for governed execution');
     if (mode === 'direct') {
       if (!old?.wire?.sha256 || !item.wire?.sha256 || item.wire.sha256 !== old.wire.sha256 || item.wire.tool_name !== old.wire.tool_name) throw new CatalogError('Direct tool wire contract changed; refresh and replan');
       if (!item.wire?.tool_name || !directToolNames.includes(item.wire.tool_name)) throw new CatalogError('Host has not confirmed this direct tool');
@@ -327,8 +327,14 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     }
     if (mode !== 'dispatch') throw new CatalogError('Invalid execution mode');
     if (execution.dispatch_state === 'requires_dynamic_projection') throw new CatalogError('Host must refresh and confirm this direct projection');
-    if (execution.lane === 'read') return callTool('mad4b-read-execute', {ability_name: abilityName, expected_input_schema_sha256: execution.input_schema_sha256, input}, {signal});
-    if (['write', 'developer'].includes(execution.lane)) return callTool(`mad4b-${execution.lane}-execute`, {ability_name: abilityName, expected_input_schema_sha256: execution.input_schema_sha256, input}, {signal});
+    const dispatchLanes = {read: 'read', write: 'write', content: 'write', admin: 'write', developer: 'developer'};
+    if (Object.hasOwn(dispatchLanes, execution.lane)) return callTool(`mad4b-${dispatchLanes[execution.lane]}-execute`, {
+      ability_name: abilityName,
+      expected_input_schema_sha256: execution.input_schema_sha256,
+      expected_classification_sha256: execution.classification_sha256,
+      expected_execution_lane: execution.lane,
+      input,
+    }, {signal});
     if (execution.lane === 'enrollment' && operation?.ability_name === abilityName && DIGEST.test(operation.expected_registration_digest) && DIGEST.test(operation.expected_dispatch_policy_digest)) return callTool('mad4b-enrollment-execute', {operation_id: operation.operation_id, expected_registration_digest: operation.expected_registration_digest, expected_dispatch_policy_digest: operation.expected_dispatch_policy_digest, expected_input_schema_sha256: execution.input_schema_sha256, input}, {signal});
     throw new CatalogError('Use the original explicit authority route for this lane');
   }

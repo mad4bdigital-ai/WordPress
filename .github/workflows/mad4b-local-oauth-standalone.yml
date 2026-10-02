@@ -249,6 +249,7 @@ jobs:
           done
           MAD4B_PROJECTION_NETWORK_BASE=http://127.0.0.1:8089 MAD4B_PROJECTION_NETWORK_HOST=mad4b-local-oauth.test php /tmp/wp-cli.phar eval-file "$root/runtime-chatgpt-projection-http.php" --path="$WP_PATH" --user=mad4b-ci-admin
           MAD4B_PROJECTION_NETWORK_BASE=http://127.0.0.1:8089 MAD4B_PROJECTION_NETWORK_HOST=mad4b-local-oauth.test php /tmp/wp-cli.phar eval-file "$root/runtime-chatgpt-breakglass-independent-http.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          MAD4B_PROJECTION_NETWORK_BASE=http://127.0.0.1:8089 MAD4B_PROJECTION_NETWORK_HOST=mad4b-local-oauth.test php /tmp/wp-cli.phar eval-file "$root/runtime-gateway-cookie-http.php" --path="$WP_PATH" --user=mad4b-ci-admin
           php /tmp/wp-cli.phar option delete mad4b_scp_chatgpt_tool_projection_v1 --path="$WP_PATH"
           rm "$WP_PATH/wp-content/mu-plugins/mad4b-projection-ci.php"
 

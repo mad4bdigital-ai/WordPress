@@ -151,3 +151,15 @@ if ( ! hash_equals( MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier(), $pro
 
 fwrite( STDOUT, 'mad4b.unified-capability-gateway.runtime.v1: PASS' . PHP_EOL );
 
+
+foreach ( array( 'mad4b/content-update-post', 'mad4b/plugin-activate' ) as $name ) {
+ $row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $name );
+ if ( is_wp_error( $row ) ) $fail( 'Core original-lane fixture unavailable.', $name );
+ $descriptor = MAD4B_SCP_Unified_Capability_Gateway::describe_execution( $row );
+ if ( ! empty( $row['execution_eligible'] ) && MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $name ) ) {
+  if ( 'mad4b/write-execute' !== ( $descriptor['dispatch_tool'] ?? '' ) || $row['execution_lane'] !== ( $descriptor['expected_execution_lane'] ?? '' ) || $row['classification_sha256'] !== ( $descriptor['expected_classification_sha256'] ?? '' ) ) $fail( 'Core mutation lost original classification in fixed dispatcher.', $descriptor );
+ } elseif ( 'blocked' !== $descriptor['state'] ) $fail( 'Ineligible core mutation advertised execution.', $descriptor );
+}
+$manifest = MAD4B_SCP_Unified_Capability_Gateway::public_manifest();
+if ( ! in_array( 'authenticated_wordpress_session', $manifest['rest_auth_modes'], true ) || false !== $manifest['server_tools_list_changed'] || 'fixed_dispatch' !== $manifest['primary_execution_mode'] ) $fail( 'Live auth/refresh manifest is inconsistent.', $manifest );
+echo "PASS original content/admin lane and stable refresh policy on real WordPress\n";

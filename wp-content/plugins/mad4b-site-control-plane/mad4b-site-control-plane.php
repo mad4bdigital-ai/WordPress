@@ -17,6 +17,10 @@ define( 'MAD4B_SCP_VERSION', '0.4.0-rc.88' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
+// Keep this tiny lifecycle hook available even on the foreign REST kernel.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-lifecycle.php';
+register_deactivation_hook( __FILE__, array( 'MAD4B_SCP_Catalog_Lifecycle', 'deactivate' ) );
+
 /*
  * Early zero-touch kernel for unrelated REST/admin-AJAX requests.
  *

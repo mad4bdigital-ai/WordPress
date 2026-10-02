@@ -37,6 +37,8 @@ final class MAD4B_SCP_Abilities {
 			array(
 				'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
 				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '[A-Fa-f0-9]{64}' ),
+				'expected_execution_lane' => array( 'type' => 'string', 'enum' => array( 'read', 'write', 'content', 'admin', 'developer' ) ),
+				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
 			), array( 'ability_name', 'expected_input_schema_sha256' )
 		), false, true, false, true );
@@ -53,6 +55,8 @@ final class MAD4B_SCP_Abilities {
 			array(
 				'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
 				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'expected_execution_lane' => array( 'type' => 'string', 'enum' => array( 'read', 'write', 'content', 'admin', 'developer' ) ),
+				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
 			), array( 'ability_name', 'expected_input_schema_sha256' )
 		), false, false, true, false );
@@ -69,6 +73,8 @@ final class MAD4B_SCP_Abilities {
 			array(
 				'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
 				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+				'expected_execution_lane' => array( 'type' => 'string', 'enum' => array( 'read', 'write', 'content', 'admin', 'developer' ) ),
+				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
 			), array( 'ability_name', 'expected_input_schema_sha256' )
 		), false, false, true, false );
@@ -318,6 +324,7 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	private function governed_read_target( $ability_name ) {
+		if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) && ! MAD4B_SCP_Unified_Capability_Gateway::runtime_blog_matches() ) return new WP_Error( 'mad4b_dispatch_blog_switch_denied', 'Use a fresh request to the target site.' );
 		$ability_name = trim( (string) $ability_name );
 		if ( '' === $ability_name ) return new WP_Error( 'mad4b_read_dispatch_target_required', 'A governed read ability_name is required.' );
 		if ( in_array( $ability_name, array( 'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute' ), true ) ) return new WP_Error( 'mad4b_read_dispatch_recursion_denied', 'Nested read-dispatch execution is not allowed.' );
@@ -378,6 +385,8 @@ final class MAD4B_SCP_Abilities {
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_read_target( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
+		$pin = $this->validate_prepared_classification( $ability_name, $input );
+		if ( is_wp_error( $pin ) ) return $pin;
 		$actual_schema_sha256 = $this->ability_input_schema_sha256( $ability );
 		$expected_schema_sha256 = isset( $input['expected_input_schema_sha256'] ) ? strtolower( trim( (string) $input['expected_input_schema_sha256'] ) ) : '';
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_schema_sha256 ) ) return new WP_Error( 'mad4b_read_dispatch_schema_pin_required', 'Governed read execution requires an exact prepared input schema digest.' );
@@ -408,6 +417,7 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	private function governed_developer_target( $ability_name ) {
+		if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) && ! MAD4B_SCP_Unified_Capability_Gateway::runtime_blog_matches() ) return new WP_Error( 'mad4b_dispatch_blog_switch_denied', 'Use a fresh request to the target site.' );
 		$ability_name = trim( (string) $ability_name );
 		if ( '' === $ability_name ) return new WP_Error( 'mad4b_developer_dispatch_target_required', 'A normal Developer ability_name is required.' );
 		if ( in_array( $ability_name, array( 'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute' ), true ) || 0 === strpos( $ability_name, 'mad4b/developer-breakglass-' ) ) return new WP_Error( 'mad4b_developer_dispatch_target_denied', 'Nested Developer dispatch and Breakglass targets are denied.' );
@@ -508,6 +518,8 @@ final class MAD4B_SCP_Abilities {
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_developer_target( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
+		$pin = $this->validate_prepared_classification( $ability_name, $input );
+		if ( is_wp_error( $pin ) ) return $pin;
 		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) return new WP_Error( 'mad4b_connector_resilience_unavailable', 'Shared connector resilience service is unavailable.' );
 		$actual_schema_sha256 = $this->ability_input_schema_sha256( $ability );
 		$expected_schema_sha256 = strtolower( trim( (string) $input['expected_input_schema_sha256'] ) );
@@ -547,7 +559,18 @@ final class MAD4B_SCP_Abilities {
 		);
 	}
 
+	private function validate_prepared_classification( $ability_name, array $input ) {
+		if ( ! array_key_exists( 'expected_execution_lane', $input ) && ! array_key_exists( 'expected_classification_sha256', $input ) ) return true;
+		if ( ! class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) return new WP_Error( 'mad4b_dispatch_classification_unavailable', 'Prepared classification cannot be revalidated.' );
+		$row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $ability_name );
+		if ( is_wp_error( $row ) || empty( $row['execution_eligible'] ) ) return new WP_Error( 'mad4b_dispatch_classification_unavailable', 'Prepared target is no longer execution eligible.' );
+		if ( isset( $input['expected_execution_lane'] ) && $row['execution_lane'] !== $input['expected_execution_lane'] ) return new WP_Error( 'mad4b_dispatch_lane_drift', 'Original execution lane changed after preparation.' );
+		if ( isset( $input['expected_classification_sha256'] ) && ( ! is_string( $input['expected_classification_sha256'] ) || ! hash_equals( $row['classification_sha256'], $input['expected_classification_sha256'] ) ) ) return new WP_Error( 'mad4b_dispatch_classification_drift', 'Target classification changed after preparation.' );
+		return true;
+	}
+
 	private function governed_write_target( $ability_name, $require_runtime_eligible = false ) {
+		if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) && ! MAD4B_SCP_Unified_Capability_Gateway::runtime_blog_matches() ) return new WP_Error( 'mad4b_dispatch_blog_switch_denied', 'Use a fresh request to the target site.' );
 		$ability_name = trim( (string) $ability_name );
 		if ( '' === $ability_name ) return new WP_Error( 'mad4b_write_dispatch_target_required', 'A governed write ability_name is required.' );
 		if ( in_array( $ability_name, array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ), true ) ) return new WP_Error( 'mad4b_write_dispatch_recursion_denied', 'Nested write-dispatch execution is not allowed.' );
@@ -731,6 +754,8 @@ final class MAD4B_SCP_Abilities {
 		$ability_name = (string) $input['ability_name'];
 		$ability = $this->governed_write_target( $ability_name, true );
 		if ( is_wp_error( $ability ) ) return $ability;
+		$pin = $this->validate_prepared_classification( $ability_name, $input );
+		if ( is_wp_error( $pin ) ) return $pin;
 		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) return new WP_Error( 'mad4b_connector_resilience_unavailable', 'Shared connector resilience service is unavailable.' );
 		$actual_schema_sha256 = $this->ability_input_schema_sha256( $ability );
 		$expected_schema_sha256 = strtolower( (string) $input['expected_input_schema_sha256'] );

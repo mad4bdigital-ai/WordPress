@@ -181,9 +181,17 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		return hash( 'sha256', $json );
 	}
 
+	public static function bounded_metadata( $value, $bytes ) {
+		$value = (string) $value;
+		if ( strlen( $value ) <= $bytes ) return $value;
+		if ( function_exists( 'mb_strcut' ) ) return mb_strcut( $value, 0, $bytes, 'UTF-8' );
+		return wp_check_invalid_utf8( substr( $value, 0, $bytes ), true );
+	}
+
 	public static function describe_ability( $name ) { return self::ability_row( $name ); }
 
 	private static function ability_row( $ability_name ) {
+		if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) && ! MAD4B_SCP_Unified_Capability_Gateway::runtime_blog_matches() ) return new WP_Error( 'mad4b_projection_blog_switch_denied', 'Use a fresh request to the target site.' );
 		try { return self::inspect_ability_row( $ability_name ); }
 		catch ( Throwable $error ) { return new WP_Error( 'mad4b_chatgpt_projection_ability_inspection_failed', 'Ability inspection failed; this projection is unavailable.' ); }
 	}
@@ -261,8 +269,8 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'execution_provider' => null === $provider ? '' : (string) $provider,
 			'execution_boundary_verified' => $boundary_verified,
 			'execution_blocker' => $execution_blocker,
-			'label' => method_exists( $ability, 'get_label' ) ? substr( (string) $ability->get_label(), 0, 160 ) : '',
-			'description' => method_exists( $ability, 'get_description' ) ? substr( (string) $ability->get_description(), 0, 2048 ) : '',
+			'label' => method_exists( $ability, 'get_label' ) ? self::bounded_metadata( $ability->get_label(), 160 ) : '',
+			'description' => method_exists( $ability, 'get_description' ) ? self::bounded_metadata( $ability->get_description(), 2048 ) : '',
 			'projection_eligible' => (bool) $projection_eligible,
 			'execution_eligible' => (bool) $execution_eligible,
 			'execution_lane' => $execution_lane,
@@ -397,15 +405,21 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$matched = 0;
 		$has_more = false;
 		foreach ( self::all_site_ability_names() as $ability_name ) {
+			// Match and paginate metadata before inspecting schemas/classification.
+			try {
+				$ability = wp_get_ability( $ability_name );
+				$label = self::bounded_metadata( $ability->get_label(), 160 );
+				$description = self::bounded_metadata( $ability->get_description(), 2048 );
+				$haystack = strtolower( $ability_name . ' ' . $label . ' ' . $description . ' ' . $ability->get_category() );
+			} catch ( Throwable $error ) { $haystack = strtolower( $ability_name ); }
+			if ( '' !== $query && false === strpos( $haystack, $query ) ) continue;
+			if ( $matched++ < $offset ) continue;
+			if ( count( $items ) >= $limit ) { $has_more = true; break; }
 			$row = self::ability_row( $ability_name );
 			$blocked = is_wp_error( $row );
 			if ( $blocked ) $row = array( 'ability_name' => $ability_name, 'category' => '', 'label' => '', 'description' => '', 'projection_blocker' => $row->get_error_code() );
 			$label = $row['label'];
 			$description = $row['description'];
-			$haystack = strtolower( $ability_name . ' ' . $label . ' ' . $description . ' ' . $row['category'] );
-			if ( '' !== $query && false === strpos( $haystack, $query ) ) continue;
-			if ( $matched++ < $offset ) continue;
-			if ( count( $items ) >= $limit ) { $has_more = true; break; }
 			$items[] = array_merge( $row, array(
 				'label' => $label,
 				'description' => $description,
@@ -685,7 +699,11 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				'max_serialized_tool_bytes' => MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_SERIALIZED_TOOL_BYTES,
 				'schema_size_policy' => 'bounded_direct_projection_with_dispatcher_fallback',
 			),
-			'catalog_refresh_action' => 'Request tools/list after a projection change.',
+			'catalog_refresh_action' => 'Request tools/list after a projection change; reconnect if the host caches tools.',
+			'primary_execution_mode' => 'fixed_dispatch',
+			'projection_role' => 'optional_hot_set',
+			'server_tools_list_changed' => false,
+			'storage' => MAD4B_SCP_Catalog_Object_Store::status(),
 			'abilities' => $stored,
 			'projection_changes_authority' => false,
 			'read_only' => true,

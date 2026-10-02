@@ -44,6 +44,17 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 
 		echo '<div class="notice notice-' . esc_attr( $type ) . '"><p><strong>' . esc_html__( 'MAD4B MCP registration diagnostics', 'mad4b-site-control-plane' ) . '</strong></p>';
 		echo '<table class="widefat striped" style="max-width:1100px;margin:8px 0 12px"><tbody>';
+		if ( class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) {
+			$projection = MAD4B_SCP_ChatGPT_Tool_Projection::status();
+			self::row( 'Projection revision', $projection['revision'] );
+			self::row( 'Projection stored / effective', $projection['stored_count'] . ' / ' . $projection['effective_count'] );
+			self::row( 'Stale projection entries', count( array_filter( $projection['abilities'], static function ( $row ) { return ! empty( $row['stale'] ); } ) ) );
+			self::row( 'Execution strategy', 'Governed dispatcher; optional direct hot set' );
+			self::row( 'Catalog indexed bytes / capacity', $projection['storage']['indexed_bytes'] . ' / ' . $projection['storage']['capacity_bytes'] );
+			self::row( 'Catalog indexed objects', $projection['storage']['indexed_objects'] );
+			self::row( 'Next catalog GC', $projection['storage']['next_gc'] ? gmdate( 'c', $projection['storage']['next_gc'] ) : 'not scheduled' );
+			self::row( 'Client refresh', $projection['catalog_refresh_action'] );
+		}
 		self::row( 'Control Plane runtime version', $build['runtime_version'] );
 		self::row( 'Control Plane main file disk version', $build['disk_version'] );
 		self::row( 'Control Plane runtime stale vs disk', ! empty( $build['runtime_stale_vs_disk'] ) ? 'yes' : 'no' );
