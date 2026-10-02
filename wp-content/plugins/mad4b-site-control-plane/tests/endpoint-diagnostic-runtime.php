@@ -4,7 +4,8 @@ $adapter_dir = $argv[1] ?? '';
 $case = $argv[2] ?? '';
 if ( '' === $case ) {
 	foreach ( array( 'capability', 'nonce', 'array_input', 'server', 'build', 'method', 'foreign_adapter', 'early_rest', 'success', 'evidence' ) as $mode ) {
-		$command = escapeshellarg( PHP_BINARY ) . ' -n ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $adapter_dir ) . ' ' . escapeshellarg( $mode );
+		// Inherit the runner's module configuration: PHP 7.4 loads JSON as an extension.
+		$command = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' ' . escapeshellarg( $adapter_dir ) . ' ' . escapeshellarg( $mode );
 		passthru( $command, $code );
 		if ( $code ) exit( $code );
 	}
