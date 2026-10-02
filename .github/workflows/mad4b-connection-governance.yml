@@ -64,6 +64,8 @@ jobs:
           php -l "$root/tests/runtime-mcp-provider-isolation-smoke.php"
           php -l "$root/tests/runtime-mcp-runtime-conflict-first-request.php"
           php -l "$root/tests/runtime-mcp-runtime-conflict-recovered.php"
+          php -l "$root/tests/runtime-mcp-mixed-class-first-request.php"
+          php -l "$root/tests/runtime-mcp-mixed-class-recovered.php"
           python3 "$root/tests/connection-readiness-contract.py"
           python3 "$root/tests/staging-write-authority-contract.py"
           python3 "$root/tests/mcp-side-channel-governance-contract.py"
@@ -267,6 +269,44 @@ jobs:
           # making the canonical 0.6.1 runtime owner and registering all six
           # MAD4B MCP servers through the normal mcp_adapter_init lifecycle.
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+      - name: Prove official Adapter plus foreign validator mixed runtime self-heals
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          MANAGED_MU="$WP_PATH/wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php"
+          HOSTINGER_PRELOAD="$WP_PATH/wp-content/mu-plugins/900-hostinger-mcp-preload.php"
+          FOREIGN_VALIDATOR="$WP_PATH/wp-content/mu-plugins/900-foreign-mcp-validator.php"
+
+          # Remove the prior whole-Adapter collision while preserving the same
+          # enrolled managed-runtime Site Profile. The next fixture preclaims
+          # only the validator class; McpAdapter itself must remain official.
+          php /tmp/wp-cli.phar plugin deactivate hostinger-ai-assistant --path="$WP_PATH" || true
+          rm -f "$MANAGED_MU" "$HOSTINGER_PRELOAD" "$FOREIGN_VALIDATOR"
+
+          cat > "$FOREIGN_VALIDATOR" <<'PHP'
+          <?php
+          if ( ! defined( 'ABSPATH' ) ) { exit; }
+          namespace WP\MCP\Domain\Tools;
+          if ( ! class_exists( __NAMESPACE__ . '\\McpToolValidator', false ) ) {
+              final class McpToolValidator {
+                  public static function validate_tool_dto( $dto ) { return true; }
+              }
+          }
+          PHP
+
+          # Request 1: official Adapter entrypoint + foreign validator must be
+          # classified as a mixed class set. No current-request class swapping
+          # is allowed; the governed 000-* MU v4 repair is armed for next request.
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+          # Request 2: managed 000-* executes before 900-*, verifies the exact
+          # certified hashes, pins every critical class from mcp-adapter and
+          # converges to a single canonical runtime.
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mixed-class-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+          rm -f "$FOREIGN_VALIDATOR"
 
       - name: Prove passive exact-profile OAuth identity projection is request-local
         shell: bash
