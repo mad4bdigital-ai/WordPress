@@ -14,10 +14,22 @@ final class MAD4B_SCP_Catalog_Object_Store {
 		++$this->metrics['reads']; $this->metrics['bytes_read'] += strlen( serialize( $value ) );
 		return $value;
 	}
-	public function put( $key, $value, $ttl ) {
+	public function put( $key, $value, $ttl, $minimum_expires = 0 ) {
+		$ttl = max( 1, (int) $ttl );
+		$minimum_expires = max( 0, (int) $minimum_expires );
+		$expires = max( time() + $ttl, $minimum_expires );
+		if ( isset( $this->pending[ $key ] ) ) {
+			if ( $this->pending[ $key ]['value'] === $value ) {
+				$this->pending[ $key ]['expires'] = max( (int) $this->pending[ $key ]['expires'], $expires );
+				return;
+			}
+			$this->pending[ $key ] = array( 'value' => $value, 'expires' => $expires );
+			return;
+		}
 		$directory = get_option( self::DIRECTORY, array() );
-		if ( isset( $directory[ $key ] ) && $directory[ $key ]['expires'] > time() + (int) ( $ttl / 2 ) && $this->get( $key ) === $value ) return;
-		$this->pending[ $key ] = array( 'value' => $value, 'expires' => time() + $ttl );
+		$reuse_floor = max( time() + (int) floor( $ttl / 2 ), $minimum_expires );
+		if ( isset( $directory[ $key ] ) && (int) $directory[ $key ]['expires'] >= $reuse_floor && $this->get( $key ) === $value ) return;
+		$this->pending[ $key ] = array( 'value' => $value, 'expires' => $expires );
 	}
 	public function expires( $key ) { $d = get_option( self::DIRECTORY, array() ); return $d[ $key ]['expires'] ?? 0; }
 	public function metrics() { return $this->metrics; }
