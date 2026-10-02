@@ -720,8 +720,13 @@ final class MAD4B_SCP_Abilities {
 			if ( ! isset( $input[ $key ] ) || ! is_string( $input[ $key ] ) || '' === $input[ $key ] ) return '';
 			$identity[ $key ] = (string) $input[ $key ];
 		}
-		// Do not retain the signed receipt itself in the request binding.
+		// Do not retain the signed receipt or mutation payload itself in the
+		// request binding; hash both into the exact prepared invocation identity.
 		$identity['preparation_receipt'] = hash( 'sha256', $identity['preparation_receipt'] );
+		$target_input = array_key_exists( 'input', $input ) ? $input['input'] : null;
+		$target_input_sha256 = $this->governance_envelope_hash( $target_input );
+		if ( '' === $target_input_sha256 ) return '';
+		$identity['target_input_sha256'] = $target_input_sha256;
 		return $this->governance_envelope_hash( $identity );
 	}
 
