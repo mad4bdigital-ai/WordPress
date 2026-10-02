@@ -178,6 +178,11 @@ mad4b_assert( is_array( $target_input ), 'Forwarded target input must remain an 
 mad4b_assert( $ticket === $target_input['_mad4b_approval_ticket_id'], 'Approval ticket must survive provider-envelope stripping.' );
 mad4b_assert( $receipt === $target_input['_mad4b_context_receipt'], 'Context Receipt must survive provider-envelope stripping.' );
 
+$oversized = $outer;
+$oversized['_mad4b_context_receipt'] = array( 'payload' => str_repeat( 'x', MAD4B_SCP_Abilities::MAX_WRITE_DISPATCH_CONTEXT_RECEIPT_BYTES + 1 ) );
+$oversized_result = $capture->invoke( $dispatcher, $oversized );
+mad4b_assert( is_wp_error( $oversized_result ) && 'mad4b_write_dispatch_context_receipt_oversized' === $oversized_result->get_error_code(), 'Oversized Context Receipt must fail before request-local governance binding.' );
+
 $conflicting = $outer;
 $conflicting['input']['_mad4b_approval_ticket_id'] = '22222222-2222-4222-8222-222222222222';
 $conflict = $capture->invoke( $dispatcher, $conflicting );
