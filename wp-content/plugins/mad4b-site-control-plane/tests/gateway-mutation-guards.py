@@ -22,6 +22,7 @@ mutations = [
     ('write governance target binding removed', 'class-mad4b-scp-abilities.php', "! hash_equals( self::$write_dispatch_governance_binding, $binding )", 'false', 'gateway-regression-runtime.php'),
     ('write governance input binding removed', 'class-mad4b-scp-abilities.php', "$identity['target_input_sha256'] = $target_input_sha256;", "$identity['target_input_sha256'] = str_repeat( '0', 64 );", 'gateway-regression-runtime.php'),
     ('approval execution scope restoration removed', 'class-mad4b-scp-identity-context.php', "self::$request_approval_ticket_id = $previous;", '/* approval scope restoration removed */', 'identity-context-runtime.php'),
+    ('write execution observation cleanup removed', 'class-mad4b-scp-abilities.php', "MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name );", '/* execution observation cleanup removed */', 'gateway-regression-runtime.php'),
     ('context receipt byte budget removed', 'class-mad4b-scp-abilities.php', "strlen( $receipt_json ) > $receipt_budget", 'false', 'gateway-regression-runtime.php'),
     ('context receipt issuer budget removed', 'class-mad4b-scp-context-preflight.php', "strlen( $encoded_receipt ) > self::MAX_RECEIPT_TRANSPORT_BYTES", 'false', 'context-preflight-runtime.php'),
     ('context receipt HMAC verification removed', 'class-mad4b-scp-context-preflight.php', "! hash_equals( self::receipt_signature( $expected_digest ), $signature )", 'false', 'context-preflight-runtime.php'),
