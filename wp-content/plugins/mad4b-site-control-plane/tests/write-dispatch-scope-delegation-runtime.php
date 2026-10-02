@@ -57,6 +57,7 @@ final class MAD4B_SCP_Servers {
     }
 }
 
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-identifiers.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-staging-write-authority.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-abilities.php';
 
