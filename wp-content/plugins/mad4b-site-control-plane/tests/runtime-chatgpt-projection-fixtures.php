@@ -79,7 +79,7 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 			'permission_callback' => static function () { return true; },
 			'input_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-			'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'write' ), 'annotations' => array( 'readonly' => false ) ),
+			'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ), 'annotations' => array( 'readonly' => false ) ),
 		) );
 	}
 	if ( ! wp_has_ability( 'mad4b-ci/recursive-parent-fixture' ) ) {
