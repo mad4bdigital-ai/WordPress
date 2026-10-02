@@ -13,7 +13,7 @@ Authenticated GET endpoints under `/wp-json/mad4b/v1/ability-catalog/`:
 | `schemas/{sha256}` | Complete source or official Adapter wire schema |
 | `schemas/{sha256}/chunks/{index}` | Raw UTF-8 byte slices with integrity headers |
 
-REST catalog routes use the existing `mad4b-chatgpt` protected resource audience and the same OAuth application. The OAuth bridge verifies the bearer before endpoint permissions. WordPress cookie authentication retains its nonce requirements. No public schema download, alternative bearer audience, new grant, or new execution endpoint is introduced.
+REST catalog routes use the existing `mad4b-chatgpt` protected resource audience and the same OAuth application. The OAuth bridge verifies the bearer before endpoint permissions. The host client defaults to `credentialMode: 'omit'`, so browser cookies are never sent implicitly; WordPress cookie authentication is available only when the caller explicitly opts into `same-origin` and still retains its nonce requirements. No public schema download, alternative bearer audience, new grant, or new execution endpoint is introduced.
 
 Responses are private and `no-store`. Binary responses carry `X-MAD4B-Content-SHA256`, `X-MAD4B-Schema-SHA256` and `X-MAD4B-Chunk-Count`; the server emits raw bytes, without JSON string quoting. HEAD has no response body. The MCP discovery Ability supports explicit `capabilities`, `manifest`, `schema`, and base64 `chunk` actions as a compatible alternative.
 
@@ -47,9 +47,9 @@ const catalog = prepared.catalogs.get('vendor/booking-status');
 const definition = await client.readSchema(catalog, 'vendor/booking-status');
 ```
 
-Task search and preparation use the protected `/mad4b/v1/capability-gateway` endpoint, or the same MCP discovery tool with `gateway_action`. Preparation serializes only selected Abilities. Full `sync` is an explicit catalog-mirror operation.
+Task search and preparation use the protected `/mad4b/v1/capability-gateway` endpoint, or the same MCP discovery tool with `gateway_action`. Task search reads bounded metadata only and does not load input/output schemas, schema digests, classification pins, or execution eligibility. Preparation performs those checks only for the selected Abilities. Full `sync` is an explicit catalog-mirror operation.
 
-Configure REST only when the host supports it. Otherwise configure `callDiscover` and use MCP base64 transfer. The client never silently switches authenticated transports after denial. It rejects changed credential origins and redirects, validates the contract and authority scope, applies complete paginated revisions atomically, verifies each chunk and aggregate digest, resumes only within the same authority/schema namespace, and renews expired REST snapshots only if the same Ability schema still exists.
+Configure REST only when the host supports it. Otherwise configure `callDiscover` and use MCP base64 transfer. The client never silently switches authenticated transports after denial. It rejects changed credential origins and redirects, validates the contract and authority scope, applies complete paginated revisions atomically, verifies each chunk and aggregate digest, and resumes only within the same authority/schema namespace. An expired schema lease is renewed with single-Ability preparation and accepted only if the same authority scope and exact schema digest still match; it does not rebuild the full catalog merely to continue one schema download.
 
 Latency adjusts the chunk size for subsequent downloads within configurable bounds. A download pins its size to keep resume indices stable. Transient transfer errors reduce the next transfer size and return the saved state; they never retry a mutation. Download concurrency is deliberately sequential. The default host limits are 1,024 manifest pages and 32 MiB per assembled schema; callers can choose stricter limits or explicitly raise them within hard client ceilings.
 
