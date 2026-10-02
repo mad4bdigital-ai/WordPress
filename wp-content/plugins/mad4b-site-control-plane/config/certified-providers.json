@@ -50,7 +50,17 @@
         "mcp-adapter.php": "1252c764e058f1d651d08c732118584dc180dd075f2af1f9666b2e6af0cd3ba7",
         "vendor/composer/autoload_classmap.php": "800cc0ac4be053e49637ba3bbea5fe1ad36ad0f4b2010e40c5461ddf4f1cf5ce",
         "vendor/composer/autoload_static.php": "49326f1de94f9a4c94aa89968f7e1e3f907596caaa5cd8f2c5494e8f98a4a8cb",
-        "vendor/composer/jetpack_autoload_classmap.php": "ce02a42824d55c95e3f4fa6d914950cfca4ce37136b8b0b2fbf1410173540015"
+        "vendor/composer/jetpack_autoload_classmap.php": "ce02a42824d55c95e3f4fa6d914950cfca4ce37136b8b0b2fbf1410173540015",
+        "includes/Domain/Tools/McpToolValidator.php": "91163ffdc7c70881cd34ca3503f67774ce20cc1cbb5e3969758237d1ea00df6a",
+        "includes/Domain/Tools/RegisterAbilityAsMcpTool.php": "d71d815c75fb4784954015dc7f15dc9a5bd9b40299a59cbaaca62277e0590276",
+        "includes/Domain/Utils/McpAnnotationMapper.php": "1416e23e35ccc92bb5d202d1b98f6c3c007dd5e3efd783c99fa3613f99d8ea75",
+        "includes/Domain/Utils/McpValidator.php": "64d4b238d8e887e0b8d393e3e2f7cf62a45a5e4790dc2383a38800ee562d60a6",
+        "includes/Domain/Utils/SchemaTransformer.php": "eba29a2fb8906557cbd8004e8503e1bced0cbfd4343e2274f5824d2fd1f78cb4",
+        "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/Tool.php": "ac1f244e1a3eed92e08250f7d9c5e26d90977da771bf5e8da796a27f98e5a056",
+        "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolInputSchema.php": "0fd3a6c1b81521e8084bdbce55a5c8a017871ff235f8710d4523d74cd367a61a",
+        "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolOutputSchema.php": "3b0509eebca5b2dd013a7f84a8ef616624441e947b966a10df3757995aa541c8",
+        "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolAnnotations.php": "b2c6dd20e3844cc2a41b0095a5ad2e71ccd7e2baacd686b6d0681476b45c8627",
+        "vendor/wordpress/php-mcp-schema/src/Server/Tools/DTO/ToolExecution.php": "c6291f9f9ce024a207015879be0cdbf9e6f80f2790f39ec34d8429f10125f532"
       }
     },
     "elementor": {
