@@ -39,6 +39,7 @@ final class MAD4B_SCP_Abilities {
 				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '[A-Fa-f0-9]{64}' ),
 				'expected_execution_lane' => array( 'type' => 'string', 'enum' => array( 'read', 'write', 'content', 'admin', 'developer' ) ),
 				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'expected_authority_scope_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
 			), array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256' )
 		), false, true, false, true );
@@ -57,6 +58,7 @@ final class MAD4B_SCP_Abilities {
 				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
 				'expected_execution_lane' => array( 'type' => 'string', 'enum' => array( 'read', 'write', 'content', 'admin', 'developer' ) ),
 				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'expected_authority_scope_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
 			), array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256' )
 		), false, false, true, false );
@@ -75,6 +77,7 @@ final class MAD4B_SCP_Abilities {
 				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 				'expected_execution_lane' => array( 'type' => 'string', 'enum' => array( 'read', 'write', 'content', 'admin', 'developer' ) ),
 				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'expected_authority_scope_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
 			), array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256' )
 		), false, false, true, false );
@@ -560,6 +563,7 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	private function validate_prepared_classification( $ability_name, array $input ) {
+		if ( array_key_exists( 'expected_authority_scope_sha256', $input ) && ( ! is_string( $input['expected_authority_scope_sha256'] ) || ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' ) || ! hash_equals( MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(), $input['expected_authority_scope_sha256'] ) ) ) return new WP_Error( 'mad4b_dispatch_authority_scope_drift', 'Execution transport does not match the prepared site and authority context.' );
 		if ( ! isset( $input['expected_execution_lane'], $input['expected_classification_sha256'] ) || ! is_string( $input['expected_execution_lane'] ) || ! in_array( $input['expected_execution_lane'], array( 'read', 'write', 'content', 'admin', 'developer' ), true ) || ! is_string( $input['expected_classification_sha256'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $input['expected_classification_sha256'] ) ) return new WP_Error( 'mad4b_dispatch_preparation_required', 'Prepare the target again and supply its exact execution lane and classification digest.' );
 		if ( ! class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) return new WP_Error( 'mad4b_dispatch_classification_unavailable', 'Prepared classification cannot be revalidated.' );
 		$row = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( $ability_name );

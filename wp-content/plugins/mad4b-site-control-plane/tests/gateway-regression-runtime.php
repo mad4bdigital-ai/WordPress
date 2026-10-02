@@ -17,6 +17,9 @@ function get_current_blog_id() { return $GLOBALS['blog']; }
 function wp_get_abilities() { return $GLOBALS['abilities']; }
 function wp_get_ability( $name ) { return $GLOBALS['abilities'][$name] ?? null; }
 function wp_has_ability( $name ) { return isset( $GLOBALS['abilities'][$name] ); }
+function apply_filters( $name, $value ) { return $value; }
+function get_current_user_id() { return 1; }
+function wp_get_current_user() { return (object) array( 'allcaps' => array() ); }
 function current_user_can() { return false; }
 function get_option( $name, $default = false ) { return $default; }
 function rest_url( $path ) { return 'https://ci.test/wp-json/' . $path; }
@@ -75,6 +78,8 @@ foreach ( array( 'write', 'content', 'admin' ) as $lane ) {
  }
  $legacy = $input; unset( $legacy['expected_execution_lane'], $legacy['expected_classification_sha256'] );
  check_gateway( is_wp_error( $dispatcher->write_execute( $legacy ) ) && 1 === $a->calls, 'Schema-only legacy execution was accepted' );
+ $foreign = $input; $foreign['expected_authority_scope_sha256'] = str_repeat( 'f', 64 );
+ check_gateway( is_wp_error( $dispatcher->write_execute( $foreign ) ) && 1 === $a->calls, 'Foreign transport authority reached execution' );
  $a->permission = false;
  check_gateway( is_wp_error( $dispatcher->write_execute( $input ) ) && 1 === $a->calls, 'Dispatcher bypassed original permission: ' . $lane );
  $a->permission = true; $a->lane = 'write' === $lane ? 'content' : 'write';

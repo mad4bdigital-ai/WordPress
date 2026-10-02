@@ -8,7 +8,8 @@ export class CatalogError extends Error {
 export function createAbilityCatalogClient({ baseUrl, headers = async () => ({}), fetchImpl = globalThis.fetch,
   callDiscover, callTool, cryptoImpl = globalThis.crypto, maxPages = 1024, maxManifestEvents = 10000, maxSchemaBytes = 33554432,
   minChunkBytes = 32768, maxChunkBytes = 262144, targetLatencyMs = 750, maxParallelSchemaFetches = 4,
-  credentialMode = 'omit', requestTimeoutMs = 15000, maxResponseBytes = 1048576, onProgress = () => {} } = {}) {
+  expectedAuthorityScopeSha256, credentialMode = 'omit', requestTimeoutMs = 15000, maxResponseBytes = 1048576, onProgress = () => {} } = {}) {
+  if (expectedAuthorityScopeSha256 !== undefined && !DIGEST.test(expectedAuthorityScopeSha256)) throw new CatalogError('Invalid enrolled authority digest');
   const base = baseUrl ? new URL(baseUrl) : null;
   if (base && (!['http:', 'https:'].includes(base.protocol) || base.username || base.password)) throw new CatalogError('Invalid trusted REST base');
   if (!base && !callDiscover) throw new CatalogError('A REST base or MCP discovery callback is required');
@@ -315,7 +316,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     if (signal?.aborted) throw signal.reason ?? new CatalogError('Transfer cancelled');
     // Always resolve the selected target through one authoritative descriptor.
     const fresh = (await prepare([abilityName], {signal})).catalogs.get(abilityName);
-    if (!fresh || fresh.authority_scope_sha256 !== catalog.authority_scope_sha256) throw new CatalogError('Authority changed; rediscover');
+    if (!fresh || (expectedAuthorityScopeSha256 && fresh.authority_scope_sha256 !== expectedAuthorityScopeSha256) || fresh.authority_scope_sha256 !== catalog.authority_scope_sha256) throw new CatalogError('Authority changed; rediscover');
     const item = fresh.entries.get(abilityName), old = catalog.entries.get(abilityName);
     if (!item || item.source?.sha256 !== old?.source?.sha256 || item.execution?.classification_sha256 !== old?.execution?.classification_sha256) throw new CatalogError('Ability contract changed; replan');
     const execution = item.execution;
@@ -330,6 +331,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     const dispatchLanes = {read: 'read', write: 'write', content: 'write', admin: 'write', developer: 'developer'};
     if (Object.hasOwn(dispatchLanes, execution.lane)) return callTool(`mad4b-${dispatchLanes[execution.lane]}-execute`, {
       ability_name: abilityName,
+      ...(expectedAuthorityScopeSha256 ? {expected_authority_scope_sha256: expectedAuthorityScopeSha256} : {}),
       expected_input_schema_sha256: execution.input_schema_sha256,
       expected_classification_sha256: execution.classification_sha256,
       expected_execution_lane: execution.lane,

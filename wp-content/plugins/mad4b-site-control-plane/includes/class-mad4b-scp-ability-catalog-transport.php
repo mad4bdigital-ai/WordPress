@@ -14,6 +14,7 @@ final class MAD4B_SCP_Ability_Catalog_Transport {
 	public static function schedule_gc() { if ( ! wp_next_scheduled( 'mad4b_catalog_gc' ) ) wp_schedule_event( time() + 3600, 'hourly', 'mad4b_catalog_gc' ); }
 	private static function ttl() { return max( 60, (int) apply_filters( 'mad4b_scp_catalog_snapshot_ttl', 3600 ) ); }
 	private static function retention() { return max( self::ttl() + 600, (int) apply_filters( 'mad4b_scp_catalog_retention_seconds', 604800 ) ); }
+	public static function current_authority_scope() { return self::scope(); }
 	private static function scope() {
 		$context = apply_filters( 'mad4b_scp_authenticated_subject_context', array() );
 		if ( ! is_array( $context ) ) $context = array();
