@@ -232,19 +232,35 @@ if ( is_wp_error( $filesystem_info ) || empty( $filesystem_info['read_only'] ) |
 	$fail( 'Read info did not preserve readonly metadata for hidden capability.', $filesystem_info );
 }
 
+$database_info = $info->execute( array( 'ability_name' => 'mad4b/database-list-tables' ) );
+if ( is_wp_error( $database_info ) || empty( $database_info['input_schema_sha256'] ) ) {
+	$fail( 'Read info did not expose an exact input schema digest.', $database_info );
+}
 $database_read = $read_execute->execute(
 	array(
 		'ability_name' => 'mad4b/database-list-tables',
+		'expected_input_schema_sha256' => (string) $database_info['input_schema_sha256'],
 		'input' => array(),
 	)
 );
-if ( is_wp_error( $database_read ) || empty( $database_read['read_only'] ) || ! isset( $database_read['result']['tables'] ) ) {
-	$fail( 'Readonly dispatcher could not execute a hidden governed read ability.', $database_read );
+if ( is_wp_error( $database_read ) || empty( $database_read['read_only'] ) || ! isset( $database_read['result']['tables'] ) || ! hash_equals( (string) $database_info['input_schema_sha256'], (string) ( $database_read['input_schema_sha256'] ?? '' ) ) ) {
+	$fail( 'Readonly dispatcher could not execute a schema-pinned hidden governed read ability.', $database_read );
+}
+$read_schema_drift = $read_execute->execute(
+	array(
+		'ability_name' => 'mad4b/database-list-tables',
+		'expected_input_schema_sha256' => str_repeat( '0', 64 ),
+		'input' => array(),
+	)
+);
+if ( ! is_wp_error( $read_schema_drift ) || 'mad4b_read_dispatch_schema_drift' !== $read_schema_drift->get_error_code() ) {
+	$fail( 'Readonly dispatcher did not fail closed on exact input schema drift.', $read_schema_drift );
 }
 
 $mutation_denied = $read_execute->execute(
 	array(
 		'ability_name' => 'mad4b/plugin-package-apply',
+		'expected_input_schema_sha256' => str_repeat( '0', 64 ),
 		'input' => array(),
 	)
 );
