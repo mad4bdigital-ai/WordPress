@@ -1,0 +1,70 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) throw new RuntimeException( 'WordPress is not loaded.' );
+
+$fail = static function ( $message, $data = null ) {
+	throw new RuntimeException( $message . ( null !== $data ? ' ' . wp_json_encode( $data, JSON_UNESCAPED_SLASHES ) : '' ) );
+};
+
+if ( ! class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) ) $fail( 'Unified capability gateway is unavailable.' );
+if ( ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' ) ) $fail( 'Ability catalog transport is unavailable.' );
+
+$negotiated = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
+	'action' => 'negotiate',
+	'client_capabilities' => array(
+		'dynamic_tool_refresh' => true,
+		'tools_list_changed' => true,
+		'tools_list_pagination' => true,
+		'max_response_bytes' => 65536,
+		'observed_rtt_ms' => 180,
+		'recent_error_rate' => 0.0,
+		'max_parallel_schema_fetches' => 4,
+	),
+), 'rest' );
+if ( is_wp_error( $negotiated ) ) $fail( 'Negotiation failed.', $negotiated->get_error_code() );
+if ( ! empty( $negotiated['client_claims_authoritative'] ) || 'none' !== ( $negotiated['authority_effect'] ?? '' ) ) $fail( 'Client compatibility claims changed authority.', $negotiated );
+if ( empty( $negotiated['transport']['rest_gateway_proven_by_request'] ) || 'rest_gateway' !== ( $negotiated['transport']['catalog'] ?? '' ) ) $fail( 'REST transport proof was not reflected in negotiation.', $negotiated );
+if ( 'fixed_dispatch' !== ( $negotiated['exposure_mode'] ?? '' ) ) $fail( 'Read-only CLI context unexpectedly gained dynamic projection authority.', $negotiated );
+
+$search = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
+	'action' => 'search',
+	'task' => 'diagnostics health',
+	'limit' => 8,
+), 'rest' );
+if ( is_wp_error( $search ) ) $fail( 'Task capability search failed.', $search->get_error_code() );
+$names = array_column( $search['items'] ?? array(), 'ability_name' );
+if ( ! in_array( 'mad4b/diagnostics-health', $names, true ) ) $fail( 'Task search did not return diagnostics-health.', $search );
+
+$prepared = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
+	'action' => 'prepare',
+	'ability_names' => array( 'mad4b/diagnostics-health' ),
+	'client_capabilities' => array( 'max_inline_schema_bytes' => 131072 ),
+), 'rest' );
+if ( is_wp_error( $prepared ) ) $fail( 'Ability preparation failed.', $prepared->get_error_code() );
+$item = $prepared['abilities'][0] ?? array();
+if ( 'mad4b/read-execute' !== ( $item['execution']['dispatch_tool'] ?? '' ) ) $fail( 'Read Ability did not map to the governed read dispatcher.', $item );
+if ( empty( $item['schema_sha256'] ) || empty( $item['snapshot'] ) || ! isset( $item['schema']['inputSchema'] ) ) $fail( 'Lazy schema preparation did not return an inline exact schema.', $item );
+$digest = (string) $item['schema_sha256'];
+
+$cached = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
+	'action' => 'prepare',
+	'ability_names' => array( 'mad4b/diagnostics-health' ),
+	'known_schemas' => array( 'mad4b/diagnostics-health' => $digest ),
+), 'rest' );
+if ( is_wp_error( $cached ) ) $fail( 'Cached preparation failed.', $cached->get_error_code() );
+$cached_item = $cached['abilities'][0] ?? array();
+if ( 'reusable' !== ( $cached_item['schema_cache_state'] ?? '' ) || isset( $cached_item['schema'] ) ) $fail( 'Matching schema fingerprint was not reused.', $cached_item );
+
+if ( wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
+	$unsafe = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
+		'action' => 'prepare',
+		'ability_names' => array( 'mad4b-ci/unclassified-projection-fixture' ),
+	), 'rest' );
+	if ( is_wp_error( $unsafe ) ) $fail( 'Unclassified preparation should remain inspectable.', $unsafe->get_error_code() );
+	$unsafe_item = $unsafe['abilities'][0] ?? array();
+	if ( 'blocked' !== ( $unsafe_item['execution']['state'] ?? '' ) || ! empty( $unsafe_item['projection_eligible'] ) ) $fail( 'Unclassified Ability did not remain fail-closed.', $unsafe_item );
+}
+
+$protected = MAD4B_SCP_OAuth_Resource_Bridge::resource_for_route( '/mad4b/v1/capability-gateway' );
+if ( ! hash_equals( MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier(), $protected ) ) $fail( 'REST capability gateway is not bound to the governed OAuth resource.' );
+
+fwrite( STDOUT, 'mad4b.unified-capability-gateway.runtime.v1: PASS' . PHP_EOL );
