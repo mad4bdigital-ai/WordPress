@@ -32,6 +32,19 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 		) );
 	}
 
+	if ( ! wp_has_ability( 'mad4b-ci/denied-read-dispatch' ) ) {
+		wp_register_ability( 'mad4b-ci/denied-read-dispatch', array(
+		    'label' => 'Denied read dispatcher fixture',
+		    'description' => 'Checks preservation of the original permission callback.',
+		    'category' => 'mad4b-read',
+		    'execute_callback' => static function () { throw new RuntimeException( 'Denied callback executed.' ); },
+		    'permission_callback' => static function () { return false; },
+		    'input_schema' => array( 'type' => 'object' ),
+		    'output_schema' => array( 'type' => 'object' ),
+		    'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ), 'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ) ),
+		) );
+	}
+
 	if ( ! wp_has_ability( 'mad4b-ci/oversized-read-projection-fixture' ) ) {
 		wp_register_ability( 'mad4b-ci/oversized-read-projection-fixture', array(
 			'label' => 'Oversized Read Projection Fixture',

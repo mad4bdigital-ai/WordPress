@@ -133,16 +133,6 @@ if ( ! is_wp_error( $drifted_execution ) || 'mad4b_read_dispatch_schema_drift' !
     $fail( 'Oversized dispatcher accepted a mismatched schema pin.' );
 }
 // A valid read lane never replaces the target's own permission decision.
-wp_register_ability( 'mad4b-ci/denied-read-dispatch', array(
-    'label' => 'Denied read dispatcher fixture',
-    'description' => 'Checks preservation of the original permission callback.',
-    'category' => 'mad4b-read',
-    'execute_callback' => static function () { throw new RuntimeException( 'Denied callback executed.' ); },
-    'permission_callback' => static function () { return false; },
-    'input_schema' => array( 'type' => 'object' ),
-    'output_schema' => array( 'type' => 'object' ),
-    'meta' => array( 'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ), 'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ) ),
-) );
 $denied_read = wp_get_ability( 'mad4b-ci/denied-read-dispatch' );
 $denied_schema_pin = MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability( 'mad4b-ci/denied-read-dispatch' );
 $denied_execution = $read_dispatch->execute( array(
