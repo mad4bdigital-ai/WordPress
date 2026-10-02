@@ -34,6 +34,9 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-mcp-client-profile-registry.php"
           php -l "$root/includes/class-mad4b-scp-mcp-client-compatibility.php"
+          php -l "$root/includes/class-mad4b-scp-ability-contract-inspector.php"
+          php -l "$root/includes/class-mad4b-scp-capability-descriptor-registry.php"
+          php -l "$root/includes/class-mad4b-scp-preparation-receipt.php"
           php -l "$root/includes/class-mad4b-scp-chatgpt-tool-projection.php"
           php -l "$root/includes/class-mad4b-scp-ability-catalog-transport.php"
           php -l "$root/includes/class-mad4b-scp-unified-capability-gateway.php"
@@ -45,6 +48,7 @@ jobs:
           node "$root/tests/catalog-transport-failures.mjs"
           php "$root/tests/projection-registration-lifecycle.php"
           php "$root/tests/gateway-regression-runtime.php"
+          php "$root/tests/ability-contract-inspector-runtime.php"
           php "$root/tests/preparation-receipt-runtime.php"
           php "$root/tests/intent-registry-contract.php"
           php "$root/tests/catalog-lifecycle-runtime.php"
@@ -84,6 +88,7 @@ jobs:
           php "$root/tests/catalog-transport-runtime.php"
           php "$root/tests/projection-registration-lifecycle.php"
           php "$root/tests/gateway-regression-runtime.php"
+          php "$root/tests/ability-contract-inspector-runtime.php"
           php "$root/tests/preparation-receipt-runtime.php"
           php "$root/tests/intent-registry-contract.php"
           php "$root/tests/catalog-lifecycle-runtime.php"
@@ -211,6 +216,36 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-decommission.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove fresh-process inactive decommission planning
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          PLUGIN=mad4b-site-control-plane
+          TOOL="$WP_PATH/wp-content/plugins/$PLUGIN/tools/catalog-decommission.php"
+          PLAN=/tmp/mad4b-catalog-decommission-fresh-plan.json
+          cleanup() {
+            rm -f "$WP_PATH/.maintenance" "$PLAN"
+            php /tmp/wp-cli.phar plugin activate "$PLUGIN" --path="$WP_PATH" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          php /tmp/wp-cli.phar plugin deactivate "$PLUGIN" --path="$WP_PATH"
+          printf '<?php $upgrading = %s;' "$(date +%s)" > "$WP_PATH/.maintenance"
+          php /tmp/wp-cli.phar eval-file "$TOOL" plan --path="$WP_PATH" --user=mad4b-ci-admin > "$PLAN"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          doc=json.loads(Path('/tmp/mad4b-catalog-decommission-fresh-plan.json').read_text())
+          plan=doc.get('plan',{})
+          assert plan.get('contract') == 'mad4b.catalog-offline-purge.v1', plan
+          assert plan.get('origin') == 'https://mad4b-client.test', plan
+          assert isinstance(doc.get('plan_sha256'), str) and len(doc['plan_sha256']) == 64, doc
+          assert set(plan.get('preserves',[])) >= {'projection','grants','approvals','audit','site_profile'}, plan
+          print('PASS fresh-process decommission plan: inactive plugin, exact site, reviewed digest and authority retention')
+          PY
+          cleanup
+          trap - EXIT
 
       - name: Prove initialize and minimal tools/list over the pinned Adapter protocol
         shell: bash
