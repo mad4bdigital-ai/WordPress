@@ -142,15 +142,19 @@ final class MAD4B_SCP_Context_Preflight {
 				$observed_at,
 				$task_scope
 			);
+			$receipt_ready = ! empty( $receipt['ready'] );
+			$receipt_blockers = isset( $receipt['blockers'] ) && is_array( $receipt['blockers'] )
+				? array_values( array_filter( array_map( 'strval', $receipt['blockers'] ) ) )
+				: array();
 			return array(
 				'contract' => self::PREFLIGHT_CONTRACT,
-				'ready' => true,
-				'state' => 'not_required',
+				'ready' => $receipt_ready,
+				'state' => $receipt_ready ? 'not_required' : 'blocked',
 				'skill_logical_id' => $logical_id,
 				'skill_sha256' => $skill_sha,
 				'policy' => $policy,
 				'policy_sha256' => '',
-				'blockers' => array(),
+				'blockers' => $receipt_ready ? array() : ( $receipt_blockers ? $receipt_blockers : array( 'context_receipt_not_ready' ) ),
 				'warnings' => array(),
 				'envelope' => array(
 					'contract' => self::ENVELOPE_CONTRACT,
@@ -784,6 +788,9 @@ final class MAD4B_SCP_Context_Preflight {
 			$observed_at,
 			$task_scope
 		);
+		if ( isset( $receipt['blockers'] ) && is_array( $receipt['blockers'] ) ) {
+			$blockers = array_values( array_unique( array_merge( $blockers, array_filter( array_map( 'strval', $receipt['blockers'] ) ) ) ) );
+		}
 		return array(
 			'contract' => self::PREFLIGHT_CONTRACT,
 			'ready' => false,
