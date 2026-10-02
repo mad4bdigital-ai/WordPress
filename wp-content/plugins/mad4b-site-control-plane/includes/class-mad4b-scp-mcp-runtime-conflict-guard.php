@@ -323,9 +323,9 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
 		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return true;
 		if ( is_admin() ) {
-			if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
-				&& MAD4B_SCP_Provider_Diagnostic_Policy::explicit_rest_materialization_allowed() ) return true;
-
+			// Endpoint diagnostics remain read-only even after nonce/capability
+			// authorization. Runtime repair is deliberately restricted to explicit
+			// WordPress plugin lifecycle surfaces, WP-CLI or cron.
 			global $pagenow;
 			$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
 			$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
