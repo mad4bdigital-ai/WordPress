@@ -23,7 +23,7 @@ try {
  };
  $ok = $send( $headers + array( 'X-WP-Nonce' => $nonce ) );
  $data = json_decode( wp_remote_retrieve_body( $ok ), true );
- if ( 200 !== wp_remote_retrieve_response_code( $ok ) || ! in_array( 'authenticated_wordpress_session', $data['rest_auth_modes'] ?? MAD4B_SCP_Unified_Capability_Gateway::public_manifest()['rest_auth_modes'], true ) ) throw new RuntimeException( 'Advertised cookie+nonce auth did not reach gateway.' );
+ if ( 200 !== wp_remote_retrieve_response_code( $ok ) || ! in_array( 'authenticated_wordpress_session', $data['rest_auth_modes'] ?? array(), true ) ) throw new RuntimeException( 'Advertised cookie+nonce auth did not reach gateway.' );
  $without_nonce = $send( $headers );
  if ( wp_remote_retrieve_response_code( $without_nonce ) < 400 ) throw new RuntimeException( 'Cookie without REST nonce retained read authority.' );
  $bad_bearer = $send( $headers + array( 'X-WP-Nonce' => $nonce, 'Authorization' => 'Bearer invalid' ) );

@@ -107,6 +107,8 @@ check_gateway( 7 === count( $search['items'] ) && 5000 === $search['universe_cou
 foreach ( $GLOBALS['abilities'] as $a ) check_gateway( 0 === $a->schema_reads, 'Metadata search loaded a schema' );
 check_gateway( microtime( true ) - $started < 5, '5000 Ability metadata search exceeded regression ceiling' );
 $GLOBALS['blog'] = 2;
+$switched_apply = MAD4B_SCP_ChatGPT_Tool_Projection::can_apply();
+check_gateway( is_wp_error( $switched_apply ) && 'mad4b_projection_blog_switch_denied' === $switched_apply->get_error_code(), 'Switched blog reached site projection authority checks' );
 check_gateway( is_wp_error( MAD4B_SCP_Unified_Capability_Gateway::dispatch( array( 'action' => 'search', 'task' => 'fixture' ) ) ), 'Blog switch reused first-site registry' );
 check_gateway( is_wp_error( MAD4B_SCP_Ability_Catalog_Transport::handle( array() ) ), 'Blog switch reused first-site catalog' );
 check_gateway( is_wp_error( $dispatcher->read_execute( array( 'ability_name' => 'fixture/00000' ) ) ), 'Fixed dispatcher reused first-site registry' );

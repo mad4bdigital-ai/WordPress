@@ -543,6 +543,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	}
 
 	public static function can_apply( $input = null ) {
+		if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) && ! MAD4B_SCP_Unified_Capability_Gateway::runtime_blog_matches() ) return new WP_Error( 'mad4b_projection_blog_switch_denied', 'Use a fresh request to the target site.' );
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_chatgpt_projection_admin_required', 'Administrator capability is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() || 'staging' !== MAD4B_SCP_Site_Profile::current_environment() || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) {
 			return new WP_Error( 'mad4b_chatgpt_projection_staging_profile_required', 'Exact enrolled Staging Site Profile is required.' );
