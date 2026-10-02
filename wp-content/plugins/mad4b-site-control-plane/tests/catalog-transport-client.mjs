@@ -55,8 +55,12 @@ assert.equal((await client.search('booking')).items[0].ability_name, row.ability
 const lazy = (await client.prepare([row.ability_name])).catalogs.get(row.ability_name);
 const lazySchema = await client.readSchema(lazy, row.ability_name);
 assert.equal(lazySchema.sha256, sha);
-assert.ok(maxInFlight > 1 && maxInFlight <= 4, 'REST schema transfer did not use bounded parallel windows');
-assert.ok(lazySchema.state.parallelism >= 1 && lazySchema.state.parallelism <= 4, 'Adaptive parallelism escaped the client budget');
+assert.ok(maxInFlight > 1 && maxInFlight <= 3, 'REST schema transfer ignored the bounded server parallelism recommendation');
+assert.ok(lazySchema.state.parallelism >= 1 && lazySchema.state.parallelism <= 3, 'Adaptive parallelism escaped the server/client budget');
+maxInFlight = 0;
+await client.readSchema(lazy, row.ability_name, {state: {chunks: new Map(), parallelism: 4}});
+assert.ok(maxInFlight > 1 && maxInFlight <= 3, 'Resume parallelism exceeded the current server recommendation');
+await assert.rejects(client.readSchema(lazy, row.ability_name, {state: {chunks: new Map(), parallelism: 9}}), /resume parallelism/);
 assert.equal(await client.execute(lazy, row.ability_name, {}), 'executed');
 const catalog = await client.sync(null); const state = {chunks: new Map()};
 const result = await client.readSchema(catalog, row.ability_name, {state});
