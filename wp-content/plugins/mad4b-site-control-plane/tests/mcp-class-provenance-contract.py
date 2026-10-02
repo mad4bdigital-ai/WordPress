@@ -38,8 +38,7 @@ for path in required:
         raise SystemExit(f"Runtime provenance mapping does not cover {path}")
 
 for marker in (
-    "mcp_adapter_class_provenance_mismatch",
-    "runtime_class_provenance",
+    "MAD4B_SCP_MCP_Class_Provenance::BLOCKER",
     "runtime_class_provenance",
     "validator_reason",
     "official_schema_validation",
