@@ -117,7 +117,7 @@ for marker in [
     "( $dynamic && ! $dynamic_readonly )",
     "$step_up_visible",
     "$breakglass_scope_visible",
-    "server:mad4b-breakglass",
+    "BREAKGLASS_SCOPE",
     "ability:",
     "MAD4B_SCP_Policy::can_breakglass()",
     "mad4b_required_catalog_schema_invalid",
@@ -126,7 +126,7 @@ for marker in [
 
 for marker in [
     "mad4b_projection_breakglass_scope_required",
-    "server:mad4b-breakglass",
+    "BREAKGLASS_SCOPE",
     "ability:",
 ]:
     require(marker in PROJECTION, f"projected Breakglass call admission missing: {marker}")
