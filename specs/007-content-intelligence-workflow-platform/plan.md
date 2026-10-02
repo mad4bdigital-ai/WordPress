@@ -829,3 +829,30 @@ Bulk closure hardening lane:
 - close the lane only through one full request→plan→approval→execution→readback→durable receipt→rollback evidence chain.
 
 Architecture Freeze remains active: this lane closes implementation/safety gaps and MUST NOT become a vehicle for new documentation-only abstractions.
+## Phase 37 — Post-merge Capability Fabric completeness
+
+Objective: convert the residual post-#230 Capability Fabric review into explicit Spec Kit ownership so no architectural, security, durability, operability or evolution dimension remains implicit.
+
+This phase does not reopen the merged capability-dispatch architecture and does not authorize Production or Breakglass. It is a post-merge closure backlog. Existing P0/P1/P2 tasks remain authoritative where they already cover a concern; Phase 37 adds only missing explicit contracts, refinements and acceptance gates.
+
+Workstreams:
+1. Canonical capability semantics: converge Operation Registry, Capability Traits, Servers and Authorization on the Capability Descriptor generation roots and eliminate independent truth re-derivation.
+2. Provider semantic content contracts and a resource-constraint compiler bound through plan/approval/commit/readback.
+3. Per-mutation-family postcondition certification and a formally conservative Execution State View.
+4. Dedicated immutable catalog storage migration, storage-level fencing, cache coherence and horizontal-worker proofs.
+5. Durable multisite/network orchestration with partial-completion and crash-resume evidence.
+6. Projection isolation and MCP refresh/protocol evolution without making projection a correctness path.
+7. Durable provider circuit breakers plus WordPress-native lifecycle migration only after parity certification.
+8. Distributed tracing, measured stage SLOs, error budgets and explicit telemetry/audit outage semantics.
+9. Impact-bound approvals, explainable authorization, a unified signed execution receipt and non-authorizing semantic routing.
+10. Cryptographic agility, time/clock policy, replay semantics, Unicode canonicalization, abuse-rate limits and egress TLS/DNS policy.
+11. Maintainability/change slicing, dependency-direction enforcement, stable reason codes and configuration-generation governance.
+12. A terminal completeness audit proving every dimension has ownership, fail-closed interim semantics and evidence.
+
+Exit gates:
+- CAPABILITY_FABRIC_DIMENSION_OWNERSHIP=PASS
+- CAPABILITY_FABRIC_NO_UNTRIAGED_P0_P1=PASS
+- CAPABILITY_FABRIC_NO_AUTHORITY_WIDENING=PASS
+
+Phase 37 is complete only when T3768–T3770 pass. Documentation alone cannot satisfy runtime/security/live gates.
+

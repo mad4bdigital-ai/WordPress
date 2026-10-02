@@ -70,7 +70,7 @@ if feature_path.exists():
         "merge_authorized": False,
         "production_activation_authorized": False,
         "architecture_freeze": True,
-        "required_phase_count": 37,
+        "required_phase_count": 38,
     }
     for k, v in expected.items():
         if data.get(k) != v:
@@ -262,7 +262,7 @@ if tasks_path.exists():
     dupes = sorted({x for x in ids if ids.count(x) > 1})
     if dupes:
         errors.append("duplicate_task_ids:" + ",".join(dupes))
-    for phase in range(0, 37):
+    for phase in range(0, 38):
         if f"Phase {phase} " not in txt and f"Phase {phase} —" not in txt:
             errors.append(f"missing_task_phase:{phase}")
 
@@ -470,6 +470,22 @@ if bulk_hardening_path.exists():
             # reference; repository paths alone can never self-close a live gate.
             if all(str(x).startswith(("specs/",".github/","tools/","wp-content/")) for x in refs):
                 errors.append(f"bulk_hardening:live_proven_without_external_evidence:{fixture}")
+
+audit_path=require_file("post-merge-capability-fabric-audit.md")
+if audit_path.exists():
+    audit_txt=audit_path.read_text(encoding="utf-8")
+    for phrase in [
+        "Canonical capability semantics","Provider postcondition reconciliation","Resource constraint compiler",
+        "Durable multisite/network orchestration","Dedicated immutable catalog table","Distributed tracing",
+        "Impact-bound approval","Unified execution receipt","Authorization decision graph","Semantic intent routing",
+        "Cryptographic agility","Clock skew","Unicode canonicalization","Rate limiting and complexity budgets",
+        "Maintainability and change architecture","CAPABILITY_FABRIC_NO_AUTHORITY_WIDENING",
+    ]:
+        if phrase not in audit_txt:
+            errors.append(f"capability_fabric_audit:missing:{phrase}")
+    for task_id in ["T3701","T3712","T3719","T3725","T3736","T3741","T3747","T3750","T3755","T3763","T3768","T3770"]:
+        if task_id not in audit_txt:
+            errors.append(f"capability_fabric_audit:task_missing:{task_id}")
 
 for rel in ["spec.md","plan.md","coverage-audit.md"]:
     p=require_file(rel)

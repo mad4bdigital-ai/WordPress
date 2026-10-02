@@ -740,3 +740,99 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3653 P0 Recertify exact installed Bit Flows 1.29.0 against permanent behavioral/security probes before execution eligibility.
 - [ ] T3654 P0 Run the complete request→plan→approval→execution→readback→durable receipt→rollback vertical slice and link all evidence to the terminal gate.
 - [ ] T3630 P0 GATE Execute exact ETG Staging linked evidence chain and emit CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED only when every hard dependency is satisfied.
+## Phase 37 — Post-merge Capability Fabric completeness
+
+### 37A — Canonical capability semantics and drift elimination
+- [ ] T3701 P0 Build a post-merge Capability Fabric dimension matrix mapping every reviewed dimension to an owning contract, task, gate, evidence source and explicit status; no P0/P1 dimension may remain unowned.
+- [ ] T3702 P0 Bind Operation Registry entries to the canonical Capability Descriptor identity instead of independently re-deriving execution/classification facts.
+- [ ] T3703 P0 Bind Capability Traits profiles to the canonical descriptor/classification generation roots and prove trait metadata cannot override execution truth.
+- [ ] T3704 P0 Bind Servers/catalog/direct projection rows to descriptor identity and generation roots; presentation layers remain consumers only.
+- [ ] T3705 P0 Bind Authorization admission/readback to canonical descriptor identity while preserving live grant/approval/policy revalidation and no cached authority grant.
+- [ ] T3706 P0 GATE Add cross-consumer drift/property/mutation tests proving Inspector, Descriptor, Operation Registry, Traits, Servers and Authorization fail closed on any schema/lane/classification/generation disagreement.
+
+### 37B — Semantic content fields and least-privilege resource constraints
+- [ ] T3707 P0 Define provider-specific semantic content-field contracts for posts, SEO, media, WooCommerce, Elementor, JetEngine and future plugins; generic string heuristics become fallback evidence only.
+- [ ] T3708 P0 Unknown or newly introduced brand-bearing provider fields require explicit classification/review and cannot silently inherit mutation eligibility.
+- [ ] T3709 P0 Define and compile a provider-neutral resource-constraint DSL for post IDs/types, taxonomies, filesystem zones/paths, DB tables/columns, provider object IDs, mutation counts and byte/value limits.
+- [ ] T3710 P0 Bind the compiled resource-set digest to plan, preparation evidence, approval, execution guard and readback evidence.
+- [ ] T3711 P0 GATE Mutation/property tests must reject resource widening, alternate identifiers, wildcard expansion, path aliasing and provider-side object substitution after approval.
+
+### 37C — Provider postconditions, reconciliation and execution-state truth
+- [ ] T3712 P0 Define a ProviderPostconditionProfile per mutation family with authoritative committed/no-effect/unknown readers and exact evidence freshness requirements.
+- [ ] T3713 P0 Durable retry/reclaim eligibility requires a certified postcondition reader for that mutation family; unsupported families remain reconciliation-required and blind-retry denied.
+- [ ] T3714 P0 Add timeout-after-possible-side-effect, lost-response, duplicate-callback and provider-commit/readback-delay fixtures for every certified mutation family.
+- [ ] T3715 P0 Formalize Execution State View precedence across Operation Journal, Durable Execution and Connector Resilience, including a complete contradictory-evidence matrix.
+- [ ] T3716 P0 GATE Prove Execution State View is fully recomputable, owns no durable state, and can never promote unknown/contradictory evidence to COMMITTED or retryable.
+- [ ] T3717 P0 Define a canonical identifier-policy registry for operation/job/approval/receipt/provider IDs with UUIDv4 or explicitly versioned opaque formats, normalization and length/entropy requirements.
+- [ ] T3718 P1 Provide compatibility/migration semantics for legacy non-canonical operation identifiers without rewriting historical journal identity.
+
+### 37D — Catalog backend, cache coherence and horizontal concurrency
+- [ ] T3719 P1 Design a dedicated immutable catalog table backend with content-addressed rows, generation directory, indexed expiry/GC and explicit capacity accounting.
+- [ ] T3720 P1 Implement shadow-read parity and bounded cutover from options storage with one authoritative publisher at a time; no dual-authority catalog state.
+- [ ] T3721 P1 Add storage-level publication fencing token/CAS semantics so lost/reused DB connections cannot publish a stale generation.
+- [ ] T3722 P1 Certify persistent object-cache/Redis behavior: stale option/object cache cannot resurrect retired objects, bypass CAS, or hide a newer catalog directory.
+- [ ] T3723 P1 Run multi-PHP-worker and multi-host concurrency tests proving process-local caches/mutexes are never authoritative and DB-scoped locks remain isolated.
+- [ ] T3724 P1 GATE Prove backend rollback/retirement preserves projection/grants/approvals/audit/site profile and leaves no orphan capacity accounting.
+
+### 37E — Durable multisite/network orchestration
+- [ ] T3725 P0 Define a durable NetworkOperation journal with per-site target identity, authority scope, plan/preparation digest, state and evidence refs.
+- [ ] T3726 P0 Define partial-completion, pause, resume and reconciliation semantics; completed sites are never falsely rolled back because another site failed.
+- [ ] T3727 P0 Add network idempotency/deduplication keys and duplicate/reordered site-dispatch tests across independent workers.
+- [ ] T3728 P0 Prove credentials, catalog ownership, receipts, approvals, context and authority remain site-bound during concurrent fan-out and cannot cross sites.
+- [ ] T3729 P0 GATE Crash mid-fan-out and reconnect/resume must reconstruct exact completed/pending/reconciling site sets from durable evidence without replaying committed mutations.
+
+### 37F — Projection isolation and MCP protocol evolution
+- [ ] T3730 P1 Decide and codify direct hot-set isolation semantics (site-global versus client/session scoped), including contention behavior and explicit statement that fixed dispatch correctness is independent.
+- [ ] T3731 P2 Add telemetry-driven adaptive hot-set recommendations with bounded quotas; recommendation/ranking can never grant authority or auto-project privileged capabilities.
+- [ ] T3732 P1 Define exact tools/list refresh/reconnect/listChanged behavior per certified MCP client/protocol profile, including stale projection detection.
+- [ ] T3733 P1 Add exact protocol capability negotiation and fail-closed behavior for unknown/newer protocol features rather than opportunistic assumptions.
+- [ ] T3734 P1 Add dual-protocol regression for tool schemas, pagination/chunk transport, refresh semantics, notifications and error normalization when a successor Adapter is certified.
+- [ ] T3735 P1 GATE Concurrent projection changes or stale clients cannot alter fixed-dispatch schema/lane/classification/authority validation or execute a removed hot-set item by visibility alone.
+
+### 37G — Durable provider resilience and WordPress lifecycle
+- [ ] T3736 P0 Implement a durable provider/site/certification-generation circuit breaker with CLOSED/OPEN/HALF_OPEN states, bounded timers and persisted transition evidence.
+- [ ] T3737 P0 Breaker probe success may restore transport eligibility only; it never grants provider certification, write authority, approval or Production eligibility.
+- [ ] T3738 P0 Define deterministic precedence among breaker state, provider quarantine, release ring, kill switch, certification and authority; strongest deny wins.
+- [ ] T3739 P1 Define a WordPress-native lifecycle migration profile and parity certification before replacing provenance wrappers/Reflection-based compatibility paths.
+- [ ] T3740 P1 Add activate/deactivate/update/uninstall/network-activate lifecycle tests proving governance retention, bounded catalog cleanup, multisite isolation and rollback compatibility.
+
+### 37H — Distributed tracing, SLOs and observability failure semantics
+- [ ] T3741 P1 Propagate a standards-compatible trace context across discovery, preparation, policy, approval, commit guard, provider call, readback, reconciliation and network fan-out.
+- [ ] T3742 P1 Define tenant-safe trace/span identity, sampling, cardinality ceilings and recursive payload redaction; raw inputs/tokens/secrets/provider payloads are excluded by default.
+- [ ] T3743 P1 Measure stage-level P50/P95/P99 for discovery, prepare, authorization, provider execution, readback, reconciliation and catalog rebuild, not only hard budgets.
+- [ ] T3744 P1 Bind stage SLOs to error-budget/burn-rate policies and operator evidence without converting telemetry into authority.
+- [ ] T3745 P1 Define observability-backend outage semantics: optional telemetry failure cannot block safe reads, while mandatory audit/evidence persistence for governed writes remains fail closed.
+- [ ] T3746 P1 GATE Cross-provider/network traces must preserve causal continuity without cross-tenant correlation leakage or unbounded high-cardinality labels.
+
+### 37I — Impact-bound approvals, explainability, execution receipts and semantic routing
+- [ ] T3747 P0 Extend approval identity with exact input digest, constrained resource set, dependency generation and blast-radius/impact digest.
+- [ ] T3748 P0 Invalidate approval when the resource set, dependency generation, impact graph or target fingerprint materially changes before commit.
+- [ ] T3749 P1 Implement an authorization decision graph exposing PASS/FAIL/NOT_EVALUATED steps, stable reason codes, policy/evidence versions and redacted evidence refs without revealing secrets.
+- [ ] T3750 P0 Define mad4b.execution-receipt.v1 linking preparation, descriptor, policy decision, approval, idempotency claim, operation journal, provider evidence, readback/reconciliation and terminal outcome.
+- [ ] T3751 P0 Hash/sign the unified execution receipt, support independent verification/export and prove no missing stage can be represented as terminal success.
+- [ ] T3752 P1 Implement provider-neutral semantic intent routing: user intent → required traits → provider candidates → exact capability, with confidence/evidence/ambiguity/human-review semantics.
+- [ ] T3753 P1 GATE Semantic routing remains non-authorizing and cannot choose a capability outside current certification, authority, environment, resource constraints or risk policy.
+
+### 37J — Cryptography, time, replay, canonicalization and abuse resistance
+- [ ] T3754 P0 Define recursive structural redaction/classification for provider/plugin errors, callback return data, metadata and nested arrays/objects; add adversarial fuzz cases for unexpected secret field names.
+- [ ] T3755 P0 Introduce versioned cryptographic profiles/key IDs for preparation/context/execution receipts with rotation, overlap, revocation and algorithm-agility rules.
+- [ ] T3756 P0 Define clock-skew and monotonic-time policy for receipt TTL, lease deadlines, breaker windows, offline authorization and reconciliation observation windows.
+- [ ] T3757 P0 Define replay semantics by operation risk class, including when preparation evidence is reusable versus single-use and how replay prevention composes with idempotency.
+- [ ] T3758 P0 Define Unicode/canonicalization/confusable policy for ability names, semantic operation IDs, resource identifiers, URLs, paths, headers and canonical JSON/hash inputs.
+- [ ] T3759 P0 Add per-principal/site/client rate limits and complexity budgets for discovery/prepare/execute, deep nesting, schema bombs, pathological regex/search terms and oversized metadata.
+- [ ] T3760 P1 Extend egress policy beyond SSRF with TLS verification, proxy trust, redirect revalidation, DNS-answer changes and certificate/hostname failure semantics.
+- [ ] T3761 P1 Define backward-compatible migration/deprecation telemetry for legacy unprepared dispatcher callers, versioned error contracts and explicit sunset gates.
+- [ ] T3762 P1 Make critical CI hermetic/deterministic with injectable clocks, bounded deterministic test randomness, stable fixtures and no flaky-check bypass for release gates.
+
+### 37K — Maintainability, change architecture and configuration governance
+- [ ] T3763 P1 Split oversized responsibility concentrations into domain services behind stable public contracts, with dependency-cycle/size budgets and behavior-parity tests before deletion of legacy façades.
+- [ ] T3764 P1 Define change-slice policy for large features: reviewable semantic units, bisect/revert boundaries, exact-head certification per slice and early split gates that prevent another mega-PR review surface.
+- [ ] T3765 P1 Generate an architecture dependency graph and enforce forbidden dependency directions so presentation/adapters cannot become sources of authority or contract truth.
+- [ ] T3766 P1 Define a stable machine-readable error/reason-code registry and response-schema evolution policy so clients can upgrade without parsing human messages.
+- [ ] T3767 P1 Bind material configuration/feature-flag generations into diagnostics/plans where they affect behavior; config flags cannot widen authority or bypass certification.
+
+### 37L — Completeness closure
+- [ ] T3768 P0 GATE Execute the post-merge Capability Fabric completeness audit: every dimension has an owner, task, contract or explicit non-goal, test strategy, evidence source and current status.
+- [ ] T3769 P0 GATE No P0/P1 dimension may remain untriaged; any OPEN item must have explicit priority, dependencies and fail-closed interim behavior.
+- [ ] T3770 P0 GATE Phase 37 must map into existing quality/traceability families and must not authorize Production, Breakglass, generic shell/raw SQL, or any new authority by documentation alone.
+
