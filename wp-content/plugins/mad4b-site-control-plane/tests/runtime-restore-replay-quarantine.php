@@ -177,9 +177,6 @@ try {
 	if ( ! is_array( $approval_after ) || 'revoked' !== (string) $approval_after['status'] ) $fail( 'Restore reconciliation did not revoke restored approval.', $approval_after );
 
 	$id_after = $wpdb->get_row( $wpdb->prepare( "SELECT status,expires_at,reconciliation_ref FROM {$tables['idempotency']} WHERE scope_key=%s AND idempotency_key=%s", $scope_key, $idempotency_key ), ARRAY_A );
-	if ( ! is_array( $id_after ) || 'pending' !== (string) $id_after['status'] || false !== strpos( (string) $id_after['reconciliation_ref'], 'restore_epoch:' ) ? false : true ) {
-		// handled below with explicit checks to avoid operator-precedence ambiguity
-	}
 	if ( ! is_array( $id_after ) || 'pending' !== (string) $id_after['status'] || 0 !== strpos( (string) $id_after['reconciliation_ref'], 'restore_epoch:' ) || strtotime( $id_after['expires_at'] . ' UTC' ) > time() ) {
 		$fail( 'Restore reconciliation did not quarantine completed idempotency result.', $id_after );
 	}
