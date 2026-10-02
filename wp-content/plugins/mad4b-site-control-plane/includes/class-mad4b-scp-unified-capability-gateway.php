@@ -258,7 +258,6 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				'readonly' => ! empty( $row['readonly'] ),
 				'projection_eligible' => ! empty( $row['projection_eligible'] ),
 				'execution_eligible' => ! empty( $row['execution_eligible'] ),
-				'execution_eligible' => ! empty( $row['execution_eligible'] ),
 				'input_schema_sha256' => isset( $row['input_schema_sha256'] ) ? (string) $row['input_schema_sha256'] : '',
 				'schema_reference_requires_prepare' => true,
 				'classification_sha256' => isset( $row['classification_sha256'] ) ? (string) $row['classification_sha256'] : '',
