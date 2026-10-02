@@ -30,6 +30,27 @@ if ( ! wp_has_ability( 'mad4b-ci/unclassified-projection-fixture' ) ) {
 		) );
 	}
 
+	if ( ! wp_has_ability( 'mad4b-ci/oversized-read-projection-fixture' ) ) {
+		wp_register_ability( 'mad4b-ci/oversized-read-projection-fixture', array(
+			'label' => 'Oversized Read Projection Fixture',
+			'description' => 'CI fixture proving that transport chunking does not imply direct tools/list admission.',
+			'category' => 'mad4b-read',
+			'execute_callback' => static function ( $input = null ) { unset( $input ); return array( 'ok' => true ); },
+			'permission_callback' => static function () { return true; },
+			'input_schema' => array(
+				'type' => 'object',
+				'properties' => array(),
+				'description' => str_repeat( 'bounded-direct-tool-schema-', 5000 ),
+				'additionalProperties' => false,
+			),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array(
+				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			),
+		) );
+	}
+
 	if ( ! wp_has_ability( 'mad4b-ci/readonly-projection-fixture' ) ) {
 		wp_register_ability( 'mad4b-ci/readonly-projection-fixture', array(
 			'label' => 'Readonly Projection Fixture',
