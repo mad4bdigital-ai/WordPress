@@ -301,7 +301,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			$breakglass_scope = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
 				&& MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
 				&& (
-					MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'server:mad4b-breakglass' )
+					MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE )
 					|| MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'ability:' . $name )
 				);
 			if ( ! $breakglass_scope ) return new WP_Error( 'mad4b_projection_breakglass_scope_required', 'Projected Breakglass execution requires an exact Breakglass server or Ability OAuth scope.' );
