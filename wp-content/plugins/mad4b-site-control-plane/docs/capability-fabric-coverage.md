@@ -61,10 +61,10 @@ migration requirement.
 | 3 | Prepared receipt | Delivered signed, expiring, scope-bound preparation evidence. Receipt and prepared authority scope are mandatory for normal fixed read/write/developer dispatch, while live authorization still re-runs. It does not replace operation-specific approvals. |
 | 4 | MCP compatibility profiles | Existing pinned Adapter/protocol remains certified. A 2026 profile needs separate shadow wire certification; no new advertised support is added. |
 | 5 | Native WordPress lifecycle | Existing provenance wrappers remain active across 6.9/latest. Native-hook replacement requires parity proofs, including pre-execute short-circuit and permission/output filters. |
-| 6 | Unified execution state machine | Existing Operation Journal, Execution Fence, Connector Resilience and commit guard remain in force. A common transition contract across these components is not delivered by this patch. |
-| 7 | Cross-request idempotency | Existing mutation claim/fence and no-blind-retry behavior remain. Provider-aware external commit reconciliation and deduplication must precede any new retry policy. Preparation evidence is reusable and is not at-most-once evidence. |
+| 6 | Unified execution state machine | Durable primitives are already substantive: Operation Journal persists lifecycle/terminal evidence, Connector Resilience distinguishes `not_started` from post-boundary `unknown`, and Durable Execution persists idempotency claims, claim epochs, leases/fencing and reconciliation. The remaining gap is one normalized cross-component transition/read model; this patch does not create a second state store. |
+| 7 | Cross-request idempotency | Durable Execution already persists exact scope/key/request-hash claims with claim epochs, `pending`/`completed` outcomes, verified reconciliation completion, bounded reconciliation observations and `released_verified_no_effect` reclaim. Connector Resilience marks uncertain post-boundary mutation failures `unknown` and forbids blind retry. The remaining work is provider-specific postcondition evidence for every external mutation family; preparation evidence itself remains reusable and is not an idempotency key. |
 | 8 | Provider circuit breaker | Request-local resilience remains. Durable provider health, isolated HALF_OPEN probes and permission-error exclusion require an atomic provider-state backend. |
-| 9 | Shadow/canary/active | Existing Capability Traits and certification contracts retain their release rings. Unified capability quarantine and promotion require integration with provider version/certification changes. |
+| 9 | Shadow/canary/active | Provider Compatibility Certification already computes capability-level certification, `QUARANTINED`, shadow/canary/active activation stages, artifact/runtime binding and canary eligibility. Behavioral Recertification performs bounded reversible probe/readback/rollback evidence, while Provider Canary Execution isolates high-risk canary writes and never auto-promotes them. The remaining gap is operational-health circuit state, not compatibility lifecycle. |
 | 10 | Adaptive hot set | Fixed dispatch remains primary; projection remains explicit and site-scoped. Telemetry-based ranking is not implemented. Recommendations must never apply a projection implicitly. |
 | 11 | Intent routing | Existing Operation Registry and Capability Trait Resolver remain available. Semantic user-intent routing is not equivalent to keyword search or the content ownership Intent Registry. Provider choice still needs explicit certified resolution. |
 | 12 | Resource constraint DSL | Existing unhandled resource constraints fail closed. A compiler needs provider-specific object/path/table extraction; no permissive generic evaluator is introduced. |
@@ -83,10 +83,7 @@ migration requirement.
 1. **Descriptor consolidation:** each current classifier/operation/provider path
    must return the same lane, schema, provider and provenance decisions. Mutable
    authority must be refreshed rather than served from a descriptor cache.
-2. **Durable execution:** define allowed transitions and atomically claim the
-   existing operation identity. Provider success followed by timeout is UNKNOWN;
-   no automatic write retry may occur before independent postcondition proof.
-   Audit persistence failure after mutation also requires reconciliation.
+2. **Durable execution:** normalize the already-persisted Operation Journal, execution-fence, Connector Resilience and Durable Execution states into one read contract rather than creating another state store. Preserve the existing rule that provider success followed by timeout is `UNKNOWN`; no automatic write retry may occur before independent provider/postcondition proof. Audit persistence failure after mutation also remains reconciliation-required.
 3. **Provider control:** circuit state must isolate site/provider/generation;
    only transport/timeout/upstream failure classes affect it. Half-open admission
    needs a single atomic probe claim. Ring/quarantine cannot broaden any grant.
