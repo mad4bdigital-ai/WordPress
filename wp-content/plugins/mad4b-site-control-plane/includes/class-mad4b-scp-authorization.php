@@ -326,6 +326,13 @@ final class MAD4B_SCP_Authorization {
 	}
 
 	public static function claim_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
+		if ( class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) {
+			$restore_ready = MAD4B_SCP_Restore_Epoch::ensure_bound();
+			if ( is_wp_error( $restore_ready ) ) {
+				self::audit_execution_denial( $ability_name, $restore_ready, $input );
+				return $restore_ready;
+			}
+		}
 		$decision = self::authorize_mutation( $ability_name, $server_id, $provider, $input );
 		if ( is_wp_error( $decision ) ) {
 			self::audit_execution_denial( $ability_name, $decision, $input );
@@ -466,6 +473,21 @@ final class MAD4B_SCP_Authorization {
 					return $restore_epoch;
 				}
 				$claim['restore_epoch_receipt'] = $restore_epoch;
+				if ( class_exists( 'MAD4B_SCP_Execution_Commit_Guard' ) ) {
+					$post_epoch_snapshot = MAD4B_SCP_Execution_Commit_Guard::capture( $claim, $input );
+					if ( is_wp_error( $post_epoch_snapshot ) ) {
+						MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $post_epoch_snapshot );
+						return $post_epoch_snapshot;
+					}
+					$claim['pre_restore_epoch_commit_guard_receipt'] = isset( $claim['commit_guard_receipt'] ) ? $claim['commit_guard_receipt'] : array();
+					$claim['commit_guard_snapshot'] = $post_epoch_snapshot;
+					$post_epoch_guard = MAD4B_SCP_Execution_Commit_Guard::revalidate( $claim, $input );
+					if ( is_wp_error( $post_epoch_guard ) ) {
+						MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $post_epoch_guard );
+						return $post_epoch_guard;
+					}
+					$claim['commit_guard_receipt'] = $post_epoch_guard;
+				}
 			}
 			MAD4B_SCP_Authorization::mark_execution_callback_started( $name );
 			try {

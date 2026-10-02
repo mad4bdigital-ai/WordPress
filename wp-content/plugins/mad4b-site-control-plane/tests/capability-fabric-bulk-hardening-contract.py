@@ -103,3 +103,10 @@ need("write_external" in restore_epoch and "write_binding" in restore_epoch and 
 need("mad4b_restore_epoch_write_must_be_disabled" in restore_epoch, "restore acknowledgement does not require write-disabled quarantine")
 need("'restore_epoch'" in commit_guard, "commit guard does not bind restore epoch")
 need("MAD4B_SCP_Restore_Epoch::advance( 'governed_execution' )" in authorization, "provider entry does not advance restore epoch")
+
+
+authorization=(ROOT/"includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
+restore_epoch=(ROOT/"includes/class-mad4b-scp-restore-epoch.php").read_text(encoding="utf-8")
+need("pre_restore_epoch_commit_guard_receipt" in authorization and "post_epoch_snapshot" in authorization and "post_epoch_guard" in authorization, "commit guard is not re-captured/revalidated after restore epoch advance")
+need("restore_epoch_site_identity_mismatch" in restore_epoch, "restore epoch is not bound to the current Site UUID")
+need("reconcile_restored_security_state" in restore_epoch and "status='revoked'" in restore_epoch and "status='pending'" in restore_epoch and "released_verified_no_effect" in restore_epoch, "restore acknowledgement does not quarantine stale approval/idempotency state")

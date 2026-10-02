@@ -304,3 +304,18 @@ for method, end, markers in (
     for marker in markers:
         if marker not in surface:
             raise SystemExit(f"single-statement durable write is not topology-fenced: {method} missing {marker}")
+
+
+# Restore/authority epoch quarantine must front every durable replay/mutation surface.
+if "private static function restore_epoch_preflight" not in DURABLE:
+    raise SystemExit("durable restore-epoch preflight helper missing")
+for method in (
+    "begin_idempotency","complete_idempotency","complete_idempotency_from_reconciliation",
+    "record_idempotency_reconciliation_observation","release_idempotency_after_verified_no_effect",
+    "reclaim_idempotency","acquire_lease","reclaim_lease","heartbeat","assert_fencing_token",
+    "complete_lease","enqueue_outbox","accept_inbox",
+):
+    start = DURABLE.index(f"public static function {method}")
+    tail = DURABLE[start:start+900]
+    if "restore_epoch_preflight" not in tail:
+        raise SystemExit(f"durable surface bypasses restore epoch quarantine: {method}")

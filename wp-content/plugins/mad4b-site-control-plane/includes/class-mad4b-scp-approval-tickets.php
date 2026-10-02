@@ -326,6 +326,10 @@ final class MAD4B_SCP_Approval_Tickets {
 	}
 
 	public static function claim_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
+		if ( class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) {
+			$restore_ready = MAD4B_SCP_Restore_Epoch::ensure_bound();
+			if ( is_wp_error( $restore_ready ) ) return $restore_ready;
+		}
 		global $wpdb;
 		$topology = class_exists( 'MAD4B_SCP_Database_Topology' ) ? MAD4B_SCP_Database_Topology::assert_write_ready( true ) : new WP_Error( 'mad4b_database_topology_unavailable', 'Database topology service is unavailable.' );
 		if ( is_wp_error( $topology ) ) return $topology;

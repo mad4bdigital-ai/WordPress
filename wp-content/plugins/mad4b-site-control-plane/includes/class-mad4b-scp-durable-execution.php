@@ -32,6 +32,8 @@ final class MAD4B_SCP_Durable_Execution {
 	const MAX_RECONCILIATION_OBSERVATIONS = 4;
 
 	public static function begin_idempotency( $scope_key, $idempotency_key, $request_sha256, $ttl_seconds = 86400 ) {
+		$restore_epoch = self::restore_epoch_preflight( 'begin_idempotency' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$scope_key = strtolower( trim( (string) $scope_key ) );
 		$idempotency_key = trim( (string) $idempotency_key );
@@ -142,6 +144,8 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function complete_idempotency( array $claim, $result ) {
+		$restore_epoch = self::restore_epoch_preflight( 'complete_idempotency' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		if ( empty( $claim['claimed'] ) || empty( $claim['scope_key'] ) || empty( $claim['idempotency_key'] ) || empty( $claim['request_sha256'] ) || empty( $claim['claim_epoch'] ) ) {
 			return new WP_Error( 'mad4b_idempotency_claim_invalid', 'Idempotency completion requires the exact pending claim and claim epoch.' );
@@ -170,6 +174,8 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function complete_idempotency_from_reconciliation( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $result ) {
+		$restore_epoch = self::restore_epoch_preflight( 'complete_idempotency_from_reconciliation' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$scope_key = strtolower( trim( (string) $scope_key ) );
 		$idempotency_key = trim( (string) $idempotency_key );
@@ -263,6 +269,8 @@ final class MAD4B_SCP_Durable_Execution {
 
 
 	public static function record_idempotency_reconciliation_observation( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $observation ) {
+		$restore_epoch = self::restore_epoch_preflight( 'record_idempotency_reconciliation_observation' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$scope_key = strtolower( trim( (string) $scope_key ) );
 		$idempotency_key = trim( (string) $idempotency_key );
@@ -403,6 +411,8 @@ final class MAD4B_SCP_Durable_Execution {
 
 
 	public static function release_idempotency_after_verified_no_effect( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $proof ) {
+		$restore_epoch = self::restore_epoch_preflight( 'release_idempotency_after_verified_no_effect' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$scope_key = strtolower( trim( (string) $scope_key ) );
 		$idempotency_key = trim( (string) $idempotency_key );
@@ -542,6 +552,8 @@ final class MAD4B_SCP_Durable_Execution {
 
 
 	public static function reclaim_idempotency( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $ttl_seconds = 86400 ) {
+		$restore_epoch = self::restore_epoch_preflight( 'reclaim_idempotency' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$scope_key = strtolower( trim( (string) $scope_key ) );
 		$idempotency_key = trim( (string) $idempotency_key );
@@ -637,6 +649,8 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function acquire_lease( $work_id, $aggregate_type, $aggregate_id, $worker_id, $expected_revision, $ttl_seconds = 120 ) {
+		$restore_epoch = self::restore_epoch_preflight( 'acquire_lease' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$valid = self::validate_lease_identity( $work_id, $aggregate_type, $aggregate_id, $worker_id, $expected_revision );
 		if ( is_wp_error( $valid ) ) return $valid;
@@ -698,6 +712,8 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function reclaim_lease( $work_id, $worker_id, $expected_revision, $reconciliation_ref, $ttl_seconds = 120 ) {
+		$restore_epoch = self::restore_epoch_preflight( 'reclaim_lease' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$work_id = strtolower( trim( (string) $work_id ) );
 		$worker_id = trim( (string) $worker_id );
@@ -762,6 +778,8 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function heartbeat( $work_id, $worker_id, $lease_epoch, $ttl_seconds = 120 ) {
+		$restore_epoch = self::restore_epoch_preflight( 'heartbeat' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$work_id = strtolower( trim( (string) $work_id ) );
 		$worker_id = trim( (string) $worker_id );
@@ -789,6 +807,8 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function assert_fencing_token( $work_id, $worker_id, $lease_epoch, $expected_revision ) {
+		$restore_epoch = self::restore_epoch_preflight( 'assert_fencing_token' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$topology = self::write_topology_preflight();
 		if ( is_wp_error( $topology ) ) return $topology;
@@ -809,6 +829,8 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function complete_lease( $work_id, $worker_id, $lease_epoch, $status = 'completed' ) {
+		$restore_epoch = self::restore_epoch_preflight( 'complete_lease' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$status = sanitize_key( (string) $status );
 		if ( ! in_array( $status, array( 'completed', 'blocked', 'failed', 'cancelled' ), true ) ) return new WP_Error( 'mad4b_lease_terminal_status_invalid', 'Lease terminal status is invalid.' );
@@ -832,6 +854,8 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function enqueue_outbox( array $record ) {
+		$restore_epoch = self::restore_epoch_preflight( 'enqueue_outbox' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$required = array( 'job_id', 'expected_job_revision', 'provider_id', 'capability_id', 'workflow_plan_sha256', 'idempotency_key', 'request_sha256' );
 		foreach ( $required as $field ) if ( ! isset( $record[ $field ] ) || '' === trim( (string) $record[ $field ] ) ) return new WP_Error( 'mad4b_outbox_field_missing', 'Outbox record is missing ' . $field . '.' );
@@ -904,6 +928,8 @@ final class MAD4B_SCP_Durable_Execution {
 	}
 
 	public static function accept_inbox( $provider_id, $provider_event_id, $job_id, $payload_sha256, $provider_execution_ref = '' ) {
+		$restore_epoch = self::restore_epoch_preflight( 'accept_inbox' );
+		if ( is_wp_error( $restore_epoch ) ) return $restore_epoch;
 		global $wpdb;
 		$provider_id = sanitize_key( (string) $provider_id );
 		$provider_event_id = trim( (string) $provider_event_id );
@@ -945,6 +971,26 @@ final class MAD4B_SCP_Durable_Execution {
 		$stored_execution_ref = isset( $row['provider_execution_ref'] ) ? (string) $row['provider_execution_ref'] : '';
 		if ( '' !== $provider_execution_ref && '' !== $stored_execution_ref && ! hash_equals( $stored_execution_ref, $provider_execution_ref ) ) return new WP_Error( 'mad4b_inbox_execution_ref_conflict', 'Duplicate provider event ID is already bound to a different provider execution reference.' );
 		return array( 'contract' => self::INBOX_CONTRACT, 'duplicate' => true, 'provider_id' => $provider_id, 'provider_event_id' => $provider_event_id, 'status' => (string) $row['status'], 'result_ref' => (string) $row['result_ref'] );
+	}
+
+	private static function restore_epoch_preflight( $surface ) {
+		if ( ! class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) {
+			return new WP_Error( 'mad4b_durable_restore_epoch_unavailable', 'Durable execution requires the restore/authority epoch contract.', array( 'surface' => sanitize_key( (string) $surface ), 'blind_retry_allowed' => false ) );
+		}
+		$status = MAD4B_SCP_Restore_Epoch::ensure_bound();
+		if ( is_wp_error( $status ) ) {
+			return new WP_Error(
+				'mad4b_durable_restore_epoch_quarantined',
+				'Durable state is quarantined because the database restore/authority epoch is not current.',
+				array(
+					'surface' => sanitize_key( (string) $surface ),
+					'cause' => $status->get_error_code(),
+					'reconciliation_required' => true,
+					'blind_retry_allowed' => false,
+				)
+			);
+		}
+		return $status;
 	}
 
 	private static function write_topology_preflight() {

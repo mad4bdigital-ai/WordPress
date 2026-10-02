@@ -17,7 +17,8 @@ function get_option($k,$d=false){return array_key_exists($k,$GLOBALS['options'])
 function update_option($k,$v,$autoload=false){$GLOBALS['options'][$k]=$v;return true;}
 function current_user_can($cap){return !empty($GLOBALS['admin']);}
 final class MAD4B_SCP_Site_Profile{
- static function site_uuid(){return '123e4567-e89b-42d3-a456-426614174000';}
+ public static $site_uuid_for_test='123e4567-e89b-42d3-a456-426614174000';
+ static function site_uuid(){return self::$site_uuid_for_test;}
  static function origin_enrolled(){return true;}
  static function write_enabled(){return !empty($GLOBALS['write_enabled']);}
 }
@@ -54,6 +55,15 @@ $GLOBALS['options'][MAD4B_SCP_Restore_Epoch::OPTION]=$stale_binding;
 MAD4B_SCP_Restore_Epoch::reset_request_cache();
 $restored_initial=MAD4B_SCP_Restore_Epoch::status(false,true);
 $check(!empty($restored_initial['ready'])&&1===(int)$restored_initial['epoch'],'fixture could not restore initial epoch after half-present tests',$restored_initial);
+
+$original_site_uuid='123e4567-e89b-42d3-a456-426614174000';
+$foreign_site_uuid='123e4567-e89b-42d3-a456-426614174099';
+MAD4B_SCP_Site_Profile::$site_uuid_for_test=$foreign_site_uuid;
+MAD4B_SCP_Restore_Epoch::reset_request_cache();
+$foreign_clone=MAD4B_SCP_Restore_Epoch::status(false,true);
+$check(empty($foreign_clone['ready'])&&in_array('restore_epoch_site_identity_mismatch',$foreign_clone['blockers'],true),'copied restore epoch was accepted on a foreign Site UUID',$foreign_clone);
+MAD4B_SCP_Site_Profile::$site_uuid_for_test=$original_site_uuid;
+MAD4B_SCP_Restore_Epoch::reset_request_cache();
 
 $advanced=MAD4B_SCP_Restore_Epoch::advance('governed_execution');
 $check(is_array($advanced)&&2===(int)$advanced['epoch'],'epoch did not advance before execution',$advanced);

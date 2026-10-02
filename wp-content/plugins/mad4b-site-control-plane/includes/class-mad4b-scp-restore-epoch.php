@@ -30,8 +30,12 @@ final class MAD4B_SCP_Restore_Epoch {
 			$binding = self::read_binding();
 		}
 		$blockers = array();
+		$current_site_uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) ) : '';
+		$current_origin_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
 		if ( empty( $external ) ) $blockers[] = 'restore_epoch_external_missing';
 		if ( empty( $binding ) ) $blockers[] = 'restore_epoch_database_binding_missing';
+		if ( ! empty( $external ) && preg_match( '/^[a-f0-9-]{36}$/', $current_site_uuid ) && ! hash_equals( $current_site_uuid, strtolower( (string) ( isset( $external['site_uuid'] ) ? $external['site_uuid'] : '' ) ) ) ) $blockers[] = 'restore_epoch_site_identity_mismatch';
+		if ( ! empty( $external ) && ! $current_origin_enrolled ) $blockers[] = 'restore_epoch_site_not_enrolled';
 		if ( ! empty( $external ) && ! empty( $binding ) ) {
 			if ( ! self::record_valid( $external ) ) $blockers[] = 'restore_epoch_external_invalid';
 			if ( ! self::binding_valid( $binding ) ) $blockers[] = 'restore_epoch_database_binding_invalid';
@@ -138,6 +142,8 @@ final class MAD4B_SCP_Restore_Epoch {
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected ) || ! hash_equals( $expected, (string) $external['external_record_sha256'] ) ) {
 			return new WP_Error( 'mad4b_restore_epoch_acknowledgement_stale', 'Restore acknowledgement does not match the current external epoch.' );
 		}
+		$reconciled = self::reconcile_restored_security_state( $external );
+		if ( is_wp_error( $reconciled ) ) return $reconciled;
 		$bound = self::write_binding( $external );
 		self::$cache = null;
 		if ( is_wp_error( $bound ) ) return $bound;
@@ -145,6 +151,73 @@ final class MAD4B_SCP_Restore_Epoch {
 	}
 
 	public static function external_path_for_test() { return self::path(); }
+
+	private static function reconcile_restored_security_state( array $external ) {
+		global $wpdb;
+		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! method_exists( 'MAD4B_SCP_Schema', 'tables' ) ) {
+			return new WP_Error( 'mad4b_restore_reconciliation_schema_unavailable', 'Restore reconciliation requires governance schema access.' );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Database_Transaction_Guard' ) ) {
+			return new WP_Error( 'mad4b_restore_reconciliation_transaction_guard_unavailable', 'Restore reconciliation requires the database transaction guard.' );
+		}
+		$t = MAD4B_SCP_Schema::tables();
+		$required = array( 'approvals', 'idempotency', 'work_leases' );
+		$transaction = MAD4B_SCP_Database_Transaction_Guard::begin( 'restore_epoch_reconciliation', $required, true );
+		if ( is_wp_error( $transaction ) ) return $transaction;
+		$now = gmdate( 'Y-m-d H:i:s' );
+		$expired = gmdate( 'Y-m-d H:i:s', time() - 5 );
+		$ref = 'restore_epoch:' . substr( (string) $external['external_record_sha256'], 0, 64 );
+		try {
+			$wpdb->last_error = '';
+			$approval_update = $wpdb->query( "UPDATE {$t['approvals']} SET status='revoked' WHERE status IN ('pending','approved','executing')" );
+			if ( false === $approval_update || '' !== trim( (string) $wpdb->last_error ) ) throw new RuntimeException( 'restore_approval_quarantine_failed:' . (string) $wpdb->last_error );
+
+			$wpdb->last_error = '';
+			$idempotency_update = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$t['idempotency']} SET status='pending',expires_at=%s,reconciliation_ref=%s,updated_at=%s WHERE status IN ('pending','completed','released_verified_no_effect')",
+				$expired, $ref, $now
+			) );
+			if ( false === $idempotency_update || '' !== trim( (string) $wpdb->last_error ) ) throw new RuntimeException( 'restore_idempotency_quarantine_failed:' . (string) $wpdb->last_error );
+
+			$wpdb->last_error = '';
+			$lease_update = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$t['work_leases']} SET status='failed',reconciliation_ref=%s,updated_at=%s WHERE status='active'",
+				$ref, $now
+			) );
+			if ( false === $lease_update || '' !== trim( (string) $wpdb->last_error ) ) throw new RuntimeException( 'restore_lease_quarantine_failed:' . (string) $wpdb->last_error );
+
+			$committed = MAD4B_SCP_Database_Transaction_Guard::commit( $transaction );
+			if ( is_wp_error( $committed ) ) return $committed;
+		} catch ( Throwable $error ) {
+			$rolled_back = MAD4B_SCP_Database_Transaction_Guard::rollback( $transaction );
+			return new WP_Error(
+				'mad4b_restore_reconciliation_failed',
+				'Restored security state could not be quarantined durably.',
+				array(
+					'reason' => substr( $error->getMessage(), 0, 191 ),
+					'rollback_verified' => true === $rolled_back,
+					'reconciliation_required' => true,
+					'blind_retry_allowed' => false,
+				)
+			);
+		}
+
+		if ( class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) {
+			if ( function_exists( 'delete_option' ) ) delete_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION );
+			if ( function_exists( 'get_option' ) && false !== get_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, false ) ) {
+				return new WP_Error( 'mad4b_restore_projection_quarantine_failed', 'Restored dynamic projection state could not be cleared; restore quarantine remains active.' );
+			}
+		}
+		return array(
+			'contract' => 'mad4b.restore-security-reconciliation.v1',
+			'approval_rows_quarantined' => max( 0, (int) $approval_update ),
+			'idempotency_rows_quarantined' => max( 0, (int) $idempotency_update ),
+			'lease_rows_quarantined' => max( 0, (int) $lease_update ),
+			'projection_cleared' => true,
+			'write_remains_disabled' => true,
+			'authorizing' => false,
+		);
+	}
 
 	private static function initialize( $path ) {
 		$site_uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) ) : '';
