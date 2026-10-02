@@ -64,5 +64,11 @@ $check( '' === MAD4B_SCP_Identity_Context::current()['approval_ticket_id'], 'App
 
 $invalid = MAD4B_SCP_Identity_Context::with_approval_ticket_for_request( 'not-a-ticket', static function () { return true; } );
 $check( is_wp_error( $invalid ) && 'mad4b_identity_approval_invalid' === $invalid->get_error_code(), 'Malformed approval ticket entered execution scope.' );
+$wrong_version = '11111111-1111-1111-8111-111111111111';
+$check( ! MAD4B_SCP_Identifiers::valid_approval_ticket_id( $wrong_version ), 'Non-v4 UUID was accepted as approval ticket identity.' );
+$wrong_version_result = MAD4B_SCP_Identity_Context::with_approval_ticket_for_request( $wrong_version, static function () { return true; } );
+$check( is_wp_error( $wrong_version_result ) && 'mad4b_identity_approval_invalid' === $wrong_version_result->get_error_code(), 'Structurally valid non-v4 UUID entered approval scope.' );
+$upper = strtoupper( $ticket );
+$check( $ticket === MAD4B_SCP_Identifiers::approval_ticket_id( $upper ), 'Canonical ticket normalization did not lower-case a valid UUIDv4.' );
 
 echo "PASS approval identity scope: exact ticket, nested conflict denial, success/exception restoration\n";
