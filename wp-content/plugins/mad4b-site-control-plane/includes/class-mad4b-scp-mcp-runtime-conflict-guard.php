@@ -307,7 +307,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 		} catch ( Throwable $e ) {
 			$out['runtime_source'] = 'reflection-unavailable';
 		}
-		$class_provenance = class_exists( 'MAD4B_SCP_MCP_Class_Provenance', false ) ? MAD4B_SCP_MCP_Class_Provenance::status() : array();
+		$class_provenance = class_exists( 'MAD4B_SCP_MCP_Class_Provenance', false ) ? MAD4B_SCP_MCP_Class_Provenance::status( false, false ) : array();
 		if ( is_array( $class_provenance ) && $class_provenance ) {
 			$out['runtime_class_provenance_enforced'] = ! empty( $class_provenance['enforced'] );
 			$out['runtime_class_provenance_ready'] = ! empty( $class_provenance['enforced'] ) ? ! empty( $class_provenance['ready'] ) : null;
