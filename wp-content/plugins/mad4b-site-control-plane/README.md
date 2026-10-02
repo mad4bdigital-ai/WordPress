@@ -6,6 +6,12 @@ Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime gen
 
 Current plugin version: **0.4.0-rc.88**.
 
+### Explicit endpoint diagnostics
+
+Connection > MCP Endpoints always renders the bounded snapshot. Deferred registration, route, permission and mounted write-tool measurements display **Not checked**, with the surface and endpoint URL still present. The diagnostic defaults to `mad4b-chatgpt`; selecting All endpoints runs signed administrator AJAX jobs serially, with only one MAD4B tool catalog materialized per request. On governed sites each job uses the same request-local REST isolation as the real MCP transport.
+
+The browser stops after 15 seconds, including response-body reads, and stops on gateway, authentication, malformed-result or build-change errors. Completed results remain visible; subsequent jobs and automatic retries are blocked. A browser deadline cannot terminate a PHP callback blocked inside a provider or MU plugin. Each completed job exposes bounded required-tool preflight failures and observed tool counts without executing a tool, creating credentials or granting authority. Endpoint inspection does not certify the external connection or clear foreign-transport governance blockers; those checks remain separate.
+
 ### rc.88 protocol bootstrap, recovery and live-acceptance hardening
 
 rc.88 moves unrelated REST and admin-AJAX traffic onto an entry-point zero-touch kernel before the full Control Plane class graph is loaded. Exact MAD4B MCP/OAuth requests keep WordPress REST defaults, MAD4B and the official MCP Adapter, but prune proven third-party plugin REST registrars request-locally with bounded callback/evidence limits and fail-open handling for unknown, Core or MU-plugin provenance. Compact ChatGPT/enrollment/Developer transports also avoid instantiating the full provider Adapter Registry.

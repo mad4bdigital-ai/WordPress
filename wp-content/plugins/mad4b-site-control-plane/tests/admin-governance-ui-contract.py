@@ -42,19 +42,16 @@ require(admin, 'Read-only governance and runtime evidence.', 'read-only-disclosu
 require(bootstrap, "class-mad4b-scp-admin-ui.php", 'bootstrap-load')
 require(plugin, 'MAD4B_SCP_Admin_UI::boot()', 'plugin-boot')
 
-# wp-admin does not naturally run rest_api_init. Deep MCP registry priming is
-# therefore allowed only on the exact Connection > Endpoints diagnostics tab.
-# Ordinary MAD4B pages (Site Setup, Overview, Governance, Providers, etc.) must
-# remain request-serving reads and may not initialize REST/Abilities as a side effect.
-require(plugin, "add_action( 'admin_init', array( __CLASS__, 'prime_admin_mcp_runtime' ), 1 )", 'admin-mcp-prime-hook')
-require(plugin, 'public static function prime_admin_mcp_runtime()', 'admin-mcp-prime-method')
-require(plugin, "'mad4b-control-plane-connection' !== $page", 'admin-mcp-prime-page-scope')
-require(plugin, "'endpoints' !== $tab", 'admin-mcp-prime-tab-scope')
-require(plugin, "admin_connection_endpoints_prime", 'admin-mcp-prime-diagnostic-reason')
+# HTML remains shallow; signed single-server jobs own explicit REST materialization.
+endpoint_worker = (ROOT / 'includes/class-mad4b-scp-endpoint-diagnostic.php').read_text('utf-8')
+require(bootstrap, 'class-mad4b-scp-endpoint-diagnostic.php', 'endpoint-worker-bootstrap')
+forbid(plugin, "add_action( 'admin_init', array( __CLASS__, 'prime_admin_mcp_runtime' ), 1 )", 'no-blocking-admin-prime')
+require(endpoint_worker, "add_action( 'wp_ajax_' . self::ACTION", 'endpoint-worker-hook')
+require(endpoint_worker, "wp_verify_nonce( $input['nonce'], 'mad4b_connection_deep_endpoints' )", 'endpoint-worker-nonce')
 require(plugin, 'public static function is_authority_admin_surface()', 'admin-authority-surface-helper')
 require(plugin, "return 0 === strpos( $page, 'mad4b-control-plane' ) || 'mad4b-approval-decisions' === $page;", 'admin-authority-surface-boundary')
 require(plugin, 'public static function reconcile_authority_on_mad4b_admin()', 'admin-authority-reconcile-method')
-require(plugin, 'rest_get_server();', 'admin-mcp-local-rest-bootstrap')
+require(endpoint_worker, 'rest_get_server();', 'endpoint-worker-local-rest-bootstrap')
 for outbound in ('wp_remote_get(', 'wp_remote_post(', 'wp_safe_remote_get(', 'wp_safe_remote_post('):
     forbid(plugin, outbound, 'admin-mcp-no-outbound-probe')
 

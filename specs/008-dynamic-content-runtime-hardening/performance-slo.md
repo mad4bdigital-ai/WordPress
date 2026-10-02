@@ -15,7 +15,7 @@ Structural invariants:
 
 - no `dbDelta`, schema install/upgrade, or physical schema reconciliation during page render;
 - no managed Skill seed/provider reconciliation during page render;
-- no `rest_get_server()` / Abilities priming outside the exact Connection > MCP Endpoints diagnostics tab;
+- no `rest_get_server()` / Abilities priming during Connection HTML rendering; explicit endpoint materialization belongs to signed administrator AJAX jobs launched from Connection > MCP Endpoints, with one MAD4B catalog per request;
 - no managed MU bootstrap refresh or MCP runtime conflict repair during ordinary page render;
 - dashboard/console data is loaded per active tab; Overview must not run the adapter `runtime_self_test()` or MCP peer inventory scan;
 - lifecycle repair remains available through activation/update, Runtime Convergence, WP-Cron/CLI, or the exact diagnostics surface.
@@ -47,7 +47,8 @@ Read/status surfaces are passive observations, not provider probes.
 - implicit REST server materialization from provider compatibility or connection status: **0**;
 - automatic retries of provider probes from read resilience: **0**;
 - if REST is already materialized by another explicit lifecycle, status may inspect the existing route registry without dispatching the route;
-- deep REST registry materialization is confined to the explicit `Connection > MCP Endpoints` workspace;
+- deep REST registry materialization is confined to explicit signed jobs from `Connection > MCP Endpoints`; browser deadlines cover both fetch and response-body reads, stop subsequent jobs and never imply termination of a blocked PHP callback;
+- unobserved registration/route/permission/catalog-count measurements remain unknown, and scoped endpoint jobs never certify the external connection or claim a complete foreign-transport inventory;
 - behavioral provider acceptance is delegated to the governed external/browser executor and persisted as bounded evidence;
 - these rules apply provider-neutrally to WPML, Elementor, JetEngine, JetSmartFilters, WooCommerce, Rank Math, LiteSpeed and future providers.
 - third-party wp-admin plugin pages are zero-touch; only explicit MAD4B operator pages may enter Control Plane lifecycle work.
