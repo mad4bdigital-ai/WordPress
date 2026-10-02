@@ -55,6 +55,22 @@ if ( is_wp_error( $cached ) ) $fail( 'Cached preparation failed.', $cached->get_
 $cached_item = $cached['abilities'][0] ?? array();
 if ( 'reusable' !== ( $cached_item['schema_cache_state'] ?? '' ) || isset( $cached_item['schema'] ) ) $fail( 'Matching schema fingerprint was not reused.', $cached_item );
 
+if ( wp_has_ability( 'mad4b-ci/readonly-projection-fixture' ) ) {
+	$dynamic_only = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
+		'action' => 'prepare',
+		'ability_names' => array( 'mad4b-ci/readonly-projection-fixture' ),
+	), 'rest' );
+	if ( is_wp_error( $dynamic_only ) ) $fail( 'Classified dynamic-only read preparation failed.', $dynamic_only->get_error_code() );
+	$dynamic_only_item = $dynamic_only['abilities'][0] ?? array();
+	if (
+		'requires_dynamic_projection' !== ( $dynamic_only_item['execution']['state'] ?? '' )
+		|| 'read_target_not_in_fixed_dispatch_catalog' !== ( $dynamic_only_item['execution']['blocker'] ?? '' )
+		|| empty( $dynamic_only_item['projection_eligible'] )
+	) {
+		$fail( 'Classified third-party read Ability was incorrectly advertised through the fixed dispatcher.', $dynamic_only_item );
+	}
+}
+
 if ( wp_has_ability( 'mad4b/chatgpt-tool-projection-apply' ) ) {
 	$enrollment = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array(
 		'action' => 'prepare',
