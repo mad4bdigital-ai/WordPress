@@ -53,7 +53,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 		if ( ! self::same( $expected_material, $current, 'provider' ) ) {
 			return self::error( 'RECERTIFICATION_REQUIRED', 'Provider capability or artifact evidence changed before commit.' );
 		}
-		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'subject_lifecycle', 'site_profile', 'candidate', 'database_storage', 'runtime_compatibility', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
+		foreach ( array( 'grant', 'approval', 'policy', 'authority', 'subject_lifecycle', 'site_profile', 'restore_epoch', 'candidate', 'database_storage', 'runtime_compatibility', 'kill_switch', 'rights', 'data_processing' ) as $dependency ) {
 			if ( ! self::same( $expected_material, $current, $dependency ) ) {
 				return self::error( 'REAPPROVAL_REQUIRED', 'A material authorization dependency changed before commit.', array( 'dependency' => $dependency ) );
 			}
@@ -92,6 +92,10 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 
 		$subject_lifecycle = self::subject_lifecycle_material( $identity );
 		if ( is_wp_error( $subject_lifecycle ) ) return $subject_lifecycle;
+
+		if ( ! class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) return self::error( 'DENIED', 'Restore/authority epoch contract is unavailable at commit guard.' );
+		$restore_epoch = MAD4B_SCP_Restore_Epoch::material();
+		if ( is_wp_error( $restore_epoch ) ) return self::error( 'REAPPROVAL_REQUIRED', 'Restore/authority epoch is not ready or indicates database rollback.', array( 'cause' => $restore_epoch->get_error_code() ) );
 
 		if ( ! class_exists( 'MAD4B_SCP_Runtime_Compatibility_Profile' ) ) return self::error( 'DENIED', 'Runtime compatibility profile is unavailable at commit guard.' );
 		$compatibility_status = MAD4B_SCP_Runtime_Compatibility_Profile::assert_governed_write_ready( true );
@@ -228,6 +232,7 @@ final class MAD4B_SCP_Execution_Commit_Guard {
 			'policy' => $policy,
 			'authority' => $authority,
 			'subject_lifecycle' => $subject_lifecycle,
+			'restore_epoch' => $restore_epoch,
 			'site_profile' => $profile,
 			'candidate' => $candidate,
 			'database_storage' => $database_storage,

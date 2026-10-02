@@ -459,6 +459,14 @@ final class MAD4B_SCP_Authorization {
 				}
 				$claim['commit_guard_receipt'] = $commit_guard;
 			}
+			if ( class_exists( 'MAD4B_SCP_Restore_Epoch' ) ) {
+				$restore_epoch = MAD4B_SCP_Restore_Epoch::advance( 'governed_execution' );
+				if ( is_wp_error( $restore_epoch ) ) {
+					MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $restore_epoch );
+					return $restore_epoch;
+				}
+				$claim['restore_epoch_receipt'] = $restore_epoch;
+			}
 			MAD4B_SCP_Authorization::mark_execution_callback_started( $name );
 			try {
 				$result = call_user_func( $original, $input );

@@ -16,6 +16,7 @@ commit_guard=(ROOT/"includes/class-mad4b-scp-execution-commit-guard.php").read_t
 runtime_compatibility=(ROOT/"includes/class-mad4b-scp-runtime-compatibility-profile.php").read_text(encoding="utf-8")
 main=(ROOT/"mad4b-site-control-plane.php").read_text(encoding="utf-8")
 request_generation=(ROOT/"includes/class-mad4b-scp-request-generation.php").read_text(encoding="utf-8")
+restore_epoch=(ROOT/"includes/class-mad4b-scp-restore-epoch.php").read_text(encoding="utf-8")
 execution_fence=(ROOT/"includes/class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
 projection=(ROOT/"includes/class-mad4b-scp-chatgpt-tool-projection.php").read_text(encoding="utf-8")
 transport_context=(ROOT/"includes/class-mad4b-scp-transport-context.php").read_text(encoding="utf-8")
@@ -94,3 +95,10 @@ need("'runtime_compatibility' => $runtime_compatibility" in commit_guard, "commi
 need("'runtime_compatibility', 'kill_switch'" in commit_guard, "commit guard does not revalidate runtime compatibility profile")
 
 print("mad4b.capability-fabric.bulk-hardening.contract.v1: PASS")
+
+need("mad4b.restore-authority-epoch.v1" in restore_epoch, "restore/authority epoch contract missing")
+need("restore_epoch_database_snapshot_detected" in restore_epoch, "database snapshot time-travel mismatch is not detected")
+need("write_external" in restore_epoch and "write_binding" in restore_epoch and restore_epoch.index("write_external") < restore_epoch.index("write_binding"), "restore epoch does not persist external state before DB binding")
+need("mad4b_restore_epoch_write_must_be_disabled" in restore_epoch, "restore acknowledgement does not require write-disabled quarantine")
+need("'restore_epoch'" in commit_guard, "commit guard does not bind restore epoch")
+need("MAD4B_SCP_Restore_Epoch::advance( 'governed_execution' )" in authorization, "provider entry does not advance restore epoch")
