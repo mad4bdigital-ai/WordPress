@@ -4,6 +4,10 @@ root = Path('wp-content/plugins/mad4b-site-control-plane')
 gateway = (root / 'includes/class-mad4b-scp-unified-capability-gateway.php').read_text(encoding='utf-8')
 catalog = (root / 'includes/class-mad4b-scp-ability-catalog-transport.php').read_text(encoding='utf-8')
 projection = (root / 'includes/class-mad4b-scp-chatgpt-tool-projection.php').read_text(encoding='utf-8')
+inspector = (root / 'includes/class-mad4b-scp-ability-contract-inspector.php').read_text(encoding='utf-8')
+descriptor = (root / 'includes/class-mad4b-scp-capability-descriptor-registry.php').read_text(encoding='utf-8')
+abilities = (root / 'includes/class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
+client = (root / 'client/ability-catalog-client.mjs').read_text(encoding='utf-8')
 oauth = (root / 'includes/class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
 compat = (root / 'includes/class-mad4b-scp-mcp-client-compatibility.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
@@ -46,6 +50,13 @@ assert "public static function prepare_ability" in catalog, 'single-Ability lazy
 for marker in ["subject_fingerprint", "issuer_fingerprint", "client_fingerprint", "token_scopes"]:
     assert marker in catalog, f'catalog scope is not identity-bound: {marker}'
 assert "public static function describe_ability" in projection, 'projection classification is not reusable by gateway'
+assert "MAD4B_SCP_Ability_Contract_Inspector::inspect" in descriptor, 'descriptor registry is not backed by the canonical inspector'
+assert "MAD4B_SCP_ChatGPT_Tool_Projection::inspect_contract" not in descriptor, 'descriptor registry regressed to presentation-layer classification'
+assert "mad4b.ability-classification.v2" in inspector and "sort( $keys, SORT_STRING )" in inspector, 'canonical classification digest contract is incomplete'
+assert "expected_authority_scope_sha256', 'preparation_receipt" in abilities, 'fixed dispatch schema does not require signed preparation scope'
+assert "expected_authority_scope_sha256: item.authority_scope_sha256" in client, 'client does not forward the fresh server authority scope'
+assert "preparation_receipt: item.preparation_receipt" in client, 'client does not forward fresh signed preparation evidence'
+assert main.index("class-mad4b-scp-ability-contract-inspector.php") < main.index("class-mad4b-scp-capability-descriptor-registry.php") < main.index("class-mad4b-scp-chatgpt-tool-projection.php"), 'canonical inspector/descriptor/projection bootstrap order drifted'
 assert "'/mad4b/v1/capability-gateway'" in oauth, 'adaptive REST gateway is not protected by the ChatGPT OAuth resource'
 assert "MAD4B_SCP_Unified_Capability_Gateway::public_manifest()" in compat, 'client compatibility manifest does not advertise adaptive gateway'
 assert "class-mad4b-scp-unified-capability-gateway.php" in main, 'gateway class is not loaded by the Control Plane'
