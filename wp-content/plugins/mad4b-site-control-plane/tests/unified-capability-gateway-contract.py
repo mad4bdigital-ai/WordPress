@@ -53,6 +53,8 @@ assert "public static function describe_ability" in projection, 'projection clas
 for source_name, source in [('gateway', gateway), ('catalog', catalog), ('fixed-dispatch', abilities)]:
     assert 'MAD4B_SCP_ChatGPT_Tool_Projection::describe_ability' not in source, f'{source_name} regressed to presentation-layer capability classification'
     assert 'MAD4B_SCP_Capability_Descriptor_Registry::describe' in source, f'{source_name} does not consume canonical capability descriptors'
+assert 'MAD4B_SCP_ChatGPT_Tool_Projection::' not in catalog, 'catalog transport must not depend on projection-layer state or binding helpers'
+assert 'MAD4B_SCP_Ability_Contract_Inspector::site_binding()' in catalog, 'catalog authority scope does not use canonical site binding'
 assert "MAD4B_SCP_Ability_Contract_Inspector::inspect" in descriptor, 'descriptor registry is not backed by the canonical inspector'
 assert "MAD4B_SCP_ChatGPT_Tool_Projection::inspect_contract" not in descriptor, 'descriptor registry regressed to presentation-layer classification'
 assert "mad4b.ability-classification.v2" in inspector and "sort( $keys, SORT_STRING )" in inspector, 'canonical classification digest contract is incomplete'
