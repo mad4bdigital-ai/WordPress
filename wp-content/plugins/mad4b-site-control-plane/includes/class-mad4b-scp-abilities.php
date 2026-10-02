@@ -62,10 +62,7 @@ final class MAD4B_SCP_Abilities {
 				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'expected_authority_scope_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'preparation_receipt' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 4096 ),
-				'_mad4b_approval_ticket_id' => array( 'type' => 'string', 'pattern' => '^[A-Fa-f0-9-]{36}
-			), array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' )
-		), false, false, true, false );
-		 ),
+				'_mad4b_approval_ticket_id' => array( 'type' => 'string', 'pattern' => '^[A-Fa-f0-9-]{36}$' ),
 				'_mad4b_context_receipt' => array( 'type' => 'object', 'additionalProperties' => true ),
 				'input' => array( 'type' => 'object', 'default' => array() ),
 			), array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' )
