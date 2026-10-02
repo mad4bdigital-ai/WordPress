@@ -5,7 +5,7 @@ const digest = value => createHash('sha256').update(value).digest('hex');
 const contract = 'mad4b.ability-catalog-transport.v2';
 const scope = 'a'.repeat(64), snapshot = 'b'.repeat(64);
 const raw = Buffer.from(JSON.stringify({inputSchema: {type: 'object', properties: {}, description: 'محتوى'.repeat(10000)}, outputSchema: {}}));
-const sha = digest(raw); let calls = 0, corrupt = false, expired = false, denied = false, origin = 'https://ci.test', captured, wireSha = sha;
+const sha = digest(raw); let calls = 0, manifestCalls = 0, prepareCalls = 0, corrupt = false, expired = false, denied = false, origin = 'https://ci.test', captured, wireSha = sha;
 const row = {ability_name: 'vendor/read', source: {sha256: sha, bytes: raw.length}, wire: {sha256: sha, bytes: raw.length, tool_name: 'vendor-read'}, execution: {lane: 'read', execution_eligible: true, input_schema_sha256: sha, classification_sha256: scope}};
 const currentRow = () => ({...row, wire: {...row.wire, sha256: wireSha}});
 const fetchImpl = async (url, options) => {
@@ -14,10 +14,11 @@ const fetchImpl = async (url, options) => {
   if (url.pathname.endsWith('/capability-gateway')) {
     const request = JSON.parse(options.body);
     if (request.action === 'search') return Response.json({contract: 'mad4b.unified-capability-gateway.v1', items: [{ability_name: row.ability_name}]});
+    if (request.action === 'prepare') prepareCalls++;
     return Response.json({contract: 'mad4b.unified-capability-gateway.v1', abilities: [{...currentRow(), snapshot, authority_scope_sha256: scope, classification: 'read', input_schema_sha256: sha, classification_sha256: scope, execution: {state: 'governed_dispatch'}}]});
   }
   if (url.pathname.endsWith('/capabilities')) return Response.json({contract, authority_scope_sha256: scope, rest_base_url: origin + '/wp-json/mad4b/v1/ability-catalog/', transports: ['authenticated_rest_binary', 'mcp_base64']});
-  if (url.pathname.endsWith('/manifest')) return Response.json({contract, authority_scope_sha256: scope, snapshot, items: [currentRow()], removed: [], delta: false, next_cursor: null});
+  if (url.pathname.endsWith('/manifest')) { manifestCalls++; return Response.json({contract, authority_scope_sha256: scope, snapshot, items: [currentRow()], removed: [], delta: false, next_cursor: null}); }
   if (expired) { expired = false; return new Response('{}', {status: 410}); }
   calls++;
   const index = Number(url.pathname.split('/').at(-1)), size = Number(url.searchParams.get('chunk_bytes'));
@@ -37,7 +38,10 @@ assert.deepEqual(result.schema.inputSchema.properties, {}); assert.equal(result.
 const downloads = calls; await client.readSchema(catalog, row.ability_name, {state}); assert.equal(calls, downloads);
 state.chunks.get(0).bytes[0] ^= 1; await client.readSchema(catalog, row.ability_name, {state}); assert.equal(calls, downloads + 1);
 corrupt = true; await assert.rejects(client.readSchema(catalog, row.ability_name), /integrity/); corrupt = false;
+const manifestsBeforeLeaseRenewal = manifestCalls, preparesBeforeLeaseRenewal = prepareCalls;
 expired = true; await client.readSchema(catalog, row.ability_name);
+assert.equal(manifestCalls, manifestsBeforeLeaseRenewal, 'Expired schema lease rebuilt the full catalog');
+assert.equal(prepareCalls, preparesBeforeLeaseRenewal + 1, 'Expired schema lease did not renew the selected Ability only');
 origin = 'https://attacker.invalid'; await assert.rejects(client.negotiate(), /credential origin/); origin = 'https://ci.test';
 denied = true; await assert.rejects(client.sync(catalog), e => e.status === 403); denied = false;
 assert.equal(await client.execute(catalog, row.ability_name, {value: 1}), 'executed');
