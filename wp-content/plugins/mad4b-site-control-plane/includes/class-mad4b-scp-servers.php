@@ -947,12 +947,21 @@ final class MAD4B_SCP_Servers {
 			if ( ! empty( $preflight['ready'] ) ) $tools = $preflight['tools'];
 		}
 		$result = $adapter->create_server( $id, 'mcp', $id, $name, $description, MAD4B_SCP_VERSION, array( $transport ), $error_handler, $observability, $tools, array(), array(), $permission );
-		if ( is_wp_error( $result ) ) { self::$registrations[ $id ] = array( 'registered' => false, 'error' => $result->get_error_code(), 'materialized' => false, 'tool_count' => 0 ); error_log( '[MAD4B SCP] Failed creating ' . $id . ': ' . $result->get_error_message() ); return; }
+		if ( is_wp_error( $result ) ) {
+			self::$registrations[ $id ] = array( 'registered' => false, 'error' => $result->get_error_code(), 'materialized' => false, 'tool_count' => 0 );
+			// Adapter rejection must not erase the earlier required-tool evidence.
+			if ( is_array( $preflight ) ) {
+				self::$registrations[ $id ]['requested_tool_count'] = count( $requested_tools );
+				self::$registrations[ $id ]['preflight'] = $preflight;
+			}
+			error_log( '[MAD4B SCP] Failed creating ' . $id . ': ' . $result->get_error_message() );
+			return;
+		}
 		self::$registrations[ $id ] = array( 'registered' => true, 'error' => '', 'materialized' => (bool) $materialized, 'tool_count' => count( $tools ) );
 		if ( 'mad4b-chatgpt' === $id && $materialized ) {
 			$server = method_exists( $adapter, 'get_server' ) ? $adapter->get_server( $id ) : null;
 			$evidence = MAD4B_SCP_MCP_Catalog_Diagnostics::inspect( $server, $tools );
-			if ( ! empty( $evidence['ready'] ) ) MAD4B_SCP_MCP_Catalog_Diagnostics::capture_classification( $server, $tools );
+			if ( ! empty( $preflight['ready'] ) && ! empty( $evidence['ready'] ) ) MAD4B_SCP_MCP_Catalog_Diagnostics::capture_classification( $server, $tools );
 			self::$registrations[ $id ]['requested_tool_count'] = count( $requested_tools );
 			self::$registrations[ $id ]['preflight'] = $preflight;
 			if ( empty( $preflight['ready'] ) ) { $evidence['ready'] = false; $evidence['blocker'] = $preflight['blocker']; }
