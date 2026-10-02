@@ -321,6 +321,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     if (!item || item.source?.sha256 !== old?.source?.sha256 || item.execution?.classification_sha256 !== old?.execution?.classification_sha256) throw new CatalogError('Ability contract changed; replan');
     const execution = item.execution;
     if (!execution?.execution_eligible || !DIGEST.test(execution.input_schema_sha256) || !DIGEST.test(execution.classification_sha256)) throw new CatalogError('Ability is not eligible for governed execution');
+    if (!DIGEST.test(item.authority_scope_sha256 ?? '') || typeof item.preparation_receipt !== 'string' || item.preparation_receipt.length < 1 || item.preparation_receipt.length > 4096) throw new CatalogError('Fresh signed preparation evidence is required');
     if (mode === 'direct') {
       if (!old?.wire?.sha256 || !item.wire?.sha256 || item.wire.sha256 !== old.wire.sha256 || item.wire.tool_name !== old.wire.tool_name) throw new CatalogError('Direct tool wire contract changed; refresh and replan');
       if (!item.wire?.tool_name || !directToolNames.includes(item.wire.tool_name)) throw new CatalogError('Host has not confirmed this direct tool');
@@ -331,11 +332,11 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     const dispatchLanes = {read: 'read', write: 'write', content: 'write', admin: 'write', developer: 'developer'};
     if (Object.hasOwn(dispatchLanes, execution.lane)) return callTool(`mad4b-${dispatchLanes[execution.lane]}-execute`, {
       ability_name: abilityName,
-      ...(expectedAuthorityScopeSha256 ? {expected_authority_scope_sha256: expectedAuthorityScopeSha256} : {}),
+      expected_authority_scope_sha256: item.authority_scope_sha256,
       expected_input_schema_sha256: execution.input_schema_sha256,
       expected_classification_sha256: execution.classification_sha256,
       expected_execution_lane: execution.lane,
-      ...(item.preparation_receipt ? {preparation_receipt: item.preparation_receipt} : {}),
+      preparation_receipt: item.preparation_receipt,
       input,
     }, {signal});
     if (execution.lane === 'enrollment' && operation?.ability_name === abilityName && DIGEST.test(operation.expected_registration_digest) && DIGEST.test(operation.expected_dispatch_policy_digest)) return callTool('mad4b-enrollment-execute', {operation_id: operation.operation_id, expected_registration_digest: operation.expected_registration_digest, expected_dispatch_policy_digest: operation.expected_dispatch_policy_digest, expected_input_schema_sha256: execution.input_schema_sha256, input}, {signal});
